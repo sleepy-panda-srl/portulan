@@ -1,0 +1,45 @@
+# Autonomy & gates
+
+> Core doctrine — loaded on demand. What an agent may do on its own, what it must get approval for, and
+> the gate no model can talk its way past. The engine defines the *mechanism* (the tiers, the floor);
+> the workspace supplies the *policy* (which concrete action sits in which tier) — mechanism/policy
+> separation.
+
+## Actions are tiered by undoability
+
+Every action an agent can take is classified by how hard it is to undo, and that class — not the
+agent's confidence — decides who has to say yes. _(The recoverable-vs-reversible axis is safety
+doctrine; see `safety.md`.)_
+
+| Tier | Action class | Who approves |
+|---|---|---|
+| **Auto** | Recoverable and reversible — edits in a working branch, reads, local runs. | The agent, unattended. |
+| **Propose** | Reversible but consequential — a diff to merge, a schema change. | Human or eval-gated review (a PR). |
+| **Gated** | Outward-facing or hard to undo — push to a shared remote, publish, deploy, buy, delete, send. | Explicit human approval, per action. |
+
+The tiers are the engine's vocabulary. The **gate map** — the table of which concrete action lands in
+which tier for this team and repo — lives in the workspace, because it is policy and it varies.
+_(Provenance: platform engineering — the same policy for agents as for humans.)_
+
+## The platform floor
+
+Prompt-level rules can be argued with; branch protection cannot. The durable gates are the ones the
+platform enforces regardless of which model, host, or prompt is driving:
+
+- Branch protection and required status checks — no merge without green.
+- `CODEOWNERS` and PR-as-gate — a human in the path for owned code.
+- Least privilege — an agent gets the tools and scopes its task needs and nothing more (the `tools:`
+  allow-list, see `../personas/`).
+
+This is the *floor* because it holds when everything above it fails: a jailbroken prompt still cannot
+push to a protected branch. Portulan configures the floor; it never asks you to trust that the model
+will behave. _(Provenance: platform engineering — the internal developer platform, turned on agents;
+vision thesis 3, "rails, not prose.")_
+
+## Approvals should not block the human's day
+
+A gated action should not mean the agent idles until someone is at a keyboard. The doctrine-permitted
+**approval relay** carries a gated-action request to the human asynchronously (chat / webhook) and the
+decision back. It is the one hosted-ish surface the product allows, and it ships self-hostable first.
+_(Built later — the enforcement compiler and the relay are milestones 4 and 9; named here so the loop's
+"gated" tier has somewhere to send its requests.)_
