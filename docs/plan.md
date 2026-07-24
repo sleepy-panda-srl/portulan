@@ -181,3 +181,24 @@ the seam applies here too: no client-identifying references)_
   APPROVE-WITH-ADJUSTMENTS (both required adjustments folded in, plus the optional one; the kernel
   deliberately not grown — 43/60, since the invariant binds at consolidation time, not on every task).
   Seam scan clean across files, commit messages, and branch name.
+
+- 2026-07-25 · Doctrine · **Handoff cadence made uniform** (maintainer ruling): every session ends with a
+  dated handoff — short is fine, absent is not, an exception is a last resort. Landed in
+  `core/operating/loop.md`, the `core/templates/handoff.md` header, `.portulan/dod.md` condition 8, and
+  `.portulan/memory/every-session-ends-with-a-handoff.md`. *Why binary rather than discretionary:* "write
+  one when it's warranted" is prose no gate can check, so only the uniform form compiles into machinery;
+  and the failure modes are asymmetric — an unnecessary handoff costs five lines, a skipped one loses
+  decisions-and-why permanently. The no-ceremony-that-can't-scale-down non-goal is satisfied *inside* the
+  artifact, which may be five lines, not by omitting it. **Forward only, as a cutoff rather than a list**
+  — the series begins with sessions closing after the rule lands on `main`; everything earlier (bootstrap,
+  both earlier M1 sessions, and the constitution session) keeps its record in the PR descriptions and this
+  log, because a handoff written after the fact fabricates a contemporaneous artifact and adds nothing the
+  *why* could be reconstructed from. Also resolved this session: the repo card's self-reference is
+  self-hosting rather than a dependency cycle (nothing needs the card to build or verify; the cascade
+  stays one-directional), so the card stays — but the real risk is **drift**, and a `doctor` lint checking
+  workspace claims against the tree is recorded as a milestone-2 requirement alongside validating
+  `.portulan/`. · Supervised in a fresh Fable 5 context: APPROVE-WITH-ADJUSTMENTS, all six folded in — the
+  change had shipped in violation of itself (this session back-editing the previous session's handoff
+  instead of writing its own), the forward-only exemption named two sessions when four lacked handoffs so
+  a correspondence checker would have failed immediately, and `core/` legislated on "session" without
+  defining it. Seam scan clean across files, commit message, and branch name.

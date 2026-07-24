@@ -76,4 +76,5 @@ These words mean exactly this here; ambiguity in them is what costs most.
 | **Verify recipe** | The executable check that decides "done" ([`verify/`](verify/)). |
 | **Stop-gate** | The machine check that blocks "done" when the recipe is not green. Milestone 4. |
 | **Platform floor** | The gates the platform enforces whatever the prompt says — branch protection, required checks, `CODEOWNERS`. |
+| **Session** | One supervised working thread here, from session-open to close — in practice one branch and one pull request. It is the unit the handoff and the Session log are written per. |
 | **Supervisor** | The fresh-context reviewer that grades a session; never the implementer's own window. |
