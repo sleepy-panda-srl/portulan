@@ -18,7 +18,10 @@ does.
 **Enforcement.** GitHub branch protection on `main` — the floor enforces itself, which is the whole
 point of naming it a floor:
 
-- Require a pull request before merging; require one approving review.
+- Require a pull request before merging. **As proposed:** one approving review. **As applied: zero** —
+  see Status below. Left visible rather than rewritten, so the record shows the proposal was wrong here
+  and why: requiring a review would have deadlocked a one-person repository, since GitHub does not let
+  anyone approve their own pull request.
 - Require conversation resolution before merging.
 - Block force-pushes and branch deletion.
 - **Include administrators.** On a solo-maintainer repository this is the setting that decides whether
