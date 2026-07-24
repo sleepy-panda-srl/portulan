@@ -22,8 +22,8 @@ when it goes green the task is met; until then it is not. Red/green is the defau
 reserved for libraries. _(Provenance: verification-first — Cherny; red/green TDD as default — agentic
 craft. See `../templates/task.md`.)_
 
-Acceptance criteria are written to be testable in the first place — in the EARS shape ("when <trigger>,
-the system shall <response>"), so each one maps to an observable check rather than a vibe. _(Provenance:
+Acceptance criteria are written to be testable in the first place — in the EARS shape ("when {trigger},
+the system shall {response}"), so each one maps to an observable check rather than a vibe. _(Provenance:
 spec-driven — Spec Kit / EARS.)_
 
 ## The Stop-gate

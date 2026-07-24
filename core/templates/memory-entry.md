@@ -8,11 +8,11 @@
 ---
 
 **type:** rule | decision | reference | glossary
-**scope:** <the persona / repo / workspace this belongs to — memory is per-agent, not global>
-**provenance:** <the incident, source, or decision this came from — a link where possible>
+**scope:** {the persona / repo / workspace this belongs to — memory is per-agent, not global}
+**provenance:** {the incident, source, or decision this came from — a link where possible}
 
-<The fact, in one or two sentences. If it is a rule, state the rule and — on their own lines — **why**
-it holds and **when to apply** it. Link related memories so recall can follow the thread.>
+{The fact, in one or two sentences. If it is a rule, state the rule and — on their own lines — **why**
+it holds and **when to apply** it. Link related memories so recall can follow the thread.}
 
-**Retire when:** <for a rule, the condition under which it stops being true — e.g. "the generated client
-is deleted" — so the librarian can demote it instead of it living forever.>
+**Retire when:** {for a rule, the condition under which it stops being true — e.g. "the generated client
+is deleted" — so the librarian can demote it instead of it living forever.}
