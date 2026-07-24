@@ -7,16 +7,16 @@
 
 ---
 
-# Handoff — <task / thread>
+# Handoff — {task / thread}
 
-**State.** <where things actually are right now — done, in-progress, blocked — in a few lines.>
+**State.** {where things actually are right now — done, in-progress, blocked — in a few lines.}
 
-**Decisions + why.** <each decision taken and the reason it was taken; the reasons are the payload.>
-- <decision> — because <why>; alternatives considered: <…>.
+**Decisions + why.** {each decision taken and the reason it was taken; the reasons are the payload.}
+- {decision} — because {why}; alternatives considered: {…}.
 
-**Open questions.** <what is undecided, and who decides it — flag the human-owned ones.>
+**Open questions.** {what is undecided, and who decides it — flag the human-owned ones.}
 
-**Next action.** <the single next step, concrete enough to start from cold.>
+**Next action.** {the single next step, concrete enough to start from cold.}
 
-**Recoverability.** <anything left in a partial state, and how to make it safe; see
-`../operating/safety.md`.>
+**Recoverability.** {anything left in a partial state, and how to make it safe; see
+`../operating/safety.md`.}

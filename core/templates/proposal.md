@@ -7,18 +7,18 @@
 
 ---
 
-# Proposal — <the rule, in one line>
+# Proposal — {the rule, in one line}
 
-**Incident.** <what went wrong, or the recurring friction that motivates this — with a link. A proposal
-without a triggering incident is usually taste, not a rule.>
+**Incident.** {what went wrong, or the recurring friction that motivates this — with a link. A proposal
+without a triggering incident is usually taste, not a rule.}
 
-**Proposed rule.** <the rule as it would read in core / pack / workspace, at the right altitude.>
+**Proposed rule.** {the rule as it would read in core / pack / workspace, at the right altitude.}
 
-**Enforcement.** <how it earns its place: hook / compiled gate / Stop-gate / eval — or, if none, the
+**Enforcement.** {how it earns its place: hook / compiled gate / Stop-gate / eval — or, if none, the
 argument for why it is worth context-window tokens as prose. Rules that enforce or measure themselves
-beat rules you must remember.>
+beat rules you must remember.}
 
-**Provenance.** <the source or precedent, plus the incident link, carried into the rule so it can later
-be retired.>
+**Provenance.** {the source or precedent, plus the incident link, carried into the rule so it can later
+be retired.}
 
-**Decision.** <human owner> — accepted | rejected | revised, on <date> — because <…>.
+**Decision.** {human owner} — accepted | rejected | revised, on {date} — because {…}.

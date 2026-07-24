@@ -7,20 +7,20 @@
 
 ---
 
-# Task — <title>
+# Task — {title}
 
-**Goal.** <the outcome in one or two sentences — what is true when this is done.>
+**Goal.** {the outcome in one or two sentences — what is true when this is done.}
 
-**Acceptance criteria.** <testable, EARS-style — "when <trigger>, the system shall <response>." Each
-line must map to an observable check.>
+**Acceptance criteria.** {testable, EARS-style — "when {trigger}, the system shall {response}." Each
+line must map to an observable check.}
 - [ ] …
 
-**Verify.** <the failing test or command that is red now and green when the task is met — this is the
-definition of done, not a description of it. See `../operating/verification.md`.>
+**Verify.** {the failing test or command that is red now and green when the task is met — this is the
+definition of done, not a description of it. See `../operating/verification.md`.}
 
-**Constraints.** <the gates in the way, the files that must not change, the altitude to match.>
+**Constraints.** {the gates in the way, the files that must not change, the altitude to match.}
 
-**Context.** <the few links that matter: the repo card, related memory, the incident or ticket. Not a
-document dump — the point of the task file is that it stays small.>
+**Context.** {the few links that matter: the repo card, related memory, the incident or ticket. Not a
+document dump — the point of the task file is that it stays small.}
 
-**Lane.** full | triage   <see `../operating/loop.md`.>
+**Lane.** full | triage   {see `../operating/loop.md`.}
