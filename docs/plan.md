@@ -50,7 +50,7 @@ Status legend: `todo` · `in-progress` · `done (date, fidelity note)`
 | # | Milestone | Sessions | Exit criterion | Status |
 |---|---|---|---|---|
 | 0 | Bootstrap | 1 | `sleepy-panda-works/portulan` skeleton pushed **as a private repo** (public flip happens at milestone 3 only, after the clearance tracked in the private context): license, README stub, directory scaffold per the topology above, `.gitignore` already excluding the bootstrap file, and this folder's `plan.md` + `vision.md` seeded as `docs/plan.md` + `docs/vision.md` | done (2026-07-24; Fable 5 verified live remote: PRIVATE, zero residue, criterion complete) |
-| 1 | Core re-expression | 2–3 | Concept inventory of the predecessor framework (private; **reference only — re-express, never copy text**); `core/` authored fresh with zero copied prose and zero client references; the private pilot workspace assembled in its own context (outside this repo); a real task runs end-to-end on engine + pilot workspace, no worse than the predecessor | todo |
+| 1 | Core re-expression | 2–3 | Concept inventory of the predecessor framework (private; **reference only — re-express, never copy text**); `core/` authored fresh with zero copied prose and zero client references; the private pilot workspace assembled in its own context (outside this repo); a real task runs end-to-end on engine + pilot workspace, no worse than the predecessor | in-progress |
 | 2 | Workspace spec v1 | 1–2 | Manifest + **constitution & product-layer slots** (team principles; mission/what/why) + gate map + verify recipes + **agent-affordances slot** (portfolio-aware: many products per workspace); `doctor` validates the demo workspace (and, privately, the pilot) | todo |
 | 3 | Plugin & public marketplace | 1–2 | Skills pass `skills-ref validate`; v0.1.0 tagged; fresh-machine install boots the engine with no local folder | todo |
 | 4 | Enforcement compiler | 1–2 | `gates.yaml` → hooks + permissions (+ Copilot ruleset export); verify recipes → Stop-gate runner; per-host backend matrix + doctor degradation report. Demo: unapproved push blocked; "done" without green verify blocked | todo |
@@ -111,3 +111,13 @@ the seam applies here too: no client-identifying references)_
   Fable 5 pre-commit (APPROVE, zero residue, docs byte-identical to source); Fable 5 milestone-close
   verified on the live remote — PRIVATE, all pushed files + full history residue-free, criterion
   demonstrated.
+
+- 2026-07-24 · M1 (Core re-expression) · First cut of `core/` authored fresh, clean-room from the
+  constitution + public agentic-engineering practice: the always-loaded kernel `engine.md` (43 lines),
+  six operating docs (loop · autonomy · verification · memory · evolution · safety), five templates
+  (repo-card · task · handoff · proposal · memory-entry), and shape-fixing READMEs for `personas/` +
+  `skills/`. · Supervised in fresh contexts (Fable 5): session-open APPROVE-WITH-ADJUSTMENTS (triage-lane
+  doctrine given a home, an explicit concept-coverage step recorded as an M1-close prerequisite,
+  repo-altitude wording — all folded in); pre-commit APPROVE with the seam scan clean across all 15
+  files and the kernel within its ≤60-line budget. Exemplar personas/skills and the concept-coverage
+  pass on `core/` land in the next M1 session; the milestone stays open.

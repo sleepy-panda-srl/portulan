@@ -1,0 +1,55 @@
+# The loop
+
+> Core doctrine — loaded on demand from `../engine.md`. The engine's unit of motion: how an agent
+> moves a task from intent to a verified, learned-from change. The *why* lives here; the *must*
+> compiles into machinery (Stop-gates, hooks) in later milestones.
+
+Every task runs the same five phases. They are a cycle, not a waterfall — a verification failure
+returns to plan or implement; a newly discovered constraint returns to research.
+
+| Phase | What happens | The phase is done when |
+|---|---|---|
+| **Research** | Read the code, the repo card, memory, and the task's links before proposing change. Read in parallel; never guess what you can check. | You can state the change and its blast radius in one paragraph. |
+| **Plan** | Turn intent into a testable shape: acceptance criteria, the failing test, the files touched, the gates in the way. | A reviewer could predict the diff from the plan. |
+| **Implement** | Make the change at the altitude of the surrounding code — small, legible, reversible steps. | The plan's steps are done and nothing outside them moved. |
+| **Verify** | Exercise the behaviour, not just the compile. Climb the verification hierarchy; the Stop-gate is the floor. | The failing test passes and you could explain every line. |
+| **Learn** | Write back what the task taught: a decision, a rule with its provenance, a memory. | The next agent starts ahead of where you did. |
+
+See `verification.md` for the hierarchy and the Stop-gate, and `memory.md` / `evolution.md` for what
+"learn" captures and how a lesson becomes a rule.
+
+## Context is the budget
+
+The loop runs inside a finite attention window, so context is managed, not hoarded:
+
+- **Compaction.** When the window fills, compact to the durable state — decisions, open questions, the
+  next action — and drop the transcript. The loop is a stateless reducer over that state, so it resumes
+  from the compaction without losing the thread. _(Provenance: HumanLayer ACE-FCA — the loop and
+  compaction; 12-Factor Agents — stateless-reducer resumability.)_
+- **Handoffs record decisions and their why**, not just what changed, so the next agent — or the next
+  window — inherits the reasoning. _(Provenance: Cognition. See `../templates/handoff.md`.)_
+- **Subagents are context firewalls.** Fan work out to a persona with its own window and return only
+  the conclusion; the parent's budget stays clean. Read in parallel, write from one place. _(See
+  `../personas/`. Provenance: HumanLayer; Cognition — read-parallel / write-isolated.)_
+
+## The triage lane (ceremony that scales down)
+
+Not every task earns the full loop. A one-line fix should not carry a plan document. The engine defines
+two lanes; the workspace sets the threshold between them.
+
+- **Full lane** — for change with real blast radius: all five phases, the plan written down, the
+  failing test first.
+- **Triage lane** — for small, low-blast, reversible change: research → implement → verify collapse into
+  one pass and the plan is a sentence. Verify and the Stop-gate still hold — they never scale down.
+
+The triage lane is a first-class feature, not a shortcut taken by breaking the rules. A framework whose
+lightest path is still heavy gets abandoned for small work first and for all work soon after. _(Provenance:
+BMAD's scale-down lesson — the failed promise we treat as a requirement. Binding non-goal: no ceremony
+that can't scale down.)_
+
+## Bounded iteration
+
+An agent that cannot finish must stop cleanly, not spin. Every loop carries an **iteration cap** and a
+**runbook** for reaching it: what to record, whom to hand to, how to leave the workspace recoverable. A
+blocked-but-safe stop beats an unattended mistake. _(Provenance: Ralph Wiggum loop — machine-checkable
+completion and iteration caps; see `safety.md`.)_
