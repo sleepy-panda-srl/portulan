@@ -1,0 +1,28 @@
+# OS / editor noise
+.DS_Store
+Thumbs.db
+*.swp
+*~
+.idea/
+.vscode/
+
+# Node / build artifacts
+node_modules/
+dist/
+build/
+coverage/
+*.log
+.env
+.env.*
+
+# Local-only build-session scaffolding — NOT product, and may reference private
+# context. Kept on this workstation; never tracked or pushed. (See docs/plan.md.)
+/BOOTSTRAP.md
+/_local/
+
+# The canonical constitution + plan are docs/vision.md + docs/plan.md. The root
+# vision.md/plan.md are the owner's local working originals ("move into docs/" per
+# plan.md) — kept out of the tracked tree so the living docs have one source and
+# cannot drift.
+/vision.md
+/plan.md
