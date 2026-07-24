@@ -232,3 +232,17 @@ the seam applies here too: no client-identifying references)_
   updating it would presuppose the human gate's outcome, and core cannot cite a workspace proposal
   without pulling customer-zero's specifics upward. Seam scan clean across files, commit message, and
   branch name.
+
+- 2026-07-25 · Platform floor · **Branch protection applied to `main`** — the last item from the
+  milestone-1 arc, and the point at which PR-as-gate here stops being convention. Live: direct pushes
+  rejected, `docs-integrity` required green, **administrators included**, conversation resolution
+  required, force-pushes and deletion blocked. **Demonstrated, not asserted** — a direct push to `main`
+  was attempted afterwards and rejected ("Changes must be made through a pull request"); the probe commit
+  was discarded. One deviation from `.portulan/proposals/0001-platform-floor-on-main.md` as drafted, and
+  it is recorded there rather than smoothed over: the proposal asked for one approving review, which
+  would have deadlocked a one-person repository, because GitHub does not permit approving one's own pull
+  request — applied with **0** required reviews instead, since `enforce_admins` is the load-bearing
+  setting and the review count is what rises when a second reviewer exists. Newly recorded as still
+  missing: `CODEOWNERS`, so no path-specific human is required on any file — including `docs/vision.md`,
+  which is protected today only by a prompt-level prohibition and not by the platform. Wanted before the
+  milestone-3 public flip. Seam scan clean across files, commit message, and branch name.

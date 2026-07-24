@@ -49,6 +49,21 @@ the price of the gate being real rather than declared. Configuring branch protec
 repository-settings change and therefore a **Gated** action ([`../gate-map.md`](../gate-map.md)): it is
 his to perform, not an agent's to do on inference.
 
-**Status: accepted, not yet applied.** The setting is not live on `main` as of this commit. Until it is,
-[`../gate-map.md`](../gate-map.md) continues to describe the floor as unconfigured — the decision does
-not change what the repository actually enforces, and the documents track the latter.
+**Status: APPLIED, 2026-07-25.** Live on `main`: pull request required, `docs-integrity` required green,
+administrators included, conversation resolution required, force-pushes and deletion blocked.
+[`../gate-map.md`](../gate-map.md) now describes the floor as configured, and records what it enforces.
+
+**Demonstrated, not asserted.** A direct push to `main` was attempted immediately after the change and
+rejected — *"Changes must be made through a pull request."* This proposal closes on the same bar the
+milestones use.
+
+**One deviation from the proposal as written, and it matters.** The rule above asked for "at least one
+approving review". That was wrong and would have deadlocked the repository: GitHub does not permit
+anyone to approve their own pull request, so one required review plus `enforce_admins` leaves a solo
+maintainer unable to merge anything. Applied with **0** required reviews instead — the PR and the green
+check are required of everyone, with no exemption. `enforce_admins` is the load-bearing setting and it
+is on; raise the review count when a second reviewer exists.
+
+**Remaining.** `CODEOWNERS` is still absent, so no path-specific human is required on any file. Tracked
+in [`../gate-map.md`](../gate-map.md) as the next piece of the floor, wanted before the milestone-3
+public flip.
