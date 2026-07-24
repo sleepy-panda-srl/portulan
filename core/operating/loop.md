@@ -33,9 +33,12 @@ The loop runs inside a finite attention window, so context is managed, not hoard
   discretionary one cannot be enforced, because no gate can judge whether skipping was warranted, and the
   costs are asymmetric — an unnecessary handoff costs five lines, a skipped one loses the reasoning
   permanently. Ceremony scales down *inside* the artifact, never by omitting it, so a gate on this checks
-  that one exists and is dated — never its structure or its length. An unbroken series is also what makes
-  the record machine-readable: the session-end gate arrives in milestone 4, the librarian that mines the
-  series in milestone 5. _(Provenance: Cognition. See `../templates/handoff.md`.)_
+  that one exists and is dated — never its structure or its length. **Dated** means the filename leads
+  with an ISO date: `YYYY-MM-DD-{slug}.md`. Naming the form matters, because a rule justified by being
+  checkable has to say what the checker looks at; a date buried in prose would need parsing and would be
+  read differently by every writer. It also makes the series sort chronologically for free. An unbroken
+  series is what makes the record machine-readable: the session-end gate arrives in milestone 4, the
+  librarian that mines the series in milestone 5. _(Provenance: Cognition. See `../templates/handoff.md`.)_
 - **Subagents are context firewalls.** Fan work out to a persona with its own window and return only
   the conclusion; the parent's budget stays clean. Read in parallel, write from one place. _(See
   `../personas/`. Provenance: HumanLayer; Cognition — read-parallel / write-isolated.)_
