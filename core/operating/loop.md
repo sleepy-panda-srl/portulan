@@ -31,6 +31,10 @@ The loop runs inside a finite attention window, so context is managed, not hoard
 - **Subagents are context firewalls.** Fan work out to a persona with its own window and return only
   the conclusion; the parent's budget stays clean. Read in parallel, write from one place. _(See
   `../personas/`. Provenance: HumanLayer; Cognition — read-parallel / write-isolated.)_
+- **Compact the error, not the transcript, back into context.** A failed run returns a concise,
+  structured signal — the failing check and the one fact needed to act on it — not a raw dump; noise
+  left in the window is paid for again on every later turn. _(Provenance: 12-Factor Agents — compact
+  errors into the context window.)_
 
 ## The triage lane (ceremony that scales down)
 

@@ -31,7 +31,10 @@ loads on demand.
 
 ## Status
 
-**Milestone 1, first cut.** The kernel, the six operating docs, and the templates are authored;
-`personas/` and `skills/` carry their shape-defining READMEs, with exemplar personas and skills — and a
-concept-coverage pass — to follow in the next M1 session. The living map is
-[`../docs/plan.md`](../docs/plan.md).
+**Milestone 1 — engine authored.** The kernel, the six operating docs, the templates, the exemplar
+personas ([`personas/`](personas/): implementer · reviewer · librarian), and the exemplar skills
+([`skills/`](skills/): clarify · codify) are in place, and a concept-coverage pass against
+[`../docs/vision.md`](../docs/vision.md) has run — every engine-relevant clause now has a home in core
+or a recorded deferral. What remains to close M1 is client-rooted and lives outside this repo (the
+predecessor concept inventory, the private pilot workspace, and a real task run end-to-end on engine +
+workspace). The living map is [`../docs/plan.md`](../docs/plan.md).
