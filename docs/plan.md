@@ -53,7 +53,7 @@ Status legend: `todo` · `in-progress` · `done (date, fidelity note)`
 |---|---|---|---|---|
 | 0 | Bootstrap | 1 | `sleepy-panda-works/portulan` skeleton pushed **as a private repo** (public flip happens at milestone 3 only, after the clearance tracked in the private context): license, README stub, directory scaffold per the topology above, `.gitignore` already excluding the bootstrap file, and this folder's `plan.md` + `vision.md` seeded as `docs/plan.md` + `docs/vision.md` | done (2026-07-24; Fable 5 verified live remote: PRIVATE, zero residue, criterion complete) |
 | 1 | Core re-expression | 3 | `core/` authored fresh — zero copied prose, zero client references; every engine-relevant `vision.md` clause mapped to a home in `core/` or a recorded deferral; a real task runs end-to-end on engine + the repo's own `.portulan/` workspace, with a recorded red→green verify | done (2026-07-25; Fable 5 M1-close, fresh context: independent vision→core walk found 0 unmapped clauses — 44 covered, 14 recorded deferrals; verify rerun green; red pre-existed per git as an M0 omission; seam clean across files + history) |
-| 2 | Workspace spec v1 | 1–2 | Manifest + **constitution & product-layer slots** (team principles; mission/what/why) + gate map + verify recipes + **agent-affordances slot** (portfolio-aware: many products per workspace) + **provenance slot**, per the decision on `.portulan/proposals/0002` (proposed: a well-formed link or a sealed owner+date stamp); `doctor` validates the demo workspace **and this repo's own `.portulan/`** (and, privately, the pilot), and lints **workspace claims against the tree** — repo-card build/test/run lines and layout, gate map — the way the `map` check already holds the root README to the repo's shape | todo |
+| 2 | Workspace spec v1 | 1–2 | Manifest + **constitution & product-layer slots** (team principles; mission/what/why) + gate map + verify recipes + **agent-affordances slot** (portfolio-aware: many products per workspace) + **provenance slot**, per the decision on `.portulan/proposals/0002-sealed-provenance.md` (proposed: a well-formed link or a sealed owner+date stamp); `doctor` validates the demo workspace **and this repo's own `.portulan/`** (and, privately, the pilot), and lints **workspace claims against the tree** — repo-card build/test/run lines and layout, gate map — the way the `map` check already holds the root README to the repo's shape | todo |
 | 3 | Plugin & public marketplace | 1–2 | Skills pass `skills-ref validate`; v0.1.0 tagged; fresh-machine install boots the engine with no local folder | todo |
 | 4 | Enforcement compiler | 1–2 | `gates.yaml` → hooks + permissions (+ Copilot ruleset export); verify recipes → Stop-gate runner; per-host backend matrix + doctor degradation report. Demo: unapproved push blocked; "done" without green verify blocked | todo |
 | 5 | Memory lifecycle & librarian | 1–2 | Generated size-budgeted index; consolidation skill; scheduled librarian (reindex, staleness, proposal nagging, demotion drafts) files its first real PR; proposals-as-PRs live | todo |
@@ -154,7 +154,8 @@ the seam applies here too: no client-identifying references)_
   the budget was a rule the repo had already stated; the other two were minted from the defect, with the
   incident recorded so they can be retired. Also surfaced and written up: `main` carries no branch
   protection, so the platform floor the engine calls unbypassable is, on our own repository, convention —
-  `.portulan/proposals/0001`, accepted with administrators included, **not yet applied**. The M1 exit
+  `.portulan/proposals/0001-platform-floor-on-main.md`, accepted with administrators included, **not yet
+  applied**. The M1 exit
   criterion was amended with Marius (that row only): the milestone now closes on publicly demonstrable
   facts, and the half that depended on material outside this repository moved to its own context under a
   one-way-flow rule — findings from there reach `core/` only by way of the constitution, never directly.
@@ -209,7 +210,7 @@ the seam applies here too: no client-identifying references)_
   the tree** — repo-card build/test/run lines and layout, and the gate map — which is the answer to the
   drift risk behind the earlier "is the repo card circular?" question (it is self-hosting, not a cycle;
   drift was always the real exposure). (2) **Sealed provenance drafted** as
-  `.portulan/proposals/0002`: the constitution's thesis 4 (every rule links to its incident) and thesis 6
+  `.portulan/proposals/0002-sealed-provenance.md`: the constitution's thesis 4 (every rule links to its incident) and thesis 6
   (a team's specifics stay in the owner's layer) collide whenever a rule generalises upward out of a
   private incident, and the collision was found *independently* by a fresh-context reviewer and in the
   design conversation. The proposal gives the provenance slot two machine-checkable forms — a resolvable

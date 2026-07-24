@@ -41,6 +41,16 @@ protection remains the one item outside this change.
 
 **Open questions.**
 
+0. **The claims lint has its first concrete case, found during this session's own review.** Copilot
+   caught two paths written as code spans in [`../../docs/plan.md`](../../docs/plan.md) —
+   `.portulan/proposals/0001` and `.portulan/proposals/0002` — that point at no file: the real names
+   carry a slug and an extension. The `links` check in [`../verify/docs.sh`](../verify/docs.sh) did not
+   see them, because it validates Markdown link targets and these were written as code spans. Fixed here,
+   and worth carrying into milestone 2 as the worked example: a path stated in prose *is* a workspace
+   claim about the tree, and it is the cheapest possible instance of the lint the M2 criterion now asks
+   for. Not added to the recipe now — a naive code-span check has real false-positive surface (`AGENTS.md`,
+   `YYYY-MM-DD-{slug}.md`, shell fragments), and shipping a noisy check would teach people to ignore the
+   one gate this repo has.
 1. **Branch protection is accepted and not yet applied** — the last item from the milestone-1 arc still
    outstanding, and the only one that is a repository setting rather than a file.
 2. **Proposal 0002 awaits a decision** and is sequenced for milestone 2, since it amends the Workspace
