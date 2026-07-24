@@ -21,6 +21,8 @@ every host. _(Vision — LLM-agnostic by construction.)_
 
 ## Status
 
-**Milestone 1 — shape only.** This README fixes the skill format and the "earns its place" test. The
-exemplar universal skills (e.g. clarify, codify) are authored in the next M1 session and formalized as
-plugin skills in milestone 3.
+**Milestone 1 — format + exemplars.** This README fixes the skill format and the "earns its place"
+test; the exemplar universal skills [`clarify`](clarify/SKILL.md) and [`codify`](codify/SKILL.md) are
+now authored against it, and are formalized as plugin skills in milestone 3. (A cross-artifact
+consistency-check ritual — the remaining spec-driven ritual named in the vision's influence map — needs
+the Workspace spec to exist first, so it is deferred to a `packs/rituals/` skill after milestone 2.)

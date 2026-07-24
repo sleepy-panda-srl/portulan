@@ -121,3 +121,21 @@ the seam applies here too: no client-identifying references)_
   repo-altitude wording — all folded in); pre-commit APPROVE with the seam scan clean across all 15
   files and the kernel within its ≤60-line budget. Exemplar personas/skills and the concept-coverage
   pass on `core/` land in the next M1 session; the milestone stays open.
+
+- 2026-07-24 · M1 (Core re-expression), session 2 · Build-half exemplars authored fresh: three
+  personas as context firewalls — `implementer`, `reviewer`, `librarian` — each with a capability-class
+  `tools:` allow-list, autonomy-tier reach (in tier vocabulary, not concrete actions), read/write
+  posture, and per-agent memory scope; two universal skills in `SKILL.md` form — `clarify` (spec-driven
+  clarification-before-plan) and `codify` (compounding-engineering mistake→proposal). A concept-coverage
+  pass mapped every engine-relevant `vision.md` clause to its home in `core/`: 38 clauses assessed — 31
+  covered (6 this session) and 7 deferred by design; the 3 named gaps fall within those two buckets
+  (`compact errors` → covered via a bullet in `operating/loop.md`; the cross-artifact consistency-check
+  → deferred to a rituals pack after M2; the "Portulan Factors" checklist → deferred to the docs
+  surface). Kernel untouched (43 lines, within budget). · Supervised in fresh Fable 5 contexts:
+  session-open APPROVE-WITH-ADJUSTMENTS (six adjustments folded in — coverage-first sequencing, widened
+  matrix rows, durable-outcome recording, tier reach in tier vocabulary, promise-only-what-exists,
+  explicit skill triggers); pre-commit APPROVE-WITH-ADJUSTMENTS (both mechanical — this log line's
+  verdict fill and the commit-message seam scan; all substance passed); seam scan clean across files,
+  commit message, and branch name. **M1
+  stays open** — the client-half (predecessor concept inventory, the private pilot workspace, and a real
+  task run end-to-end on engine + workspace) is client-rooted and lands in its own session.
