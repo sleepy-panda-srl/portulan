@@ -15,9 +15,10 @@ delivered as private-marketplace plugins.
 ## Status
 
 Pre-release, and **private during the build**. This repository is scaffolding toward `v0.1.0`: the
-directories below are placeholders that fill in milestone by milestone, and nothing here is stable
-yet. It goes public only once the engine boots from a clean install and the milestone-3 criteria are
-met. The living map is [`docs/plan.md`](docs/plan.md).
+engine in `core/` and this repository's own workspace in `.portulan/` are authored, the remaining
+directories below fill in milestone by milestone, and nothing here is stable yet. It goes public only
+once the engine boots from a clean install and the milestone-3 criteria are met. The living map is
+[`docs/plan.md`](docs/plan.md).
 
 ## Layout
 
@@ -27,8 +28,10 @@ met. The living map is [`docs/plan.md`](docs/plan.md).
 | `packs/` | Composable packs — `stacks/`, `tools/`, `rituals/` |
 | `spec/` | The Workspace Definition: schema, docs, migrations |
 | `plugin/` | Claude Code packaging (skills, agents, hooks, settings) |
+| `.claude-plugin/` | The marketplace manifest that makes this repository an installable plugin feed |
 | `cli/` | The `npx` CLI: `init` · `doctor` · `compile` · `vendor` · `index` · `upgrade` |
 | `examples/` | A fictional, public demo workspace |
+| `.portulan/` | [This repository's own workspace](.portulan/) — Portulan applied to building Portulan |
 | `evals/` | Golden tasks, the A/B harness, the CI eval gate |
 | `docs/` | [`vision.md`](docs/vision.md) (the constitution) and [`plan.md`](docs/plan.md) (the milestone map) |
 

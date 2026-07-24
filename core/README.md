@@ -31,10 +31,15 @@ loads on demand.
 
 ## Status
 
-**Milestone 1 — engine authored.** The kernel, the six operating docs, the templates, the exemplar
-personas ([`personas/`](personas/): implementer · reviewer · librarian), and the exemplar skills
+**Milestone 1 — engine authored, and exercised.** The kernel, the six operating docs, the templates, the
+exemplar personas ([`personas/`](personas/): implementer · reviewer · librarian), and the exemplar skills
 ([`skills/`](skills/): clarify · codify) are in place, and a concept-coverage pass against
-[`../docs/vision.md`](../docs/vision.md) has run — every engine-relevant clause now has a home in core
-or a recorded deferral. What remains to close M1 is client-rooted and lives outside this repo (the
-predecessor concept inventory, the private pilot workspace, and a real task run end-to-end on engine +
-workspace). The living map is [`../docs/plan.md`](../docs/plan.md).
+[`../docs/vision.md`](../docs/vision.md) has run — every engine-relevant clause now has a home in core or
+a recorded deferral.
+
+The engine also has its first real instance of the layer above it: [`../.portulan/`](../.portulan/), this
+repository's own workspace, where every "the workspace decides this" promise in these docs is answered
+concretely. A task ran end-to-end on engine + that workspace with a recorded red→green verify, giving the
+repository its first three machine checks: the kernel's line budget, which was stated doctrine with
+nothing behind it, plus two rules minted from the defect that run exposed. The living map is
+[`../docs/plan.md`](../docs/plan.md).
