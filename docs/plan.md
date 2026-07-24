@@ -37,7 +37,9 @@ sleepy-panda-works/
 │   ├── plugin/                   Claude Code packaging (SKILL.md dirs, agents, hooks, settings)
 │   ├── cli/                      init · doctor · compile · vendor · index · upgrade
 │   ├── examples/                 fictional demo workspace
+│   ├── .portulan/                this repo's own workspace — customer zero, dogfooding
 │   ├── evals/                    golden tasks, A/B harness, CI eval gate
+│   ├── docs/                     vision.md (constitution) · plan.md (this file)
 │   └── .claude-plugin/marketplace.json
 ├── portulan-workspace-template   PUBLIC  "Use this template" scaffold
 └── portulan-internal             PRIVATE Sleepy Panda feed (portfolio workspace + packs)
@@ -50,7 +52,7 @@ Status legend: `todo` · `in-progress` · `done (date, fidelity note)`
 | # | Milestone | Sessions | Exit criterion | Status |
 |---|---|---|---|---|
 | 0 | Bootstrap | 1 | `sleepy-panda-works/portulan` skeleton pushed **as a private repo** (public flip happens at milestone 3 only, after the clearance tracked in the private context): license, README stub, directory scaffold per the topology above, `.gitignore` already excluding the bootstrap file, and this folder's `plan.md` + `vision.md` seeded as `docs/plan.md` + `docs/vision.md` | done (2026-07-24; Fable 5 verified live remote: PRIVATE, zero residue, criterion complete) |
-| 1 | Core re-expression | 2–3 | Concept inventory of the predecessor framework (private; **reference only — re-express, never copy text**); `core/` authored fresh with zero copied prose and zero client references; the private pilot workspace assembled in its own context (outside this repo); a real task runs end-to-end on engine + pilot workspace, no worse than the predecessor | in-progress |
+| 1 | Core re-expression | 3 | `core/` authored fresh — zero copied prose, zero client references; every engine-relevant `vision.md` clause mapped to a home in `core/` or a recorded deferral; a real task runs end-to-end on engine + the repo's own `.portulan/` workspace, with a recorded red→green verify | done (2026-07-25; Fable 5 M1-close, fresh context: independent vision→core walk found 0 unmapped clauses — 44 covered, 14 recorded deferrals; verify rerun green; red pre-existed per git as an M0 omission; seam clean across files + history) |
 | 2 | Workspace spec v1 | 1–2 | Manifest + **constitution & product-layer slots** (team principles; mission/what/why) + gate map + verify recipes + **agent-affordances slot** (portfolio-aware: many products per workspace); `doctor` validates the demo workspace (and, privately, the pilot) | todo |
 | 3 | Plugin & public marketplace | 1–2 | Skills pass `skills-ref validate`; v0.1.0 tagged; fresh-machine install boots the engine with no local folder | todo |
 | 4 | Enforcement compiler | 1–2 | `gates.yaml` → hooks + permissions (+ Copilot ruleset export); verify recipes → Stop-gate runner; per-host backend matrix + doctor degradation report. Demo: unapproved push blocked; "done" without green verify blocked | todo |
@@ -139,3 +141,25 @@ the seam applies here too: no client-identifying references)_
   commit message, and branch name. **M1 stays open** — the client-half (predecessor concept inventory,
   the private pilot workspace, and a real task run end-to-end on engine + workspace) is client-rooted
   and lands in its own session.
+
+- 2026-07-25 · M1 (Core re-expression), session 3 · **Milestone closed.** The workspace layer got its
+  first real instance: `.portulan/`, this repository's own workspace — identity · gate map · triage
+  threshold · DoD · verify recipe · repo card · four memory entries · one task · one proposal · one
+  handoff — which is what turned every "the workspace decides this" promise in `core/` into a concrete
+  answer. A task then ran end-to-end on engine + that workspace with a recorded red→green verify:
+  `.portulan/verify/docs.sh` was written first and went red on two top-level entries missing from the root
+  README's layout table (`.claude-plugin/`, absent since M0, and `.portulan/` itself), red a second time
+  on the implementer's own dangling links, then green. Those are the repository's first three machine
+  checks — links resolve · kernel line budget · the README map matches the repo's shape — of which only
+  the budget was a rule the repo had already stated; the other two were minted from the defect, with the
+  incident recorded so they can be retired. Also surfaced and written up: `main` carries no branch
+  protection, so the platform floor the engine calls unbypassable is, on our own repository, convention —
+  `.portulan/proposals/0001`, accepted with administrators included, **not yet applied**. The M1 exit
+  criterion was amended with Marius (that row only): the milestone now closes on publicly demonstrable
+  facts, and the half that depended on material outside this repository moved to its own context under a
+  one-way-flow rule — findings from there reach `core/` only by way of the constitution, never directly.
+  · Supervised in three fresh Fable 5 contexts: session-open APPROVE-WITH-ADJUSTMENTS (seven, all folded
+  in); pre-commit APPROVE-WITH-ADJUSTMENTS (six, all folded in — including a false "three already-stated
+  rules" claim that appeared in three files, and a confirmed false green where the map check grepped the
+  whole README rather than its layout table); milestone-close CLOSE on an independent vision→core coverage
+  walk. Seam scan clean across files, commit message, and branch name.

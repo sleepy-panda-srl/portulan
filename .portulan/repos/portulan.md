@@ -1,0 +1,37 @@
+# Repo — portulan
+
+**What it is.** The Portulan monorepo: the engine, the spec, plugin packaging, the CLI, and the demo
+workspace, plus the manifest that makes the repository installable as a Claude Code plugin feed. Blast
+radius is the whole product — this is the only repository the product ships from, and from milestone 3
+its history is public and permanent.
+
+**Build / test / run.**
+- build: none — no build step yet; the CLI arrives at milestone 7
+- test: `./.portulan/verify/docs.sh`   ← the verify recipe; the Stop-gate that will run it automatically arrives at milestone 4 (see [`../../core/operating/verification.md`](../../core/operating/verification.md))
+- run: none — the product is files; there is nothing to start
+
+**Gates.** Inherits [`../gate-map.md`](../gate-map.md) with no deviations. Two worth keeping in front of
+mind because they are unusual: [`../../docs/vision.md`](../../docs/vision.md) is never edited by an agent
+at all, and repository **visibility** is Gated — private until milestone 3 by decision, not by accident
+([`../memory/repo-is-private-until-milestone-3.md`](../memory/repo-is-private-until-milestone-3.md)).
+
+**Layout.** [`../../core/`](../../core/) the engine · [`../../docs/`](../../docs/) constitution and plan ·
+`.portulan/` this workspace · [`../../examples/`](../../examples/) the demo workspace ·
+[`../../.claude-plugin/`](../../.claude-plugin/) the marketplace manifest. The remaining top-level
+directories are scaffolding that fills in milestone by milestone.
+
+**Quirks.**
+- The kernel [`../../core/engine.md`](../../core/engine.md) is line-budgeted. Adding to it is the wrong
+  reflex; the right one is to write in `core/operating/` and link from the kernel only when the line is
+  load-bearing for *every* task.
+- [`../../docs/plan.md`](../../docs/plan.md) is a living document — Status column and Session log are
+  updated as work lands, and it is what a session boots from. [`../../docs/vision.md`](../../docs/vision.md)
+  sits next to it and is the opposite: frozen, human-owned, never agent-edited.
+- A build-session bootstrap file at the repository root is deliberately git-ignored and never committed.
+  If it appears in a diff, that is the bug.
+- History cleanliness is load-bearing here in a way it is not in most repositories: this history goes
+  public at milestone 3, so the pre-commit scan ([`../dod.md`](../dod.md), condition 5) runs before every
+  commit rather than before releases.
+
+**Provenance.** Written in milestone 1, session 3 — the first repo card in the first real workspace.
+Rewrite it when the CLI lands at milestone 7 and the build/test/run lines stop reading "none".
