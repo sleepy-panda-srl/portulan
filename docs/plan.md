@@ -53,7 +53,7 @@ Status legend: `todo` · `in-progress` · `done (date, fidelity note)`
 |---|---|---|---|---|
 | 0 | Bootstrap | 1 | `sleepy-panda-works/portulan` skeleton pushed **as a private repo** (public flip happens at milestone 3 only, after the clearance tracked in the private context): license, README stub, directory scaffold per the topology above, `.gitignore` already excluding the bootstrap file, and this folder's `plan.md` + `vision.md` seeded as `docs/plan.md` + `docs/vision.md` | done (2026-07-24; Fable 5 verified live remote: PRIVATE, zero residue, criterion complete) |
 | 1 | Core re-expression | 3 | `core/` authored fresh — zero copied prose, zero client references; every engine-relevant `vision.md` clause mapped to a home in `core/` or a recorded deferral; a real task runs end-to-end on engine + the repo's own `.portulan/` workspace, with a recorded red→green verify | done (2026-07-25; Fable 5 M1-close, fresh context: independent vision→core walk found 0 unmapped clauses — 44 covered, 14 recorded deferrals; verify rerun green; red pre-existed per git as an M0 omission; seam clean across files + history) |
-| 2 | Workspace spec v1 | 1–2 | Manifest + **constitution & product-layer slots** (team principles; mission/what/why) + gate map + verify recipes + **agent-affordances slot** (portfolio-aware: many products per workspace); `doctor` validates the demo workspace (and, privately, the pilot) | todo |
+| 2 | Workspace spec v1 | 1–2 | Manifest + **constitution & product-layer slots** (team principles; mission/what/why) + gate map + verify recipes + **agent-affordances slot** (portfolio-aware: many products per workspace) + **provenance slot**, per the decision on `.portulan/proposals/0002` (proposed: a well-formed link or a sealed owner+date stamp); `doctor` validates the demo workspace **and this repo's own `.portulan/`** (and, privately, the pilot), and lints **workspace claims against the tree** — repo-card build/test/run lines and layout, gate map — the way the `map` check already holds the root README to the repo's shape | todo |
 | 3 | Plugin & public marketplace | 1–2 | Skills pass `skills-ref validate`; v0.1.0 tagged; fresh-machine install boots the engine with no local folder | todo |
 | 4 | Enforcement compiler | 1–2 | `gates.yaml` → hooks + permissions (+ Copilot ruleset export); verify recipes → Stop-gate runner; per-host backend matrix + doctor degradation report. Demo: unapproved push blocked; "done" without green verify blocked | todo |
 | 5 | Memory lifecycle & librarian | 1–2 | Generated size-budgeted index; consolidation skill; scheduled librarian (reindex, staleness, proposal nagging, demotion drafts) files its first real PR; proposals-as-PRs live | todo |
@@ -202,3 +202,32 @@ the seam applies here too: no client-identifying references)_
   instead of writing its own), the forward-only exemption named two sessions when four lacked handoffs so
   a correspondence checker would have failed immediately, and `core/` legislated on "session" without
   defining it. Seam scan clean across files, commit message, and branch name.
+
+- 2026-07-25 · Loose ends before M2 · Cleared the open items so the next milestone starts from an
+  accurate plan rather than a backlog. (1) **`doctor`'s scope amended** in the M2 row: it now validates
+  this repository's own `.portulan/` alongside the demo workspace, and lints **workspace claims against
+  the tree** — repo-card build/test/run lines and layout, and the gate map — which is the answer to the
+  drift risk behind the earlier "is the repo card circular?" question (it is self-hosting, not a cycle;
+  drift was always the real exposure). (2) **Sealed provenance drafted** as
+  `.portulan/proposals/0002`: the constitution's thesis 4 (every rule links to its incident) and thesis 6
+  (a team's specifics stay in the owner's layer) collide whenever a rule generalises upward out of a
+  private incident, and the collision was found *independently* by a fresh-context reviewer and in the
+  design conversation. The proposal gives the provenance slot two machine-checkable forms — a resolvable
+  link, or a sealed owner+date stamp with the de-identified failure shape — has `doctor` reject a rule
+  with neither and report the *sealed proportion* (a workspace where everything is sealed has opted out
+  of retirement), and has the librarian nag the owner to re-validate rather than retire on evidence it
+  cannot see. Drafted, not adopted. (3) **The "generic must never decay into vague" bar** added to
+  `codify` step 1: a rule crossing a confidentiality boundary keeps its concrete failure shape — inputs,
+  wrong outcome, why the obvious guard misses — with the bar that someone who never saw the incident can
+  still write the rule's test. (4) The handoff-cadence handoff amended with the "dated" definition,
+  visibly marked rather than woven in — errata, since the git record shows that decision was taken during
+  that session's own review cycle and merely went unrecorded. · Supervised in a fresh Fable 5 context:
+  APPROVE-WITH-ADJUSTMENTS, all five folded in — the `codify` addition used "sealed" as established
+  vocabulary that `core/` defines nowhere and pointed at a doc that does not contain the word; two
+  statements about *when* the "dated" decision was taken were wrong against git, in a workspace whose
+  forward-only rule rests on refusing fabricated contemporaneity; the M2 row baked in a pending
+  proposal's outcome; and the proposal's honest-limits omitted that a checker validates a stamp's form
+  and never its truth. `core/operating/memory.md` deliberately left recording the edge as unresolved —
+  updating it would presuppose the human gate's outcome, and core cannot cite a workspace proposal
+  without pulling customer-zero's specifics upward. Seam scan clean across files, commit message, and
+  branch name.

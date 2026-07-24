@@ -49,3 +49,30 @@ Nothing enforces it yet. This file is the rule's first instance.
 
 **Recoverability.** Documentation only; no settings changed, nothing outward taken. Verify recipe green,
 so the tree can be committed or discarded whole.
+
+### Amended 2026-07-25 — recording a decision this session made but did not write down
+
+_The decision below was taken during this session's own review cycle and shipped in the same pull
+request; only its recording here happened afterwards. This is errata, not a post-close addition._
+
+**"Dated" now has a definition, because it had none.** Copilot's review found that the rule above turns
+on a property no gate could implement: nothing said where the date lives — the filename or a field inside
+the document. Both existing handoffs happened to carry an ISO filename prefix, but by accident rather
+than by stated convention.
+
+That mattered more than a wording nit. The entire argument for making this rule binary rather than
+discretionary was *a binary rule is checkable* — so leaving the checked property undefined undercut the
+case for the rule itself. **Decided:** the date leads the **filename**, in ISO form,
+`YYYY-MM-DD-{slug}.md`, never an in-document field. _Because:_ a date in prose needs parsing and gets
+written differently by every author, whereas a filename is readable without opening the file and sorts
+the series chronologically for free. Stated in both [`../../core/operating/loop.md`](../../core/operating/loop.md)
+and the [template header](../../core/templates/handoff.md). Descriptive rather than breaking — both
+handoffs already conformed.
+
+Worth recording alongside it: three independent reviewers each found a different defect in this one
+change, and all three were failures of *checkability* — the very property the rule claims for itself.
+Rules about enforceability are unusually easy to write unenforceably.
+
+_(Marked rather than woven into the text above, so the record shows plainly what was written when. The
+session knew this by its close; it simply failed to record it — which is the more common failure and the
+one the marker is for.)_

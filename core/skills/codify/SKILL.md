@@ -23,7 +23,15 @@ in [`../../operating/`](../../operating/) as doctrine). A lesson that will not r
 ## The pass
 
 1. **Name the incident and link it.** A proposal without a triggering incident is usually taste, not a
-   rule.
+   rule. **When the incident cannot leave its owner's layer** — it belongs to a team, a customer, or a
+   confidentiality boundary — the rule still carries its shape: strip the names, tickets, paths, and
+   domains, and keep the concrete failure that motivated it, which is the inputs, the wrong outcome, and
+   why the obvious guard misses it. The bar is that an implementer who never saw the incident can still
+   write the rule's test. **Generic must never decay into vague**: a rule that lost its failure shape
+   lost the thing that made it enforceable, and de-identifying is not the same as abstracting away. Such
+   a rule's provenance is **sealed**: it carries that de-identified failure shape in place of the link.
+   See [`../../operating/memory.md`](../../operating/memory.md), which records this edge and what is
+   still unresolved about giving it a form a checker can verify.
 2. **Draft the rule at the right altitude** — the most specific layer that still generalizes:
    `core` (universal), a `pack` (stack/tool/ritual), or the `workspace` (team policy). Wrong altitude
    is how rules bloat the always-loaded window — and how a team's specifics leak upward into layers that
