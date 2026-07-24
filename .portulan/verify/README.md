@@ -59,5 +59,11 @@ rule can be retired if it ever stops applying
   link passes locally and 404s once the repository is browsed on GitHub or cloned onto Linux. Resolving
   targets against `git ls-files` instead would close it; until then this is a known false green, recorded
   rather than left to be discovered.
+- **Code spans are not treated as code.** The `links` check scans raw text, so it neither skips fenced
+  blocks and inline spans nor looks inside them. That cuts both ways, and both were observed the same
+  day: a path written as a code span is never validated (two dead pointers in the plan survived several
+  reviews that way), and Markdown link *syntax* quoted inside a code span — while writing about this
+  check — is treated as a real link and fails. Skipping spans needs a small parser; until then, write
+  paths as links when you want them checked, and avoid quoting link syntax verbatim.
 - **Nothing here checks prose quality**, and nothing can. Conditions 2–4 of [`../dod.md`](../dod.md) are
   human judgement and are meant to stay that way.
