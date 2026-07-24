@@ -27,7 +27,15 @@ The loop runs inside a finite attention window, so context is managed, not hoard
   from the compaction without losing the thread. _(Provenance: HumanLayer ACE-FCA — the loop and
   compaction; 12-Factor Agents — stateless-reducer resumability.)_
 - **Handoffs record decisions and their why**, not just what changed, so the next agent — or the next
-  window — inherits the reasoning. _(Provenance: Cognition. See `../templates/handoff.md`.)_
+  window — inherits the reasoning. **Every session ends with a dated handoff** — a *session* being one
+  bounded working stretch, however the host names it, from the moment work opens to the moment it closes.
+  Short is fine, absent is not, and an exception is a last resort. The rule is binary on purpose: a
+  discretionary one cannot be enforced, because no gate can judge whether skipping was warranted, and the
+  costs are asymmetric — an unnecessary handoff costs five lines, a skipped one loses the reasoning
+  permanently. Ceremony scales down *inside* the artifact, never by omitting it, so a gate on this checks
+  that one exists and is dated — never its structure or its length. An unbroken series is also what makes
+  the record machine-readable: the session-end gate arrives in milestone 4, the librarian that mines the
+  series in milestone 5. _(Provenance: Cognition. See `../templates/handoff.md`.)_
 - **Subagents are context firewalls.** Fan work out to a persona with its own window and return only
   the conclusion; the parent's budget stays clean. Read in parallel, write from one place. _(See
   `../personas/`. Provenance: HumanLayer; Cognition — read-parallel / write-isolated.)_

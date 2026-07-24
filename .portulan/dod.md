@@ -26,6 +26,11 @@ A change is done when **all** of the following hold.
    the truth rather than from an optimistic memory of it.
 7. **The supervisor checkpoint passed**, in a fresh context, and is recorded — for anything
    milestone-affecting.
+8. **The session ended with a dated handoff** in [`handoffs/`](handoffs/). Five lines is enough; absent
+   is not. _Why: the Session log in [`../docs/plan.md`](../docs/plan.md) records what landed, and the
+   handoff records why — and the why is the part a later session cannot reconstruct from the diff. It is
+   uniform rather than discretionary because "write one when it's warranted" is prose no gate can check
+   ([`../core/operating/loop.md`](../core/operating/loop.md))._
 
 ## What is explicitly *not* required
 
