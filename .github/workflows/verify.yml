@@ -1,0 +1,31 @@
+# The workspace verify recipe, run by the platform rather than by whoever remembers to.
+#
+# This is what makes the recipe eligible to be a *required status check* on `main`
+# (.portulan/proposals/0001-platform-floor-on-main.md): branch protection can only require
+# a check that CI actually reports. Until this exists, "required status checks" has nothing
+# to require, and the floor rests on review alone.
+#
+# Deliberately not a matrix and not cached: the recipe needs bash, git, and POSIX text
+# utilities, all present on the runner. A verify recipe with a build step of its own is a
+# verify recipe that starts failing for reasons unrelated to the change under test.
+
+name: verify
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  # The job id is the status-check context branch protection pins to. Keep it short, lowercase,
+  # and stable — renaming it silently detaches any required-check rule that referenced it.
+  docs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run the workspace verify recipe
+        run: ./.portulan/verify/docs.sh

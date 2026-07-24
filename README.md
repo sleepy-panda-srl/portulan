@@ -33,6 +33,7 @@ once the engine boots from a clean install and the milestone-3 criteria are met.
 | `examples/` | A fictional, public demo workspace |
 | `.portulan/` | [This repository's own workspace](.portulan/) — Portulan applied to building Portulan |
 | `evals/` | Golden tasks, the A/B harness, the CI eval gate |
+| `.github/` | CI workflows — runs the workspace verify recipe on every pull request |
 | `docs/` | [`vision.md`](docs/vision.md) (the constitution) and [`plan.md`](docs/plan.md) (the milestone map) |
 
 ## Read next

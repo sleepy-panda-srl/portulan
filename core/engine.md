@@ -22,7 +22,7 @@ first). Verify and the Stop-gate never scale down. → `operating/loop.md`
 
 ## Non-negotiables
 
-- **Done is demonstrated, not asserted** — it compiles < tests pass < behaviour exercised; the failing
+- **Done is demonstrated, not asserted.** It compiles < tests pass < behaviour exercised; the failing
   test is the spec; the Stop-gate blocks "done" without green. → `operating/verification.md`
 - **Outward and irreversible actions are gated.** Recoverable-and-reversible runs unattended; a merge is
   reviewed via PR; hard-to-undo waits for explicit human approval. The platform floor — branch protection, required checks, `CODEOWNERS` — is the
