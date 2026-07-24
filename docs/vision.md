@@ -40,6 +40,11 @@ One sentence: **cockpit products sell the dashboard; Portulan sells the doctrine
 5. **Human-curated, agent-drafted.** Agents may draft the curated layer, never own it
    (ETH Zurich, arXiv:2602.11988: generated context hurts, curated helps). Supervised evolution —
    proposals reviewed by humans, eval-gated where possible — is the moat against drift.
+6. **Tailored answers; owned specifics.** Core and packs carry the universal best practice; at
+   work-time the engine reads the team's own specifics — workspace, repo card, memory — and returns
+   an answer tailored to them, never a generic guideline. Those specifics persist only in the layer
+   their owner controls (their workspace, their portulan); core and packs never absorb the team's.
+   Storage follows ownership.
 
 ## Product identity
 
