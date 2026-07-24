@@ -49,7 +49,7 @@ Status legend: `todo` · `in-progress` · `done (date, fidelity note)`
 
 | # | Milestone | Sessions | Exit criterion | Status |
 |---|---|---|---|---|
-| 0 | Bootstrap | 1 | `sleepy-panda-works/portulan` skeleton pushed **as a private repo** (public flip happens at milestone 3 only, after the clearance tracked in the private context): license, README stub, directory scaffold per the topology above, `.gitignore` already excluding the bootstrap file, and this folder's `plan.md` + `vision.md` seeded as `docs/plan.md` + `docs/vision.md` | todo |
+| 0 | Bootstrap | 1 | `sleepy-panda-works/portulan` skeleton pushed **as a private repo** (public flip happens at milestone 3 only, after the clearance tracked in the private context): license, README stub, directory scaffold per the topology above, `.gitignore` already excluding the bootstrap file, and this folder's `plan.md` + `vision.md` seeded as `docs/plan.md` + `docs/vision.md` | done (2026-07-24; Fable 5 verified live remote: PRIVATE, zero residue, criterion complete) |
 | 1 | Core re-expression | 2–3 | Concept inventory of the predecessor framework (private; **reference only — re-express, never copy text**); `core/` authored fresh with zero copied prose and zero client references; the private pilot workspace assembled in its own context (outside this repo); a real task runs end-to-end on engine + pilot workspace, no worse than the predecessor | todo |
 | 2 | Workspace spec v1 | 1–2 | Manifest + **constitution & product-layer slots** (team principles; mission/what/why) + gate map + verify recipes + **agent-affordances slot** (portfolio-aware: many products per workspace); `doctor` validates the demo workspace (and, privately, the pilot) | todo |
 | 3 | Plugin & public marketplace | 1–2 | Skills pass `skills-ref validate`; v0.1.0 tagged; fresh-machine install boots the engine with no local folder | todo |
@@ -103,3 +103,11 @@ portulan.works defensively; trademark sweep EUIPO/USPTO classes 9/42 before bran
 
 _(append one line per session: date · milestone · what landed · supervisor fidelity note —
 the seam applies here too: no client-identifying references)_
+
+- 2026-07-24 · M0 (Bootstrap) · Private `sleepy-panda-works/portulan` created and pushed
+  (commit `f04dedd`): Apache-2.0 license + NOTICE, README stub, directory scaffold per the
+  topology, `.gitignore` excluding the local bootstrap file, and `docs/plan.md` + `docs/vision.md`
+  seeded from the working copy. · Supervised in fresh contexts throughout: session-open review;
+  Fable 5 pre-commit (APPROVE, zero residue, docs byte-identical to source); Fable 5 milestone-close
+  verified on the live remote — PRIVATE, all pushed files + full history residue-free, criterion
+  demonstrated.
