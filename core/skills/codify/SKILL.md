@@ -26,7 +26,9 @@ in [`../../operating/`](../../operating/) as doctrine). A lesson that will not r
    rule.
 2. **Draft the rule at the right altitude** — the most specific layer that still generalizes:
    `core` (universal), a `pack` (stack/tool/ritual), or the `workspace` (team policy). Wrong altitude
-   is how rules bloat the always-loaded window.
+   is how rules bloat the always-loaded window — and how a team's specifics leak upward into layers that
+   must not hold them. Anything above the workspace carries the mechanism, never the episode.
+   _(See [`../../operating/memory.md`](../../operating/memory.md) — storage follows ownership.)_
 3. **Attach how it earns its place** — a hook, a compiled gate, a Stop-gate, or an eval; or, if none
    fits, the argument for why it is worth context-window tokens as prose. Rules that enforce or measure
    themselves beat rules you must remember. _(Vision — rails, not prose.)_
