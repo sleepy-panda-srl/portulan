@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Portulan workspace — verify recipe for a docs-first repository.
 #
-# Three checks, each one a rule this repo already states in prose, turned into a rail:
+# Three checks. Only the kernel budget was a rule this repo had already stated; the other two were
+# minted from the defect that this recipe's first run exposed (see ./README.md, Provenance):
 #   links   every relative Markdown link resolves            (docs that lie are worse than no docs)
 #   kernel  core/engine.md stays inside its line budget      (the always-loaded layer is the scarce one)
 #   map     the root README lists every top-level entry      (agent legibility: the map matches the ground)

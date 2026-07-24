@@ -13,8 +13,10 @@
 ./.portulan/verify/docs.sh
 ```
 
-Exit `0` green · `1` red · `2` could not run. It needs `git`, `bash`, and coreutils — nothing else, on
-purpose: a recipe that needs a toolchain is a recipe that stops being run.
+Exit `0` green · `1` red · `2` could not run. It needs `bash`, `git`, and the POSIX text utilities
+already present on any developer machine or CI image — `grep`, `sed`, `awk`, `wc`, `sort`, `dirname`,
+`mktemp`. Nothing beyond that, on purpose: a recipe that needs a toolchain is a recipe that stops being
+run.
 
 ## Where this sits in the hierarchy — honestly
 
