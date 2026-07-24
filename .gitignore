@@ -20,9 +20,8 @@ coverage/
 /BOOTSTRAP.md
 /_local/
 
-# The canonical constitution + plan are docs/vision.md + docs/plan.md. The root
-# vision.md/plan.md are the owner's local working originals ("move into docs/" per
-# plan.md) — kept out of the tracked tree so the living docs have one source and
-# cannot drift.
+# The constitution + plan live ONLY in docs/ (docs/vision.md + docs/plan.md) — single
+# canonical source. These root-level guards ensure that if a vision.md or plan.md ever
+# reappears at the repo root, it can never be tracked or pushed.
 /vision.md
 /plan.md
