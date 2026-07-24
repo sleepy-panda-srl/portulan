@@ -5,7 +5,9 @@
 > is not conditional, and short is fine — and also when compacting, when hitting an iteration cap, or when
 > passing work across a persona boundary. Decisions without their why get silently re-litigated or
 > reversed. **Drop any section that has nothing to say** — the date and the decisions-with-why are the
-> only irreducible parts, and a handoff of five lines is a valid handoff. That is what keeps the
+> only irreducible parts, and a handoff of five lines is a valid handoff. The date lives in the
+> **filename**, leading, in ISO form — `YYYY-MM-DD-{slug}.md` — not in a field inside the document: that
+> is what a gate checks and what makes the series sort chronologically. That is what keeps the
 > every-session rule from becoming ceremony: it scales down here, inside the artifact, rather than by
 > being skipped. _(Provenance: Cognition — handoffs record decisions and rationale. The every-session rule
 > and why it is binary rather than discretionary are in `../operating/loop.md`.)_
