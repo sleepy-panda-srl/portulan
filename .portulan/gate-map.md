@@ -80,17 +80,36 @@ that has not seen the implementer's window:
 If supervision is unavailable in a session, that is stated plainly and the maintainer reviews the diff.
 A milestone is never self-certified.
 
-## The platform floor, honestly
+## The platform floor
 
 Core calls the platform floor the gate no prompt can bypass
-([`../core/operating/autonomy.md`](../core/operating/autonomy.md)). **On this repository it is not
-configured.** As of milestone 1 the remote is private with a default branch of `main`, and it has no
-branch protection, no required status checks, and no `CODEOWNERS`. PR-as-gate is honoured by convention
-and by the maintainer — which is precisely the "trust that the model will behave" posture the doctrine
-rejects.
+([`../core/operating/autonomy.md`](../core/operating/autonomy.md)). **On this repository it is now
+configured**, as of 2026-07-25, per
+[`proposals/0001-platform-floor-on-main.md`](proposals/0001-platform-floor-on-main.md). What `main`
+enforces:
 
-Naming it here rather than leaving it implicit: this is a real gap in customer zero. It is written up as
-[`proposals/0001-platform-floor-on-main.md`](proposals/0001-platform-floor-on-main.md), which the
-maintainer **accepted on 2026-07-25 with administrators included** — and which is **not yet applied**.
-This section changes when the setting does, not when the decision is taken: what a gate map describes is
-what the repository enforces today.
+| Setting | Value |
+|---|---|
+| Direct pushes | rejected — every change goes through a pull request |
+| Required status check | `docs-integrity` — the verify recipe, run by CI |
+| Administrators | **included**; the maintainer has no exemption |
+| Required approving reviews | 0 — see below |
+| Conversation resolution | required before merge |
+| Force-pushes and branch deletion | blocked |
+
+Verified rather than asserted: a direct push to `main` was attempted after the change and rejected with
+*"Changes must be made through a pull request."* This is the first gate in the repository that holds
+against the agent, the maintainer, and any future collaborator equally — the difference between a rule
+and a rail.
+
+**Why zero required reviews, on purpose.** GitHub does not permit anyone to approve their own pull
+request. On a repository with one human, requiring an approving review *and* enforcing for
+administrators would deadlock every merge. Requiring the PR and the green check — with no exemption for
+anyone — is the strongest floor a solo maintainer can actually stand on. When a second reviewer exists,
+raise the count; the setting to preserve is `enforce_admins`, because a floor with an exemption for the
+only actor who can act is not a floor.
+
+**Still absent:** no `CODEOWNERS`, so no path-specific human is required on any file — including
+[`../docs/vision.md`](../docs/vision.md), which is protected today only by the prohibition above and not
+by the platform. That is the next piece of the floor, and it is worth doing before the repository goes
+public at milestone 3.
