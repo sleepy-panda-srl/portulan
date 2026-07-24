@@ -163,3 +163,21 @@ the seam applies here too: no client-identifying references)_
   rules" claim that appeared in three files, and a confirmed false green where the map check grepped the
   whole README rather than its layout table); milestone-close CLOSE on an independent vision→core coverage
   walk. Seam scan clean across files, commit message, and branch name.
+
+- 2026-07-25 · Constitution · **Thesis 6 added to `docs/vision.md` by Marius** — *tailored answers; owned
+  specifics*: core and packs carry the universal best practice, the team's own specifics persist only in
+  the layer their owner controls, and storage follows ownership. Authored by the human owner and committed
+  verbatim; no agent edits that file. Its **write half** turned out to have no home anywhere in `core/` —
+  not the concept, not the vocabulary — which would have falsified milestone 1's coverage claim the moment
+  it merged, so the same change gives it one: a "Storage follows ownership" section in
+  `core/operating/memory.md` (a lesson travels upward only by generalizing **and** only as a proposal
+  through the human gate, arriving as a proposed rule rather than a relocated memory entry), plus a clause
+  in `core/skills/codify/SKILL.md` step 2, where altitude is chosen and specifics leak in practice. One
+  edge recorded rather than papered over: thesis 4 wants every rule linked to the incident that created
+  it, and an incident that cannot leave its owner's layer cannot be linked from a public one — interim
+  behaviour stated, its cost named, and a verifiable form deferred to the Workspace Definition's
+  provenance slot (M2) and the librarian's retirement logic (M5). · Supervised in two fresh Fable 5
+  contexts: thesis review SOUND WITH A NOTED CONSEQUENCE (that `core/` gap, now closed); `core/` commit
+  APPROVE-WITH-ADJUSTMENTS (both required adjustments folded in, plus the optional one; the kernel
+  deliberately not grown — 43/60, since the invariant binds at consolidation time, not on every task).
+  Seam scan clean across files, commit messages, and branch name.
