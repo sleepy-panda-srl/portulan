@@ -24,9 +24,12 @@ point of naming it a floor:
 - **Include administrators.** On a solo-maintainer repository this is the setting that decides whether
   the floor is real: without it the one human on the project is precisely the actor who can bypass it,
   and the gate degrades back into convention.
-- Required status checks: none can be required until CI runs something. A minimal workflow invoking
-  [`../verify/docs.sh`](../verify/docs.sh) would make the recipe a required check well before the
-  enforcement compiler (milestone 4) generalises this.
+- Required status checks: the **`docs-integrity`** context from
+  [`../../.github/workflows/verify.yml`](../../.github/workflows/verify.yml), which runs
+  [`../verify/docs.sh`](../verify/docs.sh) on every pull request and on `main`. It ships with this
+  proposal, so the recipe can be required well before the enforcement compiler (milestone 4)
+  generalises this. Pin the rule to that job id and not to a display name — and note that renaming the
+  job silently detaches the requirement, which is a gate that fails open.
 
 **The cost, honestly.** Including administrators means the maintainer cannot push a one-line fix to
 `main` either — every change, including his own, needs a branch and a PR he approves himself. That is
