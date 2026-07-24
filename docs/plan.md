@@ -136,6 +136,6 @@ the seam applies here too: no client-identifying references)_
   matrix rows, durable-outcome recording, tier reach in tier vocabulary, promise-only-what-exists,
   explicit skill triggers); pre-commit APPROVE-WITH-ADJUSTMENTS (both mechanical — this log line's
   verdict fill and the commit-message seam scan; all substance passed); seam scan clean across files,
-  commit message, and branch name. **M1
-  stays open** — the client-half (predecessor concept inventory, the private pilot workspace, and a real
-  task run end-to-end on engine + workspace) is client-rooted and lands in its own session.
+  commit message, and branch name. **M1 stays open** — the client-half (predecessor concept inventory,
+  the private pilot workspace, and a real task run end-to-end on engine + workspace) is client-rooted
+  and lands in its own session.
