@@ -1,15 +1,15 @@
 # The workspace verify recipe, run by the platform rather than by whoever remembers to.
 #
 # This is what makes the recipe eligible to be a *required status check* on `main`
-# (.portulan/proposals/0001-platform-floor-on-main.md): branch protection can only require
-# a check that CI actually reports. Until this exists, "required status checks" has nothing
-# to require, and the floor rests on review alone.
+# (.portulan/proposals/0001-platform-floor-on-main.md): branch protection can only require a
+# check that CI actually reports. Without it, "required status checks" has nothing to require
+# and the floor rests on review alone.
 #
-# Deliberately not a matrix and not cached: the recipe needs bash, git, and POSIX text
-# utilities, all present on the runner. A verify recipe with a build step of its own is a
-# verify recipe that starts failing for reasons unrelated to the change under test.
+# Deliberately no matrix and no cache: the recipe needs bash, git, and POSIX text utilities,
+# all present on the runner. A verify recipe with a build step of its own is a verify recipe
+# that starts failing for reasons unrelated to the change under test.
 
-name: verify
+name: workspace verify
 
 on:
   pull_request:
@@ -20,12 +20,18 @@ permissions:
   contents: read
 
 jobs:
-  # The job id is the status-check context branch protection pins to. Keep it short, lowercase,
-  # and stable — renaming it silently detaches any required-check rule that referenced it.
-  docs:
+  # This job id is the status-check context branch protection pins to, so it carries the
+  # human-readable name rather than a `name:` override — a display name would become the
+  # context string, and one containing punctuation is awkward to pin and fragile to rename.
+  # Renaming this id silently detaches any required-check rule that referenced it.
+  docs-integrity:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      # Pinned to a full-length commit SHA. This organisation's Actions policy requires it, and
+      # the policy is right: a movable tag is a supply-chain hole, because whoever controls `v4`
+      # can repoint it at any commit and every workflow trusting the tag picks it up silently.
+      # SHA below is actions/checkout v4.4.0.
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
-      - name: Run the workspace verify recipe
+      - name: Run the workspace verify recipe — links, kernel budget, repo map
         run: ./.portulan/verify/docs.sh
