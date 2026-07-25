@@ -60,9 +60,12 @@ agent does here, and this section is written to be followed by a human once.
      > authorship there records a decision a person actually took.
    - **Uncheck "Active" under Webhook.** There is no webhook receiver, and leaving it on produces
      delivery failures forever.
-   - *Repository permissions:* **Pull requests → Read and write**, and nothing else. That covers comments,
-     review replies, and resolving threads. Leave Contents at "No access" — the agent reads the repository
-     through the maintainer's own credentials, and this token is deliberately not able to write code.
+   - *Repository permissions:* **Pull requests → Read and write**, and nothing else. That covers comments
+     and review replies. It does **not** cover resolving a review thread: GitHub refuses
+     `resolveReviewThread` to any App with `Resource not accessible by integration`, so resolving stays the
+     maintainer's — see [`../gate-map.md`](../gate-map.md). Leave Contents at "No access" — the agent reads
+     the repository through the maintainer's own credentials, and this token is deliberately not able to
+     write code.
    - *Where can this App be installed:* **Only on this account.**
 2. **Note the App ID** from the App's settings page.
 3. **Generate the private key — this is a click, not a command.** On the App's settings page, scroll to
