@@ -49,12 +49,53 @@ export class DoctorError extends Error {
 // repository has now minted three rules about (../.portulan/memory/verify-preconditions-fail-closed.md),
 // and a validator is exactly where a fourth would hide.
 
-const SUPPORTED = new Set([
-    "$schema", "$id", "$defs", "$ref",
-    "title", "description",
-    "type", "properties", "required", "additionalProperties",
-    "items", "enum", "pattern", "minLength", "minItems", "uniqueItems", "oneOf",
-]);
+// Each supported keyword, with what a well-formed VALUE for it looks like. Knowing the name is not
+// enough: `pattern: "["` and `enum: "repository"` are both inside the subset by name and neither can
+// be honoured, and without this table they surface at instance-validation time as a raw SyntaxError
+// or TypeError — an "unanticipated failure" (exit 2) naming no keyword and no location, from a defect
+// that is squarely in the schema. Refusing at compile time is the same rule one level finer: the unit
+// this validator must refuse is a constraint it cannot apply, not merely a word it does not know.
+const isObject = (v) => v !== null && typeof v === "object" && !Array.isArray(v);
+const isCount = (v) => typeof v === "number" && Number.isInteger(v) && v >= 0;
+const regexCompiles = (v) => {
+    if (typeof v !== "string") return false;
+    try { new RegExp(v); return true; } catch { return false; }
+};
+
+const SUPPORTED = {
+    $schema: (v) => typeof v === "string",
+    $id: (v) => typeof v === "string",
+    $defs: isObject,
+    $ref: (v) => typeof v === "string",
+    title: (v) => typeof v === "string",
+    description: (v) => typeof v === "string",
+    // Constrained to the names `check` can actually test. `type: "integer"` would otherwise be
+    // accepted here and then match nothing, failing every instance — loud, but for the wrong reason.
+    type: (v) => ["object", "array", "string", "number", "boolean", "null"].includes(v),
+    properties: isObject,
+    required: (v) => Array.isArray(v) && v.every((n) => typeof n === "string"),
+    additionalProperties: (v) => v === false,
+    items: isObject,
+    enum: (v) => Array.isArray(v) && v.length > 0,
+    pattern: regexCompiles,
+    minLength: isCount,
+    minItems: isCount,
+    uniqueItems: (v) => typeof v === "boolean",
+    oneOf: (v) => Array.isArray(v) && v.length > 0 && v.every(isObject),
+};
+
+const SHAPE = {
+    $defs: "an object", properties: "an object", items: "a schema object",
+    required: "an array of strings", enum: "a non-empty array",
+    oneOf: "a non-empty array of schema objects",
+    pattern: "a string that compiles as a regular expression",
+    minLength: "a non-negative integer", minItems: "a non-negative integer",
+    uniqueItems: "a boolean",
+    type: "one of object, array, string, number, boolean, null",
+    additionalProperties:
+        "literal false — only that form is in the subset, and a schema-valued form would let unknown " +
+        "keys through a check this validator does not implement",
+};
 
 // Siblings a `$ref` may carry. Annotations only: they describe, they never constrain, so they
 // cannot silently narrow what the ref resolves to. Used where a field reuses a shared definition
@@ -73,11 +114,20 @@ export function compileSchema(schema, where = "#") {
     const keys = Object.keys(schema);
 
     for (const key of keys) {
-        if (!SUPPORTED.has(key)) {
+        if (!(key in SUPPORTED)) {
             throw new DoctorError(
                 `schema at ${where} uses \`${key}\`, which is outside the subset this validator ` +
                     `implements (see spec/README.md). A schema change reaching outside that list ` +
                     `is a change to doctor too, and the two land together.`,
+            );
+        }
+        if (!SUPPORTED[key](schema[key])) {
+            throw new DoctorError(
+                `schema at ${where} has \`${key}: ${JSON.stringify(schema[key])}\`, which is not ` +
+                    `${SHAPE[key] ?? "a usable value for that keyword"}. The keyword is in the subset; ` +
+                    `this value cannot be applied, and a constraint that cannot be applied is refused ` +
+                    `rather than carried to instance validation, where it would surface as a stack ` +
+                    `trace naming neither the keyword nor where it lives.`,
             );
         }
     }
@@ -99,14 +149,6 @@ export function compileSchema(schema, where = "#") {
         }
     }
 
-    if ("additionalProperties" in schema && schema.additionalProperties !== false) {
-        throw new DoctorError(
-            `schema at ${where} sets \`additionalProperties\` to something other than literal ` +
-                `\`false\`. Only \`false\` is in the subset — a schema-valued form would let unknown ` +
-                `keys through a check this validator does not implement.`,
-        );
-    }
-
     for (const [name, sub] of Object.entries(schema.$defs ?? {})) {
         compileSchema(sub, `${where}/$defs/${name}`);
     }
@@ -114,10 +156,7 @@ export function compileSchema(schema, where = "#") {
         compileSchema(sub, `${where}/properties/${name}`);
     }
     if (schema.items) compileSchema(schema.items, `${where}/items`);
-    if (schema.oneOf) {
-        if (!Array.isArray(schema.oneOf)) throw new DoctorError(`schema at ${where}: \`oneOf\` must be an array`);
-        schema.oneOf.forEach((sub, i) => compileSchema(sub, `${where}/oneOf/${i}`));
-    }
+    if (schema.oneOf) schema.oneOf.forEach((sub, i) => compileSchema(sub, `${where}/oneOf/${i}`));
 
     return schema;
 }
@@ -616,7 +655,12 @@ export async function inspect(workspaceDir, options = {}) {
             let source;
             try {
                 source = fs.readFileSync(card, "utf8");
-            } catch { continue; }
+            } catch (cause) {
+                // Was a bare `continue`: an unreadable card dropped every claim it makes, silently,
+                // and the run stayed green. A card that cannot be read is not a card with no claims.
+                fail("claims", `repos/${name}.md could not be read, so its claims went unchecked — ${cause.message}`);
+                continue;
+            }
             for (const claim of repoCardClaims(source)) {
                 claimTargets.push({ where: `repos/${name}.md`, ...claim, base: reposDir });
             }
@@ -697,7 +741,18 @@ export async function inspect(workspaceDir, options = {}) {
         } catch { /* the missing directory is already a `paths` failure */ }
 
         for (const entry of entries) {
-            const source = fs.readFileSync(path.join(memoryDir, entry), "utf8");
+            // A record that is present and unreadable is a defect in the WORKSPACE — exit 1, reported
+            // alongside everything else already found. Letting the read throw made it exit 2 and
+            // discarded every finding the run had reached, which is the gates-file defect over again
+            // one function down: the same shape, missed in the same change that fixed it.
+            let source;
+            try {
+                source = fs.readFileSync(path.join(memoryDir, entry), "utf8");
+            } catch (cause) {
+                stats.records += 1;
+                fail("provenance", `${entry} could not be read — ${cause.message}`);
+                continue;
+            }
             const type = recordType(source);
             const { present, fields } = parseProvenance(source);
             stats.records += 1;

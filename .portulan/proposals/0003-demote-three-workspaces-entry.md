@@ -48,4 +48,16 @@ agent retiring the human-owned curated layer on its own authority is the failure
 [`../../core/operating/evolution.md`](../../core/operating/evolution.md) exists to prevent, and a little
 duplication is much cheaper than that precedent.
 
-**Decision.** Marius Cetanas — **pending**. Drafted, not applied; the entry is untouched.
+**Decision.** Marius Cetanas — **accepted, 2026-07-25**, on a recommendation he commissioned from a
+fresh-context Fable 5 and posted as [`portulan-agent[bot]` on pull request 15](https://github.com/sleepy-panda-works/portulan/pull/15#issuecomment-5078534991).
+The recommendation's argument, kept because it is stronger than this proposal's own: the cost of leaving
+it pending is a **live, unguarded duplication** — the memory entry against `spec/README.md`, with nothing
+holding the two in agreement — and this milestone's own new entry
+[`a-mandate-nothing-checks-is-already-broken.md`](../memory/a-mandate-nothing-checks-is-already-broken.md)
+is fresh evidence that duplicated unchecked prose is exactly where this repository's drift happens.
+Acting on a retirement condition by hand, once, also gives the milestone-5 librarian its reference shape.
+
+**Not yet applied.** The entry is still untouched. Applying it is a memory-entry edit landing with
+[`0005`](0005-a-repository-workspace-must-declare-its-tree.md) in the follow-up immediately after pull
+request 15 merges — kept out of that pull request because it had already passed all three supervised
+checkpoints, and a post-checkpoint edit is one no supervisor saw.
