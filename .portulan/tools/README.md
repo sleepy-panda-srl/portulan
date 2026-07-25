@@ -95,10 +95,29 @@ agent does here, and this section is written to be followed by a human once.
    Then append the two lines to your profile, substituting that number:
 
    ```
-   echo 'export PORTULAN_BOT_APP_ID=1234567' >> ~/.zshrc
-   echo 'export PORTULAN_BOT_PRIVATE_KEY="$HOME/Sleepy Panda Projects/portulan-private/portulan-agent.pem"' >> ~/.zshrc
-   source ~/.zshrc
+   echo 'export PORTULAN_BOT_APP_ID=1234567' >> ~/.zshenv
+   echo 'export PORTULAN_BOT_PRIVATE_KEY="$HOME/Sleepy Panda Projects/portulan-private/portulan-agent.pem"' >> ~/.zshenv
    ```
+
+   **`~/.zshenv`, not `~/.zshrc` — and the difference is the whole point.** An agent's shell is
+   *non-interactive*, and zsh reads `~/.zshrc` only for interactive shells. Configuration placed there
+   works perfectly at your own prompt and is invisible to the thing that actually needs it, which is the
+   worst shape a misconfiguration can take: it looks correct everywhere you would think to check. `~/.zshenv`
+   is read by *every* zsh, which is exactly why it is the right file here — and why it should stay small
+   and fast, since everything in it runs on every shell start.
+
+   Verified rather than assumed, because an earlier version of this runbook said `~/.zshrc` for precisely
+   this purpose and did not achieve it:
+
+   ```
+   zsh -c  'echo $PORTULAN_BOT_APP_ID'   # non-interactive — what an agent gets
+   zsh -ic 'echo $PORTULAN_BOT_APP_ID'   # interactive — what you get
+   ```
+
+   Both must print the id. If only the second does, the lines are in the wrong file. _(On bash the split
+   differs again — non-interactive bash reads neither `~/.bashrc` nor `~/.bash_profile` unless `BASH_ENV`
+   points at a file — so the rule to carry away is not a filename but a question: does a **non-interactive**
+   shell see this?)_
 
    **Never write a placeholder as `<…>` inside a shell block.** `<` is a redirection operator, so pasting
    one is not a harmless no-op — it is a parse error, and an earlier draft of this runbook shipped exactly
@@ -106,10 +125,6 @@ agent does here, and this section is written to be followed by a human once.
    templates were changed to `{…}` because GitHub's Markdown renderer silently dropped them. Two different
    surfaces, one rule: a placeholder must be inert wherever it might be pasted.
 
-   **Put these in the profile file itself (`~/.zshrc`), not just in a running shell.** An agent's shell is
-   initialised from your profile but does not inherit exports typed into an interactive session, so a
-   variable that exists only at your prompt is invisible to the thing that needs it — and the failure
-   looks like a misconfiguration rather than a missing export.
 
 7. **Confirm it works** — this prints the repositories the installation can see, and nothing else:
 
