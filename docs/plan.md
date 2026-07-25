@@ -320,8 +320,9 @@ the seam applies here too: no client-identifying references)_
   than reporting an unearned green — the same precondition rule minted earlier the same day, applied one
   level up. It also gives `spec/slots.md`'s argument for why the `verify` slot is structured data rather
   than prose — that something consumes it — an actual consumer, a milestone before the Stop-gate runner. **The rename is deliberately not
-  done**: renaming the job id would deadlock the repository (the required context stops reporting,
-  `enforce_admins` prevents override — fails closed and stuck), so
+  done**: renaming the job id makes *that* pull request unmergeable — the required context stops reporting
+  and `enforce_admins` prevents forcing the merge, so it fails closed and strands the rename behind the very
+  settings change it was avoiding; other pull requests are unaffected. So
   [`.portulan/proposals/0004-ci-runs-every-declared-recipe.md`](../.portulan/proposals/0004-ci-runs-every-declared-recipe.md)
   records the three-step sequence and the **Gated** middle step that is the maintainer's. Verified by
   extracting the step's shell and running it under `bash -e` across four paths — both green, one red,
