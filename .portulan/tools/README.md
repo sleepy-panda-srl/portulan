@@ -40,25 +40,32 @@ agent does here, and this section is written to be followed by a human once.
      through the maintainer's own credentials, and this token is deliberately not able to write code.
    - *Where can this App be installed:* **Only on this account.**
 2. **Note the App ID** from the App's settings page.
-3. **Generate a private key** — same page, "Private keys" → *Generate a private key*. A `.pem` downloads.
-   **Move it outside this repository**, alongside the other material that never enters git:
+3. **Generate the private key — this is a click, not a command.** On the App's settings page, scroll to
+   **Private keys** → *Generate a private key*. A `.pem` lands in `~/Downloads`. Nothing below works until
+   this file exists.
+4. **Move the key out of the way**, alongside the other material that never enters git. The download is
+   named `<app-slug>.<date>.private-key.pem`, so the glob deliberately does **not** assume the App's name:
 
    ```
-   mv ~/Downloads/portulan-agent.*.private-key.pem "$HOME/Sleepy Panda Projects/portulan-private/portulan-agent.pem"
+   mv ~/Downloads/*.private-key.pem "$HOME/Sleepy Panda Projects/portulan-private/portulan-agent.pem"
    chmod 600 "$HOME/Sleepy Panda Projects/portulan-private/portulan-agent.pem"
    ```
 
+   `zsh: no matches found` here means step 3 has not happened yet — the key was never generated — rather
+   than anything being wrong with the path. If the glob matches more than one file you have keys from
+   earlier attempts; move the newest by hand and delete the rest from the App's settings page.
+
    `*.pem` is git-ignored as a second line of defence, but the file belongs outside the working copy
    regardless: an ignore rule protects against `git add`, not against a future change to the ignore rule.
-4. **Install the App** on `sleepy-panda-works` → *Only select repositories* → `portulan`.
-5. **Export the configuration** from your shell profile:
+5. **Install the App** on `sleepy-panda-works` → *Only select repositories* → `portulan`.
+6. **Export the configuration** from your shell profile:
 
    ```
    export PORTULAN_BOT_APP_ID=<the App ID>
    export PORTULAN_BOT_PRIVATE_KEY="$HOME/Sleepy Panda Projects/portulan-private/portulan-agent.pem"
    ```
 
-6. **Confirm it works** — this prints the repositories the installation can see, and nothing else:
+7. **Confirm it works** — this prints the repositories the installation can see, and nothing else:
 
    ```
    ./.portulan/tools/gh-bot api /installation/repositories --jq '.repositories[].full_name'
@@ -66,6 +73,17 @@ agent does here, and this section is written to be followed by a human once.
 
    Expect `sleepy-panda-works/portulan`. Note `gh api user` will *not* work: an installation token has no
    user, which is the point.
+
+**Where am I?** The steps are click-heavy and easy to half-finish, so each has a way to check itself
+without guessing:
+
+| Question | Command |
+|---|---|
+| Does the App exist and is it installed? | `gh api /orgs/sleepy-panda-works/installations --jq '.installations[].app_slug'` |
+| Did the key download? | `ls ~/Downloads/*.private-key.pem` |
+| Is the key in place? | `ls -l "$PORTULAN_BOT_PRIVATE_KEY"` |
+| Is the shell configured? | `echo "$PORTULAN_BOT_APP_ID"` |
+| Does the whole path work? | step 7 above |
 
 ## How the agent uses it
 
