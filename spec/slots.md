@@ -123,6 +123,13 @@ Every other content slot points at Markdown for a human. This one carries data b
 needs an answer, not a paragraph: which recipe runs when nothing more specific applies. A prose sentence
 saying "run the docs recipe" cannot be dispatched.
 
+**As of milestone 2 that argument has a consumer rather than a promise behind it.** This repository's CI reads
+`verify.recipes` from the manifest and runs each one, so declaring a recipe is what enforces it — no
+workflow edit, no branch-protection change, and no window in which a new recipe exists but nothing runs
+it. It is a milestone early (the Stop-gate runner is milestone 4) and it is the cheapest possible
+demonstration that a structured slot earns being structured. Recorded in customer zero's
+[proposal 0004](../.portulan/proposals/0004-ci-runs-every-declared-recipe.md).
+
 ```json
 "verify": {
   "default": "{recipe-id}",

@@ -1,15 +1,20 @@
-# The workspace verify recipe, run by the platform rather than by whoever remembers to.
+# The workspace verify recipes, run by the platform rather than by whoever remembers to.
 #
-# This is what makes the recipe eligible to be a *required status check* on `main`
+# This is what makes them eligible to be a *required status check* on `main`
 # (.portulan/proposals/0001-platform-floor-on-main.md): branch protection can only require a
 # check that CI actually reports. Without it, "required status checks" has nothing to require
 # and the floor rests on review alone.
 #
-# Deliberately no matrix and no cache: the recipes need bash, git, POSIX text utilities, and —
-# for the JSON recipe since milestone 2 — node, all preinstalled on the runner. Note there is no
-# actions/setup-node step, and that is the point: adding one would pin a version, which would make
-# this workflow a build. A verify recipe with a build step of its own is a verify recipe that
-# starts failing for reasons unrelated to the change under test.
+# The recipes are NOT listed here. They are read from `.portulan/workspace.json`, so adding a
+# recipe to the manifest makes it enforced — no workflow edit, and no branch-protection change
+# that somebody has to remember. See .portulan/proposals/0004-ci-runs-every-declared-recipe.md;
+# the rename this check still wants is a separate, sequenced, Gated step, documented there.
+#
+# Deliberately no matrix and no cache: the recipes need bash, git, POSIX text utilities, and
+# node — all preinstalled on the runner. Note there is no actions/setup-node step, and that is
+# the point: adding one would pin a version, which would make this workflow a build. A verify
+# recipe with a build step of its own is a verify recipe that starts failing for reasons
+# unrelated to the change under test.
 
 name: workspace verify
 
@@ -25,7 +30,9 @@ jobs:
   # This job id is the status-check context branch protection pins to, so it carries the
   # human-readable name rather than a `name:` override — a display name would become the
   # context string, and one containing punctuation is awkward to pin and fragile to rename.
-  # Renaming this id silently detaches any required-check rule that referenced it.
+  # Renaming this id silently detaches any required-check rule that referenced it, so it is
+  # NOT renamed here even though it now covers more than docs: see proposal 0004 for the
+  # three-step sequence that changes it safely.
   docs-integrity:
     runs-on: ubuntu-latest
     steps:
@@ -35,14 +42,59 @@ jobs:
       # SHA below is actions/checkout v4.4.0.
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
-      # Both recipes run in this one job on purpose. The job id is the status-check context that
-      # branch protection pins, so splitting them into two jobs would require re-pinning the rule
-      # and would leave `main` briefly requiring a check that no longer reports.
-      - name: Run the workspace verify recipe — links, kernel budget, repo map
-        run: ./.portulan/verify/docs.sh
+      - name: Run every verify recipe the workspace manifest declares
+        run: |
+          set -uo pipefail
+          set +e   # GitHub's default shell is `bash -e`; a red recipe must not abort the loop
 
-      # Runs even if the recipe above failed: two independent recipes should both report, so a
-      # broken manifest is not hidden behind a dead link. The job still fails if either does.
-      - name: Run the workspace verify recipe — JSON well-formedness
-        if: ${{ !cancelled() }}
-        run: ./.portulan/verify/json.sh
+          # The emitter validates before it emits. A recipe that is declared but cannot be run —
+          # an empty or whitespace-only command, a newline smuggled into one, an id that is not a
+          # slug — must never be silently skipped, because "declared" is what this gate treats as
+          # "enforced". Throwing here exits non-zero and becomes exit 2 below.
+          recipes=$(node -e '
+            const fs = require("fs");
+            const m = JSON.parse(fs.readFileSync(".portulan/workspace.json", "utf8"));
+            const slug = /^[a-z0-9]+(-[a-z0-9]+)*$/;
+            for (const r of m.verify.recipes) {
+              const id = String(r.id ?? "");
+              const run = String(r.run ?? "");
+              if (!slug.test(id)) throw new Error("recipe id is not a slug: " + JSON.stringify(r.id));
+              if (!run.trim()) throw new Error("recipe " + id + " declares an empty run command");
+              if (/[\n\r\t]/.test(run)) throw new Error("recipe " + id + " run contains a newline or tab");
+              process.stdout.write(id + "\t" + run + "\n");
+            }
+          ')
+          if [ $? -ne 0 ]; then
+            printf '::error::could not read verify recipes from .portulan/workspace.json\n'
+            exit 2
+          fi
+
+          # Reporting green having run nothing is the failure this whole gate exists to prevent.
+          # Enumerating the recipes is a precondition, exactly as enumerating the tree is inside
+          # each recipe — see .portulan/memory/verify-preconditions-fail-closed.md.
+          if [ -z "$recipes" ]; then
+            printf '::error::the manifest declares no verify recipes — refusing to report green\n'
+            exit 2
+          fi
+
+          status=0
+          while IFS=$'\t' read -r id cmd; do
+            # Belt and braces behind the emitter's validation. A `continue` here would be the
+            # same fail-open in miniature: a line the loop cannot parse is work that was declared
+            # and silently not done, so it stops the run rather than being skipped.
+            if [ -z "$id" ] || [ -z "$cmd" ]; then
+              printf '::error::malformed recipe line from the manifest — refusing to report a partial run\n'
+              exit 2
+            fi
+            printf '::group::%s — %s\n' "$id" "$cmd"
+            # stdin is /dev/null so a recipe that reads it cannot swallow the rest of this list.
+            bash -c "$cmd" </dev/null
+            rc=$?
+            printf '::endgroup::\n'
+            if [ "$rc" -ne 0 ]; then
+              printf '::error::verify recipe %s exited %s\n' "$id" "$rc"
+              status=1
+            fi
+          done <<<"$recipes"
+
+          exit "$status"

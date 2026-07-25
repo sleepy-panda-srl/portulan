@@ -307,3 +307,24 @@ the seam applies here too: no client-identifying references)_
   had carried only a length constraint, so a manifest could name a default no recipe could ever match), and
   two places where the spec's prose demanded more than the schema declared were reconciled. Seam scan clean
   across files, commit message, and branch name.
+
+- 2026-07-25 · Infrastructure · **CI reads the verify recipes from the manifest instead of naming them.**
+  Adding the second recipe exposed a choice with no good answer: a new CI job would have had an honest name
+  and **not been a required check** (`main` requires exactly one context, so it would report without
+  blocking until a Gated settings change), while a second step inside `docs-integrity` is enforced on merge
+  at the cost of a check whose name no longer describes it. The pressure recurs on a known schedule —
+  `doctor` is the next recipe. So the workflow now reads `verify.recipes` from
+  [`.portulan/workspace.json`](../.portulan/workspace.json) and runs each: **declaring a recipe is what
+  enforces it**, with no workflow edit and no settings change, which inverts the failure mode from
+  fail-open to fail-closed. A manifest that cannot be read, or that declares zero recipes, exits 2 rather
+  than reporting an unearned green — the same precondition rule minted earlier the same day, applied one
+  level up. It also gives `spec/slots.md`'s argument for why the `verify` slot is structured data rather
+  than prose — that something consumes it — an actual consumer, a milestone before the Stop-gate runner. **The rename is deliberately not
+  done**: renaming the job id would deadlock the repository (the required context stops reporting,
+  `enforce_admins` prevents override — fails closed and stuck), so
+  [`.portulan/proposals/0004-ci-runs-every-declared-recipe.md`](../.portulan/proposals/0004-ci-runs-every-declared-recipe.md)
+  records the three-step sequence and the **Gated** middle step that is the maintainer's. Verified by
+  extracting the step's shell and running it under `bash -e` across four paths — both green, one red,
+  manifest missing, zero recipes — after a first measurement that read the exit code through a pipe and so
+  reported `tail`'s status instead of the step's, which is the same class of mistake the change is about.
+  Seam scan clean across files, commit message, and branch name.
