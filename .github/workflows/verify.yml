@@ -9,12 +9,11 @@
 # recipe to the manifest makes it enforced — no workflow edit, and no branch-protection change
 # that somebody has to remember. See .portulan/proposals/0004-ci-runs-every-declared-recipe.md.
 #
-# TWO CONTEXTS REPORT RIGHT NOW, ON PURPOSE. `workspace-verify` is the real job and the name
-# that will last. `docs-integrity` is transitional: it is the context `main`'s branch protection
-# currently pins, and it cannot be renamed in a pull request — the required context would stop
-# reporting, the pull request would never be mergeable, and `enforce_admins` means it could not
-# be forced through. So this is step 1 of the three-step sequence in proposal 0004: both report,
-# then protection is re-pointed (Gated, maintainer), then the transitional job is deleted.
+# One job, one context, and the name says what it asserts. It arrived that way by a sequence
+# rather than an edit: a required context cannot be renamed in a pull request, because the old
+# context stops reporting and `enforce_admins` means the resulting block cannot be forced past.
+# So the new job ran alongside the old, protection was re-pointed by hand, and only then was the
+# transitional job deleted — proposal 0004, completed 2026-07-25.
 #
 # Deliberately no matrix and no cache: the recipes need bash, git, POSIX text utilities, and
 # node — all preinstalled on the runner. Note there is no actions/setup-node step, and that is
@@ -34,17 +33,14 @@ permissions:
 
 jobs:
   # A job's NAME is the status-check context branch protection pins, and the name defaults to the
-  # job id when no `name:` is given — which is why neither job here sets one. Verified against this
-  # repository rather than assumed: the required context is literally `docs-integrity`, and the
-  # check runs GitHub reports are named `docs-integrity` and `workspace-verify`. The
-  # `workflow / job` form seen in some UI listings is a display convention, not the context string.
+  # job id when no `name:` is given — which is why this job sets none. Verified against the live
+  # repository rather than assumed: the required context is the bare string `workspace-verify`,
+  # pinned to app 15368 (GitHub Actions). The `workflow / job` form seen in some UI listings is a
+  # display convention, not the context string.
   #
-  # The practical consequence for step 2: pin `workspace-verify`, not `workspace verify / workspace-verify`.
-  # And renaming an id silently detaches any required-check rule that referenced it, which is why the
-  # old id is retired by deletion after protection moves, never by renaming in place.
-  #
-  # This is the job that does the work, and the name that survives: it says the workspace's
-  # verify recipes ran, which stays true however many recipes the manifest declares.
+  # Renaming this id silently detaches the required-check rule that references it. If it ever has
+  # to change, repeat 0004's sequence — run the new name alongside, move protection, then delete —
+  # rather than editing the id in place.
   workspace-verify:
     runs-on: ubuntu-latest
     steps:
@@ -119,30 +115,3 @@ jobs:
           done <<<"$recipes"
 
           exit "$status"
-
-  # ---------------------------------------------------------------- transitional, delete me
-  # Retained ONLY because `main`'s branch protection still requires this context. It runs no
-  # recipes; it mirrors the verdict of the job above so the required check keeps reporting
-  # while the rename is sequenced.
-  #
-  # `if: always()` with an explicit result check, rather than plain `needs:`. A job that is
-  # *skipped* because its dependency failed does not report a failure — and a skipped required
-  # check does not block a merge. Using bare `needs:` here would therefore have turned a red
-  # recipe into a mergeable pull request: a fail-open, in the transitional scaffolding of a
-  # change whose entire subject is closing fail-opens.
-  #
-  # DELETE THIS JOB once branch protection requires `workspace-verify`
-  # (proposal 0004, step 3). Nothing else moves with it — the real job is already above.
-  docs-integrity:
-    needs: workspace-verify
-    if: always()
-    runs-on: ubuntu-latest
-    steps:
-      - name: Mirror the verdict of workspace-verify
-        run: |
-          result='${{ needs.workspace-verify.result }}'
-          if [ "$result" != "success" ]; then
-            printf '::error::workspace-verify did not succeed (%s) — this transitional check mirrors it\n' "$result"
-            exit 1
-          fi
-          printf 'workspace-verify succeeded; this transitional context mirrors that verdict.\n'

@@ -24,7 +24,7 @@
 | A **dated handoff series** | [`../../handoffs/`](../../handoffs/) | Filenames lead with an ISO date, so the series sorts chronologically and is machine-consumable without parsing prose. |
 | **Memory with retirement conditions** | [`../../memory/`](../../memory/) | One fact per file, each with provenance and a "retire when" clause — so a rule can be judged, not just obeyed. |
 | **Network-free, deterministic checks** | [`../../verify/README.md`](../../verify/README.md) | Nothing fetches. A check that fails for reasons unrelated to the change under test is worse than no check. |
-| A **platform floor that holds against everyone** | [`../../gate-map.md`](../../gate-map.md) | `main` rejects direct pushes, requires `docs-integrity` green, and exempts nobody — including the maintainer. |
+| A **platform floor that holds against everyone** | [`../../gate-map.md`](../../gate-map.md) | `main` rejects direct pushes, requires `workspace-verify` green, and exempts nobody — including the maintainer. |
 
 ## What an agent must not assume
 

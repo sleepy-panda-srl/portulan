@@ -68,8 +68,7 @@ Honest limits, each with the milestone that closes it:
   compiler that turns it into hooks and permissions is milestone 4, so the map's authority is review
   rather than machinery. The **platform floor beneath it is configured** — `main` rejects direct pushes
   and requires the workspace verify check green, with no exemption for administrators — so what still
-  rests on review is the tiers above the floor, not the floor. (Which context that is, is mid-rename; see
-  [`gate-map.md`](gate-map.md).)
+  rests on review is the tiers above the floor, not the floor.
 - **No generated memory index.** [`memory/`](memory/) is a flat directory. The size-budgeted index is
   *built, never hand-maintained* ([`../core/operating/memory.md`](../core/operating/memory.md)), so
   writing one by hand now would contradict the doctrine it implements; it arrives with the scheduled

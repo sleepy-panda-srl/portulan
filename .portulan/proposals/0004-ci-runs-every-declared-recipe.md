@@ -47,10 +47,14 @@ it out of order and under pressure. The sequence that works:
 1. ✅ **Done.** A pull request adds the new job **alongside** `docs-integrity`; both report. (Mergeable,
    because the required context still exists.) The real job is now `workspace-verify`, and `docs-integrity`
    is a transitional job that runs no recipes and mirrors the other's verdict.
-2. ⬜ **Gated, maintainer — the step that is yours.** Once step 1 is on `main` and `workspace-verify` has
-   reported there, re-point branch protection's required status check from `docs-integrity` to
-   `workspace-verify`.
-3. ⬜ A pull request deletes the transitional `docs-integrity` job. Nothing moves with it.
+2. ✅ **Done — the maintainer's Gated step.** Branch protection's required status check re-pointed from
+   `docs-integrity` to `workspace-verify`, **pinned to app 15368**. Applied through the
+   `required_status_checks` sub-endpoint rather than `PUT …/protection`, deliberately: the latter takes the
+   whole protection object and silently resets anything omitted, so a one-field change made that way would
+   have dropped `enforce_admins`, conversation resolution, and the force-push block. Verified afterwards —
+   `enforce_admins: true`, 0 reviews, conversation resolution on, one required check.
+3. ✅ **Done.** A pull request deletes the transitional `docs-integrity` job. Nothing moved with it, which
+   was the point of putting the work in the new job at step 1 rather than leaving it in the old one.
 
 One construction detail from step 1, because it is a trap rather than a preference: the transitional job
 uses `if: always()` plus an explicit check of `needs.workspace-verify.result`, **not** a bare `needs:`. A
@@ -104,7 +108,8 @@ should.
   detail.
 
 **Decision.** Marius Cetanas — **accepted on instruction, 2026-07-25**, and applied in the same pull
-request that carries this file. Recorded as a proposal rather than a bare change because the curated layer
+request that carries this file. **All three steps complete as of the same day**; the required check now
+says what it asserts. Recorded as a proposal rather than a bare change because the curated layer
 changes through proposals ([`../../core/operating/evolution.md`](../../core/operating/evolution.md)), and
 because the sequenced rename above needs to exist in writing before the next recipe lands. **The rename
 itself is not done and is not authorized by this decision** — it needs the Gated step 2.
