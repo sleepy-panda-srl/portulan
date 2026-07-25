@@ -5,7 +5,12 @@
 // node's own test runner, which needs no install step and so does not turn this repository
 // into one that has a build.
 //
-//   node --test cli/
+//   node --test "cli/**/*.test.mjs"
+//
+// Quoted and recursive, and both matter. Node 26 rejects a bare directory, so `node --test cli/` fails
+// to resolve `cli` as a module and produces a red that looks exactly like a real one — which cost this
+// file's author a transcript. Run it through ../.portulan/verify/tests.sh in practice: a glob matching
+// nothing exits 0, so that recipe counts the files first.
 //
 // Two rules govern the fixtures, and both were forced by the checks that already run here
 // rather than chosen (see ./fixtures/README.md):
