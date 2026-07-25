@@ -51,21 +51,30 @@ jobs:
           # an empty or whitespace-only command, a newline smuggled into one, an id that is not a
           # slug — must never be silently skipped, because "declared" is what this gate treats as
           # "enforced". Throwing here exits non-zero and becomes exit 2 below.
+          err=$(mktemp)
           recipes=$(node -e '
             const fs = require("fs");
             const m = JSON.parse(fs.readFileSync(".portulan/workspace.json", "utf8"));
+            // Exits cleanly rather than throwing: a stack trace is not a diagnosis, and this
+            // message becomes the check-summary annotation that somebody reads first.
+            const bail = (m) => { process.stderr.write(m + "\n"); process.exit(1); };
             const slug = /^[a-z0-9]+(-[a-z0-9]+)*$/;
             for (const r of m.verify.recipes) {
               const id = String(r.id ?? "");
               const run = String(r.run ?? "");
-              if (!slug.test(id)) throw new Error("recipe id is not a slug: " + JSON.stringify(r.id));
-              if (!run.trim()) throw new Error("recipe " + id + " declares an empty run command");
-              if (/[\n\r\t]/.test(run)) throw new Error("recipe " + id + " run contains a newline or tab");
+              if (!slug.test(id)) bail("recipe id is not a slug: " + JSON.stringify(r.id));
+              if (!run.trim()) bail("recipe \"" + id + "\" declares an empty run command");
+              if (/[\n\r\t]/.test(run)) bail("recipe \"" + id + "\" run contains a newline or tab");
               process.stdout.write(id + "\t" + run + "\n");
             }
-          ')
-          if [ $? -ne 0 ]; then
-            printf '::error::could not read verify recipes from .portulan/workspace.json\n'
+          ' 2>"$err")
+          rc=$?
+          if [ "$rc" -ne 0 ]; then
+            # The annotation carries the emitter's own message rather than a generic one. A manifest that
+            # parses but declares an unrunnable recipe is NOT unreadable, and saying so sends whoever reads
+            # the check summary to the wrong file — the failure is in a value, not in the JSON.
+            printf '::error::verify recipes unusable: %s\n' "$(tr '\n' ' ' <"$err" | sed 's/  */ /g' | cut -c1-400)"
+            cat "$err" >&2
             exit 2
           fi
 

@@ -29,7 +29,8 @@ sequenced Gated operation that needs the maintainer.
   a fail-open with no symptom. Caught while writing it, not by a test.
 
 **Verification, run rather than asserted.** The step's shell was extracted and executed locally under
-`bash -e`, as GitHub runs it, across four paths:
+`bash -e`, as GitHub runs it, across every path below — four as first written, four more added after review
+found the degenerate-value hole:
 
 | Path | Result |
 |---|---|
