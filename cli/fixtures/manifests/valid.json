@@ -4,6 +4,7 @@
   },
   "name": "fixture",
   "kind": "repository",
+  "tree": "./",
   "slots": {
     "identity": "identity.md",
     "principles": "principles.md",
