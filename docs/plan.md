@@ -345,3 +345,30 @@ the seam applies here too: no client-identifying references)_
   worth naming: the scaffolding around a check is where the check stops holding. **Step 2 is Gated and the
   maintainer's** — re-point branch protection at `workspace-verify` once this is on `main` — and step 3
   deletes the transitional job. Seam scan clean across files, commit message, and branch name.
+
+- 2026-07-25 · Doctrine · **The agent gets an identity of its own.** Found while answering a review about
+  claims false against the tree: four review replies written by an implementer agent had been posted through
+  the maintainer's credentials and therefore appeared under his name. The defect is invisible from inside
+  the artifact — a reader cannot tell — and it is the same failure as backfilling a handoff, with the author
+  swapped for the timestamp: a record that fabricates a human participant. Mechanism chosen (maintainer's
+  call): a **GitHub App**, so comments carry the `[bot]` suffix and attribution rests on the platform rather
+  than on a signature convention. Landed: `.portulan/tools/` (a zero-dependency token minter and a `gh`
+  wrapper), the rule with its incident in `.portulan/memory/agent-activity-is-attributable.md`, a **"Which
+  identity acts"** table in the gate map, and `*.pem` ignored. The asymmetry is stated rather than left to
+  look inconsistent: **commits stay the maintainer's** — the build's provenance discipline depends on his
+  authorship there — while conversation stops being his, because attribution is not one principle applied
+  uniformly but the question *who actually did this*, whose honest answer differs by artifact. Enforcement
+  is the App's permission set (pull-request conversation and nothing else — it cannot push, merge, or change
+  settings), not the wrapper, which is a guard against habit and bypassable in one line. **The identity does
+  not exist yet and an agent cannot create it:** creating accounts and handling credentials are outside what
+  an agent does here, so steps 1–5 of `.portulan/tools/README.md` are the maintainer's, and until they are
+  done replies still go out under his name carrying a signature line. Verified without credentials —
+  signing against a throwaway key, every misconfiguration path exiting 2, and a real API call surfacing
+  GitHub's refusal; that last one corrected the code, since a nonexistent App returns 404 rather than 401
+  and the hint would have sent a reader to check their clock. · Supervised in a fresh Fable 5 context:
+  APPROVE-WITH-ADJUSTMENTS, all four folded in — the gate map described the mechanism as live when the App
+  does not exist yet; an unanticipated exception in the token minter would have exited 1, borrowing the code
+  that means "GitHub refused" for a script that could not run; and the wrapper's guard refused `gh pr` — the
+  tool's own purpose — with a flat no, which would have sent an agent straight back to plain `gh` and the
+  maintainer's name, so it now names the sanctioned spelling. Seam scan clean across files, commit message,
+  and branch name.

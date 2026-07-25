@@ -52,6 +52,37 @@ _Why this is a prohibition rather than simply the Gated tier: every other change
 graded against that file. An agent that can edit the standard it is judged by can launder any other
 change past its own grader, and the gate stops meaning anything._
 
+## Which identity acts
+
+Two identities operate on this repository, and which one acts is not a detail — the record of who did what
+is the thing the whole gate map exists to keep honest.
+
+| Action | Identity | Why |
+|---|---|---|
+| Commits and pushes | **The maintainer's** git identity and credentials | The build's provenance discipline requires his authorship on the commit record. An agent co-authoring is fine and already conventional; an agent *replacing* him there is not. |
+| Pull-request conversation — comments, review replies, resolving threads | **The agent identity**, via [`tools/gh-bot`](tools/gh-bot) | A reply written by an agent and posted through the maintainer's credentials makes the conversation read as human when it is not, and the reader cannot tell. See [`memory/agent-activity-is-attributable.md`](memory/agent-activity-is-attributable.md). |
+| Everything Gated above — settings, releases, merges | **The maintainer**, by hand | Unchanged. The agent identity's token cannot do these at all. |
+
+Note the asymmetry, because it looks inconsistent until you say it out loud: the commit record must stay
+*his* and the conversation must stop being his. Attribution is not one principle applied uniformly — it is
+*who actually did this*, and the honest answer differs by artifact.
+
+What makes the commit half honest rather than the same convention-reliance rejected for comments is that
+**every push is Gated**: the maintainer approves each one, so his name on a commit records a decision he
+actually took, with the agent's hand marked by the `Co-Authored-By` trailer. Remove the push gate and the
+commit attribution would become exactly the fiction the comment attribution was.
+
+Enforcement is the App's permission set rather than the wrapper: that token writes pull-request
+conversation and nothing else. The wrapper's refusal of a few subcommands is a guard against habit and is
+trivially bypassable.
+
+**Not true yet.** The App does not exist — creating it needs steps only the maintainer can take
+([`tools/README.md`](tools/README.md)). Until they are done, agent replies still go out under the
+maintainer's account carrying a signature line, which is a convention and not a rail. That interim state
+and its cost are recorded in
+[`memory/agent-activity-is-attributable.md`](memory/agent-activity-is-attributable.md); this table
+describes the arrangement being put in place, not the one currently enforced.
+
 ## The triage threshold
 
 Core defines two lanes and leaves the boundary to the workspace

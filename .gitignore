@@ -6,6 +6,13 @@ Thumbs.db
 .idea/
 .vscode/
 
+# Credentials. The GitHub App private key belongs OUTSIDE this working copy entirely
+# (see .portulan/tools/README.md); this is the second line of defence, not the first —
+# an ignore rule protects against `git add`, never against a future edit to this file.
+*.pem
+*.p12
+*.key
+
 # Node / build artifacts
 node_modules/
 dist/
