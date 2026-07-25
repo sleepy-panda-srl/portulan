@@ -51,17 +51,20 @@ have sent a reader looking at their clock instead of their App id. Both hints no
 1. **The App does not exist — steps 1–5 of [`../tools/README.md`](../tools/README.md) are the
    maintainer's.** Nothing here works until then, and until then replies keep going out under his name
    with a signature line, which is a convention rather than a rail.
-2. **The end-to-end path is unverified.** Signing, misconfiguration, and GitHub's refusals are all
-   exercised; minting a real token against a real installation is not, because that needed credentials
-   that were correctly unavailable. Worth doing once, visibly, as the first bot-authored comment.
+2. ~~**The end-to-end path is unverified.**~~ **Closed the same day.** The App was created and installed,
+   and the whole path ran: token minted, installation scope confirmed as this repository alone, repository
+   contents **refused**, and the first `portulan-agent[bot]` comment posted on the pull request carrying
+   this change. Two runbook defects surfaced by a human following it rather than by review — a `<…>`
+   placeholder inside a shell block, where `<` is a redirect and the paste is a parse error; and a glob
+   assuming the App slug, in a runbook that warns the name may need a suffix. Both fixed.
 3. **Nothing enforces that an agent reaches for the wrapper.** An agent with shell access can call `gh`
    directly and post as the maintainer. The App's permissions bound the damage but not the
    misattribution. A pre-commit-style hook is not obviously the answer, since the failure is on GitHub
    rather than in the tree.
 
-**Next action.** Maintainer: create and install the App, export the two variables, and run the
-confirmation command in the runbook. Then the first comment posted through the wrapper is the
-demonstration — and this handoff's open question 2 closes.
+**Next action.** Done — the App exists, is installed, and has posted. What remains is habit: agents
+reach for [`../tools/gh-bot`](../tools/gh-bot) for anything a human will read as prose, and open question 3
+stays open because nothing enforces that.
 
 **Recoverability.** Three new files under [`../tools/`](../tools/), one new memory entry, one `.gitignore`
 addition, and edits to three existing documents — the gate map, the workspace README, and the plan's
