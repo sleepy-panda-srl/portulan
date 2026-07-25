@@ -33,11 +33,15 @@ permissions:
   contents: read
 
 jobs:
-  # A job id is the status-check context, so these ids carry the human-readable names rather
-  # than a `name:` override — a display name would become the context string, and one containing
-  # punctuation is awkward to pin and fragile to rename. Renaming an id silently detaches any
-  # required-check rule that referenced it, which is why the old id is retired by deletion after
-  # protection moves, never by renaming in place.
+  # A job's NAME is the status-check context branch protection pins, and the name defaults to the
+  # job id when no `name:` is given — which is why neither job here sets one. Verified against this
+  # repository rather than assumed: the required context is literally `docs-integrity`, and the
+  # check runs GitHub reports are named `docs-integrity` and `workspace-verify`. The
+  # `workflow / job` form seen in some UI listings is a display convention, not the context string.
+  #
+  # The practical consequence for step 2: pin `workspace-verify`, not `workspace verify / workspace-verify`.
+  # And renaming an id silently detaches any required-check rule that referenced it, which is why the
+  # old id is retired by deletion after protection moves, never by renaming in place.
   #
   # This is the job that does the work, and the name that survives: it says the workspace's
   # verify recipes ran, which stays true however many recipes the manifest declares.

@@ -24,8 +24,11 @@ request. Nothing about what is enforced changed — only what the enforcing job 
 **Open questions.**
 
 1. **Step 2 is yours and nothing proceeds without it.** After this reaches `main` and `workspace-verify`
-   has reported there, re-point the required status check from `docs-integrity` to `workspace-verify`. Step
-   3 — deleting the transitional job — is a small pull request afterwards.
+   has reported there, re-point the required status check from `docs-integrity` to `workspace-verify`. The
+   context to pin is exactly `workspace-verify` — the job name, not `workspace verify / workspace-verify`;
+   checked against the live repository, where the required context is literally `docs-integrity` and the
+   reported check runs carry the bare job names. Step 3 — deleting the transitional job — is a small pull
+   request afterwards.
 2. **Do not delete the transitional job early.** If it goes before protection moves, the required context
    stops reporting and every pull request becomes unmergeable until the settings change happens. That is
    the failure this sequence exists to avoid, so the order matters more than the speed.
