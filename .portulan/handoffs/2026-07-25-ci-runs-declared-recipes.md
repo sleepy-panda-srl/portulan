@@ -12,10 +12,11 @@ sequenced Gated operation that needs the maintainer.
   reads better and fails worse: `main` requires exactly one context, so a new job reports without
   blocking, and every future recipe would ship advisory until someone remembered a branch-protection
   change. Reading the manifest inverts the default — declaring a recipe is what enforces it.
-- **The rename is deliberately not in this change.** Renaming the job id would deadlock the repository:
-  `docs-integrity` stops reporting, protection waits for a check that never arrives, and
-  `enforce_admins: true` means it cannot be overridden. Fails closed, which is safe and still stuck. The
-  three-step sequence that works is written down in the proposal. Worth doing before `doctor` lands,
+- **The rename is deliberately not in this change.** Renaming the job id makes *that pull request*
+  unmergeable — `docs-integrity` stops reporting, protection waits for a check that never arrives, and
+  `enforce_admins: true` means the merge cannot be forced through. Other pull requests are unaffected;
+  they still report the old context. It fails closed, which is safe, and it strands the rename behind the
+  very settings change it was trying to sequence. The three-step sequence that works is in the proposal. Worth doing before `doctor` lands,
   because the cost is per-check and there are two today.
 - **Zero recipes is a failure, not a pass.** If the manifest cannot be read or declares nothing, the step
   exits 2 rather than reporting a green it did not earn. This is
