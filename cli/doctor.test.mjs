@@ -287,6 +287,18 @@ describe("the committed known-bad manifests each fail, and name why", () => {
             fs.readFileSync(path.join(FIXTURES, "manifests", "valid.json"), "utf8"),
         );
         assert.deepEqual(validate(SCHEMA, instance), []);
+        // Schema-valid is not the whole of valid, and a fixture called `valid` that satisfies only
+        // half the rules is a trap for whoever debugs against it. The cross-field rules are not
+        // expressible in the schema subset, so they are asserted here rather than assumed: this one
+        // was schema-valid and NOT doctor-valid for as long as spec 2.0 existed, which a reviewer
+        // caught and this suite did not.
+        if (instance.kind === "repository") {
+            assert.ok(instance.tree, "a `repository` manifest must declare `tree` under spec 2.0");
+        }
+        assert.ok(
+            instance.verify.recipes.some((r) => r.id === instance.verify.default),
+            "`verify.default` must name a declared recipe",
+        );
     });
 });
 
