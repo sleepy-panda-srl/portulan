@@ -573,14 +573,16 @@ export async function inspect(workspaceDir, options = {}) {
             // than flagged: `constitution`, because a product's constitution normally lives with
             // the product, and `tree`, which names the repository the workspace sits inside and
             // would be pointing at the wrong thing if it did not escape.
-            const expected = {
+            const ordinary = {
                 "slots.constitution": "a constitution usually lives with the product",
-                tree: "the tree a workspace makes claims about contains it",
+                tree: "a workspace usually sits inside the tree it describes",
             }[label];
             report(
                 "paths",
                 `${label} resolves outside the workspace directory (\`${value}\`)` +
-                    (expected ? ` — expected: ${expected}` : " — only `constitution` and `tree` are expected to"),
+                    (ordinary
+                        ? ` — ordinary here: ${ordinary}`
+                        : " — only `constitution` and `tree` ordinarily do, and neither is required to"),
             );
         }
     };

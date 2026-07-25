@@ -33,12 +33,14 @@ Two rules follow, and both were forced by real defects rather than chosen for ti
    validate fragments ([`../.portulan/verify/README.md`](../.portulan/verify/README.md)), so a slot
    addressed by anchor would be unlintable by construction — the slot would exist and nothing could ever
    confirm it pointed anywhere real.
-2. **A path slot may point outside the workspace directory.** Two slots are *expected* to.
-   `constitution`, because a product's constitution normally lives with the product, not with the
-   workspace — customer zero is the first proof: its constitution is `docs/vision.md`, one level up. And
-   `tree`, which names the repository a workspace makes claims *about* and would be pointing at the
-   wrong thing if it did not escape. A schema that required containment would have failed on its own
-   author's workspace.
+2. **A path slot may point outside the workspace directory.** Two slots commonly do, and neither is
+   required to. `constitution`, because a product's constitution normally lives with the product rather
+   than with the workspace — customer zero is the first proof: its constitution is `docs/vision.md`, one
+   level up. And `tree`, which names the repository a workspace makes claims *about*: usually `../`, for
+   a workspace directory sitting inside the repository it describes, but legitimately `./` when the
+   workspace root and the tree are the same directory. A schema that required containment would have
+   failed on its own author's workspace; one that *expected* escaping would be wrong about the other
+   arrangement. `doctor` reports an escape and never fails it, for both of them.
 
    The schema cannot express *which* slot may escape — a `pattern` sees one string, not which key it
    belongs to — so escaping is legal everywhere and `doctor` **reports** rather than fails when any slot
