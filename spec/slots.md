@@ -156,8 +156,13 @@ one-sample derivation would have modelled it that way, correctly for today and w
 the engine still resolves everything else. Note the distinction that keeps this honest — the *definition*
 has a product-layer slot, which is what the criterion requires; *instances* may leave it empty.
 
-**What `doctor` checks:** each `product` and `affordances` path resolves; each `repos` entry names a card
-in the `repos` slot. The claim it cannot check is whether the mission written there is still true.
+**What `doctor` checks:** each `product` path resolves; each `affordances` path **that is present**
+resolves; each `repos` entry names a card in the `repos` slot. Per-product `affordances` is optional
+because a product may inherit the workspace-level default — so the check is conditional, and `doctor`
+*reports* a product that has neither its own nor an inherited one rather than failing it. (An earlier
+draft of this line said `doctor` checks `affordances` unconditionally, which would have made the spec
+demand something the schema declares optional; caught in review of the change that introduced it.) The
+claim it cannot check is whether the mission written there is still true.
 
 ## `affordances` — what the product offers an agent
 

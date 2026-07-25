@@ -28,9 +28,8 @@
     },
 
     "name": {
-      "description": "Stable identifier for this workspace. Lowercase, hyphenated — it is used as a plugin name when the workspace ships through a feed.",
-      "type": "string",
-      "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
+      "description": "Stable identifier for this workspace — used as a plugin name when the workspace ships through a feed.",
+      "$ref": "#/$defs/slug"
     },
 
     "summary": {
@@ -100,9 +99,8 @@
       "required": ["default", "recipes"],
       "properties": {
         "default": {
-          "description": "The `id` of the recipe the Stop-gate runs when nothing more specific applies.",
-          "type": "string",
-          "minLength": 1
+          "description": "The `id` of the recipe the Stop-gate runs when nothing more specific applies. Constrained to the same shape as an id, so a value no recipe could ever carry is rejected by the schema rather than only by `doctor`.",
+          "$ref": "#/$defs/slug"
         },
         "recipes": {
           "type": "array",
@@ -113,7 +111,7 @@
     },
 
     "products": {
-      "description": "The product layer, repeated. A workspace may cover many products — a portfolio workspace covers all of a studio's — so mission/what/why and agent affordances belong to a product, not to the workspace. A workspace with one product still lists one.",
+      "description": "Optional. The product layer, repeated: a workspace may cover many products — a portfolio workspace covers all of a studio's — so mission/what/why and agent affordances belong to a product, not to the workspace. A workspace need not declare products at all; one that does gives an entry per product, including when there is only one.",
       "type": "array",
       "items": { "$ref": "#/$defs/product" }
     },
@@ -135,6 +133,12 @@
   },
 
   "$defs": {
+    "slug": {
+      "description": "A lowercase hyphenated identifier. Defined once and referenced everywhere an id is used or named, so the constraint cannot drift between the field that declares an id and the field that points at one.",
+      "type": "string",
+      "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
+    },
+
     "path": {
       "description": "A relative path to a file or directory, resolved from the workspace root. The leading character may not be `/` (no absolute paths) and `:` is excluded (no URLs), so `../` is the only way out of the workspace — which is deliberate, since escaping should be visible in the value itself.",
       "type": "string",
@@ -162,10 +166,7 @@
       "additionalProperties": false,
       "required": ["id", "run"],
       "properties": {
-        "id": {
-          "type": "string",
-          "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
-        },
+        "id": { "$ref": "#/$defs/slug" },
         "run": {
           "description": "The command, as it would be typed from the repository root.",
           "type": "string",
@@ -190,10 +191,7 @@
       "additionalProperties": false,
       "required": ["id", "product"],
       "properties": {
-        "id": {
-          "type": "string",
-          "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
-        },
+        "id": { "$ref": "#/$defs/slug" },
         "name": {
           "description": "Display name, when it differs from the id.",
           "type": "string",

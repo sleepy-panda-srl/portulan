@@ -106,6 +106,13 @@ not be claimed.** The subset is exactly:
 `properties` · `required` · `additionalProperties: false` · `items` · `enum` · `pattern` · `minLength` ·
 `minItems` · `uniqueItems` · `oneOf`
 
+Two notes a validator author needs. **`$ref` may carry sibling `description` and `title`** — used where a
+field reuses a shared definition but deserves its own prose, as `name` and `verify.default` both do with
+`$defs/slug`; siblings are annotations and never affect validation. And **every id-shaped field routes
+through `$defs/slug`** rather than repeating a pattern, so the field that *declares* an id and the field
+that *points at* one cannot drift apart — `verify.default` originally carried only a length constraint,
+which let a manifest name a default no recipe could ever match.
+
 A schema change that reaches outside this list is a change to `doctor` too, and the two land together.
 `$id` is an identifier, not a live endpoint — nothing is served at that URL until the docs site in
 milestone 10.

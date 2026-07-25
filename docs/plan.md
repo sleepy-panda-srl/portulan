@@ -295,4 +295,15 @@ the seam applies here too: no client-identifying references)_
   paths while the regexes accepted them; a stale "the platform floor is not configured" line in
   `.portulan/README.md`, left over from before it was, and now contradicted by a file this same change adds;
   and an over-literal "before any of the JSON it guards existed" in the handoff, which the transcript beneath
-  it disproved. Seam scan clean across files, commit message, and branch name.
+  it disproved. **A Copilot review on the pull request then found a fifth, and the best of the set: both
+  verify recipes reported GREEN when `git ls-files` failed** — empty list, zero iterations, confident pass.
+  It flagged only the newly added `json.sh`; checking whether the same shape existed elsewhere found it in
+  `docs.sh`, where it had sat since milestone 1, session 3, inherited by `json.sh` for the ordinary reason
+  that the new recipe was modelled on the existing one. Both now treat enumerating the tree as a
+  **precondition** — exit 2, "could not run", never 0 — demonstrated by running `docs.sh` in a non-git
+  directory before and after. Recorded as `.portulan/memory/verify-preconditions-fail-closed.md`, the first
+  memory entry written in the two-form provenance this same change defines. The review's three other
+  comments were taken as well: every id-shaped field now routes through one `$defs/slug` (`verify.default`
+  had carried only a length constraint, so a manifest could name a default no recipe could ever match), and
+  two places where the spec's prose demanded more than the schema declared were reconciled. Seam scan clean
+  across files, commit message, and branch name.
