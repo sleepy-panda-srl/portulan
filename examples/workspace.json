@@ -1,0 +1,63 @@
+{
+  "portulan": {
+    "spec": "1.1",
+    "workspace": "0.1.0"
+  },
+  "name": "rooftop",
+  "summary": "Rooftop: three people, two products — a Python service and a static docs site — for urban beekeeping cooperatives. A fictional workspace, written to be read end to end.",
+  "kind": "demo",
+
+  "slots": {
+    "identity": "identity.md",
+    "principles": "principles.md",
+    "gates": "gate-map.md",
+    "dod": "dod.md",
+    "memory": "memory/",
+    "repos": "repos/",
+    "tasks": "tasks/"
+  },
+
+  "affordances": "affordances.md",
+
+  "verify": {
+    "default": "service",
+    "recipes": [
+      {
+        "id": "service",
+        "run": "make check",
+        "requires": ["make", "python", "docker"],
+        "doc": "verify/README.md"
+      },
+      {
+        "id": "site",
+        "run": "npm run check",
+        "requires": ["node"],
+        "doc": "verify/README.md"
+      },
+      {
+        "id": "migrations",
+        "run": "make check-migrations",
+        "requires": ["make", "python", "docker"],
+        "doc": "verify/README.md"
+      }
+    ]
+  },
+
+  "products": [
+    {
+      "id": "combcount",
+      "name": "Combcount",
+      "product": "products/combcount/product.md",
+      "affordances": "products/combcount/affordances.md",
+      "repos": ["combcount"]
+    },
+    {
+      "id": "fieldnotes",
+      "name": "Fieldnotes",
+      "product": "products/fieldnotes/product.md",
+      "repos": ["fieldnotes"]
+    }
+  ],
+
+  "packs": ["stacks/python", "tools/github"]
+}

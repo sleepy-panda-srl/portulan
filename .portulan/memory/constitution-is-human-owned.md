@@ -1,7 +1,13 @@
 **type:** rule
 **scope:** workspace — every agent working in this repository
-**provenance:** [`../../docs/vision.md`](../../docs/vision.md) header, locked 24 July 2026; restated as a
-prohibition in [`../gate-map.md`](../gate-map.md).
+**provenance:** `form=link` `href=../../docs/vision.md`
+— the constitution's own header, locked 24 July 2026 ([`../../docs/vision.md`](../../docs/vision.md)),
+restated as a prohibition in [`../gate-map.md`](../gate-map.md). _This rule has no incident behind it,
+and the stamp says so by pointing at a document rather than at a pull request: it was legislated, not
+learned. The two-form field asks where a rule came from in a shape a machine can check and a reader can
+follow, and for a constitutional rule that is the constitution. The `href` is deliberately repeated as a
+Markdown link above, because `doctor` validates a link's shape and never resolves it — the `links` check
+in [`../verify/docs.sh`](../verify/docs.sh) is what confirms this one points at something real._
 
 No agent edits `docs/vision.md` — not with approval, not as a proposal that rewrites it in place. An
 agent that believes the constitution is wrong raises the question with the maintainer and stops.

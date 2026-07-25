@@ -1,0 +1,21 @@
+{
+  "portulan": {
+    "spec": "1.1"
+  },
+  "name": "fixture",
+  "kind": "repository",
+  "slots": {
+    "identity": "identity.md",
+    "principles": "principles.md",
+    "gates": "https://example.test/gate-map.md"
+  },
+  "verify": {
+    "default": "docs",
+    "recipes": [
+      {
+        "id": "docs",
+        "run": "./verify.sh"
+      }
+    ]
+  }
+}

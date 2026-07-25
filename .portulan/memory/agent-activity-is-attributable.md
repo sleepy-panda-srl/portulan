@@ -31,9 +31,11 @@ refusal of a few subcommands is a guard against habit and is trivially bypassabl
 what actually holds. That division is the usual one here: the machine bounds the blast radius, the human
 judges the content.
 
-**Interim state, and it is not yet true.** Until the App exists and the wrapper is configured, replies are
-still posted under the maintainer's account carrying a signature line — a convention, which is exactly the
-kind of unenforced rule this workspace keeps converting into rails. Related:
+**True as of 2026-07-25.** The App is created, installed on this repository alone, and has posted as
+`portulan-agent[bot]`; contents write is refused, so the token cannot push even by accident. The interim
+period — when replies went out under the maintainer's account carrying a signature line — lasted hours,
+not days, and is recorded rather than deleted because the rule was written *during* it and the gap
+between writing a rule and being able to hold it is the normal case here, not a lapse. Related:
 [`verify-preconditions-fail-closed.md`](verify-preconditions-fail-closed.md), the other rule this arc
 produced.
 

@@ -35,9 +35,10 @@ Deliberately thin, and it stays thin:
 | Layer | Today | Arrives |
 |---|---|---|
 | Engine, packs, and spec prose | Markdown (`SKILL.md` / `AGENTS.md` conventions) | now |
-| Verify recipes | Bash + POSIX text utilities; one of the two also needs `node` | now |
-| Workspace Definition | JSON Schema — a named subset — with JSON manifests | milestone 2 |
-| `doctor` | Zero-dependency JavaScript on Node, run from the repository | milestone 2 |
+| Verify recipes | Bash + POSIX text utilities; three of the four also need `node` | now |
+| Workspace Definition | JSON Schema — a named subset — with JSON manifests | now |
+| `doctor` | Zero-dependency JavaScript on Node, run from the repository | now — [`../cli/doctor.mjs`](../cli/doctor.mjs) |
+| Tests | `node --test`, node's own runner — no framework, no install | now — [`../cli/doctor.test.mjs`](../cli/doctor.test.mjs) |
 | Plugin packaging | Claude Code plugin manifest + skills | milestone 3 |
 | CLI | TypeScript on Node via `npx` — absorbs `doctor` | milestone 7 |
 
@@ -45,9 +46,10 @@ No framework, no build step, no service, and no package manager: nothing here is
 runs.
 
 **Where the line sits now, precisely.** [`verify/docs.sh`](verify/docs.sh) needs `git`, `bash`, and the
-POSIX text utilities and nothing else. [`verify/json.sh`](verify/json.sh) — and `doctor` after it — also
-needs `node`. Each recipe declares its own needs in [`workspace.json`](workspace.json), which is what
-keeps *could not run* distinguishable from *ran and failed*.
+POSIX text utilities and nothing else. [`verify/json.sh`](verify/json.sh),
+[`verify/doctor.sh`](verify/doctor.sh) and [`verify/tests.sh`](verify/tests.sh) also need `node`. Each
+recipe declares its own needs in [`workspace.json`](workspace.json), which is what keeps *could not run*
+distinguishable from *ran and failed*.
 
 That line moved at milestone 2 rather than drifting: the milestone's criterion requires validating a
 manifest against a schema, and there is no honest way to ask `bash` for that — a bash approximation of a
@@ -83,7 +85,8 @@ These words mean exactly this here; ambiguity in them is what costs most.
 | **Slot** | One named part of a workspace. A **path slot** points at a whole file or directory; a **structured slot** is data in the manifest, because something consumes it. |
 | **Affordances** | What a product offers an agent working on it — and what it must not assume ([`products/portulan/affordances.md`](products/portulan/affordances.md)). |
 | **Sealed provenance** | A rule's provenance given as owner + date + de-identified failure shape, when the incident cannot leave its owner's layer. The alternative form is a resolvable link. |
-| **`doctor`** | The validator for a workspace: schema conformance, and workspace claims linted against the tree. Milestone 2. |
+| **`doctor`** | The validator for a workspace ([`../cli/doctor.mjs`](../cli/doctor.mjs)): schema conformance, path resolution, cross-references, workspace claims linted against the tree, and rule provenance. Checks form, never truth. |
+| **Tree** (the slot) | Where the repository a workspace makes claims *about* begins. Declared, not inferred: present means `doctor` lints those claims; absent means the workspace describes repositories not present beside it, and they are reported unverifiable. |
 | **Stop-gate** | The machine check that blocks "done" when the recipe is not green. Milestone 4. |
 | **Platform floor** | The gates the platform enforces whatever the prompt says — branch protection, required checks, `CODEOWNERS`. |
 | **Session** | One supervised working thread here, from session-open to close — in practice one branch and one pull request. It is the unit the handoff and the Session log are written per. |

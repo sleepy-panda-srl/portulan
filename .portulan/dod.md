@@ -7,14 +7,18 @@
 
 A change is done when **all** of the following hold.
 
-1. **The verify recipe ran green in this working copy.** Not "should pass" — run
-   [`verify/docs.sh`](verify/docs.sh) and read the output. _Why: the Stop-gate that will enforce this
-   automatically is milestone 4. Until it exists, the only thing between a red check and a merged claim
-   is whoever chooses to run it._
+1. **Every verify recipe ran green in this working copy.** Not "should pass" — run each recipe
+   [`workspace.json`](workspace.json) declares, and read the output. _Why: the Stop-gate that will
+   enforce this automatically is milestone 4. CI runs them all on the pull request, which catches it
+   later and more expensively; the only thing between a red check and a claim of "done" is whoever
+   chooses to run it now._
 2. **You could walk a reviewer through every line.** Core's bar, restated because it is the one most
    often skipped when a diff is mostly prose — prose reviews as "fine" far more easily than code does.
 3. **Every new rule carries its rationale and its provenance.** A rule with neither is taste, and the
    librarian cannot retire what it cannot trace ([`../core/operating/memory.md`](../core/operating/memory.md)).
+   The provenance half is now a rail rather than a reminder: `doctor` fails a `type: rule` memory entry
+   whose provenance is neither a well-formed link nor a sealed stamp. The rationale half is still
+   judgement, and still yours.
 4. **Nothing claims a capability that does not exist.** If a document describes enforcement, either the
    enforcement exists or the sentence names the milestone where it arrives. _Why: "write the limit, not
    the aspiration" — [`identity.md`](identity.md)._

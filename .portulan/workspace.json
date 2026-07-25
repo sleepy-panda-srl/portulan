@@ -1,10 +1,12 @@
 {
   "portulan": {
-    "spec": "1.0"
+    "spec": "1.1"
   },
   "name": "portulan",
   "summary": "Sleepy Panda Works building Portulan: one maintainer, coding agents under a supervised-build protocol, a docs-first repository whose product is its files.",
   "kind": "repository",
+
+  "tree": "../",
 
   "slots": {
     "identity": "identity.md",
@@ -32,6 +34,18 @@
         "id": "json",
         "run": "./.portulan/verify/json.sh",
         "requires": ["bash", "git", "node"],
+        "doc": "verify/README.md"
+      },
+      {
+        "id": "doctor",
+        "run": "./.portulan/verify/doctor.sh",
+        "requires": ["bash", "node"],
+        "doc": "verify/README.md"
+      },
+      {
+        "id": "tests",
+        "run": "./.portulan/verify/tests.sh",
+        "requires": ["bash", "node"],
         "doc": "verify/README.md"
       }
     ]

@@ -34,7 +34,10 @@ layer where context is scarcest.
 provenance is not:
 
 - **`doctor` (milestone 2)** validates that every rule's provenance is either a resolvable link or a
-  well-formed sealed stamp. This is what turns thesis 4 from an aspiration into a check.
+  well-formed sealed stamp. This is what turns thesis 4 from an aspiration into a check. _Built in the
+  second milestone-2 session ([`../../cli/doctor.mjs`](../../cli/doctor.mjs)), and its first run against
+  this workspace found three rules carrying prose provenance — which is the proposal's own argument
+  arriving as evidence: the mandate had been adopted, written down, and not held._
 - **`doctor` also reports the sealed proportion.** A workspace where everything is sealed has quietly
   opted out of retirement altogether — every rule becomes un-retirable by its own machinery — so the
   ratio is a health signal, not a curiosity. Reporting it costs nothing and catches the failure mode
@@ -90,16 +93,21 @@ were settled in the applying rather than left open:
   key would have described a workspace's *policy about* provenance while leaving every actual rule
   unchecked. The schema defines the shape; the records carry instances of it.
 
-**Reserved to the maintainer.** This proposal warned that accepting it is a constitutional
-interpretation, and that it may warrant a wording change in [`../../docs/vision.md`](../../docs/vision.md)
-in Marius's own hand. He took the decision *and* reserved that wording change, which is carried as its own
-human-authored change to the constitution rather than as part of this one. No agent edits that file
-([`../memory/constitution-is-human-owned.md`](../memory/constitution-is-human-owned.md)).
+**Reserved to the maintainer — and since done.** This proposal warned that accepting it is a
+constitutional interpretation, and that it may warrant a wording change in
+[`../../docs/vision.md`](../../docs/vision.md) in Marius's own hand. He took the decision *and* reserved
+that wording change, carried as its own human-authored change rather than as part of this one. No agent
+edits that file ([`../memory/constitution-is-human-owned.md`](../memory/constitution-is-human-owned.md)).
 
-For as long as the two are out of step, thesis 4 reads "links to the incident" while this spec permits a
-stamp — a real gap between the constitution and the schema graded against it, recorded rather than
-smoothed over. **It must not outlive `doctor`:** once a machine mechanically enforces the two-form shape,
-a rule the constitution does not state is being enforced by tooling, which is backwards for this product.
-When the constitutional wording lands, this block and the fourth honest-limits bullet in
-[`../../spec/slots.md`](../../spec/slots.md) are the two *living* notices to sweep; the handoff and
-session-log mentions are dated records and stay as history.
+**The wording landed 2026-07-25** (commits `5a49a98`, `e2cde72`): thesis 4 now names both forms itself.
+So the ordering this proposal insisted on held. For a window between the two changes, thesis 4 read
+"links to the incident" while this spec permitted a stamp — a real gap between the constitution and the
+schema graded against it, recorded rather than smoothed over — and the condition attached to it was that
+**it must not outlive `doctor`**, because a machine mechanically enforcing a shape the constitution does
+not state is backwards for this product. `doctor` shipped in the second milestone-2 session, after the
+wording, which is the right order and was not guaranteed: the two changes were made independently and
+either could have gone first.
+
+Both living notices are now swept — this block, and the honest-limits bullet in
+[`../../spec/slots.md`](../../spec/slots.md). The handoff and session-log mentions are dated records and
+stay as history.

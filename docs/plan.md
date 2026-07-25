@@ -53,7 +53,7 @@ Status legend: `todo` · `in-progress` · `done (date, fidelity note)`
 |---|---|---|---|---|
 | 0 | Bootstrap | 1 | `sleepy-panda-works/portulan` skeleton pushed **as a private repo** (public flip happens at milestone 3 only, after the clearance tracked in the private context): license, README stub, directory scaffold per the topology above, `.gitignore` already excluding the bootstrap file, and this folder's `plan.md` + `vision.md` seeded as `docs/plan.md` + `docs/vision.md` | done (2026-07-24; Fable 5 verified live remote: PRIVATE, zero residue, criterion complete) |
 | 1 | Core re-expression | 3 | `core/` authored fresh — zero copied prose, zero client references; every engine-relevant `vision.md` clause mapped to a home in `core/` or a recorded deferral; a real task runs end-to-end on engine + the repo's own `.portulan/` workspace, with a recorded red→green verify | done (2026-07-25; Fable 5 M1-close, fresh context: independent vision→core walk found 0 unmapped clauses — 44 covered, 14 recorded deferrals; verify rerun green; red pre-existed per git as an M0 omission; seam clean across files + history) |
-| 2 | Workspace spec v1 | 1–2 | Manifest + **constitution & product-layer slots** (team principles; mission/what/why) + gate map + verify recipes + **agent-affordances slot** (portfolio-aware: many products per workspace) + **provenance slot**, per the decision on `.portulan/proposals/0002-sealed-provenance.md` (proposed: a well-formed link or a sealed owner+date stamp); `doctor` validates the demo workspace **and this repo's own `.portulan/`** (and, privately, the pilot), and lints **workspace claims against the tree** — repo-card build/test/run lines and layout, gate map — the way the `map` check already holds the root README to the repo's shape | in-progress (session 1 of 2, 2026-07-25: spec authored + instantiated; `doctor`, the demo workspace, and the claims lint owed by session 2) |
+| 2 | Workspace spec v1 | 1–2 | Manifest + **constitution & product-layer slots** (team principles; mission/what/why) + gate map + verify recipes + **agent-affordances slot** (portfolio-aware: many products per workspace) + **provenance slot**, per the decision on `.portulan/proposals/0002-sealed-provenance.md` (proposed: a well-formed link or a sealed owner+date stamp); `doctor` validates the demo workspace **and this repo's own `.portulan/`** (and, privately, the pilot), and lints **workspace claims against the tree** — repo-card build/test/run lines and layout, gate map — the way the `map` check already holds the root README to the repo's shape | in-progress — **closes on the pilot disposition alone** (2026-07-25; Fable 5 M2-close, fresh context: forced every clause red before believing any green — 7 schema violations, dead and mistyped paths, drifted build-line/layout/gate-map claims each FAIL at `map`-check severity wherever a `tree` is declared; prose or malformed provenance fails rules and only rules, sealed proportion always printed; both workspaces green through CLI and recipes, drifted fixture red, suite 68/68 and red with `doctor` removed, exits 0/1/2 honest; `tree` and `type` remain declared-not-proven opt-ins, recorded as `.portulan/proposals/0005-a-repository-workspace-must-declare-its-tree.md`). The row flips to `done` when Marius records this row's *"(and, privately, the pilot)"* disposition in his own hand — either the seam-safe verdict of running `doctor` against the pilot in his own context, or an amendment rescoping the clause. An agent cannot discharge it without breaching the seam. |
 | 3 | Plugin & public marketplace | 1–2 | Skills pass `skills-ref validate`; v0.1.0 tagged; fresh-machine install boots the engine with no local folder | todo |
 | 4 | Enforcement compiler | 1–2 | `gates.json` → hooks + permissions (+ Copilot ruleset export); verify recipes → Stop-gate runner; per-host backend matrix + doctor degradation report. Demo: unapproved push blocked; "done" without green verify blocked | todo |
 | 5 | Memory lifecycle & librarian | 1–2 | Generated size-budgeted index; consolidation skill; scheduled librarian (reindex, staleness, proposal nagging, demotion drafts) files its first real PR; proposals-as-PRs live | todo |
@@ -389,3 +389,60 @@ the seam applies here too: no client-identifying references)_
   tool's own purpose — with a flat no, which would have sent an agent straight back to plain `gh` and the
   maintainer's name, so it now names the sanctioned spelling. Seam scan clean across files, commit message,
   and branch name.
+
+- 2026-07-25 · M2 (Workspace spec v1), session 2 of 2 · **The spec became a rail, and its first run found
+  the repository in arrears.** `cli/doctor.mjs` validates a workspace against the Workspace Definition —
+  schema conformance, path resolution, cross-references, workspace claims against the tree, and every
+  rule's provenance — with a test suite written before it and ten known-bad manifests plus a drifted
+  workspace behind it. It is declared as a verify recipe, so CI ran it **without the workflow being
+  touched**, which is proposal 0004's claim collected a milestone after it was made. Two demonstrations
+  matter more than the fixtures. **The first run against `.portulan/` went red on three of five rules**
+  carrying prose provenance where the two-form stamp had been mandated one session earlier and written
+  into the spec, the schema and two core templates the same day — nobody was wrong on purpose, nobody
+  looked, because looking needed a tool that was one session away (`a-mandate-nothing-checks-is-already-broken.md`).
+  And the validator **fails closed on any JSON Schema keyword outside its declared subset** rather than
+  ignoring it, which makes true a sentence `spec/README.md` had only asserted — that a schema reaching
+  outside the subset is a change to `doctor` too — because skipping and enforcing are indistinguishable
+  from outside (`a-checker-must-refuse-what-it-cannot-check.md`). The demo workspace landed as the
+  schema's **second instance**, fictional, two products, exercising what customer zero cannot: repeated
+  products, affordances resolving down the cascade, declared packs, and a sealed provenance stamp. It
+  earned its keep immediately by producing a schema change — the claims lint needed to know *which* tree a
+  repo card describes, and the demo's repositories do not exist. The obvious answer, dispatching on
+  `kind`, was rejected twice: it breaks on the portfolio workspace at milestone 6, which is not a demo and
+  has no single tree either; and it would disable a whole check class on a **self-declared** field. So
+  `tree` is declared (spec 1.0 → **1.1**, additive, older manifests still valid — the versioning rule
+  demonstrated rather than described), and a workspace without one has its claims **reported
+  unverifiable**, never skipped. Provenance binds `type: rule` and nothing else, because thesis 4,
+  proposal 0002 as adopted, `dod.md` condition 3 and the milestone criterion are all rule-scoped; binding
+  more would be tooling enforcing a rule nobody legislated. Two thesis-4 notices swept, now that the
+  constitution names both forms — the machine enforces what the constitution states, which is the only
+  order those two are allowed to be in. Also caught, and **not this change's doing**: the gate map still
+  said the agent identity did not exist, hours after it went live. Found by grepping by hand, and the lint
+  this milestone shipped **cannot catch it** — prose about a fact outside the tree is outside what a
+  claims lint sees, which is a narrower boundary than "workspace claims are linted" implies. One false red
+  is recorded rather than buried: the session's *first* red test run used `node --test cli/`, which Node 26
+  rejects as a bare directory, so it failed on the wrong module and looked exactly like the red it was
+  meant to be. · Supervised in two fresh Fable 5 contexts. Session-open APPROVE-WITH-ADJUSTMENTS (ten
+  required, all folded in) — chiefly that the provenance mandate is **rule-scoped**, which corrected an
+  implementer assumption that would have bound `decision` records nobody had legislated for, and that the
+  claims lint must not dispatch on `kind`. **Pre-commit APPROVE-WITH-ADJUSTMENTS: nine required, and five
+  were defects in `doctor` itself, in the milestone whose own new memory entry is titled *a checker must
+  refuse what it cannot check*.** A manifest declaring a Workspace Definition version that has never
+  shipped validated green, because nothing read `portulan.spec` at all; `additionalProperties: false`
+  written without a sibling `properties` — a supported spelling that forbids every key — was silently a
+  no-op; the gate map's required-check claim was extracted *inside* the tree branch, so a workspace
+  without a tree had that claim dropped rather than reported, in exact contradiction of the paragraph
+  promising it never would be; an unguarded read of the gates file turned a workspace already judged
+  **red** into exit 2, trading a verdict for "could not run"; and the provenance parser took the last
+  matching token, so a correct record whose annotation prose *discussed* the other form would have gone
+  red — a false red invited by the template's own instruction to annotate freely. Four more findings were
+  claims false against the tree in this session's prose, including a fixture miscount in two files and a
+  justification resting on two proposals' states that were both wrong. Every fix carries a test; the suite
+  went 59 → 68. **Milestone-close CLOSE** on every clause the build may demonstrate, reached by forcing
+  each check red before believing any green — and it measured the design's real hole: deleting the one
+  `tree` line from customer zero's manifest degrades the entire claims-lint class to notes, GREEN, exit 0.
+  Loud and pull-request-visible, and the same shape as the rest of the fabric where declaring is what
+  enforces, so it is carried debt rather than a blocker — drafted as
+  `.portulan/proposals/0005-a-repository-workspace-must-declare-its-tree.md`, not applied, because binding
+  it is a MAJOR bump for one check and that trade is the maintainer's. Seam scan clean across files,
+  commit message, and branch name.

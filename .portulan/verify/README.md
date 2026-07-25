@@ -7,23 +7,34 @@
 
 ## The recipes
 
-Two, since milestone 2. Both are declared in [`../workspace.json`](../workspace.json), which is also
+Four, as of milestone 2. All are declared in [`../workspace.json`](../workspace.json), which is also
 where the **default** is named — [`docs.sh`](docs.sh), the one the Stop-gate will run when nothing more
-specific applies. Run either from anywhere in the tree:
+specific applies. Run any of them from anywhere in the tree:
 
 ```
 ./.portulan/verify/docs.sh
 ./.portulan/verify/json.sh
+./.portulan/verify/doctor.sh
+./.portulan/verify/tests.sh
 ```
 
 | Recipe | Covers | Needs |
 |---|---|---|
 | [`docs.sh`](docs.sh) — default | links · kernel budget · repo map | `bash`, `git`, POSIX text utilities |
 | [`json.sh`](json.sh) | every tracked `.json` file parses | the above, plus `node` |
+| [`doctor.sh`](doctor.sh) | both workspaces validate: schema, paths, cross-references, claims against the tree, provenance | `bash`, `node` |
+| [`tests.sh`](tests.sh) | [`../../cli/doctor.test.mjs`](../../cli/doctor.test.mjs) passes | `bash`, `node` |
 
 Exit `0` green · `1` red · `2` could not run — and that third code is why each recipe declares its needs
 in the manifest rather than discovering them: a recipe that *could not run* must never be mistaken for
 one that ran and passed.
+
+**The last two are wrappers, and the wrapper is the point.** Both delegate to `node`, and both check for
+it first. `bash -c "node …"` on a machine without `node` exits `127`, which is neither a verdict about
+the repository nor "could not run" — the wrapper is where that gets turned into a `2` deliberately.
+[`doctor.sh`](doctor.sh) also **names** the workspaces it validates rather than discovering them: a scan
+that found no manifests would run nothing and report green, which is the enumeration fail-open recorded
+below, arriving in a third disguise.
 
 `docs.sh` needs nothing beyond `grep`, `sed`, `awk`, `wc`, `sort`, `dirname`, and `mktemp`, and that is
 worth preserving — a recipe that needs a toolchain is a recipe that stops being run.
@@ -37,22 +48,22 @@ discover on a machine without `node`.
 
 **What `json.sh` does not do.** It does not validate the manifest against
 [`../../spec/workspace.schema.json`](../../spec/workspace.schema.json), and it does not check that the
-paths a manifest names exist. That is `doctor`, in the second milestone-2 session. Well-formed is a long
-way from correct.
+paths a manifest names exist. That is [`doctor.sh`](doctor.sh), and well-formed is a long way from
+correct — which is why both recipes exist rather than one replacing the other.
 
 ## Where this sits in the hierarchy — honestly
 
-This repository still ships no product code — the product is the files — so there is nothing to compile
-and no suite to pass. That puts these checks on the bottom rung, and the honest description is that they
-exercise the *documents* the way a linter exercises source. The recipes themselves are the only
-executable thing here, and nothing tests them; they are verified by being run, which is a weaker claim
-than it sounds and is why the false red described under Provenance below was caught by hand rather than
-by a harness.
+Until milestone 2 this repository shipped no product code, so there was nothing to compile and no suite
+to pass, and the honest description of every check here was that it exercised *documents* the way a
+linter exercises source. `doctor` is the first code, and `tests.sh` is the first recipe that runs a test
+suite rather than a linter — so the promise this section used to make, that real tests would join these
+rather than replace them, is kept rather than pending.
 
-Real tests join these — they do not replace them — when `doctor` arrives later in milestone 2 and the CLI
-at milestone 7. The multiple-recipes-with-a-named-default shape those anticipated is already here as of
-milestone 2, so the default now lives in [`../workspace.json`](../workspace.json) rather than in this
-sentence.
+The claim is still bounded. The suite covers `doctor`: its schema subset, its exit codes, its parsers,
+its severity split. **Nothing tests the other three recipes** — `docs.sh`, `json.sh` and `tests.sh` are
+still verified by being run, which is a weaker claim than it sounds, and is why both defects recorded
+under Provenance below were found by a human and a reviewer rather than by a harness. A defect in
+`docs.sh` today would look exactly like a green run.
 
 Saying all this matters: a recipe that implies more coverage than it has makes every later green worth
 less.
@@ -65,6 +76,8 @@ less.
 | `kernel` | [`../../core/engine.md`](../../core/engine.md) stays within 60 lines. | The always-loaded layer is the scarcest thing the framework spends, and the budget is constitutional. A budget that lives only in prose is the first thing a busy session negotiates with. |
 | `map` | Every top-level entry appears in the root `README.md` layout table. | Agent legibility: a repository whose own map omits directories teaches an agent a false shape of the ground. This one exists because that had already happened — see below. |
 | `parse` | Every tracked `.json` file is well-formed. | From milestone 2 the repository's policy layer *is* JSON. A manifest that does not parse gates nothing, and it fails at the moment it is needed rather than when it is written. |
+| `doctor` | Both workspaces conform to the Workspace Definition, their paths resolve, their claims match the tree, and every rule carries checkable provenance. | The workspace layer is where a team's policy lives, and until this existed every "this workspace conforms" sentence in the repository was an assertion. Its first run found three rules whose provenance the repository had already mandated and not held. |
+| `tests` | [`../../cli/doctor.test.mjs`](../../cli/doctor.test.mjs) passes. | The validator is the first thing here that can be *subtly* wrong rather than visibly broken — a schema keyword silently ignored looks identical to one enforced. A linter can be judged by reading it; a validator cannot. |
 
 ## Provenance
 
@@ -117,3 +130,12 @@ in both: it fails `2`, not `0`. Recorded as
   paths as links when you want them checked, and avoid quoting link syntax verbatim.
 - **Nothing here checks prose quality**, and nothing can. Conditions 2–4 of [`../dod.md`](../dod.md) are
   human judgement and are meant to stay that way.
+- **`doctor` checks form, never truth.** A path that resolves, a manifest that conforms, a provenance
+  stamp that parses. It cannot tell whether the document at the end of a path still says something
+  accurate, and a fabricated sealed stamp passes exactly as a real one does.
+- **The claims lint reads only what parses confidently as a path** — a code span or link target
+  containing `/`. Prose claims are not parsed and not failed, deliberately: an ambitious parser here
+  would produce false reds, which is the failure that gets a whole recipe switched off.
+- **`node --test` given a glob matching nothing exits `0`.** A green suite that ran nothing. `tests.sh`
+  counts the files first for that reason, and the count and the glob deliberately cover the same set —
+  a recursive `find` beside a non-recursive glob would let a test be counted and never run.

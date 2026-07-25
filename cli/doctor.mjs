@@ -1,0 +1,799 @@
+#!/usr/bin/env node
+// `doctor` — the Workspace Definition validator.
+//
+//   node cli/doctor.mjs <workspace-dir> [<workspace-dir> ...]
+//
+// Exit 0 every workspace validates · 1 at least one does not · 2 could not run.
+//
+// The third code is the one that carries weight here. A verdict ABOUT a workspace — a missing
+// manifest, a slot pointing nowhere, a rule with no provenance — is exit 1: the tool ran and
+// judged. Exit 2 means the tool could not judge at all: no arguments, an unreadable schema, an
+// unanticipated throw. Borrowing 1 for the last of those would claim a judgement nobody made,
+// which is the laundering already fixed once in ../.portulan/tools/gh-bot-token.mjs.
+//
+// Zero dependencies and no install step, deliberately — ../.portulan/identity.md places doctor at
+// milestone 2 as "zero-dependency JavaScript on Node, run from the repository", absorbed by the
+// TypeScript CLI at milestone 7. Nothing here touches the network: a check that fails for reasons
+// unrelated to the change under test is worse than no check (../.portulan/verify/README.md).
+//
+// What it does NOT do is written next to what it does, in ../spec/slots.md and in ../cli/README.md.
+// The short list: it never runs a verify recipe, never dereferences a link, never judges whether a
+// sealed stamp is true, and never scores agent-legibility.
+
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath, pathToFileURL } from "node:url";
+
+const HERE = path.dirname(fileURLToPath(import.meta.url));
+const DEFAULT_SCHEMA = path.resolve(HERE, "..", "spec", "workspace.schema.json");
+
+/** Raised when `doctor` cannot run at all. Always exit 2, never 1. */
+export class DoctorError extends Error {
+    constructor(message) {
+        super(message);
+        this.name = "DoctorError";
+    }
+}
+
+// ===========================================================================================
+// 1. The schema subset
+// ===========================================================================================
+//
+// spec/README.md names the exact JSON Schema subset this validator implements, on the reasoning
+// that a validator carried rather than depended on must be small enough to implement completely
+// and honestly. The list below IS that sentence, in a form that fails.
+//
+// Everything outside it is refused rather than ignored — which is the point. A validator that
+// skips the keywords it does not know reports conformance it never checked: the author wrote a
+// constraint, the machine agreed, and nothing enforced it. That is the same fail-open shape this
+// repository has now minted three rules about (../.portulan/memory/verify-preconditions-fail-closed.md),
+// and a validator is exactly where a fourth would hide.
+
+const SUPPORTED = new Set([
+    "$schema", "$id", "$defs", "$ref",
+    "title", "description",
+    "type", "properties", "required", "additionalProperties",
+    "items", "enum", "pattern", "minLength", "minItems", "uniqueItems", "oneOf",
+]);
+
+// Siblings a `$ref` may carry. Annotations only: they describe, they never constrain, so they
+// cannot silently narrow what the ref resolves to. Used where a field reuses a shared definition
+// and still deserves its own prose — `name` and `verify.default` both do with `$defs/slug`.
+const REF_SIBLINGS = new Set(["$ref", "title", "description"]);
+
+/**
+ * Walk a schema and refuse anything outside the subset. Returns the schema unchanged; the value
+ * is the walk, not the result.
+ */
+export function compileSchema(schema, where = "#") {
+    if (schema === null || typeof schema !== "object" || Array.isArray(schema)) {
+        throw new DoctorError(`schema at ${where} is not an object`);
+    }
+
+    const keys = Object.keys(schema);
+
+    for (const key of keys) {
+        if (!SUPPORTED.has(key)) {
+            throw new DoctorError(
+                `schema at ${where} uses \`${key}\`, which is outside the subset this validator ` +
+                    `implements (see spec/README.md). A schema change reaching outside that list ` +
+                    `is a change to doctor too, and the two land together.`,
+            );
+        }
+    }
+
+    if ("$ref" in schema) {
+        const stray = keys.filter((k) => !REF_SIBLINGS.has(k));
+        if (stray.length) {
+            throw new DoctorError(
+                `schema at ${where} carries \`$ref\` alongside ${stray.map((k) => `\`${k}\``).join(", ")}. ` +
+                    `Only \`title\` and \`description\` may accompany a $ref — they are annotations and ` +
+                    `never affect validation; anything else would be a constraint this validator ignores.`,
+            );
+        }
+        if (typeof schema.$ref !== "string" || !schema.$ref.startsWith("#/$defs/")) {
+            throw new DoctorError(
+                `schema at ${where} has \`$ref: ${JSON.stringify(schema.$ref)}\`; only local ` +
+                    `\`#/$defs/…\` references are supported.`,
+            );
+        }
+    }
+
+    if ("additionalProperties" in schema && schema.additionalProperties !== false) {
+        throw new DoctorError(
+            `schema at ${where} sets \`additionalProperties\` to something other than literal ` +
+                `\`false\`. Only \`false\` is in the subset — a schema-valued form would let unknown ` +
+                `keys through a check this validator does not implement.`,
+        );
+    }
+
+    for (const [name, sub] of Object.entries(schema.$defs ?? {})) {
+        compileSchema(sub, `${where}/$defs/${name}`);
+    }
+    for (const [name, sub] of Object.entries(schema.properties ?? {})) {
+        compileSchema(sub, `${where}/properties/${name}`);
+    }
+    if (schema.items) compileSchema(schema.items, `${where}/items`);
+    if (schema.oneOf) {
+        if (!Array.isArray(schema.oneOf)) throw new DoctorError(`schema at ${where}: \`oneOf\` must be an array`);
+        schema.oneOf.forEach((sub, i) => compileSchema(sub, `${where}/oneOf/${i}`));
+    }
+
+    return schema;
+}
+
+const typeOf = (v) =>
+    v === null ? "null" : Array.isArray(v) ? "array" : typeof v === "number" ? "number" : typeof v;
+
+/**
+ * Validate an instance against a schema written in the subset.
+ * Returns `[{ pointer, message }]` — empty when the instance conforms.
+ */
+export function validate(schema, instance) {
+    compileSchema(schema);
+    const errors = [];
+    check(schema, instance, "", schema, errors);
+    return errors;
+}
+
+function resolveRef(root, ref) {
+    const name = ref.slice("#/$defs/".length);
+    const target = root.$defs?.[name];
+    if (!target) throw new DoctorError(`schema references \`${ref}\`, which is not defined`);
+    return target;
+}
+
+function check(schema, value, pointer, root, errors) {
+    const add = (message) => errors.push({ pointer, message });
+
+    if (schema.$ref) {
+        check(resolveRef(root, schema.$ref), value, pointer, root, errors);
+        return;
+    }
+
+    if (schema.type) {
+        const actual = typeOf(value);
+        const ok = schema.type === "number" ? actual === "number" : actual === schema.type;
+        if (!ok) {
+            add(`expected type \`${schema.type}\`, found \`${actual}\``);
+            return; // Every other keyword here would be reporting the same fault again.
+        }
+    }
+
+    if (schema.enum && !schema.enum.some((allowed) => allowed === value)) {
+        add(`value ${JSON.stringify(value)} is not one of the permitted values (enum: ${schema.enum.map((v) => JSON.stringify(v)).join(", ")})`);
+    }
+
+    if (typeof value === "string") {
+        if (schema.pattern !== undefined && !new RegExp(schema.pattern).test(value)) {
+            add(`value ${JSON.stringify(value)} does not match the required pattern \`${schema.pattern}\``);
+        }
+        if (schema.minLength !== undefined && value.length < schema.minLength) {
+            add(`value is shorter than the required minLength of ${schema.minLength}`);
+        }
+    }
+
+    if (Array.isArray(value)) {
+        if (schema.minItems !== undefined && value.length < schema.minItems) {
+            add(`array has ${value.length} item(s), fewer than the required minItems of ${schema.minItems}`);
+        }
+        if (schema.uniqueItems) {
+            const seen = new Set();
+            value.forEach((item, i) => {
+                const key = JSON.stringify(item);
+                if (seen.has(key)) errors.push({ pointer: `${pointer}/${i}`, message: `duplicate entry ${key} violates uniqueItems` });
+                seen.add(key);
+            });
+        }
+        if (schema.items) {
+            value.forEach((item, i) => check(schema.items, item, `${pointer}/${i}`, root, errors));
+        }
+    }
+
+    if (value !== null && typeof value === "object" && !Array.isArray(value)) {
+        for (const name of schema.required ?? []) {
+            if (!(name in value)) add(`required property \`${name}\` is missing`);
+        }
+        if (schema.additionalProperties === false) {
+            // `properties` may legitimately be absent, and then this forbids EVERY property — the
+            // 2020-12 semantics. Treating a missing `properties` as "nothing to check" would make a
+            // supported spelling silently mean the opposite of what it says, which is the failure
+            // ../.portulan/memory/a-checker-must-refuse-what-it-cannot-check.md is about.
+            const declared = schema.properties ?? {};
+            for (const name of Object.keys(value)) {
+                if (!(name in declared)) {
+                    errors.push({
+                        pointer: `${pointer}/${name}`,
+                        message: `unexpected property \`${name}\` — the schema sets additionalProperties: false, so an unknown key is rejected rather than ignored (the common case is a typo in a slot name)`,
+                    });
+                }
+            }
+        }
+        for (const [name, sub] of Object.entries(schema.properties ?? {})) {
+            if (name in value) check(sub, value[name], `${pointer}/${name}`, root, errors);
+        }
+    }
+
+    if (schema.oneOf) {
+        const matched = schema.oneOf.filter((sub) => {
+            const trial = [];
+            check(sub, value, pointer, root, trial);
+            return trial.length === 0;
+        });
+        if (matched.length !== 1) {
+            const why = schema.oneOf
+                .map((sub, i) => {
+                    const trial = [];
+                    check(sub, value, pointer, root, trial);
+                    return `  form ${i + 1}: ${trial.map((e) => e.message).join("; ") || "matched"}`;
+                })
+                .join("\n");
+            add(`value matches ${matched.length} of the ${schema.oneOf.length} permitted forms, not exactly one (oneOf):\n${why}`);
+        }
+    }
+}
+
+// ===========================================================================================
+// 2. Provenance, parsed out of a Markdown record
+// ===========================================================================================
+//
+// The Workspace Definition puts provenance on a rule rather than in the manifest: a rule lives in
+// Markdown, so a manifest key would describe a workspace's POLICY about provenance while leaving
+// every actual rule unchecked (spec/slots.md). So the schema defines the shape and the records
+// carry instances — one definition, two carriers — and this is the parser between them.
+//
+// The accepted syntax is deliberately narrow: backticked `key=value` tokens on the `**provenance:**`
+// paragraph, keys drawn from the five the schema names. Narrow because the alternative is false
+// reds — the live records carry annotation prose after the stamp ("— the milestone-2 pull request,
+// where…"), and a parser that treated every backtick in that prose as a field would fail records
+// that are perfectly correct.
+
+const PROVENANCE_KEYS = ["form", "href", "owner", "date", "shape"];
+const PROVENANCE_TOKEN = new RegExp("`(" + PROVENANCE_KEYS.join("|") + ")=([^`]*)`", "g");
+
+/**
+ * Pull the provenance stamp out of a record.
+ * Returns `{ present, fields, raw }`; `fields` is null when the record carries prose provenance
+ * — which is a finding for a rule and a note for anything else, not a parse failure.
+ */
+export function parseProvenance(source) {
+    const lines = source.split("\n");
+    const start = lines.findIndex((l) => /^\s*\*\*provenance:\*\*/i.test(l));
+    if (start === -1) return { present: false, fields: null, raw: "" };
+
+    // The stamp may wrap, so the unit is the paragraph, not the line.
+    let end = start;
+    while (end + 1 < lines.length && lines[end + 1].trim() !== "") end += 1;
+    const raw = lines.slice(start, end + 1).join(" ");
+
+    // First occurrence wins. The stamp leads the paragraph and annotation prose follows it, so a
+    // later `form=…` inside that prose is somebody writing *about* provenance, not declaring it —
+    // and last-wins would let a sentence mentioning the other form turn a correct record red. A
+    // false red is the failure that gets a whole check switched off, so the tie breaks toward the
+    // stamp. The residual limit is stated in ../core/templates/memory-entry.md rather than left to
+    // be discovered: a backticked `key=value` using one of these five keys is reserved syntax
+    // wherever it appears in the paragraph.
+    const fields = {};
+    for (const [, key, value] of raw.matchAll(PROVENANCE_TOKEN)) {
+        if (!(key in fields)) fields[key] = value.trim();
+    }
+    return { present: true, fields: Object.keys(fields).length ? fields : null, raw };
+}
+
+const recordType = (source) => (source.match(/^\s*\*\*type:\*\*\s*(\S+)/im)?.[1] ?? "").toLowerCase();
+
+// ===========================================================================================
+// 3. Claims against the tree
+// ===========================================================================================
+//
+// The milestone-2 criterion asks for this "the way the `map` check already holds the root README
+// to the repo's shape" — so a claim that is verifiable and wrong FAILS, exactly as `map` does.
+//
+// Two things make that safe to do. First, the lint reads only what parses confidently as a path:
+// a code span or link target containing `/`. `build: none — no build step yet` claims nothing and
+// is treated as claiming nothing; anything else it cannot read as a path is **left alone** — not
+// failed, and not reported either, because reporting every ordinary sentence in a repo card would
+// bury the findings that matter. A false red is the outcome that gets a whole recipe switched off
+// (../.portulan/verify/README.md), and an ambitious prose parser is the shortest route to one.
+//
+// Second, the tree is DECLARED rather than guessed. A workspace that makes claims about the
+// repository containing it says so with the `tree` slot; one that describes repositories not
+// present beside it — a demo, or a portfolio spanning many — omits it, and its claims are reported
+// **unverifiable**. Never silently skipped: a check class that disappears without saying so is the
+// fail-open this repository keeps re-finding.
+
+const CODE_SPAN = /`([^`]+)`/g;
+const LINK_TARGET = /\]\(([^)]+)\)/g;
+
+/** Path-shaped claims in a repo card: the build/test/run lines, and the layout. */
+function repoCardClaims(source) {
+    const lines = source.split("\n");
+    const claims = [];
+
+    const section = (headingPattern) => {
+        const start = lines.findIndex((l) => headingPattern.test(l));
+        if (start === -1) return null;
+        let end = start;
+        while (end + 1 < lines.length && lines[end + 1].trim() !== "") end += 1;
+        return lines.slice(start, end + 1);
+    };
+
+    const isPathish = (token) =>
+        token.includes("/") && !/^(https?|mailto):/.test(token) && !token.includes(" ");
+
+    const build = section(/^\s*\*\*Build\s*\/\s*test\s*\/\s*run\.?\*\*/i);
+    if (build) {
+        for (const line of build) {
+            const entry = line.match(/^\s*[-*]\s*(\w[\w -]*):\s*(.+)$/);
+            if (!entry) continue;
+            const [, key, rest] = entry;
+            const spans = [...rest.matchAll(CODE_SPAN)].map((m) => m[1].trim());
+            const candidate = spans[0] ?? rest.trim().split(/\s+/)[0];
+            if (!candidate) continue;
+            if (/^none\b/i.test(candidate)) continue; // an explicit no-claim
+            if (isPathish(candidate)) claims.push({ what: `${key}: \`${candidate}\``, target: candidate });
+        }
+    }
+
+    const layout = section(/^\s*\*\*Layout\.?\*\*/i);
+    if (layout) {
+        const body = layout.join(" ");
+        const tokens = [
+            ...[...body.matchAll(CODE_SPAN)].map((m) => m[1].trim()),
+            ...[...body.matchAll(LINK_TARGET)].map((m) => m[1].trim()),
+        ];
+        for (const token of new Set(tokens)) {
+            if (isPathish(token)) claims.push({ what: `layout: \`${token}\``, target: token });
+        }
+    }
+
+    return claims;
+}
+
+/** The status-check context a gate map claims `main` requires. */
+function requiredCheckClaim(source) {
+    for (const line of source.split("\n")) {
+        if (!/^\s*\|/.test(line)) continue;
+        const cells = line.split("|").map((c) => c.trim());
+        if (!/required status check/i.test(cells[1] ?? "")) continue;
+        const token = (cells.slice(2).join(" ").match(/`([^`]+)`/) ?? [])[1];
+        if (token) return token;
+    }
+    return null;
+}
+
+/**
+ * Job ids a workflow file declares. A regex rather than a YAML parse, because a YAML parser is a
+ * dependency and this needs one shape from one well-known file. Stated as a limit rather than
+ * left to be discovered: unusual-but-valid YAML (flow mappings, quoted keys) is not recognised.
+ */
+function workflowJobIds(source) {
+    const lines = source.split("\n");
+    const start = lines.findIndex((l) => /^jobs:\s*$/.test(l));
+    if (start === -1) return [];
+    const ids = [];
+    for (const line of lines.slice(start + 1)) {
+        if (/^\S/.test(line) && line.trim() !== "") break; // back to top level
+        const id = line.match(/^ {2}([A-Za-z0-9_-]+):\s*$/);
+        if (id) ids.push(id[1]);
+    }
+    return ids;
+}
+
+// ===========================================================================================
+// 4. Inspecting one workspace
+// ===========================================================================================
+
+const PATH_SLOTS = {
+    identity: "file", principles: "file", gates: "file", dod: "file",
+    constitution: "either",
+    memory: "dir", repos: "dir", tasks: "dir", handoffs: "dir", proposals: "dir",
+};
+
+/**
+ * The Workspace Definition version a schema implements, read from its `$id`.
+ *
+ * Carried in the identifier rather than parsed out of `title`, because a machine fact read from a
+ * human sentence drifts the first time somebody rewords the sentence. Absent is a hard stop: a
+ * validator that cannot tell which version of the contract it implements cannot honestly say a
+ * manifest conforms to it.
+ */
+export function schemaVersion(schema) {
+    const match = /\/spec\/([0-9]+)\.([0-9]+)\//.exec(schema.$id ?? "");
+    if (!match) {
+        throw new DoctorError(
+            "the schema's `$id` does not carry a `/spec/MAJOR.MINOR/` segment, so `doctor` cannot " +
+                "tell which Workspace Definition version it implements",
+        );
+    }
+    return { major: Number(match[1]), minor: Number(match[2]) };
+}
+
+function loadSchema({ schema, schemaPath }) {
+    if (schema) return schema;
+    const file = schemaPath ?? DEFAULT_SCHEMA;
+    let source;
+    try {
+        source = fs.readFileSync(file, "utf8");
+    } catch (cause) {
+        throw new DoctorError(`could not read the schema at ${file}: ${cause.message}`);
+    }
+    try {
+        return JSON.parse(source);
+    } catch (cause) {
+        throw new DoctorError(`the schema at ${file} is not valid JSON: ${cause.message}`);
+    }
+}
+
+/**
+ * Inspect one workspace directory.
+ * Returns `{ dir, workspace, findings, stats }`. A finding is `{ severity, check, message }`,
+ * where severity is `fail` (exit 1) or `report` (worth reading, not a verdict).
+ */
+export async function inspect(workspaceDir, options = {}) {
+    const schema = loadSchema(options);
+    const dir = path.resolve(workspaceDir);
+    const findings = [];
+    const stats = { records: 0, rules: 0, sealed: 0, linked: 0, claims: 0, unverifiable: 0 };
+    const fail = (check, message) => findings.push({ severity: "fail", check, message });
+    const report = (check, message) => findings.push({ severity: "report", check, message });
+
+    // ---- the manifest itself
+    const manifestPath = path.join(dir, "workspace.json");
+    let workspace;
+    try {
+        workspace = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
+    } catch (cause) {
+        // A verdict about the workspace, not an environment failure: exit 1, not 2.
+        fail("schema", `no readable manifest at ${path.relative(process.cwd(), manifestPath)} — ${cause.message}`);
+        return { dir, workspace: null, findings, stats };
+    }
+
+    // Which contract is this manifest written against? Checked BEFORE conformance, because grading
+    // a manifest against a definition it was not written for produces confident nonsense: an
+    // optional slot added in a later MINOR would come back as an unexpected property, and the
+    // report would blame the author for using the spec correctly.
+    //
+    // Both mismatches are exit 2 rather than 1. "This workspace is wrong" and "I do not implement
+    // the contract it names" are different statements, and only the first is a verdict `doctor` is
+    // entitled to make — see ../.portulan/memory/a-checker-must-refuse-what-it-cannot-check.md.
+    const here = schemaVersion(schema);
+    const declared = /^([0-9]+)\.([0-9]+)$/.exec(workspace?.portulan?.spec ?? "");
+    if (declared) {
+        const [major, minor] = [Number(declared[1]), Number(declared[2])];
+        if (major !== here.major) {
+            throw new DoctorError(
+                `${path.relative(process.cwd(), dir)} declares Workspace Definition ${major}.${minor}; ` +
+                    `this schema is ${here.major}.${here.minor}. A MAJOR difference means a migration ` +
+                    `exists and this validator is not the one to run.`,
+            );
+        }
+        if (minor > here.minor) {
+            throw new DoctorError(
+                `${path.relative(process.cwd(), dir)} declares Workspace Definition ${major}.${minor}, ` +
+                    `which is ahead of the ${here.major}.${here.minor} this schema implements. Refusing ` +
+                    `rather than grading it against an older contract and reporting the difference as errors.`,
+            );
+        }
+        if (minor < here.minor) {
+            report(
+                "schema",
+                `written against Workspace Definition ${major}.${minor}; this schema is ` +
+                    `${here.major}.${here.minor}. Still valid — MINOR is additive — but slots added since ` +
+                    `${major}.${minor} will simply be absent`,
+            );
+        }
+    }
+
+    const errors = validate(schema, workspace);
+    for (const e of errors) {
+        fail("schema", `${e.pointer || "/"} — ${e.message}`);
+    }
+    if (errors.length) {
+        // The later checks read the manifest's shape. Running them on a manifest that failed the
+        // schema would produce noise at best and a crash at worst — so they are skipped, and the
+        // skip is said out loud rather than left to look like a pass.
+        report("schema", "path, cross-field, claims and provenance checks were skipped: the manifest must conform first");
+        return { dir, workspace, findings, stats };
+    }
+
+    // ---- path slots
+    // Containment is judged between REAL paths on both sides. Resolving only the target would
+    // report a false escape wherever the workspace's own path runs through a symlink — on macOS
+    // `/tmp` is one, which is where the tests build their scratch workspaces.
+    let realDir = dir;
+    try {
+        realDir = fs.realpathSync(dir);
+    } catch { /* the manifest read below reports a workspace that is not there */ }
+    const inside = (target) => {
+        const rel = path.relative(realDir, target);
+        return rel === "" || (!rel.startsWith("..") && !path.isAbsolute(rel));
+    };
+
+    const resolvePath = (value, kind, label) => {
+        const target = path.resolve(dir, value);
+        let stat = null;
+        try {
+            stat = fs.statSync(target);
+        } catch {
+            fail("paths", `${label} points at \`${value}\`, which does not exist`);
+            return;
+        }
+        if (kind === "file" && !stat.isFile()) fail("paths", `${label} points at \`${value}\`, which is not a file`);
+        if (kind === "dir" && !stat.isDirectory()) fail("paths", `${label} points at \`${value}\`, which is not a directory`);
+        // Containment is tested on the REAL path, so a symlink out of the workspace is seen for
+        // what it is. `realpathSync` is only safe after the stat above proved the target exists.
+        let real = target;
+        try {
+            real = fs.realpathSync(target);
+        } catch { /* keep the lexical path; the stat already succeeded, so this is unusual */ }
+        if (!inside(real)) {
+            // Reported, never failed. A workspace embedded in a larger repository may legitimately
+            // reach for a shared document, and failing would make the tool wrong about a case it
+            // cannot see. Two slots are *expected* to escape and are noted as unremarkable rather
+            // than flagged: `constitution`, because a product's constitution normally lives with
+            // the product, and `tree`, which names the repository the workspace sits inside and
+            // would be pointing at the wrong thing if it did not escape.
+            const expected = {
+                "slots.constitution": "a constitution usually lives with the product",
+                tree: "the tree a workspace makes claims about contains it",
+            }[label];
+            report(
+                "paths",
+                `${label} resolves outside the workspace directory (\`${value}\`)` +
+                    (expected ? ` — expected: ${expected}` : " — only `constitution` and `tree` are expected to"),
+            );
+        }
+    };
+
+    for (const [name, kind] of Object.entries(PATH_SLOTS)) {
+        if (workspace.slots?.[name]) resolvePath(workspace.slots[name], kind, `slots.${name}`);
+    }
+    if (workspace.affordances) resolvePath(workspace.affordances, "file", "affordances");
+    if (workspace.tree) resolvePath(workspace.tree, "dir", "tree");
+    (workspace.products ?? []).forEach((product, i) => {
+        resolvePath(product.product, "file", `products[${i}].product`);
+        if (product.affordances) resolvePath(product.affordances, "file", `products[${i}].affordances`);
+    });
+    (workspace.verify?.recipes ?? []).forEach((recipe, i) => {
+        if (recipe.doc) resolvePath(recipe.doc, "file", `verify.recipes[${i}].doc`);
+    });
+
+    // ---- cross-field
+    const ids = (workspace.verify?.recipes ?? []).map((r) => r.id);
+    if (!ids.includes(workspace.verify?.default)) {
+        fail("cross", `verify.default names \`${workspace.verify?.default}\`, which is not among the declared recipes (${ids.join(", ") || "none"})`);
+    }
+
+    // Uniqueness is `verify.default`'s missing sibling. The schema's `uniqueItems` compares whole
+    // objects, so two recipes sharing an id and differing anywhere else pass it — and then naming
+    // that id resolves to whichever the reader happens to look at first.
+    const duplicates = (list, what) => {
+        const seen = new Set();
+        for (const id of list) {
+            if (seen.has(id)) fail("cross", `two ${what} share the id \`${id}\`, so naming it resolves to either`);
+            seen.add(id);
+        }
+    };
+    duplicates(ids, "verify recipes");
+    duplicates((workspace.products ?? []).map((p) => p.id), "products");
+
+    const cardNames = new Set();
+    if (workspace.slots?.repos) {
+        const reposDir = path.resolve(dir, workspace.slots.repos);
+        try {
+            for (const entry of fs.readdirSync(reposDir)) {
+                if (entry.endsWith(".md") && entry !== "README.md") cardNames.add(entry.slice(0, -3));
+            }
+        } catch { /* the missing directory is already a `paths` failure */ }
+    }
+
+    (workspace.products ?? []).forEach((product, i) => {
+        for (const name of product.repos ?? []) {
+            // Exact basename, never a substring: `portulan` must not be satisfied by
+            // `portulan-internal.md`.
+            if (!cardNames.has(name)) {
+                fail("cross", `products[${i}].repos names \`${name}\`, for which there is no card in the repos slot`);
+            }
+        }
+        if (!product.affordances && !workspace.affordances) {
+            report("cross", `products[${i}] (\`${product.id}\`) has neither its own affordances nor an inherited workspace-level default`);
+        }
+    });
+
+    if (workspace.packs?.length) {
+        report("cross", `${workspace.packs.length} pack(s) declared — a declaration only: resolving a pack to an installed plugin needs the plugin machinery (milestone 3) and the feed (milestone 6)`);
+    }
+
+    // ---- claims against the tree
+    const treeRoot = workspace.tree ? path.resolve(dir, workspace.tree) : null;
+    const claimTargets = [];
+
+    if (workspace.slots?.repos) {
+        const reposDir = path.resolve(dir, workspace.slots.repos);
+        for (const name of [...cardNames].sort()) {
+            const card = path.join(reposDir, `${name}.md`);
+            let source;
+            try {
+                source = fs.readFileSync(card, "utf8");
+            } catch { continue; }
+            for (const claim of repoCardClaims(source)) {
+                claimTargets.push({ where: `repos/${name}.md`, ...claim, base: reposDir });
+            }
+        }
+    }
+
+    // The gate map's claim is extracted OUTSIDE the tree branch on purpose. Reading it only when a
+    // tree exists is how a check class disappears without saying so — a no-`tree` workspace whose
+    // gate map named a status check nothing reports used to produce no mention of it at all, while
+    // spec/slots.md promised those claims were "counted and reported unverifiable, never skipped
+    // silently". Found at the pre-commit checkpoint, in the paragraph that made the promise.
+    let claimedCheck = null;
+    if (workspace.slots?.gates) {
+        try {
+            claimedCheck = requiredCheckClaim(fs.readFileSync(path.resolve(dir, workspace.slots.gates), "utf8"));
+        } catch {
+            // Unreadable is already a `paths` failure; it must not also become an exit-2 crash,
+            // which would trade a verdict this run had already reached for "could not run".
+        }
+    }
+
+    if (treeRoot) {
+        for (const claim of claimTargets) {
+            stats.claims += 1;
+            // Two bases, because a card legitimately mixes them: `.portulan/` is written from the
+            // repository root while `../../core/` is written from the card. A claim that resolves
+            // under either is a claim that points at something real, which is what the lint is for.
+            const resolved = [path.resolve(treeRoot, claim.target), path.resolve(claim.base, claim.target)];
+            if (!resolved.some((p) => fs.existsSync(p))) {
+                fail("claims", `${claim.where} claims ${claim.what}, which exists nowhere in the tree`);
+            }
+        }
+
+        if (claimedCheck) {
+            stats.claims += 1;
+            const workflows = path.join(treeRoot, ".github", "workflows");
+            let jobIds = [];
+            let found = false;
+            try {
+                for (const entry of fs.readdirSync(workflows)) {
+                    if (!/\.ya?ml$/.test(entry)) continue;
+                    found = true;
+                    jobIds.push(...workflowJobIds(fs.readFileSync(path.join(workflows, entry), "utf8")));
+                }
+            } catch { /* handled below */ }
+
+            if (!found) {
+                stats.claims -= 1;
+                stats.unverifiable += 1;
+                report("claims", `the gate map requires the status check \`${claimedCheck}\`, and there are no workflows in the tree to report it — unverifiable`);
+            } else if (!jobIds.includes(claimedCheck)) {
+                fail("claims", `the gate map requires the status check \`${claimedCheck}\`, which no workflow job in the tree declares (found: ${jobIds.join(", ") || "none"})`);
+            } else {
+                report("claims", `the gate map's required status check \`${claimedCheck}\` is reported by a workflow job in the tree — in-tree only: whether branch protection actually requires it, and the app it is pinned to, are live settings doctor does not fetch`);
+            }
+        }
+    } else {
+        stats.unverifiable += claimTargets.length;
+        report(
+            "claims",
+            `${claimTargets.length} repo-card claim(s) unverifiable: this workspace declares no \`tree\`, so it describes repositories that are not present beside it. Reported rather than skipped — a check class that disappears quietly is worse than one that says it could not run`,
+        );
+        if (claimedCheck) {
+            stats.unverifiable += 1;
+            report(
+                "claims",
+                `the gate map requires the status check \`${claimedCheck}\`, and with no \`tree\` there is nothing to check it against — unverifiable`,
+            );
+        }
+    }
+
+    // ---- provenance
+    if (workspace.slots?.memory) {
+        const memoryDir = path.resolve(dir, workspace.slots.memory);
+        let entries = [];
+        try {
+            entries = fs.readdirSync(memoryDir).filter((f) => f.endsWith(".md") && f !== "README.md").sort();
+        } catch { /* the missing directory is already a `paths` failure */ }
+
+        for (const entry of entries) {
+            const source = fs.readFileSync(path.join(memoryDir, entry), "utf8");
+            const type = recordType(source);
+            const { present, fields } = parseProvenance(source);
+            stats.records += 1;
+            const isRule = type === "rule";
+            if (isRule) stats.rules += 1;
+
+            if (!present) {
+                const message = `${entry} carries no provenance line at all`;
+                isRule ? fail("provenance", message) : report("provenance", message);
+                continue;
+            }
+            if (!fields) {
+                // Prose provenance. Mandatory only on a rule: thesis 4, proposal 0002 as adopted,
+                // dod.md condition 3 and the task's own criterion are all rule-scoped, and having
+                // doctor bind types nobody legislated for would be tooling enforcing a rule the
+                // constitution does not state — backwards for this product.
+                const message = `${entry} (${type || "untyped"}) carries prose provenance rather than a link or a sealed stamp`;
+                isRule ? fail("provenance", message) : report("provenance", message);
+                continue;
+            }
+            const shapeErrors = validate({ $defs: schema.$defs, ...schema.$defs.provenance }, fields);
+            if (shapeErrors.length) {
+                const message = `${entry}: ${shapeErrors.map((e) => e.message).join("; ")}`;
+                isRule ? fail("provenance", message) : report("provenance", message);
+                continue;
+            }
+            if (isRule) fields.form === "sealed" ? (stats.sealed += 1) : (stats.linked += 1);
+        }
+    }
+
+    // Always emitted, including for zero records. A workspace with no memory yet is valid — the
+    // minimality rule is explicit that a day-one workspace must pass — but "checked nothing" and
+    // "checked everything and found nothing wrong" print identically unless one of them says so.
+    const proportion = stats.rules ? `${stats.sealed} of ${stats.rules}` : "0 of 0";
+    report(
+        "provenance",
+        `${stats.records} memory record(s), ${stats.rules} of them rules; sealed proportion ${proportion}` +
+            (stats.rules && stats.sealed === stats.rules
+                ? " — every rule is sealed, which means this workspace has opted out of retirement altogether"
+                : "") +
+            ". The form is checked, never the truth: a fabricated stamp passes exactly as a real one does",
+    );
+
+    return { dir, workspace, findings, stats };
+}
+
+// ===========================================================================================
+// 5. The command
+// ===========================================================================================
+
+const ICON = { fail: "FAIL ", report: "note " };
+
+/** Relative when that is shorter to read, absolute when the relative form is a ladder of `../`. */
+function display(target) {
+    const rel = path.relative(process.cwd(), path.resolve(target));
+    return rel === "" ? "." : rel.startsWith("..") ? path.resolve(target) : rel;
+}
+
+/** Run against one or more workspace directories. Returns the exit code; never throws. */
+export async function run(argv, options = {}) {
+    const say = options.quiet ? () => {} : (line = "") => process.stdout.write(`${line}\n`);
+    try {
+        const dirs = argv.filter((a) => !a.startsWith("-"));
+        if (dirs.length === 0) {
+            if (!options.quiet) {
+                process.stderr.write("usage: node cli/doctor.mjs <workspace-dir> [<workspace-dir> ...]\n");
+            }
+            return 2;
+        }
+
+        let failed = 0;
+        for (const dir of dirs) {
+            const { findings, stats } = await inspect(dir, options);
+            const bad = findings.filter((f) => f.severity === "fail");
+            say(display(dir));
+            for (const f of findings) say(`  ${ICON[f.severity]} ${f.check.padEnd(10)} ${f.message}`);
+            say(
+                `  ${bad.length ? "RED" : "GREEN"} — ${bad.length} failure(s), ` +
+                    `${findings.length - bad.length} note(s), ${stats.claims} claim(s) checked` +
+                    (stats.unverifiable ? `, ${stats.unverifiable} unverifiable` : ""),
+            );
+            say();
+            if (bad.length) failed += 1;
+        }
+        return failed ? 1 : 0;
+    } catch (error) {
+        // Anything reaching here means doctor could not judge — including a defect in doctor
+        // itself. Exit 2. Reporting 1 would assert a verdict about the workspace that was
+        // never reached, and reporting 0 would be the fail-open this whole tool exists against.
+        if (!options.quiet) {
+            process.stderr.write(`doctor: ${error instanceof DoctorError ? error.message : `unanticipated failure — ${error.stack ?? error}`}\n`);
+        }
+        return 2;
+    }
+}
+
+if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) {
+    process.exitCode = await run(process.argv.slice(2));
+}
