@@ -52,7 +52,11 @@ the price of the gate being real rather than declared. Configuring branch protec
 repository-settings change and therefore a **Gated** action ([`../gate-map.md`](../gate-map.md)): it is
 his to perform, not an agent's to do on inference.
 
-**Status: APPLIED, 2026-07-25.** Live on `main`: pull request required, `docs-integrity` required green,
+**Status: APPLIED, 2026-07-25.** _(Amended the same day: the required context was renamed
+`docs-integrity` → `workspace-verify` by the sequence in
+[`0004-ci-runs-every-declared-recipe.md`](0004-ci-runs-every-declared-recipe.md). Everything else below
+stands. Annotated rather than rewritten, so the record keeps what was applied alongside what changed.)_
+Live on `main`: pull request required, `docs-integrity` required green,
 administrators included, conversation resolution required, force-pushes and deletion blocked.
 [`../gate-map.md`](../gate-map.md) now describes the floor as configured, and records what it enforces.
 

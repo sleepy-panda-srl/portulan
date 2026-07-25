@@ -346,6 +346,23 @@ the seam applies here too: no client-identifying references)_
   maintainer's** — re-point branch protection at `workspace-verify` once this is on `main` — and step 3
   deletes the transitional job. Seam scan clean across files, commit message, and branch name.
 
+- 2026-07-25 · Infrastructure · **Required-check rename complete — steps 2 and 3.** Branch protection now
+  requires `workspace-verify` and the transitional `docs-integrity` job is deleted: one job, one context,
+  and a name that describes the work rather than a third of it. Step 3 moved nothing but a comment block,
+  which was the point of step 1 putting the work in the *new* job and leaving the old one thin — a choice
+  that looked arbitrary when both read identically. Two details worth keeping, both invisible from where
+  anyone would normally look. **Protection was changed through the `required_status_checks` sub-endpoint,
+  never `PUT …/protection`:** that endpoint takes the whole protection object and silently resets whatever
+  the payload omits, so a one-field change made that way would have dropped `enforce_admins`, conversation
+  resolution, and the force-push block — a settings tweak becoming a hole in the floor, with no error to
+  notice. And the check is **pinned to app 15368**, because a context without an app id is satisfiable by
+  any GitHub App reporting that name; the branch-protection UI does not surface this and the older
+  `contexts` API shape cannot express it. Read back live afterwards: one required check, `enforce_admins`
+  true, 0 reviews, conversation resolution on. Recorded as still-unverified rather than smoothed over: the
+  floor has not been *probed* since the rename — the settings read back correctly, and reading settings
+  back is assertion, which is the distinction this build applies to everything else. Seam scan clean across
+  files, commit message, and branch name.
+
 - 2026-07-25 · Doctrine · **The agent gets an identity of its own.** Found while answering a review about
   claims false against the tree: four review replies written by an implementer agent had been posted through
   the maintainer's credentials and therefore appeared under his name. The defect is invisible from inside

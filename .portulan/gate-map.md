@@ -127,7 +127,7 @@ enforces:
 | Setting | Value |
 |---|---|
 | Direct pushes | rejected — every change goes through a pull request |
-| Required status check | `docs-integrity` — **being renamed to `workspace-verify`**; both contexts report today, see below |
+| Required status check | `workspace-verify` — the workspace's verify recipes, run by CI; pinned to app 15368 |
 | Administrators | **included**; the maintainer has no exemption |
 | Required approving reviews | 0 — see below |
 | Conversation resolution | required before merge |
@@ -145,14 +145,18 @@ anyone — is the strongest floor a solo maintainer can actually stand on. When 
 raise the count; the setting to preserve is `enforce_admins`, because a floor with an exemption for the
 only actor who can act is not a floor.
 
-**The required check is mid-rename.** The context `main` pins is `docs-integrity`, a name that stopped
-describing the job once it ran more than a docs linter. It cannot be renamed in place: the required
-context would stop reporting, the pull request doing it would never be mergeable, and `enforce_admins`
-means it could not be forced through. So the sequence is deliberate —
-[`proposals/0004-ci-runs-every-declared-recipe.md`](proposals/0004-ci-runs-every-declared-recipe.md): both
-contexts report now, **the maintainer re-points protection to `workspace-verify`** (a Gated action, and the
-only step an agent cannot take), then the transitional job is deleted. Until step 2 happens, the name on
-the gate is wrong and the gate itself is sound.
+**The required check was renamed by a sequence, not an edit** — completed 2026-07-25, and worth keeping
+because the same constraint applies to any future rename. The context was `docs-integrity`, a name that
+stopped describing the job once it ran more than a docs linter. It could not be renamed in place: the
+required context would stop reporting, the pull request doing it would never be mergeable, and
+`enforce_admins` means that block could not be forced past. So the new job ran alongside the old, the
+maintainer re-pointed protection by hand (Gated — the one step an agent cannot take), and only then was the
+transitional job deleted. See
+[`proposals/0004-ci-runs-every-declared-recipe.md`](proposals/0004-ci-runs-every-declared-recipe.md).
+
+The check is also **pinned to app 15368** (GitHub Actions). Without an app id, any GitHub App reporting a
+check of that name would satisfy the gate — a distinction the branch-protection UI does not surface, and
+one the API does.
 
 **Still absent:** no `CODEOWNERS`, so no path-specific human is required on any file — including
 [`../docs/vision.md`](../docs/vision.md), which is protected today only by the prohibition above and not
