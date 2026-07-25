@@ -56,15 +56,30 @@ specifics has not finished generalizing and does not belong above their workspac
 for the gate, and `../skills/codify/SKILL.md` step 2 — wrong altitude is also how specifics leak
 upward.)_
 
-**A known unresolved edge.** Provenance is meant to travel with the rule, but an incident that cannot
-leave its owner's layer cannot be linked from a public one. Such a rule today carries a de-identified
-statement of the failure it prevents instead of a resolvable link — weaker, because provenance that is
-only prose cannot be checked, and a rule whose provenance cannot be checked is one the librarian cannot
-safely retire. Giving it a verifiable form — so that a rule can never arrive with no provenance at all —
-needs surface that does not exist yet: a provenance slot in the Workspace Definition (milestone 2) and
-the retirement logic the librarian runs against it (milestone 5). Recorded here as open rather than
-resolved in prose, because doctrine that promises machinery it does not have is the failure this engine
-is written to avoid.
+**The edge where provenance cannot travel, and the form it now takes.** Provenance is meant to travel
+with the rule, but an incident that cannot leave its owner's layer cannot be linked from a public one.
+That collision has a defined answer as of milestone 2: provenance takes one of exactly two forms, and one
+of them is mandatory. **Public** — a resolvable link to the incident. **Sealed** — an owner and a date
+plus the de-identified failure shape, for an incident that stays in its owner's workspace. A rule
+carrying neither is not a rule. The normative shape is `$defs/provenance` in
+[`../../spec/workspace.schema.json`](../../spec/workspace.schema.json); the reasoning and the limits are
+in [`../../spec/slots.md`](../../spec/slots.md).
+
+What this bought is that provenance can no longer be *absent*, and that the weaker form is declared
+rather than silently substituted. Three things it did not buy, stated because the gap between them is
+where this doctrine would otherwise start overclaiming:
+
+- **The machine checks a stamp's form, never its truth.** A fabricated seal validates exactly as a real
+  one does. Substance is human review's job, held to the bar in `../skills/codify/SKILL.md` step 1.
+- **A sealed rule still cannot be retired on evidence.** The librarian cannot see the incident, so it
+  cannot judge whether the incident can still recur. It **nags the owner to re-validate** on the stamp's
+  date instead — a scheduled question rather than silent rot. That logic arrives in milestone 5; until
+  then the sealed form defers retirement rather than enabling it.
+- **A workspace can seal everything and opt out of retirement entirely.** Which is why the *sealed
+  proportion* is reported as a health signal rather than left to be noticed — by `doctor`, from
+  milestone 2. Until it runs, nothing counts seals and nothing rejects a rule that carries no provenance
+  at all; both are human review's job, as everything on this page was before there was a schema to check
+  against.
 
 ## Per-agent, not global
 

@@ -1,0 +1,260 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://portulan.dev/spec/workspace.schema.json",
+  "title": "Portulan Workspace Definition v1",
+  "description": "The manifest at the root of a workspace. It is an index, not a container: it names the slots the engine resolves against and points at the Markdown that holds each slot's content and rationale. Written in a deliberately small subset of JSON Schema 2020-12 — see spec/README.md for the subset and for what validates it.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["portulan", "name", "kind", "slots", "verify"],
+
+  "properties": {
+    "portulan": {
+      "description": "Version block. `spec` is the Workspace Definition version this manifest is written against; the engine uses it to decide whether a migration is needed.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["spec"],
+      "properties": {
+        "spec": {
+          "description": "Workspace Definition version, MAJOR.MINOR. A MAJOR bump means a migration exists.",
+          "type": "string",
+          "pattern": "^[0-9]+\\.[0-9]+$"
+        },
+        "workspace": {
+          "description": "Optional version of this workspace's own content, SemVer. Lets a workspace shipped as a plugin be pinned by consumers.",
+          "type": "string",
+          "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+        }
+      }
+    },
+
+    "name": {
+      "description": "Stable identifier for this workspace. Lowercase, hyphenated — it is used as a plugin name when the workspace ships through a feed.",
+      "type": "string",
+      "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
+    },
+
+    "summary": {
+      "description": "One line an agent can read before loading anything else.",
+      "type": "string",
+      "minLength": 1
+    },
+
+    "kind": {
+      "description": "Which of the three workspace kinds this is. The distinction is load-bearing: a demo workspace is written to be read by strangers and must carry no real internal policy, while a repository or portfolio workspace carries exactly that.",
+      "enum": ["repository", "demo", "portfolio"]
+    },
+
+    "slots": {
+      "description": "Path slots. Every value resolves to a file or a directory relative to the workspace root. Fragments are not permitted: a slot addressed by `#anchor` cannot be checked, so a slot's content must be a whole file. The pattern alone cannot say WHICH slot may leave the workspace directory — `constitution` is the only one expected to, and spec/slots.md has `doctor` report (never fail) any other slot that does.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["identity", "principles", "gates"],
+      "properties": {
+        "identity": {
+          "description": "Who this team is, the stack, and the glossary. The first thing an agent reads after the kernel.",
+          "$ref": "#/$defs/filePath"
+        },
+        "principles": {
+          "description": "The team's own binding principles — the constitution slot. What makes an agent work THIS team's way rather than generically.",
+          "$ref": "#/$defs/filePath"
+        },
+        "constitution": {
+          "description": "Optional. A separate document this team's work is graded against, when one exists apart from `principles`. This is the slot permitted to point outside the workspace directory, because a product's constitution usually lives with the product rather than with the workspace.",
+          "$ref": "#/$defs/path"
+        },
+        "gates": {
+          "description": "The gate map: this team's concrete actions bound to the engine's Auto / Propose / Gated tiers, plus the triage threshold.",
+          "$ref": "#/$defs/filePath"
+        },
+        "dod": {
+          "description": "Optional. The workspace's extension of core's definition-of-done floor. Absent means core's floor stands alone, which is valid.",
+          "$ref": "#/$defs/filePath"
+        },
+        "memory": {
+          "description": "Optional. Directory of durable facts, one per file, each carrying provenance.",
+          "$ref": "#/$defs/dirPath"
+        },
+        "repos": {
+          "description": "Optional. Directory of repo cards, one per repository this workspace covers.",
+          "$ref": "#/$defs/dirPath"
+        },
+        "tasks": {
+          "description": "Optional. Directory of task files.",
+          "$ref": "#/$defs/dirPath"
+        },
+        "handoffs": {
+          "description": "Optional. Directory of dated handoffs, filenames leading with an ISO date.",
+          "$ref": "#/$defs/dirPath"
+        },
+        "proposals": {
+          "description": "Optional. Directory of agent-drafted rule changes awaiting the human gate.",
+          "$ref": "#/$defs/dirPath"
+        }
+      }
+    },
+
+    "verify": {
+      "description": "The executable half of done. A workspace declares its recipes and names the default; a repo card may override it and a task may specialize it.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["default", "recipes"],
+      "properties": {
+        "default": {
+          "description": "The `id` of the recipe the Stop-gate runs when nothing more specific applies.",
+          "type": "string",
+          "minLength": 1
+        },
+        "recipes": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/recipe" }
+        }
+      }
+    },
+
+    "products": {
+      "description": "The product layer, repeated. A workspace may cover many products — a portfolio workspace covers all of a studio's — so mission/what/why and agent affordances belong to a product, not to the workspace. A workspace with one product still lists one.",
+      "type": "array",
+      "items": { "$ref": "#/$defs/product" }
+    },
+
+    "affordances": {
+      "description": "Optional workspace-level default for agent affordances, inherited by any product that does not declare its own. The same more-specific-wins rule as the resolution cascade, applied inside the workspace.",
+      "$ref": "#/$defs/filePath"
+    },
+
+    "packs": {
+      "description": "Optional. The packs this workspace composes, in cascade order — core < pack < workspace. Named here so a workspace can state which stack, tool, and ritual layers it depends on rather than leaving it to be inferred.",
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    }
+  },
+
+  "$defs": {
+    "path": {
+      "description": "A relative path to a file or directory, resolved from the workspace root. The leading character may not be `/` (no absolute paths) and `:` is excluded (no URLs), so `../` is the only way out of the workspace — which is deliberate, since escaping should be visible in the value itself.",
+      "type": "string",
+      "pattern": "^[^#?:/][^#?:]*$",
+      "minLength": 1
+    },
+
+    "filePath": {
+      "description": "A relative path to a file — same rules as `path`, and must not end in `/`.",
+      "type": "string",
+      "pattern": "^[^#?:/]([^#?:]*[^#?:/])?$",
+      "minLength": 1
+    },
+
+    "dirPath": {
+      "description": "A relative path to a directory — same rules as `path`, and must end in `/`, so the intent is legible without touching the filesystem.",
+      "type": "string",
+      "pattern": "^[^#?:/][^#?:]*/$",
+      "minLength": 2
+    },
+
+    "recipe": {
+      "description": "One verify recipe: what to run, and what it needs in order to run at all.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "run"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
+        },
+        "run": {
+          "description": "The command, as it would be typed from the repository root.",
+          "type": "string",
+          "minLength": 1
+        },
+        "requires": {
+          "description": "The tools the recipe needs. Declared rather than discovered, because a recipe that cannot run must be distinguishable from one that ran and failed — the difference between exit 2 and exit 1.",
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "doc": {
+          "description": "Where the recipe's checks and their known limits are written up. Resolved from the WORKSPACE root, like every other path in this manifest — unlike the sibling `run`, which is a command line and is therefore written as it would be typed from the repository root. The two bases differ because the two fields are read by different things: `doc` by something resolving paths, `run` by a shell.",
+          "$ref": "#/$defs/filePath"
+        }
+      }
+    },
+
+    "product": {
+      "description": "One product this workspace covers.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "product"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
+        },
+        "name": {
+          "description": "Display name, when it differs from the id.",
+          "type": "string",
+          "minLength": 1
+        },
+        "product": {
+          "description": "The product layer: mission, what it is, why it exists.",
+          "$ref": "#/$defs/filePath"
+        },
+        "affordances": {
+          "description": "What this product offers an agent working on it — entry points, commands, machine-readable contracts, and the honest gaps. Overrides the workspace-level default.",
+          "$ref": "#/$defs/filePath"
+        },
+        "repos": {
+          "description": "The `repos/` card names this product ships from.",
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+
+    "provenance": {
+      "description": "How a rule links to the incident that created it. NOT a manifest key — rules live in Markdown records (memory entries, proposals), and this is the normative shape their `provenance:` field is parsed into. One definition, two carriers. Adopted 2026-07-25 from .portulan/proposals/0002-sealed-provenance.md; see spec/slots.md for the reasoning and the honest limits.",
+      "type": "object",
+      "oneOf": [
+        {
+          "description": "Public — a resolvable link to the incident: a ticket, a PR, a postmortem, a commit.",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["form", "href"],
+          "properties": {
+            "form": { "enum": ["link"] },
+            "href": { "type": "string", "minLength": 1 }
+          }
+        },
+        {
+          "description": "Sealed — an owner and a date plus the de-identified failure shape, for an incident that cannot leave its owner's layer. The full chain stays in the owner's workspace; what travels is the stamp and the mechanism, never the episode.",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["form", "owner", "date", "shape"],
+          "properties": {
+            "form": { "enum": ["sealed"] },
+            "owner": {
+              "description": "Who can still see the incident and therefore re-validate the rule.",
+              "type": "string",
+              "minLength": 1
+            },
+            "date": {
+              "description": "ISO date of the incident, which is what the librarian nags against.",
+              "type": "string",
+              "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+            },
+            "shape": {
+              "description": "The de-identified failure: the inputs, the wrong outcome, and why the obvious guard misses it. The bar is that someone who never saw the incident can still write the rule's test.",
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        }
+      ]
+    }
+  }
+}

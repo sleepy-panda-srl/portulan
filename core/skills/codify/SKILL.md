@@ -29,9 +29,13 @@ in [`../../operating/`](../../operating/) as doctrine). A lesson that will not r
    why the obvious guard misses it. The bar is that an implementer who never saw the incident can still
    write the rule's test. **Generic must never decay into vague**: a rule that lost its failure shape
    lost the thing that made it enforceable, and de-identifying is not the same as abstracting away. Such
-   a rule's provenance is **sealed**: it carries that de-identified failure shape in place of the link.
-   See [`../../operating/memory.md`](../../operating/memory.md), which records this edge and what is
-   still unresolved about giving it a form a checker can verify.
+   a rule's provenance is **sealed** — a defined form since milestone 2 rather than a description of one:
+   an owner, a date, and that failure shape, in place of the link. The normative shape is
+   `$defs/provenance` in [`../../../spec/workspace.schema.json`](../../../spec/workspace.schema.json);
+   the reasoning is in [`../../../spec/slots.md`](../../../spec/slots.md). Sealing is the weaker option
+   and is meant to look it — [`../../operating/memory.md`](../../operating/memory.md) records what it
+   still does not buy, chiefly that the librarian cannot retire such a rule on evidence and must ask its
+   owner instead.
 2. **Draft the rule at the right altitude** — the most specific layer that still generalizes:
    `core` (universal), a `pack` (stack/tool/ritual), or the `workspace` (team policy). Wrong altitude
    is how rules bloat the always-loaded window — and how a team's specifics leak upward into layers that

@@ -16,21 +16,28 @@ are the point:
   gate map, the triage threshold, the default verify recipe, the DoD extension — was a promise with no
   instance behind it. Writing the instance is how those promises get tested, and the gaps it exposed are
   recorded in [`proposals/`](proposals/) rather than smoothed over.
-- **It is the material the schema gets derived from.** Milestone 2 defines the Workspace Definition, and
-  the plan sequences re-expression *before* schema deliberately — derive the spec from real content
-  instead of guessing it. This is that content, and none of it is a schema. The repo card, the task, the
-  handoff, the proposal, and the memory entries are instantiated from
-  [`../core/templates/`](../core/templates/); identity, the gate map, the DoD, and the verify recipe have
-  no template yet — they are exactly the freeform material milestone 2 derives its slots from.
+- **It was the material the schema got derived from.** The plan sequences re-expression *before* schema
+  deliberately — derive the spec from real content instead of guessing it. In milestone 2 that happened:
+  the freeform documents here became the slots in [`../spec/`](../spec/), and this workspace became the
+  first instance of the definition it produced, via [`workspace.json`](workspace.json). Two slots were
+  forced into existence by the exercise — [`principles.md`](principles.md) and
+  [`products/`](products/) — because a slot is addressed as a whole file and both had been sections of
+  [`identity.md`](identity.md). One slot was resisted on purpose: `products` is an array even though this
+  workspace has exactly one product, since a schema derived faithfully from a single sample would have
+  modelled it singular and been wrong by milestone 6. _(See [`../spec/slots.md`](../spec/slots.md) for
+  each slot's derivation.)_
 
 ## Layout
 
 | Path | What lives here |
 |---|---|
-| [`identity.md`](identity.md) | Who this team is, the stack, the principles that are ours, the glossary |
+| [`workspace.json`](workspace.json) | The **manifest**: which slots this workspace fills and where each one lives |
+| [`identity.md`](identity.md) | Who this team is, the stack, the glossary |
+| [`principles.md`](principles.md) | The constitution slot: the principles this team's work is graded against |
+| [`products/`](products/) | The product layer, one directory per product — mission/what/why, and agent affordances |
 | [`gate-map.md`](gate-map.md) | The policy half of autonomy: concrete actions bound to the engine's tiers |
 | [`dod.md`](dod.md) | Definition of done here — this workspace's extension of core's floor |
-| [`verify/`](verify/) | The verify recipe the Stop-gate will run, and what each check enforces |
+| [`verify/`](verify/) | The verify recipes the Stop-gate will run, and what each check enforces |
 | [`repos/`](repos/) | Repo cards — one per repository this workspace covers |
 | [`memory/`](memory/) | Durable facts with provenance, one per file |
 | [`tasks/`](tasks/) | Task files: the atomic unit of work and of context |
@@ -51,11 +58,16 @@ Three workspaces appear in the plan and they are easy to confuse:
 
 Honest limits, each with the milestone that closes it:
 
-- **No manifest and no schema.** The Workspace Definition arrives at milestone 2. Until then this is
-  documents, and their shape is evidence *for* that schema rather than an instance of it.
+- **A manifest, but no validator.** [`workspace.json`](workspace.json) declares this workspace against
+  [`../spec/workspace.schema.json`](../spec/workspace.schema.json), and nothing checks that the
+  declaration is true. `doctor` — schema conformance, plus linting these documents' claims against the
+  tree — lands in the second milestone-2 session. Today [`verify/json.sh`](verify/json.sh) confirms only
+  that the file parses, so every conformance claim here is still an assertion.
 - **No compiled gates.** [`gate-map.md`](gate-map.md) is read and honoured by people and agents; the
-  compiler that turns it into hooks and permissions is milestone 4. Today the map's authority is review,
-  not machinery — and the platform floor beneath it is not configured either (see the gate map).
+  compiler that turns it into hooks and permissions is milestone 4, so the map's authority is review
+  rather than machinery. The **platform floor beneath it is configured** — `main` rejects direct pushes
+  and requires `docs-integrity` green, with no exemption for administrators — so what still rests on
+  review is the tiers above the floor, not the floor.
 - **No generated memory index.** [`memory/`](memory/) is a flat directory. The size-budgeted index is
   *built, never hand-maintained* ([`../core/operating/memory.md`](../core/operating/memory.md)), so
   writing one by hand now would contradict the doctrine it implements; it arrives with the scheduled
