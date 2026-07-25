@@ -727,6 +727,64 @@ describe("workspace claims are linted against the tree", () => {
         assert.match(text(checks(findings, "claims")), /workspace-verify/);
     });
 
+    // Found on the third real workspace, which is what a third instance is for. A job's reported
+    // context is its `name:` when it has one and its id otherwise — so a gate map naming the ID of a
+    // job that carries a display name is naming something no check will ever report, and this lint
+    // used to pass it. Customer zero could not have surfaced it: its workflow deliberately sets no
+    // `name:` so that the two coincide.
+    test("a gate map naming a job id shadowed by a display name fails, and says why", async () => {
+        const m = wellFormed();
+        m.tree = "./";
+        const dir = tree(scratch(), {
+            ...minimalFiles,
+            "workspace.json": JSON.stringify(m),
+            "gate-map.md":
+                "# Gate map\n\n| Setting | Value |\n|---|---|\n| Required status check | `build-test` |\n",
+            ".github/workflows/ci.yml":
+                "name: ci\njobs:\n  build-test:\n    name: build + test\n    runs-on: ubuntu-latest\n",
+        });
+        const { findings } = await inspect(dir, { schema: SCHEMA });
+        const failures = severities(checks(findings, "claims"), "fail");
+        assert.equal(failures.length, 1);
+        assert.match(text(failures), /job \*\*id\*\*/);
+        assert.match(text(failures), /build \+ test/);
+    });
+
+    // Also from the third workspace: it requires two checks, and reading only the first silently
+    // exempted the second — which was the one that was wrong.
+    test("every check named in the row is linted, not just the first", async () => {
+        const m = wellFormed();
+        m.tree = "./";
+        const dir = tree(scratch(), {
+            ...minimalFiles,
+            "workspace.json": JSON.stringify(m),
+            "gate-map.md":
+                "# Gate map\n\n| Setting | Value |\n|---|---|\n" +
+                "| Required status checks | `gates` and `not-a-real-job` |\n",
+            ".github/workflows/ci.yml": "name: ci\njobs:\n  gates:\n    runs-on: ubuntu-latest\n",
+        });
+        const { findings, stats } = await inspect(dir, { schema: SCHEMA });
+        assert.equal(stats.claims, 2, "both claims counted");
+        const failures = severities(checks(findings, "claims"), "fail");
+        assert.equal(failures.length, 1);
+        assert.match(text(failures), /not-a-real-job/);
+    });
+
+    test("claiming the display name itself passes", async () => {
+        const m = wellFormed();
+        m.tree = "./";
+        const dir = tree(scratch(), {
+            ...minimalFiles,
+            "workspace.json": JSON.stringify(m),
+            "gate-map.md":
+                "# Gate map\n\n| Setting | Value |\n|---|---|\n| Required status check | `build + test` |\n",
+            ".github/workflows/ci.yml":
+                "name: ci\njobs:\n  build-test:\n    name: build + test\n    runs-on: ubuntu-latest\n",
+        });
+        const { findings } = await inspect(dir, { schema: SCHEMA });
+        assert.deepEqual(severities(checks(findings, "claims"), "fail"), []);
+    });
+
     test("a gate map naming a required check no workflow reports is a failure", async () => {
         const m = wellFormed();
         m.tree = "./";

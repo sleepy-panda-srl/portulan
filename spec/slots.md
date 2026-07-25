@@ -120,12 +120,24 @@ explicitly that which concrete action lands in which tier is workspace policy. T
 the one slot where core has already promised the workspace will answer, so a workspace without it leaves
 an engine promise unfulfilled — required, by the minimality rule's own test.
 
-**What `doctor` checks:** the path resolves; and, where the workspace declares a `tree`, that the status
-check the gate map says `main` requires is one a workflow in that tree actually reports. That is the gate
-map's half of the claims-against-the-tree lint, and it is narrower than "does not claim enforcement the
-repository does not have": it compares one named context against the job ids it can find. Whether branch
-protection *really* requires that context, and which app it is pinned to, are live settings, and a
-network call is not something a verify recipe here is allowed to make.
+**What `doctor` checks:** the path resolves; and, where the workspace declares a `tree`, that **every**
+status check the gate map says `main` requires is one a workflow in that tree actually reports. That is
+the gate map's half of the claims-against-the-tree lint, and it is narrower than "does not claim
+enforcement the repository does not have": it compares named contexts against what the workflows declare.
+
+Two details cost a false green each before a third workspace exposed them, and both are worth knowing
+before writing a gate map. **A job's reported context is its `name:` when it has one, and its id
+otherwise** — so a gate map naming the id of a job that carries a display name names something no check
+will ever report, and `doctor` says exactly that rather than "no such job". And **a row may name several
+checks**; reading only the first silently exempts the rest. Neither could surface on customer zero, whose
+workflow deliberately sets no `name:` so that id and context coincide, and which requires exactly one
+check.
+
+Whether branch protection *really* requires those contexts, and which app they are pinned to, are live
+settings — and a network call is not something a verify recipe here is allowed to make. Worth knowing
+when checking by hand: a branch protected by a **repository ruleset** returns `404 Branch not protected`
+from the classic `…/branches/main/protection` endpoint, which is a check reporting *not clear* about
+something that is fine.
 
 ## `verify` — the only slot that is structured because it is *consumed*
 
