@@ -37,7 +37,7 @@ detail:** a constraint living in the validator rather than the schema is invisib
 schema alone, which is exactly the complaint this proposal makes about the current state.
 
 **Version.** Additive constraint on an existing optional slot, so it can invalidate a manifest that used
-to pass: **MAJOR** by [`../../spec/README.md`](../../spec/README.md)'s own rule — 1.1 → 2.0, shipping with
+to pass: **MAJOR** by [`../../spec/README.md`](../../spec/README.md)'s own rule — shipping with
 the first migration this spec has ever needed. That is a real cost for one check, and it is the strongest
 argument against adopting this now rather than at milestone 4, when the enforcement compiler is likely to
 force a MAJOR anyway and this can ride along.
@@ -72,10 +72,19 @@ proposal's own recommendation, and the reasoning is better than the one it repla
   building the demo as the schema's second instance: a migration path whose first run is on a real adopter
   is a claimed capability, not a demonstrated one.
 
-**Not yet applied**, and the sequencing is load-bearing rather than administrative: **1.1 must land on
-`main` first.** Applying 2.0 inside pull request 15 would mean 1.1 never existed on `main`, the change
-would read 1.0 → 2.0, and the "first migration, exercised at zero blast radius" argument above would be
-describing a migration between a version nobody ever had and one nobody has yet. The follow-up carries the
-`doctor` cross-field check (test written red-first), the rule stated in
-[`../../spec/slots.md`](../../spec/slots.md), spec 1.1 → 2.0 with the first migration note, and
-[`0003`](0003-demote-three-workspaces-entry.md) alongside it.
+**Applied, 2026-07-25, in the same pull request** — at the maintainer's direction, rather than as the
+follow-up this section first proposed. The reversal is worth recording because the objection turned out to
+be wrong. It ran: *1.1 must land on `main` first, or the change reads 1.0 → 2.0 and the migration is
+between a version nobody ever had and one nobody has yet.* But `main` carries **1.0**, so 1.0 → 2.0 is a
+migration from a version that genuinely shipped — and 1.1 existed only on an unmerged branch, which is not
+a version anyone had either. Publishing 1.1 to `main` in order to obsolete it an hour later would have
+been the worse practice, and it would have cost two version bumps where one does the work.
+
+What landed: the `doctor` cross-field check ([`../../cli/doctor.mjs`](../../cli/doctor.mjs), test written
+red-first and red for the right reason — adding it turned eight existing tests red at once, since their
+shared baseline manifest was a `repository` with no `tree`, which is the cheapest possible confirmation
+that the constraint binds every such workspace and not only the one it was written against); the rule
+stated in [`../../spec/slots.md`](../../spec/slots.md) **with its cost named** — it is the one rule the
+schema does not carry, because the subset has no `dependentRequired`; spec 1.0 → **2.0** with the
+migration written up in [`../../spec/README.md`](../../spec/README.md); and every manifest moved to 2.0,
+which was fourteen files and **zero content edits**, exactly as the acceptance argument predicted.

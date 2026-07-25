@@ -640,6 +640,23 @@ export async function inspect(workspaceDir, options = {}) {
         }
     });
 
+    // Proposal 0005, accepted 2026-07-25 and applied here. A `repository` workspace is the policy layer
+    // of a repository that is present, so it always has an answer; `demo` and `portfolio` describe
+    // repositories that are not beside them and genuinely do not.
+    //
+    // This constraint cannot live in the schema: a conditional dependency between two keys needs `if`/
+    // `then` or `dependentRequired`, and neither is in the subset spec/README.md declares. So it is here,
+    // and spec/slots.md states it as a rule the schema does not carry. That asymmetry is a real cost —
+    // a constraint invisible to anyone reading the schema alone — and it is stated rather than hidden.
+    if (workspace.kind === "repository" && !workspace.tree) {
+        fail(
+            "cross",
+            "a `repository` workspace must declare `tree` — it is the policy layer of a repository that " +
+                "is present, so it has an answer, and without one every repo-card and gate-map claim " +
+                "silently degrades from checked to unverifiable",
+        );
+    }
+
     if (workspace.packs?.length) {
         report("cross", `${workspace.packs.length} pack(s) declared — a declaration only: resolving a pack to an installed plugin needs the plugin machinery (milestone 3) and the feed (milestone 6)`);
     }
