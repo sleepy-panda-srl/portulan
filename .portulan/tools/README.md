@@ -13,6 +13,15 @@
 |---|---|
 | [`gh-bot-token.mjs`](gh-bot-token.mjs) | Mints a short-lived GitHub App installation token and prints it |
 | [`gh-bot`](gh-bot) | Runs a `gh` command as the agent identity rather than as the maintainer |
+| [`portulan-agent-logo.svg`](portulan-agent-logo.svg) | The App's avatar, in source form |
+
+The avatar is a **portolan wind rose**: the rhumb-line network radiating from a compass rose is the one
+feature that makes a portolan chart recognisable at a glance, which is the same reason the product carries
+the name. Thirty-two rhumbs, an eight-point rose with faceted points, and the north point marked in
+vermilion — as it is on the charts themselves, where north is the one direction worth colouring
+differently. Kept as SVG rather than only a PNG so it can be re-rendered at any size and edited without a
+design tool; export a 1000×1000 PNG to upload, since GitHub does not accept SVG avatars. It is drawn to
+survive the crop and the scale that actually matter: a circle, at roughly forty pixels, next to a comment.
 
 ## Why the agent needs its own identity
 
