@@ -91,7 +91,7 @@ enforces:
 | Setting | Value |
 |---|---|
 | Direct pushes | rejected — every change goes through a pull request |
-| Required status check | `docs-integrity` — the verify recipe, run by CI |
+| Required status check | `docs-integrity` — **being renamed to `workspace-verify`**; both contexts report today, see below |
 | Administrators | **included**; the maintainer has no exemption |
 | Required approving reviews | 0 — see below |
 | Conversation resolution | required before merge |
@@ -108,6 +108,15 @@ administrators would deadlock every merge. Requiring the PR and the green check 
 anyone — is the strongest floor a solo maintainer can actually stand on. When a second reviewer exists,
 raise the count; the setting to preserve is `enforce_admins`, because a floor with an exemption for the
 only actor who can act is not a floor.
+
+**The required check is mid-rename.** The context `main` pins is `docs-integrity`, a name that stopped
+describing the job once it ran more than a docs linter. It cannot be renamed in place: the required
+context would stop reporting, the pull request doing it would never be mergeable, and `enforce_admins`
+means it could not be forced through. So the sequence is deliberate —
+[`proposals/0004-ci-runs-every-declared-recipe.md`](proposals/0004-ci-runs-every-declared-recipe.md): both
+contexts report now, **the maintainer re-points protection to `workspace-verify`** (a Gated action, and the
+only step an agent cannot take), then the transitional job is deleted. Until step 2 happens, the name on
+the gate is wrong and the gate itself is sound.
 
 **Still absent:** no `CODEOWNERS`, so no path-specific human is required on any file — including
 [`../docs/vision.md`](../docs/vision.md), which is protected today only by the prohibition above and not

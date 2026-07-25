@@ -331,3 +331,17 @@ the seam applies here too: no client-identifying references)_
   read the exit code through a pipe and so reported `tail`'s status instead of the step's, which is the same
   class of mistake the change is about.
   Seam scan clean across files, commit message, and branch name.
+
+- 2026-07-25 · Infrastructure · **Required-check rename, step 1 of 3** (maintainer's direction: do it before
+  `doctor`, so the next recipe joins a check whose name already tells the truth). `workspace-verify` is now
+  the job that runs the recipes; `docs-integrity` survives only as a transitional job that runs nothing and
+  mirrors the other's verdict, because it is the context `main` pins and renaming it in place would leave
+  the renaming pull request permanently unmergeable. The work moved *into* the new job rather than the old
+  one keeping it, so step 3 is a deletion rather than a migration. **One trap, caught while writing it:** the
+  transitional job uses `if: always()` plus an explicit check of `needs.workspace-verify.result` rather than
+  a bare `needs:` — a job skipped because its dependency failed reports *skipped*, and a skipped required
+  check does not block a merge, so the obvious spelling would have turned a red recipe into a mergeable pull
+  request. That is the third fail-open of this shape in two days, all in gate machinery, and the pattern is
+  worth naming: the scaffolding around a check is where the check stops holding. **Step 2 is Gated and the
+  maintainer's** — re-point branch protection at `workspace-verify` once this is on `main` — and step 3
+  deletes the transitional job. Seam scan clean across files, commit message, and branch name.
