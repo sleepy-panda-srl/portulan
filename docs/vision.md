@@ -37,8 +37,8 @@ One sentence: **cockpit products sell the dashboard; Portulan sells the doctrine
 4. **Every mistake compiles into a permanent rule** — with provenance, in one of exactly two forms:
    a resolvable link to the incident that created it, or — when the incident cannot leave its owner's
    layer — a sealed stamp: owner, date, and the de-identified failure shape (Hashimoto's loop,
-   compounding engineering). The librarian retires rules whose incidents can no longer occur; a sealed
-   rule it cannot judge, so it nags the owner to re-validate instead.
+   compounding engineering). The librarian retires rules whose incidents can no longer occur. It
+   cannot judge a sealed rule, so it nags the owner to re-validate instead.
 5. **Human-curated, agent-drafted.** Agents may draft the curated layer, never own it
    (ETH Zurich, arXiv:2602.11988: generated context hurts, curated helps). Supervised evolution —
    proposals reviewed by humans, eval-gated where possible — is the moat against drift.
