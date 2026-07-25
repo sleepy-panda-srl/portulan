@@ -31,7 +31,28 @@ command -v node >/dev/null 2>&1 || {
     exit 2
 }
 
-count=$(find cli -name '*.test.mjs' -type f | wc -l | tr -d '[:space:]')
+# The count IS the precondition, so establishing it is itself a precondition — the same recursion
+# ../memory/verify-preconditions-fail-closed.md describes, one level in. Piping `find` straight into
+# `wc -l` discards `find`'s exit status, and a partial failure is the dangerous case rather than a
+# total one: with one unreadable subdirectory `find` prints an error, exits 1, and still lists what it
+# could reach, so the count comes back plausible-but-short and the suite runs a subset while reporting
+# on the whole. Demonstrated at two files, one unreadable directory, count 1. Found by a reviewer on
+# the pull request.
+tmp=$(mktemp) || exit 2
+trap 'rm -f -- "$tmp"' EXIT
+
+if ! find cli -name '*.test.mjs' -type f >"$tmp"; then
+    printf 'verify: find failed while enumerating test files — cannot establish what would run\n' >&2
+    exit 2
+fi
+
+count=$(wc -l <"$tmp" | tr -d '[:space:]')
+case "$count" in
+    '' | *[!0-9]*)
+        printf 'verify: could not count test files (got "%s") — refusing to guess\n' "$count" >&2
+        exit 2
+        ;;
+esac
 if [ "$count" -eq 0 ]; then
     printf 'verify: no test files found under cli/ — refusing to report green having run nothing\n' >&2
     exit 2

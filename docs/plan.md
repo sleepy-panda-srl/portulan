@@ -444,5 +444,12 @@ the seam applies here too: no client-identifying references)_
   Loud and pull-request-visible, and the same shape as the rest of the fabric where declaring is what
   enforces, so it is carried debt rather than a blocker — drafted as
   `.portulan/proposals/0005-a-repository-workspace-must-declare-its-tree.md`, not applied, because binding
-  it is a MAJOR bump for one check and that trade is the maintainer's. Seam scan clean across files,
-  commit message, and branch name.
+  it is a MAJOR bump for one check and that trade is the maintainer's. **A Copilot review on the pull
+  request then found the fifth and sixth defects of the fail-open class in four days**, both in the two
+  recipes this session added, both in the scaffolding rather than in a check: `doctor.sh` passed a missing
+  validator through as exit 1 — a red verdict about two workspaces nothing had looked at, one dependency
+  over from the `node` guard written to stop that exact shape — and `tests.sh` piped `find` into `wc -l`
+  without checking `find`, where the dangerous case is a *partial* failure rather than a total one, since
+  one unreadable subdirectory yields a plausible-but-short count and the suite then runs a subset while
+  reporting on the whole. Both demonstrated and now exit 2. The pattern is worth naming once: the guard is
+  never where the check is. Seam scan clean across files, commit message, and branch name.

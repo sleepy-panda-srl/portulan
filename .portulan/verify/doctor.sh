@@ -24,4 +24,14 @@ command -v node >/dev/null 2>&1 || {
     exit 2
 }
 
+# The validator's own presence is a precondition, and checking it here is not belt-and-braces.
+# `node cli/doctor.mjs` on a missing file exits **1** — demonstrated — which this recipe would pass
+# through as "the workspaces do not validate", a verdict about two workspaces nothing looked at. The
+# guards above turn a missing dependency into a 2; without this one, a missing *tool* still becomes a
+# red. Found by a reviewer on the pull request, in the recipe that has no tests.
+[ -f cli/doctor.mjs ] || {
+    printf 'verify: cli/doctor.mjs not found — this recipe cannot run\n' >&2
+    exit 2
+}
+
 node cli/doctor.mjs .portulan examples
