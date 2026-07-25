@@ -59,11 +59,25 @@ linter exercises source. `doctor` is the first code, and `tests.sh` is the first
 suite rather than a linter — so the promise this section used to make, that real tests would join these
 rather than replace them, is kept rather than pending.
 
-The claim is still bounded. The suite covers `doctor`: its schema subset, its exit codes, its parsers,
-its severity split. **Nothing tests the other three recipes** — `docs.sh`, `json.sh` and `tests.sh` are
-still verified by being run, which is a weaker claim than it sounds, and is why both defects recorded
-under Provenance below were found by a human and a reviewer rather than by a harness. A defect in
-`docs.sh` today would look exactly like a green run.
+The claim is still bounded, and the bound was demonstrated within hours of being written. The suite
+covers `doctor`: its schema subset, its exit codes, its parsers, its severity split. **Nothing tests the
+recipes themselves** — `docs.sh`, `json.sh`, `doctor.sh` and `tests.sh` are verified by being run, which
+is a weaker claim than it sounds. Every defect ever found in them was found by a human or a reviewer, and
+the two most recent were found by a reviewer on the pull request that introduced them, in the two recipes
+this file had just finished describing:
+
+- **`doctor.sh` reported a missing validator as a red verdict.** `node cli/doctor.mjs` on a missing file
+  exits `1`, which the wrapper passed through — so "the validator is not there" arrived as "the two
+  workspaces do not validate", about two workspaces nothing had looked at. The `node` guard beside it had
+  been written precisely to stop that shape, one dependency over.
+- **`tests.sh` piped `find` into `wc -l` and never checked `find`.** A total failure is harmless — the
+  count comes back `0` and the recipe exits `2`. A **partial** failure is not: with one unreadable
+  subdirectory `find` exits `1` and still lists what it reached, so the count is plausible-but-short and
+  the suite runs a subset while reporting on the whole. Measured at two files, one unreadable directory,
+  count `1`.
+
+Both are now preconditions that exit `2`. The pattern across them, and across the three earlier ones, is
+worth stating once: **the guard is never where the check is — it is in the scaffolding around it.**
 
 Saying all this matters: a recipe that implies more coverage than it has makes every later green worth
 less.

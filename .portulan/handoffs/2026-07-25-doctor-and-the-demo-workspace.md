@@ -221,9 +221,17 @@ outcome is worth anticipating — the pilot predates the spec, so if it has no m
 
 ## Open questions
 
-1. **Nothing tests the other three recipes.** `docs.sh`, `json.sh` and `tests.sh` are still verified by
-   being run. Both defects ever found in them were found by a human and a reviewer. A defect in `docs.sh`
-   today looks exactly like a green run.
+1. **Nothing tests the recipes themselves — and this stopped being hypothetical during the review.** A
+   Copilot review on [PR #15](https://github.com/sleepy-panda-works/portulan/pull/15) found two more
+   exit-code defects, both in the recipes this session added and both of the same shape as the three
+   before them. `doctor.sh` passed a missing validator through as exit `1` — a red verdict about two
+   workspaces nothing had looked at — one dependency over from the `node` guard written to stop exactly
+   that. And `tests.sh` piped `find` into `wc -l` without checking `find`, where the dangerous case is a
+   **partial** failure rather than a total one: one unreadable subdirectory and the count comes back
+   plausible-but-short, so the suite runs a subset and reports on the whole. Both demonstrated, both now
+   exit `2`. **Five defects of this class in four days, every one in scaffolding rather than in a check.**
+   A recipe harness is the obvious answer and it is not free — `tests.sh` cannot be run from inside the
+   suite it runs — so it is named here rather than improvised at a milestone close.
 2. **`type` is self-declared.** A rule labelled `decision` walks past the provenance check. Closing it
    means inferring type from content (guesswork) or extending the mandate (the maintainer's to legislate).
 3. **The gate-map lint sees the tree, never the platform.** It matches a claimed status-check name against
