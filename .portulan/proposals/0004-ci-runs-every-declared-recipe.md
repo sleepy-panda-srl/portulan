@@ -44,10 +44,19 @@ context. It fails closed, which is the safe direction, and it strands the rename
 change it was trying to avoid sequencing: the maintainer can always edit branch protection, but now does
 it out of order and under pressure. The sequence that works:
 
-1. A pull request adds the new job **alongside** `docs-integrity`; both report. (Mergeable, because the
-   required context still exists.)
-2. **Gated, maintainer:** branch protection is re-pointed at the new context.
-3. A pull request removes `docs-integrity`.
+1. ✅ **Done.** A pull request adds the new job **alongside** `docs-integrity`; both report. (Mergeable,
+   because the required context still exists.) The real job is now `workspace-verify`, and `docs-integrity`
+   is a transitional job that runs no recipes and mirrors the other's verdict.
+2. ⬜ **Gated, maintainer — the step that is yours.** Once step 1 is on `main` and `workspace-verify` has
+   reported there, re-point branch protection's required status check from `docs-integrity` to
+   `workspace-verify`.
+3. ⬜ A pull request deletes the transitional `docs-integrity` job. Nothing moves with it.
+
+One construction detail from step 1, because it is a trap rather than a preference: the transitional job
+uses `if: always()` plus an explicit check of `needs.workspace-verify.result`, **not** a bare `needs:`. A
+job skipped because its dependency failed reports *skipped*, and a skipped required check does not block a
+merge — so the obvious spelling would have turned a red recipe into a mergeable pull request. A fail-open,
+in the scaffolding of the change whose subject is closing fail-opens.
 
 Recommended name: `verify` or `workspace-verify` — something that means *the workspace's verify recipes
 ran*, which stays true however many recipes there are. Worth doing before `doctor` lands, though not

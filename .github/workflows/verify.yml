@@ -7,8 +7,14 @@
 #
 # The recipes are NOT listed here. They are read from `.portulan/workspace.json`, so adding a
 # recipe to the manifest makes it enforced — no workflow edit, and no branch-protection change
-# that somebody has to remember. See .portulan/proposals/0004-ci-runs-every-declared-recipe.md;
-# the rename this check still wants is a separate, sequenced, Gated step, documented there.
+# that somebody has to remember. See .portulan/proposals/0004-ci-runs-every-declared-recipe.md.
+#
+# TWO CONTEXTS REPORT RIGHT NOW, ON PURPOSE. `workspace-verify` is the real job and the name
+# that will last. `docs-integrity` is transitional: it is the context `main`'s branch protection
+# currently pins, and it cannot be renamed in a pull request — the required context would stop
+# reporting, the pull request would never be mergeable, and `enforce_admins` means it could not
+# be forced through. So this is step 1 of the three-step sequence in proposal 0004: both report,
+# then protection is re-pointed (Gated, maintainer), then the transitional job is deleted.
 #
 # Deliberately no matrix and no cache: the recipes need bash, git, POSIX text utilities, and
 # node — all preinstalled on the runner. Note there is no actions/setup-node step, and that is
@@ -27,13 +33,15 @@ permissions:
   contents: read
 
 jobs:
-  # This job id is the status-check context branch protection pins to, so it carries the
-  # human-readable name rather than a `name:` override — a display name would become the
-  # context string, and one containing punctuation is awkward to pin and fragile to rename.
-  # Renaming this id silently detaches any required-check rule that referenced it, so it is
-  # NOT renamed here even though it now covers more than docs: see proposal 0004 for the
-  # three-step sequence that changes it safely.
-  docs-integrity:
+  # A job id is the status-check context, so these ids carry the human-readable names rather
+  # than a `name:` override — a display name would become the context string, and one containing
+  # punctuation is awkward to pin and fragile to rename. Renaming an id silently detaches any
+  # required-check rule that referenced it, which is why the old id is retired by deletion after
+  # protection moves, never by renaming in place.
+  #
+  # This is the job that does the work, and the name that survives: it says the workspace's
+  # verify recipes ran, which stays true however many recipes the manifest declares.
+  workspace-verify:
     runs-on: ubuntu-latest
     steps:
       # Pinned to a full-length commit SHA. This organisation's Actions policy requires it, and
@@ -107,3 +115,30 @@ jobs:
           done <<<"$recipes"
 
           exit "$status"
+
+  # ---------------------------------------------------------------- transitional, delete me
+  # Retained ONLY because `main`'s branch protection still requires this context. It runs no
+  # recipes; it mirrors the verdict of the job above so the required check keeps reporting
+  # while the rename is sequenced.
+  #
+  # `if: always()` with an explicit result check, rather than plain `needs:`. A job that is
+  # *skipped* because its dependency failed does not report a failure — and a skipped required
+  # check does not block a merge. Using bare `needs:` here would therefore have turned a red
+  # recipe into a mergeable pull request: a fail-open, in the transitional scaffolding of a
+  # change whose entire subject is closing fail-opens.
+  #
+  # DELETE THIS JOB once branch protection requires `workspace-verify`
+  # (proposal 0004, step 3). Nothing else moves with it — the real job is already above.
+  docs-integrity:
+    needs: workspace-verify
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Mirror the verdict of workspace-verify
+        run: |
+          result='${{ needs.workspace-verify.result }}'
+          if [ "$result" != "success" ]; then
+            printf '::error::workspace-verify did not succeed (%s) — this transitional check mirrors it\n' "$result"
+            exit 1
+          fi
+          printf 'workspace-verify succeeded; this transitional context mirrors that verdict.\n'
