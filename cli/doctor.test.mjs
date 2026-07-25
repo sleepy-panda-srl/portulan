@@ -68,10 +68,14 @@ const checks = (findings, check) => findings.filter((f) => f.check === check);
 const text = (findings) => findings.map((f) => f.message).join("\n");
 
 // A manifest that satisfies every required key, for tests that mutate one thing at a time.
+// `tree` is here because `kind: repository` requires it as of spec 2.0 (proposal 0005) — adding the
+// check turned eight of these tests red at once, which is the cheapest possible confirmation that the
+// constraint binds every repository workspace rather than only the one it was written against.
 const wellFormed = () => ({
-    portulan: { spec: "1.1" },
+    portulan: { spec: "2.0" },
     name: "fixture",
     kind: "repository",
+    tree: "./",
     slots: { identity: "identity.md", principles: "principles.md", gates: "gate-map.md" },
     verify: { default: "docs", recipes: [{ id: "docs", run: "./verify.sh" }] },
 });
@@ -236,7 +240,7 @@ describe("the schema validator implements exactly the declared subset", () => {
 
 describe("the schema declares which Workspace Definition version it implements", () => {
     test("the shipped schema carries it in `$id`", () => {
-        assert.deepEqual(schemaVersion(SCHEMA), { major: 1, minor: 1 });
+        assert.deepEqual(schemaVersion(SCHEMA), { major: 2, minor: 0 });
     });
 
     test("a schema whose `$id` does not carry one is refused", () => {
@@ -611,6 +615,33 @@ describe("workspace claims are linted against the tree", () => {
         }
     });
 
+    // Proposal 0005, accepted 2026-07-25. A `repository` workspace IS the policy layer of a repository
+    // that is present, so it has no honest reason to omit `tree` — and while it could, deleting one
+    // manifest line degraded the whole claims-lint class to notes, GREEN, exit 0. The escape narrows
+    // from "omit a line" to "lie about what you are", which is better and is not a fix.
+    test("a `repository` workspace must declare `tree`", async () => {
+        const m = wellFormed();
+        m.kind = "repository";
+        delete m.tree;
+        const dir = tree(scratch(), { ...minimalFiles, "workspace.json": JSON.stringify(m) });
+        const { findings } = await inspect(dir, { schema: SCHEMA });
+        const failures = severities(checks(findings, "cross"), "fail");
+        assert.equal(failures.length, 1);
+        assert.match(text(failures), /tree/);
+        assert.equal(await run([dir], { quiet: true }), 1);
+    });
+
+    test("`demo` and `portfolio` may omit `tree` — they describe repositories not present", async () => {
+        for (const kind of ["demo", "portfolio"]) {
+            const m = wellFormed();
+            m.kind = kind;
+            delete m.tree;
+            const dir = tree(scratch(), { ...minimalFiles, "workspace.json": JSON.stringify(m) });
+            const { findings } = await inspect(dir, { schema: SCHEMA });
+            assert.deepEqual(severities(findings, "fail"), [], `${kind} must not be failed for omitting tree`);
+        }
+    });
+
     test("a workspace that declares no tree reports its claims unverifiable, never skips them", async () => {
         const m = wellFormed();
         m.kind = "demo";
@@ -777,17 +808,20 @@ describe("exit codes: 0 validates, 1 does not, 2 could not run", () => {
             return tree(scratch(), { ...minimalFiles, "workspace.json": JSON.stringify(m) });
         };
         assert.equal(await run([build("9.9")], { quiet: true }), 2, "a MAJOR ahead");
-        assert.equal(await run([build("1.9")], { quiet: true }), 2, "a MINOR ahead");
-        assert.equal(await run([build("1.1")], { quiet: true }), 0, "the current version");
+        assert.equal(await run([build("2.9")], { quiet: true }), 2, "a MINOR ahead");
+        assert.equal(await run([build("2.0")], { quiet: true }), 0, "the current version");
     });
 
+    // "MINOR is additive, so an older manifest stays valid" is the versioning rule's whole promise.
+    // There is no 2.x older than 2.0 yet, so the older side is supplied by a synthetic schema one
+    // MINOR ahead — which tests the comparison rather than waiting for a version to exist.
     test("an older MINOR still validates, and says it is older", async () => {
-        const m = wellFormed();
-        m.portulan.spec = "1.0";
-        const dir = tree(scratch(), { ...minimalFiles, "workspace.json": JSON.stringify(m) });
-        const { findings } = await inspect(dir, { schema: SCHEMA });
+        const ahead = { ...SCHEMA, $id: "https://portulan.dev/spec/2.1/workspace.schema.json" };
+        const dir = tree(scratch(), { ...minimalFiles, "workspace.json": JSON.stringify(wellFormed()) });
+        const { findings } = await inspect(dir, { schema: ahead });
         assert.equal(severities(findings, "fail").length, 0);
-        assert.match(text(checks(findings, "schema")), /1\.0/);
+        assert.match(text(checks(findings, "schema")), /2\.0/);
+        assert.match(text(checks(findings, "schema")), /additive/);
     });
 
     test("2 when the schema itself cannot be read", async () => {

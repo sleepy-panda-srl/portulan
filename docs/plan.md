@@ -410,9 +410,9 @@ the seam applies here too: no client-identifying references)_
   repo card describes, and the demo's repositories do not exist. The obvious answer, dispatching on
   `kind`, was rejected twice: it breaks on the portfolio workspace at milestone 6, which is not a demo and
   has no single tree either; and it would disable a whole check class on a **self-declared** field. So
-  `tree` is declared (spec 1.0 → **1.1**, additive, older manifests still valid — the versioning rule
-  demonstrated rather than described), and a workspace without one has its claims **reported
-  unverifiable**, never skipped. Provenance binds `type: rule` and nothing else, because thesis 4,
+  `tree` is declared, and a workspace without one has its claims **reported unverifiable**, never skipped.
+  It began optional and ended **required for `kind: repository`** — see the proposals below — which took
+  the spec to **2.0** with the first migration this project has written. Provenance binds `type: rule` and nothing else, because thesis 4,
   proposal 0002 as adopted, `dod.md` condition 3 and the milestone criterion are all rule-scoped; binding
   more would be tooling enforcing a rule nobody legislated. Two thesis-4 notices swept, now that the
   constitution names both forms — the machine enforces what the constitution states, which is the only
@@ -452,4 +452,19 @@ the seam applies here too: no client-identifying references)_
   without checking `find`, where the dangerous case is a *partial* failure rather than a total one, since
   one unreadable subdirectory yields a plausible-but-short count and the suite then runs a subset while
   reporting on the whole. Both demonstrated and now exit 2. The pattern is worth naming once: the guard is
-  never where the check is. Seam scan clean across files, commit message, and branch name.
+  never where the check is. **Both pending proposals were then decided and applied in the same pull
+  request**, on a recommendation the maintainer commissioned from a fresh-context Fable 5 and posted under
+  the agent identity. `0003` retired its memory entry — demoted to `reference` and trimmed to the
+  directory-to-`kind` mapping, with the vocabulary left to the spec where it is now singular rather than
+  duplicated; the first retirement condition in this workspace to have fired and been acted on, which
+  gives milestone 5's demotion pass a real instance instead of a specification of one. `0005` made `tree`
+  **required for `kind: repository`**, taking the spec to **2.0** with its first migration. That
+  recommendation reversed this session's own conclusion and was right to: the proposal had priced "MAJOR
+  for one check" against the wrong date, when two manifests exist, one already declared `tree` and the
+  other is exempt — fourteen files moved and **zero content edits**. The implementer's follow-on
+  objection, that 1.1 had to reach `main` first, was also wrong and is recorded as such: `main` carries
+  1.0, so 1.0 → 2.0 is a migration from a version that genuinely shipped, and publishing 1.1 only to
+  obsolete it an hour later would have cost two bumps to do one bump's work. One cost is stated rather
+  than hidden — the new constraint is the single rule the schema does not carry, because the declared
+  subset has no `dependentRequired`, so it lives in `doctor` and `spec/slots.md` says so loudly. Seam scan
+  clean across files, commit message, and branch name.

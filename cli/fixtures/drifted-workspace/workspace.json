@@ -1,6 +1,6 @@
 {
   "portulan": {
-    "spec": "1.1"
+    "spec": "2.0"
   },
   "name": "drifted",
   "summary": "A fixture workspace whose repo card describes a tree it no longer matches — the claims lint's red path.",

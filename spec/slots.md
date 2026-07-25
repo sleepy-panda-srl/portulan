@@ -55,7 +55,7 @@ experience a failure. *(Binding non-goal: no ceremony that can't scale down.)*
 | `verify` | structured | **yes** | criterion — *verify recipes*; [`verification.md`](../core/operating/verification.md) — the workspace sets the default |
 | `products[]` | structured | no | criterion — *product-layer slot … portfolio-aware*; content — [`identity.md`](../.portulan/identity.md) |
 | `affordances` | path | no | criterion — *agent-affordances slot*; constitution — the agent-native / AX row of the influence map |
-| `tree` | path | no | criterion — *lints workspace claims against the tree*; content — [`../examples/`](../examples/), the first workspace whose repositories are not present |
+| `tree` | path | **for `kind: repository`** | criterion — *lints workspace claims against the tree*; content — [`../examples/`](../examples/), the first workspace whose repositories are not present |
 | `packs` | structured | no | constitution — thesis 1's cascade, `core < pack < workspace` |
 | `provenance` | record field | **on every rule** | criterion — *provenance slot*; [proposal 0002](../.portulan/proposals/0002-sealed-provenance.md), adopted |
 
@@ -211,7 +211,7 @@ milestone does **not** fire that condition.
 
 ## `tree` — where the claims are checked against, and why it is declared rather than inferred
 
-Added in v1.1, and it exists because the claims lint needed an answer to a question nobody had asked
+Added in v2.0 (the slot in 1.1, the requirement in 2.0), and it exists because the claims lint needed an answer to a question nobody had asked
 while there was only one workspace: *which* tree does a repo card's `test:` line refer to?
 
 Customer zero's answer is obvious — the repository the workspace sits in, one level up. The demo's
@@ -234,7 +234,21 @@ reasons, and the second is the stronger one.
 So the workspace declares it. Present means *lint these claims against that tree*; absent means *these
 claims describe something not present here*.
 
-**What `doctor` checks:** the path resolves to a directory. With `tree` present, every path-shaped claim
+**And a `repository` workspace must declare it** — spec 2.0, from
+[proposal 0005](../.portulan/proposals/0005-a-repository-workspace-must-declare-its-tree.md). Optional
+everywhere turned out to be a hole: deleting one line degraded the whole claims-lint class to notes,
+GREEN, exit 0. A `repository` workspace *is* the policy layer of a repository that is present, so it
+always has an answer; `demo` and `portfolio` genuinely do not, and stay exempt.
+
+**This is the one rule here the schema does not carry, and that is a real cost.** A conditional
+dependency between two keys needs `if`/`then` or `dependentRequired`, and neither is in the subset
+[`README.md`](README.md) declares — so the constraint lives in `doctor` as a cross-field check, invisible
+to anyone reading the schema alone. Stated loudly rather than hidden, because "read the schema to know
+the contract" is otherwise false in exactly one place, and an unmarked exception is worse than a marked
+one.
+
+**What `doctor` checks:** the path resolves to a directory; and that a `repository` workspace has one.
+With `tree` present, every path-shaped claim
 in a repo card must exist, and the gate map's required-check claim must match a workflow job. With
 `tree` absent, those claims are counted and **reported unverifiable** — never skipped silently, because
 the whole point is that a check which vanishes without saying so is worse than one that admits it could
@@ -353,7 +367,7 @@ Each of these was a candidate; none is an oversight.
 - **`evals`.** Milestone 8 owns the eval harness; a slot pointing at golden tasks before any exist would
   be the emptiest kind of scaffolding.
 
-## What v1.1 is not
+## What v2.0 is not
 
 - **It has been validated against exactly two instances**, one of which it was derived from. The demo in
   [`../examples/`](../examples/) was the real test, and it did what a second instance is supposed to do:

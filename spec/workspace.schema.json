@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://portulan.dev/spec/1.1/workspace.schema.json",
-  "title": "Portulan Workspace Definition v1.1",
+  "$id": "https://portulan.dev/spec/2.0/workspace.schema.json",
+  "title": "Portulan Workspace Definition v2.0",
   "description": "The manifest at the root of a workspace. It is an index, not a container: it names the slots the engine resolves against and points at the Markdown that holds each slot's content and rationale. Written in a deliberately small subset of JSON Schema 2020-12 — see spec/README.md for the subset and for what validates it.",
   "type": "object",
   "additionalProperties": false,

@@ -57,7 +57,14 @@ holding the two in agreement — and this milestone's own new entry
 is fresh evidence that duplicated unchecked prose is exactly where this repository's drift happens.
 Acting on a retirement condition by hand, once, also gives the milestone-5 librarian its reference shape.
 
-**Not yet applied.** The entry is still untouched. Applying it is a memory-entry edit landing with
-[`0005`](0005-a-repository-workspace-must-declare-its-tree.md) in the follow-up immediately after pull
-request 15 merges — kept out of that pull request because it had already passed all three supervised
-checkpoints, and a post-checkpoint edit is one no supervisor saw.
+**Applied, 2026-07-25, in the same pull request**, at the maintainer's direction.
+[`../memory/three-workspaces-not-one.md`](../memory/three-workspaces-not-one.md) is now `type: reference`,
+trimmed to the directory-to-`kind` mapping — the half that is this team's own specifics — with the
+vocabulary and the two failure modes left to [`../../spec/README.md`](../../spec/README.md), where they
+are now singular rather than duplicated. Its retirement condition was rewritten too, since the old one had
+fired: it now retires when the mapping becomes derivable, which `doctor` reading every manifest in a tree
+would do.
+
+This is the first retirement condition in this workspace to have fired and been acted on, which was the
+strongest argument for doing it by hand rather than waiting for the librarian: milestone 5's demotion pass
+now has one real instance to learn its shape from instead of a specification of one.

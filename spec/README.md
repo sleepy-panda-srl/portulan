@@ -60,8 +60,10 @@ A slot is **required** only when a workspace without it breaks a promise the eng
 whole test, and it is deliberately strict — a day-one workspace has no proposals, no handoffs, and no
 memory yet, and it must still validate. Ceremony that cannot scale down is a binding non-goal.
 
-Required: `portulan.spec`, `name`, `kind`, `slots.identity`, `slots.principles`, `slots.gates`, `verify`.
-Everything else is optional. [`slots.md`](slots.md) argues each one.
+Required: `portulan.spec`, `name`, `kind`, `slots.identity`, `slots.principles`, `slots.gates`, `verify`
+— plus `tree` when `kind` is `repository`, which is the one conditional requirement and the one the
+schema cannot express (the subset has no `dependentRequired`; `doctor` enforces it and
+[`slots.md`](slots.md) says so). Everything else is optional. [`slots.md`](slots.md) argues each one.
 
 Note the distinction that does the work here: the *definition* carries a slot, while an *instance* may
 leave it empty. "The Workspace Definition has a product-layer slot" and "every workspace must declare a
@@ -69,20 +71,47 @@ product" are different claims, and only the first is true.
 
 ## Versioning and migrations
 
-`portulan.spec` is `MAJOR.MINOR`, and the current version is **1.1**.
+`portulan.spec` is `MAJOR.MINOR`, and the current version is **2.0**.
 
-- **MINOR** — additive only: new optional slots, relaxed constraints. An older manifest stays valid.
+- **MINOR** — additive only: new optional slots, relaxed constraints. An older manifest stays valid, and
+  `doctor` says so rather than staying silent about it.
 - **MAJOR** — anything that can invalidate a manifest that used to pass: a new required slot, a removed
-  or renamed one, a tightened constraint. A MAJOR bump ships with a migration, and until one exists there
-  is nothing to migrate — which is why this directory has no `migrations/` yet. Creating an empty one
-  would claim a capability that does not exist.
+  or renamed one, a tightened constraint. A MAJOR bump ships with a migration.
 
-**1.0 → 1.1 (milestone 2, second session)** added the optional `tree` slot and nothing else. A 1.0
-manifest is still valid under 1.1 — which is the rule above working rather than being described, and the
-first chance this spec has had to demonstrate it rather than assert it. What `tree` buys is in
-[`slots.md`](slots.md); the short version is that the claims lint needs to know *which* tree a
-workspace's claims are about, and inferring it from `kind` would disable a whole check class on the
-strength of a self-declared field.
+`doctor` reads `portulan.spec` before it validates anything. A manifest naming a MAJOR it does not
+implement, or a MINOR ahead of it, is **refused** — exit `2` — rather than graded against the version it
+happens to carry, because grading a manifest against a contract it was not written for produces confident
+nonsense: a slot added in a later MINOR comes back as an unexpected property, and the report blames the
+author for using the spec correctly.
+
+## Migration 1.0 → 2.0
+
+The only migration so far, and it is deliberately taken while it costs nothing.
+
+**What changed.** The `tree` slot was added, and a workspace whose `kind` is `repository` must now declare
+it. `demo` and `portfolio` may omit it. Nothing else.
+
+**How to migrate.** A `repository` workspace adds one line — `"tree": "../"` for the common case, a
+workspace directory sitting one level inside the repository it describes — and sets `portulan.spec` to
+`2.0`. A `demo` or `portfolio` workspace changes the version and nothing else.
+
+**Why a MAJOR for one constraint, now rather than later.** `tree` began as an optional slot, and optional
+was a hole: deleting one manifest line degraded the entire claims-lint class from *checked* to *reported*,
+GREEN, exit `0`. That is a fail-open in gate machinery, defended by "review would notice" — on the one
+edit review is worst at noticing, a removed line. The trade was priced at the only moment it is cheap: two
+manifests exist, one already declared `tree` and the other is a `demo` and exempt, so the migration was a
+version bump and a note with **zero manifest edits**. Every milestone toward public makes a MAJOR strictly
+more expensive, and deferring would have carried the hole across the milestone-3 flip — the window when
+outside readers first probe this spec. It also exercises the migration path while the blast radius is
+zero, which is the same reasoning that made the demo workspace worth building: a migration whose first run
+is on a real adopter is a claimed capability, not a demonstrated one.
+_(Adopted from [proposal 0005](../.portulan/proposals/0005-a-repository-workspace-must-declare-its-tree.md).
+`kind` is still self-declared, so the escape narrows from *omit a line* to *lie about what you are* —
+better, and not a fix.)_
+
+There is still no `migrations/` directory: this migration is a paragraph and a version bump, and a
+directory holding a document that says "add one line" would be scaffolding pretending to be machinery.
+One arrives when a migration needs code.
 
 The schema sets `additionalProperties: false` throughout. Unknown keys fail rather than being ignored,
 because the common case is a typo in a slot name, and a silently-ignored `principals` would leave a
