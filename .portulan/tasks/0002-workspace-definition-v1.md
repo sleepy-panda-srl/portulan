@@ -22,20 +22,30 @@ Session 1 — the definition:
 - [x] When every tracked `.json` file parses, the verify recipe shall exit zero.
 
 Session 2 — the validator:
-- [ ] When `doctor` runs against a workspace whose manifest violates the schema, it shall exit non-zero
+- [x] When `doctor` runs against a workspace whose manifest violates the schema, it shall exit non-zero
       and name the violated constraint.
-- [ ] When `doctor` runs against [`../`](../) and against the demo workspace, it shall exit zero.
-- [ ] When a path slot names a target that does not exist, `doctor` shall report it as a failure.
-- [ ] When a repo card's build/test/run lines or layout no longer match the tree, `doctor` shall report
-      it — the claims lint.
-- [ ] When a rule's provenance is neither a well-formed link nor a well-formed sealed stamp, `doctor`
-      shall reject it; and it shall report the proportion of rules that are sealed.
+- [x] When `doctor` runs against [`../`](../) and against the demo workspace, it shall exit zero.
+- [x] When a path slot names a target that does not exist, `doctor` shall report it as a failure.
+- [x] When a repo card's build/test/run lines or layout no longer match the tree, `doctor` shall report
+      it — the claims lint. _Where the workspace declares a `tree`. One that does not has those claims
+      reported **unverifiable** — never silently skipped. See [`../../spec/slots.md`](../../spec/slots.md)._
+- [x] When a rule's provenance is neither a well-formed link nor a well-formed sealed stamp, `doctor`
+      shall reject it; and it shall report the proportion of rules that are sealed. _Bound to
+      `type: rule` records in the `memory` slot, which is the scope every normative source uses; other
+      types and the `proposals` slot are reported, not failed._
 
 **Verify.** `doctor` exits `0` against this workspace and against the demo, and non-zero against a
 known-bad manifest fixture. **That fixture is not optional**: a validator that goes green on first
-contact with a manifest written to satisfy it has demonstrated nothing. Until `doctor` exists the
-standing checks are [`../verify/docs.sh`](../verify/docs.sh) and [`../verify/json.sh`](../verify/json.sh),
-and neither reads the schema.
+contact with a manifest written to satisfy it has demonstrated nothing.
+
+_Done. There are ten known-bad manifests in [`../../cli/fixtures/manifests/`](../../cli/fixtures/manifests/)
+and a whole drifted workspace beside them, driven by [`../../cli/doctor.test.mjs`](../../cli/doctor.test.mjs),
+which was written before the validator and went red for the right reason with it removed. The demonstration
+that mattered most was not a fixture, though: `doctor`'s first run against **this** workspace found three
+rules carrying prose provenance where the repository had already mandated a checkable stamp. The standing
+checks are now four — [`../verify/docs.sh`](../verify/docs.sh), [`../verify/json.sh`](../verify/json.sh),
+[`../verify/doctor.sh`](../verify/doctor.sh) and [`../verify/tests.sh`](../verify/tests.sh) — and all four
+run in CI._
 
 **Constraints.** The schema stays inside the JSON Schema subset named in
 [`../../spec/README.md`](../../spec/README.md) — `doctor` carries its own validator, so a keyword the

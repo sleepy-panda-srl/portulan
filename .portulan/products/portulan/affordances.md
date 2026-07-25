@@ -18,7 +18,8 @@
 | An always-loaded kernel with a **budget** | [`../../../core/engine.md`](../../../core/engine.md) | ≤ 60 lines, enforced by the `kernel` check. Read it first; everything else loads on demand. |
 | A **map checked against the ground — in one direction** | root [`../../../README.md`](../../../README.md) | Every top-level entry must appear in the layout table, enforced by the `map` check. The converse is **not** checked: a row describing a directory that no longer exists passes, so the map cannot omit, but it can go stale. |
 | **Executable verify recipes** with declared needs | [`../../verify/`](../../verify/) | Exit `0` green · `1` red · `2` could not run. The distinction is deliberate: a recipe that cannot run must never look like one that ran and passed. |
-| A **machine-readable manifest** | [`../../workspace.json`](../../workspace.json) | Names every slot and where it lives, so an agent can find the policy layer without guessing at directory conventions. |
+| A **machine-readable manifest**, validated | [`../../workspace.json`](../../workspace.json) | Names every slot and where it lives, so an agent can find the policy layer without guessing at directory conventions — and [`doctor`](../../../cli/doctor.mjs) fails CI if a slot points at something absent, so a path read from here can be trusted to exist. |
+| A **claims lint against this tree** | [`../../repos/portulan.md`](../../repos/portulan.md), [`../../gate-map.md`](../../gate-map.md) | The repo card's build/test/run and layout paths, and the gate map's required-check name, are checked against the actual tree. Two limits: only path-shaped tokens are checked, and live branch-protection settings are not fetched. |
 | **Templates for every artifact** | [`../../../core/templates/`](../../../core/templates/) | Repo card · task · handoff · proposal · memory entry. Placeholders are in `{braces}`; fill and delete what does not apply. |
 | **Actions bound to tiers** | [`../../gate-map.md`](../../gate-map.md) | Every concrete action this repository permits is classified Auto / Propose / Gated, so an agent can tell unattended work from work that needs a human. |
 | A **dated handoff series** | [`../../handoffs/`](../../handoffs/) | Filenames lead with an ISO date, so the series sorts chronologically and is machine-consumable without parsing prose. |
@@ -34,12 +35,14 @@ Written at the same level of detail, because a legibility report that lists only
   milestone 4. Until then it is condition 1 of [`../../dod.md`](../../dod.md) and a habit.
 - **The gate map is not compiled.** It is honoured by people and by review, not by hooks or permissions.
   The compiler is milestone 4. The platform floor beneath it *is* real; the tiers above it are not.
-- **The manifest is not yet validated.** `doctor` — which checks it against the schema and lints its
-  claims against the tree — lands in the second milestone-2 session. Today
-  [`../../verify/json.sh`](../../verify/json.sh) checks only that the JSON parses.
+- **`doctor` validates form, not truth.** It checks that the manifest conforms, that every path
+  resolves, that the cross-references hold, that repo-card and gate-map claims match the tree, and that
+  every rule's provenance is well-formed. It cannot tell whether a document at the end of a resolving
+  path still says something accurate, and it never runs a verify recipe.
 - **There is no agent-legibility score.** This slot is the input such an audit would read; the scoring
   itself is not built, and calling this file a score would be exactly the overclaim
-  [`../../principles.md`](../../principles.md) forbids.
+  [`../../principles.md`](../../principles.md) forbids. `doctor` resolves this file's path and reads
+  nothing in it.
 - **Memory has no generated index.** [`../../memory/`](../../memory/) is a flat directory; recall means
   reading filenames. The size-budgeted index arrives with the librarian in milestone 5.
 - **`links` has two known false greens.** Wrong-case link targets pass on a case-insensitive volume, and
@@ -48,5 +51,7 @@ Written at the same level of detail, because a legibility report that lists only
   dead pointers that survived several reviews.
 - **There is no `CODEOWNERS`.** No path-specific human is required on any file, including the
   constitution. It is protected by prohibition, not by the platform.
-- **There are no tests, because there is no code yet.** The recipes lint documents. Treat green as "the
-  documents are internally consistent", never as "the product works".
+- **There is one test suite, and it covers one file.**
+  [`../../../cli/doctor.test.mjs`](../../../cli/doctor.test.mjs) covers `doctor`; nothing tests the four
+  verify recipes themselves, and there is no other product code yet. Treat green as "`doctor` behaves,
+  and the documents are internally consistent" — never as "the product works".

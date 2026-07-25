@@ -1,7 +1,11 @@
 # The slots, and where each came from
 
 > Companion to [`workspace.schema.json`](workspace.schema.json). One section per slot: what it holds,
-> **why it is a slot at all**, what it was derived from, and what `doctor` will check about it.
+> **why it is a slot at all**, what it was derived from, and what [`doctor`](../cli/doctor.mjs) checks
+> about it. Every "what `doctor` checks" line below was a specification of intent when this file was
+> written and is a description of behaviour now — the second milestone-2 session built the validator,
+> and where it does **less** than a line here promised, the line says so rather than being quietly
+> softened.
 >
 > The derivation column is not decoration. A schema is the easiest place in a product to smuggle in
 > invention — a slot added for symmetry costs every future adopter a decision they did not need to make.
@@ -51,6 +55,7 @@ experience a failure. *(Binding non-goal: no ceremony that can't scale down.)*
 | `verify` | structured | **yes** | criterion — *verify recipes*; [`verification.md`](../core/operating/verification.md) — the workspace sets the default |
 | `products[]` | structured | no | criterion — *product-layer slot … portfolio-aware*; content — [`identity.md`](../.portulan/identity.md) |
 | `affordances` | path | no | criterion — *agent-affordances slot*; constitution — the agent-native / AX row of the influence map |
+| `tree` | path | no | criterion — *lints workspace claims against the tree*; content — [`../examples/`](../examples/), the first workspace whose repositories are not present |
 | `packs` | structured | no | constitution — thesis 1's cascade, `core < pack < workspace` |
 | `provenance` | record field | **on every rule** | criterion — *provenance slot*; [proposal 0002](../.portulan/proposals/0002-sealed-provenance.md), adopted |
 
@@ -79,7 +84,8 @@ The split turned out to be the right cut anyway. **Identity** answers *who we ar
 graded against. They change on different clocks: a stack row turns over every year or two, a principle
 almost never.
 
-**What `doctor` checks:** both resolve to files that exist.
+**What `doctor` checks:** both resolve to files that exist — files specifically, not directories, since
+both are declared `filePath`.
 
 ## `slots.constitution` — optional, and the one slot expected to escape
 
@@ -114,8 +120,12 @@ explicitly that which concrete action lands in which tier is workspace policy. T
 the one slot where core has already promised the workspace will answer, so a workspace without it leaves
 an engine promise unfulfilled — required, by the minimality rule's own test.
 
-**What `doctor` checks:** the path resolves; and, from the second milestone-2 session, that the gate map
-does not claim enforcement the repository does not have — the claims-against-the-tree lint.
+**What `doctor` checks:** the path resolves; and, where the workspace declares a `tree`, that the status
+check the gate map says `main` requires is one a workflow in that tree actually reports. That is the gate
+map's half of the claims-against-the-tree lint, and it is narrower than "does not claim enforcement the
+repository does not have": it compares one named context against the job ids it can find. Whether branch
+protection *really* requires that context, and which app it is pinned to, are live settings, and a
+network call is not something a verify recipe here is allowed to make.
 
 ## `verify` — the only slot that is structured because it is *consumed*
 
@@ -199,6 +209,44 @@ an audit would read, not the audit. One memory entry
 retirement as conditional on that score superseding the README map — worth stating plainly that this
 milestone does **not** fire that condition.
 
+## `tree` — where the claims are checked against, and why it is declared rather than inferred
+
+Added in v1.1, and it exists because the claims lint needed an answer to a question nobody had asked
+while there was only one workspace: *which* tree does a repo card's `test:` line refer to?
+
+Customer zero's answer is obvious — the repository the workspace sits in, one level up. The demo's
+answer is that there isn't one: Rooftop's repositories are fictional, so its cards' build/test/run lines
+and layout point at directories no tree contains. Both must validate, and a lint that failed the second
+would be wrong about it rather than right.
+
+The tempting inference is `kind`: check for `repository`, skip for `demo`. It was rejected for two
+reasons, and the second is the stronger one.
+
+- **It breaks on its own second case.** A `portfolio` workspace covers many repositories, none of which
+  is the one it sits in. It is not a demo, and it has no single tree either — so kind-dispatch would
+  demand a lint it cannot run, one milestone after v1.
+- **It disables a check class on a self-declared field.** `kind` is typed by an author, and `doctor`
+  checks only that it is one of three values. A whole category of checking that switches itself off
+  because somebody wrote `demo` is a fail-open with a doorbell on it — this repository has now recorded
+  three of that shape ([`../.portulan/memory/verify-preconditions-fail-closed.md`](../.portulan/memory/verify-preconditions-fail-closed.md)),
+  every one of them in gate machinery.
+
+So the workspace declares it. Present means *lint these claims against that tree*; absent means *these
+claims describe something not present here*.
+
+**What `doctor` checks:** the path resolves to a directory. With `tree` present, every path-shaped claim
+in a repo card must exist, and the gate map's required-check claim must match a workflow job. With
+`tree` absent, those claims are counted and **reported unverifiable** — never skipped silently, because
+the whole point is that a check which vanishes without saying so is worse than one that admits it could
+not run.
+
+Two limits worth stating before somebody relies on this. A claim is resolved against **either** the tree
+root or the card's own directory, because a real card mixes the two bases in one line — customer zero's
+does — and a lint that insisted on one would produce false reds. And only tokens that look like paths are
+checked: a code span or link target containing `/`. `build: none` claims nothing; `npm test` names a
+command, not a file. Anything ambiguous is left alone rather than guessed at, because an ambitious prose
+parser is the shortest route to the false red that gets a whole recipe switched off.
+
 ## `packs` — the cascade's missing middle
 
 Nothing in the criterion asks for this, and it is included anyway, which needs justifying. The cascade is
@@ -250,27 +298,47 @@ the episode does not.
 - **A sealed rule is not as good as a linked one.** It is *declared* weak instead of silently absent.
   `doctor` therefore reports the **sealed proportion**: a workspace where everything is sealed has
   quietly opted out of retirement altogether, and that is a health signal rather than a curiosity.
-- **Adopting this was a constitutional interpretation.** It decides how thesis 4's "links to the
-  incident" reads in the collision case. The maintainer accepted it and reserved the matching wording
-  change in [`../docs/vision.md`](../docs/vision.md) to his own hand, carried as its own change. While the
-  two are out of step the constitution reads "links" and this spec permits a stamp — recorded rather than
-  smoothed over, because the gap is exactly the kind this product exists to stop hiding, and because
-  `doctor` will *mechanically enforce* the two-form shape. A machine enforcing a rule the constitution
-  does not state is backwards here, so this notice is one of two to sweep when the wording lands (the
-  other is in customer zero's
-  [proposal 0002](../.portulan/proposals/0002-sealed-provenance.md)).
+- **Adopting this was a constitutional interpretation**, and the constitution has since been changed to
+  match. It decides how thesis 4's "links to the incident" reads in the collision case; the maintainer
+  accepted it, reserved the matching wording change in [`../docs/vision.md`](../docs/vision.md) to his
+  own hand, and made it. Thesis 4 now names both forms itself, so the machine that enforces the two-form
+  shape is enforcing something the constitution states — which is the only order these two are allowed to
+  be in. _(For a window between the two changes the constitution read "links" while this spec permitted a
+  stamp. That gap was recorded here rather than smoothed over, and closed before `doctor` shipped, which
+  is what the proposal required: a rule mechanically enforced by tooling and absent from the constitution
+  is backwards for this product.)_
+
+- **It binds a rule, and only a rule.** `doctor` requires a two-form stamp on `type: rule` records in the
+  `memory` slot and nowhere else. A `decision`, `reference`, or `glossary` record whose provenance parses
+  as neither form is **reported**, never failed — thesis 4, this proposal as adopted, `dod.md` condition
+  3, and the milestone's own criterion are all rule-scoped, and having the validator bind types nobody
+  legislated for would be the same inversion as the previous bullet. **Proposals are not checked at all**
+  in v1, though a proposal argues for a rule and carries a `Provenance` section of its own. Two reasons,
+  and the second is the one that decides it. A proposal is the *argument* for a rule; the rule itself
+  lands in a memory entry or in `core/` when accepted, and that is the carrier the mandate names — a
+  proposal's provenance documents where the reasoning came from, which is a different thing from the
+  incident stamp `$defs/provenance` describes. And one of the four proposals that exist is still
+  **pending** the human gate, so a checker demanding a format from it would be acting on a record
+  mid-decision, which is the gate's business and not a validator's. Saying which carrier is unchecked
+  matters more than the choice does — silence is how the next reader assumes coverage that is not there.
+
+- **`type` is self-declared, and that is an opening.** A rule labelled `decision` walks past the check.
+  Closing it means either inferring type from content or extending the mandate, and the first is
+  guesswork while the second is the maintainer's to legislate, not the validator's to assume.
 
 ## Considered and left out
 
 Each of these was a candidate; none is an oversight.
 
-- **`rituals` as its own slot.** The constitution names rituals as a pack category, and — at the time
-  this was written — also inside thesis 1's workspace list. The two readings disagreed and the schema had
-  to pick one. It picks packs: rituals ship as packs ([`../packs/rituals/`](../packs/rituals/)), so a
-  workspace composes them through `packs`, and a second slot would be two ways to say one thing. The
-  ambiguity itself was raised with the maintainer rather than settled here, because the constitution is
-  human-owned and a schema is not the place to resolve what it means. Revisit if a workspace-local ritual
-  ever needs a home that is not a pack.
+- **`rituals` as its own slot.** The constitution names rituals as a pack category, and — when this was
+  written — also inside thesis 1's workspace list. The two readings disagreed and the schema had to pick
+  one. It picks packs: rituals ship as packs ([`../packs/rituals/`](../packs/rituals/)), so a workspace
+  composes them through `packs`, and a second slot would be two ways to say one thing. **The ambiguity
+  was raised with the maintainer rather than settled here** — the constitution is human-owned and a
+  schema is not the place to decide what it means — and he has since settled it: thesis 1 now lists
+  rituals once, under packs, which is the reading this schema had guessed at. Kept rather than deleted,
+  because the record of *how* the disagreement was resolved is the part worth having: the schema deferred
+  and the human legislated. Revisit if a workspace-local ritual ever needs a home that is not a pack.
 - **`stack` and `glossary` as slots.** Both are named in thesis 1 and both live inside `identity.md`
   today. Splitting them buys nothing until something *consumes* them — a stack pack selecting itself
   from a declared stack would be that consumer, and it does not exist. Splitting on speculation is how a
@@ -285,12 +353,17 @@ Each of these was a candidate; none is an oversight.
 - **`evals`.** Milestone 8 owns the eval harness; a slot pointing at golden tasks before any exist would
   be the emptiest kind of scaffolding.
 
-## What v1 is not
+## What v1.1 is not
 
-- **It has been derived from one workspace and validated against none.** A schema meets its real test on
-  its *second* instance, and that is the fictional demo in [`../examples/`](../examples/), which does not
-  exist yet. Expect this document to change when it does; the milestone stays open until it has.
-- **No `doctor`.** Everything above written as "what `doctor` checks" is a specification of intent. Today
-  the only machinery is that the JSON parses.
+- **It has been validated against exactly two instances**, one of which it was derived from. The demo in
+  [`../examples/`](../examples/) was the real test, and it did what a second instance is supposed to do:
+  it produced a schema change (`tree`) within an hour of being written. A third differently-shaped
+  workspace — the portfolio one at milestone 6 — should be expected to produce another.
+- **`doctor` checks form, not truth.** Every line above says what it resolves, parses, or matches. It
+  cannot tell whether a mission statement is still accurate, whether a sealed stamp describes a real
+  incident, whether a gate map's tiers are honoured, or whether a `requires` list is complete. The
+  machine catches absence; the human judges substance.
+- **It never executes anything.** Recipes are read and never run — that is the Stop-gate runner in
+  milestone 4, and until then a recipe that quietly needs an undeclared tool passes.
 - **Nothing here describes how a workspace is *installed*.** Workspaces ship as plugins through a feed;
   that packaging is milestone 3 for the public path and milestone 6 for the private one.

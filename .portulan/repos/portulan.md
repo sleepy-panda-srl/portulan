@@ -7,18 +7,19 @@ its history is public and permanent.
 
 **Build / test / run.**
 - build: none — no build step yet; the CLI arrives at milestone 7
-- test: `./.portulan/verify/docs.sh`   ← the verify recipe; the Stop-gate that will run it automatically arrives at milestone 4 (see [`../../core/operating/verification.md`](../../core/operating/verification.md))
-- run: none — the product is files; there is nothing to start
+- test: `./.portulan/verify/docs.sh` — the default recipe. Three more are declared in [`../workspace.json`](../workspace.json) and all four run in CI: `json.sh`, `doctor.sh`, `tests.sh`. The Stop-gate that will run one automatically on task completion arrives at milestone 4 (see [`../../core/operating/verification.md`](../../core/operating/verification.md))
+- run: `./.portulan/verify/doctor.sh` — the nearest thing to running the product: it validates both workspaces against the Workspace Definition
 
 **Gates.** Inherits [`../gate-map.md`](../gate-map.md) with no deviations. Two worth keeping in front of
 mind because they are unusual: [`../../docs/vision.md`](../../docs/vision.md) is never edited by an agent
 at all, and repository **visibility** is Gated — private until milestone 3 by decision, not by accident
 ([`../memory/repo-is-private-until-milestone-3.md`](../memory/repo-is-private-until-milestone-3.md)).
 
-**Layout.** [`../../core/`](../../core/) the engine · [`../../docs/`](../../docs/) constitution and plan ·
-`.portulan/` this workspace · [`../../examples/`](../../examples/) the demo workspace ·
-[`../../.claude-plugin/`](../../.claude-plugin/) the marketplace manifest. The remaining top-level
-directories are scaffolding that fills in milestone by milestone.
+**Layout.** [`../../core/`](../../core/) the engine · [`../../spec/`](../../spec/) the Workspace
+Definition · [`../../cli/`](../../cli/) `doctor` and its tests · [`../../docs/`](../../docs/)
+constitution and plan · `.portulan/` this workspace · [`../../examples/`](../../examples/) the demo
+workspace · [`../../.claude-plugin/`](../../.claude-plugin/) the marketplace manifest. The remaining
+top-level directories are scaffolding that fills in milestone by milestone.
 
 **Quirks.**
 - The kernel [`../../core/engine.md`](../../core/engine.md) is line-budgeted. Adding to it is the wrong
@@ -34,4 +35,7 @@ directories are scaffolding that fills in milestone by milestone.
   commit rather than before releases.
 
 **Provenance.** Written in milestone 1, session 3 — the first repo card in the first real workspace.
-Rewrite it when the CLI lands at milestone 7 and the build/test/run lines stop reading "none".
+Amended in milestone 2, session 2, when `doctor` gave this card's own claims a checker: the build/test/run
+lines and the layout above are now linted against the tree, which is the first time anything in this
+repository has held a workspace document to reality. Rewrite it when the CLI lands at milestone 7 and the
+build line stops reading "none".

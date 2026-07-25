@@ -1,0 +1,27 @@
+{
+  "portulan": {
+    "spec": "1.1"
+  },
+  "name": "drifted",
+  "summary": "A fixture workspace whose repo card describes a tree it no longer matches — the claims lint's red path.",
+  "kind": "repository",
+
+  "tree": "./",
+
+  "slots": {
+    "identity": "identity.md",
+    "principles": "principles.md",
+    "gates": "gate-map.md",
+    "repos": "repos/"
+  },
+
+  "verify": {
+    "default": "docs",
+    "recipes": [
+      {
+        "id": "docs",
+        "run": "./verify.sh"
+      }
+    ]
+  }
+}

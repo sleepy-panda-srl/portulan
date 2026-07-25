@@ -81,12 +81,18 @@ Enforcement is the App's permission set rather than the wrapper: that token writ
 conversation and nothing else. The wrapper's refusal of a few subcommands is a guard against habit and is
 trivially bypassable.
 
-**Not true yet.** The App does not exist — creating it needs steps only the maintainer can take
-([`tools/README.md`](tools/README.md)). Until they are done, agent replies still go out under the
-maintainer's account carrying a signature line, which is a convention and not a rail. That interim state
-and its cost are recorded in
-[`memory/agent-activity-is-attributable.md`](memory/agent-activity-is-attributable.md); this table
-describes the arrangement being put in place, not the one currently enforced.
+**Live since 2026-07-25.** The App exists, is installed on this repository alone, and has posted its
+first `portulan-agent[bot]` comment. Its permissions are pull-request conversation write and metadata
+read; **repository contents is refused**, which is the load-bearing part — it is what makes the
+permission set the enforcement rather than the wrapper. Setup and its honest limits are in
+[`tools/README.md`](tools/README.md).
+
+_This paragraph read "the App does not exist" until milestone 2, session 2, by which time it had existed
+for several hours. The change that brought it live updated `tools/README.md` and its handoff and not this
+file — an ordinary miss, worth naming because it happened inside the milestone whose subject is claims
+drift, and because the lint that milestone shipped **cannot catch this one**: it checks paths and a
+status-check name against the tree, and "the App does not exist" is prose about a fact outside the tree
+entirely. Found by grepping for stale claims by hand. That is the honest boundary of the machinery._
 
 ## The triage threshold
 

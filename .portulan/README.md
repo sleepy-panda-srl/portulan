@@ -52,18 +52,21 @@ Three workspaces appear in the plan and they are easy to confuse:
 | Workspace | Where | Public? | Covers |
 |---|---|---|---|
 | **This one** — `.portulan/` | here | with the repo, at milestone 3 | building Portulan itself: dogfooding |
-| Demo workspace | [`../examples/`](../examples/) | yes | a fictional team, so a stranger can read a complete workspace end to end |
+| Demo workspace | [`../examples/`](../examples/) | yes | a fictional team with two products, so a stranger can read a complete workspace end to end |
 | Sleepy Panda portfolio | private feed (milestone 6) | no | every Sleepy Panda product |
 
 ## Deliberately not here yet
 
 Honest limits, each with the milestone that closes it:
 
-- **A manifest, but no validator.** [`workspace.json`](workspace.json) declares this workspace against
-  [`../spec/workspace.schema.json`](../spec/workspace.schema.json), and nothing checks that the
-  declaration is true. `doctor` — schema conformance, plus linting these documents' claims against the
-  tree — lands in the second milestone-2 session. Today [`verify/json.sh`](verify/json.sh) confirms only
-  that the file parses, so every conformance claim here is still an assertion.
+- **A validated manifest, and it does not validate the interesting part.**
+  [`workspace.json`](workspace.json) declares this workspace against
+  [`../spec/workspace.schema.json`](../spec/workspace.schema.json), and since the second milestone-2
+  session [`../cli/doctor.mjs`](../cli/doctor.mjs) checks the declaration: schema conformance, every path
+  resolving, the cross-references, this directory's claims against the tree, and every rule's provenance.
+  It runs in CI on every pull request. What it cannot check is whether any of these documents is still
+  *true* — whether the gate map's tiers are honoured, whether a mission statement has drifted, whether a
+  sealed stamp describes a real incident. The machine catches absence; the human judges substance.
 - **No compiled gates.** [`gate-map.md`](gate-map.md) is read and honoured by people and agents; the
   compiler that turns it into hooks and permissions is milestone 4, so the map's authority is review
   rather than machinery. The **platform floor beneath it is configured** — `main` rejects direct pushes

@@ -18,7 +18,7 @@ value in a file nobody enjoys reading.
 That splits the slots in two, and the distinction is worth naming because it decides what `doctor` can
 say about each:
 
-- **Path slots** — `slots.*`, the workspace-level `affordances`, `products[].product`,
+- **Path slots** — `slots.*`, the workspace-level `affordances`, `tree`, `products[].product`,
   `products[].affordances`, and `verify.recipes[].doc` — resolve to a file or a directory. `doctor` can
   check they exist and that what they claim matches the tree. The list is exhaustive on purpose:
   `doctor`'s existence checks are derived from it, so a path field missing here is a path field nothing
@@ -33,10 +33,12 @@ Two rules follow, and both were forced by real defects rather than chosen for ti
    validate fragments ([`../.portulan/verify/README.md`](../.portulan/verify/README.md)), so a slot
    addressed by anchor would be unlintable by construction — the slot would exist and nothing could ever
    confirm it pointed anywhere real.
-2. **A path slot may point outside the workspace directory.** Exactly one slot is *expected* to —
-   `constitution` — because a product's constitution normally lives with the product, not with the
-   workspace. Customer zero is the first proof: its constitution is `docs/vision.md`, one level up. A
-   schema that required containment would have failed on its own author's workspace.
+2. **A path slot may point outside the workspace directory.** Two slots are *expected* to.
+   `constitution`, because a product's constitution normally lives with the product, not with the
+   workspace — customer zero is the first proof: its constitution is `docs/vision.md`, one level up. And
+   `tree`, which names the repository a workspace makes claims *about* and would be pointing at the
+   wrong thing if it did not escape. A schema that required containment would have failed on its own
+   author's workspace.
 
    The schema cannot express *which* slot may escape — a `pattern` sees one string, not which key it
    belongs to — so escaping is legal everywhere and `doctor` **reports** rather than fails when any slot
@@ -67,7 +69,7 @@ product" are different claims, and only the first is true.
 
 ## Versioning and migrations
 
-`portulan.spec` is `MAJOR.MINOR`.
+`portulan.spec` is `MAJOR.MINOR`, and the current version is **1.1**.
 
 - **MINOR** — additive only: new optional slots, relaxed constraints. An older manifest stays valid.
 - **MAJOR** — anything that can invalidate a manifest that used to pass: a new required slot, a removed
@@ -75,26 +77,36 @@ product" are different claims, and only the first is true.
   is nothing to migrate — which is why this directory has no `migrations/` yet. Creating an empty one
   would claim a capability that does not exist.
 
+**1.0 → 1.1 (milestone 2, second session)** added the optional `tree` slot and nothing else. A 1.0
+manifest is still valid under 1.1 — which is the rule above working rather than being described, and the
+first chance this spec has had to demonstrate it rather than assert it. What `tree` buys is in
+[`slots.md`](slots.md); the short version is that the claims lint needs to know *which* tree a
+workspace's claims are about, and inferring it from `kind` would disable a whole check class on the
+strength of a self-declared field.
+
 The schema sets `additionalProperties: false` throughout. Unknown keys fail rather than being ignored,
 because the common case is a typo in a slot name, and a silently-ignored `principals` would leave a
 workspace with no constitution slot and a green report.
 
 ## What actually validates any of this, today
 
-Honestly: **almost nothing yet.**
-
 | Artifact | Checked by | Status |
 |---|---|---|
 | Every `.json` file parses | [`../.portulan/verify/json.sh`](../.portulan/verify/json.sh) | **Built.** Well-formedness only — it does not read the schema. |
-| Manifest conforms to the schema | `doctor` | Milestone 2, second session. |
-| Path slots resolve to real files | `doctor` | Milestone 2, second session. |
-| Workspace claims match the tree | `doctor` | Milestone 2, second session — repo-card build/test/run lines and layout, and the gate map. |
-| A rule's provenance is well-formed | `doctor` | Milestone 2, second session. |
-| Sealed proportion reported | `doctor` | Milestone 2, second session. |
+| Manifest conforms to the schema | [`../cli/doctor.mjs`](../cli/doctor.mjs) | **Built.** Names the violated constraint and its location. |
+| Path slots resolve to real files | `doctor` | **Built.** File-versus-directory too; a slot resolving outside the workspace is reported, never failed. |
+| Workspace claims match the tree | `doctor` | **Built, where a tree is declared** — repo-card build/test/run lines and layout, and the gate map's required-check claim. A workspace with no `tree` has those claims *reported unverifiable*. |
+| A rule's provenance is well-formed | `doctor` | **Built.** On `type: rule` records in the `memory` slot; the form only, never the truth. |
+| Sealed proportion reported | `doctor` | **Built.** Over rules, which is the denominator the mandate uses. |
+| The recipes a workspace declares actually run | Stop-gate runner | Milestone 4. `doctor` reads recipes and never executes one. |
+| A rule's link resolves | — | Not built, and not planned as a gate: dereferencing needs the network, and a gate that fails for reasons unrelated to the change under test is worse than no gate. |
+| Agent-legibility scored | `doctor` | Not built. The `affordances` slot is the input such an audit would read; it is not the audit. |
 
-Until `doctor` exists, this schema is a specification and not a rail, and every conformance claim about a
-workspace is an assertion. Saying so is the point: a spec that implied it was enforced would make the
-first real green worth less.
+As of milestone 2 the schema is a rail rather than only a specification — but read the right-hand column
+rather than the middle one. `doctor` checks that a workspace's claims are **well-formed and resolvable**;
+almost nothing it checks is a claim about whether the workspace's content is *true*. It is run by CI on
+every pull request here, because [`../.portulan/workspace.json`](../.portulan/workspace.json) declares it
+as a verify recipe and the workflow runs every recipe the manifest declares.
 
 ## The JSON Schema subset
 
@@ -125,9 +137,14 @@ of 2026-07-25 covering the enforcement compiler's input too.
 
 The first real instance is customer zero's own manifest,
 [`../.portulan/workspace.json`](../.portulan/workspace.json) — the material this schema was derived from,
-rather than an example written to flatter it. A fictional demo workspace with more than one product
-follows in [`../examples/`](../examples/); a second, differently-shaped instance is what actually tests a
-schema, and this one has not had that test yet.
+rather than an example written to flatter it.
+
+The **second** is [`../examples/`](../examples/), a fictional workspace covering two products, and it is
+the one that actually tested the schema: a definition derived from a single sample has not been tested
+until it meets a differently-shaped one. It exercises what customer zero cannot — repeated products,
+affordances resolving down the cascade, declared packs, a workspace-level default, and a sealed
+provenance stamp — and it is where the `tree` slot came from, because writing a workspace whose
+repositories are *not present* is what exposed that the claims lint had no way to say so.
 
 Illustrative fragments in [`slots.md`](slots.md) use `{braces}` for placeholders, the same convention as
 [`../core/templates/`](../core/templates/).

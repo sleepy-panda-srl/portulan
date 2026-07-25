@@ -15,10 +15,13 @@ delivered as private-marketplace plugins.
 ## Status
 
 Pre-release, and **private during the build**. This repository is scaffolding toward `v0.1.0`: the
-engine in `core/` and this repository's own workspace in `.portulan/` are authored, the remaining
-directories below fill in milestone by milestone, and nothing here is stable yet. It goes public only
-once the engine boots from a clean install and the milestone-3 criteria are met. The living map is
-[`docs/plan.md`](docs/plan.md).
+engine in `core/`, the Workspace Definition in `spec/`, two workspaces, and the validator that checks
+them are authored; the remaining directories below fill in milestone by milestone, and nothing here is
+stable yet. It goes public only once the engine boots from a clean install and the milestone-3 criteria
+are met. The living map is [`docs/plan.md`](docs/plan.md).
+
+The quickest way to see what this is: read [`examples/`](examples/), a complete fictional workspace, then
+run `node cli/doctor.mjs examples` to watch it validate.
 
 ## Layout
 
@@ -29,8 +32,8 @@ once the engine boots from a clean install and the milestone-3 criteria are met.
 | `spec/` | The Workspace Definition: schema, docs, migrations |
 | `plugin/` | Claude Code packaging (skills, agents, hooks, settings) |
 | `.claude-plugin/` | The marketplace manifest that makes this repository an installable plugin feed |
-| `cli/` | The `npx` CLI: `init` · `doctor` · `compile` · `vendor` · `index` · `upgrade` |
-| `examples/` | A fictional, public demo workspace |
+| `cli/` | The `npx` CLI: `init` · `doctor` · `compile` · `vendor` · `index` · `upgrade`. Only [`doctor`](cli/doctor.mjs) exists so far |
+| `examples/` | [A fictional, public demo workspace](examples/) — two products, read end to end |
 | `.portulan/` | [This repository's own workspace](.portulan/) — Portulan applied to building Portulan |
 | `evals/` | Golden tasks, the A/B harness, the CI eval gate |
 | `.github/` | CI workflows — runs the workspace verify recipe on every pull request |

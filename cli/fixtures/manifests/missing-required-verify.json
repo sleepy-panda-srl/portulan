@@ -1,0 +1,12 @@
+{
+  "portulan": {
+    "spec": "1.1"
+  },
+  "name": "fixture",
+  "kind": "repository",
+  "slots": {
+    "identity": "identity.md",
+    "principles": "principles.md",
+    "gates": "gate-map.md"
+  }
+}

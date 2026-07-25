@@ -1,7 +1,8 @@
 **type:** rule
 **scope:** workspace — every session working in this repository
-**provenance:** Maintainer ruling, Marius Cetanas, 2026-07-25, taken after milestone 1 session 3 produced
-the first handoff and the question was raised whether one is warranted per session or only when useful.
+**provenance:** `form=link` `href=https://github.com/sleepy-panda-works/portulan/pull/5`
+— the maintainer's ruling, Marius Cetanas, 2026-07-25, taken after milestone 1 session 3 produced the
+first handoff and the question was raised whether one is warranted per session or only when useful.
 
 Every session ends with a dated handoff in [`../handoffs/`](../handoffs/). Short is fine; absent is not;
 an exception is a last resort rather than a judgement call.
