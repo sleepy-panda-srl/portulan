@@ -105,6 +105,29 @@ describe("the schema validator implements exactly the declared subset", () => {
         });
     });
 
+    // Knowing a keyword's NAME is not enough: `pattern: "["` and `enum: "repository"` are both inside
+    // the subset by name and neither can be applied. Before this, they reached instance validation and
+    // surfaced as a raw SyntaxError or TypeError — exit 2, "unanticipated failure", naming neither the
+    // keyword nor where it lives, from a defect squarely in the schema.
+    test("refuses a supported keyword carrying a value it cannot apply", () => {
+        const cases = [
+            [{ type: "string", pattern: "[" }, /pattern/],
+            [{ enum: "repository" }, /enum/],
+            [{ type: "object", required: "name" }, /required/],
+            [{ type: "string", minLength: -1 }, /minLength/],
+            [{ type: "array", uniqueItems: "yes" }, /uniqueItems/],
+            [{ type: "integer" }, /type/],
+            [{ oneOf: [] }, /oneOf/],
+        ];
+        for (const [schema, naming] of cases) {
+            assert.throws(() => compileSchema(schema), (error) => {
+                assert.ok(error instanceof DoctorError, `${JSON.stringify(schema)} threw ${error.constructor.name}`);
+                assert.match(error.message, naming);
+                return true;
+            }, `expected ${JSON.stringify(schema)} to be refused at compile time`);
+        }
+    });
+
     test("refuses `additionalProperties` with any value but literal false", () => {
         assert.throws(
             () => compileSchema({ type: "object", additionalProperties: true }),
@@ -518,6 +541,30 @@ describe("provenance is parsed into the two forms the constitution names", () =>
         assert.match(text(checks(findings, "provenance")), /1 of 2|1\/2|50/);
     });
 
+    // An unreadable record is a defect in the WORKSPACE, so it is exit 1 reported beside everything
+    // else — not exit 2, which would discard every finding the run had already reached. The identical
+    // shape was fixed for the gates file in the same change that left this one.
+    test("an unreadable memory record fails the workspace; it does not abort the run", async () => {
+        const m = wellFormed();
+        m.slots.memory = "memory/";
+        const dir = tree(scratch(), {
+            ...minimalFiles,
+            "workspace.json": JSON.stringify(m),
+            "memory/readable.md": "**type:** rule\n**provenance:** `form=link` `href=https://example.test/1`\n\nA rule.\n",
+            "memory/locked.md": "**type:** rule\n**provenance:** `form=link` `href=https://example.test/2`\n\nA rule.\n",
+        });
+        fs.chmodSync(path.join(dir, "memory", "locked.md"), 0o000);
+        try {
+            assert.equal(await run([dir], { quiet: true }), 1, "a workspace defect is exit 1, not 2");
+            const { findings, stats } = await inspect(dir, { schema: SCHEMA });
+            assert.match(text(severities(checks(findings, "provenance"), "fail")), /locked\.md/);
+            // The readable one was still counted: the run continued rather than aborting.
+            assert.equal(stats.records, 2);
+        } finally {
+            fs.chmodSync(path.join(dir, "memory", "locked.md"), 0o644);
+        }
+    });
+
     test("a workspace with no memory slot says it checked nothing, rather than passing quietly", async () => {
         const dir = tree(scratch(), { ...minimalFiles, "workspace.json": JSON.stringify(wellFormed()) });
         const { findings, stats } = await inspect(dir, { schema: SCHEMA });
@@ -540,6 +587,28 @@ describe("workspace claims are linted against the tree", () => {
     test("customer zero's own card passes the lint", async () => {
         const { findings } = await inspect(path.join(REPO, ".portulan"), { schema: SCHEMA });
         assert.deepEqual(severities(checks(findings, "claims"), "fail"), []);
+    });
+
+    // Was a bare `continue`: an unreadable card dropped every claim it makes and the run stayed green.
+    // A card that cannot be read is not a card with no claims.
+    test("an unreadable repo card fails rather than dropping its claims", async () => {
+        const m = wellFormed();
+        m.tree = "./";
+        m.slots.repos = "repos/";
+        const dir = tree(scratch(), {
+            ...minimalFiles,
+            "workspace.json": JSON.stringify(m),
+            "repos/app.md": "# Repo\n\n**Layout.** `nowhere/` the code\n",
+        });
+        fs.chmodSync(path.join(dir, "repos", "app.md"), 0o000);
+        try {
+            const { findings } = await inspect(dir, { schema: SCHEMA });
+            const failures = severities(checks(findings, "claims"), "fail");
+            assert.equal(failures.length, 1);
+            assert.match(text(failures), /could not be read/);
+        } finally {
+            fs.chmodSync(path.join(dir, "repos", "app.md"), 0o644);
+        }
     });
 
     test("a workspace that declares no tree reports its claims unverifiable, never skips them", async () => {

@@ -229,7 +229,15 @@ outcome is worth anticipating — the pilot predates the spec, so if it has no m
    that. And `tests.sh` piped `find` into `wc -l` without checking `find`, where the dangerous case is a
    **partial** failure rather than a total one: one unreadable subdirectory and the count comes back
    plausible-but-short, so the suite runs a subset and reports on the whole. Both demonstrated, both now
-   exit `2`. **Five defects of this class in four days, every one in scaffolding rather than in a check.**
+   exit `2`. A second Copilot pass then found two more, both inside `doctor` itself: `compileSchema`
+   checked a keyword's *name* and never its *value*, so `pattern: "["` or `enum: "repository"` reached
+   instance validation and surfaced as a raw `SyntaxError`/`TypeError` — exit 2, "unanticipated failure",
+   naming neither the keyword nor where it lived, from a defect squarely in the schema; and an unguarded
+   read of each memory record turned a workspace defect into exit 2, **discarding every finding the run
+   had already made**. That is the identical shape the pre-commit checkpoint found in the gates file, which
+   this session fixed *there and nowhere else* — so sweeping the rest of the file for it found a third: an
+   unreadable repo card was `continue`d, silently dropping every claim it makes.
+   **Seven defects of this class in four days, every one in scaffolding rather than in a check.**
    A recipe harness is the obvious answer and it is not free — `tests.sh` cannot be run from inside the
    suite it runs — so it is named here rather than improvised at a milestone close.
 2. **`type` is self-declared.** A rule labelled `decision` walks past the provenance check. Closing it
@@ -244,6 +252,24 @@ outcome is worth anticipating — the pilot predates the spec, so if it has no m
    tool passes. The honest fix is executing recipes — the Stop-gate runner, milestone 4.
 6. **`CODEOWNERS` is still absent**, carried forward from the platform-floor handoff. Nothing requires a
    path-specific human on any file, including the constitution.
+
+## Both pending proposals were decided during the review, and the argument came from elsewhere
+
+The maintainer commissioned a fresh-context Fable 5 to review `0003` and `0005` and posted its
+recommendation as [`portulan-agent[bot]` on the pull request](https://github.com/sleepy-panda-works/portulan/pull/15#issuecomment-5078534991).
+Both **accepted**. Worth recording that on `0005` the recommendation **reversed this session's own
+conclusion, and was right to**: the proposal argued a MAJOR bump for one check was a poor trade and
+should ride milestone 4's. It priced that against the wrong date. Two manifests exist, one already
+declares `tree` and the other is a `demo` and exempt — so the first migration is a version bump and a
+note, **zero manifest edits**, and it will never be cheaper than today. Deferring also carries a
+fail-open in gate machinery across the milestone-3 public flip, which is when strangers first probe the
+spec.
+
+Neither is applied here. `0005` **cannot** be applied in this pull request without destroying its own
+argument: 1.1 has to land on `main` first, or the change reads 1.0 → 2.0 and the "first migration
+exercised at zero blast radius" is a migration between a version nobody ever had and one nobody has yet.
+Both land in the follow-up immediately after merge, together, which also keeps them out of a pull request
+that has already passed all three supervised checkpoints.
 
 ## Next action
 

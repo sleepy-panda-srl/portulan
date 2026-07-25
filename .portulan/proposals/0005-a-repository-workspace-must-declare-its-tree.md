@@ -57,7 +57,25 @@ Session log. The supervisor's exact demonstration: one line removed, drift intro
   migrations are the thing a spec's adopters feel. Waiting means carrying the hole. That trade is the
   decision, and it is the maintainer's.
 
-**Decision.** Marius Cetanas — **pending**. Drafted at the milestone-2 close, not applied. The close
-checkpoint returned CLOSE with this recorded as carried debt rather than as a blocker, on the grounds
-that the opt-out is loud, PR-visible, and the same shape as the rest of the enforcement fabric — where
-declaring a recipe is what enforces it.
+**Decision.** Marius Cetanas — **accepted, 2026-07-25**, on a recommendation he commissioned from a
+fresh-context Fable 5 and posted as [`portulan-agent[bot]` on pull request 15](https://github.com/sleepy-panda-works/portulan/pull/15#issuecomment-5078534991).
+**Apply before the milestone-3 public flip, not riding milestone 4's bump** — which reverses this
+proposal's own recommendation, and the reasoning is better than the one it replaces:
+
+- **The first migration is nearly free right now.** Two manifests exist. `.portulan/` already declares
+  `tree`; `examples/` is a `demo` and exempt. The migration is a version bump and a note — **zero manifest
+  edits.** Every milestone toward public makes a MAJOR strictly more expensive, so "MAJOR for one check is
+  a poor trade" was priced against the wrong date: it is the cheapest it will ever be, today.
+- **Deferring carries the hole across the milestone-3 flip** — precisely the window when outside
+  evaluators first probe the spec, and a fail-open in gate machinery is the worst thing for them to find.
+- **It exercises the migration machinery while the blast radius is zero.** Same logic that justified
+  building the demo as the schema's second instance: a migration path whose first run is on a real adopter
+  is a claimed capability, not a demonstrated one.
+
+**Not yet applied**, and the sequencing is load-bearing rather than administrative: **1.1 must land on
+`main` first.** Applying 2.0 inside pull request 15 would mean 1.1 never existed on `main`, the change
+would read 1.0 → 2.0, and the "first migration, exercised at zero blast radius" argument above would be
+describing a migration between a version nobody ever had and one nobody has yet. The follow-up carries the
+`doctor` cross-field check (test written red-first), the rule stated in
+[`../../spec/slots.md`](../../spec/slots.md), spec 1.1 → 2.0 with the first migration note, and
+[`0003`](0003-demote-three-workspaces-entry.md) alongside it.
