@@ -1,0 +1,56 @@
+#!/usr/bin/env bash
+# Run a `gh` command as the agent identity instead of as the maintainer.
+#
+#     ./.portulan/tools/gh-bot api repos/{owner}/{repo}/issues/8/comments -f body='…'
+#
+# The token is minted fresh (it expires in an hour), passed to `gh` through the environment, and
+# never written to disk or echoed. Prefer this over exporting a token in your shell: an exported
+# credential outlives the command and quietly re-attributes everything you type afterwards, which
+# is the failure this whole mechanism exists to prevent.
+#
+# Scope, deliberately narrow: this is for PULL REQUEST CONVERSATION ONLY — comments, review
+# replies, resolving threads. Commits and pushes keep the maintainer's identity, because the
+# build's provenance discipline requires his authorship on the commit record. Do not use this to
+# push. See ../gate-map.md, "Which identity acts".
+#
+# Exit 2 if the token could not be minted, so a misconfiguration cannot be mistaken for a
+# GitHub refusal — the same contract as the verify recipes.
+
+set -uo pipefail
+
+here=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd) || exit 2
+command -v gh >/dev/null 2>&1 || { printf 'gh-bot: the gh CLI is not installed\n' >&2; exit 2; }
+command -v node >/dev/null 2>&1 || { printf 'gh-bot: node is not installed\n' >&2; exit 2; }
+
+if [ "$#" -eq 0 ]; then
+    printf 'gh-bot: usage: %s <gh arguments…>\n' "${BASH_SOURCE[0]}" >&2
+    printf '        e.g. %s api repos/OWNER/REPO/issues/1/comments -f body=hello\n' "${BASH_SOURCE[0]}" >&2
+    exit 2
+fi
+
+# Refuse the operations that must stay the maintainer's. This is a guard-rail against habit,
+# not a security boundary — the token itself is scoped by the App's permissions, and that is
+# what actually stops a push.
+#
+# `gh pr` is refused with a POINTER, not a flat no: pull-request conversation is exactly what this
+# identity is for, and an agent that hits a dead end here will reach for plain `gh` and post as the
+# maintainer — the failure this whole mechanism exists to prevent. The refusal must always name the
+# sanctioned spelling.
+case "${1:-}" in
+    pr)
+        printf 'gh-bot: use the API form so the action is unambiguous, e.g.\n' >&2
+        printf '        %s api repos/OWNER/REPO/issues/N/comments -f body=...\n' "${BASH_SOURCE[0]}" >&2
+        printf '        %s api repos/OWNER/REPO/pulls/N/comments/ID/replies -f body=...\n' "${BASH_SOURCE[0]}" >&2
+        printf '        (`gh pr` also covers merge and close, which are the maintainer'"'"'s — see ../gate-map.md.)\n' >&2
+        exit 2
+        ;;
+    repo|release|auth|secret|ssh-key|gpg-key)
+        printf 'gh-bot: `gh %s` is not for the agent identity — see ../gate-map.md, "Which identity acts"\n' "$1" >&2
+        exit 2
+        ;;
+esac
+
+token=$(node "$here/gh-bot-token.mjs") || exit $?
+[ -n "$token" ] || { printf 'gh-bot: empty token\n' >&2; exit 2; }
+
+GH_TOKEN="$token" exec gh "$@"

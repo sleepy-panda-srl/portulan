@@ -38,6 +38,7 @@ are the point:
 | [`gate-map.md`](gate-map.md) | The policy half of autonomy: concrete actions bound to the engine's tiers |
 | [`dod.md`](dod.md) | Definition of done here — this workspace's extension of core's floor |
 | [`verify/`](verify/) | The verify recipes the Stop-gate will run, and what each check enforces |
+| [`tools/`](tools/) | Operator tooling — how this repository is *run*, as distinct from how a change is checked |
 | [`repos/`](repos/) | Repo cards — one per repository this workspace covers |
 | [`memory/`](memory/) | Durable facts with provenance, one per file |
 | [`tasks/`](tasks/) | Task files: the atomic unit of work and of context |
@@ -66,8 +67,9 @@ Honest limits, each with the milestone that closes it:
 - **No compiled gates.** [`gate-map.md`](gate-map.md) is read and honoured by people and agents; the
   compiler that turns it into hooks and permissions is milestone 4, so the map's authority is review
   rather than machinery. The **platform floor beneath it is configured** — `main` rejects direct pushes
-  and requires `docs-integrity` green, with no exemption for administrators — so what still rests on
-  review is the tiers above the floor, not the floor.
+  and requires the workspace verify check green, with no exemption for administrators — so what still
+  rests on review is the tiers above the floor, not the floor. (Which context that is, is mid-rename; see
+  [`gate-map.md`](gate-map.md).)
 - **No generated memory index.** [`memory/`](memory/) is a flat directory. The size-budgeted index is
   *built, never hand-maintained* ([`../core/operating/memory.md`](../core/operating/memory.md)), so
   writing one by hand now would contradict the doctrine it implements; it arrives with the scheduled
