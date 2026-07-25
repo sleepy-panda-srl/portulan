@@ -5,9 +5,11 @@
 # check that CI actually reports. Without it, "required status checks" has nothing to require
 # and the floor rests on review alone.
 #
-# Deliberately no matrix and no cache: the recipe needs bash, git, and POSIX text utilities,
-# all present on the runner. A verify recipe with a build step of its own is a verify recipe
-# that starts failing for reasons unrelated to the change under test.
+# Deliberately no matrix and no cache: the recipes need bash, git, POSIX text utilities, and —
+# for the JSON recipe since milestone 2 — node, all preinstalled on the runner. Note there is no
+# actions/setup-node step, and that is the point: adding one would pin a version, which would make
+# this workflow a build. A verify recipe with a build step of its own is a verify recipe that
+# starts failing for reasons unrelated to the change under test.
 
 name: workspace verify
 
@@ -33,5 +35,14 @@ jobs:
       # SHA below is actions/checkout v4.4.0.
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
+      # Both recipes run in this one job on purpose. The job id is the status-check context that
+      # branch protection pins, so splitting them into two jobs would require re-pinning the rule
+      # and would leave `main` briefly requiring a check that no longer reports.
       - name: Run the workspace verify recipe — links, kernel budget, repo map
         run: ./.portulan/verify/docs.sh
+
+      # Runs even if the recipe above failed: two independent recipes should both report, so a
+      # broken manifest is not hidden behind a dead link. The job still fails if either does.
+      - name: Run the workspace verify recipe — JSON well-formedness
+        if: ${{ !cancelled() }}
+        run: ./.portulan/verify/json.sh

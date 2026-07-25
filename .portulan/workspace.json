@@ -1,0 +1,51 @@
+{
+  "portulan": {
+    "spec": "1.0"
+  },
+  "name": "portulan",
+  "summary": "Sleepy Panda Works building Portulan: one maintainer, coding agents under a supervised-build protocol, a docs-first repository whose product is its files.",
+  "kind": "repository",
+
+  "slots": {
+    "identity": "identity.md",
+    "principles": "principles.md",
+    "constitution": "../docs/vision.md",
+    "gates": "gate-map.md",
+    "dod": "dod.md",
+    "memory": "memory/",
+    "repos": "repos/",
+    "tasks": "tasks/",
+    "handoffs": "handoffs/",
+    "proposals": "proposals/"
+  },
+
+  "verify": {
+    "default": "docs",
+    "recipes": [
+      {
+        "id": "docs",
+        "run": "./.portulan/verify/docs.sh",
+        "requires": ["bash", "git"],
+        "doc": "verify/README.md"
+      },
+      {
+        "id": "json",
+        "run": "./.portulan/verify/json.sh",
+        "requires": ["bash", "git", "node"],
+        "doc": "verify/README.md"
+      }
+    ]
+  },
+
+  "products": [
+    {
+      "id": "portulan",
+      "name": "Portulan",
+      "product": "products/portulan/product.md",
+      "affordances": "products/portulan/affordances.md",
+      "repos": ["portulan"]
+    }
+  ],
+
+  "packs": []
+}

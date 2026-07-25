@@ -53,9 +53,9 @@ Status legend: `todo` · `in-progress` · `done (date, fidelity note)`
 |---|---|---|---|---|
 | 0 | Bootstrap | 1 | `sleepy-panda-works/portulan` skeleton pushed **as a private repo** (public flip happens at milestone 3 only, after the clearance tracked in the private context): license, README stub, directory scaffold per the topology above, `.gitignore` already excluding the bootstrap file, and this folder's `plan.md` + `vision.md` seeded as `docs/plan.md` + `docs/vision.md` | done (2026-07-24; Fable 5 verified live remote: PRIVATE, zero residue, criterion complete) |
 | 1 | Core re-expression | 3 | `core/` authored fresh — zero copied prose, zero client references; every engine-relevant `vision.md` clause mapped to a home in `core/` or a recorded deferral; a real task runs end-to-end on engine + the repo's own `.portulan/` workspace, with a recorded red→green verify | done (2026-07-25; Fable 5 M1-close, fresh context: independent vision→core walk found 0 unmapped clauses — 44 covered, 14 recorded deferrals; verify rerun green; red pre-existed per git as an M0 omission; seam clean across files + history) |
-| 2 | Workspace spec v1 | 1–2 | Manifest + **constitution & product-layer slots** (team principles; mission/what/why) + gate map + verify recipes + **agent-affordances slot** (portfolio-aware: many products per workspace) + **provenance slot**, per the decision on `.portulan/proposals/0002-sealed-provenance.md` (proposed: a well-formed link or a sealed owner+date stamp); `doctor` validates the demo workspace **and this repo's own `.portulan/`** (and, privately, the pilot), and lints **workspace claims against the tree** — repo-card build/test/run lines and layout, gate map — the way the `map` check already holds the root README to the repo's shape | todo |
+| 2 | Workspace spec v1 | 1–2 | Manifest + **constitution & product-layer slots** (team principles; mission/what/why) + gate map + verify recipes + **agent-affordances slot** (portfolio-aware: many products per workspace) + **provenance slot**, per the decision on `.portulan/proposals/0002-sealed-provenance.md` (proposed: a well-formed link or a sealed owner+date stamp); `doctor` validates the demo workspace **and this repo's own `.portulan/`** (and, privately, the pilot), and lints **workspace claims against the tree** — repo-card build/test/run lines and layout, gate map — the way the `map` check already holds the root README to the repo's shape | in-progress (session 1 of 2, 2026-07-25: spec authored + instantiated; `doctor`, the demo workspace, and the claims lint owed by session 2) |
 | 3 | Plugin & public marketplace | 1–2 | Skills pass `skills-ref validate`; v0.1.0 tagged; fresh-machine install boots the engine with no local folder | todo |
-| 4 | Enforcement compiler | 1–2 | `gates.yaml` → hooks + permissions (+ Copilot ruleset export); verify recipes → Stop-gate runner; per-host backend matrix + doctor degradation report. Demo: unapproved push blocked; "done" without green verify blocked | todo |
+| 4 | Enforcement compiler | 1–2 | `gates.json` → hooks + permissions (+ Copilot ruleset export); verify recipes → Stop-gate runner; per-host backend matrix + doctor degradation report. Demo: unapproved push blocked; "done" without green verify blocked | todo |
 | 5 | Memory lifecycle & librarian | 1–2 | Generated size-budgeted index; consolidation skill; scheduled librarian (reindex, staleness, proposal nagging, demotion drafts) files its first real PR; proposals-as-PRs live | todo |
 | 6 | Sleepy Panda workspace & private feed | 1–2 | `portulan-internal` marketplace live; a Sleepy Panda product task runs the full loop from a private-feed install | todo |
 | 7 | CLI & onboarding | 2 | `npx @sleepy-panda-works/portulan` ships init/doctor/compile/vendor/index/upgrade; a never-seen repo onboards to a validated workspace in one afternoon | todo |
@@ -246,3 +246,53 @@ the seam applies here too: no client-identifying references)_
   missing: `CODEOWNERS`, so no path-specific human is required on any file — including `docs/vision.md`,
   which is protected today only by a prompt-level prohibition and not by the platform. Wanted before the
   milestone-3 public flip. Seam scan clean across files, commit message, and branch name.
+
+- 2026-07-25 · M2 (Workspace spec v1), session 1 of 2 · **The workspace layer stopped being a folder
+  convention.** `spec/` now carries the Workspace Definition — the schema, an orientation, and a per-slot
+  document in which every slot cites what it was derived from (the milestone criterion, a constitution
+  clause, or the one real workspace that existed), so "derived from real content" is checkable rather than
+  claimed. `.portulan/` became its first instance via `workspace.json`. One constraint did most of the
+  design work: a slot must be a **whole file**, because this repository's `links` check cannot validate
+  `#fragment` targets and a fragment-addressed slot would be unlintable by construction — which is what
+  forced `identity.md` to split into identity · `principles.md` (the constitution slot) · `products/` (the
+  product layer plus the new agent-affordances slot), rather than the schema bending around the document.
+  Two design calls were made *against* the available evidence and are worth keeping: `products` is an array
+  though this workspace has exactly one product, since a faithful one-sample derivation would have modelled
+  it singular and been wrong by milestone 6; and `constitution` is the one slot permitted to point outside
+  the workspace directory, because customer zero's is `docs/vision.md` — a containment rule would have sent
+  `doctor`'s first run red for a schema-design reason rather than a content one. Provenance landed as a
+  **record field rather than a manifest key**: a rule lives in Markdown, so a manifest key would have
+  described a workspace's policy about provenance while leaving every actual rule unchecked. The repository
+  also gained a second verify recipe, `verify/json.sh`, written **before** the JSON it guards and red→green
+  on a fixture; it caught its own author first, reporting a file that had been fine since milestone 0 as
+  malformed — a **false red**, fixed by deleting the argument handling that caused it, and recorded because
+  a false red is the failure that gets a whole recipe switched off. `docs.sh` stays POSIX-only; the `node`
+  dependency is confined to the new recipe and to `doctor`, and each recipe now declares its own needs, which
+  is what keeps *could not run* distinguishable from *ran and failed*. Five placeholder READMEs claiming
+  "populated from milestone 1" were corrected — `examples/` and the four under `packs/` — the milestone's
+  own first instance of the claims-drift its `doctor` lint exists to catch. (The first draft of this very
+  sentence said "three … and the three under `packs/`", wrong twice, and was caught at the pre-commit
+  checkpoint — which is the argument for the lint restated as evidence.) **Milestone 2 stays open:**
+  `doctor`, the demo workspace, and the claims-against-the-tree lint are session 2, and task `0002` carries
+  both halves. · **Maintainer decisions this session:** proposal `0002` (sealed provenance) **accepted** and
+  closed as applied — with two questions it had deferred settled in the applying (*resolvable* means
+  well-formed, never fetched; the slot is a record field) and the matching **`docs/vision.md` thesis-4
+  wording change reserved to Marius's own hand**, so until it lands the constitution reads "links" while the
+  spec permits a stamp, stated in both rather than smoothed over; and **JSON as the format product-wide**,
+  which is why milestone 4's row now reads `gates.json` — raised because a "no YAML parser" rationale that
+  ignored the YAML artifact the plan named one milestone later would have been a rationale with a hole in it.
+  Proposal `0003` was **drafted, not applied**: the new `kind` slot fires the retirement condition
+  `three-workspaces-not-one.md` wrote for itself, but only for its general half, since which of this
+  repository's directories is which kind is a specific that thesis 6 keeps with its owner. · Supervised in a
+  fresh Fable 5 context: session-open APPROVE-WITH-ADJUSTMENTS (nine required, all folded in — chiefly that
+  the slot inventory be driven by the criterion and the constitution rather than by the one available
+  sample, that products be modelled as repeated, that no unparseable JSON ship, and that `.portulan/README.md`'s
+  own "no manifest and no schema" limit be corrected in the same change); pre-commit APPROVE-WITH-ADJUSTMENTS
+  (nine required, seven mechanical, all folded in). The pre-commit pass verified by hand what no validator
+  yet can — that the schema stays inside its declared keyword subset, and that the shipped manifest would
+  actually validate against the shipped schema — and caught four claims that were false against the tree:
+  this entry's own README miscount; three `$defs` patterns whose descriptions promised to reject absolute
+  paths while the regexes accepted them; a stale "the platform floor is not configured" line in
+  `.portulan/README.md`, left over from before it was, and now contradicted by a file this same change adds;
+  and an over-literal "before any of the JSON it guards existed" in the handoff, which the transcript beneath
+  it disproved. Seam scan clean across files, commit message, and branch name.

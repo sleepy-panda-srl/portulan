@@ -18,7 +18,10 @@ without a triggering incident is usually taste, not a rule.}
 argument for why it is worth context-window tokens as prose. Rules that enforce or measure themselves
 beat rules you must remember.}
 
-**Provenance.** {the source or precedent, plus the incident link, carried into the rule so it can later
-be retired.}
+**Provenance.** {the source or precedent, carried into the rule so it can later be retired — in one of
+the two forms the Workspace Definition defines (`../../spec/workspace.schema.json`, `$defs/provenance`):
+`form=link href={…}` when the incident is visible to everyone who can read the rule, or
+`form=sealed owner={…} date={YYYY-MM-DD} shape={the de-identified failure}` when it cannot leave its
+owner's layer. Neither form present means the proposal is taste; see `../templates/memory-entry.md`.}
 
 **Decision.** {human owner} — accepted | rejected | revised, on {date} — because {…}.

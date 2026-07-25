@@ -70,6 +70,30 @@ theses are ever reconciled some other way.
   4's "links to the incident" reads in the collision case. That call is the maintainer's alone, and it may
   warrant a wording change in `docs/vision.md` in his own hand rather than only a spec slot.
 
-**Decision.** Marius Cetanas — **pending**. Drafted, not adopted: an agent may draft the curated layer
-and never own it ([`../../core/operating/evolution.md`](../../core/operating/evolution.md)). Sequenced
-for milestone 2, since the provenance slot is part of the Workspace Definition this proposal amends.
+**Decision.** Marius Cetanas — **accepted, 2026-07-25**, at the opening of the milestone-2 session that
+defines the Workspace Definition. Accepted as drafted: both forms, one of them mandatory, with `doctor`
+rejecting a rule that carries neither and reporting the sealed proportion, and the librarian nagging
+rather than retiring on evidence it cannot see.
+
+**As applied.** The rule landed in [`../../spec/slots.md`](../../spec/slots.md) (the reasoning and the
+honest limits) and in `$defs/provenance` of
+[`../../spec/workspace.schema.json`](../../spec/workspace.schema.json) (the normative shape), and is
+reflected in [`../../core/templates/memory-entry.md`](../../core/templates/memory-entry.md) and
+[`../../core/templates/proposal.md`](../../core/templates/proposal.md) as the proposal asked. Two details
+were settled in the applying rather than left open:
+
+- **"Resolvable" means well-formed, not fetched** — the question this proposal explicitly deferred to
+  milestone 2. Settled the way the proposal guessed it would be: `doctor` validates a link's shape and
+  never dereferences it, because [`../verify/README.md`](../verify/README.md) refuses network-dependent
+  gates and a flaky gate is worse than no gate.
+- **The slot is a record field, not a manifest key.** A rule lives in a Markdown record, so a manifest
+  key would have described a workspace's *policy about* provenance while leaving every actual rule
+  unchecked. The schema defines the shape; the records carry instances of it.
+
+**Reserved to the maintainer.** This proposal warned that accepting it is a constitutional
+interpretation, and that it may warrant a wording change in [`../../docs/vision.md`](../../docs/vision.md)
+in Marius's own hand. He took the decision *and* reserved that wording change. Until it lands, thesis 4
+still reads "links to the incident" while this spec permits a stamp — a real gap between the constitution
+and the schema graded against it, recorded here and in [`../../spec/slots.md`](../../spec/slots.md)
+rather than smoothed over. No agent edits that file
+([`../memory/constitution-is-human-owned.md`](../memory/constitution-is-human-owned.md)).

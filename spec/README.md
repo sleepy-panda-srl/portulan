@@ -1,7 +1,126 @@
 # spec/
 
-The **Workspace Definition**: schema, docs, and migrations. A workspace is the per-team layer
-(identity, stack, repo cards, gate map, verify recipes, rituals, DoD, glossary, memory, plus the
-constitution and product-layer slots) that the engine resolves against.
+The **Workspace Definition** — the contract between the engine and a team's own layer. `core/` is
+mechanism and is identical for everyone; a workspace is the half that is theirs, and this directory is
+what makes that half machine-readable instead of a folder convention.
 
-> Placeholder. Authored in **milestone 2**.
+- [`workspace.schema.json`](workspace.schema.json) — the manifest schema, normative.
+- [`slots.md`](slots.md) — every slot: what it holds, why it exists, where it was derived from, and what
+  `doctor` checks about it. The rationale lives there; this file is the orientation.
+
+## The manifest is an index, not a container
+
+A workspace's content is Markdown, and it stays Markdown. The manifest names the slots and points at the
+documents that hold each one — so the *why* stays next to the rule, where a human reads it, and the
+machine gets a contract it can check. A manifest that absorbed the prose would put the product's actual
+value in a file nobody enjoys reading.
+
+That splits the slots in two, and the distinction is worth naming because it decides what `doctor` can
+say about each:
+
+- **Path slots** — `slots.*`, the workspace-level `affordances`, `products[].product`,
+  `products[].affordances`, and `verify.recipes[].doc` — resolve to a file or a directory. `doctor` can
+  check they exist and that what they claim matches the tree. The list is exhaustive on purpose:
+  `doctor`'s existence checks are derived from it, so a path field missing here is a path field nothing
+  will ever check.
+- **Structured slots** (`verify`, `products`, `packs`) are data in the manifest itself, because they are
+  consumed rather than read — the Stop-gate needs to know *which* recipe is the default, and no amount
+  of prose gives it that.
+
+Two rules follow, and both were forced by real defects rather than chosen for tidiness:
+
+1. **No `#fragment` targets.** A slot must be a whole file. This repository's own `links` check cannot
+   validate fragments ([`../.portulan/verify/README.md`](../.portulan/verify/README.md)), so a slot
+   addressed by anchor would be unlintable by construction — the slot would exist and nothing could ever
+   confirm it pointed anywhere real.
+2. **A path slot may point outside the workspace directory.** Exactly one slot is *expected* to —
+   `constitution` — because a product's constitution normally lives with the product, not with the
+   workspace. Customer zero is the first proof: its constitution is `docs/vision.md`, one level up. A
+   schema that required containment would have failed on its own author's workspace.
+
+   The schema cannot express *which* slot may escape — a `pattern` sees one string, not which key it
+   belongs to — so escaping is legal everywhere and `doctor` **reports** rather than fails when any slot
+   other than `constitution` does it. Reporting rather than failing is the right severity: a workspace
+   embedded in a larger repository may legitimately reach for a shared document, and a hard failure
+   would make the schema wrong about a case it cannot see.
+
+## The three kinds
+
+`kind` is required, and it is not bookkeeping. A **demo** workspace is written to be read by strangers
+and must carry no real internal policy; a **repository** workspace is a team dogfooding on their own
+product; a **portfolio** workspace covers many products at once. Confusing them produces the two failures
+that actually cost something: real internal policy published in a demo, or a demo written as merely
+illustrative when it is the only complete worked example an evaluator will ever read.
+
+## Required versus optional
+
+A slot is **required** only when a workspace without it breaks a promise the engine makes. That is the
+whole test, and it is deliberately strict — a day-one workspace has no proposals, no handoffs, and no
+memory yet, and it must still validate. Ceremony that cannot scale down is a binding non-goal.
+
+Required: `portulan.spec`, `name`, `kind`, `slots.identity`, `slots.principles`, `slots.gates`, `verify`.
+Everything else is optional. [`slots.md`](slots.md) argues each one.
+
+Note the distinction that does the work here: the *definition* carries a slot, while an *instance* may
+leave it empty. "The Workspace Definition has a product-layer slot" and "every workspace must declare a
+product" are different claims, and only the first is true.
+
+## Versioning and migrations
+
+`portulan.spec` is `MAJOR.MINOR`.
+
+- **MINOR** — additive only: new optional slots, relaxed constraints. An older manifest stays valid.
+- **MAJOR** — anything that can invalidate a manifest that used to pass: a new required slot, a removed
+  or renamed one, a tightened constraint. A MAJOR bump ships with a migration, and until one exists there
+  is nothing to migrate — which is why this directory has no `migrations/` yet. Creating an empty one
+  would claim a capability that does not exist.
+
+The schema sets `additionalProperties: false` throughout. Unknown keys fail rather than being ignored,
+because the common case is a typo in a slot name, and a silently-ignored `principals` would leave a
+workspace with no constitution slot and a green report.
+
+## What actually validates any of this, today
+
+Honestly: **almost nothing yet.**
+
+| Artifact | Checked by | Status |
+|---|---|---|
+| Every `.json` file parses | [`../.portulan/verify/json.sh`](../.portulan/verify/json.sh) | **Built.** Well-formedness only — it does not read the schema. |
+| Manifest conforms to the schema | `doctor` | Milestone 2, second session. |
+| Path slots resolve to real files | `doctor` | Milestone 2, second session. |
+| Workspace claims match the tree | `doctor` | Milestone 2, second session — repo-card build/test/run lines and layout, and the gate map. |
+| A rule's provenance is well-formed | `doctor` | Milestone 2, second session. |
+| Sealed proportion reported | `doctor` | Milestone 2, second session. |
+
+Until `doctor` exists, this schema is a specification and not a rail, and every conformance claim about a
+workspace is an assertion. Saying so is the point: a spec that implied it was enforced would make the
+first real green worth less.
+
+## The JSON Schema subset
+
+`doctor` will carry its own validator rather than a dependency, so the schema is written in a subset
+small enough to implement completely and honestly. **Full JSON Schema 2020-12 is not supported and will
+not be claimed.** The subset is exactly:
+
+`$schema` · `$id` · `$defs` · `$ref` (local, `#/$defs/…` only) · `title` · `description` · `type` ·
+`properties` · `required` · `additionalProperties: false` · `items` · `enum` · `pattern` · `minLength` ·
+`minItems` · `uniqueItems` · `oneOf`
+
+A schema change that reaches outside this list is a change to `doctor` too, and the two land together.
+`$id` is an identifier, not a live endpoint — nothing is served at that URL until the docs site in
+milestone 10.
+
+**Formats are JSON across the product**, not only here: machine inputs are JSON, and the *why* that would
+otherwise live in comments belongs in the Markdown the manifest points at. That is a maintainer decision
+of 2026-07-25 covering the enforcement compiler's input too.
+
+## Reading an instance
+
+The first real instance is customer zero's own manifest,
+[`../.portulan/workspace.json`](../.portulan/workspace.json) — the material this schema was derived from,
+rather than an example written to flatter it. A fictional demo workspace with more than one product
+follows in [`../examples/`](../examples/); a second, differently-shaped instance is what actually tests a
+schema, and this one has not had that test yet.
+
+Illustrative fragments in [`slots.md`](slots.md) use `{braces}` for placeholders, the same convention as
+[`../core/templates/`](../core/templates/).
