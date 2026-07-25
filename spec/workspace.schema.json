@@ -225,7 +225,12 @@
           "required": ["form", "href"],
           "properties": {
             "form": { "enum": ["link"] },
-            "href": { "type": "string", "minLength": 1 }
+            "href": {
+              "description": "Where the incident lives: a ticket, a PR, a postmortem, a commit. Shape only — never dereferenced, because a gate that needs the network fails for reasons unrelated to the change under test. Whitespace is rejected so that `well-formed` is a claim a checker can actually enforce rather than a description of intent.",
+              "type": "string",
+              "pattern": "^\\S+$",
+              "minLength": 1
+            }
           }
         },
         {

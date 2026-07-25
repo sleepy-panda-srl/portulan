@@ -76,6 +76,8 @@ These words mean exactly this here; ambiguity in them is what costs most.
 | **Lane** | Which weight of the loop a task takes: `full` or `triage`. |
 | **Gate map** | The binding of concrete actions to autonomy tiers. Policy, hence workspace-owned. |
 | **Verify recipe** | The executable check that decides "done" ([`verify/`](verify/)). A workspace may have several and names the default. |
+| **Principles** | [`principles.md`](principles.md) — how *we* decide. Required, lives in this directory. This is what the milestone-2 criterion calls the *constitution slot*. |
+| **Constitution** (the slot) | The separate document our work is graded against — for us [`../docs/vision.md`](../docs/vision.md), which sits *outside* this directory and is human-owned. Optional, and the only slot allowed to point outside the workspace. **Not** a synonym for **Principles**: one is how we work, the other is what we are judged by. |
 | **Workspace Definition** | The schema a workspace is validated against ([`../spec/`](../spec/)). The contract between engine and team layer. |
 | **Manifest** | [`workspace.json`](workspace.json) — the index naming this workspace's slots. An index, never a container: the prose stays in Markdown. |
 | **Slot** | One named part of a workspace. A **path slot** points at a whole file or directory; a **structured slot** is data in the manifest, because something consumes it. |
