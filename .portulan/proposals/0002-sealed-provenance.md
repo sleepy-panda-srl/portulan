@@ -92,8 +92,14 @@ were settled in the applying rather than left open:
 
 **Reserved to the maintainer.** This proposal warned that accepting it is a constitutional
 interpretation, and that it may warrant a wording change in [`../../docs/vision.md`](../../docs/vision.md)
-in Marius's own hand. He took the decision *and* reserved that wording change. Until it lands, thesis 4
-still reads "links to the incident" while this spec permits a stamp — a real gap between the constitution
-and the schema graded against it, recorded here and in [`../../spec/slots.md`](../../spec/slots.md)
-rather than smoothed over. No agent edits that file
+in Marius's own hand. He took the decision *and* reserved that wording change, which is carried as its own
+human-authored change to the constitution rather than as part of this one. No agent edits that file
 ([`../memory/constitution-is-human-owned.md`](../memory/constitution-is-human-owned.md)).
+
+For as long as the two are out of step, thesis 4 reads "links to the incident" while this spec permits a
+stamp — a real gap between the constitution and the schema graded against it, recorded rather than
+smoothed over. **It must not outlive `doctor`:** once a machine mechanically enforces the two-form shape,
+a rule the constitution does not state is being enforced by tooling, which is backwards for this product.
+When the constitutional wording lands, this block and the fourth honest-limits bullet in
+[`../../spec/slots.md`](../../spec/slots.md) are the two *living* notices to sweep; the handoff and
+session-log mentions are dated records and stay as history.

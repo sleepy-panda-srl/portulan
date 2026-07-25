@@ -9,9 +9,11 @@
 >
 > - **criterion** — the milestone-2 exit criterion in [`../docs/plan.md`](../docs/plan.md), which names
 >   the slots this milestone owes.
-> - **constitution** — [`../docs/vision.md`](../docs/vision.md): thesis 1's definition of a workspace
->   *(identity, stack, repo cards, gate map, verify recipes, rituals, DoD, glossary, memory, plus the
->   constitution and product-layer slots)*, or another clause named inline.
+> - **constitution** — [`../docs/vision.md`](../docs/vision.md): thesis 1's definition of a workspace, or
+>   another clause named inline. The parenthetical is deliberately **not** reproduced here. A quotation of
+>   the constitution inside a document about accurate derivation is a drift surface, and this one had
+>   already drifted: an earlier draft appended the milestone-2 criterion's *"plus the constitution and
+>   product-layer slots"* to thesis 1's own list, which does not contain that phrase. Follow the link.
 > - **content** — the one real workspace that existed when this was written,
 >   [`../.portulan/`](../.portulan/). The plan sequences re-expression before schema on purpose: derive
 >   the spec from real material rather than guessing it.
@@ -100,6 +102,11 @@ the schema carries. Reporting is the right severity — a workspace embedded in 
 legitimately reach for a shared document, and failing would make the tool wrong about a case it cannot
 see.
 
+One consequence worth naming before `doctor` is written: this slot takes `$defs/path`, which admits a
+directory as well as a file, so `"constitution": "docs/"` validates. That is deliberate — a team's
+constitution may genuinely be a folder rather than one document — and it means `doctor` resolves the
+target without assuming it is a file. Same severity as an escape: report what it found, do not fail.
+
 ## `slots.gates` — the policy half of autonomy
 
 [`autonomy.md`](../core/operating/autonomy.md) defines the tiers as universal mechanism and says
@@ -130,8 +137,10 @@ failed) from *could not run* (exit 2, a tool is missing), and that distinction i
 declares what was needed. Customer zero now has two recipes with different needs — one POSIX-only, one
 requiring `node` — which is exactly the case that made the field earn its place.
 
-**What `doctor` checks:** `default` names a recipe that exists in `recipes`; each `doc` resolves. It does
-**not** run the recipes, and it does not check that `requires` is honest — a recipe that quietly needs a
+**What `doctor` checks:** `default` names a recipe that exists in `recipes`; each `doc` **that is
+present** resolves. `doc` is optional by the minimality rule — a recipe whose limits are not yet written
+up is still a runnable recipe, and requiring the write-up would be exactly the ceremony that rule refuses.
+It does **not** run the recipes, and it does not check that `requires` is honest — a recipe that quietly needs a
 tool it did not declare passes. That is a real gap; the honest fix is executing them, which belongs to
 the Stop-gate runner in milestone 4.
 
@@ -236,18 +245,25 @@ the episode does not.
   quietly opted out of retirement altogether, and that is a health signal rather than a curiosity.
 - **Adopting this was a constitutional interpretation.** It decides how thesis 4's "links to the
   incident" reads in the collision case. The maintainer accepted it and reserved the matching wording
-  change in [`../docs/vision.md`](../docs/vision.md) to his own hand; until that lands, the constitution
-  still reads "links" while this spec permits a stamp. Recorded here rather than smoothed over, because
-  the gap is exactly the kind this product exists to stop hiding.
+  change in [`../docs/vision.md`](../docs/vision.md) to his own hand, carried as its own change. While the
+  two are out of step the constitution reads "links" and this spec permits a stamp — recorded rather than
+  smoothed over, because the gap is exactly the kind this product exists to stop hiding, and because
+  `doctor` will *mechanically enforce* the two-form shape. A machine enforcing a rule the constitution
+  does not state is backwards here, so this notice is one of two to sweep when the wording lands (the
+  other is in customer zero's
+  [proposal 0002](../.portulan/proposals/0002-sealed-provenance.md)).
 
 ## Considered and left out
 
 Each of these was a candidate; none is an oversight.
 
-- **`rituals` as its own slot.** Thesis 1 names rituals in its workspace definition. But rituals ship as
-  packs ([`../packs/rituals/`](../packs/rituals/)), so a workspace composes them through `packs` and a
-  second slot would be two ways to say one thing. Revisit if a workspace-local ritual ever needs a home
-  that is not a pack.
+- **`rituals` as its own slot.** The constitution names rituals as a pack category, and — at the time
+  this was written — also inside thesis 1's workspace list. The two readings disagreed and the schema had
+  to pick one. It picks packs: rituals ship as packs ([`../packs/rituals/`](../packs/rituals/)), so a
+  workspace composes them through `packs`, and a second slot would be two ways to say one thing. The
+  ambiguity itself was raised with the maintainer rather than settled here, because the constitution is
+  human-owned and a schema is not the place to resolve what it means. Revisit if a workspace-local ritual
+  ever needs a home that is not a pack.
 - **`stack` and `glossary` as slots.** Both are named in thesis 1 and both live inside `identity.md`
   today. Splitting them buys nothing until something *consumes* them — a stack pack selecting itself
   from a declared stack would be that consumer, and it does not exist. Splitting on speculation is how a
