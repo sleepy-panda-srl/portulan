@@ -76,10 +76,26 @@ agent does here, and this section is written to be followed by a human once.
 5. **Install the App** on `sleepy-panda-works` → *Only select repositories* → `portulan`.
 6. **Export the configuration** from your shell profile:
 
+   Find the App's numeric id — from the App's settings page, or by asking GitHub:
+
    ```
-   export PORTULAN_BOT_APP_ID=<the App ID>
-   export PORTULAN_BOT_PRIVATE_KEY="$HOME/Sleepy Panda Projects/portulan-private/portulan-agent.pem"
+   gh api /orgs/sleepy-panda-works/installations \
+     --jq '.installations[] | select(.app_slug=="portulan-agent") | .app_id'
    ```
+
+   Then append the two lines to your profile, substituting that number:
+
+   ```
+   echo 'export PORTULAN_BOT_APP_ID=1234567' >> ~/.zshrc
+   echo 'export PORTULAN_BOT_PRIVATE_KEY="$HOME/Sleepy Panda Projects/portulan-private/portulan-agent.pem"' >> ~/.zshrc
+   source ~/.zshrc
+   ```
+
+   **Never write a placeholder as `<…>` inside a shell block.** `<` is a redirection operator, so pasting
+   one is not a harmless no-op — it is a parse error, and an earlier draft of this runbook shipped exactly
+   that. The repository already learned this once from the other direction, when `<…>` placeholders in the
+   templates were changed to `{…}` because GitHub's Markdown renderer silently dropped them. Two different
+   surfaces, one rule: a placeholder must be inert wherever it might be pasted.
 
    **Put these in the profile file itself (`~/.zshrc`), not just in a running shell.** An agent's shell is
    initialised from your profile but does not inherit exports typed into an interactive session, so a
@@ -136,6 +152,8 @@ silently re-attributes everything typed afterwards, which is the failure this me
   trivially. The real enforcement is the App's permission set: that token cannot push, cannot merge, and
   cannot change settings, so the worst case is a comment in the wrong voice rather than a change in the
   wrong hands.
-- **The end-to-end path is unverified until the App exists.** Signing, configuration errors, and GitHub's
-  refusal responses are all exercised; minting a real token against a real installation is not, because
-  that needed credentials that were correctly not available while this was written.
+- ~~**The end-to-end path is unverified until the App exists.**~~ **Verified 2026-07-25.** The App is
+  installed on `sleepy-panda-works/portulan` only, with `pull_requests: write` and `metadata: read`; a
+  token minted through this path listed exactly that one repository, was **refused** repository contents,
+  and posted the first `portulan-agent[bot]` comment. The contents refusal is the load-bearing one: it is
+  what makes "the permission set is the enforcement, not the wrapper" a fact rather than an intention.
