@@ -22,7 +22,12 @@ Recoverable and reversible inside a working copy. Nothing here reaches another p
 
 Reversible but consequential: it changes what the repository says, or how it behaves.
 
-- Open a pull request. **An agent never merges its own.**
+- Open a pull request. **An agent never merges its own on its own authority** — but the gate is the
+  maintainer's *decision* to merge, not his keystroke. He may review a pull request and then instruct an
+  agent to perform the merge; that is the gate working, not a bypass. What stays forbidden is an agent
+  deciding for itself that a change is ready to land. Default when nothing is said: open the pull request
+  and hand it over. _(Recorded because the shorter wording reads as an absolute, and an agent following it
+  literally would have to refuse a direct instruction from the person the rule exists to protect.)_
 - Add or change doctrine in [`../core/`](../core/), a template, a persona, or a skill.
 - Add or change anything in this workspace, including this file.
 - Update the Status column or the Session log in [`../docs/plan.md`](../docs/plan.md).
