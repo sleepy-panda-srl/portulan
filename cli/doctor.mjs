@@ -389,34 +389,56 @@ function repoCardClaims(source) {
     return claims;
 }
 
-/** The status-check context a gate map claims `main` requires. */
-function requiredCheckClaim(source) {
+/**
+ * The status-check contexts a gate map claims `main` requires — every one named in the row, not just
+ * the first. A repository may require several, and reading only the first silently exempts the rest:
+ * the third real workspace requires two, and the one that was ignored was the one that was wrong.
+ */
+function requiredCheckClaims(source) {
     for (const line of source.split("\n")) {
         if (!/^\s*\|/.test(line)) continue;
         const cells = line.split("|").map((c) => c.trim());
         if (!/required status check/i.test(cells[1] ?? "")) continue;
-        const token = (cells.slice(2).join(" ").match(/`([^`]+)`/) ?? [])[1];
-        if (token) return token;
+        const tokens = [...cells.slice(2).join(" ").matchAll(/`([^`]+)`/g)].map((m) => m[1]);
+        if (tokens.length) return [...new Set(tokens)];
     }
-    return null;
+    return [];
 }
 
 /**
- * Job ids a workflow file declares. A regex rather than a YAML parse, because a YAML parser is a
- * dependency and this needs one shape from one well-known file. Stated as a limit rather than
- * left to be discovered: unusual-but-valid YAML (flow mappings, quoted keys) is not recognised.
+ * The status-check contexts a workflow file will report, as `{ id, context }`.
+ *
+ * The context is the job's `name:` when it sets one, and the job id otherwise — that is what branch
+ * protection pins, and the distinction is invisible until a job has both. It surfaced on the third
+ * real workspace: a job id `build-test` carrying `name: build + test`, where the ruleset requires
+ * `build + test` and this function previously returned only `build-test`, so a gate map claiming the
+ * id passed a check that should have failed. Customer zero could never have shown it, because its
+ * workflow deliberately sets no `name:` precisely so the two coincide.
+ *
+ * A regex rather than a YAML parse, because a parser is a dependency and this reads one shape from one
+ * well-known file. Stated as a limit rather than left to be discovered: unusual-but-valid YAML — flow
+ * mappings, quoted or multi-line keys, `name` given as an expression — is not recognised.
  */
-function workflowJobIds(source) {
+function workflowJobs(source) {
     const lines = source.split("\n");
     const start = lines.findIndex((l) => /^jobs:\s*$/.test(l));
     if (start === -1) return [];
-    const ids = [];
+    const jobs = [];
     for (const line of lines.slice(start + 1)) {
         if (/^\S/.test(line) && line.trim() !== "") break; // back to top level
         const id = line.match(/^ {2}([A-Za-z0-9_-]+):\s*$/);
-        if (id) ids.push(id[1]);
+        if (id) {
+            jobs.push({ id: id[1], context: id[1] });
+            continue;
+        }
+        // `name:` at the job's own level, not inside a step (steps are deeper and start with `- `).
+        const name = line.match(/^ {4}name:\s*(.+?)\s*$/);
+        if (name && jobs.length) {
+            const value = name[1].replace(/^["']|["']$/g, "");
+            if (value && !value.includes("${{")) jobs[jobs.length - 1].context = value;
+        }
     }
-    return ids;
+    return jobs;
 }
 
 // ===========================================================================================
@@ -691,10 +713,10 @@ export async function inspect(workspaceDir, options = {}) {
     // gate map named a status check nothing reports used to produce no mention of it at all, while
     // spec/slots.md promised those claims were "counted and reported unverifiable, never skipped
     // silently". Found at the pre-commit checkpoint, in the paragraph that made the promise.
-    let claimedCheck = null;
+    let claimedChecks = [];
     if (workspace.slots?.gates) {
         try {
-            claimedCheck = requiredCheckClaim(fs.readFileSync(path.resolve(dir, workspace.slots.gates), "utf8"));
+            claimedChecks = requiredCheckClaims(fs.readFileSync(path.resolve(dir, workspace.slots.gates), "utf8"));
         } catch {
             // Unreadable is already a `paths` failure; it must not also become an exit-2 crash,
             // which would trade a verdict this run had already reached for "could not run".
@@ -713,27 +735,40 @@ export async function inspect(workspaceDir, options = {}) {
             }
         }
 
-        if (claimedCheck) {
-            stats.claims += 1;
+        if (claimedChecks.length) {
             const workflows = path.join(treeRoot, ".github", "workflows");
-            let jobIds = [];
+            let jobs = [];
             let found = false;
             try {
                 for (const entry of fs.readdirSync(workflows)) {
                     if (!/\.ya?ml$/.test(entry)) continue;
                     found = true;
-                    jobIds.push(...workflowJobIds(fs.readFileSync(path.join(workflows, entry), "utf8")));
+                    jobs.push(...workflowJobs(fs.readFileSync(path.join(workflows, entry), "utf8")));
                 }
             } catch { /* handled below */ }
 
+            const contexts = jobs.map((j) => j.context);
+            // A job whose id is claimed but whose reported context differs is the interesting failure,
+            // and it deserves its own message: "no job declares that" would send the reader hunting for
+            // a missing job when the job is right there under a display name.
             if (!found) {
-                stats.claims -= 1;
-                stats.unverifiable += 1;
-                report("claims", `the gate map requires the status check \`${claimedCheck}\`, and there are no workflows in the tree to report it — unverifiable`);
-            } else if (!jobIds.includes(claimedCheck)) {
-                fail("claims", `the gate map requires the status check \`${claimedCheck}\`, which no workflow job in the tree declares (found: ${jobIds.join(", ") || "none"})`);
-            } else {
-                report("claims", `the gate map's required status check \`${claimedCheck}\` is reported by a workflow job in the tree — in-tree only: whether branch protection actually requires it, and the app it is pinned to, are live settings doctor does not fetch`);
+                stats.unverifiable += claimedChecks.length;
+                report("claims", `the gate map requires ${claimedChecks.length} status check(s) — ${claimedChecks.map((c) => `\`${c}\``).join(", ")} — and there are no workflows in the tree to report them — unverifiable`);
+                claimedChecks = [];
+            }
+            for (const claimedCheck of claimedChecks) {
+                stats.claims += 1;
+                const shadowed = jobs.find((j) => j.id === claimedCheck && j.context !== claimedCheck);
+                if (shadowed) {
+                    fail(
+                        "claims",
+                        `the gate map requires the status check \`${claimedCheck}\`, which is a job **id**; that job sets \`name: ${shadowed.context}\`, and the name is what branch protection pins. The claim names something no check will ever report`,
+                    );
+                } else if (!contexts.includes(claimedCheck)) {
+                    fail("claims", `the gate map requires the status check \`${claimedCheck}\`, which no workflow job in the tree reports (found: ${contexts.join(", ") || "none"})`);
+                } else {
+                    report("claims", `the gate map's required status check \`${claimedCheck}\` is reported by a workflow job in the tree — in-tree only: whether branch protection actually requires it, and the app it is pinned to, are live settings doctor does not fetch`);
+                }
             }
         }
     } else {
@@ -742,11 +777,11 @@ export async function inspect(workspaceDir, options = {}) {
             "claims",
             `${claimTargets.length} repo-card claim(s) unverifiable: this workspace declares no \`tree\`, so it describes repositories that are not present beside it. Reported rather than skipped — a check class that disappears quietly is worse than one that says it could not run`,
         );
-        if (claimedCheck) {
-            stats.unverifiable += 1;
+        if (claimedChecks.length) {
+            stats.unverifiable += claimedChecks.length;
             report(
                 "claims",
-                `the gate map requires the status check \`${claimedCheck}\`, and with no \`tree\` there is nothing to check it against — unverifiable`,
+                `the gate map requires ${claimedChecks.map((c) => `\`${c}\``).join(", ")}, and with no \`tree\` there is nothing to check against — unverifiable`,
             );
         }
     }
