@@ -32,7 +32,23 @@ agent does here, and this section is written to be followed by a human once.
 1. **Create the App.** `github.com/organizations/sleepy-panda-works/settings/apps` → **New GitHub App**.
    - *Name:* `portulan-agent` — it must be globally unique on GitHub, so expect to need a suffix. Whatever
      it becomes is what appears on every comment, so pick something that reads as a bot at a glance.
-   - *Homepage URL:* anything valid; `https://sleepypanda.ro` will do.
+   - *Homepage URL:* required. Use `https://sleepypanda.ro` — **not** the repository URL, which is
+     private until milestone 3 and would 404 for anyone who saw it.
+   - *Description:* shown on the App's page and in the install prompt, and public once the repository is.
+     Draft to paste:
+
+     > **What it does.** Posts pull-request comments and review replies on behalf of coding agents working
+     > on Portulan, so that agent-authored conversation is attributable to an agent rather than to a
+     > person's account.
+     >
+     > **Why it exists.** A review reply written by an agent and posted with a human's credentials reads as
+     > human, and nothing in the record reveals otherwise. Portulan is an operating framework for agentic
+     > engineering, and its doctrine refuses records that fabricate a participant — so it applies that rule
+     > to its own repository first.
+     >
+     > **What it cannot do.** Pull-request conversation only: it has no access to repository contents,
+     > cannot merge, and cannot change settings. Commits keep their human author's identity, because
+     > authorship there records a decision a person actually took.
    - **Uncheck "Active" under Webhook.** There is no webhook receiver, and leaving it on produces
      delivery failures forever.
    - *Repository permissions:* **Pull requests → Read and write**, and nothing else. That covers comments,
@@ -64,6 +80,11 @@ agent does here, and this section is written to be followed by a human once.
    export PORTULAN_BOT_APP_ID=<the App ID>
    export PORTULAN_BOT_PRIVATE_KEY="$HOME/Sleepy Panda Projects/portulan-private/portulan-agent.pem"
    ```
+
+   **Put these in the profile file itself (`~/.zshrc`), not just in a running shell.** An agent's shell is
+   initialised from your profile but does not inherit exports typed into an interactive session, so a
+   variable that exists only at your prompt is invisible to the thing that needs it — and the failure
+   looks like a misconfiguration rather than a missing export.
 
 7. **Confirm it works** — this prints the repositories the installation can see, and nothing else:
 
