@@ -213,11 +213,19 @@ workspace must declare `tree`, since it is the one kind with no honest reason to
 it is a MAJOR bump for one check, which is a trade only the maintainer should make, and the honest
 alternative is riding along with whatever forces a MAJOR at milestone 4.
 
-The close is also explicit that **the pilot clause is Marius's**, and names what he is being asked: either
-the seam-safe verdict of running `doctor` against the pilot in his own context (GREEN/RED/could-not-run
-plus counts, nothing more), or an amendment rescoping the clause in his own hand. The likely honest
-outcome is worth anticipating — the pilot predates the spec, so if it has no manifest yet the run is exit
-1 by design, and the truthful disposition is "not yet onboarded" rather than a failure.
+The close is also explicit that **the pilot clause is Marius's**. It was checked the same day, and the
+anticipated outcome is what happened: **the pilot carries no workspace manifest at all.** Searched rather
+than assumed — no `workspace.json` anywhere beneath it, at any depth — which is consistent with the record,
+since extracting that workspace was a milestone-1 client-half deliverable and milestone 1 closed without
+the client half. So there is nothing for `doctor` to validate, and the clause cannot be discharged as
+written.
+
+**Striking the clause on that evidence was offered and declined.** The maintainer kept the criterion
+unamended, which makes onboarding the pilot a client-session task and leaves **milestone 2 open**. That is
+the harder of the two choices and the right one: the alternative was narrowing a criterion until it fit
+what had been built, which is the exact failure the milestone-1 amendment was written to warn about — and
+milestone 1's amendment survives scrutiny only because it *widened* what had to be demonstrated rather
+than shrinking it.
 
 ## Open questions
 
@@ -273,10 +281,15 @@ that has already passed all three supervised checkpoints.
 
 ## Next action
 
-The milestone-close checkpoint, in a fresh context, against the criterion in
-[`../../docs/plan.md`](../../docs/plan.md) — including an explicit disposition for the criterion's
-*"(and, privately, the pilot)"* clause, which is the maintainer's and not this build's to run. Then
-milestone 3.
+**Milestone 2 stays open, and exactly one thing closes it:** the private pilot workspace has to be
+onboarded to the Workspace Definition — given a manifest — and then validated, in a client-rooted session.
+That is not this build's work and cannot be, under the seam. Everything the criterion asks of *this*
+repository is built, demonstrated and merged-pending.
+
+Milestone 3 (plugin & public marketplace) is startable in parallel; nothing in it depends on the pilot.
+Two carried items belong to whoever opens it: `CODEOWNERS`, wanted before the public flip and absent since
+the platform-floor session, and the recipe-test harness named in open question 1 — seven defects of one
+class in four days is enough evidence that the recipes need what `doctor` now has.
 
 ## Recoverability
 
