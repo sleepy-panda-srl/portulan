@@ -111,5 +111,6 @@ should.
 request that carries this file. **All three steps complete as of the same day**; the required check now
 says what it asserts. Recorded as a proposal rather than a bare change because the curated layer
 changes through proposals ([`../../core/operating/evolution.md`](../../core/operating/evolution.md)), and
-because the sequenced rename above needs to exist in writing before the next recipe lands. **The rename
-itself is not done and is not authorized by this decision** — it needs the Gated step 2.
+because the sequenced rename above needed to exist in writing before the next recipe landed — which it
+then did, in the order it prescribed. When this was first written the rename was explicitly *not* done and
+*not* authorized by this decision; step 2 was the maintainer's Gated action and step 3 followed it.
