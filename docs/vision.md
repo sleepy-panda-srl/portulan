@@ -25,7 +25,7 @@ One sentence: **cockpit products sell the dashboard; Portulan sells the doctrine
 
 1. **Mechanism/policy separation.** A universal engine (the loop, autonomy model, verification
    hierarchy, memory lifecycle, supervised evolution) + a per-team Workspace (identity, stack,
-   repo cards, gate map, verify recipes, rituals, DoD, glossary, memory) + composable packs
+   repo cards, gate map, verify recipes, DoD, glossary, memory) + composable packs
    (stacks / tools / rituals). Resolution cascade: core < pack < workspace < repo card < task.
 2. **Context layers outlive workflow machinery.** Hosts keep absorbing orchestration (Agent OS v3
    deleted its own; agent teams went native). Durable value = standards, workspace, memory, evals —
@@ -34,9 +34,11 @@ One sentence: **cockpit products sell the dashboard; Portulan sells the doctrine
 3. **Rails, not prose.** Every rule either enforces itself (hooks, compiled gates, Stop-gates,
    platform floor), measures itself (evals, telemetry), or earns its place in the context window.
    The why stays in Markdown; the must lives in machinery.
-4. **Every mistake compiles into a permanent rule** — with provenance. Each rule links to the
-   incident that created it (Hashimoto's loop, compounding engineering). The librarian retires
-   rules whose incidents can no longer occur.
+4. **Every mistake compiles into a permanent rule** — with provenance, in one of exactly two forms:
+   a resolvable link to the incident that created it, or — when the incident cannot leave its owner's
+   layer — a sealed stamp: owner, date, and the de-identified failure shape (Hashimoto's loop,
+   compounding engineering). The librarian retires rules whose incidents can no longer occur; a sealed
+   rule it cannot judge, so it nags the owner to re-validate instead.
 5. **Human-curated, agent-drafted.** Agents may draft the curated layer, never own it
    (ETH Zurich, arXiv:2602.11988: generated context hurts, curated helps). Supervised evolution —
    proposals reviewed by humans, eval-gated where possible — is the moat against drift.
