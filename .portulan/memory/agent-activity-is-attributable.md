@@ -6,7 +6,7 @@ through the maintainer's credentials and therefore appeared under his name. Noti
 wrote them, while answering a review about claims that are false against the tree.
 
 Anything an agent writes on this repository's GitHub surface — pull-request comments, review replies,
-resolved threads — must be attributable to a non-human identity at a glance, without the reader having to
+review replies — must be attributable to a non-human identity at a glance, without the reader having to
 know a convention.
 
 **Why it holds:** the defect is invisible from inside the artifact, which is what makes it worse than an
@@ -24,6 +24,14 @@ and the honest answer differs between a commit the maintainer owns and a comment
 **When to apply:** before any write to GitHub that a human will read as prose. Posting through
 [`../tools/gh-bot`](../tools/gh-bot) satisfies it; posting through the maintainer's default `gh` auth does
 not.
+
+**Resolving a review thread is not in scope, and not by choice.** The platform refuses it: a GitHub App
+calling `resolveReviewThread` gets `FORBIDDEN — Resource not accessible by integration`, whatever its
+permissions. Discovered by trying it on pull request 15, three documents into claiming the agent did it.
+The split it forces turns out to be the correct one anyway — a reply is *what the agent says*, resolving
+is *the judgement that a review point is settled*, and where conversation resolution gates merging, that
+judgement belongs to whoever holds the merge gate. Recorded because the interesting part is the order:
+the capability was written into the gate map, this entry, and the runbook before anyone ran it.
 
 **Enforced by permissions, not by discipline.** The agent identity is a GitHub App whose token can write
 pull-request conversation and nothing else — it cannot push, merge, or change settings. The wrapper's

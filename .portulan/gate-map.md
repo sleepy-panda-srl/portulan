@@ -65,7 +65,8 @@ is the thing the whole gate map exists to keep honest.
 | Action | Identity | Why |
 |---|---|---|
 | Commits and pushes | **The maintainer's** git identity and credentials | The build's provenance discipline requires his authorship on the commit record. An agent co-authoring is fine and already conventional; an agent *replacing* him there is not. |
-| Pull-request conversation — comments, review replies, resolving threads | **The agent identity**, via [`tools/gh-bot`](tools/gh-bot) | A reply written by an agent and posted through the maintainer's credentials makes the conversation read as human when it is not, and the reader cannot tell. See [`memory/agent-activity-is-attributable.md`](memory/agent-activity-is-attributable.md). |
+| Pull-request conversation — comments and review replies | **The agent identity**, via [`tools/gh-bot`](tools/gh-bot) | A reply written by an agent and posted through the maintainer's credentials makes the conversation read as human when it is not, and the reader cannot tell. See [`memory/agent-activity-is-attributable.md`](memory/agent-activity-is-attributable.md). |
+| **Resolving a review thread** | **The maintainer**, by hand | Not a choice — the platform refuses it. `resolveReviewThread` returns `FORBIDDEN — Resource not accessible by integration` for a GitHub App, whatever its permission set. It is also the right split on reflection: a reply is *what the agent says*, while resolving is *the judgement that a review point is settled*, and this repository requires conversation resolution before merge, which makes it part of the merge gate rather than part of the conversation. |
 | Everything Gated above — settings, releases, merges | **The maintainer**, by hand | Unchanged. The agent identity's token cannot do these at all. |
 
 Note the asymmetry, because it looks inconsistent until you say it out loud: the commit record must stay
