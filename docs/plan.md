@@ -325,7 +325,9 @@ the seam applies here too: no client-identifying references)_
   settings change it was avoiding; other pull requests are unaffected. So
   [`.portulan/proposals/0004-ci-runs-every-declared-recipe.md`](../.portulan/proposals/0004-ci-runs-every-declared-recipe.md)
   records the three-step sequence and the **Gated** middle step that is the maintainer's. Verified by
-  extracting the step's shell and running it under `bash -e` across four paths — both green, one red,
-  manifest missing, zero recipes — after a first measurement that read the exit code through a pipe and so
-  reported `tail`'s status instead of the step's, which is the same class of mistake the change is about.
+  extracting the step's shell and running it under `bash -e` across nine paths — both green, one red,
+  manifest missing, manifest truncated, zero recipes, and the four degenerate-value cases review added
+  (empty, whitespace-only and newline-bearing `run`, and a non-slug `id`) — after a first measurement that
+  read the exit code through a pipe and so reported `tail`'s status instead of the step's, which is the same
+  class of mistake the change is about.
   Seam scan clean across files, commit message, and branch name.
