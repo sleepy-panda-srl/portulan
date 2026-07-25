@@ -88,6 +88,15 @@ list now arrives on stdin), and the red→green transcript is in
 Worth recording because the lesson generalises past this check: a false red is not a milder failure than
 a false green, it is the one that gets the whole recipe switched off.
 
+**Both recipes then turned out to have a false green, found in review of that same change.** Neither
+checked whether `git ls-files` succeeded. When it failed the list came back empty, every loop iterated
+nothing, and the recipe printed GREEN having examined *nothing* — demonstrated by running `docs.sh` in a
+non-git directory, where it emitted `fatal: not a git repository` and still exited `0`. `docs.sh` had
+carried it since milestone 1, session 3; `json.sh` inherited it by being modelled on `docs.sh`, which is
+how a defect in an exemplar becomes a defect in a family. Enumerating the tree is now a **precondition**
+in both: it fails `2`, not `0`. Recorded as
+[`../memory/verify-preconditions-fail-closed.md`](../memory/verify-preconditions-fail-closed.md).
+
 ## Known limits
 
 - **Anchors are not checked.** A link to `file.md#section` verifies only that `file.md` exists. Checking

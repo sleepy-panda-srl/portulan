@@ -86,7 +86,31 @@ ok    parse — 1 JSON file(s) parse
 GREEN — verify recipe passed.                            exit: 0
 ```
 
-Stated honestly: that red came from a **synthetic fixture**, not from a defect found in the wild. The
+**A false green in *both* recipes, found in review after the pull request opened.** Neither checked
+whether `git ls-files` succeeded, so a failure there produced an empty file list, zero iterations, and a
+confident GREEN. Demonstrated by copying the recipes into a non-git directory:
+
+```
+$ ./.portulan/verify/docs.sh                      # before
+fatal: not a git repository (or any of the parent directories): .git
+ok    links — every relative Markdown link resolves
+ok    kernel — core/engine.md is 43/60 lines
+ok    map — every top-level entry is documented in README.md
+GREEN — verify recipe passed.                      exit: 0     ← examined nothing
+
+$ ./.portulan/verify/docs.sh                      # after
+fatal: not a git repository (or any of the parent directories): .git
+verify: git ls-files failed — cannot enumerate the tree
+                                                   exit: 2
+```
+
+`docs.sh` had carried this since milestone 1, session 3; `json.sh` inherited it by being modelled on
+`docs.sh` — which is how a defect in an exemplar quietly becomes a defect in a family. The reviewer
+flagged only the new file; the old one was found by checking whether the same shape was there too, and it
+was. Recorded as [`../memory/verify-preconditions-fail-closed.md`](../memory/verify-preconditions-fail-closed.md),
+and it is the first memory entry written in the two-form provenance the same change defines.
+
+Stated honestly: the `json.sh` red above came from a **synthetic fixture**, not from a defect found in the wild. The
 genuine defect this session produced was the false red described above — caught by running the check, not
 by the check itself. The manifest's path resolution was also exercised by hand (every `slots.*` entry,
 both product paths, both recipe docs, and `verify.default` naming a real recipe — all resolved, including

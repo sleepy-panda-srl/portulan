@@ -30,8 +30,15 @@ pass() { printf 'ok    %s\n' "$1"; }
 
 # Tracked plus new-and-not-ignored, so a malformed file is caught before it is committed,
 # not after — the same manifest rule ./docs.sh uses, for the same reason.
+#
+# And the same precondition check, for the same reason: an unchecked failure here yields an
+# empty list, zero files scanned, and a GREEN report from a recipe that examined nothing.
+# See ./README.md, Provenance.
 manifest="$tmp/manifest"
-git ls-files --cached --others --exclude-standard >"$manifest"
+if ! git ls-files --cached --others --exclude-standard >"$manifest"; then
+    printf 'verify: git ls-files failed — cannot enumerate the tree\n' >&2
+    exit 2
+fi
 
 # ---------------------------------------------------------------------- 1. parse
 # The file list goes to node on stdin rather than as arguments. `node -e` shifts argv in a way

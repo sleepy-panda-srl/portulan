@@ -30,8 +30,17 @@ pass() { printf 'ok    %s\n' "$1"; }
 
 # Everything tracked, plus everything new that is not ignored — so a directory or a link
 # is checked before it is committed, not after.
+#
+# The exit status is checked, and that is load-bearing rather than defensive: if git fails
+# here the list comes back empty, every loop below iterates nothing, and the recipe reports
+# GREEN having checked exactly nothing. A check that passes when it could not run is worse
+# than no check. Enumerating the tree is a precondition, so its failure is exit 2 —
+# "could not run" — never exit 0.
 manifest="$tmp/manifest"
-git ls-files --cached --others --exclude-standard >"$manifest"
+if ! git ls-files --cached --others --exclude-standard >"$manifest"; then
+    printf 'verify: git ls-files failed — cannot enumerate the tree\n' >&2
+    exit 2
+fi
 
 # ---------------------------------------------------------------------- 1. links
 : >"$tmp/links"
