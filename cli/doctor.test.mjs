@@ -765,6 +765,32 @@ describe("workspace claims are linted against the tree", () => {
         }
     });
 
+    // A command token is unverifiable whether or not it happens to resolve. Counting it as *checked*
+    // when the path exists would make the accounting depend on incidental filesystem state and
+    // overstate what was verified.
+    test("a command token is unverifiable whether or not it resolves", async () => {
+        const m = wellFormed();
+        m.tree = "./";
+        m.slots.repos = "repos/";
+        const build = (present) => {
+            const dir = tree(scratch(), {
+                ...minimalFiles,
+                "workspace.json": JSON.stringify(m),
+                "repos/app.md": "# Repo\n\n**Build / test / run.**\n- run: `node --dir src/app main.js`\n",
+            });
+            if (present) fs.mkdirSync(path.join(dir, "src", "app"), { recursive: true });
+            return dir;
+        };
+        const absent = await inspect(build(false), { schema: SCHEMA });
+        const exists = await inspect(build(true), { schema: SCHEMA });
+
+        assert.equal(absent.stats.claims, 0, "a command token is never a checked claim");
+        assert.equal(exists.stats.claims, 0, "…and that does not change when it resolves");
+        assert.equal(absent.stats.unverifiable, exists.stats.unverifiable);
+        assert.deepEqual(severities(checks(exists.findings, "claims"), "fail"), []);
+        assert.deepEqual(severities(checks(absent.findings, "claims"), "fail"), []);
+    });
+
     // Absolute tokens resolve against the HOST, so `/usr/bin/env` would otherwise be found and
     // counted as a passing claim about a repository it has nothing to do with.
     test("an absolute token is never treated as a claim about the tree", async () => {
