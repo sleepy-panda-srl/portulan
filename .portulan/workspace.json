@@ -39,7 +39,7 @@
       {
         "id": "doctor",
         "run": "./.portulan/verify/doctor.sh",
-        "requires": ["bash", "node"],
+        "requires": ["bash", "git", "node"],
         "doc": "verify/README.md"
       },
       {

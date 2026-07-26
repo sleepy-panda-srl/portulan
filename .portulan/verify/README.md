@@ -22,7 +22,7 @@ specific applies. Run any of them from anywhere in the tree:
 |---|---|---|
 | [`docs.sh`](docs.sh) — default | links · kernel budget · repo map | `bash`, `git`, POSIX text utilities |
 | [`json.sh`](json.sh) | every tracked `.json` file parses | the above, plus `node` |
-| [`doctor.sh`](doctor.sh) | both workspaces validate: schema, paths, cross-references, claims against the tree, provenance | `bash`, `node` |
+| [`doctor.sh`](doctor.sh) | both workspaces validate: schema, paths, cross-references, claims against the tree, provenance | `bash`, `git`, `node` |
 | [`tests.sh`](tests.sh) | [`../../cli/doctor.test.mjs`](../../cli/doctor.test.mjs) passes | `bash`, `node` |
 
 Exit `0` green · `1` red · `2` could not run — and that third code is why each recipe declares its needs
@@ -44,7 +44,14 @@ exits `2`. The ordering is the whole design. Discovery cross-checks and never de
 reintroduce the fail-open it was avoided for — a scan finding nothing now disagrees with a non-empty list
 and fails loudly, where a scan that *drove* the run would have passed in silence. Fixtures under
 `cli/fixtures/` are excluded by prefix, because they are broken on purpose and validating them would fail
-by design.
+by design. **This is why the recipe needs `git`** — the audit reads the index, and the manifest declares
+that dependency alongside `bash` and `node`.
+
+Two limits, stated because the audit is easy to read as stronger than it is. It compares against the
+**index**, so a manifest deleted from disk while still tracked passes the audit — `doctor` then goes red
+on it, exit `1`, which is the right code for a workspace it read and judged. And the audit answers *is the
+list complete*, never *is the list right*: naming a directory that is not a workspace is caught by the
+manifest being absent, not by the audit.
 
 `docs.sh` needs nothing beyond `grep`, `sed`, `awk`, `wc`, `sort`, `dirname`, and `mktemp`, and that is
 worth preserving — a recipe that needs a toolchain is a recipe that stops being run.
