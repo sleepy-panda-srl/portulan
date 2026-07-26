@@ -561,6 +561,23 @@ the seam applies here too: no client-identifying references)_
   session-open in a fresh Fable 5 context: **APPROVE-WITH-ADJUSTMENTS, ten required, all folded in** —
   including the symlink alternative, the boot-skill false green, the two `CODEOWNERS` claims missing from
   the sweep list, and the instruction to *measure* the first-party validator's coverage by forced red
-  rather than cite it, which is what produced the finding above. **Milestone 3 stays open:** `v0.1.0`
+  rather than cite it, which is what produced the finding above. · **Three Copilot rounds on the pull
+  request then found eight more, and every one was a claim false against the thing beside it.** Two were
+  substantive: containment was **lexical**, so a symlink out of the tree read as inside it — the shape
+  this repository had already considered and rejected for its own payload; and skills were validated with
+  `requireName: false` while three documents said a name is checked, which is the docs being right and
+  the code not doing it. One finding was **refused with a measurement rather than an argument** — that
+  the audit's pathspec reaches only one directory deep, when git's default magic lets `*` cross `/`,
+  shown by planting a manifest four levels down. And **rounds 2 and 3 were each about the previous
+  round's repair**, which is the durable lesson: a fix is a change, and a change is unreviewed until it
+  is reviewed. · `CODEOWNERS` then moved from a personal handle to the org team
+  `@sleepy-panda-works/maintainers` on the maintainer's instruction, in the order where every wrong step
+  is silent — team created visible, granted write, and only then referenced — verified by GitHub's own
+  `codeowners/errors` returning zero rather than by eye. · A second limit of the agent identity was found
+  **by attempting the action rather than by reading the permission list**: it cannot open a pull request
+  at all, because that needs repository-contents read and the App is deliberately refused it. Not a gap
+  to close — that refusal is what makes the permission set the enforcement rather than the wrapper — so
+  the pull request was opened under the maintainer's credentials with an attribution line in its body,
+  and every comment on it came from the bot. **Milestone 3 stays open:** `v0.1.0`
   tagged and the fresh-machine install are session 1, and both need a push. Seam scan clean across files,
   commit message, and branch name.
