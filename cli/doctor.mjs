@@ -729,7 +729,7 @@ export async function inspect(workspaceDir, options = {}) {
     }
 
     if (workspace.packs?.length) {
-        report("cross", `${workspace.packs.length} pack(s) declared — a declaration only: resolving a pack to an installed plugin needs the plugin machinery (milestone 3) and the feed (milestone 6)`);
+        report("cross", `${workspace.packs.length} pack(s) declared — a declaration only: the plugin machinery exists as of milestone 3, but resolving a pack to an installed one still needs the feed (milestone 6)`);
     }
 
     // ---- claims against the tree

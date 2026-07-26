@@ -71,6 +71,15 @@ maintainer unable to merge anything. Applied with **0** required reviews instead
 check are required of everyone, with no exemption. `enforce_admins` is the load-bearing setting and it
 is on; raise the review count when a second reviewer exists.
 
-**Remaining.** `CODEOWNERS` is still absent, so no path-specific human is required on any file. Tracked
-in [`../gate-map.md`](../gate-map.md) as the next piece of the floor, wanted before the milestone-3
-public flip.
+**Remaining.** ~~`CODEOWNERS` is still absent, so no path-specific human is required on any file.~~
+**Discharged in part, 2026-07-26 (milestone 3, session 0):** [`../../CODEOWNERS`](../../CODEOWNERS)
+exists and records path ownership. It is **not** part of the floor, and the reason is this proposal's own
+arithmetic one paragraph up, applied a second time: *Require review from Code Owners* demands an
+approving review from an owner, GitHub forbids approving your own pull request, and `enforce_admins`
+gives the one human no exemption — so switching it on would deadlock every merge exactly as one required
+review would have. The setting stays off until a second reviewer exists, which is the same trigger this
+proposal already names for raising the review count.
+
+So the honest state is unchanged where it counts and should not be read as closed: no path-specific human
+is *required* on any file, including [`../../docs/vision.md`](../../docs/vision.md), which remains
+protected by prohibition rather than by the platform ([`../gate-map.md`](../gate-map.md)).

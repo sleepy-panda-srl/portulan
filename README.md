@@ -15,10 +15,11 @@ delivered as private-marketplace plugins.
 ## Status
 
 Pre-release, and **private during the build**. This repository is scaffolding toward `v0.1.0`: the
-engine in `core/`, the Workspace Definition in `spec/`, two workspaces, and the validator that checks
-them are authored; the remaining directories below fill in milestone by milestone, and nothing here is
-stable yet. It goes public only once the engine boots from a clean install and the milestone-3 criteria
-are met. The living map is [`docs/plan.md`](docs/plan.md).
+engine in `core/`, the Workspace Definition in `spec/`, two workspaces, the validators that check them,
+and — as of milestone 3 — the plugin packaging in `plugin/` and `.claude-plugin/` are authored. The
+remaining directories below fill in milestone by milestone, and nothing here is stable yet. It goes
+public once the milestone-3 criteria are met and a separate clearance completes. The living map is
+[`docs/plan.md`](docs/plan.md).
 
 The quickest way to see what this is: read [`examples/`](examples/), a complete fictional workspace, then
 run `node cli/doctor.mjs examples` to watch it validate.
@@ -30,9 +31,9 @@ run `node cli/doctor.mjs examples` to watch it validate.
 | `core/` | The engine: operating docs, personas, universal skills, templates |
 | `packs/` | Composable packs — `stacks/`, `tools/`, `rituals/` |
 | `spec/` | The Workspace Definition: schema, docs, migrations |
-| `plugin/` | Claude Code packaging (skills, agents, hooks, settings) |
-| `.claude-plugin/` | The marketplace manifest that makes this repository an installable plugin feed |
-| `cli/` | The `npx` CLI: `init` · `doctor` · `compile` · `vendor` · `index` · `upgrade`. Only [`doctor`](cli/doctor.mjs) exists so far |
+| `plugin/` | [The Claude Code adapter](plugin/): the `/portulan` boot skill and the personas bound to this host's tools |
+| `.claude-plugin/` | The [plugin](.claude-plugin/plugin.json) and [marketplace](.claude-plugin/marketplace.json) manifests that make this repository an installable plugin feed |
+| `cli/` | The `npx` CLI: `init` · `doctor` · `compile` · `vendor` · `index` · `upgrade`. Only [`doctor`](cli/doctor.mjs) exists so far, alongside [`plugin-lint`](cli/plugin-lint.mjs) |
 | `examples/` | [A fictional, public demo workspace](examples/) — two products, read end to end |
 | `.portulan/` | [This repository's own workspace](.portulan/) — Portulan applied to building Portulan |
 | `evals/` | Golden tasks, the A/B harness, the CI eval gate |

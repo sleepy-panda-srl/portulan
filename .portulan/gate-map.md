@@ -165,7 +165,15 @@ The check is also **pinned to app 15368** (GitHub Actions). Without an app id, a
 check of that name would satisfy the gate — a distinction the branch-protection UI does not surface, and
 one the API does.
 
-**Still absent:** no `CODEOWNERS`, so no path-specific human is required on any file — including
-[`../docs/vision.md`](../docs/vision.md), which is protected today only by the prohibition above and not
-by the platform. That is the next piece of the floor, and it is worth doing before the repository goes
-public at milestone 3.
+**`CODEOWNERS` exists as of milestone 3 — and it is not yet part of the floor.**
+[`../CODEOWNERS`](../CODEOWNERS) records who owns which paths and routes review requests. It does not
+block anything, because *Require review from Code Owners* is **off** in branch protection, deliberately:
+GitHub does not permit anyone to approve their own pull request, this repository has one human, and
+`enforce_admins` gives him no exemption — so requiring a code owner's approval would require an approval
+nobody present can give, and nothing would ever merge. That is the same arithmetic behind the 0
+required-reviews decision above.
+
+So the honest position is unchanged where it counts: [`../docs/vision.md`](../docs/vision.md) is still
+protected by the prohibition above and **not** by the platform. What the file adds today is that
+ownership is written down; what it adds later is a rail, on the day a second reviewer exists and the
+setting can be switched on. That switch is a repository-settings change — Gated.
