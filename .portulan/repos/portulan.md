@@ -19,9 +19,11 @@ at all, and repository **visibility** is Gated — private until milestone 3 by 
 Definition · [`../../cli/`](../../cli/) `doctor`, `plugin-lint` and their tests ·
 [`../../docs/`](../../docs/) constitution and plan · `.portulan/` this workspace ·
 [`../../examples/`](../../examples/) the demo workspace · [`../../plugin/`](../../plugin/) the Claude Code
-adapter — the boot skill and the personas as agents · [`../../.claude-plugin/`](../../.claude-plugin/) the
-plugin and marketplace manifests. The remaining top-level directories are scaffolding that fills in
-milestone by milestone.
+adapter — the boot skill · [`../../agents/`](../../agents/) the three personas bound to this host, at the
+root because that is the default agents directory of a plugin rooted at this repository, and the host
+reads no other (measured 2026-07-26 on Claude Code v2.1.215; re-measure at the next upgrade) ·
+[`../../.claude-plugin/`](../../.claude-plugin/) the plugin and marketplace manifests. The
+remaining top-level directories are scaffolding that fills in milestone by milestone.
 
 **Quirks.**
 - The kernel [`../../core/engine.md`](../../core/engine.md) is line-budgeted. Adding to it is the wrong

@@ -14,7 +14,7 @@ because milestone 3 needed it.
 |---|---|
 | [`doctor.mjs`](doctor.mjs) | The Workspace Definition validator. Zero dependencies, no install step, run from the repository root. |
 | [`doctor.test.mjs`](doctor.test.mjs) | Its test suite, on node's own runner. Written before the validator. |
-| [`plugin-lint.mjs`](plugin-lint.mjs) | The packaging validator: the plugin and marketplace manifests, and the skills and agents they declare. |
+| [`plugin-lint.mjs`](plugin-lint.mjs) | The packaging validator: the plugin and marketplace manifests, the skills they declare, and the agents at `./agents/` that nothing declares. |
 | [`plugin-lint.test.mjs`](plugin-lint.test.mjs) | Its test suite, likewise written first. |
 | [`fixtures/`](fixtures/) | Known-bad manifests, and a workspace whose repo card has drifted from its tree. |
 
@@ -66,7 +66,8 @@ Both manifests parse and are objects; `plugin.json` has a kebab-case `name` and,
 SemVer `version`; `marketplace.json` has a name, an owner, and **at least one plugin**; every entry has a
 name and a source; every relative source and every component path starts with `./`, stays inside the
 tree, and resolves; the marketplace entry that points at the plugin root agrees with `plugin.json` about
-name and version; and every declared skill and agent is a real file with frontmatter, a kebab-case
+name and version; every declared skill — and every agent at `./agents/`, which the manifest cannot
+declare without suppressing it — is a real file with frontmatter, a kebab-case
 `name`, and a non-empty `description`. A skill found in the tree but covered by no declared path is
 **reported** — declared is what ships, and an undeclared skill is one its author believes is shipping.
 

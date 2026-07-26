@@ -15,8 +15,12 @@ what they *sounded* like they covered, and both readings were wrong in the direc
 
 - The repository's own `plugin-lint` reported GREEN on a `plugin.json` declaring `"agents":
   ["./plugin/agents/"]`. `claude plugin validate --strict` refused the same file outright — that field
-  requires explicit `.md` files. The lint had resolved the path, walked the directory, and read every
-  agent behind it; it was not lazy, it simply does not own that contract.
+  accepts explicit `.md` files only. The lint had resolved the path, walked the directory, and read every
+  agent behind it; it was not lazy, it simply does not own that contract. _(Do not read that as "so use
+  explicit `.md` files": one session later, an install showed the accepted form loads **nothing**, and
+  the repository had been shipping three inert personas past both checkers —
+  [`a-manifest-field-can-validate-and-load-nothing.md`](a-manifest-field-can-validate-and-load-nothing.md).
+  Both readings of this incident flattered, including the corrective one.)_
 - `claude plugin validate --strict` reported GREEN on this repository with a `SKILL.md` whose frontmatter
   had been deleted, whose `description` had been emptied, and whose `name` was not kebab-case — three
   separate forced reds, all passed. Measured further: at a **marketplace root** it validates no skills at

@@ -24,11 +24,12 @@ Look for a workspace manifest at `${CLAUDE_PROJECT_DIR}/.portulan/workspace.json
 root, the directory the session was started in. If the variable is not set, use the working directory;
 do not fall back to searching upward or outward.
 
-**Search the project only.** This plugin bundle ships two workspaces of its own — Portulan's, used to
-build Portulan, and a fictional demo under `examples/` — and both are real, valid manifests sitting
-inside `${CLAUDE_PLUGIN_ROOT}`. Booting on one of those would load another team's identity, another
-team's gate map, and another team's definition of done, and would look exactly like success. If the
-project has no workspace, that is the answer; go to step 4.
+**Search the project only.** This plugin bundle ships three workspace manifests of its own — Portulan's,
+used to build Portulan; a fictional demo under `examples/`; and a deliberately drifted fixture under
+`cli/fixtures/` that exists to be invalid. All three sit inside `${CLAUDE_PLUGIN_ROOT}`. Booting on any
+of them would load another team's identity, another team's gate map, and another team's definition of
+done, and would look exactly like success. If the project has no workspace, that is the answer; go to
+step 4.
 
 ## 3. Read the slots the manifest names
 

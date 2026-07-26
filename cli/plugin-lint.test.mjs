@@ -66,7 +66,6 @@ function fixture({ plugin = {}, marketplace = {}, skip = [] } = {}) {
         version: "0.1.0",
         description: "A demo plugin.",
         skills: ["./skills/"],
-        agents: ["./agents/worker.md"],
         ...plugin,
     };
     const marketplaceJson = {
@@ -300,9 +299,16 @@ describe("component paths", () => {
         assert.match(messages(inspect(root).findings), /no-such-dir/);
     });
 
-    test("an agents path that does not resolve is a failure", () => {
-        const root = fixture({ plugin: { agents: ["./agents/ghost.md"] } });
-        assert.match(messages(inspect(root).findings), /ghost/);
+    test("an `agents` key is a failure whatever it names, because declaring one loads nothing", () => {
+        // Measured 2026-07-26 against Claude Code v2.1.215, with a positive control: files at the
+        // default ./agents/ and NO key register (`Agents (1)`); the same files named explicitly
+        // register `Agents (0)`; a directory value refuses the whole plugin. So the key does not
+        // merely fail to help — it suppresses the scan that works. A path that resolves is exactly
+        // as dead as one that does not, which is why this fails on the key rather than on its value.
+        const resolves = fixture({ plugin: { agents: ["./agents/worker.md"] } });
+        assert.match(messages(inspect(resolves).findings), /agents/);
+        const dangling = fixture({ plugin: { agents: ["./agents/ghost.md"] } });
+        assert.match(messages(inspect(dangling).findings), /agents/);
     });
 
     test("a symlink out of the plugin root is a failure, not merely a lexical pass", () => {
@@ -422,7 +428,14 @@ describe("the skills the plugin declares", () => {
     });
 });
 
-describe("the agents the plugin declares", () => {
+describe("the agents nothing declares", () => {
+    // Agents are found by convention rather than by declaration, and that is not a style choice:
+    // the only form the host loads is `./agents/` with no `agents` key at all. So the coverage the
+    // milestone-3 criterion asks for — "CI checks every declared skill and agent" — cannot be
+    // reached through the manifest for agents, and is reached through the convention instead.
+    // Without these tests the criterion degrades silently: the recipe printed `0 agent(s)` and
+    // GREEN the moment the key came out.
+
     test("an agent file with no frontmatter is a failure", () => {
         const root = fixture();
         write(root, "agents/worker.md", "# Worker\n\nNo frontmatter.\n");
@@ -435,22 +448,62 @@ describe("the agents the plugin declares", () => {
         assert.match(messages(inspect(root).findings), /description/);
     });
 
-    test("an agents directory is walked, not only a file", () => {
-        const root = fixture({ plugin: { agents: ["./agents/"] } });
+    test("an agent file with no name is a failure", () => {
+        const root = fixture();
+        write(root, "agents/worker.md", "---\ndescription: Does work.\n---\n\nBody.\n");
+        assert.match(messages(inspect(root).findings), /name/);
+    });
+
+    test("every agent in the directory is checked, not only the first", () => {
+        const root = fixture();
         write(root, "agents/second.md", "---\nname: second\n---\n\nNo description.\n");
         assert.match(messages(inspect(root).findings), /second/);
     });
 
-    test("an agents directory is reported, because the platform refuses that form", () => {
-        // Written from the incident: this repository shipped `"agents": ["./plugin/agents/"]`,
-        // this validator said GREEN, and `claude plugin validate --strict` refused it outright.
-        // A note rather than a failure — the accepted path forms belong to the platform, and a
-        // frozen copy of somebody else's contract drifts into a false red as surely as into a
-        // false green. See ../.portulan/memory/a-checkers-coverage-is-measured-not-named.md.
-        const root = fixture({ plugin: { agents: ["./agents/"] } });
-        const { findings } = inspect(root);
-        const notes = findings.filter((f) => f.severity === "note").map((f) => f.message).join("\n");
-        assert.match(notes, /claude plugin validate/);
+    test("an agents directory holding no agent is a failure", () => {
+        const root = fixture({ skip: ["agents"] });
+        fs.mkdirSync(path.join(root, "agents"), { recursive: true });
+        assert.match(messages(inspect(root).findings), /no agent/i);
+    });
+
+    test("a plugin that ships no agents at all is not a failure", () => {
+        // Generic validator, not a mirror of this repository: shipping no agents is legitimate.
+        // The residual hole is named rather than hidden — deleting `agents/` outright degrades to
+        // a note here, and the check that would bind it is the persona↔agent agreement lint in
+        // ../.portulan/tasks/0005-lint-the-persona-agent-binding.md.
+        const root = fixture({ skip: ["agents"] });
+        assert.equal(fails(inspect(root).findings).length, 0, messages(inspect(root).findings));
+        assert.equal(inspect(root).stats.agents, 0);
+    });
+
+    test("this repository's three personas are found and checked", () => {
+        // The count is asserted against this tree on purpose. `0 agent(s)` read as GREEN once and
+        // the personas had silently stopped shipping; a bare "no failures" assertion would have
+        // agreed with it.
+        assert.equal(inspect(REPO).stats.agents, 3);
+    });
+
+    test("this repository's agents/ is a real directory, not a symlink", () => {
+        // A repository-anchored assertion rather than a rule in the lint, because the shape it
+        // refuses is one the platform *accepts*: a symlinked `agents/` was built during this
+        // session, loaded correctly through two of the three install paths, and passed every check
+        // here. It was rejected on the maintainer's direction because the third path — a clone from
+        // the remote — was never measured, which makes it an untested behaviour resting on a
+        // platform quirk. Nothing stopped it coming back: one `ln -s` restored it and the whole
+        // suite, the lint and the map check all stayed green. So the ruling is written where it
+        // binds this tree and nowhere else. A generic refusal would be this repository encoding its
+        // own risk appetite into a tool other plugins run.
+        assert.equal(fs.lstatSync(path.join(REPO, "agents")).isSymbolicLink(), false);
+    });
+
+    test("an agent reached by a symlink is checked, not silently skipped", () => {
+        // `readdirSync(…, { withFileTypes: true })` reports a symlink as neither a file nor a
+        // directory, so the obvious `isFile()` filter drops it — and a dropped agent is exactly the
+        // failure this whole session is about: present in the tree, absent from the count, nothing
+        // saying so. Here the target is inside the root and broken, so it must be *reported*.
+        const root = fixture();
+        fs.symlinkSync("./nowhere.md", path.join(root, "agents", "linked.md"));
+        assert.notEqual(fails(inspect(root).findings).length, 0, "a symlinked agent was skipped");
     });
 });
 
@@ -470,7 +523,8 @@ describe("failing closed", () => {
     });
 
     test("one failure does not discard the findings around it", () => {
-        const root = fixture({ plugin: { skills: ["./no-such-dir/"], agents: ["./agents/ghost.md"] } });
+        const root = fixture({ plugin: { skills: ["./no-such-dir/"] } });
+        write(root, "agents/worker.md", "# Worker\n\nNo frontmatter.\n");
         assert.equal(fails(inspect(root).findings).length >= 2, true, "both failures should survive");
     });
 

@@ -25,7 +25,7 @@ context firewalls; Cognition — read-parallel / write-isolated.)_
 exemplar personas [`implementer`](implementer.md), [`reviewer`](reviewer.md), and
 [`librarian`](librarian.md) are authored against it. They stay host-agnostic — each `tools:` allow-list
 is a set of capability classes — and milestone 3 bound those classes to concrete Claude Code tools in
-[`../../plugin/agents/`](../../plugin/agents/), which is where a host's vocabulary is allowed to appear.
+[`../../agents/`](../../agents/), which is where a host's vocabulary is allowed to appear.
 
 **The binding is lossy, and that is the useful finding.** Of the three charters, exactly one survives
 translation into a tool grant: the reviewer *does not edit the code under review*, so its agent is

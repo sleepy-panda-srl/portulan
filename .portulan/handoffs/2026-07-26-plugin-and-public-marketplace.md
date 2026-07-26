@@ -3,7 +3,7 @@
 **State.** Milestone 3, session 0 of 1–2. Shipped: the plugin
 ([`../../.claude-plugin/plugin.json`](../../.claude-plugin/plugin.json), a populated
 [marketplace entry](../../.claude-plugin/marketplace.json), the [boot skill](../../plugin/skills/portulan/SKILL.md),
-three [agents](../../plugin/agents/)), the packaging validator
+three [agents](../../agents/)), the packaging validator
 [`../../cli/plugin-lint.mjs`](../../cli/plugin-lint.mjs) with its suite, a fifth verify recipe
 [`../verify/plugin.sh`](../verify/plugin.sh), [`../../CODEOWNERS`](../../CODEOWNERS), and one new rule.
 Task [`0003`](../tasks/0003-plugin-and-public-marketplace.md) is complete on its session-0 half.
