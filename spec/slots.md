@@ -266,12 +266,20 @@ in a repo card must exist, and the gate map's required-check claim must match a 
 the whole point is that a check which vanishes without saying so is worse than one that admits it could
 not run.
 
-Two limits worth stating before somebody relies on this. A claim is resolved against **either** the tree
+Three limits worth stating before somebody relies on this. A claim is resolved against **either** the tree
 root or the card's own directory, because a real card mixes the two bases in one line — customer zero's
-does — and a lint that insisted on one would produce false reds. And only tokens that look like paths are
-checked: a code span or link target containing `/`. `build: none` claims nothing; `npm test` names a
-command, not a file. Anything ambiguous is left alone rather than guessed at, because an ambitious prose
-parser is the shortest route to the false red that gets a whole recipe switched off.
+does — and a lint that insisted on one would produce false reds. Only tokens that look like paths are
+checked: something containing `/`, taken from a code span or a link target. `build: none` claims nothing;
+`npm test` names a command, not a file. Prose is left alone rather than guessed at, because an ambitious
+parser is the shortest route to the false red that gets a whole recipe switched off — **but a
+build/test/run line is a structured field where every entry is a claim**, so one with nothing path-shaped
+in it is counted and reported unverifiable rather than dropped. (It was dropped, silently, until a fourth
+workspace whose card writes real commands rather than bare paths exposed it.)
+
+And the third: **claims resolve against the filesystem, not against git.** A card naming a directory that
+`.gitignore` excludes — a runtime `state/` or `logs/` — resolves in a working copy where the application
+created it and is absent from a clean checkout. The failure direction is local-green / CI-red, which is
+fail-closed and therefore the safe one, but it means a local green is the weaker of the two.
 
 ## `packs` — the cascade's missing middle
 
