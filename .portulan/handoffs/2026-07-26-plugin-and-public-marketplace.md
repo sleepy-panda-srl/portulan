@@ -182,6 +182,26 @@ that the deferred harness get a task file rather than a third forward-reference.
    then tag — but until session 1 cuts it, the manifests name a version the repository has never
    published. If the tag slips, that is the sentence that goes stale first.
 
+## Found while performing the gated action, not before it
+
+**The agent identity cannot open a pull request.** `portulan-agent[bot]` was tried first and GitHub
+refused with `not all refs are readable` — creating a pull request needs repository-**contents** read,
+which this App is deliberately denied. That denial is the load-bearing part of the whole mechanism, so
+the answer is not to widen it: buying nicer attribution on one artifact by granting the token the
+ability to write code trades the guarantee for the cosmetic. [#18](https://github.com/sleepy-panda-works/portulan/pull/18)
+was opened with the maintainer's credentials and its first line says an agent wrote it — the fallback
+this repository used before the App existed, which serves the rule's real purpose: a reader can tell.
+Conversation on the pull request comes from the bot as usual. Recorded in
+[`../gate-map.md`](../gate-map.md) and [`../tools/README.md`](../tools/README.md).
+
+This is the second capability the identity turned out to lack, after thread resolution, and both were
+found by attempting the action rather than by reading the permission list. Worth noting as a pattern:
+the App's *stated* scope — "pull-request conversation" — reads as covering more than it does.
+
+**Also confirmed on the remote rather than locally:** CI ran all five recipes, `plugin` included, with no
+workflow edit — proposal 0004's mechanism demonstrated a third time and for the first time on a check
+that was gating a real merge.
+
 ## Next action
 
 **Session 1:** `claude plugin validate --strict` re-run and recorded, `v0.1.0` tagged, and a machine with
