@@ -220,12 +220,30 @@ since extracting that workspace was a milestone-1 client-half deliverable and mi
 the client half. So there is nothing for `doctor` to validate, and the clause cannot be discharged as
 written.
 
-**Striking the clause on that evidence was offered and declined.** The maintainer kept the criterion
-unamended, which makes onboarding the pilot a client-session task and leaves **milestone 2 open**. That is
-the harder of the two choices and the right one: the alternative was narrowing a criterion until it fit
-what had been built, which is the exact failure the milestone-1 amendment was written to warn about — and
-milestone 1's amendment survives scrutiny only because it *widened* what had to be demonstrated rather
-than shrinking it.
+**Striking the clause on that evidence was offered and declined**, and the maintainer was right to decline
+— because the argument offered was the wrong one. "There is nothing there to validate" is narrowing a
+criterion to fit what was built, which is precisely the failure the milestone-1 amendment warns about.
+
+**The clause was struck later the same day on a different and much stronger argument, and the milestone
+closed.** Asked plainly *"what private pilot are you asking for?"*, the honest answer turned out to be:
+one the governing document had already de-gated. The private context's milestone-1 footnote, amended
+2026-07-25, says the client-rooted work remaining there **"neither gates any public milestone."**
+_(An earlier draft of this paragraph called that work "optional" as well. It is not — a residual check
+there is a standing task in its own context. **Non-gating** is the true claim and the only one the strike
+rests on; caught at the strike audit.)_ This row gated one. It had never been reconciled, and — the part worth keeping — *nothing
+could have reconciled it*, because that document is outside the repository by design and no check here
+can read it.
+
+The clause also carried both defects the milestone-1 amendment existed to remove: a criterion no build
+session could execute under our own rules, so it structurally guaranteed a close-by-assertion; and a
+public milestone made dependent on the predecessor framework as an input, which is the weaker posture.
+Removed in one row, left standing in the next.
+
+Generalised so it cannot recur, rather than fixed once:
+[`../memory/a-public-criterion-must-be-demonstrable-from-this-repo.md`](../memory/a-public-criterion-must-be-demonstrable-from-this-repo.md).
+It states plainly that it cannot be a rail — the same boundary that let the gate map claim the agent
+identity did not exist for hours after it did. Prose about a fact outside the tree is invisible to every
+check this repository has.
 
 ## Open questions
 
@@ -281,15 +299,16 @@ that has already passed all three supervised checkpoints.
 
 ## Next action
 
-**Milestone 2 stays open, and exactly one thing closes it:** the private pilot workspace has to be
-onboarded to the Workspace Definition — given a manifest — and then validated, in a client-rooted session.
-That is not this build's work and cannot be, under the seam. Everything the criterion asks of *this*
-repository is built, demonstrated and merged-pending.
+**Milestone 2 is closed** — the criterion amended (this row only) and every remaining clause demonstrated
+rather than asserted. **Milestone 3: plugin & public marketplace.**
 
-Milestone 3 (plugin & public marketplace) is startable in parallel; nothing in it depends on the pilot.
 Two carried items belong to whoever opens it: `CODEOWNERS`, wanted before the public flip and absent since
-the platform-floor session, and the recipe-test harness named in open question 1 — seven defects of one
-class in four days is enough evidence that the recipes need what `doctor` now has.
+the platform-floor session, and the recipe-test harness named in open question 1 — seven-plus defects of
+one class in four days is enough evidence that the recipes need what `doctor` now has.
+
+The highest-value thing available is not in this repository. Tipar and one personal project now carry real
+Portulan workspaces, and **nobody has yet used one on real work.** That will say more about what `core/`
+gets wrong than a fifth instance would.
 
 ## Recoverability
 
