@@ -17,10 +17,22 @@
 # a rail, and it is a repository-settings change, which is Gated (.portulan/gate-map.md).
 #
 # Syntax note: patterns follow gitignore rules, last matching pattern wins, and a pattern with no owner
-# clears ownership for those paths.
+# clears ownership for those paths. An owner is `@username`, `@org/team-name`, or an email address on
+# that account — nothing else. A bare organisation name is not an owner, and neither is a person's name.
 #
-# The owner below is the maintainer's GitHub login, read from the API rather than guessed — a mistyped
-# owner here routes nothing and reports nothing, which is the quietest way for this file to be useless.
+# The owner below is the maintainer's GitHub login, read from the API rather than guessed, and the file
+# was validated by GitHub itself (`GET /repos/{owner}/{repo}/codeowners/errors` — zero errors) rather
+# than by eye. Both halves matter, because **an invalid line is skipped, not rejected**: the paths it
+# named end up with no owner while the file still reads as complete. That is the quietest way for this
+# file to be useless, and it is why an owner is measured here rather than typed and trusted. An owner
+# must also hold write access; this one holds admin.
+#
+# **On the day a second reviewer exists** — the trigger this file names below for switching enforcement
+# on — prefer moving to `@sleepy-panda-works/maintainers` over adding a second personal handle. A team
+# makes that day a settings change instead of a file edit, and stops this file needing to know who the
+# people are, which is the same separation the product sells. The ordering is not optional: create the
+# team, give it **visible** write access on this repository, and only then point CODEOWNERS at it — a
+# reference to a team that does not yet exist is skipped in silence, exactly as above.
 
 # Everything, by default.
 *                       @marius-cetanas
