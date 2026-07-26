@@ -202,8 +202,11 @@ in both: it fails `2`, not `0`. Recorded as
 - **`plugin.sh` does not check the platform's contract, and a green from it is not a green from
   `claude plugin validate`.** It checks this repository's own invariants about its packaging. Measured
   the day it was written: this repository's `plugin.json` declared `"agents": ["./plugin/agents/"]`, the
-  lint said GREEN, and the first-party validator refused the file — that field requires explicit `.md`
-  files. Run both.
+  lint said GREEN, and the first-party validator refused the file. Run both. **And note where that
+  ended**, because the obvious repair was wrong: the explicit `.md` form the validator wanted is a form
+  the *runtime* never loads, so the plugin then passed both checkers with three inert personas until an
+  install counted them ([`../memory/a-manifest-field-can-validate-and-load-nothing.md`](../memory/a-manifest-field-can-validate-and-load-nothing.md)).
+  Neither checker was wrong about what it owns. Running both is still not the same as installing it.
 - **`node --test` given a glob matching nothing exits `0`.** A green suite that ran nothing. `tests.sh`
   counts the files first for that reason, and the count and the glob deliberately cover the same set —
   a recursive `find` beside a non-recursive glob would let a test be counted and never run.

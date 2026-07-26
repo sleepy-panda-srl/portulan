@@ -24,8 +24,10 @@ workspace, their memory, their evals. Building at that layer is the bet: *design
 they were written down here; the value being added is the re-expression into something a team other than
 its author can adopt in an afternoon.
 
-**Stage, honestly.** Pre-release and private. `v0.1.0` is not tagged; the engine and this workspace are
-authored, the enforcement compiler and CLI are not. The living map is
+**Stage, honestly.** Pre-release and private; `v0.1.0` is not tagged yet. The engine and this workspace
+are authored, the enforcement compiler and CLI are not. What that release will contain when it is cut,
+and what it will not, is [`../../../CHANGELOG.md`](../../../CHANGELOG.md), which is where that list
+belongs rather than here. The living map is
 [`../../../docs/plan.md`](../../../docs/plan.md), and it is the file to trust over this one whenever the
 two disagree about status.
 

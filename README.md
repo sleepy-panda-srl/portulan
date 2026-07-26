@@ -14,12 +14,12 @@ delivered as private-marketplace plugins.
 
 ## Status
 
-Pre-release, and **private during the build**. This repository is scaffolding toward `v0.1.0`: the
-engine in `core/`, the Workspace Definition in `spec/`, two workspaces, the validators that check them,
-and — as of milestone 3 — the plugin packaging in `plugin/` and `.claude-plugin/` are authored. The
-remaining directories below fill in milestone by milestone, and nothing here is stable yet. It goes
-public once the milestone-3 criteria are met and a separate clearance completes. The living map is
-[`docs/plan.md`](docs/plan.md).
+Pre-release, and **private during the build**. What `v0.1.0` will contain when it is tagged — and, just
+as usefully, what it will not — is [`CHANGELOG.md`](CHANGELOG.md). The engine
+in `core/`, the Workspace Definition in `spec/`, two workspaces, the validators that check them, and the
+plugin packaging in `plugin/` and `.claude-plugin/` are authored; the remaining directories below fill in
+milestone by milestone, and the `0.` major means nothing here is stable yet. It goes public once a
+separate clearance completes. The living map is [`docs/plan.md`](docs/plan.md).
 
 The quickest way to see what this is: read [`examples/`](examples/), a complete fictional workspace, then
 run `node cli/doctor.mjs examples` to watch it validate.
@@ -32,6 +32,7 @@ run `node cli/doctor.mjs examples` to watch it validate.
 | `packs/` | Composable packs — `stacks/`, `tools/`, `rituals/` |
 | `spec/` | The Workspace Definition: schema, docs, migrations |
 | `plugin/` | [The Claude Code adapter](plugin/): the `/portulan` boot skill and the personas bound to this host's tools |
+| `agents/` | [The three personas bound to this host's tools](agents/) — `implementer`, `reviewer`, `librarian`. A platform-fixed location: the default agents directory of a plugin whose root is this repository. The doctrine they bind stays in [`core/personas/`](core/personas/) |
 | `.claude-plugin/` | The [plugin](.claude-plugin/plugin.json) and [marketplace](.claude-plugin/marketplace.json) manifests that make this repository an installable plugin feed |
 | `cli/` | The `npx` CLI: `init` · `doctor` · `compile` · `vendor` · `index` · `upgrade`. Only [`doctor`](cli/doctor.mjs) exists so far, alongside [`plugin-lint`](cli/plugin-lint.mjs) |
 | `examples/` | [A fictional, public demo workspace](examples/) — two products, read end to end |

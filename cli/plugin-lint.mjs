@@ -60,9 +60,11 @@ const SEMVER = /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/;
 // Manifest keys whose value may name a path. `hooks`, `mcpServers` and `lspServers` also accept an
 // inline object, so only string values are treated as paths — an object there is configuration, not
 // a claim about the tree.
+//
+// `agents` is deliberately absent: see AGENT_DIR below. Declaring it does not resolve to a component
+// the host will load, so treating it as a path claim would be validating a path nobody reads.
 const PATH_FIELDS = [
     "skills",
-    "agents",
     "commands",
     "workflows",
     "outputStyles",
@@ -77,6 +79,21 @@ const PATH_FIELDS = [
 // because "declared is what ships" and a skill hidden from this pass is one its author believes is
 // shipping. Reporting beats skipping here for the same reason it does everywhere else in this tree.
 const SKIP_DIRS = new Set([".git", "node_modules", ".claude-plugin"]);
+
+// The one location the host loads agents from, and it loads them from nowhere else. Measured
+// 2026-07-26 against Claude Code v2.1.215 with a positive control, because the failure is silent in
+// both directions:
+//
+//   files at ./agents/, no `agents` key         →  Agents (1)   loaded
+//   the same files named explicitly in `agents` →  Agents (0)   the key SUPPRESSES the scan
+//   files at ./plugin/agents/, no key           →  Agents (0)   nowhere else is scanned
+//   `agents` naming a directory, any path       →  the plugin fails to load at all
+//
+// So agents are found here by convention rather than by declaration. That is not a preference: the
+// manifest cannot express a working agent path, and `claude plugin validate --strict` accepts the
+// explicit-file form that loads nothing — this repository shipped exactly that and its personas were
+// inert on every install (../.portulan/memory/a-manifest-field-can-validate-and-load-nothing.md).
+const AGENT_DIR = "agents";
 const MAX_WALK_DEPTH = 6;
 
 // ===========================================================================================
@@ -382,7 +399,6 @@ export function inspect(rawRoot) {
     // --- component paths ----------------------------------------------------------------------
 
     const declaredSkillRoots = [];
-    const declaredAgentTargets = [];
 
     for (const field of PATH_FIELDS) {
         for (const raw of asList(plugin?.[field])) {
@@ -391,8 +407,20 @@ export function inspect(rawRoot) {
             const resolved = resolve(raw, "paths", `plugin.json ${field}`);
             if (!resolved) continue;
             if (field === "skills") declaredSkillRoots.push(resolved);
-            if (field === "agents") declaredAgentTargets.push(resolved);
         }
+    }
+
+    // An `agents` key is refused whatever it names — see AGENT_DIR. A path that resolves is exactly
+    // as dead as one that does not, so this fails on the key's presence rather than on its value,
+    // and it fails rather than notes: a note is read past, and re-adding the key silently unloads
+    // every persona the plugin ships.
+    if (plugin !== null && typeof plugin === "object" && plugin.agents !== undefined) {
+        fail(
+            "agents",
+            "plugin.json declares `agents` — measured 2026-07-26 on Claude Code v2.1.215, the key " +
+                `suppresses the scan of ./${AGENT_DIR}/ and loads nothing. Remove it; agents load by ` +
+                "convention",
+        );
     }
 
     // --- the skills behind those paths ----------------------------------------------------------
@@ -460,44 +488,71 @@ export function inspect(rawRoot) {
         }
     }
 
-    // --- the agents behind those paths ----------------------------------------------------------
+    // --- the agents at the convention location --------------------------------------------------
+    //
+    // Nothing declares these, so nothing but this pass covers them. The milestone-3 criterion asks
+    // that CI check "every declared skill and agent"; for agents the manifest cannot carry the
+    // claim, and the coverage has to come from the convention instead. The moment the `agents` key
+    // came out of this repository's manifest, the recipe printed `0 agent(s)` and GREEN.
 
-    for (const { file: target, isDirectory } of declaredAgentTargets) {
-        const files = [];
-        if (isDirectory) {
-            // A dated snapshot, not a frozen copy of the contract. Measured 2026-07-26 against
-            // Claude Code v2.1.215: `agents` naming a directory — with or without a trailing slash,
-            // as a string or in an array — is refused with "agents: Invalid input", while the same
-            // files listed explicitly pass. This validator still walks the directory, so the agents
-            // are checked either way, and it reports rather than fails: the accepted path forms are
-            // the platform's contract to change, and `claude plugin validate` is its authority.
-            // This note exists because this repository shipped exactly that manifest and its own
-            // lint said GREEN — see ../.portulan/memory/a-checkers-coverage-is-measured-not-named.md.
-            note(
-                "agents",
-                `plugin.json names the directory ${path.relative(root, target)} — as of 2026-07-26 ` +
-                    "the platform's validator requires explicit .md files here; run `claude plugin validate --strict`",
-            );
-            let entries;
-            try {
-                entries = fs.readdirSync(target, { withFileTypes: true });
-            } catch (error) {
-                fail("agents", `${path.relative(root, target)} could not be read — ${error.code ?? error.message}`);
-                continue;
+    if (!fs.existsSync(path.join(root, AGENT_DIR))) {
+        // A plugin that ships no agents is legitimate, so this is a note. The residual hole is real
+        // and named rather than hidden: deleting `agents/` outright degrades this whole check class
+        // to a note, the same shape proposal 0005 closed for `tree`. The check that would bind it is
+        // the persona↔agent agreement lint — ../.portulan/tasks/0005-lint-the-persona-agent-binding.md.
+        note("agents", `no ./${AGENT_DIR}/ directory — this plugin ships no agents`);
+    } else {
+        // Routed through the same resolver as every declared path, so an `agents/` that is a symlink
+        // out of the tree is an escape here too — undeclared does not mean unchecked, and this is the
+        // one component directory nothing declares.
+        const dir = resolve(`./${AGENT_DIR}/`, "agents", "the plugin's agents directory");
+        if (dir) {
+            if (!dir.isDirectory) {
+                fail("agents", `./${AGENT_DIR}/ is not a directory`);
+            } else {
+                let entries;
+                try {
+                    entries = fs.readdirSync(dir.file, { withFileTypes: true });
+                } catch (error) {
+                    fail("agents", `./${AGENT_DIR}/ could not be read — ${error.code ?? error.message}`);
+                    entries = null;
+                }
+                if (entries) {
+                    // `isFile()` is false for a symlink, so the obvious filter *drops* a symlinked
+                    // agent — present in the tree, absent from the count, nothing saying so, which
+                    // is the exact failure this pass exists to prevent. Symlinks are taken in and
+                    // judged instead: a broken one fails through `read` below, and one resolving
+                    // out of the plugin root fails here, the same answer `resolve` gives a declared
+                    // path. Reporting beats skipping, as everywhere else in this file.
+                    const files = entries
+                        .filter((e) => e.name.endsWith(".md") && (e.isFile() || e.isSymbolicLink()))
+                        .map((e) => ({ file: path.join(dir.file, e.name), link: e.isSymbolicLink() }))
+                        .sort((a, b) => (a.file < b.file ? -1 : a.file > b.file ? 1 : 0));
+                    if (files.length === 0) {
+                        fail("agents", `./${AGENT_DIR}/ exists but contains no agent`);
+                    }
+                    for (const { file, link } of files) {
+                        const rel = path.relative(root, file);
+                        stats.agents += 1;
+                        if (link) {
+                            let real = null;
+                            try {
+                                real = fs.realpathSync(file);
+                            } catch (error) {
+                                fail("agents", `${rel} is a link that does not resolve — ${error.code ?? error.message}`);
+                                continue;
+                            }
+                            if (escapes(root, real)) {
+                                fail("agents", `${rel} is a link out of the plugin root (to ${real})`);
+                                continue;
+                            }
+                        }
+                        const text = read(file, "agents", rel);
+                        if (text === null) continue;
+                        checkFrontmatter(text, rel, "agents", { requireName: true });
+                    }
+                }
             }
-            for (const e of entries) if (e.isFile() && e.name.endsWith(".md")) files.push(path.join(target, e.name));
-            if (files.length === 0) {
-                fail("agents", `plugin.json declares ${path.relative(root, target)} but it contains no agent`);
-            }
-        } else {
-            files.push(target);
-        }
-        for (const file of files) {
-            const rel = path.relative(root, file);
-            stats.agents += 1;
-            const text = read(file, "agents", rel);
-            if (text === null) continue;
-            checkFrontmatter(text, rel, "agents", { requireName: true });
         }
     }
 

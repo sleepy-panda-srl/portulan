@@ -43,7 +43,7 @@ _(See [`../operating/memory.md`](../operating/memory.md).)_
 
 Re-expressed from public practice (last-mile review; read-isolated verification). The `tools:` list is
 **capability classes** at engine altitude. Milestone 3 bound them to concrete host tools in
-[`../../plugin/agents/reviewer.md`](../../plugin/agents/reviewer.md) — and this is the persona whose
+[`../../agents/reviewer.md`](../../agents/reviewer.md) — and this is the persona whose
 charter the host can actually enforce: *does not edit the code under review* becomes an agent granted no
 write tool at all. The firewall is a rail here rather than a convention, which is not true of the other
 two.

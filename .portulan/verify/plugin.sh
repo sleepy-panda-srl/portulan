@@ -3,7 +3,8 @@
 #
 # One check, run against every plugin root this repository ships:
 #   plugin  both manifests parse and agree, every declared component path resolves inside the tree,
-#           and every skill and agent behind those paths is a real artifact with a description
+#           every skill behind those paths is a real artifact with a description, and so is every
+#           agent at `./agents/`, which nothing declares and which therefore nothing else covers
 #
 # Exit 0 green · 1 red · 2 could not run. The wrapper exists for the third code: `bash -c "node …"`
 # on a machine without node exits 127, which is neither a verdict nor "could not run".

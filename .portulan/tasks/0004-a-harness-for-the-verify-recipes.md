@@ -20,6 +20,11 @@ the guard was never where the check was. All were found by review or by accident
    plausible-but-short count, so the suite runs a subset and reports on the whole.
 6. `doctor.sh` named its workspaces but did not audit that the list matched the tree.
 7. A diagnostic in `doctor.sh` word-split and glob-expanded the very name it existed to print.
+8. `docs.sh`'s `map` check could not see a top-level **symlink** at all — `awk -F/ 'NF > 1'` yields only
+   directories that contain tracked files, and git tracks a symlink as one path with no `/`. It had
+   silently stopped covering the tree the day the tree gained one (milestone 3, session 1). The shape
+   worth noting for the harness: this was not a check that failed, it was a check whose *input set* was
+   short, which is the same defect as 1, 2 and 5 and the fourth time it has appeared here.
 
 **Acceptance criteria.**
 - [ ] When a recipe's precondition fails — no `git`, no `node`, a missing validator, an empty

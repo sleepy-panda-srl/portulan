@@ -90,7 +90,22 @@ else
     while IFS= read -r dir; do
         # Anchored to a table cell: a passing mention in prose must not satisfy the map.
         grep -qF -- "| \`$dir/\`" "$README" || printf '%s/\n' "$dir" >>"$tmp/map"
-    done < <(awk -F/ 'NF > 1 { print $1 }' "$manifest" | sort -u)
+    done < <(
+        {
+            # A directory shows up here as the first segment of the paths inside it.
+            awk -F/ 'NF > 1 { print $1 }' "$manifest"
+            # …which is why a top-level *symlink* to a directory is invisible to it: git tracks a
+            # symlink as a single path with no `/`, so `NF > 1` drops it and the map reports GREEN
+            # over an entry it never looked at. Found at milestone 3 session 1, when the tree briefly
+            # grew one; the symlink went away and this stayed, because the hole is in the check
+            # rather than in that tree. `[ -d ]` follows the link, so a top-level regular file
+            # (LICENSE, NOTICE, CODEOWNERS) is still correctly excluded: this check is about
+            # directories, and a link to one is one.
+            awk -F/ 'NF == 1 { print $1 }' "$manifest" | while IFS= read -r entry; do
+                [ -d "$entry" ] && printf '%s\n' "$entry"
+            done
+        } | sort -u
+    )
 
     if [ -s "$tmp/map" ]; then
         fail "map — $(wc -l <"$tmp/map" | tr -d '[:space:]') top-level entr(ies) absent from $README"

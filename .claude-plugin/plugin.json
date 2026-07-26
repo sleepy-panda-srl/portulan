@@ -20,10 +20,5 @@
   "skills": [
     "./core/skills/",
     "./plugin/skills/"
-  ],
-  "agents": [
-    "./plugin/agents/implementer.md",
-    "./plugin/agents/reviewer.md",
-    "./plugin/agents/librarian.md"
   ]
 }
