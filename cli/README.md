@@ -66,9 +66,17 @@ Both manifests parse and are objects; `plugin.json` has a kebab-case `name` and,
 SemVer `version`; `marketplace.json` has a name, an owner, and **at least one plugin**; every entry has a
 name and a source; every relative source and every component path starts with `./`, stays inside the
 tree, and resolves; the marketplace entry that points at the plugin root agrees with `plugin.json` about
-name and version; and every declared skill and agent is a real file with frontmatter and a non-empty
-description. A skill found in the tree but covered by no declared path is **reported** — declared is what
-ships, and an undeclared skill is one its author believes is shipping.
+name and version; and every declared skill and agent is a real file with frontmatter, a kebab-case
+`name`, and a non-empty `description`. A skill found in the tree but covered by no declared path is
+**reported** — declared is what ships, and an undeclared skill is one its author believes is shipping.
+
+Two of those are **stricter than the platform**, on purpose, and are this repository's invariants rather
+than claims about the contract. `name` is optional to Claude Code: omit it and the invocation name is
+inherited from the layout — the directory name for a skill in a `skills/<dir>/` subdirectory, but the
+*install* directory for a path pointing straight at one, which on a marketplace install is a version
+string that changes with every update. Requiring it makes a skill's name a property of the skill.
+And a component path is required to resolve **after canonicalisation**, not merely lexically, so a
+symlink out of the tree is caught rather than read as containment.
 
 **What it is not.** It is not an implementation of the Claude Code plugin contract, and describing it as
 one would be the overclaim this repository forbids. `claude plugin validate --strict` is that authority

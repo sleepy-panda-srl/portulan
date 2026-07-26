@@ -48,6 +48,14 @@ if [ "${#PLUGIN_ROOTS[@]}" -eq 0 ]; then
 fi
 
 # Tracked plus new-and-not-ignored, so a plugin is audited before it is committed rather than after.
+#
+# `*/.claude-plugin/plugin.json` reaches ANY depth, not one directory. Git's default pathspec magic
+# does not set pathname mode, so `*` crosses `/`; that only stops being true under `:(glob)` magic,
+# where `**` would be required. Raised in review on the assumption it matched one level, and
+# measured rather than argued: a manifest planted at `packs/rituals/deep/nested/.claude-plugin/` was
+# listed by this command and the audit exited 2 naming it. Worth the comment because the "fix" —
+# adding `:(glob)` or a second `**` pattern — would be a change made in the belief it closed a hole
+# that was never open, and under the wrong magic it would open one.
 if ! manifests=$(git ls-files --cached --others --exclude-standard \
     -- '.claude-plugin/plugin.json' '*/.claude-plugin/plugin.json'); then
     printf 'verify: git ls-files failed — cannot audit the plugin-root list\n' >&2

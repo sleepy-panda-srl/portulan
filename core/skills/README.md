@@ -38,7 +38,9 @@ remaining spec-driven ritual named in the vision's influence map — needs the W
 first, so it is deferred to a `packs/rituals/` skill.)
 
 **What checks them:** [`../../.portulan/verify/plugin.sh`](../../.portulan/verify/plugin.sh) on every
-pull request — frontmatter present, `description` non-empty, `name` a slug. Note that the platform's own
+pull request — frontmatter present, `description` non-empty, and a `name` that is kebab-case. The
+`name` is required here although the platform treats it as optional, so that a skill's invocation name
+comes from the skill rather than from where it happens to sit. Note that the platform's own
 `claude plugin validate` does **not** reach these files: it validates skills only under a plugin's
 default `./skills/` directory, and these sit behind a declared custom path. Measured, not assumed
 ([`../../.portulan/memory/a-checkers-coverage-is-measured-not-named.md`](../../.portulan/memory/a-checkers-coverage-is-measured-not-named.md)).
