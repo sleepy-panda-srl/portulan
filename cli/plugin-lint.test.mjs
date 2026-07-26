@@ -26,10 +26,19 @@ import { PluginLintError, inspect, run, parseFrontmatter } from "./plugin-lint.m
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO = path.resolve(HERE, "..");
 
+// One exit handler for every scratch directory, not one per directory. The per-directory form
+// exceeds node's default limit of ten listeners partway through this suite and prints a
+// MaxListenersExceededWarning — noise that trains a reader to skim warnings from a test run, which
+// is where a real listener leak would then hide. Found by review on the pull request.
+const SCRATCH = [];
+process.on("exit", () => {
+    for (const dir of SCRATCH) fs.rmSync(dir, { recursive: true, force: true });
+});
+
 /** A throwaway directory, removed when the process exits. */
 function scratch() {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), "portulan-plugin-"));
-    process.on("exit", () => fs.rmSync(dir, { recursive: true, force: true }));
+    SCRATCH.push(dir);
     return dir;
 }
 
@@ -296,6 +305,36 @@ describe("component paths", () => {
         assert.match(messages(inspect(root).findings), /ghost/);
     });
 
+    test("a symlink out of the plugin root is a failure, not merely a lexical pass", () => {
+        // The lexical containment check reads "./outside/" as inside the root; only canonicalising
+        // the target catches that the files are somewhere else. A plugin's contract is that its
+        // components live inside it, and this repository rejected a symlinked payload for its own
+        // packaging — so the shape is one it actively considered, not a hypothetical.
+        const root = fixture();
+        const elsewhere = scratch();
+        fs.mkdirSync(path.join(elsewhere, "smuggled"), { recursive: true });
+        write(elsewhere, "smuggled/SKILL.md", SKILL("smuggled", "Not in the tree."));
+        fs.symlinkSync(elsewhere, path.join(root, "outside"));
+        write(
+            root,
+            ".claude-plugin/plugin.json",
+            JSON.stringify({ name: "demo", version: "0.1.0", skills: ["./outside/"] }),
+        );
+        assert.match(messages(inspect(root).findings), /link out of the plugin root/);
+    });
+
+    test("a symlink that stays inside the plugin root is fine", () => {
+        // The other half, so the check above cannot be satisfied by refusing every symlink: the
+        // platform dereferences in-marketplace symlinks, and rejecting them would fail a layout it
+        // supports.
+        const root = fixture();
+        fs.mkdirSync(path.join(root, "real", "greet"), { recursive: true });
+        write(root, "real/greet/SKILL.md", SKILL("greet", "Greets."));
+        fs.rmSync(path.join(root, "skills"), { recursive: true, force: true });
+        fs.symlinkSync(path.join(root, "real"), path.join(root, "skills"));
+        assert.equal(fails(inspect(root).findings).length, 0, messages(inspect(root).findings));
+    });
+
     test("a string component path is accepted as well as an array", () => {
         const root = fixture({ plugin: { skills: "./skills/" } });
         assert.equal(fails(inspect(root).findings).length, 0, messages(inspect(root).findings));
@@ -337,6 +376,16 @@ describe("the skills the plugin declares", () => {
         const root = fixture();
         write(root, "skills/greet/SKILL.md", '---\nname: greet\ndescription: ""\n---\n\nBody.\n');
         assert.match(messages(inspect(root).findings), /description/);
+    });
+
+    test("a SKILL.md with no name is a failure", () => {
+        // Stricter than the platform, deliberately, and the reason is in plugin-lint.mjs beside the
+        // call: without `name` the invocation name is inherited from the layout, and for a path
+        // pointing straight at a skill that means the install directory — a version string that
+        // changes on every marketplace update.
+        const root = fixture();
+        write(root, "skills/greet/SKILL.md", "---\ndescription: Greets.\n---\n\nBody.\n");
+        assert.match(messages(inspect(root).findings), /name/);
     });
 
     test("a non-slug skill name is a failure", () => {

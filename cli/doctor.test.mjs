@@ -51,10 +51,20 @@ const SCHEMA = JSON.parse(
 // a constraint-bearing sibling by the back door.
 const provenanceSchema = { $defs: SCHEMA.$defs, ...SCHEMA.$defs.provenance };
 
+// One exit handler for all scratch directories rather than one each — the per-directory form
+// exceeds node's default ten-listener limit partway through this suite and prints a
+// MaxListenersExceededWarning. Found by review on ../.portulan/handoffs/2026-07-26-plugin-and-public-marketplace.md's
+// pull request, in the *new* suite; this file had the same defect first and the new one inherited
+// it by being modelled on it, which is how a defect in an exemplar becomes a defect in a family.
+const SCRATCH = [];
+process.on("exit", () => {
+    for (const dir of SCRATCH) fs.rmSync(dir, { recursive: true, force: true });
+});
+
 /** A throwaway directory, removed when the process exits. */
 function scratch() {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), "portulan-doctor-"));
-    process.on("exit", () => fs.rmSync(dir, { recursive: true, force: true }));
+    SCRATCH.push(dir);
     return dir;
 }
 

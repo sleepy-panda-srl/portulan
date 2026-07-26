@@ -143,6 +143,12 @@ export function parseFrontmatter(text) {
  * @returns {{findings: Array<{severity: "fail"|"note", check: string, message: string}>,
  *            stats: {skills: number, agents: number, paths: number, unverifiable: number}}}
  */
+/** True when `target` lies outside `root`. Lexical — the caller decides what it is fed. */
+function escapes(root, target) {
+    const inside = path.relative(root, target);
+    return inside.startsWith("..") || path.isAbsolute(inside);
+}
+
 export function inspect(rawRoot) {
     // Absolute from here on. Two sets of paths are compared later — the skills the manifest declares
     // and the skills found by walking the tree — and they are only comparable if both are built the
@@ -151,14 +157,23 @@ export function inspect(rawRoot) {
     // every shipped skill was reported as undeclared: a note that was false about every skill, which
     // is worse than no note, because it hides the true one in noise. The suite missed it because
     // every fixture passed an absolute temp directory. Now normalised once, at the boundary.
-    const root = path.resolve(rawRoot);
     let stat;
     try {
-        stat = fs.statSync(root);
+        stat = fs.statSync(path.resolve(rawRoot));
     } catch (error) {
         throw new PluginLintError(`cannot read ${rawRoot} — ${error.code ?? error.message}`);
     }
     if (!stat.isDirectory()) throw new PluginLintError(`${rawRoot} is not a directory`);
+    // Canonical, not merely absolute: every containment answer below compares against this, and
+    // comparing a canonical target to a symlinked root reports an escape that is not one. Both
+    // sides must be canonicalised or neither. (On macOS this is not hypothetical — the temp
+    // directories the suite builds fixtures in live under a symlinked `/tmp`.)
+    let root;
+    try {
+        root = fs.realpathSync(path.resolve(rawRoot));
+    } catch (error) {
+        throw new PluginLintError(`cannot resolve ${rawRoot} — ${error.code ?? error.message}`);
+    }
 
     const findings = [];
     const stats = { skills: 0, agents: 0, paths: 0, unverifiable: 0 };
@@ -205,7 +220,17 @@ export function inspect(rawRoot) {
      * Resolve a declared path against the root, enforcing the platform's two stated rules — it
      * must start with `./` and it must not leave the plugin root — and this repository's one:
      * it must actually resolve.
-     * @returns {string|null} the absolute path, or null having recorded the failure.
+     *
+     * Containment is checked **twice**, and the second one is the check that means something.
+     * `path.relative` is lexical: it reads `./plugin/skills/` as inside the root whether or not
+     * `plugin/skills` is a symlink to somewhere else entirely. Since a plugin's whole contract is
+     * that its components live inside it — and since a symlink escaping the root is a shape this
+     * repository actively considered and rejected for its own packaging — the lexical answer is
+     * the one an attacker or an accident would satisfy. So the target is canonicalised and asked
+     * again. The lexical check is kept first because it is the only one that can judge a path that
+     * does not exist: `./../elsewhere/` must fail as *outside*, not as *missing*.
+     *
+     * @returns {string|null} the canonical absolute path, or null having recorded the failure.
      */
     const resolve = (raw, check, where) => {
         stats.paths += 1;
@@ -218,16 +243,31 @@ export function inspect(rawRoot) {
             return null;
         }
         const target = path.resolve(root, raw);
-        const inside = path.relative(root, target);
-        if (inside.startsWith("..") || path.isAbsolute(inside)) {
+        if (escapes(root, target)) {
             fail(check, `${where} declares "${raw}", which resolves outside the plugin root`);
             return null;
         }
+        // `existsSync` follows symlinks, so a broken link is reported as not resolving rather than
+        // crashing the canonicalisation below.
         if (!fs.existsSync(target)) {
             fail(check, `${where} declares "${raw}", which does not resolve to anything`);
             return null;
         }
-        return target;
+        let real;
+        try {
+            real = fs.realpathSync(target);
+        } catch (error) {
+            fail(check, `${where} declares "${raw}", which could not be resolved — ${error.code ?? error.message}`);
+            return null;
+        }
+        if (escapes(root, real)) {
+            fail(
+                check,
+                `${where} declares "${raw}", which is a link out of the plugin root (to ${real})`,
+            );
+            return null;
+        }
+        return real;
     };
 
     const asList = (value) => (Array.isArray(value) ? value : value === undefined ? [] : [value]);
@@ -376,7 +416,16 @@ export function inspect(rawRoot) {
         stats.skills += 1;
         const text = read(file, "skills", `${rel}/SKILL.md`);
         if (text === null) continue;
-        checkFrontmatter(text, `${rel}/SKILL.md`, "skills", { requireName: false });
+        // `name` is required here although the platform makes it optional, and the stricter rule is
+        // this repository's own invariant rather than a claim about the contract. Without it the
+        // invocation name is inherited from the layout, and the fallback differs by layout: a skill
+        // in a `skills/<dir>/` subdirectory takes the directory name, which is stable, while a skill
+        // reached by a path pointing straight at it — the `"./"` form, which packs will use — takes
+        // the *install* directory name, which for a marketplace install is a version string that
+        // changes on every update. Requiring `name` makes the invocation name a property of the
+        // skill rather than of where it happens to sit, and every skill this repository ships has
+        // one already, so the rule costs nothing and closes the case before packs arrive.
+        checkFrontmatter(text, `${rel}/SKILL.md`, "skills", { requireName: true });
     }
 
     // A skill authored and never declared is a skill nobody ships, and its author will believe

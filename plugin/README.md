@@ -45,7 +45,8 @@ green on another team's identity, gate map, and definition of done. So the boot 
 
 - [`../.portulan/verify/plugin.sh`](../.portulan/verify/plugin.sh), on every pull request: the manifests
   parse and agree, every declared path resolves inside the tree, every declared skill and agent is real
-  and carries a description.
+  and carries a kebab-case `name` and a non-empty `description`. Paths are checked after
+  canonicalisation, so a symlink out of the tree is an escape rather than containment.
 - `claude plugin validate --strict`, by hand at the supervised checkpoints and before a release. It owns
   the platform's contract; the recipe does not, and **neither is a superset of the other**
   ([`../.portulan/memory/a-checkers-coverage-is-measured-not-named.md`](../.portulan/memory/a-checkers-coverage-is-measured-not-named.md)).
