@@ -125,9 +125,11 @@ looking for a Markdown table row whose first cell matches **`required status che
 and reading the backticked values from the rest of the row. That is the only structure the tool expects
 of a gate map — everything else in the file is prose it never parses. It is written here because nothing
 else states it: there is no gate-map template in [`../core/templates/`](../core/templates/), so an adopter
-whose floor table uses a different row label gets the check **silently skipped**, with `doctor` reporting
-that no claim was found rather than that it could not find one. Naming the convention is the cheap fix; a
-template is the better one and is not built.
+whose floor table uses a different row label gets the check **skipped** — no comparison happens at all.
+It is no longer *silent*: `doctor` reports that the gate map names no required status check, and names
+both readings, so a reader cannot mistake *this workspace requires none* for *I did not recognise your
+table*. (It was silent — nothing reported, nothing counted — until a review measured it.) Naming the
+convention is the cheap fix; a template is the better one and is not built.
 
 **What `doctor` checks:** the path resolves; and, where the workspace declares a `tree`, that **every**
 status check the gate map says `main` requires is one a workflow in that tree actually reports. That is
@@ -278,12 +280,20 @@ not run.
 Three limits worth stating before somebody relies on this. A claim is resolved against **either** the tree
 root or the card's own directory, because a real card mixes the two bases in one line — customer zero's
 does — and a lint that insisted on one would produce false reds. Only tokens that look like paths are
-checked: something containing `/`, taken from a code span or a link target. `build: none` claims nothing;
-`npm test` names a command, not a file. Prose is left alone rather than guessed at, because an ambitious
-parser is the shortest route to the false red that gets a whole recipe switched off — **but a
-build/test/run line is a structured field where every entry is a claim**, so one with nothing path-shaped
-in it is counted and reported unverifiable rather than dropped. (It was dropped, silently, until a fourth
-workspace whose card writes real commands rather than bare paths exposed it.)
+checked: something containing `/`, never absolute, taken from a code span or a link target. `build: none`
+claims nothing. Prose outside the two parsed sections is left alone rather than guessed at, because an
+ambitious parser is the shortest route to the false red that gets a whole recipe switched off.
+
+**Severity is where that lesson actually bit**, and the rule is worth knowing before writing a card. A
+build/test/run candidate that is a **single path-shaped token** — `./verify.sh` — is an unambiguous claim
+and **fails** when absent. A candidate that is a **command** — `dotnet run --project src/App` — only
+*contains* tokens that might be paths, and those are **reported, never failed**, because nothing can
+distinguish an input path from an output path not built yet, a flag value, a `sed` expression, a glob or
+an npm script name. A line with nothing path-shaped in it is counted and reported too. Nothing is
+dropped in silence — which it was, until the third real workspace's card exposed it — but the first
+attempt at fixing that failed command tokens outright and produced false reds on `go test ./...`,
+`cc -o bin/app src/main.c` and `--project=src/App` with the directory present, which is precisely the
+shape [`../core/templates/repo-card.md`](../core/templates/repo-card.md) tells adopters to write.
 
 And the third: **claims resolve against the filesystem, not against git.** A card naming a directory that
 `.gitignore` excludes — a runtime `state/` or `logs/` — resolves in a working copy where the application

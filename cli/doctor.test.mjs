@@ -712,25 +712,90 @@ describe("workspace claims are linted against the tree", () => {
     // than reading its green. A build/test/run line written as a real command — `dotnet run --project
     // src/…` — was taken as one candidate, rejected for containing a space, and then **silently
     // dropped**: not checked, not counted, not reported. Invisible on customer zero, whose card writes
-    // bare paths rather than commands, which is exactly how it survived to a fourth workspace.
-    test("a path inside a command on a build/test/run line is checked", async () => {
+    // bare paths rather than commands, which is exactly how it survived to the third real workspace.
+    // A candidate that IS a single path is an unambiguous claim: fail when it is absent. This is the
+    // shape customer zero's card uses and the one the milestone-2 close demonstrated red.
+    test("a build/test/run line that is a bare path fails when the path is absent", async () => {
         const m = wellFormed();
         m.tree = "./";
         m.slots.repos = "repos/";
         const dir = tree(scratch(), {
             ...minimalFiles,
             "workspace.json": JSON.stringify(m),
-            "repos/app.md":
-                "# Repo\n\n**Build / test / run.**\n- run: `dotnet run --project src/App.Nonexistent`\n",
+            "repos/app.md": "# Repo\n\n**Build / test / run.**\n- test: `./scripts/check.sh`\n",
         });
         const { findings } = await inspect(dir, { schema: SCHEMA });
-        const failures = severities(checks(findings, "claims"), "fail");
-        assert.equal(failures.length, 1);
-        assert.match(text(failures), /src\/App\.Nonexistent/);
+        assert.equal(severities(checks(findings, "claims"), "fail").length, 1);
 
-        fs.mkdirSync(path.join(dir, "src", "App.Nonexistent"), { recursive: true });
+        tree(dir, { "scripts/check.sh": "#!/bin/sh\n" });
         const fixed = await inspect(dir, { schema: SCHEMA });
         assert.deepEqual(severities(checks(fixed.findings, "claims"), "fail"), []);
+    });
+
+    // A candidate that is a COMMAND merely contains tokens that might be paths — or output paths, or
+    // flag values, or globs. Reported, never failed. An earlier version failed them and produced a
+    // false red on every one of the cases below, all of which a reviewer constructed and all of which
+    // are the shape core/templates/repo-card.md tells adopters to write.
+    test("a path pulled out of a command is reported, never failed", async () => {
+        const m = wellFormed();
+        m.tree = "./";
+        m.slots.repos = "repos/";
+        const commands = [
+            "go test ./...",
+            "dotnet build --project=src/App",
+            "git clone git@github.com:acme/app.git",
+            "cc -o bin/app src/main.c",
+            "sed s/dev/prod/ config.tmpl",
+            "npm run test/unit",
+            "docker run -v /var/run/docker.sock:/x ghcr.io/acme/app",
+            "/usr/bin/env node scripts/run.mjs",
+        ];
+        for (const command of commands) {
+            const dir = tree(scratch(), {
+                ...minimalFiles,
+                "workspace.json": JSON.stringify(m),
+                "repos/app.md": `# Repo\n\n**Build / test / run.**\n- test: \`${command}\`\n`,
+            });
+            const { findings } = await inspect(dir, { schema: SCHEMA });
+            assert.deepEqual(
+                severities(checks(findings, "claims"), "fail"),
+                [],
+                `\`${command}\` must not produce a failure`,
+            );
+        }
+    });
+
+    // Absolute tokens resolve against the HOST, so `/usr/bin/env` would otherwise be found and
+    // counted as a passing claim about a repository it has nothing to do with.
+    test("an absolute token is never treated as a claim about the tree", async () => {
+        const m = wellFormed();
+        m.tree = "./";
+        m.slots.repos = "repos/";
+        const dir = tree(scratch(), {
+            ...minimalFiles,
+            "workspace.json": JSON.stringify(m),
+            "repos/app.md": "# Repo\n\n**Build / test / run.**\n- run: `/usr/bin/env node app.mjs`\n",
+        });
+        const { findings, stats } = await inspect(dir, { schema: SCHEMA });
+        assert.deepEqual(severities(checks(findings, "claims"), "fail"), []);
+        assert.equal(stats.claims, 0, "an absolute path is not a checked claim");
+    });
+
+    // The gate map's row label is a convention no template defines. A workspace wording it
+    // differently used to produce nothing at all — no finding, no count — so a GREEN could not be
+    // told apart from "I did not recognise your table".
+    test("a gate map whose floor row is worded differently says so", async () => {
+        const m = wellFormed();
+        m.tree = "./";
+        const dir = tree(scratch(), {
+            ...minimalFiles,
+            "workspace.json": JSON.stringify(m),
+            "gate-map.md":
+                "# Gate map\n\n| Setting | Value |\n|---|---|\n| Required check | `something` |\n",
+        });
+        const { findings } = await inspect(dir, { schema: SCHEMA });
+        assert.deepEqual(severities(checks(findings, "claims"), "fail"), []);
+        assert.match(text(checks(findings, "claims")), /names no required status check/);
     });
 
     // The silent half of the same defect: a line with no path-shaped token in it must be COUNTED and

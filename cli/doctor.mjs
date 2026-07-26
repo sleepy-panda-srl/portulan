@@ -328,12 +328,18 @@ const recordType = (source) => (source.match(/^\s*\*\*type:\*\*\s*(\S+)/im)?.[1]
 // The milestone-2 criterion asks for this "the way the `map` check already holds the root README
 // to the repo's shape" — so a claim that is verifiable and wrong FAILS, exactly as `map` does.
 //
-// Two things make that safe to do. First, the lint reads only what parses confidently as a path:
-// a code span or link target containing `/`. `build: none — no build step yet` claims nothing and
-// is treated as claiming nothing; anything else it cannot read as a path is **left alone** — not
-// failed, and not reported either, because reporting every ordinary sentence in a repo card would
-// bury the findings that matter. A false red is the outcome that gets a whole recipe switched off
-// (../.portulan/verify/README.md), and an ambitious prose parser is the shortest route to one.
+// Three things make that safe to do. First, the lint reads only what parses confidently as a path:
+// a code span or link target containing `/`, never absolute. `build: none — no build step yet`
+// claims nothing and is treated as claiming nothing. Prose outside the two parsed sections is
+// **left alone** — not failed and not reported — because reporting every ordinary sentence in a
+// repo card would bury the findings that matter.
+//
+// Second, FAIL is reserved for a claim that is unambiguous. A build/test/run candidate that is a
+// single path-shaped token is a claim a file exists; a candidate that is a command merely contains
+// tokens that might be paths, output paths, flag values or globs, and those are reported rather
+// than failed. A false red is the outcome that gets a whole recipe switched off
+// (../.portulan/verify/README.md), and an ambitious parser is the shortest route to one — which
+// this check learned by producing them.
 //
 // Second, the tree is DECLARED rather than guessed. A workspace that makes claims about the
 // repository containing it says so with the `tree` slot; one that describes repositories not
@@ -357,8 +363,14 @@ function repoCardClaims(source) {
         return lines.slice(start, end + 1);
     };
 
+    // Absolute paths are excluded because they resolve against the HOST rather than the tree:
+    // `/usr/bin/env` inside a command would otherwise be checked, found, and counted as a passing
+    // claim about a repository it has nothing to do with.
     const isPathish = (token) =>
-        token.includes("/") && !/^(https?|mailto):/.test(token) && !token.includes(" ");
+        token.includes("/") &&
+        !token.startsWith("/") &&
+        !/^(https?|mailto):/.test(token) &&
+        !token.includes(" ");
 
     const build = section(/^\s*\*\*Build\s*\/\s*test\s*\/\s*run\.?\*\*/i);
     if (build) {
@@ -371,22 +383,39 @@ function repoCardClaims(source) {
             if (!candidate) continue;
             if (/^none\b/i.test(candidate)) continue; // an explicit no-claim
 
-            // A real command is the normal case here — `dotnet run --project src/App` — so the whole
-            // candidate is almost never a path. Take the path-shaped tokens out of it. The previous
-            // version tested the candidate whole, rejected anything containing a space, and dropped it
-            // **silently**: every build/test/run line on a card written with commands was inert, and
-            // nothing said so. Found on a fourth workspace; invisible on customer zero, whose card
-            // happens to write bare paths.
-            const targets = candidate.split(/\s+/).filter(isPathish);
-            if (targets.length) {
+            // Severity turns on whether the candidate IS a path or merely CONTAINS one, and that
+            // split is the whole design of this branch.
+            //
+            // A candidate that is a single path-shaped token — `./verify.sh` — is unambiguously a
+            // claim that a file exists, and absent it is a **failure**. That is the shape customer
+            // zero's card uses and the shape the milestone-2 close demonstrated red.
+            //
+            // A candidate that is a command — `dotnet run --project src/App` — contains tokens that
+            // may be an input path, an output path not built yet, a flag value, a `sed` expression, a
+            // glob, an npm script name, or an SSH remote. Nothing here can tell those apart, so every
+            // extracted token is **reported, never failed**. An earlier version failed them and bought
+            // false reds on `go test ./...`, `cc -o bin/app src/main.c`, and `--project=src/App` with
+            // the directory present — on exactly the input `../core/templates/repo-card.md` tells
+            // adopters to write. Tightening the pattern cannot fix it: `bin/app` and `test/unit` are
+            // clean-looking paths. A false red gets a whole recipe switched off; a missed check does
+            // not, and this repository has ranked those two twice.
+            //
+            // What both branches guarantee is that nothing is **silent**. Before this, a
+            // command-shaped line was tested whole, rejected for containing a space, and dropped:
+            // not checked, not counted, not reported.
+            const tokens = candidate.split(/\s+/);
+            const targets = tokens.filter(isPathish);
+            if (tokens.length === 1 && targets.length === 1) {
+                claims.push({ what: `${key}: \`${candidate}\``, target: candidate, severity: "fail" });
+            } else if (targets.length) {
                 for (const target of new Set(targets)) {
-                    claims.push({ what: `${key}: \`${target}\``, target });
+                    claims.push({
+                        what: `${key}: \`${target}\`, taken from \`${candidate}\``,
+                        target,
+                        severity: "report",
+                    });
                 }
             } else {
-                // Nothing path-shaped to check. This is a structured field where every entry is a
-                // claim, so it is counted and said rather than dropped — unlike prose elsewhere on the
-                // card, where reporting everything would bury the findings. "Nothing to check here" and
-                // "I did not look" print identically unless one of them speaks.
                 claims.push({ what: `${key}: \`${candidate}\``, target: null });
             }
         }
@@ -732,9 +761,11 @@ export async function inspect(workspaceDir, options = {}) {
     // spec/slots.md promised those claims were "counted and reported unverifiable, never skipped
     // silently". Found at the pre-commit checkpoint, in the paragraph that made the promise.
     let claimedChecks = [];
+    let gatesRead = false;
     if (workspace.slots?.gates) {
         try {
             claimedChecks = requiredCheckClaims(fs.readFileSync(path.resolve(dir, workspace.slots.gates), "utf8"));
+            gatesRead = true;
         } catch {
             // Unreadable is already a `paths` failure; it must not also become an exit-2 crash,
             // which would trade a verdict this run had already reached for "could not run".
@@ -754,7 +785,14 @@ export async function inspect(workspaceDir, options = {}) {
             // under either is a claim that points at something real, which is what the lint is for.
             const resolved = [path.resolve(treeRoot, claim.target), path.resolve(claim.base, claim.target)];
             if (!resolved.some((p) => fs.existsSync(p))) {
-                fail("claims", `${claim.where} claims ${claim.what}, which exists nowhere in the tree`);
+                const message = `${claim.where} claims ${claim.what}, which exists nowhere in the tree`;
+                if (claim.severity === "report") {
+                    stats.claims -= 1;
+                    stats.unverifiable += 1;
+                    report("claims", `${message} — reported rather than failed: a token pulled out of a command may be an output path, a flag value or a glob, and this cannot tell those from a broken one`);
+                } else {
+                    fail("claims", message);
+                }
             }
         }
 
@@ -807,6 +845,19 @@ export async function inspect(workspaceDir, options = {}) {
                 `the gate map requires ${claimedChecks.map((c) => `\`${c}\``).join(", ")}, and with no \`tree\` there is nothing to check against — unverifiable`,
             );
         }
+    }
+
+    // Finding no claim is a result, not an absence, and it has to say so. `doctor` recognises the
+    // required-check claim by one convention — a table row whose first cell reads "required status
+    // check" — and no template defines that label (see spec/slots.md). A gate map wording the row
+    // differently produced **nothing at all**: no finding, no count, and a reader with a GREEN in
+    // front of them had no way to tell "this workspace requires no check" from "I did not recognise
+    // your table". Reported since the review that measured it.
+    if (gatesRead && claimedChecks.length === 0) {
+        report(
+            "claims",
+            "the gate map names no required status check — either this workspace requires none, or its floor table does not use the row label `Required status check` that this check recognises (spec/slots.md). Nothing was compared against the tree",
+        );
     }
 
     // ---- provenance
