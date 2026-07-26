@@ -230,7 +230,11 @@ export function inspect(rawRoot) {
      * again. The lexical check is kept first because it is the only one that can judge a path that
      * does not exist: `./../elsewhere/` must fail as *outside*, not as *missing*.
      *
-     * @returns {string|null} the canonical absolute path, or null having recorded the failure.
+     * The kind travels back with the path deliberately: it is read here, once, inside this
+     * function's guard, so no caller has a second unguarded `statSync` to throw from.
+     *
+     * @returns {{file: string, isDirectory: boolean}|null} the canonical absolute path and what it
+     *   is, or null having recorded the failure.
      */
     const resolve = (raw, check, where) => {
         stats.paths += 1;

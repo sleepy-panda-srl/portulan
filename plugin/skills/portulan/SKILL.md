@@ -65,8 +65,8 @@ What is available to read, in this bundle:
 - `node ${CLAUDE_PLUGIN_ROOT}/cli/doctor.mjs <workspace-dir>` — validates a workspace against that
   definition. Zero dependencies; it needs Node and nothing else.
 
-Authoring a workspace is a human's job at this milestone. The `init` command that interviews a team
-and drafts one — for a human to then curate — arrives with the CLI; see step 5.
+Authoring a workspace is a human's job at this milestone: read the demo, copy its shape, and curate it.
+There is no scaffolder yet — see step 5.
 
 ## 5. Report what is enforced, and what is not
 
@@ -82,6 +82,10 @@ what it *enforces* is the thing an agent must not paper over:
   real is the platform floor beneath it — branch protection, required checks — where the team has
   configured one.
 - **Memory has no generated index.** Recall means reading the directory.
+- **There is no CLI, so nothing drafts a workspace for a team that has none.** `init` — the interview
+  and codebase scan that produces a draft for a human to curate — plus `compile`, `vendor`, `index` and
+  `upgrade`, all arrive with the CLI at a later milestone. What exists today is `doctor`, which validates
+  a workspace somebody has already written.
 
 State which of these apply to the workspace you just loaded, using its own documents. If a document
 claims an enforcement that does not exist, that is a defect worth reporting, not a detail to smooth
