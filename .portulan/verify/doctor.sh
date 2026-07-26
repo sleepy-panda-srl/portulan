@@ -82,8 +82,11 @@ named=$(printf '%s\n' "${WORKSPACES[@]}" | sort -u)
 
 if [ "$present" != "$named" ]; then
     printf 'verify: the workspaces this recipe validates are not the workspaces in the tree.\n' >&2
-    printf '  validated : %s\n' "$(printf '%s ' $named)" >&2
-    printf '  in tree   : %s\n' "$(printf '%s ' $present)" >&2
+    # Quoted, and newlines flattened with `tr` rather than by leaving the expansion bare. An unquoted
+    # expansion here would word-split and glob-expand: a workspace directory containing `*` or `[`
+    # would print something other than its name, in the one message whose whole job is to name it.
+    printf '  validated : %s\n' "$(printf '%s' "$named" | tr '\n' ' ')" >&2
+    printf '  in tree   : %s\n' "$(printf '%s' "$present" | tr '\n' ' ')" >&2
     printf 'Add the missing workspace to WORKSPACES in this file, or remove the stale entry.\n' >&2
     exit 2
 fi
