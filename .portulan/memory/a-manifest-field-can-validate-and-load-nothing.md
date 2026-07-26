@@ -54,6 +54,12 @@ and the capability was absent anyway. There was no lie to find at rest. It exist
 declaring a component the runtime will not read is itself an error rather than a shrug. At that point
 `claude plugin validate` covers this and the rule is doing no work.
 
+**Retire together with the lint rule this entry is cited by.** `plugin-lint`'s stranded-agent report —
+*"this file is not in `./agents/`, the only directory the host loads agents from"* — exists only
+because of the platform fact measured here. If the fact changes, that report becomes a generator of
+false notes about files that load perfectly well, so the rule and this entry come out in the same
+change. The pairing is stated in the rule's comment too, so whoever finds one finds the other.
+
 **Re-test on every Claude Code upgrade**, and this half is the more urgent one, because a workaround
 outlives the defect that justified it and then reads as taste. The measurement above is dated and
 version-stamped for exactly that reason. **If the `agents` key starts registering the files it names,

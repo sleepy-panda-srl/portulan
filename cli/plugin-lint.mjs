@@ -479,6 +479,20 @@ export function inspect(rawRoot) {
     // A skill authored and never declared is a skill nobody ships, and its author will believe
     // otherwise. Reported rather than failed: an undeclared SKILL.md may legitimately be an example
     // or a fixture, and this validator has no way to tell which.
+    // The same report, for the side of the asymmetry that has already bitten: a skill under a
+    // declared custom path loads, and an agent under any custom path does not. So an agent file
+    // anywhere but `./agents/` is one its author believes is loading, and nothing else in this
+    // validator would ever mention it. Reported rather than failed for the reason below — a `.md`
+    // under some other `agents/` may be a fixture, an example, or another host's binding, and this
+    // validator cannot tell which.
+    for (const stranded of walkForStrandedAgents(root)) {
+        note(
+            "agents",
+            `${path.relative(root, stranded)} is not in ./${AGENT_DIR}/, the only directory the host ` +
+                "loads agents from — it will not load",
+        );
+    }
+
     for (const found of walkForSkills(root)) {
         if (!skillDirs.has(found)) {
             note(
@@ -602,6 +616,45 @@ export function inspect(rawRoot) {
 }
 
 /** Every directory beneath `root` that holds a SKILL.md. Bounded, and skips the obvious noise. */
+/**
+ * Every directory named `agents` in the tree apart from the loadable one at the plugin root.
+ *
+ * The mistake this catches is not exotic — it is the one this repository made and shipped: agent
+ * files under `plugin/agents/`, where the host will never look. It is the natural place to put them,
+ * because **skills** do load from custom declared paths and agents do not, and nothing about the
+ * asymmetry announces itself. See ../.portulan/memory/a-manifest-field-can-validate-and-load-nothing.md
+ * for the measurement.
+ *
+ * **This rule and that memory entry retire together.** Both exist only because the platform loads
+ * agents from one fixed location; if a release makes the `agents` key register the files it names,
+ * the stranding stops being a defect, this walk becomes a source of false notes, and both go.
+ */
+function walkForStrandedAgents(root, dir = root, depth = 0, found = []) {
+    if (depth > MAX_WALK_DEPTH) return found;
+    let entries;
+    try {
+        entries = fs.readdirSync(dir, { withFileTypes: true });
+    } catch {
+        // Same reasoning as the skills walk: an unreadable subtree is not a verdict about packaging.
+        return found;
+    }
+    // Every `agents/` **except the loadable one**, compared by path rather than by depth: the first
+    // version of this used `depth > 0`, which excludes the plugin root itself and not the `agents/`
+    // directly under it — so it reported the three files sitting exactly where it exists to tell
+    // people to put them. Caught by strengthening the test to assert what must *not* be named.
+    if (dir !== path.join(root, AGENT_DIR) && path.basename(dir) === AGENT_DIR) {
+        for (const entry of entries) {
+            if (entry.isFile() && entry.name.endsWith(".md")) found.push(path.join(dir, entry.name));
+        }
+    }
+    for (const entry of entries) {
+        if (!entry.isDirectory()) continue;
+        if (SKIP_DIRS.has(entry.name)) continue;
+        walkForStrandedAgents(root, path.join(dir, entry.name), depth + 1, found);
+    }
+    return found;
+}
+
 function walkForSkills(root, dir = root, depth = 0, found = []) {
     if (depth > MAX_WALK_DEPTH) return found;
     let entries;

@@ -30,7 +30,8 @@
 
 ```
 sleepy-panda-works/
-├── portulan                      PUBLIC  monorepo + public marketplace
+├── portulan                      monorepo + public marketplace
+│                                 PUBLIC at the milestone-3 flip; private today
 │   ├── core/                     engine: operating docs, personas, universal skills, templates
 │   ├── packs/                    stacks/ · tools/ · rituals/
 │   ├── spec/                     Workspace Definition schema, docs, migrations
@@ -38,11 +39,12 @@ sleepy-panda-works/
 │   ├── agents/                   Claude Code agent bindings of core/personas/ — a platform-fixed
 │   │                             location: the default agents dir of the repo-rooted plugin
 │   ├── cli/                      init · doctor · compile · vendor · index · upgrade
+│   │                             (today: doctor + plugin-lint, standalone; the CLI absorbs them at M7)
 │   ├── examples/                 fictional demo workspace
 │   ├── .portulan/                this repo's own workspace — customer zero, dogfooding
 │   ├── evals/                    golden tasks, A/B harness, CI eval gate
 │   ├── docs/                     vision.md (constitution) · plan.md (this file)
-│   └── .claude-plugin/marketplace.json
+│   └── .claude-plugin/           plugin + marketplace manifests
 ├── portulan-workspace-template   PUBLIC  "Use this template" scaffold
 └── portulan-internal             PRIVATE Sleepy Panda feed (portfolio workspace + packs)
 ```
