@@ -787,15 +787,15 @@ describe("workspace claims are linted against the tree", () => {
             ...minimalFiles,
             "workspace.json": JSON.stringify(m),
             "gate-map.md":
-                "# Gate map\n\n| Setting | Value |\n|---|---|\n| Required status check | `nightly-soak` |\n",
+                "# Gate map\n\n| Setting | Value |\n|---|---|\n| Required status check | `example-job` |\n",
             ".github/workflows/ci.yml":
-                "name: ci\njobs:\n  nightly-soak:\n    name: nightly + soak\n    runs-on: ubuntu-latest\n",
+                "name: ci\njobs:\n  example-job:\n    name: Example Job\n    runs-on: ubuntu-latest\n",
         });
         const { findings } = await inspect(dir, { schema: SCHEMA });
         const failures = severities(checks(findings, "claims"), "fail");
         assert.equal(failures.length, 1);
         assert.match(text(failures), /job \*\*id\*\*/);
-        assert.match(text(failures), /nightly \+ soak/);
+        assert.match(text(failures), /Example Job/);
     });
 
     // Also from the third workspace: it requires two checks, and reading only the first silently
@@ -825,9 +825,9 @@ describe("workspace claims are linted against the tree", () => {
             ...minimalFiles,
             "workspace.json": JSON.stringify(m),
             "gate-map.md":
-                "# Gate map\n\n| Setting | Value |\n|---|---|\n| Required status check | `nightly + soak` |\n",
+                "# Gate map\n\n| Setting | Value |\n|---|---|\n| Required status check | `Example Job` |\n",
             ".github/workflows/ci.yml":
-                "name: ci\njobs:\n  nightly-soak:\n    name: nightly + soak\n    runs-on: ubuntu-latest\n",
+                "name: ci\njobs:\n  example-job:\n    name: Example Job\n    runs-on: ubuntu-latest\n",
         });
         const { findings } = await inspect(dir, { schema: SCHEMA });
         assert.deepEqual(severities(checks(findings, "claims"), "fail"), []);
