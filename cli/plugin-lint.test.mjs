@@ -496,6 +496,17 @@ describe("the agents nothing declares", () => {
         assert.equal(fs.lstatSync(path.join(REPO, "agents")).isSymbolicLink(), false);
     });
 
+    test("a broken agents/ symlink is a failure, not 'this plugin ships no agents'", () => {
+        // Found by review. `existsSync` **follows** the link, so a broken `agents` entry answered
+        // "absent" and took the note branch — GREEN, `0 agent(s)`, exit 0, over a tree that plainly
+        // contains an `agents` entry and cannot use it. Absent and unusable are different verdicts
+        // and only one of them is benign; deciding between them with a dereferencing call is the
+        // same short-input-set defect this whole session is about, in the code written to fix it.
+        const root = fixture({ skip: ["agents"] });
+        fs.symlinkSync("./nowhere", path.join(root, "agents"));
+        assert.notEqual(fails(inspect(root).findings).length, 0, "a broken agents/ link passed");
+    });
+
     test("an agent reached by a symlink is checked, not silently skipped", () => {
         // `readdirSync(…, { withFileTypes: true })` reports a symlink as neither a file nor a
         // directory, so the obvious `isFile()` filter drops it — and a dropped agent is exactly the

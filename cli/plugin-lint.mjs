@@ -495,7 +495,20 @@ export function inspect(rawRoot) {
     // claim, and the coverage has to come from the convention instead. The moment the `agents` key
     // came out of this repository's manifest, the recipe printed `0 agent(s)` and GREEN.
 
-    if (!fs.existsSync(path.join(root, AGENT_DIR))) {
+    // `lstat`, not `exists`: the question here is whether the tree *has* an `agents` entry, and
+    // `existsSync` answers a different one because it follows the link — so a broken `agents`
+    // symlink reported "absent", took the note branch, and went GREEN with `0 agent(s)` over a tree
+    // that plainly has an `agents` entry and cannot use it. Absent and unusable are different
+    // verdicts and only one is benign. Deciding it non-dereferencingly leaves every other case to
+    // `resolve()` below, which already knows how to fail a link that does not resolve. Found by
+    // review, and it is the short-input-set defect this pass was written to close, in the pass.
+    let present = true;
+    try {
+        fs.lstatSync(path.join(root, AGENT_DIR));
+    } catch {
+        present = false;
+    }
+    if (!present) {
         // A plugin that ships no agents is legitimate, so this is a note. The residual hole is real
         // and named rather than hidden: deleting `agents/` outright degrades this whole check class
         // to a note, the same shape proposal 0005 closed for `tree`. The check that would bind it is
