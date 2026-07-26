@@ -32,9 +32,19 @@ one that ran and passed.
 **The last two are wrappers, and the wrapper is the point.** Both delegate to `node`, and both check for
 it first. `bash -c "node …"` on a machine without `node` exits `127`, which is neither a verdict about
 the repository nor "could not run" — the wrapper is where that gets turned into a `2` deliberately.
-[`doctor.sh`](doctor.sh) also **names** the workspaces it validates rather than discovering them: a scan
-that found no manifests would run nothing and report green, which is the enumeration fail-open recorded
-below, arriving in a third disguise.
+
+**[`doctor.sh`](doctor.sh) names the workspaces it validates, and audits that list against the tree.**
+Naming rather than discovering closes the enumeration fail-open recorded below: a scan finding no
+manifests would run nothing and report green. But naming opens the mirror hole — a workspace *added* to
+the tree and not added to the list is validated by nothing, and nothing says so. That was demonstrated
+before it was closed: a third manifest dropped into the tree, and the recipe exited `0` having ignored it.
+
+So the named list is what **runs** and a discovery pass **audits** it; disagreement in either direction
+exits `2`. The ordering is the whole design. Discovery cross-checks and never decides, so it cannot
+reintroduce the fail-open it was avoided for — a scan finding nothing now disagrees with a non-empty list
+and fails loudly, where a scan that *drove* the run would have passed in silence. Fixtures under
+`cli/fixtures/` are excluded by prefix, because they are broken on purpose and validating them would fail
+by design.
 
 `docs.sh` needs nothing beyond `grep`, `sed`, `awk`, `wc`, `sort`, `dirname`, and `mktemp`, and that is
 worth preserving — a recipe that needs a toolchain is a recipe that stops being run.
