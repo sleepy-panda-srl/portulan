@@ -7,8 +7,8 @@ its history is public and permanent.
 
 **Build / test / run.**
 - build: none — no build step yet; the CLI arrives at milestone 7
-- test: `./.portulan/verify/docs.sh` — the default recipe. Three more are declared in [`../workspace.json`](../workspace.json) and all four run in CI: `json.sh`, `doctor.sh`, `tests.sh`. The Stop-gate that will run one automatically on task completion arrives at milestone 4 (see [`../../core/operating/verification.md`](../../core/operating/verification.md))
-- run: `./.portulan/verify/doctor.sh` — the nearest thing to running the product: it validates both workspaces against the Workspace Definition
+- test: `./.portulan/verify/docs.sh` — the default recipe. Four more are declared in [`../workspace.json`](../workspace.json) and all five run in CI: `json.sh`, `doctor.sh`, `tests.sh`, `plugin.sh`. The Stop-gate that will run one automatically on task completion arrives at milestone 4 (see [`../../core/operating/verification.md`](../../core/operating/verification.md))
+- run: `./.portulan/verify/doctor.sh` — the nearest thing to running the product: it validates both workspaces against the Workspace Definition. From milestone 3 there is a second sense of "run": install the repository as a Claude Code plugin and invoke `/portulan`, which boots the engine ([`../../plugin/`](../../plugin/))
 
 **Gates.** Inherits [`../gate-map.md`](../gate-map.md) with no deviations. Two worth keeping in front of
 mind because they are unusual: [`../../docs/vision.md`](../../docs/vision.md) is never edited by an agent
@@ -16,10 +16,12 @@ at all, and repository **visibility** is Gated — private until milestone 3 by 
 ([`../memory/repo-is-private-until-milestone-3.md`](../memory/repo-is-private-until-milestone-3.md)).
 
 **Layout.** [`../../core/`](../../core/) the engine · [`../../spec/`](../../spec/) the Workspace
-Definition · [`../../cli/`](../../cli/) `doctor` and its tests · [`../../docs/`](../../docs/)
-constitution and plan · `.portulan/` this workspace · [`../../examples/`](../../examples/) the demo
-workspace · [`../../.claude-plugin/`](../../.claude-plugin/) the marketplace manifest. The remaining
-top-level directories are scaffolding that fills in milestone by milestone.
+Definition · [`../../cli/`](../../cli/) `doctor`, `plugin-lint` and their tests ·
+[`../../docs/`](../../docs/) constitution and plan · `.portulan/` this workspace ·
+[`../../examples/`](../../examples/) the demo workspace · [`../../plugin/`](../../plugin/) the Claude Code
+adapter — the boot skill and the personas as agents · [`../../.claude-plugin/`](../../.claude-plugin/) the
+plugin and marketplace manifests. The remaining top-level directories are scaffolding that fills in
+milestone by milestone.
 
 **Quirks.**
 - The kernel [`../../core/engine.md`](../../core/engine.md) is line-budgeted. Adding to it is the wrong

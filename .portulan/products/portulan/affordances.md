@@ -49,9 +49,22 @@ Written at the same level of detail, because a legibility report that lists only
   paths written as code spans are never checked at all. Both are recorded in
   [`../../verify/README.md`](../../verify/README.md); the second has already cost this repository two
   dead pointers that survived several reviews.
-- **There is no `CODEOWNERS`.** No path-specific human is required on any file, including the
-  constitution. It is protected by prohibition, not by the platform.
-- **There is one test suite, and it covers one file.**
-  [`../../../cli/doctor.test.mjs`](../../../cli/doctor.test.mjs) covers `doctor`; nothing tests the four
-  verify recipes themselves, and there is no other product code yet. Treat green as "`doctor` behaves,
-  and the documents are internally consistent" — never as "the product works".
+- **`CODEOWNERS` exists but enforces nothing.** [`../../../CODEOWNERS`](../../../CODEOWNERS) routes
+  review requests and records ownership; *Require review from Code Owners* is off in branch protection,
+  because a solo maintainer cannot approve his own pull request and `enforce_admins` has no exemption for
+  him. So no path-specific human is *required* on any file, including the constitution: it is still
+  protected by prohibition, not by the platform. See [`../../gate-map.md`](../../gate-map.md).
+- **A green packaging check is not the platform's approval.**
+  [`../../verify/plugin.sh`](../../verify/plugin.sh) checks this repository's own invariants — the
+  manifests parse and agree, paths resolve, declared skills and agents are real. `claude plugin validate
+  --strict` owns the Claude Code contract and is run by hand at checkpoints, not in CI. Neither is a
+  superset: measured on the day both were adopted, the lint passed a manifest the platform refused, and
+  the platform passed three broken skills the lint failed
+  ([`../../memory/a-checkers-coverage-is-measured-not-named.md`](../../memory/a-checkers-coverage-is-measured-not-named.md)).
+- **There are two test suites, and they cover two files.**
+  [`../../../cli/doctor.test.mjs`](../../../cli/doctor.test.mjs) covers `doctor` and
+  [`../../../cli/plugin-lint.test.mjs`](../../../cli/plugin-lint.test.mjs) covers `plugin-lint`; nothing
+  tests the five verify recipes themselves
+  ([`../../tasks/0004-a-harness-for-the-verify-recipes.md`](../../tasks/0004-a-harness-for-the-verify-recipes.md)),
+  and there is no other product code yet. Treat green as "the two validators behave, and the documents
+  are internally consistent" — never as "the product works".

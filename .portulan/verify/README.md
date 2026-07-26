@@ -7,7 +7,7 @@
 
 ## The recipes
 
-Four, as of milestone 2. All are declared in [`../workspace.json`](../workspace.json), which is also
+Five, as of milestone 3. All are declared in [`../workspace.json`](../workspace.json), which is also
 where the **default** is named — [`docs.sh`](docs.sh), the one the Stop-gate will run when nothing more
 specific applies. Run any of them from anywhere in the tree:
 
@@ -16,6 +16,7 @@ specific applies. Run any of them from anywhere in the tree:
 ./.portulan/verify/json.sh
 ./.portulan/verify/doctor.sh
 ./.portulan/verify/tests.sh
+./.portulan/verify/plugin.sh
 ```
 
 | Recipe | Covers | Needs |
@@ -23,21 +24,34 @@ specific applies. Run any of them from anywhere in the tree:
 | [`docs.sh`](docs.sh) — default | links · kernel budget · repo map | `bash`, `git`, POSIX text utilities |
 | [`json.sh`](json.sh) | every tracked `.json` file parses | the above, plus `node` |
 | [`doctor.sh`](doctor.sh) | both workspaces validate: schema, paths, cross-references, claims against the tree, provenance | `bash`, `git`, `node` |
-| [`tests.sh`](tests.sh) | [`../../cli/doctor.test.mjs`](../../cli/doctor.test.mjs) passes | `bash`, `node` |
+| [`tests.sh`](tests.sh) | [`../../cli/doctor.test.mjs`](../../cli/doctor.test.mjs) and [`../../cli/plugin-lint.test.mjs`](../../cli/plugin-lint.test.mjs) pass | `bash`, `node` |
+| [`plugin.sh`](plugin.sh) | the packaging: both manifests parse and agree, component paths resolve, declared skills and agents are real | `bash`, `git`, `node` |
 
 Exit `0` green · `1` red · `2` could not run — and that third code is why each recipe declares its needs
 in the manifest rather than discovering them: a recipe that *could not run* must never be mistaken for
 one that ran and passed.
 
-**The last two are wrappers, and the wrapper is the point.** Both delegate to `node`, and both check for
-it first. `bash -c "node …"` on a machine without `node` exits `127`, which is neither a verdict about
+**The last three are wrappers, and the wrapper is the point.** Each delegates to `node`, and each checks
+for it first. `bash -c "node …"` on a machine without `node` exits `127`, which is neither a verdict about
 the repository nor "could not run" — the wrapper is where that gets turned into a `2` deliberately.
+
+**What [`plugin.sh`](plugin.sh) deliberately does not run.** `claude plugin validate --strict` is the
+authority on the Claude Code plugin contract, and it is **not** a recipe: CI installs nothing by stated
+doctrine, so declaring the `claude` binary would exit `2` on every pull request — permanently red. It runs
+at the supervised checkpoints and before a release instead. The two are not nested and neither is a
+superset: the first-party validator refused a manifest this lint passed, and passed three broken skills
+this lint fails. Measured rather than assumed —
+[`../memory/a-checkers-coverage-is-measured-not-named.md`](../memory/a-checkers-coverage-is-measured-not-named.md).
 
 **[`doctor.sh`](doctor.sh) names the workspaces it validates, and audits that list against the tree.**
 Naming rather than discovering closes the enumeration fail-open recorded below: a scan finding no
 manifests would run nothing and report green. But naming opens the mirror hole — a workspace *added* to
 the tree and not added to the list is validated by nothing, and nothing says so. That was demonstrated
 before it was closed: a third manifest dropped into the tree, and the recipe exited `0` having ignored it.
+
+[`plugin.sh`](plugin.sh) carries the same structure for plugin roots, because the hole is the same one:
+this repository is about to ship packs as plugins, and a second `plugin.json` added to the tree and not
+added to the list would be linted by nothing.
 
 So the named list is what **runs** and a discovery pass **audits** it; disagreement in either direction
 exits `2`. The ordering is the whole design. Discovery cross-checks and never decides, so it cannot
@@ -76,10 +90,12 @@ linter exercises source. `doctor` is the first code, and `tests.sh` is the first
 suite rather than a linter — so the promise this section used to make, that real tests would join these
 rather than replace them, is kept rather than pending.
 
-The claim is still bounded, and the bound was demonstrated within hours of being written. The suite
-covers `doctor`: its schema subset, its exit codes, its parsers, its severity split. **Nothing tests the
-recipes themselves** — `docs.sh`, `json.sh`, `doctor.sh` and `tests.sh` are verified by being run, which
-is a weaker claim than it sounds. Every defect ever found in them was found by a human or a reviewer, and
+The claim is still bounded, and the bound was demonstrated within hours of being written. There are two
+suites now: one covering `doctor` — its schema subset, its exit codes, its parsers, its severity split —
+and one covering `plugin-lint`. **Nothing tests the recipes themselves** — `docs.sh`, `json.sh`,
+`doctor.sh`, `tests.sh` and `plugin.sh` are verified by being run, which is a weaker claim than it sounds.
+That gap now has a task of its own rather than a mention in a handoff:
+[`../tasks/0004-a-harness-for-the-verify-recipes.md`](../tasks/0004-a-harness-for-the-verify-recipes.md). Every defect ever found in them was found by a human or a reviewer, and
 the two most recent were found by a reviewer on the pull request that introduced them, in the two recipes
 this file had just finished describing:
 
@@ -108,7 +124,8 @@ less.
 | `map` | Every top-level entry appears in the root `README.md` layout table. | Agent legibility: a repository whose own map omits directories teaches an agent a false shape of the ground. This one exists because that had already happened — see below. |
 | `parse` | Every tracked `.json` file is well-formed. | From milestone 2 the repository's policy layer *is* JSON. A manifest that does not parse gates nothing, and it fails at the moment it is needed rather than when it is written. |
 | `doctor` | Both workspaces conform to the Workspace Definition, their paths resolve, their claims match the tree, and every rule carries checkable provenance. | The workspace layer is where a team's policy lives, and until this existed every "this workspace conforms" sentence in the repository was an assertion. Its first run found three rules whose provenance the repository had already mandated and not held. |
-| `tests` | [`../../cli/doctor.test.mjs`](../../cli/doctor.test.mjs) passes. | The validator is the first thing here that can be *subtly* wrong rather than visibly broken — a schema keyword silently ignored looks identical to one enforced. A linter can be judged by reading it; a validator cannot. |
+| `tests` | The test suites pass. | The validators are the first things here that can be *subtly* wrong rather than visibly broken — a schema keyword silently ignored looks identical to one enforced. A linter can be judged by reading it; a validator cannot. |
+| `plugin` | Both packaging manifests parse and agree; every component path resolves inside the tree; every declared skill and agent is a real artifact with a description. | From milestone 3 the repository *is* a distribution channel, and a marketplace declaring no plugins — or a skill path resolving to nothing — installs cleanly and delivers nothing. The platform's own validator reports the empty-marketplace case as a *warning*, which is the severity a milestone walks past. |
 
 ## Provenance
 
@@ -182,6 +199,11 @@ in both: it fails `2`, not `0`. Recorded as
   than a safety, though: for a card that truthfully describes a gitignored runtime directory this is a
   **permanent false red in CI**, not a caught defect. Found by running `doctor` in a fresh worktree
   rather than the working copy it had always been run in.
+- **`plugin.sh` does not check the platform's contract, and a green from it is not a green from
+  `claude plugin validate`.** It checks this repository's own invariants about its packaging. Measured
+  the day it was written: this repository's `plugin.json` declared `"agents": ["./plugin/agents/"]`, the
+  lint said GREEN, and the first-party validator refused the file — that field requires explicit `.md`
+  files. Run both.
 - **`node --test` given a glob matching nothing exits `0`.** A green suite that ran nothing. `tests.sh`
   counts the files first for that reason, and the count and the glob deliberately cover the same set —
   a recursive `find` beside a non-recursive glob would let a test be counted and never run.

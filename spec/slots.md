@@ -309,9 +309,12 @@ resolution order. The portfolio workspace at milestone 6 ships as a private-feed
 packs — a manifest that cannot express that forces a MAJOR bump one milestone after v1.
 
 An array of names in cascade order, empty by default. **What `doctor` checks:** that the names are
-unique. Resolving a pack to an installed plugin needs the plugin machinery from milestone 3 and the feed
-from milestone 6; until then this slot is a declaration, and `doctor` will say so rather than pretending
-to verify it.
+unique. Resolving a pack to an installed plugin needed two things: the plugin machinery, which landed at
+milestone 3 ([`../plugin/`](../plugin/) and [`../.claude-plugin/`](../.claude-plugin/)), and a feed to
+resolve a name *against*, which is milestone 6. Until the second exists this slot is still a
+declaration, and `doctor` says so rather than pretending to verify it — the wording of that note was
+updated when the first half landed, because a note naming a prerequisite that already exists sends a
+reader to wait for something that arrived.
 
 ## `provenance` — a record field, not a manifest key
 

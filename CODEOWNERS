@@ -1,0 +1,49 @@
+# Code owners — who GitHub asks for review, by path.
+#
+# ## What this file does today, and what it does not
+#
+# It routes review requests. It does **not** block a merge: branch protection on `main` does not have
+# *Require review from Code Owners* switched on, and that is deliberate rather than pending.
+#
+# Turning it on would deadlock this repository. GitHub does not permit anyone to approve their own pull
+# request; this repository has one human; `enforce_admins` is on and has no exemption for him. Requiring
+# a code owner's approval would therefore mean requiring an approval nobody present is able to give, and
+# nothing would ever merge — the same arithmetic that produced the "0 required approving reviews"
+# decision in .portulan/proposals/0001-platform-floor-on-main.md.
+#
+# So this file is a routing table and a statement of ownership, and the sentence that matters is the one
+# it does NOT let anyone write: `docs/vision.md` is still protected by prohibition rather than by the
+# platform. Switch the setting on when a second reviewer exists — that is the change that makes this file
+# a rail, and it is a repository-settings change, which is Gated (.portulan/gate-map.md).
+#
+# Syntax note: patterns follow gitignore rules, last matching pattern wins, and a pattern with no owner
+# clears ownership for those paths.
+#
+# The owner below is the maintainer's GitHub login, read from the API rather than guessed — a mistyped
+# owner here routes nothing and reports nothing, which is the quietest way for this file to be useless.
+
+# Everything, by default.
+*                       @marius-cetanas
+
+# The constitution. Human-owned, never edited by an agent at all — see .portulan/gate-map.md,
+# "Above the tiers". This line does not enforce that; it records who must be asked.
+/docs/vision.md         @marius-cetanas
+
+# The living plan: milestone status and the session log are the build's own record.
+/docs/plan.md           @marius-cetanas
+
+# The engine and the contract other people's workspaces are validated against. A change here reaches
+# every installation, which is what makes it worth naming separately from the default.
+/core/                  @marius-cetanas
+/spec/                  @marius-cetanas
+
+# Packaging and distribution: the marketplace manifest, the plugin manifest, and the release surface.
+/.claude-plugin/        @marius-cetanas
+/plugin/                @marius-cetanas
+
+# The gates themselves. A change that relaxes a check is the one worth scrutinising hardest, because it
+# is the change that makes every future green mean less.
+/.github/               @marius-cetanas
+/.portulan/verify/      @marius-cetanas
+/.portulan/gate-map.md  @marius-cetanas
+/CODEOWNERS             @marius-cetanas

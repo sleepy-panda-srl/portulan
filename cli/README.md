@@ -5,7 +5,8 @@ Eventually the `npx` CLI that wraps the file-based mechanics for hosts beyond Cl
 enforcement) · `vendor` (self-contained `AGENTS.md` + `.portulan/`) · `index` · `upgrade`. That
 packaging is **milestone 7**.
 
-One of those exists now, because milestone 2 needed it.
+One of those exists now, because milestone 2 needed it — plus one tool that is not on that list at all,
+because milestone 3 needed it.
 
 ## What is here today
 
@@ -13,10 +14,13 @@ One of those exists now, because milestone 2 needed it.
 |---|---|
 | [`doctor.mjs`](doctor.mjs) | The Workspace Definition validator. Zero dependencies, no install step, run from the repository root. |
 | [`doctor.test.mjs`](doctor.test.mjs) | Its test suite, on node's own runner. Written before the validator. |
+| [`plugin-lint.mjs`](plugin-lint.mjs) | The packaging validator: the plugin and marketplace manifests, and the skills and agents they declare. |
+| [`plugin-lint.test.mjs`](plugin-lint.test.mjs) | Its test suite, likewise written first. |
 | [`fixtures/`](fixtures/) | Known-bad manifests, and a workspace whose repo card has drifted from its tree. |
 
 ```
 node cli/doctor.mjs <workspace-dir> [<workspace-dir> ...]
+node cli/plugin-lint.mjs <plugin-root> [<plugin-root> ...]
 ```
 
 Exit `0` every workspace validates · `1` at least one does not · `2` could not run. Both workspaces this
@@ -56,7 +60,34 @@ recipe the manifest declares.
   API facts `doctor` does not fetch.
 - **It has no per-host capability report.** That belongs with the enforcement backends, milestone 4.
 
+## What `plugin-lint` checks
+
+Both manifests parse and are objects; `plugin.json` has a kebab-case `name` and, if it declares one, a
+SemVer `version`; `marketplace.json` has a name, an owner, and **at least one plugin**; every entry has a
+name and a source; every relative source and every component path starts with `./`, stays inside the
+tree, and resolves; the marketplace entry that points at the plugin root agrees with `plugin.json` about
+name and version; and every declared skill and agent is a real file with frontmatter and a non-empty
+description. A skill found in the tree but covered by no declared path is **reported** — declared is what
+ships, and an undeclared skill is one its author believes is shipping.
+
+**What it is not.** It is not an implementation of the Claude Code plugin contract, and describing it as
+one would be the overclaim this repository forbids. `claude plugin validate --strict` is that authority
+and runs at the supervised checkpoints rather than in CI, because CI here installs nothing and a recipe
+declaring the `claude` binary would exit `2` on every run. The two are not nested in either direction:
+on the day both were adopted, this lint passed a `plugin.json` the platform refused, and the platform
+passed three separately-broken skills this lint fails. Recorded as
+[`../.portulan/memory/a-checkers-coverage-is-measured-not-named.md`](../.portulan/memory/a-checkers-coverage-is-measured-not-named.md).
+
+Deliberately **not** checked: the platform's reserved-marketplace-name list, which the platform re-checks
+on every load and has already changed — a copy frozen here would drift into a false verdict in one
+direction or the other.
+
 ## Why it lives here rather than in the workspace
+
+`plugin-lint` is the harder case of the two, and it is placed here on the same rule with a caveat worth
+stating: it validates *any* plugin root, so it is product surface in shape — but the invariants it
+enforces are this repository's own, and a customer's plugin may reasonably differ. Treat it as a tool
+this repository owns and others may run, not as a contract shipped to them.
 
 `doctor` validates *any* workspace, so it is product surface rather than customer-zero tooling —
 [`../.portulan/verify/`](../.portulan/verify/) holds this repository's own recipes and

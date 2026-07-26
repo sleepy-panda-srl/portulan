@@ -46,4 +46,8 @@ Re-expressed from public practice (Letta — consolidation; compounding engineer
 — curated beats generated). **Invocable on demand now**; the *scheduled* librarian that runs these
 passes automatically (reindex, staleness, proposal-nagging, demotion drafts) arrives in **milestone
 5** — this persona is the contract it will execute. The `tools:` list is **capability classes** at
-engine altitude; milestone 3 binds them to concrete host tools in `plugin/`.
+engine altitude; milestone 3 bound them to concrete host tools in
+[`../../plugin/agents/librarian.md`](../../plugin/agents/librarian.md). The binding cannot express the
+constraint that matters most here — *drafts everything, accepts nothing* is a property of what the agent
+may **conclude**, not of which tools it may call, so it is stated in the agent's instructions and
+enforced by the human gate rather than by the host.

@@ -35,11 +35,11 @@ Deliberately thin, and it stays thin:
 | Layer | Today | Arrives |
 |---|---|---|
 | Engine, packs, and spec prose | Markdown (`SKILL.md` / `AGENTS.md` conventions) | now |
-| Verify recipes | Bash + POSIX text utilities; three of the four also need `node` | now |
+| Verify recipes | Bash + POSIX text utilities; four of the five also need `node` | now |
 | Workspace Definition | JSON Schema — a named subset — with JSON manifests | now |
-| `doctor` | Zero-dependency JavaScript on Node, run from the repository | now — [`../cli/doctor.mjs`](../cli/doctor.mjs) |
-| Tests | `node --test`, node's own runner — no framework, no install | now — [`../cli/doctor.test.mjs`](../cli/doctor.test.mjs) |
-| Plugin packaging | Claude Code plugin manifest + skills | milestone 3 |
+| `doctor` · `plugin-lint` | Zero-dependency JavaScript on Node, run from the repository | now — [`../cli/`](../cli/) |
+| Tests | `node --test`, node's own runner — no framework, no install | now — [`../cli/`](../cli/), two suites |
+| Plugin packaging | Claude Code plugin + marketplace manifests, engine skills, personas as agents | now — [`../plugin/`](../plugin/) and [`../.claude-plugin/`](../.claude-plugin/) |
 | CLI | TypeScript on Node via `npx` — absorbs `doctor` | milestone 7 |
 
 No framework, no build step, no service, and no package manager: nothing here is installed before it
@@ -47,9 +47,17 @@ runs.
 
 **Where the line sits now, precisely.** [`verify/docs.sh`](verify/docs.sh) needs `git`, `bash`, and the
 POSIX text utilities and nothing else. [`verify/json.sh`](verify/json.sh),
-[`verify/doctor.sh`](verify/doctor.sh) and [`verify/tests.sh`](verify/tests.sh) also need `node`. Each
-recipe declares its own needs in [`workspace.json`](workspace.json), which is what keeps *could not run*
-distinguishable from *ran and failed*.
+[`verify/doctor.sh`](verify/doctor.sh), [`verify/tests.sh`](verify/tests.sh) and
+[`verify/plugin.sh`](verify/plugin.sh) also need `node`. Each recipe declares its own needs in
+[`workspace.json`](workspace.json), which is what keeps *could not run* distinguishable from *ran and
+failed*.
+
+**One tool is deliberately outside that line.** `claude plugin validate --strict` — the authority on the
+Claude Code plugin contract — is run by hand at the supervised checkpoints and before a release, and is
+**not** a verify recipe. Declaring it would make a recipe that exits `2` on every CI run, since CI here
+installs nothing; and installing it would make this workflow a build. The cost of that choice is that the
+platform's contract is checked at a checkpoint rather than on every pull request, which is stated in
+[`verify/README.md`](verify/README.md) rather than left to be discovered.
 
 That line moved at milestone 2 rather than drifting: the milestone's criterion requires validating a
 manifest against a schema, and there is no honest way to ask `bash` for that — a bash approximation of a
@@ -86,6 +94,7 @@ These words mean exactly this here; ambiguity in them is what costs most.
 | **Affordances** | What a product offers an agent working on it — and what it must not assume ([`products/portulan/affordances.md`](products/portulan/affordances.md)). |
 | **Sealed provenance** | A rule's provenance given as owner + date + de-identified failure shape, when the incident cannot leave its owner's layer. The alternative form is a resolvable link. |
 | **`doctor`** | The validator for a workspace ([`../cli/doctor.mjs`](../cli/doctor.mjs)): schema conformance, path resolution, cross-references, workspace claims linted against the tree, and rule provenance. Checks form, never truth. |
+| **`plugin-lint`** | The validator for this repository's *packaging* ([`../cli/plugin-lint.mjs`](../cli/plugin-lint.mjs)): the two manifests parse and agree, component paths resolve inside the tree, declared skills and agents are real. **Not** the platform's contract — that is `claude plugin validate`, and neither is a superset of the other. |
 | **Tree** (the slot) | Where the repository a workspace makes claims *about* begins. Declared, not inferred: present means `doctor` lints those claims; absent means the workspace describes repositories not present beside it, and they are reported unverifiable. |
 | **Stop-gate** | The machine check that blocks "done" when the recipe is not green. Milestone 4. |
 | **Platform floor** | The gates the platform enforces whatever the prompt says — branch protection, required checks, `CODEOWNERS`. |

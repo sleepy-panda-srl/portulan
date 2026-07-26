@@ -47,6 +47,12 @@
         "run": "./.portulan/verify/tests.sh",
         "requires": ["bash", "node"],
         "doc": "verify/README.md"
+      },
+      {
+        "id": "plugin",
+        "run": "./.portulan/verify/plugin.sh",
+        "requires": ["bash", "git", "node"],
+        "doc": "verify/README.md"
       }
     ]
   },

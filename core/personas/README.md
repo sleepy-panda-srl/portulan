@@ -21,8 +21,18 @@ context firewalls; Cognition — read-parallel / write-isolated.)_
 
 ## Status
 
-**Milestone 1 — contract + exemplars.** This README fixes the persona contract; the exemplar personas
-[`implementer`](implementer.md), [`reviewer`](reviewer.md), and [`librarian`](librarian.md) are now
-authored against it (after the concept-coverage pass). They are host-agnostic — each `tools:` allow-list
-is a set of capability classes; milestone 3 binds those to concrete host tools and formalizes each as a
-plugin agent.
+**Milestone 3 — contract, exemplars, and one host binding.** This README fixes the persona contract; the
+exemplar personas [`implementer`](implementer.md), [`reviewer`](reviewer.md), and
+[`librarian`](librarian.md) are authored against it. They stay host-agnostic — each `tools:` allow-list
+is a set of capability classes — and milestone 3 bound those classes to concrete Claude Code tools in
+[`../../plugin/agents/`](../../plugin/agents/), which is where a host's vocabulary is allowed to appear.
+
+**The binding is lossy, and that is the useful finding.** Of the three charters, exactly one survives
+translation into a tool grant: the reviewer *does not edit the code under review*, so its agent is
+granted no write tool and the firewall becomes a rail. The other two do not. The implementer's Auto/Gated
+line cannot be drawn with a tool list on a host where one `Bash` grant covers both running a verify
+recipe and pushing; the librarian's *drafts everything, accepts nothing* is a constraint on what it may
+conclude, not on what it may call. Each agent file says which of the three it is, so nobody reads a
+frontmatter list as the gate. What holds those two is the workspace's gate map and the platform floor —
+which is the constitution's point that the platform floor is the gate no prompt can bypass, met from the
+other direction.

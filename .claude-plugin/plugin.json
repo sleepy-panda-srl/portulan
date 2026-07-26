@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
+  "name": "portulan",
+  "displayName": "Portulan",
+  "version": "0.1.0",
+  "description": "An operating framework for agentic engineering: a small always-loaded kernel, doctrine for the loop, autonomy tiers, verification and memory, and the Workspace Definition your team's own policy layer is validated against.",
+  "author": {
+    "name": "Sleepy Panda Works",
+    "url": "https://sleepypanda.ro"
+  },
+  "repository": "https://github.com/sleepy-panda-works/portulan",
+  "license": "Apache-2.0",
+  "keywords": [
+    "agentic-engineering",
+    "operating-framework",
+    "workspace",
+    "standards",
+    "verification"
+  ],
+  "skills": [
+    "./core/skills/",
+    "./plugin/skills/"
+  ],
+  "agents": [
+    "./plugin/agents/implementer.md",
+    "./plugin/agents/reviewer.md",
+    "./plugin/agents/librarian.md"
+  ]
+}
