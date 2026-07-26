@@ -267,7 +267,22 @@ export function inspect(rawRoot) {
             );
             return null;
         }
-        return real;
+        // The kind is read here, once, inside the guard — rather than by the callers, which used to
+        // `statSync` the path a second time unguarded. Existence having been established two lines
+        // up makes that second call *look* safe, and it is not: the window is small (a removal
+        // between the two calls, a transient filesystem error) but what it costs is large, because
+        // a throw from there reaches the top-level catch and turns a run that had already found
+        // real failures into exit 2 — "could not run" — discarding every one of them. That is the
+        // defect this repository has now fixed four times, and the reliable cure is not another
+        // try/catch but having only one read to guard.
+        let stat;
+        try {
+            stat = fs.statSync(real);
+        } catch (error) {
+            fail(check, `${where} declares "${raw}", which could not be read — ${error.code ?? error.message}`);
+            return null;
+        }
+        return { file: real, isDirectory: stat.isDirectory() };
     };
 
     const asList = (value) => (Array.isArray(value) ? value : value === undefined ? [] : [value]);
@@ -333,13 +348,14 @@ export function inspect(rawRoot) {
             continue;
         }
 
-        const target = resolve(entry.source, "market", `${label} ("${name ?? "?"}") source`);
-        if (!target) continue;
+        const resolved = resolve(entry.source, "market", `${label} ("${name ?? "?"}") source`);
+        if (!resolved) continue;
 
         // The entry that points at the marketplace root IS this plugin, so the two manifests are
         // describing one artifact and must not contradict each other. Drift between them is
         // invisible at runtime — plugin.json wins — which is what makes it worth a check.
-        if (path.resolve(target) === path.resolve(root) && plugin) {
+        // Both sides are canonical by construction, so this compares like with like.
+        if (resolved.file === root && plugin) {
             if (name && typeof plugin.name === "string" && name !== plugin.name) {
                 fail(
                     "agree",
@@ -368,18 +384,18 @@ export function inspect(rawRoot) {
         for (const raw of asList(plugin?.[field])) {
             // An inline object for hooks / MCP / LSP is configuration, not a path claim.
             if (typeof raw === "object" && raw !== null) continue;
-            const target = resolve(raw, "paths", `plugin.json ${field}`);
-            if (!target) continue;
-            if (field === "skills") declaredSkillRoots.push(target);
-            if (field === "agents") declaredAgentTargets.push(target);
+            const resolved = resolve(raw, "paths", `plugin.json ${field}`);
+            if (!resolved) continue;
+            if (field === "skills") declaredSkillRoots.push(resolved);
+            if (field === "agents") declaredAgentTargets.push(resolved);
         }
     }
 
     // --- the skills behind those paths ----------------------------------------------------------
 
     const skillDirs = new Set();
-    for (const skillRoot of declaredSkillRoots) {
-        if (!fs.statSync(skillRoot).isDirectory()) {
+    for (const { file: skillRoot, isDirectory } of declaredSkillRoots) {
+        if (!isDirectory) {
             fail("skills", `plugin.json skills path ${path.relative(root, skillRoot)} is not a directory`);
             continue;
         }
@@ -442,9 +458,9 @@ export function inspect(rawRoot) {
 
     // --- the agents behind those paths ----------------------------------------------------------
 
-    for (const target of declaredAgentTargets) {
+    for (const { file: target, isDirectory } of declaredAgentTargets) {
         const files = [];
-        if (fs.statSync(target).isDirectory()) {
+        if (isDirectory) {
             // A dated snapshot, not a frozen copy of the contract. Measured 2026-07-26 against
             // Claude Code v2.1.215: `agents` naming a directory — with or without a trailing slash,
             // as a string or in an array — is refused with "agents: Invalid input", while the same
