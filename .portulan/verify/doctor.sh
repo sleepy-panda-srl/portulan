@@ -52,11 +52,27 @@ WORKSPACES=(.portulan examples)
 # rather than by listing them keeps a new fixture from tripping the audit.
 FIXTURE_PREFIX="cli/fixtures/"
 
+# An empty list is a configuration error, not a workspace verdict, and it is checked before anything
+# else uses the array: on bash 3.2 — the system bash on macOS — expanding an empty array under
+# `set -u` aborts mid-script, which would surface as exit 1, a red that judged nothing.
+if [ "${#WORKSPACES[@]}" -eq 0 ]; then
+    printf 'verify: WORKSPACES is empty — this recipe would validate nothing\n' >&2
+    exit 2
+fi
+
 # Tracked plus new-and-not-ignored, so a workspace is audited before it is committed rather than
-# after — the same manifest rule ./docs.sh and ./json.sh use. Its failure is a precondition: an
-# unchecked `git ls-files` here would return nothing, and nothing matches nothing, so a silent
-# failure would report the list as correct precisely when it could not be verified.
-if ! manifests=$(git ls-files --cached --others --exclude-standard -- '*workspace.json'); then
+# after — the same manifest rule ./docs.sh and ./json.sh use.
+#
+# Its failure is guarded for the diagnosis rather than for a false green: with a non-empty list an
+# unchecked failure yields an empty `present`, which mismatches and exits 2 anyway — but it would
+# blame the LIST for git's failure and send a reader to edit a file that is correct. (The green case
+# needs `WORKSPACES` empty as well, which the guard above has already refused.)
+#
+# The pathspec is two patterns rather than `*workspace.json`, which matches any path merely *ending*
+# in that string: `docs/x-workspace.json` would have been reported as an unlisted workspace, with
+# advice to add a stray file to the list. Fail-closed, but a false block is still the failure this
+# repository says gets a recipe switched off.
+if ! manifests=$(git ls-files --cached --others --exclude-standard -- 'workspace.json' '*/workspace.json'); then
     printf 'verify: git ls-files failed — cannot audit the workspace list\n' >&2
     exit 2
 fi
