@@ -762,10 +762,16 @@ export async function inspect(workspaceDir, options = {}) {
     // silently". Found at the pre-commit checkpoint, in the paragraph that made the promise.
     let claimedChecks = [];
     let gatesRead = false;
+    // Captured immediately after parsing and never reassigned. `claimedChecks` is emptied later when
+    // there are no workflows to compare against, and keying the "names no check" report off the
+    // mutated array made it fire for a gate map that had named one — two contradictory findings from
+    // the same run.
+    let namedAnyCheck = false;
     if (workspace.slots?.gates) {
         try {
             claimedChecks = requiredCheckClaims(fs.readFileSync(path.resolve(dir, workspace.slots.gates), "utf8"));
             gatesRead = true;
+            namedAnyCheck = claimedChecks.length > 0;
         } catch {
             // Unreadable is already a `paths` failure; it must not also become an exit-2 crash,
             // which would trade a verdict this run had already reached for "could not run".
@@ -779,19 +785,25 @@ export async function inspect(workspaceDir, options = {}) {
                 report("claims", `${claim.where} states ${claim.what}, which contains nothing path-shaped to check — counted as unverifiable rather than passed over`);
                 continue;
             }
-            stats.claims += 1;
+            // A token pulled out of a command is never a *checked* claim, whether or not it happens to
+            // resolve. Counting it in `stats.claims` when it resolved and in `unverifiable` when it did
+            // not would make the accounting depend on incidental filesystem state and would overstate
+            // what was verified — `docker run -v $(pwd)/state:/state` is not a claim about the tree
+            // because `state` exists. It is unverifiable either way; only the finding differs.
+            const checkable = claim.severity !== "report";
+            if (checkable) stats.claims += 1;
+            else stats.unverifiable += 1;
+
             // Two bases, because a card legitimately mixes them: `.portulan/` is written from the
             // repository root while `../../core/` is written from the card. A claim that resolves
             // under either is a claim that points at something real, which is what the lint is for.
             const resolved = [path.resolve(treeRoot, claim.target), path.resolve(claim.base, claim.target)];
             if (!resolved.some((p) => fs.existsSync(p))) {
                 const message = `${claim.where} claims ${claim.what}, which exists nowhere in the tree`;
-                if (claim.severity === "report") {
-                    stats.claims -= 1;
-                    stats.unverifiable += 1;
-                    report("claims", `${message} — reported rather than failed: a token pulled out of a command may be an output path, a flag value or a glob, and this cannot tell those from a broken one`);
-                } else {
+                if (checkable) {
                     fail("claims", message);
+                } else {
+                    report("claims", `${message} — reported rather than failed: a token pulled out of a command may be an output path, a flag value or a glob, and this cannot tell those from a broken one`);
                 }
             }
         }
@@ -853,7 +865,7 @@ export async function inspect(workspaceDir, options = {}) {
     // differently produced **nothing at all**: no finding, no count, and a reader with a GREEN in
     // front of them had no way to tell "this workspace requires no check" from "I did not recognise
     // your table". Reported since the review that measured it.
-    if (gatesRead && claimedChecks.length === 0) {
+    if (gatesRead && !namedAnyCheck) {
         report(
             "claims",
             "the gate map names no required status check — either this workspace requires none, or its floor table does not use the row label `Required status check` that this check recognises (spec/slots.md). Nothing was compared against the tree",
