@@ -522,7 +522,9 @@ the seam applies here too: no client-identifying references)_
   once two of the session's own defects each earned one — and red on the
   right module first, and declared as the fifth verify recipe — so CI runs it with **no workflow edit**,
   the third time proposal 0004's mechanism has paid out. `CODEOWNERS` landed too, five handoffs after it
-  was first wanted, with the honest half stated in the file: *Require review from Code Owners* stays
+  was first wanted — owned by the org team `@sleepy-panda-works/maintainers` rather than by a person, on
+  the maintainer's instruction, so the day a second reviewer arrives is a membership change and not an
+  edit to eleven lines — with the honest half stated in the file: *Require review from Code Owners* stays
   **off**, because one human plus `enforce_admins` plus a platform that forbids approving your own pull
   request means switching it on would deadlock every merge — so `docs/vision.md` is still protected by
   prohibition and not by the platform, and the file is a routing table until a second reviewer exists.

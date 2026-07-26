@@ -20,42 +20,44 @@
 # clears ownership for those paths. An owner is `@username`, `@org/team-name`, or an email address on
 # that account — nothing else. A bare organisation name is not an owner, and neither is a person's name.
 #
-# The owner below is the maintainer's GitHub login, read from the API rather than guessed, and the file
-# was validated by GitHub itself (`GET /repos/{owner}/{repo}/codeowners/errors` — zero errors) rather
-# than by eye. Both halves matter, because **an invalid line is skipped, not rejected**: the paths it
-# named end up with no owner while the file still reads as complete. That is the quietest way for this
-# file to be useless, and it is why an owner is measured here rather than typed and trusted. An owner
-# must also hold write access; this one holds admin.
+# **The owner is a team, not a person**, and that is the point of it. `@sleepy-panda-works/maintainers`
+# has one member today and this repository has one human, so nothing about *who reviews* changes. What
+# changes is what the day of the second reviewer costs: adding them to the team, rather than editing
+# every line below. This file stops needing to know who the people are — the same separation between
+# mechanism and policy the product is built on, applied to the one file most likely to name individuals.
 #
-# **On the day a second reviewer exists** — the trigger this file names below for switching enforcement
-# on — prefer moving to `@sleepy-panda-works/maintainers` over adding a second personal handle. A team
-# makes that day a settings change instead of a file edit, and stops this file needing to know who the
-# people are, which is the same separation the product sells. The ordering is not optional: create the
-# team, give it **visible** write access on this repository, and only then point CODEOWNERS at it — a
-# reference to a team that does not yet exist is skipped in silence, exactly as above.
+# It was created in the order that is not optional, because each step failing is silent rather than
+# loud: the team exists, its privacy is `closed` (**visible** — a `secret` team is refused as a code
+# owner), it holds **write** on this repository, and only then did this file point at it. Verified by
+# GitHub itself rather than by eye — `GET /repos/{owner}/{repo}/codeowners/errors` returns zero — which
+# matters because **an invalid line is skipped, not rejected**: the paths it named end up with no owner
+# while the file still reads as complete. That is the quietest way for this file to be useless.
+#
+# Membership is the thing to keep true from here. A team with no members owns every path and notifies
+# nobody, and the file would look exactly as it does now.
 
 # Everything, by default.
-*                       @marius-cetanas
+*                       @sleepy-panda-works/maintainers
 
 # The constitution. Human-owned, never edited by an agent at all — see .portulan/gate-map.md,
 # "Above the tiers". This line does not enforce that; it records who must be asked.
-/docs/vision.md         @marius-cetanas
+/docs/vision.md         @sleepy-panda-works/maintainers
 
 # The living plan: milestone status and the session log are the build's own record.
-/docs/plan.md           @marius-cetanas
+/docs/plan.md           @sleepy-panda-works/maintainers
 
 # The engine and the contract other people's workspaces are validated against. A change here reaches
 # every installation, which is what makes it worth naming separately from the default.
-/core/                  @marius-cetanas
-/spec/                  @marius-cetanas
+/core/                  @sleepy-panda-works/maintainers
+/spec/                  @sleepy-panda-works/maintainers
 
 # Packaging and distribution: the marketplace manifest, the plugin manifest, and the release surface.
-/.claude-plugin/        @marius-cetanas
-/plugin/                @marius-cetanas
+/.claude-plugin/        @sleepy-panda-works/maintainers
+/plugin/                @sleepy-panda-works/maintainers
 
 # The gates themselves. A change that relaxes a check is the one worth scrutinising hardest, because it
 # is the change that makes every future green mean less.
-/.github/               @marius-cetanas
-/.portulan/verify/      @marius-cetanas
-/.portulan/gate-map.md  @marius-cetanas
-/CODEOWNERS             @marius-cetanas
+/.github/               @sleepy-panda-works/maintainers
+/.portulan/verify/      @sleepy-panda-works/maintainers
+/.portulan/gate-map.md  @sleepy-panda-works/maintainers
+/CODEOWNERS             @sleepy-panda-works/maintainers

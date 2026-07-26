@@ -167,7 +167,13 @@ check of that name would satisfy the gate — a distinction the branch-protectio
 one the API does.
 
 **`CODEOWNERS` exists as of milestone 3 — and it is not yet part of the floor.**
-[`../CODEOWNERS`](../CODEOWNERS) records who owns which paths and routes review requests. It does not
+[`../CODEOWNERS`](../CODEOWNERS) records who owns which paths and routes review requests. Every path is
+owned by the org team **`@sleepy-panda-works/maintainers`** rather than by a person: the team was created
+visible, granted write on this repository, and only then referenced — that order matters because every
+way of getting it wrong is silent, since GitHub *skips* an invalid owner line rather than refusing it,
+leaving the paths it named unowned while the file still reads as complete. Naming a team means the day a
+second reviewer arrives is a membership change rather than an edit to eleven lines, and it keeps the one
+file most likely to accumulate personal handles from carrying any. It does not
 block anything, because *Require review from Code Owners* is **off** in branch protection, deliberately:
 GitHub does not permit anyone to approve their own pull request, this repository has one human, and
 `enforce_admins` gives him no exemption — so requiring a code owner's approval would require an approval
