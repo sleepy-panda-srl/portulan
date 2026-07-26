@@ -651,7 +651,19 @@ the seam applies here too: no client-identifying references)_
   silently — this session's defect in miniature, inside the fix for it. The first checkpoint found
   `v0.1.0` asserted as cut in four places with no tag in existence, `Agents (3)` attributed to an
   install it had not been read from, a task edit claimed and never made, and suite arithmetic carried
-  from a stale figure. · **Milestone 3 stays open on one clause.** The boot needs a live session
+  from a stale figure. · **Three Copilot rounds on the pull request, four findings, three real and one
+  refused with a measurement** — recorded here before the merge rather than after, which is the rule the
+  preceding commit exists to state. Round 1: `existsSync` **follows** symlinks, so a broken `agents`
+  link answered "absent" and went GREEN with `0 agent(s)`. Round 2: the repair's own catch-all filed
+  *every* error under absent, so EACCES became the same benign note — three states now, because "I could
+  not tell" is a real answer. Round 3: the layout table still put the personas under `plugin/`, and **the
+  `map` check cannot catch that** — it holds the README to the *set* of top-level entries, never to what
+  a row says about one, so the table can be complete and wrong at once; the second time this repository
+  has hit that exact boundary, after "the App does not exist" survived hours in the gate map. The refused
+  one was an unmatched backtick that is a template-literal delimiter in the source and not a character in
+  the output, measured and left alone. **Rounds 2 and 3 were each about the previous round's repair**,
+  and rounds 1 and 2 are both the short-input-set defect — the class this pull request is about, found
+  twice inside the code written to close it. · **Milestone 3 stays open on one clause.** The boot needs a live session
   and the account's credit balance blocks every one, including a control `claude -p` with no plugin loaded;
   classified as an auth failure rather than read as a packaging failure, which is the misreading session 0
   flagged in advance. Seam scan clean across files, commit message, and branch name.

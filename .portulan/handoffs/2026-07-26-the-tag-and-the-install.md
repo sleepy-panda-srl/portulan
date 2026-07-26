@@ -188,6 +188,37 @@ which is this session's defect in miniature. Symlinked entries are now taken in 
 The rest were prose, and the pattern is the same one twice: five sentences still describing the tree as
 it was for about an hour, and `product.md` asserting a release that does not exist.
 
+## What three Copilot rounds found on the pull request
+
+Written into the record *before* the merge, because the commit this branch sits on is named for a
+session that fixed everything its reviews found and recorded none of it.
+
+**Four findings. Three were real, and two of the three were in the fix for the previous one.**
+
+- **Round 1 — `existsSync` follows symlinks.** The convention pass decided whether the tree has an
+  `agents` entry with a dereferencing call, so a **broken** `agents` symlink answered "absent", took the
+  benign note, and reported GREEN with `0 agent(s)` and exit 0 over a tree that plainly has an `agents`
+  entry and cannot use it. Reproduced on the real tree before it was fixed.
+- **Round 2 — the repair's own catch-all.** The `lstat` probe that replaced it filed *every* error under
+  absent, so EACCES on the plugin root arrived as the same reassuring note. Three states now, because
+  **"I could not tell" is a real answer and collapsing it into either of the others is a lie.**
+- **Round 3 — the layout table still put the personas under `plugin/`.** True at breakfast, false by
+  then. The `map` check cannot catch it: it holds the README to the *set* of top-level entries, and did
+  force the new `agents/` row into the table, but it never reads what a row *says* about the entry it
+  names. **The table can be complete and wrong at the same time.** Second time this repository has hit
+  that exact boundary — the gate map carried "the App does not exist" for hours after the App existed,
+  and the claims lint could not see that either. Both found by review, neither by a rail.
+- **One refused, with a measurement rather than an argument:** an unmatched backtick in a failure
+  message. The backtick is the template-literal delimiter in the *source*; the rendered message has two,
+  matched. Left as written with the measured output in the reply, because the "fix" would have been a
+  change made in the belief it closed something never open — the second time this repository has
+  declined a finding on those grounds.
+
+**The pattern, and it is now three sessions deep: rounds 2 and 3 were each about the previous round's
+repair.** A fix is a change, and a change is unreviewed until it is reviewed. Rounds 1 and 2 are also
+both the short-input-set defect — the same class as the `map` blindness, the same class as the bug this
+whole pull request exists to fix — found twice inside the code written to close it.
+
 ## Open questions
 
 1. **The boot is the only clause left, and it is blocked by billing, not by packaging.** Every live run
