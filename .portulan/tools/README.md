@@ -167,6 +167,13 @@ silently re-attributes everything typed afterwards, which is the failure this me
   maintainer's git identity because the build's provenance discipline requires his authorship on the
   commit record. The App's permissions cannot write code at all, which is the enforcement rather than the
   intention. See [`../gate-map.md`](../gate-map.md).
+- **The App cannot open a pull request, only talk on one.** Creating one requires repository-contents
+  read, which this installation is refused; GitHub answers `not all refs are readable` (HTTP 422).
+  Measured 2026-07-26. This is the contents refusal working rather than a gap to close — granting
+  contents to buy better attribution on one artifact would give the token the ability to write code,
+  which is the whole thing this design is trading for. So a pull request is opened with the maintainer's
+  credentials and its body says, in the artifact, that an agent wrote it; every comment and review reply
+  afterwards comes from the bot. Recorded in [`../gate-map.md`](../gate-map.md).
 - **The token is short-lived but real.** An installation token lasts an hour and can comment as the bot
   for that hour. It is minted per command and never stored, which is the mitigation; there is no way to
   make a credential harmless.
