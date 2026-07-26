@@ -31,7 +31,7 @@ run `node cli/doctor.mjs examples` to watch it validate.
 | `core/` | The engine: operating docs, personas, universal skills, templates |
 | `packs/` | Composable packs — `stacks/`, `tools/`, `rituals/` |
 | `spec/` | The Workspace Definition: schema, docs, migrations |
-| `plugin/` | [The Claude Code adapter](plugin/): the `/portulan` boot skill and the personas bound to this host's tools |
+| `plugin/` | [The Claude Code adapter](plugin/): the `/portulan` boot skill, and why the agent bindings below sit at the root rather than here |
 | `agents/` | [The three personas bound to this host's tools](agents/) — `implementer`, `reviewer`, `librarian`. A platform-fixed location: the default agents directory of a plugin whose root is this repository. The doctrine they bind stays in [`core/personas/`](core/personas/) |
 | `.claude-plugin/` | The [plugin](.claude-plugin/plugin.json) and [marketplace](.claude-plugin/marketplace.json) manifests that make this repository an installable plugin feed |
 | `cli/` | The `npx` CLI: `init` · `doctor` · `compile` · `vendor` · `index` · `upgrade`. Only [`doctor`](cli/doctor.mjs) exists so far, alongside [`plugin-lint`](cli/plugin-lint.mjs) |
