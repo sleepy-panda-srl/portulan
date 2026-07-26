@@ -202,6 +202,55 @@ the App's *stated* scope — "pull-request conversation" — reads as covering m
 workflow edit — proposal 0004's mechanism demonstrated a third time and for the first time on a check
 that was gating a real merge.
 
+## What the pull-request reviews found, across three rounds
+
+Recorded because it is the pattern rather than the list: **eight findings, and every one was a claim
+false against the thing beside it** — code contradicting its own comment, a document promising a check
+the code did not perform, a guard that was not where the read was.
+
+**Round 1 — five.** Two substantive. Containment was **lexical**: `path.relative` reads a declared path
+as inside the root whether or not it is a symlink elsewhere, so the check a plugin's entire contract
+rests on was satisfiable by exactly the shape this repository had considered and rejected for its own
+payload. Both sides are canonicalised now, with the lexical check kept first because it is the only one
+that can judge a path that does not exist. And **skills were checked with `requireName: false` while
+three documents said a name is checked** — the docs were right about what should hold and the code was
+not doing it; now required, stricter than the platform, with the reason recorded as this repository's
+invariant rather than as a claim about the contract. Also: an exit handler per fixture, exceeding node's
+ten-listener default and printing a warning — `doctor.test.mjs` had it first and the new suite inherited
+it by being modelled on it, the exemplar-to-family shape for the third time here.
+
+**One finding was refused, with a measurement rather than an argument:** that the audit's
+`*/.claude-plugin/plugin.json` pathspec reaches one directory deep. Git's default pathspec magic does
+not set pathname mode, so `*` crosses `/`; a manifest planted four levels down was listed and the audit
+exited 2 naming it. Left as written, with the measurement in a comment beside it, because the "fix"
+would have been a change made in the belief it closed a hole that was never open.
+
+**Round 2 — one, in two places.** An unguarded `statSync` on a declared path, after existence had been
+established two lines above, which is what made it look safe. A throw from there reaches the top-level
+catch and turns a run that had **already found real failures** into exit 2. Fifth appearance of this
+shape here, so the fix was structural rather than a fifth try/catch: `resolve()` reads the kind once,
+inside the guard it already had, and returns it, leaving the loops no read to throw from.
+
+**Round 3 — two, both created by round 2's fix.** `resolve()`'s JSDoc still said `string|null` after
+its return type changed — a signature is the part of a function a caller reads *instead of* the body, so
+a stale one is worse than none. And the boot skill pointed at step 5 for `init`, which step 5 did not
+mention: fixed on the side that made the pointer true, since "there is no CLI" belongs in the
+honest-limits list and was missing from a list whose whole job is completeness.
+
+Worth naming: **rounds 2 and 3 were both about the previous round's repair.** A fix is a change, and a
+change is unreviewed until it is reviewed.
+
+## Also landed after the pull request opened
+
+**Ownership moved from a person to a team.** `CODEOWNERS` names
+`@sleepy-panda-works/maintainers` rather than a personal handle, on the maintainer's instruction. One
+member today and one human on the repository, so nothing about *who reviews* changes; what changes is
+what the day of the second reviewer costs — a membership change instead of an edit to eleven lines — and
+that the file most likely to accumulate personal handles carries none, which matters once this history
+is public. Done in the order where every wrong step is silent: team created `closed` (visible; a
+`secret` team is refused as a code owner), maintainer added, **write** granted on the repository, and
+only then the file pointed at it. Verified by `GET /codeowners/errors` returning zero rather than by eye.
+
 ## Next action
 
 **Session 1:** `claude plugin validate --strict` re-run and recorded, `v0.1.0` tagged, and a machine with
