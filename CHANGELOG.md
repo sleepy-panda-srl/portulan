@@ -5,10 +5,14 @@ Every release of Portulan, and what changed in it. Kept because
 from `v0.1.0`, and from milestone 8 each release carries an eval result as well.
 
 This file is written in the change that cuts the release and merged before the tag is created, so
-the tagged tree contains its own entry. **A date here is the date the release was cut** — the date
-of the merge that carries this entry, not of the `git tag` command, which follows it by minutes and
-could slip past midnight. Stated because the alternative wording makes the first entry false on
-arrival for the sake of a distinction nobody needs.
+the tagged tree contains its own entry.
+
+**A date here is the day the release was cut, in the maintainer's timezone (Europe/Bucharest) — not
+the `git tag` timestamp. The merger corrects the date if the cut slips past midnight.** The timezone
+is named because "past midnight" means nothing without one, and that ambiguity is the part that would
+actually bite. Nothing checks this: the true cut date is exactly the class of fact `doctor` never
+judges, and the one readable artifact — the tag's own timestamp — is the thing this rule declares
+non-authoritative. It is human-owned prose on purpose, and it is not a candidate for a lint.
 
 The Session log in [`docs/plan.md`](docs/plan.md) is the fuller record — it is per *session* and it
 records how things were found. This is per *release* and records what a reader gets.

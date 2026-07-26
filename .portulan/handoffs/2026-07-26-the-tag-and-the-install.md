@@ -219,6 +219,34 @@ repair.** A fix is a change, and a change is unreviewed until it is reviewed. Ro
 both the short-input-set defect — the same class as the `map` blindness, the same class as the bug this
 whole pull request exists to fix — found twice inside the code written to close it.
 
+## The three supervisor questions, answered and landed
+
+All three came back through the maintainer with the amendment to make, so none is left open.
+
+- **Topology rows swept, by coarsening rather than by correcting.** The root line now says *PUBLIC at the
+  milestone-3 flip; private today*; the `.claude-plugin/` row names its **purpose** rather than one file;
+  the `cli/` row keeps its milestone-7 target list and appends what exists today. The reason to record:
+  **the topology diagram is unlinted prose** — `doctor`'s claims lint does not reach `docs/` — so this
+  drift class recurs exactly as often as the diagram makes fine-grained claims. A row naming files is
+  claim surface that rots; a row naming purpose survives additions.
+- **The changelog date rule gained its timezone.** *"Past midnight"* is undefined without one, and that
+  ambiguity was the real bug rather than the slip it describes. Deliberately unlinted: the true cut date
+  is the class of fact `doctor` never judges, and the one readable artifact — the tag timestamp — is what
+  the rule declares non-authoritative.
+- **The repo-anchored test was upgraded to a lint rule**, and kept as its red fixture. The test pins the
+  invariant for this tree; the rule protects every plugin the checker will ever validate, including the
+  milestone-6 private-feed packs. **An agent file outside `./agents/` is now reported** — a note, in the
+  same family as the undeclared-`SKILL.md` report and for the same reason: a `.md` under some other
+  `agents/` may be a fixture or another host's binding, and this validator cannot tell which. The rule
+  cites the dated memory entry, and **the two retire together** — stated in both, so whoever finds one
+  finds the other.
+
+**The rule shipped a false positive and the test caught it only after being strengthened**, which is
+worth more than the rule. The first version excluded the plugin root by *depth* rather than by path, so
+it reported the three agents sitting exactly where it exists to tell people to put them — and the test
+passed, because it asserted the stranded file **was** named and never that the loadable ones were not.
+A test that cannot fail on the opposite answer is not testing the answer.
+
 ## Open questions
 
 1. **The boot is the only clause left, and it is blocked by billing, not by packaging.** Every live run

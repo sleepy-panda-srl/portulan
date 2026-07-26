@@ -483,6 +483,34 @@ describe("the agents nothing declares", () => {
         assert.equal(inspect(REPO).stats.agents, 3);
     });
 
+    test("an agent stranded outside the loadable directory is reported", () => {
+        // The failure this whole pull request is about, generalised past this repository: an agent
+        // file its author believes is shipping, sitting where the platform will never load it.
+        // `plugin/agents/` is the shape that bit here, and it is the natural one to reach for
+        // because *skills* do load from custom declared paths — the asymmetry is the trap.
+        const root = fixture();
+        write(root, "plugin/agents/stranded.md", AGENT("stranded", "Believes it is loading."));
+        const notes = inspect(root)
+            .findings.filter((f) => f.severity === "note")
+            .map((f) => f.message)
+            .join("\n");
+        assert.match(notes, /stranded/);
+        // And the loadable ones are NOT reported. Asserting only that the stranded file is named
+        // passes just as happily when *every* agent is named, which is what the first version of
+        // this rule did — it reported the three agents at the location it exists to point people
+        // toward. A test that cannot fail on the opposite answer is not testing the answer.
+        assert.doesNotMatch(notes, /worker/);
+    });
+
+    test("a stranded agent is a note, not a failure", () => {
+        // Same reasoning as the undeclared-SKILL.md report beside it: a `.md` under some other
+        // `agents/` may legitimately be a fixture, an example, or another host's binding, and this
+        // validator cannot tell which. Reporting beats both failing and skipping.
+        const root = fixture();
+        write(root, "packs/demo/agents/example.md", AGENT("example", "A pack's example binding."));
+        assert.equal(fails(inspect(root).findings).length, 0, messages(inspect(root).findings));
+    });
+
     test("this repository's agents/ is a real directory, not a symlink", () => {
         // A repository-anchored assertion rather than a rule in the lint, because the shape it
         // refuses is one the platform *accepts*: a symlinked `agents/` was built during this
