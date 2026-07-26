@@ -18,6 +18,13 @@ cascade, the loop, four non-negotiables, and a map to the doctrine behind them. 
 
 Do not read all of `core/` up front. The kernel being small is the design, not an accident.
 
+**If that read is denied, the kernel did not load — say so and do not proceed as though it had.**
+`${CLAUDE_PLUGIN_ROOT}` is outside the project directory, so a session whose file access is scoped to
+the project will refuse it: measured 2026-07-26 on a headless run with default permissions, where the
+boot correctly reported the absence of a workspace while having no engine in context at all. Booting
+without the kernel is the same failure shape as booting on the wrong workspace — it looks like a boot
+and it is not. Ask for read access to the bundle, or report the boot as incomplete.
+
 ## 2. Find the workspace — in the project, never in this bundle
 
 Look for a workspace manifest at `${CLAUDE_PROJECT_DIR}/.portulan/workspace.json` — that is the project

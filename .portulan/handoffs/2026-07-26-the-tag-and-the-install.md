@@ -1,11 +1,10 @@
 # Handoff — the install said `Agents (0)`, and everything else follows from that
 
-**State.** Milestone 3, session 1 of 1–2. The fresh-machine install is demonstrated end to end from a
-clone, the first `CHANGELOG.md` is written, **PR #19 is merged (`main` = `9305a16`) and `v0.1.0` is
-tagged** on it — and the defect the install found, the three personas never registering on any install,
-is fixed along with the two fail-opens the fix itself opened. **Milestone 3 does not close here.** One
-clause is left: the boot, which needs a live session, and the account's credit balance blocks every one.
-What is demonstrated is that the engine **arrives**; what is not is that it **boots**.
+**State.** Milestone 3, session 1 of 1–2. **Every clause of the exit criterion is now demonstrated** —
+the install from a clone, `v0.1.0` tagged on `9305a16` (PR #19 merged), and the boot, run twice once the
+billing blocker cleared. The defect the install found — three personas never registering on any install —
+is fixed, along with the two fail-opens the fix itself opened. The milestone-close verdict is the
+supervisor's to sign, not this handoff's.
 
 ## The finding, and why nothing before it could have found it
 
@@ -218,6 +217,42 @@ repair.** A fix is a change, and a change is unreviewed until it is reviewed. Ro
 both the short-input-set defect — the same class as the `map` blindness, the same class as the bug this
 whole pull request exists to fix — found twice inside the code written to close it.
 
+## The boot, and what it cost to run
+
+Installed from the remote into a real config — clone `9305a16`, `git describe --tags` = **`v0.1.0`**, so
+the thing booted is the tagged release — then booted twice, because the criterion has two halves and one
+of them is a false green waiting to happen.
+
+**No workspace in the project.** The engine reported the absence and named all three bundled manifests as
+things it declined to fall back to. That is the hazard the boot skill was designed against, refusing
+itself out loud rather than being asserted safe in a document.
+
+**A workspace in the project.** It reported `tidewrack` and quoted its glossary marker
+**`FATHOM-MARK-11`** — a term grepped for and confirmed absent from the merged tree *and* from the
+payload before the fixture was built, which is what makes the transcript proof rather than assertion. It
+also noticed which slots that workspace does not declare, and reported the honest enforcement position
+without being asked. Session 1's earlier marker was retired for exactly this reason: once this handoff
+merges, any term written in it ships inside the payload and stops discriminating.
+
+**A real limit, found by the first run and now in the skill.** With default headless permissions the
+kernel read was **denied** — `${CLAUDE_PLUGIN_ROOT}` is outside the project, and a session scoped to the
+project will refuse it. The boot still handled the workspace half correctly, which is the dangerous part:
+it looked like a boot and had no engine in context at all. Step 1 of the skill now says a denied kernel
+read is an incomplete boot to be reported rather than worked around — the same shape as booting on the
+wrong workspace, and it took a real boot to find it.
+
+**The blocker was billing, and the control probe is what proved it.** The standalone CLI was signed in in
+Console/API mode against an empty credit balance while interactive sessions billed the subscription — one
+account, two wallets. A `claude -p` with **no plugin loaded** failed identically, which is why this was
+never chased as a packaging fault. Worth one line in the operator runbook: headless `claude -p` bills the
+CLI's own stored login, not the calling session's, so a demo on another machine needs that login first.
+That is a machine-local operator fact, not workspace content.
+
+**The maintainer's config was restored.** The plugin was uninstalled and the marketplace removed;
+`marketplace list` and `plugin list` show exactly what they showed before, and the clone directory is
+gone. The install had to go in the real config because an isolated `CLAUDE_CONFIG_DIR` has no
+credentials — verified both ways in the same minute.
+
 ## The three supervisor questions, answered and landed
 
 All three came back through the maintainer with the amendment to make, so none is left open.
@@ -260,7 +295,9 @@ A test that cannot fail on the opposite answer is not testing the answer.
 2. **`claude plugin tag` would have created `portulan--v0.1.0`, not `v0.1.0`.** The platform namespaces
    a plugin release inside a marketplace that may ship several, which this one will once `packs/` ship.
    Measured before recommending: the marketplace clone is **shallow and single-ref** (`+refs/heads/main`,
-   zero tags), so that form is **decorative for installation here** and the maintainer deferred it. It
+   zero tags **at the time of that measurement** — re-measured after the tag, and the shallow clone now
+   carries `v0.1.0`, so that basis is stale and the conclusion needs re-deriving before milestone 6 leans
+   on it), so that form was judged **decorative for installation here** and the maintainer deferred it. It
    becomes the right shape the day a pack is versioned independently of the engine.
 3. **Nothing still tests the five verify recipes** — [`0004`](../tasks/0004-a-harness-for-the-verify-recipes.md),
    carried for a third session. This session added the **eighth** fail-open to its list, in the `map`
@@ -292,29 +329,12 @@ Clone HEAD `9305a16`, `${CLAUDE_PLUGIN_ROOT}/core/engine.md` readable at 43 line
 [`0003`](../tasks/0003-plugin-and-public-marketplace.md) is ticked, and it was ticked only when the path
 it names actually ran.
 
-**2. Boot the engine — the one clause milestone 3 is still open on, and now the only one.** It needs a live session, and
-every one in session 1 returned `Credit balance is too low`, **including a control `claude -p` with no
-plugin loaded**, which is how it was classified as an auth failure rather than mistaken for a packaging
-failure. Re-checked four times across the session; still blocked at its end. Two runs, and the second is
-the one that matters:
-
-- in a project with **no** workspace → the engine must *report the absence* rather than improvise a
-  policy layer;
-- in a project **with** a workspace of its own → it must read *that* one and not either of the two valid
-  workspaces inside its own bundle.
-
-The second needs a discriminator, or the transcript proves nothing: build a minimal spec-2.0 workspace
-(`portulan.spec` `2.0`, `name`, `kind: repository`, `tree`, `slots.{identity,principles,gates}`,
-`verify`) whose identity glossary carries a marker term that exists in no other workspace anywhere, and
-check the boot output names it. Validate it with `node cli/doctor.mjs` before trusting it, as session 1
-did with a fictional "Lanternfish Cartography" workspace.
-
-**Mint a new marker term — do not reuse session 1's.** It was `SOUNDING-LINE-7`, and the moment this
-handoff merges that string ships **inside the plugin payload**, because the payload is the whole
-repository and this file is in it. A boot transcript echoing it would no longer prove the bundle was not
-the source, which was the term's entire job. The discriminator has to be absent from the merged tree —
-grep for it before using it. _(The fixture itself is gone regardless: it lived in a session-scoped
-scratch directory. Rebuild, do not go looking.)_
+**2. ~~Boot the engine.~~ DONE — see "The boot, and what it cost to run" below.** The blocker was
+billing, not packaging, and the cause is worth recording: the standalone `claude` CLI was signed in in
+Console/API mode, billing an empty API credit balance, while interactive sessions billed the
+subscription — one account, two wallets. Switching the CLI login to the subscription cleared it. **The
+control-probe discipline is what localized this**: a `claude -p` with no plugin loaded failed identically,
+which is why it was never chased as a packaging fault.
 
 **3. ~~Tag `v0.1.0`.~~ DONE** — annotated, on `9305a16`, pushed. The tagged tree carries its own
 `CHANGELOG.md` entry, which is what *fix first, then tag the merge* was for. Still open and still the
@@ -331,6 +351,6 @@ fail-opens), [`0005`](../tasks/0005-lint-the-persona-agent-binding.md) and
 ## Recoverability
 
 Three files moved, one manifest key removed, two validators extended, and documentation. All five
-recipes are green and the suite is 149. The move is the only change that alters what an installed plugin
+recipes are green and the suite is 155 (146 at the branch point). The move is the only change that alters what an installed plugin
 does; reverting it restores the previous behaviour exactly, which was three personas that never loaded.
 The push, the pull request, the merge, and the tag were each asked for separately.

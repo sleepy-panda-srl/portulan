@@ -141,10 +141,16 @@ That second count is the whole of milestone 3, session 1: the same install once 
 It was re-measured through a clone rather than inferred from the `--plugin-dir` reading, because a green
 from one install path had already been read as a green from another once.
 
-**One thing is still outstanding**, in
-[`../.portulan/tasks/0003-plugin-and-public-marketplace.md`](../.portulan/tasks/0003-plugin-and-public-marketplace.md):
-**booting** the installed engine, which needs a live session. Until that runs, what is demonstrated is
-that the engine *arrives*, not that it *boots* — a distinction this file keeps rather than rounds off.
+**And it boots.** Run twice from that install: in a project with no workspace it reported the absence and
+named all three bundled manifests as things it declined to fall back to; in a project carrying its own
+workspace it read *that* one and quoted a glossary term confirmed absent from this repository and from the
+payload beforehand, which is what makes the transcript proof rather than assertion.
+
+**One measured limit, kept rather than rounded off.** With default headless permissions the kernel read is
+**denied**, because `${CLAUDE_PLUGIN_ROOT}` lies outside the project and a session scoped to the project
+refuses it. The boot handled the workspace half correctly regardless — which is the dangerous part, since
+it looks like a boot with no engine in context. Step 1 of
+[`skills/portulan/SKILL.md`](skills/portulan/SKILL.md) now says so.
 
 No hooks and no settings ship yet. Hooks belong with the enforcement compiler at milestone 4, which is
 where the gate map stops being honoured by people and starts being enforced by machinery — shipping a
