@@ -1,7 +1,7 @@
 **type:** rule
 **scope:** workspace — anyone writing or amending a milestone exit criterion in `docs/plan.md`
 **provenance:** `form=link` `href=https://github.com/sleepy-panda-works/portulan/pull/15`
-— milestone 2 spent a session "open on the pilot clause", with the maintainer asked twice to do
+— milestone 2 spent a session and part of the next "open on the pilot clause", with the maintainer asked twice to do
 client-rooted work in order to close a public milestone. The clause had been contradicted since
 2026-07-25 by the ruling that closed milestone 1, which established in the governing private context
 that the client-rooted work remaining there *"neither gates any public milestone"*. Nobody reconciled
@@ -25,6 +25,11 @@ example: it is held on a clearance tracked in the private context, that hold is 
 not an argument for removing it.** Read without this paragraph the rule is exactly such an argument,
 which is how it was first drafted and what a fresh-context supervisor caught before it merged — a rule
 written to prevent one bad strike, loaded to authorise the next.
+
+The carve-out has one edge, and closing it is the difference between a distinction and a loophole: **a
+hold that requires outside *work* rather than outside *permission* is a criterion in disguise**, and this
+rule reaches it. "Wait for someone to authorise" is a hold; "wait for someone to build and validate a
+thing" is a criterion wearing a hold's clothing, and relabelling it does not move it.
 
 **Why it holds.** Two failures, and the second is the one that costs.
 

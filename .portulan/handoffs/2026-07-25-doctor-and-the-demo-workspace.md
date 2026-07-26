@@ -224,8 +224,8 @@ written.
 — because the argument offered was the wrong one. "There is nothing there to validate" is narrowing a
 criterion to fit what was built, which is precisely the failure the milestone-1 amendment warns about.
 
-**The clause was struck later the same day on a different and much stronger argument, and the milestone
-closed.** Asked plainly *"what private pilot are you asking for?"*, the honest answer turned out to be:
+**The clause was struck the following day, 2026-07-26, on a different and much stronger argument, and
+the milestone closed.** Asked plainly *"what private pilot are you asking for?"*, the honest answer turned out to be:
 one the governing document had already de-gated. The private context's milestone-1 footnote, amended
 2026-07-25, says the client-rooted work remaining there **"neither gates any public milestone."**
 _(An earlier draft of this paragraph called that work "optional" as well. It is not — a residual check
@@ -241,7 +241,8 @@ Removed in one row, left standing in the next.
 
 Generalised so it cannot recur, rather than fixed once:
 [`../memory/a-public-criterion-must-be-demonstrable-from-this-repo.md`](../memory/a-public-criterion-must-be-demonstrable-from-this-repo.md).
-It states plainly that it cannot be a rail — the same boundary that let the gate map claim the agent
+It says plainly that it is mostly not railable, and records the one grep-able part that is — the same
+boundary that let the gate map claim the agent
 identity did not exist for hours after it did. Prose about a fact outside the tree is invisible to every
 check this repository has.
 

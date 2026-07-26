@@ -149,18 +149,22 @@ in both: it fails `2`, not `0`. Recorded as
   accurate, and a fabricated sealed stamp passes exactly as a real one does.
 - **The claims lint reads only what parses confidently as a path** — a token containing `/`, taken from a
   code span or link target. Prose is not parsed and not failed, deliberately: an ambitious parser here
-  would produce false reds, which is the failure that gets a whole recipe switched off. On a
-  **build/test/run** line, which is a structured field where every entry is a claim, a line with nothing
-  path-shaped in it is **counted and reported unverifiable** rather than passed over. That distinction was
-  bought: those lines used to be tested whole, rejected for containing a space, and dropped in silence, so
-  every card written with real commands rather than bare paths had all three lines inert and nothing said
-  so. Invisible here, where this repository's own card writes bare paths — found on a fourth workspace.
+  would produce false reds, which is the failure that gets a whole recipe switched off.
+- **On a build/test/run line, FAIL is reserved for a candidate that IS a path.** `./verify.sh` absent is
+  a failure. A **command** — `dotnet run --project src/App` — only contains tokens that might be paths,
+  and those are **reported, never failed**: nothing can tell an input path from an output path not built
+  yet, a flag value, a `sed` expression or a glob. A line with nothing path-shaped is counted and
+  reported too, so nothing is dropped in silence — which it was, until the third real workspace's card
+  exposed it. The first attempt at fixing that failed command tokens outright and produced false reds on
+  `go test ./...`, `cc -o bin/app src/main.c` and `--project=src/App` with the directory present. Caught
+  in review before it reached anyone's onboarding.
 - **Claims resolve against the filesystem, not against git — so an ignored path passes locally and fails
   in CI.** A repo card naming a runtime directory that `.gitignore` excludes resolves in a working copy
   where the application has created it, and does not exist in a clean checkout. CI is always a clean
-  checkout, which makes it the **stricter** environment and the one to believe: the failure direction is
-  local-green / CI-red, which is fail-closed and therefore safe. Found by running `doctor` in a fresh
-  worktree rather than the working copy it had always been run in.
+  checkout, which makes it the **stricter** environment and the one to believe. Stated as a cost rather
+  than a safety, though: for a card that truthfully describes a gitignored runtime directory this is a
+  **permanent false red in CI**, not a caught defect. Found by running `doctor` in a fresh worktree
+  rather than the working copy it had always been run in.
 - **`node --test` given a glob matching nothing exits `0`.** A green suite that ran nothing. `tests.sh`
   counts the files first for that reason, and the count and the glob deliberately cover the same set —
   a recursive `find` beside a non-recursive glob would let a test be counted and never run.
