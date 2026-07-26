@@ -428,8 +428,8 @@ function requiredCheckClaims(source) {
  *
  * The context is the job's `name:` when it sets one, and the job id otherwise — that is what branch
  * protection pins, and the distinction is invisible until a job has both. It surfaced on the third
- * real workspace: a job id `nightly-soak` carrying `name: nightly + soak`, where the ruleset requires
- * `nightly + soak` and this function previously returned only `nightly-soak`, so a gate map claiming the
+ * real workspace: a job id `example-job` carrying `name: Example Job`, where the ruleset requires
+ * `Example Job` and this function previously returned only `example-job`, so a gate map claiming the
  * id passed a check that should have failed. Customer zero could never have shown it, because its
  * workflow deliberately sets no `name:` precisely so the two coincide.
  *

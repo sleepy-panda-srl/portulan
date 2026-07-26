@@ -120,6 +120,15 @@ explicitly that which concrete action lands in which tier is workspace policy. T
 the one slot where core has already promised the workspace will answer, so a workspace without it leaves
 an engine promise unfulfilled — required, by the minimality rule's own test.
 
+**One convention this slot carries, and it is load-bearing.** `doctor` finds the required-check claim by
+looking for a Markdown table row whose first cell matches **`required status check`** (case-insensitive)
+and reading the backticked values from the rest of the row. That is the only structure the tool expects
+of a gate map — everything else in the file is prose it never parses. It is written here because nothing
+else states it: there is no gate-map template in [`../core/templates/`](../core/templates/), so an adopter
+whose floor table uses a different row label gets the check **silently skipped**, with `doctor` reporting
+that no claim was found rather than that it could not find one. Naming the convention is the cheap fix; a
+template is the better one and is not built.
+
 **What `doctor` checks:** the path resolves; and, where the workspace declares a `tree`, that **every**
 status check the gate map says `main` requires is one a workflow in that tree actually reports. That is
 the gate map's half of the claims-against-the-tree lint, and it is narrower than "does not claim
