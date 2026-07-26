@@ -131,15 +131,20 @@ manifest and not for the marketplace; guessing a URL would be a claim about some
 
 ## Status
 
-**Milestone 3 — the plugin installs, and its personas took a second session to actually arrive.** A
-machine with no local copy of this repository has added the marketplace and installed from the remote;
-the payload and the three skills are demonstrated, and the `Agents (0)` that install reported is what
-produced the `agents/` arrangement above. Two things are still outstanding, both in
+**Milestone 3 — the plugin installs from the remote, and everything it ships arrives.** A machine with
+no local copy of this repository adds the marketplace by GitHub shorthand, installs, and the host reports
+`Skills (3)` and `Agents (3)  reviewer, librarian, implementer`, with
+`${CLAUDE_PLUGIN_ROOT}/core/engine.md` readable at 43 lines. Tagged `v0.1.0`.
+
+That second count is the whole of milestone 3, session 1: the same install once reported **`Agents (0)`**
+— every file shipped, both validators green — and it is what produced the `agents/` arrangement above.
+It was re-measured through a clone rather than inferred from the `--plugin-dir` reading, because a green
+from one install path had already been read as a green from another once.
+
+**One thing is still outstanding**, in
 [`../.portulan/tasks/0003-plugin-and-public-marketplace.md`](../.portulan/tasks/0003-plugin-and-public-marketplace.md):
-**booting** the installed engine, which needs a live session, and re-installing **from the remote** to
-confirm the persona fix survives a clone — it has so far only been read through `--plugin-dir`, which is
-a different install path, and this section exists because a green from one path was read as a green from
-another.
+**booting** the installed engine, which needs a live session. Until that runs, what is demonstrated is
+that the engine *arrives*, not that it *boots* — a distinction this file keeps rather than rounds off.
 
 No hooks and no settings ship yet. Hooks belong with the enforcement compiler at milestone 4, which is
 where the gate map stops being honoured by people and starts being enforced by machinery — shipping a
