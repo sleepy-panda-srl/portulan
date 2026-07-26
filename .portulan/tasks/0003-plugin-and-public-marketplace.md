@@ -15,18 +15,23 @@ Session 0 — the artifact:
       agents.
 - [x] When the marketplace manifest is read, it shall list at least one plugin — a marketplace declaring
       none is the fail-open this milestone exists to close.
-- [x] When the plugin is installed and the engine booted, the boot skill shall look for a workspace in
-      the **project**, never in its own bundle. _(The bundle ships two valid workspaces of its own;
-      booting on one would load another team's policy and look exactly like success.)_
+- [ ] When the plugin is installed and the engine booted, the boot skill shall look for a workspace in
+      the **project**, never in its own bundle. _(The bundle ships two valid workspaces of its own, plus a
+      deliberately invalid fixture; booting on any of them would load another team's policy and look
+      exactly like success. **Unticked in session 1: it was `[x]` and no boot has ever run.** The skill is
+      written to search `${CLAUDE_PROJECT_DIR}` and says so, which is a fact about the file — this
+      criterion is about behaviour, and the same session found what happens when those two are confused.
+      It closes with the boot demonstration, not before.)_
 - [x] When a persona is delegated to on this host, it shall arrive as an agent whose tool grant matches
       its charter — and where the host cannot express the charter, the agent shall say so rather than
       imply the grant is the gate. _(Ticked in session 0 and **false**: the files shipped, both
       validators passed, and the installed plugin reported `Agents (0)`. Re-ticked in session 1 against
-      a host that reports `Agents (3)  reviewer, librarian, implementer` — read through `--plugin-dir`,
-      the pre-release test path, since the remote cannot carry the fix until this merges. The tick rests
+      a host that reports `Agents (3)  reviewer, librarian, implementer` — first through `--plugin-dir`,
+      the pre-release test path, because at that point the remote could not carry the fix. The tick rests
       on a count from the host rather than on the manifest saying so
       ([`../memory/a-manifest-field-can-validate-and-load-nothing.md`](../memory/a-manifest-field-can-validate-and-load-nothing.md));
-      the criterion below is the one that holds it to an **install**, and it stays open.)_
+      the criterion below is the one that holds it to an **install**, and it has since been ticked from a
+      clone.)_
 - [x] When either manifest declares a path that does not resolve, or a declared skill or agent lacks
       frontmatter or a description, the packaging validator shall exit non-zero.
 - [x] When the packaging validator is declared in [`../workspace.json`](../workspace.json), CI shall run
@@ -36,7 +41,10 @@ Session 0 — the artifact:
       whichever way it lands.
 
 Session 1 — the distribution (needs a push; every item below is Gated or downstream of one):
-- [ ] When `v0.1.0` is tagged, the tag shall name the commit whose manifests declare `0.1.0`.
+- [x] When `v0.1.0` is tagged, the tag shall name the commit whose manifests declare `0.1.0`.
+      _(Annotated tag on `9305a16`, pushed 2026-07-26. Both manifests there declare `0.1.0`, and the tree
+      carries its own `CHANGELOG.md` because the changelog merged ahead of the tag it describes — the
+      maintainer's ruling was fix first, then tag the merge.)_
 - [ ] When a machine with no local copy of this repository adds the marketplace and installs the plugin,
       the engine shall boot: the kernel loads, and a project workspace is found or its absence is
       reported.
@@ -47,15 +55,15 @@ Session 1 — the distribution (needs a push; every item below is Gated or downs
       correcting session 0's open question 1.)_
 
 **Added in session 1**, because the install refuted an accepted criterion above:
-- [ ] When the plugin is **installed from the remote**, the host shall report the three personas in its
-      component inventory. _(Nothing previously asserted this against the host — the manifest asserted it
-      against the tree, and the tree was never the question. `Agents (3)  reviewer, librarian,
-      implementer` is measured two ways so far: a `--plugin-dir` load, and a **local-path** marketplace
-      install into a versioned cache, which also confirmed `${CLAUDE_PLUGIN_ROOT}/core/engine.md`
-      readable at 43 lines. Neither is the path a stranger uses, and the clone could not carry the fix
-      while it sat on a branch. **Deliberately left unticked** — this criterion exists because a green
-      from one install path was read as a green from another, and ticking it on the same reasoning would
-      be the identical mistake one level up.)_
+- [x] When the plugin is **installed from the remote**, the host shall report the three personas in its
+      component inventory. _(`Agents (3)  reviewer, librarian, implementer`, from an empty
+      `CLAUDE_CONFIG_DIR` and a temp project, with the marketplace added by GitHub shorthand — clone HEAD
+      `9305a16`, the tagged commit, `${CLAUDE_PLUGIN_ROOT}/core/engine.md` readable at 43 lines. Held
+      unticked through the whole of session 1 on purpose: it had been measured through `--plugin-dir` and
+      a local-path install, and the clone could not carry the fix while it sat on a branch. **This
+      criterion exists because a green from one install path was once read as a green from another**, so
+      it was ticked only when the path it names actually ran — minutes after the merge made that
+      possible, not before.)_
 - [x] When `plugin.json` declares an `agents` key, the packaging validator shall exit non-zero — the
       key suppresses the only scan that loads agents.
 - [x] When an agent at the convention location lacks frontmatter, a kebab-case `name`, or a non-empty

@@ -1,12 +1,11 @@
 # Handoff — the install said `Agents (0)`, and everything else follows from that
 
-**State.** Milestone 3, session 1 of 1–2. The fresh-machine install is demonstrated, the first
-`CHANGELOG.md` is written, and a defect the install found — the three personas never registering on any
-install — is fixed, along with the two fail-opens the fix itself opened. **`v0.1.0` is not tagged yet**:
-the maintainer's ruling is *fix first, then tag the merge*, so the tag names a merge commit that does not
-exist until this pull request lands, and cutting it is the next Gated action after that. **Milestone 3
-does not close here.** One clause is left: the boot, which needs a live session, and the account's credit
-balance blocks every one.
+**State.** Milestone 3, session 1 of 1–2. The fresh-machine install is demonstrated end to end from a
+clone, the first `CHANGELOG.md` is written, **PR #19 is merged (`main` = `9305a16`) and `v0.1.0` is
+tagged** on it — and the defect the install found, the three personas never registering on any install,
+is fixed along with the two fail-opens the fix itself opened. **Milestone 3 does not close here.** One
+clause is left: the boot, which needs a live session, and the account's credit balance blocks every one.
+What is demonstrated is that the engine **arrives**; what is not is that it **boots**.
 
 ## The finding, and why nothing before it could have found it
 
@@ -277,26 +276,23 @@ A test that cannot fail on the opposite answer is not testing the answer.
 Written out rather than summarised, because two of these are the kind of thing a closing session
 assumes was already done.
 
-**1. Re-install from the remote and count the agents.** `Agents (3)` today is read from a
-`--plugin-dir` load and from a **local-path** marketplace install — both real, neither the path a
-stranger uses. The remote could not carry the fix while it sat on a branch. So: clone-backed install,
-then `claude plugin details portulan`, and the criterion in
-[`0003`](../tasks/0003-plugin-and-public-marketplace.md) that names *"installed from the remote"* is
-**deliberately unticked** until that reading exists. This is the session's first act, before the boot,
-because everything after it assumes the personas arrived.
+**1. ~~Re-install from the remote and count the agents.~~ DONE, after the merge and tag.** Recorded here
+because the checklist was written before it was possible. With `v0.1.0` on `9305a16` the clone could
+carry the fix, so the install ran the way a stranger runs it:
 
 ```
 CLAUDE_CONFIG_DIR=<empty temp dir> claude plugin marketplace add sleepy-panda-works/portulan
 CLAUDE_CONFIG_DIR=<same>           claude plugin install portulan@portulan
-CLAUDE_CONFIG_DIR=<same>           claude plugin details portulan     # expect Skills (3), Agents (3)
+CLAUDE_CONFIG_DIR=<same>           claude plugin details portulan
+  Skills (3)  clarify, codify, portulan
+  Agents (3)  reviewer, librarian, implementer
 ```
 
-**Pre-agreed fallback, so this does not stall:** if the clone-backed install still reports `Agents (0)`,
-the files are already at the platform's default location and the remaining suspects are the clone or the
-copier — capture the cache listing before changing anything, and take it to the maintainer rather than
-improvising a second workaround.
+Clone HEAD `9305a16`, `${CLAUDE_PLUGIN_ROOT}/core/engine.md` readable at 43 lines. The criterion in
+[`0003`](../tasks/0003-plugin-and-public-marketplace.md) is ticked, and it was ticked only when the path
+it names actually ran.
 
-**2. Boot the engine — the one clause milestone 3 is still open on.** It needs a live session, and
+**2. Boot the engine — the one clause milestone 3 is still open on, and now the only one.** It needs a live session, and
 every one in session 1 returned `Credit balance is too low`, **including a control `claude -p` with no
 plugin loaded**, which is how it was classified as an auth failure rather than mistaken for a packaging
 failure. Re-checked four times across the session; still blocked at its end. Two runs, and the second is
@@ -320,10 +316,10 @@ the source, which was the term's entire job. The discriminator has to be absent 
 grep for it before using it. _(The fixture itself is gone regardless: it lived in a session-scoped
 scratch directory. Rebuild, do not go looking.)_
 
-**3. Tag `v0.1.0`** on the merge commit, and push it. Both Gated, both the maintainer's. The ruling is
-*fix first, then tag the merge*, so the tagged tree carries its own `CHANGELOG.md` entry. Note the
-platform's own `claude plugin tag` would create `portulan--v0.1.0` instead — deferred, and open
-question 2 below has the measurement behind that.
+**3. ~~Tag `v0.1.0`.~~ DONE** — annotated, on `9305a16`, pushed. The tagged tree carries its own
+`CHANGELOG.md` entry, which is what *fix first, then tag the merge* was for. Still open and still the
+maintainer's: the platform's own `claude plugin tag` would create `portulan--v0.1.0` instead, deferred
+with the measurement in open question 2 below.
 
 **4. Milestone-close supervisor**, fresh context, verifying the criterion was *demonstrated*. Its
 fidelity note goes in the Status column verbatim.
