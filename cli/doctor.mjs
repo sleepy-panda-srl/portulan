@@ -370,7 +370,25 @@ function repoCardClaims(source) {
             const candidate = spans[0] ?? rest.trim().split(/\s+/)[0];
             if (!candidate) continue;
             if (/^none\b/i.test(candidate)) continue; // an explicit no-claim
-            if (isPathish(candidate)) claims.push({ what: `${key}: \`${candidate}\``, target: candidate });
+
+            // A real command is the normal case here — `dotnet run --project src/App` — so the whole
+            // candidate is almost never a path. Take the path-shaped tokens out of it. The previous
+            // version tested the candidate whole, rejected anything containing a space, and dropped it
+            // **silently**: every build/test/run line on a card written with commands was inert, and
+            // nothing said so. Found on a fourth workspace; invisible on customer zero, whose card
+            // happens to write bare paths.
+            const targets = candidate.split(/\s+/).filter(isPathish);
+            if (targets.length) {
+                for (const target of new Set(targets)) {
+                    claims.push({ what: `${key}: \`${target}\``, target });
+                }
+            } else {
+                // Nothing path-shaped to check. This is a structured field where every entry is a
+                // claim, so it is counted and said rather than dropped — unlike prose elsewhere on the
+                // card, where reporting everything would bury the findings. "Nothing to check here" and
+                // "I did not look" print identically unless one of them speaks.
+                claims.push({ what: `${key}: \`${candidate}\``, target: null });
+            }
         }
     }
 
@@ -410,8 +428,8 @@ function requiredCheckClaims(source) {
  *
  * The context is the job's `name:` when it sets one, and the job id otherwise — that is what branch
  * protection pins, and the distinction is invisible until a job has both. It surfaced on the third
- * real workspace: a job id `build-test` carrying `name: build + test`, where the ruleset requires
- * `build + test` and this function previously returned only `build-test`, so a gate map claiming the
+ * real workspace: a job id `nightly-soak` carrying `name: nightly + soak`, where the ruleset requires
+ * `nightly + soak` and this function previously returned only `nightly-soak`, so a gate map claiming the
  * id passed a check that should have failed. Customer zero could never have shown it, because its
  * workflow deliberately sets no `name:` precisely so the two coincide.
  *
@@ -725,6 +743,11 @@ export async function inspect(workspaceDir, options = {}) {
 
     if (treeRoot) {
         for (const claim of claimTargets) {
+            if (claim.target === null) {
+                stats.unverifiable += 1;
+                report("claims", `${claim.where} states ${claim.what}, which contains nothing path-shaped to check — counted as unverifiable rather than passed over`);
+                continue;
+            }
             stats.claims += 1;
             // Two bases, because a card legitimately mixes them: `.portulan/` is written from the
             // repository root while `../../core/` is written from the card. A claim that resolves

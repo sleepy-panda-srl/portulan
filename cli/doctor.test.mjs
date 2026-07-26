@@ -708,6 +708,54 @@ describe("workspace claims are linted against the tree", () => {
         assert.match(text(severities(checks(findings, "paths"), "fail")), /gate-map\.md/);
     });
 
+    // Found by the third real workspace's own onboarding session, forcing each claim check red rather
+    // than reading its green. A build/test/run line written as a real command — `dotnet run --project
+    // src/…` — was taken as one candidate, rejected for containing a space, and then **silently
+    // dropped**: not checked, not counted, not reported. Invisible on customer zero, whose card writes
+    // bare paths rather than commands, which is exactly how it survived to a fourth workspace.
+    test("a path inside a command on a build/test/run line is checked", async () => {
+        const m = wellFormed();
+        m.tree = "./";
+        m.slots.repos = "repos/";
+        const dir = tree(scratch(), {
+            ...minimalFiles,
+            "workspace.json": JSON.stringify(m),
+            "repos/app.md":
+                "# Repo\n\n**Build / test / run.**\n- run: `dotnet run --project src/App.Nonexistent`\n",
+        });
+        const { findings } = await inspect(dir, { schema: SCHEMA });
+        const failures = severities(checks(findings, "claims"), "fail");
+        assert.equal(failures.length, 1);
+        assert.match(text(failures), /src\/App\.Nonexistent/);
+
+        fs.mkdirSync(path.join(dir, "src", "App.Nonexistent"), { recursive: true });
+        const fixed = await inspect(dir, { schema: SCHEMA });
+        assert.deepEqual(severities(checks(fixed.findings, "claims"), "fail"), []);
+    });
+
+    // The silent half of the same defect: a line with no path-shaped token in it must be COUNTED and
+    // SAID, not dropped. "Nothing to check here" and "I did not look" print identically otherwise.
+    test("a build/test/run line with no checkable path is reported, never dropped", async () => {
+        const m = wellFormed();
+        m.tree = "./";
+        m.slots.repos = "repos/";
+        const dir = tree(scratch(), {
+            ...minimalFiles,
+            "workspace.json": JSON.stringify(m),
+            "repos/app.md":
+                "# Repo\n\n**Build / test / run.**\n" +
+                "- build: `dotnet build App.slnx --configuration Release`\n" +
+                "- test: `npm test`\n" +
+                "- run: none — nothing to start\n",
+        });
+        const { findings, stats } = await inspect(dir, { schema: SCHEMA });
+        assert.deepEqual(severities(checks(findings, "claims"), "fail"), []);
+        // `none` claims nothing; the other two are unverifiable and must be visible as such.
+        assert.equal(stats.unverifiable, 2);
+        assert.match(text(checks(findings, "claims")), /App\.slnx/);
+        assert.match(text(checks(findings, "claims")), /npm test/);
+    });
+
     test("a bare command word is not treated as a path claim", async () => {
         const m = wellFormed();
         m.tree = "./";
@@ -739,15 +787,15 @@ describe("workspace claims are linted against the tree", () => {
             ...minimalFiles,
             "workspace.json": JSON.stringify(m),
             "gate-map.md":
-                "# Gate map\n\n| Setting | Value |\n|---|---|\n| Required status check | `build-test` |\n",
+                "# Gate map\n\n| Setting | Value |\n|---|---|\n| Required status check | `nightly-soak` |\n",
             ".github/workflows/ci.yml":
-                "name: ci\njobs:\n  build-test:\n    name: build + test\n    runs-on: ubuntu-latest\n",
+                "name: ci\njobs:\n  nightly-soak:\n    name: nightly + soak\n    runs-on: ubuntu-latest\n",
         });
         const { findings } = await inspect(dir, { schema: SCHEMA });
         const failures = severities(checks(findings, "claims"), "fail");
         assert.equal(failures.length, 1);
         assert.match(text(failures), /job \*\*id\*\*/);
-        assert.match(text(failures), /build \+ test/);
+        assert.match(text(failures), /nightly \+ soak/);
     });
 
     // Also from the third workspace: it requires two checks, and reading only the first silently
@@ -777,9 +825,9 @@ describe("workspace claims are linted against the tree", () => {
             ...minimalFiles,
             "workspace.json": JSON.stringify(m),
             "gate-map.md":
-                "# Gate map\n\n| Setting | Value |\n|---|---|\n| Required status check | `build + test` |\n",
+                "# Gate map\n\n| Setting | Value |\n|---|---|\n| Required status check | `nightly + soak` |\n",
             ".github/workflows/ci.yml":
-                "name: ci\njobs:\n  build-test:\n    name: build + test\n    runs-on: ubuntu-latest\n",
+                "name: ci\njobs:\n  nightly-soak:\n    name: nightly + soak\n    runs-on: ubuntu-latest\n",
         });
         const { findings } = await inspect(dir, { schema: SCHEMA });
         assert.deepEqual(severities(checks(findings, "claims"), "fail"), []);
