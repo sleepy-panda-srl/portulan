@@ -502,13 +502,26 @@ export function inspect(rawRoot) {
     // verdicts and only one is benign. Deciding it non-dereferencingly leaves every other case to
     // `resolve()` below, which already knows how to fail a link that does not resolve. Found by
     // review, and it is the short-input-set defect this pass was written to close, in the pass.
-    let present = true;
+    // Three states, not two, because "I could not tell" is a real answer and collapsing it into
+    // either of the others is a lie. Only ENOENT means absent; EACCES, EIO or anything else means
+    // the question was not answered, and answering an unanswerable question with the reassuring
+    // option is this file's recurring defect — caught here in review, one round after the same
+    // shape was caught in the line above.
+    let state;
     try {
         fs.lstatSync(path.join(root, AGENT_DIR));
-    } catch {
-        present = false;
+        state = "present";
+    } catch (error) {
+        if (error.code === "ENOENT") {
+            state = "absent";
+        } else {
+            state = "unknown";
+            fail("agents", `./${AGENT_DIR}/ could not be examined — ${error.code ?? error.message}`);
+        }
     }
-    if (!present) {
+    if (state === "unknown") {
+        // Already failed; there is nothing further to say about a directory nobody could look at.
+    } else if (state === "absent") {
         // A plugin that ships no agents is legitimate, so this is a note. The residual hole is real
         // and named rather than hidden: deleting `agents/` outright degrades this whole check class
         // to a note, the same shape proposal 0005 closed for `tree`. The check that would bind it is

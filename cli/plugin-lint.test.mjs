@@ -496,6 +496,24 @@ describe("the agents nothing declares", () => {
         assert.equal(fs.lstatSync(path.join(REPO, "agents")).isSymbolicLink(), false);
     });
 
+    test("a filesystem error is not reported as 'this plugin ships no agents'", () => {
+        // Round 2 of the same finding: the probe that replaced `existsSync` caught *every* error and
+        // called it absent, so EACCES on the plugin root became the benign note. Only ENOENT means
+        // absent. Everything else means the question could not be answered, and answering an
+        // unanswerable question with the reassuring option is the whole defect class.
+        const root = fixture();
+        fs.chmodSync(root, 0o600); // parent loses +x, so lstat of any child gives EACCES
+        try {
+            const notes = inspect(root)
+                .findings.filter((f) => f.severity === "note")
+                .map((f) => f.message)
+                .join("\n");
+            assert.doesNotMatch(notes, /ships no agents/);
+        } finally {
+            fs.chmodSync(root, 0o755);
+        }
+    });
+
     test("a broken agents/ symlink is a failure, not 'this plugin ships no agents'", () => {
         // Found by review. `existsSync` **follows** the link, so a broken `agents` entry answered
         // "absent" and took the note branch — GREEN, `0 agent(s)`, exit 0, over a tree that plainly
