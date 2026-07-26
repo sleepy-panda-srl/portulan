@@ -12,16 +12,21 @@ session 1 cuts the tag and demonstrates the install, both of which need a push f
 Session 0 — the artifact:
 - [x] When the repository is read as a plugin, the system shall carry a
       [`plugin.json`](../../.claude-plugin/plugin.json) naming the engine's skills and the personas as
-      agents.
+      agents. _(Half of this wording is now **false against the tree, deliberately**: the manifest names
+      the skills, and names no agents at all, because an `agents` key suppresses the only scan that loads
+      them — a key is a lint FAIL under the criterion added at the bottom of this file. The personas
+      register by convention from [`../../agents/`](../../agents/), which is what the clause wanted and
+      not how it said it. Left readable rather than rewritten, since the criterion was met by a route
+      nobody knew about when it was written.)_
 - [x] When the marketplace manifest is read, it shall list at least one plugin — a marketplace declaring
       none is the fail-open this milestone exists to close.
-- [ ] When the plugin is installed and the engine booted, the boot skill shall look for a workspace in
-      the **project**, never in its own bundle. _(The bundle ships two valid workspaces of its own, plus a
-      deliberately invalid fixture; booting on any of them would load another team's policy and look
-      exactly like success. **Unticked in session 1: it was `[x]` and no boot has ever run.** The skill is
-      written to search `${CLAUDE_PROJECT_DIR}` and says so, which is a fact about the file — this
-      criterion is about behaviour, and the same session found what happens when those two are confused.
-      It closes with the boot demonstration, not before.)_
+- [x] When the plugin is installed and the engine booted, the boot skill shall look for a workspace in
+      the **project**, never in its own bundle. _(Unticked mid-session because it had been `[x]` with no
+      boot ever run, then **demonstrated**: booted in a project carrying its own workspace, the engine
+      reported `tidewrack` and quoted its glossary marker `FATHOM-MARK-11` — a term absent from the merged
+      tree and from the payload, so the transcript proves which manifest was read. Booted again in a
+      project with **no** workspace: it reported the absence and named all three bundled manifests as
+      things it declined to fall back to.)_
 - [x] When a persona is delegated to on this host, it shall arrive as an agent whose tool grant matches
       its charter — and where the host cannot express the charter, the agent shall say so rather than
       imply the grant is the gate. _(Ticked in session 0 and **false**: the files shipped, both
@@ -45,9 +50,16 @@ Session 1 — the distribution (needs a push; every item below is Gated or downs
       _(Annotated tag on `9305a16`, pushed 2026-07-26. Both manifests there declare `0.1.0`, and the tree
       carries its own `CHANGELOG.md` because the changelog merged ahead of the tag it describes — the
       maintainer's ruling was fix first, then tag the merge.)_
-- [ ] When a machine with no local copy of this repository adds the marketplace and installs the plugin,
+- [x] When a machine with no local copy of this repository adds the marketplace and installs the plugin,
       the engine shall boot: the kernel loads, and a project workspace is found or its absence is
-      reported.
+      reported. _(Installed from the remote — clone at `9305a16`, `git describe --tags` = `v0.1.0` — then
+      booted three times: one attempt that halted, then two complete runs. In both complete runs the kernel
+      loaded and reported 43 lines; a workspace was found in one project and its absence reported in the
+      other. **The halted attempt is the measured limit, and it is in the record rather than smoothed
+      over:** it came first, under default headless permissions, and the kernel read was *denied* because
+      `${CLAUDE_PLUGIN_ROOT}` lies outside the project — the boot still refused the bundle's workspaces
+      and still reported the absence correctly, but it had no engine in context. The skill now says that
+      a denied kernel read is an incomplete boot to be reported, not worked around.)_
 - [x] When the install is demonstrated, the transcript shall record which visibility it was performed
       under, because a private repository's install path is authenticated and a public one's is not.
       _(**PRIVATE**, recorded at the moment of the install. The clone came over HTTPS after the CLI
