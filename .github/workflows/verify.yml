@@ -45,10 +45,25 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       # Pinned to a full-length commit SHA. This organisation's Actions policy requires it, and
-      # the policy is right: a movable tag is a supply-chain hole, because whoever controls `v4`
+      # the policy is right: a movable tag is a supply-chain hole, because whoever controls `v7`
       # can repoint it at any commit and every workflow trusting the tag picks it up silently.
-      # SHA below is actions/checkout v4.4.0.
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      # SHA below is actions/checkout v7.0.1.
+      #
+      # Moved off v4.4.0 because that release declares `using: node20` and the runner has been
+      # forcing it onto Node 24 since the Node 20 deprecation, which is a warning today and a
+      # broken required check on the day the runner stops carrying the old runtime. v5.0.0 is the
+      # first release declaring `using: node24`; v7 is taken rather than the smallest bump so the
+      # pin sits on the line that keeps getting fixes. What that jump changes for *this* job is
+      # nothing: v6 moved persisted credentials into `$RUNNER_TEMP` (needs runner >= v2.329.0,
+      # which GitHub-hosted `ubuntu-latest` is well past) and every recipe here touches git only
+      # through `git ls-files` — local, no network, no credentials.
+      #
+      # One caveat, load-bearing only if this step ever grows a `with:`. Since v5.1.0 checkout
+      # refuses to check out a fork pull request under `pull_request_target` or `workflow_run`
+      # unless `allow-unsafe-pr-checkout` is set. The guard is skipped entirely for a default
+      # self-checkout — no `repository:` and no `ref:` — which is what this step is, and this
+      # workflow triggers on `pull_request` besides. Adding a `ref:` here would arm it.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Run every verify recipe the workspace manifest declares
         run: |
