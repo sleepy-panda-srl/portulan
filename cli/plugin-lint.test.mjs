@@ -474,6 +474,35 @@ describe("failing closed", () => {
         assert.equal(fails(inspect(root).findings).length >= 2, true, "both failures should survive");
     });
 
+    test("a declared path that cannot be read is a verdict, not could-not-run", () => {
+        // Review'd point, and the right one: a declared-but-unreadable component path must arrive as
+        // a packaging failure (exit 1), never as exit 2 discarding the findings around it. The fix
+        // was structural rather than another try/catch — `resolve()` now reads the path's kind once,
+        // inside its own guard, so the loops below it have no second unguarded `statSync` to throw
+        // from.
+        const root = fixture({ plugin: { skills: ["./locked/inner/"] } });
+        fs.mkdirSync(path.join(root, "locked", "inner"), { recursive: true });
+        fs.chmodSync(path.join(root, "locked"), 0o000);
+        try {
+            const { findings } = inspect(root);
+            assert.ok(fails(findings).length >= 1, "expected a failure, not a clean run");
+            assert.match(messages(findings), /locked/);
+        } finally {
+            fs.chmodSync(path.join(root, "locked"), 0o755);
+        }
+    });
+
+    test("that unreadable path is exit 1, not exit 2", async () => {
+        const root = fixture({ plugin: { skills: ["./locked/inner/"] } });
+        fs.mkdirSync(path.join(root, "locked", "inner"), { recursive: true });
+        fs.chmodSync(path.join(root, "locked"), 0o000);
+        try {
+            assert.equal(await run([root], { quiet: true }), 1);
+        } finally {
+            fs.chmodSync(path.join(root, "locked"), 0o755);
+        }
+    });
+
     test("a root that does not exist is could-not-run, not a verdict", () => {
         assert.throws(() => inspect(path.join(scratch(), "absent")), PluginLintError);
     });
