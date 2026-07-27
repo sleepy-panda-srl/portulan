@@ -2,8 +2,8 @@
 
 **What it is.** The Portulan monorepo: the engine, the spec, plugin packaging, the CLI, and the demo
 workspace, plus the manifest that makes the repository installable as a Claude Code plugin feed. Blast
-radius is the whole product — this is the only repository the product ships from, and when the
-repository went public on 2026-07-27; its history is public and permanent.
+radius is the whole product — this is the only repository the product ships from, and its history
+has been public and permanent since 2026-07-27.
 
 **Build / test / run.**
 - build: none — no build step yet; the CLI arrives at milestone 7
@@ -35,7 +35,7 @@ remaining top-level directories are scaffolding that fills in milestone by miles
   sits next to it and is the opposite: frozen, human-owned, never agent-edited.
 - A build-session bootstrap file at the repository root is deliberately git-ignored and never committed.
   If it appears in a diff, that is the bug.
-- History cleanliness is load-bearing here in a way it is not in most repositories: this history goes
+- History cleanliness is load-bearing here in a way it is not in most repositories: this history has been
   public since 2026-07-27, so the pre-commit scan ([`../dod.md`](../dod.md), condition
   5) runs before every commit rather than before releases.
 
