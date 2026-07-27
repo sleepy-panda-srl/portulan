@@ -1,103 +1,127 @@
-# Proposal — adopting a control is not the same as knowing what it did
+# Proposal — name the enforcer, and re-read the prose you just falsified
 
-**Incident.** Not an outage. Two proposals in two days each cited
+**Status: REVISED 2026-07-27, still PROPOSED.** Not applied. Marius's decision on the first draft was
+**revise, not accept**: the diagnosis was right and the directions were wrong. This is the revision.
+What it replaces is recorded rather than deleted, because *why* the first set failed is the most useful
+thing this document knows.
+
+## What the first draft got right, and where it went wrong
+
+**Right:** two proposals in two days each cited
 [`../memory/a-mandate-nothing-checks-is-already-broken.md`](../memory/a-mandate-nothing-checks-is-already-broken.md)
-as precedent — [`0006`](0006-dependabot-security-updates.md) calling itself the second instance, and
-[`0007`](0007-every-watcher-ships-with-its-observation-procedure.md) the third — and the handoff for that
-session proposed that three instances meant the rule was "stated too narrowly."
+as precedent, and only one of the citations fitted. That is a **discrimination failure** — a rule that
+accumulates near-misses stops being usable as a check — and it is still the thing worth fixing.
 
-Reading the rule against its own three citations says something more useful than *broaden it*. **Only the
-first citation actually matches the rule as written.** The rule says:
+**Wrong:** the three directions it proposed (*behind it* · *beside it* · *at it*) were induced from the
+three citations that happened to be open, and they turned out to be **ground already covered**:
 
-> When a rule is adopted before the check that enforces it exists, assume the existing corpus already
-> violates it, and say so in the adopting change.
+| First draft's direction | Already covered by |
+|---|---|
+| *Behind it* — the corpus now in arrears | [`a-mandate-nothing-checks-is-already-broken.md`](../memory/a-mandate-nothing-checks-is-already-broken.md), which is exactly this and says it better |
+| *At it* — can the control be observed working | [`0007`](0007-every-watcher-ships-with-its-observation-procedure.md), accepted and applied the same day |
+| *Beside it* — a new risk in place of the old | its one motivating instance — a SHA pin closing tag-hijacking and opening staleness — was closed by adopting a watcher, which is 0007's subject. One instance is not a direction. |
 
-That is about **arrears** — the back-catalogue behind you, silently non-compliant, discovered later as what
-looks like a regression. Measured against that:
+Taxonomy over covered ground does not earn its tokens. Worse, a three-bullet checklist whose bullets all
+point at existing rules teaches a reader that the checklist *is* the rule, and the rules it points at
+stop being read.
 
-| Citation | What actually went wrong | Matches the rule? |
-|---|---|---|
-| Proposal 0002's provenance mandate | 3 of 5 existing memory records violated the new rule | **Yes** — this is arrears, exactly |
-| 0006 — SHA pinning | pinning closed the tag-hijacking hole and **opened a staleness hole in its place**, and nothing was paired with it to watch the new one | No — nothing was in arrears; a *new* risk was created |
-| 0007 — the `dependabot.yml` watcher | the watcher itself could not be shown to work; success and failure produced identical silence | No — nothing was in arrears; the *control itself* was unverified |
+**The derivation was the error.** Those directions came from the three documents in front of the author.
+The same day produced **two other patterns, repeatedly**, and neither appears above — because nobody was
+looking at the documents where they lived.
 
-So the citations were loose. Both were filed under the nearest available rule because it was the nearest
-available rule, which is its own failure mode: a rule that accumulates near-misses stops discriminating, and
-then it stops being usable as a check.
+## The two directions, derived from what actually recurred
 
-**What the three share** is not arrears. It is that **something was adopted, and the means of knowing what it
-did was not adopted with it.** The consequence differs each time — a corpus put in arrears, a new risk
-created in place of the old, a control that cannot be observed working — and naming only one of the three is
-what let the other two get mis-filed.
+### Direction A — the stated enforcer is not the real one
 
-**Proposed rule.** Amend
-[`../memory/a-mandate-nothing-checks-is-already-broken.md`](../memory/a-mandate-nothing-checks-is-already-broken.md)
-so its general form leads and the arrears case becomes the first of three named consequences:
+One axis, two signs, which look like opposites until named together:
 
-> Adopting a control is not the same as knowing what it did. When you adopt one — a rule, a mandate, a pin, a
-> watcher, a required check — name what it changes, in three directions, and record which of them you have
-> not checked:
->
-> 1. **Behind it** — what the existing corpus now violates, because nothing enumerated it at the moment of
->    adoption.
-> 2. **Beside it** — what new risk it creates in place of the one it closed, because a control that removes a
->    failure mode usually substitutes another.
-> 3. **At it** — whether the control itself can be observed working, because a control whose success and
->    failure look identical is indistinguishable from an absent one.
->
-> An unchecked direction is not a reason to refuse the adoption. It is a thing to write down, dated, in the
-> adopting change.
+- **Overclaim** — asserting the platform refuses what only the gate forbids.
+  [`0006`](0006-dependabot-security-updates.md) shipped saying "an agent cannot perform them" of three
+  settings, when two are reachable by any admin-scoped token. **Prohibited is not impossible.**
+- **Underclaim** — asserting policy or habit where the platform is enforcing.
+  `sha_pinning_required: true` was described everywhere as "the organisation's policy" — language that
+  reads as a convention people comply with — while the platform refuses unpinned actions outright.
+  **A rail written down as a habit.**
 
-Everything the current entry says about arrears is kept verbatim as direction 1 — its reasoning, its two
-cheap moves, and its *what it does not say*. Direction 3 already has a specific rule of its own,
-[`0007`](0007-every-watcher-ships-with-its-observation-procedure.md), which stays: the general form tells you
-to look at the control, and 0007 tells you what looking costs and what to do when there is no safe test.
-Direction 2 is the one with no rule behind it, and is the reason this proposal exists rather than a memory
-edit.
+Same defect, opposite signs: *the stated enforcer does not match the real one*. Each teaches the wrong
+lesson in its own direction. **Overclaim teaches an agent not to attempt what is merely forbidden**, so
+the prohibition is never tested and its real strength is never learned. **Underclaim invites trusting
+discipline where there is steel**, so the steel goes unrecorded and the next person removes it as
+ceremony.
 
-**Enforcement.** Honestly, none today, and less than the parent has.
+More from the same day, which is what makes this a direction rather than an anecdote: the identity table
+claimed impossibility where the tier claimed approval; the platform floor was described as one layer when
+it is three; a gate map called the floor the thing that refuses a push *"regardless"* after an audit had
+withdrawn precisely that unconditional reading.
 
-- The parent's arrears direction is at least *countable* — "how many existing records satisfy this" is
-  usually a `grep`, which is why that entry could name two cheap moves. Directions 2 and 3 are not countable:
-  they ask what a change makes newly possible, which no tool here evaluates.
-- What the amendment buys is **discrimination, not enforcement**. Three named directions give a reviewer
-  three questions to ask at proposal time, and — the concrete part — make a mis-citation visible. Under the
-  current single-direction wording, 0006 and 0007 both read as precedent-backed; under the amended wording
-  they would each have had to name which direction, and neither would have picked direction 1.
-- Candidate input for the milestone-4 enforcement compiler and, more plausibly, for the milestone-5
-  librarian: "enumerate the corpus against a proposed rule at the moment it is proposed" is already this
-  entry's own stated retirement condition, and directions 2 and 3 are the part a librarian could prompt for
-  even if it cannot decide.
+> **Rule.** A claim of impossibility, or of guarantee, states what enforces it. *"An agent cannot do X"*
+> is incomplete. *"The platform refuses X"*, *"the gate forbids X and the token could do it"*, and
+> *"convention asks for X"* are three different sentences, and only one is true of any given X.
+
+**Mechanization: partial, and the limit is the point.** The proposal and codify templates gain an
+**`enforced by:`** expectation, so a rule arriving without one is visibly incomplete at review. That
+catches *new* rules. It does **not** catch the instances above, which were prose in documents nobody was
+editing — no lint here reads a sentence and knows whether GitHub would refuse the thing it describes.
+Past that template line this is a **review-checklist direction**, and saying so is better than implying
+machinery that does not exist.
+
+### Direction B — a change falsifies the prose that defines it
+
+A definition, an example, or a description is invalidated by the very change that alters what it
+describes — and the change looks complete, because the mechanical part *is* complete.
+
+- Moving one action between tiers **falsified three separate definitions of the tiers**, none of which
+  mentioned that action.
+- Dependabot rewrote a pin and could not rewrite the paragraph *about* the pin, so `main` briefly carried
+  a false claim **produced by the fix working exactly as designed**. A mechanical revert is not a
+  narrative revert.
+- The same week: an Auto-tier definition — *"nothing here reaches another person"* — stopped being true
+  the moment a push moved into that tier; a heading reading *"Above the tiers"* survived the arrival of a
+  tier it now names; a tier table's own example went stale in the repository that wrote it.
+
+> **Rule.** After changing a thing, grep for prose *about* that thing. The edit that completes a change
+> is usually not in the file the change was in.
+
+**Mechanization: none, honestly.** The claims lint cannot see this. It resolves paths and compares
+declared claims against the tree; *"this sentence defines a category that no longer has these members"*
+is semantic, and a path-shaped check is blind to it. The honest enforcement is a **named pre-commit
+checklist step**, and calling it a checklist step rather than a rail is the whole of what it can offer.
+
+## What this asks for
+
+1. Amend [`../memory/a-mandate-nothing-checks-is-already-broken.md`](../memory/a-mandate-nothing-checks-is-already-broken.md)
+   **not at all.** The first draft proposed rewriting it around three directions; that was the error. It
+   is correct as written and stays.
+2. Add **two memory entries**, one per direction, each carrying its own instances — rather than growing
+   one entry into a taxonomy that then becomes the only entry anyone reads.
+3. Add an `enforced by:` line to [`../../core/templates/proposal.md`](../../core/templates/proposal.md)
+   and the matching step in [`../../core/skills/codify/SKILL.md`](../../core/skills/codify/SKILL.md).
+4. Add the grep-the-prose step to the pre-commit conditions in [`../dod.md`](../dod.md).
+5. Correct the two loose citations in [`0006`](0006-dependabot-security-updates.md) and
+   [`0007`](0007-every-watcher-ships-with-its-observation-procedure.md) — as the first draft also asked,
+   and for the same reason: leaving them preserves the defect this document exists to name.
 
 **Provenance.** `form=link`
 `href=`[`https://github.com/sleepy-panda-works/portulan/pull/28`](https://github.com/sleepy-panda-works/portulan/pull/28)
-— the pull request whose proposal was the third citation and whose handoff raised the question. The two
-mis-citations are readable at [`0006`](0006-dependabot-security-updates.md) and
-[`0007`](0007-every-watcher-ships-with-its-observation-procedure.md), in this repository, carrying no client
-material, so no seal is needed. Retire when rule adoption and consequence-enumeration land together as a
-matter of course — the parent entry's own retirement condition, inherited unchanged.
+— the pull request that raised the question. The instances behind both directions are the 2026-07-27
+session log and the [#24](https://github.com/sleepy-panda-works/portulan/pull/24)–[#29](https://github.com/sleepy-panda-works/portulan/pull/29)
+cluster, all in this repository and carrying no client material, so no seal is needed.
 
-**Honest limits.**
+## Honest limits
 
-- **This is a rule about how to write rules, which is the easiest kind to over-value.** It changes no
-  behaviour on its own and adds three questions to a process that already has several. The case for it is
-  narrow and specific: two documents cited a precedent that did not fit, five days apart, and neither author
-  noticed. That is a discrimination failure, and it is the only thing this amendment fixes.
-- **If accepted, the citations in 0006 and 0007 should be corrected in the same change**, naming direction 2
-  and direction 3 respectively. Leaving them would preserve the exact defect the amendment exists to prevent,
-  in the two documents that motivated it.
-- **Three directions may not be all of them.** The set was derived from three instances, which is a thin
-  basis, and a fourth may arrive that fits none — in which case this entry gets the same scrutiny it is
-  applying here, rather than a fourth bullet bolted on. Preferring a rewrite to accretion is the lesson of
-  the entry it amends.
-- **The parent rule is not wrong and is not being replaced.** Its arrears reasoning is the most developed part
-  of it and survives intact. What changes is that it stops being the only named direction, and therefore stops
-  being the default home for anything adjacent.
+- **Two directions derived from one day is a thin basis**, exactly as three from three documents was. The
+  difference is the count: each direction here has **four or more** instances from that day alone, where
+  the first draft's *beside it* had one. Better, not good.
+- **Direction B has no mechanization and direction A has very little.** Both are review-checklist
+  directions with a template line attached, and a checklist is a thing people stop reading. This
+  repository has a memory entry about mandates nothing checks; these two are in that category **by
+  construction**, and the entries should say so in their own text rather than leaving a reader to notice.
+- **This is still a rule about how to write rules** — the easiest kind to over-value. It changes no
+  behaviour on its own. The case is narrow: two patterns each recurred four or more times in a single day
+  and neither had a name, so neither could be cited when it happened again.
+- **The first draft's fate is the argument for this one's limits.** It was written with the same
+  confidence, from a smaller sample, and it was wrong in a way its author could not see. Reading this
+  document as settled would repeat that.
 
-**Decision.** _Pending — Marius Cetanas._ Raised by the same session that produced both mis-citations, which
-is worth stating: an agent proposing a rule that would have caught its own two errors is arguing from its own
-record, not from taste. Written by an implementer agent (Claude Opus 5).
-
-**Status: PROPOSED, 2026-07-27.** Not applied. On acceptance the change is the amendment to
-`a-mandate-nothing-checks-is-already-broken.md` plus the two corrected citations, in a pull request separate
-from this one — the sequence 0006 and 0007 both followed.
+**Decision.** _Pending — Marius Cetanas._ The first draft was decided **revise, not accept**; this is that
+revision. Written by an implementer agent (Claude Opus 5).
