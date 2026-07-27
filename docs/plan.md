@@ -15,15 +15,16 @@
 2. **The private pilot workspace stays outside this repo — entirely.** The predecessor framework
    that proved these concepts, and the pilot workspace derived from it, remain local to their
    owner's context: no hosted copy, no references here. Portulan's engine is authored as **fresh
-   expression** — concepts may be re-expressed; prose is never copied. The repo starts **private**
-   and flips public at milestone 3 only after the predecessor-IP clearance completes (tracked in
-   the private context, not here). The seam scan (term list in the private context) runs before
-   every commit.
+   expression** — concepts may be re-expressed; prose is never copied. The repo started **private**;
+   it went public on 2026-07-27 by the maintainer's directive, ahead of the predecessor-IP
+   clearance completing — his decision, on record in the Session log; the clearance track continues
+   in the private context, not here. *(Amended 2026-07-27; original: "starts **private** and flips
+   public at milestone 3 only after the predecessor-IP clearance completes".)* The seam scan (term list in the private context) runs before every commit.
 3. **Proof workspaces:** fictional demo (public, `examples/`) + Sleepy Panda portfolio workspace
    (ALL Sleepy Panda products, Tipar API first) via the private feed. Workspaces ship as plugins.
 4. **Two-tier supervised build** (see Protocol).
 5. **Product shape: product-around-the-files, never an app-instead-of-files** — site, docs,
-   community, pricing around the file-based core; no cockpit; no hosted SaaS except the
+   community, pricing around the file-based core; no operating cockpit; no hosted SaaS except the
    self-hostable-first approval relay.
 
 ## Repo topology
@@ -31,7 +32,7 @@
 ```
 sleepy-panda-works/
 ├── portulan                      monorepo + public marketplace
-│                                 PUBLIC at the milestone-3 flip; private today
+│                                 PUBLIC since 2026-07-27
 │   ├── core/                     engine: operating docs, personas, universal skills, templates
 │   ├── packs/                    stacks/ · tools/ · rituals/
 │   ├── spec/                     Workspace Definition schema, docs, migrations
@@ -95,15 +96,16 @@ evals before any rule-change cadence · product surface only after v0.1.0 exists
 
 ## Risks & guardrails
 
-Predecessor-IP hygiene (fresh expression only; own time and equipment; written clearance before
-the public flip; details governed in the private context) · scope creep (milestone map is the
+Predecessor-IP hygiene (fresh expression only; own time and equipment; the written-clearance track
+continues post-flip — the 2026-07-27 flip preceded its completion, the maintainer's decision on
+record in the Session log; details governed in the private context) · scope creep (milestone map is the
 scope; new ideas become proposals) · instruction bloat (≤60-line always-loaded core; evals prune;
 librarian demotes) · competitors moving down-stack (speed on spec; open-standard positioning) ·
 platform absorption (design for deletion — thin workflow, durable context layers) ·
 solo-maintainer bottleneck (proposals-as-PRs, librarian nagging, eval gates) · **naming** (FINAL
 24 Jul: **Portulan**, the Romanian word for a portolan chart; **portulan.dev registered 24 Jul
 2026 by Sleepy Panda SRL** — auto-renew ON, DNSSEC enabled with DS auto-published; consider
-portulan.works defensively; trademark sweep EUIPO/USPTO classes 9/42 before brand spend).
+portulan.works defensively; knockout trademark sweep classes 9/42 cleared 27 Jul 2026 — a formal clearance opinion by counsel (EUIPO/USPTO) before brand spend).
 
 ## Session log
 
