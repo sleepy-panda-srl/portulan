@@ -1,4 +1,4 @@
-# Proposal 0007 — a gate policy beside the gate map
+# Proposal 0008 — a gate policy beside the gate map
 
 **Status.** Applied in the same change that proposes it, and recorded here for the reason the earlier
 proposals were: the decision has a shape somebody will want to argue with later, and the argument is
