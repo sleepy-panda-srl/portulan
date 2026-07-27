@@ -60,8 +60,9 @@ resolved, and administrators have no exemption. Every pull request carries at le
 authority on what private channel exists, because it reflects the live setting rather than this file's
 memory of it: if it offers *Report a vulnerability*, use that — it reaches the maintainer with no public
 record. If the button is absent, GitHub's private vulnerability reporting is off, and the fallback is
-email to the maintainer — the address on the maintainer's GitHub profile or, if the profile shows
-none, the author address on this repository's commits (`git log` shows it; a profile can hide email,
-a commit cannot). Enabling private reporting is a repository-settings change — Gated, and the
-maintainer's — and it is the right fix; this paragraph is written to stay true on either side of
-that switch.
+email to the maintainer — try the maintainer's GitHub profile, then the author address in this
+repository's commit history; either may be absent or a `noreply` alias, because GitHub lets both be
+masked. If neither yields a reachable address, open an issue saying only that you have a security
+report and need a private channel — the report itself never goes in the issue. Enabling private
+reporting is a repository-settings change — Gated, and the maintainer's — and it is the right fix;
+this paragraph is written to stay true on either side of that switch.
