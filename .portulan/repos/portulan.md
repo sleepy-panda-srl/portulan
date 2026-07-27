@@ -17,7 +17,7 @@ decision, not by accident
 ([`../memory/repo-is-private-until-flip-clearance.md`](../memory/repo-is-private-until-flip-clearance.md)).
 
 **Layout.** [`../../core/`](../../core/) the engine · [`../../spec/`](../../spec/) the Workspace
-Definition · [`../../cli/`](../../cli/) `doctor`, `plugin-lint` and their tests ·
+Definition · [`../../cli/`](../../cli/) `doctor`, `plugin-lint`, `compile` and their tests ·
 [`../../docs/`](../../docs/) constitution and plan · `.portulan/` this workspace ·
 [`../../examples/`](../../examples/) the demo workspace · [`../../plugin/`](../../plugin/) the Claude Code
 adapter — the boot skill · [`../../agents/`](../../agents/) the three personas bound to this host, at the

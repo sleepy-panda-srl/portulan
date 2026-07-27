@@ -987,3 +987,33 @@ the seam applies here too: no client-identifying references)_
   plan; the truth-up diff passed a fresh-context Fable 5 pre-commit review before push.** Handoff:
   [`.portulan/handoffs/2026-07-27-the-public-flip.md`](../.portulan/handoffs/2026-07-27-the-public-flip.md).
   Seam scan clean across files, commit message, and branch name.
+- 2026-07-27 · post-M3, in-M4 — no milestone row touched · **`compile` was missing from the map: three
+  documents still described a two-tool `cli/`.** Commissioned to fix the `tests` recipe's own
+  understatement, this session collided with two parallel ones — #42 merged the brief mid-session and #43
+  merged the `identity.md`/`affordances.md` siblings this session had also written and had reviewed. That
+  work was discarded rather than pushed as a competing pull request; #43's affordances bullet is the
+  better text and states the recipes gap at six. What shipped is what neither touched, and it is a
+  different sentence: not *how many suites* but *`compile` is absent from the inventory*. `cli/README.md`:
+  the *what is here today* table listed `doctor`, `plugin-lint` and their suites and stopped, while the
+  prose below already discussed `compile` twice — the file described a tool it did not list, so three rows
+  were added (`compile.mjs`, `compile.test.mjs`, `stop-gate.test.mjs`) along with its usage line; the
+  exit-code sentence was also split, since "every workspace validates" sat above a block containing
+  `plugin-lint`, which validates plugin roots, and `compile`'s codes mean wrote/drifted/could-not-run.
+  `.portulan/repos/portulan.md`: the layout line said "`doctor`, `plugin-lint` and their tests" ten lines
+  under a build/test/run block that already names all six recipes, so the omission was local to that line
+  rather than a stale card — and this is the card `doctor`'s claims lint reads. `.portulan/tasks/0004`: opened on "the five verify recipes" with a harness proposed as "a
+  sixth recipe that runs the other five"; corrected to six and seven, with the goal now stating that a sixth
+  recipe and two more suites have been added since it was written while the number testing a recipe is
+  still zero — the five it was born with was right at the time, checked against `workspace.json` at the
+  task's own commit rather than assumed stale. Acceptance criteria untouched — written against `workspace.json` rather than a count, which is
+  why they did not rot. Per `.portulan/memory/a-stated-enforcer-must-be-the-real-one.md`, understating a
+  checker is the same defect as overstating it. · **Supervisor fidelity: fresh-context Fable 5 pre-commit
+  review, which returned REQUEST-CHANGES on the pre-collision draft — five must-fix items, including two
+  new false claims introduced while fixing old ones and two living documents the sweep had missed; the
+  missed documents are two of the three files shipped here, and the false claims died with the discarded
+  half. The re-review after the rebase returned must-fix items of its own — a fresh overcount minted inside the
+  corrected goal ("two recipes" where one was added), and records the moving `main` had already staled —
+  all folded in and re-verified. No session-open review; no milestone-close (none due).** Maintainer
+  merges; nothing here was merged by the session. · Seam scan clean across files, commit message, and
+  branch name. Handoff:
+  [`.portulan/handoffs/2026-07-27-the-third-tool-was-missing-from-the-map.md`](../.portulan/handoffs/2026-07-27-the-third-tool-was-missing-from-the-map.md).
