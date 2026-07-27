@@ -56,10 +56,10 @@ resolved, and administrators have no exemption. Every pull request carries at le
 
 ## Security
 
-**Please do not report a security issue in a public issue**, and note that today there is no private
-channel configured on this repository to send it to instead: GitHub's private vulnerability reporting is
-**off**, so the Security tab shows no *Report a vulnerability* button. That is stated rather than papered
-over with an instruction that would not work.
-
-Until it is enabled, email the maintainer at the address on his GitHub profile. Turning private reporting
-on is a repository-settings change — Gated, and the maintainer's — and it is the right fix.
+**Please do not report a security issue in a public issue.** The repository's **Security tab** is the
+authority on what private channel exists, because it reflects the live setting rather than this file's
+memory of it: if it offers *Report a vulnerability*, use that — it reaches the maintainer with no public
+record. If the button is absent, GitHub's private vulnerability reporting is off, and the fallback is
+email to the maintainer at the address on his GitHub profile. Enabling private reporting is a
+repository-settings change — Gated, and the maintainer's — and it is the right fix; this paragraph is
+written to stay true on either side of that switch.
