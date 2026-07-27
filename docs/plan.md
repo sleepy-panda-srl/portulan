@@ -76,7 +76,7 @@ private feed after plugin+spec (dogfood the customer path) · CLI late (wraps pr
 evals before any rule-change cadence · product surface only after v0.1.0 exists · **desktop last —
 it renders machinery that must already exist (gates compiled, recipes running, the authoring surface
 shipped), so building it earlier would mean inventing that machinery twice; and it is a row
-that can be cut entire without stranding another, which is the property to keep if the constitutional
+that can be cut entirely without stranding another, which is the property to keep if the constitutional
 questions come back no.**
 
 ## Protocol (every session)
