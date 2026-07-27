@@ -14,8 +14,8 @@ delivered as private-marketplace plugins.
 
 ## Status
 
-Pre-release, and **private during the build**. What `v0.1.0` will contain when it is tagged — and, just
-as usefully, what it will not — is [`CHANGELOG.md`](CHANGELOG.md). The engine
+Pre-release, and **private during the build**. `v0.1.0` is tagged; what it contains — and, just as
+usefully, what it does not — is [`CHANGELOG.md`](CHANGELOG.md). The engine
 in `core/`, the Workspace Definition in `spec/`, two workspaces, the validators that check them, and the
 plugin packaging in `plugin/` and `.claude-plugin/` are authored; the remaining directories below fill in
 milestone by milestone, and the `0.` major means nothing here is stable yet. It goes public once a

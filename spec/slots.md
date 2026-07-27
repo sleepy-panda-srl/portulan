@@ -234,8 +234,9 @@ milestone does **not** fire that condition.
 
 ## `tree` — where the claims are checked against, and why it is declared rather than inferred
 
-Added in v2.0 (the slot in 1.1, the requirement in 2.0), and it exists because the claims lint needed an answer to a question nobody had asked
-while there was only one workspace: *which* tree does a repo card's `test:` line refer to?
+Added in v2.0, slot and requirement together (an optional-slot draft never reached `main`), and it
+exists because the claims lint needed an answer to a question nobody had asked while there was only one
+workspace: *which* tree does a repo card's `test:` line refer to?
 
 Customer zero's answer is obvious — the repository the workspace sits in, one level up. The demo's
 answer is that there isn't one: Rooftop's repositories are fictional, so its cards' build/test/run lines
@@ -373,7 +374,7 @@ the episode does not.
   and the second is the one that decides it. A proposal is the *argument* for a rule; the rule itself
   lands in a memory entry or in `core/` when accepted, and that is the carrier the mandate names — a
   proposal's provenance documents where the reasoning came from, which is a different thing from the
-  incident stamp `$defs/provenance` describes. And one of the four proposals that exist is still
+  incident stamp `$defs/provenance` describes. And at any moment a proposal can be sitting
   **pending** the human gate, so a checker demanding a format from it would be acting on a record
   mid-decision, which is the gate's business and not a validator's. Saying which carrier is unchecked
   matters more than the choice does — silence is how the next reader assumes coverage that is not there.
