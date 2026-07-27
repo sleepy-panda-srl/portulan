@@ -184,3 +184,32 @@ So the honest position is unchanged where it counts: [`../docs/vision.md`](../do
 protected by the prohibition above and **not** by the platform. What the file adds today is that
 ownership is written down; what it adds later is a rail, on the day a second reviewer exists and the
 setting can be switched on. That switch is a repository-settings change — Gated.
+
+**The floor now watches what the repository pins**, as of 2026-07-27, per
+[`proposals/0006-dependabot-security-updates.md`](proposals/0006-dependabot-security-updates.md):
+
+> Every dependency the repository pins is watched for published advisories by the platform, not by
+> whoever remembers to look. Dependabot alerts and security updates are on, and the dependency graph that
+> feeds them is on. A pin that cannot move on its own requires something that can tell you when it should.
+
+The occasion was a SHA-pinned `actions/checkout` that declared a deprecated runtime for as long as GitHub
+had been deprecating it, with the warning in a green run's log as the entire notification mechanism. SHA
+pinning is the organisation's policy and the policy is right; **a SHA pin is also by construction a pin
+that never moves**, so what closes the tag-hijacking hole opens a staleness one in its place, and the
+mandate was adopted with nothing paired to it that could answer for the drift
+([`memory/a-mandate-nothing-checks-is-already-broken.md`](memory/a-mandate-nothing-checks-is-already-broken.md)).
+
+Three settings, and they chain — the graph feeds alerts, alerts feed security updates, so enabling only the
+last does nothing. Each is a repository-settings change and therefore **Gated**. Worth stating precisely,
+because the short version of that sentence drifts into a stronger claim than it can carry: the *agent
+identity's* token cannot touch repository settings at all, but of the three only the dependency graph has
+no repository-level REST endpoint. Alerts and security updates are both reachable by any admin-scoped
+token — including the maintainer's own credentials, which this repository already routes every commit
+through. Two of the three are withheld by the gate rather than refused by the platform, and a gate map
+that blurs those two has mislaid the distinction it exists to record.
+
+**What it buys today is one watched dependency**, and the count belongs in the record rather than rounded
+up: [`../.github/workflows/verify.yml`](../.github/workflows/verify.yml) is the only manifest in the tree,
+`actions/checkout` the only entry in it, and there is no `package.json` and no lockfile. The mechanism is
+the point and not the count — but a floor described as broader than it is would be the same drift this
+rule was added to catch.

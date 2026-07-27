@@ -91,10 +91,37 @@ of which this is a second instance in the same subject area — SHA pinning was 
 nothing was ever paired with it to answer for the drift it creates; and the incident above. Retire the
 rule if the repository ever stops depending on anything it does not build.
 
-**Decision.** _Pending — Marius Cetanas._ Written by an implementer agent (Claude Opus 5); the three
-settings are Gated and an agent cannot perform them, so this proposal exists to be decided rather than to
-be applied by whoever wrote it.
+**Decision.** _Accepted — Marius Cetanas, 2026-07-27._ Written by an implementer agent (Claude Opus 5); the
+three settings are Gated, so this proposal exists to be decided rather than to be applied by whoever wrote
+it. The gate here is a prohibition and not a platform refusal — a distinction this document of all
+documents should keep, since its subject is two things being conflated because they share a name. The
+agent identity's token cannot touch repository settings at all, but the dependency graph is the only one of
+the three with no repository-level REST endpoint; alerts and security updates are both reachable by any
+admin-scoped token, including the maintainer's own credentials that this repository already routes every
+commit through. _(This paragraph read "an agent cannot perform them" as merged, and was corrected in the
+same change that recorded the observations below.)_
 
-**Status: PROPOSED, 2026-07-27.** Not applied. When it is, the honest close records what was *observed*
-after the toggles, not that they were flipped: whether the graph lists the Actions ecosystem, and whether
-alerts return something other than `404`.
+**Status: ACCEPTED and APPLIED, 2026-07-27.** All three were enabled by the maintainer. What follows is
+what the API returned *afterwards*, because that is the part that counts — flipping a toggle is a claim
+about an intention, and only the probe is a claim about a state:
+
+| Thing | Before | Observed after, 08:39:48Z |
+|---|---|---|
+| Dependency graph | `404` | `200`, and the SBOM lists `actions/checkout @ 3d3c42e5aac5ba805825da76410c181273ba90b1` — the exact SHA pinned in [`../../.github/workflows/verify.yml`](../../.github/workflows/verify.yml) |
+| Dependabot alerts | `404` | `204` |
+| Dependabot security updates | `disabled` | `enabled`, and `/automated-security-fixes` returns `{"enabled": true, "paused": false}` |
+| Advisories against that pin | `403`, alerts disabled | `[]` |
+| Org default for new repositories | off, all three | **unchanged, deliberately** — this asked about one repository, and the org default is a separate decision |
+
+The estimate was right about the size, which is the more useful thing to have checked than the toggles:
+the graph found **one** dependency, and the SBOM's only other entry is the repository itself. So the
+mechanism is now real and its coverage is exactly the one action this repository pins.
+
+`[]` is the shape worth having seen. Before the flip the same endpoint returned `403 Dependabot alerts are
+disabled`, and the distance between those two answers is the distance between *a check that ran and found
+nothing* and *a check that could not run at all* — which is the confusion this proposal was written about,
+appearing one last time in the probe used to close it.
+
+_Not closed by this: the **version**-update side from PR #22. Version-update jobs have no REST endpoint, so
+no probe here can speak to them; that is read at Insights → Dependency graph → Dependabot, and the first
+scheduled run is the Monday after this._
