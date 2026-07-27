@@ -35,10 +35,10 @@ Deliberately thin, and it stays thin:
 | Layer | Today | Arrives |
 |---|---|---|
 | Engine, packs, and spec prose | Markdown (`SKILL.md` / `AGENTS.md` conventions) | now |
-| Verify recipes | Bash + POSIX text utilities; four of the five also need `node` | now |
+| Verify recipes | Bash + POSIX text utilities; every recipe but `docs` also needs `node` | now |
 | Workspace Definition | JSON Schema — a named subset — with JSON manifests | now |
-| `doctor` · `plugin-lint` | Zero-dependency JavaScript on Node, run from the repository | now — [`../cli/`](../cli/) |
-| Tests | `node --test`, node's own runner — no framework, no install | now — [`../cli/`](../cli/), two suites |
+| `doctor` · `plugin-lint` · `compile` | Zero-dependency JavaScript on Node, run from the repository | now — [`../cli/`](../cli/) |
+| Tests | `node --test`, node's own runner — no framework, no install | now — every `*.test.mjs` under [`../cli/`](../cli/), four as of milestone 4 |
 | Plugin packaging | Claude Code plugin + marketplace manifests, engine skills, personas as agents | now — [`../plugin/`](../plugin/) and [`../.claude-plugin/`](../.claude-plugin/) |
 | CLI | TypeScript on Node via `npx` — absorbs `doctor` | milestone 7 |
 
@@ -46,11 +46,12 @@ No framework, no build step, no service, and no package manager: nothing here is
 runs.
 
 **Where the line sits now, precisely.** [`verify/docs.sh`](verify/docs.sh) needs `git`, `bash`, and the
-POSIX text utilities and nothing else. [`verify/json.sh`](verify/json.sh),
-[`verify/doctor.sh`](verify/doctor.sh), [`verify/tests.sh`](verify/tests.sh) and
-[`verify/plugin.sh`](verify/plugin.sh) also need `node`. Each recipe declares its own needs in
-[`workspace.json`](workspace.json), which is what keeps *could not run* distinguishable from *ran and
-failed*.
+POSIX text utilities and nothing else, and it is the only one that stops there: every other recipe —
+[`verify/json.sh`](verify/json.sh), [`verify/doctor.sh`](verify/doctor.sh),
+[`verify/tests.sh`](verify/tests.sh), [`verify/plugin.sh`](verify/plugin.sh) and
+[`verify/compile.sh`](verify/compile.sh) — also needs `node`. Each recipe declares its own needs in
+[`workspace.json`](workspace.json), which is the authority on this line rather than the paragraph you are
+reading, and is what keeps *could not run* distinguishable from *ran and failed*.
 
 **One tool is deliberately outside that line.** `claude plugin validate --strict` — the authority on the
 Claude Code plugin contract — is run by hand at the supervised checkpoints and before a release, and is
