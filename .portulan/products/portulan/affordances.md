@@ -31,10 +31,15 @@
 
 Written at the same level of detail, because a legibility report that lists only strengths is marketing.
 
-- **Nothing runs the verify recipe for you.** The Stop-gate that blocks "done" on a red recipe is
-  milestone 4. Until then it is condition 1 of [`../../dod.md`](../../dod.md) and a habit.
-- **The gate map is not compiled.** It is honoured by people and by review, not by hooks or permissions.
-  The compiler is milestone 4. The platform floor beneath it *is* real; the tiers above it are not.
+- **The Stop-gate runs one recipe, not six.** Since milestone 4 it runs the workspace **default** and
+  blocks "done" on a red or an exit 2 — and releases the session after three blocks. The other five are
+  still condition 1 of [`../../dod.md`](../../dod.md) and a habit.
+- **Two of the four tiers compile; two do not.** Gated actions prompt and the constitution is refused,
+  from [`../../gates.json`](../../gates.json). `auto` and `propose` emit nothing — the compiler adds
+  restriction only, and `propose` is the floor's job. The refusals are printed, never silent.
+- **A compiled gate matches a spelling, not an intent.** A command reaching a gated action by another
+  route escapes it; one wrapper level is peeled and no more. The platform floor beneath is what is
+  indifferent to spelling.
 - **`doctor` validates form, not truth.** It checks that the manifest conforms, that every path
   resolves, that the cross-references hold, that repo-card and gate-map claims match the tree, and that
   every rule's provenance is well-formed. It cannot tell whether a document at the end of a resolving

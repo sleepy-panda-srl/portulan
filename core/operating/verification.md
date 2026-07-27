@@ -33,8 +33,15 @@ is the machine check that fires when an agent tries to end a task: it runs the t
 blocks "done" if the recipe is not green. The engine defines the contract — a task declares its verify
 recipe; the gate runs it on Stop. The recipe resolves down the cascade — the **workspace** sets the
 default, a **repo card** overrides it, a **task** may specialize — and the **compiler** wires the gate
-to the host. _(Runner built in milestone 4 — named here as the contract the loop's Verify phase
-relies on.)_
+to the host.
+
+The runner arrived in milestone 4, and two of its properties are contract rather than detail. A recipe
+that **could not run** blocks exactly as a red one does: "nothing looked" must never be read as "nothing
+wrong". And the gate carries an **iteration cap** — a host's end-of-turn event is not the same event as
+*the task is finished*, so a gate that blocked indefinitely would make a red working copy undriveable,
+including by the session opened to repair it. The cap is a real weakening and the workspace states its
+number; what the gate guarantees is that a red is unmissable, and the platform floor is what makes it
+binding. _(Provenance: verification-first — Cherny; bounded iteration — the Ralph Wiggum loop.)_
 
 ## Definition of done
 

@@ -1,9 +1,29 @@
 # Gate map — what an agent may do in this repository
 
 > The **policy** half of [`../core/operating/autonomy.md`](../core/operating/autonomy.md). Core defines
-> the tiers — Auto, Propose, Gated — as universal mechanism; this file binds *this repository's* concrete
-> actions to them, because which action is dangerous is a property of the team, not of the engine. When
-> the enforcement compiler arrives (milestone 4), this table is its input.
+> the tiers — Auto, Propose, Gated, Prohibited — as universal mechanism; this file binds *this repository's* concrete
+> actions to them, because which action is dangerous is a property of the team, not of the engine.
+
+## Where the policy actually lives, since milestone 4
+
+**This file is the rationale. [`gates.json`](gates.json) is the policy.** Each bullet below carries the
+`rule-id` of the rule that enforces it, and the two are checked against each other **both ways** — a rule
+here with no id, or an id here that no rule declares, fails the suite. *(The reverse direction has a
+boundary worth knowing: it recognises a citation by its shape, three or more hyphenated segments in a code
+span, so a two-segment invention would not be caught. Measured at the pre-commit checkpoint, and stated
+rather than tightened — an allowlist of every non-rule term in this file would need maintaining, and a
+checker nobody maintains is the fail-open one step later.)* That is deliberate and it is the
+narrow thing a checker can actually hold: two files stating one policy is this repository's signature
+defect, and *"the gate map is the compiler's input"* — which this paragraph replaced — had been false from
+the moment a separate policy file existed.
+
+What no check here can hold is whether a *sentence* below contradicts the rule it names. Prose about a
+fact is outside what a claims lint sees, the same boundary that let this file claim the agent identity did
+not exist for hours after it did. So: **where they disagree, `gates.json` is authoritative**, because it is
+the one that compiles.
+
+Two tiers below compile to nothing at all, on purpose, and the compiler prints them as refusals rather than
+passing over them in silence — see [What the compiler refuses](#what-the-compiler-refuses).
 
 ## The tiers, bound
 
@@ -19,18 +39,19 @@ never the working copy: it is that an Auto action cannot change what the reposit
 anything in front of anyone. A pushed working branch is visible and is not yet a claim on the repository. What
 that visibility costs is stated below rather than defined away.
 
-- Read anything in the repository, including git history.
-- Create and edit files on a working branch, in a worktree.
-- Run [`verify/docs.sh`](verify/docs.sh) or any read-only shell command.
-- Commit to a working branch — never to `main`.
-- **Push a working branch to `origin`, including its first push.** Never `main`, which the platform
+- `read-anything-in-the-repository` — including git history.
+- `edit-on-a-working-branch` — create and edit files on a working branch, in a worktree.
+- `run-a-verify-recipe` — [`verify/docs.sh`](verify/docs.sh) or any read-only shell command.
+- `commit-to-a-working-branch` — never to `main`.
+- `push-a-working-branch` — **to `origin`, including its first push.** Never `main`, which the platform
   refuses anyway. See below for why this stopped being Gated. Force-pushing a working branch is included,
   with `--force-with-lease` rather than `--force`: the lease refuses the push if the remote moved since it
   was last fetched, which is the difference between rewriting your own history and silently discarding
   someone else's. Bare `--force` on a shared remote is the one part of this that is not recoverable inside
-  a working copy, so it does not belong in this tier.
-- Draft memory entries, task files, handoffs, and proposals.
-- Delegate to a subagent persona ([`../core/personas/`](../core/personas/)).
+  a working copy, so it does not belong in this tier — it is `force-push-without-a-lease`, Gated below.
+- Draft memory entries, task files, handoffs, and proposals. _(Covered by `edit-on-a-working-branch`.)_
+- Delegate to a subagent persona ([`../core/personas/`](../core/personas/)). _(No tool-level rule: which
+  subagents exist is the plugin's business, not the gate policy's.)_
 
 **Pushing a working branch was Gated until 2026-07-27, and the argument for gating it did not survive
 inspection.** It is recorded rather than quietly dropped, because the reasoning it replaces is still the
@@ -60,15 +81,16 @@ one-collaborator private repository and is the thing to revisit first if either 
 
 Reversible but consequential: it changes what the repository says, or how it behaves.
 
-- Open a pull request. **An agent never merges its own pull request on its own authority** — what
+- `open-a-pull-request`. **An agent never merges its own pull request on its own authority** — what
   stays forbidden is an agent deciding for itself that a change is ready to land. Merging itself is
   Gated below, and as that tier's header says, the gate is the maintainer's decision rather than his
   keystroke: he may review a pull request and then instruct an agent to perform the merge. Default
   when nothing is said: open the pull request and hand it over.
-- Add or change doctrine in [`../core/`](../core/), a template, a persona, or a skill.
-- Add or change anything in this workspace, including this file.
-- Update the Status column or the Session log in [`../docs/plan.md`](../docs/plan.md).
-- Change the verify recipe — and *relaxing* a check is the case to scrutinise hardest, because it is the
+- `change-doctrine` — [`../core/`](../core/), a template, a persona, or a skill.
+- `change-this-workspace` — anything here, including this file and [`gates.json`](gates.json).
+- `change-the-plan` — the Status column or the Session log in [`../docs/plan.md`](../docs/plan.md).
+- `change-a-verify-recipe` — and *relaxing* a check is the case to scrutinise hardest, because it is the
+  one change that makes every future "green" mean less.
   one change that makes every future "green" mean less.
 
 ### Gated — explicit human approval, per action, before it happens
@@ -98,22 +120,88 @@ protect." That note was right about the hazard and wrong about its scope — **a
 neighbouring tier, does not reach the actions it was meant to govern.** The lesson generalises past this
 file: where a rule and its clarification live apart, only the rule gets read.)_
 
-- Merge a pull request; delete a remote branch.
-- Change repository settings — **visibility above all** — collaborators, or branch protection.
-- Create, rename, transfer, or delete a repository.
-- Tag or publish a release; publish to a package registry or a plugin marketplace.
-- Register or change a domain; anything that spends money.
-- Send any message or artifact outside this repository on the team's behalf.
+- `merge-a-pull-request`, and `delete-a-remote-branch` — which is a push, and is the one push spelling
+  that did not move to Auto, because it destroys a ref on a shared remote rather than adding one.
+- `force-push-without-a-lease` — bare `--force`. `--force-with-lease` is Auto above; the lease is the
+  whole difference, and it is why these are two rules rather than one with a caveat.
+- `change-repository-settings` — **visibility above all**. And `change-settings-through-the-api`,
+  because branch protection and collaborators are changed through `gh api` rather than `gh repo edit`;
+  this repository's own floor was configured that way, so a rule naming only the first would have had a
+  sentence broader than its matcher.
+- `create-a-repository` and `delete-a-repository`. `rename-or-transfer-a-repository` is named too and
+  compiles to **nothing** — a transfer is ordinarily a web-UI action and no permission rule reaches it.
+- `tag-a-release` and `publish-a-release`; `publish-to-a-package-registry`, which covers a plugin
+  marketplace.
+- `spend-money-or-register-a-domain`.
+- `send-something-outside-this-repository` on the team's behalf.
+
+The last two compile to **nothing**, and the policy says why in its own words rather than leaving a
+reader to notice the absence: neither has a tool-level surface a permission rule can reach. A matcher
+pretending to cover "send a message outward" would be worse than the honest gap, because it would read
+as enforcement. They stay prompt-level, and the compiler prints them as refusals on every run.
 
 ## Above the tiers: what no agent may do at all
 
-[`../docs/vision.md`](../docs/vision.md) is the constitution, and it is **human-owned**. No agent edits
-it — not with approval, not as a proposal that rewrites it in place. An agent that believes the
-constitution is wrong raises the question with the maintainer and stops.
+`edit-the-constitution` — [`../docs/vision.md`](../docs/vision.md) is the constitution, and it is
+**human-owned**. No agent edits it — not with approval, not as a proposal that rewrites it in place. An
+agent that believes the constitution is wrong raises the question with the maintainer and stops.
 
 _Why this is a prohibition rather than simply the Gated tier: every other change in this repository is
 graded against that file. An agent that can edit the standard it is judged by can launder any other
 change past its own grader, and the gate stops meaning anything._
+
+Since milestone 4 this is the one rule with a **fourth tier of its own** in [`gates.json`](gates.json):
+`prohibited`, not `gated`. The distinction is load-bearing rather than decorative. Gated means *approvable
+per action* and compiles to a prompt; prohibited means *no approval exists* and compiles to a flat refusal.
+A three-tier policy would have had to file this under Gated, and the compiler would then have emitted a
+prompt — turning "no agent edits it, ever" into "no agent edits it unless someone clicks yes". Found at the
+session-open checkpoint, before the schema was written, by a supervisor counting the classes in this file
+against the three the implementer had planned.
+
+## What the compiler refuses
+
+[`../cli/compile.mjs`](../cli/compile.mjs) turns [`gates.json`](gates.json) into
+[`../.claude/settings.json`](../.claude/settings.json) — permission rules and hooks. Every rule ends in
+exactly one of **compiled** or **refused with a stated reason**, and the counts are asserted by the suite,
+because the distinctive failure of a compiler that emits gate machinery is a rule that goes in and nothing
+comes out: the map reads as configured and the machine enforces nothing.
+
+Three kinds of refusal, all printed on every run:
+
+| Refusal | Why |
+|---|---|
+| tier `auto` | Unattended by definition. Emitting an `allow` rule would *loosen* a check rather than add one — the maintainer's ruling, 2026-07-27: the compiler only ever adds restriction. |
+| tier `propose` | Enforced by the platform floor — pull request, required check, review — not by a permission rule on one machine. |
+| action `none` | No tool-level surface exists. Spending money and sending something outward are the two here. |
+
+**Two layers are emitted for every gate, and only one of them is the gate.** The permission rule holds;
+the hook supplies the sentence. That split is forced by a measurement rather than chosen: on CLI 2.1.220 a
+hook that *crashes* fails **open** — the tool proceeds — on the identical wiring that blocks when the hook
+is healthy. A permission rule does not fail open. So [`compile/gate.mjs`](compile/gate.mjs) is written to
+step aside silently on any internal error, handing the decision back to the layer that cannot be removed by
+a syntax error.
+
+**The honest holes, named because they are the ones to know.** Three of them, and the first is smaller than
+an earlier draft of this paragraph claimed — that draft said the wrapper spelling "falls through to the
+host's default mode", which was true *before* the hook existed and false of the shipped configuration. A
+pre-commit supervisor measured it and found the hook's `ask` governing and its sentence reaching the agent.
+Corrected here rather than left, because a gate map that overstates a hole is as wrong as one that hides it.
+
+1. **Spellings neither layer sees.** The permission rule matches a literal prefix; the hook peels **one**
+   shell wrapper. Two wrappers, a heredoc, an interpolated variable, or a command assembled at runtime
+   reach neither. This is asserted as a test rather than only written down, so anyone tempted to call this
+   layer a rail meets the counterexample.
+2. **A local `allow` rule beside the compiled gates is unmeasured.** `.claude/settings.local.json` is
+   git-ignored, so an adopter's own allow rules sit invisibly next to these. A compiled `deny`/`ask` beats
+   an `allow` for the *same* pattern; what a broad local `Bash` allow does to the *wrapper* spelling has
+   not been measured, and is not claimed either way.
+3. **A rule whose sentence is broader than its matcher.** Guarded against by splitting rather than by
+   trusting prose — `rename-or-transfer-a-repository` compiles to nothing and says so, rather than hiding
+   inside a neighbour's matcher.
+
+All of which is the same point: **this layer is a convenience above a rail, not the rail.** The rail is the
+platform floor below, which refuses the push at the server regardless of what any local file says, and is
+the only layer indifferent to how a command was spelled.
 
 ## Which identity acts
 

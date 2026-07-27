@@ -52,5 +52,6 @@ compliance page is correct, which is the only way that repository can be badly w
   notice a bad deploy. The deploy gate is a human in a dashboard
   ([`../gate-map.md`](../gate-map.md)).
 - **Nothing here can run in this repository.** Rooftop's repositories are fictional. These are
-  declarations, and the Portulan repository's `doctor` never executes a workspace's recipes in any case
-  — that is the Stop-gate runner, milestone 4.
+  declarations, and the Portulan repository's `doctor` never executes a workspace's recipes in any case.
+  Executing one is the Stop-gate runner (milestone 4) — and Rooftop has not compiled a gate policy, so no
+  Stop-gate fires for it either.

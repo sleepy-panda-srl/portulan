@@ -152,6 +152,16 @@ refuses it. The boot handled the workspace half correctly regardless — which i
 it looks like a boot with no engine in context. Step 1 of
 [`skills/portulan/SKILL.md`](skills/portulan/SKILL.md) now says so.
 
-No hooks and no settings ship yet. Hooks belong with the enforcement compiler at milestone 4, which is
-where the gate map stops being honoured by people and starts being enforced by machinery — shipping a
-hooks file before then would be packaging an enforcement that does not exist.
+**Settings ship in the payload as of milestone 4, and they are inert for you.**
+[`../.claude/settings.json`](../.claude/settings.json) is this repository's own compiled enforcement —
+its push gates, its Stop-gate. It is a file in the tree, so an install copies it; measured, a plugin's
+`.claude/settings.json` has **no effect on the installer** and activates only when this repository is
+the project.
+
+**No hooks directory ships, and that is deliberate rather than pending.** A plugin carrying
+`hooks/hooks.json` has those hooks fire for everyone who installs it, in unrelated projects — measured,
+with a positive control. Putting compiled enforcement there would push Sleepy Panda's gate map onto
+strangers' machines, denying their pushes and blocking their sessions over a policy they never adopted.
+See [`../.portulan/memory/a-plugin-payload-can-enforce-on-strangers.md`](../.portulan/memory/a-plugin-payload-can-enforce-on-strangers.md).
+When Portulan ships gate enforcement *for* an adopter, it will be by compiling **their** policy into
+**their** workspace — never by shipping ours inside the payload.

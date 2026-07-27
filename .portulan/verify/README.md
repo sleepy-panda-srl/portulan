@@ -7,9 +7,9 @@
 
 ## The recipes
 
-Five, as of milestone 3. All are declared in [`../workspace.json`](../workspace.json), which is also
-where the **default** is named — [`docs.sh`](docs.sh), the one the Stop-gate will run when nothing more
-specific applies. Run any of them from anywhere in the tree:
+Six, as of milestone 4. All are declared in [`../workspace.json`](../workspace.json), which is also
+where the **default** is named — [`docs.sh`](docs.sh), the one the Stop-gate now actually runs when
+nothing more specific applies. Run any of them from anywhere in the tree:
 
 ```
 ./.portulan/verify/docs.sh
@@ -17,6 +17,7 @@ specific applies. Run any of them from anywhere in the tree:
 ./.portulan/verify/doctor.sh
 ./.portulan/verify/tests.sh
 ./.portulan/verify/plugin.sh
+./.portulan/verify/compile.sh
 ```
 
 | Recipe | Covers | Needs |
@@ -26,6 +27,7 @@ specific applies. Run any of them from anywhere in the tree:
 | [`doctor.sh`](doctor.sh) | both workspaces validate: schema, paths, cross-references, claims against the tree, provenance | `bash`, `git`, `node` |
 | [`tests.sh`](tests.sh) | [`../../cli/doctor.test.mjs`](../../cli/doctor.test.mjs) and [`../../cli/plugin-lint.test.mjs`](../../cli/plugin-lint.test.mjs) pass | `bash`, `node` |
 | [`plugin.sh`](plugin.sh) | the packaging: both manifests parse and agree, component paths resolve, declared skills and agents are real | `bash`, `git`, `node` |
+| [`compile.sh`](compile.sh) | the compiled enforcement in [`../../.claude/settings.json`](../../.claude/settings.json) is exactly what [`../gates.json`](../gates.json) compiles to | `bash`, `node` |
 
 Exit `0` green · `1` red · `2` could not run — and that third code is why each recipe declares its needs
 in the manifest rather than discovering them: a recipe that *could not run* must never be mistaken for
@@ -34,6 +36,16 @@ one that ran and passed.
 **The last three are wrappers, and the wrapper is the point.** Each delegates to `node`, and each checks
 for it first. `bash -c "node …"` on a machine without `node` exits `127`, which is neither a verdict about
 the repository nor "could not run" — the wrapper is where that gets turned into a `2` deliberately.
+
+**[`compile.sh`](compile.sh) never writes.** It recompiles in memory and byte-compares. A verify recipe
+that repairs what it is checking always passes, which is a fail-open dressed as a convenience — and this
+is the recipe most tempting to write that way, because the repair is one function call away.
+
+**And it cannot tell you the enforcement works.** It proves the artifact matches the policy. Whether the
+host *honours* the artifact is a fact about a running host, and CI installs nothing by stated doctrine —
+the same boundary that keeps `claude plugin validate --strict` out of the recipes. Both halves were
+measured at this milestone's checkpoints, and the measurement is version-stamped in
+[`../compile/README.md`](../compile/README.md) because it is a fact about one CLI version.
 
 **What [`plugin.sh`](plugin.sh) deliberately does not run.** `claude plugin validate --strict` is the
 authority on the Claude Code plugin contract, and it is **not** a recipe: CI installs nothing by stated
@@ -125,6 +137,7 @@ less.
 | `parse` | Every tracked `.json` file is well-formed. | From milestone 2 the repository's policy layer *is* JSON. A manifest that does not parse gates nothing, and it fails at the moment it is needed rather than when it is written. |
 | `doctor` | Both workspaces conform to the Workspace Definition, their paths resolve, their claims match the tree, and every rule carries checkable provenance. | The workspace layer is where a team's policy lives, and until this existed every "this workspace conforms" sentence in the repository was an assertion. Its first run found three rules whose provenance the repository had already mandated and not held. |
 | `tests` | The test suites pass. | The validators are the first things here that can be *subtly* wrong rather than visibly broken — a schema keyword silently ignored looks identical to one enforced. A linter can be judged by reading it; a validator cannot. |
+| `compile` | [`../../.claude/settings.json`](../../.claude/settings.json) is byte-identical to what [`../gates.json`](../gates.json) compiles to. | The artifact is generated *and* committed — generated so the policy is the single source, committed so the gate wiring is reviewable in a diff. That combination invites exactly one failure: a hand-edit that works until the next compile silently reverts it. This is the check that makes that loud. |
 | `plugin` | Both packaging manifests parse and agree; every component path resolves inside the tree — after canonicalisation, so a symlink out of it is an escape rather than containment; every declared skill and agent is a real artifact with a kebab-case `name` and a non-empty `description`. | From milestone 3 the repository *is* a distribution channel, and a marketplace declaring no plugins — or a skill path resolving to nothing — installs cleanly and delivers nothing. The platform's own validator reports the empty-marketplace case as a *warning*, which is the severity a milestone walks past. |
 
 ## Provenance

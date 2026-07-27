@@ -37,7 +37,9 @@ are the point:
 | [`products/`](products/) | The product layer, one directory per product — mission/what/why, and agent affordances |
 | [`gate-map.md`](gate-map.md) | The policy half of autonomy: concrete actions bound to the engine's tiers |
 | [`dod.md`](dod.md) | Definition of done here — this workspace's extension of core's floor |
-| [`verify/`](verify/) | The verify recipes the Stop-gate will run, and what each check enforces |
+| [`verify/`](verify/) | The verify recipes — one of which the Stop-gate now runs — and what each check enforces |
+| [`gates.json`](gates.json) | The gate policy the enforcement compiler reads: actions bound to tiers, in this workspace's vocabulary rather than a host's |
+| [`compile/`](compile/) | The runtime the compiled artifact points at — the `PreToolUse` gate and the `Stop` gate |
 | [`tools/`](tools/) | Operator tooling — how this repository is *run*, as distinct from how a change is checked |
 | [`repos/`](repos/) | Repo cards — one per repository this workspace covers |
 | [`memory/`](memory/) | Durable facts with provenance, one per file |
@@ -67,9 +69,11 @@ Honest limits, each with the milestone that closes it:
   It runs in CI on every pull request. What it cannot check is whether any of these documents is still
   *true* — whether the gate map's tiers are honoured, whether a mission statement has drifted, whether a
   sealed stamp describes a real incident. The machine catches absence; the human judges substance.
-- **No compiled gates.** [`gate-map.md`](gate-map.md) is read and honoured by people and agents; the
-  compiler that turns it into hooks and permissions is milestone 4, so the map's authority is review
-  rather than machinery. The **platform floor beneath it is configured** — `main` rejects direct pushes
+- **Compiled gates, as of milestone 4 — for two tiers of four.** [`gates.json`](gates.json) compiles to
+  [`../.claude/settings.json`](../.claude/settings.json), so Gated actions prompt and the constitution is
+  refused outright. `auto` and `propose` compile to **nothing**, deliberately: the compiler emits
+  restriction only, and `propose` is the platform floor's job. Those refusals are printed on every run
+  rather than passed over. The **platform floor beneath it is configured** — `main` rejects direct pushes
   and requires the status check `workspace-verify` green, with no exemption for administrators — so what
   still rests on review is the tiers above the floor, not the floor. _(The exact context string matters
   when cross-checking branch protection: it is the job id, not the workflow's display name.)_

@@ -64,5 +64,7 @@ from the repository root. It validates the manifest against
 cross-references, and reports the sealed proportion. It exits `0`.
 
 What it does **not** do here is run Rooftop's verify recipes: `make check` needs a repository that does
-not exist. The recipes are declarations, and `doctor` never executes a recipe in any workspace — that is
-the Stop-gate runner, milestone 4.
+not exist. The recipes are declarations, and `doctor` never executes a recipe in any workspace. Executing
+one is the Stop-gate runner (milestone 4), which Rooftop has not compiled — it declares no `gates`, so
+nothing here is enforced by machinery. That is the ordinary state of a workspace, and worth seeing in the
+demo rather than only in the one repository that did compile.

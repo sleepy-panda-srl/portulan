@@ -31,7 +31,13 @@ recipes, which [`../verify/README.md`](../verify/README.md) states plainly. Rela
 [`readme-map-must-match-shape.md`](readme-map-must-match-shape.md), the other rule minted from a defect
 rather than stated in advance.
 
-**Retire when:** the recipes are executed by a runner that distinguishes the exit codes itself and fails
-closed on a recipe that examined nothing — the Stop-gate runner, milestone 4. At that point this rule
-should *move* into the runner's contract rather than be deleted, because the underlying asymmetry does
-not go away.
+**Partly discharged, and deliberately not retired.** The Stop-gate runner arrived in milestone 4 and it
+does distinguish the codes — [`../compile/stop.mjs`](../compile/stop.mjs) blocks on exit 2 exactly as it
+blocks on exit 1, so "nothing looked" cannot read as "nothing wrong". The contract moved into
+[`../../core/operating/verification.md`](../../core/operating/verification.md), which is where the retire
+condition said it should go. **The rule stays** because the runner covers one recipe in one workspace and
+the asymmetry it names applies to every check anyone writes here — including, immediately, the new sixth
+recipe and the runner itself.
+
+**Retire when:** nothing in this repository enumerates anything without a precondition — which is a
+property of the whole tree and not of one runner, and is therefore unlikely to arrive as a single change.

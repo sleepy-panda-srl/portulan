@@ -37,8 +37,9 @@ The loop runs inside a finite attention window, so context is managed, not hoard
   with an ISO date: `YYYY-MM-DD-{slug}.md`. Naming the form matters, because a rule justified by being
   checkable has to say what the checker looks at; a date buried in prose would need parsing and would be
   read differently by every writer. It also makes the series sort chronologically for free. An unbroken
-  series is what makes the record machine-readable: the session-end gate arrives in milestone 4, the
-  librarian that mines the series in milestone 5. _(Provenance: Cognition. See `../templates/handoff.md`.)_
+  series is what makes the record machine-readable: the session-end gate arrived in milestone 4 — it
+  checks that a handoff dated today exists, never its length or its shape — and the librarian that mines
+  the series is milestone 5. _(Provenance: Cognition. See `../templates/handoff.md`.)_
 - **Subagents are context firewalls.** Fan work out to a persona with its own window and return only
   the conclusion; the parent's budget stays clean. Read in parallel, write from one place. _(See
   `../personas/`. Provenance: HumanLayer; Cognition — read-parallel / write-isolated.)_

@@ -255,7 +255,7 @@ describe("the schema validator implements exactly the declared subset", () => {
 
 describe("the schema declares which Workspace Definition version it implements", () => {
     test("the shipped schema carries it in `$id`", () => {
-        assert.deepEqual(schemaVersion(SCHEMA), { major: 2, minor: 0 });
+        assert.deepEqual(schemaVersion(SCHEMA), { major: 2, minor: 1 });
     });
 
     test("a schema whose `$id` does not carry one is refused", () => {
@@ -324,6 +324,31 @@ describe("path slots resolve, and escapes are reported rather than failed", () =
         const failures = severities(checks(findings, "paths"), "fail");
         assert.equal(failures.length, 1);
         assert.match(text(failures), /dod\.md/);
+    });
+
+    test("the top-level `gates` path is resolved like any other — a policy file that does not exist fails", async () => {
+        // Regression. `gates` shipped for one checkpoint with `../spec/slots.md` already promising
+        // "What `doctor` checks: that the path resolves", and nothing resolving it — so a manifest
+        // naming a policy file that was not there validated GREEN. A mandate nothing checks is
+        // already broken; this is the check.
+        const dir = tree(scratch(), {
+            ...minimalFiles,
+            "workspace.json": JSON.stringify({ ...wellFormed(), gates: "no-such-policy.json" }),
+        });
+        const { findings } = await inspect(dir, { schema: SCHEMA });
+        const failures = severities(checks(findings, "paths"), "fail");
+        assert.equal(failures.length, 1);
+        assert.match(text(failures), /no-such-policy\.json/);
+    });
+
+    test("a present `gates` policy resolves cleanly", async () => {
+        const dir = tree(scratch(), {
+            ...minimalFiles,
+            "gates.json": JSON.stringify({ portulan: { spec: "2.1" }, rules: [] }),
+            "workspace.json": JSON.stringify({ ...wellFormed(), gates: "gates.json" }),
+        });
+        const { findings } = await inspect(dir, { schema: SCHEMA });
+        assert.equal(severities(checks(findings, "paths"), "fail").length, 0);
     });
 
     test("a directory slot pointing at a file fails, and the reverse too", async () => {

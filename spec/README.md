@@ -129,7 +129,8 @@ workspace with no constitution slot and a green report.
 | Workspace claims match the tree | `doctor` | **Built, where a tree is declared** — repo-card build/test/run lines and layout, and the gate map's required-check claim. A workspace with no `tree` has those claims *reported unverifiable*. |
 | A rule's provenance is well-formed | `doctor` | **Built.** On `type: rule` records in the `memory` slot; the form only, never the truth. |
 | Sealed proportion reported | `doctor` | **Built.** Over rules, which is the denominator the mandate uses. |
-| The recipes a workspace declares actually run | Stop-gate runner | Milestone 4. `doctor` reads recipes and never executes one. |
+| The recipes a workspace declares actually run | Stop-gate runner | **Built** (milestone 4), for the **default** recipe only, and outside `doctor` — which still reads recipes and executes none. A non-default recipe declaring a tool it does not have still passes. |
+| The gate policy compiles to host enforcement | `compile` | **Built** (milestone 4). Every rule ends as compiled or refused-with-a-reason; the emitted artifact is held to the policy by a verify recipe. That the *host* honours it is not checkable here — CI installs nothing. |
 | A rule's link resolves | — | Not built, and not planned as a gate: dereferencing needs the network, and a gate that fails for reasons unrelated to the change under test is worse than no gate. |
 | Agent-legibility scored | `doctor` | Not built. The `affordances` slot is the input such an audit would read; it is not the audit. |
 

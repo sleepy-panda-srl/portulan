@@ -27,6 +27,14 @@ coverage/
 /BOOTSTRAP.md
 /_local/
 
+# `.claude/` is now PARTLY tracked: `.claude/settings.json` is the compiled enforcement
+# (milestone 4) and belongs in review. Everything else the host puts there is local session
+# state. Ignoring the siblings rather than the directory is deliberate — a blanket `/.claude/`
+# would silently exclude the generated gate file, and a gate nobody can see in a diff is the
+# failure this whole rail exists against.
+/.claude/*
+!/.claude/settings.json
+
 # The constitution + plan live ONLY in docs/ (docs/vision.md + docs/plan.md) — single
 # canonical source. These root-level guards ensure that if a vision.md or plan.md ever
 # reappears at the repo root, it can never be tracked or pushed.
