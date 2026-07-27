@@ -1083,8 +1083,8 @@ the seam applies here too: no client-identifying references)_
   duplicated**: it named a precondition that runs and fails, and never reached one that was never
   installed, which yields the same empty output and the same green. Every recipe now guards its whole
   command list up front and exits `2`; the probe returns `2` in all thirty cases — the thirty being
-  every previously-unguarded command the five recipes now declare, less `dirname` — with every baseline
-  still green. · **`cli/compile.mjs`, two defects from #31**: a shell target ending in `/` was
+  every previously-unguarded command the five recipes now declare, less `dirname` — and a wider sweep
+  over *every* entry in *every* guard list, **43 cases**, likewise, with all six baselines still green. · **`cli/compile.mjs`, two defects from #31**: a shell target ending in `/` was
   unmatchable by `matchesRule` while the emitted `Bash(target:*)` rule prefix-matches on the host, so
   the two halves the file promises are one definition disagreed — **stated at its real size**, the only
   target of that shape is `auto`, compiles to nothing, and is never read by the runtime gate, so
@@ -1110,17 +1110,24 @@ the seam applies here too: no client-identifying references)_
   records the tier change correctly; only the merged PR's text was thin), the inconsistent `Status:`
   shapes across the other ten proposals (normalising them means inventing a convention nobody stated
   and editing ten decision records to match — the maintainer's call), and `doctor`'s unsized-record KB
-  total, which already discloses the incompleteness it could hide. · **Supervisor fidelity: no
-  fresh-context Fable 5 review was run at any checkpoint, including pre-commit, and this change touches
-  this file — which the standing instruction says requires one. Recorded as a gap in the protocol, not
-  an exemption; the review is owed before merge, and the pull request is the gate that holds it.**
-  *(Closed 2026-07-28: the owed fresh-context Fable 5 review ran pre-merge over the full diff. Verdict
-  do-not-ship on one finding — the population mislabel this entry carried, "48 merged" for what was
-  #1–#48 with #10 closed unmerged and #50 outside the sweep — fixed in this same head. The seam,
-  mechanism, suite and thread-accounting claims were independently reproduced, the guard lists proven
-  complete by running each recipe on a PATH restricted to exactly its declared commands; its advisory
-  that a `..`-climbing path target still compiled was checked and refuted — the refusal and its
-  four-spelling tests are on this branch.)* All
-  six recipes green, suite 249/249, `compile.sh` green so the emitter is unchanged. · Seam scan clean
+  total, which already discloses the incompleteness it could hide. · **Supervisor fidelity: the
+  pre-commit checkpoint was skipped on the first push and recorded here as a gap rather than an
+  exemption; it was then taken, late — Copilot's own review asked for it, Marius authorised it, and a
+  fresh-context Fable 5 supervisor read the full diff against `vision.md`, `plan.md` and `dod.md`.
+  Verdict APPROVE-WITH-ADJUSTMENTS, one must-fix, and it was in the record rather than the machinery:
+  this entry gave its counts without their population — "48 merged" for what is #1–#48, with #10 closed
+  and #50 outside the sweep — which is this change's own defect class landing in its own headline.
+  Corrected above, and the counts re-measured from the API rather than edited by hand.** It verified by
+  execution rather than by reading: the suite at both ends, all six recipes, the false-green matrix
+  reproduced **exactly** on the pre-fix tree, every guard-list removal closing to `2`, and both
+  `compile.mjs` defects demonstrated on the old code and their fixes on the new. It also proved the
+  guard lists complete **and minimal**, by running each recipe with `PATH` restricted to exactly its own
+  list — a check this session had not thought to make. All four of its optional items were taken, the
+  `..` target among them: that advisory was **confirmed, not refuted** — `{"write": "../secrets/"}`
+  compiled to `Edit(./../secrets/**)` on this branch's own head until the refusal landed, and the
+  transcript of that check is the reason the refusal and its four spellings of test exist. Where the
+  supervisor's own review-count differed from this entry's, both proved right for different populations
+  and neither had stated one. No session-open review; no milestone-close (none due). · All
+  six recipes green, suite 255/255, `compile.sh` green so the emitter is unchanged. · Seam scan clean
   across files, commit messages, and branch name. Handoff:
   [`.portulan/handoffs/2026-07-27-the-reviewer-was-right-and-nobody-could-tell.md`](../.portulan/handoffs/2026-07-27-the-reviewer-was-right-and-nobody-could-tell.md).

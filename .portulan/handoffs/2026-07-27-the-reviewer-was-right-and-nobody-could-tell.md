@@ -61,8 +61,10 @@ where a precondition runs and fails; it never reached the case where the precond
 installed, which produces the identical empty output and the identical green. The rule has been
 extended rather than duplicated: **a dependency is a precondition.**
 
-Every recipe now checks its whole command list before running any check, exiting `2`. The same probe
-now returns `2` in all thirty cases, with every baseline still green.
+Every recipe now checks its whole command list before running any check, exiting `2`. The same probe —
+the thirty cases that produced the results above — now returns `2` in every one of them, and a wider
+sweep over *every entry in every recipe's guard list*, **43 cases**, likewise returns `2` with all six
+baselines still green.
 
 ## The rest
 
@@ -74,8 +76,13 @@ now returns `2` in all thirty cases, with every baseline still green.
   gate never reads it. Nothing was mis-enforced; a divergence existed and is now closed by test.
   Separately, an absolute `write`/`read` target was silently rewritten — `/etc/passwd` emitted
   `Edit(./etc/passwd)` and matched any path *ending* `/etc/passwd`. Now refused at compile time, on
-  the same "refuse rather than escape" reasoning as the reserved-character check beside it. Five
-  tests added; suite 244 → 249.
+  the same "refuse rather than escape" reasoning as the reserved-character check beside it — and so is
+  the sibling spelling the supervisor found, a target climbing out with `..`: `../secrets/` emitted
+  `Edit(./../secrets/**)`, which the host may resolve against the parent tree, while `matchesPath` can
+  never match a `/../`-bearing tail, so emitter and matcher disagreed about *which way* it was wrong.
+  Broader and narrower are both wrong; the narrower is worse, being a gate that reads as present and
+  holds nothing. Eleven tests added, including one proving `docs/a..b.md` still compiles — `..` is a
+  path segment, not a substring, and refusing the substring would be a false red. Suite 244 → 255.
 - **`agents/implementer.md`** told the reader "on this repository, pushing a working branch is Auto"
   one clause after telling them the gate map, not this file, decides. These bindings ship with the
   plugin into repositories whose gate maps this one has never seen, so the sentence was both

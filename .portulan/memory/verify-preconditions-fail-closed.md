@@ -32,7 +32,8 @@ empty output and the same green. Measured across all six recipes by removing one
 on `grep`/`sed`/`tr`/`wc`, `plugin.sh` on `sort`/`tr` — plus five runs that went red overall while
 individual checks still printed `ok`, among them `docs.sh` printing `ok    map` having examined zero
 directories. Each recipe now guards **every external command it runs**, exiting `2`, and the same probe
-returns `2` in all thirty cases. So the rule's reach is the *list of inputs*, not only the command that
+returns `2` in all thirty cases — and a sweep over every entry in every guard list, 43 cases, likewise,
+with all six baselines green. So the rule's reach is the *list of inputs*, not only the command that
 builds it: a dependency is a precondition.
 
 **A note on where this came from, since it matters for how much to trust the recipes.** It was found by
