@@ -9,7 +9,15 @@
 
 ### Auto — the agent acts unattended
 
-Recoverable and reversible inside a working copy. Nothing here reaches another person or a shared branch.
+Recoverable and reversible. **Nothing here lands on `main`, and nothing here asks a person for anything** —
+no decision is requested, so nothing waits on one.
+
+That definition was rewritten on 2026-07-27, because the previous one — "recoverable and reversible inside a
+working copy; nothing here reaches another person or a shared branch" — stopped being true the moment
+working-branch pushes moved into this tier. A push does reach a shared remote. The tier's real boundary was
+never the working copy: it is that an Auto action cannot change what the repository *is*, and cannot put
+anything in front of anyone. A pushed working branch is visible and is not yet a claim on the repository. What
+that visibility costs is stated below rather than defined away.
 
 - Read anything in the repository, including git history.
 - Create and edit files on a working branch, in a worktree.
