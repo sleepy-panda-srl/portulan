@@ -165,19 +165,37 @@ export function compile(policy) {
         if (action[kind] !== action[kind].trim()) {
             throw new CompileError(`rule \`${id}\`'s ${kind} target has leading or trailing whitespace, which the host would not match`);
         }
-        // An absolute path target is refused rather than normalised, for the reason directly above.
-        // `pattern()` and `matchesPath()` both strip the leading slash and compare against a
-        // workspace-relative tail, so `"/etc/passwd"` would emit `Edit(./etc/passwd)` and match any
-        // file whose path ends `/etc/passwd` — a gate enforcing something broader than, and different
-        // from, what the policy declares. A workspace needing to gate a path outside its own tree
-        // needs this compiler extended deliberately. Shell targets are exempt: `/usr/bin/git` is a
-        // command spelling, not a path this compiler rewrites. Found by review on #31.
-        if ((kind === "write" || kind === "read") && action[kind].startsWith("/")) {
-            throw new CompileError(
-                `rule \`${id}\`'s ${kind} target ${JSON.stringify(action[kind])} is an absolute path. Both the emitter ` +
-                    `and the runtime matcher compare against a workspace-relative tail, so the gate enforced would be ` +
-                    `broader than the one declared. Refusing rather than silently rewriting it.`,
-            );
+        // A path target that leaves the workspace is refused rather than normalised, for the reason
+        // directly above. Two spellings, one defect: `pattern()` and `matchesPath()` compare against a
+        // workspace-relative TAIL, so neither an absolute target nor one climbing out with `..` means
+        // at enforcement time what it says in the policy.
+        //
+        //   "/etc/passwd"  -> emits `Edit(./etc/passwd)` and matches any file whose path ends
+        //                     `/etc/passwd`, anywhere on the machine — broader than declared.
+        //   "../secrets/"  -> emits `Edit(./../secrets/**)`, which the host may resolve against the
+        //                     PARENT tree, while `matchesPath` can never match a `/../`-bearing tail
+        //                     against a resolved absolute path — narrower than declared, and the
+        //                     emitter and matcher disagree about which.
+        //
+        // Broader and narrower are both wrong, and the second is worse: it is a gate that reads as
+        // present and holds nothing. A workspace needing to gate a path outside its own tree needs
+        // this compiler extended deliberately. Shell targets are exempt: `/usr/bin/git` is a command
+        // spelling, not a path this compiler rewrites. Absolute found by review on #31; the `..`
+        // sibling by the fresh-context supervisor reviewing that fix, which is the same defect one
+        // spelling over.
+        if (kind === "write" || kind === "read") {
+            const escapes = action[kind].startsWith("/")
+                ? "is an absolute path"
+                : action[kind].split("/").includes("..")
+                  ? "climbs out of the workspace with `..`"
+                  : null;
+            if (escapes) {
+                throw new CompileError(
+                    `rule \`${id}\`'s ${kind} target ${JSON.stringify(action[kind])} ${escapes}. The emitter and the ` +
+                        `runtime matcher both compare against a workspace-relative tail, so the gate enforced would not ` +
+                        `be the one declared. Refusing rather than silently rewriting it.`,
+                );
+            }
         }
 
         // --- the three ways a rule ends -------------------------------------------------------

@@ -27,9 +27,13 @@
 set -uo pipefail
 
 # Every external command this recipe runs — see ./docs.sh for the measurement behind the shape.
-# This recipe was already correct on every dependency measured (a missing `find`, `tr` or `wc` each
-# exited 2), because the suite count is checked against zero before anything is run. The guard is
-# here so that correctness is stated rather than incidental, and so the shape is uniform.
+# This recipe was already correct on the three dependencies that can empty its input: a missing
+# `find`, `tr` or `wc` each exited 2, because the suite count is checked against zero before anything
+# runs. Not "correct on everything", and the difference is worth stating rather than rounding off —
+# a missing `rm` exited 0, because `rm` appears only in the EXIT trap and by then the suite had run
+# on real data. A failed cleanup is not a false verdict, which is why it is none of the eleven; the
+# guard covers it anyway, since a recipe that lists what it runs and then runs something else is the
+# drift this loop exists to stop.
 for need in dirname find mktemp node rm tr wc; do
     command -v "$need" >/dev/null 2>&1 || {
         printf 'verify: %s not found — this recipe needs it; see .portulan/verify/README.md\n' "$need" >&2

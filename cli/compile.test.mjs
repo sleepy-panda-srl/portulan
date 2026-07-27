@@ -188,6 +188,31 @@ describe("refusing what it cannot compile", () => {
     });
 
     for (const kind of ["write", "read"]) {
+        test(`a ${kind} target climbing out with \`..\` refuses`, () => {
+            // The sibling of the absolute case, one spelling over: `../secrets/` emits
+            // `Edit(./../secrets/**)` — which the host may resolve against the PARENT tree — while
+            // `matchesPath` can never match a `/../`-bearing tail against a resolved path. The
+            // emitter and the matcher disagree about which way it is wrong, and a gate that reads as
+            // present while holding nothing is the worse half. Found by the supervisor on #51.
+            const p = policy();
+            p.rules[0].action = { [kind]: "../secrets/" };
+            assert.throws(() => compile(p), CompileError);
+        });
+
+        test(`a ${kind} target with an interior \`..\` segment refuses`, () => {
+            const p = policy();
+            p.rules[0].action = { [kind]: "docs/../../etc/" };
+            assert.throws(() => compile(p), CompileError);
+        });
+
+        test(`a ${kind} target merely CONTAINING dots is fine — only a \`..\` segment escapes`, () => {
+            // `..` is a path segment, not a substring: a file legitimately named `a..b.md`, or any
+            // dotfile, must still compile. Refusing on the substring would be a false red.
+            const p = policy();
+            p.rules[0].action = { [kind]: "docs/a..b.md" };
+            assert.doesNotThrow(() => compile(p));
+        });
+
         test(`an absolute ${kind} target refuses rather than being silently made relative`, () => {
             // `pattern()` and `matchesPath()` both strip the leading slash, so `/etc/passwd` compiled
             // to `Edit(./etc/passwd)` and matched any path ENDING in `/etc/passwd` — a gate enforcing

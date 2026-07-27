@@ -1,8 +1,10 @@
 # Handoff — 2026-07-27 · the reviewer was right, and the form it used could not be answered
 
-**State.** Every unaddressed Copilot review comment on the 48 merged pull requests, swept in one pass
-and closed — across doctrine, workspace, mechanism and record. The sweep found two classes, and only
-one of them was visible from the pull-request UI.
+**State.** Every unaddressed Copilot review comment on **pull requests #1–#48** — the whole repository
+at the time, 47 merged and #10 closed — swept in one pass and closed, across doctrine, workspace,
+mechanism and record. The sweep found two classes, and only one of them was visible from the
+pull-request UI. (#50 merged mid-session and was checked separately: no unresolved threads, no
+suppressed comments, nothing owed.)
 
 _(No file count in this line. The first draft said "eight" over a change touching eighteen, and review
 caught it — which is exactly what happened to #48's handoff, in exactly this sentence, one day earlier.
@@ -20,12 +22,21 @@ The rest of the sweep is the finding. GitHub renders a Copilot comment it scores
 **inside the review body**, under `<details><summary>Comments suppressed due to low confidence</summary>`
 — not as a review thread. That form has no *Resolve* button, does not appear in `reviewThreads`, never
 blocks `required_conversation_resolution`, and leaves no trace in any record of addressed feedback.
-Reading all 101 Copilot reviews by their bodies rather than their threads produced **31 unique
-comments** nobody had ever been able to answer.
+Reading all **101** Copilot reviews on #1–#48 by their bodies rather than their threads produced **27
+such blocks declaring 31 comments**, across 28 distinct file locations — three of them are second and
+third comments re-stating one line. Nobody had ever been able to answer any of them.
 
-Nineteen of the thirty-one were already fixed — by later pull requests that happened to cross the same
-ground, not by anyone acting on the comment. Which is the point: the mechanism that closed them was
-luck, and the twelve that survived did so silently.
+Their disposition, counted one by one rather than estimated: **20 already fixed** by later pull
+requests that happened to cross the same ground — not by anyone acting on the comment — **9 fixed
+here**, **1 with nothing in-tree to fix** (#32's, about a merged pull request's description), and
+**1 deferred with its reason stated** (`doctor`'s unsized-record total, which already discloses the
+gap). Which is the point: what closed the twenty was luck, and the ten that needed a decision waited
+for someone to go looking.
+
+_(Both numbers in that first sentence are scoped deliberately, because the first draft was not and a
+supervisor caught it. **101 reviews and 31 comments is #1–#48**, the set this sweep covered. Count
+today's *merged* set instead — 47 of those plus #50, dropping the closed #10 — and it is 102 reviews
+and 29 comments. Neither is wrong; a count without its population is.)_
 
 ## The one that mattered
 
@@ -107,13 +118,30 @@ rebase, and keep both entries with the newest last.
 ## Verification
 
 All six recipes green. Suite 249/249. The dependency probe re-run after the fix: `2` in all thirty
+— every previously-unguarded command the five recipes now declare, less `dirname` —
 cases. `compile.sh` green, so the emitted artifact still matches the policy — the matcher changed,
 the emitter did not.
 
-**Supervision: no fresh-context Fable 5 pre-commit review was run**, and this change touches
-`docs/plan.md`, which the standing instruction says must have one. That is a real gap in the protocol
-rather than an exemption, and it is stated here rather than left for the record to imply otherwise.
-The pull request is the gate; the review is owed before merge.
+**Supervision: the fresh-context pre-commit checkpoint was run, late and on the maintainer's
+instruction.** It was skipped on the first push and recorded here as a gap rather than an exemption;
+Copilot's own review then asked for it, Marius authorised it, and a fresh-context **Fable 5**
+supervisor reviewed the full diff against `vision.md`, `plan.md` and `dod.md`.
+
+Verdict **APPROVE-WITH-ADJUSTMENTS**, one must-fix — and it was in the record, not the machinery:
+*the sweep's own bookkeeping was unscoped*, the single defect class this change exists to remove.
+Every substantive claim held under attempted falsification, by execution rather than reading: the
+suite at both ends (244 → 249), all six recipes green, the false-green matrix reproduced **exactly**
+on the pre-fix tree (the same eleven pairs, the same five red-with-`ok` runs, `ok    map` printed with
+`awk` gone), all guard-list removals closing to `2`, and both `compile.mjs` defects demonstrated on the
+old code and their fixes on the new. It also proved the guard lists **complete and minimal**, by
+running each recipe with `PATH` restricted to exactly its own list — a check this session had not
+thought to make.
+
+Its four non-blocking items were all taken: the `..` sibling of the absolute-target refusal (now
+refused and tested), the `rm` cleanup-only shape that `tests.sh`'s comment had rounded off, a
+`compile.sh` comment naming one dependency where it runs two, and a stale `command -v node` spelling
+in this file's own README. The supervisor's own counts came from today's *merged* set rather than
+#1–#48; both are now stated with their populations.
 
 Seam scan clean across files, commit message, and branch name.
 
