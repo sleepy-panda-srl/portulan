@@ -154,7 +154,7 @@ else
         fail "record — no Session log entries found in $PLAN"
     else
         entry=$(awk -v s="$last" 'NR==s{f=1} f && NR>s && (/^- 2[0-9][0-9][0-9]-/ || /^## /){exit} f{print}' "$PLAN")
-        if printf '%s\n' "$entry" | grep -qiE 'seam scan.*clean'; then
+        if printf '%s' "$entry" | tr '\n' ' ' | grep -qiE 'seam scan[^.]{0,120}clean'; then
             pass "record — the newest Session log entry carries a seam attestation"
         else
             fail "record — the newest Session log entry ($PLAN:$last) carries no seam attestation"
