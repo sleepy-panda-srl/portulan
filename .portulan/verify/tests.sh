@@ -26,12 +26,19 @@
 
 set -uo pipefail
 
+# Every external command this recipe runs — see ./docs.sh for the measurement behind the shape.
+# This recipe was already correct on every dependency measured (a missing `find`, `tr` or `wc` each
+# exited 2), because the suite count is checked against zero before anything is run. The guard is
+# here so that correctness is stated rather than incidental, and so the shape is uniform.
+for need in dirname find mktemp node rm tr wc; do
+    command -v "$need" >/dev/null 2>&1 || {
+        printf 'verify: %s not found — this recipe needs it; see .portulan/verify/README.md\n' "$need" >&2
+        exit 2
+    }
+done
+
 root=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." && pwd) || exit 2
 cd -- "$root" || exit 2
-command -v node >/dev/null 2>&1 || {
-    printf 'verify: node not found — this recipe needs it; see .portulan/verify/README.md\n' >&2
-    exit 2
-}
 
 # The count IS the precondition, so establishing it is itself a precondition — the same recursion
 # ../memory/verify-preconditions-fail-closed.md describes, one level in. Piping `find` straight into

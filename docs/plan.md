@@ -979,7 +979,8 @@ the seam applies here too: no client-identifying references)_
   trademark sweep (no PORTULAN/PORTOLAN in classes 9/42 in any register reached; nearest mark PORTOLANO,
   textiles, unrelated; one coexistence disclosed — an academic language-science infrastructure with a
   composite name, judged non-blocking; TMview unreachable, recorded as the sweep's limit), and a seam
-  scan of every surface the flip makes public — tree, full history, branch names, all 43 PR titles and   bodies, every review and issue comment: all clean, the PR-text surfaces swept for the first time. The
+  scan of every surface the flip makes public — tree, full history, branch names, all 43 PR titles and
+  bodies, every review and issue comment: all clean, the PR-text surfaces swept for the first time. The
   flip verified public by anonymous fetch. This entry ships in the truth-up PR correcting what the flip
   falsified: README status, the private-until-clearance memory entry (retire-when fired; rule inverted
   per its own clause), and one supervisor-must-fix sentence in the previous entry, rewritten with its
@@ -1001,12 +1002,13 @@ the seam applies here too: no client-identifying references)_
   `plugin-lint`, which validates plugin roots, and `compile`'s codes mean wrote/drifted/could-not-run.
   `.portulan/repos/portulan.md`: the layout line said "`doctor`, `plugin-lint` and their tests" ten lines
   under a build/test/run block that already names all six recipes, so the omission was local to that line
-  rather than a stale card — and this is the card `doctor`'s claims lint reads. `.portulan/tasks/0004`: opened on "the five verify recipes" with a harness proposed as "a
-  sixth recipe that runs the other five"; corrected to six and seven, with the goal now stating that a sixth
-  recipe and two more suites have been added since it was written while the number testing a recipe is
-  still zero — the five it was born with was right at the time, checked against `workspace.json` at the
-  task's own commit rather than assumed stale. Acceptance criteria untouched — written against `workspace.json` rather than a count, which is
-  why they did not rot. Per `.portulan/memory/a-stated-enforcer-must-be-the-real-one.md`, understating a
+  rather than a stale card — and this is the card `doctor`'s claims lint reads.
+  `.portulan/tasks/0004-a-harness-for-the-verify-recipes.md`: opened on "the five verify recipes" with a
+  harness proposed as "a sixth recipe that runs the other five"; corrected to six and seven, with the goal
+  now stating that a sixth recipe and two more suites have been added since it was written while the
+  number testing a recipe is still zero — the five it was born with was right at the time, checked against
+  `workspace.json` at the task's own commit rather than assumed stale. Acceptance criteria untouched —
+  written against `workspace.json` rather than a count, which is why they did not rot. Per `.portulan/memory/a-stated-enforcer-must-be-the-real-one.md`, understating a
   checker is the same defect as overstating it. · **Supervisor fidelity: fresh-context Fable 5 pre-commit
   review, which returned REQUEST-CHANGES on the pre-collision draft — five must-fix items, including two
   new false claims introduced while fixing old ones and two living documents the sweep had missed; the
@@ -1015,11 +1017,11 @@ the seam applies here too: no client-identifying references)_
   corrected goal ("two recipes" where one was added), and records the moving `main` had already staled —
   all folded in and re-verified. No session-open review; no milestone-close (none due).** · **Merged by
   the session on Marius's explicit instruction** ("merge #48, complete the work") — the Gated tier
-  working as written, his decision rather than his keystroke. It landed **twelve commits behind** `main`
-  and so became an early subject of #46's own rule: **rebased twice**, onto `8dcfa22` and then `9e449ad`
-  as #47 landed too, each time hitting the predicted two-sessions-append-the-Session-log conflict and
-  each time resolved by keeping both entries with this one last, so the `record` check still reads a
-  newest entry that attests the seam; all six recipes re-run green after each rebase. Copilot's second
+  working as written, his decision rather than his keystroke. It came up for merge **twelve commits
+  behind** `main` and so became an early subject of #46's own rule: **rebased twice**, onto `8dcfa22` and
+  then `9e449ad` as #47 landed too, each time hitting the predicted two-sessions-append-the-Session-log
+  conflict and each time resolved by keeping both entries with this one last, so the `record` check still
+  reads a newest entry that attests the seam; all six recipes re-run green after each rebase. Copilot's second
   comment caught this handoff's State line calling the change "three files" when it touches five — an
   understatement in the handoff of a pull request about understatement, now counted with the record in
   it. · Seam scan clean across files, commit messages, and branch name. Handoff:
@@ -1050,3 +1052,56 @@ the seam applies here too: no client-identifying references)_
   by the session on the same standing instruction to complete the work. · Seam scan clean across files,
   commit message, and branch name. Handoff:
   [`.portulan/handoffs/2026-07-27-the-label-check-joins-the-floor.md`](../.portulan/handoffs/2026-07-27-the-label-check-joins-the-floor.md).
+
+- 2026-07-27 · post-M3, in-M4 — no milestone row touched · **Every unaddressed Copilot comment across
+  all 48 merged pull requests, swept in one pass — and the sweep's finding is that most of them were
+  never answerable.** Six review threads stood unresolved; two (#1, #2) already carried a `Fixed in
+  <sha>` reply over a landed fix and were verified as owing nothing, and four were real. The rest came
+  from reading all 101 Copilot reviews *by body* rather than by thread: a comment scored low-confidence
+  is rendered inside the review body under **"Comments suppressed due to low confidence"**, which has no
+  Resolve control, never appears in `reviewThreads`, never blocks `required_conversation_resolution`,
+  and so leaves no trace in any record of addressed feedback. **31 unique such comments**, of which 19
+  had been closed by later pull requests that crossed the same ground by chance rather than by anyone
+  acting on them. · **The one that mattered was three days old.** On #3 the reviewer said `docs.sh`
+  guarded only `git` while depending on `awk`, `sed`, `wc` and the rest, and that this risked "confusing
+  failures or even false greens". Measured by removing one command at a time from `PATH` across all six
+  recipes: **eleven false greens** — `docs.sh` on `sed`/`sort`/`wc`, `doctor.sh` on `sort`/`tr`,
+  `json.sh` on `grep`/`sed`/`tr`/`wc`, `plugin.sh` on `sort`/`tr` — plus five runs that went red overall
+  while individual checks still printed `ok`, the sharpest being `docs.sh` printing `ok    map` having
+  enumerated **zero** directories, inside a check whose own comment warns about exactly that. Only
+  `tests.sh` and `compile.sh` were clean. This is
+  [`.portulan/memory/verify-preconditions-fail-closed.md`](../.portulan/memory/verify-preconditions-fail-closed.md)
+  a second time — a rule whose own provenance is a Copilot comment — and it was **extended rather than
+  duplicated**: it named a precondition that runs and fails, and never reached one that was never
+  installed, which yields the same empty output and the same green. Every recipe now guards its whole
+  command list up front and exits `2`; the probe returns `2` in all thirty cases with every baseline
+  still green. · **`cli/compile.mjs`, two defects from #31**: a shell target ending in `/` was
+  unmatchable by `matchesRule` while the emitted `Bash(target:*)` rule prefix-matches on the host, so
+  the two halves the file promises are one definition disagreed — **stated at its real size**, the only
+  target of that shape is `auto`, compiles to nothing, and is never read by the runtime gate, so
+  nothing was mis-enforced and what is closed is a divergence; and an absolute `write`/`read` target
+  was silently rewritten (`/etc/passwd` → `Edit(./etc/passwd)`, matching any path *ending* there),
+  now refused at compile time. Suite 244 → 249. · `agents/implementer.md` asserted this repository's
+  own Auto/Gated line one clause after saying the gate map decides it — false for adopters, since these
+  bindings ship with the plugin; siblings checked and clean. `.portulan/labels.json` pointed one
+  directory too high at `../memory/…` and `../dod.md`. `.portulan/dod.md` condition 5 still promised the
+  history "goes public when the flip clearance completes", which happened on 2026-07-27. Plus the gate
+  map's "can resolve one", `three-workspaces-not-one.md`'s doubled "public", proposal 0008's status line
+  leading with `REVISED` rather than its state, and in this file a double space, a bare
+  `.portulan/tasks/0004`, and #48 recorded as having "landed twelve commits behind `main`" — which
+  nothing that merged can have done. · **A collision, handled the way #48's was.** The `docs/plan.md:26`
+  "no cockpit" → "no operating cockpit" follow-up #41 left was folded in here and then **taken back
+  out**: #49 opened mid-session carrying the identical edit, and shipping a second copy of a change
+  another open pull request already owns is how two branches end up arguing over one line. #49 carries
+  it; this entry records that it was checked rather than missed. · **Deliberately not fixed**, so the
+  next reader does not re-open them: #32's comment about a thin pull-request description (the tree
+  records the tier change correctly; only the merged PR's text was thin), the inconsistent `Status:`
+  shapes across the other ten proposals (normalising them means inventing a convention nobody stated
+  and editing ten decision records to match — the maintainer's call), and `doctor`'s unsized-record KB
+  total, which already discloses the incompleteness it could hide. · **Supervisor fidelity: no
+  fresh-context Fable 5 review was run at any checkpoint, including pre-commit, and this change touches
+  this file — which the standing instruction says requires one. Recorded as a gap in the protocol, not
+  an exemption; the review is owed before merge, and the pull request is the gate that holds it.** All
+  six recipes green, suite 249/249, `compile.sh` green so the emitter is unchanged. · Seam scan clean
+  across files, commit message, and branch name. Handoff:
+  [`.portulan/handoffs/2026-07-27-the-reviewer-was-right-and-nobody-could-tell.md`](../.portulan/handoffs/2026-07-27-the-reviewer-was-right-and-nobody-could-tell.md).

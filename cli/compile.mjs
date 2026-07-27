@@ -165,6 +165,20 @@ export function compile(policy) {
         if (action[kind] !== action[kind].trim()) {
             throw new CompileError(`rule \`${id}\`'s ${kind} target has leading or trailing whitespace, which the host would not match`);
         }
+        // An absolute path target is refused rather than normalised, for the reason directly above.
+        // `pattern()` and `matchesPath()` both strip the leading slash and compare against a
+        // workspace-relative tail, so `"/etc/passwd"` would emit `Edit(./etc/passwd)` and match any
+        // file whose path ends `/etc/passwd` — a gate enforcing something broader than, and different
+        // from, what the policy declares. A workspace needing to gate a path outside its own tree
+        // needs this compiler extended deliberately. Shell targets are exempt: `/usr/bin/git` is a
+        // command spelling, not a path this compiler rewrites. Found by review on #31.
+        if ((kind === "write" || kind === "read") && action[kind].startsWith("/")) {
+            throw new CompileError(
+                `rule \`${id}\`'s ${kind} target ${JSON.stringify(action[kind])} is an absolute path. Both the emitter ` +
+                    `and the runtime matcher compare against a workspace-relative tail, so the gate enforced would be ` +
+                    `broader than the one declared. Refusing rather than silently rewriting it.`,
+            );
+        }
 
         // --- the three ways a rule ends -------------------------------------------------------
 
@@ -253,7 +267,23 @@ export function matchesPath(candidate, target) {
 export function matchesRule(rule, tool, input = {}) {
     const action = rule?.action ?? {};
     if (typeof action.shell === "string" && tool === "Bash") {
-        return spellings(input.command).some((s) => s === action.shell || s.startsWith(`${action.shell} `));
+        // A shell target ending in `/` is a PATH PREFIX covering the subtree — the meaning `pattern()`
+        // already gives a trailing slash for write and read, and the meaning the emitted
+        // `Bash(target:*)` rule already has on the host, which prefix-matches the command string.
+        // Without this branch the two halves this section exists to keep identical disagreed: for
+        // `"./.portulan/verify/"` the emitted rule covers `./.portulan/verify/docs.sh` and this
+        // matcher did not, because a path prefix is never followed by a space.
+        //
+        // **Stated at its real size.** The one target of this shape in ../.portulan/gates.json is
+        // `run-a-verify-recipe`, which is `auto` — refused from compilation, and skipped by
+        // ../.portulan/compile/gate.mjs, which reads only `gated` and `prohibited`. So nothing was
+        // mis-enforced today; what existed was a divergence between two definitions this file
+        // promises are one, waiting for the first gated rule written in the path form. Fixed on that
+        // basis rather than on an incident. An ordinary command prefix keeps its whitespace boundary,
+        // or `git push` would cover `git pushall`. Found by a Copilot review comment on #31.
+        return spellings(input.command).some((s) =>
+            action.shell.endsWith("/") ? s.startsWith(action.shell) : s === action.shell || s.startsWith(`${action.shell} `),
+        );
     }
     if (typeof action.write === "string" && WRITE_TOOLS.includes(tool)) {
         return matchesPath(input.file_path ?? input.notebook_path, action.write);

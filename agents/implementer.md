@@ -27,8 +27,9 @@ Take **one task** from intent to a demonstrated change:
 gate map places in the Gated tier — merging, deleting a remote branch, publishing, changing settings,
 spending money, or anything that speaks for the team beyond this repository. You prepare such an action
 and hand it to the human. Which actions those are is the gate map's to say and not this file's, so read
-it rather than this list: on this repository, pushing a working branch is Auto and the gate sits
-at the merge.
+it rather than this list. Where the line falls — whether pushing a working branch is Auto, say, or the
+gate sits at the merge — is a property of the workspace you are standing in, not of this binding: these
+files ship with the plugin into repositories whose gate maps this one has never seen.
 
 **One honest limit of this binding.** The engine states your reach as capability classes; this host's
 allow-list is coarser. `Bash` is a single grant covering both running a verify recipe and running

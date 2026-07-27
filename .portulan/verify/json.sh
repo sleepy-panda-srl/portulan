@@ -16,10 +16,18 @@
 
 set -uo pipefail
 
+# Every external command this recipe runs — see ./docs.sh for the measurement behind the shape.
+# `git` and `node` were guarded and the rest were not, so with `grep`, `sed`, `tr` or `wc` absent
+# this recipe exited GREEN over a file list that had gone empty on the way here.
+for need in dirname git grep mktemp node rm sed tr wc; do
+    command -v "$need" >/dev/null 2>&1 || {
+        printf 'verify: %s not found — this recipe needs it; see .portulan/verify/README.md\n' "$need" >&2
+        exit 2
+    }
+done
+
 root=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." && pwd) || exit 2
 cd -- "$root" || exit 2
-command -v git >/dev/null 2>&1 || { printf 'verify: git not found\n' >&2; exit 2; }
-command -v node >/dev/null 2>&1 || { printf 'verify: node not found — this recipe needs it; see .portulan/verify/README.md\n' >&2; exit 2; }
 
 tmp=$(mktemp -d) || exit 2
 trap 'rm -rf -- "$tmp"' EXIT

@@ -26,12 +26,18 @@
 
 set -uo pipefail
 
+# Every external command this recipe runs — see ./docs.sh for the measurement behind the shape.
+# Guarding only `node` left this recipe exiting GREEN with `sort` or `tr` absent, because the
+# workspace list it compares is built by them and two empty lists compare equal.
+for need in dirname git grep node sed sort tr; do
+    command -v "$need" >/dev/null 2>&1 || {
+        printf 'verify: %s not found — this recipe needs it; see .portulan/verify/README.md\n' "$need" >&2
+        exit 2
+    }
+done
+
 root=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." && pwd) || exit 2
 cd -- "$root" || exit 2
-command -v node >/dev/null 2>&1 || {
-    printf 'verify: node not found — this recipe needs it; see .portulan/verify/README.md\n' >&2
-    exit 2
-}
 
 # The validator's own presence is a precondition, and checking it here is not belt-and-braces.
 # `node cli/doctor.mjs` on a missing file exits **1** — demonstrated — which this recipe would pass
