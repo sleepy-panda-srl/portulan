@@ -46,6 +46,6 @@ Re-expressed from public agentic-engineering practice (HumanLayer; Cognition; ve
 The `tools:` list is stated as **capability classes** at engine altitude. Milestone 3 bound them to
 concrete host tools in [`../../agents/implementer.md`](../../agents/implementer.md), and
 the binding is lossy in one direction worth knowing: that host's allow-list has a single `Bash` grant
-covering both *run the verify recipe* and *merge a pull request*, so it cannot express the Auto/Gated line this persona
-draws. The line is held by the workspace's gate map and the platform floor, not by the agent file — which
-is stated in the agent file rather than left for a reader to infer from a tool list.
+covering both *run the verify recipe* and *merge a pull request*, so it cannot express the Auto/Gated
+line this persona draws. The line is held by the workspace's gate map and the platform floor, not by
+the agent file — which is stated in the agent file rather than left for a reader to infer from a tool list.

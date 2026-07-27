@@ -52,14 +52,15 @@ against treating maintainer-at-merge as a substitute.
   because they share a name.
 - **The Copilot ruleset carries only `copilot_code_review`** — only that rule, so a second ruleset does not
   become a divergent copy of the floor.
-- **`review_on_push` was set false and the maintainer reversed it to true the same day.** The original
-  reasoning was that conversation resolution is required on `main`, so a re-review per push would open a
-  merge-blocking thread on every iteration and the gate would get slower the more carefully you worked. That
-  cost is real, but it was weighed against nothing: **with it false, a fix is never re-reviewed.** Every round
-  after the first needs someone to remember to ask, and until they do the pull request reads as reviewed while
-  the reviewed content is several commits stale. This was found by walking into it — three rounds of fixes on
-  #32 sat unreviewed, and the missing round had to be requested by hand. The setting now favours the failure
-  that announces itself (an extra thread to resolve) over the one that stays quiet (a stale review that looks
+- **`review_on_push` was set false and the maintainer reversed it to true the same day.** The
+  original reasoning was that conversation resolution is required on `main`, so a re-review per push
+  would open a merge-blocking thread on every iteration and the gate would get slower the more
+  carefully you worked. That cost is real, but it was weighed against nothing: **with it false, a
+  fix is never re-reviewed.** Every round after the first needs someone to remember to ask, and
+  until they do the pull request reads as reviewed while the reviewed content is several commits
+  stale. This was found by walking into it — three rounds of fixes on #32 sat unreviewed, and the
+  missing round had to be requested by hand. The setting now favours the failure that announces
+  itself (an extra thread to resolve) over the one that stays quiet (a stale review that looks
   current), which is the same preference the rest of this session kept arriving at.
 - **Applied 0007 in a change separate from the one proposing it**, as 0006 was, so the record shows a
   decision taken rather than a proposal that applied itself.
@@ -82,18 +83,19 @@ against treating maintainer-at-merge as a substitute.
   as designed.** Generalised as *a mechanical revert is not a narrative revert*.
 - **Adding the Copilot ruleset made #26 incomplete while #26 was open** — a pull request about uncounted
   rulesets, made inaccurate by adding one.
-- **Every `git push` in this session was handed back to the maintainer to type by hand.** Added after the
-  fact, because it was found after this handoff first merged and belongs in the session's own record rather
-  than only in the fix. The gate map states that the gate is the maintainer's *decision* and not his
-  keystroke — but stated it **once, in the Propose tier, attached to merging**, while `git push` and `Merge a
-  pull request` both sat in the Gated tier, at the time, under a header reading "explicit human approval, per
-  action, before it happens". Nothing connected the two, so the Gated tier was read literally, for a whole
-  session. (`git push` on a working branch moved to Auto later the same day, downstream of this finding.)
-  The original note had predicted exactly this — *"an agent following it literally would have to refuse a
-  direct instruction from the person the rule exists to protect"* — so it was right about the hazard and
-  wrong about its scope. Fixed by hoisting the principle into the Gated header, with the generalisation
-  recorded because it outlives this file: **where a rule and its clarification live apart, only the rule gets
-  read.**
+- **Every `git push` in this session was handed back to the maintainer to type by hand.** Added
+  after the fact, because it was found after this handoff first merged and belongs in the session's
+  own record rather than only in the fix. The gate map states that the gate is the maintainer's
+  *decision* and not his keystroke — but stated it **once, in the Propose tier, attached to
+  merging**, while `git push` and `Merge a pull request` both sat in the Gated tier, at the time,
+  under a header reading "explicit human approval, per action, before it happens". Nothing connected
+  the two, so the Gated tier was read literally, for a whole session. (`git push` on a working
+  branch moved to Auto later the same day, downstream of this finding.) The original note had
+  predicted exactly this — *"an agent following it literally would have to refuse a direct
+  instruction from the person the rule exists to protect"* — so it was right about the hazard and
+  wrong about its scope. Fixed by hoisting the principle into the Gated header, with the
+  generalisation recorded because it outlives this file: **where a rule and its clarification live
+  apart, only the rule gets read.**
 
 ## Open questions
 
