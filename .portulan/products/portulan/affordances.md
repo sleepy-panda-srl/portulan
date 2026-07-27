@@ -66,10 +66,12 @@ Written at the same level of detail, because a legibility report that lists only
   superset: measured on the day both were adopted, the lint passed a manifest the platform refused, and
   the platform passed three broken skills the lint failed
   ([`../../memory/a-checkers-coverage-is-measured-not-named.md`](../../memory/a-checkers-coverage-is-measured-not-named.md)).
-- **There are two test suites, and they cover two files.**
-  [`../../../cli/doctor.test.mjs`](../../../cli/doctor.test.mjs) covers `doctor` and
-  [`../../../cli/plugin-lint.test.mjs`](../../../cli/plugin-lint.test.mjs) covers `plugin-lint`; nothing
-  tests the five verify recipes themselves
+- **The test suites are discovered, not enumerated — and they cover the tooling, not the product.**
+  [`../../verify/tests.sh`](../../verify/tests.sh) runs every `*.test.mjs` under
+  [`../../../cli/`](../../../cli/), counting them before it runs them, so a suite added there is covered
+  without this bullet changing: four as of milestone 4, over `doctor`, `plugin-lint`, the enforcement
+  compiler [`../../../cli/compile.mjs`](../../../cli/compile.mjs), and the Stop-gate runner's arithmetic
+  in [`../../compile/stop.mjs`](../../compile/stop.mjs). Nothing tests the six verify recipes themselves
   ([`../../tasks/0004-a-harness-for-the-verify-recipes.md`](../../tasks/0004-a-harness-for-the-verify-recipes.md)),
-  and there is no other product code yet. Treat green as "the two validators behave, and the documents
-  are internally consistent" — never as "the product works".
+  and there is no other product code yet. Treat green as "the modules those suites reach behave, and the
+  documents are internally consistent" — never as "the product works".
