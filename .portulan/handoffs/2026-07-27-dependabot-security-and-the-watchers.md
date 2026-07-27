@@ -4,6 +4,10 @@
 Six pull requests merged, #24 through #29, `main` at `1f8f756`, 0 open, every branch of this session deleted.
 The task was Dependabot **security** updates; it pulled in four more things that were wrong in the same way.
 Nothing is left in a partial state — see Recoverability.
+*Amended 2026-07-27 (audit remediation): the count above was written before its own merge — #30, the pull
+request this handoff rode in, made it seven. Later the same day #32 and #33 landed as their own arc,
+recorded (as a labelled reconstruction) in
+[`2026-07-27-the-gate-is-the-decision-not-the-keystroke.md`](2026-07-27-the-gate-is-the-decision-not-the-keystroke.md).*
 
 **⚠️ This session ran with no supervision at any checkpoint.** No session-open review, **no pre-commit
 checkpoint before any of the seven commits**, no milestone-close (none was due). The gate map's fallback

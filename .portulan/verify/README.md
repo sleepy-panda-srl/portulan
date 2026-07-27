@@ -22,7 +22,7 @@ nothing more specific applies. Run any of them from anywhere in the tree:
 
 | Recipe | Covers | Needs |
 |---|---|---|
-| [`docs.sh`](docs.sh) — default | links · kernel budget · repo map | `bash`, `git`, POSIX text utilities |
+| [`docs.sh`](docs.sh) — default | links · kernel budget · repo map · record correspondence | `bash`, `git`, POSIX text utilities |
 | [`json.sh`](json.sh) | every tracked `.json` file parses | the above, plus `node` |
 | [`doctor.sh`](doctor.sh) | both workspaces validate: schema, paths, cross-references, claims against the tree, provenance | `bash`, `git`, `node` |
 | [`tests.sh`](tests.sh) | [`../../cli/doctor.test.mjs`](../../cli/doctor.test.mjs) and [`../../cli/plugin-lint.test.mjs`](../../cli/plugin-lint.test.mjs) pass | `bash`, `node` |
@@ -134,6 +134,7 @@ less.
 | `links` | Every relative Markdown link resolves. | The engine is a web of cross-references between doctrine, templates, personas, and skills — progressive disclosure *is* those links. A dead link in a framework about context engineering is a product defect, not a docs defect. |
 | `kernel` | [`../../core/engine.md`](../../core/engine.md) stays within 60 lines. | The always-loaded layer is the scarcest thing the framework spends, and the budget is constitutional. A budget that lives only in prose is the first thing a busy session negotiates with. |
 | `map` | Every top-level entry appears in the root `README.md` layout table. | Agent legibility: a repository whose own map omits directories teaches an agent a false shape of the ground. This one exists because that had already happened — see below. |
+| `record` | Every Session log date since 2026-07-25 has a dated handoff in `../handoffs/`, and the newest log entry carries a seam attestation. | The Session log and the handoffs are the repository's memory of *how* things were decided, and a session that leaves no record cannot be audited afterwards — which stopped being hypothetical the day a merged doctrine rewrite (#32/#33) turned out to have neither. The floor date is the day the handoff cadence became a maintainer ruling; earlier entries predate the mandate. |
 | `parse` | Every tracked `.json` file is well-formed. | From milestone 2 the repository's policy layer *is* JSON. A manifest that does not parse gates nothing, and it fails at the moment it is needed rather than when it is written. |
 | `doctor` | Both workspaces conform to the Workspace Definition, their paths resolve, their claims match the tree, and every rule carries checkable provenance. | The workspace layer is where a team's policy lives, and until this existed every "this workspace conforms" sentence in the repository was an assertion. Its first run found three rules whose provenance the repository had already mandated and not held. |
 | `tests` | The test suites pass. | The validators are the first things here that can be *subtly* wrong rather than visibly broken — a schema keyword silently ignored looks identical to one enforced. A linter can be judged by reading it; a validator cannot. |
@@ -162,6 +163,15 @@ list now arrives on stdin), and the red→green transcript is in
 Worth recording because the lesson generalises past this check: a false red is not a milder failure than
 a false green, it is the one that gets the whole recipe switched off.
 
+The `record` check was added 2026-07-27, after a fresh-context audit found that the day's #32/#33
+doctrine-rewrite arc had merged with **no handoff and no Session log entry**, and that the newest log
+entry had closed without the seam attestation its siblings carry. Written red-first against the tree it
+was aimed at: on the pre-repair record it failed on exactly the missing attestation (`docs/plan.md:714`)
+and went green only once the record was repaired. Its observation procedure is one move — delete the
+seam line from the newest entry and run the recipe ([the 0007 rule](../gate-map.md): a watcher earns its
+place by being watched). Forcing the date half red is a bigger move on today's tree: every logged date
+has more than one handoff, so it takes deleting all of a date's handoffs, not one.
+
 **Both recipes then turned out to have a false green, found in review of that same change.** Neither
 checked whether `git ls-files` succeeded. When it failed the list came back empty, every loop iterated
 nothing, and the recipe printed GREEN having examined *nothing* — demonstrated by running `docs.sh` in a
@@ -189,6 +199,13 @@ in both: it fails `2`, not `0`. Recorded as
   reviews that way), and Markdown link *syntax* quoted inside a code span — while writing about this
   check — is treated as a real link and fails. Skipping spans needs a small parser; until then, write
   paths as links when you want them checked, and avoid quoting link syntax verbatim.
+- **`record` corresponds by date, not by session — and reads presence, not truth.** Two sessions closing
+  on one day are satisfied by one handoff: the milestone-3-close session of 2026-07-27 has a Session log
+  entry and no handoff of its own, and the check cannot see that, because the dependabot handoff shares
+  the date. And the seam half checks that the newest entry *contains* an attestation, never that the
+  attestation is honest — a false "seam scan clean" passes exactly as a true one does. Both are the
+  known cost of a check cheap enough to exist; per-session correspondence needs the log to name its
+  handoff, which is a convention change, not a bigger grep.
 - **Nothing here checks prose quality**, and nothing can. Conditions 2–4 of [`../dod.md`](../dod.md) are
   human judgement and are meant to stay that way.
 - **`doctor` checks form, never truth.** A path that resolves, a manifest that conforms, a provenance
