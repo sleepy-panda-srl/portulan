@@ -388,6 +388,42 @@ describe("customer zero", () => {
         }
     });
 
+    test("every rule is cited under the gate map section matching its TIER", () => {
+        // Membership alone only proves a rule is *mentioned*. It does not stop the prose filing a
+        // Gated action under Auto — which is the drift that matters, because the gate map is the
+        // document humans read and the policy is the one that compiles. Headings are structure
+        // rather than prose, so this is a real check and not the ambitious parser `spec/slots.md`
+        // warns against: it asks only which section an id appears in.
+        const prose = fs.readFileSync(path.join(REPO, ".portulan", "gate-map.md"), "utf8");
+        const HEADING = /^#{2,3} (.+)$/gm;
+        const sections = [];
+        let m;
+        while ((m = HEADING.exec(prose)) !== null) sections.push({ title: m[1], start: m.index });
+        sections.forEach((s, i) => {
+            s.body = prose.slice(s.start, sections[i + 1]?.start ?? prose.length);
+        });
+
+        // Which section speaks for which tier, keyed off the headings the file actually carries.
+        const owner = {
+            auto: sections.find((s) => /^Auto\b/.test(s.title)),
+            propose: sections.find((s) => /^Propose\b/.test(s.title)),
+            gated: sections.find((s) => /^Gated\b/.test(s.title)),
+            prohibited: sections.find((s) => /^Above the tiers\b/.test(s.title)),
+        };
+        for (const [tier, section] of Object.entries(owner)) {
+            assert.ok(section, `gate-map.md has no section speaking for tier \`${tier}\``);
+        }
+
+        for (const rule of real.rules) {
+            const section = owner[rule.tier];
+            assert.match(
+                section.body,
+                new RegExp(`\`${rule.id}\``),
+                `\`${rule.id}\` is tier \`${rule.tier}\` in gates.json, but gate-map.md does not cite it under "${section.title}"`,
+            );
+        }
+    });
+
     test("the constitution is prohibited, not merely gated", () => {
         const rule = real.rules.find((r) => r.action?.write === "docs/vision.md");
         assert.equal(rule.tier, "prohibited", "an approvable constitution edit is not a prohibition");
