@@ -25,7 +25,7 @@ nothing more specific applies. Run any of them from anywhere in the tree:
 | [`docs.sh`](docs.sh) — default | links · kernel budget · repo map · record correspondence | `bash`, `git`, POSIX text utilities |
 | [`json.sh`](json.sh) | every tracked `.json` file parses | the above, plus `node` |
 | [`doctor.sh`](doctor.sh) | both workspaces validate: schema, paths, cross-references, claims against the tree, provenance — plus the memory store's growth report (count, size, records stating no retirement condition; notes, never failures) | `bash`, `git`, `node` |
-| [`tests.sh`](tests.sh) | [`../../cli/doctor.test.mjs`](../../cli/doctor.test.mjs) and [`../../cli/plugin-lint.test.mjs`](../../cli/plugin-lint.test.mjs) pass | `bash`, `node` |
+| [`tests.sh`](tests.sh) | every `*.test.mjs` under [`../../cli/`](../../cli/) passes — discovered by glob, counted before running | `bash`, `node` |
 | [`plugin.sh`](plugin.sh) | the packaging: both manifests parse and agree, component paths resolve, declared skills and agents are real | `bash`, `git`, `node` |
 | [`compile.sh`](compile.sh) | the compiled enforcement in [`../../.claude/settings.json`](../../.claude/settings.json) is exactly what [`../gates.json`](../gates.json) compiles to | `bash`, `node` |
 
@@ -102,10 +102,12 @@ linter exercises source. `doctor` is the first code, and `tests.sh` is the first
 suite rather than a linter — so the promise this section used to make, that real tests would join these
 rather than replace them, is kept rather than pending.
 
-The claim is still bounded, and the bound was demonstrated within hours of being written. There are two
-suites now: one covering `doctor` — its schema subset, its exit codes, its parsers, its severity split —
-and one covering `plugin-lint`. **Nothing tests the recipes themselves** — `docs.sh`, `json.sh`,
-`doctor.sh`, `tests.sh` and `plugin.sh` are verified by being run, which is a weaker claim than it sounds.
+The claim is still bounded, and the bound was demonstrated within hours of being written. The suites are
+discovered, not enumerated: `tests.sh` runs every `*.test.mjs` under [`../../cli/`](../../cli/), counting
+them first, so a suite added to `cli/` is covered without this paragraph changing — four as of milestone
+4, covering `doctor`, `plugin-lint`, the enforcement compiler, and the Stop-gate runner's arithmetic.
+**Nothing tests the recipes themselves** — `docs.sh`, `json.sh`, `doctor.sh`, `tests.sh`, `plugin.sh` and
+`compile.sh` are verified by being run, which is a weaker claim than it sounds.
 That gap now has a task of its own rather than a mention in a handoff:
 [`../tasks/0004-a-harness-for-the-verify-recipes.md`](../tasks/0004-a-harness-for-the-verify-recipes.md). Every defect ever found in them was found by a human or a reviewer, and
 the two most recent were found by a reviewer on the pull request that introduced them, in the two recipes
