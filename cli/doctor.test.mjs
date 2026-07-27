@@ -839,6 +839,41 @@ describe("the enforcement backends report their own degradation", () => {
         assert.match(failures[0].message, /never-reported/);
     });
 
+    test("a gate map naming NO check still gets the cross-check — the worst divergence, not the exempt one", async () => {
+        // Found by review, round 2. The cross-check was gated on the prose having named at least one
+        // context, so a gate map whose required-check row is missing or written in a shape this tool
+        // does not recognise skipped it entirely — and that is not the mild case, it is the extreme
+        // one: the policy declares two required checks and the prose carries none. The generic "names
+        // no required status check" note fires, but it says nothing was compared against the *tree*
+        // and says nothing at all about the policy declaring checks the prose omits.
+        //
+        // A check that quietly does not run in its own worst case is this repository's recurring
+        // defect (`a-checker-must-refuse-what-it-cannot-check.md`), and the guard here was an
+        // optimisation that read as a precondition.
+        const dir = withGates(
+            {
+                portulan: { spec: "2.2" },
+                why: "gate-map.md",
+                floor: { branch: "main", checks: [{ context: "workspace-verify" }], reviews: 0, resolve_conversations: true },
+                rules: [{ id: "open-a-pull-request", tier: "propose", action: { shell: "gh pr create" }, reason: "by pull request" }],
+            },
+            {
+                "gate-map.md": "# Gate map\n\nEverything is Gated. This file names no required check at all.\n",
+                ".github/workflows/verify.yml": "jobs:\n  workspace-verify:\n    steps: []\n",
+            },
+        );
+        fs.writeFileSync(path.join(dir, "workspace.json"), JSON.stringify(manifest()));
+        const { findings } = await inspect(dir);
+        // Asserted on the cross-check's OWN sentence, not on the context name: an unpinned-check note
+        // also mentions `workspace-verify`, so a looser assertion passed before the fix and proved
+        // nothing. Caught by running the test red first and finding it green.
+        assert.match(
+            text(checks(findings, "enforcement")),
+            /prose does not name it/,
+            "the policy declares a context the prose does not carry, and that must be said",
+        );
+    });
+
     test("the cross-check reads the gate map itself, not an array another check emptied", async () => {
         // Found by review. `claimedChecks` is cleared when there are no workflows to compare it
         // against — so with a tree carrying none, the cross-check saw an empty prose list and
