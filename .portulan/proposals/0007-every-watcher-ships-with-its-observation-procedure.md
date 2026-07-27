@@ -98,10 +98,12 @@ whose job is to notice.
   order to make a problem stop recurring*. Generalising it is a separate change and is not proposed here,
   because widening a rule in the same breath as instantiating it makes both harder to review.
 
-**Decision.** _Pending — Marius Cetanas._ He approved writing this proposal and directed the demonstration
-that closes its incident; the rule itself is undecided. Written by an implementer agent (Claude Opus 5).
+**Decision.** _Accepted — Marius Cetanas, 2026-07-27._ He directed the demonstration that closes the
+incident and then accepted the general rule. Written by an implementer agent (Claude Opus 5).
 
-**Status: PROPOSED, 2026-07-27.** Not applied — the gate-map rule lands only on acceptance, the same
-sequence [`0006-dependabot-security-updates.md`](0006-dependabot-security-updates.md) followed. The
-incident it describes *is* closed and demonstrated; what remains undecided is whether the general rule is
-worth its place.
+**Status: ACCEPTED and APPLIED, 2026-07-27.** The rule is in [`../gate-map.md`](../gate-map.md) under the
+platform floor, with the three demonstrations above carried across as its worked examples and both honest
+limits carried with it — that nothing in this repository can check the rule, and that not every watcher has
+a safe red test. Applied in a change separate from the one that proposed it, the same sequence
+[`0006-dependabot-security-updates.md`](0006-dependabot-security-updates.md) followed, so that the record
+shows a decision taken rather than a proposal that applied itself.
