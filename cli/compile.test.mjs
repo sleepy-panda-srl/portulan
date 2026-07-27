@@ -22,7 +22,7 @@ import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { CompileError, compile, claudeCode, run, spellings, matchesRule, matchesPath } from "./compile.mjs";
+import { CompileError, compile, claudeCode, run, spellings, matchesRule, matchesPath, policyPath } from "./compile.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO = path.resolve(HERE, "..");
@@ -326,6 +326,59 @@ describe("the shared matcher", () => {
     test("a directory target matches anything beneath it", () => {
         assert.ok(matchesPath("/repo/core/operating/loop.md", "core/"));
         assert.ok(!matchesPath("/repo/coreish/loop.md", "core/"));
+    });
+});
+
+// ===========================================================================================
+// 4c. The policy location comes from the manifest, not from a constant
+// ===========================================================================================
+//
+// Found by review. `compile` hard-coded `.portulan/gates.json` while spec 2.1 defines the manifest's
+// `gates` key as "a path to a JSON file the enforcement compiler reads" and `doctor` resolves it — so a
+// workspace naming a different file would have had one tool validate a policy the other never compiled,
+// both green. A manifest key that validates and is never consumed is this repository's most expensive
+// recurring defect, and this was it inside the key the milestone had just added.
+
+describe("the policy location", () => {
+    test("comes from the manifest's `gates` key when one is declared", () => {
+        const dir = scratch();
+        fs.mkdirSync(path.join(dir, ".portulan"), { recursive: true });
+        fs.writeFileSync(path.join(dir, ".portulan", "workspace.json"), JSON.stringify({ gates: "policy/rules.json" }));
+        assert.equal(policyPath(dir), path.resolve(dir, ".portulan", "policy", "rules.json"));
+    });
+
+    test("falls back to the default when no key is declared", () => {
+        const dir = scratch();
+        fs.mkdirSync(path.join(dir, ".portulan"), { recursive: true });
+        fs.writeFileSync(path.join(dir, ".portulan", "workspace.json"), JSON.stringify({ name: "x" }));
+        assert.equal(policyPath(dir), path.join(dir, ".portulan", "gates.json"));
+    });
+
+    test("falls back when there is no manifest at all — a legitimate shape, not an error", () => {
+        const dir = scratch();
+        assert.equal(policyPath(dir), path.join(dir, ".portulan", "gates.json"));
+    });
+
+    test("an unreadable or malformed manifest falls back rather than throwing", () => {
+        // `doctor` is the tool that judges a manifest. This one only needs to know where the policy is,
+        // and a parse error here must not become a crash in the hook that runs on every tool call.
+        const dir = scratch();
+        fs.mkdirSync(path.join(dir, ".portulan"), { recursive: true });
+        fs.writeFileSync(path.join(dir, ".portulan", "workspace.json"), "{ not json");
+        assert.equal(policyPath(dir), path.join(dir, ".portulan", "gates.json"));
+    });
+
+    test("compiles the file the manifest names, end to end", () => {
+        const dir = scratch();
+        fs.mkdirSync(path.join(dir, ".portulan", "policy"), { recursive: true });
+        fs.writeFileSync(path.join(dir, ".portulan", "workspace.json"), JSON.stringify({ gates: "policy/rules.json" }));
+        fs.writeFileSync(path.join(dir, ".portulan", "policy", "rules.json"), JSON.stringify(policy()));
+        assert.equal(run(["--workspace", dir], { quiet: true }), 0, "the named policy is the one compiled");
+        assert.ok(fs.existsSync(path.join(dir, ".claude", "settings.json")));
+    });
+
+    test("customer zero's manifest and the default agree — so this repo exercises both paths identically", () => {
+        assert.equal(policyPath(REPO), path.resolve(REPO, ".portulan", "gates.json"));
     });
 });
 

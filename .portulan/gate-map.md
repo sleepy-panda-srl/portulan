@@ -91,7 +91,6 @@ Reversible but consequential: it changes what the repository says, or how it beh
 - `change-the-plan` — the Status column or the Session log in [`../docs/plan.md`](../docs/plan.md).
 - `change-a-verify-recipe` — and *relaxing* a check is the case to scrutinise hardest, because it is the
   one change that makes every future "green" mean less.
-  one change that makes every future "green" mean less.
 
 ### Gated — explicit human approval, per action, before it happens
 

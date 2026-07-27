@@ -60,10 +60,13 @@ import { fileURLToPath } from "node:url";
 // The action vocabulary is defined ONCE, in the compiler, and imported here. Two implementations of
 // one matcher is the drift this repository keeps finding — and a matcher that drifts does not look
 // wrong, it looks like a gate that quietly stopped covering something.
-import { matchesRule } from "../../cli/compile.mjs";
+import { matchesRule, policyPath } from "../../cli/compile.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
-const POLICY = path.resolve(HERE, "..", "gates.json");
+// Resolved the same way the compiler resolves it — through the manifest's `gates` key — because the
+// emitter and the runtime reading different policy files is the drift that would be hardest to see: both
+// would work, on different rules.
+const POLICY = policyPath(path.resolve(HERE, "..", ".."), path.basename(path.resolve(HERE, "..")));
 
 /** Exit without a decision. The permission rule still holds; only the sentence is lost. */
 function stepAside() {
