@@ -81,8 +81,11 @@ baselines still green.
   `Edit(./../secrets/**)`, which the host may resolve against the parent tree, while `matchesPath` can
   never match a `/../`-bearing tail, so emitter and matcher disagreed about *which way* it was wrong.
   Broader and narrower are both wrong; the narrower is worse, being a gate that reads as present and
-  holds nothing. Eleven tests added, including one proving `docs/a..b.md` still compiles — `..` is a
-  path segment, not a substring, and refusing the substring would be a false red. Suite 244 → 255.
+  holds nothing. Tests added for both refusals, including one proving `docs/a..b.md` still compiles —
+  `..` is a path segment, not a substring, and refusing the substring would be a false red. Suite
+  244 → 255. _(No test-count in that sentence. The first draft said "five" and then "eleven" as the
+  change grew, and review caught both — a per-change tally is the hand-maintained number this whole
+  pull request is about. The suite total stays because `node --test` prints it.)_
 - **`agents/implementer.md`** told the reader "on this repository, pushing a working branch is Auto"
   one clause after telling them the gate map, not this file, decides. These bindings ship with the
   plugin into repositories whose gate maps this one has never seen, so the sentence was both
@@ -124,7 +127,7 @@ rebase, and keep both entries with the newest last.
 
 ## Verification
 
-All six recipes green. Suite 249/249. The dependency probe re-run after the fix: `2` in all thirty
+All six recipes green. Suite 255/255. The dependency probe re-run after the fix: `2` in all thirty
 — every previously-unguarded command the five recipes now declare, less `dirname` —
 cases. `compile.sh` green, so the emitted artifact still matches the policy — the matcher changed,
 the emitter did not.
@@ -137,7 +140,7 @@ supervisor reviewed the full diff against `vision.md`, `plan.md` and `dod.md`.
 Verdict **APPROVE-WITH-ADJUSTMENTS**, one must-fix — and it was in the record, not the machinery:
 *the sweep's own bookkeeping was unscoped*, the single defect class this change exists to remove.
 Every substantive claim held under attempted falsification, by execution rather than reading: the
-suite at both ends (244 → 249), all six recipes green, the false-green matrix reproduced **exactly**
+suite at both ends (244 at `main`, 255 here), all six recipes green, the false-green matrix reproduced **exactly**
 on the pre-fix tree (the same eleven pairs, the same five red-with-`ok` runs, `ok    map` printed with
 `awk` gone), all guard-list removals closing to `2`, and both `compile.mjs` defects demonstrated on the
 old code and their fixes on the new. It also proved the guard lists **complete and minimal**, by
