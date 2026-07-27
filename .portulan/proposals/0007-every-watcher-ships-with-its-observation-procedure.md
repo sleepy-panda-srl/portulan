@@ -73,13 +73,25 @@ whose job is to notice.
   something destructive, rate-limited, or irreversible may have no safe red test, and the rule's fallback —
   say so in the artifact — is genuinely weaker than a demonstration. The rule prefers evidence and settles
   for an admission; it should not pretend those are equal.
-- **The rule has a live instance it cannot yet close.** The ruleset `copilot auto-review on pull requests`
-  (id `19805871`) was added 2026-07-27 to request a Copilot review on every pull request without anyone
-  remembering to ask. **Its effect is unobserved.** It was created at 09:30:38Z; the Copilot review on PR
-  #26 was requested by hand at 09:26:44Z and arrived at 09:28:00Z, two and a half minutes *before* the
-  ruleset existed, so that review is not evidence for it. The first pull request opened after that
-  timestamp is the test. Recorded here rather than in a later edit, because a proposal that could not name
-  its own outstanding instance would be an odd thing to hold others to.
+- **The rule closed its own live instance, on this file's own pull request.** The ruleset `copilot
+  auto-review on pull requests` (id `19805871`) was added 2026-07-27 so that every pull request gets a
+  Copilot review requested without anyone remembering to ask. When this proposal was first written its
+  effect was **unobserved**, and it said so: created 09:30:38Z, while the Copilot review on PR #26 was
+  hand-requested at 09:26:44Z and arrived at 09:28:00Z — two and a half minutes *before* the ruleset
+  existed, so that review was not evidence for it.
+
+  **Observed on [#28](https://github.com/sleepy-panda-works/portulan/pull/28), the first pull request opened
+  after that timestamp: Copilot was requested at 09:39:15Z, the same instant as the `CODEOWNERS` team
+  request and therefore at pull-request open, with no request made by the maintainer or by the agent.** The
+  timestamps are what make that conclusive rather than the attribution — GitHub credits a ruleset-driven
+  request to the author's context, so the actor reads as the maintainer either way. What separates the two
+  cases is that #26's request arrived three minutes after open, by hand, and #28's arrived simultaneously
+  with the automatic one.
+
+  The whole exchange is left here rather than trimmed to its result, because the shape is the point: the
+  observation procedure was written down while the answer was still unknown. That is the only order in
+  which it is a procedure rather than a description of something that already happened — and it is the
+  order this rule is asking for.
 - **Three instances suggest the parent rule is stated too narrowly.**
   `a-mandate-nothing-checks-is-already-broken` reads as being about *mandates*. Two of its three instances
   were mandates; this one is a checker. The word that covers all three is closer to *anything adopted in
