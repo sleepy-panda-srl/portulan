@@ -1,8 +1,14 @@
 # Handoff — 2026-07-27 · the reviewer was right, and the form it used could not be answered
 
-**State.** Eight files changed across doctrine, workspace, mechanism and record: every unaddressed
-Copilot review comment on the 48 merged pull requests, swept in one pass and closed. The sweep found
-two classes, and only one of them was visible from the pull-request UI.
+**State.** Every unaddressed Copilot review comment on the 48 merged pull requests, swept in one pass
+and closed — across doctrine, workspace, mechanism and record. The sweep found two classes, and only
+one of them was visible from the pull-request UI.
+
+_(No file count in this line. The first draft said "eight" over a change touching eighteen, and review
+caught it — which is exactly what happened to #48's handoff, in exactly this sentence, one day earlier.
+A count written by hand into a document that keeps being edited is the same shape as the stale rosters
+this repository spent milestone 4 removing. `git diff --stat origin/main...` is the number, and it is
+always current.)_
 
 ## What was swept, and how the second class was found
 
