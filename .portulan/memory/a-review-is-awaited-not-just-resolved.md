@@ -30,7 +30,15 @@ satisfy it. That is the defect itself — the review existed and described a dif
 merging — so a checker matching on *"a Copilot review exists"* would have reported green on every case
 this rule was written for.
 
-**Two limits, stated because the rule is weaker than it sounds.** The reviewer's login is a platform fact
+**Demonstrated on the pull request that introduced it**, both halves, per
+[`a-watcher-earns-its-place-by-being-watched`](../proposals/0007-every-watcher-ships-with-its-observation-procedure.md):
+the check went **red** on a head with no Copilot review, printing that head's SHA and `Review authors
+seen: none`; Copilot then reviewed **that exact SHA** and the `pull_request_review` re-trigger fired. It
+did **not** go green on its own — GitHub held the bot-triggered run as `action_required`, awaiting a
+maintainer's approval. So the rail works and **costs one click per pull request**, which is recorded as a
+cost rather than smoothed over.
+
+**Three limits, stated because the rule is weaker than it sounds.** The reviewer's login is a platform fact
 the workflow hard-codes; a rename surfaces as a permanent red rather than a silent pass, which is the
 right failure direction and still a fragility. And *resolved* is not *adjudicated*: a reviewer can
 resolve its own thread — measured on [#44](https://github.com/sleepy-panda-works/portulan/pull/44) — so

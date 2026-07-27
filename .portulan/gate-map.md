@@ -304,11 +304,20 @@ check matches every review's `commit_id` against the pull request's current head
 `synchronize`, so pushing puts it back to pending. It also **fails closed** — an unreadable API is
 `could not look`, never `nothing wrong`.
 
-**Two limits, named rather than found later.** The reviewer's login is a platform fact the workflow
+**Three limits, named rather than found later.** The reviewer's login is a platform fact the workflow
 hard-codes, and a rename would show up as a permanent red rather than a silent pass — the failure
-direction to prefer, but a fragility to know about. And resolution still does not mean *adjudication*:
+direction to prefer, but a fragility to know about. Resolution still does not mean *adjudication*:
 a reviewer can resolve its own thread, as recorded in the floor section below. This rule makes the round
 **happen before the merge**; it does not make anyone agree with it.
+
+And the third was **measured on the pull request that added the workflow**, which is how a watcher is
+supposed to earn its place. The `pull_request_review` re-trigger fires but **does not self-serve**: the
+triggering actor is the bot, and GitHub held the run as `action_required`, awaiting a maintainer's
+*Approve and run*. So the check does not flip itself green when the review lands — a human clears it, by
+approving that run or by re-running the `pull_request` job, which is not bot-triggered. **The awaited
+guarantee therefore costs one click per pull request.** That is a real cost and it is the honest price of
+the rule; the alternative is a merge that does not wait at all. Nobody should describe this workflow as
+fully automatic.
 
 **It composes with the autonomy mode; it does not substitute for one.** A mode governs whether the
 *agent* raises a ship-step prompt. This is a required status check — a floor row — and floor rows hold at

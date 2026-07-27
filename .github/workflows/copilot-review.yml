@@ -43,6 +43,18 @@ on:
     types: [opened, reopened, ready_for_review, synchronize]
   # A review arriving is the event that turns this green. Without it the check would sit red until
   # something else pushed, which would train everyone to ignore it.
+  #
+  # **MEASURED LIMIT, 2026-07-27, on the pull request that added this file.** The re-trigger fires but
+  # does not self-serve: the triggering actor is the bot `Copilot`, and GitHub held the run as
+  # `action_required` — awaiting a maintainer's *Approve and run*. So the sequence is: push (red, no
+  # review yet) → Copilot reviews → this run is QUEUED FOR APPROVAL, not green. A human clears it, either
+  # by approving that run or by re-running the original `pull_request` job, which is not bot-triggered
+  # and needs no approval.
+  #
+  # That is stated here rather than discovered by whoever first watches this sit red. It is a real cost:
+  # the check is not fully self-serving, and the "awaited" guarantee therefore costs one click per pull
+  # request. It is still the right shape — the alternative is a merge that does not wait at all — but
+  # anyone tempted to describe this workflow as fully automatic should read this paragraph first.
   pull_request_review:
     types: [submitted, edited, dismissed]
 
@@ -122,6 +134,8 @@ jobs:
           printf 'A pull request may not merge until Copilot has reviewed the commit it is actually\n'
           printf 'merging, and until that feedback is resolved. Conversation resolution covers the\n'
           printf 'resolved half; this covers the awaited half. If the branch was just pushed, wait —\n'
-          printf 'Copilot is requested automatically and this re-runs when the review arrives.\n'
+          printf 'Copilot is requested automatically. NOTE: when the review lands, the re-run is\n'
+          printf 'bot-triggered and GitHub holds it as action_required, so a maintainer approves that\n'
+          printf 'run (or re-runs this job) to clear the check. Measured 2026-07-27.\n'
           printf 'Review authors seen on this pull request:%s\n' "${seen:- none}"
           exit 1
