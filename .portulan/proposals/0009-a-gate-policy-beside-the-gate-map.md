@@ -1,11 +1,11 @@
-# Proposal 0008 — a gate policy beside the gate map
+# Proposal 0009 — a gate policy beside the gate map
 
 **Status.** Applied in the same change that proposes it, and recorded here for the reason the earlier
 proposals were: the decision has a shape somebody will want to argue with later, and the argument is
 worth more than the outcome.
 
-**Decision needed from the maintainer:** none for the shape below — it was ruled at session open. What
-remains open is named at the bottom.
+**Decision needed from the maintainer:** none. The shape was ruled at session open, and the three
+questions this proposal deferred were all decided on 2026-07-27 — see the closing section.
 
 ## The problem
 
@@ -60,13 +60,19 @@ Whether `prohibited` should be promoted into `core/operating/autonomy.md` as a f
 than decided: core currently describes three tiers and a separate "platform floor", and a fourth class
 may or may not be the right way to express *no approval exists*.
 
-## Still open
+## Still open — nothing, as of 2026-07-27
 
-1. **Should `prohibited` be promoted to core?** Above. Maintainer's.
-2. **May a pack contribute gate rules?** The cascade is `core < pack < workspace`, and
-   `packs/tools/README.md` has expected exactly this need since it was written. The schema does not
-   preclude it and nothing implements it. Deliberately not built — but the vocabulary was kept
-   host-neutral and id-addressed so that adding it later is a MINOR rather than a redesign.
-3. **Where does `autonomy.md`'s platform-floor promise land?** Core says the compiler "generates that
-   configuration" — branch protection, required checks. The milestone-4 row does not name that
-   deliverable, and session 1's Copilot-ruleset clause may or may not be it. Surfaced to the maintainer.
+All three were decided by Marius the same day, and closing them here rather than leaving the heading is
+the lesson proposal 0006 paid for: **deciding a proposal is a separate event from writing it**, and a
+document that still says "open" about a settled question is a false claim in the record.
+
+1. **Should `prohibited` be promoted to core?** **Accepted** — it is now a fourth universal tier in
+   [`../../core/operating/autonomy.md`](../../core/operating/autonomy.md), recorded as
+   [`0010-prohibited-as-a-fourth-universal-tier.md`](0010-prohibited-as-a-fourth-universal-tier.md).
+2. **May a pack contribute gate rules?** **Yes in principle, tighten-only, and nothing is built.** A pack
+   may raise a tier or add a prohibition, never demote another layer's classification. Recorded where the
+   compiler is documented, in [`../compile/README.md`](../compile/README.md).
+3. **Where does `autonomy.md`'s platform-floor promise land?** In this milestone's own row: the
+   *"Copilot ruleset export"* clause was reworded to name a **GitHub repository-ruleset export**, which is
+   that configuration, positioned in the backend matrix as the floor backend. The doctrine sentence was
+   left exactly as written; the row moved to meet it.

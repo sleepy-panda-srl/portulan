@@ -106,7 +106,7 @@ what `core/operating/loop.md` has promised since the cadence rule landed.
   contemporaneous records and would be falsified by editing.
 - **`tasks/0004` got larger, not smaller.** A sixth recipe means one more piece of untested
   scaffolding; the harness is still unbuilt.
-- **Three questions live in [`../proposals/0008-a-gate-policy-beside-the-gate-map.md`](../proposals/0008-a-gate-policy-beside-the-gate-map.md)**:
+- **Three questions live in [`../proposals/0009-a-gate-policy-beside-the-gate-map.md`](../proposals/0009-a-gate-policy-beside-the-gate-map.md)**:
   whether `prohibited` should be promoted into `core/` as a fourth universal tier (constitution-adjacent,
   so Marius's), whether a **pack** may contribute gate rules — the cascade's missing middle, which
   `packs/tools/README.md` has expected since it was written — and the platform-floor question above.
@@ -211,7 +211,7 @@ Marius settled the lot on 2026-07-27. Four applied cleanly; the fifth did not.
   gets. The rewording is not cosmetic; the ambiguity cost a session-blocking question. `autonomy.md`'s
   sentence stays exactly as written — the row moved to meet the doctrine, not the reverse.
 - **`prohibited` is now a fourth universal tier** in `core/operating/autonomy.md`, with his clause
-  verbatim, recorded as [`../proposals/0009-prohibited-as-a-fourth-universal-tier.md`](../proposals/0009-prohibited-as-a-fourth-universal-tier.md).
+  verbatim, recorded as [`../proposals/0010-prohibited-as-a-fourth-universal-tier.md`](../proposals/0010-prohibited-as-a-fourth-universal-tier.md).
   The compiler mapping does not change — it was built against this distinction before core carried it, so
   what changes is that it now implements doctrine rather than anticipating it. Dependents swept; the
   constitution is untouched, and `engine.md` never named the tiers so the kernel stays at 43/60.

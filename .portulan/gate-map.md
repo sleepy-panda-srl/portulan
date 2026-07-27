@@ -140,7 +140,7 @@ reader to notice the absence: neither has a tool-level surface a permission rule
 pretending to cover "send a message outward" would be worse than the honest gap, because it would read
 as enforcement. They stay prompt-level, and the compiler prints them as refusals on every run.
 
-## Above the tiers: what no agent may do at all
+## Prohibited — what no yes makes acceptable
 
 `edit-the-constitution` — [`../docs/vision.md`](../docs/vision.md) is the constitution, and it is
 **human-owned**. No agent edits it — not with approval, not as a proposal that rewrites it in place. An
@@ -150,8 +150,8 @@ _Why this is a prohibition rather than simply the Gated tier: every other change
 graded against that file. An agent that can edit the standard it is judged by can launder any other
 change past its own grader, and the gate stops meaning anything._
 
-Since milestone 4 this is the one rule with a **fourth tier of its own** in [`gates.json`](gates.json):
-`prohibited`, not `gated`. The distinction is load-bearing rather than decorative. Gated means *approvable
+Since milestone 4 this is a tier of its own — `prohibited`, not `gated` — in both [`gates.json`](gates.json)
+and, as of the same session, [`../core/operating/autonomy.md`](../core/operating/autonomy.md). The distinction is load-bearing rather than decorative. Gated means *approvable
 per action* and compiles to a prompt; prohibited means *no approval exists* and compiles to a flat refusal.
 A three-tier policy would have had to file this under Gated, and the compiler would then have emitted a
 prompt — turning "no agent edits it, ever" into "no agent edits it unless someone clicks yes". Found at the

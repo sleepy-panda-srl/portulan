@@ -7,9 +7,11 @@
 
 ## Actions are tiered by undoability
 
-Every action an agent can take is classified by how hard it is to undo, and that class — not the
-agent's confidence — decides who has to say yes. _(The recoverable-vs-reversible axis is safety
-doctrine; see `safety.md`.)_
+Every action an agent can take is classified by how hard it is to undo — and, past a line, by whether
+any approval could make it acceptable at all. That class, not the agent's confidence, decides who has to
+say yes. _(The recoverable-vs-reversible axis is safety doctrine; see `safety.md`. The fourth tier is
+not an undoability class: editing the standard you are graded against is trivially revertible and
+forbidden anyway, which is why the axis needed the second clause when that tier arrived.)_
 
 | Tier | Action class | Who approves |
 |---|---|---|

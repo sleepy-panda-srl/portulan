@@ -271,10 +271,16 @@ function collectProblems() {
 export function verdict({ problems, count, total = count, max = MAX_BLOCKS, maxTotal = MAX_TOTAL_BLOCKS }) {
     if (problems.length === 0) return { action: "allow" };
     if (count > max || total > maxTotal) {
+        // Name the bound that actually released it. Saying "cap of 3" after nine refusals with a
+        // consecutive count of 1 is false, and it is the same defect already fixed once in this very
+        // message — a release that misreports why it happened sends a reader to the wrong constant.
+        const bound = count > max
+            ? `the cap of ${max} consecutive refusals was reached`
+            : `the absolute ceiling of ${maxTotal} refusals was reached (consecutive count ${count}, which the green-recipe reset kept low)`;
         return {
             action: "release",
             message:
-                `PORTULAN STOP-GATE — cap of ${max} refusals reached. This session is ending **RED**, not done.\n` +
+                `PORTULAN STOP-GATE — ${bound}. This session is ending **RED**, not done.\n` +
                 `Nothing below was fixed, and the session ending does not fix it. Say so in the handoff and in any\n` +
                 `report of this work; a task that ends at the cap is an unfinished task with a stop attached.\n\n` +
                 `${problems.join("\n\n")}\n`,
