@@ -7,7 +7,7 @@ the failure is silent until someone writes the first pack.
 `<root>/SKILL.md` (the point-at-one-skill form), or the **immediate child directories** of `<root>`. A
 skill one level deeper — `<root>/<pack>/skills/<skill>/SKILL.md`, which is the natural shape for a pack
 that carries more than skills — resolves `<root>/<pack>` as the skill directory and then **fails** with
-`has no SKILL.md`. Read at `cli/plugin-lint.mjs:428–462`.
+`has no SKILL.md`. Read the skill-resolution walk in `cli/plugin-lint.mjs` (the block that expands a declared skills path — line numbers drift; search for the `has no SKILL.md` note it emits).
 
 This blocks the pack manifest planned for milestone 6
 ([`../proposals/0013-the-architecture-is-extensible-the-product-is-not.md`](../proposals/0013-the-architecture-is-extensible-the-product-is-not.md)),

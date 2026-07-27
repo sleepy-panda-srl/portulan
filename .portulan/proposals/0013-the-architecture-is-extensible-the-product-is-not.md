@@ -25,7 +25,7 @@ that let a user actually do it. Measured against the current tree, not assumed:
 | **Declaration** | `packs: string[]` in `spec/workspace.schema.json` — a bare array of strings | No shape, no resolver. `examples/workspace.json` declares two packs that do not exist and `doctor` is **green** on it, reporting a count and calling itself a declaration only |
 | **Cascade resolution** | written down in eight files | **implemented in none.** `cli/compile.mjs` contains zero occurrences of the word |
 | **Scaffolding** | nothing | Nothing in `cli/` writes a file for a user. The only filesystem write in the whole CLI is the compiled settings artifact |
-| **Validation** | `plugin-lint` checks skill and agent *packaging*; `doctor` checks the workspace manifest | **`doctor` never opens a `SKILL.md`, a persona, an agent binding or a pack** — in `cli/doctor.mjs`, `skill` and `persona` appear zero times, `agent` once and that once is a comment, `pack` twice and both are the count it reports rather than a check |
+| **Validation** | `plugin-lint` checks skill and agent *packaging*; `doctor` checks the workspace manifest | **`doctor` never opens a `SKILL.md`, a persona, an agent binding or a pack** — in `cli/doctor.mjs`, `skill` and `persona` appear zero times, `agent` once and that once is a comment, `pack` once, and that once is the count it reports rather than a check |
 
 Two of those are worse than gaps, because they will fail a real author on their first try:
 

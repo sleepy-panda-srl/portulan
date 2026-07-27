@@ -4,8 +4,8 @@
 files that are not part of the repository at all.
 
 **The defect, measured.** The tree walk in `cli/plugin-lint.mjs` skips exactly three directories —
-`.git`, `node_modules`, `.claude-plugin` (`SKIP_DIRS`, line 81) — and **nothing consults `.gitignore`**.
-`.gitignore` line 35 ignores `/.claude/*`, under which every local worktree lives, each a full copy of
+`.git`, `node_modules`, `.claude-plugin` (the `SKIP_DIRS` constant — search by name; line numbers drift) — and **nothing consults `.gitignore`**.
+`.gitignore`'s `/.claude/*` rule ignores `/.claude/*`, under which every local worktree lives, each a full copy of
 the repository. So each worktree contributes a complete set of false *is not covered by any declared
 skills path* notes.
 
