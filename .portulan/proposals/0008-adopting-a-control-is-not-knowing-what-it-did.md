@@ -1,9 +1,13 @@
-# Proposal — name the enforcer, and re-read the prose you just falsified
+# Proposal — the stated enforcer, and the prose a change falsifies
 
 **Status: REVISED 2026-07-27, still PROPOSED.** Not applied. Marius's decision on the first draft was
 **revise, not accept**: the diagnosis was right and the directions were wrong. This is the revision.
-What it replaces is recorded rather than deleted, because *why* the first set failed is the most useful
-thing this document knows.
+The first draft is described rather than deleted, because *why* that set failed is the most useful thing
+this document knows.
+
+_(The filename still reads `adopting-a-control-is-not-knowing-what-it-did`, which was the first draft's
+thesis and is no longer this one's. Kept because two merged proposals cite it by path and a rename would
+break them for a cosmetic gain; the title above is the current subject.)_
 
 ## What the first draft got right, and where it went wrong
 
