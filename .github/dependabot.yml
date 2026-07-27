@@ -17,6 +17,22 @@
 # that ever stops being true, the ecosystem that changed it belongs here too, and this comment is the
 # thing that should have been updated.
 
+# This watcher has been demonstrated once, and the demonstration has a hole in it — stated here because
+# the rule this repository adopted on 2026-07-27 requires a watcher to ship with its observation procedure
+# and to admit where its own silence is not evidence (.portulan/gate-map.md, the platform floor).
+#
+# What was demonstrated: on 2026-07-27 the pinned `actions/checkout` was deliberately regressed one patch
+# to v7.0.0 and Dependabot opened the bump back to v7.0.1, rewriting the SHA and its trailing version
+# comment together. So the detection works, the grouping works, and the compatibility claim below is
+# measured rather than assumed.
+#
+# What was NOT demonstrated: **the schedule.** That run was forced by hand — Insights → Dependency graph →
+# Dependabot → *Check for updates* — so it proves the job runs when asked, not that the cadence below fires
+# on its own. Nothing here can prove that: version-update jobs have no REST endpoint, and a Monday that
+# opens no pull request looks identical whether the schedule fired and found nothing or never fired at all.
+# The observation is cheap and nobody has made it yet: after a Monday nobody triggered, that same Insights
+# page shows a last-checked timestamp. Until then, silence from this file is not evidence.
+
 version: 2
 
 updates:
