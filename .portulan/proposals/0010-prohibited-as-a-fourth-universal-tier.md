@@ -46,6 +46,25 @@ the tier's value is entirely in being rare enough that its presence means someth
 The escape hatch is deliberately slow rather than absent: change the rule through the evolution gate — a
 proposal, a human, a pull request. Slow is the feature.
 
+## A second fix rides this one, in the same file and the same section
+
+**The tier table's examples are now marked illustrative, not binding.** Decided by Marius the same day,
+and carried here rather than separately because it is the same file, the same section, and the same
+review — splitting it would have bought two supervised passes over one paragraph.
+
+It is the *other half* of a fix already made. The "decision, not keystroke" clarification landed in the
+Gated tier header after an agent read that tier literally and handed `git push` commands back to be
+typed by hand. That fix repaired one row. This sentence repairs the reading for every **other** example
+in the table, which is where the same misreading would land next.
+
+The table supplied its own evidence while this was being written: its Gated row still offers *"push to a
+shared remote"* as an example, and that is **false for the repository that wrote it** — a working-branch
+push moved to Auto on 2026-07-27, gated at the merge instead. An example that has already gone stale in
+its own home repository is the clearest possible argument that examples are not classifications.
+
+Written to be retirable: if a future edit drops the examples from the *Action class* column, the
+paragraph says it retires with them.
+
 ## Related, decided at the same time and deliberately not built
 
 **Packs may contribute gate rules, tighten-only.** Agreed by Marius the same day. A pack may raise a tier
