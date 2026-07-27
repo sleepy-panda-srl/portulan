@@ -18,7 +18,9 @@ false model of what holds when nobody is watching. Both appeared on the same day
   What stops an agent is the **gate**, not the platform. The same conflation was then found three more
   times inside [`../gate-map.md`](../gate-map.md) itself — "**the maintainer**, by hand" of every Gated
   action, "the one step an agent cannot take" of re-pointing branch protection, and "the platform refuses
-  it" of resolving a review thread, which was measured only for a GitHub App.
+  it" of resolving a review thread, which was measured only for a GitHub App. That last gap closed
+  2026-07-27: with the maintainer's own credentials `resolveReviewThread` **succeeds**, so the row had
+  been describing an App's permission set as if it were a property of the action.
 - **Understated.** SHA-pinning every action was described for weeks as "this organisation's Actions
   policy" — wording that reads as a convention people comply with. `sha_pinning_required: true` is set at
   both organisation and repository level and the platform refuses an unpinned action outright. **A rail
