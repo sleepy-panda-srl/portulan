@@ -33,9 +33,12 @@ Exit `0` green · `1` red · `2` could not run — and that third code is why ea
 in the manifest rather than discovering them: a recipe that *could not run* must never be mistaken for
 one that ran and passed.
 
-**The last three are wrappers, and the wrapper is the point.** Each delegates to `node`, and each checks
-for it first. `bash -c "node …"` on a machine without `node` exits `127`, which is neither a verdict about
-the repository nor "could not run" — the wrapper is where that gets turned into a `2` deliberately.
+**Every recipe but [`docs.sh`](docs.sh) is a wrapper, and the wrapper is the point.** Each one whose
+**Needs** column above names `node` delegates to it, and each checks for it first with the same
+`command -v node` guard — so a seventh recipe joins this paragraph by declaring that dependency rather
+than by being counted into it. `bash -c "node …"` on a machine without `node` exits `127`, which is
+neither a verdict about the repository nor "could not run" — the wrapper is where that gets turned into a
+`2` deliberately.
 
 **[`compile.sh`](compile.sh) never writes.** It recompiles in memory and byte-compares. A verify recipe
 that repairs what it is checking always passes, which is a fail-open dressed as a convenience — and this
@@ -79,8 +82,9 @@ on it, exit `1`, which is the right code for a workspace it read and judged. And
 list complete*, never *is the list right*: naming a directory that is not a workspace is caught by the
 manifest being absent, not by the audit.
 
-`docs.sh` needs nothing beyond `grep`, `sed`, `awk`, `wc`, `sort`, `dirname`, and `mktemp`, and that is
-worth preserving — a recipe that needs a toolchain is a recipe that stops being run.
+`docs.sh` needs `bash`, `git`, and a handful of POSIX utilities — `grep`, `sed`, `awk`, `wc`, `sort`,
+`cut`, `tail`, `tr`, `dirname`, `mktemp`, and `rm` as of milestone 4 — and nothing else, which is worth
+preserving: a recipe that needs a toolchain is a recipe that stops being run.
 
 **Why `json.sh` breaks that rule, deliberately.** Milestone 2 introduced the first JSON this repository
 *depends* on rather than merely carries, and well-formedness is a parser's judgement: bash can only
