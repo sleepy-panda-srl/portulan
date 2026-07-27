@@ -83,8 +83,9 @@ touched; this branch was rebased onto their merge.
 
 ## Recoverability
 
-Four branches — three based on `863b87b`, this one rebased onto the milestone-4 merge after #31 and #35
-landed — each independently mergeable and independently revertable; nothing merged by this session, no
+Four branches, all opened from `863b87b`; this one and #36 were later rebased onto the milestone-4 merge
+(#36 to clear two positional conflicts with it, both sides kept — noted on that pull request). Each is
+independently mergeable and independently revertable; nothing merged by this session, no
 state outside the branches except three worktrees already removed (the fourth goes when this pull
 request opens). The `record` check is additive at the end of `docs.sh` and came through the milestone-4
 rebase unchanged. Seam scan clean across files, commit
