@@ -834,13 +834,13 @@ describe("customer zero", () => {
         }
     });
 
-    test("this workspace declares Gated — the ship step asks, nothing before it does", () => {
+    test("this workspace declares Auto — customer zero runs the most autonomous mode", () => {
         // The declared mode is a maintainer's ruling, not an implementation detail: it is the
         // difference between a session that merges on its own and one that stops for a click.
-        assert.equal(declaredMode(real), "gated");
+        assert.equal(declaredMode(real), "auto");
         const tierAt = (shell, mode) => resolveTier(real.rules.find((r) => r.action?.shell === shell), mode);
-        assert.equal(tierAt("gh pr merge", "gated"), "gated", "Gated gates the ship step");
-        assert.equal(tierAt("gh pr merge", "auto"), "auto", "Auto raises no agent-side prompt there");
+        assert.equal(tierAt("gh pr merge", "auto"), "auto", "Auto raises no agent-side prompt at the ship step");
+        assert.equal(tierAt("gh pr merge", "gated"), "gated", "the engine's shipped default still gates it");
         assert.equal(tierAt("git push", "gated"), "auto", "Gated does not gate the push");
         assert.equal(tierAt("git push", "strict"), "gated", "Strict gates every push");
     });

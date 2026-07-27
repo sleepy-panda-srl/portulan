@@ -32,14 +32,16 @@ passing over them in silence — see [What the compiler refuses](#what-the-compi
 
 ## The three modes
 
-**This repository runs `gated`**, which is also what the engine ships as its recommendation
-([`../core/operating/autonomy.md`](../core/operating/autonomy.md)). Declared in
-[`gates.json`](gates.json)'s top-level `mode` and compiled into
-[`../.claude/settings.json`](../.claude/settings.json)'s `$portulan.mode`.
+**This repository runs `auto`**, on the maintainer's ruling of 2026-07-27: **customer zero runs the most
+autonomous mode.** The engine *ships* `gated` as its recommendation for everyone else
+([`../core/operating/autonomy.md`](../core/operating/autonomy.md)); this workspace deliberately does not
+take its own recommendation, because dogfooding the extreme is how the extreme gets tested and a setting
+nobody runs is a setting nobody has checked. Declared in [`gates.json`](gates.json)'s top-level `mode` and
+compiled into [`../.claude/settings.json`](../.claude/settings.json)'s `$portulan.mode`.
 
 Two rules vary with the mode here, and only two:
 
-| Rule | `auto` | `gated` ← **ours** | `strict` |
+| Rule | `auto` ← **ours** | `gated` (engine default) | `strict` |
 |---|---|---|---|
 | [`push-a-working-branch`](gates.json) | Auto tier | Auto tier | **Gated tier** |
 | [`merge-a-pull-request`](gates.json) | Auto tier | **Gated tier** | **Gated tier** |
@@ -47,10 +49,12 @@ Two rules vary with the mode here, and only two:
 So: **Auto** raises no agent-side prompt anywhere in the cycle. **Gated** is autonomous until the merge,
 which asks once. **Strict** asks before every push as well.
 
-**Adopting the mode model changed no gate.** The recompiled artifact is byte-identical to its predecessor
-plus one line recording the mode. That was the test of whether `gated` described the posture this
-repository already had, and it passed — so what a reviewer is being asked to accept here is a mechanism,
-not a change of posture.
+**What the declaration changed, as a diff rather than a reassurance.** It **removed one compiled gate**:
+`Bash(gh pr merge:*)` is no longer in the artifact's `ask` list, so an agent running here is not prompted
+before a merge. That single line is the whole of what the ruling changed in enforcement, and it is the
+line to look at hardest. The mechanism was separately validated against the posture it replaced —
+compiled at `gated`, the artifact was byte-identical to its predecessor plus one line — so the difference
+visible here is the **ruling**, not the machinery.
 
 ### What a mode never touches: the platform floor
 
@@ -74,11 +78,12 @@ not buy on this repository:
 - **Where a pull request carries no thread at all**, nothing on the floor requires a human act, because
   required approving reviews are 0 (deliberately — see the solo-maintainer arithmetic below).
 
-**So the honest statement, at `auto`, is narrower than it is tempting to write:** `auto` would move this
-repository's last *agent-side* checkpoint onto a floor that is strong about process and weak about
-judgement. At `gated` — what we run — the merge approval is still the maintainer's, and none of the above
-is load-bearing. _(A workspace declaring `auto` without conversation resolution, without a required
-check, or with admin exemptions is declaring something quite different under the same word.)_
+**So the honest statement is narrower than it is tempting to write:** `auto` moves this repository's last
+*agent-side* checkpoint onto a floor that is **strong about process and weak about judgement**. A pull
+request that draws a review comment still waits for a human to resolve it. A pull request that draws none
+can land with no human act at all. Both of those are true, and the second is the one that must not be
+left out of the sentence. _(A workspace declaring `auto` without conversation resolution, without a
+required check, or with admin exemptions is declaring something quite different under the same word.)_
 
 **Everything else in this file is mode-invariant** — repository settings, the two destructive push
 spellings, repository creation and deletion, releases, package publication, spending, sending outward,
@@ -192,10 +197,11 @@ cost a session of hand-typed `git push` commands. A mode leaves the tier table i
 checkpoint a **setting** — so whoever wants the last human look before content leaves the machine turns it
 on, per workspace or per session, and whoever does not is not taxed for it.
 
-**What this repository itself runs on that axis is a one-line call and it is the maintainer's.** The
-declared mode here is `gated`, which leaves the push unattended — the posture that was already in force,
-carried forward deliberately rather than by inattention, so that adopting the mode model changed no gate.
-Moving to `strict` is a one-word edit to [`gates.json`](gates.json) plus a recompile.
+**What this repository itself runs on that axis went the other way.** The declared mode here is `auto`,
+which leaves the push unattended and the merge unprompted as well. So the public flip did not buy this
+repository a tighter push posture: it bought the **engine** a `strict` mode that any adopter can turn on,
+and left customer zero deliberately at the loose end of its own axis. Moving to `strict` remains a
+one-word edit to [`gates.json`](gates.json) plus a recompile.
 
 The argument for it is the public flip. The argument against is that the two facts are about different
 things, and the distinction is the one to keep straight: the confidentiality obligation rests on the
@@ -255,7 +261,7 @@ file: where a rule and its clarification live apart, only the rule gets read.)_
   that did not move to Auto, because it destroys a ref on a shared remote rather than adding one.
 
   **`merge-a-pull-request` is the mode-varying one**, and it is the step the modes are named around: Gated
-  here at `gated` (ours) and at `strict`, and in the Auto tier at `auto`, where a session ships with no
+  here at `gated` (the engine default) and at `strict`, and in the Auto tier at `auto` — **ours** — where a session ships with no
   agent-side prompt. `delete-a-remote-branch` is mode-invariant and stays Gated at every mode — deleting a
   ref is irreversible, which is a fact about the action rather than about how closely anyone is watching.
 
@@ -390,14 +396,13 @@ Note the asymmetry, because it looks inconsistent until you say it out loud: the
 *his* and the conversation must stop being his. Attribution is not one principle applied uniformly — it is
 *who actually did this*, and the honest answer differs by artifact.
 
-What makes the commit half honest rather than the same convention-reliance rejected for comments is that
-**every merge is Gated at this workspace's declared mode** — `gated`: the maintainer approves each one, so
-his name on a commit that reached `main` records a decision he actually took, with the agent's hand marked
-by the `Co-Authored-By` trailer.
+What made the commit half honest rather than the same convention-reliance rejected for comments **used to
+be** that every merge was Gated: the maintainer approved each one, so his name on a commit that reached
+`main` recorded a decision he actually took, with the agent's hand marked by the `Co-Authored-By` trailer.
 
-**That sentence now depends on a setting, and the dependency is the point.** It holds at `gated` and at
-`strict`. It would **not** hold at `auto`, where the merge is in the Auto tier: a merge nobody approved
-cannot record a decision anybody took, and what the floor would leave behind is smaller than it looks —
+**That stopped being true on 2026-07-27, when this workspace declared `auto`, and the loss is recorded as
+a loss rather than restated in a confident tone.** A merge nobody approved cannot record a decision
+anybody took, and what the floor leaves behind is smaller than it looks —
 
 - where a pull request carries an unresolved thread, resolution is required, but that establishes *"this
   review point is settled"* rather than *"this change should land"*, and a reviewer can resolve its own
@@ -405,11 +410,12 @@ cannot record a decision anybody took, and what the floor would leave behind is 
 - where it carries no thread at all, nothing on the floor requires a human act, since required approving
   reviews are 0.
 
-So moving this repository to `auto` is not only a checkpoint change: **it costs this guarantee**, and
-whoever makes that change owes this paragraph a rewrite that says his authorship records that he owns the
-repository and that the change cleared the floor — and not that he decided it should land. Written down
-in advance because the alternative is a stale sentence defending a property a setting had already
-removed, which is the drift this file has now been corrected for twice.
+So, replacing the sentence above: **his authorship on a `main` commit no longer records his decision that
+the change should land.** It records that he owns the repository and that the change cleared the floor;
+for pull requests that carried threads, it additionally records that he settled them. Provenance
+reasoning from these commits should read them that way and not the older way. The paragraph was rewritten
+in the same change that removed the property, rather than left defending it — which is the drift this
+file has now been corrected for twice.
 
 _This paragraph said "every push is Gated" until 2026-07-27, and the difference matters more than the word
 does. Push was the wrong anchor: a commit's author is fixed when it is written, and a commit on an unmerged

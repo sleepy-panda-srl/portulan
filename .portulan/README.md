@@ -75,9 +75,9 @@ Honest limits, each with the milestone that closes it:
   refused outright. `auto` and `propose` compile to **nothing**, deliberately: the compiler emits
   restriction only, and `propose` is the platform floor's job. Those refusals are printed on every run
   rather than passed over. **Which tier some of those rules hold is a setting** as of 2026-07-27: this
-  workspace declares autonomy mode `gated`, so the cycle runs unattended until the ship step and asks
-  there — the posture it already had, so adopting the model changed no gate. `auto` never asks; `strict`
-  asks at every push too. A session may tighten its own mode and never loosen it (`node cli/mode.mjs`).
+  workspace declares autonomy mode **`auto`**, so no agent-side prompt is raised anywhere in the cycle,
+  including at the merge. The engine *ships* `gated` (one approval at the ship step) as its
+  recommendation; customer zero runs the most autonomous mode deliberately. `strict` asks at every push. A session may tighten its own mode and never loosen it (`node cli/mode.mjs`).
   A mode never moves the platform floor, at any value. See
   [The three modes](gate-map.md#the-three-modes). The **platform
   floor beneath it is configured** — `main` rejects direct pushes

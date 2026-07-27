@@ -86,7 +86,7 @@ These words mean exactly this here; ambiguity in them is what costs most.
 | **Task** | The atomic unit of work *and* of context — self-contained enough to hand to a fresh window. |
 | **Lane** | Which weight of the loop a task takes: `full` or `triage`. |
 | **Tier** | What an action *is*, classified by undoability: `auto`, `propose`, `gated`, `prohibited`. Per action, and it does not move. |
-| **Mode** | How often the *development cycle* stops for approval: `auto` (never), `gated` (once, at the ship step), `strict` (every push, and the ship step). Per workspace and per session — a different axis from **Tier**, sharing two of its words. Ours is `gated`, which is also what the engine recommends. |
+| **Mode** | How often the *development cycle* stops for approval: `auto` (never), `gated` (once, at the ship step), `strict` (every push, and the ship step). Per workspace and per session — a different axis from **Tier**, sharing two of its words. **Ours is `auto`**; the engine ships `gated` as its recommendation, and customer zero deliberately runs the most autonomous mode instead. |
 | **Gate map** | The binding of concrete actions to autonomy tiers, and the declaration of which mode we run. Policy, hence workspace-owned. |
 | **Verify recipe** | The executable check that decides "done" ([`verify/`](verify/)). A workspace may have several and names the default. |
 | **Principles** | [`principles.md`](principles.md) — how *we* decide. Required, lives in this directory. This is what the milestone-2 criterion calls the *constitution slot*. |
