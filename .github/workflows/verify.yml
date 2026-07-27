@@ -47,7 +47,25 @@ jobs:
       # Pinned to a full-length commit SHA. This organisation's Actions policy requires it, and
       # the policy is right: a movable tag is a supply-chain hole, because whoever controls `v7`
       # can repoint it at any commit and every workflow trusting the tag picks it up silently.
-      # SHA below is actions/checkout v7.0.1.
+      #
+      # **The SHA below is v7.0.0 — one patch BEHIND the current v7.0.1 — and that is deliberate,
+      # temporary, and the whole point of this paragraph.** PR #22 added `dependabot.yml` beside
+      # this file to watch these pins, and nothing ever confirmed the watcher works. It could not:
+      # version-update jobs have no REST endpoint, no `dependabot` check run appears on this
+      # repository at all, and v7.0.1 was already the newest release — so "Dependabot opened no pull
+      # request" was indistinguishable from "Dependabot never ran". Silence was simultaneously the
+      # success state and the failure state, which is the same shape as the incident that prompted
+      # PR #22 in the first place: a warning nobody was obliged to read.
+      #
+      # So this regression is the standing bar of this repository — force a check red before
+      # believing its green — applied to the one check that had never been forced. It hands
+      # Dependabot something it must notice.
+      #
+      # **Do not "fix" this pin by hand.** The fix is Dependabot's own pull request proposing
+      # v7.0.1, and merging that is simultaneously the proof and the revert — it also demonstrates
+      # the claim one paragraph of `dependabot.yml` rests on, that Dependabot rewrites the SHA and
+      # the trailing version comment together. If that pull request never arrives, the watcher is
+      # broken, and that is the finding rather than a disappointment.
       #
       # Moved off v4.4.0 because that release declares `using: node20` and the runner has been
       # forcing it onto Node 24 since the Node 20 deprecation, which is a warning today and a
@@ -71,7 +89,7 @@ jobs:
       # does is stop this step qualifying for the default-self-checkout early-out, so the check is
       # called and then returns on the event. What would actually matter is this workflow moving to
       # `pull_request_target` or `workflow_run`, which is the change to think twice about.
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
 
       - name: Run every verify recipe the workspace manifest declares
         run: |
