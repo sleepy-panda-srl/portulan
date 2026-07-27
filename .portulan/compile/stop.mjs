@@ -168,19 +168,43 @@ function defaultRecipe() {
     }
 }
 
-/** Has this session done work? A read-only session owes no handoff. */
+/**
+ * Has this session done work? A read-only session owes no handoff.
+ *
+ * Three signals, tried in order, because the obvious one is not portable. The first version hard-coded
+ * `origin/main..HEAD`, which throws in a repository with no `origin`, a differently-named default
+ * branch, or an unfetched ref — and the catch turned that throw into `false`, **silently disabling the
+ * handoff gate while local commits sat there unrecorded.** A fail-open in the gate, and a quiet one.
+ * Found by review on the pull request.
+ */
 function didWork() {
+    const git = (args) => execFileSync("git", args, { cwd: REPO, encoding: "utf8", timeout: 10_000 });
+
+    // 1. Uncommitted changes. Portable, and the strongest signal there is.
     try {
-        const dirty = execFileSync("git", ["status", "--porcelain"], { cwd: REPO, encoding: "utf8", timeout: 10_000 });
-        if (dirty.trim() !== "") return true;
-        const ahead = execFileSync("git", ["log", "--oneline", "origin/main..HEAD"], {
-            cwd: REPO,
-            encoding: "utf8",
-            timeout: 10_000,
-        });
-        return ahead.trim() !== "";
+        if (git(["status", "--porcelain"]).trim() !== "") return true;
     } catch {
-        // Cannot tell. Do not invent an obligation out of a failed git call.
+        // Not a git repository, or git is unusable. Nothing below will work either.
+        process.stderr.write("portulan stop-gate: cannot read git status — the handoff check is not running.\n");
+        return false;
+    }
+
+    // 2. Commits ahead of this branch's configured upstream, whatever it is called.
+    try {
+        const upstream = git(["rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}"]).trim();
+        if (upstream) return git(["log", "--oneline", `${upstream}..HEAD`]).trim() !== "";
+    } catch {
+        // No upstream configured. Ordinary for a branch that has never been pushed — fall through.
+    }
+
+    // 3. Commits that are on no remote at all. Works with no upstream, and with no remote either —
+    //    in a repository with no remotes every commit qualifies, which is the correct reading there.
+    try {
+        return git(["log", "--oneline", "HEAD", "--not", "--remotes"]).trim() !== "";
+    } catch {
+        // Genuinely cannot tell. Say so rather than inventing an obligation OR silently dropping one:
+        // a gate that disables itself without a word is the failure this whole runner exists against.
+        process.stderr.write("portulan stop-gate: cannot determine whether this session did work — the handoff check is not running.\n");
         return false;
     }
 }

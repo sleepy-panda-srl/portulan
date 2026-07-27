@@ -377,6 +377,25 @@ describe("the policy location", () => {
         assert.ok(fs.existsSync(path.join(dir, ".claude", "settings.json")));
     });
 
+    test("an absolute path is refused and falls back — a hook must not read outside the workspace", () => {
+        // Found by review. This resolves on every tool call, so an unvalidated manifest value is an
+        // arbitrary file-read surface. `doctor` would refuse such a manifest, but there is no ordering
+        // between the two tools: the schema is the contract, not the sequence.
+        const dir = scratch();
+        fs.mkdirSync(path.join(dir, ".portulan"), { recursive: true });
+        fs.writeFileSync(path.join(dir, ".portulan", "workspace.json"), JSON.stringify({ gates: "/etc/passwd" }));
+        assert.equal(policyPath(dir), path.join(dir, ".portulan", "gates.json"));
+    });
+
+    test("a `../` escape is refused after resolution, not by pattern alone", () => {
+        // A traversal chain satisfies any reasonable regex and still leaves the directory, so
+        // containment is checked on the resolved path.
+        const dir = scratch();
+        fs.mkdirSync(path.join(dir, ".portulan"), { recursive: true });
+        fs.writeFileSync(path.join(dir, ".portulan", "workspace.json"), JSON.stringify({ gates: "../../../etc/passwd" }));
+        assert.equal(policyPath(dir), path.join(dir, ".portulan", "gates.json"));
+    });
+
     test("customer zero's manifest and the default agree — so this repo exercises both paths identically", () => {
         assert.equal(policyPath(REPO), path.resolve(REPO, ".portulan", "gates.json"));
     });
