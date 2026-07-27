@@ -59,18 +59,12 @@ on:
     types: [submitted, edited, dismissed]
 
 permissions:
-  contents: read
   pull-requests: read
 
 jobs:
   copilot-reviewed:
     runs-on: ubuntu-latest
     steps:
-      # Pinned to a full-length SHA: the organisation and this repository both set
-      # `sha_pinning_required: true`. Same pin as verify.yml and pr-labels.yml, so Dependabot bumps
-      # all three together.
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-
       - name: A Copilot review exists for the current head commit
         env:
           GH_TOKEN: ${{ github.token }}
@@ -116,7 +110,8 @@ jobs:
             lower=$(printf '%s' "$login" | tr '[:upper:]' '[:lower:]')
             seen="$seen $lower"
             for candidate in $REVIEWERS; do
-              if [ "$lower" = "$candidate" ] && [ "$commit" = "$head" ]; then
+              # A DISMISSED review is an invalidated one — it must not satisfy the await.
+              if [ "$lower" = "$candidate" ] && [ "$commit" = "$head" ] && [ "$state" != "DISMISSED" ]; then
                 printf 'found: %s reviewed %s (%s)\n' "$login" "$commit" "$state"
                 matched=1
               fi

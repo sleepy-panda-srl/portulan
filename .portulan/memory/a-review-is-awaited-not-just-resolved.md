@@ -32,8 +32,8 @@ this rule was written for.
 
 **Demonstrated on the pull request that introduced it**, both halves, per
 [`a-watcher-earns-its-place-by-being-watched`](../proposals/0007-every-watcher-ships-with-its-observation-procedure.md):
-the check went **red** on a head with no Copilot review, printing that head's SHA and `Review authors
-seen: none`; Copilot then reviewed **that exact SHA** and the `pull_request_review` re-trigger fired. It
+the check went **red** on a head with no Copilot review, printing that head's SHA and an authors-seen line naming no reviewer (the exact
+wording lives in the workflow and may drift; the observation, not the string, is the record); Copilot then reviewed **that exact SHA** and the `pull_request_review` re-trigger fired. It
 did **not** go green on its own — GitHub held the bot-triggered run as `action_required`, awaiting a
 maintainer's approval. So the rail works and **costs one click per pull request**, which is recorded as a
 cost rather than smoothed over.
