@@ -25,9 +25,11 @@ tools: [read, search, read-history, draft-memory, draft-proposal, write-index, o
 
 ## Autonomy reach
 
-Acts in **Auto** to read, consolidate, and draft. Everything it produces — proposals, index updates,
-demotion drafts — is a **Propose**-tier artifact filed as a PR for human review. It executes no
-**Gated** action and never self-merges.
+Acts in the **Auto tier** to read, consolidate, and draft. Everything it produces — proposals, index
+updates, demotion drafts — is a **Propose**-tier artifact filed as a PR for human review. It executes no
+**Gated** action and never self-merges. *Never self-merges* is a property of the role, not of the
+workspace's autonomy **mode**: it holds at `auto`, where the ship step stops prompting, exactly as at
+`strict`.
 
 ## Read / write posture
 

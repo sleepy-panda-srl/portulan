@@ -4,7 +4,8 @@
 > [`../gates.json`](../gates.json) and writes [`../../.claude/settings.json`](../../.claude/settings.json);
 > the two scripts here are what that artifact points at.
 >
-> Core states the doctrine — the tiers ([`../../core/operating/autonomy.md`](../../core/operating/autonomy.md))
+> Core states the doctrine — the tiers and the modes
+> ([`../../core/operating/autonomy.md`](../../core/operating/autonomy.md))
 > and the Stop-gate contract ([`../../core/operating/verification.md`](../../core/operating/verification.md)).
 > Both named milestone 4 as where the machinery arrives. This is that machinery.
 
@@ -58,6 +59,25 @@ and it would have flattened the one rule that has no approval path at all — no
 [`../../docs/vision.md`](../../docs/vision.md) — into an ordinary push. That is why the policy carries
 four tier classes where core names three: `prohibited` is not a stronger `gated`, it is a different
 answer to a different question.
+
+## The mode is resolved at runtime, and only this layer can do it
+
+The compiled `permissions` rules express the **workspace default** mode, because a static file cannot
+vary per session. A session may have *tightened* its own mode since ([`../gate-map.md`](../gate-map.md),
+"The three modes"), and [`gate.mjs`](gate.mjs) resolves that at decision time — reading the session's
+override, keyed by working tree and carrying the session that claimed it, exactly as
+[`stop.mjs`](stop.mjs) keys its counter.
+
+So a `strict` session's extra checkpoints live **at this layer only**, which makes them a convenience
+above a rail — the same status as the wrapper coverage, and for the same measured reason: a crashed hook
+fails open. What makes that acceptable is the **direction**. An override may only tighten, so everything
+this layer adds is additional refusal, and if it fails the session falls back to the compiled default —
+the posture a reviewer approved — never below it. A *loosening* override would have the opposite failure
+mode, and it is refused outright rather than being enforced hopefully.
+
+The emitted sentence names the mode (`… (gated, mode strict) — …`) because a prompt that appears only at
+`strict` is otherwise indistinguishable from one the reader believed was always there, and the first
+question anyone asks of an unexpected gate is why it is being asked now.
 
 ## The permission pattern respects token boundaries — measured, not assumed
 

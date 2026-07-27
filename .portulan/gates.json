@@ -5,6 +5,9 @@
 
   "why": "gate-map.md",
 
+  "$mode": "The autonomy MODE this workspace runs: how often the development cycle stops for approval. `auto` never stops, `gated` stops once at the ship step, `strict` stops at every push and at the ship step. A mode moves only the rules below that declare a mode-keyed `tier`; everything else — settings, deletions, releases, spending, and the constitution — is mode-invariant, because how often a team wants to be asked about its own loop says nothing about whether deleting a repository is recoverable. A session may TIGHTEN this for itself and never loosen it (`cli/mode.mjs`); loosening is a change to this line, which is a pull request. `gated` is both this workspace's declared mode and what the ENGINE ships as its recommendation — see core/operating/autonomy.md. It preserves exactly the posture this repository already had: unattended through the work, one approval at the moment a change lands. Adopting the mode model therefore changed no gate, which is how it is known the model is faithful to what it replaced.",
+  "mode": "gated",
+
   "rules": [
     {
       "id": "edit-the-constitution",
@@ -27,9 +30,9 @@
     },
     {
       "id": "merge-a-pull-request",
-      "tier": "gated",
+      "tier": { "auto": "auto", "gated": "gated", "strict": "gated" },
       "action": { "shell": "gh pr merge" },
-      "reason": "An agent never decides for itself that a change is ready to land. The maintainer may instruct an agent to perform a merge he has decided on; he may not have it decided for him. This is the gate the push gate used to stand in for: a commit enters the repository's record here, not at the push. A merge also has a precondition his approval does not waive: the head must not be behind `main`. Check it with `gh api repos/{owner}/{repo}/compare/main...<head> --jq .behind_by` — zero, or rebase onto `origin/main`, push with `--force-with-lease`, and let the checks re-run first, because CI tested this branch against a `main` that has since moved."
+      "reason": "The ship step — the one the mode is named around. At mode `gated` (this workspace's default) and at `strict`, an agent never decides for itself that a change is ready to land: the maintainer may instruct an agent to perform a merge he has decided on; he may not have it decided for him. This is the gate the push gate used to stand in for — a commit enters the repository's record here, not at the push. At mode `auto` this checkpoint is gone by declaration, and what goes with it is stated rather than discovered: the commit-attribution argument in gate-map.md rests on the maintainer approving every merge, so `auto` trades that guarantee for unattended shipping and is a ruling to take deliberately. A merge also has a precondition no mode and no approval waives: the head must not be behind `main`. Check it with `gh api repos/{owner}/{repo}/compare/main...<head> --jq .behind_by` — zero, or rebase onto `origin/main`, push with `--force-with-lease`, and let the checks re-run first, because CI tested this branch against a `main` that has since moved. The platform enforces that one regardless (`required_status_checks.strict`)."
     },
     {
       "id": "change-repository-settings",
@@ -149,9 +152,9 @@
     },
     {
       "id": "push-a-working-branch",
-      "tier": "auto",
+      "tier": { "auto": "auto", "gated": "auto", "strict": "gated" },
       "action": { "shell": "git push" },
-      "reason": "Pushing a working branch, including its first push and a `--force-with-lease` rewrite, is unattended as of 2026-07-27. A working branch is visible but is not yet a claim on the repository; the guarantee the push gate stood in for lives at the merge. `main` is refused by the platform regardless. The two Gated spellings above are narrower prefixes and are matched first."
+      "reason": "Pushing a working branch, including its first push and a `--force-with-lease` rewrite, is unattended at modes `auto` and `gated` — as it has been since 2026-07-27. A working branch is visible but is not yet a claim on the repository; the guarantee the push gate stood in for lives at the merge. Mode `strict` gates it instead: one prompt per push, for whoever wants the last human checkpoint before content leaves the machine. That checkpoint is the thing the repository going public on 2026-07-27 made worth offering, and `strict` is the designed answer rather than a revision of the Auto tier. `main` is refused by the platform at every mode. The two Gated spellings above are narrower prefixes, are matched first, and are mode-invariant."
     },
     {
       "id": "run-a-verify-recipe",

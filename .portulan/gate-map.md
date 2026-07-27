@@ -1,8 +1,13 @@
 # Gate map — what an agent may do in this repository
 
 > The **policy** half of [`../core/operating/autonomy.md`](../core/operating/autonomy.md). Core defines
-> the tiers — Auto, Propose, Gated, Prohibited — as universal mechanism; this file binds *this repository's* concrete
+> the tiers — Auto, Propose, Gated, Prohibited — and the modes — Auto, Gated, Strict — as universal
+> mechanism; this file binds *this repository's* concrete
 > actions to them, because which action is dangerous is a property of the team, not of the engine.
+>
+> **Tier and mode are different axes.** A tier says what an action is; a mode says how often this
+> repository's development cycle stops for approval. Where both are in scope below, they are written
+> "the Auto **tier**" and "Auto **mode**" — the bare word is always ambiguous.
 
 ## Where the policy actually lives, since milestone 4
 
@@ -25,6 +30,103 @@ the one that compiles.
 Two tiers below compile to nothing at all, on purpose, and the compiler prints them as refusals rather than
 passing over them in silence — see [What the compiler refuses](#what-the-compiler-refuses).
 
+## The three modes
+
+**This repository runs `gated`**, which is also what the engine ships as its recommendation
+([`../core/operating/autonomy.md`](../core/operating/autonomy.md)). Declared in
+[`gates.json`](gates.json)'s top-level `mode` and compiled into
+[`../.claude/settings.json`](../.claude/settings.json)'s `$portulan.mode`.
+
+Two rules vary with the mode here, and only two:
+
+| Rule | `auto` | `gated` ← **ours** | `strict` |
+|---|---|---|---|
+| [`push-a-working-branch`](gates.json) | Auto tier | Auto tier | **Gated tier** |
+| [`merge-a-pull-request`](gates.json) | Auto tier | **Gated tier** | **Gated tier** |
+
+So: **Auto** raises no agent-side prompt anywhere in the cycle. **Gated** is autonomous until the merge,
+which asks once. **Strict** asks before every push as well.
+
+**Adopting the mode model changed no gate.** The recompiled artifact is byte-identical to its predecessor
+plus one line recording the mode. That was the test of whether `gated` described the posture this
+repository already had, and it passed — so what a reviewer is being asked to accept here is a mechanism,
+not a change of posture.
+
+### What a mode never touches: the platform floor
+
+A mode changes how often *this loop* stops. It changes nothing the platform enforces, at any value:
+branch protection, the required checks, `required_status_checks.strict`, required conversation
+resolution and `enforce_admins` all hold identically at `auto` and at `strict`. That is the property
+that makes offering `auto` defensible at all, and it is worth being precise about what it does and does
+not buy on this repository:
+
+- **Where a pull request carries an unresolved review thread**, it cannot merge until that thread is
+  resolved. The agent *identity* — the App token — is refused `resolveReviewThread` by GitHub outright.
+  But that is not the same as "no agent can clear it": an agent running with the maintainer's own
+  credentials **has** resolved threads here, on his per-action approval (see
+  [Which identity acts](#which-identity-acts)), and on
+  [#44](https://github.com/sleepy-panda-works/portulan/pull/44) the Copilot reviewer resolved its **own**
+  thread unasked. So this row stops a comment being *ignored*; it does not guarantee a human judged
+  anything.
+- **A Copilot review is *requested* on every pull request** by repository ruleset — **requested, not
+  awaited.** Nothing today makes a merge wait for that round to land, and the floor section below says so
+  in its own words: that ruleset "gates nothing directly". Naming this as a rail would be inventing one.
+- **Where a pull request carries no thread at all**, nothing on the floor requires a human act, because
+  required approving reviews are 0 (deliberately — see the solo-maintainer arithmetic below).
+
+**So the honest statement, at `auto`, is narrower than it is tempting to write:** `auto` would move this
+repository's last *agent-side* checkpoint onto a floor that is strong about process and weak about
+judgement. At `gated` — what we run — the merge approval is still the maintainer's, and none of the above
+is load-bearing. _(A workspace declaring `auto` without conversation resolution, without a required
+check, or with admin exemptions is declaring something quite different under the same word.)_
+
+**Everything else in this file is mode-invariant** — repository settings, the two destructive push
+spellings, repository creation and deletion, releases, package publication, spending, sending outward,
+and the constitution. That is not an omission. Those are classified by undoability, and how often we want
+to be asked about our own loop says nothing about whether deleting a repository is recoverable. A mode is
+not a licence, and the suite asserts it: a test walks that list and fails if any of them stops being
+Gated at any mode.
+
+**The Prohibited tier is unreachable by any mode**, in either direction, enforced by the compiler rather
+than promised. A mode-keyed tier naming `prohibited` fails the whole compile. A prohibition a setting
+could switch off would be the Gated tier wearing its name.
+
+### A session may tighten its own mode; it may not loosen it
+
+`node cli/mode.mjs` reports the mode in force; `node cli/mode.mjs strict` tightens **this session only**;
+`node cli/mode.mjs --clear` drops back to the default. It touches no tracked file — the record is
+worktree-local session state in the OS temp directory, carrying the session that claimed it, invisible to
+every other session, and inert once that session is gone. Same shape and same reasons as the Stop-gate's
+counter in [`compile/stop.mjs`](compile/stop.mjs).
+
+Loosening is refused, and the reason is a measurement rather than a preference: **the compiled permission
+rules — the only layer that cannot fail open — were emitted at the default.** A session claiming to be
+looser would still meet every prompt its mode promised to remove. That is a stated enforcer that is not
+the real one, which is the defect
+[`memory/a-stated-enforcer-must-be-the-real-one.md`](memory/a-stated-enforcer-must-be-the-real-one.md)
+exists about. The second reason is independent and would be enough alone: an agent writes that file, and
+editing on a working branch is in the Auto tier — so an agent that could loosen its own mode could
+un-gate its own merge.
+
+To loosen, change `mode` in [`gates.json`](gates.json) and recompile. That is `change-this-workspace` —
+Propose, so a pull request, so a human. **The direction that needs a human keeps one.**
+
+**Precedence, in one line:** _session override > workspace default; the Prohibited tier and every
+mode-invariant rule above ignore both._
+
+**What an auditor can reconstruct afterwards, stated precisely because the record discipline will ask.**
+The tracked artifact at any commit names the mode that commit was compiled at, so `git log -p
+.claude/settings.json` is the durable history of this repository's declared posture. It also **bounds**
+every session that ran against that commit: because an override can only tighten, no session was ever
+looser than the artifact says. What git cannot tell you is whether a particular session tightened —
+that is untracked by design, and the honest mechanism for it is the same one that carries every other
+"why": the session says so in its handoff. A tightening is worth a line there; the absence of a line is
+not evidence either way, and this paragraph is the reason nobody should read it as such.
+
+**What no mode touches at all: the platform floor.** Branch protection, the required check,
+`enforce_admins` and conversation resolution hold identically at `auto` and at `strict`, because the
+server enforces them rather than the run. That is the property that makes offering `auto` defensible.
+
 ## The tiers, bound
 
 ### Auto — the agent acts unattended
@@ -44,7 +146,9 @@ that visibility costs is stated below rather than defined away.
 - `run-a-verify-recipe` — [`verify/docs.sh`](verify/docs.sh) or any read-only shell command.
 - `commit-to-a-working-branch` — never to `main`.
 - `push-a-working-branch` — **to `origin`, including its first push.** Never `main`, which the platform
-  refuses anyway. See below for why this stopped being Gated. Force-pushing a working branch is included,
+  refuses anyway. **Mode-varying**: Auto here at `auto` and `gated` modes, and in the Gated tier at
+  `strict` — see [The three modes](#the-three-modes). See below for why this stopped being Gated.
+  Force-pushing a working branch is included,
   with `--force-with-lease` rather than `--force`: the lease refuses the push if the remote moved since it
   was last fetched, which is the difference between rewriting your own history and silently discarding
   someone else's. Bare `--force` on a shared remote is the one part of this that is not recoverable inside
@@ -73,9 +177,30 @@ any of that. Every commit still carries `Co-Authored-By` marking the agent's han
 **The one real cost, named rather than waved past:** a push is the moment content leaves this machine for
 GitHub, and it was the last human checkpoint before that happened. The confidentiality seam does not depend
 on it — the seam scan is a **commit**-time obligation, and commits were already Auto — so nothing moves
-from checked to unchecked. But the honest statement is that an unreviewed push now publishes to a private
-remote where it is visible to anyone with access and may be cached or indexed. That is judged acceptable on a
-one-collaborator private repository and is the thing to revisit first if either of those facts changes.
+from checked to unchecked. But the honest statement is that an unreviewed push publishes to a remote where
+it is visible and may be cached or indexed.
+
+**That revisit clause fired, and this is the answer to it.** The paragraph above used to end "judged
+acceptable on a one-collaborator private repository and the thing to revisit first if either of those facts
+changes." One of them changed on 2026-07-27, when the repository went **public** — and an unreviewed push
+now publishes to a remote that is world-readable and permanently so. The clause did its job: it named in
+advance the fact whose change would matter, and the fact changed.
+
+The answer is **`strict` mode**, and it is a better answer than re-gating the push would have been. Re-gating
+would have imposed one team's risk posture on every adopter of the engine and re-opened the misreading that
+cost a session of hand-typed `git push` commands. A mode leaves the tier table intact and makes the
+checkpoint a **setting** — so whoever wants the last human look before content leaves the machine turns it
+on, per workspace or per session, and whoever does not is not taxed for it.
+
+**What this repository itself runs on that axis is a one-line call and it is the maintainer's.** The
+declared mode here is `gated`, which leaves the push unattended — the posture that was already in force,
+carried forward deliberately rather than by inattention, so that adopting the mode model changed no gate.
+Moving to `strict` is a one-word edit to [`gates.json`](gates.json) plus a recompile.
+
+The argument for it is the public flip. The argument against is that the two facts are about different
+things, and the distinction is the one to keep straight: the confidentiality obligation rests on the
+**seam scan**, a commit-time obligation unchanged at every mode, and not on anyone eyeballing a push.
+`strict` buys a *review* checkpoint, not a confidentiality one.
 
 ### Propose — a human or an eval gate reviews before it counts
 
@@ -128,6 +253,11 @@ file: where a rule and its clarification live apart, only the rule gets read.)_
 
 - `merge-a-pull-request`, and `delete-a-remote-branch` — which is a push, and is the one push spelling
   that did not move to Auto, because it destroys a ref on a shared remote rather than adding one.
+
+  **`merge-a-pull-request` is the mode-varying one**, and it is the step the modes are named around: Gated
+  here at `gated` (ours) and at `strict`, and in the Auto tier at `auto`, where a session ships with no
+  agent-side prompt. `delete-a-remote-branch` is mode-invariant and stays Gated at every mode — deleting a
+  ref is irreversible, which is a fact about the action rather than about how closely anyone is watching.
 
   **The merge carries a precondition the approval does not waive: the head must not be behind `main`.**
   Sync first — `git rebase origin/main`, then `git push --force-with-lease`, both Auto — let
@@ -220,6 +350,17 @@ Corrected here rather than left, because a gate map that overstates a hole is as
 3. **A rule whose sentence is broader than its matcher.** Guarded against by splitting rather than by
    trusting prose — `rename-or-transfer-a-repository` compiles to nothing and says so, rather than hiding
    inside a neighbour's matcher.
+4. **A session can loosen its own *local* enforcement unattended, and the mode override is not the way it
+   would.** [The three modes](#the-three-modes) says a session may tighten and never loosen, and that is
+   true of the override mechanism. It is not a claim about the whole machine: editing
+   [`gates.json`](gates.json) is `change-this-workspace` — Propose, which is a *review* obligation, not a
+   runtime refusal — and the file is writable on a working branch, while `node cli/compile.mjs` is
+   ungated. So an agent that decided to could rewrite the policy and recompile, and the local permission
+   layer would follow it. **What catches that is the pull request**, where the diff shows both the policy
+   and the regenerated artifact, plus `verify/compile.sh`, which fails if the two disagree. Named here
+   rather than left implied, because "a session cannot loosen" is exactly the kind of sentence that gets
+   read one clause wider than it was written. The honest form: *a session cannot loosen the mode without
+   leaving the change in the diff.*
 
 All of which is the same point: **this layer is a convenience above a rail, not the rail.** The rail is the
 platform floor below, which refuses the push at the server regardless of what any local file says, and is
@@ -250,8 +391,25 @@ Note the asymmetry, because it looks inconsistent until you say it out loud: the
 *who actually did this*, and the honest answer differs by artifact.
 
 What makes the commit half honest rather than the same convention-reliance rejected for comments is that
-**every merge is Gated**: the maintainer approves each one, so his name on a commit that reached `main`
-records a decision he actually took, with the agent's hand marked by the `Co-Authored-By` trailer.
+**every merge is Gated at this workspace's declared mode** — `gated`: the maintainer approves each one, so
+his name on a commit that reached `main` records a decision he actually took, with the agent's hand marked
+by the `Co-Authored-By` trailer.
+
+**That sentence now depends on a setting, and the dependency is the point.** It holds at `gated` and at
+`strict`. It would **not** hold at `auto`, where the merge is in the Auto tier: a merge nobody approved
+cannot record a decision anybody took, and what the floor would leave behind is smaller than it looks —
+
+- where a pull request carries an unresolved thread, resolution is required, but that establishes *"this
+  review point is settled"* rather than *"this change should land"*, and a reviewer can resolve its own
+  thread ([#44](https://github.com/sleepy-panda-works/portulan/pull/44));
+- where it carries no thread at all, nothing on the floor requires a human act, since required approving
+  reviews are 0.
+
+So moving this repository to `auto` is not only a checkpoint change: **it costs this guarantee**, and
+whoever makes that change owes this paragraph a rewrite that says his authorship records that he owns the
+repository and that the change cleared the floor — and not that he decided it should land. Written down
+in advance because the alternative is a stale sentence defending a property a setting had already
+removed, which is the drift this file has now been corrected for twice.
 
 _This paragraph said "every push is Gated" until 2026-07-27, and the difference matters more than the word
 does. Push was the wrong anchor: a commit's author is fixed when it is written, and a commit on an unmerged

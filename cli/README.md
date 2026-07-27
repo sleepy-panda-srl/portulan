@@ -16,8 +16,9 @@ plus one tool that is not on that list at all, because milestone 3 needed it.
 | [`doctor.test.mjs`](doctor.test.mjs) | Its test suite, on node's own runner. Written before the validator. |
 | [`plugin-lint.mjs`](plugin-lint.mjs) | The packaging validator: the plugin and marketplace manifests, the skills they declare, and the agents at `./agents/` that nothing declares. |
 | [`plugin-lint.test.mjs`](plugin-lint.test.mjs) | Its test suite, likewise written first. |
-| [`compile.mjs`](compile.mjs) | The enforcement compiler: a workspace's [`../.portulan/gates.json`](../.portulan/gates.json) becomes host enforcement. One backend today — Claude Code `permissions` + `hooks` — and the vocabulary it reads stays the workspace's, so a second backend translates the same policy instead of forcing it to be rewritten. |
+| [`compile.mjs`](compile.mjs) | The enforcement compiler: a workspace's [`../.portulan/gates.json`](../.portulan/gates.json) becomes host enforcement. One backend today — Claude Code `permissions` + `hooks` — and the vocabulary it reads stays the workspace's, so a second backend translates the same policy instead of forcing it to be rewritten. Also the one definition of what an action pattern matches and what an autonomy **mode** means, imported by the runtime gate so the two can never disagree. |
 | [`compile.test.mjs`](compile.test.mjs) | Its test suite, likewise written first. Emission fidelity only — nothing in here can establish that a host *honours* what the compiler emits, which is a fact about a running host. |
+| [`mode.mjs`](mode.mjs) | Reads, or **tightens**, the current session's autonomy mode. Touches no tracked file and no other session; it refuses to loosen, because the compiled permission rules were emitted at the workspace default. |
 | [`stop-gate.test.mjs`](stop-gate.test.mjs) | The exception to "written first": it covers the Stop-gate runner ([`../.portulan/compile/stop.mjs`](../.portulan/compile/stop.mjs)), and it exists because a supervisor found a fail-open and a forever-block in a runner nothing tested at all. Its cap arithmetic and date handling — deliberately not its I/O. |
 | [`fixtures/`](fixtures/) | Known-bad manifests, and a workspace whose repo card has drifted from its tree. |
 
@@ -25,6 +26,7 @@ plus one tool that is not on that list at all, because milestone 3 needed it.
 node cli/doctor.mjs <workspace-dir> [<workspace-dir> ...]
 node cli/plugin-lint.mjs <plugin-root> [<plugin-root> ...]
 node cli/compile.mjs [--workspace <dir>] [--check]
+node cli/mode.mjs [auto|gated|strict|--clear]
 ```
 
 The two validators: exit `0` when every workspace or plugin root validates · `1` when at least one does

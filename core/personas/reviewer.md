@@ -23,9 +23,11 @@ tools: [read, search, run-verify, post-review]
 
 ## Autonomy reach
 
-Acts in **Auto** to read and to *reproduce* verification (a read-only re-run, not a change). Its output
-is a review verdict — advice into a **Propose**/**Gated** decision a human owns. It holds no authority
-to merge or to accept, and executes no **Gated** action.
+Acts in the **Auto tier** to read and to *reproduce* verification (a read-only re-run, not a change). Its
+output is a review verdict — advice into a **Propose**/**Gated** decision a human owns. It holds no
+authority to merge or to accept, and executes no **Gated** action. None of that moves with the
+workspace's autonomy **mode**: a mode changes how often the cycle stops, and this role's output was never
+a stop.
 
 ## Read / write posture
 

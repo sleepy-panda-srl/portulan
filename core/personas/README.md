@@ -11,11 +11,19 @@ context firewalls; Cognition — read-parallel / write-isolated.)_
 - **`tools:` allow-list** — default-deny; the role's least-privilege surface (see
   [`../operating/safety.md`](../operating/safety.md) and [`../operating/autonomy.md`](../operating/autonomy.md)).
 - **Charter** — what the role is for, and just as importantly what it must *not* do.
-- **Autonomy reach** — the highest tier the role may act in, in tier vocabulary (Auto / Propose /
+- **Autonomy reach** — the highest **tier** the role may act in, in tier vocabulary (Auto / Propose /
   Gated), not concrete actions — the gate map that binds actions to tiers is workspace policy (see
   [`../operating/autonomy.md`](../operating/autonomy.md)). **Prohibited is never a reach**: it is the
   one tier no role may act in, so it does not appear here — a persona declaring it would be claiming a
   permission that does not exist for anyone.
+
+  **A reach is a tier, never a mode.** The two axes share the words *Auto* and *Gated*, so this is the
+  place the confusion would land first. A reach is a *ceiling on what this role may do*; the workspace's
+  autonomy **mode** is *how often the cycle stops*, and it is nobody's persona to declare. A mode can
+  move a concrete action across the line a reach draws — a merge is in the Gated tier at `gated` mode and
+  in the Auto tier at `auto` — and a persona that may not act in the Gated tier still may not merge under
+  `auto`, because a reach bounds the role and a mode only says how often anyone is asked. Where a persona
+  file must say both, it writes "the Auto tier" or "Auto mode" and never the bare word.
 - **Memory scope** — memory is per-agent; a reviewer's memory is not the implementer's (see
   [`../operating/memory.md`](../operating/memory.md)).
 - **Read / write posture** — most personas read in parallel; writes are isolated to one place so two
