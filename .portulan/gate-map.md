@@ -177,6 +177,21 @@ attempt it is to offer a rewritten history, and the cost of being wrong is `main
 So the position to hold is that the floor is very probably intact and one layer of it is unverified. That
 is a weaker claim than this section made before the audit, and it is the accurate one.
 
+**A second ruleset exists and is deliberately not part of the floor.** `copilot auto-review on pull
+requests` — id `19805871`, repository-sourced, added 2026-07-27 — targets the same `~DEFAULT_BRANCH` and
+carries the single rule `copilot_code_review`, so every pull request gets a Copilot review requested without
+anyone remembering to ask. It is recorded here because anyone auditing `repos/{owner}/{repo}/rulesets` will
+now find two and needs to know which is which.
+
+It gates nothing directly: required approving reviews remain 0, and a Copilot review arrives as `COMMENTED`
+rather than as an approval. The honest qualification is that it can still decide whether a change lands —
+conversation resolution is required on `main`, so a Copilot review that leaves an inline comment opens a
+thread that blocks merge until the maintainer resolves it, which is exactly what happened on
+[#25](https://github.com/sleepy-panda-works/portulan/pull/25). Not a gate, then, but upstream of one.
+
+It was added while this section was being written, which is as good an illustration as the section could
+ask for of why the layers needed counting in the first place.
+
 **Why zero required reviews, on purpose.** GitHub does not permit anyone to approve their own pull
 request. On a repository with one human, requiring an approving review *and* enforcing for
 administrators would deadlock every merge. Requiring the PR and the green check — with no exemption for
