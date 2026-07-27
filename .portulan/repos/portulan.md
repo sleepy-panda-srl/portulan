@@ -3,7 +3,7 @@
 **What it is.** The Portulan monorepo: the engine, the spec, plugin packaging, the CLI, and the demo
 workspace, plus the manifest that makes the repository installable as a Claude Code plugin feed. Blast
 radius is the whole product — this is the only repository the product ships from, and when the
-public-flip clearance completes its history becomes public and permanent.
+public-flip clearance completes, its history becomes public and permanent.
 
 **Build / test / run.**
 - build: none — no build step yet; the CLI arrives at milestone 7
