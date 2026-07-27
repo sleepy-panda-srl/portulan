@@ -322,6 +322,34 @@ export function claudeCode(result, options = {}) {
 // 3. The command line
 // ===========================================================================================
 
+/**
+ * Where a workspace's gate policy lives.
+ *
+ * Read from the manifest's top-level `gates` key, because that is what the key MEANS —
+ * `../spec/slots.md` calls it "a path to a JSON file the enforcement compiler reads", and `doctor`
+ * resolves it. This compiler hard-coded `.portulan/gates.json` for one round, so a workspace naming a
+ * different file would have had `doctor` validate one policy and `compile` compile another, with both
+ * reporting green. A manifest key that validates and is never consumed is this repository's most
+ * expensive recurring defect, and here it was in the very key this milestone added. Found by review on
+ * the pull request.
+ *
+ * The default survives for a workspace with no manifest or no key — that is a legitimate shape, and
+ * refusing it would make the key required, which is a spec change nobody decided.
+ */
+export function policyPath(workspaceRoot, workspaceDir = ".portulan") {
+    const manifest = path.join(workspaceRoot, workspaceDir, "workspace.json");
+    try {
+        const declared = JSON.parse(fs.readFileSync(manifest, "utf8")).gates;
+        if (typeof declared === "string" && declared.trim()) {
+            return path.resolve(path.join(workspaceRoot, workspaceDir), declared);
+        }
+    } catch {
+        // No manifest, or unreadable. `doctor` is the tool that judges a manifest; this one only needs
+        // to know where the policy is, and the default is where it is when nothing says otherwise.
+    }
+    return path.join(workspaceRoot, workspaceDir, "gates.json");
+}
+
 function readJson(file, what) {
     let raw;
     try {
@@ -357,7 +385,7 @@ export function run(argv, options = {}) {
             } else throw new CompileError(`unknown argument ${JSON.stringify(argv[i])}`);
         }
 
-        const policyFile = path.join(workspaceRoot, ".portulan", "gates.json");
+        const policyFile = policyPath(workspaceRoot);
         const policy = readJson(policyFile, "the gate policy");
         const result = compile(policy);
         const { settings } = claudeCode(result);
