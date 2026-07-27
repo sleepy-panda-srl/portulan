@@ -259,3 +259,45 @@ up: [`../.github/workflows/verify.yml`](../.github/workflows/verify.yml) is the 
 `actions/checkout` the only entry in it, and there is no `package.json` and no lockfile. The mechanism is
 the point and not the count — but a floor described as broader than it is would be the same drift this
 rule was added to catch.
+
+**A watcher earns its place by being watched**, as of 2026-07-27, per
+[`proposals/0007-every-watcher-ships-with-its-observation-procedure.md`](proposals/0007-every-watcher-ships-with-its-observation-procedure.md):
+
+> A watcher earns its place by being watched. Anything added here whose job is to notice something — a bot,
+> a scheduled job, a required check, an alert, a review request — ships with the procedure that would
+> demonstrate it works, and that procedure is run once and its result recorded. Where no such procedure
+> exists, the artifact says so in as many words, and says that its own silence is not evidence.
+
+The occasion was a watcher adopted because nothing was watching, which nothing then watched.
+[`../.github/dependabot.yml`](../.github/dependabot.yml) landed to catch drift in the Actions pins and for
+five days had no evidence behind it at all: version-update jobs have no REST endpoint, no `dependabot` check
+run appeared, and the pin already sat on the newest release, so the correct behaviour was to open nothing.
+**Success and failure produced the same silence** — the same shape as the incident that prompted the watcher.
+Third instance of
+[`memory/a-mandate-nothing-checks-is-already-broken.md`](memory/a-mandate-nothing-checks-is-already-broken.md)
+in one subject area, and the first where the unchecked mandate was itself a checker.
+
+Three watchers were made to produce a positive signal on the day the rule was adopted, and those are the
+worked examples of what the rule asks for:
+
+| Watcher | The procedure that was actually run |
+|---|---|
+| Dependabot version updates | the pin was deliberately regressed one patch to v7.0.0; Dependabot opened the bump back to v7.0.1, and merging that was simultaneously the proof and the revert |
+| Dependency graph, alerts, security updates | the SBOM went `404` → `200`, and then tracked a pin *through a change* — which the first reading alone could not have shown |
+| Copilot auto-review ruleset | recorded as unvouched-for with its test stated in advance — the first pull request opened after `09:30:38Z` — and Copilot was then requested on that pull request at open, unasked |
+
+**The honest limits, because the rule is weaker than it sounds.** Nothing here checks it: whether a watcher
+works is a fact about live services, and `doctor` already reports live settings as something it does not
+fetch. What makes it more than taste is that it asks for an *artifact* visible in a diff — either a stated
+procedure or a sentence admitting there is none — so a reviewer can require it where no script can. And not
+every watcher can be forced red safely: this one could, at a cost of one patch and a few minutes of a
+required check running an older action, while a watcher for something destructive, rate-limited, or
+irreversible may have no safe red test at all. The rule prefers evidence and settles for an admission, and
+it should not pretend those are equal.
+
+One corollary learned the same day, and left in
+[`../.github/workflows/verify.yml`](../.github/workflows/verify.yml) where it will be tripped over:
+**a mechanical revert is not a narrative revert.** Dependabot rewrote the pin and could not rewrite the
+paragraph describing the pin, so `main` briefly carried a deliberate-regression notice above a line that no
+longer matched it — a false claim produced by the fix working exactly as designed. When a bot rewrites a
+value, the prose around it is the half nothing checks.
