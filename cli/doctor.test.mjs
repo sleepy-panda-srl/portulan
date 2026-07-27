@@ -616,6 +616,19 @@ describe("provenance is parsed into the two forms the constitution names", () =>
             assert.match(text(severities(checks(findings, "provenance"), "fail")), /locked\.md/);
             // The readable one was still counted: the run continued rather than aborting.
             assert.equal(stats.records, 2);
+            // And the unreadable one is still SIZED (from stat): it is counted in `records`, so
+            // leaving it out of `bytes` would have the two totals disagree about what a record is.
+            const expected =
+                fs.statSync(path.join(dir, "memory", "readable.md")).size +
+                fs.statSync(path.join(dir, "memory", "locked.md")).size;
+            assert.equal(stats.bytes, expected, "count and size must agree on what a record is");
+            // And the summary must not claim assessment it never performed: the unreadable record
+            // is counted as unassessed, and the retirement report says so instead of asserting
+            // that every record states a condition.
+            assert.equal(stats.unassessed, 1);
+            const retirement = text(severities(checks(findings, "retirement"), "report"));
+            assert.match(retirement, /1 unreadable and never assessed/);
+            assert.doesNotMatch(retirement, /every record states a retirement condition/);
         } finally {
             fs.chmodSync(path.join(dir, "memory", "locked.md"), 0o644);
         }
