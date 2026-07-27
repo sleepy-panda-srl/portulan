@@ -51,7 +51,7 @@ Three workspaces appear in the plan and they are easy to confuse:
 
 | Workspace | Where | Public? | Covers |
 |---|---|---|---|
-| **This one** — `.portulan/` | here | with the repo, at milestone 3 | building Portulan itself: dogfooding |
+| **This one** — `.portulan/` | here | with the repo, when the flip clearance completes | building Portulan itself: dogfooding |
 | Demo workspace | [`../examples/`](../examples/) | yes | a fictional team with two products, so a stranger can read a complete workspace end to end |
 | Sleepy Panda portfolio | private feed (milestone 6) | no | every Sleepy Panda product |
 

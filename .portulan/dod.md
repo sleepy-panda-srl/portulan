@@ -23,8 +23,9 @@ A change is done when **all** of the following hold.
    enforcement exists or the sentence names the milestone where it arrives. _Why: "write the limit, not
    the aspiration" — [`identity.md`](identity.md)._
 5. **The pre-commit scan is clean** across the changed files, the commit message, and the branch name.
-   The term list lives outside this repository. _Why: this history goes public at milestone 3, and
-   history cannot be cleaned afterwards — only rewritten, which is worse and leaves its own trace._
+   The term list lives outside this repository. _Why: this history goes public when the flip clearance
+   completes, and history cannot be cleaned afterwards — only rewritten, which is worse and leaves its
+   own trace._
 6. **The plan reflects reality.** If the work moved milestone state, the same change updates
    [`../docs/plan.md`](../docs/plan.md) — Status column and Session log — so the next session boots from
    the truth rather than from an optimistic memory of it.

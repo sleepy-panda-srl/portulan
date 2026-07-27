@@ -20,7 +20,7 @@ exit criterion.
 **This rule binds exit criteria and nothing else. It never touches an authorization hold.** An exit
 criterion answers *is this done?* — a claim about work, which must be demonstrable where it is claimed.
 An authorization hold answers *may this happen?* — a permission, which is legitimately granted from
-outside and stays a gate no matter where the granting lives. The milestone-3 public flip is the live
+outside and stays a gate no matter where the granting lives. The public flip is the live
 example: it is held on a clearance tracked in the private context, that hold is real, and **this rule is
 not an argument for removing it.** Read without this paragraph the rule is exactly such an argument,
 which is how it was first drafted and what a fresh-context supervisor caught before it merged — a rule

@@ -103,7 +103,7 @@ GREEN, exit `0`. That is a fail-open in gate machinery, defended by "review woul
 edit review is worst at noticing, a removed line. The trade was priced at the only moment it is cheap: two
 manifests exist, one already declared `tree` and the other is a `demo` and exempt, so the migration was a
 version bump and a note with **zero manifest edits**. Every milestone toward public makes a MAJOR strictly
-more expensive, and deferring would have carried the hole across the milestone-3 flip — the window when
+more expensive, and deferring would have carried the hole across the public flip — the window when
 outside readers first probe this spec. It also exercises the migration path while the blast radius is
 zero, which is the same reasoning that made the demo workspace worth building: a migration whose first run
 is on a real adopter is a claimed capability, not a demonstrated one.
