@@ -7,7 +7,7 @@
 #   links   every relative Markdown link resolves            (docs that lie are worse than no docs)
 #   kernel  core/engine.md stays inside its line budget      (the always-loaded layer is the scarce one)
 #   map     the root README lists every top-level entry      (agent legibility: the map matches the ground)
-#   record  every Session log date has a dated handoff       (work that leaves no record cannot be audited)
+#   record  every log date has a dated handoff; newest entry attests the seam (no record = unauditable)
 #
 # Exit 0 green · 1 red · 2 could not run. The Stop-gate (milestone 4) calls this;
 # until it exists, the definition of done in ../dod.md requires running it by hand.
@@ -134,7 +134,11 @@ else
     : >"$tmp/record"
     while IFS= read -r d; do
         [[ "$d" < "$CADENCE_FLOOR" ]] && continue
-        grep -q "^\.portulan/handoffs/${d}-.*\.md\$" "$manifest" || printf '%s\n' "$d" >>"$tmp/record"
+        found=0
+        while IFS= read -r h; do
+            [ -f "$h" ] && found=1 && break
+        done < <(grep "^${HANDOFFS}/${d}-.*\.md$" "$manifest")
+        [ "$found" -eq 1 ] || printf '%s\n' "$d" >>"$tmp/record"
     done < <(sed -n 's/^- \(2[0-9]\{3\}-[0-9]\{2\}-[0-9]\{2\}\) ·.*/\1/p' "$PLAN" | sort -u)
 
     if [ -s "$tmp/record" ]; then
