@@ -23,9 +23,9 @@ Recoverable and reversible inside a working copy. Nothing here reaches another p
 Reversible but consequential: it changes what the repository says, or how it behaves.
 
 - Open a pull request. **An agent never merges its own on its own authority** — what stays forbidden is an
-  agent deciding for itself that a change is ready to land. Merging itself is Gated below, and the
-  decision-not-keystroke principle stated in that tier's header applies to it: the maintainer may review a
-  pull request and then instruct an agent to perform the merge. Default when nothing is said: open the pull
+  agent deciding for itself that a change is ready to land. Merging itself is Gated below, and as that
+  tier's header says, the gate is the maintainer's decision rather than his keystroke: he may review a pull
+  request and then instruct an agent to perform the merge. Default when nothing is said: open the pull
   request and hand it over.
 - Add or change doctrine in [`../core/`](../core/), a template, a persona, or a skill.
 - Add or change anything in this workspace, including this file.
@@ -43,6 +43,11 @@ not only the merge it was first written about. He may approve in conversation an
 command; that is the gate working, not a bypass. What the tier forbids is an agent deciding for itself that
 approval was implied, or treating one approval as standing permission. Default when nothing is said: prepare
 the action, ask, and wait.
+
+*Which* credentials run it is a separate question, answered in **Which identity acts** below: the agent
+identity's token cannot perform Gated actions at all, so an agent executing one necessarily does so with the
+maintainer's own credentials — which is precisely why the approval has to be explicit and per action rather
+than inferred from a previous one.
 
 _(Hoisted here 2026-07-27, after the omission cost several exchanges. The principle had been written down
 once — in the Propose tier, attached to merging — while `git push` and `Merge a pull request` both sit in
@@ -82,8 +87,8 @@ is the thing the whole gate map exists to keep honest.
 | Commits and pushes | **The maintainer's** git identity and credentials | The build's provenance discipline requires his authorship on the commit record. An agent co-authoring is fine and already conventional; an agent *replacing* him there is not. |
 | Pull-request conversation — comments and review replies | **The agent identity**, via [`tools/gh-bot`](tools/gh-bot) | A reply written by an agent and posted through the maintainer's credentials makes the conversation read as human when it is not, and the reader cannot tell. See [`memory/agent-activity-is-attributable.md`](memory/agent-activity-is-attributable.md). |
 | **Opening a pull request** | **The maintainer's credentials**, with the body carrying an attribution line naming the agent | Not a choice either — the platform refuses it. Creating a pull request needs repository-**contents** read, and this App is deliberately refused contents: that refusal is what makes "the permission set is the enforcement, not the wrapper" true, so widening it to buy nicer attribution would trade the load-bearing guarantee for a cosmetic one. GitHub answers `not all refs are readable` (HTTP 422). Measured 2026-07-26 opening [#18](https://github.com/sleepy-panda-works/portulan/pull/18). The fallback is the one this repository used before the App existed: post under his name and *say so in the artifact*, which serves the rule's actual purpose — a reader can tell. Conversation on the pull request still comes from the bot. |
-| **Resolving a review thread** | **The maintainer**, by hand | Not a choice — the platform refuses it. `resolveReviewThread` returns `FORBIDDEN — Resource not accessible by integration` for a GitHub App, whatever its permission set. It is also the right split on reflection: a reply is *what the agent says*, while resolving is *the judgement that a review point is settled*, and this repository requires conversation resolution before merge, which makes it part of the merge gate rather than part of the conversation. |
-| Everything Gated above — settings, releases, merges | **The maintainer**, by hand | Unchanged. The agent identity's token cannot do these at all. |
+| **Resolving a review thread** | **The maintainer**, by hand | Not the agent identity's, and that part is a platform refusal: `resolveReviewThread` returns `FORBIDDEN — Resource not accessible by integration` for a GitHub App, whatever its permission set. Whether the maintainer's *own* credentials could is **untested and deliberately so** — attempting it would resolve a live thread, which is an action on the merge gate. It is beside the point anyway, because this is the one row where the split is right on the merits and not only on capability: a reply is *what the agent says*, while resolving is *the judgement that a review point is settled*, and this repository requires conversation resolution before merge, which makes it part of the merge gate rather than part of the conversation. |
+| Everything Gated above — settings, releases, merges | **The maintainer decides**; the command is his or an agent's, on his explicit per-action approval | The agent identity's token cannot do these at all — that half is a platform refusal and is the load-bearing one. The other half is a *prohibition*: an agent running with the maintainer's credentials can call most of these, so what stops it is the Gated tier's header, not the platform. This cell read "**The maintainer**, by hand", which stated impossibility where the truth is authorization — corrected 2026-07-27, the same conflation proposal [`0006`](proposals/0006-dependabot-security-updates.md) shipped and had to fix, here in the file that defines the tier. |
 
 Note the asymmetry, because it looks inconsistent until you say it out loud: the commit record must stay
 *his* and the conversation must stop being his. Attribution is not one principle applied uniformly — it is
@@ -219,7 +224,7 @@ because the same constraint applies to any future rename. The context was `docs-
 stopped describing the job once it ran more than a docs linter. It could not be renamed in place: the
 required context would stop reporting, the pull request doing it would never be mergeable, and
 `enforce_admins` means that block could not be forced past. So the new job ran alongside the old, the
-maintainer re-pointed protection by hand (Gated — the one step an agent cannot take), and only then was the
+maintainer re-pointed protection himself (Gated — the one step no agent may take on its own), and only then was the
 transitional job deleted. See
 [`proposals/0004-ci-runs-every-declared-recipe.md`](proposals/0004-ci-runs-every-declared-recipe.md).
 
