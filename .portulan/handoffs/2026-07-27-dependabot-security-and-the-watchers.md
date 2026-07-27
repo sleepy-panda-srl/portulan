@@ -50,10 +50,17 @@ against treating maintainer-at-merge as a substitute.
   authorization, not capability. 0006 had asserted "an agent cannot perform them", which conflates
   *prohibited* with *impossible* — corrected in #24, in a document whose own subject is two things conflated
   because they share a name.
-- **The Copilot ruleset carries only `copilot_code_review`,** and `review_on_push` is **false**. Only that
-  rule, so a second ruleset does not become a divergent copy of the floor. `review_on_push` false because
-  conversation resolution is required on `main`, so a re-review per push would open a merge-blocking thread
-  on every iteration — the gate would get slower the more carefully you worked.
+- **The Copilot ruleset carries only `copilot_code_review`** — only that rule, so a second ruleset does not
+  become a divergent copy of the floor.
+- **`review_on_push` was set false and the maintainer reversed it to true the same day.** The original
+  reasoning was that conversation resolution is required on `main`, so a re-review per push would open a
+  merge-blocking thread on every iteration and the gate would get slower the more carefully you worked. That
+  cost is real, but it was weighed against nothing: **with it false, a fix is never re-reviewed.** Every round
+  after the first needs someone to remember to ask, and until they do the pull request reads as reviewed while
+  the reviewed content is several commits stale. This was found by walking into it — three rounds of fixes on
+  #32 sat unreviewed, and the missing round had to be requested by hand. The setting now favours the failure
+  that announces itself (an extra thread to resolve) over the one that stays quiet (a stale review that looks
+  current), which is the same preference the rest of this session kept arriving at.
 - **Applied 0007 in a change separate from the one proposing it**, as 0006 was, so the record shows a
   decision taken rather than a proposal that applied itself.
 - **Did not widen `a-mandate-nothing-checks-is-already-broken` while instantiating it.** Widening a rule in
