@@ -56,8 +56,16 @@ paid for. So the workflow merges to `main` first, and only then does `pr-labeled
 
 ```
 gh api -X PATCH repos/sleepy-panda-works/portulan/branches/main/protection/required_status_checks \
-  --input '{"strict":true,"checks":[{"context":"workspace-verify","app_id":15368},{"context":"pr-labeled","app_id":15368}]}'
+  --input - <<'JSON'
+{"strict":true,"checks":[{"context":"workspace-verify","app_id":15368},{"context":"pr-labeled","app_id":15368}]}
+JSON
 ```
+
+**Both contexts are listed, and both carry `app_id`**, because the `checks` array is sent whole rather
+than added to — and a required check written without its `app_id` is satisfiable by any GitHub App
+reporting that name, which is the hole proposal `0001` closed. `strict` is repeated for the same reason:
+send the state you want, rather than relying on what a `PATCH` leaves alone. `--input` reads a file or,
+as here, stdin; inline JSON as its argument is treated as a filename and fails.
 
 Until that runs, this is a rule a human applies and CI reports on — stated so nothing here reads as a
 floor it is not part of yet ([`a-stated-enforcer-must-be-the-real-one.md`](a-stated-enforcer-must-be-the-real-one.md)).
