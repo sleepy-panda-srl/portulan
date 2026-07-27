@@ -86,10 +86,15 @@ manifest being absent, not by the audit.
 `cut`, `tail`, `tr`, `dirname`, `mktemp`, and `rm` as of milestone 4 — and nothing else, which is worth
 preserving: a recipe that needs a toolchain is a recipe that stops being run.
 
-**Every recipe now checks its own list before it runs a check**, exiting `2`. That list and this
-paragraph are the same claim in two places and are edited together; the guard is the enforcer, and this
-is the prose. It is not defensive coding — until 2026-07-27 the recipes guarded only `git` or `node`,
-and the rest of the list was assumed. See Provenance below for what that cost.
+**Every recipe now checks its own list before it runs a check**, exiting `2` — and **the `for need in …`
+line inside each recipe is the source of truth** for what that recipe requires. The Needs column above
+and `requires` in [`../workspace.json`](../workspace.json) name only the substantial dependencies
+(`bash`, `git`, `node`) and are summaries rather than lists: `tests.sh` genuinely needs `find`, and
+neither says so, deliberately — a manifest that declared `awk` would be noise nobody reads. The
+paragraph above is the one place a full list is written out in prose, and it is `docs.sh`'s alone,
+because that is the default recipe and the only one whose dependencies are all POSIX utilities; it is
+edited together with that recipe's guard. It is not defensive coding — until 2026-07-27 the recipes
+guarded only `git` or `node`, and the rest of the list was assumed. See Provenance below for the cost.
 
 **Why `json.sh` breaks that rule, deliberately.** Milestone 2 introduced the first JSON this repository
 *depends* on rather than merely carries, and well-formedness is a parser's judgement: bash can only
