@@ -476,6 +476,51 @@ describe("the floor backend", () => {
         assert.deepEqual(ruleset(withFloor({ branch: "trunk" })).conditions.ref_name.include, ["refs/heads/trunk"]);
     });
 
+    // ---- the four ways the floor declaration could be believed and be wrong ------------------
+    //
+    // All four found by review on the pull request, and all four share a shape: an input this
+    // compiler accepted and then used in a way that produced an artifact GitHub would take and not
+    // enforce. That is worse than a refusal by exactly the margin that matters here.
+
+    test("a `floor.branch` already carrying a ref prefix is refused, not double-prefixed", () => {
+        // `refs/heads/main` passed the branch pattern and the emitter prefixes unconditionally, so
+        // the ruleset would have targeted `refs/heads/refs/heads/main` — a ref no repository has.
+        // Importable, valid, and matching nothing: the exact shape this backend's own fail-closed
+        // guard exists against, arriving through the one field that names what the floor protects.
+        for (const branch of ["refs/heads/main", "refs/tags/v1"]) {
+            assert.throws(() => parse(withFloor({ branch })), CompileError, `${branch} must be refused`);
+        }
+        // And a branch name that merely contains a slash is still fine — `release/2026` is ordinary.
+        assert.equal(githubRuleset(parse(withFloor({ branch: "release/2026" }))).artifact.value.conditions.ref_name.include[0], "refs/heads/release/2026");
+    });
+
+    test("a check context with surrounding whitespace is refused rather than normalised", () => {
+        // `" workspace-verify "` was non-empty after `trim()` and was then stored untrimmed, so the
+        // ruleset would require a context no job can report. Refused rather than quietly fixed, for
+        // the same reason a rule target is: quietly fixing it hides a policy error, and the policy
+        // is the artifact a human reviews.
+        assert.throws(() => parse(withFloor({ checks: [{ context: " workspace-verify " }] })), CompileError);
+    });
+
+    test("an `auto` rule never compiles to a ref rule, whatever it is spelled", () => {
+        // The ref-rule table was consulted before the tier was, so an Auto rule spelled exactly
+        // `git push --force` compiled into `non_fast_forward` — a gate emitted for an action the
+        // policy declares unattended, and `floorRefusal`'s own `auto` branch left unreachable for it.
+        // The tier is the policy's answer; the table is only how this backend spells it.
+        const p = withFloor();
+        p.rules.find((r) => r.id === "force").tier = "auto";
+        const result = githubRuleset(parse(p));
+        assert.ok(!result.compiled.some((c) => c.id === "force"), "an unattended action gets no ruleset rule");
+        assert.match(result.refused.find((r) => r.id === "force").why, /unattended/);
+        assert.ok(!result.artifact.value.rules.some((r) => r.type === "non_fast_forward"));
+    });
+
+    test("a `prohibited` ref spelling still compiles — the restriction is not gated-only", () => {
+        const p = withFloor();
+        p.rules.find((r) => r.id === "force").tier = "prohibited";
+        assert.ok(githubRuleset(parse(p)).compiled.some((c) => c.id === "force" && c.surface === "non_fast_forward"));
+    });
+
     // ---- the two paths that must refuse rather than guess ------------------------------------
 
     test("no floor declared: no artifact, no invented branch, and every rule refused with that reason", () => {

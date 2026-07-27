@@ -784,6 +784,14 @@ export async function inspect(workspaceDir, options = {}) {
     // spec/slots.md promised those claims were "counted and reported unverifiable, never skipped
     // silently". Found at the pre-commit checkpoint, in the paragraph that made the promise.
     let claimedChecks = [];
+    // The same list, captured before anything mutates it. `claimedChecks` is emptied further down
+    // when there are no workflows to compare against, and the floor cross-check read it afterwards —
+    // reporting that the gate map named nothing, about a gate map that named it plainly. That is the
+    // SECOND consumer caught reading this array after the mutation; the first fix added a separate
+    // flag for one consumer instead of making the array safe to read, so the next consumer inherited
+    // the trap. Found by review on the pull request. Snapshot rather than flag this time, so a third
+    // consumer inherits something true instead of something to remember.
+    let declaredChecksInProse = [];
     let gatesRead = false;
     // What the tree's workflows actually report, filled in once a tree is available. `null` means
     // no tree was declared, which is a different thing from a tree with no workflows in it.
@@ -796,6 +804,7 @@ export async function inspect(workspaceDir, options = {}) {
     if (workspace.slots?.gates) {
         try {
             claimedChecks = requiredCheckClaims(fs.readFileSync(path.resolve(dir, workspace.slots.gates), "utf8"));
+            declaredChecksInProse = [...claimedChecks];
             gatesRead = true;
             namedAnyCheck = claimedChecks.length > 0;
         } catch {
@@ -996,8 +1005,8 @@ export async function inspect(workspaceDir, options = {}) {
             // other check here reads for content.
             if (parsed.floor && gatesRead && namedAnyCheck) {
                 const declared = parsed.floor.checks.map((c) => c.context);
-                const missingFromProse = declared.filter((c) => !claimedChecks.includes(c));
-                const missingFromPolicy = claimedChecks.filter((c) => !declared.includes(c));
+                const missingFromProse = declared.filter((c) => !declaredChecksInProse.includes(c));
+                const missingFromPolicy = declaredChecksInProse.filter((c) => !declared.includes(c));
                 if (missingFromProse.length || missingFromPolicy.length) {
                     report(
                         "enforcement",
