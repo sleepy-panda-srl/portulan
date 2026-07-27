@@ -1,0 +1,73 @@
+# Bug report. Structured because a bug report's value is almost entirely in the parts people leave out
+# — what was expected, and what would have to be true for the reporter to be wrong.
+name: Bug report
+description: Something in Portulan does not do what it says it does.
+title: "[bug] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time. **Do not report a security issue here** — this is public. See the
+        Security section of [`CONTRIBUTING.md`](https://github.com/sleepy-panda-works/portulan/blob/main/CONTRIBUTING.md).
+
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you did, and what happened instead of what you expected.
+      placeholder: |
+        I ran `node cli/doctor.mjs .portulan` and it reported green on a workspace whose `gates` key
+        points at a file that does not exist.
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected, and where Portulan says so
+      description: >
+        A link or quote from the repository is the most useful thing you can give us — Portulan's whole
+        product is its files, so a bug is usually a gap between a file's claim and its behaviour. If you
+        expected something the files never promised, say that instead; it is still worth reporting, and
+        it is a different kind of defect.
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: How to reproduce
+      description: Smallest sequence that shows it. A failing command and its output is ideal.
+      render: shell
+    validations:
+      required: false
+
+  - type: input
+    id: version
+    attributes:
+      label: Version or commit
+      description: The tag, commit SHA, or plugin version you are on.
+      placeholder: "v0.1.0, or the SHA from `git rev-parse --short HEAD`"
+    validations:
+      required: false
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: OS, node version, and the host you are running under (Claude Code CLI version, or another host).
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: acknowledgements
+    attributes:
+      label: Before you file
+      options:
+        - label: I searched existing issues and this is not already reported.
+          required: true
+        - label: >
+            I understand that Portulan does not accept outside pull requests, and that this report is
+            the contribution — not a lesser path to one.
+          required: true

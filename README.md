@@ -47,6 +47,12 @@ run `node cli/doctor.mjs examples` to watch it validate.
 - [`docs/vision.md`](docs/vision.md) — the constitution: what Portulan is, the thesis, the non-goals.
 - [`docs/plan.md`](docs/plan.md) — the living milestone map and build protocol.
 
+## Contributing
+
+Portulan is developed in the open and is **not** open to outside code contributions. Read, clone and fork
+freely; send bugs, proposals and feedback through the [issue forms](https://github.com/sleepy-panda-works/portulan/issues/new/choose). Code lands
+only through team members. [`CONTRIBUTING.md`](CONTRIBUTING.md) has the whole of it, including why.
+
 ## License
 
 [Apache-2.0](LICENSE) © 2026 Sleepy Panda SRL.

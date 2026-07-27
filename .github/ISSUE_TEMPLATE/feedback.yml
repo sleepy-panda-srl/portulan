@@ -1,0 +1,57 @@
+# Feedback. Deliberately the loosest of the three forms: the reports worth most here are the ones that
+# do not fit a defect template — "I could not tell what this file was for" is not a bug and not a
+# proposal, and a repository whose product is its files needs to hear it more than it needs either.
+name: Feedback
+description: Tell us what was confusing, what did not fit, or what you expected to find and did not.
+title: "[feedback] "
+labels: ["feedback"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        This form is for everything that is neither a defect nor a concrete proposal. **"I did not
+        understand this" is a complete and welcome report** — Portulan's product is its files, so a file
+        that does not land is a defect in the product even when nothing is broken.
+
+  - type: dropdown
+    id: kind
+    attributes:
+      label: What kind of feedback
+      options:
+        - "Something was confusing or hard to follow"
+        - "Something did not survive contact with my repository"
+        - "I expected to find something and did not"
+        - "A disagreement with a decision or a non-goal"
+        - "Something worked well and is worth keeping"
+        - "Other"
+    validations:
+      required: true
+
+  - type: textarea
+    id: feedback
+    attributes:
+      label: The feedback
+      description: >
+        In your own words. Pointing at the file or paragraph is helpful, but do not go looking for one
+        if you cannot — "I bounced off the README and could not tell what this was for" is exactly the
+        report that is hardest to get and most worth having.
+    validations:
+      required: true
+
+  - type: textarea
+    id: context
+    attributes:
+      label: What you were trying to do
+      description: What brought you here, and what you were hoping to get out of it.
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: acknowledgements
+    attributes:
+      label: Before you file
+      options:
+        - label: >
+            I understand this is a public issue and I have not included anything confidential — my own,
+            my employer's, or anyone else's.
+          required: true

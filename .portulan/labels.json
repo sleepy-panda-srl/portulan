@@ -2,6 +2,33 @@
   "$comment": "The pull-request label policy for this repository — the POLICY half; the checker that enforces it is ../.github/workflows/pr-labels.yml, and the two are separate for the same reason gates.json and cli/compile.mjs are. The set is derived from this repository's own structure rather than from GitHub's stock issue labels, which are built for bug trackers and cannot discriminate between changes here: every pull request in a doctrine repository would be `documentation`. Adding a label to this file does NOT create it on GitHub, and until it exists nobody can apply it — see the `gh label create` loop under 'Adding a label ... does not create it on GitHub' in memory/every-pull-request-carries-a-label.md.",
   "policy": "at-least-one",
   "policyMeans": "A pull request carries at least one label from `labels` below. Extra labels beyond the set are allowed and ignored — the check refuses an UNLABELLED pull request, never an over-labelled one, because a rule that fails on a stray `question` is a rule someone switches off. WHICH label is right stays human judgement, exactly as the rationale half of a rule's provenance does (dod.md, condition 3); `covers` is the guidance, not a matcher.",
+  "$intake": "The ISSUE-intake vocabulary, kept in a separate array from `labels` on purpose. `labels` is the PULL-REQUEST policy and `../.github/workflows/pr-labels.yml` reads `.labels[].name` and nothing else, so these three are invisible to that check — which is the point. Folding them into one set would let a pull request satisfy the at-least-one policy by being labelled `feedback`, and would ask an incoming bug report to know whether it is `doctrine` or `mechanism`, which a reporter cannot know and should not be asked. The two vocabularies answer different questions: `labels` says which part of the repository a change touched, `intake` says what kind of report arrived. Applied automatically by the issue forms in `../.github/ISSUE_TEMPLATE/`. As with `labels`, declaring one here does NOT create it on GitHub — see the `gh label create` note in memory/every-pull-request-carries-a-label.md.",
+  "intake": [
+    {
+      "name": "bug",
+      "color": "d73a4a",
+      "description": "Something does not do what the files say it does",
+      "appliedBy": "issue form",
+      "form": "bug.yml",
+      "note": "Already existed on the repository — GitHub's stock label, and the one case where the stock vocabulary says exactly the right thing."
+    },
+    {
+      "name": "improvement",
+      "color": "a2eeef",
+      "description": "A proposed change to doctrine, mechanism, or the shape of a file",
+      "appliedBy": "issue form",
+      "form": "improvement.yml",
+      "note": "Named `improvement` rather than reusing GitHub's stock `enhancement`, which reads as a feature request for a product with features. What arrives here is usually an argument about a standard."
+    },
+    {
+      "name": "feedback",
+      "color": "c5def5",
+      "description": "Confusion, friction, or an expectation the files did not meet — neither a defect nor a proposal",
+      "appliedBy": "issue form",
+      "form": "feedback.yml",
+      "note": "The category that has no stock equivalent, and the one this repository most needs: a file that does not land is a defect in a product whose product is its files, even when nothing is broken."
+    }
+  ],
   "labels": [
     {
       "name": "doctrine",

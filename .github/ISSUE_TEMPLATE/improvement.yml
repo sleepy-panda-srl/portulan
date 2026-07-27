@@ -1,0 +1,81 @@
+# Improvement / proposal. The fields mirror `.portulan/proposals/` — the shape a change to this
+# repository has to take anyway — so a good issue is most of the proposal that would answer it, and a
+# proposal that cannot state its enforcement or its cost is one the repository would refuse from a team
+# member too.
+name: Improvement
+description: Propose a change to Portulan — doctrine, mechanism, or the shape of a file.
+title: "[improvement] "
+labels: ["improvement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Proposals are wanted, **including ones arguing the current design is wrong** — that is the most
+        useful kind. Note that Portulan does not accept outside pull requests: the proposal is the
+        contribution, and a team member implements what is accepted. See
+        [`CONTRIBUTING.md`](https://github.com/sleepy-panda-works/portulan/blob/main/CONTRIBUTING.md).
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: The problem
+      description: >
+        What goes wrong today, concretely. An occasion beats a principle — the change most likely to be
+        accepted is the one that names the thing that actually happened.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What you propose
+      description: The change itself. Be specific enough that someone could disagree with it.
+    validations:
+      required: true
+
+  - type: textarea
+    id: enforcement
+    attributes:
+      label: How it would earn its place
+      description: >
+        Portulan's third thesis is *rails, not prose*: a rule either enforces itself (a hook, a compiled
+        gate, a Stop-gate, the platform floor), measures itself, or earns its place some other stated
+        way. A rule nothing checks is already broken. If your proposal is prose only, say so — that is
+        an honest answer and sometimes the right one, but it should be deliberate.
+    validations:
+      required: true
+
+  - type: textarea
+    id: cost
+    attributes:
+      label: What it costs, and what it would break
+      description: >
+        The strongest proposals here name their own downside. What gets slower, what gets stricter, who
+        has to do something they did not before, and which existing file stops being true.
+    validations:
+      required: false
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Which part of Portulan
+      description: Best guess is fine — this is triage, not a commitment.
+      options:
+        - "doctrine — core/: the loop, autonomy, verification, memory, evolution, safety"
+        - "mechanism — cli/, spec/, the plugin: the code that checks and enforces"
+        - "workspace — .portulan/: the policy layer and the gate map"
+        - "packaging — the plugin, the marketplace, install and boot"
+        - "documentation — README, the plan, the examples"
+        - "not sure"
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: acknowledgements
+    attributes:
+      label: Before you file
+      options:
+        - label: I searched existing issues and proposals, and this is not already open.
+          required: true
+        - label: I have read `docs/vision.md` and this does not contradict a stated non-goal.
+          required: false
