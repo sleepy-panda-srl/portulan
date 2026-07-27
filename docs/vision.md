@@ -17,8 +17,8 @@ from the accumulated observations of real voyages: hard-won local knowledge, clo
 more valuable with every trip. That is the product thesis in one object, in Sleepy Panda's own
 language: **the engine is the chartmaking method; your workspace is your portulan.** (Decided
 final 24 Jul 2026; **portulan.dev registered by Sleepy Panda SRL the same day.** A knockout
-trademark sweep in classes 9/42 cleared before the repository went public on 27 Jul 2026; a
-formal clearance opinion by counsel precedes brand spend.)
+trademark sweep in classes 9/42 cleared before the repository went public on 27 Jul 2026;
+counsel's formal clearance opinion is still owed and precedes any brand spend.)
 
 One sentence: **cockpit products sell the dashboard; Portulan sells the doctrine.**
 
