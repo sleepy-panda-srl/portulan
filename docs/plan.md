@@ -751,9 +751,11 @@ the seam applies here too: no client-identifying references)_
   `{"shell": "git push"}` rather than any host's matcher syntax, so session 1's second backend tests the
   seam instead of forcing a redesign. `cli/compile.mjs` compiles it to `.claude/settings.json`;
   `.portulan/compile/` is the runtime that artifact points at; `compile --check` is the **sixth verify
-  recipe**, declared in the manifest, so CI will run it on the pull request with no workflow edit —
-  proposal 0004's mechanism, fourth payout. (Stated as the conditional it is: this branch has not been
-  pushed, so CI has not yet run it. The red→green was demonstrated locally.) Spec 2.0 → **2.1**, one optional additive key, with the demo workspace deliberately left at 2.0
+  recipe**, declared in the manifest, and **CI ran it on the pull request with no workflow edit** —
+  `compile — ./.portulan/verify/compile.sh`, `10 compiled, 12 refused`, GREEN, in the `workspace-verify`
+  job on [#31](https://github.com/sleepy-panda-works/portulan/pull/31). Proposal 0004's mechanism, fourth
+  payout, collected rather than asserted. (Held as a conditional in this entry until the run existed,
+  which is the same discipline that kept milestone 3's install criterion unticked for a whole session.) Spec 2.0 → **2.1**, one optional additive key, with the demo workspace deliberately left at 2.0
   so the older-minor path is exercised rather than swept along. Suite 155 → 209 (199 at the pre-commit checkpoint; the ten it added are the regression for the defect it found). · **Both demo clauses ran
   against a live host with the settings in force.** The push demo used a scratch bare remote **on
   purpose**: had the gate failed, the demonstration itself would still have performed no outward action.
