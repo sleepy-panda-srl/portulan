@@ -132,19 +132,50 @@ configured**, as of 2026-07-25, per
 [`proposals/0001-platform-floor-on-main.md`](proposals/0001-platform-floor-on-main.md). What `main`
 enforces:
 
-| Setting | Value |
-|---|---|
-| Direct pushes | rejected — every change goes through a pull request |
-| Required status check | `workspace-verify` — the workspace's verify recipes, run by CI; pinned to app 15368 |
-| Administrators | **included**; the maintainer has no exemption |
-| Required approving reviews | 0 — see below |
-| Conversation resolution | required before merge |
-| Force-pushes and branch deletion | blocked |
+| Setting | Value | Configured in |
+|---|---|---|
+| Direct pushes | rejected — every change goes through a pull request | classic branch protection |
+| Required status check | `workspace-verify` — the workspace's verify recipes, run by CI; pinned to app 15368 | classic branch protection |
+| Administrators | **included**; the maintainer has no exemption | classic branch protection, `enforce_admins` |
+| Required approving reviews | 0 — see below | classic branch protection |
+| Conversation resolution | required before merge | classic branch protection |
+| Force-pushes and branch deletion | blocked | classic branch protection **and**, separately, the organisation ruleset below |
+| SHA-pinned Actions | **required, and enforced by the platform** — `sha_pinning_required: true` | organisation *and* repository Actions policy |
 
 Verified rather than asserted: a direct push to `main` was attempted after the change and rejected with
 *"Changes must be made through a pull request."* This is the first gate in the repository that holds
 against the agent, the maintainer, and any future collaborator equally — the difference between a rule
 and a rail.
+
+**The floor is three layers, and this section used to describe only one.** Recorded 2026-07-27, after an
+audit prompted by an unrelated question found the table claiming to say what `main` enforces while omitting
+two mechanisms that also enforce it. The errors ran in *both* directions, which is why the audit was worth
+more than the patch:
+
+1. **Classic branch protection** — every row above attributed to it. Read at
+   `repos/{owner}/{repo}/branches/main/protection`.
+2. **An organisation ruleset** — `default-branch protection (all repos)`, id `19450244`, active since
+   2026-07-21, targeting `~DEFAULT_BRANCH` on `~ALL` repositories, with the rules `deletion` and
+   `non_fast_forward`. It re-makes two guarantees classic protection already makes, and it carries a bypass
+   for `OrganizationAdmin` with `bypass_mode: always`. Read at `orgs/{org}/rulesets/{id}`. It is not
+   something this repository configured and does not present itself as this repository's, which is most of
+   why it went unnoticed for six days.
+3. **The Actions SHA-pinning policy** — `sha_pinning_required: true`, set at both organisation and
+   repository level. This one was *understated* rather than missing: everything here has been calling SHA
+   pinning "the organisation's policy", language that reads as a convention people comply with, when the
+   platform refuses unpinned actions outright. It is a rail, and it was written down as a habit.
+
+**An honest limit, because the inference is load-bearing.** GitHub documents that rulesets and classic
+branch protection *aggregate*, with the most restrictive version of each rule applying — so
+`enforce_admins: true` should still bind an organisation admin even though the ruleset would let one past
+its own `non_fast_forward` rule. What GitHub does **not** document is how ruleset bypass actors interact
+with `enforce_admins` specifically, and **that interaction is untested here.** The direct-push rejection
+above is not evidence for it: that exercised classic protection, not the bypass. The test that would settle
+it is a force-push to `main` by an organisation admin, and it is deliberately not run — the only way to
+attempt it is to offer a rewritten history, and the cost of being wrong is `main`.
+
+So the position to hold is that the floor is very probably intact and one layer of it is unverified. That
+is a weaker claim than this section made before the audit, and it is the accurate one.
 
 **Why zero required reviews, on purpose.** GitHub does not permit anyone to approve their own pull
 request. On a repository with one human, requiring an approving review *and* enforcing for
