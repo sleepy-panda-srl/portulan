@@ -29,7 +29,7 @@ about `CODEOWNERS` and the agent App.
 - **After any automated rewrite lands**, read the prose around what moved — not the diff, which shows only
   the line that changed, but the paragraph, which is where the stale claim will be. The diff's narrowness
   is exactly what hides this.
-- **While writing prose about a value something else may change.** Prefer a claim that dates itself to one
+- **While writing prose about a value something else may change.** Prefer a claim that dates itself over one
   written in the present tense. This is why the observation table in
   [`../proposals/0006-dependabot-security-updates.md`](../proposals/0006-dependabot-security-updates.md)
   is stamped with the time it was read: when the pin later moved, that table stayed honest as a historical
