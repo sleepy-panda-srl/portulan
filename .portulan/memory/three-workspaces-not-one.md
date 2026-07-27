@@ -11,7 +11,7 @@ Which of *this repository's* directories is which workspace kind:
 
 | Directory | `kind` | Ships |
 |---|---|---|
-| `.portulan/` | `repository` | publicly with the repo, at milestone 3 |
+| `.portulan/` | `repository` | publicly with the repo, when the flip clearance completes |
 | [`../../examples/`](../../examples/) | `demo` | publicly — the worked example a stranger reads |
 | the Sleepy Panda portfolio workspace | `portfolio` | privately, through the feed at milestone 6 |
 

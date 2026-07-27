@@ -12,8 +12,9 @@
 > these are how *we* work while building it.
 
 - **Write the limit, not the aspiration.** Every document says what exists *today* and names the
-  milestone where the rest lands. _Why:_ the repository goes public at milestone 3 as a pre-release, and
-  a framework that overclaims about its own enforcement burns the only asset an unknown project has.
+  milestone where the rest lands. _Why:_ the repository goes public as a pre-release when the flip
+  clearance completes, and a framework that overclaims about its own enforcement burns the only asset an
+  unknown project has.
   _Applied:_ every "arrives in milestone N" note in this workspace, and the platform-floor admission in
   [`gate-map.md`](gate-map.md).
 - **Prefer the rail to the reminder.** Given a choice between a rule an agent must remember and a check
