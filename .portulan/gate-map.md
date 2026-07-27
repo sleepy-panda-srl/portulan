@@ -23,8 +23,12 @@ that visibility costs is stated below rather than defined away.
 - Create and edit files on a working branch, in a worktree.
 - Run [`verify/docs.sh`](verify/docs.sh) or any read-only shell command.
 - Commit to a working branch — never to `main`.
-- **Push a working branch to `origin`, including its first push, and force-push it.** Never `main`, which the
-  platform refuses anyway. See below for why this stopped being Gated.
+- **Push a working branch to `origin`, including its first push.** Never `main`, which the platform
+  refuses anyway. See below for why this stopped being Gated. Force-pushing a working branch is included,
+  with `--force-with-lease` rather than `--force`: the lease refuses the push if the remote moved since it
+  was last fetched, which is the difference between rewriting your own history and silently discarding
+  someone else's. Bare `--force` on a shared remote is the one part of this that is not recoverable inside
+  a working copy, so it does not belong in this tier.
 - Draft memory entries, task files, handoffs, and proposals.
 - Delegate to a subagent persona ([`../core/personas/`](../core/personas/)).
 
@@ -56,11 +60,11 @@ one-collaborator private repository and is the thing to revisit first if either 
 
 Reversible but consequential: it changes what the repository says, or how it behaves.
 
-- Open a pull request. **An agent never merges its own on its own authority** — what stays forbidden is an
-  agent deciding for itself that a change is ready to land. Merging itself is Gated below, and as that
-  tier's header says, the gate is the maintainer's decision rather than his keystroke: he may review a pull
-  request and then instruct an agent to perform the merge. Default when nothing is said: open the pull
-  request and hand it over.
+- Open a pull request. **An agent never merges its own pull request on its own authority** — what
+  stays forbidden is an agent deciding for itself that a change is ready to land. Merging itself is
+  Gated below, and as that tier's header says, the gate is the maintainer's decision rather than his
+  keystroke: he may review a pull request and then instruct an agent to perform the merge. Default
+  when nothing is said: open the pull request and hand it over.
 - Add or change doctrine in [`../core/`](../core/), a template, a persona, or a skill.
 - Add or change anything in this workspace, including this file.
 - Update the Status column or the Session log in [`../docs/plan.md`](../docs/plan.md).
