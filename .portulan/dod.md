@@ -10,7 +10,8 @@ A change is done when **all** of the following hold.
 1. **Every verify recipe ran green in this working copy.** Not "should pass" — run each recipe
    [`workspace.json`](workspace.json) declares, and read the output. _Why: since milestone 4 the
    Stop-gate runs the **default** recipe automatically and blocks "done" on a red or an exit 2 — but it
-   runs one recipe, not six, and it releases the session after three consecutive refusals (reset by a green run) or nine in total. So it makes a red
+   runs one recipe, not six, and it releases the session after three consecutive refusals **for any one
+   reason** (each reason's count clearing only when that reason clears) or nine in total. So it makes a red
    unmissable rather than impossible, and this condition is still yours. CI runs all of them on the pull
    request, which catches it later and more expensively._
 2. **You could walk a reviewer through every line.** Core's bar, restated because it is the one most

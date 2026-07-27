@@ -40,7 +40,7 @@ are the point:
 | [`verify/`](verify/) | The verify recipes — one of which the Stop-gate now runs — and what each check enforces |
 | [`gates.json`](gates.json) | The gate policy the enforcement compiler reads: actions bound to tiers, in this workspace's vocabulary rather than a host's |
 | [`labels.json`](labels.json) | The pull-request label set, read by [`../.github/workflows/pr-labels.yml`](../.github/workflows/pr-labels.yml) — policy here, checker there |
-| [`compile/`](compile/) | The runtime the compiled artifact points at — the `PreToolUse` gate and the `Stop` gate |
+| [`compile/`](compile/) | The runtime the Claude Code artifact points at — the `PreToolUse` gate and the `Stop` gate — and the compiled platform floor, [`compile/github-ruleset.json`](compile/github-ruleset.json) |
 | [`tools/`](tools/) | Operator tooling — how this repository is *run*, as distinct from how a change is checked |
 | [`repos/`](repos/) | Repo cards — one per repository this workspace covers |
 | [`memory/`](memory/) | Durable facts with provenance, one per file |
@@ -70,14 +70,19 @@ Honest limits, each with the milestone that closes it:
   It runs in CI on every pull request. What it cannot check is whether any of these documents is still
   *true* — whether the gate map's tiers are honoured, whether a mission statement has drifted, whether a
   sealed stamp describes a real incident. The machine catches absence; the human judges substance.
-- **Compiled gates, as of milestone 4 — for two tiers of four.** [`gates.json`](gates.json) compiles to
-  [`../.claude/settings.json`](../.claude/settings.json), so Gated actions prompt and the constitution is
-  refused outright. `auto` and `propose` compile to **nothing**, deliberately: the compiler emits
-  restriction only, and `propose` is the platform floor's job. Those refusals are printed on every run
-  rather than passed over. The **platform floor beneath it is configured** — `main` rejects direct pushes
-  and requires the status check `workspace-verify` green, with no exemption for administrators — so what
-  still rests on review is the tiers above the floor, not the floor. _(The exact context string matters
-  when cross-checking branch protection: it is the job id, not the workflow's display name.)_
+- **Compiled gates, as of milestone 4 — two backends, and neither covers everything.** [`gates.json`](gates.json)
+  compiles to [`../.claude/settings.json`](../.claude/settings.json), so Gated actions prompt and the
+  constitution is refused outright; `auto` and `propose` compile to **nothing** there, deliberately, since
+  the compiler emits restriction only. It also compiles to
+  [`compile/github-ruleset.json`](compile/github-ruleset.json), the platform floor as importable data,
+  where the partition inverts and `propose` is exactly what is enforced. **Three gates neither backend
+  compiles** — renaming or transferring the repository, spending money, sending something outward — and
+  `compile --matrix` and `doctor` both name them, because a policy stating a gate nothing enforces must
+  never read as configured. The **platform floor beneath it all is configured and live** — `main` rejects
+  direct pushes and requires `workspace-verify` and `pr-labeled` green, with no exemption for
+  administrators — so what still rests on review is the tiers above the floor, not the floor. _(The exact
+  context string matters when cross-checking branch protection: it is the job id, not the workflow's
+  display name.)_
 - **No generated memory index.** [`memory/`](memory/) is a flat directory. The size-budgeted index is
   *built, never hand-maintained* ([`../core/operating/memory.md`](../core/operating/memory.md)), so
   writing one by hand now would contradict the doctrine it implements; it arrives with the scheduled

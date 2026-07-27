@@ -188,13 +188,25 @@ exactly one of **compiled** or **refused with a stated reason**, and the counts 
 because the distinctive failure of a compiler that emits gate machinery is a rule that goes in and nothing
 comes out: the map reads as configured and the machine enforces nothing.
 
-Three kinds of refusal, all printed on every run:
+**Two backends read this policy, and what each refuses is different.** The refusals below are the
+**Claude Code** backend's — the host on this machine. Since milestone 4 session 1 there is a second, the
+**GitHub repository ruleset** in [`compile/github-ruleset.json`](compile/github-ruleset.json), which is
+the platform floor compiled from this same file, and its partition is close to the inverse: `propose` is
+exactly what it enforces. `node cli/compile.mjs --matrix` prints every rule against both, and
+[`compile/README.md`](compile/README.md) argues each refusal.
+
+Three kinds of refusal from the Claude Code backend, all printed on every run:
 
 | Refusal | Why |
 |---|---|
 | tier `auto` | Unattended by definition. Emitting an `allow` rule would *loosen* a check rather than add one — the maintainer's ruling, 2026-07-27: the compiler only ever adds restriction. |
-| tier `propose` | Enforced by the platform floor — pull request, required check, review — not by a permission rule on one machine. |
+| tier `propose` | Enforced by the platform floor — pull request, required check, review — not by a permission rule on one machine. **The floor backend compiles exactly these**, which is what makes that sentence a hand-off rather than a shrug. |
 | action `none` | No tool-level surface exists. Spending money and sending something outward are the two here. |
+
+**Three gates neither backend compiles**, printed by `--matrix` and by `doctor` because a policy stating
+a gate nothing enforces should never read as configured: `rename-or-transfer-a-repository`,
+`spend-money-or-register-a-domain`, `send-something-outside-this-repository`. Each is a
+prompt-level habit and the Gated tier's header, and nothing else, until something reaches it.
 
 **Two layers are emitted for every gate, and only one of them is the gate.** The permission rule holds;
 the hook supplies the sentence. That split is forced by a measurement rather than chosen: on CLI 2.1.220 a
@@ -383,6 +395,20 @@ Verified rather than asserted: a direct push to `main` was attempted after the c
 against the agent, the maintainer, and any future collaborator equally — the difference between a rule
 and a rail.
 
+**This row now has a second in-tree carrier, and they are checked against each other.**
+[`gates.json`](gates.json)'s `floor` declares the same required contexts as machine-readable policy, because
+the floor backend has to emit them. Two files stating one fact is this repository's signature defect, so
+`doctor` compares them and reports any divergence — the same containment already applied to the rule ids
+above. It is worth knowing exactly how narrow the older check was: `doctor`'s claims lint reads this row and
+compares it against the **tree**, where both jobs exist, so a row naming one of two contexts passed. The
+cross-check is what closes that, and it closed it on its first run — against a branch whose checkout
+predated [#50](https://github.com/sleepy-panda-works/portulan/pull/50), where this row still named one
+context and `main` had already fixed it. A fair demonstration of the class, and not a defect found in the
+record.
+
+Neither carrier is the live setting, and that gap is real: whether branch protection *actually* requires
+these contexts is an API fact no check here fetches. It is read by hand at the supervised checkpoints.
+
 **One row is weaker than it reads, and it is the one another section leans on.** Conversation resolution
 requires every thread **resolved**; it does not require that anyone holding the merge gate agrees with it.
 A thread can be resolved by the very reviewer that raised it — measured 2026-07-27 on
@@ -422,6 +448,15 @@ attempt it is to offer a rewritten history, and the cost of being wrong is `main
 
 So the position to hold is that the floor is very probably intact and one layer of it is unverified. That
 is a weaker claim than this section made before the audit, and it is the accurate one.
+
+**This floor now has a compiled form, and it is not the one in force.**
+[`compile/github-ruleset.json`](compile/github-ruleset.json) is what [`gates.json`](gates.json) compiles to
+for the platform-floor backend: an importable GitHub repository ruleset carrying a pull-request
+requirement, these required checks (strict), a force-push block and a deletion block. It is **generated,
+never applied** — importing it is a settings change, Gated, and nobody has — so the table above still
+describes the live configuration and that file describes what the policy *says* the floor should be. They
+agree today, checked by hand at this session's checkpoints. Nothing checks them automatically, and nothing
+here can: `doctor` does not fetch settings and no verify recipe may make a network call.
 
 **A second ruleset exists and is deliberately not part of the floor.** `copilot auto-review on pull
 requests` — id `19805871`, repository-sourced, added 2026-07-27 — targets the same `~DEFAULT_BRANCH` and

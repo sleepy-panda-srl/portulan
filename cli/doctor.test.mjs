@@ -255,7 +255,7 @@ describe("the schema validator implements exactly the declared subset", () => {
 
 describe("the schema declares which Workspace Definition version it implements", () => {
     test("the shipped schema carries it in `$id`", () => {
-        assert.deepEqual(schemaVersion(SCHEMA), { major: 2, minor: 1 });
+        assert.deepEqual(schemaVersion(SCHEMA), { major: 2, minor: 2 });
     });
 
     test("a schema whose `$id` does not carry one is refused", () => {
@@ -711,6 +711,170 @@ describe("the store reports its own growth", () => {
 });
 
 // -------------------------------------------------------------------- the claims lint
+
+// ------------------------------------------------- the per-host degradation report
+//
+// `docs/vision.md` promises that "the enforcement backends are per-host with an honest degradation
+// report". The compiler's per-rule accounting is that report's data — every rule ends as compiled or
+// refused-with-a-reason, per backend — so this reads it rather than re-deriving it. Two
+// implementations of one accounting is the drift this repository keeps finding.
+//
+// Report severity, never failure, for the same reason `retirement` is: nothing legislates a coverage
+// floor, and `doctor` does not enforce what nobody legislated. What it must never do is print a
+// green that reads as "everything is enforced" when three gates are enforced by nothing.
+
+describe("the enforcement backends report their own degradation", () => {
+    const gated = (rules) => ({
+        portulan: { spec: "2.2" },
+        why: "gate-map.md",
+        rules,
+    });
+
+    const withGates = (policy, extra = {}) => {
+        const dir = scratch();
+        tree(dir, {
+            ...minimalFiles,
+            "gates.json": JSON.stringify(policy, null, 2),
+            ...extra,
+        });
+        return dir;
+    };
+
+    const manifest = () => ({ ...wellFormed(), portulan: { spec: "2.2" }, gates: "gates.json" });
+
+    test("a workspace declaring a gate policy gets a per-backend line, always", async () => {
+        const dir = withGates(gated([
+            { id: "push-force", tier: "gated", action: { shell: "git push --force" }, reason: "no lease on a shared remote" },
+        ]));
+        fs.writeFileSync(path.join(dir, "workspace.json"), JSON.stringify(manifest()));
+        const { findings } = await inspect(dir);
+        const lines = text(checks(findings, "enforcement"));
+        assert.match(lines, /Claude Code/);
+        assert.match(lines, /GitHub repository ruleset/);
+    });
+
+    test("it names the GATES no backend compiles, and does not pad the count with `auto` rules", async () => {
+        // Reporting eight where three are real is how a report gets skimmed. An `auto` rule compiled
+        // by no backend is the system working; a `gated` one is a gate that exists only as a sentence.
+        const dir = withGates(gated([
+            { id: "push-force", tier: "gated", action: { shell: "git push --force" }, reason: "no lease on a shared remote" },
+            { id: "spend-money", tier: "gated", action: { none: "no tool-level surface reaches a registrar or a payment page" }, reason: "money is gated" },
+            { id: "read-the-tree", tier: "auto", action: { read: "./" }, reason: "reading is unattended" },
+        ]));
+        fs.writeFileSync(path.join(dir, "workspace.json"), JSON.stringify(manifest()));
+        const { findings } = await inspect(dir);
+        const lines = text(checks(findings, "enforcement"));
+        assert.match(lines, /spend-money/, "a gate nothing compiles must be named");
+        assert.doesNotMatch(lines, /read-the-tree/, "an unattended rule is not a degradation");
+    });
+
+    test("the report never fails a workspace — nothing legislates a coverage floor", async () => {
+        const dir = withGates(gated([
+            { id: "spend-money", tier: "gated", action: { none: "no tool-level surface reaches a registrar" }, reason: "money is gated" },
+            { id: "push-force", tier: "gated", action: { shell: "git push --force" }, reason: "no lease" },
+        ]));
+        fs.writeFileSync(path.join(dir, "workspace.json"), JSON.stringify(manifest()));
+        const { findings } = await inspect(dir);
+        assert.equal(severities(checks(findings, "enforcement"), "fail").length, 0);
+    });
+
+    test("a workspace declaring no gate policy gets no enforcement findings at all", async () => {
+        // Not a silent skip and not a fabricated note: a workspace with no `gates` key has not
+        // declared a policy, so there is nothing to report degradation about.
+        const dir = scratch();
+        tree(dir, { ...minimalFiles, "workspace.json": JSON.stringify(wellFormed()) });
+        const { findings } = await inspect(dir);
+        assert.equal(checks(findings, "enforcement").length, 0);
+    });
+
+    test("a policy the compiler refuses is a finding, not a crash and not a silent pass", async () => {
+        // The M2 lesson, one tool over: an unguarded read turned a workspace already judged red into
+        // exit 2, trading a verdict for "could not run". A malformed gate policy must be reported
+        // where every other finding is, with the run's other verdicts intact.
+        const dir = withGates(gated([{ id: "bad", tier: "occasionally", action: { shell: "x" }, reason: "nope" }]));
+        fs.writeFileSync(path.join(dir, "workspace.json"), JSON.stringify(manifest()));
+        const { findings } = await inspect(dir);
+        assert.equal(severities(checks(findings, "enforcement"), "fail").length, 1, "a policy that cannot compile is the workspace's defect");
+        assert.match(text(checks(findings, "enforcement")), /occasionally/);
+    });
+
+    test("a policy that PARSES but that a backend refuses is a finding too, not a crash", async () => {
+        // The narrower sibling of the test above, and the one that was actually broken: the parse
+        // was guarded and the backends were not, so a policy `parse()` accepts and a backend refuses
+        // — a declared floor no rule reaches, or gate rules that all compile to nothing — threw out
+        // of `inspect`, exited 2, and discarded every verdict the run had already reached. That is
+        // the milestone-2 gates-file defect, in the file whose adjacent comment cites it. Found at
+        // the pre-commit checkpoint.
+        const dir = withGates({
+            portulan: { spec: "2.2" },
+            why: "gate-map.md",
+            floor: { branch: "main", checks: [{ context: "workspace-verify" }], reviews: 0, resolve_conversations: true },
+            rules: [{ id: "read-the-tree", tier: "auto", action: { read: "./" }, reason: "reading is unattended" }],
+        });
+        fs.writeFileSync(path.join(dir, "workspace.json"), JSON.stringify(manifest()));
+        const { findings } = await inspect(dir);
+        assert.equal(severities(checks(findings, "enforcement"), "fail").length, 1);
+        assert.match(text(checks(findings, "enforcement")), /enforces nothing/);
+        assert.ok(findings.length > 1, "the run's other verdicts must survive");
+    });
+
+    test("a floor context no workflow job reports FAILS — the costliest typo the tree can catch", async () => {
+        // A required context that never reports blocks every pull request, and `enforce_admins`
+        // leaves nobody able to force past it: proposal 0004's lesson, which cost a three-step
+        // rename to work around. This is the one enforcement check that is a failure rather than a
+        // note, because the claim is about the tree and the tree can answer it.
+        const dir = withGates(
+            {
+                portulan: { spec: "2.2" },
+                why: "gate-map.md",
+                floor: { branch: "main", checks: [{ context: "never-reported" }], reviews: 0, resolve_conversations: true },
+                rules: [{ id: "open-a-pull-request", tier: "propose", action: { shell: "gh pr create" }, reason: "by pull request" }],
+            },
+            { ".github/workflows/verify.yml": "jobs:\n  workspace-verify:\n    steps: []\n" },
+        );
+        fs.writeFileSync(path.join(dir, "workspace.json"), JSON.stringify(manifest()));
+        const { findings } = await inspect(dir);
+        const failures = severities(checks(findings, "enforcement"), "fail");
+        assert.equal(failures.length, 1);
+        assert.match(failures[0].message, /never-reported/);
+    });
+
+    test("a floor context with no app pin is reported — any app reporting that name satisfies it", async () => {
+        const dir = withGates(
+            {
+                portulan: { spec: "2.2" },
+                why: "gate-map.md",
+                floor: { branch: "main", checks: [{ context: "workspace-verify" }], reviews: 0, resolve_conversations: true },
+                rules: [{ id: "open-a-pull-request", tier: "propose", action: { shell: "gh pr create" }, reason: "by pull request" }],
+            },
+            { ".github/workflows/verify.yml": "jobs:\n  workspace-verify:\n    steps: []\n" },
+        );
+        fs.writeFileSync(path.join(dir, "workspace.json"), JSON.stringify(manifest()));
+        const { findings } = await inspect(dir);
+        assert.match(text(checks(findings, "enforcement")), /integration_id|app/i);
+    });
+
+    test("the floor and the gate map are cross-checked — two carriers of one fact must agree", async () => {
+        // The gate map's platform-floor table and the policy's `floor` now both state which checks
+        // `main` requires. Where a fact has two in-tree carriers, the drift is not hypothetical: this
+        // and the prose half is the half no other check here reads for content.
+        const dir = withGates(
+            {
+                portulan: { spec: "2.2" },
+                why: "gate-map.md",
+                floor: { branch: "main", checks: [{ context: "workspace-verify" }, { context: "pr-labeled" }], reviews: 0, resolve_conversations: true },
+                rules: [{ id: "open-a-pull-request", tier: "propose", action: { shell: "gh pr create" }, reason: "by pull request" }],
+            },
+            {
+                "gate-map.md": "# Gate map\n\n| Setting | Value |\n|---|---|\n| Required status check | `workspace-verify` |\n",
+                ".github/workflows/verify.yml": "jobs:\n  workspace-verify:\n    steps: []\n  pr-labeled:\n    steps: []\n",
+            },
+        );
+        fs.writeFileSync(path.join(dir, "workspace.json"), JSON.stringify(manifest()));
+        const { findings } = await inspect(dir);
+        assert.match(text(checks(findings, "enforcement")), /pr-labeled/, "the context the prose omits must be named");
+    });
+});
 
 describe("workspace claims are linted against the tree", () => {
     test("a repo card claiming a path the tree lacks is a failure", async () => {

@@ -27,7 +27,7 @@ nothing more specific applies. Run any of them from anywhere in the tree:
 | [`doctor.sh`](doctor.sh) | both workspaces validate: schema, paths, cross-references, claims against the tree, provenance — plus the memory store's growth report (count, size, records stating no retirement condition; notes, never failures) | `bash`, `git`, `node` |
 | [`tests.sh`](tests.sh) | every `*.test.mjs` under [`../../cli/`](../../cli/) passes — counted by `find` first, then run by a recursive glob over that same set | `bash`, `node` |
 | [`plugin.sh`](plugin.sh) | the packaging: both manifests parse and agree, component paths resolve, declared skills and agents are real | `bash`, `git`, `node` |
-| [`compile.sh`](compile.sh) | the compiled enforcement in [`../../.claude/settings.json`](../../.claude/settings.json) is exactly what [`../gates.json`](../gates.json) compiles to | `bash`, `node` |
+| [`compile.sh`](compile.sh) | both compiled artifacts — [`../../.claude/settings.json`](../../.claude/settings.json) and [`../compile/github-ruleset.json`](../compile/github-ruleset.json) — are exactly what [`../gates.json`](../gates.json) compiles to | `bash`, `node` |
 
 Exit `0` green · `1` red · `2` could not run — and that third code is why each recipe declares its needs
 in the manifest rather than discovering them: a recipe that *could not run* must never be mistaken for
