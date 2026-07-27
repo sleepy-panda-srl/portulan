@@ -97,6 +97,26 @@ the **wrapper** spelling has not been measured and is not claimed either way.
   that keeps `claude plugin validate --strict` out of the recipes
   ([`../verify/README.md`](../verify/README.md)). Loading is measured at the supervised checkpoints.
 
+## The observation procedure, because a watcher earns its place by being watched
+
+[`../proposals/0007-every-watcher-ships-with-its-observation-procedure.md`](../proposals/0007-every-watcher-ships-with-its-observation-procedure.md)
+was adopted the same day this landed, and it binds everything here: anything whose job is to *notice*
+something ships with the procedure that would demonstrate it works, run once, with its result recorded.
+Both runners are watchers. So:
+
+| Watcher | The procedure that was run |
+|---|---|
+| `permissions` deny/ask | a headless session was told to push to a **scratch bare remote**; the push was refused and the remote held 0 refs, with an ordinary command succeeding in the same session as the positive control. The maintainer then ran the same command by hand and it succeeded — so *blocked* is distinguishable from *impossible*. |
+| [`gate.mjs`](gate.mjs) | the same push written `bash -c "git push …"`, the spelling the permission pattern cannot see: refused, carrying this policy's own sentence verbatim. |
+| [`stop.mjs`](stop.mjs), recipe half | one dead link planted; a session told to reply `done` was refused three times carrying the recipe's output naming file and line, then released at the cap. Green, it ended in one turn. |
+| [`stop.mjs`](stop.mjs), handoff half | recipe left **green** so the block could only come from this half; today's handoff moved aside and a scratch file making the session count as work. Refused three times naming the exact date. |
+
+**Where the rule settles for an admission rather than evidence**, which it says to state plainly: nothing
+proves the artifact still works *after this session*. Each row above is a fact about one CLI version on one
+day. There is no scheduled re-run, CI cannot install a host to attempt one, and the failure mode is silent —
+a hook the host quietly stopped loading looks exactly like a session with nothing to block. **This runner's
+own silence is not evidence.** Re-run the table on every Claude Code upgrade.
+
 ## Why these files are here and not in a top-level `hooks/`
 
 Because this repository **is** a plugin whose payload is the whole tree, and that makes the obvious

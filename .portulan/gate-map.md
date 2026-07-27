@@ -203,6 +203,13 @@ All of which is the same point: **this layer is a convenience above a rail, not 
 platform floor below, which refuses the push at the server regardless of what any local file says, and is
 the only layer indifferent to how a command was spelled.
 
+One qualification, added when this section met the floor audit below rather than left to read as stronger
+than the floor now claims to be: that audit records the floor as **three layers with one of them
+unverified** — the interaction between the organisation ruleset's bypass actors and `enforce_admins` is
+undocumented and deliberately untested. So "the rail beneath this" is very probably intact and is not
+certified. This layer being a convenience is unchanged either way; what changes is that neither layer
+should now be described as unconditional.
+
 ## Which identity acts
 
 Two identities operate on this repository, and which one acts is not a detail — the record of who did what

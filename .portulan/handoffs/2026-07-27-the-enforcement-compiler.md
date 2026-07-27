@@ -104,7 +104,7 @@ what `core/operating/loop.md` has promised since the cadence rule landed.
   contemporaneous records and would be falsified by editing.
 - **`tasks/0004` got larger, not smaller.** A sixth recipe means one more piece of untested
   scaffolding; the harness is still unbuilt.
-- **Three questions live in [`../proposals/0007-a-gate-policy-beside-the-gate-map.md`](../proposals/0007-a-gate-policy-beside-the-gate-map.md)**:
+- **Three questions live in [`../proposals/0008-a-gate-policy-beside-the-gate-map.md`](../proposals/0008-a-gate-policy-beside-the-gate-map.md)**:
   whether `prohibited` should be promoted into `core/` as a fourth universal tier (constitution-adjacent,
   so Marius's), whether a **pack** may contribute gate rules — the cascade's missing middle, which
   `packs/tools/README.md` has expected since it was written — and the platform-floor question above.
@@ -174,6 +174,30 @@ And the sequencing note earned its keep: both runners were **refactored after** 
 last live evidence predated the shipped code. Re-run against the committed artifact — ordinary tool calls
 ran, the push was refused, the scratch remote stayed empty. A broken `PreToolUse` hook in a tracked
 settings file would wedge every future session, and that was checked rather than reasoned about.
+
+## The rebase, which was not a formality
+
+`main` moved nine commits while this session ran, and three of them mattered here.
+
+- **A proposal number collided.** Another session landed `0007-every-watcher-ships-with-its-observation-procedure.md`;
+  this one had also written an `0007`. Renumbered to **0008** with every reference repointed. Worth a line
+  because sequential ids allocated by two sessions at once will collide again, and the only thing that
+  caught it was looking.
+- **That new rule binds this machinery.** A watcher ships with the procedure that would demonstrate it
+  works, run once and recorded. Both runners are watchers, so `compile/README.md` now carries the table —
+  four procedures, all run this session — and, as the rule also demands, the admission: none of it proves
+  the artifact still works *after* today, the failure is silent, and **this runner's own silence is not
+  evidence.**
+- **The floor audit made one of my sentences too strong.** The gate map now records the floor as three
+  layers with one unverified — the ruleset-bypass/`enforce_admins` interaction is undocumented and
+  deliberately untested. The "honest holes" paragraph had called the floor beneath this layer the thing
+  that refuses a push "regardless", which is exactly the unconditional phrasing that audit withdrew.
+  Reconciled: this layer is still a convenience above a rail, and neither layer is now described as
+  unconditional.
+
+Git merged the two rewrites of `gate-map.md` without a conflict, which is the case to distrust: a clean
+auto-merge produces a file that parses and can still contradict itself. The reconciliation above is what
+reading it found.
 
 ## The thing to be suspicious of next session
 
