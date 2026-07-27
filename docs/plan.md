@@ -940,7 +940,7 @@ the seam applies here too: no client-identifying references)_
   runtime). **The rule's first subject was this branch:** `main` moved four commits during the session,
   the rebase hit the conflict the rule predicts — two sessions appending the Session log — and it was
   resolved by keeping both entries, all six recipes re-run green afterwards. · **A second ruling, same
-  session: *"each PR should have a label and be labeled accordingly."*** Taken when 45 pull requests had
+  session:** *"each PR should have a label and be labeled accordingly."* Taken when 45 pull requests had
   produced exactly one label, applied by Dependabot, and the repository's only labels were GitHub's stock
   issue set — `documentation` being true of nearly every change here and therefore saying nothing. Landed
   as [`.portulan/labels.json`](../.portulan/labels.json) (policy: five labels derived from this

@@ -79,10 +79,16 @@ per-action instruction rather than on inference.
 **Applied, and read back rather than assumed.**
 
 ```
-$ gh api -X PATCH .../branches/main/protection/required_status_checks \
-    --input '{"strict":true,"checks":[{"context":"workspace-verify","app_id":15368}]}'
+$ gh api -X PATCH repos/sleepy-panda-works/portulan/branches/main/protection/required_status_checks \
+    --input - <<'JSON'
+{"strict":true,"checks":[{"context":"workspace-verify","app_id":15368}]}
+JSON
 {"strict":true,"contexts":["workspace-verify"],"checks":[{"context":"workspace-verify","app_id":15368}]}
 ```
+
+_(`--input` takes a **file**, or `-` for stdin — inline JSON as its argument is read as a filename and
+fails. Written as the heredoc form so it is copy-pasteable; what was actually run passed a temporary file,
+which is the same request.)_
 
 The `checks` array was sent explicitly rather than trusting the `PATCH` to preserve it, because a
 required check that quietly loses its `app_id` pin is satisfiable by any GitHub App reporting that name —
