@@ -1054,15 +1054,23 @@ the seam applies here too: no client-identifying references)_
   [`.portulan/handoffs/2026-07-27-the-label-check-joins-the-floor.md`](../.portulan/handoffs/2026-07-27-the-label-check-joins-the-floor.md).
 
 - 2026-07-27 · post-M3, in-M4 — no milestone row touched · **Every unaddressed Copilot comment across
-  all 48 merged pull requests, swept in one pass — and the sweep's finding is that most of them were
-  never answerable.** Six review threads stood unresolved; two (#1, #2) already carried a `Fixed in
-  <sha>` reply over a landed fix and were verified as owing nothing, and four were real. The rest came
-  from reading all 101 Copilot reviews *by body* rather than by thread: a comment scored low-confidence
-  is rendered inside the review body under **"Comments suppressed due to low confidence"**, which has no
-  Resolve control, never appears in `reviewThreads`, never blocks `required_conversation_resolution`,
-  and so leaves no trace in any record of addressed feedback. **31 unique such comments**, of which 19
-  had been closed by later pull requests that crossed the same ground by chance rather than by anyone
-  acting on them. · **The one that mattered was three days old.** On #3 the reviewer said `docs.sh`
+  pull requests #1–#48 — the whole repository at the time, 47 merged and #10 closed — swept in one pass,
+  and the sweep's finding is that most of them were never answerable.** (#50, merged mid-session, sat
+  outside the sweep; the pre-merge fresh-context review of 2026-07-28 verified it separately — two
+  Copilot reviews, no suppressed comments, no unresolved threads.) Six review threads stood
+  unresolved; two (#1, #2) already carried a `Fixed in <sha>` reply over a landed fix and were verified
+  as owing nothing, and four were real. The rest came from reading all **101** Copilot reviews on that
+  set *by body* rather than by thread: a comment scored low-confidence is rendered inside the review
+  body under **"Comments suppressed due to low confidence"**, which has no Resolve control, never
+  appears in `reviewThreads`, never blocks `required_conversation_resolution`, and so leaves no trace in
+  any record of addressed feedback. **27 such blocks declaring 31 comments** over 28 distinct locations.
+  Disposition, counted one by one: **20 already fixed** by later pull requests crossing the same ground
+  by chance rather than by anyone acting on them, **9 fixed here**, **1 with nothing in-tree to fix**,
+  **1 deferred with its reason stated**. (#50 merged mid-session and was checked separately — no
+  unresolved threads, no suppressed comments, nothing owed.) **Both counts are scoped on purpose**: 101
+  and 31 is #1–#48; today's *merged* set — those 47 plus #50, without the closed #10 — is 102 and 29.
+  The first draft gave the numbers without the population and a supervisor caught it, which is this
+  change's own defect class landing in its own headline. · **The one that mattered was three days old.** On #3 the reviewer said `docs.sh`
   guarded only `git` while depending on `awk`, `sed`, `wc` and the rest, and that this risked "confusing
   failures or even false greens". Measured by removing one command at a time from `PATH` across all six
   recipes: **eleven false greens** — `docs.sh` on `sed`/`sort`/`wc`, `doctor.sh` on `sort`/`tr`,
@@ -1074,14 +1082,18 @@ the seam applies here too: no client-identifying references)_
   a second time — a rule whose own provenance is a Copilot comment — and it was **extended rather than
   duplicated**: it named a precondition that runs and fails, and never reached one that was never
   installed, which yields the same empty output and the same green. Every recipe now guards its whole
-  command list up front and exits `2`; the probe returns `2` in all thirty cases with every baseline
+  command list up front and exits `2`; the probe returns `2` in all thirty cases — the thirty being
+  every previously-unguarded command the five recipes now declare, less `dirname` — with every baseline
   still green. · **`cli/compile.mjs`, two defects from #31**: a shell target ending in `/` was
   unmatchable by `matchesRule` while the emitted `Bash(target:*)` rule prefix-matches on the host, so
   the two halves the file promises are one definition disagreed — **stated at its real size**, the only
   target of that shape is `auto`, compiles to nothing, and is never read by the runtime gate, so
   nothing was mis-enforced and what is closed is a divergence; and an absolute `write`/`read` target
   was silently rewritten (`/etc/passwd` → `Edit(./etc/passwd)`, matching any path *ending* there),
-  now refused at compile time. Suite 244 → 249. · `agents/implementer.md` asserted this repository's
+  now refused at compile time — as is its sibling spelling, a target climbing out with `..`, which the
+  supervisor found: that one emits `Edit(./../secrets/**)` while `matchesPath` can never match a
+  `/../` tail, so emitter and matcher disagree about *which way* it is wrong, and the narrower half is
+  a gate that reads as present and holds nothing. Suite 244 → 255. · `agents/implementer.md` asserted this repository's
   own Auto/Gated line one clause after saying the gate map decides it — false for adopters, since these
   bindings ship with the plugin; siblings checked and clean. `.portulan/labels.json` pointed one
   directory too high at `../memory/…` and `../dod.md`. `.portulan/dod.md` condition 5 still promised the
@@ -1101,7 +1113,14 @@ the seam applies here too: no client-identifying references)_
   total, which already discloses the incompleteness it could hide. · **Supervisor fidelity: no
   fresh-context Fable 5 review was run at any checkpoint, including pre-commit, and this change touches
   this file — which the standing instruction says requires one. Recorded as a gap in the protocol, not
-  an exemption; the review is owed before merge, and the pull request is the gate that holds it.** All
+  an exemption; the review is owed before merge, and the pull request is the gate that holds it.**
+  *(Closed 2026-07-28: the owed fresh-context Fable 5 review ran pre-merge over the full diff. Verdict
+  do-not-ship on one finding — the population mislabel this entry carried, "48 merged" for what was
+  #1–#48 with #10 closed unmerged and #50 outside the sweep — fixed in this same head. The seam,
+  mechanism, suite and thread-accounting claims were independently reproduced, the guard lists proven
+  complete by running each recipe on a PATH restricted to exactly its declared commands; its advisory
+  that a `..`-climbing path target still compiled was checked and refuted — the refusal and its
+  four-spelling tests are on this branch.)* All
   six recipes green, suite 249/249, `compile.sh` green so the emitter is unchanged. · Seam scan clean
-  across files, commit message, and branch name. Handoff:
+  across files, commit messages, and branch name. Handoff:
   [`.portulan/handoffs/2026-07-27-the-reviewer-was-right-and-nobody-could-tell.md`](../.portulan/handoffs/2026-07-27-the-reviewer-was-right-and-nobody-could-tell.md).

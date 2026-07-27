@@ -24,8 +24,8 @@
 set -uo pipefail
 
 # Every external command this recipe runs — see ./docs.sh for the measurement behind the shape.
-# This recipe invokes only `node`, and was already correct; the guard is here for uniformity, so
-# that a later edit reaching for `grep` inherits the rule instead of rediscovering it.
+# This recipe invokes only `node` and `dirname`, and was already correct; the guard is here for
+# uniformity, so a later edit reaching for `grep` inherits the rule instead of rediscovering it.
 for need in dirname node; do
     command -v "$need" >/dev/null 2>&1 || {
         printf 'verify: %s not found — this recipe needs it; see .portulan/verify/README.md\n' "$need" >&2
