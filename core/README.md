@@ -22,7 +22,8 @@ loads on demand.
 
 - **Rails, not prose.** Every rule either enforces itself (a hook, a compiled gate, a Stop-gate),
   measures itself (an eval), or earns its context-window tokens. The *why* stays in Markdown; the *must*
-  compiles into machinery (the enforcement compiler, milestone 4).
+  compiles into machinery (the enforcement compiler, milestone 4: a workspace's gate policy becomes the
+  host's own permissions and hooks, and its verify recipes become a Stop-gate).
 - **Rationale and provenance on every rule.** Each convention names where it came from — from public
   agentic-engineering practice — so a future reader can weigh it and the librarian can retire it.
 - **Authored fresh.** This engine is a clean-room re-expression from the constitution

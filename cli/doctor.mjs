@@ -661,6 +661,13 @@ export async function inspect(workspaceDir, options = {}) {
     }
     if (workspace.affordances) resolvePath(workspace.affordances, "file", "affordances");
     if (workspace.tree) resolvePath(workspace.tree, "dir", "tree");
+    // Added with the `gates` key in Workspace Definition 2.1. It shipped for one checkpoint without
+    // this line while ../spec/slots.md already promised "What `doctor` checks: that the path
+    // resolves" — a manifest naming a policy file that did not exist validated GREEN. Caught at the
+    // pre-commit checkpoint, and it is exactly the shape of
+    // ../.portulan/memory/a-mandate-nothing-checks-is-already-broken.md: the mandate was written in
+    // the same change as the key, and nothing looked.
+    if (workspace.gates) resolvePath(workspace.gates, "file", "gates");
     (workspace.products ?? []).forEach((product, i) => {
         resolvePath(product.product, "file", `products[${i}].product`);
         if (product.affordances) resolvePath(product.affordances, "file", `products[${i}].affordances`);

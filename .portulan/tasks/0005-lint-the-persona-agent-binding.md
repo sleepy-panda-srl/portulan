@@ -36,10 +36,12 @@ from it — comparing only sentences that carry a modal, not prose generally. Me
 bindings that exist before writing the rule, the way the Workspace Definition was derived from real
 content rather than imagined.
 
-**The better ending, and why this task is deliberately small.** At milestone 4 the enforcement compiler
-generates the agent files from the personas, the way it compiles `gates.json` into hooks — and this
-hand-maintained binding, and this check with it, are deleted. So build the smallest thing that stops the
-drift until then, and do not build a framework for it.
+**The better ending, and why this task is deliberately small.** The hoped-for ending was that the
+milestone-4 compiler would generate the agent files from the personas, the way it compiles `gates.json`
+into permissions and hooks — deleting this hand-maintained binding and this check with it. **That did not
+happen and is not scheduled.** Milestone 4, session 0 compiled gate policy only; session 1 is the second
+backend and the degradation report. So the ending is real but undated, and this task is still live. Build
+the smallest thing that stops the drift, and do not build a framework for it.
 
 **Constraints.** [`../../docs/vision.md`](../../docs/vision.md) is not edited. `core/personas/` stays
 host-neutral — no concrete tool names, no host vocabulary, which is the whole reason the two files are

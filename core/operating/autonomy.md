@@ -33,8 +33,17 @@ platform enforces regardless of which model, host, or prompt is driving:
 
 This is the *floor* because it holds when everything above it fails: a jailbroken prompt still cannot
 push to a protected branch. Portulan configures the floor rather than asking you to trust that the model
-will behave — the compiler that generates that configuration from the gate map lands in milestone 4. _(Provenance: platform engineering — the internal developer platform, turned on agents;
-vision thesis 3, "rails, not prose.")_
+will behave. The **enforcement compiler** (milestone 4) reads the workspace's gate policy and generates
+the host's own enforcement — permissions and hooks — so a tier is configuration rather than a sentence an
+agent is trusted to have read.
+
+Two things about that compiled layer, stated here because they are mechanism rather than policy. It sits
+**above** the floor and does not replace it: a local permission rule matches the spelling it was given,
+so a command reaching the same action by another route escapes it, and only the floor is indifferent to
+spelling. And what a host can enforce **varies**, so a backend reports honestly what it could not
+compile rather than passing over it — a gate silently not emitted is worse than one openly refused.
+_(Provenance: platform engineering — the internal developer platform, turned on agents; vision thesis 3,
+"rails, not prose.")_
 
 ## Approvals should not block the human's day
 

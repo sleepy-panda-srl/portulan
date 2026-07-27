@@ -82,13 +82,14 @@ Close the boot by stating the honest position, because the gap between what a fr
 what it *enforces* is the thing an agent must not paper over:
 
 - **The verify recipes are real.** They are executable and they exit 0 green / 1 red / 2 could not
-  run. Nothing runs them for you automatically yet — the Stop-gate that blocks a "done" claim on a
-  red recipe is a later milestone. Until then, running them is a condition of the definition of done
-  and a habit.
-- **The gate map is not compiled.** The tiers are honoured by people and by review; the hooks and
-  permissions that would enforce them are the enforcement compiler, a later milestone. What *is*
-  real is the platform floor beneath it — branch protection, required checks — where the team has
-  configured one.
+  run. Whether one runs *automatically* depends on the workspace: a Stop-gate exists, but it fires
+  only where that workspace has compiled it, and it runs that workspace's **default** recipe alone.
+  Running the rest is a condition of the definition of done and a habit.
+- **A gate map is compiled only where the workspace compiled it.** Where a gate policy exists and has
+  been compiled for this host, tiers are permissions and hooks; where it does not, the tiers are
+  honoured by people and by review and nothing enforces them. Do not assume the first. What is real
+  either way is the platform floor beneath — branch protection, required checks — where the team has
+  configured one, and it is the only layer indifferent to how a command was spelled.
 - **Memory has no generated index.** Recall means reading the directory.
 - **There is no CLI, so nothing drafts a workspace for a team that has none.** `init` — the interview
   and codebase scan that produces a draft for a human to curate — plus `compile`, `vendor`, `index` and

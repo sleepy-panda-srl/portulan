@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://portulan.dev/spec/2.0/workspace.schema.json",
-  "title": "Portulan Workspace Definition v2.0",
+  "$id": "https://portulan.dev/spec/2.1/workspace.schema.json",
+  "title": "Portulan Workspace Definition v2.1",
   "description": "The manifest at the root of a workspace. It is an index, not a container: it names the slots the engine resolves against and points at the Markdown that holds each slot's content and rationale. Written in a deliberately small subset of JSON Schema 2020-12 — see spec/README.md for the subset and for what validates it.",
   "type": "object",
   "additionalProperties": false,
@@ -124,6 +124,11 @@
     "tree": {
       "description": "Optional. Where the repository tree this workspace makes claims ABOUT begins, relative to the workspace root — for a workspace that is the policy layer of the repository containing it, `../`. Present means `doctor` lints repo-card build/test/run and layout claims, and the gate map's required-check claim, against that tree. Absent means the workspace describes repositories not present beside it — a demo, or a portfolio spanning many — and those claims are REPORTED unverifiable rather than checked. Declared rather than inferred from `kind`: `kind` is self-declared, and a whole check class silently disabled by a self-declared field is a fail-open with a doorbell; and a portfolio workspace is not a demo yet has no single tree either, so kind-dispatch would break on its second case.",
       "$ref": "#/$defs/dirPath"
+    },
+
+    "gates": {
+      "description": "Optional, added in 2.1. The gate POLICY — a path to a JSON file the enforcement compiler reads, distinct from `slots.gates`, which is the Markdown that argues it. Two keys rather than one because they answer different questions and only one of them compiles: `slots.gates` is prose a human reads and no tool can dispatch on, while this file binds action patterns to tiers in a host-neutral vocabulary. A workspace may declare either, both, or neither — but a workspace with prose and no policy has a gate map nothing enforces, which is the state this repository was in for three milestones and named honestly while it lasted.",
+      "$ref": "#/$defs/filePath"
     },
 
     "packs": {

@@ -1,0 +1,151 @@
+{
+  "portulan": {
+    "spec": "2.1"
+  },
+
+  "why": "gate-map.md",
+
+  "rules": [
+    {
+      "id": "edit-the-constitution",
+      "tier": "prohibited",
+      "action": { "write": "docs/vision.md" },
+      "reason": "docs/vision.md is the constitution and is human-owned. Every other change here is graded against it, so an agent that can edit it can launder any other change past its own grader. Raise the question with the maintainer and stop."
+    },
+
+    {
+      "id": "push-to-a-remote",
+      "tier": "gated",
+      "action": { "shell": "git push" },
+      "reason": "Every push is Gated, including the first push of a new branch. Prepare the push, summarise what it carries, and ask the maintainer."
+    },
+    {
+      "id": "merge-a-pull-request",
+      "tier": "gated",
+      "action": { "shell": "gh pr merge" },
+      "reason": "An agent never decides for itself that a change is ready to land. The maintainer may instruct an agent to perform a merge he has decided on; he may not have it decided for him."
+    },
+    {
+      "id": "change-repository-settings",
+      "tier": "gated",
+      "action": { "shell": "gh repo edit" },
+      "reason": "Repository settings — visibility above all — are Gated. Visibility is also an authorization hold that lives outside this repository entirely."
+    },
+    {
+      "id": "change-settings-through-the-api",
+      "tier": "gated",
+      "action": { "shell": "gh api" },
+      "reason": "Branch protection, collaborators and rulesets are changed through the API, not through `gh repo edit` — this repository's own platform floor was configured that way. Gated for the same reason and by the same sentence. `gh api` also reads, and a gated read is a small cost against a settings change nobody approved."
+    },
+    {
+      "id": "create-a-repository",
+      "tier": "gated",
+      "action": { "shell": "gh repo create" },
+      "reason": "Creating a repository is Gated and outward-facing."
+    },
+    {
+      "id": "rename-or-transfer-a-repository",
+      "tier": "gated",
+      "action": {
+        "none": "No single command. `gh repo rename` and a transfer are separate spellings, and a transfer is ordinarily done in the web UI, which no permission rule reaches. Named rather than folded into a neighbouring rule so the gap is visible instead of implied by a sentence that covers more than its matcher does."
+      },
+      "reason": "Renaming or transferring a repository is Gated and outward-facing."
+    },
+    {
+      "id": "delete-a-repository",
+      "tier": "gated",
+      "action": { "shell": "gh repo delete" },
+      "reason": "Deleting a repository is Gated, outward-facing, and the least recoverable action in this list."
+    },
+    {
+      "id": "tag-a-release",
+      "tier": "gated",
+      "action": { "shell": "git tag" },
+      "reason": "Tagging is Gated. A tag is a published claim about what a tree contains, and v0.1.0 was cut deliberately after its fix merged rather than before."
+    },
+    {
+      "id": "publish-a-release",
+      "tier": "gated",
+      "action": { "shell": "gh release" },
+      "reason": "Publishing a release is Gated and outward-facing."
+    },
+    {
+      "id": "publish-to-a-package-registry",
+      "tier": "gated",
+      "action": { "shell": "npm publish" },
+      "reason": "Publishing to a package registry or a plugin marketplace is Gated. It cannot be recalled once it has been fetched."
+    },
+    {
+      "id": "spend-money-or-register-a-domain",
+      "tier": "gated",
+      "action": {
+        "none": "No tool-level surface. Buying a domain or spending money happens through a registrar or a payment surface this backend never sees, so no permission rule can reach it. It stays a prompt-level prohibition and a habit."
+      },
+      "reason": "Anything that spends money is Gated."
+    },
+    {
+      "id": "send-something-outside-this-repository",
+      "tier": "gated",
+      "action": {
+        "none": "No tool-level surface. 'Send a message or artifact outside this repository on the team's behalf' has no single command to match — it is email, chat, an issue on someone else's tracker. A matcher pretending to cover it would be worse than the honest gap."
+      },
+      "reason": "Sending anything outward on the team's behalf is Gated."
+    },
+
+    {
+      "id": "open-a-pull-request",
+      "tier": "propose",
+      "action": { "shell": "gh pr create" },
+      "reason": "Opening a pull request is Propose: reversible but consequential. The gate is the maintainer's decision to merge, not his keystroke."
+    },
+    {
+      "id": "change-doctrine",
+      "tier": "propose",
+      "action": { "write": "core/" },
+      "reason": "Doctrine, templates, personas and skills change by pull request."
+    },
+    {
+      "id": "change-this-workspace",
+      "tier": "propose",
+      "action": { "write": ".portulan/" },
+      "reason": "Anything in this workspace, including the gate map and this policy file, changes by pull request."
+    },
+    {
+      "id": "change-the-plan",
+      "tier": "propose",
+      "action": { "write": "docs/plan.md" },
+      "reason": "The Status column and the Session log change by pull request."
+    },
+    {
+      "id": "change-a-verify-recipe",
+      "tier": "propose",
+      "action": { "write": ".portulan/verify/" },
+      "reason": "Changing a verify recipe is Propose — and relaxing a check is the case to scrutinise hardest, because it is the one change that makes every future green mean less."
+    },
+
+    {
+      "id": "read-anything-in-the-repository",
+      "tier": "auto",
+      "action": { "read": "./" },
+      "reason": "Reading anything in the repository, including git history, is unattended."
+    },
+    {
+      "id": "edit-on-a-working-branch",
+      "tier": "auto",
+      "action": { "write": "./" },
+      "reason": "Creating and editing files on a working branch, in a worktree, is unattended. What makes this safe is the push gate above, not the edit itself."
+    },
+    {
+      "id": "commit-to-a-working-branch",
+      "tier": "auto",
+      "action": { "shell": "git commit" },
+      "reason": "Committing to a working branch is unattended. Committing to main is refused by the platform floor, which is a rail rather than a rule."
+    },
+    {
+      "id": "run-a-verify-recipe",
+      "tier": "auto",
+      "action": { "shell": "./.portulan/verify/" },
+      "reason": "Running a verify recipe, or any read-only shell command, is unattended."
+    }
+  ]
+}

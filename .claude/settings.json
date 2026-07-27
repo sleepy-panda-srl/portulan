@@ -1,0 +1,76 @@
+{
+  "$portulan": {
+    "generated": "cli/compile.mjs",
+    "source": ".portulan/gates.json",
+    "warning": "Generated file. Edit .portulan/gates.json and recompile; `verify/compile.sh` fails on drift."
+  },
+  "permissions": {
+    "deny": [
+      "Edit(./docs/vision.md)",
+      "Write(./docs/vision.md)",
+      "NotebookEdit(./docs/vision.md)"
+    ],
+    "ask": [
+      "Bash(git push:*)",
+      "Bash(gh pr merge:*)",
+      "Bash(gh repo edit:*)",
+      "Bash(gh api:*)",
+      "Bash(gh repo create:*)",
+      "Bash(gh repo delete:*)",
+      "Bash(git tag:*)",
+      "Bash(gh release:*)",
+      "Bash(npm publish:*)"
+    ],
+    "allow": []
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PROJECT_DIR}/.portulan/compile/gate.mjs\""
+          }
+        ]
+      },
+      {
+        "matcher": "Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PROJECT_DIR}/.portulan/compile/gate.mjs\""
+          }
+        ]
+      },
+      {
+        "matcher": "NotebookEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PROJECT_DIR}/.portulan/compile/gate.mjs\""
+          }
+        ]
+      },
+      {
+        "matcher": "Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PROJECT_DIR}/.portulan/compile/gate.mjs\""
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PROJECT_DIR}/.portulan/compile/stop.mjs\""
+          }
+        ]
+      }
+    ]
+  }
+}

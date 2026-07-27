@@ -47,8 +47,10 @@ recipe the manifest declares.
 
 ## What it does not do, and will not pretend to
 
-- **It never runs a verify recipe.** It reads them. Executing them is the Stop-gate runner, milestone 4 —
-  which is also why a recipe needing a tool it did not declare passes.
+- **`doctor` never runs a verify recipe.** It reads them — which is why a recipe needing a tool it did
+  not declare still passes it. Executing one is the Stop-gate runner
+  ([`../.portulan/compile/stop.mjs`](../.portulan/compile/stop.mjs), milestone 4), and it runs the
+  *default* recipe only.
 - **It never dereferences a link.** "Resolvable" means well-formed. A gate that needs the network fails
   for reasons unrelated to the change under test.
 - **It never judges truth.** A fabricated sealed stamp passes exactly as a real one does; a path that
@@ -58,7 +60,14 @@ recipe the manifest declares.
 - **It cannot see live settings.** The gate-map lint compares a claimed status-check name against job ids
   in the tree. Whether branch protection actually requires that check, and which app it is pinned to, are
   API facts `doctor` does not fetch.
-- **It has no per-host capability report.** That belongs with the enforcement backends, milestone 4.
+- **There is no per-host capability report yet.** `compile` accounts for every rule as compiled or
+  refused-with-a-reason and prints both, which is the data such a report is built from — but the report
+  itself, and a second backend to compare against, are milestone 4's second session.
+- **`compile` cannot tell whether the host honours what it emits.** It proves the artifact matches the
+  policy. That a permission rule or a hook is actually enforced is a fact about a running host, measured
+  at the supervised checkpoints — see
+  [`../.portulan/memory/a-manifest-field-can-validate-and-load-nothing.md`](../.portulan/memory/a-manifest-field-can-validate-and-load-nothing.md)
+  for what it costs to assume otherwise.
 
 ## What `plugin-lint` checks
 

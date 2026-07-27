@@ -27,8 +27,12 @@ sessions' record stays in the pull-request descriptions and the Session log. Sta
 date rather than naming sessions is deliberate — an enumerated exemption is a checker's bug waiting to
 happen, and the first draft of this entry named two sessions when four lacked handoffs.
 
-**Nothing enforces this yet.** Today it is prose plus review; a session-end gate is milestone 4, and the
-librarian that mines a complete series is milestone 5. Related:
+**A gate enforces this since milestone 4.** [`../compile/stop.mjs`](../compile/stop.mjs) blocks the end of
+a session that changed something and has no handoff dated today. It checks **existence and a date, never
+length or shape** — which is the whole reason the rule was written in that checkable form. Two limits
+kept honest: it releases after three blocks, and it judges "changed something" by the working tree and
+the branch, so a session whose work was all conversation owes nothing. The librarian that mines a
+complete series is milestone 5. Related:
 [`readme-map-must-match-shape.md`](readme-map-must-match-shape.md) — the same preference for a rail over
 a reminder, in that case already built.
 

@@ -150,6 +150,58 @@ when checking by hand: a branch protected by a **repository ruleset** returns `4
 from the classic `…/branches/main/protection` endpoint, which is a check reporting *not clear* about
 something that is fine.
 
+## `gates` — the policy, as distinct from the argument for it
+
+**Added in 2.1, optional.** A path to a JSON file the enforcement compiler reads. It is a *second* key
+beside `slots.gates`, and the duplication is the point rather than an oversight: they answer different
+questions and only one of them compiles.
+
+- **`slots.gates`** → Markdown. *Why* an action sits in a tier. Read by humans; no tool dispatches on it.
+- **`gates`** → JSON. *Which* action sits in which tier, in a vocabulary a backend can translate.
+
+The alternative shapes were both considered and both refused. **Generating the prose from the JSON** adds
+a build step to a product whose thesis is that the files *are* the product. **Extracting the JSON from the
+prose** needs the ambitious parser this document already warns against elsewhere — it would produce false
+reds, and a false red is what gets a whole check switched off.
+
+So two files state one policy, which is this repository's signature defect, and it is contained rather than
+denied: every rule carries an `id`, the prose cites those ids in code spans, and **membership is checked
+both ways** — a rule with no mention, or a mention with no rule, fails. The forward direction is exact. The
+reverse recognises a citation by *shape*, so it is a strong check rather than a total one, and the workspace
+that implements it says so at the point of use. What no check can hold is whether a
+*sentence* contradicts the rule it names. Hence the tie-break, stated in both files: **where they disagree,
+the policy wins**, because it is the one that compiles.
+
+### The action vocabulary is the workspace's, never a host's
+
+A rule says `{"shell": "git push"}`, not `Bash(git push:*)`. That is what keeps "LLM-agnostic by
+construction" true at this layer: a second backend translates the same policy instead of forcing every
+adopter to rewrite theirs. It is cheapest to hold while exactly one backend exists, which is why it was
+held then.
+
+### Four tier classes, where core names three
+
+`auto` · `propose` · `gated` · **`prohibited`**. The fourth is not a stronger `gated` — it is a different
+answer. Gated means *approvable per action* and compiles to a prompt; prohibited means *no approval
+exists* and compiles to a refusal. A three-class policy would file "no agent edits the constitution" under
+Gated, and the compiler would then emit a prompt — turning *never* into *unless someone clicks yes*.
+
+### What a compiler must do with it
+
+Two obligations, both learned from defects rather than designed in the abstract:
+
+1. **Account for every rule.** Each ends as *compiled* or *refused with a stated reason*, and the two
+   counts sum to the input. A rule that goes in and produces nothing leaves a policy that reads as
+   enforced and a machine that enforces nothing.
+2. **Refuse what it cannot compile.** An unknown tier or action shape fails the *whole* compile rather
+   than dropping one rule — skipping and enforcing are indistinguishable from outside
+   ([`../.portulan/memory/a-checker-must-refuse-what-it-cannot-check.md`](../.portulan/memory/a-checker-must-refuse-what-it-cannot-check.md)).
+
+**What `doctor` checks:** that the path resolves. It does **not** compile the policy, and it does not
+check that the prose and the policy agree — that lives in the compiler's suite, anchored to the real tree,
+because the citation convention is this repository's and not the spec's. A workspace may declare prose and
+no policy; that is an ordinary state, and it is the demo workspace's state.
+
 ## `verify` — the only slot that is structured because it is *consumed*
 
 Every other content slot points at Markdown for a human. This one carries data because the Stop-gate
@@ -181,8 +233,11 @@ requiring `node` — which is exactly the case that made the field earn its plac
 present** resolves. `doc` is optional by the minimality rule — a recipe whose limits are not yet written
 up is still a runnable recipe, and requiring the write-up would be exactly the ceremony that rule refuses.
 It does **not** run the recipes, and it does not check that `requires` is honest — a recipe that quietly needs a
-tool it did not declare passes. That is a real gap; the honest fix is executing them, which belongs to
-the Stop-gate runner in milestone 4.
+tool it did not declare passes. That gap narrowed in milestone 4 rather than closing: the Stop-gate runner
+executes the **default** recipe, so that one recipe's `requires` is now tested by being run. Every other
+declared recipe is still read and never executed, and `doctor` remains the wrong place to fix it — a
+validator that ran arbitrary commands out of a manifest would be a validator you could not safely point
+at someone else's workspace.
 
 ## `products[]` — repeated, even though customer zero has one
 
@@ -419,7 +474,8 @@ Each of these was a candidate; none is an oversight.
   cannot tell whether a mission statement is still accurate, whether a sealed stamp describes a real
   incident, whether a gate map's tiers are honoured, or whether a `requires` list is complete. The
   machine catches absence; the human judges substance.
-- **It never executes anything.** Recipes are read and never run — that is the Stop-gate runner in
-  milestone 4, and until then a recipe that quietly needs an undeclared tool passes.
+- **It never executes anything.** Recipes are read and never run. The Stop-gate runner (milestone 4)
+  executes the **default** recipe, so that one is tested by being run; every other declared recipe is
+  still read only, and one quietly needing an undeclared tool still passes.
 - **Nothing here describes how a workspace is *installed*.** Workspaces ship as plugins through a feed;
   that packaging is milestone 3 for the public path and milestone 6 for the private one.
