@@ -127,6 +127,7 @@ fi
 # reads PRESENCE of an attestation in the newest entry, never whether its verdict is honest.
 PLAN=docs/plan.md
 HANDOFFS=.portulan/handoffs
+HANDOFFS_RE=${HANDOFFS//./\\.}   # dots escaped: the path is a literal in a regex context
 CADENCE_FLOOR=2026-07-25
 if [ ! -f "$PLAN" ]; then
     fail "record — $PLAN is missing"
@@ -137,7 +138,7 @@ else
         found=0
         while IFS= read -r h; do
             [ -f "$h" ] && found=1 && break
-        done < <(grep "^${HANDOFFS}/${d}-.*\.md$" "$manifest")
+        done < <(grep "^${HANDOFFS_RE}/${d}-.*\.md$" "$manifest")
         [ "$found" -eq 1 ] || printf '%s\n' "$d" >>"$tmp/record"
     done < <(sed -n 's/^- \(2[0-9]\{3\}-[0-9]\{2\}-[0-9]\{2\}\) ·.*/\1/p' "$PLAN" | sort -u)
 
@@ -153,7 +154,7 @@ else
         fail "record — no Session log entries found in $PLAN"
     else
         entry=$(awk -v s="$last" 'NR==s{f=1} f && NR>s && (/^- 2[0-9][0-9][0-9]-/ || /^## /){exit} f{print}' "$PLAN")
-        if printf '%s\n' "$entry" | grep -qi 'seam scan'; then
+        if printf '%s\n' "$entry" | grep -qiE 'seam scan.*clean'; then
             pass "record — the newest Session log entry carries a seam attestation"
         else
             fail "record — the newest Session log entry ($PLAN:$last) carries no seam attestation"
