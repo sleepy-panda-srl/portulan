@@ -38,7 +38,7 @@ run `node cli/doctor.mjs examples` to watch it validate.
 | `examples/` | [A fictional, public demo workspace](examples/) — two products, read end to end |
 | `.portulan/` | [This repository's own workspace](.portulan/) — Portulan applied to building Portulan |
 | `evals/` | Golden tasks, the A/B harness, the CI eval gate |
-| `.github/` | CI workflows — runs the workspace verify recipe on every pull request |
+| `.github/` | CI workflows — runs every verify recipe the workspace declares, on every pull request — and the [Dependabot config](.github/dependabot.yml) that watches the Actions pins those workflows are held to |
 | `docs/` | [`vision.md`](docs/vision.md) (the constitution) and [`plan.md`](docs/plan.md) (the milestone map) |
 
 ## Read next
