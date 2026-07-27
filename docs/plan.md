@@ -99,8 +99,9 @@ evals before any rule-change cadence · product surface only after v0.1.0 exists
 
 Predecessor-IP hygiene (fresh expression only; own time and equipment; the written-clearance track
 continues post-flip — the 2026-07-27 flip preceded its completion, the maintainer's decision on
-record in the Session log; details governed in the private context) · scope creep (milestone map is the
-scope; new ideas become proposals) · instruction bloat (≤60-line always-loaded core; evals prune;
+record in the Session log; details governed in the private context) ·
+scope creep (milestone map is the scope; new ideas become proposals) ·
+instruction bloat (≤60-line always-loaded core; evals prune;
 librarian demotes) · competitors moving down-stack (speed on spec; open-standard positioning) ·
 platform absorption (design for deletion — thin workflow, durable context layers) ·
 solo-maintainer bottleneck (proposals-as-PRs, librarian nagging, eval gates) · **naming** (FINAL
