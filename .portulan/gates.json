@@ -14,16 +14,22 @@
     },
 
     {
-      "id": "push-to-a-remote",
+      "id": "force-push-without-a-lease",
       "tier": "gated",
-      "action": { "shell": "git push" },
-      "reason": "Every push is Gated, including the first push of a new branch. Prepare the push, summarise what it carries, and ask the maintainer."
+      "action": { "shell": "git push --force" },
+      "reason": "Bare `--force` on a shared remote can silently discard commits that arrived since you last fetched, and that is the one part of pushing which is not recoverable inside a working copy. Use `--force-with-lease`, which is Auto: the lease refuses the push if the remote moved."
+    },
+    {
+      "id": "delete-a-remote-branch",
+      "tier": "gated",
+      "action": { "shell": "git push --delete" },
+      "reason": "Deleting a branch on a shared remote destroys a ref rather than adding one, which is why it is the single push spelling that did not move to Auto on 2026-07-27."
     },
     {
       "id": "merge-a-pull-request",
       "tier": "gated",
       "action": { "shell": "gh pr merge" },
-      "reason": "An agent never decides for itself that a change is ready to land. The maintainer may instruct an agent to perform a merge he has decided on; he may not have it decided for him."
+      "reason": "An agent never decides for itself that a change is ready to land. The maintainer may instruct an agent to perform a merge he has decided on; he may not have it decided for him. This is the gate the push gate used to stand in for: a commit enters the repository's record here, not at the push."
     },
     {
       "id": "change-repository-settings",
@@ -140,6 +146,12 @@
       "tier": "auto",
       "action": { "shell": "git commit" },
       "reason": "Committing to a working branch is unattended. Committing to main is refused by the platform floor, which is a rail rather than a rule."
+    },
+    {
+      "id": "push-a-working-branch",
+      "tier": "auto",
+      "action": { "shell": "git push" },
+      "reason": "Pushing a working branch, including its first push and a `--force-with-lease` rewrite, is unattended as of 2026-07-27. A working branch is visible but is not yet a claim on the repository; the guarantee the push gate stood in for lives at the merge. `main` is refused by the platform regardless. The two Gated spellings above are narrower prefixes and are matched first."
     },
     {
       "id": "run-a-verify-recipe",

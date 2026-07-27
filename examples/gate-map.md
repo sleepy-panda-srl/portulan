@@ -1,6 +1,6 @@
 # Gate map — what an agent may do at Rooftop
 
-> The **policy** half of autonomy. Core defines the tiers — Auto, Propose, Gated — as universal
+> The **policy** half of autonomy. Core defines the tiers — Auto, Propose, Gated, Prohibited — as universal
 > mechanism; this file binds *our* concrete actions to them, because which action is dangerous is a
 > property of the team, not of the engine. _(Fictional. See [`README.md`](README.md).)_
 

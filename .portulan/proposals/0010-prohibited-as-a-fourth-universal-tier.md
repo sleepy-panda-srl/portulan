@@ -1,4 +1,4 @@
-# Proposal 0009 — `prohibited` as a fourth universal tier
+# Proposal 0010 — `prohibited` as a fourth universal tier
 
 **Status. ACCEPTED by Marius, 2026-07-27, and applied in this change.** Recorded as a proposal rather
 than merely done, because it amends `core/operating/autonomy.md` — the tier model every workspace's gate

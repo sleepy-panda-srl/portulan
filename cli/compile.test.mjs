@@ -408,7 +408,7 @@ describe("customer zero", () => {
             auto: sections.find((s) => /^Auto\b/.test(s.title)),
             propose: sections.find((s) => /^Propose\b/.test(s.title)),
             gated: sections.find((s) => /^Gated\b/.test(s.title)),
-            prohibited: sections.find((s) => /^Above the tiers\b/.test(s.title)),
+            prohibited: sections.find((s) => /^Prohibited\b/.test(s.title)),
         };
         for (const [tier, section] of Object.entries(owner)) {
             assert.ok(section, `gate-map.md has no section speaking for tier \`${tier}\``);
@@ -429,7 +429,23 @@ describe("customer zero", () => {
         assert.equal(rule.tier, "prohibited", "an approvable constitution edit is not a prohibition");
     });
 
-    test("pushing is gated — every push, including a new branch's first", () => {
-        assert.ok(real.rules.some((r) => r.tier === "gated" && r.action?.shell === "git push"));
+    test("the two destructive push spellings are gated; the ordinary one is not", () => {
+        // The policy changed on 2026-07-27: pushing a working branch moved to Auto, because the
+        // guarantee the push gate stood in for lives at the *merge*. What stayed Gated is the pair
+        // that destroys rather than adds — a bare `--force`, and a branch deletion. This test asserted
+        // the old policy and failed the moment the new one landed, which is the test doing its job.
+        const tierOf = (shell) => real.rules.find((r) => r.action?.shell === shell)?.tier;
+        assert.equal(tierOf("git push"), "auto", "an ordinary working-branch push is unattended");
+        assert.equal(tierOf("git push --force"), "gated", "bare --force is not recoverable");
+        assert.equal(tierOf("git push --delete"), "gated", "deleting a remote ref is not adding one");
+    });
+
+    test("the gated push prefixes do not swallow the Auto spelling they sit beside", () => {
+        // `--force` must not match `--force-with-lease`, which is explicitly Auto. A prefix rule that
+        // over-matched here would silently re-gate the thing the maintainer just ungated.
+        const force = real.rules.find((r) => r.id === "force-push-without-a-lease");
+        assert.ok(matchesRule(force, "Bash", { command: "git push --force origin x" }));
+        assert.ok(!matchesRule(force, "Bash", { command: "git push --force-with-lease origin x" }));
+        assert.ok(!matchesRule(force, "Bash", { command: "git push origin x" }));
     });
 });
