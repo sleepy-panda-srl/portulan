@@ -296,7 +296,7 @@ enforces:
 | Required status check | `workspace-verify` — the workspace's verify recipes, run by CI; pinned to app 15368 | classic branch protection |
 | Administrators | **included**; the maintainer has no exemption | classic branch protection, `enforce_admins` |
 | Required approving reviews | 0 — see below | classic branch protection |
-| Conversation resolution | required before merge | classic branch protection |
+| Conversation resolution | required before merge — every thread *resolved*, which is not *adjudicated*; see below | classic branch protection |
 | Force-pushes and branch deletion | blocked | classic branch protection **and**, separately, the organisation ruleset below |
 | SHA-pinned Actions | **required, and enforced by the platform** — `sha_pinning_required: true` | organisation *and* repository Actions policy |
 
@@ -304,6 +304,16 @@ Verified rather than asserted: a direct push to `main` was attempted after the c
 *"Changes must be made through a pull request."* This is the first gate in the repository that holds
 against the agent, the maintainer, and any future collaborator equally — the difference between a rule
 and a rail.
+
+**One row is weaker than it reads, and it is the one another section leans on.** Conversation resolution
+requires every thread **resolved**; it does not require that anyone holding the merge gate agreed with it.
+The reviewer that raised a thread can resolve it itself — measured 2026-07-27 on
+[#44](https://github.com/sleepy-panda-works/portulan/pull/44), where Copilot cleared its own objection once
+a reply addressed it, unasked. So the row stops a comment being *ignored* and establishes nothing about
+whether it was *answered*; `resolvedBy` is the field that tells them apart. This matters beyond the floor,
+because "Which identity acts" argues that resolving belongs to the merge gate on the strength of this
+setting — that argument survives, since it rests on who *should* judge, but it may not be read as the
+platform guaranteeing a judgement happened.
 
 **The floor is three layers, and this section used to describe only one.** Recorded 2026-07-27, after an
 audit prompted by an unrelated question found the table claiming to say what `main` enforces while omitting
