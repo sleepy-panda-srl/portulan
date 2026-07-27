@@ -27,11 +27,11 @@ node cli/plugin-lint.mjs <plugin-root> [<plugin-root> ...]
 node cli/compile.mjs [--workspace <dir>] [--check]
 ```
 
-Both validators exit `0` everything they were handed validates · `1` at least one does not · `2` could
-not run. `compile` exits `0` wrote, or agreed under `--check` · `1` only under `--check`, where the
-artifact is missing or has drifted · `2` could not run — writing never returns `1`, because a run that
-rewrites the artifact has nothing to disagree with. Both workspaces this repository owns are validated
-on every pull request, because
+The two validators: exit `0` when every workspace or plugin root validates · `1` when at least one does
+not · `2` could not run. `compile`: exit `0` when it wrote, or agreed under `--check` · `1` only under
+`--check`, when the artifact is missing or has drifted · `2` could not run — writing never returns `1`,
+because a run that rewrites the artifact has nothing to disagree with. Both workspaces this repository
+owns are validated on every pull request, because
 [`../.portulan/workspace.json`](../.portulan/workspace.json) declares
 [`../.portulan/verify/doctor.sh`](../.portulan/verify/doctor.sh) as a verify recipe and CI runs every
 recipe the manifest declares.

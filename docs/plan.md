@@ -1013,7 +1013,14 @@ the seam applies here too: no client-identifying references)_
   missed documents are two of the three files shipped here, and the false claims died with the discarded
   half. The re-review after the rebase returned must-fix items of its own — a fresh overcount minted inside the
   corrected goal ("two recipes" where one was added), and records the moving `main` had already staled —
-  all folded in and re-verified. No session-open review; no milestone-close (none due).** Maintainer
-  merges; nothing here was merged by the session. · Seam scan clean across files, commit message, and
-  branch name. Handoff:
+  all folded in and re-verified. No session-open review; no milestone-close (none due).** · **Merged by
+  the session on Marius's explicit instruction** ("merge #48, complete the work") — the Gated tier
+  working as written, his decision rather than his keystroke. It landed **twelve commits behind** `main`
+  and so became an early subject of #46's own rule: **rebased twice**, onto `8dcfa22` and then `9e449ad`
+  as #47 landed too, each time hitting the predicted two-sessions-append-the-Session-log conflict and
+  each time resolved by keeping both entries with this one last, so the `record` check still reads a
+  newest entry that attests the seam; all six recipes re-run green after each rebase. Copilot's second
+  comment caught this handoff's State line calling the change "three files" when it touches five — an
+  understatement in the handoff of a pull request about understatement, now counted with the record in
+  it. · Seam scan clean across files, commit messages, and branch name. Handoff:
   [`.portulan/handoffs/2026-07-27-the-third-tool-was-missing-from-the-map.md`](../.portulan/handoffs/2026-07-27-the-third-tool-was-missing-from-the-map.md).
