@@ -306,7 +306,7 @@ against the agent, the maintainer, and any future collaborator equally — the d
 and a rail.
 
 **One row is weaker than it reads, and it is the one another section leans on.** Conversation resolution
-requires every thread **resolved**; it does not require that anyone holding the merge gate agreed with it.
+requires every thread **resolved**; it does not require that anyone holding the merge gate agrees with it.
 A thread can be resolved by the very reviewer that raised it — measured 2026-07-27 on
 [#44](https://github.com/sleepy-panda-works/portulan/pull/44), where Copilot cleared its own objection once
 a reply addressed it, unasked. So the row stops a comment being *ignored* and establishes nothing about
