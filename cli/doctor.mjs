@@ -550,7 +550,7 @@ export async function inspect(workspaceDir, options = {}) {
     const findings = [];
     // `unretirable` counts records stating no `Retire when:` condition — retirable by a human
     // re-reading them, never by the condition-driven pass, which is the sense that matters here.
-    const stats = { records: 0, rules: 0, sealed: 0, linked: 0, claims: 0, unverifiable: 0, bytes: 0, unretirable: 0 };
+    const stats = { records: 0, rules: 0, sealed: 0, linked: 0, claims: 0, unverifiable: 0, bytes: 0, unretirable: 0, unassessed: 0 };
     const fail = (check, message) => findings.push({ severity: "fail", check, message });
     const report = (check, message) => findings.push({ severity: "report", check, message });
 
@@ -905,6 +905,12 @@ export async function inspect(workspaceDir, options = {}) {
                 source = fs.readFileSync(path.join(memoryDir, entry), "utf8");
             } catch (cause) {
                 stats.records += 1;
+                // The unreadable record still occupies the store, and it is already counted in
+                // `records` — so it is sized from stat, or `record(s)` and `KB` would disagree
+                // about what a record is. Its content is still never assessed: this run is
+                // already red on the read failure, and only the accounting stays consistent.
+                try { stats.bytes += fs.statSync(path.join(memoryDir, entry)).size; } catch { /* unstattable: its size stays unknown */ }
+                stats.unassessed += 1;
                 fail("provenance", `${entry} could not be read — ${cause.message}`);
                 continue;
             }
@@ -976,7 +982,12 @@ export async function inspect(workspaceDir, options = {}) {
             ? `the store holds ${stats.records} record(s), ${(stats.bytes / 1024).toFixed(1)} KB — ` +
               (stats.unretirable
                   ? `${stats.unretirable} with no retirement condition`
-                  : "every record states a retirement condition") +
+                  : stats.unassessed
+                    ? "every readable record states a retirement condition"
+                    : "every record states a retirement condition") +
+              (stats.unassessed
+                  ? `; ${stats.unassessed} unreadable and never assessed`
+                  : "") +
               ". Size and count only: ages live in git, which doctor does not read, so staleness is the librarian's (milestone 5)"
             : "no memory records — nothing measured, nothing awaiting retirement",
     );

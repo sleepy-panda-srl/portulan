@@ -874,8 +874,9 @@ the seam applies here too: no client-identifying references)_
   naming any record that states no `Retire when:` condition — reported, never failed, because nothing
   legislates the field, and ages deliberately absent (doctor reads the tree, never git; in a fresh clone
   every mtime is checkout time, so an age line would be fabrication — staleness stays the librarian's).
-  Both live stores measured clean — 17 records / 56.7 KB and 4 / 7.6 KB, every record naming its
-  condition — so the notes guard the future rather than flagging a mess. Suite 240 → 244 (both figures
+  Both live stores measured clean — 17 records / 56.8 KB and 4 / 7.6 KB on the shipped tree (56.7 at
+  the review's baseline; the merged audit pull requests edited four records in between), every record
+  naming its condition — so the notes guard the future rather than flagging a mess. Suite 240 → 244 (both figures
   measured, not derived), including a test that binds customer zero byte-for-byte: a record added here
   without a retirement condition turns `tests` red, so for this repository the note is backed by a rail
   — a workspace extending the floor, which dod.md permits and the product's doctor deliberately does not
