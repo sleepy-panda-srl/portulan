@@ -1,10 +1,13 @@
 # Handoff — the third tool was missing from the map
 
-**State.** Doc-only, three files: [`../../cli/README.md`](../../cli/README.md),
-[`../repos/portulan.md`](../repos/portulan.md), and
-[`../tasks/0004-a-harness-for-the-verify-recipes.md`](../tasks/0004-a-harness-for-the-verify-recipes.md).
-All six verify recipes green in this working copy, each read for its **exit code** rather than its
-banner. Branch synced onto `c1838f9`. Not merged by this session.
+**State.** Doc-only, **five files**. Three carry the fix — [`../../cli/README.md`](../../cli/README.md),
+[`../repos/portulan.md`](../repos/portulan.md) and
+[`../tasks/0004-a-harness-for-the-verify-recipes.md`](../tasks/0004-a-harness-for-the-verify-recipes.md)
+— and two are the record this file is half of: itself, and the `docs/plan.md` Session log entry.
+_(Counted this way after a reviewer pointed out that "three files" understated the change, in the
+handoff of a pull request about understatement. The record is part of the diff, not commentary beside
+it.)_ All six verify recipes green in this working copy, each read for its **exit code** rather than its
+banner. Branch synced onto `9e449ad` and merged on the maintainer's explicit instruction.
 
 **What this session was asked to do, and why almost none of it shipped.** The brief was the `tests`
 recipe's understatement — the row in `../verify/README.md` and the header of `../verify/tests.sh` naming
@@ -47,17 +50,19 @@ not *how many suites are there* but **`compile` is missing from the map altogeth
   understating a checker is the same defect as overstating it, and it is the harder one to notice because
   it reads as modesty rather than as a claim.
 
-**Open questions.** One, and it is merge order. As of this branch's sync onto `c1838f9`,
-[#47](https://github.com/sleepy-panda-works/portulan/pull/47) is open on
-[`../repos/portulan.md`](../repos/portulan.md) and `docs/plan.md`, and
-[#46](https://github.com/sleepy-panda-works/portulan/pull/46) on `docs/plan.md` — so whichever of the
-three merges second wants a look, and the Session log will want all three entries kept rather than one
-resolved away. The card is the shallower overlap than it appears: #47 rewrites the public-flip sentences
-at the top and bottom of that file and never touches the layout line this branch edits.
-[#44](https://github.com/sleepy-panda-works/portulan/pull/44) is disjoint.
+**Open questions.** None left. Merge order resolved itself by attrition: #44, #45, #46 and finally #47
+all merged while this branch waited, and #46 is the pull request that made `main` refuse a merge from
+behind it — so this branch became an early subject of that rule rather than an exception to it, twelve
+commits behind at the first sync and two more by the second. **Rebased twice, onto `8dcfa22` and then
+`9e449ad`**, each time hitting exactly the conflict the rule predicts — two sessions appending the
+Session log — and each time resolved by keeping both entries with this one last, so the `record` check
+still reads a newest entry that attests the seam. #47's overlap on
+[`../repos/portulan.md`](../repos/portulan.md) turned out shallower than it looked: it rewrote the
+public-flip sentences at the top and bottom of that card and never touched the layout line this one
+edits, so the second rebase conflicted only in the log.
 
-**Next action.** Maintainer reviews and merges; delete the branch afterwards. Nothing here blocks
-milestone 4.
+**Next action.** None for this branch — merged and deleted. Nothing here blocked milestone 4, and
+nothing here starts it.
 
 **Recoverability.** Nothing partial. No code path, no gate and no manifest changed — `gates.json` and the
 compiled artifact are untouched, confirmed by running `compile.sh` rather than by reading the diff.
@@ -69,5 +74,6 @@ GitHub. The duplicated work was caught only by re-reading `origin/main` before p
 merge-order paragraph only by a supervisor who did the same. The cheap habit both times: `gh pr list`
 plus a fresh fetch *before* writing the record, not just before pushing it. This repository already
 knows proposal numbers collide when sessions run parallel; prose fixes collide the same way, with no
-filename to warn anyone. Proposal `0011`, in flight on #46 and therefore not yet a file in this tree, is
-the mechanical version of this lesson.
+filename to warn anyone. The mechanical version of this lesson landed the same evening as
+[`0011-no-merge-from-behind-main.md`](../proposals/0011-no-merge-from-behind-main.md) — in flight while
+this handoff was first drafted, merged before it was committed, and applied to this very branch.

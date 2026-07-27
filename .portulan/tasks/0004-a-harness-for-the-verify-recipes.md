@@ -7,8 +7,9 @@ the local evidence for that claim.)_
 
 **Goal.** The six verify recipes are the machinery every "done" in this repository rests on, and nothing
 tests them. The tools are covered — every `*.test.mjs` under [`../../cli/`](../../cli/), four as of
-milestone 4, three of them over a tool some recipe invokes — but the shell doing the invoking has no
-suite at all. The gap has widened rather than closed since this was written: a sixth recipe and two more
+milestone 4 — but the shell doing the invoking has no suite at all. Three of the four cover tools that
+recipes invoke; the fourth covers the Stop-gate runner, which invokes a recipe rather than being invoked
+by one. The gap has widened rather than closed since this was written: a sixth recipe and two more
 suites have been added, and the number testing a recipe is still zero.
 
 **Why, with the count.** Every defect below was a **fail-open in scaffolding rather than in a check** —
