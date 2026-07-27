@@ -18,6 +18,12 @@ A memory moves through four states; each has an owner and a budget.
 _(Provenance: Letta — per-agent memory and sleep-time consolidation; Anthropic context engineering —
 an attention budget per layer, hence the generated, size-budgeted index.)_
 
+A budget here is a rail, not an aim. When a layer breaches its budget, the remedy is consolidation —
+merge, compress, retire — never squeezing past the breach, and never raising the budget in the same
+change that broke it. The machinery that turns a breach into a red arrives with the librarian in
+milestone 5; until it does, this sentence binds review, the way everything on this page did before
+there was a schema to check against.
+
 ## One fact per memory, with provenance
 
 A memory holds one fact and states where it came from. A rule links to the **incident** that created

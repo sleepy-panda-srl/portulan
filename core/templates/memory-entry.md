@@ -40,4 +40,5 @@ does.
 it holds and **when to apply** it. Link related memories so recall can follow the thread.}
 
 **Retire when:** {for a rule, the condition under which it stops being true — e.g. "the generated client
-is deleted" — so the librarian can demote it instead of it living forever.}
+is deleted" — so the librarian can demote it instead of it living forever.} _(`doctor` reports an entry
+that states none — a record no condition can demote is how a store only grows.)_
