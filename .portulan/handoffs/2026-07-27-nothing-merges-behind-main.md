@@ -1,8 +1,11 @@
-# Handoff — nothing merges from behind `main`
+# Handoff — nothing merges from behind `main`, and everything that merges is labelled
 
 **State.** Post-milestone-4-session-0; **no milestone row touched and none was due.** Branched from
-`8c02c5f`, which was `origin/main` at session open and still is at close. One maintainer ruling landed
-as doctrine, one proposal opened for the setting that would make it a rail.
+`8c02c5f`; `main` moved four commits during the session (#41, #42 and two more merged), so the branch was
+rebased onto `e31feac` before close — under the rule it had just written, which is how the first
+conflict it predicts got hit and resolved. **Two maintainer rulings** landed as doctrine, each with the
+instruction to set it in GitHub rather than leave it as prose: one is now a platform rail, the other is
+a workflow one merge away from being one.
 
 ## The ruling
 
@@ -68,6 +71,44 @@ spelling the permission pattern cannot see. Caught by reading the runner instead
 architecture diagram in my head — which is `a-stated-enforcer-must-be-the-real-one` catching a fresh
 instance of itself, in the same session that added a rule about honest greens.
 
+## The second ruling — every pull request carries a label
+
+Arrived mid-session, after the first was applied: *"each PR should have a label and be labeled
+accordingly."* Measured before designing anything, as with the first: **45 pull requests, exactly one
+label between them**, on #27, applied by Dependabot. The repository's label set was GitHub's stock issue
+vocabulary, which cannot discriminate here — in a repository whose changes are almost all Markdown,
+`documentation` is true of nearly everything and therefore says nothing.
+
+- **The set is derived from this repository's structure**, not from a generic taxonomy:
+  `doctrine` (`core/`, `agents/`) · `workspace` (`.portulan/`) · `mechanism` (`cli/`, `spec/`, `plugin/`)
+  · `record` (Session log, handoffs, changelog) · `infrastructure` (`.github/`, settings). Plus
+  `dependencies` and `github_actions` **declared rather than exempted**, so a Dependabot pull request
+  passes with the labels Dependabot applies itself — a gate that reds every automated security bump is a
+  gate that gets bypassed, and proposal `0006` means those bumps are coming.
+- **Policy and checker are separate files**, the `gates.json`/`compile.mjs` split:
+  [`../labels.json`](../labels.json) is the set, [`../../.github/workflows/pr-labels.yml`](../../.github/workflows/pr-labels.yml)
+  is the machinery. Editing the set needs no workflow edit.
+- **Binary half checked, judgement half human.** The check refuses an *unlabelled* pull request and
+  never an over-labelled one, and `covers` is documentation rather than a matcher: a path→label matcher
+  reds the first pull request that touches `core/` incidentally, and a false red is what gets a check
+  switched off. Same split as provenance — `doctor` fails a rule with no stamp and cannot tell whether
+  the stamp is true.
+- **Red-first, four payloads:** unlabelled → red; only-undeclared (`wontfix`) → red; declared → green;
+  policy missing or declaring nothing → red with a stated reason, never green. The last two matter most —
+  a checker that cannot read its own policy must not report success.
+- **The trigger list is load-bearing.** `labeled` and `unlabeled` are in it, so adding the label clears
+  the check. Without them the check would refuse, the author would label, nothing would re-run, and the
+  gate would trap the change instead of gating it.
+
+**Not made a required status check, and that is the whole sequencing risk.** A required context that has
+never reported blocks every open pull request that does not carry the workflow, and `enforce_admins`
+means nobody can force past it — proposal `0004` paid for that lesson with a three-step rename. So the
+workflow merges to `main` first; `pr-labeled` joins the floor after, by the single command recorded in
+[`../memory/every-pull-request-carries-a-label.md`](../memory/every-pull-request-carries-a-label.md).
+**Doing it in the other order would deadlock the repository.**
+
+The five new labels were created on GitHub. That half is live; the enforcement half is one merge away.
+
 **Flagged, not touched, in the same neighbourhood.** [`../gate-map.md`](../gate-map.md)'s *What the
 compiler refuses* opens with "the permission rule holds; **the hook supplies the sentence**" — the
 framing [`../compile/gate.mjs`](../compile/gate.mjs)'s header records as the assumption its own
@@ -93,6 +134,8 @@ change is how a summary drifts a second time. This entry's cross-reference point
 
 ## Recoverability
 
-`.claude/settings.json` is unchanged, so reverting this branch needs no recompile. **One outward action
-was performed** and it is one `PATCH` to undo — `strict:false` with the same explicit `checks` array
-restores the previous protection exactly; the before-state was captured before the change was made.
+`.claude/settings.json` is unchanged, so reverting this branch needs no recompile. **Two outward actions
+were performed, both narrow and both reversible.** The protection `PATCH` undoes with `strict:false` and
+the same explicit `checks` array — the before-state was captured before the change was made. The five
+labels undo with `gh label delete`; nothing was labelled with them, so deleting them strands no pull
+request. Seam scan clean across files, commit messages, and branch name.

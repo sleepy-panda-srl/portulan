@@ -1,0 +1,52 @@
+{
+  "$comment": "The pull-request label policy for this repository — the POLICY half; the checker that enforces it is ../.github/workflows/pr-labels.yml, and the two are separate for the same reason gates.json and cli/compile.mjs are. The set is derived from this repository's own structure rather than from GitHub's stock issue labels, which are built for bug trackers and cannot discriminate between changes here: every pull request in a doctrine repository would be `documentation`. Adding a label to this file does NOT create it on GitHub — run the create command in ../memory/every-pull-request-carries-a-label.md.",
+  "policy": "at-least-one",
+  "policyMeans": "A pull request carries at least one label from `labels` below. Extra labels beyond the set are allowed and ignored — the check refuses an UNLABELLED pull request, never an over-labelled one, because a rule that fails on a stray `question` is a rule someone switches off. WHICH label is right stays human judgement, exactly as the rationale half of a rule's provenance does (../dod.md, condition 3); `covers` is the guidance, not a matcher.",
+  "labels": [
+    {
+      "name": "doctrine",
+      "color": "5319e7",
+      "description": "The engine's own doctrine: core/, templates, skills, personas",
+      "covers": ["core/", "agents/"]
+    },
+    {
+      "name": "workspace",
+      "color": "0e8a16",
+      "description": "Customer zero's policy layer: .portulan/",
+      "covers": [".portulan/"]
+    },
+    {
+      "name": "mechanism",
+      "color": "1d76db",
+      "description": "The code that checks and enforces: cli/, spec/, plugin/, .claude-plugin/",
+      "covers": ["cli/", "spec/", "plugin/", ".claude-plugin/"]
+    },
+    {
+      "name": "record",
+      "color": "fbca04",
+      "description": "The audit trail: the plan's Session log, handoffs, the changelog",
+      "covers": ["docs/plan.md", ".portulan/handoffs/", "CHANGELOG.md"]
+    },
+    {
+      "name": "infrastructure",
+      "color": "d4c5f9",
+      "description": "CI, workflows, repository and branch-protection settings",
+      "covers": [".github/"]
+    },
+    {
+      "name": "dependencies",
+      "color": "0366d6",
+      "description": "Pull requests that update a dependency file",
+      "covers": [],
+      "appliedBy": "dependabot",
+      "note": "Declared so a Dependabot pull request satisfies the policy with the label Dependabot applies itself. It cannot know this repository's vocabulary, and a gate that reds every automated security bump is a gate that gets bypassed. Same for github_actions below. Both already existed on the repository — created by Dependabot, not by this policy."
+    },
+    {
+      "name": "github_actions",
+      "color": "000000",
+      "description": "Pull requests that update GitHub Actions code",
+      "covers": [],
+      "appliedBy": "dependabot"
+    }
+  ]
+}

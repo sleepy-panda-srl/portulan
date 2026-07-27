@@ -901,8 +901,9 @@ the seam applies here too: no client-identifying references)_
   because that record already fails the run and hedging the common case to cover an already-red corner
   is the wrong trade. Seam scan clean across files, commit message, and branch name.
 
-- 2026-07-27 · post-M4-session-0 — no milestone row touched, and none was due · **A maintainer ruling:
-  nothing merges from behind `main`.** Marius ruled that a pull request may not merge while it is behind
+- 2026-07-27 · post-M4-session-0 — no milestone row touched, and none was due · **Two maintainer rulings
+  about how a pull request reaches `main`: nothing merges from behind it, and everything that reaches it
+  is labelled.** Marius ruled that a pull request may not merge while it is behind
   `main` — sync first, then merge. The repository when the ruling was taken is why it is not a
   formality: **three open pull requests, #41, #42 and #43, each exactly one commit behind**, and #43
   reported by GitHub as `CLEAN` / `MERGEABLE` — mergeable on the spot, with a green `workspace-verify`
@@ -933,8 +934,28 @@ the seam applies here too: no client-identifying references)_
   spelling — a fresh instance of `a-stated-enforcer-must-be-the-real-one`, caught in the session that was
   adding a rule about honest greens, and both documents now say the carrier is a human reading them.
   `.claude/settings.json` recompiled byte-identical (reasons live in `gates.json`; the hook reads them at
-  runtime). · **Supervisor fidelity: none — no fresh-context checkpoint was taken. Doctrine work, no
-  milestone state touched; the maintainer reviews the diff, per `.portulan/gate-map.md`.** Nothing was
-  merged by the session and the three behind pull requests were not touched. · Seam scan clean across
-  files, commit message, and branch name. Handoff:
+  runtime). **The rule's first subject was this branch:** `main` moved four commits during the session,
+  the rebase hit the conflict the rule predicts — two sessions appending the Session log — and it was
+  resolved by keeping both entries, all six recipes re-run green afterwards. · **A second ruling, same
+  session: *"each PR should have a label and be labeled accordingly."*** Taken when 45 pull requests had
+  produced exactly one label, applied by Dependabot, and the repository's only labels were GitHub's stock
+  issue set — `documentation` being true of nearly every change here and therefore saying nothing. Landed
+  as [`.portulan/labels.json`](../.portulan/labels.json) (policy: five labels derived from this
+  repository's own structure — `doctrine`, `workspace`, `mechanism`, `record`, `infrastructure` — plus
+  Dependabot's two, declared so an automated security bump is not red on arrival),
+  [`.github/workflows/pr-labels.yml`](../.github/workflows/pr-labels.yml) (checker: reads the policy and
+  the event payload, no token, no network), and
+  [`.portulan/memory/every-pull-request-carries-a-label.md`](../.portulan/memory/every-pull-request-carries-a-label.md).
+  The five labels were created on GitHub. **Binary half machine-checked, judgement half human:** the
+  check refuses an *unlabelled* pull request and never an over-labelled one, and `covers` is guidance
+  rather than a matcher, because a path→label matcher reds the first change that touches `core/`
+  incidentally and *a false red is what gets a check switched off*. Red-first tested against four
+  payloads — none, undeclared-only, declared, and both unreadable-policy preconditions, which fail closed.
+  **Deliberately NOT yet a required status check:** a required context that has never reported blocks
+  every open pull request not carrying the workflow, and `enforce_admins` leaves nobody able to force
+  past — proposal `0004`'s lesson. The workflow merges first; `pr-labeled` joins the floor after, by the
+  one command recorded in the memory entry. · **Supervisor fidelity: none — no fresh-context checkpoint
+  was taken. Doctrine work, no milestone state touched; the maintainer reviews the diff, per
+  `.portulan/gate-map.md`.** Nothing was merged by the session and no other session's pull request was
+  touched. · Seam scan clean across files, commit message, and branch name. Handoff:
   [`.portulan/handoffs/2026-07-27-nothing-merges-behind-main.md`](../.portulan/handoffs/2026-07-27-nothing-merges-behind-main.md).

@@ -1,0 +1,82 @@
+# Every pull request carries a label from the declared set.
+#
+# The policy is `.portulan/labels.json` and this file is only the checker — the same split as
+# `.portulan/gates.json` and `cli/compile.mjs`, and for the same reason: the set of labels is ours to
+# choose, while "a pull request must carry one" is machinery. Editing the set is a workspace change and
+# needs no workflow edit.
+#
+# WHY A SEPARATE WORKFLOW rather than a job inside verify.yml. A label check needs the `labeled` and
+# `unlabeled` event types, and adding those to verify.yml would re-run all six verify recipes every time
+# somebody clicks a label — for a check that reads two files and never looks at the tree. It would also
+# make the required `workspace-verify` context re-report on label churn, which is noise on the one check
+# branch protection actually pins.
+#
+# THE TRIGGER LIST IS LOAD-BEARING. Without `labeled`/`unlabeled` this check would refuse a pull request,
+# the author would add the label, and nothing would re-run — the check would stay red with no way to
+# clear it but an empty push. That is a gate that fails CLOSED and traps the change, which is worse than
+# the omission it protects against.
+#
+# NOT YET A REQUIRED STATUS CHECK, deliberately, and the sequence matters — proposal 0004 learned it the
+# expensive way. A required context that has never reported blocks every open pull request that does not
+# carry the workflow, including ones already in review. So: this ships, it merges to `main`, and only
+# then is `pr-labeled` added to branch protection. Making it required before that would deadlock the
+# repository, and `enforce_admins: true` means nobody could force past it.
+#
+# The job id IS the status-check context, so renaming it later detaches the requirement silently.
+
+name: pr labels
+
+on:
+  pull_request:
+    types: [opened, reopened, ready_for_review, synchronize, labeled, unlabeled]
+
+permissions:
+  contents: read
+
+jobs:
+  pr-labeled:
+    runs-on: ubuntu-latest
+    steps:
+      # Pinned to a full-length SHA because the organisation and this repository both set
+      # `sha_pinning_required: true` — the platform refuses an unpinned action outright. Same pin as
+      # verify.yml, so Dependabot bumps both together.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: The pull request carries at least one declared label
+        run: |
+          set -uo pipefail
+
+          POLICY=.portulan/labels.json
+
+          # Preconditions fail CLOSED, never green. A check that cannot read its own policy and reports
+          # success has told everyone the pull request is labelled without having looked — the defect
+          # .portulan/memory/verify-preconditions-fail-closed.md exists for.
+          if [ ! -f "$POLICY" ]; then
+            printf '::error::%s is missing — cannot judge whether this pull request is labelled\n' "$POLICY"
+            exit 1
+          fi
+          if ! declared=$(jq -er '.labels[].name' "$POLICY"); then
+            printf '::error::%s declares no labels, or does not parse — refusing to report green\n' "$POLICY"
+            exit 1
+          fi
+
+          # Read from the event payload rather than the API: no token, no network, and the labels in the
+          # payload are the ones that triggered this run.
+          carried=$(jq -r '.pull_request.labels[]?.name' "$GITHUB_EVENT_PATH")
+
+          matched=$(comm -12 <(printf '%s\n' "$declared" | sort -u) <(printf '%s\n' "$carried" | sort -u))
+
+          {
+            printf '### Declared labels\n\n'
+            jq -r '.labels[] | "- `\(.name)` — \(.description)" + (if (.covers|length) > 0 then " _(usually: \(.covers|join(", ")))_" else "" end)' "$POLICY"
+            printf '\n### On this pull request\n\n%s\n' "$(printf '%s' "${carried:-none}" | sed 's/^/- /')"
+          } >>"$GITHUB_STEP_SUMMARY"
+
+          if [ -z "$matched" ]; then
+            printf '::error::this pull request carries no label from the declared set — add one of: %s\n' \
+              "$(printf '%s' "$declared" | tr '\n' ' ')"
+            printf 'RED — unlabelled. Declared labels:\n%s\n' "$declared"
+            exit 1
+          fi
+
+          printf 'GREEN — carries: %s\n' "$(printf '%s' "$matched" | tr '\n' ' ')"
