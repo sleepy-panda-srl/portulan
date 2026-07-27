@@ -12,8 +12,8 @@
 > these are how *we* work while building it.
 
 - **Write the limit, not the aspiration.** Every document says what exists *today* and names the
-  milestone where the rest lands. _Why:_ the repository goes public as a pre-release when the flip
-  clearance completes, and a framework that overclaims about its own enforcement burns the only asset an
+  milestone where the rest lands. _Why:_ the repository is public as a pre-release (since
+  2026-07-27), and a framework that overclaims about its own enforcement burns the only asset an
   unknown project has.
   _Applied:_ every "arrives in milestone N" note in this workspace, and the platform-floor admission in
   [`gate-map.md`](gate-map.md).

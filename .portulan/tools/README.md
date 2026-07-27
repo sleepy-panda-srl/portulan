@@ -42,7 +42,7 @@ agent does here, and this section is written to be followed by a human once.
    - *Name:* `portulan-agent` — it must be globally unique on GitHub, so expect to need a suffix. Whatever
      it becomes is what appears on every comment, so pick something that reads as a bot at a glance.
    - *Homepage URL:* required. Use `https://sleepypanda.ro` — **not** the repository URL, which is
-     private until the public-flip clearance completes and would 404 for anyone who saw it.
+     private until 2026-07-27 and would have 404'd for anyone who saw it before the flip.
    - *Description:* shown on the App's page and in the install prompt, and public once the repository is.
      Draft to paste:
 

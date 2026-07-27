@@ -14,12 +14,12 @@ delivered as private-marketplace plugins.
 
 ## Status
 
-Pre-release, and **private during the build**. `v0.1.0` is tagged; what it contains — and, just as
-usefully, what it does not — is [`CHANGELOG.md`](CHANGELOG.md). The engine
+Pre-release, and **public as of 27 July 2026** — by the maintainer's decision. `v0.1.0` is tagged; what
+it contains — and, just as usefully, what it does not — is [`CHANGELOG.md`](CHANGELOG.md). The engine
 in `core/`, the Workspace Definition in `spec/`, two workspaces, the validators that check them, and the
 plugin packaging in `plugin/` and `.claude-plugin/` are authored; the remaining directories below fill in
-milestone by milestone, and the `0.` major means nothing here is stable yet. It goes public once a
-separate clearance completes. The living map is [`docs/plan.md`](docs/plan.md).
+milestone by milestone, and the `0.` major means nothing here is stable yet. The living map is
+[`docs/plan.md`](docs/plan.md).
 
 The quickest way to see what this is: read [`examples/`](examples/), a complete fictional workspace, then
 run `node cli/doctor.mjs examples` to watch it validate.
