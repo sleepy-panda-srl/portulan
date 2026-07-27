@@ -39,6 +39,7 @@ are the point:
 | [`dod.md`](dod.md) | Definition of done here — this workspace's extension of core's floor |
 | [`verify/`](verify/) | The verify recipes — one of which the Stop-gate now runs — and what each check enforces |
 | [`gates.json`](gates.json) | The gate policy the enforcement compiler reads: actions bound to tiers, in this workspace's vocabulary rather than a host's |
+| [`labels.json`](labels.json) | The pull-request label set, read by [`../.github/workflows/pr-labels.yml`](../.github/workflows/pr-labels.yml) — policy here, checker there |
 | [`compile/`](compile/) | The runtime the compiled artifact points at — the `PreToolUse` gate and the `Stop` gate |
 | [`tools/`](tools/) | Operator tooling — how this repository is *run*, as distinct from how a change is checked |
 | [`repos/`](repos/) | Repo cards — one per repository this workspace covers |

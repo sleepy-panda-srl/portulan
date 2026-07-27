@@ -86,6 +86,13 @@ Reversible but consequential: it changes what the repository says, or how it beh
   Gated below, and as that tier's header says, the gate is the maintainer's decision rather than his
   keystroke: he may review a pull request and then instruct an agent to perform the merge. Default
   when nothing is said: open the pull request and hand it over.
+
+  **It is opened with a label** — at least one from [`labels.json`](labels.json), in the `gh pr create`
+  command rather than remembered afterwards. The maintainer's ruling, 2026-07-27, taken when 45 pull
+  requests had produced exactly one label and Dependabot had applied it.
+  [`../.github/workflows/pr-labels.yml`](../.github/workflows/pr-labels.yml) checks it and
+  [`memory/every-pull-request-carries-a-label.md`](memory/every-pull-request-carries-a-label.md) carries
+  the reasoning. Which label is right is judgement; that there is one is not.
 - `change-doctrine` — [`../core/`](../core/), a template, a persona, or a skill.
 - `change-this-workspace` — anything here, including this file and [`gates.json`](gates.json).
 - `change-the-plan` — the Status column or the Session log in [`../docs/plan.md`](../docs/plan.md).
