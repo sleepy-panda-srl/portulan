@@ -1024,3 +1024,29 @@ the seam applies here too: no client-identifying references)_
   understatement in the handoff of a pull request about understatement, now counted with the record in
   it. · Seam scan clean across files, commit messages, and branch name. Handoff:
   [`.portulan/handoffs/2026-07-27-the-third-tool-was-missing-from-the-map.md`](../.portulan/handoffs/2026-07-27-the-third-tool-was-missing-from-the-map.md).
+
+- 2026-07-27 · post-M4-session-0 — no milestone row touched · **`pr-labeled` joined the platform floor,
+  and the floor's own description caught up with it.** On Marius's explicit instruction ("add pr-labeled
+  to branch protection") — the Gated tier working as written, his decision rather than his keystroke —
+  the check #46 shipped one step short of required became required. Applied with the command
+  `.portulan/memory/every-pull-request-carries-a-label.md` had already written down rather than a fresh
+  one: both contexts sent whole, both pinned to app 15368, `strict` repeated, because the `checks` array
+  is replaced rather than appended to and a `PATCH` meant only to add a context drops `workspace-verify`'s
+  pin if the array omits it. **Read back whole and diffed against a before-image** — three fields moved,
+  all of them the addition; `strict`, `enforce_admins`, conversation resolution, force-push and deletion
+  blocks, review count, linear history, lock-branch and signatures individually compared and unmoved.
+  Timed for **zero open pull requests**, so a newly-required context had nothing in flight to trap
+  (proposal `0004`'s lesson honoured at no cost). **Then demonstrated red first** on the pull request
+  carrying the change, opened deliberately unlabelled: `pr-labeled` fail, `mergeStateStatus: BLOCKED`,
+  `mergeable: MERGEABLE` — no textual conflict, the platform refusing on the required check alone —
+  then pass and `CLEAN` once labelled, **with the re-run coming from the `labeled` event and no push**,
+  which turns the workflow's "the trigger list is load-bearing" comment from a prediction into a
+  measurement. Three documents said it was not required and were corrected in the same change (gate-map
+  floor table and ungating paragraph, the memory entry, the workflow header); the gate map's dated
+  read-back of #46 was deliberately left alone, being an explicitly past-tense record of what was
+  observed then. `doctor` now lints both contexts against workflow job ids, since the row names both.
+  · **Supervisor fidelity: no fresh-context review — settings-and-record change with the measurement in
+  hand rather than a doctrine rewrite; no session-open review; no milestone-close (none due).** Merged
+  by the session on the same standing instruction to complete the work. · Seam scan clean across files,
+  commit message, and branch name. Handoff:
+  [`.portulan/handoffs/2026-07-27-the-label-check-joins-the-floor.md`](../.portulan/handoffs/2026-07-27-the-label-check-joins-the-floor.md).

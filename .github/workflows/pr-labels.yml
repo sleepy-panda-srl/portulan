@@ -16,11 +16,12 @@
 # clear it but an empty push. That is a gate that fails CLOSED and traps the change, which is worse than
 # the omission it protects against.
 #
-# NOT YET A REQUIRED STATUS CHECK, deliberately, and the sequence matters — proposal 0004 learned it the
-# expensive way. A required context that has never reported blocks every open pull request that does not
-# carry the workflow, including ones already in review. So: this ships, it merges to `main`, and only
-# then is `pr-labeled` added to branch protection. Making it required before that would deadlock the
-# repository, and `enforce_admins: true` means nobody could force past it.
+# A REQUIRED STATUS CHECK SINCE 2026-07-27, and it got there by a sequence rather than in one step —
+# proposal 0004 learned the expensive way why. A required context that has never reported blocks every
+# open pull request that does not carry the workflow, including ones already in review, and
+# `enforce_admins: true` means nobody could force past it. So this shipped first, merged to `main` (#46),
+# reported green on real pull requests, and only then joined branch protection — at a moment with zero
+# open pull requests, so nothing in flight could be trapped by the new requirement.
 #
 # The job id IS the status-check context, so renaming it later detaches the requirement silently.
 
