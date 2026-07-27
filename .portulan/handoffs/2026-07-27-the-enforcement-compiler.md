@@ -76,6 +76,9 @@ what `core/operating/loop.md` has promised since the cadence rule landed.
   matrix, and `doctor`'s degradation report. The refusal accounting is already the matrix's data —
   every rule ends as compiled or refused-with-a-reason, and the counts are asserted — so session 1 is
   mostly formatting rather than new measurement.
+- **The criterion was amended** (that row only) to name the session-end gate, which
+  `core/operating/loop.md` had promised to this milestone while the row named only two of the three
+  things the doctrine owed here. An expansion, not a narrowing.
 - **Two questions are still the maintainer's** and both were surfaced rather than assumed: what
   "Copilot ruleset export" means, and where `autonomy.md`'s promise that the compiler generates the
   *platform floor* configuration lands. The second matters — read literally, core doctrine promises
@@ -123,6 +126,39 @@ what the suite could not, because nothing tested `stop.mjs` at all:
 Also caught: a UTC date in the handoff check that would falsely block between midnight and 03:00 local, a
 missing `2)` arm making a documented exit code print "not a verdict it documents", and a claim that CI had
 caught a drift on a branch that has never been pushed.
+
+## The consistency review, and what it changed
+
+A cross-session consistency review confirmed the four rulings and rode five constraints in with them.
+Three were already satisfied and are now evidenced rather than assumed; three changed the code.
+
+Already true, checked rather than claimed: the **freshness rail** exists (`verify/compile.sh` recompiles
+and byte-compares, red on mismatch); **emitted hook paths are repo-relative** — `${CLAUDE_PROJECT_DIR}`,
+no absolute path, so the tracked artifact does not lie on another machine; and **exit 2 propagates to its
+own outcome**, neither folded into red nor read as a pass, which is the shape all three recorded
+fail-opens here share.
+
+Changed by the review:
+
+- **Cap exhaustion now says the session is ending RED, not done.** The cap bounds how long the gate
+  argues, never whether red can become done — the release message carries the unresolved problems and
+  says so in those words.
+- **The false-red direction is tested as hard as the false-green.** `verdict()` was extracted as a pure
+  function precisely so both can be: a green stop must never block, and a *spent budget* must never turn
+  a green stop into a block. A Stop-gate that blocks on green gets switched off by an annoyed human, and
+  then it guards nothing.
+- **Tier agreement is now checked, not just membership.** Membership proved a rule was *mentioned*; it
+  did not stop the prose filing a Gated action under Auto. The suite now checks each rule id appears
+  under the gate map heading matching its tier — headings are structure, so this is not the ambitious
+  parser the spec warns against.
+- **The pressure valve is written down** in `compile/README.md`: personal `allow` convenience belongs in
+  untracked `settings.local.json`; the tracked artifact carries policy only. Stated so prompt fatigue
+  does not erode the no-allows ruling one informal line at a time.
+
+And the sequencing note earned its keep: both runners were **refactored after** the live demos, so the
+last live evidence predated the shipped code. Re-run against the committed artifact — ordinary tool calls
+ran, the push was refused, the scratch remote stayed empty. A broken `PreToolUse` hook in a tracked
+settings file would wedge every future session, and that was checked rather than reasoned about.
 
 ## The thing to be suspicious of next session
 

@@ -59,6 +59,23 @@ and it would have flattened the one rule that has no approval path at all — no
 four tier classes where core names three: `prohibited` is not a stronger `gated`, it is a different
 answer to a different question.
 
+## The pressure valve, named so it does not get opened quietly
+
+The compiler emits **restriction only** — `ask` and `deny`, never `allow`. That is a maintainer's
+ruling and it holds a real line: a compiler whose output can only ever *add* a gate cannot loosen an
+existing check by having a bug.
+
+It also creates prompt fatigue, and fatigue is what erodes a decision informally — one `allow` added
+to the compiled file "just for now", and the artifact stops being policy. So the valve is stated
+rather than left to be improvised: **personal convenience belongs in `.claude/settings.local.json`**,
+which is git-ignored and yours. The tracked artifact carries policy; the untracked file carries taste.
+Anyone reviewing a diff can then tell which they are looking at, which is the whole reason to separate
+them.
+
+One consequence is honest and unmeasured: a broad local `Bash` allow sits invisibly beside these
+gates. A compiled `deny`/`ask` beats an `allow` on the *same* pattern; what a broad local allow does to
+the **wrapper** spelling has not been measured and is not claimed either way.
+
 ## The limits, stated where somebody will meet them
 
 - **One level of wrapper unwrapping, and no more.** Deeper nesting, a heredoc, an interpolated

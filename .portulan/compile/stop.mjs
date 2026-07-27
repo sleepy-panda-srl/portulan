@@ -156,8 +156,12 @@ function collectProblems() {
         } catch (error) {
             const code = error.status;
             const output = `${error.stdout ?? ""}${error.stderr ?? ""}`.trim().split("\n").slice(-25).join("\n");
-            const verdict = code === 2 ? "could not run (exit 2)" : `RED (exit ${code ?? "?"})`;
-            problems.push(`verify recipe \`${recipe.id}\` — ${verdict}\n${output}`);
+            // Exit 2 gets its OWN outcome, not folded into red. The recipes distinguish "ran and
+            // failed" from "could not run" precisely so that neither is mistaken for the other, and a
+            // runner that flattened them would either fail open (2 read as pass) or manufacture false
+            // reds (2 read as a verdict about the tree). Both block; they say different things.
+            const outcome = code === 2 ? "could not run (exit 2) — the gate could not judge" : `RED (exit ${code ?? "?"})`;
+            problems.push(`verify recipe \`${recipe.id}\` — ${outcome}\n${output}`);
         }
     }
 
@@ -172,6 +176,38 @@ function collectProblems() {
     return problems;
 }
 
+/**
+ * The gate's arithmetic, as a pure function — the part that decides whether this gate can be talked
+ * past, or can wrongly refuse. Exported because both directions need testing and neither is
+ * testable through a hook that calls `process.exit`.
+ *
+ * Three outcomes, deliberately distinct:
+ *   allow   — nothing is wrong. A green stop is FREE: it must never consume the budget, or an
+ *             ordinary session spends its cap on good turns and a real red walks through afterwards.
+ *   block   — refuse this stop, and charge it.
+ *   release — the cap is spent. The session may end, and the record must say RED rather than done.
+ */
+export function verdict({ problems, count, max = MAX_BLOCKS }) {
+    if (problems.length === 0) return { action: "allow" };
+    if (count > max) {
+        return {
+            action: "release",
+            message:
+                `PORTULAN STOP-GATE — cap of ${max} refusals reached. This session is ending **RED**, not done.\n` +
+                `Nothing below was fixed, and the session ending does not fix it. Say so in the handoff and in any\n` +
+                `report of this work; a task that ends at the cap is an unfinished task with a stop attached.\n\n` +
+                `${problems.join("\n\n")}\n`,
+        };
+    }
+    return {
+        action: "block",
+        message:
+            `PORTULAN STOP-GATE (${count}/${max}) — this task is not done:\n\n${problems.join("\n\n")}\n\n` +
+            "Fix these rather than working around them. If a check is wrong, say so and change it deliberately — " +
+            "relaxing a check is the change to scrutinise hardest, because it is the one that makes every future green mean less.",
+    };
+}
+
 function main() {
     let payload = {};
     try {
@@ -183,23 +219,16 @@ function main() {
     }
 
     const problems = collectProblems();
-    if (problems.length === 0) allow(); // A green stop is free. It must not consume the budget.
+    // Charged only when this gate is actually about to refuse. A green stop costs nothing.
+    const count = problems.length === 0 ? 0 : bumpCount(payload.session_id ?? "unknown");
+    const result = verdict({ problems, count });
 
-    // Charged only now, when this gate is actually about to refuse a stop.
-    const count = bumpCount(payload.session_id ?? "unknown");
-    if (count > MAX_BLOCKS) {
-        process.stderr.write(
-            `portulan stop-gate: cap of ${MAX_BLOCKS} refusals reached for this session — allowing the stop.\n` +
-                `The following is STILL UNRESOLVED and is not fixed by this session ending:\n\n${problems.join("\n\n")}\n`,
-        );
+    if (result.action === "allow") allow();
+    if (result.action === "release") {
+        process.stderr.write(result.message);
         allow();
     }
-
-    block(
-        `PORTULAN STOP-GATE (${count}/${MAX_BLOCKS}) — this task is not done:\n\n${problems.join("\n\n")}\n\n` +
-            "Fix these rather than working around them. If a check is wrong, say so and change it deliberately — " +
-            "relaxing a check is the change to scrutinise hardest, because it is the one that makes every future green mean less.",
-    );
+    block(result.message);
 }
 
 if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) {

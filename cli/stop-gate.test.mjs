@@ -22,7 +22,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 
-import { bumpCount, today, MAX_BLOCKS } from "../.portulan/compile/stop.mjs";
+import { bumpCount, today, verdict, MAX_BLOCKS } from "../.portulan/compile/stop.mjs";
 
 const SCRATCH = [];
 process.on("exit", () => {
@@ -90,5 +90,35 @@ describe("the handoff date", () => {
 
     test("the format is exactly the one handoffs are named with", () => {
         assert.match(today(), /^\d{4}-\d{2}-\d{2}$/);
+    });
+});
+
+describe("the verdict — both directions, because only one of them is tested by instinct", () => {
+    test("no problems means allow, and allow never charges the budget", () => {
+        // The false-RED direction. A Stop-gate that blocks on green gets switched off by an annoyed
+        // human, and then it guards nothing — the `json.sh` false-red lesson, applied to the gate
+        // rather than to a recipe.
+        assert.equal(verdict({ problems: [], count: 0 }).action, "allow");
+        assert.equal(verdict({ problems: [], count: 99 }).action, "allow", "a spent budget must not turn green into a block");
+    });
+
+    test("a problem below the cap blocks, and says which refusal this is", () => {
+        const v = verdict({ problems: ["recipe red"], count: 2 });
+        assert.equal(v.action, "block");
+        assert.match(v.message, /2\/3/);
+        assert.match(v.message, /recipe red/);
+    });
+
+    test("past the cap the session is released, and the message says RED rather than done", () => {
+        // The cap bounds how long the gate argues, never whether red can become done.
+        const v = verdict({ problems: ["recipe red"], count: MAX_BLOCKS + 1 });
+        assert.equal(v.action, "release");
+        assert.match(v.message, /ending \*\*RED\*\*, not done/);
+        assert.match(v.message, /recipe red/, "the unresolved problems must survive into the release message");
+    });
+
+    test("the cap itself still blocks — release begins one past it", () => {
+        assert.equal(verdict({ problems: ["x"], count: MAX_BLOCKS }).action, "block");
+        assert.equal(verdict({ problems: ["x"], count: MAX_BLOCKS + 1 }).action, "release");
     });
 });
