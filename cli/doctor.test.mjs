@@ -839,6 +839,31 @@ describe("the enforcement backends report their own degradation", () => {
         assert.match(failures[0].message, /never-reported/);
     });
 
+    test("the cross-check reads the gate map itself, not an array another check emptied", async () => {
+        // Found by review. `claimedChecks` is cleared when there are no workflows to compare it
+        // against — so with a tree carrying none, the cross-check saw an empty prose list and
+        // reported that the prose names nothing, about a gate map that names it plainly. A false
+        // report, and the SECOND consumer of that array to be caught reading it after the mutation:
+        // the first fix introduced a separate `namedAnyCheck` flag for one consumer instead of
+        // making the array safe to read, so the next consumer inherited the trap.
+        const dir = withGates(
+            {
+                portulan: { spec: "2.2" },
+                why: "gate-map.md",
+                floor: { branch: "main", checks: [{ context: "workspace-verify" }], reviews: 0, resolve_conversations: true },
+                rules: [{ id: "open-a-pull-request", tier: "propose", action: { shell: "gh pr create" }, reason: "by pull request" }],
+            },
+            { "gate-map.md": "# Gate map\n\n| Setting | Value |\n|---|---|\n| Required status check | `workspace-verify` |\n" },
+        );
+        fs.writeFileSync(path.join(dir, "workspace.json"), JSON.stringify(manifest()));
+        const { findings } = await inspect(dir);
+        assert.doesNotMatch(
+            text(checks(findings, "enforcement")),
+            /prose does not name it/,
+            "the gate map names this context; only the workflow comparison was unavailable",
+        );
+    });
+
     test("a floor context with no app pin is reported — any app reporting that name satisfies it", async () => {
         const dir = withGates(
             {

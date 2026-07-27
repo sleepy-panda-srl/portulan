@@ -227,12 +227,34 @@ function parseFloor(floor) {
                 `Refusing rather than defaulting to \`main\`: a compiler that invents the ref it gates has stopped compiling policy.`,
         );
     }
+    // A branch NAME, never a full ref. The emitter prefixes `refs/heads/` unconditionally, so
+    // `refs/heads/main` here produced `refs/heads/refs/heads/main` — a ruleset GitHub accepts and
+    // that matches no ref in any repository. Importable, valid, enforcing nothing, in the one field
+    // that names what the floor protects. Found by review on the pull request. (`release/2026` is an
+    // ordinary branch name and stays legal; only a `refs/` prefix is refused.)
+    if (/^refs\//.test(branch)) {
+        throw new CompileError(
+            `\`floor.branch\` is ${JSON.stringify(branch)} — declare a branch NAME, not a full ref. This compiler emits ` +
+                `\`refs/heads/<branch>\`, so a \`refs/\` prefix here compiles to a ref no repository has, and a ruleset that ` +
+                `matches nothing is worse than one that refuses to build.`,
+        );
+    }
     if (!Array.isArray(floor.checks)) {
         throw new CompileError("`floor.checks` must be an array — an absent one is indistinguishable from a floor requiring nothing");
     }
     const checks = floor.checks.map((c, i) => {
         if (!c || typeof c !== "object" || typeof c.context !== "string" || c.context.trim() === "") {
             throw new CompileError(`\`floor.checks[${i}]\` declares no \`context\` — a required check with no name cannot be required`);
+        }
+        // Refused rather than normalised, exactly as a rule target is a few lines up: a context
+        // stored with its surrounding whitespace is emitted with it, and GitHub then requires a
+        // check no job reports. Trimming it silently would hide a policy error in the file a human
+        // reviews. Found by review on the pull request.
+        if (c.context !== c.context.trim()) {
+            throw new CompileError(
+                `\`floor.checks[${i}].context\` is ${JSON.stringify(c.context)} — it has leading or trailing whitespace, which no ` +
+                    `status check will report. Fix the policy rather than having this quietly trim it.`,
+            );
         }
         // The app pin is optional and its absence is a real weakening rather than a style choice: a
         // context with no `integration_id` is satisfiable by ANY app reporting that name. Permitted,
@@ -496,6 +518,11 @@ const REF_RULES = new Map([
     ["git push --delete", "deletion"],
 ]);
 
+// Which tiers this backend may emit a ref rule for. `prohibited` is included and `auto` is not:
+// a prohibition on a ref operation is a restriction the floor can carry, while an unattended action
+// needs no ref gate by definition.
+const FLOOR_GATE_TIERS = new Set(["gated", "prohibited"]);
+
 /** Commands a *tag* ruleset would reach. Named individually so the refusal can say which mechanism. */
 const TAG_SHAPED = new Set(["git tag", "gh release"]);
 
@@ -571,7 +598,13 @@ export function githubRuleset(parsed, options = {}) {
             continue;
         }
 
-        const shell = rule.kind === "shell" ? rule.target : null;
+        // The TIER is consulted before the spelling table, and that order is the whole of it. It was
+        // the other way round for one round, so an `auto` rule spelled exactly `git push --force`
+        // compiled into `non_fast_forward` — a ruleset rule emitted for an action the policy declares
+        // unattended, with `floorRefusal`'s own `auto` branch left unreachable for it. The table is
+        // only how this backend spells a gate; whether there is a gate at all is the policy's answer.
+        // Found by review on the pull request.
+        const shell = rule.kind === "shell" && FLOOR_GATE_TIERS.has(rule.tier) ? rule.target : null;
         const refType = shell ? REF_RULES.get(shell) : undefined;
         if (refType) {
             rules.push({ type: refType });

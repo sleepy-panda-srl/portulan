@@ -123,7 +123,7 @@ green throughout — is pinned by the suite.
 
 ## Spec 2.1 → 2.2
 
-Suite 244 → **289**, both figures measured (at `fab592d` and at head) rather than derived.
+Suite 244 → **294**, both figures measured (at `fab592d` and at head) rather than derived.
 
 Additive: the optional `floor` object in the gate policy — `branch`, `checks`, `reviews`,
 `resolve_conversations`. All four exist because they vary per repository and the export would otherwise
@@ -161,6 +161,34 @@ taking this session's comparison on trust. Three findings changed the artifact r
 Both were red-tested before being fixed. The rest were record fixes: a stale cap sentence in the glossary,
 a count given as nine where the tree says eight across three carriers, a historical demo attributed to the
 wrong constant, and the provenance overclaim now split above.
+
+## The Copilot round, which found four and was right about four
+
+All four were about the **floor declaration being believed** — an input accepted here and then used in a
+way that produces an artifact GitHub takes and does not enforce. That is the failure this backend is least
+able to notice about itself, since nothing here imports anything.
+
+- **`floor.branch` could carry a ref prefix.** `refs/heads/main` passed the branch pattern, and the
+  emitter prefixes unconditionally, so the ruleset targeted `refs/heads/refs/heads/main` — importable,
+  valid, matching no ref in any repository. In the one field that names what the floor protects.
+- **A check context was stored untrimmed.** `" workspace-verify "` was non-empty after `trim()` and was
+  emitted with its whitespace, requiring a check no job reports. Refused rather than normalised, matching
+  how a rule target is treated four lines away: quietly fixing it hides a policy error in the file a human
+  reviews.
+- **The ref-rule table was consulted before the tier.** An `auto` rule spelled exactly `git push --force`
+  compiled into `non_fast_forward` — a ruleset rule emitted for an action the policy calls unattended,
+  with `floorRefusal`'s own `auto` branch unreachable for it. The table is only how this backend *spells*
+  a gate; whether there is one is the policy's answer, and the order now says so.
+- **The prose cross-check read a mutated array.** `claimedChecks` is emptied when there are no workflows
+  to compare against, so on such a tree the cross-check reported that the gate map named nothing about a
+  gate map that named it plainly. **The second consumer caught reading that array after the mutation** —
+  the first fix added a separate flag for one consumer instead of making the array safe to read, so the
+  next consumer inherited the trap. Fixed with a snapshot this time, so a third consumer inherits
+  something true rather than something to remember.
+
+All four red-tested first. Both emitted artifacts are byte-identical afterwards, which is the expected
+result and worth stating: every fix was a refusal or an ordering, and none of them changed what *this*
+policy compiles to. Suite 289 → 294.
 
 ## What is left
 
