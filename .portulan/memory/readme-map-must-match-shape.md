@@ -19,5 +19,5 @@ Enforced rather than remembered: the `map` check in [`../verify/docs.sh`](../ver
 undocumented top-level entry. Related: [`three-workspaces-not-one.md`](three-workspaces-not-one.md).
 
 **Retire when:** the root README's layout table stops being this repository's primary map for agents —
-for instance if `doctor`'s agent-legibility report (milestone 2) supersedes it with a generated one. At
+for instance if `doctor` grows an agent-legibility report that supersedes it with a generated one. At
 that point the check should *move* rather than simply be deleted.
