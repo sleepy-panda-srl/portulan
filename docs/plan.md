@@ -754,7 +754,7 @@ the seam applies here too: no client-identifying references)_
   recipe**, declared in the manifest, so CI will run it on the pull request with no workflow edit —
   proposal 0004's mechanism, fourth payout. (Stated as the conditional it is: this branch has not been
   pushed, so CI has not yet run it. The red→green was demonstrated locally.) Spec 2.0 → **2.1**, one optional additive key, with the demo workspace deliberately left at 2.0
-  so the older-minor path is exercised rather than swept along. Suite 155 → 199. · **Both demo clauses ran
+  so the older-minor path is exercised rather than swept along. Suite 155 → 209 (199 at the pre-commit checkpoint; the ten it added are the regression for the defect it found). · **Both demo clauses ran
   against a live host with the settings in force.** The push demo used a scratch bare remote **on
   purpose**: had the gate failed, the demonstration itself would still have performed no outward action.
   A headless session ran `git status --short` (positive control), was refused the push, and the remote
