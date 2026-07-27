@@ -399,13 +399,16 @@ land. The reasoning, the one-command condition and the cost are in
 [`memory/a-branch-syncs-with-main-before-it-merges.md`](memory/a-branch-syncs-with-main-before-it-merges.md)
 and [`proposals/0011-no-merge-from-behind-main.md`](proposals/0011-no-merge-from-behind-main.md).
 
-**Verified at the settings layer, not end to end, and the difference is stated rather than glossed.** The
-protection was read back immediately after the change: `strict: true`, the required check still
-`workspace-verify` pinned to app 15368, `enforce_admins`, conversation resolution and the force-push and
-deletion blocks all intact — a `PATCH` to one sub-resource left the rest alone. What was *not* captured is
-a behind pull request being refused: the three that were behind all merged or rebased inside the same
-half-hour, so the subject of the test synced itself. The first honest demonstration is the pull request
-carrying this paragraph, which was behind `main` when the setting landed.
+**Verified at the settings layer and then demonstrated.** The protection was read back immediately after
+the change: `strict: true`, the required check still `workspace-verify` pinned to app 15368,
+`enforce_admins`, conversation resolution and the force-push and deletion blocks all intact — a `PATCH` to
+one sub-resource left the rest alone. The demonstration came from the pull request carrying this
+paragraph, when `main` moved two commits under it: **`mergeStateStatus: BEHIND`, `mergeable: MERGEABLE`,
+`behind_by: 2`.** No textual conflict — git would merge it cleanly — and the platform refuses anyway,
+which is the refusal this row buys. Before the setting, that same state read `CLEAN`. The limit worth
+naming: what was observed is GitHub reporting the refusal, not a merge attempted and rejected, because a
+merge attempt that is *not* refused lands the change — the reasoning that also leaves the ruleset-bypass
+interaction untested above.
 
 **Why zero required reviews, on purpose.** GitHub does not permit anyone to approve their own pull
 request. On a repository with one human, requiring an approving review *and* enforcing for

@@ -45,7 +45,9 @@ that no prompt has to carry: a behind pull request reports `BEHIND`, the merge i
 the branch re-triggers `pull_request` so the required check re-runs against the merge that will actually
 happen. Verified at the settings layer immediately after the change — `strict: true`, the required check
 still `workspace-verify` **pinned to app 15368**, `enforce_admins`, conversation resolution, and the
-force-push and deletion blocks all intact.
+force-push and deletion blocks all intact — and then demonstrated on the pull request that landed this
+rule: `mergeStateStatus: BEHIND` beside `mergeable: MERGEABLE` at `behind_by: 2`, a refusal with no
+textual conflict behind it, where the same state read `CLEAN` a few hours earlier.
 
 [`../gates.json`](../gates.json) also states the precondition in the reason on `merge-a-pull-request`, and
 that is a courtesy rather than a second layer: on a bare `gh pr merge` the permission rule matches, the
