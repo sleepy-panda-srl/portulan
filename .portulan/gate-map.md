@@ -66,8 +66,8 @@ decision to **merge**, which is where a commit actually enters `main` — and th
 was a proxy for a guarantee that lives one step later.
 
 What ungating it does not touch, all of it platform-enforced rather than promised: `main` rejects direct
-pushes, force-pushes and deletions on `main` are blocked, `workspace-verify` is required, conversation
-resolution is required, and `enforce_admins` leaves nobody an exemption. A working-branch push cannot reach
+pushes, force-pushes and deletions on `main` are blocked, `workspace-verify` and `pr-labeled` are both
+required, conversation resolution is required, and `enforce_admins` leaves nobody an exemption. A working-branch push cannot reach
 any of that. Every commit still carries `Co-Authored-By` marking the agent's hand.
 
 **The one real cost, named rather than waved past:** a push is the moment content leaves this machine for
@@ -316,7 +316,7 @@ enforces:
 | Setting | Value | Configured in |
 |---|---|---|
 | Direct pushes | rejected — every change goes through a pull request | classic branch protection |
-| Required status check | `workspace-verify` — the workspace's verify recipes, run by CI; pinned to app 15368 | classic branch protection |
+| Required status checks | `workspace-verify` — the workspace's verify recipes — and, since 2026-07-27, `pr-labeled` — every pull request carries a label from the declared set. Both run by CI and both pinned to app 15368 | classic branch protection |
 | Administrators | **included**; the maintainer has no exemption | classic branch protection, `enforce_admins` |
 | Required approving reviews | 0 — see below | classic branch protection |
 | Conversation resolution | required before merge — every thread *resolved*, which is not *adjudicated*; see below | classic branch protection |

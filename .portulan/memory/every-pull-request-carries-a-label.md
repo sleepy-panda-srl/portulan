@@ -47,12 +47,13 @@ replaced a payload read on the first run of this checker in anger, and the reaso
 `opened` event's payload is empty and the check went red on a pull request that was labelled from the
 first second. A spurious red on every newly-opened pull request is the false-red failure this rule's own
 reasoning warns about — found by watching the check run rather than by trusting it. Reading current
-state also means the answer is about the pull request, not about the event that woke the job. **It is
-not yet a required status check**, and the sequence is the point: a required context that has never
-reported blocks every open
+state also means the answer is about the pull request, not about the event that woke the job. **It became
+a required status check on 2026-07-27**, and the sequence it waited for is the point: a required context
+that has never reported blocks every open
 pull request that does not carry the workflow, and `enforce_admins: true` leaves nobody able to force
 past it — the lesson [`../proposals/0004-ci-runs-every-declared-recipe.md`](../proposals/0004-ci-runs-every-declared-recipe.md)
-paid for. So the workflow merges to `main` first, and only then does `pr-labeled` join the floor:
+paid for. So the workflow merged to `main` first (#46), reported green on real pull requests, and only
+then did `pr-labeled` join the floor, on the maintainer's explicit instruction, by exactly this command:
 
 ```
 gh api -X PATCH repos/sleepy-panda-works/portulan/branches/main/protection/required_status_checks \
@@ -67,8 +68,24 @@ reporting that name, which is the hole proposal `0001` closed. `strict` is repea
 send the state you want, rather than relying on what a `PATCH` leaves alone. `--input` reads a file or,
 as here, stdin; inline JSON as its argument is treated as a filename and fails.
 
-Until that runs, this is a rule a human applies and CI reports on — stated so nothing here reads as a
-floor it is not part of yet ([`a-stated-enforcer-must-be-the-real-one.md`](a-stated-enforcer-must-be-the-real-one.md)).
+**Applied 2026-07-27, and read back whole.** The one field that moved was the addition: `contexts` and
+`checks` gained `pr-labeled`, `workspace-verify` kept its `app_id` pin, and `strict`, `enforce_admins`,
+conversation resolution, the force-push and deletion blocks and the review count were all compared
+against a before-image and unmoved. It went on at a moment with **zero open pull requests**, which is the
+cheapest time to add a required context: there was nothing in flight for a newly-required check to trap.
+
+**Then demonstrated, red first, on the pull request carrying this paragraph.** It was opened
+deliberately **unlabelled**: `pr-labeled` reported `fail` and the pull request read
+`mergeStateStatus: BLOCKED` with `mergeable: MERGEABLE` — no textual conflict, the platform refusing on
+the required context alone, which is the refusal this row buys. Two labels were then applied and it read
+`pr-labeled` pass, `CLEAN`. **The re-run came from the `labeled` event, with no push**, which is the
+half the workflow's trigger list exists for: without `labeled`/`unlabeled` the check would have stayed
+red with no way to clear it but an empty push — a gate that fails closed and traps the change. That
+comment was a prediction until this run; it is now a measurement.
+This is now a floor rather than a habit, and the sentence that used to say otherwise was corrected in the
+same change rather than left to be discovered
+([`a-stated-enforcer-must-be-the-real-one.md`](a-stated-enforcer-must-be-the-real-one.md) — a rule
+understating its own enforcement is the same defect as one overstating it).
 
 **Adding a label to [`../labels.json`](../labels.json) does not create it on GitHub**, and until it
 exists nobody can apply it — so the policy would name a label that reds every pull request trying to use
