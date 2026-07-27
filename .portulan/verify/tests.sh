@@ -2,7 +2,9 @@
 # Portulan workspace — verify recipe: the test suite.
 #
 # One check:
-#   tests   ../../cli/doctor.test.mjs passes
+#   tests   every *.test.mjs under ../../cli/ passes — enumerated and counted by `find` first,
+#           then run by a recursive glob covering that same set, so a new suite joins this
+#           recipe by existing rather than by being named here
 #
 # This is the first recipe here that runs *tests* rather than linting documents. Until milestone 2
 # this repository shipped no code, so ./README.md's "real tests join these — they do not replace

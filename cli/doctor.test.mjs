@@ -616,6 +616,19 @@ describe("provenance is parsed into the two forms the constitution names", () =>
             assert.match(text(severities(checks(findings, "provenance"), "fail")), /locked\.md/);
             // The readable one was still counted: the run continued rather than aborting.
             assert.equal(stats.records, 2);
+            // And the unreadable one is still SIZED (from stat): it is counted in `records`, so
+            // leaving it out of `bytes` would have the two totals disagree about what a record is.
+            const expected =
+                fs.statSync(path.join(dir, "memory", "readable.md")).size +
+                fs.statSync(path.join(dir, "memory", "locked.md")).size;
+            assert.equal(stats.bytes, expected, "count and size must agree on what a record is");
+            // And the summary must not claim assessment it never performed: the unreadable record
+            // is counted as unassessed, and the retirement report says so instead of asserting
+            // that every record states a condition.
+            assert.equal(stats.unassessed, 1);
+            const retirement = text(severities(checks(findings, "retirement"), "report"));
+            assert.match(retirement, /1 unreadable and never assessed/);
+            assert.doesNotMatch(retirement, /every record states a retirement condition/);
         } finally {
             fs.chmodSync(path.join(dir, "memory", "locked.md"), 0o644);
         }
@@ -626,6 +639,74 @@ describe("provenance is parsed into the two forms the constitution names", () =>
         const { findings, stats } = await inspect(dir, { schema: SCHEMA });
         assert.equal(stats.rules, 0);
         assert.match(text(checks(findings, "provenance")), /0 /);
+    });
+});
+
+// -------------------------------------------------------------------- retirement
+
+describe("the store reports its own growth", () => {
+    test("a record stating no retirement condition is noted by name; one stating it is not", async () => {
+        const m = wellFormed();
+        m.slots.memory = "memory/";
+        const dir = tree(scratch(), {
+            ...minimalFiles,
+            "workspace.json": JSON.stringify(m),
+            "memory/never-dies.md":
+                "**type:** reference\n**provenance:** `form=link` `href=https://example.test/1`\n\nA fact.\n",
+            "memory/dies-on-time.md":
+                "**type:** rule\n**provenance:** `form=link` `href=https://example.test/2`\n\nA rule.\n\n**Retire when:** the generated client is deleted.\n",
+        });
+        const { findings, stats } = await inspect(dir, { schema: SCHEMA });
+        const notes = checks(findings, "retirement");
+        assert.equal(severities(notes, "fail").length, 0, "retirement is reported, never failed — nothing legislates the field");
+        assert.match(text(notes), /never-dies\.md/);
+        assert.doesNotMatch(text(notes), /dies-on-time\.md/);
+        assert.equal(stats.unretirable, 1);
+    });
+
+    test("prose that merely mentions retiring is not a retirement condition", async () => {
+        const m = wellFormed();
+        m.slots.memory = "memory/";
+        const dir = tree(scratch(), {
+            ...minimalFiles,
+            "workspace.json": JSON.stringify(m),
+            "memory/talks-about-it.md":
+                "**type:** decision\n**provenance:** `form=link` `href=https://example.test/3`\n\nWe retire when the quarter ends, someone said once.\n",
+        });
+        const { stats } = await inspect(dir, { schema: SCHEMA });
+        assert.equal(stats.unretirable, 1, "an unbolded mention must not count as the field");
+    });
+
+    test("the summary is always emitted, carries the store's size, and is zero-safe", async () => {
+        const m = wellFormed();
+        m.slots.memory = "memory/";
+        const sized = tree(scratch(), {
+            ...minimalFiles,
+            "workspace.json": JSON.stringify(m),
+            "memory/one.md":
+                "**type:** rule\n**provenance:** `form=link` `href=https://example.test/1`\n\nA rule.\n\n**Retire when:** it stops being true.\n",
+        });
+        const withRecords = await inspect(sized, { schema: SCHEMA });
+        assert.match(text(checks(withRecords.findings, "retirement")), /1 record\(s\), 0\.\d KB/);
+        assert.ok(withRecords.stats.bytes > 0);
+
+        const empty = tree(scratch(), { ...minimalFiles, "workspace.json": JSON.stringify(wellFormed()) });
+        const without = await inspect(empty, { schema: SCHEMA });
+        assert.match(text(checks(without.findings, "retirement")), /no memory records/);
+    });
+
+    test("every live record in this repository states a retirement condition", () => {
+        // Byte-for-byte against the real stores, like the two-form parse test above: customer zero
+        // holding itself to the bar the note only reports — for this repository, the suite is the rail.
+        for (const store of [path.join(REPO, ".portulan", "memory"), path.join(REPO, "examples", "memory")]) {
+            for (const f of fs.readdirSync(store).filter((n) => n.endsWith(".md") && n !== "README.md")) {
+                assert.match(
+                    fs.readFileSync(path.join(store, f), "utf8"),
+                    /^\s*\*\*retire when:\*\*/im,
+                    `${f} states no retirement condition — add a **Retire when:** line or retire the record now`,
+                );
+            }
+        }
     });
 });
 

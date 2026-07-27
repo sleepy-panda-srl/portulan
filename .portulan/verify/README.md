@@ -24,8 +24,8 @@ nothing more specific applies. Run any of them from anywhere in the tree:
 |---|---|---|
 | [`docs.sh`](docs.sh) — default | links · kernel budget · repo map · record correspondence | `bash`, `git`, POSIX text utilities |
 | [`json.sh`](json.sh) | every tracked `.json` file parses | the above, plus `node` |
-| [`doctor.sh`](doctor.sh) | both workspaces validate: schema, paths, cross-references, claims against the tree, provenance | `bash`, `git`, `node` |
-| [`tests.sh`](tests.sh) | [`../../cli/doctor.test.mjs`](../../cli/doctor.test.mjs) and [`../../cli/plugin-lint.test.mjs`](../../cli/plugin-lint.test.mjs) pass | `bash`, `node` |
+| [`doctor.sh`](doctor.sh) | both workspaces validate: schema, paths, cross-references, claims against the tree, provenance — plus the memory store's growth report (count, size, records stating no retirement condition; notes, never failures) | `bash`, `git`, `node` |
+| [`tests.sh`](tests.sh) | every `*.test.mjs` under [`../../cli/`](../../cli/) passes — counted by `find` first, then run by a recursive glob over that same set | `bash`, `node` |
 | [`plugin.sh`](plugin.sh) | the packaging: both manifests parse and agree, component paths resolve, declared skills and agents are real | `bash`, `git`, `node` |
 | [`compile.sh`](compile.sh) | the compiled enforcement in [`../../.claude/settings.json`](../../.claude/settings.json) is exactly what [`../gates.json`](../gates.json) compiles to | `bash`, `node` |
 
@@ -102,10 +102,13 @@ linter exercises source. `doctor` is the first code, and `tests.sh` is the first
 suite rather than a linter — so the promise this section used to make, that real tests would join these
 rather than replace them, is kept rather than pending.
 
-The claim is still bounded, and the bound was demonstrated within hours of being written. There are two
-suites now: one covering `doctor` — its schema subset, its exit codes, its parsers, its severity split —
-and one covering `plugin-lint`. **Nothing tests the recipes themselves** — `docs.sh`, `json.sh`,
-`doctor.sh`, `tests.sh` and `plugin.sh` are verified by being run, which is a weaker claim than it sounds.
+The claim is still bounded, and the bound was demonstrated within hours of being written. The suites are
+read off the tree rather than named in a list: `tests.sh` counts every `*.test.mjs` under
+[`../../cli/`](../../cli/) with `find`, then runs that same set through a recursive glob — so a suite
+added to `cli/` is covered without this paragraph changing. Four as of milestone 4, covering `doctor`,
+`plugin-lint`, the enforcement compiler, and the Stop-gate runner's arithmetic.
+**Nothing tests the recipes themselves** — `docs.sh`, `json.sh`, `doctor.sh`, `tests.sh`, `plugin.sh` and
+`compile.sh` are verified by being run, which is a weaker claim than it sounds.
 That gap now has a task of its own rather than a mention in a handoff:
 [`../tasks/0004-a-harness-for-the-verify-recipes.md`](../tasks/0004-a-harness-for-the-verify-recipes.md). Every defect ever found in them was found by a human or a reviewer, and
 the two most recent were found by a reviewer on the pull request that introduced them, in the two recipes
@@ -136,7 +139,7 @@ less.
 | `map` | Every top-level entry appears in the root `README.md` layout table. | Agent legibility: a repository whose own map omits directories teaches an agent a false shape of the ground. This one exists because that had already happened — see below. |
 | `record` | Every Session log date since 2026-07-25 has a dated handoff in `../handoffs/`, and the newest log entry carries a seam attestation. | The Session log and the handoffs are the repository's memory of *how* things were decided, and a session that leaves no record cannot be audited afterwards — which stopped being hypothetical the day a merged doctrine rewrite (#32/#33) turned out to have neither. The floor date is the day the handoff cadence became a maintainer ruling; earlier entries predate the mandate. |
 | `parse` | Every tracked `.json` file is well-formed. | From milestone 2 the repository's policy layer *is* JSON. A manifest that does not parse gates nothing, and it fails at the moment it is needed rather than when it is written. |
-| `doctor` | Both workspaces conform to the Workspace Definition, their paths resolve, their claims match the tree, and every rule carries checkable provenance. | The workspace layer is where a team's policy lives, and until this existed every "this workspace conforms" sentence in the repository was an assertion. Its first run found three rules whose provenance the repository had already mandated and not held. |
+| `doctor` | Both workspaces conform to the Workspace Definition, their paths resolve, their claims match the tree, and every rule carries checkable provenance. It also reports the memory store's count and size, and names any record stating no `Retire when:` condition — reported, never failed, because nothing legislates the field; the budget rail arrives with the librarian (milestone 5). For this repository the suite is stricter: a live record without the field turns `tests` red. | The workspace layer is where a team's policy lives, and until this existed every "this workspace conforms" sentence in the repository was an assertion. Its first run found three rules whose provenance the repository had already mandated and not held. |
 | `tests` | The test suites pass. | The validators are the first things here that can be *subtly* wrong rather than visibly broken — a schema keyword silently ignored looks identical to one enforced. A linter can be judged by reading it; a validator cannot. |
 | `compile` | [`../../.claude/settings.json`](../../.claude/settings.json) is byte-identical to what [`../gates.json`](../gates.json) compiles to. | The artifact is generated *and* committed — generated so the policy is the single source, committed so the gate wiring is reviewable in a diff. That combination invites exactly one failure: a hand-edit that works until the next compile silently reverts it. This is the check that makes that loud. |
 | `plugin` | Both packaging manifests parse and agree; every component path resolves inside the tree — after canonicalisation, so a symlink out of it is an escape rather than containment; every declared skill and agent is a real artifact with a kebab-case `name` and a non-empty `description`. | From milestone 3 the repository *is* a distribution channel, and a marketplace declaring no plugins — or a skill path resolving to nothing — installs cleanly and delivers nothing. The platform's own validator reports the empty-marketplace case as a *warning*, which is the severity a milestone walks past. |
