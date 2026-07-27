@@ -1,0 +1,51 @@
+# Something has to watch the Actions pins, because the runner is not a notification.
+#
+# This file exists because of the change beside it. `actions/checkout` sat pinned to a release
+# declaring `using: node20` until GitHub deprecated that runtime and the runner started substituting
+# Node 24 — and the warning in the run log was the only thing that ever said so. That is a mandate
+# nothing checks: SHA-pinning every action is this organisation's policy, and a SHA pin is by design
+# a pin that never moves on its own. Nothing followed it up, so drift was guaranteed and its
+# discovery was left to whichever human happened to read a green run's log.
+#
+# `workspace-verify` is the required check on `main` with `enforce_admins` on, so an action whose
+# runtime the runner drops is not a warning that ages into a nuisance — it is every merge blocked.
+# The whole point of putting the floor in the platform was that it holds without anyone remembering;
+# a floor built on an action that silently rots is a floor with a clock on it.
+#
+# One ecosystem, deliberately. There is no `package.json`, no lockfile, and nothing else tracked that
+# declares a dependency — `cli/` is zero-dependency Node and the verify recipes are POSIX shell. If
+# that ever stops being true, the ecosystem that changed it belongs here too, and this comment is the
+# thing that should have been updated.
+
+version: 2
+
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "07:00"
+      timezone: Europe/Bucharest
+
+    # Dependabot rewrites the SHA *and* the trailing `# vX.Y.Z` comment together, which is the only
+    # reason this is compatible with the pinning policy at all — worth stating, because "we pin to
+    # SHAs" reads like a reason Dependabot cannot help here, and it is the opposite: the pin is what
+    # makes the update reviewable as a diff rather than invisible behind a moved tag. Read the
+    # version comment as a claim about the SHA above it, and check it the way any other claim in this
+    # repository gets checked.
+    groups:
+      actions:
+        patterns:
+          - "*"
+
+    # One open pull request at a time. These land as ordinary pull requests through the same gate as
+    # everything else — required check, conversation resolution, the maintainer merging — and a queue
+    # of them competing for that attention is how the batch stops being read.
+    open-pull-requests-limit: 1
+
+    # No `labels:` and no `commit-message:` on purpose. `dependencies` is the label Dependabot
+    # applies by default and creates itself; naming it here would add a dependency on a label that
+    # does not exist on this repository yet, to buy nothing. And every commit subject in this history
+    # is a plain declarative sentence — configuring a `build:` prefix would introduce a convention
+    # the repository does not otherwise use, so Dependabot's unprefixed default is the closer match.
