@@ -121,6 +121,22 @@ file: where a rule and its clarification live apart, only the rule gets read.)_
 
 - `merge-a-pull-request`, and `delete-a-remote-branch` — which is a push, and is the one push spelling
   that did not move to Auto, because it destroys a ref on a shared remote rather than adding one.
+
+  **The merge carries a precondition the approval does not waive: the head must not be behind `main`.**
+  Sync first — `git rebase origin/main`, then `git push --force-with-lease`, both Auto — let
+  `workspace-verify` re-run, and merge after that. The approval is the maintainer's decision that the
+  change should land; being in sync is what makes the green check describe the tree it will land *as*,
+  since CI tests `refs/pull/N/merge` against `main` as it stood when the run happened and nothing re-runs
+  it when `main` moves. The condition is one command —
+  `gh api repos/{owner}/{repo}/compare/main...<head> --jq .behind_by`, and zero is the only acceptable
+  answer. Reasoning and the local spelling:
+  [`memory/a-branch-syncs-with-main-before-it-merges.md`](memory/a-branch-syncs-with-main-before-it-merges.md).
+  **And this one is a rail, since 2026-07-27** — `required_status_checks.strict` is `true` on `main` (see
+  the platform floor below), so a behind pull request reports `BEHIND` and the platform refuses the merge
+  for the maintainer too. [`gates.json`](gates.json)'s reason states the precondition as well, which is a
+  courtesy and not a second layer: on a bare `gh pr merge` the permission rule matches and the host
+  discards the hook's sentence, so that reason reaches an agent only on the wrapped spelling — the
+  measurement is in [`compile/gate.mjs`](compile/gate.mjs)'s own header.
 - `force-push-without-a-lease` — bare `--force`. `--force-with-lease` is Auto above; the lease is the
   whole difference, and it is why these are two rules rather than one with a caveat.
 - `change-repository-settings` — **visibility above all**. And `change-settings-through-the-api`,
@@ -297,6 +313,7 @@ enforces:
 | Administrators | **included**; the maintainer has no exemption | classic branch protection, `enforce_admins` |
 | Required approving reviews | 0 — see below | classic branch protection |
 | Conversation resolution | required before merge — every thread *resolved*, which is not *adjudicated*; see below | classic branch protection |
+| Branch up to date with `main` before merging | **required** since 2026-07-27 — `strict: true`; a behind pull request reports `BEHIND` and cannot merge | classic branch protection, `required_status_checks.strict` |
 | Force-pushes and branch deletion | blocked | classic branch protection **and**, separately, the organisation ruleset below |
 | SHA-pinned Actions | **required, and enforced by the platform** — `sha_pinning_required: true` | organisation *and* repository Actions policy |
 
@@ -359,6 +376,29 @@ thread that blocks merge until the maintainer resolves it, which is exactly what
 
 It was added while this section was being written, which is as good an illustration as the section could
 ask for of why the layers needed counting in the first place.
+
+**The up-to-date row, added 2026-07-27 — the day the rule and the setting arrived together.** The
+maintainer ruled that a pull request may not merge while it is behind `main`, and then instructed that it
+be set in GitHub rather than left as a rule documents ask for. What made the ruling concrete was the state
+of the repository that morning: **three open pull requests, each exactly one commit behind**, one of them
+reported `CLEAN` and `MERGEABLE` with a green required check describing a merge against a `main` that had
+already moved. `strict` was `false`, so the platform had nothing to say about it.
+
+`required_status_checks.strict = true` is now the fourth thing this floor refuses. It matters here more
+than the setting's name suggests, because CI runs on `pull_request` against `refs/pull/N/merge` — a test
+merge against `main` *as it stood when the run happened* — and nothing re-runs it when the base moves.
+`strict` forces the branch forward, which forces the check to re-run against the merge that will actually
+land. The reasoning, the one-command condition and the cost are in
+[`memory/a-branch-syncs-with-main-before-it-merges.md`](memory/a-branch-syncs-with-main-before-it-merges.md)
+and [`proposals/0011-no-merge-from-behind-main.md`](proposals/0011-no-merge-from-behind-main.md).
+
+**Verified at the settings layer, not end to end, and the difference is stated rather than glossed.** The
+protection was read back immediately after the change: `strict: true`, the required check still
+`workspace-verify` pinned to app 15368, `enforce_admins`, conversation resolution and the force-push and
+deletion blocks all intact — a `PATCH` to one sub-resource left the rest alone. What was *not* captured is
+a behind pull request being refused: the three that were behind all merged or rebased inside the same
+half-hour, so the subject of the test synced itself. The first honest demonstration is the pull request
+carrying this paragraph, which was behind `main` when the setting landed.
 
 **Why zero required reviews, on purpose.** GitHub does not permit anyone to approve their own pull
 request. On a repository with one human, requiring an approving review *and* enforcing for

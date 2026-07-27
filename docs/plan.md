@@ -900,3 +900,41 @@ the seam applies here too: no client-identifying references)_
   note (an unreadable record is counted but never assessed for retirement) is deliberately not folded,
   because that record already fails the run and hedging the common case to cover an already-red corner
   is the wrong trade. Seam scan clean across files, commit message, and branch name.
+
+- 2026-07-27 · post-M4-session-0 — no milestone row touched, and none was due · **A maintainer ruling:
+  nothing merges from behind `main`.** Marius ruled that a pull request may not merge while it is behind
+  `main` — sync first, then merge. The repository when the ruling was taken is why it is not a
+  formality: **three open pull requests, #41, #42 and #43, each exactly one commit behind**, and #43
+  reported by GitHub as `CLEAN` / `MERGEABLE` — mergeable on the spot, with a green `workspace-verify`
+  describing a test merge against a `main` that stopped existing at `8c02c5f`. CI runs on
+  `pull_request` against `refs/pull/N/merge` and nothing re-runs it when the base moves, so the class of
+  defect that gets through is the union of two individually-green branches — which is exactly what this
+  workspace's *correspondence* recipes catch and neither branch's own run can see (`links` on a file one
+  deletes and another links to, `map` on a directory added beside a rewritten README table, `record` on a
+  Session log date whose handoff is on the other branch). Landed as
+  [`.portulan/memory/a-branch-syncs-with-main-before-it-merges.md`](../.portulan/memory/a-branch-syncs-with-main-before-it-merges.md)
+  with the one-command condition (`compare/main...<head> --jq .behind_by`, zero or nothing), as a
+  precondition on the Gated merge in [`.portulan/gate-map.md`](../.portulan/gate-map.md), and — after
+  Marius's second instruction mid-session, *"this rule needs to be set in GitHub too"* — as a **new
+  platform-floor row that is actually enforced**: `required_status_checks.strict` flipped `false → true`
+  on `main`, which is why a branch one commit behind had been reading `CLEAN`. Applied by the session on
+  his explicit per-action instruction, which is the Gated tier working rather than bypassed;
+  [`0011-no-merge-from-behind-main.md`](../.portulan/proposals/0011-no-merge-from-behind-main.md) records
+  it **ACCEPTED and APPLIED**, with the `checks` array sent explicitly so the `app_id: 15368` pin could
+  not be dropped by a `PATCH` meant only to flip a boolean, and the whole protection object re-read
+  afterwards (`enforce_admins`, conversation resolution, force-push and deletion blocks, review count —
+  unmoved). It also obliges milestone 4's ruleset export to carry strict checks, noted there rather than
+  folded into the row. **The end-to-end demonstration is missing and is recorded as missing:** the three
+  behind pull requests all merged or rebased within the same half-hour, so no refusal was observed — a
+  `BLOCKED` reading on #43 mid-recompute is not evidence, and this repository does not accept that
+  standard elsewhere. This pull request, behind `main` when the setting landed, is the honest subject. **The session's own correction:** the first draft called the gate reason a second
+  enforcement layer; `.portulan/compile/gate.mjs` records the measurement that the host discards a hook's
+  reason whenever a permission rule matches, so that sentence reaches an agent only on the wrapped
+  spelling — a fresh instance of `a-stated-enforcer-must-be-the-real-one`, caught in the session that was
+  adding a rule about honest greens, and both documents now say the carrier is a human reading them.
+  `.claude/settings.json` recompiled byte-identical (reasons live in `gates.json`; the hook reads them at
+  runtime). · **Supervisor fidelity: none — no fresh-context checkpoint was taken. Doctrine work, no
+  milestone state touched; the maintainer reviews the diff, per `.portulan/gate-map.md`.** Nothing was
+  merged by the session and the three behind pull requests were not touched. · Seam scan clean across
+  files, commit message, and branch name. Handoff:
+  [`.portulan/handoffs/2026-07-27-nothing-merges-behind-main.md`](../.portulan/handoffs/2026-07-27-nothing-merges-behind-main.md).

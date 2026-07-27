@@ -29,7 +29,7 @@
       "id": "merge-a-pull-request",
       "tier": "gated",
       "action": { "shell": "gh pr merge" },
-      "reason": "An agent never decides for itself that a change is ready to land. The maintainer may instruct an agent to perform a merge he has decided on; he may not have it decided for him. This is the gate the push gate used to stand in for: a commit enters the repository's record here, not at the push."
+      "reason": "An agent never decides for itself that a change is ready to land. The maintainer may instruct an agent to perform a merge he has decided on; he may not have it decided for him. This is the gate the push gate used to stand in for: a commit enters the repository's record here, not at the push. A merge also has a precondition his approval does not waive: the head must not be behind `main`. Check it with `gh api repos/{owner}/{repo}/compare/main...<head> --jq .behind_by` — zero, or rebase onto `origin/main`, push with `--force-with-lease`, and let the checks re-run first, because CI tested this branch against a `main` that has since moved."
     },
     {
       "id": "change-repository-settings",
