@@ -102,9 +102,7 @@ A second question rides along if he wants (b) ever: **is the relay exception a s
 class — *self-hostable-first relays*?** Written as a name today. That wording is doing more work than it
 looks like it is.
 
-## Provenance
-
-`form=link href=docs/plan.md` — Protocol → The seam, and `core/operating/autonomy.md` → the Gated tier,
+**Provenance.** `form=link href=docs/plan.md` — Protocol → The seam, and `core/operating/autonomy.md` → the Gated tier,
 read against the maintainer's directive and the no-external-pull-requests ruling of 2026-07-27.
 
 **Decision.** Marius Cetanas — pending.
