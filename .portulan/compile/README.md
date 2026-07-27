@@ -59,6 +59,36 @@ and it would have flattened the one rule that has no approval path at all — no
 four tier classes where core names three: `prohibited` is not a stronger `gated`, it is a different
 answer to a different question.
 
+## The permission pattern respects token boundaries — measured, not assumed
+
+`force-push-without-a-lease` compiles to `Bash(git push --force:*)` while `git push --force-with-lease`
+is **Auto**. Those two look like they must collide: one string is a prefix of the other, and this
+runner's own matcher has to enforce a word boundary explicitly. A review on
+[#31](https://github.com/sleepy-panda-works/portulan/pull/31) raised exactly that — if the permission
+layer matched naively, the load-bearing layer would be **stricter than the policy**, re-gating an action
+the maintainer had just ungated.
+
+Measured on CLI 2.1.220, with both controls, because the failure mode here is a denial that looks like
+your rule and is not:
+
+| Rule present | Command | Result |
+|---|---|---|
+| `Bash(git push --force:*)` | `git push --force origin HEAD` | **"Permission to use Bash with command … has been denied"** — the rule's own wording. It fired. |
+| `Bash(git push --force:*)` | `git push --force-with-lease origin HEAD` | "This command requires approval" |
+| *no rule at all* | `git push --force-with-lease origin HEAD` | "This command requires approval" — **identical** |
+
+The last two rows are the answer. With and without the rule the outcome is byte-identical, so the rule
+**never matched** `--force-with-lease`: the host's `Bash(prefix:*)` matching is token-aware, not naive
+string-prefix. The finding was a false positive and is refused with a measurement rather than an
+argument — the second time that has been the right response to a review here.
+
+**What was measured is one boundary case**, and the claim is scoped to it: a longer token beginning with
+the pattern's final token is not matched. Nothing here establishes how the host treats quoting,
+subshells, or flag reordering, and `git push origin x --force` reaches neither layer — which is in the
+honest-holes list in [`../gate-map.md`](../gate-map.md) rather than here.
+
+Re-test on upgrade. This is a fact about one CLI version, and the policy above leans on it.
+
 ## The pressure valve, named so it does not get opened quietly
 
 The compiler emits **restriction only** — `ask` and `deny`, never `allow`. That is a maintainer's
