@@ -22,12 +22,11 @@ Recoverable and reversible inside a working copy. Nothing here reaches another p
 
 Reversible but consequential: it changes what the repository says, or how it behaves.
 
-- Open a pull request. **An agent never merges its own on its own authority** — but the gate is the
-  maintainer's *decision* to merge, not his keystroke. He may review a pull request and then instruct an
-  agent to perform the merge; that is the gate working, not a bypass. What stays forbidden is an agent
-  deciding for itself that a change is ready to land. Default when nothing is said: open the pull request
-  and hand it over. _(Recorded because the shorter wording reads as an absolute, and an agent following it
-  literally would have to refuse a direct instruction from the person the rule exists to protect.)_
+- Open a pull request. **An agent never merges its own on its own authority** — what stays forbidden is an
+  agent deciding for itself that a change is ready to land. Merging itself is Gated below, and the
+  decision-not-keystroke principle stated in that tier's header applies to it: the maintainer may review a
+  pull request and then instruct an agent to perform the merge. Default when nothing is said: open the pull
+  request and hand it over.
 - Add or change doctrine in [`../core/`](../core/), a template, a persona, or a skill.
 - Add or change anything in this workspace, including this file.
 - Update the Status column or the Session log in [`../docs/plan.md`](../docs/plan.md).
@@ -38,6 +37,22 @@ Reversible but consequential: it changes what the repository says, or how it beh
 
 Outward-facing or hard to undo. The agent prepares the action and asks; it does not proceed on inference,
 and approval for one action never generalises to the next.
+
+**The gate is the maintainer's decision, not his keystroke — and that governs every action in this tier**,
+not only the merge it was first written about. He may approve in conversation and then have an agent run the
+command; that is the gate working, not a bypass. What the tier forbids is an agent deciding for itself that
+approval was implied, or treating one approval as standing permission. Default when nothing is said: prepare
+the action, ask, and wait.
+
+_(Hoisted here 2026-07-27, after the omission cost several exchanges. The principle had been written down
+once — in the Propose tier, attached to merging — while `git push` and `Merge a pull request` both sit in
+this tier under a header reading "explicit human approval, per action, before it happens", with nothing
+connecting the two. An agent read this tier literally and handed `git push` commands back to the maintainer
+to type by hand, which is precisely the failure the original note predicted in its own words: "an agent
+following it literally would have to refuse a direct instruction from the person the rule exists to
+protect." That note was right about the hazard and wrong about its scope — **a principle stated once, in a
+neighbouring tier, does not reach the actions it was meant to govern.** The lesson generalises past this
+file: where a rule and its clarification live apart, only the rule gets read.)_
 
 - `git push` to `origin` — including the first push of a new branch.
 - Merge a pull request; delete a remote branch.
