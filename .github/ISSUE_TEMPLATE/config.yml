@@ -1,0 +1,19 @@
+# Blank issues are OFF, deliberately. The three forms above are the intake vocabulary, and a blank
+# issue is the escape hatch that makes a vocabulary decorative — every report arrives shaped as
+# whatever the reporter felt like, and the labels stop meaning anything within a month.
+#
+# The cost is real and is accepted: someone with a report that fits none of the three has to pick the
+# closest, and `feedback.yml` is written loose enough to be that closest for anything. If a fourth kind
+# keeps arriving under `feedback`, that is the signal to add a fourth form rather than to reopen blanks.
+#
+# GitHub Discussions is DISABLED on this repository, so nothing here links to it. That is why this file
+# carries only one contact link rather than the usual two — an entry pointing at a disabled feature
+# renders as a dead end, and a dead end in the intake path is worse than a shorter menu.
+blank_issues_enabled: false
+contact_links:
+  - name: How contribution works here
+    url: https://github.com/sleepy-panda-works/portulan/blob/main/CONTRIBUTING.md
+    about: >
+      Read, clone and fork freely. Bugs, proposals and feedback go through the forms above — they are
+      the contribution channel. Code lands only through team members, and outside pull requests are
+      not accepted.
