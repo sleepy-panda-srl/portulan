@@ -48,14 +48,22 @@ jobs:
       # the policy is right: a movable tag is a supply-chain hole, because whoever controls `v7`
       # can repoint it at any commit and every workflow trusting the tag picks it up silently.
       #
-      # **The SHA below is v7.0.0 — one patch BEHIND the current v7.0.1 — and that is deliberate,
-      # temporary, and the whole point of this paragraph.** PR #22 added `dependabot.yml` beside
-      # this file to watch these pins, and nothing ever confirmed the watcher works. It could not:
-      # version-update jobs have no REST endpoint, no `dependabot` check run appears on this
-      # repository at all, and v7.0.1 was already the newest release — so "Dependabot opened no pull
-      # request" was indistinguishable from "Dependabot never ran". Silence was simultaneously the
-      # success state and the failure state, which is the same shape as the incident that prompted
-      # PR #22 in the first place: a warning nobody was obliged to read.
+      # **The SHA below is v7.0.0, one patch behind v7.0.1 — the newest release as of 2026-07-27 —
+      # and that is deliberate, temporary, and the whole point of this paragraph.** PR #22 added
+      # `dependabot.yml` beside this file to watch these pins, and nothing ever confirmed the watcher
+      # works. It could not. Version-update jobs have no REST endpoint; no `dependabot` check run or
+      # check-suite was present on any of the four commits read on 2026-07-27 — PR #22's head, the
+      # rebased `91e3578`, `main`, and this branch's head — so there was no in-Checks signal either;
+      # and the pin already sat on the newest release, so there was nothing to propose. "Dependabot
+      # opened no pull request" was therefore indistinguishable from "Dependabot never ran": silence
+      # was simultaneously the success state and the failure state, the same shape as the incident
+      # that prompted PR #22, a warning nobody was obliged to read.
+      #
+      # That check-run observation is deliberately narrow, because the broad version of it would be
+      # the very drift this file keeps getting corrected for. It is four commits read at one time,
+      # not a standing property of the repository. Dependabot *can* publish a config-validation
+      # check run; none had appeared here, plausibly because the dependency graph was off until
+      # 08:39 that day. Whether one appears now that it is on is an open prediction, not a claim.
       #
       # So this regression is the standing bar of this repository — force a check red before
       # believing its green — applied to the one check that had never been forced. It hands
