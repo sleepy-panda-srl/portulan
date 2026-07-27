@@ -30,8 +30,16 @@ on:
   pull_request:
     types: [opened, reopened, ready_for_review, synchronize, labeled, unlabeled]
 
+# `pull-requests: read` buys the one thing the event payload cannot give: the labels the pull request
+# carries RIGHT NOW. Measured on #46, the pull request that added this file — `gh pr create --label` opens
+# the pull request and applies labels as a second operation, so the `opened` event's payload carries an
+# empty label array and this check went red on a pull request that was labelled from the first second.
+# A spurious red on every newly-opened pull request is precisely the failure `.portulan/memory/` warns
+# about, since a false red is what gets a whole check switched off. So the payload supplies the number
+# and the API supplies the answer.
 permissions:
   contents: read
+  pull-requests: read
 
 jobs:
   pr-labeled:
@@ -43,6 +51,9 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: The pull request carries at least one declared label
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
           set -uo pipefail
 
@@ -60,9 +71,14 @@ jobs:
             exit 1
           fi
 
-          # Read from the event payload rather than the API: no token, no network, and the labels in the
-          # payload are the ones that triggered this run.
-          carried=$(jq -r '.pull_request.labels[]?.name' "$GITHUB_EVENT_PATH")
+          # Current labels, from the API rather than from the event payload — see the note on
+          # `pull-requests: read` at the top of this file. This read is also a precondition: if it fails
+          # the check does not know whether the pull request is labelled, and saying GREEN there would be
+          # a check reporting on something it could not see.
+          if ! carried=$(gh api "repos/${GITHUB_REPOSITORY}/pulls/${PR_NUMBER}" --jq '.labels[]?.name'); then
+            printf '::error::could not read the labels on #%s — refusing to report green on an unread pull request\n' "$PR_NUMBER"
+            exit 1
+          fi
 
           matched=$(comm -12 <(printf '%s\n' "$declared" | sort -u) <(printf '%s\n' "$carried" | sort -u))
 

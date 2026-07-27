@@ -96,6 +96,17 @@ vocabulary, which cannot discriminate here — in a repository whose changes are
 - **Red-first, four payloads:** unlabelled → red; only-undeclared (`wontfix`) → red; declared → green;
   policy missing or declaring nothing → red with a stated reason, never green. The last two matter most —
   a checker that cannot read its own policy must not report success.
+- **Then the checker's first run in anger found a defect in it**, which is the part worth carrying. It
+  read labels from the **event payload**, and `gh pr create --label` opens the pull request and applies
+  labels as a *second* operation — so the `opened` event fired with an empty label array and the check
+  went red on a pull request that had been labelled from its first second. Five runs on #46, one red, and
+  the red was wrong. A spurious red on every newly-opened pull request is exactly the false-red failure
+  the rule's own reasoning cites, shipped inside the rule that cites it. Fixed by reading current labels
+  from the API (`pull-requests: read`), which also makes the check answer a question about the *pull
+  request* rather than about the event that woke the job; the read is itself a precondition and fails
+  closed. Re-tested against three live pull requests: #46 green on three labels, #45 red on none, a
+  nonexistent number red with a stated reason. **Found by watching the check run rather than by trusting
+  it** — the same reason this repository demonstrates rather than asserts.
 - **The trigger list is load-bearing.** `labeled` and `unlabeled` are in it, so adding the label clears
   the check. Without them the check would refuse, the author would label, nothing would re-run, and the
   gate would trap the change instead of gating it.
