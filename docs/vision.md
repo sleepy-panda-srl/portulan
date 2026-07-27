@@ -70,9 +70,11 @@ One sentence: **cockpit products sell the dashboard; Portulan sells the doctrine
 
 ## Non-goals (as binding as the goals)
 
-- **No cockpit.** No fleet-management UI, no desktop app, no agent-monitoring dashboard.
-  Compose with orchestrators (Claude Code agent teams, GitHub Agentic Workflows, Hyprlayer);
-  never compete with them.
+- **No operating cockpit.** No fleet-management UI, no agent-monitoring dashboard, no run
+  controls. Compose with orchestrators (Claude Code agent teams, GitHub Agentic Workflows,
+  Hyprlayer); never compete with them. Human-facing surfaces that serve the human gate —
+  onboarding (`init`), curation and review, `doctor` reports, the approval relay — are
+  in-bounds: local-first, and always renderers over the files, never a second source of truth.
 - **No hosted SaaS**, with one doctrine-permitted exception: the **approval relay** (async
   Slack/webhook approvals for gated actions), shipped self-hostable first.
 - **No auto-generated curated context.** `init` drafts; humans accept.
