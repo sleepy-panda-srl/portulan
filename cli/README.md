@@ -5,8 +5,8 @@ Eventually the `npx` CLI that wraps the file-based mechanics for hosts beyond Cl
 enforcement) · `vendor` (self-contained `AGENTS.md` + `.portulan/`) · `index` · `upgrade`. That
 packaging is **milestone 7**.
 
-One of those exists now, because milestone 2 needed it — plus one tool that is not on that list at all,
-because milestone 3 needed it.
+Two of those exist now — `doctor` because milestone 2 needed it, `compile` because milestone 4 did —
+plus one tool that is not on that list at all, because milestone 3 needed it.
 
 ## What is here today
 
@@ -16,15 +16,22 @@ because milestone 3 needed it.
 | [`doctor.test.mjs`](doctor.test.mjs) | Its test suite, on node's own runner. Written before the validator. |
 | [`plugin-lint.mjs`](plugin-lint.mjs) | The packaging validator: the plugin and marketplace manifests, the skills they declare, and the agents at `./agents/` that nothing declares. |
 | [`plugin-lint.test.mjs`](plugin-lint.test.mjs) | Its test suite, likewise written first. |
+| [`compile.mjs`](compile.mjs) | The enforcement compiler: a workspace's [`../.portulan/gates.json`](../.portulan/gates.json) becomes host enforcement. One backend today — Claude Code `permissions` + `hooks` — and the vocabulary it reads stays the workspace's, so a second backend translates the same policy instead of forcing it to be rewritten. |
+| [`compile.test.mjs`](compile.test.mjs) | Its test suite, likewise written first. Emission fidelity only — nothing in here can establish that a host *honours* what the compiler emits, which is a fact about a running host. |
+| [`stop-gate.test.mjs`](stop-gate.test.mjs) | The exception to "written first": it covers the Stop-gate runner ([`../.portulan/compile/stop.mjs`](../.portulan/compile/stop.mjs)), and it exists because a supervisor found a fail-open and a forever-block in a runner nothing tested at all. Its cap arithmetic and date handling — deliberately not its I/O. |
 | [`fixtures/`](fixtures/) | Known-bad manifests, and a workspace whose repo card has drifted from its tree. |
 
 ```
 node cli/doctor.mjs <workspace-dir> [<workspace-dir> ...]
 node cli/plugin-lint.mjs <plugin-root> [<plugin-root> ...]
+node cli/compile.mjs [--workspace <dir>] [--check]
 ```
 
-Exit `0` every workspace validates · `1` at least one does not · `2` could not run. Both workspaces this
-repository owns are validated on every pull request, because
+Both validators exit `0` everything they were handed validates · `1` at least one does not · `2` could
+not run. `compile` exits `0` wrote, or agreed under `--check` · `1` only under `--check`, where the
+artifact is missing or has drifted · `2` could not run — writing never returns `1`, because a run that
+rewrites the artifact has nothing to disagree with. Both workspaces this repository owns are validated
+on every pull request, because
 [`../.portulan/workspace.json`](../.portulan/workspace.json) declares
 [`../.portulan/verify/doctor.sh`](../.portulan/verify/doctor.sh) as a verify recipe and CI runs every
 recipe the manifest declares.
