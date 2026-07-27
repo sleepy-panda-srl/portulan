@@ -23,7 +23,10 @@ set -uo pipefail
 # examined zero directories, over a check whose own comment already warned about reporting green
 # over an entry it never looked at. Only `git` was guarded here, which is why the gap survived.
 # Raised as a low-confidence Copilot comment on #3 — the kind that never becomes a review thread and
-# so can never be resolved. The list is this recipe's Needs column in ./README.md; edit them together.
+# so can never be resolved. **This line is the source of truth for what the recipe needs.** ./README.md's
+# Needs column and `requires` in ../workspace.json name only the substantial dependencies — `bash`,
+# `git`, `node` — and are deliberately coarser, so neither is the thing to edit alongside this. The
+# prose that does match it utility for utility is the "`docs.sh` needs …" paragraph in ./README.md.
 for need in awk cut dirname git grep mktemp rm sed sort tail tr wc; do
     command -v "$need" >/dev/null 2>&1 || {
         printf 'verify: %s not found — this recipe needs it; see .portulan/verify/README.md\n' "$need" >&2
