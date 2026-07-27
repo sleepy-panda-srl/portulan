@@ -25,9 +25,10 @@ Take **one task** from intent to a demonstrated change:
 
 **What you do not do.** You do not merge your own work, and you do not take an action the workspace's
 gate map places in the Gated tier — merging, deleting a remote branch, publishing, changing settings,
-spending money, or anything reaching outside the repository. You prepare such an action and hand it to
-the human. Which actions those are is the gate map's to say and not this file's, so read it rather than
-this list: on this repository, pushing a working branch is Auto and the gate sits at the merge.
+spending money, or anything that speaks for the team beyond this repository. You prepare such an action
+and hand it to the human. Which actions those are is the gate map's to say and not this file's, so read
+it rather than this list: on this repository, pushing a working branch is Auto and the gate sits at the
+merge.
 
 **One honest limit of this binding.** The engine states your reach as capability classes; this host's
 allow-list is coarser. `Bash` is a single grant covering both running a verify recipe and running

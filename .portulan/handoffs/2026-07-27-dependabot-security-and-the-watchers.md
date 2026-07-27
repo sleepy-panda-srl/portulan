@@ -79,8 +79,9 @@ against treating maintainer-at-merge as a substitute.
   fact, because it was found after this handoff first merged and belongs in the session's own record rather
   than only in the fix. The gate map states that the gate is the maintainer's *decision* and not his
   keystroke — but stated it **once, in the Propose tier, attached to merging**, while `git push` and `Merge a
-  pull request` both sit in the Gated tier under a header reading "explicit human approval, per action,
-  before it happens". Nothing connected the two, so the Gated tier was read literally, for a whole session.
+  pull request` both sat in the Gated tier, at the time, under a header reading "explicit human approval, per
+  action, before it happens". Nothing connected the two, so the Gated tier was read literally, for a whole
+  session. (`git push` on a working branch moved to Auto later the same day, downstream of this finding.)
   The original note had predicted exactly this — *"an agent following it literally would have to refuse a
   direct instruction from the person the rule exists to protect"* — so it was right about the hazard and
   wrong about its scope. Fixed by hoisting the principle into the Gated header, with the generalisation
