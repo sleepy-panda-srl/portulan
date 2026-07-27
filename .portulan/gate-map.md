@@ -47,9 +47,9 @@ any of that. Every commit still carries `Co-Authored-By` marking the agent's han
 
 **The one real cost, named rather than waved past:** a push is the moment content leaves this machine for
 GitHub, and it was the last human checkpoint before that happened. The confidentiality seam does not depend
-on it — the seam scan is a **commit**-time obligation, and commits were already Auto — so nothing moves from
-checked to unchecked. But the honest statement is that an unreviewed push now publishes to a private remote
-where it is visible to anyone with access and may be cached or indexed. That is judged acceptable on a
+on it — the seam scan is a **commit**-time obligation, and commits were already Auto — so nothing moves
+from checked to unchecked. But the honest statement is that an unreviewed push now publishes to a private
+remote where it is visible to anyone with access and may be cached or indexed. That is judged acceptable on a
 one-collaborator private repository and is the thing to revisit first if either of those facts changes.
 
 ### Propose — a human or an eval gate reviews before it counts
@@ -87,9 +87,9 @@ _(Hoisted here 2026-07-27, after the omission cost several exchanges. The princi
 once — in the Propose tier, attached to merging — while `git push` (Gated at the time, Auto since) and
 `Merge a pull request` both sat in this tier under a header reading "explicit human approval, per action,
 before it happens", with nothing connecting the two. An agent read this tier literally and handed `git push`
-commands back to the maintainer
-to type by hand, which is precisely the failure the original note predicted in its own words: "an agent
-following it literally would have to refuse a direct instruction from the person the rule exists to
+commands back to the maintainer to type by hand, which is precisely the failure the original note
+predicted in its own words: "an agent following it literally would have to refuse a direct
+instruction from the person the rule exists to
 protect." That note was right about the hazard and wrong about its scope — **a principle stated once, in a
 neighbouring tier, does not reach the actions it was meant to govern.** The lesson generalises past this
 file: where a rule and its clarification live apart, only the rule gets read.)_
@@ -264,8 +264,8 @@ because the same constraint applies to any future rename. The context was `docs-
 stopped describing the job once it ran more than a docs linter. It could not be renamed in place: the
 required context would stop reporting, the pull request doing it would never be mergeable, and
 `enforce_admins` means that block could not be forced past. So the new job ran alongside the old, the
-maintainer re-pointed protection himself (Gated — the one step no agent may take on its own), and only then was the
-transitional job deleted. See
+maintainer re-pointed branch protection himself (Gated — the one step no agent may take on its own),
+and only then was the transitional job deleted. See
 [`proposals/0004-ci-runs-every-declared-recipe.md`](proposals/0004-ci-runs-every-declared-recipe.md).
 
 The check is also **pinned to app 15368** (GitHub Actions). Without an app id, any GitHub App reporting a
