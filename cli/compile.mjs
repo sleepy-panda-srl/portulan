@@ -70,6 +70,10 @@ const TIER_NOT_A_GATE = {
 
 const SLUG = /^[a-z0-9]+(-[a-z0-9]+)*$/;
 
+// The `filePath` shape from ../spec/workspace.schema.json, carried here rather than imported because
+// this file has no dependencies by design. Relative, no fragment/query/colon, not a directory.
+const FILE_PATH = /^[^#?:/]([^#?:]*[^#?:/])?$/;
+
 /** The tools that can write a path, and the tools that can read one. */
 const WRITE_TOOLS = ["Edit", "Write", "NotebookEdit"];
 const READ_TOOLS = ["Read"];
@@ -337,11 +341,20 @@ export function claudeCode(result, options = {}) {
  * refusing it would make the key required, which is a spec change nobody decided.
  */
 export function policyPath(workspaceRoot, workspaceDir = ".portulan") {
-    const manifest = path.join(workspaceRoot, workspaceDir, "workspace.json");
+    const base = path.join(workspaceRoot, workspaceDir);
+    const manifest = path.join(base, "workspace.json");
     try {
         const declared = JSON.parse(fs.readFileSync(manifest, "utf8")).gates;
-        if (typeof declared === "string" && declared.trim()) {
-            return path.resolve(path.join(workspaceRoot, workspaceDir), declared);
+        // Validated against the schema's `filePath` shape before it is used, and containment is
+        // checked after resolution rather than by pattern alone — a `../` chain passes any regex and
+        // still escapes. Without this, a malformed or hand-edited manifest turns a hook that runs on
+        // EVERY tool call into an arbitrary file read outside the workspace. `doctor` would refuse such
+        // a manifest, but this runner must not depend on `doctor` having been run: the two tools have
+        // no ordering between them, and the schema is the contract, not the sequence. Found by review.
+        if (typeof declared === "string" && declared.trim() && FILE_PATH.test(declared)) {
+            const resolved = path.resolve(base, declared);
+            const inside = path.relative(base, resolved);
+            if (inside && !inside.startsWith("..") && !path.isAbsolute(inside)) return resolved;
         }
     } catch {
         // No manifest, or unreadable. `doctor` is the tool that judges a manifest; this one only needs
