@@ -31,7 +31,7 @@ is a set of capability classes — and milestone 3 bound those classes to concre
 translation into a tool grant: the reviewer *does not edit the code under review*, so its agent is
 granted no write tool and the firewall becomes a rail. The other two do not. The implementer's Auto/Gated
 line cannot be drawn with a tool list on a host where one `Bash` grant covers both running a verify
-recipe and pushing; the librarian's *drafts everything, accepts nothing* is a constraint on what it may
+recipe and merging a pull request; the librarian's *drafts everything, accepts nothing* is a constraint on what it may
 conclude, not on what it may call. Each agent file says which of the three it is, so nobody reads a
 frontmatter list as the gate. What holds those two is the workspace's gate map and the platform floor —
 which is the constitution's point that the platform floor is the gate no prompt can bypass, met from the

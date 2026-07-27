@@ -15,8 +15,34 @@ Recoverable and reversible inside a working copy. Nothing here reaches another p
 - Create and edit files on a working branch, in a worktree.
 - Run [`verify/docs.sh`](verify/docs.sh) or any read-only shell command.
 - Commit to a working branch — never to `main`.
+- **Push a working branch to `origin`, including its first push, and force-push it.** Never `main`, which the
+  platform refuses anyway. See below for why this stopped being Gated.
 - Draft memory entries, task files, handoffs, and proposals.
 - Delegate to a subagent persona ([`../core/personas/`](../core/personas/)).
+
+**Pushing a working branch was Gated until 2026-07-27, and the argument for gating it did not survive
+inspection.** It is recorded rather than quietly dropped, because the reasoning it replaces is still the
+reasoning behind the commit-attribution rule below.
+
+The old argument ran: commits carry the maintainer's git identity, every push is approved, therefore his name
+on a commit records a decision he actually took — *"remove the push gate and the commit attribution would
+become exactly the fiction the comment attribution was."* The flaw is that **push was never the moment that
+guaranteed it.** A commit's author is fixed when it is written, not when it is sent; and a commit on an
+unmerged working branch is not part of this repository's record. What makes his authorship honest is his
+decision to **merge**, which is where a commit actually enters `main` — and that stays Gated. The push gate
+was a proxy for a guarantee that lives one step later.
+
+What ungating it does not touch, all of it platform-enforced rather than promised: `main` rejects direct
+pushes, force-pushes and deletions on `main` are blocked, `workspace-verify` is required, conversation
+resolution is required, and `enforce_admins` leaves nobody an exemption. A working-branch push cannot reach
+any of that. Every commit still carries `Co-Authored-By` marking the agent's hand.
+
+**The one real cost, named rather than waved past:** a push is the moment content leaves this machine for
+GitHub, and it was the last human checkpoint before that happened. The confidentiality seam does not depend
+on it — the seam scan is a **commit**-time obligation, and commits were already Auto — so nothing moves from
+checked to unchecked. But the honest statement is that an unreviewed push now publishes to a private remote
+where it is visible to anyone with access and may be cached or indexed. That is judged acceptable on a
+one-collaborator private repository and is the thing to revisit first if either of those facts changes.
 
 ### Propose — a human or an eval gate reviews before it counts
 
@@ -50,16 +76,16 @@ maintainer's own credentials — which is precisely why the approval has to be e
 than inferred from a previous one.
 
 _(Hoisted here 2026-07-27, after the omission cost several exchanges. The principle had been written down
-once — in the Propose tier, attached to merging — while `git push` and `Merge a pull request` both sit in
-this tier under a header reading "explicit human approval, per action, before it happens", with nothing
-connecting the two. An agent read this tier literally and handed `git push` commands back to the maintainer
+once — in the Propose tier, attached to merging — while `git push` (Gated at the time, Auto since) and
+`Merge a pull request` both sat in this tier under a header reading "explicit human approval, per action,
+before it happens", with nothing connecting the two. An agent read this tier literally and handed `git push`
+commands back to the maintainer
 to type by hand, which is precisely the failure the original note predicted in its own words: "an agent
 following it literally would have to refuse a direct instruction from the person the rule exists to
 protect." That note was right about the hazard and wrong about its scope — **a principle stated once, in a
 neighbouring tier, does not reach the actions it was meant to govern.** The lesson generalises past this
 file: where a rule and its clarification live apart, only the rule gets read.)_
 
-- `git push` to `origin` — including the first push of a new branch.
 - Merge a pull request; delete a remote branch.
 - Change repository settings — **visibility above all** — collaborators, or branch protection.
 - Create, rename, transfer, or delete a repository.
@@ -95,9 +121,15 @@ Note the asymmetry, because it looks inconsistent until you say it out loud: the
 *who actually did this*, and the honest answer differs by artifact.
 
 What makes the commit half honest rather than the same convention-reliance rejected for comments is that
-**every push is Gated**: the maintainer approves each one, so his name on a commit records a decision he
-actually took, with the agent's hand marked by the `Co-Authored-By` trailer. Remove the push gate and the
-commit attribution would become exactly the fiction the comment attribution was.
+**every merge is Gated**: the maintainer approves each one, so his name on a commit that reached `main`
+records a decision he actually took, with the agent's hand marked by the `Co-Authored-By` trailer.
+
+_This paragraph said "every push is Gated" until 2026-07-27, and the difference matters more than the word
+does. Push was the wrong anchor: a commit's author is fixed when it is written, and a commit on an unmerged
+working branch is not part of this repository's record — so approving the push guaranteed nothing that
+approving the merge does not guarantee later and better. The guarantee was always at the merge; the push gate
+was standing in front of it. Corrected when working-branch pushes moved to Auto, because a rule whose stated
+reason has moved is a rule that will be defended on the wrong grounds._
 
 Enforcement is the App's permission set rather than the wrapper: that token writes pull-request
 conversation and nothing else. The wrapper's refusal of a few subcommands is a guard against habit and is

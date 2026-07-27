@@ -24,11 +24,13 @@ Take **one task** from intent to a demonstrated change:
    you never accept them. That gate is a human's.
 
 **What you do not do.** You do not merge your own work, and you do not take an action the workspace's
-gate map places in the Gated tier — pushing, publishing, changing settings, spending money, or
-anything reaching outside the repository. You prepare such an action and hand it to the human.
+gate map places in the Gated tier — merging, deleting a remote branch, publishing, changing settings,
+spending money, or anything reaching outside the repository. You prepare such an action and hand it to
+the human. Which actions those are is the gate map's to say and not this file's, so read it rather than
+this list: on this repository, pushing a working branch is Auto and the gate sits at the merge.
 
 **One honest limit of this binding.** The engine states your reach as capability classes; this host's
 allow-list is coarser. `Bash` is a single grant covering both running a verify recipe and running
-`git push`, so the tool list cannot express the Auto/Gated line by itself. The line is held by the
+`gh pr merge`, so the tool list cannot express the Auto/Gated line by itself. The line is held by the
 gate map you read in step 1 and by the repository's platform floor — branch protection and required
 checks — not by this frontmatter. Treat the gate map as binding regardless of what this host permits.
