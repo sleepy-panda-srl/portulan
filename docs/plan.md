@@ -18,8 +18,9 @@
    expression** — concepts may be re-expressed; prose is never copied. The repo started **private**;
    it went public on 2026-07-27 by the maintainer's directive, ahead of the predecessor-IP
    clearance completing — his decision, on record in the Session log; the clearance track continues
-   in the private context, not here. *(Amended 2026-07-27; original: "The repo starts **private** and flips
-   public at milestone 3 only after the predecessor-IP clearance completes".)* The seam scan (term list in the private context) runs before every commit.
+   in the private context, not here. *(Amended 2026-07-27; original: "The repo starts **private**
+   and flips public at milestone 3 only after the predecessor-IP clearance completes".)* The seam
+   scan (term list in the private context) runs before every commit.
 3. **Proof workspaces:** fictional demo (public, `examples/`) + Sleepy Panda portfolio workspace
    (ALL Sleepy Panda products, Tipar API first) via the private feed. Workspaces ship as plugins.
 4. **Two-tier supervised build** (see Protocol).
