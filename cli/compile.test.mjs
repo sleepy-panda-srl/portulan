@@ -159,6 +159,34 @@ describe("refusing what it cannot compile", () => {
         assert.throws(() => compile(p), CompileError, "a gate with no sentence to show a human is not finished");
     });
 
+    for (const [label, bad] of [
+        ["a colon, which separates prefix from wildcard in the host DSL", "git log --pretty=format:%h"],
+        ["parentheses, which delimit the rule", "git (push)"],
+        ["a newline", "git push\npwd"],
+    ]) {
+        test(`a shell target containing ${label} refuses the whole compile`, () => {
+            // Targets are interpolated into `Bash(target:*)`. A structural character there emits a rule
+            // the host reads differently from what the policy says, and an ambiguous gate is
+            // indistinguishable from an absent one. Refused rather than escaped: extending the DSL is a
+            // deliberate change, not something a compiler should improvise. Found by review.
+            const p = policy();
+            p.rules[1].action = { shell: bad };
+            assert.throws(() => compile(p), CompileError);
+        });
+    }
+
+    test("a target with surrounding whitespace refuses rather than being silently trimmed", () => {
+        const p = policy();
+        p.rules[1].action = { shell: " git push " };
+        assert.throws(() => compile(p), CompileError, "the host would not match it, so quietly fixing it hides a policy error");
+    });
+
+    test("a path target may contain a colon — only shell targets use it structurally", () => {
+        const p = policy();
+        p.rules[0].action = { write: "docs/odd:name.md" };
+        assert.doesNotThrow(() => compile(p));
+    });
+
     test("a policy whose spec version has never shipped refuses", () => {
         assert.throws(() => compile(policy({ portulan: { spec: "99.0" } })), CompileError);
     });
@@ -260,6 +288,15 @@ describe("the Claude Code backend", () => {
     test("the artifact carries a generation header naming its source", () => {
         const { settings } = claudeCode(compile(policy()));
         assert.match(JSON.stringify(settings), /gates\.json/, "a reader must be able to find what generated this");
+    });
+
+    test("the header names the policy actually read, not a hard-coded default", () => {
+        // It was a literal for one round, so a workspace declaring a non-default policy got an artifact
+        // claiming it came from somewhere it did not — in the field whose only job is saying what
+        // generated the file. Found by review.
+        const { settings } = claudeCode(compile(policy()), { source: ".portulan/policy/rules.json" });
+        assert.equal(settings.$portulan.source, ".portulan/policy/rules.json");
+        assert.match(settings.$portulan.warning, /policy\/rules\.json/, "the warning must point at the same file");
     });
 });
 
