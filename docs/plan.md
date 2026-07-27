@@ -710,3 +710,38 @@ the seam applies here too: no client-identifying references)_
   criterion whose letter is false against the shipped manifest, a stale suite figure, and a self-
   contradicting boot count) and left the maintainer's config restored to its exact baseline. Seam scan
   clean across files, commit message, and branch name.
+
+- 2026-07-27 · post-M3, pre-M4 — **no milestone row touched, and none was due** · Dependabot **security**
+  updates turned on and closed on what was *observed*, not on the toggles being flipped: SBOM `404` → `200`
+  listing the exact pinned `actions/checkout` SHA, `vulnerability-alerts` `404` → `204`,
+  `dependabot_security_updates` `disabled` → `enabled`, the advisory list `403` → `[]`. Coverage is honestly
+  **one** dependency and the record says so. Proposal `0006` accepted, its rule in the gate map — and its own
+  Decision line corrected, because it claimed "an agent cannot perform them" of three settings when two are
+  reachable by any admin token: prohibited is not impossible, in a document whose subject is two things
+  conflated because they share a name. · **PR #22's watcher was made to prove itself.** For five days it had
+  no evidence behind it at all — no REST endpoint for version-update jobs, no `dependabot` check run on any
+  commit read, and the pin already newest, so "opened no pull request" and "never ran" were the same
+  observable. The pin was deliberately regressed to v7.0.0 (#25), Dependabot opened the bump back (#27), and
+  **merging that was simultaneously the proof and the revert** — demonstrating the claim the config rests on,
+  that the SHA and its trailing version comment are rewritten together. Generalised as proposal `0007`,
+  accepted and applied: *a watcher earns its place by being watched*. · **The platform floor was three layers
+  and the gate map described one** (#26). Missing: an organisation ruleset over every default branch carrying
+  an `OrganizationAdmin` always-bypass. Understated: `sha_pinning_required: true` at org and repo — **a rail
+  written down as a habit**, the first drift here to run in that direction and no less wrong for it. The
+  `enforce_admins`-versus-bypass interaction is recorded **untested**, because GitHub documents aggregation
+  but not that interaction and the only test risks `main`; the section now claims less than it did. · Copilot
+  auto-review made automatic via a repository ruleset carrying that rule only, observed firing at pull-request
+  open on #28 and #29, unasked. `delete_branch_on_merge` set and verified by three merges. · Two lessons cost
+  something to learn: **a mechanical revert is not a narrative revert** — Dependabot rewrote the pin and not
+  the paragraph about the pin, so `main` briefly carried a false claim produced by the fix working as
+  designed; and adding the Copilot ruleset made #26 incomplete while #26 was open. Residuals swept rather
+  than left: the weekly schedule is unproven and `.github/dependabot.yml` now says so, and proposal `0008`
+  asks whether the rule 0006 and 0007 both cited actually covers them — on close reading it does not, and
+  **two of three citations were loose**. · **Supervisor fidelity: NONE. This session ran unsupervised at every
+  checkpoint — no session-open, no pre-commit before any of seven commits, no milestone-close (none due).**
+  The gate map's fallback is invoked explicitly rather than passed over: supervision was unavailable, it is
+  stated plainly, and the maintainer reviews the diff. Copilot reviewed all six pull requests and the
+  maintainer merged each, which is **not** the fresh-context pre-commit checkpoint the protocol asks for —
+  and two of the three defects found in this session's own work were found by Copilot rather than by the
+  implementer, which is the argument against treating review-at-merge as a substitute. Handoff:
+  [`.portulan/handoffs/2026-07-27-dependabot-security-and-the-watchers.md`](../.portulan/handoffs/2026-07-27-dependabot-security-and-the-watchers.md).
