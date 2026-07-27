@@ -44,6 +44,11 @@ recipe the manifest declares.
 - **Rule provenance** — every `type: rule` memory record carries a well-formed link or sealed stamp, and
   the **sealed proportion** is reported, because a workspace where every rule is sealed has opted out of
   retirement altogether.
+- **The store's growth is reported, never judged** — record count and total size on every run, plus a
+  note naming any record that states no `Retire when:` condition, because a record no condition can
+  demote is how a store only grows. Notes, not failures: no rule mandates the field. Ages are absent on
+  purpose — doctor reads the tree, never git, and in a fresh clone every mtime is checkout time, so an
+  age report from here would be fabrication; staleness is the librarian's (milestone 5).
 
 ## What it does not do, and will not pretend to
 

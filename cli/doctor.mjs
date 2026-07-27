@@ -321,6 +321,12 @@ export function parseProvenance(source) {
 
 const recordType = (source) => (source.match(/^\s*\*\*type:\*\*\s*(\S+)/im)?.[1] ?? "").toLowerCase();
 
+// The retirement condition is a template field, not a schema one (core/templates/memory-entry.md):
+// the line a demotion pass retires by. Anchored to the bolded field at line start, so prose that
+// merely discusses retiring never matches — the same false-red caution parseProvenance takes with
+// backticked tokens, for the same reason: a false red is what gets a whole check switched off.
+const RETIRE_WHEN = /^\s*\*\*retire when:\*\*/im;
+
 // ===========================================================================================
 // 3. Claims against the tree
 // ===========================================================================================
@@ -542,7 +548,9 @@ export async function inspect(workspaceDir, options = {}) {
     const schema = loadSchema(options);
     const dir = path.resolve(workspaceDir);
     const findings = [];
-    const stats = { records: 0, rules: 0, sealed: 0, linked: 0, claims: 0, unverifiable: 0 };
+    // `unretirable` counts records stating no `Retire when:` condition — retirable by a human
+    // re-reading them, never by the condition-driven pass, which is the sense that matters here.
+    const stats = { records: 0, rules: 0, sealed: 0, linked: 0, claims: 0, unverifiable: 0, bytes: 0, unretirable: 0 };
     const fail = (check, message) => findings.push({ severity: "fail", check, message });
     const report = (check, message) => findings.push({ severity: "report", check, message });
 
@@ -879,7 +887,7 @@ export async function inspect(workspaceDir, options = {}) {
         );
     }
 
-    // ---- provenance
+    // ---- provenance, and the store's own growth
     if (workspace.slots?.memory) {
         const memoryDir = path.resolve(dir, workspace.slots.memory);
         let entries = [];
@@ -903,8 +911,22 @@ export async function inspect(workspaceDir, options = {}) {
             const type = recordType(source);
             const { present, fields } = parseProvenance(source);
             stats.records += 1;
+            stats.bytes += Buffer.byteLength(source);
             const isRule = type === "rule";
             if (isRule) stats.rules += 1;
+
+            // Growth control rather than provenance: the retirement pass demotes a record by the
+            // condition its own `Retire when:` line states, so a record stating none is one no
+            // condition will ever demote. Reported, never failed — no rule mandates the field, and
+            // doctor does not enforce what nobody legislated. Checked ahead of the provenance
+            // branches below, so a record with a provenance defect is still assessed for this.
+            if (!RETIRE_WHEN.test(source)) {
+                stats.unretirable += 1;
+                report(
+                    "retirement",
+                    `${entry} states no retirement condition — no \`**Retire when:**\` line (core/templates/memory-entry.md). A record no condition can demote leaves the store only by someone re-reading it`,
+                );
+            }
 
             if (!present) {
                 const message = `${entry} carries no provenance line at all`;
@@ -941,6 +963,22 @@ export async function inspect(workspaceDir, options = {}) {
                 ? " — every rule is sealed, which means this workspace has opted out of retirement altogether"
                 : "") +
             ". The form is checked, never the truth: a fabricated stamp passes exactly as a real one does",
+    );
+
+    // The store's growth, always emitted for the same reason the line above is: a store quietly
+    // growing and a store quietly fine print identically unless something says which. Size and
+    // count are what doctor can honestly see — it reads the tree and never git, and in a fresh
+    // clone every file's mtime is checkout time, so an age report from here would be fabrication.
+    // Staleness is the librarian's (milestone 5), which may legitimately ask git.
+    report(
+        "retirement",
+        stats.records
+            ? `the store holds ${stats.records} record(s), ${(stats.bytes / 1024).toFixed(1)} KB — ` +
+              (stats.unretirable
+                  ? `${stats.unretirable} with no retirement condition`
+                  : "every record states a retirement condition") +
+              ". Size and count only: ages live in git, which doctor does not read, so staleness is the librarian's (milestone 5)"
+            : "no memory records — nothing measured, nothing awaiting retirement",
     );
 
     return { dir, workspace, findings, stats };
