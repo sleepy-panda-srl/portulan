@@ -16,6 +16,20 @@ doctrine; see `safety.md`.)_
 | **Auto** | Recoverable and reversible — edits in a working branch, reads, local runs. | The agent, unattended. |
 | **Propose** | Reversible but consequential — a diff to merge, a schema change. | Human or eval-gated review (a PR). |
 | **Gated** | Outward-facing or hard to undo — push to a shared remote, publish, deploy, buy, delete, send. | Explicit human approval, per action. |
+| **Prohibited** | Actions no approval makes acceptable — editing the standard the work is graded against. | Nobody, at runtime. |
+
+**Gated** is grantable at runtime by a human yes. **Prohibited** compiles to deny and is grantable only
+by changing the rule itself through the evolution gate — never by runtime approval.
+
+That distinction is the whole reason the fourth tier exists rather than being folded into Gated, and it
+is not academic: a compiler with three tiers must file *"no agent edits the constitution"* under Gated,
+and Gated compiles to a prompt. *Never* would become *unless somebody clicks yes* — a difference no
+reader of the gate map would see, produced entirely by the vocabulary being one word short. _(Found by
+building the compiler: milestone 4 needed a fourth class before it had a schema, and the workspace layer
+carried it for one session while core still named three.)_
+
+Use it sparingly. A tier that cannot be approved is a tier that cannot be worked around in an emergency
+either, and a policy that reaches for it often has stopped distinguishing *dangerous* from *forbidden*.
 
 The tiers are the engine's vocabulary. The **gate map** — the table of which concrete action lands in
 which tier for this team and repo — lives in the workspace, because it is policy and it varies.

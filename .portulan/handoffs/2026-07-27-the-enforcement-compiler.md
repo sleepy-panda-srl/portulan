@@ -201,6 +201,54 @@ Git merged the two rewrites of `gate-map.md` without a conflict, which is the ca
 auto-merge produces a file that parses and can still contradict itself. The reconciliation above is what
 reading it found.
 
+## All five open questions came back decided, and one of them fought back
+
+Marius settled the lot on 2026-07-27. Four applied cleanly; the fifth did not.
+
+- **"Copilot ruleset export" means a GitHub repository-ruleset export** — importable branch-protection
+  JSON compiled from the same policy — and never a Copilot integration. The row is amended to say so, and
+  positions it as **the floor backend**: what every host falls back to, and all a host with no hook system
+  gets. The rewording is not cosmetic; the ambiguity cost a session-blocking question. `autonomy.md`'s
+  sentence stays exactly as written — the row moved to meet the doctrine, not the reverse.
+- **`prohibited` is now a fourth universal tier** in `core/operating/autonomy.md`, with his clause
+  verbatim, recorded as [`../proposals/0009-prohibited-as-a-fourth-universal-tier.md`](../proposals/0009-prohibited-as-a-fourth-universal-tier.md).
+  The compiler mapping does not change — it was built against this distinction before core carried it, so
+  what changes is that it now implements doctrine rather than anticipating it. Dependents swept; the
+  constitution is untouched, and `engine.md` never named the tiers so the kernel stays at 43/60.
+- **Packs may contribute gate rules, tighten-only, and nothing is built.** Recorded where the compiler is
+  documented, with the policy shaped so a later merge step is an addition rather than a redesign.
+- **The block counter is consecutive-red and resets on an observed green recipe.** Implemented, and the
+  key now carries the worktree as well as the session, because several worktrees of this repository are
+  routinely checked out at once.
+
+**The fifth needed an addition, and it is flagged rather than folded in quietly.** Reset-on-green-recipe,
+applied literally, reintroduces a hang: the reset keys off the *recipe*, and the gate refuses for **two**
+reasons. A session with a green recipe and a missing handoff would reset its consecutive count on every
+attempt and never reach any cap — unbounded, in the exact case this session had already *demonstrated*
+releasing at the cap. So there is now an **absolute ceiling of nine refusals that does not reset**. The
+consecutive cap governs the futile-retry episode the ruling is aimed at; the ceiling guarantees the gate
+can always stop. That is an addition to the ruling rather than a reading of it, and it is the maintainer's
+to confirm or overrule.
+
+## The Copilot review, which found the exit code the gate rests on
+
+Two findings on [#31](https://github.com/sleepy-panda-works/portulan/pull/31), both real.
+
+**A recipe that cannot run was being reported as RED.** The runner read every non-zero status except 2 as
+a verdict, so a missing script — exit 127 — arrived as "the repository is red" about a tree nothing had
+looked at. That is precisely the laundering the recipes' three-code contract exists to prevent, reaching
+the gate that contract is *for*, and it is the fourth time this shape has been found here. 126, 127 and a
+spawn with no status now join 2 as *could not judge*. `bash -c` **stays**, and the reason is written down:
+the manifest declares a command, not a script path, and CI runs it the same way — a Stop-gate executing
+recipes differently from CI would trade a small quoting surface for two runners disagreeing about what a
+recipe means.
+
+**And a session id sanitising to the empty string shared one counter with every other such id**, letting
+unrelated sessions charge each other's cap or release each other early. The name now carries a digest as
+well as a readable part. Both fixed with regression tests, and the exit-code tests assert the *shell's*
+behaviour rather than a copy of the constant, since "a missing command exits 127" is the premise worth
+pinning.
+
 ## The thing to be suspicious of next session
 
 The compiled artifact is now enforcing on this working copy, which means every future session here

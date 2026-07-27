@@ -13,7 +13,9 @@ context firewalls; Cognition — read-parallel / write-isolated.)_
 - **Charter** — what the role is for, and just as importantly what it must *not* do.
 - **Autonomy reach** — the highest tier the role may act in, in tier vocabulary (Auto / Propose /
   Gated), not concrete actions — the gate map that binds actions to tiers is workspace policy (see
-  [`../operating/autonomy.md`](../operating/autonomy.md)).
+  [`../operating/autonomy.md`](../operating/autonomy.md)). **Prohibited is never a reach**: it is the
+  one tier no role may act in, so it does not appear here — a persona declaring it would be claiming a
+  permission that does not exist for anyone.
 - **Memory scope** — memory is per-agent; a reviewer's memory is not the implementer's (see
   [`../operating/memory.md`](../operating/memory.md)).
 - **Read / write posture** — most personas read in parallel; writes are isolated to one place so two
