@@ -1,8 +1,10 @@
 # The compiled enforcement, and what it is worth
 
-> The runtime half of the enforcement compiler. [`../../cli/compile.mjs`](../../cli/compile.mjs) reads
-> [`../gates.json`](../gates.json) and writes [`../../.claude/settings.json`](../../.claude/settings.json);
-> the two scripts here are what that artifact points at.
+> The runtime half of the enforcement compiler, and one of its two emitted artifacts.
+> [`../../cli/compile.mjs`](../../cli/compile.mjs) reads [`../gates.json`](../gates.json) and writes two
+> files: [`../../.claude/settings.json`](../../.claude/settings.json), which points at the two runner
+> scripts here, and [`github-ruleset.json`](github-ruleset.json), the platform floor compiled from the
+> same policy.
 >
 > Core states the doctrine — the tiers ([`../../core/operating/autonomy.md`](../../core/operating/autonomy.md))
 > and the Stop-gate contract ([`../../core/operating/verification.md`](../../core/operating/verification.md)).
@@ -12,6 +14,7 @@
 |---|---|
 | [`gate.mjs`](gate.mjs) | `PreToolUse` runner. Finds the rule an attempted action matches and returns its decision and its sentence. |
 | [`stop.mjs`](stop.mjs) | `Stop` runner. Runs the workspace's default verify recipe and the session-end handoff check, and blocks the ending if either is unmet. |
+| [`github-ruleset.json`](github-ruleset.json) | **Generated.** An importable GitHub repository ruleset — the platform floor as data. Nothing here applies it; see below. |
 
 ## Two layers, and only one of them is the gate
 
@@ -89,6 +92,115 @@ honest-holes list in [`../gate-map.md`](../gate-map.md) rather than here.
 
 Re-test on upgrade. This is a fact about one CLI version, and the policy above leans on it.
 
+## The floor backend, and why its refusals are the interesting half
+
+[`github-ruleset.json`](github-ruleset.json) is the second backend's artifact: a GitHub repository
+ruleset compiled from the same [`../gates.json`](../gates.json), carrying the three rule types the
+milestone-4 criterion names — a pull-request requirement, required status checks (**strict**), and a
+block on force-pushes — plus `deletion`, because the policy gates that spelling too.
+
+The criterion positions it as **the floor backend**: what every host falls back to, and all that a host
+with no hook system has. `../../core/operating/autonomy.md` says the floor is the floor *"because it
+holds when everything above it fails"* — quoted verbatim, since a paraphrase inside quotation marks is the
+small version of the defect this file is about — and promises that the enforcement compiler generates
+it. This is
+that promise, discharged — and it is why the tier partition had to move.
+
+**The two backends disagree about `propose`, and that disagreement is the design.** The Claude Code
+backend refuses every `propose` rule with the words *"enforced by the platform floor — pull requests,
+required checks, review — not by a tool-level permission rule on this machine"*. That sentence names
+this backend. For one session it lived in the shared stage, refusing `propose` before any backend ran —
+so the floor backend, when it arrived, would have found the rules it exists to compile already thrown
+away, and would have emitted an empty ruleset while reporting success. Recorded as
+[`../memory/a-shared-stage-must-not-hold-one-backends-opinion.md`](../memory/a-shared-stage-must-not-hold-one-backends-opinion.md).
+
+**It generates and never applies.** Importing a ruleset is a repository-settings change: outward,
+Gated, the maintainer's, per the [`0001`](../proposals/0001-platform-floor-on-main.md) precedent. The
+compiler writes a file and stops. Nothing here calls an API.
+
+### What it refuses, and why the refusals are scoped rather than absolute
+
+Seven of this repository's twenty-four rules compile; seventeen refuse, each by name and with its own
+sentence. The reasons are scoped to **this export** rather than to GitHub, because the convenient
+blanket version — *"the platform gates a ref, not a path"* — is simply false, and
+[`../memory/a-stated-enforcer-must-be-the-real-one.md`](../memory/a-stated-enforcer-must-be-the-real-one.md)
+binds any sentence containing *cannot*:
+
+- **A write-scoped rule** refuses for scope. `CODEOWNERS` gates owned paths and is named as part of the
+  floor by `autonomy.md` itself; push rulesets gate file paths. This export emits one branch ruleset and
+  neither of those, and this repository's `CODEOWNERS` is separately non-enforcing.
+- **`git tag` and `gh release`** would be reached by a **tag** ruleset targeting `refs/tags/*`. Not
+  emitted, so out of scope — not beyond the platform.
+- **`gh pr merge`** is the one worth reading twice. The floor *constrains* it — required checks green,
+  and with strict checks a head that is not behind the base — but with a required review count of 0 it
+  does not require anyone's yes, which is what the Gated tier means. Reported as **not compiled** rather
+  than as covered, because overstating a guarantee in the artifact whose subject is guarantees is the
+  worst place to do it.
+- **Everything else** — `gh api`, `gh repo …`, `npm publish` — has no ruleset of any target.
+
+### The coarseness runs in both directions
+
+Stated in the compiler's own output, because a backend reporting only where it is weaker than the policy
+would be flattering itself:
+
+- **Stricter.** On `refs/heads/main`, `non_fast_forward` blocks *every* force-push, including
+  `git push --force-with-lease`, which this policy classifies **Auto**. The floor gates a ref and cannot
+  read a command's flags.
+- **Narrower.** Every rule applies to one declared ref and nothing else. A policy rule about any other
+  branch is uncovered even where it "compiled".
+- **Partial.** The export carries the three named rule types and no more. Imported beside classic branch
+  protection it **adds** a layer rather than replacing one — and removing classic protection afterwards
+  would drop whatever this ruleset does not carry.
+
+### Recognition is by exact spelling, and that is a limit
+
+The action vocabulary has no `ref` kind — a rule says `{"shell": "git push --force"}` — so this backend
+matches command strings against a two-entry table. `git push -f` is the same action to a human and is
+**refused, loudly**, rather than silently gated. A matcher clever enough to generalise would be clever
+enough to be wrong quietly, and false reds are what get a check switched off.
+
+### The floor declaration, and the one thing a policy may not declare
+
+`floor` names what the export would otherwise have to invent: the branch, the required check contexts
+(with their app pins), the required review count, and whether conversation resolution is required. No
+defaults — a compiler that invents the ref it gates has stopped compiling policy and started writing it.
+
+What a policy may **not** declare is `strict`. A pull request may not merge from behind its base
+([`0011`](../proposals/0011-no-merge-from-behind-main.md), applied live), so the export forces it. A
+declarable `strict: false` would be a compiled artifact quietly undoing a ruling, in a diff nobody would
+read as one. `bypass_actors` is empty for the same class of reason: a floor carrying an exemption for
+the only actor who can act is not a floor.
+
+The emitted JSON carries only GitHub's **input** fields, and the provenance of that claim is worth
+splitting, because half of it is read and half is not. The **envelope** — `name`, `target`, `enforcement`,
+`conditions.ref_name`, `rules`, `bypass_actors` — and the list of server fields to omit (`id`, `node_id`,
+`source`, `source_type`, `created_at`, `updated_at`, `_links`, `current_user_can_bypass`) were **read from
+two live rulesets** on 2026-07-27: the organisation's default-branch ruleset and this repository's
+Copilot-review one. Neither of those carries a `pull_request` or a `required_status_checks` rule, so the
+**parameter blocks for the two rules that matter most come from GitHub's documented schema, not from any
+ruleset read here.** They were checked against that documentation at the pre-commit checkpoint and are
+correct; they are simply not observed the way the envelope is, and
+[`../memory/a-stated-enforcer-must-be-the-real-one.md`](../memory/a-stated-enforcer-must-be-the-real-one.md)
+sits three lines away and does not permit rounding that up. An export asserting facts it cannot know is a
+worse file than a shorter one — and so is a README asserting a provenance it did not have. The generated-ness lives in the ruleset **name**, since JSON has no comments and a
+ruleset has no description field — the same job the `$portulan` header does in the other artifact, done
+in the one field the settings UI shows.
+
+## The per-host backend matrix
+
+`node cli/compile.mjs --matrix` prints every rule against every backend, plus the line that matters most:
+**the gates no backend compiles at all.** For this repository that is three —
+`rename-or-transfer-a-repository`, `spend-money-or-register-a-domain`,
+`send-something-outside-this-repository` — each a rule with no tool-level surface and no ruleset, and so
+a prompt-level habit until something reaches it. `doctor` reports the same accounting under the
+`enforcement` check.
+
+Two things it deliberately does not do. It does not pad that number with the five `auto` rules no backend
+compiles: an unattended rule enforced by nothing is the system working, and reporting eight where three
+are real is how a report gets skimmed. And it is **derived from the backends rather than maintained
+beside them** — a matrix written by hand is a claim about compilers, and a coverage claim that drifts
+does not look wrong, it looks like enforcement that quietly stopped covering something.
+
 ## The pressure valve, named so it does not get opened quietly
 
 The compiler emits **restriction only** — `ask` and `deny`, never `allow`. That is a maintainer's
@@ -145,15 +257,19 @@ merge would need to explain itself.
   the session opened to fix the red. Hence the cap — a real weakening, stated as one: an agent refused
   enough times ends anyway, with the unresolved problems printed each time. CI still refuses the merge.
   This gate makes a red *unmissable*, not *binding*.
-- **The cap counts three CONSECUTIVE refusals and resets on an observed green run of the governing
-  recipe** — because it exists to end a *futile-retry episode*, not to ration a long honest session that
-  hits and properly fixes several unrelated reds, which would be ceremony that cannot scale down.
-  (Maintainer's ruling, 2026-07-27.) Two riders: **refusals, not stops** — the first version charged every
-  Stop event, so a session spent its budget on green turns and a genuine red then passed with a note; and
-  an **absolute ceiling of nine** that does not reset, because the reset keys off the *recipe* while the
-  gate refuses for two reasons, so a green recipe beside a missing handoff would otherwise reset forever
-  and the gate could never stop. The ceiling is an addition to the ruling, not a reading of it, and was
-  surfaced as such.
+- **The cap counts three CONSECUTIVE refusals PER REASON, and a reason's count clears only when that
+  reason clears** — because it exists to end a *futile-retry episode*, not to ration a long honest session
+  that hits and properly fixes several unrelated reds, which would be ceremony that cannot scale down.
+  (Maintainer's ruling, 2026-07-27, generalised in
+  [`../tasks/0007-per-reason-stop-gate-counters.md`](../tasks/0007-per-reason-stop-gate-counters.md).)
+  Three riders. **Refusals, not stops** — the first version charged every Stop event, so a session spent
+  its budget on green turns and a genuine red then passed with a note. An **absolute ceiling of nine**
+  that does not reset, which closed a hang the first reset rule created and survives its removal as the
+  backstop that guarantees the gate can always stop — including for a reason added later that nobody
+  remembered to give a clearing condition. And **one refusal is one charge against the ceiling however
+  many reasons it names**, or a two-reason session would reach nine in half the attempts. What the
+  per-reason counters removed is the asymmetry the ruling itself named: a missing five-line handoff used
+  to ride to nine on the strength of a green recipe, while a failing suite got three.
 - **Nothing here is checked by CI.** The `compile` recipe proves the artifact matches the policy. It
   cannot prove the host honours it, because CI installs nothing by stated doctrine — the same boundary
   that keeps `claude plugin validate --strict` out of the recipes
@@ -171,7 +287,9 @@ Both runners are watchers. So:
 | `permissions` deny/ask | a headless session was told to push to a **scratch bare remote**; the push was refused and the remote held 0 refs, with an ordinary command succeeding in the same session as the positive control. The maintainer then ran the same command by hand and it succeeded — so *blocked* is distinguishable from *impossible*. |
 | [`gate.mjs`](gate.mjs) | the same push written `bash -c "git push …"`, the spelling the permission pattern cannot see: refused, carrying this policy's own sentence verbatim. |
 | [`stop.mjs`](stop.mjs), recipe half | one dead link planted; a session told to reply `done` was refused three times carrying the recipe's output naming file and line, then released at the cap. Green, it ended in one turn. |
-| [`stop.mjs`](stop.mjs), handoff half | recipe left **green** so the block could only come from this half; today's handoff moved aside and a scratch file making the session count as work. Refused three times naming the exact date. |
+| [`stop.mjs`](stop.mjs), handoff half | recipe left **green** so the block could only come from this half; today's handoff moved aside and a scratch file making the session count as work. Refused three times naming the exact date, then released. **Run before the reset ruling**, when there was one cap of three and no reset at all — so that release came from the single cap. Under the arithmetic session 0 *ended* with, the same run's bound would have been the ceiling of nine, which is exactly the asymmetry the maintainer named; per-reason counters return it to the handoff's own cap of three. |
+| [`stop.mjs`](stop.mjs), per-reason counters | the recipe half re-run live on the real tree after the change: one dead link planted, four attempts, blocked at `recipe 1/3`, `2/3`, `3/3`, then released naming *"the cap of 3 consecutive refusals for `recipe`"* — the reason, not just the number. A green tree allowed the stop in one attempt as the positive control. **The handoff half was not re-run live and this row says so**: on a day when any session has already written a dated handoff the branch cannot fire in this tree, and the fixture that would force it has to be made green against the `record` check first — an hour's work to re-observe a branch whose *wiring* is unchanged and whose *arithmetic* is pinned by the suite, including the two-reason interaction and the handoff capping at three with the recipe green throughout. Stated rather than quietly counted as covered. |
+| [`github-ruleset.json`](github-ruleset.json) | **The weakest row here, and it says so.** The emitted JSON was compared field by field against the repository's live protection — `strict` true, both required contexts with their app pin, 0 required reviews, conversation resolution on, force-pushes and deletion blocked — and every value matches the floor in force. Read **twice, independently**: once by the implementing session and once by the fresh-context supervisor at the pre-commit checkpoint, which is the only reason the comparison is worth more than the diff's own word for it. What was **not** done is an import, because importing is a settings change and therefore Gated. So: envelope observed, values observed twice, the two load-bearing parameter blocks taken from GitHub's documented schema, and *acceptance by GitHub's importer* inferred rather than demonstrated. |
 
 **Where the rule settles for an admission rather than evidence**, which it says to state plainly: nothing
 proves the artifact still works *after this session*. Each row above is a fact about one CLI version on one
@@ -194,3 +312,9 @@ dogfooding this milestone is for, and nothing wider.
 This is the `agents/` lesson from milestone 3 repeating with higher stakes: for a repo-rooted plugin,
 top-level directory names are **platform-reserved**, and the cost of picking one by accident is paid
 by strangers.
+
+The same reasoning chose this directory for [`github-ruleset.json`](github-ruleset.json) over the
+obvious `.github/`. It ships in the payload either way and is inert either way — it is data nothing
+reads unless a human imports it — but `.github/` is the forge's reserved directory, and putting a
+generated file there is the same bet that lost twice already. A compile output belongs beside the
+compiler's other outputs.

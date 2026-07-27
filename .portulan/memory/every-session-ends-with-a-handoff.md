@@ -30,7 +30,10 @@ happen, and the first draft of this entry named two sessions when four lacked ha
 **A gate enforces this since milestone 4.** [`../compile/stop.mjs`](../compile/stop.mjs) blocks the end of
 a session that changed something and has no handoff dated today. It checks **existence and a date, never
 length or shape** — which is the whole reason the rule was written in that checkable form. Two limits
-kept honest: it releases after three consecutive refusals — or nine in all, which is the ceiling that matters here, since a green recipe beside a missing handoff would otherwise reset the consecutive count forever — and it judges "changed something" by the working tree and
+kept honest: it releases after three consecutive refusals **of this reason** — the missing handoff keeps
+its own count, cleared only by a handoff appearing, so it no longer rides to the ceiling of nine on the
+strength of a green recipe (the asymmetry the maintainer named on 2026-07-27, removed in milestone 4
+session 1) — and it judges "changed something" by the working tree and
 the branch, so a session whose work was all conversation owes nothing. The librarian that mines a
 complete series is milestone 5. Related:
 [`readme-map-must-match-shape.md`](readme-map-must-match-shape.md) — the same preference for a rail over

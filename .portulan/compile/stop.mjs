@@ -42,25 +42,35 @@ const HERE = path.dirname(fileURLToPath(import.meta.url));
 const WORKSPACE = path.resolve(HERE, "..");
 const REPO = path.resolve(WORKSPACE, "..");
 
-// How many CONSECUTIVE red-blocked stops one session may accumulate before the gate lets it end.
-// Bounded iteration is already doctrine — ../../core/operating/loop.md carries the runbook/iteration-cap
-// row — and a Stop-gate that cannot stop is not a gate, it is a hang.
+// The independent reasons this gate refuses a stop for. Each keeps its own consecutive count.
 //
-// **Consecutive, and it resets on an observed green run of the governing recipe** (maintainer's ruling,
-// 2026-07-27). The cap is aimed at the futile-retry episode — the same failure the Ralph Wiggum row names
-// — not at long honest sessions. A session that hits three unrelated reds and properly fixes each one
-// should not be taxed for having done the work; accumulating across a whole session would be ceremony
-// that cannot scale down, which is a binding non-goal.
+// Named as data rather than left implicit in the code, because the counters, the reset rule and the
+// release message all have to agree about what a reason *is* — and three implicit lists is how the
+// single-counter version came to reset one reason on another reason's evidence.
+export const REASONS = ["recipe", "handoff"];
+
+// How many CONSECUTIVE refusals **for one reason** a session may accumulate before the gate lets it
+// end. Bounded iteration is already doctrine — ../../core/operating/loop.md carries the
+// runbook/iteration-cap row — and a Stop-gate that cannot stop is not a gate, it is a hang.
+//
+// **Consecutive, and a reason's count clears only when THAT reason clears** (maintainer's ruling,
+// 2026-07-27, generalised in ../tasks/0007-per-reason-stop-gate-counters.md). The cap is aimed at the
+// futile-retry episode — the same failure the Ralph Wiggum row names — not at long honest sessions. A
+// session that hits three unrelated reds and properly fixes each one should not be taxed for having
+// done the work; accumulating across a whole session would be ceremony that cannot scale down, which
+// is a binding non-goal.
+//
+// Session 0 implemented the reset literally, keyed off the recipe alone, and that made the gate
+// unbounded: a green recipe beside a missing handoff cleared the count on every attempt. It also left
+// an asymmetry nobody chose — a missing five-line handoff rode to nine while a failing suite got
+// three. Per-reason counters remove both by construction.
 export const MAX_BLOCKS = 3;
 
-// An absolute ceiling on refusals per session, which does NOT reset. This is a deliberate addition to
-// the ruling above rather than an interpretation of it, and the reason is a hang the ruling would
-// otherwise reintroduce: the reset keys off the *recipe* going green, and the recipe is only one of the
-// two things this gate refuses for. A session with a green recipe and a missing handoff would reset the
-// consecutive count on every attempt and never reach the cap — unbounded, in the exact case that was
-// demonstrated releasing at the cap before this change. So the consecutive cap governs the ordinary
-// futile-retry episode, and this ceiling guarantees the gate can always stop. Surfaced to the maintainer
-// rather than applied silently.
+// An absolute ceiling on refusals per session, which does NOT reset. It was introduced to close the
+// hang above and it survives that hang's removal, as the backstop that guarantees the gate can always
+// stop whatever the per-reason counts do — including for a reason added later that nobody remembered
+// to give a clearing condition. Counts REFUSALS, not reasons: a stop refused for two reasons is one
+// refusal, or a two-reason session would reach the ceiling in half the attempts.
 export const MAX_TOTAL_BLOCKS = 9;
 
 const RECIPE_TIMEOUT_MS = 90_000;
@@ -87,47 +97,66 @@ function counterFile(sessionId, dir, root = REPO) {
     return path.join(dir, `portulan-stopgate-${readable}-${digest(sessionId)}-${digest(root)}`);
 }
 
+/** The stored shape: one consecutive count per reason, plus the non-resetting refusal total. */
 function readCount(file) {
+    let stored = {};
     try {
-        const v = JSON.parse(fs.readFileSync(file, "utf8"));
-        return { consecutive: Number(v.consecutive) || 0, total: Number(v.total) || 0 };
+        stored = JSON.parse(fs.readFileSync(file, "utf8")) ?? {};
     } catch {
-        return { consecutive: 0, total: 0 };
+        // No counter yet, or an unreadable one. Either way this session has spent nothing — the
+        // stricter direction, since a session that cannot read its budget has not used it.
     }
+    const counts = {};
+    for (const reason of REASONS) counts[reason] = Number(stored.counts?.[reason]) || 0;
+    return { counts, total: Number(stored.total) || 0 };
 }
 
 /**
- * Count one refusal against a session. Returns `{ consecutive, total }`.
+ * Count one refusal against a session. `reasons` is every reason THIS stop was refused for.
+ * Returns `{ counts, total }`.
  *
  * Exported for the suite; `dir` and `root` are injectable for the same reason.
  *
- * When the counter cannot be kept at all, this returns numbers ABOVE both caps so the caller lets the
- * session end. That direction is deliberate: an un-capped gate is the one failure here a human cannot
- * escape from inside the session. (The first version returned exactly `MAX_BLOCKS`, which is not above
- * it — so an unwritable temp dir made a red tree block *forever*, the precise opposite of what its own
- * comment claimed. Found at the pre-commit checkpoint, demonstrated against a read-only TMPDIR.)
+ * When the counter cannot be kept at all, this returns numbers ABOVE every cap — for every reason,
+ * not only the ones passed in — so the caller lets the session end. That direction is deliberate: an
+ * un-capped gate is the one failure here a human cannot escape from inside the session. (The first
+ * version returned exactly `MAX_BLOCKS`, which is not above it — so an unwritable temp dir made a red
+ * tree block *forever*, the precise opposite of what its own comment claimed. Found at the pre-commit
+ * checkpoint, demonstrated against a read-only TMPDIR. Filling only the named reasons would have
+ * reintroduced that trap one reason over.)
  */
-export function bumpCount(sessionId, dir = os.tmpdir(), root = REPO) {
+export function bumpCount(sessionId, reasons, dir = os.tmpdir(), root = REPO) {
     const file = counterFile(sessionId, dir, root);
     const now = readCount(file);
-    const next = { consecutive: now.consecutive + 1, total: now.total + 1 };
+    const counts = { ...now.counts };
+    for (const reason of reasons) counts[reason] = (counts[reason] ?? 0) + 1;
+    // One refusal, however many reasons named it — see MAX_TOTAL_BLOCKS.
+    const next = { counts, total: now.total + 1 };
     try {
         fs.writeFileSync(file, JSON.stringify(next));
     } catch {
-        return { consecutive: MAX_BLOCKS + 1, total: MAX_TOTAL_BLOCKS + 1 };
+        const released = {};
+        for (const reason of REASONS) released[reason] = MAX_BLOCKS + 1;
+        return { counts: released, total: MAX_TOTAL_BLOCKS + 1 };
     }
     return next;
 }
 
 /**
- * An observed green run of the governing recipe clears the CONSECUTIVE count — and only that one.
+ * One reason's condition cleared: its consecutive count goes to zero, and **only** its own.
+ *
+ * This is the whole of task 0007. The previous version cleared *the* count on an observed green
+ * recipe while the gate refused for two reasons — so a missing handoff's patience was restored by
+ * evidence about the recipe, which made the gate unbounded in that case and gave a five-line file
+ * three times the tolerance of a failing suite.
+ *
  * The running total survives on purpose: it is what guarantees the gate can still stop.
  */
-export function resetConsecutive(sessionId, dir = os.tmpdir(), root = REPO) {
+export function clearReason(sessionId, reason, dir = os.tmpdir(), root = REPO) {
     const file = counterFile(sessionId, dir, root);
     const now = readCount(file);
-    if (now.consecutive === 0) return now;
-    const next = { consecutive: 0, total: now.total };
+    if (!now.counts[reason]) return now;
+    const next = { counts: { ...now.counts, [reason]: 0 }, total: now.total };
     try {
         fs.writeFileSync(file, JSON.stringify(next));
     } catch {
@@ -225,15 +254,18 @@ function handoffToday() {
  * whether to block keys off the whole set.
  */
 function collectProblems() {
+    /** Every problem carries the REASON it belongs to — the key its own counter is kept under. */
     const problems = [];
     let recipeGreen = false;
 
     const recipe = defaultRecipe();
     if (!recipe) {
-        problems.push(
-            "could not read the workspace's default verify recipe from .portulan/workspace.json, so nothing " +
+        problems.push({
+            reason: "recipe",
+            text:
+                "could not read the workspace's default verify recipe from .portulan/workspace.json, so nothing " +
                 "verified this work. That is 'could not run', which blocks exactly as red does.",
-        );
+        });
     } else {
         // `bash -c` with the command as one string, deliberately: the manifest declares a *command*,
         // not a script path — `spec/slots.md` says so and the CI workflow runs each recipe the same
@@ -266,19 +298,22 @@ function collectProblems() {
             const outcome = CANNOT_RUN.has(code) || code === undefined || code === null
                 ? `could not run (exit ${code ?? "no status"}) — the gate could not judge`
                 : `RED (exit ${code})`;
-            problems.push(`verify recipe \`${recipe.id}\` — ${outcome}\n${output}`);
+            problems.push({ reason: "recipe", text: `verify recipe \`${recipe.id}\` — ${outcome}\n${output}` });
         }
     }
 
-    if (didWork() && !handoffToday()) {
-        problems.push(
-            `no handoff dated ${today()} in .portulan/handoffs/. Every session ends with a dated handoff — ` +
+    const handoffPresent = handoffToday();
+    if (didWork() && !handoffPresent) {
+        problems.push({
+            reason: "handoff",
+            text:
+                `no handoff dated ${today()} in .portulan/handoffs/. Every session ends with a dated handoff — ` +
                 "five lines is enough, absent is not. The Session log records what landed; the handoff records why, " +
                 "and the why is the part the next session cannot reconstruct from the diff.",
-        );
+        });
     }
 
-    return { problems, recipeGreen };
+    return { problems, recipeGreen, handoffPresent };
 }
 
 /**
@@ -292,28 +327,40 @@ function collectProblems() {
  *   block   — refuse this stop, and charge it.
  *   release — the cap is spent. The session may end, and the record must say RED rather than done.
  */
-export function verdict({ problems, count, total = count, max = MAX_BLOCKS, maxTotal = MAX_TOTAL_BLOCKS }) {
+export function verdict({ problems, counts = {}, total = 0, max = MAX_BLOCKS, maxTotal = MAX_TOTAL_BLOCKS }) {
     if (problems.length === 0) return { action: "allow" };
-    if (count > max || total > maxTotal) {
+
+    const text = problems.map((p) => p.text).join("\n\n");
+    // Only a reason that is wrong RIGHT NOW may release the gate. A cleared reason's counter is
+    // zeroed, so this never remembers that the recipe was once red four times and lets every later
+    // stop through on the strength of a problem that no longer exists.
+    const spent = problems.map((p) => p.reason).filter((reason) => (counts[reason] ?? 0) > max);
+
+    if (spent.length || total > maxTotal) {
         // Name the bound that actually released it. Saying "cap of 3" after nine refusals with a
-        // consecutive count of 1 is false, and it is the same defect already fixed once in this very
+        // per-reason count of 1 is false, and it is the same defect already fixed once in this very
         // message — a release that misreports why it happened sends a reader to the wrong constant.
-        const bound = count > max
-            ? `the cap of ${max} consecutive refusals was reached`
-            : `the absolute ceiling of ${maxTotal} refusals was reached (consecutive count ${count}, which the green-recipe reset kept low)`;
+        // Per-reason counters add one more way to be wrong: naming the cap without naming whose.
+        const bound = spent.length
+            ? `the cap of ${max} consecutive refusals for \`${spent.join("`, `")}\` was reached`
+            : `the absolute ceiling of ${maxTotal} refusals was reached (no single reason had reached its cap of ${max})`;
         return {
             action: "release",
             message:
                 `PORTULAN STOP-GATE — ${bound}. This session is ending **RED**, not done.\n` +
                 `Nothing below was fixed, and the session ending does not fix it. Say so in the handoff and in any\n` +
                 `report of this work; a task that ends at the cap is an unfinished task with a stop attached.\n\n` +
-                `${problems.join("\n\n")}\n`,
+                `${text}\n`,
         };
     }
+
+    // The counts shown are per reason, because that is what the caps now are. A single "2/3" would
+    // be a number no constant in this file corresponds to the moment two reasons are live.
+    const tally = problems.map((p) => `${p.reason} ${counts[p.reason] ?? 0}/${max}`).join(", ");
     return {
         action: "block",
         message:
-            `PORTULAN STOP-GATE (${count}/${max}) — this task is not done:\n\n${problems.join("\n\n")}\n\n` +
+            `PORTULAN STOP-GATE (${tally}) — this task is not done:\n\n${text}\n\n` +
             "Fix these rather than working around them. If a check is wrong, say so and change it deliberately — " +
             "relaxing a check is the change to scrutinise hardest, because it is the one that makes every future green mean less.",
     };
@@ -330,15 +377,19 @@ function main() {
     }
 
     const sessionId = payload.session_id ?? "unknown";
-    const { problems, recipeGreen } = collectProblems();
+    const { problems, recipeGreen, handoffPresent } = collectProblems();
 
-    // An observed green run of the governing recipe ends the futile-retry episode, whether or not the
-    // stop is allowed. Done before the bump so a green recipe never charges a consecutive refusal.
-    if (recipeGreen) resetConsecutive(sessionId);
+    // A reason's condition clearing ends THAT reason's futile-retry episode, whether or not the stop
+    // is allowed, and never any other reason's. Done before the bump so a cleared reason cannot be
+    // charged a consecutive refusal on the same turn it cleared.
+    if (recipeGreen) clearReason(sessionId, "recipe");
+    if (handoffPresent) clearReason(sessionId, "handoff");
 
     // Charged only when this gate is actually about to refuse. A green stop costs nothing.
-    const counts = problems.length === 0 ? { consecutive: 0, total: 0 } : bumpCount(sessionId);
-    const result = verdict({ problems, count: counts.consecutive, total: counts.total });
+    const state = problems.length === 0
+        ? { counts: {}, total: 0 }
+        : bumpCount(sessionId, [...new Set(problems.map((p) => p.reason))]);
+    const result = verdict({ problems, counts: state.counts, total: state.total });
 
     if (result.action === "allow") allow();
     if (result.action === "release") {

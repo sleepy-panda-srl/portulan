@@ -32,11 +32,14 @@
 Written at the same level of detail, because a legibility report that lists only strengths is marketing.
 
 - **The Stop-gate runs one recipe, not six.** Since milestone 4 it runs the workspace **default** and
-  blocks "done" on a red, an exit 2, or a recipe it could not execute — and releases after three consecutive refusals, or nine in all. The other five are
+  blocks "done" on a red, an exit 2, or a recipe it could not execute — and releases after three
+  consecutive refusals of any one reason, or nine in all. The other five are
   still condition 1 of [`../../dod.md`](../../dod.md) and a habit.
-- **Two of the four tiers compile; two do not.** Gated actions prompt and the constitution is refused,
-  from [`../../gates.json`](../../gates.json). `auto` and `propose` emit nothing — the compiler adds
-  restriction only, and `propose` is the floor's job. The refusals are printed, never silent.
+- **Which tiers compile depends on the backend, and there are two.** For the Claude Code backend gated
+  actions prompt and the constitution is refused, while `auto` and `propose` emit nothing — the compiler
+  adds restriction only. For the **floor** backend the partition inverts: `propose` is exactly what a
+  GitHub repository ruleset enforces. Both read [`../../gates.json`](../../gates.json); `compile --matrix`
+  prints every rule against both. The refusals are printed, never silent.
 - **A compiled gate matches a spelling, not an intent.** A command reaching a gated action by another
   route escapes it; one wrapper level is peeled and no more. The platform floor beneath is what is
   indifferent to spelling.
