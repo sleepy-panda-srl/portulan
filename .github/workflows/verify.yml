@@ -58,11 +58,19 @@ jobs:
       # which GitHub-hosted `ubuntu-latest` is well past) and every recipe here touches git only
       # through `git ls-files` — local, no network, no credentials.
       #
-      # One caveat, load-bearing only if this step ever grows a `with:`. Since v5.1.0 checkout
-      # refuses to check out a fork pull request under `pull_request_target` or `workflow_run`
-      # unless `allow-unsafe-pr-checkout` is set. The guard is skipped entirely for a default
-      # self-checkout — no `repository:` and no `ref:` — which is what this step is, and this
-      # workflow triggers on `pull_request` besides. Adding a `ref:` here would arm it.
+      # One caveat, and the condition that matters is the trigger rather than this step. Since
+      # v5.1.0 checkout refuses to check out a *fork* pull request under `pull_request_target` or
+      # `workflow_run` unless `allow-unsafe-pr-checkout` is set — because those two run with the
+      # base repository's token and secrets, which is what makes executing fork code there a pwn
+      # request. Read at the pinned commit rather than inferred: the refusal needs all of that
+      # event, a head repo whose id differs from the base, and a resolved repository/ref/commit
+      # pointing at that fork's PR head. On `pull_request` — this workflow's trigger — the check
+      # returns before testing anything else, so it cannot fire here.
+      #
+      # Adding a `ref:` or `repository:` therefore does NOT arm a refusal on `pull_request`; all it
+      # does is stop this step qualifying for the default-self-checkout early-out, so the check is
+      # called and then returns on the event. What would actually matter is this workflow moving to
+      # `pull_request_target` or `workflow_run`, which is the change to think twice about.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Run every verify recipe the workspace manifest declares
