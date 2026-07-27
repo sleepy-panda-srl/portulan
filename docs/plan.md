@@ -943,14 +943,20 @@ the seam applies here too: no client-identifying references)_
   as [`.portulan/labels.json`](../.portulan/labels.json) (policy: five labels derived from this
   repository's own structure — `doctrine`, `workspace`, `mechanism`, `record`, `infrastructure` — plus
   Dependabot's two, declared so an automated security bump is not red on arrival),
-  [`.github/workflows/pr-labels.yml`](../.github/workflows/pr-labels.yml) (checker: reads the policy and
-  the event payload, no token, no network), and
+  [`.github/workflows/pr-labels.yml`](../.github/workflows/pr-labels.yml) (checker: the policy for the
+  set, the API for the labels the pull request carries now), and
   [`.portulan/memory/every-pull-request-carries-a-label.md`](../.portulan/memory/every-pull-request-carries-a-label.md).
   The five labels were created on GitHub. **Binary half machine-checked, judgement half human:** the
   check refuses an *unlabelled* pull request and never an over-labelled one, and `covers` is guidance
   rather than a matcher, because a path→label matcher reds the first change that touches `core/`
   incidentally and *a false red is what gets a check switched off*. Red-first tested against four
   payloads — none, undeclared-only, declared, and both unreadable-policy preconditions, which fail closed.
+  **And then the checker's first live run found a defect in the checker:** it read the event payload, but
+  `gh pr create --label` applies labels *after* opening, so the `opened` event carried an empty array and
+  reported red on a pull request labelled from its first second — the false-red failure shipped inside
+  the rule that names it. Fixed to read current labels from the API, which fails closed if the read
+  fails; re-tested on three live pull requests (#46 green, #45 red, nonexistent red with a reason). Found
+  by watching the check run rather than trusting it.
   **Deliberately NOT yet a required status check:** a required context that has never reported blocks
   every open pull request not carrying the workflow, and `enforce_admins` leaves nobody able to force
   past — proposal `0004`'s lesson. The workflow merges first; `pr-labeled` joins the floor after, by the

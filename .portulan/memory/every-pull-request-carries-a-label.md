@@ -38,10 +38,18 @@ re-runs on `labeled`, which is deliberate and is the difference between a gate a
 
 **The rail, and the one step still outstanding.**
 [`../../.github/workflows/pr-labels.yml`](../../.github/workflows/pr-labels.yml) reads
-[`../labels.json`](../labels.json) and the event payload, and fails a pull request carrying no declared
-label — red-first tested against four payloads: none, undeclared-only, declared, and both
-policy-unreadable preconditions, which fail closed rather than green. **It is not yet a required status
-check**, and the sequence is the point: a required context that has never reported blocks every open
+[`../labels.json`](../labels.json) for the set and the **API** for the labels the pull request carries
+now, and fails one carrying no declared label. Tested red-first against four synthetic payloads (none,
+undeclared-only, declared, and an unreadable policy) and then against three live pull requests: #46
+green on three labels, #45 red on none, a nonexistent number red with a stated reason. **The API read
+replaced a payload read on the first run of this checker in anger, and the reason is worth keeping:**
+`gh pr create --label` opens the pull request and applies labels as a *second* operation, so the
+`opened` event's payload is empty and the check went red on a pull request that was labelled from the
+first second. A spurious red on every newly-opened pull request is the false-red failure this rule's own
+reasoning warns about — found by watching the check run rather than by trusting it. Reading current
+state also means the answer is about the pull request, not about the event that woke the job. **It is
+not yet a required status check**, and the sequence is the point: a required context that has never
+reported blocks every open
 pull request that does not carry the workflow, and `enforce_admins: true` leaves nobody able to force
 past it — the lesson [`../proposals/0004-ci-runs-every-declared-recipe.md`](../proposals/0004-ci-runs-every-declared-recipe.md)
 paid for. So the workflow merges to `main` first, and only then does `pr-labeled` join the floor:
@@ -53,8 +61,19 @@ gh api -X PATCH repos/sleepy-panda-works/portulan/branches/main/protection/requi
 
 Until that runs, this is a rule a human applies and CI reports on — stated so nothing here reads as a
 floor it is not part of yet ([`a-stated-enforcer-must-be-the-real-one.md`](a-stated-enforcer-must-be-the-real-one.md)).
-The label *set* is live on GitHub already; adding a name to `labels.json` does not create it, and the
-checker would then red every pull request using it — `gh label create` is the other half.
+
+**Adding a label to [`../labels.json`](../labels.json) does not create it on GitHub**, and until it
+exists nobody can apply it — so the policy would name a label that reds every pull request trying to use
+it. This is the other half, run from the repository root, and it is idempotent (`--force` updates an
+existing label rather than failing):
+
+```
+node -e 'for (const l of require("./.portulan/labels.json").labels) if (l.appliedBy !== "dependabot") console.log([l.name, l.color, l.description].join("\t"))' \
+  | while IFS=$'\t' read -r name color desc; do gh label create "$name" --color "$color" --description "$desc" --force; done
+```
+
+The `appliedBy` filter is what keeps it from re-creating Dependabot's two, which are declared here but
+owned there.
 
 **Retire when:** the labels stop being read — if nothing (the librarian, a release-note generator, a
 query anyone actually runs) consumes them, the rule is decoration with a gate attached, and the honest
