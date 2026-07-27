@@ -149,6 +149,22 @@ export function compile(policy) {
         if (typeof action[kind] !== "string" || action[kind].trim() === "") {
             throw new CompileError(`rule \`${id}\`'s action \`${kind}\` has no value`);
         }
+        // The value is interpolated into the host's permission DSL — `Bash(prefix:*)`, `Edit(./path)`.
+        // Characters that are structural THERE would emit a rule the host parses differently from what
+        // the policy meant, and an ambiguous gate is indistinguishable from an absent one. Refuse rather
+        // than escape: a workspace needing a gate on a command containing `(` or `:` needs this
+        // compiler extended deliberately, not quietly reinterpreted. Found by review on the pull request.
+        const RESERVED = kind === "shell" ? /[()\n\r\t:]/ : /[()\n\r\t]/;
+        if (RESERVED.test(action[kind])) {
+            throw new CompileError(
+                `rule \`${id}\`'s ${kind} target ${JSON.stringify(action[kind])} contains a character that is ` +
+                    `structural in the host's permission syntax. Emitting it would produce a rule the host reads ` +
+                    `differently from what this policy says, which is worse than refusing to compile.`,
+            );
+        }
+        if (action[kind] !== action[kind].trim()) {
+            throw new CompileError(`rule \`${id}\`'s ${kind} target has leading or trailing whitespace, which the host would not match`);
+        }
 
         // --- the three ways a rule ends -------------------------------------------------------
 
@@ -271,6 +287,10 @@ function pattern(tool, target) {
  * a Gated action would turn a per-action prompt into a hard block, which is the tier above it.
  */
 export function claudeCode(result, options = {}) {
+    // The header names the policy file that was ACTUALLY read. It was a literal for one round, so a
+    // workspace declaring a non-default policy got an artifact claiming it came from somewhere it did
+    // not — in the one field whose entire job is telling a reader what generated this. Found by review.
+    const source = options.source ?? ".portulan/gates.json";
     const runner = options.runner ?? '"${CLAUDE_PROJECT_DIR}/.portulan/compile/gate.mjs"';
     const stopRunner = options.stopRunner ?? '"${CLAUDE_PROJECT_DIR}/.portulan/compile/stop.mjs"';
 
@@ -302,8 +322,8 @@ export function claudeCode(result, options = {}) {
     const settings = {
         $portulan: {
             generated: "cli/compile.mjs",
-            source: ".portulan/gates.json",
-            warning: "Generated file. Edit .portulan/gates.json and recompile; `verify/compile.sh` fails on drift.",
+            source,
+            warning: `Generated file. Edit ${source} and recompile; \`verify/compile.sh\` fails on drift.`,
         },
         permissions: { deny, ask, allow: [] },
         hooks: {
@@ -401,7 +421,9 @@ export function run(argv, options = {}) {
         const policyFile = policyPath(workspaceRoot);
         const policy = readJson(policyFile, "the gate policy");
         const result = compile(policy);
-        const { settings } = claudeCode(result);
+        const { settings } = claudeCode(result, {
+            source: path.relative(workspaceRoot, policyFile).split(path.sep).join("/"),
+        });
         const text = render(settings);
         const artifact = path.join(workspaceRoot, ".claude", "settings.json");
 
