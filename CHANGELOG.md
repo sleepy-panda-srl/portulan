@@ -90,4 +90,4 @@ engine's skills shipped as the same files `core/` documents, never copies.
 - **Nothing runs the verify recipes for you.** They are executable and CI runs them on every pull
   request; the Stop-gate that blocks a "done" claim on a red recipe is milestone 4.
 - **Memory has no generated index.** Recall means reading the directory.
-- **The repository is private at this tag.** It goes public after a clearance tracked outside it. _(2026-07-27: it went public on the maintainer's directive ahead of that clearance — see docs/plan.md, Session log.)_
+- **The repository was private at this tag.** It was to go public after a clearance tracked outside it. _(2026-07-27: it went public on the maintainer's directive ahead of that clearance — see docs/plan.md, Session log.)_
