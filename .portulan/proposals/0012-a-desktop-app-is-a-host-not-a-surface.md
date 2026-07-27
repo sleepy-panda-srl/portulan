@@ -196,9 +196,7 @@ update endpoints carry bits, never workspace content, and are outside the line; 
 user's context is inside it.** Worth writing into `vision.md` if he agrees, so the next session does not
 re-litigate it from scratch.
 
-## Provenance
-
-`form=link href=docs/vision.md` — Non-goals (*No operating cockpit*, *No hosted SaaS*) and The thesis
+**Provenance.** `form=link href=docs/vision.md` — Non-goals (*No operating cockpit*, *No hosted SaaS*) and The thesis
 clause 2, read against the maintainer's directive of 2026-07-27. The precedent for the
 examples-versus-class defect is `core/operating/autonomy.md` and
 [`../memory/two-layers-need-two-jobs.md`](../memory/two-layers-need-two-jobs.md)'s sibling finding that a

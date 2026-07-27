@@ -114,9 +114,7 @@ gains `skills` and `personas` path slots; packs stay the *distribution* unit, no
 This is a spec change (the schema is `additionalProperties: false`, so a user cannot do it unilaterally
 today) and therefore his.
 
-## Provenance
-
-`form=link href=docs/vision.md` — The thesis, clauses 1 and 6, and Non-goals (*No ceremony that can't
+**Provenance.** `form=link href=docs/vision.md` — The thesis, clauses 1 and 6, and Non-goals (*No ceremony that can't
 scale down*, *No auto-generated curated context*), read against the maintainer's directive of
 2026-07-27. The measured gaps come from a read of the current tree at `b9722da`, cited inline above.
 
