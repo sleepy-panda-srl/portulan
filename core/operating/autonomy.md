@@ -53,7 +53,7 @@ Prompt-level rules can be argued with; branch protection cannot. The durable gat
 platform enforces regardless of which model, host, or prompt is driving:
 
 - Branch protection and required status checks — no merge without green.
-- `CODEOWNERS` and PR-as-gate — a human in the path for owned code.
+- PR-as-gate, and `CODEOWNERS` where configured — a human in the path for owned code.
 - Least privilege — an agent gets the tools and scopes its task needs and nothing more (the `tools:`
   allow-list, see `../personas/`).
 
