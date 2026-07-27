@@ -1,11 +1,13 @@
 #!/usr/bin/env bash
 # Portulan workspace — verify recipe for a docs-first repository.
 #
-# Three checks. Only the kernel budget was a rule this repo had already stated; the other two were
-# minted from the defect that this recipe's first run exposed (see ./README.md, Provenance):
+# Four checks. Only the kernel budget was a rule this repo had already stated; links and map were
+# minted from the defect that this recipe's first run exposed (see ./README.md, Provenance), and
+# record from the 2026-07-27 audit that found a merged arc with no record at all:
 #   links   every relative Markdown link resolves            (docs that lie are worse than no docs)
 #   kernel  core/engine.md stays inside its line budget      (the always-loaded layer is the scarce one)
 #   map     the root README lists every top-level entry      (agent legibility: the map matches the ground)
+#   record  every Session log date has a dated handoff       (work that leaves no record cannot be audited)
 #
 # Exit 0 green · 1 red · 2 could not run. The Stop-gate (milestone 4) calls this;
 # until it exists, the definition of done in ../dod.md requires running it by hand.
@@ -112,6 +114,46 @@ else
         sed 's/^/        /' "$tmp/map"
     else
         pass "map — every top-level entry is documented in $README"
+    fi
+fi
+
+# --------------------------------------------------------------------- 4. record
+# Two correspondence checks on the session record, added 2026-07-27 after an audit found a merged
+# doctrine rewrite (#32/#33) with no handoff and no Session log entry, and the newest entry missing
+# its seam attestation. Correspondence is by DATE, not by session: two sessions closing on one day
+# are satisfied by one handoff — a stated limit, not a claim (see ./README.md, Known limits). The
+# floor is 2026-07-25, the day the handoff cadence became a maintainer ruling (docs/plan.md,
+# Session log) — entries before it predate the mandate and are not retro-bound. The seam check
+# reads PRESENCE of an attestation in the newest entry, never whether its verdict is honest.
+PLAN=docs/plan.md
+HANDOFFS=.portulan/handoffs
+CADENCE_FLOOR=2026-07-25
+if [ ! -f "$PLAN" ]; then
+    fail "record — $PLAN is missing"
+else
+    : >"$tmp/record"
+    while IFS= read -r d; do
+        [[ "$d" < "$CADENCE_FLOOR" ]] && continue
+        grep -q "^\.portulan/handoffs/${d}-.*\.md\$" "$manifest" || printf '%s\n' "$d" >>"$tmp/record"
+    done < <(sed -n 's/^- \(2[0-9]\{3\}-[0-9]\{2\}-[0-9]\{2\}\) ·.*/\1/p' "$PLAN" | sort -u)
+
+    if [ -s "$tmp/record" ]; then
+        fail "record — Session log date(s) since $CADENCE_FLOOR with no dated handoff in $HANDOFFS/"
+        sed 's/^/        /' "$tmp/record"
+    else
+        pass "record — every Session log date since $CADENCE_FLOOR has a dated handoff"
+    fi
+
+    last=$(grep -n '^- 2[0-9]\{3\}-[0-9]\{2\}-[0-9]\{2\} ·' "$PLAN" | tail -1 | cut -d: -f1)
+    if [ -z "$last" ]; then
+        fail "record — no Session log entries found in $PLAN"
+    else
+        entry=$(awk -v s="$last" 'NR==s{f=1} f && NR>s && (/^- 2[0-9][0-9][0-9]-/ || /^## /){exit} f{print}' "$PLAN")
+        if printf '%s\n' "$entry" | grep -qi 'seam scan'; then
+            pass "record — the newest Session log entry carries a seam attestation"
+        else
+            fail "record — the newest Session log entry ($PLAN:$last) carries no seam attestation"
+        fi
     fi
 fi
 

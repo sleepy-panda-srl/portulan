@@ -748,6 +748,30 @@ the seam applies here too: no client-identifying references)_
   and two of the three defects found in this session's own work were found by Copilot rather than by the
   implementer, which is the argument against treating review-at-merge as a substitute. Handoff:
   [`.portulan/handoffs/2026-07-27-dependabot-security-and-the-watchers.md`](../.portulan/handoffs/2026-07-27-dependabot-security-and-the-watchers.md).
+  *Amended 2026-07-27 (audit remediation): this entry closed without the seam attestation its siblings
+  carry. An independent scan of the arc — files, commit messages, branch names — was clean, so this was a
+  record gap and not a leak: seam scan clean, attested after the fact.*
+
+- 2026-07-27 · post-M3, pre-M4 — no milestone row touched · **The git-push tier doctrine rewrite (#32)
+  and the two-lessons extraction (#33) — recorded here after the fact; the arc itself logged nothing,
+  which is an audit finding and the reason this entry exists.** #32 hoisted *the gate is the maintainer's
+  decision, not his keystroke* into the Gated tier header where it governs every action in the tier — it
+  had been stated once, in the Propose tier, attached to merging, and the Gated tier was read literally
+  for a whole session of hand-typed pushes; `git push` of a working branch moved to Auto (its old reason
+  did not survive: the guarantee was always at the merge, which stays Gated), force-push Auto only with
+  `--force-with-lease`, the merge's two-tier split resolved, three falsified tier definitions re-read and
+  fixed, and the parent handoff visibly amended with the defect found after it merged. Generalisation
+  recorded: *where a rule and its clarification live apart, only the rule gets read.* #33 extracted the
+  day's two lessons into memory rules by handoff provenance — `a-stated-enforcer-must-be-the-real-one`
+  and `a-mechanical-revert-is-not-a-narrative-revert` — each retire-when naming the in-flight `0008`
+  revision; `doctor` then counted 14 memory records, 12 rules. · **Supervisor fidelity: no fresh-context
+  pre-commit checkpoint is recorded for either pull request** — Copilot review plus the maintainer at
+  merge, which the parent session's record itself says is not the checkpoint; `review_on_push` was
+  reversed to `true` mid-arc after three fix rounds on #32 sat unreviewed. · *This entry is a
+  reconstruction, written 2026-07-27 by the audit-remediation session from the merged record.* · Seam
+  scan of the arc's diffs, commit messages, and branch names: clean (re-scanned independently during
+  reconstruction). Handoff (labelled reconstruction):
+  [`.portulan/handoffs/2026-07-27-the-gate-is-the-decision-not-the-keystroke.md`](../.portulan/handoffs/2026-07-27-the-gate-is-the-decision-not-the-keystroke.md).
 
 - 2026-07-27 · M4 (Enforcement compiler), session 0 of 1–2 · **The gate map stopped being a document.**
   `.portulan/gates.json` is the policy as data — actions bound to tiers in a **host-neutral** vocabulary,
@@ -807,3 +831,27 @@ the seam applies here too: no client-identifying references)_
   `core/operating/autonomy.md`'s promise that the compiler generates the **platform floor** configuration
   lands, since the milestone row does not name that deliverable. Seam scan clean across files, commit
   message, and branch name.
+
+- 2026-07-27 · post-M3, pre-M4 — no milestone row touched · **Audit remediation: four pull requests, one
+  per finding category of the day's fresh-context audit (taken at `aa48abe`, every finding re-verified
+  against `863b87b` before fixing).** #34 contradictions — `v0.1.0` present tense in `README.md` and the
+  product card (the tag exists); `spec/slots.md` no longer names a spec 1.1 that never reached `main` and
+  drops a proposal count that had rotted; a retire-when stops citing a milestone-2 report milestone 2
+  never built. #36 precision — the count-of-three assertion reattributed from `plugin-lint` to its test
+  suite (`tests.sh`, not `plugin.sh`) in the living doc, with visible amendments on three dated carriers;
+  `CODEOWNERS` dropped from the kernel's platform-floor enumeration (the gate map: not yet part of the
+  floor) and from `identity.md`'s glossary row, kernel at 43/60. #37 stale claims — nine living documents
+  rebound from "public at milestone 3" to the public-flip clearance, `repo-is-private-until-milestone-3.md`
+  renamed to `repo-is-private-until-flip-clearance.md` with links updated; `docs/vision.md:20` and
+  `docs/plan.md:19`/`:34` carry the same phrase and are the maintainer's own to reword — flagged, not
+  touched. This PR closes the record: the #32/#33 arc's reconstruction (entry above, labelled handoff),
+  visible amendments restoring the State-line count and the missing seam attestation, and a `record`
+  check added to `docs.sh` — red first on exactly the missing attestation (`docs/plan.md:714`), green
+  once the record was repaired. Enforcement of the audit's unchecked mandates stays milestone 4's; this
+  session closed the record, not the gates. · **Supervisor fidelity: commissioned by the maintainer from
+  a fresh-context audit; each pull request passed a fresh-context Fable 5 pre-commit review (three of the
+  four reviews returned must-fix items — every one folded in and re-verified, this pull request's by
+  amending its commit so the shipped commit postdates its review's verdict); no separate session-open
+  review; no milestone-close (none due).** The maintainer merges all four; nothing here was merged by the
+  session. · Seam scan clean across files, commit messages, and branch names, per pull request. Handoff:
+  [`.portulan/handoffs/2026-07-27-the-audit-remediation.md`](../.portulan/handoffs/2026-07-27-the-audit-remediation.md).
