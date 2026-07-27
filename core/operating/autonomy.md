@@ -20,6 +20,16 @@ forbidden anyway, which is why the axis needed the second clause when that tier 
 | **Gated** | Outward-facing or hard to undo — push to a shared remote, publish, deploy, buy, delete, send. | Explicit human approval, per action. |
 | **Prohibited** | Actions no approval makes acceptable — editing the standard the work is graded against. | Nobody, at runtime. |
 
+**The examples in that table are illustrative, not binding.** Which concrete action sits in which tier is
+workspace policy, always — an example here is a typical case, never a classification a team inherits. The
+*Action class* column is the doctrine; the actions after the dash are there to make it legible.
+
+_(Written down because the misreading has a price attached. An example read as binding once cost a whole
+session of `git push` commands handed back to a maintainer to type by hand — and by way of demonstration,
+this table's own Gated example is already false for the repository that wrote it: a working-branch push is
+Auto there, gated at the merge instead. If a future edit drops the examples from the column, this paragraph
+retires with them.)_
+
 **Gated** is grantable at runtime by a human yes. **Prohibited** compiles to deny and is grantable only
 by changing the rule itself through the evolution gate — never by runtime approval.
 
