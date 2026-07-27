@@ -82,6 +82,9 @@ can express is both accepted and live.
      only checks declarations stops seeing undeclared things, and the milestone's own criterion asks
      that CI check "every declared skill and agent". `plugin-lint` now finds agents by convention,
      **fails** on a present `agents` key, and asserts this repository's count of three against the tree.
+     *Amended 2026-07-27 (fresh-context audit): that assertion lives in the lint's test suite,
+     `cli/plugin-lint.test.mjs`, so it runs with `tests.sh`, not `plugin.sh` — the tool itself counts
+     and reports.*
   2. The `map` check could not see the new top-level entry **at all** — `awk -F/ 'NF > 1'` yields only
      directories that contain tracked files, and git tracks a symlink as a single path with no `/`. It
      had silently stopped covering the tree the day the tree gained one. Extended, red-first.

@@ -103,11 +103,13 @@ removes that path from the question entirely.)_
 
 Because nothing declares these files, a validator that only checks declarations stops seeing them — the
 recipe printed `0 agent(s)` and GREEN the moment the key came out. So `plugin-lint` finds them by
-convention instead, fails on a present `agents` key, asserts this repository's count of three against
-the tree, and **reports any agent file stranded outside `./agents/`** — the mistake this repository
-actually made, and the natural one to make, because *skills* load from custom declared paths and agents
-do not. That rule and the memory entry behind it retire together, on the day a release makes the
-`agents` key register what it names. One hole is left open deliberately and named rather than hidden: deleting `agents/` outright is
+convention instead, fails on a present `agents` key, and **reports any agent file stranded outside
+`./agents/`** — the mistake this repository actually made, and the natural one to make, because *skills*
+load from custom declared paths and agents do not. That rule and the memory entry behind it retire
+together, on the day a release makes the `agents` key register what it names. This repository's count of
+three *is* asserted against the tree — by the lint's test suite
+([`../cli/plugin-lint.test.mjs`](../cli/plugin-lint.test.mjs)), so that assertion runs with `tests.sh`,
+not with `plugin.sh`. One hole is left open deliberately and named rather than hidden: deleting `agents/` outright is
 a note and exit 0, because a plugin that ships no agents is legitimate. What binds it is
 [`../.portulan/tasks/0005-lint-the-persona-agent-binding.md`](../.portulan/tasks/0005-lint-the-persona-agent-binding.md)
 — a persona with no binding is not legitimate, and that is the check that can say so.
