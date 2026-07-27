@@ -123,7 +123,7 @@ green throughout — is pinned by the suite.
 
 ## Spec 2.1 → 2.2
 
-Suite 244 → **294**, both figures measured (at `fab592d` and at head) rather than derived.
+Suite 244 → **295**, both figures measured (at `fab592d` and at head) rather than derived.
 
 Additive: the optional `floor` object in the gate policy — `branch`, `checks`, `reviews`,
 `resolve_conversations`. All four exist because they vary per repository and the export would otherwise
@@ -188,7 +188,20 @@ able to notice about itself, since nothing here imports anything.
 
 All four red-tested first. Both emitted artifacts are byte-identical afterwards, which is the expected
 result and worth stating: every fix was a refusal or an ordering, and none of them changed what *this*
-policy compiles to. Suite 289 → 294.
+policy compiles to.
+
+**A second round found two more, both real.** The floor/prose cross-check was gated on the prose having
+named at least one check — which exempted **the worst divergence there is**: a policy declaring required
+checks beside a gate-map row that is missing or unrecognised. The generic "names no required status check"
+note fires there and reports something else entirely, so the extreme case was the one case that went
+unreported. A check that quietly skips its own worst input is `a-checker-must-refuse-what-it-cannot-check`
+once more. And the plan's `289 at head` was read as contradicting `244 → 295` — it meant the head at the
+pre-commit checkpoint, and now says so.
+
+**The first attempt at the red test for that fix passed before the fix**, because it asserted on the
+context name and an unrelated unpinned-check note in the same check class already mentions it. Tightened
+to the cross-check's own sentence. Worth recording: a red test that is green is not a test, and only
+running it first showed that. Suite 289 → 295.
 
 ## What is left
 

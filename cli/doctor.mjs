@@ -1003,7 +1003,14 @@ export async function inspect(workspaceDir, options = {}) {
             // legitimately be shaped differently — but never left silent, because two files stating
             // one policy is this repository's signature defect, and the prose half is the half no
             // other check here reads for content.
-            if (parsed.floor && gatesRead && namedAnyCheck) {
+            // NOT gated on the prose having named a check. It was for one round, which exempted the
+            // worst divergence there is: a policy declaring required checks beside a gate-map row that
+            // is missing or written in a shape `requiredCheckClaims` does not recognise. The generic
+            // "names no required status check" note fires there, but it reports that nothing was
+            // compared against the *tree* and says nothing about the policy carrying checks the prose
+            // does not. A check that quietly skips its own extreme case is
+            // `a-checker-must-refuse-what-it-cannot-check.md` again. Found by review, round 2.
+            if (parsed.floor && gatesRead) {
                 const declared = parsed.floor.checks.map((c) => c.context);
                 const missingFromProse = declared.filter((c) => !declaredChecksInProse.includes(c));
                 const missingFromPolicy = declaredChecksInProse.filter((c) => !declared.includes(c));
