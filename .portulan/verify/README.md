@@ -82,9 +82,9 @@ on it, exit `1`, which is the right code for a workspace it read and judged. And
 list complete*, never *is the list right*: naming a directory that is not a workspace is caught by the
 manifest being absent, not by the audit.
 
-`docs.sh` needs nothing beyond the POSIX text utilities — `grep`, `sed`, `awk`, `wc`, `sort`, `cut`,
-`tail`, `tr`, `dirname`, and `mktemp`, as of milestone 4 — and that is worth preserving: a recipe that
-needs a toolchain is a recipe that stops being run.
+`docs.sh` needs `bash`, `git`, and a handful of POSIX utilities — `grep`, `sed`, `awk`, `wc`, `sort`,
+`cut`, `tail`, `tr`, `dirname`, `mktemp`, and `rm` as of milestone 4 — and nothing else, which is worth
+preserving: a recipe that needs a toolchain is a recipe that stops being run.
 
 **Why `json.sh` breaks that rule, deliberately.** Milestone 2 introduced the first JSON this repository
 *depends* on rather than merely carries, and well-formedness is a parser's judgement: bash can only
