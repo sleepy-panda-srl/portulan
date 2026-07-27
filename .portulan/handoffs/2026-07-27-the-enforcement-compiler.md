@@ -78,7 +78,22 @@ what `core/operating/loop.md` has promised since the cadence rule landed.
   mostly formatting rather than new measurement.
 - **The criterion was amended** (that row only) to name the session-end gate, which
   `core/operating/loop.md` had promised to this milestone while the row named only two of the three
-  things the doctrine owed here. An expansion, not a narrowing.
+  things the doctrine owed here. An expansion, not a narrowing — **and the amendment was itself
+  supervised in a fresh Fable 5 context**, per the standing rule for plan changes:
+  APPROVE-WITH-ADJUSTMENTS, four folded in. It verified the justification at `ca5c369` rather than
+  against files this session had edited (the promise entered with the cadence-rule commit itself); it
+  found the promise count true only under an unstated scope, since `autonomy.md`'s platform-floor
+  promise makes a **fourth**; it caught that the reconciliation principle had no *direction* and was
+  therefore loadable as an argument for striking `+ Copilot ruleset export`, which no doctrine backs —
+  the second time here a rule written to prevent one bad change could have authorised the next; and it
+  noted the gloss "a dated handoff exists" was satisfiable forever by any old handoff, where the code
+  demands one dated *that day*. Generalised as
+  [`../memory/a-doctrine-promise-belongs-in-the-row-it-names.md`](../memory/a-doctrine-promise-belongs-in-the-row-it-names.md).
+- **The handoff gate is now demonstrated, not merely built.** The supervisor pointed out it had neither
+  a test nor a demo behind its specific path — the earlier Stop-gate demo exercised the dead-link red.
+  So: recipe green, today's handoff moved aside, a scratch file making the session count as work. The
+  gate refused three times naming the exact date, then released at the cap. Both halves of the
+  Stop-gate now have a transcript.
 - **Two questions are still the maintainer's** and both were surfaced rather than assumed: what
   "Copilot ruleset export" means, and where `autonomy.md`'s promise that the compiler generates the
   *platform floor* configuration lands. The second matters — read literally, core doctrine promises
