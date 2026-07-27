@@ -3,7 +3,7 @@
 **What it is.** The Portulan monorepo: the engine, the spec, plugin packaging, the CLI, and the demo
 workspace, plus the manifest that makes the repository installable as a Claude Code plugin feed. Blast
 radius is the whole product — this is the only repository the product ships from, and when the
-public-flip clearance completes, its history becomes public and permanent.
+repository went public on 2026-07-27; its history is public and permanent.
 
 **Build / test / run.**
 - build: none — no build step yet; the CLI arrives at milestone 7
@@ -12,7 +12,7 @@ public-flip clearance completes, its history becomes public and permanent.
 
 **Gates.** Inherits [`../gate-map.md`](../gate-map.md) with no deviations. Two worth keeping in front of
 mind because they are unusual: [`../../docs/vision.md`](../../docs/vision.md) is never edited by an agent
-at all, and repository **visibility** is Gated — private until the public-flip clearance completes, by
+at all, and repository **visibility** is Gated — public since 2026-07-27; further visibility changes stay Gated, by
 decision, not by accident
 ([`../memory/repo-is-private-until-flip-clearance.md`](../memory/repo-is-private-until-flip-clearance.md)).
 
@@ -36,7 +36,7 @@ remaining top-level directories are scaffolding that fills in milestone by miles
 - A build-session bootstrap file at the repository root is deliberately git-ignored and never committed.
   If it appears in a diff, that is the bug.
 - History cleanliness is load-bearing here in a way it is not in most repositories: this history goes
-  public when the flip clearance completes, so the pre-commit scan ([`../dod.md`](../dod.md), condition
+  public since 2026-07-27, so the pre-commit scan ([`../dod.md`](../dod.md), condition
   5) runs before every commit rather than before releases.
 
 **Provenance.** Written in milestone 1, session 3 — the first repo card in the first real workspace.

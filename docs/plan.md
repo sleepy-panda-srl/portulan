@@ -897,9 +897,14 @@ the seam applies here too: no client-identifying references)_
   fresh Fable 5 context: APPROVE, zero required adjustments — the reviewer re-measured rather than
   read: suite 240/240 at baseline `4352569` via git archive and 244/244 at head, both stores' figures
   reproduced by independent byte sums (58035 B and 7827 B), all six recipes green; its one optional
-  note (an unreadable record is counted but never assessed for retirement) is deliberately not folded,
-  because that record already fails the run and hedging the common case to cover an already-red corner
-  is the wrong trade. Seam scan clean across files, commit message, and branch name.
+  note (an unreadable record is counted but never assessed for retirement) was folded in full one commit
+  later, on Copilot's review (`d3fa194`): the record is sized from stat so count and size agree on what
+  a record is, and the summary says every *readable* record — plus an unreadable count — instead of
+  claiming an assessment it never performed. The hedge is conditional, so the common green line is
+  unchanged when nothing is unreadable, which is what the original not-folding ruling was protecting.
+  *(This sentence rewritten 2026-07-27 on the supervisor's must-fix: the entry first said the note was
+  "deliberately not folded", written before the commit that folded it — a mechanical revert is not a
+  narrative revert, again.)* Seam scan clean across files, commit message, and branch name.
 
 - 2026-07-27 · post-M4-session-0 — no milestone row touched, and none was due · **Two maintainer rulings
   about how a pull request reaches `main`: nothing merges from behind it, and everything that reaches it
@@ -968,3 +973,17 @@ the seam applies here too: no client-identifying references)_
   `.portulan/gate-map.md`.** Nothing was merged by the session and no other session's pull request was
   touched. · Seam scan clean across files, commit message, and branch name. Handoff:
   [`.portulan/handoffs/2026-07-27-nothing-merges-behind-main.md`](../.portulan/handoffs/2026-07-27-nothing-merges-behind-main.md).
+- 2026-07-27 · post-M4-session-0 — no milestone row touched · **The repository went PUBLIC**, on the
+  maintainer's explicit directive, ahead of the clearance track's completion and on his stated
+  acceptance of that risk — his authorization to give, recorded as given. Before the flip: a knockout
+  trademark sweep (no PORTULAN/PORTOLAN in classes 9/42 in any register reached; nearest mark PORTOLANO,
+  textiles, unrelated; one coexistence disclosed — an academic language-science infrastructure with a
+  composite name, judged non-blocking; TMview unreachable, recorded as the sweep's limit), and a seam
+  scan of every surface the flip makes public — tree, full history, branch names, all 43 PR titles and   bodies, every review and issue comment: all clean, the PR-text surfaces swept for the first time. The
+  flip verified public by anonymous fetch. This entry ships in the truth-up PR correcting what the flip
+  falsified: README status, the private-until-clearance memory entry (retire-when fired; rule inverted
+  per its own clause), and one supervisor-must-fix sentence in the previous entry, rewritten with its
+  amendment note. · **Supervisor fidelity: the maintainer's real-time directive stood as the session
+  plan; the truth-up diff passed a fresh-context Fable 5 pre-commit review before push.** Handoff:
+  [`.portulan/handoffs/2026-07-27-the-public-flip.md`](../.portulan/handoffs/2026-07-27-the-public-flip.md).
+  Seam scan clean across files, commit message, and branch name.
