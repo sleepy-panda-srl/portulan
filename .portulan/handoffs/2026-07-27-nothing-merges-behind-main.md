@@ -130,13 +130,15 @@ change is how a summary drifts a second time. This entry's cross-reference point
 
 ## Open, and deliberately not closed here
 
-- **The demonstration is missing, and that is named rather than finessed.** The bar here is
-  *demonstrated, not asserted*, and no behind pull request was observed being refused: within the same
-  half-hour #41 and #42 merged and #43 rebased to `behind_by=0`, so every available subject synced
-  itself. A `BLOCKED` reading was caught on #43 between its `CLEAN` and its rebase, and one ambiguous
-  observation is not evidence — GitHub reports `BLOCKED` for several reasons and was mid-recompute. The
-  honest subject is **this** pull request: it was behind `main` when the setting landed, so its
-  pre-rebase `mergeStateStatus` is the measurement, and it belongs in proposal `0011` when taken.
+- ~~**The demonstration is missing.**~~ **Taken, on #46 itself.** The first attempt failed for an
+  uninteresting reason — within the same half-hour #41 and #42 merged and #43 rebased to `behind_by=0`,
+  so every available subject synced itself, and the `BLOCKED` reading caught on #43 mid-recompute is not
+  evidence. Then `main` moved two commits under this pull request during a review round and it read
+  **`BEHIND` / `MERGEABLE`, `mergeable_state: behind`, `behind_by: 2`**. `MERGEABLE` beside `BEHIND` is
+  the point: no textual conflict, git would merge it cleanly, and the platform refuses anyway. Recorded
+  in [`../proposals/0011-no-merge-from-behind-main.md`](../proposals/0011-no-merge-from-behind-main.md)
+  with its one limit — GitHub was observed *reporting* the refusal; no merge was attempted, because an
+  attempt that is not refused lands the change.
 - **Milestone 4's ruleset export** must now carry strict required status checks, or the exported floor
   will be weaker than the live one. Noted in the proposal for session 1; the criterion row is the
   maintainer's to change, so it was not edited.

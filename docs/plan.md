@@ -925,10 +925,13 @@ the seam applies here too: no client-identifying references)_
   not be dropped by a `PATCH` meant only to flip a boolean, and the whole protection object re-read
   afterwards (`enforce_admins`, conversation resolution, force-push and deletion blocks, review count —
   unmoved). It also obliges milestone 4's ruleset export to carry strict checks, noted there rather than
-  folded into the row. **The end-to-end demonstration is missing and is recorded as missing:** the three
-  behind pull requests all merged or rebased within the same half-hour, so no refusal was observed — a
-  `BLOCKED` reading on #43 mid-recompute is not evidence, and this repository does not accept that
-  standard elsewhere. This pull request, behind `main` when the setting landed, is the honest subject. **The session's own correction:** the first draft called the gate reason a second
+  folded into the row. **Demonstrated on this pull request, after a first attempt failed for an
+  uninteresting reason:** the three behind pull requests all merged or rebased within the same half-hour,
+  so no refusal was observable, and a `BLOCKED` reading on #43 mid-recompute is not evidence. Then `main`
+  moved two commits under #46 itself and it read **`BEHIND` / `MERGEABLE`, `behind_by: 2`** — no textual
+  conflict, git would merge it cleanly, and the platform refuses anyway, which is the whole purchase. The
+  same state read `CLEAN` before the setting. Limit named: what was observed is GitHub reporting the
+  refusal, not a merge attempted and rejected — a merge attempt that is not refused lands the change. **The session's own correction:** the first draft called the gate reason a second
   enforcement layer; `.portulan/compile/gate.mjs` records the measurement that the host discards a hook's
   reason whenever a permission rule matches, so that sentence reaches an agent only on the wrapped
   spelling — a fresh instance of `a-stated-enforcer-must-be-the-real-one`, caught in the session that was

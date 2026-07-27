@@ -90,11 +90,29 @@ the hole [`0001`](0001-platform-floor-on-main.md) closed and this change must no
 whole protection object was then re-read: `enforce_admins: true`, conversation resolution on, force-pushes
 and deletion blocked, reviews 0, check pinned to 15368 — nothing else moved.
 
-**What is NOT demonstrated, and it should have been.** This repository's bar is *demonstrated, not
-asserted*, and the end-to-end demonstration — a behind pull request reporting `BEHIND` and refusing to
-merge — is not in hand. The three pull requests that were behind when the ruling was taken all merged or
-rebased within the same half-hour: #41 and #42 landed, #43 rebased to `behind_by=0`. A `BLOCKED` reading
-was captured on #43 mid-recompute, between `CLEAN` and its rebase, and one ambiguous observation is not a
-demonstration — it is exactly the kind of evidence this repository does not accept elsewhere. The pull
-request carrying this proposal is the honest subject: it was behind `main` when the setting landed, and
-whether it reports `BEHIND` before its rebase is the measurement to record here when it is taken.
+**Demonstrated, not asserted — on the pull request carrying this proposal.** The first attempt at a
+demonstration failed for an uninteresting reason and is recorded so the second is not mistaken for the
+first: the three pull requests that were behind when the ruling was taken all merged or rebased within
+the same half-hour (#41 and #42 landed, #43 rebased to `behind_by=0`), so every subject synced itself. A
+`BLOCKED` reading was caught on #43 mid-recompute, and one ambiguous observation is not evidence — GitHub
+reports `BLOCKED` for several reasons.
+
+The real one came from **#46**, this proposal's own pull request, when `main` moved two commits under it
+while a review round was being addressed:
+
+```
+$ gh pr view 46 --json mergeStateStatus,mergeable   → BEHIND / MERGEABLE
+$ gh api …/pulls/46 --jq .mergeable_state           → behind
+$ gh api …/compare/main...how-a-pull-request-reaches-main --jq .behind_by  → 2
+```
+
+`MERGEABLE` beside `BEHIND` is the whole point: there is **no textual conflict** — git would merge this
+cleanly — and the platform refuses anyway, because the green check on it describes a merge with a `main`
+that is two commits gone. Before the setting, that same state read `CLEAN` and was mergeable on the spot.
+That is the before-and-after this proposal exists to produce.
+
+**The honest limit on this evidence:** what was observed is GitHub *reporting* the refusal, not a merge
+being attempted and rejected. The direct-push demonstration in [`0001`](0001-platform-floor-on-main.md)
+could be run because a rejected push changes nothing; a merge attempt that is *not* refused would land
+the change, so it is deliberately not run — the same reasoning that leaves the ruleset-bypass interaction
+untested in [`../gate-map.md`](../gate-map.md).
