@@ -187,6 +187,24 @@ describe("refusing what it cannot compile", () => {
         assert.doesNotThrow(() => compile(p));
     });
 
+    for (const kind of ["write", "read"]) {
+        test(`an absolute ${kind} target refuses rather than being silently made relative`, () => {
+            // `pattern()` and `matchesPath()` both strip the leading slash, so `/etc/passwd` compiled
+            // to `Edit(./etc/passwd)` and matched any path ENDING in `/etc/passwd` — a gate enforcing
+            // something both different from and broader than the policy's own words. The same
+            // "refuse rather than escape" reasoning as the reserved-character check. Found by review.
+            const p = policy();
+            p.rules[0].action = { [kind]: "/etc/passwd" };
+            assert.throws(() => compile(p), CompileError);
+        });
+    }
+
+    test("an absolute shell target still compiles — it is a command spelling, not a rewritten path", () => {
+        const p = policy();
+        p.rules[1].action = { shell: "/usr/bin/git push" };
+        assert.doesNotThrow(() => compile(p));
+    });
+
     test("a policy whose spec version has never shipped refuses", () => {
         assert.throws(() => compile(policy({ portulan: { spec: "99.0" } })), CompileError);
     });
@@ -338,6 +356,26 @@ describe("the shared matcher", () => {
 
     test("an unrelated command matches nothing", () => {
         assert.ok(!matchesRule({ action: { shell: "git push" } }, "Bash", { command: "git status" }));
+    });
+
+    test("a shell target ending in `/` is a path prefix, and covers what is under it", () => {
+        // The two halves of compile.mjs must agree about what a target covers. They did not: the
+        // emitted `Bash(./.portulan/verify/:*)` prefix-matches the command string on the host, while
+        // this matcher required an exact hit or a space after the target — which a path never has.
+        // No rule was mis-enforced by it: the one target of this shape in ../.portulan/gates.json is
+        // `auto`, so it compiles to nothing and the runtime gate never reads it. The divergence was
+        // the defect, and this test is what keeps the two halves one. Found by review on #31.
+        const rule = { tier: "gated", action: { shell: "./.portulan/verify/" } };
+        assert.ok(matchesRule(rule, "Bash", { command: "./.portulan/verify/docs.sh" }));
+        assert.ok(matchesRule(rule, "Bash", { command: "./.portulan/verify/tests.sh --quiet" }));
+        assert.ok(matchesRule(rule, "Bash", { command: 'bash -c "./.portulan/verify/docs.sh"' }), "through a wrapper too");
+        assert.ok(!matchesRule(rule, "Bash", { command: "./.portulan/verifyx/docs.sh" }), "the slash is the boundary");
+    });
+
+    test("a trailing slash does not loosen an ordinary command prefix", () => {
+        // The subtree reading applies to targets that end in `/` and nothing else: `git push` must
+        // still refuse `git pushall`, or the fix above would have widened every gate in the policy.
+        assert.ok(!matchesRule({ action: { shell: "git push" } }, "Bash", { command: "git pushall" }));
     });
 
     test("the limit is asserted, not just documented: two wrappers still escape", () => {

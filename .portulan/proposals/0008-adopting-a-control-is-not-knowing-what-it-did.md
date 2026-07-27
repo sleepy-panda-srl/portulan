@@ -1,6 +1,6 @@
 # Proposal — the stated enforcer, and the prose a change falsifies
 
-**Status: REVISED 2026-07-27, still PROPOSED.** Not applied. Marius's decision on the first draft was
+**Status: PROPOSED, revised 2026-07-27.** Not applied. Marius's decision on the first draft was
 **revise, not accept**: the diagnosis was right and the directions were wrong. This is the revision.
 The first draft is described rather than deleted, because *why* that set failed is the most useful thing
 this document knows.

@@ -23,13 +23,18 @@
 
 set -uo pipefail
 
+# Every external command this recipe runs — see ./docs.sh for the measurement behind the shape.
+# This recipe invokes only `node`, and was already correct; the guard is here for uniformity, so
+# that a later edit reaching for `grep` inherits the rule instead of rediscovering it.
+for need in dirname node; do
+    command -v "$need" >/dev/null 2>&1 || {
+        printf 'verify: %s not found — this recipe needs it; see .portulan/verify/README.md\n' "$need" >&2
+        exit 2
+    }
+done
+
 root=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." && pwd) || exit 2
 cd -- "$root" || exit 2
-
-command -v node >/dev/null 2>&1 || {
-    printf 'verify: node not found — this recipe needs it; see .portulan/verify/README.md\n' >&2
-    exit 2
-}
 
 # The validator's own presence is a precondition, not a red. `node cli/compile.mjs` on a missing file
 # exits 1, and passing that through would report "the enforcement has drifted" about an artifact

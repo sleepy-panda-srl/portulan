@@ -25,9 +25,23 @@ input produces exit `2`. Both runs are in
 list, a glob, a manifest of recipes, a directory walk. The test is simple: if this command returned
 nothing, would the recipe still print green? If yes, it is a precondition and needs its own guard.
 
+**Second instance, 2026-07-27: a command that is absent returns nothing too.** The rule was written
+about a precondition that *ran and failed*; a precondition that was never installed produces the same
+empty output and the same green. Measured across all six recipes by removing one utility at a time from
+`PATH`: **eleven false greens** — `docs.sh` on `sed`/`sort`/`wc`, `doctor.sh` on `sort`/`tr`, `json.sh`
+on `grep`/`sed`/`tr`/`wc`, `plugin.sh` on `sort`/`tr` — plus five runs that went red overall while
+individual checks still printed `ok`, among them `docs.sh` printing `ok    map` having examined zero
+directories. Each recipe now guards **every external command it runs**, exiting `2`, and the same probe
+returns `2` in all thirty cases. So the rule's reach is the *list of inputs*, not only the command that
+builds it: a dependency is a precondition.
+
 **A note on where this came from, since it matters for how much to trust the recipes.** It was found by
 an automated reviewer, not by the checks themselves — nothing in this repository tests its own verify
-recipes, which [`../verify/README.md`](../verify/README.md) states plainly. Related:
+recipes, which [`../verify/README.md`](../verify/README.md) states plainly. **Both instances were**, and
+the second had been sitting in the open for three days: it was raised on #3 as a Copilot comment
+*suppressed due to low confidence*, which GitHub renders inside the review body rather than as a review
+thread — so it was never resolvable, never blocked a merge, and appears nowhere in the repository's
+record of addressed feedback. The reviewer was right and the confidence score was wrong. Related:
 [`readme-map-must-match-shape.md`](readme-map-must-match-shape.md), the other rule minted from a defect
 rather than stated in advance.
 

@@ -86,6 +86,11 @@ manifest being absent, not by the audit.
 `cut`, `tail`, `tr`, `dirname`, `mktemp`, and `rm` as of milestone 4 — and nothing else, which is worth
 preserving: a recipe that needs a toolchain is a recipe that stops being run.
 
+**Every recipe now checks its own list before it runs a check**, exiting `2`. That list and this
+paragraph are the same claim in two places and are edited together; the guard is the enforcer, and this
+is the prose. It is not defensive coding — until 2026-07-27 the recipes guarded only `git` or `node`,
+and the rest of the list was assumed. See Provenance below for what that cost.
+
 **Why `json.sh` breaks that rule, deliberately.** Milestone 2 introduced the first JSON this repository
 *depends* on rather than merely carries, and well-formedness is a parser's judgement: bash can only
 approximate it, and an approximation would pass files it does not understand — a false green, which is
@@ -187,6 +192,20 @@ carried it since milestone 1, session 3; `json.sh` inherited it by being modelle
 how a defect in an exemplar becomes a defect in a family. Enumerating the tree is now a **precondition**
 in both: it fails `2`, not `0`. Recorded as
 [`../memory/verify-preconditions-fail-closed.md`](../memory/verify-preconditions-fail-closed.md).
+
+**And that rule turned out to be narrower than the defect it was minted from — measured 2026-07-27.**
+It named the case where a precondition *runs and fails*; a utility that is simply not installed
+produces the identical empty output and the identical green. Removing one command at a time from
+`PATH` across all six recipes found **eleven false greens** — `docs.sh` on `sed`, `sort` or `wc`;
+`doctor.sh` on `sort` or `tr`; `json.sh` on `grep`, `sed`, `tr` or `wc`; `plugin.sh` on `sort` or `tr`
+— and five more runs that went red overall while individual checks still printed `ok`. The sharpest of
+those: with `awk` gone, `docs.sh` printed `ok    map — every top-level entry is documented in
+README.md` having enumerated **zero** directories, in a check whose own comment already warns about
+reporting green over an entry it never looked at. Only `tests.sh` and `compile.sh` were clean
+throughout. Each recipe now guards its whole list up front and the probe returns `2` in all thirty
+cases. Provenance: a Copilot review comment on [#3](https://github.com/sleepy-panda-works/portulan/pull/3)
+that said exactly this, three days earlier, and was filed *suppressed due to low confidence* — a form
+that never becomes a review thread and therefore can never be resolved or block a merge.
 
 ## Known limits
 
