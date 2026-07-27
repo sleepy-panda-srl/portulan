@@ -7,9 +7,11 @@ Gated, and this branch's first push is the maintainer's call.
 
 `.portulan/gates.json` is the gate policy as data, and `cli/compile.mjs` turns it into
 `.claude/settings.json` — permission rules and hooks — with `compile --check` declared as the **sixth
-verify recipe**, so a policy edited without recompiling will fail CI with no workflow edit. That is
-proposal 0004's mechanism paying out a fourth time. (Conditional on purpose: the branch is unpushed, so
-CI has not run it. The red→green was demonstrated locally.) `.portulan/compile/gate.mjs` and `stop.mjs` are
+verify recipe**, so a policy edited without recompiling fails CI with no workflow edit. That is
+proposal 0004's mechanism paying out a fourth time — and it was **collected**: the `workspace-verify` job
+on [#31](https://github.com/sleepy-panda-works/portulan/pull/31) ran `compile — ./.portulan/verify/compile.sh`
+and reported `10 compiled, 12 refused`, GREEN, with no workflow edit in the diff. Written as a conditional
+until that run existed. `.portulan/compile/gate.mjs` and `stop.mjs` are
 the runtime the artifact points at. Spec 2.0 → **2.1**: one optional `gates` key, additive.
 
 Both demo clauses of the criterion ran against a **live host**, in this repository, with the compiled
