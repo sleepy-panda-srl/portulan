@@ -71,6 +71,9 @@ jobs:
           PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
           set -uo pipefail
+          # No globbing: the reviewer logins below contain `[bot]`, which an unquoted
+          # expansion would treat as a character class and match against filenames.
+          set -f
 
           # The reviewer logins that count. Lower-case; compared lower-cased.
           REVIEWERS='copilot-pull-request-reviewer[bot] copilot copilot[bot]'
