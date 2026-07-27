@@ -76,6 +76,31 @@ One consequence is honest and unmeasured: a broad local `Bash` allow sits invisi
 gates. A compiled `deny`/`ask` beats an `allow` on the *same* pattern; what a broad local allow does to
 the **wrapper** spelling has not been measured and is not claimed either way.
 
+## Designed for, not built: pack-contributed gate rules
+
+The cascade is `core < pack < workspace`, and
+[`../../packs/tools/README.md`](../../packs/tools/README.md) has promised since it was written that a tool
+pack ships "with the gate classification for each" — so pack-contributed rules are **promised**, not merely
+unprecluded. Marius agreed the direction on 2026-07-27, with one constraint that is the whole of why it is
+safe:
+
+> **Packs may only tighten.** A pack may raise a tier or add a prohibition. It may never demote another
+> layer's classification.
+
+The reason is supply-chain shaped rather than aesthetic: a composed-in third-party artifact that could
+quietly demote `push` from Gated to Auto would be a dependency with the power to disarm the gate that
+exists to contain it — and the demotion would look exactly like configuration. Tighten-only means the worst
+a hostile or careless pack can do is make a workspace *more* cautious, which is a bug rather than a breach.
+The **workspace** may still override explicitly in its own gate map, because it owns its policy — with
+core's `prohibited` entries excepted, since those are grantable only through the evolution gate.
+
+**Nothing is built.** No pack exists, and a slot before its consumer is the mistake the Workspace
+Definition was written to avoid. What was done instead is smaller and is the same move as modelling
+`products` as an array with one product: the policy is a **list of id-addressed rules with no dependence on
+being the only source**, so a future merge step — later layers tightening earlier ones — is an addition
+rather than a redesign. The compiler's accounting already reports per-rule outcomes, which is the shape a
+merge would need to explain itself.
+
 ## The limits, stated where somebody will meet them
 
 - **One level of wrapper unwrapping, and no more.** Deeper nesting, a heredoc, an interpolated
@@ -87,11 +112,18 @@ the **wrapper** spelling has not been measured and is not claimed either way.
   the floor "the gate that holds when everything above it fails", and this is the thing above it.
 - **The Stop event is not the doctrine's "end of task".** It fires when the agent finishes any
   response, so a gate blocking on every red would make a red working copy undriveable — including by
-  the session opened to fix the red. Hence the cap of three **refusals** per session — a real weakening,
-  stated as one: an agent refused enough times ends anyway, with the unresolved problems printed each
-  time. CI still refuses the merge. This gate makes a red *unmissable*, not *binding*. **Refusals, not
-  stops:** the first version charged every Stop event, so an ordinary session spent its budget on green
-  turns and a genuine red then passed with a note. A green stop is free.
+  the session opened to fix the red. Hence the cap — a real weakening, stated as one: an agent refused
+  enough times ends anyway, with the unresolved problems printed each time. CI still refuses the merge.
+  This gate makes a red *unmissable*, not *binding*.
+- **The cap counts three CONSECUTIVE refusals and resets on an observed green run of the governing
+  recipe** — because it exists to end a *futile-retry episode*, not to ration a long honest session that
+  hits and properly fixes several unrelated reds, which would be ceremony that cannot scale down.
+  (Maintainer's ruling, 2026-07-27.) Two riders: **refusals, not stops** — the first version charged every
+  Stop event, so a session spent its budget on green turns and a genuine red then passed with a note; and
+  an **absolute ceiling of nine** that does not reset, because the reset keys off the *recipe* while the
+  gate refuses for two reasons, so a green recipe beside a missing handoff would otherwise reset forever
+  and the gate could never stop. The ceiling is an addition to the ruling, not a reading of it, and was
+  surfaced as such.
 - **Nothing here is checked by CI.** The `compile` recipe proves the artifact matches the policy. It
   cannot prove the host honours it, because CI installs nothing by stated doctrine — the same boundary
   that keeps `claude plugin validate --strict` out of the recipes

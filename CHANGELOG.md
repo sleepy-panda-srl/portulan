@@ -31,7 +31,7 @@ would leave a policy that reads as enforced and a machine that enforces nothing.
 **A Stop-gate that actually blocks.** [`.portulan/compile/stop.mjs`](.portulan/compile/stop.mjs) runs the
 workspace's default verify recipe when an agent tries to end its turn, and blocks on red *or* on exit 2 —
 "nothing looked" must never read as "nothing wrong". It also enforces the session-end handoff, which
-`core/operating/loop.md` had promised to this milestone. Capped at three blocks per session, because a
+`core/operating/loop.md` had promised to this milestone. Capped at three **consecutive** refusals, resetting on an observed green run of the governing recipe (the cap ends a futile-retry episode, not a long honest session), with an absolute ceiling of nine that does not reset — because a
 host's end-of-turn event is not the doctrine's "task finished" and a gate that cannot stop is a hang.
 
 **Workspace Definition 2.1** — one optional `gates` key, additive. `slots.gates` keeps the prose that

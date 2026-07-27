@@ -21,7 +21,7 @@
 | A **machine-readable manifest**, validated | [`../../workspace.json`](../../workspace.json) | Names every slot and where it lives, so an agent can find the policy layer without guessing at directory conventions — and [`doctor`](../../../cli/doctor.mjs) fails CI if a slot points at something absent, so a path read from here can be trusted to exist. |
 | A **claims lint against this tree** | [`../../repos/portulan.md`](../../repos/portulan.md), [`../../gate-map.md`](../../gate-map.md) | The repo card's build/test/run and layout paths, and the gate map's required-check name, are checked against the actual tree. Two limits: only path-shaped tokens are checked, and live branch-protection settings are not fetched. |
 | **Templates for every artifact** | [`../../../core/templates/`](../../../core/templates/) | Repo card · task · handoff · proposal · memory entry. Placeholders are in `{braces}`; fill and delete what does not apply. |
-| **Actions bound to tiers** | [`../../gate-map.md`](../../gate-map.md) | Every concrete action this repository permits is classified Auto / Propose / Gated, so an agent can tell unattended work from work that needs a human. |
+| **Actions bound to tiers** | [`../../gate-map.md`](../../gate-map.md) | Every concrete action this repository permits is classified Auto / Propose / Gated / Prohibited, so an agent can tell unattended work from work that needs a human — and from work no yes makes acceptable. |
 | A **dated handoff series** | [`../../handoffs/`](../../handoffs/) | Filenames lead with an ISO date, so the series sorts chronologically and is machine-consumable without parsing prose. |
 | **Memory with retirement conditions** | [`../../memory/`](../../memory/) | One fact per file, each with provenance and a "retire when" clause — so a rule can be judged, not just obeyed. |
 | **Network-free, deterministic checks** | [`../../verify/README.md`](../../verify/README.md) | Nothing fetches. A check that fails for reasons unrelated to the change under test is worse than no check. |
@@ -32,7 +32,7 @@
 Written at the same level of detail, because a legibility report that lists only strengths is marketing.
 
 - **The Stop-gate runs one recipe, not six.** Since milestone 4 it runs the workspace **default** and
-  blocks "done" on a red or an exit 2 — and releases the session after three blocks. The other five are
+  blocks "done" on a red, an exit 2, or a recipe it could not execute — and releases after three consecutive refusals, or nine in all. The other five are
   still condition 1 of [`../../dod.md`](../../dod.md) and a habit.
 - **Two of the four tiers compile; two do not.** Gated actions prompt and the constitution is refused,
   from [`../../gates.json`](../../gates.json). `auto` and `propose` emit nothing — the compiler adds
