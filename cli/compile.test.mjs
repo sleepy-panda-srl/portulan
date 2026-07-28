@@ -34,6 +34,8 @@ import {
     matchesRule,
     matchesPath,
     policyPath,
+    FILE_WRITERS,
+    IN_PLACE_EDITORS,
 } from "./compile.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -413,7 +415,14 @@ describe("the Claude Code backend", () => {
         // run rather than left for a reader to infer from an absence.
         const result = claudeCode(parse(policy()));
         const permissions = [...result.artifact.value.permissions.deny, ...result.artifact.value.permissions.ask];
-        assert.ok(!permissions.some((p) => /^Bash\((cp|sed|tee|mv|rm)/.test(p)), "gating the utility is not gating the path");
+        // Derived from the real tables rather than a hand-listed subset. This read
+        // `/^Bash\((cp|sed|tee|mv|rm)/` until 2026-07-28 — five of the fourteen — so a change that
+        // began emitting `Bash(ln:*)` or `Bash(dd:*)` would have passed while violating exactly the
+        // guarantee this asserts. Found by Copilot review on #60. Deriving it means the next entry
+        // added to either table is covered without anyone remembering to widen a regex.
+        const utilities = [...FILE_WRITERS, ...IN_PLACE_EDITORS];
+        const leaked = permissions.filter((p) => utilities.some((u) => p.startsWith(`Bash(${u}`)));
+        assert.deepEqual(leaked, [], "gating the utility is not gating the path");
         assert.ok(
             result.notes.some((n) => /FAILS OPEN/.test(n) && /heredoc/.test(n)),
             "the layer that fails open, and what it misses, are both named",

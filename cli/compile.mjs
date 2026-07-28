@@ -331,7 +331,7 @@ export function spellings(raw) {
 // uncovered writer in this repository, which is why ../.portulan/gate-map.md names it rather than leaving
 // it inside "any writer outside the table".
 /** Commands whose job is to write, replace or remove a file they NAME on their own command line. */
-const FILE_WRITERS = new Set(["cp", "mv", "ln", "rm", "tee", "dd", "install", "truncate", "shred", "patch"]);
+export const FILE_WRITERS = new Set(["cp", "mv", "ln", "rm", "tee", "dd", "install", "truncate", "shred", "patch"]);
 
 /**
  * Editors that READ their arguments by default and write them only under an in-place flag.
@@ -340,7 +340,7 @@ const FILE_WRITERS = new Set(["cp", "mv", "ln", "rm", "tee", "dd", "install", "t
  * `sed -n '1,5p' docs/vision.md` — which is a *read*, and which this policy declares Auto. A matcher
  * that contradicts a declared tier is worse than one that admits a gap.
  */
-const IN_PLACE_EDITORS = new Set(["sed", "gsed", "perl", "ruby"]);
+export const IN_PLACE_EDITORS = new Set(["sed", "gsed", "perl", "ruby"]);
 
 /** Words that stand in front of the command that actually runs. Recognised, not parsed: `sudo cp …` is seen, `sudo -u someone cp …` is not. */
 const COMMAND_PREFIXES = new Set(["sudo", "env", "command", "builtin", "exec", "nohup", "nice", "time"]);
@@ -916,7 +916,7 @@ export function claudeCode(parsed, options = {}) {
                 `\`${[...IN_PLACE_EDITORS].join("`/`")}\` under an in-place flag. This half is the HOOK's alone and therefore ` +
                 `FAILS OPEN if the hook does: \`Bash(prefix:*)\` matches a command prefix while the path sits anywhere in the ` +
                 `command, so no permission rule expresses it. A heredoc, an interpolated variable, a command assembled at ` +
-                `runtime, a runtime writing the file itself (\`python -c\`), or any writer outside that table still reaches ` +
+                `runtime, a runtime writing the file itself (\`python3 -c\`), or any writer outside that table still reaches ` +
                 `the path. The platform floor is what covers those.`,
         );
     }
