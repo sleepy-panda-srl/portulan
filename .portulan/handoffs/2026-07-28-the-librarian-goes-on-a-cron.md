@@ -5,7 +5,7 @@
 
 **State.** Clauses 4 and 5 of the row, in one pull request: `cli/librarian.mjs` and its suite,
 `.github/workflows/librarian.yml`, spec 2.3 → 2.4, `docs.sh`'s new `proposal` check, pull-request
-pointers on all fourteen existing proposals, and proposal `0015`. Suite 499 → **582**; all eight
+pointers on all fourteen existing proposals, and proposal `0015`. Suite 499 → **584**; all eight
 recipes green, each exit code read — `proposal` only after [#81](https://github.com/sleepy-panda-works/portulan/pull/81)
 existed to be named, which is the one red this change ships with and clears itself. **The first real pull request has not been filed yet** — it needs
 the merge plus the two repository secrets, which are the maintainer's. Two clauses the row gained this
@@ -175,7 +175,21 @@ were real, in code that has never executed**:
   nobody is watching. Now a `doctor` failure — and the memory budgets, which were missing the identical
   check, are fixed in the same stroke as siblings of one class rather than left for the next round.
 
-Anything after this becomes an issue.
+**Round four found the loose end round three's fix left, and it is the same shape one turn on.** The
+rename from `drifted` to `regenerated` missed one site in `run`'s summary, so that branch became
+**dead** — the pass could never say it had regenerated anything. Finished rather than filed, on the
+precedent this repository set at #73 round five: a loose end in this session's own just-written code is
+finishing the change, not another round of it. The transferable half is smaller and sharper than the
+patch: **a rename with no test on the renamed branch is how a field goes quietly unread**, and there
+was no test on it, which is why the rename passed a green suite.
+
+Two other claims in that round were **wrong, and are now asserted rather than argued**: optional
+chaining short-circuits the *whole* member chain, so `result.proposals?.filter(…).length ?? 0` yields
+`0` rather than throwing when a workspace declares no `slots.proposals`. Measured — `examples` takes
+that path on every real run and always has. Two tests pin it, so the next reader does not re-derive it.
+
+**Everything after round four becomes an issue**, and [#82](https://github.com/sleepy-panda-works/portulan/issues/82)
+is the one that remains: the handoff-series index the row gained mid-flight.
 
 ## Open questions
 
