@@ -556,11 +556,17 @@ function jqVersion() {
     return result.stdout.trim();
 }
 
+// No `encoding` — stdout comes back as a Buffer and is compared as bytes.
+//
+// It read `encoding: "utf8"` first, which decodes before comparing, and a Copilot round on #64 said
+// so: the header two screens up promised a byte-for-byte comparison and the code delivered a string
+// one. For valid UTF-8 the two agree, so nothing was passing that should have failed — but the
+// promise was still wider than the code, and a decode step is exactly where a difference goes
+// missing (two invalid sequences both become U+FFFD and compare equal). Fixed in the direction that
+// keeps the promise rather than by trimming the promise, because what this recipe asserts about
+// **jq's output** is the whole of its value.
 function runCase(program, testCase) {
-    const result = spawnSync("jq", [...program.flags, program.filter], {
-        input: testCase.input,
-        encoding: "utf8",
-    });
+    const result = spawnSync("jq", [...program.flags, program.filter], { input: testCase.input });
     if (result.error) {
         throw new CouldNotRun(
             result.error.code === "ENOENT"
@@ -572,8 +578,13 @@ function runCase(program, testCase) {
         throw new CouldNotRun(`jq was killed by ${result.signal} on fixture \`${testCase.id}\``);
     }
     const faults = [];
-    if (result.stdout !== testCase.stdout) {
-        faults.push(`stdout ${JSON.stringify(result.stdout)}, expected ${JSON.stringify(testCase.stdout)}`);
+    const expected = Buffer.from(testCase.stdout, "utf8");
+    if (!result.stdout.equals(expected)) {
+        // Decoded for the message only. The verdict above is the bytes; this is what a person reads.
+        faults.push(
+            `stdout ${JSON.stringify(result.stdout.toString("utf8"))}, `
+                + `expected ${JSON.stringify(testCase.stdout)}`,
+        );
     }
     if (result.status !== testCase.status) {
         faults.push(`exit ${result.status}, expected ${testCase.status}`);
