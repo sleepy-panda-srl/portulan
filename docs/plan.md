@@ -1586,3 +1586,13 @@ _The seam applies here too: no client-identifying references._
   plan.md. · Fidelity: session-open APPROVE-WITH-ADJUSTMENTS (11) and pre-commit APPROVE-WITH-ADJUSTMENTS
   (4), all folded in; the implementation ran ahead of the first verdict, recorded in the handoff. Seam
   scan clean. Handoff: [`…rail.md`](../.portulan/handoffs/2026-07-28-the-record-gets-its-rail.md).
+- 2026-07-28 · M5 · M6 · M7 · M8 · M10 criteria amended — no Status moved · **The rows name what they
+  owe** — [#80](https://github.com/sleepy-panda-works/portulan/pull/80). Five rows gain deliverables and
+  none loses one: M5's librarian reindexes and ages the **handoff series**, 3.4× the store it already
+  indexes and the layer `core/operating/loop.md` has promised this row since the cadence rule; M8 gains
+  gate fixtures, mutation, fuzzing, review metering, forced-red drills; M7 names the legibility score,
+  M10 the Portulan Factors, M6 its resolving pack as the checkpoint ritual. R3's three sentences land in
+  the gate map; `dod.md` 7 cites the trigger rather than restating it. A handoff *budget* is refused in
+  the row and put to Marius. · Fidelity: session-open APPROVE-WITH-ADJUSTMENTS (9) — four drafted
+  sentences contradicted their own cited record — and pre-commit APPROVE-WITH-ADJUSTMENTS (2, both on
+  these records); all folded in. Eight recipes green, suite 499. Seam scan clean. Handoff: [`…owe.md`](../.portulan/handoffs/2026-07-28-the-rows-name-what-they-owe.md).
