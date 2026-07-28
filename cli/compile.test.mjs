@@ -917,6 +917,22 @@ describe("the shared matcher", () => {
         });
     }
 
+    // `matchesRule` documents that it never throws, and that promise is load-bearing rather than
+    // tidy: ../.portulan/compile/gate.mjs catches and steps aside, so an exception here does not
+    // surface as an error — it silently removes whatever gate was being evaluated. For the shell
+    // half of `edit-the-constitution` that is the only layer there is (hole 3), so a throw is a
+    // fail-open wearing a stack trace.
+    //
+    // It threw on all four of these until 2026-07-28, introduced on this branch by the fix that
+    // began passing the raw payload to `commandSegments` instead of an already-stringified spelling.
+    // Found by Copilot review on #60.
+    for (const input of [{}, { command: undefined }, { command: null }, { command: 123 }, { command: {} }]) {
+        test(`the never-throws contract holds for a Bash payload of ${JSON.stringify(input)}`, () => {
+            const rule = { tier: "gated", action: { shell: "git push --force" } };
+            assert.equal(matchesRule(rule, "Bash", input), false, "a payload with no readable command matches nothing");
+        });
+    }
+
     test("the limit is asserted, not just documented: two wrappers still escape", () => {
         // Recorded as a test so that anyone tempted to call this layer a rail meets the counterexample.
         // The platform floor is what covers this — ../core/operating/autonomy.md.
