@@ -171,9 +171,12 @@ citing an id no policy declares is the dangling pointer this document's own rail
 session the cost was not small — branch-protection and ruleset reads are ordinary traffic, and every one
 of them stopped for a dialog the maintainer had not asked for.
 
-The narrower rule was never available. Both matchers here are **prefix** matchers — `matchesRule` in
-[`compile/gate.mjs`](compile/gate.mjs) and the emitted `Bash(gh api:*)` on the host — and neither
-language has negation, so *"`gh api` except when it writes"* cannot be said in either. The two are not
+The narrower rule was never available while the gate stood. Both matchers open to it were **prefix**
+matchers — `matchesRule` in [`compile/gate.mjs`](compile/gate.mjs), and on the host a `Bash(<prefix>:*)`
+rule, the shape this policy compiles every shell gate into — and neither language has negation, so
+*"`gh api` except when it writes"* cannot be said in either. (The entry that shape produced here,
+`Bash(gh api:*)`, is the one this change removes; it is named in the past tense on purpose, since a
+reader arriving after the merge will not find it in [`../.claude/settings.json`](../.claude/settings.json).) The two are not
 separable by prefix in any case: `gh api` switches to `POST` on its own the moment a request parameter
 is added, so `gh api repos/x/y -f name=z` is a write with no `-X` in it. A rule spelled `gh api -X`
 would have read as a gate and missed the ordinary write — the failure
