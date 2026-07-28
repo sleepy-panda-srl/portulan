@@ -608,6 +608,60 @@ function namesTarget(word, target, orAncestor = false) {
 }
 
 /**
+ * The commands in a shell line, as SOURCE text, split on unquoted separators.
+ *
+ * The shell matcher below prefix-matches a command string, which meant a gate held only when its
+ * command came FIRST: `ls && git push --force origin main` reached no gate, and neither did
+ * `git status; gh pr merge 60` or `cd . && gh repo delete foo`. Every Gated outward action in
+ * ../.portulan/gates.json was defeated by putting anything in front of it.
+ *
+ * That is the same defect as the `write:` one this change began with — a matcher reading only the
+ * head of a command string — one action kind over, so it is fixed in the same stroke rather than
+ * left as a sibling nobody comes back for. Found by the fresh-context supervisor at the pre-merge
+ * checkpoint, which is exactly the class it was asked to hunt.
+ *
+ * Quoting is respected, so `echo "git push --force"` still splits into one segment that no gate
+ * matches; and each segment keeps the whitespace boundary the prefix match relies on, so
+ * `--force-with-lease` stays Auto.
+ */
+function commandSegments(raw) {
+    // `String(raw ?? "")`, for the reason `spellings` does the same: `matchesRule` promises never to
+    // throw, and a Bash payload carrying no `command` — a malformed host message, a renamed field, a
+    // test — would otherwise reach `stripHeredocs` and die on `.split`.
+    //
+    // What that costs is not an exception some caller reports. ../.portulan/compile/gate.mjs catches
+    // and steps aside, so the throw would SILENTLY remove the shell-write half of the constitution
+    // gate — hole 3, the half with no permission rule beneath it. Introduced earlier on this branch
+    // by the segment-composition fix, which began passing the raw payload here in place of a spelling
+    // that had already been stringified. Found by Copilot review on #60.
+    const command = stripHeredocs(String(raw ?? ""));
+    const out = [];
+    let start = 0;
+    let quote = null;
+    for (let i = 0; i < command.length; i += 1) {
+        const c = command[i];
+        if (quote) {
+            if (c === quote) quote = null;
+            continue;
+        }
+        if (c === "'" || c === '"') {
+            quote = c;
+            continue;
+        }
+        if (c === "\\") {
+            i += 1;
+            continue;
+        }
+        if (";|&()\n\r".includes(c)) {
+            out.push(command.slice(start, i));
+            start = i + 1;
+        }
+    }
+    out.push(command.slice(start));
+    return out.map((s) => s.trim()).filter(Boolean);
+}
+
+/**
  * Does this shell command write a path a `write:` rule protects?
  *
  * The permission layer cannot ask this. `Bash(prefix:*)` matches a literal command PREFIX and the
@@ -642,51 +696,6 @@ function namesTarget(word, target, orAncestor = false) {
  * whose whole reason is that the file must not change. A false red here costs one prompt on a rare
  * operation; a false green costs the laundering the rule exists to prevent.
  */
-/**
- * The commands in a shell line, as SOURCE text, split on unquoted separators.
- *
- * The shell matcher below prefix-matches a command string, which meant a gate held only when its
- * command came FIRST: `ls && git push --force origin main` reached no gate, and neither did
- * `git status; gh pr merge 60` or `cd . && gh repo delete foo`. Every Gated outward action in
- * ../.portulan/gates.json was defeated by putting anything in front of it.
- *
- * That is the same defect as the `write:` one this change began with — a matcher reading only the
- * head of a command string — one action kind over, so it is fixed in the same stroke rather than
- * left as a sibling nobody comes back for. Found by the fresh-context supervisor at the pre-merge
- * checkpoint, which is exactly the class it was asked to hunt.
- *
- * Quoting is respected, so `echo "git push --force"` still splits into one segment that no gate
- * matches; and each segment keeps the whitespace boundary the prefix match relies on, so
- * `--force-with-lease` stays Auto.
- */
-function commandSegments(raw) {
-    const command = stripHeredocs(raw);
-    const out = [];
-    let start = 0;
-    let quote = null;
-    for (let i = 0; i < command.length; i += 1) {
-        const c = command[i];
-        if (quote) {
-            if (c === quote) quote = null;
-            continue;
-        }
-        if (c === "'" || c === '"') {
-            quote = c;
-            continue;
-        }
-        if (c === "\\") {
-            i += 1;
-            continue;
-        }
-        if (";|&()\n\r".includes(c)) {
-            out.push(command.slice(start, i));
-            start = i + 1;
-        }
-    }
-    out.push(command.slice(start));
-    return out.map((s) => s.trim()).filter(Boolean);
-}
-
 export function shellWrites(command, target) {
     for (const segment of shellSegments(stripHeredocs(String(command ?? "")))) {
         if (segment.redirects.some((word) => namesTarget(word, target))) return true;
