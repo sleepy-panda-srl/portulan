@@ -85,6 +85,10 @@ describe("gh-bot — the endpoint allowlist", () => {
         // A merge is `merge-a-pull-request`, Gated, and lives under `pulls/` — so it is the case
         // that proves the allowlist is not simply "anything under pulls".
         ["api", "repos/o/r/pulls/1/merge"],
+        // Not a GitHub route at all — measured 404 on 2026-07-28. It was ADMITTED until then, which
+        // is the quieter half of the same defect: an allowlist entry for a surface that does not
+        // exist reads as a considered decision and cannot be reviewed as one.
+        ["api", "repos/o/r/pulls/reviews/123"],
     ]) {
         test(`refuses \`${args.join(" ")}\``, () => {
             const { status, stderr } = run(...args);
@@ -105,6 +109,12 @@ describe("gh-bot — the endpoint allowlist", () => {
         ["api", "repos/o/r/pulls/42/comments"],
         ["api", "repos/o/r/pulls/42/comments/123/replies"],
         ["api", "repos/o/r/pulls/42/reviews"],
+        // A review BY ID and that review's comments. Both were refused until 2026-07-28 while
+        // `pulls/reviews/<id>` — which GitHub answers 404 for — was admitted. Measured both ways
+        // against the live API before the pattern was changed: `…/pulls/61/reviews/4796335478`
+        // answers 200, `…/pulls/reviews/4796335478` answers `Not Found`.
+        ["api", "repos/o/r/pulls/42/reviews/123"],
+        ["api", "repos/o/r/pulls/42/reviews/123/comments"],
         ["api", "repos/o/r/pulls/comments/123"],
         ["api", "graphql"],
         ["api", "/installation/repositories"],
