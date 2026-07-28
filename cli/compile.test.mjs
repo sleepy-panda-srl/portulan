@@ -839,6 +839,33 @@ describe("the shared matcher", () => {
         assert.ok(!matchesRule(force, "Bash", { command: 'echo "git push --force"' }), "quoted text is not a command");
     });
 
+    // The other half of the segment fix, asserted so the gate map's hole 2 cannot drift back to
+    // claiming "closed" unqualified. Splitting on SEPARATORS reaches a command after `&&`, `;`, `|`
+    // or a newline; it does not reach a word sitting in front of a command INSIDE a segment. These
+    // are ordinary shell, not exotic spellings, and each was measured stepping aside on the runner
+    // while the bare command answers `ask`.
+    //
+    // Left open on purpose. A named table of leaders would close the common ones the way the writer
+    // table does, but that table has no natural edge — `nice`, `time`, `nohup`, `timeout`, `command`,
+    // `stdbuf`, `doas` — and one missing entry buys the false confidence this suite exists to deny.
+    // Found by Copilot review on #60, against the paragraph that had just claimed the hole closed.
+    for (const [label, command] of [
+        ["a leading assignment", "FOO=bar git push --force origin main"],
+        ["`env`", "env git push --force origin main"],
+        ["`sudo`", "sudo git push --force origin main"],
+        ["a `then` branch", "if true; then git push --force origin main; fi"],
+        ["a `do` body", "for x in 1; do git push --force origin main; done"],
+        ["a brace group", "{ git push --force origin main; }"],
+    ]) {
+        test(`the limit is asserted, not just documented: a leader still escapes — ${label}`, () => {
+            const rule = { tier: "gated", action: { shell: "git push --force" } };
+            assert.ok(!matchesRule(rule, "Bash", { command }), command);
+            // The control: strip the leader and the same line is gated, so this is the leader
+            // escaping rather than the target being wrong.
+            assert.ok(matchesRule(rule, "Bash", { command: "git push --force origin main" }));
+        });
+    }
+
     test("the limit is asserted, not just documented: two wrappers still escape", () => {
         // Recorded as a test so that anyone tempted to call this layer a rail meets the counterexample.
         // The platform floor is what covers this — ../core/operating/autonomy.md.

@@ -323,14 +323,36 @@ Corrected here rather than left, because a gate map that overstates a hole is as
    newline. It was corrected by a fresh-context supervisor that tried to defeat the matcher instead of
    reading it. A hole list is a claim like any other, and the only thing that checks it is somebody
    attacking it._
-2. **A gated command that was not the first word on the line used to reach nothing — now closed at the
-   hook, still open at the permission layer.** `ls && git push --force origin main` matched no gate at
-   all until 2026-07-28: the matcher prefix-matched the whole command string, so **every** Gated outward
-   action here was defeated by putting anything in front of it. The hook now splits a line into its
-   commands and matches each. The permission rule still does not — `Bash(git push --force:*)` is a
-   prefix pattern on the host, and nothing in that DSL reaches a command in second position — so this
-   is the second gate whose reach beyond the first word is the hook's alone. Found by the supervisor
-   pass on the write gate, and fixed there because it is the same defect one action kind over.
+2. **A gated command that was not the first word on the line reached nothing — now closed for
+   SEPARATORS, still open for leaders, and still open at the permission layer.** `ls && git push
+   --force origin main` matched no gate at all until 2026-07-28: the matcher prefix-matched the whole
+   command string, so **every** Gated outward action here was defeated by putting anything in front of
+   it. The hook now splits a line on its separators and matches each command.
+
+   What that does not reach is a word sitting in front of a command *inside* a segment, and those
+   forms are ordinary rather than exotic. Measured on the runner, 2026-07-28 — each of these steps
+   aside where the bare spelling answers `ask`:
+
+   | Still escapes | Spelling |
+   |---|---|
+   | a leading assignment | `FOO=bar git push --force origin main` |
+   | a command prefix | `env git push --force …`, `sudo git push --force …` |
+   | a compound-statement keyword | `if true; then git push --force …; fi` |
+   | a loop body | `for x in 1; do git push --force …; done` |
+   | a brace group | `{ git push --force …; }` |
+
+   Stripping a **named table** of leaders would close the common ones the way the writer table does,
+   and is deliberately not done: that table has no natural edge — `nice`, `time`, `nohup`, `timeout`,
+   `command`, `stdbuf`, `doas` — and one missing entry buys exactly the false confidence this list
+   exists to deny. Asserted as tests rather than only written down.
+
+   **This entry said "now closed at the hook" without qualification until 2026-07-28**, which was a
+   sentence broader than its matcher — hole 5, one entry down, in the paragraph claiming to have
+   closed a hole. Found by Copilot review on the pull request that wrote it.
+
+   The permission rule reaches none of it either — `Bash(git push --force:*)` is a prefix pattern on
+   the host, and nothing in that DSL reaches a command in second position — so this stays a gate whose
+   reach beyond the first word is the hook's alone.
 3. **A gate whose only layer is the hook — and the hook is the one that fails open.** New with the shell
    half of `edit-the-constitution`, above. Everywhere else the permission rule is the gate and the hook
    adds reach; there, the hook *is* the reach, because no `Bash(prefix:*)` pattern can name a path sitting
