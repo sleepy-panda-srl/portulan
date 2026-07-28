@@ -29,6 +29,7 @@ import { fileURLToPath } from "node:url";
 
 import {
     LibrarianError,
+    parseArgs,
     daysBetween,
     sealedStamp,
     retireWhen,
@@ -670,6 +671,42 @@ describe("run", () => {
         const out = say();
         assert.equal(run(["--as-of", "2026-06-15", path.join(dir, "nowhere")], out), 2);
         assert.match(out.lines.join("\n"), /✗/);
+    });
+
+    test("an unknown option is refused, not dropped", () => {
+        // Dropping it is the fail-open Copilot found on #81: `--wrtie` produced a run that reported
+        // everything it found and wrote nothing, with a success message over work that did not happen.
+        const dir = repo({ ".portulan/memory/r.md": [linked(), "2026-06-01"] }, { workspace: MANIFEST() });
+        const out = say();
+        assert.equal(run(["--wrtie", path.join(dir, ".portulan")], out), 2);
+        assert.match(out.lines.join("\n"), /unknown option/);
+    });
+
+    test("a value-bearing flag with no value is refused rather than swallowing a flag", () => {
+        assert.throws(() => parseArgs(["--as-of"]), LibrarianError);
+        assert.throws(() => parseArgs(["--log"]), LibrarianError);
+        assert.throws(() => parseArgs(["--log", "--write", "a"]), LibrarianError);
+    });
+
+    test("and where the grammar cannot help, the empty workspace list does", () => {
+        // `--log .portulan` is not detectable at parse time — `.portulan` is a perfectly good value,
+        // and any `--flag value` grammar consumes it. What catches the caller who meant it as a
+        // workspace is the check one layer up: no workspaces left, so nothing is examined and the run
+        // says so and exits 2 rather than reporting a green over an empty list. Asserted because it is
+        // the *only* thing standing between that typo and a pass that examined nothing.
+        const out = say();
+        assert.equal(run(["--log", ".portulan"], out), 2);
+        assert.match(out.lines.join("\n"), /usage/);
+    });
+
+    test("the flags it does understand still parse, in any order", () => {
+        assert.deepEqual(parseArgs(["--as-of", "2026-06-15", "--write", "--log", "docs/plan.md", "a", "b"]), {
+            asOf: "2026-06-15",
+            logPath: "docs/plan.md",
+            write: true,
+            dirs: ["a", "b"],
+        });
+        assert.deepEqual(parseArgs(["a", "--write"]), { asOf: undefined, logPath: undefined, write: true, dirs: ["a"] });
     });
 
     test("`--as-of` must be a date, not a word", () => {
