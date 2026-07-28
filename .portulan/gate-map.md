@@ -316,26 +316,39 @@ check matches every review's `commit_id` against the pull request's current head
 `synchronize`, so pushing puts it back to pending. It also **fails closed** — an unreadable API is
 `could not look`, never `nothing wrong`.
 
+**Awaiting is pending, not failing — amended 2026-07-28.** The first cut had two outcomes for a question
+with three answers, so *the round has not arrived yet* was reported in the same colour as *the round is
+never coming*. Since Copilot cannot have reviewed a commit that did not exist when the run started, **every
+push produced a red check by construction**, and rounds on this repository land 1m53s–3m47s later (#49,
+#54, #57). A red that is expected on every push is how a gate becomes background weather. The check now
+waits inside its own run: the job stays *in progress* while the round is outstanding, which blocks a merge
+exactly as hard and says the true thing. Red is reserved for the round never arriving — a 20-minute budget,
+five times the slowest round measured — and for an API that stays unreadable, which is still `could not
+look`, never `nothing wrong`.
+
+The same amendment closed a red that could never clear. The Copilot ruleset carries
+`review_draft_pull_requests: false`, so on a **draft** no round is owed and none was ever coming; the check
+now reports success there, naming the reason, which opens nothing because GitHub refuses to merge a draft
+at all and `ready_for_review` re-runs the real check. The window it leaves is named in the workflow.
+
 **Three limits, named rather than found later.** The reviewer's login is a platform fact the workflow
 hard-codes, and a rename would show up as a permanent red rather than a silent pass — the failure
 direction to prefer, but a fragility to know about. Resolution still does not mean *adjudication*:
 a reviewer can resolve its own thread, as recorded in the floor section below. This rule makes the round
 **happen before the merge**; it does not make anyone agree with it.
 
-And the third was **measured on the pull request that added the workflow**, which is how a watcher is
-supposed to earn its place. The `pull_request_review` re-trigger fires but **does not self-serve**: the
-triggering actor is the bot, and GitHub held the run as `action_required`, awaiting a maintainer's
-*Approve and run*. So the check does not flip itself green when the review lands — a human clears it, by
-approving that run or by re-running the `pull_request` job, which is not bot-triggered. **The awaited
-guarantee therefore costs one click per pull request.** That is a real cost and it is the honest price of
-the rule; the alternative is a merge that does not wait at all. Nobody should describe this workflow as
-fully automatic.
+And the third is what the wait costs when it is not enough. **This used to be a click on every pull
+request**: the `pull_request_review` re-trigger fired when the review landed, but the triggering actor was
+the bot, so GitHub held the run as `action_required` awaiting a maintainer's *Approve and run*. Waiting
+inside the `pull_request` run — which is not bot-triggered — removed that trigger and that click. What is
+left is the tail: if the budget expires before the round lands, **nothing re-triggers the check** and a
+maintainer re-runs the job. The same click as before, now only in the case that is already a fault.
 
 **It composes with the autonomy mode; it does not substitute for one.** A mode governs whether the
-*agent* raises a ship-step prompt. This is a required status check — a floor row — and floor rows hold at
-every mode. So under `gated` a merge waits for both the maintainer's approval and this check; under
-`auto` the approval prompt is gone and **this check still holds**. Anyone reading `auto` as *"nothing
-waits"* should read this row again.
+*agent* raises a ship-step prompt. This is a status check — a floor row once it joins the floor, per the
+paragraph below — and floor rows hold at every mode. So under `gated` a merge waits for both the
+maintainer's approval and this check; under `auto` the approval prompt is gone and **this check still
+holds**. Anyone reading `auto` as *"nothing waits"* should read this row again.
 
 **Not yet required, deliberately** — the same reason as `pr-labeled` before it, from
 [`proposals/0004-ci-runs-every-declared-recipe.md`](proposals/0004-ci-runs-every-declared-recipe.md): a

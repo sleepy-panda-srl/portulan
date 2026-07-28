@@ -35,19 +35,34 @@ this rule was written for.
 the check went **red** on a head with no Copilot review, printing that head's SHA and an authors-seen line naming no reviewer (the exact
 wording lives in the workflow and may drift; the observation, not the string, is the record); Copilot then reviewed **that exact SHA** and the `pull_request_review` re-trigger fired. It
 did **not** go green on its own — GitHub held the bot-triggered run as `action_required`, awaiting a
-maintainer's approval. So the rail works and **costs one click per pull request**, which is recorded as a
-cost rather than smoothed over.
+maintainer's approval. So the rail worked and **cost one click per pull request**, recorded as a cost
+rather than smoothed over.
+
+**Amended 2026-07-28 — awaiting is pending, not failing, and the click is gone.** The first cut answered a
+three-state question with two colours: it could not distinguish *the round has not arrived yet* from *no
+round is coming*, and reported both as failure. That made the red on the first row **guaranteed** — Copilot
+cannot review a commit that did not exist when the run started — and the red on the second row
+**permanent**, because the ruleset carries `review_draft_pull_requests: false` and a draft is never sent.
+Rounds measured 1m53s–3m47s across #49, #54 and #57. The check now waits inside the `pull_request` run it
+already has, so awaiting shows as a pending check that blocks a merge just as hard; a draft reports success
+with its reason, which opens nothing, since GitHub will not merge a draft and `ready_for_review` re-runs the
+real check. Removing the `pull_request_review` trigger removed the `action_required` click with it — and
+also a class of false red, since the agent's own replies to Copilot are submitted as reviews and each one
+re-ran the check mid-round.
 
 **Three limits, stated because the rule is weaker than it sounds.** The reviewer's login is a platform fact
 the workflow hard-codes; a rename surfaces as a permanent red rather than a silent pass, which is the
-right failure direction and still a fragility. And *resolved* is not *adjudicated*: a reviewer can
+right failure direction and still a fragility. *Resolved* is not *adjudicated*: a reviewer can
 resolve its own thread — measured on [#44](https://github.com/sleepy-panda-works/portulan/pull/44) — so
-this rule guarantees the round **happened before the merge**, not that anyone agreed with it.
+this rule guarantees the round **happened before the merge**, not that anyone agreed with it. And the wait
+has a budget: 20 minutes, five times the slowest round measured. Past it the check reds and **nothing
+re-triggers it**, so a maintainer re-runs the job — the old click, surviving only in the case that is
+already a fault.
 
 **It composes with the autonomy mode rather than substituting for one.** A mode decides whether an agent
-raises a ship-step prompt; this is a required status check, and floor rows hold at every mode. Under
-`auto`, where no prompt is raised, this check still refuses. That composition is the reason the rule is
-worth more under a loose mode than under a strict one.
+raises a ship-step prompt; this is a status check, and floor rows hold at every mode — it is not yet
+required, deliberately, per the gate map. Under `auto`, where no prompt is raised, this check still
+refuses. That composition is the reason the rule is worth more under a loose mode than under a strict one.
 
 **Retire when:** Copilot review is no longer part of this repository's review path, or the platform gains
 a native *"require a review from this app on the current head"* setting that makes the workflow redundant.
