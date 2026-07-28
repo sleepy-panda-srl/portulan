@@ -145,6 +145,22 @@ could run; nothing readable at all is the only honest `2`; a stray beside real h
 correspondence still runs. All four branches measured, plus the restored tree. **#78 is closed by this
 change and should be closed on merge, not before** — it describes `main` accurately until then.
 
+**Round five found the loose end round four's fix left**, and it is the same rule one turn further on:
+with the audit ahead of the precondition, a directory holding nothing enumerable printed
+`ok   record — … (0 examined)` and *then* exited `2` — a green opening a run that ends in *could not
+check*. The precondition now returns before any verdict is printed. Taken together the two orderings
+state the whole rule: **report a finding before a precondition that would hide it, and report nothing at
+all when there is nothing to find.** Fixed rather than filed because it is a loose end in this session's
+own just-written code rather than new feedback on pre-existing code — finishing the change, not another
+round of it. **That is where it stops:** whatever round six says goes to an issue regardless of what it
+finds, and this is said here so the next reader can hold this session to it.
+
+**Four of the five findings on this pull request came through the suppressed low-confidence channel** —
+no thread, no Resolve control, no effect on any gate, and `copilot-reviewed` green throughout. On this
+change it was the higher-yield half of the review by a wide margin, which is the strongest evidence yet
+for [#66](https://github.com/sleepy-panda-works/portulan/issues/66), the open issue proposing those
+notes be promoted into real threads.
+
 ## A third false green — or rather, the first false RED
 
 Writing this session's own Session log entry turned the recipe red on the seam attestation the entry
