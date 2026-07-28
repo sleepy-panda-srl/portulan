@@ -56,9 +56,14 @@ is that a signal nobody acts on is not coverage.
   is in the trigger list and re-runs the real check, and nothing that could previously merge unreviewed
   became mergeable. **The residual window, named rather than found later:** marking ready does not change
   the SHA, so for the seconds between that click and the new run reporting, the head's newest check run is
-  the draft-era success. Merging inside it would have to beat `workspace-verify`, `pr-labeled` and
-  conversation resolution as well, and would have to be deliberate. The alternative was a red that no
-  action could clear, which is not a stricter gate — it is a gate that traps the change.
+  the draft-era success. **Nothing else covers that window**, and the first version of this handoff and
+  of the workflow comment both claimed otherwise: `workspace-verify` and `pr-labeled` run on draft pushes
+  too, so on a mature draft they are already green on that SHA and `ready_for_review` re-runs neither,
+  and conversation resolution is trivially satisfied because Copilot never reviewed the draft. The only
+  guard is that a merge here is Gated and human — acceptable today, and **not acceptable the moment
+  auto-merge is enabled**, which is the interaction to own before that setting changes. Caught by this
+  session's fresh-context supervisor, not by the implementer. The alternative was a red that no action
+  could clear, which is not a stricter gate — it is a gate that traps the change.
 - **Superseded heads exit 0, and that is not a third relaxation.** A run whose head moved reports against a
   commit that is no longer the head, and a merge is gated on the head commit's check runs. `concurrency`
   with `cancel-in-progress` should normally get there first; the branch exists for when it does not.
