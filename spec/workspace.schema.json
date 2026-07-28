@@ -62,7 +62,7 @@
           "$ref": "#/$defs/path"
         },
         "gates": {
-          "description": "The gate map: this team's concrete actions bound to the engine's Auto / Propose / Gated tiers, plus the triage threshold.",
+          "description": "The gate map: this team's concrete actions bound to the engine's Auto / Propose / Gated / Prohibited tiers, the autonomy mode the workspace runs, and the triage threshold.",
           "$ref": "#/$defs/filePath"
         },
         "dod": {
@@ -127,7 +127,7 @@
     },
 
     "gates": {
-      "description": "Optional, added in 2.1. The gate POLICY — a path to a JSON file the enforcement compiler reads, distinct from `slots.gates`, which is the Markdown that argues it. Two keys rather than one because they answer different questions and only one of them compiles: `slots.gates` is prose a human reads and no tool can dispatch on, while this file binds action patterns to tiers in a host-neutral vocabulary. A workspace may declare either, both, or neither — but a workspace with prose and no policy has a gate map nothing enforces, which is the state this repository was in for three milestones and named honestly while it lasted.",
+      "description": "Optional, added in 2.1. The gate POLICY — a path to a JSON file the enforcement compiler reads, distinct from `slots.gates`, which is the Markdown that argues it. Two keys rather than one because they answer different questions and only one of them compiles: `slots.gates` is prose a human reads and no tool can dispatch on, while this file binds action patterns to tiers in a host-neutral vocabulary and declares the workspace's autonomy MODE. A workspace may declare either, both, or neither — but a workspace with prose and no policy has a gate map nothing enforces, which is the state this repository was in for three milestones and named honestly while it lasted.",
       "$ref": "#/$defs/filePath"
     },
 

@@ -75,7 +75,12 @@ Honest limits, each with the milestone that closes it:
   constitution is refused outright; `auto` and `propose` compile to **nothing** there, deliberately, since
   the compiler emits restriction only. It also compiles to
   [`compile/github-ruleset.json`](compile/github-ruleset.json), the platform floor as importable data,
-  where the partition inverts and `propose` is exactly what is enforced. **Three gates neither backend
+  where the partition inverts and `propose` is exactly what is enforced. **Which tier the two cycle rules
+  hold is a setting** as of 2026-07-27: this workspace declares autonomy mode `ship-gate`, so the cycle
+  runs unattended until the ship step and asks there — the posture it already had, so adopting the model
+  changed no gate. `autonomous` never asks; `strict` asks at every push too. A session may tighten its own
+  mode and never loosen it (`node cli/mode.mjs`); a mode never moves the platform floor, at any value. See
+  [The three modes](gate-map.md#the-three-modes). **Three gates neither backend
   compiles** — renaming or transferring the repository, spending money, sending something outward — and
   `compile --matrix` and `doctor` both name them, because a policy stating a gate nothing enforces must
   never read as configured. The **platform floor beneath it all is configured and live** — `main` rejects

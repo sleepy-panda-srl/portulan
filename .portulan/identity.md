@@ -95,7 +95,9 @@ These words mean exactly this here; ambiguity in them is what costs most.
 | **Repo card** | The per-repository facts an agent cannot safely infer ([`repos/`](repos/)). |
 | **Task** | The atomic unit of work *and* of context — self-contained enough to hand to a fresh window. |
 | **Lane** | Which weight of the loop a task takes: `full` or `triage`. |
-| **Gate map** | The binding of concrete actions to autonomy tiers. Policy, hence workspace-owned. |
+| **Tier** | What an action *is*, classified by undoability: `auto`, `propose`, `gated`, `prohibited`. Per action, and it does not move. |
+| **Mode** | How often the *development cycle* stops for approval: `autonomous` (never), `ship-gate` (once, at the ship step), `strict` (every push, and the ship step). Per workspace and per session — a different axis from **Tier**, and deliberately sharing no words with it since 2026-07-27. Ours is `ship-gate`, which is also what the engine recommends. |
+| **Gate map** | The binding of concrete actions to autonomy tiers, and the declaration of which mode we run. Policy, hence workspace-owned. |
 | **Verify recipe** | The executable check that decides "done" ([`verify/`](verify/)). A workspace may have several and names the default. |
 | **Principles** | [`principles.md`](principles.md) — how *we* decide. Required, lives in this directory. This is what the milestone-2 criterion calls the *constitution slot*. |
 | **Constitution** (the slot) | The separate document our work is graded against — for us [`../docs/vision.md`](../docs/vision.md), which sits *outside* this directory and is human-owned. Optional, and the only slot allowed to point outside the workspace. **Not** a synonym for **Principles**: one is how we work, the other is what we are judged by. |

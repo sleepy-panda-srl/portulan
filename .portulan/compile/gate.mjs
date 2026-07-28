@@ -71,25 +71,53 @@ import { fileURLToPath } from "node:url";
 // The action vocabulary is defined ONCE, in the compiler, and imported here. Two implementations of
 // one matcher is the drift this repository keeps finding — and a matcher that drifts does not look
 // wrong, it looks like a gate that quietly stopped covering something.
-import { matchesRule, policyPath } from "../../cli/compile.mjs";
+import { matchesRule, policyPath, resolveTier, effectiveMode } from "../../cli/compile.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
+// The working tree this runner speaks for. It keys the session-mode record, for the same reason the
+// Stop-gate counter is keyed by it: several worktrees of this repository are routinely checked out at
+// once, and one tree's mode is not another's.
+const REPO = path.resolve(HERE, "..", "..");
 // Resolved the same way the compiler resolves it — through the manifest's `gates` key — because the
 // emitter and the runtime reading different policy files is the drift that would be hardest to see: both
 // would work, on different rules.
-const POLICY = policyPath(path.resolve(HERE, "..", ".."), path.basename(path.resolve(HERE, "..")));
+const POLICY = policyPath(REPO, path.basename(path.resolve(HERE, "..")));
 
 /** Exit without a decision. The permission rule still holds; only the sentence is lost. */
 function stepAside() {
     process.exit(0);
 }
 
+/**
+ * Which rule this action trips, at the mode in force for THIS session.
+ *
+ * The mode is resolved here rather than baked in, and that is the one thing this runner does which
+ * the permission layer structurally cannot: a permission rule is a static file compiled at the
+ * workspace default, while a session may have tightened its own mode since. So a `strict` session's
+ * extra checkpoints exist at this layer only — which makes them a convenience above a rail, exactly
+ * like the wrapper coverage above, and for the same measured reason (a crashed hook fails open).
+ *
+ * The direction is what makes that acceptable. An override may only ever TIGHTEN, so everything this
+ * layer adds is *additional* refusal. If it fails, the session falls back to the compiled default —
+ * the posture a reviewer approved — never below it. A loosening override would have the opposite
+ * failure and is refused outright; `cli/compile.mjs` carries the argument.
+ */
 function decide(payload, policy) {
     const tool = payload.tool_name;
     const input = payload.tool_input ?? {};
+    const { mode } = effectiveMode({ policy, root: REPO, sessionId: payload.session_id });
     for (const rule of policy.rules ?? []) {
-        if (rule.tier !== "gated" && rule.tier !== "prohibited") continue;
-        if (matchesRule(rule, tool, input)) return rule;
+        let tier;
+        try {
+            tier = resolveTier(rule, mode);
+        } catch {
+            // A rule this runner cannot read is a rule the compiler would have refused outright. Skip
+            // it here rather than throwing: the permission layer already carries the compiled verdict,
+            // and a hook that dies on one malformed rule loses the sentences for all the others.
+            continue;
+        }
+        if (tier !== "gated" && tier !== "prohibited") continue;
+        if (matchesRule(rule, tool, input)) return { rule, tier, mode };
     }
     return null;
 }
@@ -108,16 +136,20 @@ async function main() {
         return;
     }
 
-    const rule = decide(payload, policy);
-    if (!rule) stepAside();
+    const hit = decide(payload, policy);
+    if (!hit) stepAside();
 
-    const decision = rule.tier === "prohibited" ? "deny" : "ask";
+    const { rule, tier, mode } = hit;
+    const decision = tier === "prohibited" ? "deny" : "ask";
+    // The mode is named in the sentence because a gate that appears only at `strict` is otherwise
+    // indistinguishable from one the reader thought was always there — and the first question anyone
+    // asks of an unexpected prompt is why it is being asked now and was not before.
     process.stdout.write(
         `${JSON.stringify({
             hookSpecificOutput: {
                 hookEventName: "PreToolUse",
                 permissionDecision: decision,
-                permissionDecisionReason: `PORTULAN GATE \`${rule.id}\` (${rule.tier}) — ${rule.reason}`,
+                permissionDecisionReason: `PORTULAN GATE \`${rule.id}\` (${tier}, mode ${mode}) — ${rule.reason}`,
             },
         })}\n`,
     );

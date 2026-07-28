@@ -36,6 +36,14 @@ import {
     policyPath,
     FILE_WRITERS,
     IN_PLACE_EDITORS,
+    MODES,
+    STRICTNESS,
+    declaredMode,
+    resolveTier,
+    readSessionMode,
+    writeSessionMode,
+    effectiveMode,
+    sessionModeFile,
 } from "./compile.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -1294,6 +1302,263 @@ describe("--check", () => {
 });
 
 // ===========================================================================================
+// 5b. Autonomy MODES — how often the development cycle stops
+// ===========================================================================================
+//
+// A mode is not a tier. A **tier** says what an action IS (how hard it is to undo) and is decided
+// per action; a **mode** says how often the *development cycle* stops for approval, and is decided
+// per workspace and per session. The two vocabularies once shared the words "auto" and "gated";
+// the maintainer renamed the modes (autonomous / ship-gate / strict, 2026-07-27) so they no longer
+// collide — and these tests still pin the distinction the words alone never could: `tier` is a
+// rule's field, `mode` is the policy's, and a mode may only ever move a rule between `auto`,
+// `propose` and `gated`.
+//
+// Everything below is red-first. The rails that matter are the four refusals: a mode cannot reach
+// Prohibited, cannot be partially specified, cannot loosen as it gets stricter, and cannot be
+// resolved at all without a declared default.
+
+/** A policy with one mode-varying rule. `push` is Auto until Strict, which gates it. */
+function modePolicy(overrides = {}) {
+    return {
+        portulan: { spec: "2.1" },
+        mode: "ship-gate",
+        rules: [
+            { id: "ban", tier: "prohibited", action: { write: "docs/vision.md" }, reason: "constitution" },
+            {
+                id: "push",
+                tier: { autonomous: "auto", "ship-gate": "auto", strict: "gated" },
+                action: { shell: "git push" },
+                reason: "a working branch is not a claim on the repository",
+            },
+            {
+                id: "ship",
+                tier: { autonomous: "auto", "ship-gate": "gated", strict: "gated" },
+                action: { shell: "gh pr merge" },
+                reason: "the ship step",
+            },
+        ],
+        ...overrides,
+    };
+}
+
+describe("modes — the vocabulary", () => {
+    test("there are exactly three, and they are ordered by strictness", () => {
+        assert.deepEqual([...MODES], ["autonomous", "ship-gate", "strict"]);
+    });
+
+    test("a mode may never reach the Prohibited tier — in either direction", () => {
+        // The whole reason the fourth tier exists is that it is NOT approvable. A mode that could
+        // grant or revoke it would make "no agent edits the constitution" a setting, which is the
+        // exact collapse core/operating/autonomy.md says the fourth tier was added to prevent.
+        const p = modePolicy();
+        p.rules[1].tier = { autonomous: "auto", "ship-gate": "gated", strict: "prohibited" };
+        assert.throws(() => parse(p), /prohibited/i);
+    });
+
+    test("a mode-keyed tier must name all three modes — no silent default", () => {
+        const p = modePolicy();
+        p.rules[1].tier = { autonomous: "auto", strict: "gated" };
+        assert.throws(() => parse(p), CompileError);
+    });
+
+    test("a mode-keyed tier may not name a mode that does not exist", () => {
+        const p = modePolicy();
+        p.rules[1].tier = { autonomous: "auto", "ship-gate": "auto", strict: "gated", yolo: "auto" };
+        assert.throws(() => parse(p), CompileError);
+    });
+
+    test("a stricter mode may never be LOOSER than a laxer one", () => {
+        // Without this the names lie: a policy could declare Strict more permissive than Auto and
+        // every document describing the modes would be false while the compiler reported green.
+        const p = modePolicy();
+        p.rules[1].tier = { autonomous: "gated", "ship-gate": "gated", strict: "auto" };
+        assert.throws(() => parse(p), /looser|monotonic|stricter/i);
+    });
+
+    test("equal tiers across modes are fine — non-loosening, not strictly increasing", () => {
+        const p = modePolicy();
+        p.rules[1].tier = { autonomous: "gated", "ship-gate": "gated", strict: "gated" };
+        assert.doesNotThrow(() => parse(p));
+    });
+
+    test("a mode-keyed tier with no declared mode refuses the whole compile", () => {
+        const p = modePolicy();
+        delete p.mode;
+        assert.throws(() => parse(p), CompileError);
+    });
+
+    test("a policy declaring a mode that is not one of the three refuses", () => {
+        assert.throws(() => parse(modePolicy({ mode: "yolo" })), CompileError);
+    });
+
+    test("a policy with no modes at all still compiles — modes are opt-in", () => {
+        // Backwards compatibility is not a courtesy here: examples/ ships a workspace with no
+        // gates.json at all, and an adopter on scalar tiers must not be broken by a feature they
+        // never declared.
+        assert.doesNotThrow(() => parse(policy()));
+    });
+});
+
+describe("modes — what each one compiles to", () => {
+    const tierOf = (result, id) => result.compiled.find((g) => g.id === id)?.tier;
+
+    test("Autonomous gates neither the push nor the ship step", () => {
+        const result = claudeCode(parse(modePolicy({ mode: "autonomous" })));
+        assert.equal(tierOf(result, "push"), undefined, "push is not a gate in Autonomous");
+        assert.equal(tierOf(result, "ship"), undefined, "the ship step is not a gate in Autonomous");
+    });
+
+    test("Ship-gate gates the ship step and nothing before it", () => {
+        const result = claudeCode(parse(modePolicy({ mode: "ship-gate" })));
+        assert.equal(tierOf(result, "push"), undefined, "push stays unattended in Ship-gate");
+        assert.equal(tierOf(result, "ship"), "gated", "the last step asks");
+    });
+
+    test("Strict gates every push, and the ship step too", () => {
+        const result = claudeCode(parse(modePolicy({ mode: "strict" })));
+        assert.equal(tierOf(result, "push"), "gated");
+        assert.equal(tierOf(result, "ship"), "gated");
+    });
+
+    test("the Prohibited rule is identical under all three modes", () => {
+        for (const mode of MODES) {
+            const result = claudeCode(parse(modePolicy({ mode })));
+            assert.equal(tierOf(result, "ban"), "prohibited", `mode ${mode} moved the constitution gate`);
+        }
+    });
+
+    test("the emitted artifact differs by mode — the compiled file IS the declared default", () => {
+        const auto = claudeCode(parse(modePolicy({ mode: "autonomous" }))).artifact.value;
+        const strict = claudeCode(parse(modePolicy({ mode: "strict" }))).artifact.value;
+        assert.ok(!auto.permissions.ask.includes("Bash(git push:*)"));
+        assert.ok(strict.permissions.ask.includes("Bash(git push:*)"));
+    });
+
+    test("the compiled artifact records which mode produced it", () => {
+        // An artifact that does not say which mode it expresses cannot be audited after the fact —
+        // and the mode is the one input that changes the output without changing a rule.
+        const settings = claudeCode(parse(modePolicy({ mode: "strict" }))).artifact.value;
+        assert.equal(settings.$portulan.mode, "strict");
+    });
+
+    test("a refused mode-varying rule still accounts — it is refused, never dropped", () => {
+        const result = claudeCode(parse(modePolicy({ mode: "ship-gate" })));
+        const ids = [...result.compiled, ...result.refused].map((r) => r.id).sort();
+        assert.deepEqual(ids, ["ban", "push", "ship"], "every rule ends in exactly one bucket");
+    });
+});
+
+describe("modes — resolution", () => {
+    test("resolveTier returns the scalar for a mode-invariant rule, whatever the mode", () => {
+        const rule = { id: "x", tier: "gated", action: { shell: "a" }, reason: "r" };
+        for (const mode of MODES) assert.equal(resolveTier(rule, mode), "gated");
+    });
+
+    test("resolveTier reads the mode's cell for a mode-varying rule", () => {
+        const rule = modePolicy().rules[1];
+        assert.equal(resolveTier(rule, "autonomous"), "auto");
+        assert.equal(resolveTier(rule, "strict"), "gated");
+    });
+
+    test("declaredMode falls back to the strictest mode when a policy is silent", () => {
+        // Silence must never be read as the loosest setting. A policy that says nothing gets the
+        // safest answer, not the most convenient one.
+        assert.equal(declaredMode({}), "strict");
+        assert.equal(declaredMode({ mode: "autonomous" }), "autonomous");
+    });
+
+    test("STRICTNESS orders the tiers a mode may move between, and excludes prohibited", () => {
+        assert.ok(STRICTNESS.auto < STRICTNESS.propose);
+        assert.ok(STRICTNESS.propose < STRICTNESS.gated);
+        assert.equal(STRICTNESS.prohibited, undefined, "prohibited is not on the mode axis");
+    });
+});
+
+describe("modes — the per-session override", () => {
+    // Session state, mirroring ../.portulan/compile/stop.mjs's counter: untracked, in the OS temp
+    // dir, keyed by the working tree, and carrying the session that claimed it. Never a tracked
+    // file — two parallel sessions sharing one would let either disarm the other's gate, and an
+    // override that outlives its session is a setting nobody remembers making.
+
+    test("an override tightens, and the tightened mode is what resolves", () => {
+        const dir = scratch();
+        writeSessionMode("strict", { dir, root: "/repo/a", sessionId: "s1" });
+        assert.equal(effectiveMode({ policy: modePolicy(), dir, root: "/repo/a", sessionId: "s1" }).mode, "strict");
+    });
+
+    test("an override may NOT loosen below the declared default", () => {
+        // Not a taste call. The permission layer — the half that cannot fail open — was compiled at
+        // the default, so a loosened session would still meet the prompt the mode promised to
+        // remove. A mode that says "no prompt" while the host prompts is a false claim about an
+        // enforcer, which is the defect this repository has a memory entry about.
+        const dir = scratch();
+        assert.throws(() => writeSessionMode("autonomous", { dir, root: "/repo/b", sessionId: "s1", policy: modePolicy() }), /tighten|loosen/i);
+    });
+
+    test("one session's override is invisible to another in the same working tree", () => {
+        const dir = scratch();
+        writeSessionMode("strict", { dir, root: "/repo/c", sessionId: "s1" });
+        const other = effectiveMode({ policy: modePolicy(), dir, root: "/repo/c", sessionId: "s2" });
+        assert.equal(other.mode, "ship-gate", "a foreign session's override must not bind this one");
+        assert.equal(other.source, "workspace default");
+    });
+
+    test("a second session writing does not erase the first session's override", () => {
+        // The regression test for the defect this mechanism shipped with for one checkpoint. The
+        // record was keyed on the working tree ALONE and the reader compared the session id it found,
+        // which reads correctly and WRITES wrongly: two sessions in one worktree shared a file, so the
+        // second to tighten silently erased the first — and the first fell back to the workspace
+        // default while its own tool had reported success. The claim in three documents was that an
+        // override is "invisible to every other session"; it was invisible in one direction only.
+        // Found at the pre-commit checkpoint by a supervisor who ran two writers.
+        const dir = scratch();
+        writeSessionMode("strict", { dir, root: "/repo/shared", sessionId: "first" });
+        writeSessionMode("strict", { dir, root: "/repo/shared", sessionId: "second" });
+        assert.equal(
+            effectiveMode({ policy: modePolicy(), dir, root: "/repo/shared", sessionId: "first" }).mode,
+            "strict",
+            "the first session's tightening must survive the second session writing its own",
+        );
+    });
+
+    test("an id-less reader is not bound by a session's override", () => {
+        // A reader with no session id must not inherit somebody else's tightening — and, more to the
+        // point, must not inherit one that nothing can ever clear.
+        const dir = scratch();
+        writeSessionMode("strict", { dir, root: "/repo/h", sessionId: "s1" });
+        assert.equal(effectiveMode({ policy: modePolicy(), dir, root: "/repo/h" }).mode, "ship-gate");
+    });
+
+    test("the same override in a different working tree is invisible too", () => {
+        const dir = scratch();
+        writeSessionMode("strict", { dir, root: "/repo/d", sessionId: "s1" });
+        assert.equal(effectiveMode({ policy: modePolicy(), dir, root: "/repo/OTHER", sessionId: "s1" }).mode, "ship-gate");
+    });
+
+    test("no override means the workspace default, and says so", () => {
+        const dir = scratch();
+        const eff = effectiveMode({ policy: modePolicy(), dir, root: "/repo/e", sessionId: "s1" });
+        assert.equal(eff.mode, "ship-gate");
+        assert.equal(eff.source, "workspace default");
+    });
+
+    test("an unreadable override degrades to the default rather than throwing", () => {
+        // The gate runner that consumes this fails open by design; a throw here would be a crash in
+        // the one component whose crash removes the sentence a human reads.
+        const dir = scratch();
+        fs.writeFileSync(path.join(dir, "junk"), "not json");
+        assert.doesNotThrow(() => readSessionMode({ dir, root: "/repo/f", sessionId: "s1" }));
+        assert.equal(effectiveMode({ policy: modePolicy(), dir, root: "/repo/f", sessionId: "s1" }).mode, "ship-gate");
+    });
+
+    test("the override reports its own provenance, for the record", () => {
+        const dir = scratch();
+        writeSessionMode("strict", { dir, root: "/repo/g", sessionId: "s1" });
+        assert.equal(effectiveMode({ policy: modePolicy(), dir, root: "/repo/g", sessionId: "s1" }).source, "session override");
+    });
+});
+
+// ===========================================================================================
 // 6. This repository's own policy compiles, and its gate map agrees with it
 // ===========================================================================================
 //
@@ -1379,14 +1644,61 @@ describe("customer zero", () => {
             assert.ok(section, `gate-map.md has no section speaking for tier \`${tier}\``);
         }
 
+        // **Mode-invariant rules only.** A rule whose tier moves with the mode does not *have* a tier
+        // section — it has a row in the mode table, and the next test is what holds it there. Filing
+        // such a rule under whichever tier it happens to hold today would be worse than not checking
+        // it: at `autonomous` the merge is in the Auto tier, so this check would demand that the merge
+        // bullet be moved out of the Gated section and into "the agent acts unattended", and a reader
+        // meeting it there would learn the wrong thing about why a merge is dangerous. The two checks
+        // partition the rules — every rule is held by exactly one of them, which is the property that
+        // matters, and losing it is what would let a rule go uncited entirely.
+        const mode = declaredMode(real);
+        let invariant = 0;
         for (const rule of real.rules) {
-            const section = owner[rule.tier];
+            if (typeof rule.tier !== "string") continue;
+            invariant += 1;
+            const tier = resolveTier(rule, mode);
+            const section = owner[tier];
             assert.match(
                 section.body,
                 new RegExp(`\`${rule.id}\``),
-                `\`${rule.id}\` is tier \`${rule.tier}\` in gates.json, but gate-map.md does not cite it under "${section.title}"`,
+                `\`${rule.id}\` is tier \`${tier}\` in gates.json, but gate-map.md does not cite it under "${section.title}"`,
             );
         }
+        const varying = real.rules.length - invariant;
+        assert.equal(invariant + varying, real.rules.length, "every rule is held by this check or the mode-table one");
+        assert.ok(varying > 0, "no rule varies by mode — the mode model has become decorative");
+    });
+
+    test("every mode-varying rule is cited where the modes are explained", () => {
+        // A rule whose tier moves with the mode is the one a reader is most likely to misread from
+        // the tier sections alone — those state today's answer, not the setting that produced it.
+        const prose = fs.readFileSync(path.join(REPO, ".portulan", "gate-map.md"), "utf8");
+        const start = prose.search(/^## The three modes\b/m);
+        assert.ok(start !== -1, "gate-map.md has no section explaining the modes");
+        const body = prose.slice(start, prose.indexOf("\n## ", start + 1));
+        for (const rule of real.rules) {
+            if (typeof rule.tier === "string") continue;
+            assert.match(body, new RegExp(`\`${rule.id}\``), `\`${rule.id}\` varies by mode but the modes section never names it`);
+        }
+    });
+
+    test("this workspace declares Ship-gate — the ship step asks, nothing before it does", () => {
+        // The declared mode is a maintainer's ruling, not an implementation detail: it is the
+        // difference between a session that merges on its own and one that stops for a click.
+        assert.equal(declaredMode(real), "ship-gate");
+        const tierAt = (shell, mode) => resolveTier(real.rules.find((r) => r.action?.shell === shell), mode);
+        assert.equal(tierAt("gh pr merge", "ship-gate"), "gated", "Ship-gate gates the ship step");
+        assert.equal(tierAt("gh pr merge", "autonomous"), "auto", "Autonomous raises no agent-side prompt there");
+        assert.equal(tierAt("git push", "ship-gate"), "auto", "Ship-gate does not gate the push");
+        assert.equal(tierAt("git push", "strict"), "gated", "Strict gates every push");
+    });
+
+    test("the compiled artifact on disk expresses the declared mode", () => {
+        // The tracked artifact is the audit record: it bounds what any session could have done,
+        // because a session may only ever tighten from here.
+        const artifact = JSON.parse(fs.readFileSync(path.join(REPO, ".claude", "settings.json"), "utf8"));
+        assert.equal(artifact.$portulan.mode, declaredMode(real));
     });
 
     test("the constitution is prohibited, not merely gated", () => {
@@ -1399,10 +1711,49 @@ describe("customer zero", () => {
         // guarantee the push gate stood in for lives at the *merge*. What stayed Gated is the pair
         // that destroys rather than adds — a bare `--force`, and a branch deletion. This test asserted
         // the old policy and failed the moment the new one landed, which is the test doing its job.
-        const tierOf = (shell) => real.rules.find((r) => r.action?.shell === shell)?.tier;
-        assert.equal(tierOf("git push"), "auto", "an ordinary working-branch push is unattended");
-        assert.equal(tierOf("git push --force"), "gated", "bare --force is not recoverable");
-        assert.equal(tierOf("git push --delete"), "gated", "deleting a remote ref is not adding one");
+        // Resolved at the declared mode since 2026-07-27: the ordinary push is mode-varying — Auto
+        // until Strict — while the two destructive spellings are gated at EVERY mode, because a mode
+        // governs how often the cycle stops, not whether a destructive action is recoverable.
+        const tierOf = (shell, mode = declaredMode(real)) => resolveTier(real.rules.find((r) => r.action?.shell === shell), mode);
+        assert.equal(tierOf("git push"), "auto", "an ordinary working-branch push is unattended at the declared mode");
+        for (const mode of MODES) {
+            assert.equal(tierOf("git push --force", mode), "gated", `bare --force is not recoverable, whatever the mode (${mode})`);
+            assert.equal(tierOf("git push --delete", mode), "gated", `deleting a remote ref is not adding one (${mode})`);
+        }
+    });
+
+    test("no mode makes an irreversible non-development action unattended", () => {
+        // The carve-out, asserted rather than promised. A mode is a development-cycle setting; it is
+        // not a licence for repository settings, deletions, releases or spending. If one of these
+        // ever acquires a mode-keyed tier, this test is what says so out loud.
+        // This list must cover everything the gate map's prose says it covers. It omitted the three
+        // below for one round while the prose claimed "settings, deletions, releases, package
+        // publication, spending, sending outward" — a stated checker narrower than its sentence, which
+        // is the defect this repository names oftenest. Found at the pre-commit checkpoint. The three
+        // `none`-action rules are included deliberately: they compile to nothing, so nothing else in
+        // the suite would notice them acquiring a mode-keyed tier. (`change-settings-through-the-api`
+        // was on this list until the `gh api` gate came off, 2026-07-28 — the rule no longer exists,
+        // and this assertion is the drift alarm that said so during the rebase.)
+        const carved = [
+            "change-repository-settings",
+            "delete-a-repository",
+            "create-a-repository",
+            "rename-or-transfer-a-repository",
+            "delete-a-remote-branch",
+            "force-push-without-a-lease",
+            "tag-a-release",
+            "publish-a-release",
+            "publish-to-a-package-registry",
+            "spend-money-or-register-a-domain",
+            "send-something-outside-this-repository",
+        ];
+        for (const id of carved) {
+            const rule = real.rules.find((r) => r.id === id);
+            assert.ok(rule, `no rule \`${id}\` — the carve-out list has drifted from the policy`);
+            for (const mode of MODES) {
+                assert.equal(resolveTier(rule, mode), "gated", `\`${id}\` stopped being gated at mode ${mode}`);
+            }
+        }
     });
 
     test("the gated push prefixes do not swallow the Auto spelling they sit beside", () => {

@@ -40,6 +40,7 @@
 // Zero dependencies, no network, no install step — same constraints as ./doctor.mjs.
 
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 
@@ -61,6 +62,138 @@ export class CompileError extends Error {
 const KNOWN_SPECS = new Set(["2.1", "2.2"]);
 
 const TIERS = new Set(["auto", "propose", "gated", "prohibited"]);
+
+// ===========================================================================================
+// Autonomy MODES — how often the development cycle stops
+// ===========================================================================================
+//
+// A **tier** says what an action IS: how hard it is to undo. It is decided per action and it does
+// not move. A **mode** says how often the *development cycle* stops for approval. It is decided per
+// workspace, and a session may tighten its own. The two are different axes and the doctrine is in
+// ../core/operating/autonomy.md; what follows is the mechanism.
+//
+//   autonomous   no checkpoint anywhere in the cycle, including the last step
+//   ship-gate    unattended until the ship step, which asks once
+//   strict       every push asks, and so does the ship step
+//
+// **These names were Auto / Gated / Strict for exactly one review round, and the rename is the
+// interesting part.** Two of them collided with tier names, and the collision was defended as harmless
+// because a tier is a *rule's* field and a mode is the *policy's* — different positions, no ambiguity.
+// That defence was wrong, and it was disproved by the cheapest possible experiment: the maintainer read
+// the mode-to-tier mapping table and understood it as *per-rule mode selection* — as if each rule chose
+// a mode — which is not what it says and is exactly what the shared words invite. A reader who has to
+// hold "which sense of Auto is this" in working memory will eventually resolve it wrong, and a table
+// that can be misread by the person who commissioned it is a table that will be misread by everyone
+// else. Renamed on his ruling, 2026-07-27. The tiers are untouched: `auto` / `propose` / `gated` /
+// `prohibited` still mean what they meant.
+//
+// ## What a mode may and may not move
+//
+// A mode may move a rule between `auto`, `propose` and `gated`. It may **not** reach `prohibited` in
+// either direction. That is the whole reason the fourth tier exists: it is the tier no approval
+// unlocks, and a mode that could grant or revoke it would turn "no agent edits the constitution"
+// into a setting. Enforced below, not promised.
+//
+// A mode also reaches only the rules that OPT IN, by declaring a mode-keyed tier instead of a scalar
+// one. Everything else is mode-invariant — repository settings, deletions, releases, spending. Those
+// are irreversible rather than ceremonial, and how often a team wants to be asked about its own
+// development loop says nothing about whether deleting a repository is recoverable.
+//
+// ## Non-loosening, enforced
+//
+// The three modes are ordered, so a mode-keyed tier must not get *looser* as the mode gets stricter.
+// Without that rail a policy could declare Strict more permissive than Auto and every document
+// describing the modes would be false while the compiler reported green — the exact shape of
+// ../.portulan/memory/a-stated-enforcer-must-be-the-real-one.md.
+
+/** The three modes, ordered from the least ceremony to the most. */
+export const MODES = new Set(["autonomous", "ship-gate", "strict"]);
+
+/** How strict each mode is. Only used to compare two modes; never exposed as a tier. */
+const MODE_STRICTNESS = { autonomous: 0, "ship-gate": 1, strict: 2 };
+
+/**
+ * The tiers a mode may move a rule between, ordered.
+ *
+ * `prohibited` is deliberately absent, and its absence is the enforcement: a mode-keyed tier naming
+ * it has no rank, so the check below refuses rather than comparing against `undefined`.
+ */
+export const STRICTNESS = { auto: 0, propose: 1, gated: 2 };
+
+/**
+ * The mode a policy declares.
+ *
+ * A policy that says nothing gets **`strict`**, not `auto`. Silence is not a licence: the safest
+ * reading of "nobody chose" is the one that asks most often, and a default that ran unattended
+ * because a key was missing would be a gate removed by an omission.
+ */
+export function declaredMode(policy) {
+    const declared = policy?.mode;
+    if (declared === undefined || declared === null) return "strict";
+    if (typeof declared !== "string" || !MODES.has(declared)) {
+        throw new CompileError(
+            `the gate policy declares mode ${JSON.stringify(declared)}, which is not one of ${[...MODES].join(" / ")}. ` +
+                `An unrecognised mode is not a setting to ignore — ignoring it would run the cycle at a checkpoint frequency nobody chose.`,
+        );
+    }
+    return declared;
+}
+
+/** Refuse a mode-keyed tier that cannot mean what it appears to. Returns the map when it is sound. */
+function checkModeTier(id, map) {
+    const named = Object.keys(map);
+    const missing = [...MODES].filter((m) => !named.includes(m));
+    const unknown = named.filter((m) => !MODES.has(m));
+    if (missing.length || unknown.length) {
+        throw new CompileError(
+            `rule \`${id}\` declares a mode-keyed tier naming ${JSON.stringify(named)}, but a mode-keyed tier must name ` +
+                `exactly ${[...MODES].join(", ")}` +
+                `${missing.length ? ` (missing: ${missing.join(", ")})` : ""}${unknown.length ? ` (unknown: ${unknown.join(", ")})` : ""}. ` +
+                `No mode may be left to a default — the posture of every mode is the thing a reviewer is here to read.`,
+        );
+    }
+    for (const mode of MODES) {
+        const tier = map[mode];
+        if (!TIERS.has(tier)) {
+            throw new CompileError(`rule \`${id}\` declares tier ${JSON.stringify(tier)} for mode \`${mode}\`, which is not a tier`);
+        }
+        if (tier === "prohibited") {
+            throw new CompileError(
+                `rule \`${id}\` puts tier \`prohibited\` behind mode \`${mode}\`. A mode may never reach the Prohibited tier: ` +
+                    `prohibited means no approval exists, and a prohibition a setting can grant or revoke is the Gated tier ` +
+                    `wearing its name. Modes move rules between ${Object.keys(STRICTNESS).join(", ")} only.`,
+            );
+        }
+    }
+    const ranks = [...MODES].map((m) => STRICTNESS[map[m]]);
+    for (let i = 1; i < ranks.length; i += 1) {
+        if (ranks[i] < ranks[i - 1]) {
+            const order = [...MODES];
+            throw new CompileError(
+                `rule \`${id}\` is looser at mode \`${order[i]}\` (${map[order[i]]}) than at mode \`${order[i - 1]}\` ` +
+                    `(${map[order[i - 1]]}). The modes are ordered, so a stricter mode may never relax what a laxer one gates — ` +
+                    `otherwise the names lie and every document describing them is false while this compiler reports green.`,
+            );
+        }
+    }
+    return map;
+}
+
+/**
+ * The tier a rule holds at a given mode.
+ *
+ * A scalar `tier` is mode-invariant and answers the same at every mode. A mode-keyed `tier` is an
+ * object naming all three. There is never a second statement of a rule's tier to fall out of sync
+ * with the first — the rule carries one shape or the other, never both.
+ */
+export function resolveTier(rule, mode) {
+    const tier = rule?.tier;
+    if (typeof tier === "string") return tier;
+    if (tier && typeof tier === "object" && !Array.isArray(tier)) {
+        return checkModeTier(rule.id, tier)[mode];
+    }
+    throw new CompileError(`rule \`${rule?.id}\` declares tier ${JSON.stringify(tier)}, which is neither a tier nor a mode-keyed map of them`);
+}
 
 const SLUG = /^[a-z0-9]+(-[a-z0-9]+)*$/;
 
@@ -106,6 +239,27 @@ export function parse(policy) {
         throw new CompileError("the gate policy declares no rules — refusing to emit an artifact that gates nothing");
     }
 
+    // The mode this compile resolves at. `--mode` is not a flag: the artifact expresses the
+    // WORKSPACE's declared default, and a per-session override lives at runtime rather than in a
+    // generated file (see the session-mode section below). Compiling at anything else would produce
+    // a tracked artifact that no reviewer could match to the policy beside it.
+    // `null` counts as silence exactly as a missing key does, in all three places that ask. They
+    // disagreed for one round — `declaredMode` read `null` as silence while the refusal below and the
+    // artifact's `modeDeclared` tested `!== undefined` — so a policy with `"mode": null` and
+    // mode-keyed tiers compiled instead of refusing, and stamped `strict` into the artifact as though
+    // a workspace had chosen it. That is the artifact asserting a ruling nobody made, which is the one
+    // thing the `modeDeclared` flag exists to prevent. Found at the pre-commit checkpoint.
+    const declares = policy.mode !== undefined && policy.mode !== null;
+    const mode = declaredMode(policy);
+    const modeVarying = policy.rules.filter((r) => r?.tier && typeof r.tier === "object" && !Array.isArray(r.tier));
+    if (modeVarying.length > 0 && !declares) {
+        throw new CompileError(
+            `${modeVarying.length} rule(s) declare a mode-keyed tier (${modeVarying.map((r) => r.id).join(", ")}) but the policy ` +
+                `declares no \`mode\`. Refusing to pick one: which mode this workspace runs is a ruling, and a compiler that ` +
+                `guessed it would set the checkpoint frequency of every session from a missing key.`,
+        );
+    }
+
     const rules = [];
     const seen = new Set();
 
@@ -117,10 +271,14 @@ export function parse(policy) {
         if (seen.has(id)) throw new CompileError(`duplicate rule id \`${id}\` — one id, one rule, or the gate map cannot cite either`);
         seen.add(id);
 
-        if (!TIERS.has(rule.tier)) {
+        // Resolved once, here, and used everywhere below. A rule's tier is either a scalar or a
+        // mode-keyed map; `resolveTier` refuses anything else and refuses a map that cannot mean what
+        // it looks like. An unrecognised tier is not a rule to skip — skipping it would silently
+        // un-gate whatever it names.
+        const tier = resolveTier(rule, mode);
+        if (!TIERS.has(tier)) {
             throw new CompileError(
-                `rule \`${id}\` declares tier ${JSON.stringify(rule.tier)}, which is not one of ${[...TIERS].join(" / ")}. ` +
-                    `An unrecognised tier is not a rule to skip — skipping it would silently un-gate whatever it names.`,
+                `rule \`${id}\` resolves at mode \`${mode}\` to tier ${JSON.stringify(tier)}, which is not one of ${[...TIERS].join(" / ")}.`,
             );
         }
         if (typeof rule.reason !== "string" || rule.reason.trim().length === 0) {
@@ -194,10 +352,15 @@ export function parse(policy) {
             }
         }
 
-        rules.push({ id, tier: rule.tier, kind, target: action[kind], reason: rule.reason, action });
+        // The tier a backend sees is the RESOLVED one — scalar rules answer themselves, mode-keyed
+        // rules answer at the declared mode, and the rails inside `resolveTier` (all three modes
+        // named, never `prohibited`, never looser as the mode tightens) fire here, once, for every
+        // backend at once. Backends stay mode-blind on purpose: two of them re-deciding what a mode
+        // means is the two-statements-of-one-policy defect this file exists to prevent.
+        rules.push({ id, tier: resolveTier(rule, mode), kind, target: action[kind], reason: rule.reason, action });
     }
 
-    return { rules, floor: parseFloor(policy.floor) };
+    return { rules, floor: parseFloor(policy.floor), mode, modeDeclared: declares };
 }
 
 /**
@@ -862,6 +1025,163 @@ export function matchesRule(rule, tool, input = {}) {
 }
 
 // ===========================================================================================
+// 2b. The per-session mode override
+// ===========================================================================================
+//
+// The workspace declares a default mode and the compiled artifact expresses it. A session may want a
+// tighter one — a run nobody is watching closely, an unfamiliar area of the tree — without editing a
+// tracked file and without changing what any other session does. That is this.
+//
+// ## Tighten-only, and the reason is a measurement rather than a preference
+//
+// **An override may raise a session's checkpoint frequency. It may never lower it.** Two independent
+// reasons, either sufficient:
+//
+// 1. **It could not be honoured if it did.** The load-bearing layer is the `permissions` rule, and
+//    that was compiled at the DEFAULT. A session claiming to be looser would still meet the prompt
+//    its mode promised to remove — the host asks, because the artifact says ask. A mode announcing
+//    "no checkpoint" while the host checkpoints is a false claim about an enforcer, which is exactly
+//    ../.portulan/memory/a-stated-enforcer-must-be-the-real-one.md.
+// 2. **The agent writes this file.** Editing on a working branch is Auto, so an agent that could
+//    loosen its own mode could un-gate its own merge — self-authorisation with extra steps. Raising
+//    your own bar needs nobody's permission; lowering it is the thing gates are for.
+//
+// So loosening is a change to the workspace default: a `.portulan/` edit, which is Propose, which is
+// a pull request somebody reviews. The direction that needs a human keeps one.
+//
+// Enforced twice on purpose — `writeSessionMode` refuses (so a human gets a sentence) and
+// `effectiveMode` clamps (so a hand-written or stale file is inert rather than trusted). This file
+// lives in the OS temp directory where nothing validates it, so the read path treats it as untrusted
+// input rather than as state this program wrote.
+//
+// ## Session-scoped, worktree-local, self-expiring
+//
+// Mirrors the Stop-gate counter in ../.portulan/compile/stop.mjs, for the same reasons and with the
+// same shape: keyed by the working tree because several worktrees of this repository are routinely
+// checked out at once, and carrying the session that claimed it because two sessions in one tree must
+// not bind each other. A record whose session does not match the reader's is ignored — which is also
+// the expiry: the next session's id will not match, so yesterday's override is inert without anything
+// having to delete it.
+//
+// Never a tracked file. An override in the repository would cross-contaminate parallel sessions, and
+// it would outlive the session that set it — a setting nobody remembers making is worse than no
+// setting at all.
+
+/** A short, stable digest. Not security — just enough that two distinct inputs differ. */
+function digest(value) {
+    let h = 0;
+    for (const ch of String(value)) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+    return h.toString(36);
+}
+
+/**
+ * Where one session's mode record lives, for one working tree. Untracked, in the OS temp dir.
+ *
+ * Keyed by the session **and** the working tree, which is the same key
+ * `../.portulan/compile/stop.mjs` uses for its counter and for the same two reasons. An earlier
+ * version keyed on the tree alone and let the reader compare the session id it found — which read
+ * correctly and *wrote* wrongly: two sessions in one worktree shared a file, so the second to tighten
+ * silently erased the first, and the first fell back to the default while its own tool had reported
+ * success. Found at the pre-commit checkpoint, against three documents claiming this record was
+ * "invisible to every other session". It is now, because there is nothing to share.
+ *
+ * The readable part is for a human debugging a stuck override; the digest is what makes the name
+ * unique. Sanitising alone is not enough and the failure is silent — a session id made entirely of
+ * characters outside the class sanitises to the empty string, so every such session would share one
+ * record again. Inherited wholesale from `stop.mjs`, including that lesson.
+ */
+export function sessionModeFile({ dir = os.tmpdir(), root = process.cwd(), sessionId = null } = {}) {
+    const readable = String(sessionId ?? "unclaimed").replace(/[^a-zA-Z0-9-]/g, "").slice(0, 40);
+    return path.join(dir, `portulan-mode-${readable}-${digest(sessionId)}-${digest(root)}`);
+}
+
+/**
+ * Read the session-mode record for a working tree, or `null`.
+ *
+ * Never throws. The gate runner that consumes this is written to fail open on any internal error, so
+ * a throw here would remove the sentence a human reads — and a missing, truncated or hand-mangled
+ * record is an ordinary state, not an exceptional one.
+ */
+export function readSessionMode({ dir, root, sessionId = null } = {}) {
+    try {
+        const record = JSON.parse(fs.readFileSync(sessionModeFile({ dir, root, sessionId }), "utf8"));
+        if (!MODES.has(record?.mode)) return null;
+        // Belt and braces. The filename already isolates sessions, so this compares equal in every
+        // ordinary case; it is kept because the *claim* this design makes is about sessions rather
+        // than about filenames, and a record hand-placed or left by a changed naming scheme should
+        // not bind a session that did not write it. Absence is not an identity: a record written
+        // with no session binds NOBODY, and a reader with no session id is bound by nothing —
+        // otherwise two absences would compare equal, and an override written outside any session
+        // would bind every consumer whose host happened not to supply a session id (the gate
+        // runner's `payload.session_id` is host-supplied, not guaranteed).
+        if (record.session == null || sessionId == null) return null;
+        if (record.session !== sessionId) return null;
+        return { mode: record.mode, session: record.session ?? null, at: record.at ?? null };
+    } catch {
+        return null;
+    }
+}
+
+/**
+ * Claim a tighter mode for this session. Returns the written record.
+ *
+ * `policy` is optional and is what makes the tighten-only refusal possible — without it there is no
+ * default to compare against, and the clamp in `effectiveMode` is the backstop.
+ */
+export function writeSessionMode(mode, { dir = os.tmpdir(), root = process.cwd(), sessionId = null, policy } = {}) {
+    if (!MODES.has(mode)) {
+        throw new CompileError(`\`${mode}\` is not a mode — expected one of ${[...MODES].join(", ")}`);
+    }
+    if (policy !== undefined) {
+        const base = declaredMode(policy);
+        if (MODE_STRICTNESS[mode] < MODE_STRICTNESS[base]) {
+            throw new CompileError(
+                `a session may tighten its mode, never loosen it: this workspace declares \`${base}\` and \`${mode}\` is looser. ` +
+                    `The compiled permission rules were emitted at \`${base}\`, so a looser session would still meet the prompts ` +
+                    `it claims to have removed. Loosening is a change to the workspace default in the gate policy — a pull request.`,
+            );
+        }
+    }
+    const record = { mode, session: sessionId ?? null, at: new Date().toISOString() };
+    fs.writeFileSync(sessionModeFile({ dir, root, sessionId }), JSON.stringify(record));
+    return record;
+}
+
+/**
+ * The mode in force right now, and where it came from.
+ *
+ * Precedence, in one line: **session override > workspace default**, and the override may only
+ * tighten. The Prohibited tier and every mode-invariant rule ignore both.
+ */
+export function effectiveMode({ policy, dir, root, sessionId } = {}) {
+    let base;
+    let baseSource = "workspace default";
+    if (policy == null) {
+        // No policy at all is not a declaration. `declaredMode(null)` would return `strict` through
+        // its omitted-key branch — the legal "workspace omitted the key" reading — but a workspace
+        // with no readable policy omitted nothing; it declared nothing. Same clamp, honest label.
+        base = "strict";
+        baseSource = "fail-closed: no readable policy, strictest assumed";
+    } else {
+        try {
+            base = declaredMode(policy);
+        } catch {
+            // An unreadable or invalid policy mode is not this function's to adjudicate — `compile`
+            // refuses it loudly at build time. At runtime the strictest reading is the safe one —
+            // and the source says so, because reporting the clamp as `workspace default` would
+            // label a fail-closed fallback as a declaration nobody made.
+            base = "strict";
+            baseSource = "fail-closed: no usable mode in the gate policy, strictest assumed";
+        }
+    }
+    const record = readSessionMode({ dir, root, sessionId });
+    if (record && MODE_STRICTNESS[record.mode] > MODE_STRICTNESS[base]) {
+        return { mode: record.mode, source: "session override", since: record.at };
+    }
+    return { mode: base, source: baseSource, since: null };
+}
+
+
 // 3. The backends
 // ===========================================================================================
 //
@@ -1014,10 +1334,17 @@ export function claudeCode(parsed, options = {}) {
     // The generation header. An emitted artifact that does not say what generated it invites the
     // one edit this whole rail exists to catch — a hand-fix that survives until the next compile
     // silently reverts it.
+    // The mode this artifact expresses. Recorded because the mode is the one input that changes the
+    // output without changing a rule — so an artifact that omitted it could not be matched to the
+    // policy beside it by reading either. It is also the audit record: a session may only ever
+    // TIGHTEN from here, so this field bounds what any session running against this commit could do.
+    const mode = options.mode ?? (parsed.modeDeclared ? parsed.mode : undefined);
+
     const value = {
         $portulan: {
             generated: "cli/compile.mjs",
             source,
+            ...(mode === undefined ? {} : { mode }),
             warning: `Generated file. Edit ${source} and recompile; \`verify/compile.sh\` fails on drift.`,
         },
         permissions: { deny, ask, allow: [] },
@@ -1461,6 +1788,20 @@ export function run(argv, options = {}) {
         const parsed = parse(policy);
         const source = path.relative(workspaceRoot, policyFile).split(path.sep).join("/");
         const columns = backends(parsed, { source });
+
+        // The mode is printed first because it is the input that silently changes every line below
+        // it — a run that listed gates without naming the mode would be reporting an answer without
+        // its question. The mode-varying rules are rendered in full, all three cells, so the setting
+        // is legible from the tool rather than only from the policy file.
+        say(
+            `mode: ${parsed.mode}${parsed.modeDeclared ? "" : " (not declared — defaulting to the strictest)"} ` +
+                `— session overrides may tighten, never loosen`,
+        );
+        for (const rule of policy.rules) {
+            if (!rule?.tier || typeof rule.tier !== "object" || Array.isArray(rule.tier)) continue;
+            const cells = [...MODES].map((m) => `${m}=${rule.tier[m]}`).join("  ");
+            say(`  varies  ${String(rule.id).padEnd(38)} ${cells}`);
+        }
 
         if (showMatrix) {
             printMatrix(say, parsed, columns, { source });

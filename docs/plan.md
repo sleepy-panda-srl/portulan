@@ -1292,6 +1292,69 @@ the seam applies here too: no client-identifying references)_
   `CONTRIBUTING.md`, the tier-model work) were not touched. · Seam scan clean across files, commit
   message, and branch name. Handoff:
   [`.portulan/handoffs/2026-07-27-the-desktop-is-a-host.md`](../.portulan/handoffs/2026-07-27-the-desktop-is-a-host.md).
+- 2026-07-27 · M4 (Enforcement compiler), session 1 territory — no milestone row ticked · **Autonomy
+  became a setting: three modes, two scopes, and the tier table survived intact.** Maintainer's ruling,
+  2026-07-27: **Autonomous** is fully autonomous agentic development with no prompt anywhere including the
+  last step; **Ship-gate** is unattended until the ship step, which asks once; **Strict** asks at every
+  push. _(Named Auto / Gated / Strict for one review round — see the rename below.)_ A
+  refinement the same day made it a setting with **two scopes** — a workspace default, and a per-session
+  override that may tighten and never loosen. Landed as a `mode` key in
+  [`.portulan/gates.json`](../.portulan/gates.json), mode-keyed `tier` objects on the two cycle rules,
+  the doctrine in [`core/operating/autonomy.md`](../core/operating/autonomy.md), the policy in
+  [`.portulan/gate-map.md`](../.portulan/gate-map.md)'s new *The three modes*, and
+  [`cli/mode.mjs`](../cli/mode.mjs). **This workspace declares `ship-gate`**, which is also what the engine
+  ships as its recommendation — the posture it already had, carried forward deliberately so that adopting
+  the model changed **no gate**: the recompiled artifact is byte-identical but for one line recording the
+  mode, which was the test of whether the model was faithful to what it replaced. **The design question the ruling forced, and the answer that did not survive contact with a reader.**
+  The modes were first named Auto / Gated / Strict, colliding with two of the four tiers, and the
+  collision was defended as harmless by *position* — a tier is a rule's field, a mode is the policy's, and
+  prose could say "the Auto tier" or "Auto mode". **The maintainer then read the mode-to-tier mapping
+  table as per-rule mode selection**, as though each rule chose a mode, which is not what it says and is
+  exactly what shared words invite. That misreading is the provenance of the rename he ordered the same
+  day: **Autonomous / Ship-gate / Strict**, tiers untouched. The generalisable form —
+  *disambiguation-by-convention is a tax collected on every future reader, and the first person to fail
+  to pay it is the evidence you needed a different word* — is in `core/operating/autonomy.md`, since it
+  is doctrine rather than a note about one table. **Four rails, all
+  red-first:** a mode may never reach `prohibited` in either direction; a mode-keyed tier must name all
+  three modes, so no posture is left to a default; it may not get looser as the mode gets stricter, or the
+  names lie while the compiler reports green; and a mode-keyed tier in a policy declaring no `mode`
+  refuses the whole compile, because which mode a workspace runs is a ruling and not a default. Silence,
+  where a mode must be resolved anyway, resolves to **`strict`** and never to `autonomous`. **Tighten-only is a
+  measurement, not a preference:** the load-bearing `permissions` layer was compiled at the workspace
+  default, so a session claiming to be looser would still meet every prompt its mode promised to remove —
+  a stated enforcer that is not the real one. The second reason stands alone: an agent writes that file
+  and editing on a working branch is in the Auto tier, so a loosenable mode is self-authorisation with
+  extra steps. Loosening is therefore a `.portulan/` edit — Propose, so a pull request. **The bound on
+  that claim is named rather than left to be read wider than it is:** an agent *can* edit `gates.json`
+  and recompile unattended, so what a session cannot do is loosen the mode **without leaving the change
+  in the diff** — added to the gate map's honest-holes list at the checkpoint. **The gate-map:78 revisit
+  clause fired and is answered here:** push-stays-Auto was justified on a one-collaborator *private*
+  repository, and the repository went public the same day. `strict` is the designed answer rather than
+  re-gating the push for every adopter — the engine gains a setting instead of imposing one team's risk
+  posture on every adopter, and which mode this repository runs on that axis stays the maintainer's
+  one-line call. The mode lives in the gate policy rather than the
+  manifest, so `portulan.spec` stays **2.1** and no schema *shape* changed — two `description` strings
+  in `spec/workspace.schema.json` were reworded, and nothing validates differently. Suite 280, all six
+  recipes green. ·
+  **Supervisor fidelity: fresh-context Fable 5 pre-commit review of the doctrine, plan and spec diffs —
+  verdict do-not-ship, and it was right.** Its findings, folded: the session-mode record was keyed on the
+  **working tree alone**, so two sessions in one worktree shared a file and the second to tighten silently
+  erased the first — under three documents claiming an override is "invisible to every other session", and
+  under a claim that it matched `stop.mjs`'s counter, which keys by session *and* tree. Now keyed both
+  ways, with the clobber as a regression test. Also: the mode-invariance test walked nine of the twelve
+  rules its prose claimed to cover (a stated checker narrower than its sentence — the three `none`-action
+  rules were the gap); `"mode": null` compiled instead of refusing and stamped `strict` into the artifact
+  as a ruling nobody made; and four enforcement overstatements about the floor were cut, including "no
+  agent can clear it" (an agent has, on his credentials, and Copilot has cleared its own thread) and a
+  forward reference to an await-Copilot rail that does not exist yet. **It also found a constitution
+  conflict**, which is why the customer-zero mode declaration is NOT in this change. **Copilot's round
+  then found the defect the session-keying fix had introduced**: `mode --clear` deleted the *unclaimed*
+  record rather than this session's, so it reported "override cleared" while the override stayed in
+  force — a tool reporting success for work it did not do, which is worse than one that fails because the
+  operator stops looking. Fixed, with `cli/mode.test.mjs` added to hold it. Nothing was merged by the
+  session. · Seam scan clean across files, commit message, and branch name.
+  Handoff:
+  [`.portulan/handoffs/2026-07-27-autonomy-is-a-setting.md`](../.portulan/handoffs/2026-07-27-autonomy-is-a-setting.md).
 - 2026-07-28 · M4 (Enforcement compiler) · **Milestone closed on a fresh-context verdict that re-measured
   rather than replayed — and that ran the one demonstration the implementing session could not.** [#57](https://github.com/sleepy-panda-works/portulan/pull/57)
   merged as `6b6f591`; this change moves the row to done and carries the two non-gating fixes the close

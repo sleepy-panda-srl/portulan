@@ -186,6 +186,42 @@ answer. Gated means *approvable per action* and compiles to a prompt; prohibited
 exists* and compiles to a refusal. A three-class policy would file "no agent edits the constitution" under
 Gated, and the compiler would then emit a prompt — turning *never* into *unless someone clicks yes*.
 
+### Three autonomy modes, on a different axis from the tiers
+
+A tier says what an action **is**; a mode says **how often the development cycle stops** for approval.
+The policy declares one in a top-level `mode`: `autonomous` (no checkpoint anywhere, including the last
+step), `ship-gate` (unattended until the ship step, which asks once), `strict` (every push asks, and the
+ship step too). The three deliberately share no words with the tier names — an earlier naming did, and
+was misread as each rule selecting its own mode.
+
+A rule opts into the mode axis by declaring its `tier` as an **object keyed by mode** instead of a
+string — `{"autonomous": "auto", "ship-gate": "auto", "strict": "gated"}`. A rule carries one shape or the other,
+never both, so a rule's tier is stated exactly once and there is no second statement to drift from the
+first. Four refusals are the compiler's obligation here, and each closes a way the vocabulary could lie:
+
+- a mode-keyed tier naming **`prohibited`** — a mode may not reach the tier no approval unlocks, in
+  either direction;
+- a mode-keyed tier that does not name **all three** modes, so no posture is left to a default;
+- a mode-keyed tier that gets **looser as the mode gets stricter**, which would make the names false
+  while the compiler reported green;
+- a mode-keyed tier in a policy declaring **no `mode`** — which mode a workspace runs is a ruling, and a
+  compiler that guessed it would set every session's checkpoint frequency from a missing key.
+
+A policy that declares no `mode` and no mode-keyed tiers is valid and unchanged: modes are opt-in, and
+an adopter on scalar tiers is not broken by a feature they never declared. Where a mode must be resolved
+anyway, **silence resolves to `strict`** — the safest reading of "nobody chose", never the most
+convenient one.
+
+**The mode lives in the gate policy, not in the manifest.** That is deliberate: it belongs beside the
+rules it moves, it is read by the same file the compiler already reads, and putting it in
+`workspace.json` would have required a schema change and a spec bump to express a setting that no
+manifest consumer needs. `portulan.spec` stays **2.1**.
+
+**A per-session override is runtime state and is out of scope for this spec** — it is not a slot, not a
+manifest key, and nothing in a repository. What the spec does fix is the precedence a host must honour:
+_session override > workspace default_, an override may only **tighten**, and the Prohibited tier and
+every mode-invariant rule ignore both.
+
 ### What a compiler must do with it
 
 Two obligations, both learned from defects rather than designed in the abstract:

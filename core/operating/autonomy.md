@@ -1,9 +1,14 @@
 # Autonomy & gates
 
 > Core doctrine — loaded on demand. What an agent may do on its own, what it must get approval for, and
-> the gate no model can talk its way past. The engine defines the *mechanism* (the tiers, the floor);
-> the workspace supplies the *policy* (which concrete action sits in which tier) — mechanism/policy
-> separation.
+> the gate no model can talk its way past. The engine defines the *mechanism* (the tiers, the modes, the
+> floor); the workspace supplies the *policy* (which concrete action sits in which tier, and which mode
+> it runs) — mechanism/policy separation.
+
+**Two axes, and confusing them is the expensive mistake.** A **tier** says what an action *is* — how hard
+it is to undo — and is decided per action. A **mode** says how often the *development cycle* stops for
+approval, and is decided per workspace and per session. A tier is a property of the action; a mode is a
+property of the run. Neither substitutes for the other, and the sections below take them in that order.
 
 ## Actions are tiered by undoability
 
@@ -46,6 +51,120 @@ either, and a policy that reaches for it often has stopped distinguishing *dange
 The tiers are the engine's vocabulary. The **gate map** — the table of which concrete action lands in
 which tier for this team and repo — lives in the workspace, because it is policy and it varies.
 _(Provenance: platform engineering — the same policy for agents as for humans.)_
+
+## Autonomy modes — how often the cycle stops
+
+The tiers answer *what may I do*. They do not answer *how often will this run stop and ask*, and that is a
+separate question with a separate right answer per team, per repository, and sometimes per session. A
+team shipping to a staging environment and a team shipping to production want the same tier table and a
+different checkpoint frequency.
+
+| Mode | The development cycle | The one-line version |
+|---|---|---|
+| **Autonomous** | No checkpoint anywhere, including the last step. | Fully autonomous, end to end. |
+| **Ship-gate** | Unattended until the ship step, which asks once. | Autonomous until it lands. |
+| **Strict** | Every push asks, and so does the ship step. | Ask before anything leaves the machine. |
+
+**The rows above are modes; the columns of the mapping below are tiers.** They are different
+vocabularies and they were briefly the same words — see *Why these names* at the end of this section.
+
+**`ship-gate` is the engine's shipped default**, and it is the recommendation, not merely a value: one
+approval at the moment work lands is the smallest checkpoint that still puts a human between a change and
+the repository's record. A workspace should have a reason to move off it in either direction.
+
+Two different things are easy to confuse here, so they are named separately:
+
+| | Value | What it is |
+|---|---|---|
+| **Shipped default** | `ship-gate` | What a workspace should declare absent a reason not to. A recommendation, and nothing enforces it. |
+| **Fallback on silence** | `strict` | What a compiler resolves when a policy declares no mode at all. Not a recommendation — the safest reading of *nobody chose*, so that an omission can never be the loosest setting. |
+
+_(Which mode any particular workspace runs is that workspace's declaration, not core's business — core
+would be stating a fact it cannot check, and a doctrine file carrying another file's live value is how
+the two drift apart. Read the workspace's own gate policy.)_
+
+**A mode governs the development cycle and nothing else.** It moves only the actions a workspace marks as
+cycle steps — the push, the ship. It does not reach settings changes, deletions, releases, or spending:
+those are classified by undoability, and how often a team wants to be asked about its own loop says
+nothing about whether deleting a repository is recoverable. A mode is not a licence.
+
+**No mode reaches the Prohibited tier**, in either direction. That tier exists precisely because it is the
+one no approval unlocks, and a prohibition a setting could grant or revoke would be the Gated tier wearing
+its name — the same collapse the fourth tier was added to prevent, arriving by a different door. This is
+enforced by the compiler rather than promised: a mode-keyed tier naming `prohibited` fails the whole
+compile.
+
+### Why these names, and the misreading that produced them
+
+The modes were **Auto / Gated / Strict** for exactly one review round. Two of those are also tier names,
+and the collision was defended as harmless on the grounds that a tier is a *rule's* field while a mode is
+a *policy's* — different positions, so no real ambiguity, and prose could disambiguate by writing "the
+Auto tier" or "Auto mode".
+
+**That defence was wrong, and the disproof was immediate and cheap.** Handed the mode-to-tier mapping
+table, the maintainer read it as **per-rule mode selection** — as though each rule chose its own mode —
+which is not what the table says and is exactly what the shared words invite. A reader forced to hold
+*"which sense of Auto is this"* in working memory will eventually resolve it wrong, and a table that can
+be misread by the person who commissioned it will be misread by everyone else.
+
+So the modes were renamed on his ruling, 2026-07-27: **Autonomous**, **Ship-gate**, **Strict**. The tiers
+are untouched — `auto`, `propose`, `gated`, `prohibited` still mean exactly what they meant. The lesson
+generalises past this table: **disambiguation-by-convention is a tax collected on every future reader,
+and the first person to fail to pay it is the evidence you needed a different word.**
+
+### Two scopes: a workspace default, and a session that may tighten
+
+The workspace declares a **default mode**, and that default is what the enforcement compiler compiles —
+so the generated artifact expresses it and a reviewer can read it in a diff.
+
+A **session may tighten its own mode** at any point, without touching the policy, without a pull request,
+and without affecting any other session. It may **not loosen**. Both halves matter:
+
+- **Tightening is free** because raising your own bar needs nobody's permission.
+- **Loosening is not available at runtime at all** — not gated, *absent*. Two independent reasons, either
+  sufficient. First, it could not be honoured: the load-bearing layer is the compiled permission rule,
+  emitted at the default, so a session claiming to be looser would still meet every prompt its mode
+  promised to remove — a mode announcing a posture the host does not have is a false claim about an
+  enforcer. Second, the agent writes that setting, and editing on a working branch is unattended — an
+  agent that could loosen its own mode could un-gate its own ship step, which is self-authorisation with
+  extra steps.
+
+So loosening is a change to the workspace default: a policy edit, which is Propose, which is a review.
+**The direction that needs a human keeps one.**
+
+**Precedence, in one line:** _session override > workspace default; the Prohibited tier and every
+mode-invariant action ignore both._
+
+The override is session state, never repository state: worktree-local, untracked, carrying the session
+that claimed it, and ignored by any other session — which is also how it expires, since the next
+session's identity will not match it. A mode that outlived its session would be a setting nobody
+remembers making.
+
+_(One consequence to take deliberately rather than discover: a workspace on **Autonomous** removes the agent-side
+prompt at the last step. Any argument a workspace makes that rests on a human approving every merge —
+commit attribution is the usual one — is an argument that changes under Autonomous. Say so where the argument
+lives, rather than leaving a paragraph defending a property the setting has already removed.)_
+
+**Autonomous removes a prompt; it does not remove the floor.** This is the sentence to keep hold of, because
+"fully autonomous" invites the other reading. The platform floor below is enforced by the server, and a
+mode is a property of the run — so required checks, required reviews, and required conversation
+resolution all still hold at Autonomous. An Autonomous-mode agent still cannot land a change *that carries an
+unresolved review thread* where resolving one is authorised to a human: the mode deleted the prompt the
+*agent* would have raised and left every gate the *platform* raises exactly where it was.
+
+**But read what that floor actually guarantees before leaning on it**, because the reassuring version of
+this paragraph is the one that goes stale. Required conversation resolution establishes that no comment
+was *ignored*, not that anyone agreed — a reviewer can resolve its own thread. A pull request that drew no
+comment trips none of it. And a workspace with zero required approving reviews has no floor row that
+demands a human act at all. So a workspace declaring Autonomous is choosing **where** its checkpoints come from,
+and it should check that the floor it is delegating to actually has the ones it thinks it does.
+
+### What a mode does not survive
+
+The **platform floor** below is indifferent to modes. Branch protection, required checks and review
+requirements hold at Autonomous exactly as at Strict, because they are enforced by the server rather
+than by the run. A mode changes how often *this* loop stops; it changes nothing about what the platform
+will accept. That is the property that makes Autonomous safe to offer at all.
 
 ## The platform floor
 

@@ -2,6 +2,7 @@
   "$portulan": {
     "generated": "cli/compile.mjs",
     "source": ".portulan/gates.json",
+    "mode": "ship-gate",
     "warning": "Generated file. Edit .portulan/gates.json and recompile; `verify/compile.sh` fails on drift."
   },
   "permissions": {
