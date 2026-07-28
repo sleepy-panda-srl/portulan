@@ -257,6 +257,12 @@ parsed run: scalar`. Put a jq program in a workflow the recipe does not name →
 instrument → **exit 2** from the wrapper. Take `jq` off the `PATH` → **exit 2**, from the wrapper's
 guard and again from the instrument run alone. Clean tree → **green, 7 programs, 24 fixtures**.
 
+A Copilot round on #64 then found the one place the recipe overstated itself, which is the failure it
+exists to catch happening to it: the comparison was promised byte-for-byte and `spawnSync` ran with
+`encoding: "utf8"`, so decoded strings were compared. Kept the promise rather than trimming it — the
+verdict is `Buffer.equals` now — and demonstrated on the only non-ASCII fixture, where swapping the em
+dash in `pr-labels.yml`'s summary program for a hyphen is three bytes for one and comes back **red**.
+
 Two more were added when the binding rule was tightened, because the first version of it would have
 trapped a change rather than caught one: the **same** program appearing in a second workflow → **green,
 8 programs**, both sites exercised by the same fixtures, where requiring exactly one call site made an
