@@ -232,20 +232,22 @@ else
     # The scope is Markdown deliberately: the enumeration above greps `*.md`, so a `notes.txt` here
     # passes — measured, not assumed. Widening it would red the untracked debris a working tree
     # collects (`.DS_Store` and friends), which is a worse trade than the gap.
+    if [ ! -s "$tmp/handoffdates" ] && [ ! -s "$tmp/strays" ]; then
+        # Nothing whatever to look at: the only branch that is honestly *could not run*. It returns
+        # BEFORE any verdict is printed, and that ordering is the second half of the same lesson.
+        # Emitting the audit's line first meant a run ending in exit 2 opened with `ok … (0 examined)`
+        # — a green above a "could not check", which is the shape this whole check exists to refuse.
+        printf 'verify: no Markdown file under %s/ — cannot check correspondence\n' "$HANDOFFS" >&2
+        exit 2
+    fi
+
     if [ -s "$tmp/strays" ]; then
         fail "record — Markdown file(s) in $HANDOFFS/ whose name carries no date, so no check counts them"
         sed 's/^/        /' "$tmp/strays"
     else
-        # The count is printed for the same reason 4c prints its own: on an empty directory this
-        # sentence is vacuously true, and a green that does not say it examined nothing reads as a
-        # green that examined something.
+        # The count names this check's coverage, as 4c's does. It can no longer be 0: the empty case
+        # returned above, and a directory of nothing but strays takes the FAIL branch.
         pass "record — every Markdown file in $HANDOFFS/ is a dated handoff ($(wc -l <"$tmp/handoffdates" | tr -d '[:space:]') examined)"
-    fi
-
-    if [ ! -s "$tmp/handoffdates" ] && [ ! -s "$tmp/strays" ]; then
-        # Nothing whatever to look at. This is the only branch that is honestly *could not run*.
-        printf 'verify: no Markdown file under %s/ — cannot check correspondence\n' "$HANDOFFS" >&2
-        exit 2
     fi
 
     if [ ! -s "$tmp/handoffdates" ]; then

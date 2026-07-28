@@ -270,8 +270,8 @@ Observations, each run on this tree and reverted, with the tree asserted clean a
 | the cutoff lowered to 2026-07-24, binding 36 entries | **red** on 30, including both merged 2026-07-28 entries — and on **none** of the six added here, which is how their length is a measurement rather than a hand count |
 | a Markdown file in `../handoffs/` whose name carries no date | **red**, naming the file; correspondence still runs |
 | `../handoffs/` holding **only** undated Markdown | **red** naming the files, plus a second red saying neither correspondence check could run — it was **exit 2 naming nothing** until the reorder below |
-| an undated **non**-Markdown file there (`notes.txt`) | green — the audit's scope is `*.md`, measured rather than assumed |
-| `../handoffs/` holding nothing readable at all | **exit 2** — the only branch that is honestly *could not run* |
+| an undated **non**-Markdown file (`notes.txt`) beside real handoffs | green — the audit's scope is `*.md`, measured rather than assumed |
+| `../handoffs/` holding **only** a `notes.txt`, or nothing at all | **exit 2**, and — after the second reorder — printing no verdict line at all beforehand |
 | `../handoffs/` emptied | **exit 2** — could not check correspondence |
 | every entry removed from the log | **exit 2** — could not enumerate the record |
 | the whole recipe under `LC_ALL=C`, `en_US.UTF-8`, `tr_TR.UTF-8` | green and identical in all three |
@@ -319,6 +319,16 @@ neither correspondence check could run; nothing readable at all is the only hone
 real handoffs is red while correspondence still runs. Raised as a suppressed low-confidence note on #73,
 twice — round 3 filed it as [#78](https://github.com/sleepy-panda-works/portulan/issues/78) under the
 review bound, and the maintainer then authorised a further round, which is what fixed it.
+
+**Then the fix needed a second ordering, for the same reason as the first.** With the audit moved ahead
+of the precondition, a directory holding nothing enumerable printed `ok   record — … (0 examined)` and
+*then* exited `2`: a green line opening a run that ends in *could not check*. The precondition now
+returns before any verdict is emitted, so the two orderings together say the whole rule — **report a
+finding before a precondition that would hide it, and report no finding at all when there is nothing to
+find.** The count on the green survives and can no longer read 0: the empty case returns earlier, and a
+directory of nothing but strays takes the FAIL branch. Both orderings came from the same channel on
+consecutive rounds, each one exposed by the previous fix, which is the honest shape of this fix rather
+than something to smooth over.
 
 **Both recipes then turned out to have a false green, found in review of that same change.** Neither
 checked whether `git ls-files` succeeded. When it failed the list came back empty, every loop iterated
