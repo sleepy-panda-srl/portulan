@@ -82,17 +82,40 @@ is that a signal nobody acts on is not coverage.
   "nothing to review", and it would have been one line. What Copilot does there is unmeasured, and an
   unverified pass path in a merge gate is worth less than the noise it removes.
 
-**Verification.** The step script was extracted from the YAML and exercised against a stubbed API over ten
-cases — review present, review landing on a later poll, dismissed, null `commit_id`, never arriving, draft,
-head moved mid-wait, unreadable pull request, unreadable reviews, absent head SHA. The `late` case is the
-one that matters: it goes green on the third poll where the old shape would have gone red on the first.
-This is the 0007 obligation discharged in the lab rather than on the platform; the workflow's real
-behaviour on a live push is **not yet observed**, and the first pull request carrying it is where that
-happens.
+**Verification, in the lab.** The step script is extracted from the YAML **by a parser, not by slicing
+text**, and exercised against a stubbed API over thirteen cases — review present, landing on a later poll,
+dismissed, null `commit_id`, never arriving, draft, head moved mid-wait, unreadable pull request,
+unreadable reviews, absent head SHA, and four for the notes extraction, two of them driven by real Copilot
+review bodies. The `late` case is the one that matters: green on the third poll where the old shape went
+red on the first. The extraction method is not incidental — slicing by string prefix once let a multi-line
+string whose continuation lines sat at column 0 pass all thirteen while the workflow itself no longer
+parsed.
+
+**Verification, on the platform** — the 0007 obligation, discharged where it counts, on
+[#63](https://github.com/sleepy-panda-works/portulan/pull/63):
+
+| Head | Job start → green | Polls | Click needed |
+|---|---|---|---|
+| `d4db12b` | 10:41:57Z → 10:44:01Z, **125s** | 5 | none |
+| `1a61a54` | **3m12s** | — | none |
+
+The log reads `waiting (1s of 1200s)` … `waiting (94s of 1200s)` … `found: copilot-pull-request-reviewer[bot] reviewed d4db12b (COMMENTED)` → `GREEN`. **No `action_required`, no maintainer approval, on either run** — the cost the first cut recorded as one click per pull request is gone, measured rather than predicted.
+
+**The surfacing step earned its place on the same pull request.** Round one printed one suppressed note,
+round two printed two. **All three were threadless**, none had a Resolve control, and none would have been
+seen without it. Round one's was a correct fix with a wrong diagnosis — it claimed the indented here-doc
+bodies reached `read` with leading spaces, when a YAML block scalar had already stripped them; the
+here-strings landed anyway, because the old form was correct only while those lines carried exactly the
+block indent. Round two's two were refused with evidence: jq's `join` treats null as the empty string and
+does not error, so the suggested coalesce was a no-op that would have left a defensive line asserting a
+hazard that does not exist.
 
 **For the next session.** This check is **still not a required status check** and this change does not make
 it one — so none of the above blocks or unblocks a merge mechanically yet. Joining the floor remains one
-Gated settings command, unchanged. The branch is unpushed and the Copilot feedback loop on it has not
-started.
+Gated settings command, and it is now blocked on a measurement nobody has taken: the repository is public,
+and whether the Copilot ruleset requests a round on **fork** pull requests is unknown. If it does not,
+every outside contribution reds out after twenty minutes the day this becomes required. One follow-up is
+carried rather than smuggled in: the regression harness stubs `gh`, so the workflow's `--jq` filters are
+executed against null-bearing input only as a one-off measurement, not by the suite.
 
 **Seam scan clean** across files, commit message, and branch name.
