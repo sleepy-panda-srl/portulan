@@ -110,6 +110,22 @@ block indent. Round two's two were refused with evidence: jq's `join` treats nul
 does not error, so the suggested coalesce was a no-op that would have left a defensive line asserting a
 hazard that does not exist.
 
+**The loop got a bound, and this pull request is why.** Four rounds in, the maintainer ruled that the
+feedback loop *"can grow out of hand; it hinders development more than it helps"* — the same day he made
+it mandatory. Measuring the 30 most recently merged pull requests said he was right and said why:
+**110 rounds, 3.7 each, 29% finding nothing at all, twelve needing four or more, #49 needing nine.** The
+driver was *pushes*, not findings — `review_on_push: true` spawns a round per push, and round three here
+was spawned by a **handoff correction**, a documentation-only push that could not have needed review.
+The bound is [`../memory/a-review-loop-needs-a-bound.md`](../memory/a-review-loop-needs-a-bound.md), new
+in this change: one push per round, records land last, threads block but low-confidence notes do not,
+two fix-rounds then triage. **The guarantee is untouched** — the merge still waits for the round on the
+merging head. What was bounded is the process built on top of it, which nobody ruled and which grew on
+its own. That the rule had **no repository record at all** until now, while being described as
+mandatory, is its own instance of `a-mandate-nothing-checks-is-already-broken`.
+
+This final push applies the rule it lands: the round-four fix, the doctrine, and these records go up
+together, in one push, instead of the three separate ones that would have cost three more rounds.
+
 **For the next session.** This check is **still not a required status check** and this change does not make
 it one — so none of the above blocks or unblocks a merge mechanically yet. Joining the floor remains one
 Gated settings command, and it is now blocked on a measurement nobody has taken: the repository is public,

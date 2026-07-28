@@ -321,17 +321,28 @@ jobs:
             sleep "$POLL_SECONDS"
           done
 
-          printf '::error::no Copilot review for the current head commit (%s) after %ss of waiting.\n' \
-            "${head:-unknown}" "$SECONDS"
-          printf 'A pull request may not merge until Copilot has reviewed the commit it is actually\n'
-          printf 'merging, and until that feedback is resolved. Conversation resolution covers the\n'
-          printf 'resolved half; this covers the awaited half. Rounds on this repository land in\n'
-          printf 'under four minutes, so a full budget spent waiting is a fault, not slowness:\n'
-          printf 'check that the Copilot ruleset is still active and that the reviewer login below\n'
-          printf 'has not been renamed, then re-run this job — it is not bot-triggered and needs no\n'
-          printf 'approval. Measured 2026-07-28.\n'
+          # Two timeouts, two different faults, and the check must not claim the one it did not
+          # establish. "No review arrived" is a finding about Copilot. "The API stayed unreadable" is
+          # a finding about GitHub, and it leaves `head` holding whatever the last SUCCESSFUL poll
+          # returned — possibly minutes stale, possibly not the head any more. Naming that SHA as the
+          # commit with no review would send a reader to investigate a reviewer that may have answered
+          # perfectly well. The verdict is red either way; only the sentence differs.
           if [ -n "$unread" ]; then
-            printf 'The last read of the API failed: %s\n' "$unread"
+            printf '::error::could not confirm a Copilot review on #%s after %ss — the API was still unreadable at the last attempt: %s\n' \
+              "$PR_NUMBER" "$SECONDS" "$unread"
+            printf 'This is not a finding about the review. It is "could not look", held for the whole\n'
+            printf 'budget, which stays red because a gate that opens when it is unwell is not a gate.\n'
+            printf 'The last head SHA read successfully was %s, which may be stale — do not act on it.\n' "${head:-none}"
+          else
+            printf '::error::no Copilot review for the current head commit (%s) after %ss of waiting.\n' \
+              "$head" "$SECONDS"
+            printf 'A pull request may not merge until Copilot has reviewed the commit it is actually\n'
+            printf 'merging, and until that feedback is resolved. Conversation resolution covers the\n'
+            printf 'resolved half; this covers the awaited half. Rounds on this repository land in\n'
+            printf 'under four minutes, so a full budget spent waiting is a fault, not slowness:\n'
+            printf 'check that the Copilot ruleset is still active and that the reviewer login below\n'
+            printf 'has not been renamed, then re-run this job — it is not bot-triggered and needs no\n'
+            printf 'approval. Measured 2026-07-28.\n'
           fi
           printf 'Review authors seen on this pull request:%s\n' "${seen:- none}"
           # Diagnostic only — nothing above depends on it. It separates "Copilot was never asked"

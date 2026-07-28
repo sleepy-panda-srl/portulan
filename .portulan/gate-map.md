@@ -344,6 +344,16 @@ inside the `pull_request` run — which is not bot-triggered — removed that tr
 left is the tail: if the budget expires before the round lands, **nothing re-triggers the check** and a
 maintainer re-runs the job. The same click as before, now only in the case that is already a fault.
 
+**The guarantee is bounded; the process on top of it is now bounded too — 2026-07-28.** Answering
+Copilot was made mandatory and unbounded on the same day, and the unbounded half did not survive
+contact: **110 rounds across the 30 most recently merged pull requests, 3.7 each, 29% of them finding
+nothing at all, twelve needing four or more.** The length was driven by *pushes* rather than findings —
+`review_on_push: true` means every push spawns a round, including documentation-only ones. The bound is
+[`memory/a-review-loop-needs-a-bound.md`](memory/a-review-loop-needs-a-bound.md): one push per round,
+records land last, threads block but low-confidence notes do not, and after two fix-rounds the remainder
+becomes an issue rather than another push. **None of that touches the row in the table above** — the
+merge still waits for the round on the merging head, and threads still resolve.
+
 **It composes with the autonomy mode; it does not substitute for one.** A mode governs whether the
 *agent* raises a ship-step prompt. This is a status check — a floor row once it joins the floor, per the
 paragraph below — and floor rows hold at every mode. So under `gated` a merge waits for both the
