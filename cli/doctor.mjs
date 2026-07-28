@@ -24,6 +24,14 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
+// The enforcement compiler, imported rather than reimplemented. `doctor` reports what each backend
+// covers, and the only way that report can be true is for it to ask the backends themselves — a
+// second copy of the accounting would drift, and a *coverage claim* that drifts does not look wrong,
+// it looks like enforcement that quietly stopped covering something. Same reasoning that has
+// ../.portulan/compile/gate.mjs import the matcher instead of writing a second one. Zero
+// dependencies on both sides, so nothing is added to what this tool needs to run.
+import { parse, backends } from "./compile.mjs";
+
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const DEFAULT_SCHEMA = path.resolve(HERE, "..", "spec", "workspace.schema.json");
 
@@ -776,7 +784,18 @@ export async function inspect(workspaceDir, options = {}) {
     // spec/slots.md promised those claims were "counted and reported unverifiable, never skipped
     // silently". Found at the pre-commit checkpoint, in the paragraph that made the promise.
     let claimedChecks = [];
+    // The same list, captured before anything mutates it. `claimedChecks` is emptied further down
+    // when there are no workflows to compare against, and the floor cross-check read it afterwards —
+    // reporting that the gate map named nothing, about a gate map that named it plainly. That is the
+    // SECOND consumer caught reading this array after the mutation; the first fix added a separate
+    // flag for one consumer instead of making the array safe to read, so the next consumer inherited
+    // the trap. Found by review on the pull request. Snapshot rather than flag this time, so a third
+    // consumer inherits something true instead of something to remember.
+    let declaredChecksInProse = [];
     let gatesRead = false;
+    // What the tree's workflows actually report, filled in once a tree is available. `null` means
+    // no tree was declared, which is a different thing from a tree with no workflows in it.
+    let workflowContexts = null;
     // Captured immediately after parsing and never reassigned. `claimedChecks` is emptied later when
     // there are no workflows to compare against, and keying the "names no check" report off the
     // mutated array made it fire for a gate map that had named one — two contradictory findings from
@@ -785,6 +804,7 @@ export async function inspect(workspaceDir, options = {}) {
     if (workspace.slots?.gates) {
         try {
             claimedChecks = requiredCheckClaims(fs.readFileSync(path.resolve(dir, workspace.slots.gates), "utf8"));
+            declaredChecksInProse = [...claimedChecks];
             gatesRead = true;
             namedAnyCheck = claimedChecks.length > 0;
         } catch {
@@ -823,19 +843,24 @@ export async function inspect(workspaceDir, options = {}) {
             }
         }
 
-        if (claimedChecks.length) {
-            const workflows = path.join(treeRoot, ".github", "workflows");
-            let jobs = [];
-            let found = false;
-            try {
-                for (const entry of fs.readdirSync(workflows)) {
-                    if (!/\.ya?ml$/.test(entry)) continue;
-                    found = true;
-                    jobs.push(...workflowJobs(fs.readFileSync(path.join(workflows, entry), "utf8")));
-                }
-            } catch { /* handled below */ }
+        // Read once and shared by two consumers: the gate map's prose claim about required checks,
+        // and — since the floor backend arrived — the gate policy's `floor.checks`. It was nested
+        // inside the first consumer's `if`, which would have left the second silently unable to
+        // check anything whenever the prose named nothing.
+        const workflows = path.join(treeRoot, ".github", "workflows");
+        let jobs = [];
+        let found = false;
+        try {
+            for (const entry of fs.readdirSync(workflows)) {
+                if (!/\.ya?ml$/.test(entry)) continue;
+                found = true;
+                jobs.push(...workflowJobs(fs.readFileSync(path.join(workflows, entry), "utf8")));
+            }
+        } catch { /* handled by each consumer */ }
+        const contexts = jobs.map((j) => j.context);
+        workflowContexts = { contexts, found };
 
-            const contexts = jobs.map((j) => j.context);
+        if (claimedChecks.length) {
             // A job whose id is claimed but whose reported context differs is the interesting failure,
             // and it deserves its own message: "no job declares that" would send the reader hunting for
             // a missing job when the job is right there under a display name.
@@ -885,6 +910,121 @@ export async function inspect(workspaceDir, options = {}) {
             "claims",
             "the gate map names no required status check — either this workspace requires none, or its floor table does not use the row label `Required status check` that this check recognises (spec/slots.md). Nothing was compared against the tree",
         );
+    }
+
+    // ---- the per-host degradation report
+    //
+    // `../docs/vision.md`: "the enforcement backends are per-host with an honest degradation
+    // report." The compiler's accounting IS that report's data — every rule ends as compiled or
+    // refused-with-a-reason, per backend — so this reads the backends rather than re-deriving what
+    // they cover. Two implementations of one accounting is the drift this repository keeps finding,
+    // and it is the reason `../.portulan/compile/gate.mjs` imports the matcher instead of copying it.
+    //
+    // Reported, never failed, with one exception below: nothing legislates a coverage floor, and
+    // `doctor` does not enforce what nobody legislated — the same reasoning that made `retirement`
+    // report-only. What it must not do is print a green that reads as "everything is enforced".
+    if (workspace.gates) {
+        const policyFile = path.resolve(dir, workspace.gates);
+        let parsed = null;
+        let columns = null;
+        try {
+            parsed = parse(JSON.parse(fs.readFileSync(policyFile, "utf8")));
+            // Inside the SAME guard as the parse, which it was not for one checkpoint. A policy can
+            // parse cleanly and still be refused by a backend — a declared floor no rule reaches, or
+            // gate rules that all compile to nothing — and with `backends()` outside the try, that
+            // threw out of `inspect`, exited 2, and discarded every verdict this run had already
+            // reached. Trading a verdict for "could not run" is the milestone-2 gates-file defect,
+            // and it was sitting three lines under a comment naming it. Found at the pre-commit
+            // checkpoint.
+            columns = backends(parsed, { source: workspace.gates });
+        } catch (cause) {
+            // A defect in the WORKSPACE's own policy, reported where every other finding is.
+            fail("enforcement", `${workspace.gates} — ${cause.message}`);
+            parsed = null;
+        }
+
+        if (parsed) {
+            for (const column of columns) {
+                report(
+                    "enforcement",
+                    `${column.label}: ${column.compiled.length} of ${parsed.rules.length} rule(s) compiled, ${column.refused.length} refused` +
+                        (column.artifact ? ` → ${column.artifact.path}` : " → no artifact (this backend compiled nothing here)"),
+                );
+            }
+
+            // The honest signal, split by tier because the halves mean opposite things. An `auto`
+            // rule compiled by nothing is the system working; a `gated` or `prohibited` one is a
+            // gate that exists only as a sentence, which is what this product is against.
+            const uncovered = parsed.rules.filter(
+                (rule) =>
+                    (rule.tier === "gated" || rule.tier === "prohibited") &&
+                    columns.every((c) => !c.compiled.some((x) => x.id === rule.id)),
+            );
+            report(
+                "enforcement",
+                uncovered.length
+                    ? `${uncovered.length} gate(s) no backend compiles — declared policy that nothing enforces: ${uncovered.map((r) => `\`${r.id}\``).join(", ")}. Each is a prompt-level habit until a backend reaches it`
+                    : "every gate in this policy is compiled by at least one backend — which says the policy is reachable, never that a host honours what was emitted",
+            );
+
+            // ---- the floor's declared contexts, against the tree and against the prose
+            for (const check of parsed.floor?.checks ?? []) {
+                if (check.integration_id === undefined) {
+                    report(
+                        "enforcement",
+                        `the floor requires the status check \`${check.context}\` with no \`integration_id\` — an unpinned context is satisfiable by any GitHub App reporting that name, which the branch-protection UI does not surface`,
+                    );
+                }
+                if (workflowContexts === null) {
+                    stats.unverifiable += 1;
+                    report("enforcement", `the floor requires the status check \`${check.context}\` and this workspace declares no tree to check it against — unverifiable`);
+                    continue;
+                }
+                if (!workflowContexts.found) {
+                    stats.unverifiable += 1;
+                    report("enforcement", `the floor requires the status check \`${check.context}\` and there are no workflows in the tree to report it — unverifiable`);
+                    continue;
+                }
+                stats.claims += 1;
+                // The one enforcement FAILURE, and it earns the severity: a required context that
+                // never reports blocks every pull request, and `enforce_admins` leaves nobody able
+                // to force past it. That is proposal 0004's lesson, which cost a three-step rename
+                // to work around after the fact — the highest-priced typo this tree can catch.
+                if (!workflowContexts.contexts.includes(check.context)) {
+                    fail(
+                        "enforcement",
+                        `the floor requires the status check \`${check.context}\`, which no workflow job in the tree reports (found: ${workflowContexts.contexts.join(", ") || "none"}). Importing this ruleset would block every pull request on a check that never arrives`,
+                    );
+                }
+            }
+
+            // Two in-tree carriers of one fact: the gate map's platform-floor table and the policy's
+            // `floor`. Reported rather than failed — the prose row is a human summary and may
+            // legitimately be shaped differently — but never left silent, because two files stating
+            // one policy is this repository's signature defect, and the prose half is the half no
+            // other check here reads for content.
+            // NOT gated on the prose having named a check. It was for one round, which exempted the
+            // worst divergence there is: a policy declaring required checks beside a gate-map row that
+            // is missing or written in a shape `requiredCheckClaims` does not recognise. The generic
+            // "names no required status check" note fires there, but it reports that nothing was
+            // compared against the *tree* and says nothing about the policy carrying checks the prose
+            // does not. A check that quietly skips its own extreme case is
+            // `a-checker-must-refuse-what-it-cannot-check.md` again. Found by review, round 2.
+            if (parsed.floor && gatesRead) {
+                const declared = parsed.floor.checks.map((c) => c.context);
+                const missingFromProse = declared.filter((c) => !declaredChecksInProse.includes(c));
+                const missingFromPolicy = declaredChecksInProse.filter((c) => !declared.includes(c));
+                if (missingFromProse.length || missingFromPolicy.length) {
+                    report(
+                        "enforcement",
+                        "the gate policy's `floor` and the gate map's required-check row disagree" +
+                            (missingFromProse.length ? `; the policy declares ${missingFromProse.map((c) => `\`${c}\``).join(", ")} and the prose does not name it` : "") +
+                            (missingFromPolicy.length ? `; the prose names ${missingFromPolicy.map((c) => `\`${c}\``).join(", ")} and the policy does not declare it` : "") +
+                            ". Where they disagree the policy wins, because it is the one that compiles",
+                    );
+                }
+            }
+        }
     }
 
     // ---- provenance, and the store's own growth

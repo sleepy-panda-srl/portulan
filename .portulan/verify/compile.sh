@@ -1,10 +1,16 @@
 #!/usr/bin/env bash
 # Portulan workspace — verify recipe: the compiled enforcement matches the policy.
 #
-# One check:
-#   compile   ../.claude/settings.json is exactly what ../gates.json compiles to
+# One check, over every backend the compiler has:
+#   compile   ../.claude/settings.json AND ../compile/github-ruleset.json are exactly what
+#             ../gates.json compiles to
 #
-# This is the drift rail for generated enforcement. The artifact is committed on purpose — an
+# Both, and by the same code path: `compile --check` walks the backends and compares each one's
+# artifact, so a backend added later joins this recipe with no edit here — the same property that
+# makes declaring a recipe in the manifest enough to have CI run it. A backend that emits nothing for
+# this workspace (a policy with no `floor`, say) is owed no file, and absent-and-not-owed is green.
+#
+# This is the drift rail for generated enforcement. The artifacts are committed on purpose — an
 # uncommitted gate file is invisible to review, and the hook wiring is precisely the thing that
 # should be readable in a diff — but a committed generated file invites the one edit that defeats
 # it: a hand-fix that works until the next compile silently reverts it. So the recipe recompiles in
@@ -23,13 +29,18 @@
 
 set -uo pipefail
 
+# Every external command this recipe runs — see ./docs.sh for the measurement behind the shape.
+# This recipe invokes only `node` and `dirname`, and was already correct; the guard is here for
+# uniformity, so a later edit reaching for `grep` inherits the rule instead of rediscovering it.
+for need in dirname node; do
+    command -v "$need" >/dev/null 2>&1 || {
+        printf 'verify: %s not found — this recipe needs it; see .portulan/verify/README.md\n' "$need" >&2
+        exit 2
+    }
+done
+
 root=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." && pwd) || exit 2
 cd -- "$root" || exit 2
-
-command -v node >/dev/null 2>&1 || {
-    printf 'verify: node not found — this recipe needs it; see .portulan/verify/README.md\n' >&2
-    exit 2
-}
 
 # The validator's own presence is a precondition, not a red. `node cli/compile.mjs` on a missing file
 # exits 1, and passing that through would report "the enforcement has drifted" about an artifact
@@ -42,7 +53,7 @@ for required in cli/compile.mjs .portulan/gates.json; do
     fi
 done
 
-printf 'compile: checking .claude/settings.json against .portulan/gates.json\n'
+printf 'compile: checking .claude/settings.json and .portulan/compile/github-ruleset.json against .portulan/gates.json\n'
 
 node cli/compile.mjs --workspace . --check
 status=$?

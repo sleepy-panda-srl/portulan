@@ -73,7 +73,13 @@ product" are different claims, and only the first is true.
 
 ## Versioning and migrations
 
-`portulan.spec` is `MAJOR.MINOR`, and the current version is **2.0**.
+`portulan.spec` is `MAJOR.MINOR`, and the current version is **2.2**.
+
+_(This line read `2.0` for two MINOR bumps after the schema had moved past it — the version of the
+spec, stated wrongly in the spec's own README, while the `$id` beside it was right. It is recorded
+rather than quietly corrected because it is the exact defect class this project keeps finding: a fact
+with two carriers, only one of which anything checks. Both live manifests declare their version and
+`doctor` reads it, so nothing was broken by the wrong sentence; nothing would have caught it either.)_
 
 - **MINOR** — additive only: new optional slots, relaxed constraints. An older manifest stays valid, and
   `doctor` says so rather than staying silent about it.
@@ -130,7 +136,8 @@ workspace with no constitution slot and a green report.
 | A rule's provenance is well-formed | `doctor` | **Built.** On `type: rule` records in the `memory` slot; the form only, never the truth. |
 | Sealed proportion reported | `doctor` | **Built.** Over rules, which is the denominator the mandate uses. |
 | The recipes a workspace declares actually run | Stop-gate runner | **Built** (milestone 4), for the **default** recipe only, and outside `doctor` — which still reads recipes and executes none. A non-default recipe declaring a tool it does not have still passes. |
-| The gate policy compiles to host enforcement | `compile` | **Built** (milestone 4). Every rule ends as compiled or refused-with-a-reason; the emitted artifact is held to the policy by a verify recipe. That the *host* honours it is not checkable here — CI installs nothing. |
+| The gate policy compiles to host enforcement | `compile` | **Built** (milestone 4). Two backends — the Claude Code host and the GitHub repository ruleset that is the platform floor. Every rule ends as compiled or refused-with-a-reason, **per backend**, and each emitted artifact is held to the policy by a verify recipe. That the *host* honours it is not checkable here — CI installs nothing. |
+| What each backend cannot enforce | `doctor` · `compile --matrix` | **Built** (milestone 4). Per-backend coverage, the gates no backend compiles, and the floor's declared status checks against the tree's workflow jobs — the last of those a failure, the rest reports. Exported-versus-live drift is **not** checked: `doctor` does not fetch settings, and no recipe here makes a network call. |
 | A rule's link resolves | — | Not built, and not planned as a gate: dereferencing needs the network, and a gate that fails for reasons unrelated to the change under test is worse than no gate. |
 | Agent-legibility scored | `doctor` | Not built. The `affordances` slot is the input such an audit would read; it is not the audit. |
 

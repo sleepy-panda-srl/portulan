@@ -22,7 +22,19 @@ import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { CompileError, compile, claudeCode, run, spellings, matchesRule, matchesPath, policyPath } from "./compile.mjs";
+import {
+    CompileError,
+    parse,
+    claudeCode,
+    githubRuleset,
+    backends,
+    matrix,
+    run,
+    spellings,
+    matchesRule,
+    matchesPath,
+    policyPath,
+} from "./compile.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO = path.resolve(HERE, "..");
@@ -41,10 +53,17 @@ function scratch() {
     return dir;
 }
 
-/** A minimal well-formed policy, with one rule of each tier. Tests mutate a clone. */
+/**
+ * A minimal well-formed policy, with one rule of each tier. Tests mutate a clone.
+ *
+ * It declares **no `floor`** on purpose: a workspace that has not declared its platform floor is a
+ * legitimate shape, it is the shape every fixture had before the floor backend existed, and the
+ * no-floor path is the one that must refuse rather than invent a branch name. Tests that want a
+ * floor add one with `withFloor`.
+ */
 function policy(overrides = {}) {
     return {
-        portulan: { spec: "2.1" },
+        portulan: { spec: "2.2" },
         why: "gate-map.md",
         rules: [
             { id: "ban", tier: "prohibited", action: { write: "docs/vision.md" }, reason: "constitution" },
@@ -54,6 +73,23 @@ function policy(overrides = {}) {
         ],
         ...overrides,
     };
+}
+
+/** The same policy with a complete floor declaration, and the two ref-gated push spellings. */
+function withFloor(overrides = {}) {
+    const p = policy();
+    p.rules.push(
+        { id: "force", tier: "gated", action: { shell: "git push --force" }, reason: "no lease" },
+        { id: "drop", tier: "gated", action: { shell: "git push --delete" }, reason: "destroys a ref" },
+    );
+    p.floor = {
+        branch: "main",
+        checks: [{ context: "workspace-verify", integration_id: 15368 }],
+        reviews: 0,
+        resolve_conversations: true,
+        ...overrides,
+    };
+    return p;
 }
 
 /** Writes a policy file into a scratch workspace and returns the workspace dir. */
@@ -78,38 +114,52 @@ function workspace(p = policy()) {
 }
 
 // ===========================================================================================
-// 1. Nothing is dropped on the floor
+// 1. Nothing is dropped on the floor — and the accounting is now PER BACKEND
 // ===========================================================================================
 //
 // The distinctive failure of a compiler that emits gate machinery is a rule that goes in and
 // nothing comes out: the gate reads as configured and enforces nothing. So the accounting is a
 // test, not a diagnostic — every rule ends in exactly one of {compiled, refused-with-a-reason},
 // and the two counts must add up to the input.
+//
+// **Per backend, since the floor backend arrived.** For one session the tier partition lived in the
+// shared stage: `auto` and `propose` were refused before any backend ran. That is the Claude Code
+// backend's partition, not a property of policy — the floor backend inverts it, compiling exactly
+// the `propose` rules the other one refuses *on the grounds that the floor enforces them*. Left
+// where it was, the second backend could never have compiled anything, and the matrix would have
+// been a column of refusals wearing a compiler's name.
 
 describe("the accounting", () => {
-    test("every rule is either compiled or refused, and the counts add up", () => {
-        const result = compile(policy());
-        const seen = new Set([...result.compiled, ...result.refused].map((r) => r.id));
-        assert.equal(seen.size, policy().rules.length, "every rule accounted for exactly once");
-        assert.equal(result.compiled.length + result.refused.length, policy().rules.length);
-    });
+    for (const backend of backends(parse(withFloor()))) {
+        test(`${backend.backend}: every rule is either compiled or refused, and the counts add up`, () => {
+            const seen = new Set([...backend.compiled, ...backend.refused].map((r) => r.id));
+            assert.equal(seen.size, withFloor().rules.length, "every rule accounted for exactly once");
+            assert.equal(backend.compiled.length + backend.refused.length, withFloor().rules.length);
+        });
 
-    test("a refusal always carries a stated reason, never a bare skip", () => {
-        for (const r of compile(policy()).refused) {
-            assert.ok(r.why && r.why.length > 20, `refusal ${r.id} must say why in a sentence`);
-        }
-    });
+        test(`${backend.backend}: a refusal always carries a stated reason, never a bare skip`, () => {
+            for (const r of backend.refused) {
+                assert.ok(r.why && r.why.length > 20, `refusal ${r.id} must say why in a sentence`);
+            }
+        });
 
-    test("auto and propose are refused as tiers, not silently ignored", () => {
-        const refusedIds = compile(policy()).refused.map((r) => r.id);
-        assert.ok(refusedIds.includes("pr"), "propose is not a gate");
+        test(`${backend.backend}: a compiled rule names the surface it became`, () => {
+            for (const c of backend.compiled) {
+                assert.ok(c.surface, `${c.id} compiled into nothing a reader can name`);
+            }
+        });
+    }
+
+    test("the Claude Code backend refuses auto and propose as tiers, not silently", () => {
+        const refusedIds = claudeCode(parse(policy())).refused.map((r) => r.id);
+        assert.ok(refusedIds.includes("pr"), "propose is not a tool-level gate");
         assert.ok(refusedIds.includes("read"), "auto is not a gate");
     });
 
     test("an action declaring `none` is refused carrying the policy's own words", () => {
         const p = policy();
         p.rules.push({ id: "money", tier: "gated", action: { none: "no tool-level surface exists for spending money" }, reason: "gated" });
-        const refusal = compile(p).refused.find((r) => r.id === "money");
+        const refusal = claudeCode(parse(p)).refused.find((r) => r.id === "money");
         assert.match(refusal.why, /no tool-level surface/, "the compiler reports the policy's reason, never one it invented");
     });
 });
@@ -126,37 +176,37 @@ describe("refusing what it cannot compile", () => {
     test("an unknown tier refuses the whole compile", () => {
         const p = policy();
         p.rules[1].tier = "sometimes";
-        assert.throws(() => compile(p), CompileError, "an unrecognised tier is not a rule to skip");
+        assert.throws(() => parse(p), CompileError, "an unrecognised tier is not a rule to skip");
     });
 
     test("an unknown action shape refuses the whole compile", () => {
         const p = policy();
         p.rules[1].action = { telepathy: "git push" };
-        assert.throws(() => compile(p), CompileError);
+        assert.throws(() => parse(p), CompileError);
     });
 
     test("an action declaring two kinds at once refuses the whole compile", () => {
         const p = policy();
         p.rules[1].action = { shell: "git push", write: "x" };
-        assert.throws(() => compile(p), CompileError, "ambiguous is not the same as either");
+        assert.throws(() => parse(p), CompileError, "ambiguous is not the same as either");
     });
 
     test("a duplicate rule id refuses the whole compile", () => {
         const p = policy();
         p.rules.push({ ...p.rules[1] });
-        assert.throws(() => compile(p), CompileError);
+        assert.throws(() => parse(p), CompileError);
     });
 
     test("a rule id that is not a slug refuses the whole compile", () => {
         const p = policy();
         p.rules[1].id = "Push To Origin";
-        assert.throws(() => compile(p), CompileError);
+        assert.throws(() => parse(p), CompileError);
     });
 
     test("a rule with no reason refuses the whole compile", () => {
         const p = policy();
         delete p.rules[1].reason;
-        assert.throws(() => compile(p), CompileError, "a gate with no sentence to show a human is not finished");
+        assert.throws(() => parse(p), CompileError, "a gate with no sentence to show a human is not finished");
     });
 
     for (const [label, bad] of [
@@ -171,24 +221,78 @@ describe("refusing what it cannot compile", () => {
             // deliberate change, not something a compiler should improvise. Found by review.
             const p = policy();
             p.rules[1].action = { shell: bad };
-            assert.throws(() => compile(p), CompileError);
+            assert.throws(() => parse(p), CompileError);
         });
     }
 
     test("a target with surrounding whitespace refuses rather than being silently trimmed", () => {
         const p = policy();
         p.rules[1].action = { shell: " git push " };
-        assert.throws(() => compile(p), CompileError, "the host would not match it, so quietly fixing it hides a policy error");
+        assert.throws(() => parse(p), CompileError, "the host would not match it, so quietly fixing it hides a policy error");
     });
 
     test("a path target may contain a colon — only shell targets use it structurally", () => {
         const p = policy();
         p.rules[0].action = { write: "docs/odd:name.md" };
-        assert.doesNotThrow(() => compile(p));
+        assert.doesNotThrow(() => parse(p));
+    });
+
+    // These arrived on `main` in `f545228` while the floor backend was in flight, written against the
+    // `compile()` name this branch renamed to `parse()` when the tier partition moved into the
+    // backends. Retargeted, not rewritten: the validation is the shared stage's either way, and it is
+    // where they were always aimed.
+    //
+    // Their nine reds on the rebase were **entirely** this rename, and reading them as something else
+    // cost a defect. The first diagnosis was that the merge had dropped the validation itself; it had
+    // not — the block came through untouched — and "restoring" it added a second copy of a
+    // load-bearing validator, which a Copilot round then caught. `git show <commit>:cli/compile.mjs`
+    // would have settled it in one command before any of that. Recorded here rather than only in the
+    // handoff, because this is where the next person meets these tests.
+    for (const kind of ["write", "read"]) {
+        test(`a ${kind} target climbing out with \`..\` refuses`, () => {
+            // The sibling of the absolute case, one spelling over: `../secrets/` emits
+            // `Edit(./../secrets/**)` — which the host may resolve against the PARENT tree — while
+            // `matchesPath` can never match a `/../`-bearing tail against a resolved path. The
+            // emitter and the matcher disagree about which way it is wrong, and a gate that reads as
+            // present while holding nothing is the worse half. Found by the supervisor on #51.
+            const p = policy();
+            p.rules[0].action = { [kind]: "../secrets/" };
+            assert.throws(() => parse(p), CompileError);
+        });
+
+        test(`a ${kind} target with an interior \`..\` segment refuses`, () => {
+            const p = policy();
+            p.rules[0].action = { [kind]: "docs/../../etc/" };
+            assert.throws(() => parse(p), CompileError);
+        });
+
+        test(`a ${kind} target merely CONTAINING dots is fine — only a \`..\` segment escapes`, () => {
+            // `..` is a path segment, not a substring: a file legitimately named `a..b.md`, or any
+            // dotfile, must still compile. Refusing on the substring would be a false red.
+            const p = policy();
+            p.rules[0].action = { [kind]: "docs/a..b.md" };
+            assert.doesNotThrow(() => parse(p));
+        });
+
+        test(`an absolute ${kind} target refuses rather than being silently made relative`, () => {
+            // `pattern()` and `matchesPath()` both strip the leading slash, so `/etc/passwd` compiled
+            // to `Edit(./etc/passwd)` and matched any path ENDING in `/etc/passwd` — a gate enforcing
+            // something both different from and broader than the policy's own words. The same
+            // "refuse rather than escape" reasoning as the reserved-character check. Found by review.
+            const p = policy();
+            p.rules[0].action = { [kind]: "/etc/passwd" };
+            assert.throws(() => parse(p), CompileError);
+        });
+    }
+
+    test("an absolute shell target still compiles — it is a command spelling, not a rewritten path", () => {
+        const p = policy();
+        p.rules[1].action = { shell: "/usr/bin/git push" };
+        assert.doesNotThrow(() => parse(p));
     });
 
     test("a policy whose spec version has never shipped refuses", () => {
-        assert.throws(() => compile(policy({ portulan: { spec: "99.0" } })), CompileError);
+        assert.throws(() => parse(policy({ portulan: { spec: "99.0" } })), CompileError);
     });
 });
 
@@ -202,7 +306,11 @@ describe("refusing what it cannot compile", () => {
 // that rule one level down.
 
 describe("fail-closed", () => {
-    test("a policy carrying gate rules that would emit no gate at all refuses", () => {
+    // The guard is **per backend** now, and it has to be: what a backend "should have compiled"
+    // differs by backend, so a shared version would either fire on a backend that legitimately
+    // compiles nothing, or never fire at all. Asserted for each backend against the input that
+    // makes that backend's own claim empty.
+    test("Claude Code: a policy carrying gate rules that would emit no gate at all refuses", () => {
         const p = policy();
         // Every gate becomes unreachable, but the rules are still there claiming enforcement.
         p.rules = p.rules.map((r) =>
@@ -210,11 +318,20 @@ describe("fail-closed", () => {
                 ? { ...r, action: { none: "deliberately unreachable for this test" } }
                 : r,
         );
-        assert.throws(() => compile(p), CompileError, "a policy that declares gates and emits none must not report success");
+        assert.throws(() => claudeCode(parse(p)), CompileError, "a policy that declares gates and emits none must not report success");
+    });
+
+    test("the floor backend: a declared floor that would emit no ruleset rule at all refuses", () => {
+        // A floor is declared — so the workspace is claiming a platform floor — and nothing in the
+        // policy reaches it. Writing an empty ruleset here would be the same defect: an importable
+        // file, valid, named for a floor, enforcing nothing.
+        const p = withFloor();
+        p.rules = p.rules.filter((r) => r.tier !== "propose" && !String(r.action?.shell ?? "").startsWith("git push --"));
+        assert.throws(() => githubRuleset(parse(p)), CompileError, "a declared floor that compiles to no rule must not report success");
     });
 
     test("a policy with no rules at all refuses", () => {
-        assert.throws(() => compile(policy({ rules: [] })), CompileError);
+        assert.throws(() => parse(policy({ rules: [] })), CompileError);
     });
 
     test("run() exits 2 — never 0 or 1 — when the policy cannot be read", () => {
@@ -239,13 +356,13 @@ describe("fail-closed", () => {
 
 describe("the Claude Code backend", () => {
     test("gated compiles to `ask` — per-action approval, which is what Gated means", () => {
-        const { settings } = claudeCode(compile(policy()));
+        const settings = claudeCode(parse(policy())).artifact.value;
         assert.ok(settings.permissions.ask.includes("Bash(git push:*)"));
         assert.ok(!(settings.permissions.deny ?? []).includes("Bash(git push:*)"), "gated is not a prohibition");
     });
 
     test("prohibited compiles to `deny` — an action with no approval path", () => {
-        const { settings } = claudeCode(compile(policy()));
+        const settings = claudeCode(parse(policy())).artifact.value;
         for (const rule of ["Edit(./docs/vision.md)", "Write(./docs/vision.md)"]) {
             assert.ok(settings.permissions.deny.includes(rule), `expected ${rule}`);
         }
@@ -253,18 +370,18 @@ describe("the Claude Code backend", () => {
     });
 
     test("no `allow` rules are emitted — the compiler only ever adds restriction", () => {
-        const { settings } = claudeCode(compile(policy()));
+        const settings = claudeCode(parse(policy())).artifact.value;
         assert.deepEqual(settings.permissions.allow ?? [], [], "maintainer's ruling, 2026-07-27: gates only");
     });
 
     test("every gate is emitted as a permission rule AND backed by a hook", () => {
-        const { settings } = claudeCode(compile(policy()));
+        const settings = claudeCode(parse(policy())).artifact.value;
         assert.ok(settings.permissions.ask.length > 0, "permissions are the load-bearing layer");
         assert.ok(settings.hooks.PreToolUse.length > 0, "the hook is the explanation layer");
     });
 
     test("a write action covers every tool that can write, not just Edit", () => {
-        const { settings } = claudeCode(compile(policy()));
+        const settings = claudeCode(parse(policy())).artifact.value;
         const denied = settings.permissions.deny.join(" ");
         for (const tool of ["Edit", "Write", "NotebookEdit"]) {
             assert.match(denied, new RegExp(`${tool}\\(`), `${tool} can write and must be covered`);
@@ -272,12 +389,12 @@ describe("the Claude Code backend", () => {
     });
 
     test("the Stop hook is wired to the session-end runner", () => {
-        const { settings } = claudeCode(compile(policy()));
+        const settings = claudeCode(parse(policy())).artifact.value;
         assert.ok(settings.hooks.Stop?.length > 0, "the Stop-gate is the other half of milestone 4");
     });
 
     test("emitted hook commands invoke node directly rather than an inline shell one-liner", () => {
-        const { settings } = claudeCode(compile(policy()));
+        const settings = claudeCode(parse(policy())).artifact.value;
         const commands = [...settings.hooks.PreToolUse, ...settings.hooks.Stop]
             .flatMap((h) => h.hooks.map((x) => x.command));
         for (const c of commands) {
@@ -286,7 +403,7 @@ describe("the Claude Code backend", () => {
     });
 
     test("the artifact carries a generation header naming its source", () => {
-        const { settings } = claudeCode(compile(policy()));
+        const settings = claudeCode(parse(policy())).artifact.value;
         assert.match(JSON.stringify(settings), /gates\.json/, "a reader must be able to find what generated this");
     });
 
@@ -294,9 +411,307 @@ describe("the Claude Code backend", () => {
         // It was a literal for one round, so a workspace declaring a non-default policy got an artifact
         // claiming it came from somewhere it did not — in the field whose only job is saying what
         // generated the file. Found by review.
-        const { settings } = claudeCode(compile(policy()), { source: ".portulan/policy/rules.json" });
+        const settings = claudeCode(parse(policy()), { source: ".portulan/policy/rules.json" }).artifact.value;
         assert.equal(settings.$portulan.source, ".portulan/policy/rules.json");
         assert.match(settings.$portulan.warning, /policy\/rules\.json/, "the warning must point at the same file");
+    });
+});
+
+// ===========================================================================================
+// 4a. The floor backend — a GitHub repository ruleset, compiled from the same policy
+// ===========================================================================================
+//
+// The milestone-4 criterion positions this as **the floor backend**: what every host falls back to,
+// and all that a host with no hook system has. So its refusals matter more than the other backend's,
+// not less — this is the column an adopter reads to learn what their host cannot give them.
+//
+// Two properties are asserted hardest, because both were reachable failures at design time:
+//   1. It never invents policy. No declared floor → no artifact and no invented branch name.
+//   2. It never emits half a mapping. `pull_request` without `required_status_checks` imports
+//      cleanly and reads as a configured floor while letting a red pull request merge.
+
+describe("the floor backend", () => {
+    const ruleset = (p = withFloor()) => githubRuleset(parse(p)).artifact.value;
+    const types = (p = withFloor()) => ruleset(p).rules.map((r) => r.type);
+
+    test("the three rules the criterion names are emitted", () => {
+        const t = types();
+        for (const type of ["pull_request", "required_status_checks", "non_fast_forward"]) {
+            assert.ok(t.includes(type), `the criterion names ${type}`);
+        }
+    });
+
+    test("required status checks are STRICT — a branch behind the base cannot merge", () => {
+        // Not optional and not read from the policy: proposal 0011 ruled that a pull request may not
+        // merge from behind `main`, and applied it live. An export that let a policy declare
+        // `strict: false` would be a compiled artifact quietly undoing a ruling the repository took.
+        const rule = ruleset().rules.find((r) => r.type === "required_status_checks");
+        assert.equal(rule.parameters.strict_required_status_checks_policy, true);
+    });
+
+    test("every declared check reaches the emitted ruleset, with its app pin intact", () => {
+        const rule = ruleset().rules.find((r) => r.type === "required_status_checks");
+        assert.deepEqual(rule.parameters.required_status_checks, [{ context: "workspace-verify", integration_id: 15368 }]);
+    });
+
+    test("bypass_actors is empty, deliberately and unconditionally", () => {
+        // The gate map's own words: a floor carrying an exemption for the only actor who can act is
+        // not a floor. This is why the org-level ruleset's `OrganizationAdmin` always-bypass is
+        // recorded as the unverified layer rather than copied.
+        assert.deepEqual(ruleset().bypass_actors, []);
+    });
+
+    test("enforcement is active — an exported ruleset in evaluate mode reads as a floor and holds nothing", () => {
+        assert.equal(ruleset().enforcement, "active");
+    });
+
+    test("the ruleset name says it is generated, because the format has nowhere else to say it", () => {
+        // JSON has no comments and a GitHub ruleset has no description field. The name is the only
+        // field a human sees in the settings UI, so it carries the warning the `$portulan` header
+        // carries in the other artifact.
+        assert.match(ruleset().name, /generated/i);
+        assert.match(ruleset().name, /gates\.json/);
+    });
+
+    test("only the server's input fields are emitted — never an id, a timestamp or a source", () => {
+        // Read from two live rulesets on 2026-07-27: GitHub returns `id`, `node_id`, `source`,
+        // `source_type`, `created_at`, `updated_at`, `_links` and `current_user_can_bypass`. None is
+        // an input. Emitting any of them would be the export asserting a fact it cannot know.
+        for (const key of ["id", "node_id", "source", "source_type", "created_at", "updated_at", "_links", "current_user_can_bypass"]) {
+            assert.ok(!(key in ruleset()), `${key} is the server's to say, not this compiler's`);
+        }
+    });
+
+    test("the declared branch becomes the ref condition, and nothing else does", () => {
+        assert.deepEqual(ruleset().conditions.ref_name, { include: ["refs/heads/main"], exclude: [] });
+        assert.deepEqual(ruleset(withFloor({ branch: "trunk" })).conditions.ref_name.include, ["refs/heads/trunk"]);
+    });
+
+    // ---- the four ways the floor declaration could be believed and be wrong ------------------
+    //
+    // All four found by review on the pull request, and all four share a shape: an input this
+    // compiler accepted and then used in a way that produced an artifact GitHub would take and not
+    // enforce. That is worse than a refusal by exactly the margin that matters here.
+
+    test("a `floor.branch` already carrying a ref prefix is refused, not double-prefixed", () => {
+        // `refs/heads/main` passed the branch pattern and the emitter prefixes unconditionally, so
+        // the ruleset would have targeted `refs/heads/refs/heads/main` — a ref no repository has.
+        // Importable, valid, and matching nothing: the exact shape this backend's own fail-closed
+        // guard exists against, arriving through the one field that names what the floor protects.
+        for (const branch of ["refs/heads/main", "refs/tags/v1"]) {
+            assert.throws(() => parse(withFloor({ branch })), CompileError, `${branch} must be refused`);
+        }
+        // And a branch name that merely contains a slash is still fine — `release/2026` is ordinary.
+        assert.equal(githubRuleset(parse(withFloor({ branch: "release/2026" }))).artifact.value.conditions.ref_name.include[0], "refs/heads/release/2026");
+    });
+
+    test("a check context with surrounding whitespace is refused rather than normalised", () => {
+        // `" workspace-verify "` was non-empty after `trim()` and was then stored untrimmed, so the
+        // ruleset would require a context no job can report. Refused rather than quietly fixed, for
+        // the same reason a rule target is: quietly fixing it hides a policy error, and the policy
+        // is the artifact a human reviews.
+        assert.throws(() => parse(withFloor({ checks: [{ context: " workspace-verify " }] })), CompileError);
+    });
+
+    test("an `auto` rule never compiles to a ref rule, whatever it is spelled", () => {
+        // The ref-rule table was consulted before the tier was, so an Auto rule spelled exactly
+        // `git push --force` compiled into `non_fast_forward` — a gate emitted for an action the
+        // policy declares unattended, and `floorRefusal`'s own `auto` branch left unreachable for it.
+        // The tier is the policy's answer; the table is only how this backend spells it.
+        const p = withFloor();
+        p.rules.find((r) => r.id === "force").tier = "auto";
+        const result = githubRuleset(parse(p));
+        assert.ok(!result.compiled.some((c) => c.id === "force"), "an unattended action gets no ruleset rule");
+        assert.match(result.refused.find((r) => r.id === "force").why, /unattended/);
+        assert.ok(!result.artifact.value.rules.some((r) => r.type === "non_fast_forward"));
+    });
+
+    test("a `prohibited` ref spelling still compiles — the restriction is not gated-only", () => {
+        const p = withFloor();
+        p.rules.find((r) => r.id === "force").tier = "prohibited";
+        assert.ok(githubRuleset(parse(p)).compiled.some((c) => c.id === "force" && c.surface === "non_fast_forward"));
+    });
+
+    // ---- the two paths that must refuse rather than guess ------------------------------------
+
+    test("no floor declared: no artifact, no invented branch, and every rule refused with that reason", () => {
+        const result = githubRuleset(parse(policy()));
+        assert.equal(result.artifact, null, "a workspace that declared no floor gets no floor file");
+        assert.equal(result.compiled.length, 0);
+        assert.equal(result.refused.length, policy().rules.length, "still accounted for, one by one");
+        for (const r of result.refused) assert.match(r.why, /no `floor`/, "the reason must name what is missing");
+    });
+
+    test("checks declared with NO propose rule emit nothing — the pair is compiled, never assumed", () => {
+        // Found by review, round 3. `pull_request` + `required_status_checks` were emitted whenever
+        // `floor.checks` was non-empty, whether or not any rule said changes go by pull request. Two
+        // things wrong with that, and the second is the worse one. It invents policy: an exported
+        // floor requiring pull requests that nothing in the policy asked for. And it breaks the
+        // accounting — those two ruleset rules would sit in the artifact with no rule credited for
+        // compiling them, so `--matrix` and `doctor` would describe a floor that is missing two of
+        // its rules, which is the failure this backend's whole reporting layer exists to prevent.
+        const p = withFloor();
+        p.rules = p.rules.filter((r) => r.tier !== "propose");
+        const result = githubRuleset(parse(p));
+        const types = result.artifact.value.rules.map((r) => r.type);
+        assert.ok(!types.includes("pull_request"), "no rule asked for a pull-request requirement");
+        assert.ok(!types.includes("required_status_checks"));
+        assert.ok(types.includes("non_fast_forward"), "the ref rules that WERE asked for still compile");
+
+        // Every emitted ruleset rule is credited to a policy rule. Asserted directly, because it is
+        // the property that was silently false rather than the symptom that was visible.
+        const surfaces = new Set(result.compiled.flatMap((c) => c.surface.split(" · ")));
+        for (const type of types) assert.ok(surfaces.has(type), `\`${type}\` is in the artifact and no rule compiled to it`);
+
+        // And the orphaned declaration is reported rather than dropped in silence: a manifest field
+        // that validates and compiles nothing is this repository's most expensive recurring defect.
+        assert.ok(result.notes.some((n) => /no `propose` rule/.test(n)), "declared checks nothing compiles must be named");
+    });
+
+    test("a floor declaring no checks refuses the pull-request rule TOO — the mapping is a pair", () => {
+        // Emitting `pull_request` alone would import cleanly, read as a configured floor, and let a
+        // red pull request merge. Half a mapping is the silent weakening this repository keeps
+        // finding, so the propose rules refuse together and say what is missing.
+        //
+        // Two ref-gated rules survive here, so the ruleset is non-empty and the refusal is visible
+        // rather than fatal — which is the case worth pinning, since a fatal one would be indistinct
+        // from any other refusal to compile.
+        const result = githubRuleset(parse(withFloor({ checks: [] })));
+        assert.ok(!result.artifact.value.rules.some((r) => r.type === "pull_request"));
+        assert.ok(!result.artifact.value.rules.some((r) => r.type === "required_status_checks"));
+        const refusal = result.refused.find((r) => r.id === "pr");
+        assert.match(refusal.why, /declares no status check/, "the refusal must name the missing declaration");
+    });
+
+    test("a floor declaring no checks and holding no ref rule refuses the whole compile", () => {
+        // The same policy with the ref-gated spellings gone: a declared floor that reaches nothing.
+        // Writing an empty ruleset would be importable, valid, named for a floor, and inert.
+        const p = withFloor({ checks: [] });
+        p.rules = p.rules.filter((r) => r.id !== "force" && r.id !== "drop");
+        assert.throws(() => githubRuleset(parse(p)), CompileError, "nothing in this policy reaches the floor");
+    });
+
+    // ---- the mapping is a table of exact spellings, not a parser -----------------------------
+
+    test("the ref-gated spellings compile; a spelling one character off refuses", () => {
+        // The action vocabulary has no `ref` kind — a rule says `{"shell": "git push --force"}` — so
+        // this backend recognises exact command strings and nothing else. `git push -f` is the same
+        // action to a human and is refused, loudly, rather than silently gated. An ambitious matcher
+        // here would buy false confidence with false reds, which is the trade `spec/slots.md` refuses.
+        const ok = githubRuleset(parse(withFloor()));
+        assert.ok(ok.compiled.some((c) => c.id === "force" && c.surface === "non_fast_forward"));
+        assert.ok(ok.compiled.some((c) => c.id === "drop" && c.surface === "deletion"));
+
+        const p = withFloor();
+        p.rules.find((r) => r.id === "force").action.shell = "git push -f";
+        const refusal = githubRuleset(parse(p)).refused.find((r) => r.id === "force");
+        assert.ok(refusal, "an unrecognised spelling refuses rather than compiling to nothing quietly");
+        assert.match(refusal.why, /exact/i, "the refusal must say that recognition is by exact spelling");
+    });
+
+    test("the coarseness is stated in BOTH directions in the refusal record", () => {
+        // On the protected ref `non_fast_forward` is STRICTER than the policy — it blocks
+        // `--force-with-lease`, which this policy makes Auto. Off that ref it enforces nothing at
+        // all. A backend that reported only the second half would be flattering itself.
+        const notes = githubRuleset(parse(withFloor())).notes ?? [];
+        assert.ok(notes.some((n) => /--force-with-lease/.test(n)), "the stricter-than-policy direction must be recorded");
+        assert.ok(notes.some((n) => /only.*refs\/heads\/main|one declared ref/.test(n)), "the narrower-than-policy direction too");
+    });
+
+    // ---- refusals must be true about GitHub, not merely convenient --------------------------
+
+    test("a write-scoped rule is refused for SCOPE, never for impossibility", () => {
+        // `CODEOWNERS` and push rulesets do gate paths on GitHub — `core/operating/autonomy.md` names
+        // CODEOWNERS as part of the floor. So "the platform cannot" would be false, and
+        // `a-stated-enforcer-must-be-the-real-one.md` binds every sentence containing *cannot*.
+        const refusal = githubRuleset(parse(withFloor())).refused.find((r) => r.id === "ban");
+        assert.match(refusal.why, /CODEOWNERS/, "name the mechanism that would, and why this export does not emit it");
+        assert.doesNotMatch(refusal.why, /the platform cannot/i);
+    });
+
+    test("a tag-scoped rule is refused naming tag rulesets, which this export does not emit", () => {
+        const p = withFloor();
+        p.rules.push({ id: "tag", tier: "gated", action: { shell: "git tag" }, reason: "a published claim" });
+        const refusal = githubRuleset(parse(p)).refused.find((r) => r.id === "tag");
+        assert.match(refusal.why, /tag ruleset/i);
+    });
+
+    test("the merge rule is refused, and the refusal says what the floor DOES constrain", () => {
+        // The honest answer, and the one most easily got wrong: the floor constrains what a merge may
+        // land — green required checks, and strict, so not from behind the base — but with a review
+        // count of 0 it does not require anyone's yes, which is what the Gated tier means. Calling
+        // that "compiled" would overstate the guarantee in the artifact whose whole subject is
+        // guarantees.
+        const p = withFloor();
+        p.rules.push({ id: "merge", tier: "gated", action: { shell: "gh pr merge" }, reason: "the maintainer decides" });
+        const refusal = githubRuleset(parse(p)).refused.find((r) => r.id === "merge");
+        assert.match(refusal.why, /constrains/i, "say what the floor does do, not only what it does not");
+    });
+
+    test("--check covers the floor artifact too, and its absence is drift rather than a crash", () => {
+        const dir = workspace(withFloor());
+        assert.equal(run(["--workspace", dir], { quiet: true }), 0, "write both artifacts");
+        assert.equal(run(["--workspace", dir, "--check"], { quiet: true }), 0);
+        fs.rmSync(path.join(dir, ".portulan", "compile", "github-ruleset.json"));
+        assert.equal(run(["--workspace", dir, "--check"], { quiet: true }), 1, "a missing floor artifact is drift");
+    });
+
+    test("an artifact a backend NO LONGER owes is red, not quietly ignored", () => {
+        // The eighth fail-open of this repository's series, found at the pre-commit checkpoint.
+        // `--check` handled absent-and-not-owed and not present-and-not-owed: delete `floor` from a
+        // policy that had one, and the orphaned ruleset sat there unexamined while the recipe
+        // reported GREEN — an importable file whose own `name` field claims to be generated from the
+        // policy that no longer produces it. A stale gate artifact is exactly the hand-edit this rail
+        // exists to catch, arriving by deletion instead of by hand.
+        const dir = workspace(withFloor());
+        assert.equal(run(["--workspace", dir], { quiet: true }), 0);
+        const orphan = path.join(dir, ".portulan", "compile", "github-ruleset.json");
+        assert.ok(fs.existsSync(orphan));
+
+        const p = withFloor();
+        delete p.floor;
+        fs.writeFileSync(path.join(dir, ".portulan", "gates.json"), JSON.stringify(p, null, 2));
+        assert.equal(run(["--workspace", dir, "--check"], { quiet: true }), 1, "the orphan must be a verdict, not a silence");
+
+        // And a plain compile clears it, so the fix is reachable by the command the message names.
+        assert.equal(run(["--workspace", dir], { quiet: true }), 0);
+        assert.ok(!fs.existsSync(orphan), "compile removes what it no longer owes");
+        assert.equal(run(["--workspace", dir, "--check"], { quiet: true }), 0);
+    });
+
+    test("a workspace with no floor is not asked for a floor artifact", () => {
+        const dir = workspace(policy());
+        assert.equal(run(["--workspace", dir], { quiet: true }), 0);
+        assert.ok(!fs.existsSync(path.join(dir, ".portulan", "compile", "github-ruleset.json")));
+        assert.equal(run(["--workspace", dir, "--check"], { quiet: true }), 0, "absent-and-not-owed is green");
+    });
+});
+
+// ===========================================================================================
+// 4a-ii. The per-host backend matrix
+// ===========================================================================================
+//
+// Derived from the backends rather than written beside them. A matrix maintained by hand is a claim
+// about compilers, and this repository has spent two milestones learning what claims about
+// machinery are worth. This one cannot drift from the compilers because it *is* their accounting.
+
+describe("the backend matrix", () => {
+    test("every rule appears once per backend, with a verdict", () => {
+        const rows = matrix(parse(withFloor()));
+        assert.equal(rows.length, withFloor().rules.length);
+        for (const row of rows) {
+            assert.equal(Object.keys(row.backends).length, 2, "one column per backend");
+            for (const cell of Object.values(row.backends)) {
+                assert.ok(cell.verdict === "compiled" || cell.verdict === "refused");
+                assert.ok(cell.detail, "a cell with no detail is a matrix that says nothing");
+            }
+        }
+    });
+
+    test("the matrix names the rules NO backend compiles — the honest degradation signal", () => {
+        const rows = matrix(parse(withFloor()));
+        const uncovered = rows.filter((r) => Object.values(r.backends).every((c) => c.verdict === "refused"));
+        assert.ok(uncovered.some((r) => r.id === "read"), "an Auto rule is covered by nothing, and that is correct");
     });
 });
 
@@ -338,6 +753,26 @@ describe("the shared matcher", () => {
 
     test("an unrelated command matches nothing", () => {
         assert.ok(!matchesRule({ action: { shell: "git push" } }, "Bash", { command: "git status" }));
+    });
+
+    test("a shell target ending in `/` is a path prefix, and covers what is under it", () => {
+        // The two halves of compile.mjs must agree about what a target covers. They did not: the
+        // emitted `Bash(./.portulan/verify/:*)` prefix-matches the command string on the host, while
+        // this matcher required an exact hit or a space after the target — which a path never has.
+        // No rule was mis-enforced by it: the one target of this shape in ../.portulan/gates.json is
+        // `auto`, so it compiles to nothing and the runtime gate never reads it. The divergence was
+        // the defect, and this test is what keeps the two halves one. Found by review on #31.
+        const rule = { tier: "gated", action: { shell: "./.portulan/verify/" } };
+        assert.ok(matchesRule(rule, "Bash", { command: "./.portulan/verify/docs.sh" }));
+        assert.ok(matchesRule(rule, "Bash", { command: "./.portulan/verify/tests.sh --quiet" }));
+        assert.ok(matchesRule(rule, "Bash", { command: 'bash -c "./.portulan/verify/docs.sh"' }), "through a wrapper too");
+        assert.ok(!matchesRule(rule, "Bash", { command: "./.portulan/verifyx/docs.sh" }), "the slash is the boundary");
+    });
+
+    test("a trailing slash does not loosen an ordinary command prefix", () => {
+        // The subtree reading applies to targets that end in `/` and nothing else: `git push` must
+        // still refuse `git pushall`, or the fix above would have widened every gate in the policy.
+        assert.ok(!matchesRule({ action: { shell: "git push" } }, "Bash", { command: "git pushall" }));
     });
 
     test("the limit is asserted, not just documented: two wrappers still escape", () => {
@@ -476,8 +911,33 @@ describe("customer zero", () => {
     const real = JSON.parse(fs.readFileSync(path.join(REPO, ".portulan", "gates.json"), "utf8"));
 
     test("the real policy compiles without refusing", () => {
-        const result = compile(real);
+        const result = claudeCode(parse(real));
         assert.ok(result.compiled.length >= 6, "this repository has at least six enforceable gates");
+    });
+
+    test("this repository declares a floor, and the export reproduces the checks `main` really requires", () => {
+        // Both contexts, not one. `pr-labeled` joined `workspace-verify` on the live protection after
+        // the labels workflow reached `main`, and an export naming only the first would encode a floor
+        // weaker than the one in force — in the artifact whose entire purpose is being importable.
+        const contexts = parse(real).floor.checks.map((c) => c.context).sort();
+        assert.deepEqual(contexts, ["pr-labeled", "workspace-verify"]);
+        for (const check of parse(real).floor.checks) {
+            assert.equal(check.integration_id, 15368, "an unpinned context is satisfiable by any app reporting that name");
+        }
+    });
+
+    test("every context this repository's floor declares is reported by a job in this repository", () => {
+        // The highest-cost typo the tree can catch: a required context that never reports blocks every
+        // pull request, and `enforce_admins` leaves nobody able to force past it — proposal 0004's
+        // lesson, which cost a three-step rename to work around. Checked here against the workflows
+        // themselves rather than trusted.
+        const workflows = fs
+            .readdirSync(path.join(REPO, ".github", "workflows"))
+            .map((f) => fs.readFileSync(path.join(REPO, ".github", "workflows", f), "utf8"))
+            .join("\n");
+        for (const check of parse(real).floor.checks) {
+            assert.match(workflows, new RegExp(`^\\s{2}${check.context}:`, "m"), `no job reports \`${check.context}\``);
+        }
     });
 
     test("every rule id in the policy appears in the gate map's prose", () => {

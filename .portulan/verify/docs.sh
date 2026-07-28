@@ -15,9 +15,27 @@
 
 set -uo pipefail
 
+# Every external command this recipe runs, checked before it runs any of them. A missing utility is
+# *could not run* and never a verdict — and the alternative was measured rather than feared: on
+# 2026-07-27 this recipe exited GREEN with `sed`, `sort` or `wc` absent, because a command that is
+# not there produces no output and an empty findings list is indistinguishable from a clean one.
+# Eleven false greens of this shape across four recipes; `docs.sh` also printed `ok    map` having
+# examined zero directories, over a check whose own comment already warned about reporting green
+# over an entry it never looked at. Only `git` was guarded here, which is why the gap survived.
+# Raised as a low-confidence Copilot comment on #3 — the kind that never becomes a review thread and
+# so can never be resolved. **This line is the source of truth for what the recipe needs.** ./README.md's
+# Needs column and `requires` in ../workspace.json name only the substantial dependencies — `bash`,
+# `git`, `node` — and are deliberately coarser, so neither is the thing to edit alongside this. The
+# prose that does match it utility for utility is the "`docs.sh` needs …" paragraph in ./README.md.
+for need in awk cut dirname git grep mktemp rm sed sort tail tr wc; do
+    command -v "$need" >/dev/null 2>&1 || {
+        printf 'verify: %s not found — this recipe needs it; see .portulan/verify/README.md\n' "$need" >&2
+        exit 2
+    }
+done
+
 root=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." && pwd) || exit 2
 cd -- "$root" || exit 2
-command -v git >/dev/null 2>&1 || { printf 'verify: git not found\n' >&2; exit 2; }
 
 KERNEL=core/engine.md
 KERNEL_BUDGET=60

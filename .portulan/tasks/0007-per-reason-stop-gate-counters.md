@@ -1,10 +1,12 @@
 # Task — the Stop-gate counts per reason, not per session
 
-**Status.** Open, scheduled for milestone 4, session 1, alongside the repository-ruleset export, the
+**Status.** **Done, 2026-07-27** — milestone 4, session 1, alongside the repository-ruleset export, the
 per-host backend matrix and `doctor`'s degradation report. **Ruled by Marius, 2026-07-27.** Written as a
 task rather than left in a cross-session message because that is the only form that survives into a
 fresh context — the decision arrived after the session-0 pull request had merged, and a ruling nobody
-can find is a ruling that gets re-litigated.
+can find is a ruling that gets re-litigated. It worked: this task is what the implementing session read,
+and a session-open supervisor checked the claim that the ruling was recorded-but-unbuilt against
+`../compile/stop.mjs` rather than taking it on trust.
 
 **Goal.** [`../compile/stop.mjs`](../compile/stop.mjs) keeps **one** consecutive-refusal counter for the
 whole session, and the gate refuses for **two** independent reasons — a default recipe that was **not
@@ -32,21 +34,21 @@ incidental exception.
 
 **Acceptance criteria.**
 
-- [ ] When the default recipe is **not observed green** on three consecutive stop attempts — red or
+- [x] When the default recipe is **not observed green** on three consecutive stop attempts — red or
       could-not-run, since both block — the gate shall release on the fourth *for that reason*.
-- [ ] When a handoff is missing on three consecutive stop attempts **and the recipe is observed green
+- [x] When a handoff is missing on three consecutive stop attempts **and the recipe is observed green
       throughout**, the gate shall release on the fourth *for that reason* — **this is the case that
       produced the original hang, and it must now cap at 3 rather than riding to 9.** The green recipe is
       part of the criterion, not scenery: with a red fixture the release could come from the *recipe* cap
       while a handoff counter still rode to 9, and the test would pass without exercising the ruling.
-- [ ] When the recipe goes green while the handoff is still missing, the recipe counter shall reset and
+- [x] When the recipe goes green while the handoff is still missing, the recipe counter shall reset and
       the handoff counter shall **not**.
-- [ ] When the total refusals across all reasons reach the absolute ceiling, the gate shall release on
+- [x] When the total refusals across all reasons reach the absolute ceiling, the gate shall release on
       the **next** attempt, regardless of any per-reason count — matching the convention the suite already
       pins for the per-reason cap ("the last blocked stop is the cap itself, not one past it").
-- [ ] When the gate releases, the message shall name **which** bound released it — the reason's cap or
+- [x] When the gate releases, the message shall name **which** bound released it — the reason's cap or
       the ceiling. _(Session 0 shipped this misreporting once already and fixed it; do not regress it.)_
-- [ ] The two-reason interaction shall be tested directly. A per-reason design that is only tested one
+- [x] The two-reason interaction shall be tested directly. A per-reason design that is only tested one
       reason at a time has not been tested at all — the original defect lived exactly in the interaction.
 
 **The trap, stated so it is not rediscovered.** The counter is keyed by session id **and** working tree,
@@ -65,4 +67,24 @@ was revised over.
 
 **Context.** [`../handoffs/2026-07-27-the-enforcement-compiler.md`](../handoffs/2026-07-27-the-enforcement-compiler.md)
 — where the hang was found and the ceiling flagged · [`../compile/README.md`](../compile/README.md)
-— the current semantics and their stated limits.
+— the current semantics and their stated limits ·
+[`../handoffs/2026-07-27-the-floor-backend-and-the-matrix.md`](../handoffs/2026-07-27-the-floor-backend-and-the-matrix.md)
+— where it was built.
+
+**How it landed.** `{consecutive, total}` became `{counts: {recipe, handoff}, total}`; `resetConsecutive`
+became `clearReason(session, reason)`; `verdict` takes `problems` tagged with their reason and releases
+when a **currently-active** reason is past its cap, or the ceiling is. Three choices are worth reading as
+decisions rather than as details, because each had a defensible opposite:
+
+- **`REASONS` is exported data**, not three implicit lists in three functions. The single-counter version
+  went wrong precisely because the counter, the reset and the message disagreed about what a reason was.
+- **One refusal charges the ceiling once**, however many reasons name it — otherwise a two-reason session
+  reaches nine in half the attempts, and the backstop starts firing during ordinary work.
+- **Release keys off reasons that are wrong *now*.** A cleared reason's counter is zeroed, so the gate
+  can never release a later stop on the strength of a problem that has since been fixed. Pinned by a test
+  rather than left to be inferred from the zeroing.
+
+One acceptance criterion is met **by the suite rather than by a live run**, and
+[`../compile/README.md`](../compile/README.md)'s observation table says so in the row itself: the handoff
+branch cannot fire in this tree on a day when any session has already written a dated handoff. The
+recipe branch was re-run live end-to-end after the change and released naming its own reason.

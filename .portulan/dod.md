@@ -10,7 +10,8 @@ A change is done when **all** of the following hold.
 1. **Every verify recipe ran green in this working copy.** Not "should pass" — run each recipe
    [`workspace.json`](workspace.json) declares, and read the output. _Why: since milestone 4 the
    Stop-gate runs the **default** recipe automatically and blocks "done" on a red or an exit 2 — but it
-   runs one recipe, not six, and it releases the session after three consecutive refusals (reset by a green run) or nine in total. So it makes a red
+   runs one recipe, not six, and it releases the session after three consecutive refusals **for any one
+   reason** (each reason's count clearing only when that reason clears) or nine in total. So it makes a red
    unmissable rather than impossible, and this condition is still yours. CI runs all of them on the pull
    request, which catches it later and more expensively._
 2. **You could walk a reviewer through every line.** Core's bar, restated because it is the one most
@@ -24,9 +25,9 @@ A change is done when **all** of the following hold.
    enforcement exists or the sentence names the milestone where it arrives. _Why: "write the limit, not
    the aspiration" — [`identity.md`](identity.md)._
 5. **The pre-commit scan is clean** across the changed files, the commit message, and the branch name.
-   The term list lives outside this repository. _Why: this history goes public when the flip clearance
-   completes, and history cannot be cleaned afterwards — only rewritten, which is worse and leaves its
-   own trace._
+   The term list lives outside this repository. _Why: this history **is** public, since 2026-07-27, and
+   cannot be cleaned afterwards — only rewritten, which is worse and leaves its own trace. The condition
+   this clause was written under has arrived, so it binds harder now than when it was drafted, not less._
 6. **The plan reflects reality.** If the work moved milestone state, the same change updates
    [`../docs/plan.md`](../docs/plan.md) — Status column and Session log — so the next session boots from
    the truth rather than from an optimistic memory of it.

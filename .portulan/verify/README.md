@@ -27,16 +27,17 @@ nothing more specific applies. Run any of them from anywhere in the tree:
 | [`doctor.sh`](doctor.sh) | both workspaces validate: schema, paths, cross-references, claims against the tree, provenance — plus the memory store's growth report (count, size, records stating no retirement condition; notes, never failures) | `bash`, `git`, `node` |
 | [`tests.sh`](tests.sh) | every `*.test.mjs` under [`../../cli/`](../../cli/) passes — counted by `find` first, then run by a recursive glob over that same set | `bash`, `node` |
 | [`plugin.sh`](plugin.sh) | the packaging: both manifests parse and agree, component paths resolve, declared skills and agents are real | `bash`, `git`, `node` |
-| [`compile.sh`](compile.sh) | the compiled enforcement in [`../../.claude/settings.json`](../../.claude/settings.json) is exactly what [`../gates.json`](../gates.json) compiles to | `bash`, `node` |
+| [`compile.sh`](compile.sh) | both compiled artifacts — [`../../.claude/settings.json`](../../.claude/settings.json) and [`../compile/github-ruleset.json`](../compile/github-ruleset.json) — are exactly what [`../gates.json`](../gates.json) compiles to | `bash`, `node` |
 
 Exit `0` green · `1` red · `2` could not run — and that third code is why each recipe declares its needs
 in the manifest rather than discovering them: a recipe that *could not run* must never be mistaken for
 one that ran and passed.
 
 **Every recipe but [`docs.sh`](docs.sh) is a wrapper, and the wrapper is the point.** Each one whose
-**Needs** column above names `node` delegates to it, and each checks for it first with the same
-`command -v node` guard — so a seventh recipe joins this paragraph by declaring that dependency rather
-than by being counted into it. `bash -c "node …"` on a machine without `node` exits `127`, which is
+**Needs** column above names `node` delegates to it, and each checks for it first — since 2026-07-27
+as one entry in that recipe's `for need in …` guard rather than as a standalone `command -v node`, the
+same mechanism spelled once for every dependency — so a seventh recipe joins this paragraph by
+declaring that dependency rather than by being counted into it. `bash -c "node …"` on a machine without `node` exits `127`, which is
 neither a verdict about the repository nor "could not run" — the wrapper is where that gets turned into a
 `2` deliberately.
 
@@ -85,6 +86,16 @@ manifest being absent, not by the audit.
 `docs.sh` needs `bash`, `git`, and a handful of POSIX utilities — `grep`, `sed`, `awk`, `wc`, `sort`,
 `cut`, `tail`, `tr`, `dirname`, `mktemp`, and `rm` as of milestone 4 — and nothing else, which is worth
 preserving: a recipe that needs a toolchain is a recipe that stops being run.
+
+**Every recipe now checks its own list before it runs a check**, exiting `2` — and **the `for need in …`
+line inside each recipe is the source of truth** for what that recipe requires. The Needs column above
+and `requires` in [`../workspace.json`](../workspace.json) name only the substantial dependencies
+(`bash`, `git`, `node`) and are summaries rather than lists: `tests.sh` genuinely needs `find`, and
+neither says so, deliberately — a manifest that declared `awk` would be noise nobody reads. The
+paragraph above is the one place a full list is written out in prose, and it is `docs.sh`'s alone,
+because that is the default recipe and the only one whose dependencies are all POSIX utilities; it is
+edited together with that recipe's guard. It is not defensive coding — until 2026-07-27 the recipes
+guarded only `git` or `node`, and the rest of the list was assumed. See Provenance below for the cost.
 
 **Why `json.sh` breaks that rule, deliberately.** Milestone 2 introduced the first JSON this repository
 *depends* on rather than merely carries, and well-formedness is a parser's judgement: bash can only
@@ -187,6 +198,20 @@ carried it since milestone 1, session 3; `json.sh` inherited it by being modelle
 how a defect in an exemplar becomes a defect in a family. Enumerating the tree is now a **precondition**
 in both: it fails `2`, not `0`. Recorded as
 [`../memory/verify-preconditions-fail-closed.md`](../memory/verify-preconditions-fail-closed.md).
+
+**And that rule turned out to be narrower than the defect it was minted from — measured 2026-07-27.**
+It named the case where a precondition *runs and fails*; a utility that is simply not installed
+produces the identical empty output and the identical green. Removing one command at a time from
+`PATH` across all six recipes found **eleven false greens** — `docs.sh` on `sed`, `sort` or `wc`;
+`doctor.sh` on `sort` or `tr`; `json.sh` on `grep`, `sed`, `tr` or `wc`; `plugin.sh` on `sort` or `tr`
+— and five more runs that went red overall while individual checks still printed `ok`. The sharpest of
+those: with `awk` gone, `docs.sh` printed `ok    map — every top-level entry is documented in
+README.md` having enumerated **zero** directories, in a check whose own comment already warns about
+reporting green over an entry it never looked at. Only `tests.sh` and `compile.sh` were clean
+throughout. Each recipe now guards its whole list up front and the probe returns `2` in all thirty
+cases. Provenance: a Copilot review comment on [#3](https://github.com/sleepy-panda-works/portulan/pull/3)
+that said exactly this, three days earlier, and was filed *suppressed due to low confidence* — a form
+that never becomes a review thread and therefore can never be resolved or block a merge.
 
 ## Known limits
 

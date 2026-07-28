@@ -197,10 +197,39 @@ Two obligations, both learned from defects rather than designed in the abstract:
    than dropping one rule — skipping and enforcing are indistinguishable from outside
    ([`../.portulan/memory/a-checker-must-refuse-what-it-cannot-check.md`](../.portulan/memory/a-checker-must-refuse-what-it-cannot-check.md)).
 
-**What `doctor` checks:** that the path resolves. It does **not** compile the policy, and it does not
-check that the prose and the policy agree — that lives in the compiler's suite, anchored to the real tree,
-because the citation convention is this repository's and not the spec's. A workspace may declare prose and
-no policy; that is an ordinary state, and it is the demo workspace's state.
+### `floor` — the platform floor this policy compiles to
+
+**Added in 2.2, optional**, inside the gate policy rather than the manifest — it is policy, and policy
+lives where the rules live. Four keys, and each one exists because it varies per repository and the
+floor backend would otherwise have to guess it:
+
+| Key | What it declares |
+|---|---|
+| `branch` | The ref the floor protects. No default: a compiler that invents the ref it gates has stopped compiling policy and started writing it. |
+| `checks` | The status checks that must be green, each `{ context, integration_id? }`. An unpinned context is satisfiable by *any* app reporting that name — permitted, and reported by `doctor`. |
+| `reviews` | Required approving reviews. Declared rather than defaulted: 0 and 1 are a real difference, and a repository with one maintainer cannot use 1, because GitHub does not permit approving one's own pull request. |
+| `resolve_conversations` | Whether review threads must be resolved before merge. Omitting it would export a floor weaker than the one many repositories already run. |
+
+**What is deliberately NOT declarable is `strict`.** A pull request may not merge from behind its base
+([proposal 0011](../.portulan/proposals/0011-no-merge-from-behind-main.md), applied live on
+2026-07-27), so the export forces strict required status checks unconditionally. A policy able to
+declare `strict: false` would be a compiled artifact quietly undoing a ruling, in a diff nobody would
+read as one.
+
+A workspace with no `floor` compiles no floor: the backend refuses every rule *by name*, says the key
+is missing, and writes nothing. That is a legitimate shape — a workspace whose repositories are not on
+GitHub, or whose floor is configured by hand, or which has not got there yet. It is **not** the demo
+workspace's, which declares no gate policy at all and so never reaches this backend; saying otherwise
+would credit a fixture with exercising a path it does not.
+
+**What `doctor` checks:** that the path resolves; that every `floor.checks` context is reported by a
+workflow job in the declared tree (a **failure** — a required context that never reports blocks every
+pull request, and `enforce_admins` leaves nobody able to force past it); and, as a report, how much of
+the policy each backend compiles, which gates no backend compiles at all, and whether the `floor` and
+the gate map's required-check row agree. It does **not** compile the artifact or check the prose
+citations — that lives in the compiler's suite, anchored to the real tree, because the citation
+convention is this repository's and not the spec's. A workspace may declare prose and no policy; that
+is an ordinary state, and it is the demo workspace's state.
 
 ## `verify` — the only slot that is structured because it is *consumed*
 
