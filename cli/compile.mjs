@@ -687,6 +687,12 @@ function commandSegments(raw) {
  * a `>`/`>>` redirection into the path, and a file-writing command that names it — or names a
  * directory the path lives in, since removing the container removes the file.
  *
+ * A heredoc is NOT on that list, and the omission is worth stating rather than leaving to be read as
+ * one: the body is stripped and the command line survives, so `cat > docs/vision.md <<EOF` is reached
+ * and gated — asserted in the suite. What escapes is an interpolated TARGET, heredoc or not, which is
+ * the first item below. The emitted note said "a heredoc" flatly until 2026-07-28 and overstated the
+ * hole; a gate map that overstates a hole is as wrong as one that hides it, and so is a compiler note.
+ *
  * What that leaves open, listed because a hole list that is wrong is worse than none: an
  * interpolated path (`> $VISION`), a command assembled at runtime, a language runtime writing the
  * file itself (`python3 -c`), a writer absent from the table (`ex`, and `git checkout` deliberately
@@ -973,7 +979,8 @@ export function claudeCode(parsed, options = {}) {
                 `path: a \`>\`/\`>>\` redirection into it, or one of \`${[...FILE_WRITERS].join("`, `")}\` naming it, or ` +
                 `\`${[...IN_PLACE_EDITORS].join("`/`")}\` under an in-place flag. This half is the HOOK's alone and therefore ` +
                 `FAILS OPEN if the hook does: \`Bash(prefix:*)\` matches a command prefix while the path sits anywhere in the ` +
-                `command, so no permission rule expresses it. A heredoc, an interpolated variable, a command assembled at ` +
+                `command, so no permission rule expresses it. A heredoc whose TARGET is interpolated, an interpolated ` +
+                `variable, a command assembled at ` +
                 `runtime, a runtime writing the file itself (\`python3 -c\`), or any writer outside that table still reaches ` +
                 `the path. The platform floor is what covers those.`,
         );
