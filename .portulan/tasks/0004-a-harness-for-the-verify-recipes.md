@@ -5,7 +5,7 @@ task rather than left in a handoff because it has now been handed forward twice,
 lives only in prose is one nobody is accountable for. _(`CODEOWNERS` took four handoffs to land, which is
 the local evidence for that claim.)_
 
-**Goal.** The seven verify recipes are the machinery every "done" in this repository rests on, and nothing
+**Goal.** The verify recipes are the machinery every "done" in this repository rests on, and nothing
 tests them. The tools are covered — every `*.test.mjs` under [`../../cli/`](../../cli/), four as of
 milestone 4 — but the shell doing the invoking has no suite at all. Three of the four cover tools that
 recipes invoke; the fourth covers the Stop-gate runner, which invokes a recipe rather than being invoked
@@ -44,7 +44,7 @@ the guard was never where the check was. All were found by review or by accident
       applies first to itself._
 
 **The known difficulty, stated so it is not rediscovered.** `tests.sh` cannot be run from inside the
-suite `tests.sh` runs. The harness is therefore either a seventh recipe that runs the other six in a
+suite `tests.sh` runs. The harness is therefore either a further recipe that runs the others in a
 sandbox with faked preconditions, or a test module that invokes each recipe as a subprocess with a
 doctored `PATH` and a scratch tree. Neither is free, and choosing badly under time pressure at a
 milestone close is how this gets done twice.

@@ -7,7 +7,7 @@
 
 ## The recipes
 
-Seven, as of milestone 4. All are declared in [`../workspace.json`](../workspace.json), which is also
+Eight, as of milestone 5. All are declared in [`../workspace.json`](../workspace.json), which is also
 where the **default** is named — [`docs.sh`](docs.sh), the one the Stop-gate now actually runs when
 nothing more specific applies. Run any of them from anywhere in the tree:
 
@@ -19,6 +19,7 @@ nothing more specific applies. Run any of them from anywhere in the tree:
 ./.portulan/verify/plugin.sh
 ./.portulan/verify/compile.sh
 ./.portulan/verify/workflow-filters.sh
+./.portulan/verify/index.sh
 ```
 
 | Recipe | Covers | Needs |
@@ -30,6 +31,7 @@ nothing more specific applies. Run any of them from anywhere in the tree:
 | [`plugin.sh`](plugin.sh) | the packaging: both manifests parse and agree, component paths resolve, declared skills and agents are real | `bash`, `git`, `node` |
 | [`compile.sh`](compile.sh) | both compiled artifacts — [`../../.claude/settings.json`](../../.claude/settings.json) and [`../compile/github-ruleset.json`](../compile/github-ruleset.json) — are exactly what [`../gates.json`](../gates.json) compiles to | `bash`, `node` |
 | [`workflow-filters.sh`](workflow-filters.sh) | every jq program the workflows run, lifted out of the parsed `run:` scalars and executed against null-bearing fixtures — exact stdout, exact exit status | `bash`, `node`, `jq` |
+| [`index.sh`](index.sh) | both workspaces' generated memory indexes are exactly what their stores render, and neither the index nor the store is over the budget its manifest declares | `bash`, `git`, `node` |
 
 Exit `0` green · `1` red · `2` could not run — and that third code is why each recipe declares its needs
 in the manifest rather than discovering them: a recipe that *could not run* must never be mistaken for
@@ -46,6 +48,16 @@ neither a verdict about the repository nor "could not run" — the wrapper is wh
 **The seventh arrived on 2026-07-28 and did exactly that**, with a dependency this directory had not
 had before: [`workflow-filters.sh`](workflow-filters.sh) declares `jq`, guards it in the same
 `for need in …` line as `node`, and needed no edit to this paragraph or to CI to be enforced.
+
+**The eighth is [`index.sh`](index.sh)**, and it is [`compile.sh`](compile.sh)'s shape applied to a
+second generated artifact: the memory index is emitted by [`../../cli/index.mjs`](../../cli/index.mjs)
+from the store, committed so a change to what is always loaded is reviewable in a diff, and
+byte-compared here so a hand-edit survives exactly until the next run. It carries **two distinct
+reds**, because they have two distinct repairs — *out of date* is fixed by running the generator,
+*over budget* is fixed by consolidating the store
+([`../../core/skills/consolidate/SKILL.md`](../../core/skills/consolidate/SKILL.md)) — and a recipe
+that reported one verdict for both would send an author to regenerate a file that is already correct
+and still too big.
 
 **[`compile.sh`](compile.sh) never writes.** It recompiles in memory and byte-compares. A verify recipe
 that repairs what it is checking always passes, which is a fail-open dressed as a convenience — and this
@@ -142,10 +154,16 @@ read off the tree rather than named in a list: `tests.sh` counts every `*.test.m
 added to `cli/` is covered without this paragraph changing. Four as of milestone 4, covering `doctor`,
 `plugin-lint`, the enforcement compiler, and the Stop-gate runner's arithmetic.
 **Nothing tests the recipes themselves** — `docs.sh`, `json.sh`, `doctor.sh`, `tests.sh`, `plugin.sh`,
-`compile.sh` and `workflow-filters.sh` are verified by being run, which is a weaker claim than it
-sounds, and it is weakest on the newest of them: its reader of the workflow files is code that can be
-subtly wrong, and what stands behind that reader is a second, independent reading of the same file
-that has to agree with it — not a suite.
+`compile.sh`, `workflow-filters.sh` and `index.sh` are verified by being run, which is a weaker claim
+than it sounds, and it is weakest on `workflow-filters.sh`: its reader of the workflow files is code
+that can be subtly wrong, and what stands behind that reader is a second, independent reading of the
+same file that has to agree with it — not a suite. `index.sh` is the newest and is not in that
+position: everything in it that could be subtly wrong lives in [`../../cli/index.mjs`](../../cli/index.mjs),
+which the suite does cover, and the wrapper itself does dependency guarding, the workspace audit, and
+exit-code passthrough — the three things every recipe here has had a defect in, and the three the
+paragraphs above exist to explain. It is not the *smallest* of the eight, which its shape might
+suggest: at 100 lines it is second-largest with `doctor.sh`, because the audit and the guard are what
+take the room.
 That gap now has a task of its own rather than a mention in a handoff:
 [`../tasks/0004-a-harness-for-the-verify-recipes.md`](../tasks/0004-a-harness-for-the-verify-recipes.md). Every defect ever found in them was found by a human or a reviewer, and
 the two most recent were found by a reviewer on the pull request that introduced them, in the two recipes
@@ -176,10 +194,11 @@ less.
 | `map` | Every top-level entry appears in the root `README.md` layout table. | Agent legibility: a repository whose own map omits directories teaches an agent a false shape of the ground. This one exists because that had already happened — see below. |
 | `record` | Every Session log date since 2026-07-25 has a dated handoff in `../handoffs/`, and the newest log entry carries a seam attestation. | The Session log and the handoffs are the repository's memory of *how* things were decided, and a session that leaves no record cannot be audited afterwards — which stopped being hypothetical the day a merged doctrine rewrite (#32/#33) turned out to have neither. The floor date is the day the handoff cadence became a maintainer ruling; earlier entries predate the mandate. |
 | `parse` | Every tracked `.json` file is well-formed. | From milestone 2 the repository's policy layer *is* JSON. A manifest that does not parse gates nothing, and it fails at the moment it is needed rather than when it is written. |
-| `doctor` | Both workspaces conform to the Workspace Definition, their paths resolve, their claims match the tree, and every rule carries checkable provenance. It also reports the memory store's count and size, and names any record stating no `Retire when:` condition — reported, never failed, because nothing legislates the field; the budget rail arrives with the librarian (milestone 5). For this repository the suite is stricter: a live record without the field turns `tests` red. | The workspace layer is where a team's policy lives, and until this existed every "this workspace conforms" sentence in the repository was an assertion. Its first run found three rules whose provenance the repository had already mandated and not held. |
+| `doctor` | Both workspaces conform to the Workspace Definition, their paths resolve, their claims match the tree, and every rule carries checkable provenance. It also reports the memory store's count and size, and names any record stating no `Retire when:` condition — reported, never failed, because nothing legislates the field. The budget rail that *does* fail arrived at milestone 5 and is [`index.sh`](index.sh), one recipe over; the retirement condition stays a note here, because it is still the field nothing legislates. For this repository the suite is stricter: a live record without the field turns `tests` red. | The workspace layer is where a team's policy lives, and until this existed every "this workspace conforms" sentence in the repository was an assertion. Its first run found three rules whose provenance the repository had already mandated and not held. |
 | `tests` | The test suites pass. | The validators are the first things here that can be *subtly* wrong rather than visibly broken — a schema keyword silently ignored looks identical to one enforced. A linter can be judged by reading it; a validator cannot. |
 | `compile` | [`../../.claude/settings.json`](../../.claude/settings.json) is byte-identical to what [`../gates.json`](../gates.json) compiles to. | The artifact is generated *and* committed — generated so the policy is the single source, committed so the gate wiring is reviewable in a diff. That combination invites exactly one failure: a hand-edit that works until the next compile silently reverts it. This is the check that makes that loud. |
 | `filters` | Every jq program in [`../../.github/workflows/`](../../.github/workflows/) produces exactly the bytes and exactly the exit status the shell around it branches on. The programs are read out of the parsed `run:` scalars and never restated here; the fixtures carry null and empty inputs alongside ordinary ones. | Two merge gates are decided by jq's answer for null — `copilot-review.yml` refuses a pull request whose `head.sha` came back empty from `join("|")`, and the required `pr-labeled` check treats *no output from `jq -er`* as "the policy declares no labels". Both behaviours were asserted by prose and by a harness that stubs `gh`, and executed by nothing. A filter is the one kind of code in this repository that can be wrong in a way review cannot see: it looks like a selector and behaves like a program. |
+| `index` | Each workspace's committed memory index is byte-identical to what its store renders, no record's heading disagrees with its filename, and neither the index's line count nor the store's size is over the budget the manifest declares. | `core/operating/memory.md` has promised a *generated, size-budgeted* index since milestone 1, and until milestone 5 both halves were prose: the index did not exist, and the budget was a sentence binding review. A budget that lives only in prose is the first thing a busy session negotiates with — the same argument the `kernel` row makes, applied to the layer that decides what else gets loaded. The heading check is here because the store may hold two carriers of a record's name and must not hold two answers; it found a real disagreement on its first run. |
 | `plugin` | Both packaging manifests parse and agree; every component path resolves inside the tree — after canonicalisation, so a symlink out of it is an escape rather than containment; every declared skill and agent is a real artifact with a kebab-case `name` and a non-empty `description`. | From milestone 3 the repository *is* a distribution channel, and a marketplace declaring no plugins — or a skill path resolving to nothing — installs cleanly and delivers nothing. The platform's own validator reports the empty-marketplace case as a *warning*, which is the severity a milestone walks past. |
 
 ## Provenance
@@ -286,6 +305,33 @@ runner's jq is **1.7** and the maintainer's is **1.7.1** — two versions, same 
 first evidence anyone here has that these programs are not pinned to one build. It is not evidence
 about gojq, which is the interpreter that actually runs them in the workflows.
 
+The `index` check was added 2026-07-28, at milestone 5, against two sentences
+[`../../core/operating/memory.md`](../../core/operating/memory.md) had carried since milestone 1 — that
+the index is *generated, never hand-maintained*, and that a budget is *a rail, not an aim*. Neither
+had a machine behind it: there was no index, and the budget was prose. It found a real defect on its
+first run against the tree, which is the third time a check here has
+([`map`](../memory/readme-map-must-match-shape.md) and `doctor` were the others): one record's H1 said
+something its filename did not, and the store therefore held two answers to what that record is called.
+
+Its observation procedure ([the 0007 rule](../gate-map.md)), thirteen moves measured on a scratch copy
+of the tree at the commit that added it. Add a record and do not regenerate → **red, exit 1**, *out of
+date*. Edit a record's **prose** and do not regenerate → **green**, and deliberately so: the index
+carries a title, a path and a type, all of which come from the record's *name* and one field, so it
+goes stale on the record **set** rather than on record content — which is what keeps an ordinary edit
+from churning a generated file. Lower `lines` below the store → **red**, *over budget*, naming the
+overage. Note that this red arrives **with** an *out of date* alongside it until the index is
+regenerated, because the header states the **line** budget: a change to that one number stales the
+artifact it governs, so a raise of it cannot land without touching the generated file too. **That
+property is the `lines` axis's alone** — measured, not assumed: lowering `columns` and lowering
+`kilobytes` each produce a single budget red with no staleness beside it, because neither number is
+written into the index. Lower `columns` under the longest line → **red**, naming the line and its
+width. Lower the store's `kilobytes` under 88.8 → **red** on the axis the index cannot see. Make a record's heading disagree
+with its filename → **red**, both spellings quoted. Delete the committed index → **red**, *declared and
+absent*. Set a budget to `0` → **exit 2**, refused rather than read as undeclared. Site the index
+inside its own store → **exit 2**. Delete the generator → **exit 2** from the wrapper. Drop a third
+`workspace.json` into the tree → **exit 2**, the list disagreeing with the audit. Take `node` off the
+`PATH` → **exit 2** from the guard. Clean tree at both ends → **green**.
+
 ## Known limits
 
 - **Anchors are not checked.** A link to `file.md#section` verifies only that `file.md` exists. Checking
@@ -311,6 +357,33 @@ about gojq, which is the interpreter that actually runs them in the workflows.
   attestation is honest — a false "seam scan clean" passes exactly as a true one does. Both are the
   known cost of a check cheap enough to exist; per-session correspondence needs the log to name its
   handoff, which is a convention change, not a bigger grep.
+- **`index` checks what memory costs, never whether it is any good.** Derivation and size are
+  machine questions; whether these lines lead a reader to the right record is not, and no green here
+  should be read as answering it. That is an eval question (milestone 8) and a naming question for
+  whoever writes the records.
+- **Nothing refuses a budget RAISE, and that is the row's own repair being un-railed.** The rule is
+  that a breach is answered by consolidation and never by widening the number in the same change
+  ([`../../core/operating/memory.md`](../../core/operating/memory.md)). Refusing it needs a check that
+  reads git *history*, and a check that reads history produces false reds in a shallow CI checkout —
+  the failure this page holds to be worse than no check. Measured rather than argued: with the budget
+  raised from 14 to 18 on a twelve-record scratch store, the recipe goes **green**, exactly as it does
+  after a real consolidation. So the breach is a rail and the remedy is a human-gate rule. What stands
+  behind it is thin and worth stating exactly: a raise of the **`lines`** budget also stales the index,
+  so it drags the generated file into the same diff and is visible twice. A raise of `columns` or of
+  the store's `kilobytes` does neither — neither number is written into the index — so those two land
+  in the manifest diff alone.
+- **The store walk is flat, and nothing enforces that it should be.** Both `index` and `doctor` read
+  `slots.memory` non-recursively, so they agree about what the store contains — but records moved into
+  a subdirectory of it leave the index, the KB budget and the store report together, in silence. No
+  workspace does this today; the plausible accident is an `archive/` directory arriving with the
+  librarian's demotion drafts at milestone 5, session 1, which is why it is written down now rather
+  than discovered then.
+- **A present-but-empty store is a green.** It renders an index of `0 record(s)`, which matches a
+  committed index of the same, and passes. That is correct — a workspace may legitimately have no
+  memory yet — and it is the closest relative of the enumeration fail-opens above, so it is named:
+  what is refused is a store that cannot be *read*, not one that is empty. Emptying a populated store
+  still cannot pass quietly, because the index goes stale first and the regenerate that clears it is a
+  diff deleting every line.
 - **Nothing here checks prose quality**, and nothing can. Conditions 2–4 of [`../dod.md`](../dod.md) are
   human judgement and are meant to stay that way.
 - **`doctor` checks form, never truth.** A path that resolves, a manifest that conforms, a provenance

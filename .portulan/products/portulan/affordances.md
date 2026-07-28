@@ -31,9 +31,9 @@
 
 Written at the same level of detail, because a legibility report that lists only strengths is marketing.
 
-- **The Stop-gate runs one recipe, not six.** Since milestone 4 it runs the workspace **default** and
+- **The Stop-gate runs one recipe, not all of them.** Since milestone 4 it runs the workspace **default** and
   blocks "done" on a red, an exit 2, or a recipe it could not execute — and releases after three
-  consecutive refusals of any one reason, or nine in all. The other five are
+  consecutive refusals of any one reason, or nine in all. The others are
   still condition 1 of [`../../dod.md`](../../dod.md) and a habit.
 - **Which tiers compile depends on the backend, and there are two.** For the Claude Code backend gated
   actions prompt and the constitution is refused, while `auto` and `propose` emit nothing — the compiler
@@ -51,8 +51,15 @@ Written at the same level of detail, because a legibility report that lists only
   itself is not built, and calling this file a score would be exactly the overclaim
   [`../../principles.md`](../../principles.md) forbids. `doctor` resolves this file's path and reads
   nothing in it.
-- **Memory has no generated index.** [`../../memory/`](../../memory/) is a flat directory; recall means
-  reading filenames. The size-budgeted index arrives with the librarian in milestone 5.
+- **The memory index is generated and budgeted — and it is still only an index.**
+  [`../../memory-index.md`](../../memory-index.md) is emitted from [`../../memory/`](../../memory/) by
+  [`../../../cli/index.mjs`](../../../cli/index.mjs) and byte-compared by the `index` recipe, so it
+  cannot go stale unnoticed and cannot be hand-edited into disagreement with the store. Three things
+  an agent must not read into it. Every line is **derived** — title from the filename, type from the
+  record — so it carries no summary anyone wrote, and finding the right record still means opening
+  it. The store is walked **flat**: records under a subdirectory of it are in no index and count
+  against no budget. And the budget's *remedy* is not enforced — a breach is red, but nothing refuses
+  a change that answers the breach by raising the number.
 - **`links` has two known false greens.** Wrong-case link targets pass on a case-insensitive volume, and
   paths written as code spans are never checked at all. Both are recorded in
   [`../../verify/README.md`](../../verify/README.md); the second has already cost this repository two
@@ -72,9 +79,13 @@ Written at the same level of detail, because a legibility report that lists only
 - **The test suites are discovered, not enumerated — and they cover the tooling, not the product.**
   [`../../verify/tests.sh`](../../verify/tests.sh) runs every `*.test.mjs` under
   [`../../../cli/`](../../../cli/), counting them before it runs them, so a suite added there is covered
-  without this bullet changing: four as of milestone 4, over `doctor`, `plugin-lint`, the enforcement
-  compiler [`../../../cli/compile.mjs`](../../../cli/compile.mjs), and the Stop-gate runner's arithmetic
-  in [`../../compile/stop.mjs`](../../compile/stop.mjs). Nothing tests the seven verify recipes themselves
+  without this bullet changing — over `doctor`, `plugin-lint`, the enforcement compiler
+  [`../../../cli/compile.mjs`](../../../cli/compile.mjs), the memory index generator
+  [`../../../cli/index.mjs`](../../../cli/index.mjs), and the Stop-gate runner's arithmetic in
+  [`../../compile/stop.mjs`](../../compile/stop.mjs). _(This sentence used to carry a count as well as
+  that claim, and the count had drifted twice by milestone 5 while the claim beside it said a suite
+  could be added without the bullet changing. The number is gone rather than corrected: the recipe
+  prints the live figure, which is the carrier that cannot be wrong.)_ Nothing tests the verify recipes themselves
   ([`../../tasks/0004-a-harness-for-the-verify-recipes.md`](../../tasks/0004-a-harness-for-the-verify-recipes.md)),
   and there is no other product code yet. Treat green as "the modules those suites reach behave, and the
   documents are internally consistent" — never as "the product works".

@@ -1,6 +1,6 @@
 {
   "portulan": {
-    "spec": "2.0",
+    "spec": "2.3",
     "workspace": "0.1.0"
   },
   "name": "rooftop",
@@ -41,6 +41,21 @@
         "doc": "verify/README.md"
       }
     ]
+  },
+
+  "memory": {
+    "index": {
+      "path": "memory-index.md",
+      "budget": {
+        "lines": 20,
+        "columns": 140
+      }
+    },
+    "store": {
+      "budget": {
+        "kilobytes": 20
+      }
+    }
   },
 
   "products": [

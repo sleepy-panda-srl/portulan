@@ -18,6 +18,8 @@ plus one tool that is not on that list at all, because milestone 3 needed it.
 | [`plugin-lint.test.mjs`](plugin-lint.test.mjs) | Its test suite, likewise written first. |
 | [`compile.mjs`](compile.mjs) | The enforcement compiler: a workspace's [`../.portulan/gates.json`](../.portulan/gates.json) becomes host enforcement. One backend today — Claude Code `permissions` + `hooks` — and the vocabulary it reads stays the workspace's, so a second backend translates the same policy instead of forcing it to be rewritten. |
 | [`compile.test.mjs`](compile.test.mjs) | Its test suite, likewise written first. Emission fidelity only — nothing in here can establish that a host *honours* what the compiler emits, which is a fact about a running host. |
+| [`index.mjs`](index.mjs) | The memory index generator: a workspace's store becomes a generated, size-budgeted index, and the budgets it declares become a red. Every field on an index line is derived from the record it points at, so the file has no hand-maintained half. It writes an over-budget index rather than refusing to — the remedy is consolidation, and consolidating needs the artifact to consolidate from. |
+| [`index.test.mjs`](index.test.mjs) | Its test suite, written first. Derivation, drift and cost only — nothing in here can establish that the index is any good at *recall*, which is an eval question. |
 | [`stop-gate.test.mjs`](stop-gate.test.mjs) | The exception to "written first": it covers the Stop-gate runner ([`../.portulan/compile/stop.mjs`](../.portulan/compile/stop.mjs)), and it exists because a supervisor found a fail-open and a forever-block in a runner nothing tested at all. Its cap arithmetic and date handling — deliberately not its I/O. |
 | [`fixtures/`](fixtures/) | Known-bad manifests, and a workspace whose repo card has drifted from its tree. |
 
@@ -25,12 +27,16 @@ plus one tool that is not on that list at all, because milestone 3 needed it.
 node cli/doctor.mjs <workspace-dir> [<workspace-dir> ...]
 node cli/plugin-lint.mjs <plugin-root> [<plugin-root> ...]
 node cli/compile.mjs [--workspace <dir>] [--check]
+node cli/index.mjs [--check] <workspace-dir> [<workspace-dir> ...]
 ```
 
 The two validators: exit `0` when every workspace or plugin root validates · `1` when at least one does
 not · `2` could not run. `compile`: exit `0` when it wrote, or agreed under `--check` · `1` only under
 `--check`, when the artifact is missing or has drifted · `2` could not run — writing never returns `1`,
-because a run that rewrites the artifact has nothing to disagree with. Both workspaces this repository
+because a run that rewrites the artifact has nothing to disagree with. `index` uses the same three
+codes and differs from `compile` in one way worth knowing before reading it: **writing can still return
+`1`**, because a budget breach is a verdict about the store rather than about the artifact, and the
+artifact is written anyway so there is something to consolidate from. Both workspaces this repository
 owns are validated on every pull request, because
 [`../.portulan/workspace.json`](../.portulan/workspace.json) declares
 [`../.portulan/verify/doctor.sh`](../.portulan/verify/doctor.sh) as a verify recipe and CI runs every

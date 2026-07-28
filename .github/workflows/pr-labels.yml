@@ -6,7 +6,7 @@
 # needs no workflow edit.
 #
 # WHY A SEPARATE WORKFLOW rather than a job inside verify.yml. A label check needs the `labeled` and
-# `unlabeled` event types, and adding those to verify.yml would re-run all seven verify recipes every time
+# `unlabeled` event types, and adding those to verify.yml would re-run every verify recipe every time
 # somebody clicks a label — for a check that reads two files and never looks at the tree. It would also
 # make the required `workspace-verify` context re-report on label churn, which is noise on the one check
 # branch protection actually pins.

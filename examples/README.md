@@ -25,6 +25,7 @@ incident it is not allowed to publish.
 | [`dod.md`](dod.md) | What "done" means here |
 | [`verify/README.md`](verify/README.md) | The executable half of done |
 | [`repos/`](repos/) · [`memory/`](memory/) · [`tasks/`](tasks/) | The per-repository facts, the durable rules, one task |
+| [`memory-index.md`](memory-index.md) | The generated index of that store, and the budgets it is held to — written by `node cli/index.mjs examples`, never by hand |
 | [`workspace.json`](workspace.json) | The manifest tying it together |
 
 ## Four things this workspace is showing you on purpose

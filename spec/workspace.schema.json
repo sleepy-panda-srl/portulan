@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://portulan.dev/spec/2.2/workspace.schema.json",
-  "title": "Portulan Workspace Definition v2.2",
+  "$id": "https://portulan.dev/spec/2.3/workspace.schema.json",
+  "title": "Portulan Workspace Definition v2.3",
   "description": "The manifest at the root of a workspace. It is an index, not a container: it names the slots the engine resolves against and points at the Markdown that holds each slot's content and rationale. Written in a deliberately small subset of JSON Schema 2020-12 — see spec/README.md for the subset and for what validates it.",
   "type": "object",
   "additionalProperties": false,
@@ -138,6 +138,59 @@
       "items": {
         "type": "string",
         "minLength": 1
+      }
+    },
+
+    "memory": {
+      "description": "Optional, added in 2.3. What the memory store's generated index is called and what memory may cost — distinct from `slots.memory`, which is the store itself, for the same reason `gates` is distinct from `slots.gates`: one is content, this is machine configuration. A workspace may declare a store and no budget, which is every workspace that existed before 2.3 and is a legitimate shape; what it may not do is declare this object without a store, since there would be nothing to index. That conditional requirement is `doctor`'s, not the schema's — the declared subset has no `dependentRequired`, exactly as with `tree` when `kind` is `repository`.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "index": {
+          "description": "The generated index: the layer loaded to decide what else to load. It is built by `cli/index.mjs` and byte-compared by a verify recipe, so nothing in it is hand-maintained. Its path must resolve OUTSIDE `slots.memory` — an index living in the store is counted as a record by `doctor`'s store report, and `index` refuses that siting rather than teaching one filename to hide from a walk.",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["path"],
+          "properties": {
+            "path": {
+              "description": "Where the generated index is written, relative to the workspace root.",
+              "$ref": "#/$defs/filePath"
+            },
+            "budget": {
+              "description": "Optional. A rail, not an aim: on breach the remedy is consolidation — merge, compress, retire — and never a raise in the same change (core/operating/memory.md). Nothing here is defaulted; an undeclared number is not checked, because a default would be this specification setting a policy for every workspace that adopts it, in a key nobody typed.",
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "lines": {
+                  "description": "The most lines the generated index may hold. With one line per record this is a rail on record COUNT, which is the cost memory imposes on every recall.",
+                  "type": "number"
+                },
+                "columns": {
+                  "description": "The most columns any one index line may hold. Closes the hole a line budget has — one enormous line absorbing what the budget counts — and is refused rather than truncated, since a silently shortened title is a generated file disagreeing with its source.",
+                  "type": "number"
+                }
+              }
+            }
+          }
+        },
+        "store": {
+          "description": "Optional. Budgets on the store itself rather than on its index. The axis an index cannot see: record count can hold still while the records grow.",
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "budget": {
+              "description": "Optional, and not defaulted, on the same reasoning as the index's.",
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "kilobytes": {
+                  "description": "The most kilobytes (1024 bytes) the store's records may total — the same measure `doctor`'s retirement report already prints, so the report and the rail cannot disagree about what was measured.",
+                  "type": "number"
+                }
+              }
+            }
+          }
+        }
       }
     }
   },
