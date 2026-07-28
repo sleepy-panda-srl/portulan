@@ -42,6 +42,17 @@
 # every push for the life of the draft. See the `draft` branch below for why reporting success there does
 # not open the gate, and for the one window it does leave.
 #
+# ## It also prints the half of the round that no gate can see
+#
+# `required_conversation_resolution` covers Copilot's *threads*. Its low-confidence comments are not
+# threads — they sit inside the review body, with no Resolve control and no effect on any check, so the
+# platform states them once and never mentions them again. Catching them was a manual sweep of
+# `/pulls/N/reviews` that an agent had to remember, and forgetting it has already cost this repository a
+# correct finding that sat for three days
+# (`.portulan/memory/verify-preconditions-fail-closed.md`). This job reads that endpoint anyway, so on
+# green it extracts them into the run's job summary. **It changes no verdict** — a note is not a blocker,
+# and making it one would be a different rule than the one the maintainer gave.
+#
 # ## It still fails CLOSED
 #
 # An unreadable API is never taken as an answer — it is retried, and if it is still unreadable when the
@@ -198,11 +209,12 @@ jobs:
               # its newest reviews on a page this never fetched — a check that silently examines the
               # first thirty of forty reviews is the fail-open in miniature.
               if ! reviews=$(gh api --paginate "repos/${GITHUB_REPOSITORY}/pulls/${PR_NUMBER}/reviews" \
-                    --jq '.[] | [.user.login, .commit_id, .state] | join("|")'); then
+                    --jq '.[] | [.user.login, .commit_id, .state, (.id|tostring)] | join("|")'); then
                 unread="could not read the reviews on #${PR_NUMBER}"
               else
                 matched=0
-                while IFS='|' read -r login commit state; do
+                matched_id=''
+                while IFS='|' read -r login commit state id; do
                   [ -n "${login:-}" ] || continue
                   lower=$(printf '%s' "$login" | tr '[:upper:]' '[:lower:]')
                   seen="$seen $lower"
@@ -211,6 +223,10 @@ jobs:
                     if [ "$lower" = "$candidate" ] && [ "$commit" = "$head" ] && [ "$state" != "DISMISSED" ]; then
                       printf 'found: %s reviewed %s (%s)\n' "$login" "$commit" "$state"
                       matched=1
+                      # The API returns reviews oldest-first, so the last match is the newest round on
+                      # this head — Copilot reviews the same SHA twice when a re-review is requested
+                      # (measured on #57, `599fd30` at 06:56:49Z and again at 07:00:07Z, 2026-07-28).
+                      matched_id="$id"
                     fi
                   done
                 done <<EOF
@@ -219,6 +235,63 @@ jobs:
 
                 if [ "$matched" -eq 1 ]; then
                   printf 'GREEN — Copilot has reviewed the current head commit.\n'
+
+                  # THE HALF NOBODY READS. Copilot's low-confidence comments are delivered inside the
+                  # review BODY: no thread, no Resolve control, and therefore no effect on
+                  # `required_conversation_resolution`. Nothing in the platform surfaces them and
+                  # nothing gates on them, so until now the only thing between those notes and oblivion
+                  # was an agent remembering to sweep `/pulls/N/reviews` by hand. The repository has
+                  # already paid for forgetting once —
+                  # `.portulan/memory/verify-preconditions-fail-closed.md` records a suppressed comment
+                  # that was right, sat for three days, and appears nowhere in the record of addressed
+                  # feedback. This job already reads that endpoint, so it prints them.
+                  #
+                  # **This changes no verdict.** The check is green either way; a note is not a
+                  # blocker, and making it one would be a different rule than the one the maintainer
+                  # gave. What it must not do is go quiet when it could not look — that is the false
+                  # green this whole file exists to refuse — so an unreadable body says so.
+                  report=''
+                  if ! body=$(gh api "repos/${GITHUB_REPOSITORY}/pulls/${PR_NUMBER}/reviews/${matched_id}" \
+                        --jq '.body // ""'); then
+                    report='**Could not read review body `'"${matched_id}"'`.** Sweep `/pulls/'"${PR_NUMBER}"'/reviews` by hand — this section is not evidence of absence.'
+                    printf 'suppressed low-confidence notes: COULD NOT READ review %s\n' "$matched_id"
+                  else
+                    # Copilot wraps them in `<details><summary>Comments suppressed due to low
+                    # confidence (N)</summary>`. Matched on that phrase and not on `<details>`, because
+                    # the body carries a second, uninteresting one — `Show a summary per file`.
+                    count=$(printf '%s\n' "$body" \
+                      | sed -n 's/.*Comments suppressed due to low confidence (\([0-9][0-9]*\)).*/\1/p' \
+                      | head -1)
+                    notes=$(printf '%s\n' "$body" | awk '
+                      /Comments suppressed due to low confidence/ { f = 1; next }
+                      f && /<\/details>/ { exit }
+                      f { print }')
+                    if [ -n "${count:-}" ] && [ -n "${notes:-}" ]; then
+                      # Built by appending rather than as one multi-line literal: a continuation line
+                      # would have to sit at column 0 to avoid leading spaces in the output, and a
+                      # column-0 line ENDS this YAML block scalar. That broke the file once already
+                      # and the shell tests still passed, because they were fed a hand-sliced copy of
+                      # the block instead of one YAML had parsed.
+                      report="**${count} comment(s) suppressed as low confidence** on the round for \`${head}\`."
+                      report="${report}"$'\n'"They carry no thread and no Resolve control, so nothing"
+                      report="${report} else in this pull request will ever mention them again."
+                      report="${report} Address or refuse each one in a reply, per the standing"
+                      report="${report} feedback-loop rule."$'\n\n'"${notes}"
+                      printf 'suppressed low-confidence notes: %s — printed to the job summary\n' "$count"
+                    else
+                      report="No suppressed low-confidence comments on the round for \`${head}\`. Read, not assumed."
+                      printf 'suppressed low-confidence notes: none on this round\n'
+                    fi
+                  fi
+
+                  if [ -n "${GITHUB_STEP_SUMMARY:-}" ]; then
+                    {
+                      printf '## Copilot notes that no gate can see\n\n'
+                      printf '%s\n' "$report"
+                    } >>"$GITHUB_STEP_SUMMARY"
+                  else
+                    printf '%s\n' "$report"
+                  fi
                   exit 0
                 fi
               fi
