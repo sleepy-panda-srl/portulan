@@ -47,19 +47,52 @@ policy carrying only a write rule.
 
 ## Observation
 
-Run against the **runner**, not a host, and the compile README's table says which. Five payloads on stdin:
-the three write spellings each returned `deny` carrying the rule's own sentence; `cat docs/vision.md` and
-`git status` produced no output and exit 0 — the runner stepping aside, which is the control that
-distinguishes *refused* from *refuses everything*. That the host invokes the hook for a `Bash` call is
-**inferred**, not shown; it is the same boundary every row in that table has, and it belongs to a
-supervised checkpoint.
+Runner: five payloads on stdin. The three write spellings each returned `deny` carrying the rule's own
+sentence; `cat docs/vision.md` and `git status` produced no output and exit 0 — the runner stepping aside,
+which is the control that distinguishes *refused* from *refuses everything*.
+
+**The host half stopped being inferred, twice, by accident.** This handoff said "inferred, not shown" for
+one draft. Then the supervisor's own scratch script (`printf … > …/docs/vision.md` under `/private/tmp`)
+was refused by the host with verbatim `gate.mjs` output — a string no permission rule can produce, since
+the deny list holds only `Edit`/`Write`/`NotebookEdit` — and the implementing session hit the same refusal
+on an inline `node -e` probe. So the host **does** invoke this hook for `Bash`, and both the decision and
+the sentence reach the agent. Both were also false reds, which is the coarse direction this design chose
+deliberately, met in the wild inside an hour.
+
+## What the supervisor checkpoint changed
+
+**Verdict: PASS WITH FIXES**, on DoD condition 4 — the published hole list was wrong. Four entries, five
+missing, and the plainest of them a **newline**: `git status\ncp /tmp/x docs/vision.md` folded into one
+segment whose head was `git`, so the entire table half fell through while the redirection half kept
+working and the coverage looked alive. Also missing: a writer behind `{`, `then` or `do`; `docs/./vision.md`
+and `docs//vision.md`, which no tail comparison matches; and `rm -rf docs`, which destroys the constitution
+by destroying its container. All five are now closed and asserted, and each was mutation-tested — break the
+guard, watch the right tests go red.
+
+Two code comments stated reasons that measurement contradicted (a quote branch and a `<` branch each
+defended by a hazard that cannot occur); both rewritten to the reason that actually goes red. Two branches
+had no test at all — an unchecked branch in a security matcher — and now do.
+
+**And it found the sibling.** The *shell* matcher had the identical defect one action kind over:
+`ls && git push --force origin main` reached no gate, because the match was a prefix on the whole command
+string. Every Gated outward action here — merge, publish, release, repo delete — was defeated by typing
+anything in front of it. Fixed in the same stroke per the standing ruling on defect classes; the control
+that `--force-with-lease` stays **Auto**, mid-line or not, is asserted.
+
+**Then the fix bit its own author.** Once a newline separated commands, every line of a heredoc body became
+a segment — and the commit closing the newline hole was **refused by the gate it was adding**, because its
+message quoted `cp /tmp/x docs/vision.md` as the escape being fixed. Heredoc bodies are now skipped: a body
+is text being written, not commands being run, so reading it as commands was simply wrong. The opening line
+still gates and anything after the terminator still counts, both asserted.
+
+The lesson worth keeping is not that the holes were fixed. It is that a hole list is a claim like any
+other, and nothing checks it except somebody attacking the matcher instead of reading it — and that a
+coarse matcher's false reds land on the people doing the work, which is how this one got measured.
 
 ## State
 
-Six recipes green, suite 350 (was 309). Rebased onto `bf46153`; `.claude/settings.json` is byte-identical,
-so `verify/compile.sh` is green with no artifact change. **No pre-commit supervisor ran** — this session
-was told not to spawn subagents, and the checkpoint is the maintainer's to run if he wants one on
-enforcement machinery.
+Six recipes green, suite **378** (was 309 on `main`; 350 before the checkpoint). Rebased onto `bf46153`;
+`.claude/settings.json` is byte-identical, so `verify/compile.sh` is green with no artifact change.
 
 Open PRs [#53](https://github.com/sleepy-panda-works/portulan/pull/53) and
 [#55](https://github.com/sleepy-panda-works/portulan/pull/55) touch all five of these files and will

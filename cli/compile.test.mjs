@@ -809,6 +809,36 @@ describe("the shared matcher", () => {
         assert.ok(!matchesRule({ action: { shell: "git push" } }, "Bash", { command: "git pushall" }));
     });
 
+    // A SIBLING of the write defect, found by the same supervisor pass and fixed in the same stroke.
+    // The shell matcher prefix-matched the whole command string, so every Gated outward action in
+    // ../.portulan/gates.json was defeated by putting anything at all in front of it. Measured on the
+    // real runner before the fix: `ls && git push --force origin main` reached no gate.
+
+    for (const [label, target, command] of [
+        ["after `&&`", "git push --force", "ls && git push --force origin main"],
+        ["after `;`", "git push --force", "git status; git push --force origin main"],
+        ["after a newline", "git push --force", "git status\ngit push --force origin main"],
+        ["a merge, mid-line", "gh pr merge", "echo hi && gh pr merge 60"],
+        ["a repo delete, mid-line", "gh repo delete", "cd . && gh repo delete foo"],
+        ["a publish after a pipe", "npm publish", "echo y | npm publish"],
+        ["a path-prefix target, mid-line", "./.portulan/verify/", "ls && ./.portulan/verify/docs.sh"],
+    ]) {
+        test(`a gated command is gated wherever it sits on the line: ${label}`, () => {
+            assert.ok(matchesRule({ tier: "gated", action: { shell: target } }, "Bash", { command }), command);
+        });
+    }
+
+    test("splitting the line does not widen any gate — the Auto spellings stay Auto", () => {
+        // The load-bearing control on the fix above. `--force-with-lease` is Auto by the maintainer's
+        // ruling of 2026-07-27, and a segment matcher that re-gated it would be the compiler taking
+        // back an ungating — worse than the hole it closes.
+        const force = { tier: "gated", action: { shell: "git push --force" } };
+        assert.ok(!matchesRule(force, "Bash", { command: "git push --force-with-lease origin main" }));
+        assert.ok(!matchesRule(force, "Bash", { command: "ls && git push --force-with-lease origin main" }), "mid-line too");
+        assert.ok(!matchesRule(force, "Bash", { command: "git pushall --force" }), "the word boundary still holds");
+        assert.ok(!matchesRule(force, "Bash", { command: 'echo "git push --force"' }), "quoted text is not a command");
+    });
+
     test("the limit is asserted, not just documented: two wrappers still escape", () => {
         // Recorded as a test so that anyone tempted to call this layer a rail meets the counterexample.
         // The platform floor is what covers this — ../core/operating/autonomy.md.
@@ -886,6 +916,57 @@ describe("the shared matcher", () => {
         });
     }
 
+    // Everything below was found by the fresh-context supervisor at the pre-merge checkpoint, after
+    // the first round of this change shipped a four-item hole list that was missing five holes. Each
+    // one was a live escape: measured false on the matcher AND confirmed to write the file in a real
+    // shell. They are tests rather than prose because a hole list is a claim, and this repository
+    // grades an overstated coverage as a defect (dod.md, condition 4).
+
+    for (const [label, command] of [
+        // The most ordinary spelling there is. `\n` was not a separator, so the whole line folded
+        // into one segment whose head was the FIRST command — never the writer.
+        ["a writer on the second line", "git status\ncp /tmp/x docs/vision.md"],
+        ["a remover on the second line", "git status\nrm -f docs/vision.md"],
+        ["an in-place edit on the third line", "a\nb\nsed -i '' s/x/y/ docs/vision.md"],
+        ["a backslash-newline continuation", "cp /tmp/x \\\ndocs/vision.md"],
+        // A leader is not a command: `{`, `then` and `do` sat where the head goes and hid the writer.
+        ["inside a brace group", "{ cp /tmp/x docs/vision.md; }"],
+        ["inside if/then", "if true; then cp /tmp/x docs/vision.md; fi"],
+        ["inside a for loop", "for f in a; do cp /tmp/x docs/vision.md; done"],
+        ["inside a piped while loop", "echo a | while read f; do rm -f docs/vision.md; done"],
+        // A tail comparison is not a path normaliser, and neither spelling ends with the literal tail.
+        ["a `/./` in the path", "echo x > docs/./vision.md"],
+        ["a doubled slash", "echo x > docs//vision.md"],
+        ["a `..` climbing back in", "echo x > foo/../docs/vision.md"],
+        ["a `/./` in a writer's argument", "cp /tmp/x docs/./vision.md"],
+        // Destroying the container destroys the file, and a trailing slash decided it.
+        ["removing the parent directory", "rm -rf docs"],
+        ["removing the parent directory, with a slash", "rm -rf docs/"],
+        ["moving the parent directory away", "mv docs docs.bak"],
+    ]) {
+        test(`a write rule reaches the shell spelling: ${label}`, () => {
+            const rule = { tier: "prohibited", action: { write: "docs/vision.md" } };
+            assert.ok(matchesRule(rule, "Bash", { command }), command);
+        });
+    }
+
+    test("a subtree write target is reached whether or not the command spells the trailing slash", () => {
+        const rule = { tier: "prohibited", action: { write: ".portulan/" } };
+        assert.ok(matchesRule(rule, "Bash", { command: "rm -rf .portulan/" }));
+        assert.ok(matchesRule(rule, "Bash", { command: "rm -rf .portulan" }), "the slash must not decide it");
+        assert.ok(matchesRule(rule, "Bash", { command: "rm -rf .portulan/compile" }), "and neither does depth");
+    });
+
+    test("naming a SIBLING under the protected file's directory is not naming the directory", () => {
+        // The ancestor rule earns `rm -rf docs`, and it must not earn anything else. Spelling the
+        // ancestors as subtree patterns made every file under `docs/` a hit, so an ordinary edit to
+        // `docs/plan.md` — which this policy gates at `propose`, not `prohibited` — was refused.
+        const rule = { tier: "prohibited", action: { write: "docs/vision.md" } };
+        assert.ok(!matchesRule(rule, "Bash", { command: "cp foo docs/plan.md" }));
+        assert.ok(!matchesRule(rule, "Bash", { command: "rm -f docs/plan.md" }));
+        assert.ok(!matchesRule(rule, "Bash", { command: "echo x > docs/not-vision.md" }));
+    });
+
     test("the shell half of a write gate is a table, and its limits are asserted rather than implied", () => {
         // Recorded as a test for the same reason two-wrapper nesting is, one block up: anyone tempted
         // to read the shell coverage as complete meets the counterexamples. `compile.mjs` says so in
@@ -893,14 +974,67 @@ describe("the shared matcher", () => {
         // fails loudly if somebody later widens the claim without widening the matcher.
         const rule = { tier: "prohibited", action: { write: "docs/vision.md" } };
         for (const [why, command] of [
-            ["a heredoc", "cat > $TARGET <<'EOF'\nx\nEOF"],
-            ["an interpolated variable", "echo x > $VISION"],
+            ["an interpolated path", "echo x > $VISION"],
+            ["a heredoc whose target is interpolated", "cat > $TARGET <<'EOF'\nx\nEOF"],
             ["a runtime assembling the write itself", `python3 -c "open('docs/vision.md','w').write('x')"`],
             ["a writer outside the table", "ex -sc wq docs/vision.md"],
             ["two shell wrappers", `bash -c "bash -c 'echo x > docs/vision.md'"`],
+            // A program that INVOKES a writer. Parsing THEIR flags to find the real command is the
+            // ambitious parser this design refuses to become, so these are disclosed instead.
+            ["find -exec invoking a writer", "find . -name x -exec cp {} docs/vision.md ;"],
+            ["xargs invoking a writer", "echo /tmp/x | xargs -I{} cp {} docs/vision.md"],
         ]) {
             assert.ok(!matchesRule(rule, "Bash", { command }), `${why} is a stated hole, not coverage`);
         }
+    });
+
+    test("a heredoc BODY is data, not commands — and this one was measured the hard way", () => {
+        // Once a newline separated commands, every line of a heredoc body became its own segment. The
+        // commit that fixed the newline hole was itself REFUSED by this gate, because its message
+        // quoted `cp /tmp/x docs/vision.md` as the escape being closed. A matcher that stops you
+        // describing an attack has stopped being cautious and started being wrong: a heredoc body is
+        // text being written, and no shell runs it.
+        const write = { tier: "prohibited", action: { write: "docs/vision.md" } };
+        const force = { tier: "gated", action: { shell: "git push --force" } };
+        assert.ok(!matchesRule(write, "Bash", { command: "git commit -F - <<'MSG'\nfixed: cp /tmp/x docs/vision.md\nMSG" }));
+        assert.ok(!matchesRule(write, "Bash", { command: "cat <<'EOF' > /tmp/notes\nrm -rf docs\nEOF" }));
+        assert.ok(!matchesRule(force, "Bash", { command: "git commit -F - <<'MSG'\nls && git push --force escaped\nMSG" }));
+        assert.ok(!matchesRule(write, "Bash", { command: "cat <<-EOF > /tmp/x\n  sed -i '' s/a/b/ docs/vision.md\n\tEOF" }), "<<- too");
+    });
+
+    test("dropping the body does not drop the line that opens it, nor what follows the terminator", () => {
+        // The half that would turn the fix above into a hole. The redirection lives on the OPENING
+        // line, so it must still gate; and a real command after the terminator is a real command.
+        const rule = { tier: "prohibited", action: { write: "docs/vision.md" } };
+        assert.ok(matchesRule(rule, "Bash", { command: "tee docs/vision.md <<'EOF'\nx\nEOF" }));
+        assert.ok(matchesRule(rule, "Bash", { command: "cat <<'EOF' > /tmp/x\nharmless\nEOF\ncp /tmp/x docs/vision.md" }));
+    });
+
+    test("a heredoc naming the path literally IS covered — the coverage is not understated either", () => {
+        // Filed under limits by an earlier draft, which had it backwards. A heredoc redirects like
+        // anything else; what escapes is the interpolated TARGET, tested above. Understating coverage
+        // is the same defect as overstating it — both make the hole list untrue.
+        const rule = { tier: "prohibited", action: { write: "docs/vision.md" } };
+        assert.ok(matchesRule(rule, "Bash", { command: "cat > docs/vision.md <<'EOF'\nx\nEOF" }));
+        assert.ok(matchesRule(rule, "Bash", { command: "cat <<'EOF' > docs/vision.md\nx\nEOF" }));
+    });
+
+    test("a redirected INPUT is skipped rather than ending the command it feeds", () => {
+        // The `<` branch is load-bearing here and nowhere else: `tee` keeps its head and its real
+        // argument. Asserted because the branch survived a mutation with zero tests red, which means
+        // nothing was checking it — and an unchecked branch in a security matcher is the shape this
+        // repository has a memory entry about.
+        const rule = { tier: "prohibited", action: { write: "docs/vision.md" } };
+        assert.ok(matchesRule(rule, "Bash", { command: "tee < /tmp/in docs/vision.md" }));
+        assert.ok(!matchesRule(rule, "Bash", { command: "patch /tmp/other.md < docs/vision.md" }), "and it is still an input");
+    });
+
+    test("a writer READING the protected path is refused too — the stated coarse direction", () => {
+        // Asserted rather than only claimed in four prose carriers. `cp P /tmp/backup` only reads,
+        // and is refused, because argument grammars differ per command and guessing which word is the
+        // destination is a false GREEN on the file that must not change.
+        const rule = { tier: "prohibited", action: { write: "docs/vision.md" } };
+        assert.ok(matchesRule(rule, "Bash", { command: "cp docs/vision.md /tmp/backup" }));
     });
 
     test("a read rule is NOT given shell coverage — the scope is write, and it says so", () => {

@@ -75,18 +75,49 @@ one-wrapper spellings as everything else. It recognises exactly two shapes:
 |---|---|
 | A `>` or `>>` redirection into the path, at any point in a list or pipeline | `ls && echo x > docs/vision.md` |
 | A command from a **named table** naming the path — `cp`, `mv`, `ln`, `rm`, `tee`, `dd`, `install`, `truncate`, `shred`, `patch`; and `sed`, `gsed`, `perl`, `ruby` **under an in-place flag** | `sed -i '' s/a/b/ docs/vision.md` |
+| …or naming a **directory the path lives in**, for that same table | `rm -rf docs` |
+
+Both halves read a line the way a shell does: commands are separated by `;`, `&&`, `|`, a subshell **and a
+newline**, and a writer sitting behind `{`, `then` or `do` is still a writer. Paths are normalised before
+comparison, so `docs/./vision.md` and `docs//vision.md` are the same file.
 
 **Why a table and not a parser.** The same reason the floor backend recognises ref rules by exact spelling:
-a limit a reader can measure is worth more than a matcher clever enough to be wrong quietly. What it leaves
-open is not a rounding error and is not presented as one — a heredoc, an interpolated path, a command
-assembled at runtime, a language runtime writing the file itself, or any writer absent from that table. This
-closes the spelling reached for by accident or convenience; it does not close one constructed on purpose,
-and nothing at this layer could.
+a limit a reader can measure is worth more than a matcher clever enough to be wrong quietly. This closes the
+spelling reached for by accident or convenience; it does not close one constructed on purpose, and nothing
+at this layer could.
+
+**What it leaves open**, and this list is now the corrected one:
+
+- an interpolated path — `echo x > $VISION`, or a heredoc whose *target* is a variable;
+- a command assembled at runtime, or a language runtime writing the file itself (`python3 -c`);
+- a writer absent from the table (`ex`);
+- a program that **invokes** a writer — `find . -exec cp {} docs/vision.md \;`, `xargs cp`. Parsing *their*
+  flags to find the real command is the ambitious parser this design refuses to become;
+- two shell wrappers, as everywhere else here;
+- and in the other direction, a false **red**: quoting is honoured to one level of nesting, so a
+  write-shaped string inside a `node -e` script trips the gate. Measured on this repository's own tooling
+  while testing this change.
+
+A heredoc naming the path *literally* — `cat > docs/vision.md <<'EOF'` — **is** covered. An earlier draft
+listed it as a hole, which is the same defect as overstating coverage: it makes the list untrue.
+
+**Heredoc bodies are skipped, and that is a correctness fix rather than a concession.** A body is text
+being written; no shell runs it. It only became a question when a newline started separating commands,
+which turned every body line into its own segment — and the cost was immediate and literal: **the commit
+fixing the newline hole was refused by this gate**, because its message quoted `cp /tmp/x docs/vision.md`
+as the escape being closed. A matcher that will not let you describe an attack has stopped being cautious.
+The opening line still gates, and a command after the terminator is still a command; both are asserted.
 
 The absentee worth naming is **`git`**: `git checkout -- docs/vision.md` and `git restore` overwrite the
 file and are not gated. Deliberate — the head of those commands is `git`, so covering them would gate
 `git diff docs/vision.md` and `git log` in the same stroke, and reading the constitution is Auto. The
 generic sentence would have hidden the one escape a session here is actually likely to take.
+
+**This list was wrong when it was first written.** It had four entries and was missing five, the plainest of
+them a newline: `git status\ncp /tmp/x docs/vision.md` folded into a single command whose head was `git`,
+and reached nothing. A fresh-context supervisor found all five in under an hour by *attacking* the matcher
+rather than reading it. Recorded because the lesson is not "we fixed it" — it is that a hole list is a claim
+like any other, and the only thing that checks a claim about coverage is somebody trying to get past it.
 
 **Two deliberate asymmetries**, both of which look like bugs until you have the reason:
 
@@ -107,6 +138,35 @@ gate, and that line is load-bearing: without it the runner is never invoked for 
 shell half is a matcher nothing reaches. It changes no artifact in *this* repository, whose policy already
 gates shell commands — which is exactly why its absence would not have been noticed here, and why the suite
 asserts it against a policy carrying only a write rule.
+
+`compile` names the affected rules in a note whenever it compiles the policy — `compile` and
+`compile --check`, so on every CI run through [`../verify/compile.sh`](../verify/compile.sh). Not
+`--matrix`, and not `doctor`: neither has ever printed a backend's notes, which is an inherited convention
+rather than anything this change introduced. (An earlier draft of this paragraph claimed "every run", which
+is the kind of small overstatement that this section otherwise exists to prevent.)
+
+## The same defect, one action kind over
+
+The supervisor pass on the write gate turned up its sibling in the **shell** matcher, and it was worse.
+`matchesRule` prefix-matched the whole command string, so a gated command reached its gate **only when it
+came first on the line**:
+
+```
+git push --force origin main          → ask   (the gate holds)
+ls && git push --force origin main    → nothing
+git status; gh pr merge 60            → nothing
+cd . && gh repo delete foo            → nothing
+```
+
+Every Gated outward action in [`../gates.json`](../gates.json) — merge, publish, release, repository
+delete — was defeated by typing anything at all in front of it. Fixed in the same change rather than left
+as a sibling nobody returns for, which is this repository's standing ruling on defect classes: the hook now
+splits a line into its commands and matches each one.
+
+**The permission layer still cannot do this**, so it is the second entry in the gate map's honest-holes
+list: `Bash(git push --force:*)` is a prefix pattern on the host, and nothing in that DSL reaches a command
+in second position. What the fix must not do is widen a gate, and the control is asserted —
+`git push --force-with-lease` is **Auto** by the maintainer's ruling and stays Auto, mid-line or not.
 
 ## Why Gated is `ask` and the constitution is `deny`
 
@@ -308,9 +368,14 @@ merge would need to explain itself.
   written here, so that anyone tempted to call this layer a rail meets the counterexample. What must
   not happen *regardless of spelling* belongs on the platform floor.
 - **The shell half of a `write:` gate is a table of writers, and only the hook carries it.** Its
-  contents and its holes are above; the part that belongs in a limits list is that this is the one
-  gate here with no permission rule beneath it, so a broken hook removes it silently while the
-  `Edit`/`Write` denials stay standing and the gate still reads as whole from outside.
+  contents and its holes are above; the part that belongs in a limits list is that this **half** has
+  no permission rule beneath it, so a broken hook removes it silently while the `Edit`/`Write`
+  denials stay standing and the gate still reads as whole from outside. (The rule as a whole *does*
+  have permission rules — three of them. It is the shell half that stands alone, and the shorter
+  phrasing an earlier draft used was wrong about which.)
+- **Matching a gated command past the first word is also the hook's alone.** Same shape, different
+  action kind: the host's `Bash(prefix:*)` cannot reach `ls && git push --force`, so what closes it
+  is the runner splitting the line — and that too is gone if the hook is.
 - **This layer is a convenience above a rail, not the rail.** The floor — branch protection, required
   checks, PR-as-gate — refuses a push at the server whatever any local file says. `autonomy.md` calls
   the floor "the gate that holds when everything above it fails", and this is the thing above it.
@@ -348,7 +413,7 @@ Both runners are watchers. So:
 |---|---|
 | `permissions` deny/ask | a headless session was told to push to a **scratch bare remote**; the push was refused and the remote held 0 refs, with an ordinary command succeeding in the same session as the positive control. The maintainer then ran the same command by hand and it succeeded — so *blocked* is distinguishable from *impossible*. |
 | [`gate.mjs`](gate.mjs) | the same push written `bash -c "git push …"`, the spelling the permission pattern cannot see: refused, carrying this policy's own sentence verbatim. |
-| [`gate.mjs`](gate.mjs), shell half of a write gate | **Run against the runner, not against a host, and the row says which.** Five payloads were fed to `gate.mjs` on stdin on 2026-07-28, as the host would: `echo x >> docs/vision.md`, `bash -c "sed -i .bak s/a/b/ docs/vision.md"` and `cp /tmp/x docs/vision.md` each returned `permissionDecision: "deny"` carrying `edit-the-constitution`'s own sentence; `cat docs/vision.md` and `git status` produced no output and exit 0 — the runner stepping aside, which is the positive control that distinguishes *refused* from *refuses everything*. What this does **not** establish is that the host invokes the hook for a `Bash` call at all, which is the same boundary every row here has: emission and decision are what a pull request can prove, and loading is measured at the supervised checkpoints. Until one runs, the shell half of this gate is demonstrated in the runner and **inferred** in the host. |
+| [`gate.mjs`](gate.mjs), shell half of a write gate | **Runner:** five payloads on stdin, 2026-07-28, as the host would send them. `echo x >> docs/vision.md`, `bash -c "sed -i .bak s/a/b/ docs/vision.md"` and `cp /tmp/x docs/vision.md` each returned `permissionDecision: "deny"` carrying `edit-the-constitution`'s own sentence; `cat docs/vision.md` and `git status` produced no output and exit 0 — the runner stepping aside, the control that distinguishes *refused* from *refuses everything*. **Host: observed, not inferred.** This row said "inferred" for one draft, and then the checkpoint closed it twice by accident, which is the only way this particular fact was ever going to be caught. The supervisor's own scratch script — `printf … > …/docs/vision.md` under `/private/tmp` — was refused by the host, and the text it received was verbatim `gate.mjs` output, ``PORTULAN GATE `edit-the-constitution` (prohibited) — …``. No permission rule produces that string: the deny list holds only `Edit`, `Write` and `NotebookEdit`. The implementing session then hit the identical refusal on an inline `node -e` probe. So **the host does invoke this hook for a `Bash` call, and the hook's decision and its sentence both reach the agent.** Both incidents were also false reds — one on an unrelated tree, one on a quoted string — which is the coarse direction this design chose on purpose, met in the wild within the hour. |
 | [`stop.mjs`](stop.mjs), recipe half | one dead link planted; a session told to reply `done` was refused three times carrying the recipe's output naming file and line, then released at the cap. Green, it ended in one turn. |
 | [`stop.mjs`](stop.mjs), handoff half | recipe left **green** so the block could only come from this half; today's handoff moved aside and a scratch file making the session count as work. Refused three times naming the exact date, then released. **Run before the reset ruling**, when there was one cap of three and no reset at all — so that release came from the single cap. Under the arithmetic session 0 *ended* with, the same run's bound would have been the ceiling of nine, which is exactly the asymmetry the maintainer named; per-reason counters return it to the handoff's own cap of three. |
 | [`stop.mjs`](stop.mjs), per-reason counters | the recipe half re-run live on the real tree after the change: one dead link planted, four attempts, blocked at `recipe 1/3`, `2/3`, `3/3`, then released naming *"the cap of 3 consecutive refusals for `recipe`"* — the reason, not just the number. A green tree allowed the stop in one attempt as the positive control. The handoff half was **not** re-run live by the session that made the change, and this row said so rather than quietly counting it as covered — the branch cannot fire in this tree on a day when any session has already written a dated handoff. **The milestone-4 close checkpoint then ran it**, in an isolated clone where that constraint does not apply: recipe green throughout, blocked `handoff 1/3 → 3/3`, released on the fourth naming its own cap of three rather than the ceiling of nine. So the one acceptance criterion of [`../tasks/0007-per-reason-stop-gate-counters.md`](../tasks/0007-per-reason-stop-gate-counters.md) that was suite-only is now a live observation too, and it was made by a fresh context rather than by the session that wanted it to pass. |
