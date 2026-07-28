@@ -990,6 +990,13 @@ describe("the shared matcher", () => {
         // wrapper, while the same wrapper alone answered `deny`. Measured stepping aside before the
         // fix. Found by Copilot review on #60, five commits after the sibling was fixed.
         ["a wrapper after a `;`", 'git status; bash -c "echo x >> docs/vision.md"'],
+        // A CRLF line continuation. `\r\n` was consumed one character at a time, so the `\n` survived
+        // as an operator and flushed the word instead of continuing it — the LF spelling denied and
+        // the CRLF spelling stepped aside, which made the constitution reachable by editing the file
+        // on Windows. Both are asserted so the pair cannot drift apart again.
+        ["a CRLF continuation before the path", "cp /tmp/x \\\r\ndocs/vision.md"],
+        ["a CRLF continuation after `>`", "echo x > \\\r\ndocs/vision.md"],
+        ["an LF continuation, the control", "cp /tmp/x \\\ndocs/vision.md"],
         ["a wrapper after `&&`", 'ls && bash -c "cp /tmp/x docs/vision.md"'],
         ["a `$'…'` wrapper, mid-line", "ls && bash -c $'echo x > docs/vision.md'"],
         // The same `$'…'` gap on the write side. `shellWords` glued the `$` onto the front, so
