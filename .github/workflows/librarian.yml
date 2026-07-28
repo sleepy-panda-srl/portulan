@@ -123,8 +123,14 @@ jobs:
           # plain `gh pr list` answers the only question this step asks, and it fails in the safe
           # direction: no output (no match, or a network failure) takes the loud branch below, never
           # the "nothing to do" one.
-          if [ -n "$(gh pr list --head "$branch" --state open --limit 1)" ]; then
-            printf '::notice::%s already has an open pull request — this pass has run today. Nothing to do.\n' "$branch"
+          # `--state all`, not `open`. The question is *did this pass already file today*, and a merged
+          # or closed pull request answers yes just as well as an open one — the branch outliving it is
+          # ordinary, since a merge without `--delete-branch` leaves it standing. Scoped to open, a
+          # re-dispatch after the day's pass had already merged would take the error path below and
+          # fail the job over work that had gone perfectly. Raised by Copilot on #81, in the suppressed
+          # half of the round.
+          if [ -n "$(gh pr list --head "$branch" --state all --limit 1)" ]; then
+            printf '::notice::%s already has a pull request — this pass has run today. Nothing to do.\n' "$branch"
             printf 'filed=yes\n' >>"$GITHUB_OUTPUT"
             exit 0
           fi
@@ -232,13 +238,19 @@ jobs:
           would never report and this could never merge. See `.github/workflows/librarian.yml`.
           EOF
           )
-          gh pr create \
+          # The URL is captured rather than the branch name re-resolved. `gh pr edit "$BRANCH"` asks
+          # the CLI to find a pull request from a head-branch string, which is one more thing that can
+          # answer wrongly at 06:00 on a Monday — and answering wrongly here leaves the pull request
+          # open and unlabelled, with the required `pr-labeled` context red and nobody watching. The
+          # URL `create` just printed cannot be ambiguous. Raised by Copilot on #81, suppressed half.
+          url=$(gh pr create \
             --base main --head "$BRANCH" \
             --title "The librarian's pass of ${DATE}" \
-            --body "$body" || {
+            --body "$body") || {
               printf '::error::could not open the pull request; the branch %s is pushed and waiting\n' "$BRANCH"
               exit 1
             }
+          printf '::notice::filed %s\n' "$url"
 
           # Labelled with the App too, and the actor matters as much as the label: `pr-labeled` ran
           # once already on `opened` and failed, because the label could not exist before the pull
@@ -246,7 +258,7 @@ jobs:
           # `GITHUB_TOKEN` would set the label and start no run, leaving a red check over a labelled
           # pull request. `workspace` is from the declared set in `.portulan/labels.json` — an
           # undeclared one fails the whole call.
-          gh pr edit "$BRANCH" --add-label workspace || {
+          gh pr edit "$url" --add-label workspace || {
             printf '::error::the pull request is open and unlabelled — `pr-labeled` stays red until somebody adds a label from .portulan/labels.json\n'
             exit 1
           }
