@@ -7,7 +7,7 @@
 
 ## The recipes
 
-Six, as of milestone 4. All are declared in [`../workspace.json`](../workspace.json), which is also
+Seven, as of milestone 4. All are declared in [`../workspace.json`](../workspace.json), which is also
 where the **default** is named — [`docs.sh`](docs.sh), the one the Stop-gate now actually runs when
 nothing more specific applies. Run any of them from anywhere in the tree:
 
@@ -18,6 +18,7 @@ nothing more specific applies. Run any of them from anywhere in the tree:
 ./.portulan/verify/tests.sh
 ./.portulan/verify/plugin.sh
 ./.portulan/verify/compile.sh
+./.portulan/verify/workflow-filters.sh
 ```
 
 | Recipe | Covers | Needs |
@@ -28,6 +29,7 @@ nothing more specific applies. Run any of them from anywhere in the tree:
 | [`tests.sh`](tests.sh) | every `*.test.mjs` under [`../../cli/`](../../cli/) passes — counted by `find` first, then run by a recursive glob over that same set | `bash`, `node` |
 | [`plugin.sh`](plugin.sh) | the packaging: both manifests parse and agree, component paths resolve, declared skills and agents are real | `bash`, `git`, `node` |
 | [`compile.sh`](compile.sh) | both compiled artifacts — [`../../.claude/settings.json`](../../.claude/settings.json) and [`../compile/github-ruleset.json`](../compile/github-ruleset.json) — are exactly what [`../gates.json`](../gates.json) compiles to | `bash`, `node` |
+| [`workflow-filters.sh`](workflow-filters.sh) | every jq program the workflows run, lifted out of the parsed `run:` scalars and executed against null-bearing fixtures — exact stdout, exact exit status | `bash`, `node`, `jq` |
 
 Exit `0` green · `1` red · `2` could not run — and that third code is why each recipe declares its needs
 in the manifest rather than discovering them: a recipe that *could not run* must never be mistaken for
@@ -40,6 +42,10 @@ same mechanism spelled once for every dependency — so a seventh recipe joins t
 declaring that dependency rather than by being counted into it. `bash -c "node …"` on a machine without `node` exits `127`, which is
 neither a verdict about the repository nor "could not run" — the wrapper is where that gets turned into a
 `2` deliberately.
+
+**The seventh arrived on 2026-07-28 and did exactly that**, with a dependency this directory had not
+had before: [`workflow-filters.sh`](workflow-filters.sh) declares `jq`, guards it in the same
+`for need in …` line as `node`, and needed no edit to this paragraph or to CI to be enforced.
 
 **[`compile.sh`](compile.sh) never writes.** It recompiles in memory and byte-compares. A verify recipe
 that repairs what it is checking always passes, which is a fail-open dressed as a convenience — and this
@@ -90,7 +96,7 @@ preserving: a recipe that needs a toolchain is a recipe that stops being run.
 **Every recipe now checks its own list before it runs a check**, exiting `2` — and **the `for need in …`
 line inside each recipe is the source of truth** for what that recipe requires. The Needs column above
 and `requires` in [`../workspace.json`](../workspace.json) name only the substantial dependencies
-(`bash`, `git`, `node`) and are summaries rather than lists: `tests.sh` genuinely needs `find`, and
+(`bash`, `git`, `node`, and since 2026-07-28 `jq`) and are summaries rather than lists: `tests.sh` genuinely needs `find`, and
 neither says so, deliberately — a manifest that declared `awk` would be noise nobody reads. The
 paragraph above is the one place a full list is written out in prose, and it is `docs.sh`'s alone,
 because that is the default recipe and the only one whose dependencies are all POSIX utilities; it is
@@ -103,6 +109,19 @@ approximate it, and an approximation would pass files it does not understand —
 worse than no check at all. So the dependency was accepted for one recipe rather than smuggled into the
 default, and the cost is stated in [`../identity.md`](../identity.md) instead of left for someone to
 discover on a machine without `node`.
+
+**Why `workflow-filters.sh` needs `jq`, and why it is a recipe rather than a test.** The thing under
+test *is* an external interpreter's behaviour: two merge-gate workflows branch on what jq prints for
+null, and only jq can answer for that. That makes the dependency unavoidable, and where a check with
+an unavoidable external dependency lives is decided by the third exit code. `node --test` has two
+outcomes, not three — a skipped test still exits `0`, so the suite would report green over a check
+that never ran, and a failing one would say the repository is broken when only the environment is.
+Both are named on this page as the failures to avoid. `2` is the honest answer and only this layer
+has it. The second reason is smaller and still real: keeping the codes honest inside the suite would
+mean adding `jq` to [`tests.sh`](tests.sh)'s guard, so a machine without it could run none of the
+suite rather than one fewer check. And unlike `claude plugin validate --strict`, this dependency does
+not make a permanently-red recipe: `jq` ships on `ubuntu-latest`, so CI runs the check rather than
+skipping it, and installs nothing to do so.
 
 **What `json.sh` does not do.** It does not validate the manifest against
 [`../../spec/workspace.schema.json`](../../spec/workspace.schema.json), and it does not check that the
@@ -122,8 +141,11 @@ read off the tree rather than named in a list: `tests.sh` counts every `*.test.m
 [`../../cli/`](../../cli/) with `find`, then runs that same set through a recursive glob — so a suite
 added to `cli/` is covered without this paragraph changing. Four as of milestone 4, covering `doctor`,
 `plugin-lint`, the enforcement compiler, and the Stop-gate runner's arithmetic.
-**Nothing tests the recipes themselves** — `docs.sh`, `json.sh`, `doctor.sh`, `tests.sh`, `plugin.sh` and
-`compile.sh` are verified by being run, which is a weaker claim than it sounds.
+**Nothing tests the recipes themselves** — `docs.sh`, `json.sh`, `doctor.sh`, `tests.sh`, `plugin.sh`,
+`compile.sh` and `workflow-filters.sh` are verified by being run, which is a weaker claim than it
+sounds, and it is weakest on the newest of them: its reader of the workflow files is code that can be
+subtly wrong, and what stands behind that reader is a second, independent reading of the same file
+that has to agree with it — not a suite.
 That gap now has a task of its own rather than a mention in a handoff:
 [`../tasks/0004-a-harness-for-the-verify-recipes.md`](../tasks/0004-a-harness-for-the-verify-recipes.md). Every defect ever found in them was found by a human or a reviewer, and
 the two most recent were found by a reviewer on the pull request that introduced them, in the two recipes
@@ -157,6 +179,7 @@ less.
 | `doctor` | Both workspaces conform to the Workspace Definition, their paths resolve, their claims match the tree, and every rule carries checkable provenance. It also reports the memory store's count and size, and names any record stating no `Retire when:` condition — reported, never failed, because nothing legislates the field; the budget rail arrives with the librarian (milestone 5). For this repository the suite is stricter: a live record without the field turns `tests` red. | The workspace layer is where a team's policy lives, and until this existed every "this workspace conforms" sentence in the repository was an assertion. Its first run found three rules whose provenance the repository had already mandated and not held. |
 | `tests` | The test suites pass. | The validators are the first things here that can be *subtly* wrong rather than visibly broken — a schema keyword silently ignored looks identical to one enforced. A linter can be judged by reading it; a validator cannot. |
 | `compile` | [`../../.claude/settings.json`](../../.claude/settings.json) is byte-identical to what [`../gates.json`](../gates.json) compiles to. | The artifact is generated *and* committed — generated so the policy is the single source, committed so the gate wiring is reviewable in a diff. That combination invites exactly one failure: a hand-edit that works until the next compile silently reverts it. This is the check that makes that loud. |
+| `filters` | Every jq program in [`../../.github/workflows/`](../../.github/workflows/) produces exactly the bytes and exactly the exit status the shell around it branches on. The programs are read out of the parsed `run:` scalars and never restated here; the fixtures carry null and empty inputs alongside ordinary ones. | Two merge gates are decided by jq's answer for null — `copilot-review.yml` refuses a pull request whose `head.sha` came back empty from `join("|")`, and the required `pr-labeled` check treats *no output from `jq -er`* as "the policy declares no labels". Both behaviours were asserted by prose and by a harness that stubs `gh`, and executed by nothing. A filter is the one kind of code in this repository that can be wrong in a way review cannot see: it looks like a selector and behaves like a program. |
 | `plugin` | Both packaging manifests parse and agree; every component path resolves inside the tree — after canonicalisation, so a symlink out of it is an escape rather than containment; every declared skill and agent is a real artifact with a kebab-case `name` and a non-empty `description`. | From milestone 3 the repository *is* a distribution channel, and a marketplace declaring no plugins — or a skill path resolving to nothing — installs cleanly and delivers nothing. The platform's own validator reports the empty-marketplace case as a *warning*, which is the severity a milestone walks past. |
 
 ## Provenance
@@ -212,6 +235,27 @@ throughout. Each recipe now guards its whole list up front and the probe returns
 cases. Provenance: a Copilot review comment on [#3](https://github.com/sleepy-panda-works/portulan/pull/3)
 that said exactly this, three days earlier, and was filed *suppressed due to low confidence* — a form
 that never becomes a review thread and therefore can never be resolved or block a merge.
+
+The `filters` check was added 2026-07-28, out of the **suppressed** half of a Copilot round on
+[#63](https://github.com/sleepy-panda-works/portulan/pull/63). Two low-confidence comments claimed
+that `join("|")` errors on a null element and asked for a coalesce. The claim is wrong — jq renders
+null as the empty string in `join` and errors only on arrays and objects — and it was refused on the
+pull request with that evidence. **What survived the refusal is the gap the comment had walked past:**
+the refusal rested on one measurement, taken by hand, in a terminal, and the harness for that workflow
+stubs `gh`, so it asserts the *shape* the filters are assumed to produce (`Copilot||PENDING|7`,
+`|false`) with nothing anywhere proving jq produces it. That is the second time this directory has
+gained a check from a comment filed at low confidence, after the eleven false greens above; both are
+the same lesson, which is that the reviewer's least-certain half is where the unexercised claims are.
+
+Its observation procedure ([the 0007 rule](../gate-map.md)), all eight measured on a scratch copy of
+the tree at the commit that added it, with `jq-1.7.1`: change a program's output (`join("|")` →
+`join(",")`) → **red, exit 1**, four fixtures named. Rename a selector a fixture anchors on
+(`.head.sha` → `.head.ref`) → **exit 2**, the anchor matching 0 of 7 programs. Add a jq program and no
+fixture → **exit 2**, the program printed with its file and line. Put a continuation line at column 0
+inside the step, which ends the block scalar → **exit 2**, `4 jq token(s) in the file and 1 inside a
+parsed run: scalar`. Put a jq program in a workflow the recipe does not name → **exit 2**. Delete the
+instrument → **exit 2** from the wrapper. Take `jq` off the `PATH` → **exit 2**, from the wrapper's
+guard and again from the instrument run alone. Clean tree → **green, 7 programs, 24 fixtures**.
 
 ## Known limits
 
@@ -269,6 +313,24 @@ that never becomes a review thread and therefore can never be resolved or block 
   the *runtime* never loads, so the plugin then passed both checkers with three inert personas until an
   install counted them ([`../memory/a-manifest-field-can-validate-and-load-nothing.md`](../memory/a-manifest-field-can-validate-and-load-nothing.md)).
   Neither checker was wrong about what it owns. Running both is still not the same as installing it.
+- **`filters` runs `jq`; the workflows run gojq.** `gh api --jq` evaluates the filter with the
+  re-implementation bundled inside `gh`, not with the binary on the `PATH`. So the check establishes
+  these programs' behaviour under jq 1.7.x — the interpreter every contributor has, and the one the
+  answer given on #63 was measured with — and a gojq divergence on them is not covered. Covering it
+  would mean installing a second interpreter, which is the line [`../identity.md`](../identity.md)
+  holds. `pr-labels.yml`'s `jq -er` call is the real binary, so that one program is exact.
+- **It reads `run:` scalars, and jq programs written as a single-quoted argument.** A folded `run: >`
+  is refused outright; a program built in a variable, double-quoted, or spanning lines is not
+  extractable. None of these is a silent miss: every jq token in the raw file must have been seen
+  inside a parsed scalar, so a program this reader cannot lift makes the counts disagree and the
+  recipe exits `2`. The audit counts tokens, though — a *second* program on a line whose first one
+  parsed is caught, and a jq call hidden inside a string that the audit's own token pattern misses is
+  the residue nobody has found a cheap check for.
+- **It covers workflows, not every jq program anyone runs.** Nothing else in the tree executes jq
+  today — the remaining occurrences are commands in prose that a person types
+  ([`../gate-map.md`](../gate-map.md), [`../tools/README.md`](../tools/README.md)) — and the audit
+  looks only inside [`../../.github/workflows/`](../../.github/workflows/), so a script under
+  [`../tools/`](../tools/) that grew a filter would be covered by nothing and nothing would say so.
 - **`node --test` given a glob matching nothing exits `0`.** A green suite that ran nothing. `tests.sh`
   counts the files first for that reason, and the count and the glob deliberately cover the same set —
   a recursive `find` beside a non-recursive glob would let a test be counted and never run.

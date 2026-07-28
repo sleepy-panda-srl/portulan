@@ -35,7 +35,7 @@ Deliberately thin, and it stays thin:
 | Layer | Today | Arrives |
 |---|---|---|
 | Engine, packs, and spec prose | Markdown (`SKILL.md` / `AGENTS.md` conventions) | now |
-| Verify recipes | Bash + POSIX text utilities; every recipe but `docs` also needs `node` | now |
+| Verify recipes | Bash + POSIX text utilities; every recipe but `docs` also needs `node`, and `workflow-filters` needs `jq` | now |
 | Workspace Definition | JSON Schema — a named subset — with JSON manifests | now |
 | `doctor` · `plugin-lint` · `compile` | Zero-dependency JavaScript on Node, run from the repository | now — [`../cli/`](../cli/) |
 | Tests | `node --test`, node's own runner — no framework, no install | now — every `*.test.mjs` under [`../cli/`](../cli/), four as of milestone 4 |
@@ -48,10 +48,19 @@ runs.
 **Where the line sits now, precisely.** [`verify/docs.sh`](verify/docs.sh) needs `git`, `bash`, and the
 POSIX text utilities and nothing else, and it is the only one that stops there: every other recipe —
 [`verify/json.sh`](verify/json.sh), [`verify/doctor.sh`](verify/doctor.sh),
-[`verify/tests.sh`](verify/tests.sh), [`verify/plugin.sh`](verify/plugin.sh) and
-[`verify/compile.sh`](verify/compile.sh) — also needs `node`. Each recipe declares its own needs in
-[`workspace.json`](workspace.json), which is the authority on this line rather than the paragraph you are
-reading, and is what keeps *could not run* distinguishable from *ran and failed*.
+[`verify/tests.sh`](verify/tests.sh), [`verify/plugin.sh`](verify/plugin.sh),
+[`verify/compile.sh`](verify/compile.sh) and
+[`verify/workflow-filters.sh`](verify/workflow-filters.sh) — also needs `node`. Each recipe declares
+its own needs in [`workspace.json`](workspace.json), which is the authority on this line rather than
+the paragraph you are reading, and is what keeps *could not run* distinguishable from *ran and failed*.
+
+**One recipe needs a third thing, and it is the first since milestone 2 to move this line.**
+[`verify/workflow-filters.sh`](verify/workflow-filters.sh) needs **`jq`**, because what it checks is
+jq's own behaviour: two merge-gate workflows branch on what a jq program prints for null input, and no
+other tool can answer for that. Same test as milestone 2 applied to a different binary — the property
+that matters is not the letter *bash*, it is that nothing is installed before it runs, and `jq` is
+present on the maintainer's machine and on `ubuntu-latest` alike. The cost is stated rather than
+hidden: on a machine without it that recipe exits `2`, and the six others still run.
 
 **One tool is deliberately outside that line.** `claude plugin validate --strict` — the authority on the
 Claude Code plugin contract — is run by hand at the supervised checkpoints and before a release, and is

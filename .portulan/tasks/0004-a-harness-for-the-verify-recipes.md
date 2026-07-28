@@ -5,12 +5,16 @@ task rather than left in a handoff because it has now been handed forward twice,
 lives only in prose is one nobody is accountable for. _(`CODEOWNERS` took four handoffs to land, which is
 the local evidence for that claim.)_
 
-**Goal.** The six verify recipes are the machinery every "done" in this repository rests on, and nothing
+**Goal.** The seven verify recipes are the machinery every "done" in this repository rests on, and nothing
 tests them. The tools are covered — every `*.test.mjs` under [`../../cli/`](../../cli/), four as of
 milestone 4 — but the shell doing the invoking has no suite at all. Three of the four cover tools that
 recipes invoke; the fourth covers the Stop-gate runner, which invokes a recipe rather than being invoked
-by one. The gap has widened rather than closed since this was written: a sixth recipe and two more
-suites have been added, and the number testing a recipe is still zero.
+by one. The gap has widened rather than closed since this was written: a sixth and a seventh recipe and
+two more suites have been added, and the number testing a recipe is still zero. The seventh,
+[`../verify/workflow-filters.sh`](../verify/workflow-filters.sh), sharpens the ask rather than
+answering it — it ships a *reader* of the workflow files, which is the first recipe carrying logic that
+could be subtly wrong rather than visibly broken, and it stands on a second reading of the same file
+agreeing with the first rather than on a suite.
 
 **Why, with the count.** Every defect below was a **fail-open in scaffolding rather than in a check** —
 the guard was never where the check was. All were found by review or by accident, none by a test:
