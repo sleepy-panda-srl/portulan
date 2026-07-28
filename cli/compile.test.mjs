@@ -831,6 +831,20 @@ describe("the shared matcher", () => {
         ["a repo delete, mid-line", "gh repo delete", "cd . && gh repo delete foo"],
         ["a publish after a pipe", "npm publish", "echo y | npm publish"],
         ["a path-prefix target, mid-line", "./.portulan/verify/", "ls && ./.portulan/verify/docs.sh"],
+        // ANSI-C and locale quoting of the wrapper payload. `spellings()` stripped a leading `'` or
+        // `"` and nothing else, so the `$` survived and the inner command never matched — a bypass
+        // costing one character. Measured stepping aside before the fix. The mid-line form is the
+        // one that matters most: it composes with the separator gap this block already covers.
+        ["a `$'…'` wrapper payload", "git push --force", "bash -c $'git push --force origin main'"],
+        ['a `$"…"` wrapper payload', "git push --force", 'bash -c $"git push --force origin main"'],
+        ["a `$'…'` wrapper, mid-line", "git push --force", "ls && bash -c $'git push --force origin main'"],
+        // The wider one, found writing the case above: a wrapper that is not the first thing on the
+        // line escaped in EVERY quoting form, plain ones included. Unwrapping was anchored at the
+        // start of the command and segmentation ran separately, so hole 1's "one wrapper, peeled"
+        // and hole 2's mid-line reach each held alone and did not compose. This is the plain-quote
+        // spelling, which is what a session would actually type.
+        ["a plain wrapper, mid-line", "git push --force", 'ls && bash -c "git push --force origin main"'],
+        ["a wrapper after a `;`", "gh pr merge", 'git status; bash -c "gh pr merge 60"'],
     ]) {
         test(`a gated command is gated wherever it sits on the line: ${label}`, () => {
             assert.ok(matchesRule({ tier: "gated", action: { shell: target } }, "Bash", { command }), command);
@@ -934,6 +948,10 @@ describe("the shared matcher", () => {
         ["after a `&&`", "ls && echo x > docs/vision.md"],
         ["inside a subshell", "(cd . && echo x > docs/vision.md)"],
         ["through a shell wrapper", 'bash -c "echo x >> docs/vision.md"'],
+        // The same `$'…'` gap on the write side. `shellWords` glued the `$` onto the front, so
+        // `$'docs/vision.md'` tokenised as `$docs/vision.md` and the constitution's gate missed it.
+        ["a `$'…'` redirect target", "echo x > $'docs/vision.md'"],
+        ["a `$'…'` target to a writer", "cp /tmp/x $'docs/vision.md'"],
         ["cp", "cp /tmp/x docs/vision.md"],
         ["cp, quoted target", "cp /tmp/x 'docs/vision.md'"],
         ["cp by absolute path", "/bin/cp /tmp/x docs/vision.md"],

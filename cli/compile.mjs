@@ -308,6 +308,12 @@ export function spellings(raw) {
     const wrapper = /^(?:\/usr\/bin\/env\s+)?(?:ba|z|da)?sh\s+-[a-zA-Z]*c\s+(.*)$/s.exec(command);
     if (wrapper) {
         let inner = wrapper[1].trim();
+        // The same `$'…'` / `$"…"` forms `shellWords` strips, at the other site that reads a quote.
+        // Two sites, because a wrapped command is unwrapped HERE and a word is tokenised THERE, and
+        // fixing one left `bash -c $'git push --force origin main'` still stepping aside while
+        // `cp /tmp/x $'docs/vision.md'` had started denying — measured, and the reason this is not
+        // one edit. Found by Copilot on #60.
+        if (inner[0] === "$" && (inner[1] === "'" || inner[1] === '"')) inner = inner.slice(1);
         const quote = inner[0];
         if ((quote === '"' || quote === "'") && inner.endsWith(quote) && inner.length > 1) {
             inner = inner.slice(1, -1);
@@ -427,6 +433,19 @@ function shellWords(command) {
     };
     for (let i = 0; i < command.length; i += 1) {
         const c = command[i];
+        // `$'…'` (ANSI-C quoting) and `$"…"` (locale translation) are quoting forms whose `$` is not
+        // part of the word. Without this the `$` glued onto the front — `$'docs/vision.md'` tokenised
+        // as `$docs/vision.md` — and no target matched. Measured on the runner before this branch:
+        // `bash -c $'git push --force origin main'` stepped aside where the plain wrapper answers
+        // `ask`, and `cp /tmp/x $'docs/vision.md'` stepped aside where the plain target denies. So
+        // this was a live bypass of both a Gated shell target and the constitution's write gate,
+        // sitting inside the claim one line down that quoting is honoured. Found by Copilot on #60.
+        //
+        // **Two forms and no more, because this grammar is closed.** `$(…)` is command substitution
+        // and deliberately stays out: its content is a command to run, not a word to read, and
+        // reading it as a word is precisely how a matcher becomes clever and wrong quietly. That one
+        // is hole 1's "command assembled at runtime", where it belongs.
+        if (c === "$" && (command[i + 1] === "'" || command[i + 1] === '"')) continue;
         if (c === "'" || c === '"') {
             // Quoted runs are taken whole, and the quotes are stripped: `cp /tmp/x 'docs/vision.md'`
             // must reach the gate, which is what goes red if this branch is removed. (An earlier
@@ -712,7 +731,23 @@ export function matchesRule(rule, tool, input = {}) {
         // the first thing on the line is still that command — see `commandSegments`.
         const hit = (s) =>
             action.shell.endsWith("/") ? s.startsWith(action.shell) : s === action.shell || s.startsWith(`${action.shell} `);
-        return spellings(input.command).some((s) => hit(s) || commandSegments(s).some(hit));
+        // `spellings` is applied to each SEGMENT as well as to the whole line, and the second call is
+        // not redundant. Unwrapping was anchored at the start of the command, so a wrapper that was
+        // not the first thing on the line never got unwrapped: `ls && bash -c "git push --force
+        // origin main"` stepped aside, while both halves of it worked alone — the wrapper spelling is
+        // hole 1's "one level, peeled", and mid-line reach is hole 2. Two claims that each held and
+        // did not compose, which is how a gap survives a reader checking either one.
+        //
+        // Found while writing a regression test for the `$'…'` form Copilot reported; the plain-quote
+        // spelling turned out to escape the same way, so this is wider than the report.
+        //
+        // **Both calls read the RAW command, and that is the whole care in this line.** The first
+        // draft segmented each *spelling* and unwrapped again — which peeled TWO levels for a nested
+        // wrapper and made `bash -c "bash -c 'git push origin HEAD'"` match, contradicting hole 1's
+        // documented and asserted limit. The suite caught it, which is what that counterexample test
+        // is for. Reading the raw command in both branches keeps the budget at exactly one unwrap.
+        const segments = commandSegments(input.command);
+        return spellings(input.command).some(hit) || segments.some((seg) => spellings(seg).some(hit));
     }
     if (typeof action.write === "string") {
         if (WRITE_TOOLS.includes(tool)) return matchesPath(input.file_path ?? input.notebook_path, action.write);
