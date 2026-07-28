@@ -122,6 +122,20 @@ doctrine, found before merge, with the fix in hand. Filing an issue would have m
 false sentence into the file every session boots from. That is fix-round **two**, the last the bound
 allows; anything further becomes an issue and the pull request merges.
 
+**Round three carried one suppressed note, and it went to an issue — the bound working rather than
+failing.** [#78](https://github.com/sleepy-panda-works/portulan/issues/78): the handoffs precondition
+fires *before* the stray-file audit, so a directory holding only undated Markdown exits `2` — *could
+not run* — for a defect the audit had already collected the evidence for. Reproduced before filing. It
+is the mirror of the rule that minted `verify-preconditions-fail-closed`: there, *could not look* must
+never read as *nothing wrong*; here, *I looked and found it* reads as *could not look*. Not fixed on
+this branch — rule 4 is the termination condition, and having overridden rule 3 once already,
+overriding rule 4 as well would leave no bound at all.
+
+**Round four was the maintainer's instruction, not the loop escaping.** He asked for the rebase onto
+the merged #72 and for one further round to be addressed. Recorded so a later reader does not count
+four rounds and conclude the bound failed: rounds one and two were the bound's, three was its triage
+path, four is a maintainer override of it.
+
 ## A third false green — or rather, the first false RED
 
 Writing this session's own Session log entry turned the recipe red on the seam attestation the entry
@@ -140,10 +154,25 @@ counting weakness.
 
 ## State
 
-Seven recipes green, each exit code read; suite **442**; seam scan clean across files, commit message
-and branch name. `.claude/settings.json` untouched, so `compile.sh` is green with no artifact change.
-CI re-ran the recipe on `ubuntu-latest` and printed byte-identical `record` lines to the local runs,
-which is the first time this check has been measured on a second platform.
+**Rebased onto `c383d58` after [#72](https://github.com/sleepy-panda-works/portulan/pull/72) merged**,
+which is why the figures below are not the ones this branch was written against. Two textual conflicts,
+both in the files the collision note predicted: the Session log tail, resolved by date so the four
+reconstructions (11:40–15:35) sit before #72's entry (merged 18:39) and this session's entry sits last;
+and `verify/README.md`'s Known limits, where #72's four `index` limits were kept whole and only the
+`record` bullet this change rewrites was dropped as superseded. Nothing of #72's was lost — asserted by
+count after the resolution, not by eye.
+
+**Eight** recipes green, each exit code read; suite **499** — both re-measured after the rebase rather
+than carried over from the pre-rebase run (they were seven and 442; #72 brought `index.sh` and 57 tests).
+Seam scan clean across files, commit messages and branch name. `.claude/settings.json` untouched, so
+`compile.sh` is green with no artifact change. CI re-ran the recipe on `ubuntu-latest` and printed
+byte-identical `record` lines to the local runs — the first time this check has been measured on a
+second platform.
+
+The correspondence rail absorbed the merge without an edit: 2026-07-28 now carries **7** handoffs
+(#72's and this one included) against **8** log entries, and the count check is green on `≥`. That is
+the rail meeting a case nobody arranged for it, which is the same property #64's fixture table was
+built to have.
 
 **Collision to expect:** [#72](https://github.com/sleepy-panda-works/portulan/pull/72)
 (`m5-the-index-is-the-rail`) opened while this was in flight and touches `docs/plan.md`,
