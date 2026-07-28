@@ -6,7 +6,8 @@
 **State.** Clauses 4 and 5 of the row, in one pull request: `cli/librarian.mjs` and its suite,
 `.github/workflows/librarian.yml`, spec 2.3 → 2.4, `docs.sh`'s new `proposal` check, pull-request
 pointers on all fourteen existing proposals, and proposal `0015`. Suite 499 → **558**; all eight
-recipes green, each exit code read. **The first real pull request has not been filed yet** — it needs
+recipes green, each exit code read — `proposal` only after [#81](https://github.com/sleepy-panda-works/portulan/pull/81)
+existed to be named, which is the one red this change ships with and clears itself. **The first real pull request has not been filed yet** — it needs
 the merge plus the two repository secrets, which are the maintainer's. Two clauses the row gained this
 session are session 2's: mining, and scheduled consolidation.
 
