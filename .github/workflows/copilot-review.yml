@@ -178,9 +178,16 @@ jobs:
               # `ready_for_review` is in the trigger list above, so the real check runs the moment the
               # pull request stops being one. **The window it does leave, named rather than found
               # later:** marking ready does not change the SHA, so for the seconds between that click
-              # and the new run reporting, the head's newest check run is this success. Merging inside
-              # it would also have to beat `workspace-verify`, `pr-labeled`, and conversation
-              # resolution, and would have to be deliberate.
+              # and the new run reporting, the head's newest check run is this success.
+              #
+              # Nothing else covers that window, and an earlier draft of this comment claimed
+              # otherwise. `workspace-verify` and `pr-labeled` run on draft pushes too, so on a mature
+              # draft they are ALREADY green on that SHA and `ready_for_review` re-runs neither; and
+              # conversation resolution is trivially satisfied, because Copilot never reviewed the
+              # draft and so there are no threads to resolve. **The only guard in the window is that a
+              # merge here is Gated and human.** That is an acceptable residual on this repository and
+              # it stops being one the moment auto-merge is enabled — see `.portulan/gate-map.md`,
+              # *Merge discipline*, which owns that interaction.
               if [ "$draft" = "true" ]; then
                 printf 'NOT APPLICABLE — #%s is a draft, and the ruleset does not request Copilot on drafts.\n' "$PR_NUMBER"
                 printf 'A draft cannot merge; this check runs for real on ready_for_review.\n'
