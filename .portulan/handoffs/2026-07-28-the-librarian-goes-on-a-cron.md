@@ -5,7 +5,7 @@
 
 **State.** Clauses 4 and 5 of the row, in one pull request: `cli/librarian.mjs` and its suite,
 `.github/workflows/librarian.yml`, spec 2.3 → 2.4, `docs.sh`'s new `proposal` check, pull-request
-pointers on all fourteen existing proposals, and proposal `0015`. Suite 499 → **558**; all eight
+pointers on all fourteen existing proposals, and proposal `0015`. Suite 499 → **582**; all eight
 recipes green, each exit code read — `proposal` only after [#81](https://github.com/sleepy-panda-works/portulan/pull/81)
 existed to be named, which is the one red this change ships with and clears itself. **The first real pull request has not been filed yet** — it needs
 the merge plus the two repository secrets, which are the maintainer's. Two clauses the row gained this
@@ -153,7 +153,29 @@ open and unlabelled with a required context red.
 **Four of the six findings on this pull request came through the suppressed channel**, which
 `copilot-reviewed` passes regardless of and which has no Resolve control — the same pattern as #72 and
 #73, and the standing argument for [#66](https://github.com/sleepy-panda-works/portulan/issues/66).
-That is fix-round **two**, the last the bound allows; anything further becomes an issue.
+That is fix-round **two**, the last the bound allows.
+
+**Round three was the maintainer's instruction, not the loop escaping.** He asked for a rebase onto
+`main` and one further round to be addressed. Recorded so a later reader does not count three rounds
+and conclude the bound failed. It carried one thread and four notes, and **all three distinct findings
+were real, in code that has never executed**:
+
+- **The workflow would have failed on its very first run.** Declaring `permissions:` at all sets every
+  unnamed scope to `none` — it replaces the default rather than adding to it — so `contents: write`
+  alone left `gh pr list` refused, the idempotence check would have taken the stranded-branch error
+  path, and the job would have died with a message about a branch when the cause was a token. Now
+  `pull-requests: read` beside it.
+- **The pass misreported the one thing it changed.** `inspect` in write mode regenerates the index and
+  *then* compares, so it never reports drift — it has just removed it. Reading `drifted` off that
+  result said "index current" about an index the pass had regenerated a line earlier, and put "no index
+  drift" into the generated Session log entry. Drift is now read **before** the write, and the field is
+  named `regenerated` so the next reader cannot make the same mistake from the name.
+- **`doctor` did not validate the thresholds it had just learned to require.** A `record_days: 0` passed
+  CI green and would have failed at 06:00 on a Monday, when `librarian` refuses it with exit 2 and
+  nobody is watching. Now a `doctor` failure — and the memory budgets, which were missing the identical
+  check, are fixed in the same stroke as siblings of one class rather than left for the next round.
+
+Anything after this becomes an issue.
 
 ## Open questions
 
@@ -223,7 +245,21 @@ generated, byte-compared index over `.portulan/handoffs/`, which is 3.4× the st
 measurement and has no index at all. `cli/librarian.mjs` reads `slots.memory` and nothing else. So the
 row's undelivered set is **three** clauses, not two, and the session note says so rather than leaving
 it to the diff: a row amended by one pull request while another is being written against it is exactly
-how a clause ends up owned by nobody. Filed as an issue for session 2 rather than absorbed here.
+how a clause ends up owned by nobody. Filed as an issue for session 2 rather than absorbed here. The amendment's intent was to land *before*
+the librarian was built so that no retrofit would be needed; #81 was in flight when #80 merged, so that
+intent was overtaken by events and the retrofit is confined to that one clause.
+
+**The pass keeps no state between runs.** Every figure it reports — ages, seals, pending proposals,
+drift — is recomputed from git and the tree on each run; nothing is remembered, and two runs on an
+unchanged store are byte-identical because of it. So **per-agent memory gets no first instance in this
+session**, and that is a design answer rather than an omission: a stateless pass has nothing to keep.
+Recorded deliberately because it decides what the post-M5 reconciliation inherits, and the question is
+this session's to answer rather than anyone's to infer.
+
+Three items from that reconciliation are deliberately **untouched** here on the maintainer's ruling
+(*"Merge #80 as is. We'll reconcile after M5 lands"*): a budget on the handoff series, converting
+amendment blocks to pointers, and the per-agent-memory note in `core/operating/memory.md`. This change
+edits that file only where this session's own deliverables are described.
 
 **Recoverability.** Everything is on one branch. Nothing outward happened: no secrets were set, no App
 permission changed, no workflow has run. The forced observations ran in a scratch clone under `/tmp`

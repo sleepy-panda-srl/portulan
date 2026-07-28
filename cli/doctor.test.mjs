@@ -253,6 +253,57 @@ describe("the schema validator implements exactly the declared subset", () => {
     });
 });
 
+describe("a budget or a threshold that is not a positive integer", () => {
+    // The declared keyword subset has no `minimum` and cannot say `integer`, so `type: "number"` is the
+    // strongest thing the schema can express and every value below would validate against it. The
+    // consuming tools refuse them with exit 2 — but only when they RUN, and `librarian` runs unattended
+    // on a cron, so a `0` would pass CI green and fail at 06:00 on a Monday with nobody watching. A
+    // policy defect that surfaces only in an unattended run is the worst place for one. Raised by
+    // Copilot on #81, in the suppressed half of the round, about the librarian's thresholds; the memory
+    // budgets were missing the same check and are a sibling of the same class, so they are covered here
+    // in the same stroke.
+    const KEYS = [
+        ["librarian.staleness.record_days", (m, v) => ((m.librarian = { staleness: { record_days: v } }), m)],
+        ["librarian.staleness.sealed_days", (m, v) => ((m.librarian = { staleness: { sealed_days: v } }), m)],
+        ["memory.index.budget.lines", (m, v) => ((m.memory = { index: { path: "i.md", budget: { lines: v } } }), m)],
+        ["memory.store.budget.kilobytes", (m, v) => ((m.memory = { store: { budget: { kilobytes: v } } }), m)],
+    ];
+
+    for (const [name, set] of KEYS) {
+        // A string is refused by the SCHEMA — `type: "number"` is one thing the subset can say — so it
+        // is asserted as a failure without demanding this check's wording. The three the schema cannot
+        // see are the reason this check exists, and they get the message too.
+        for (const bad of [0, -1, 1.5]) {
+            test(`${name}: ${JSON.stringify(bad)} is a failure, not a green`, async () => {
+                const m = set(wellFormed(), bad);
+                m.slots.memory = "memory/";
+                const dir = tree(scratch(), { ...minimalFiles, "memory/r.md": "x\n", "workspace.json": JSON.stringify(m) });
+                const { findings } = await inspect(dir, { schema: SCHEMA });
+                const hit = severities(findings, "fail").find((f) => /positive integer/.test(f.message));
+                assert.ok(hit, `expected a positive-integer failure for ${name}`);
+                assert.match(hit.message, new RegExp(name.split(".").pop()));
+            });
+        }
+
+        test(`${name}: a string is refused too, by the schema`, async () => {
+            const m = set(wellFormed(), "90");
+            m.slots.memory = "memory/";
+            const dir = tree(scratch(), { ...minimalFiles, "memory/r.md": "x\n", "workspace.json": JSON.stringify(m) });
+            const { findings } = await inspect(dir, { schema: SCHEMA });
+            assert.ok(severities(findings, "fail").some((f) => f.message.includes(name.split(".").pop())));
+        });
+
+        test(`${name}: a positive integer passes`, async () => {
+            const m = set(wellFormed(), 90);
+            m.slots.memory = "memory/";
+            const dir = tree(scratch(), { ...minimalFiles, "memory/r.md": "x\n", "workspace.json": JSON.stringify(m) });
+            const { findings } = await inspect(dir, { schema: SCHEMA });
+            const bad = severities(findings, "fail").filter((f) => /positive integer/.test(f.message));
+            assert.deepEqual(bad, []);
+        });
+    }
+});
+
 describe("the schema declares which Workspace Definition version it implements", () => {
     test("the shipped schema carries it in `$id`", () => {
         assert.deepEqual(schemaVersion(SCHEMA), { major: 2, minor: 4 });

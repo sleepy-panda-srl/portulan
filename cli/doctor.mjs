@@ -783,6 +783,34 @@ export async function inspect(workspaceDir, options = {}) {
         );
     }
 
+    // Every number the schema can only type as `number`, checked here for the constraint the declared
+    // subset cannot express. Without this, `record_days: 0` — or `-1`, or `"90"` — passes CI green and
+    // fails at 06:00 on a Monday, when `cli/librarian.mjs` refuses it with exit 2 and nobody is
+    // watching. A policy defect that only surfaces in an unattended run is the worst place for one, and
+    // this is a `doctor` failure rather than a `librarian` one because it is a fact about the manifest.
+    // Raised by Copilot on #81, suppressed half. The memory budgets are checked the same way, and were
+    // missing it too — a sibling of the same class, fixed in the same stroke rather than left for the
+    // next round to find.
+    const positive = (v) => typeof v === "number" && Number.isInteger(v) && v > 0;
+    for (const [where, value] of [
+        ["memory.index.budget.lines", workspace.memory?.index?.budget?.lines],
+        ["memory.index.budget.columns", workspace.memory?.index?.budget?.columns],
+        ["memory.store.budget.kilobytes", workspace.memory?.store?.budget?.kilobytes],
+        ["librarian.staleness.record_days", workspace.librarian?.staleness?.record_days],
+        ["librarian.staleness.sealed_days", workspace.librarian?.staleness?.sealed_days],
+        ["librarian.staleness.proposal_days", workspace.librarian?.staleness?.proposal_days],
+    ]) {
+        if (value !== undefined && !positive(value)) {
+            fail(
+                "schema",
+                `${where} is ${JSON.stringify(value)}, which is not a positive integer. The declared keyword ` +
+                    "subset has no `minimum` and cannot say `integer`, so this is checked here — and it matters " +
+                    "because a zero or negative value reads as *undeclared* to the tool that consumes it and " +
+                    "switches the rail off in the key that exists to switch it on",
+            );
+        }
+    }
+
     if (workspace.librarian?.staleness?.proposal_days !== undefined && !workspace.slots?.proposals) {
         fail(
             "cross",
