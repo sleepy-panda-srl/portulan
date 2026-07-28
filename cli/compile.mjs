@@ -179,6 +179,44 @@ export function parse(policy) {
         // spelling, not a path this compiler rewrites. Absolute found by review on #31; the `..`
         // sibling by the fresh-context supervisor reviewing that fix, which is the same defect one
         // spelling over.
+        //
+        // (Restored during the rebase onto `f545228`, which landed this while the floor backend was in
+        // flight. The auto-merge kept both files' text and dropped this block, because it sits inside
+        // the function this branch rewrote — a clean merge of prose around a rewritten body. Its tests
+        // came across on their own and went red, which is the only reason the loss was visible: nine
+        // reds naming a validation nobody had deleted on purpose.)
+        if (kind === "write" || kind === "read") {
+            const escapes = action[kind].startsWith("/")
+                ? "is an absolute path"
+                : action[kind].split("/").includes("..")
+                  ? "climbs out of the workspace with `..`"
+                  : null;
+            if (escapes) {
+                throw new CompileError(
+                    `rule \`${id}\`'s ${kind} target ${JSON.stringify(action[kind])} ${escapes}. The emitter and the ` +
+                        `runtime matcher both compare against a workspace-relative tail, so the gate enforced would not ` +
+                        `be the one declared. Refusing rather than silently rewriting it.`,
+                );
+            }
+        }
+        // A path target that leaves the workspace is refused rather than normalised, for the reason
+        // directly above. Two spellings, one defect: `pattern()` and `matchesPath()` compare against a
+        // workspace-relative TAIL, so neither an absolute target nor one climbing out with `..` means
+        // at enforcement time what it says in the policy.
+        //
+        //   "/etc/passwd"  -> emits `Edit(./etc/passwd)` and matches any file whose path ends
+        //                     `/etc/passwd`, anywhere on the machine — broader than declared.
+        //   "../secrets/"  -> emits `Edit(./../secrets/**)`, which the host may resolve against the
+        //                     PARENT tree, while `matchesPath` can never match a `/../`-bearing tail
+        //                     against a resolved absolute path — narrower than declared, and the
+        //                     emitter and matcher disagree about which.
+        //
+        // Broader and narrower are both wrong, and the second is worse: it is a gate that reads as
+        // present and holds nothing. A workspace needing to gate a path outside its own tree needs
+        // this compiler extended deliberately. Shell targets are exempt: `/usr/bin/git` is a command
+        // spelling, not a path this compiler rewrites. Absolute found by review on #31; the `..`
+        // sibling by the fresh-context supervisor reviewing that fix, which is the same defect one
+        // spelling over.
         if (kind === "write" || kind === "read") {
             const escapes = action[kind].startsWith("/")
                 ? "is an absolute path"

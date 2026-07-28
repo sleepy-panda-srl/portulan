@@ -237,6 +237,11 @@ describe("refusing what it cannot compile", () => {
         assert.doesNotThrow(() => parse(p));
     });
 
+    // These arrived on `main` in `f545228` while the floor backend was in flight, written against the
+    // `compile()` name this branch renamed to `parse()` when the tier partition moved into the
+    // backends. Retargeted, not rewritten: the validation is the shared stage's either way, and it is
+    // where they were always aimed. Their going red on the rebase is what surfaced that the merge had
+    // silently dropped the validation itself out of the rewritten function body.
     for (const kind of ["write", "read"]) {
         test(`a ${kind} target climbing out with \`..\` refuses`, () => {
             // The sibling of the absolute case, one spelling over: `../secrets/` emits
@@ -246,13 +251,13 @@ describe("refusing what it cannot compile", () => {
             // present while holding nothing is the worse half. Found by the supervisor on #51.
             const p = policy();
             p.rules[0].action = { [kind]: "../secrets/" };
-            assert.throws(() => compile(p), CompileError);
+            assert.throws(() => parse(p), CompileError);
         });
 
         test(`a ${kind} target with an interior \`..\` segment refuses`, () => {
             const p = policy();
             p.rules[0].action = { [kind]: "docs/../../etc/" };
-            assert.throws(() => compile(p), CompileError);
+            assert.throws(() => parse(p), CompileError);
         });
 
         test(`a ${kind} target merely CONTAINING dots is fine — only a \`..\` segment escapes`, () => {
@@ -260,7 +265,7 @@ describe("refusing what it cannot compile", () => {
             // dotfile, must still compile. Refusing on the substring would be a false red.
             const p = policy();
             p.rules[0].action = { [kind]: "docs/a..b.md" };
-            assert.doesNotThrow(() => compile(p));
+            assert.doesNotThrow(() => parse(p));
         });
 
         test(`an absolute ${kind} target refuses rather than being silently made relative`, () => {
@@ -270,14 +275,14 @@ describe("refusing what it cannot compile", () => {
             // "refuse rather than escape" reasoning as the reserved-character check. Found by review.
             const p = policy();
             p.rules[0].action = { [kind]: "/etc/passwd" };
-            assert.throws(() => compile(p), CompileError);
+            assert.throws(() => parse(p), CompileError);
         });
     }
 
     test("an absolute shell target still compiles — it is a command spelling, not a rewritten path", () => {
         const p = policy();
         p.rules[1].action = { shell: "/usr/bin/git push" };
-        assert.doesNotThrow(() => compile(p));
+        assert.doesNotThrow(() => parse(p));
     });
 
     test("a policy whose spec version has never shipped refuses", () => {
