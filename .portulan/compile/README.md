@@ -161,11 +161,17 @@ cd . && gh repo delete foo            → nothing
 Every Gated outward action in [`../gates.json`](../gates.json) — merge, publish, release, repository
 delete — was defeated by typing anything at all in front of it. Fixed in the same change rather than left
 as a sibling nobody returns for, which is this repository's standing ruling on defect classes: the hook now
-splits a line into its commands and matches each one.
+splits a line on its SEPARATORS and matches each command.
 
-**The permission layer still cannot do this**, so it is the second entry in the gate map's honest-holes
-list: `Bash(git push --force:*)` is a prefix pattern on the host, and nothing in that DSL reaches a command
-in second position. What the fix must not do is widen a gate, and the control is asserted —
+**Separators, and not leaders.** A word sitting in front of a command inside a segment still escapes —
+`env`, `sudo`, a leading `FOO=bar`, a `then` or `do` branch, a brace group, a leading redirection. That
+qualification was missing here and from the gate map until 2026-07-28, where it read "closed" flat; the
+spellings are tabled and asserted there now.
+
+**The permission layer still cannot do any of it**, which the gate map's honest-holes list carries — by
+description rather than by ordinal, since two changes landed holes in that list on the same day and every
+number in it moved. `Bash(git push --force:*)` is a prefix pattern on the host, and nothing in that DSL
+reaches a command in second position. What the fix must not do is widen a gate, and the control is asserted —
 `git push --force-with-lease` is **Auto** by the maintainer's ruling and stays Auto, mid-line or not.
 
 ## Why Gated is `ask` and the constitution is `deny`
