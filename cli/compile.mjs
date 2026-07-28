@@ -464,6 +464,15 @@ function shellWords(command) {
             // A backslash-newline is a line continuation: both characters vanish, and the word
             // continues on the next line. Appending the newline instead would have glued it into the
             // middle of a path, which no target matches.
+            // `\r\n` is consumed as a PAIR. Skipping one character left the `\n` behind, and a
+            // newline is an operator here, so a CRLF continuation flushed the word instead of
+            // continuing it: `cp /tmp/x \\<CRLF>docs/vision.md` stepped aside where the LF spelling
+            // answers `deny` — the constitution, reachable by editing the file on Windows. Measured
+            // both ways, 2026-07-28. Found by Copilot review on #60.
+            if (command[i + 1] === "\r" && command[i + 2] === "\n") {
+                i += 2;
+                continue;
+            }
             if (command[i + 1] === "\n" || command[i + 1] === "\r") {
                 i += 1;
                 continue;
@@ -649,7 +658,12 @@ function commandSegments(raw) {
             continue;
         }
         if (c === "\\") {
-            i += 1;
+            // The same CRLF pair, in the other reader. No spelling was measured behaving differently
+            // here — a continuation split into two segments still leaves a gated command at the head
+            // of one — so this is fixed for the reason the session kept re-learning rather than for a
+            // failing case: one carrier corrected and its sibling left is how the last three defects
+            // on this branch happened.
+            i += command[i + 1] === "\r" && command[i + 2] === "\n" ? 2 : 1;
             continue;
         }
         // `#` is NOT treated as starting a comment, and that is a decision rather than an oversight.
