@@ -666,6 +666,35 @@ describe("run", () => {
         assert.match(out.lines.join("\n"), /1 stale/i);
     });
 
+    test("the summary says so when it regenerated an index", () => {
+        // The round-three fix renamed `drifted` to `regenerated` and missed this one site, so the
+        // branch became dead: the summary could never say it had regenerated anything. Found by
+        // Copilot on #81 in round four — a loose end in the fix rather than new feedback on old code,
+        // which is why it was finished rather than filed. A rename with no test on the renamed branch
+        // is how a field goes quietly unread.
+        const m = MANIFEST({ librarian: { staleness: STALENESS }, memory: { index: { path: "memory-index.md" } } });
+        m.slots.handoffs = "handoffs/";
+        const dir = repo(
+            { ".portulan/memory/r.md": [linked(), "2026-06-01"], ".portulan/handoffs/2026-06-01-x.md": ["x\n", "2026-06-01"] },
+            { workspace: m },
+        );
+        const out = say();
+        assert.equal(run(["--as-of", "2026-06-15", "--write", path.join(dir, ".portulan")], out), 0);
+        assert.match(out.lines.join("\n"), /index regenerated/);
+    });
+
+    test("a workspace with no proposals slot does not crash the summary", () => {
+        // Copilot read `result.proposals?.filter(...).length ?? 0` as throwing when `proposals` is
+        // null. It does not: optional chaining short-circuits the WHOLE member chain, so the
+        // expression is `undefined` and `?? 0` catches it. Measured rather than argued, and asserted
+        // here so the next reader does not have to re-derive it — `examples` declares no
+        // `slots.proposals` and takes this path on every real run.
+        const dir = repo({ ".portulan/memory/r.md": [linked(), "2026-06-01"] }, { workspace: MANIFEST({ librarian: { staleness: STALENESS } }) });
+        const out = say();
+        assert.equal(run(["--as-of", "2026-06-15", path.join(dir, ".portulan")], out), 0);
+        assert.match(out.lines.join("\n"), /0 proposal\(s\) nagged/);
+    });
+
     test("a refusal exits 2 and names what it could not do", () => {
         const dir = scratch();
         const out = say();

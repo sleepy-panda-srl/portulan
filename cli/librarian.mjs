@@ -754,7 +754,7 @@ export function run(argv, say = console.log) {
                 `  ok ${dir}: ${plural(result.counts.records, "record")}, ${result.stale.length} stale, ` +
                     `${result.seals.filter((s) => s.due).length} seal(s) due, ` +
                     `${result.proposals?.filter((p) => p.due).length ?? 0} proposal(s) nagged` +
-                    (result.index.drifted ? ", index regenerated" : ""),
+                    (result.index.regenerated ? ", index regenerated" : ""),
             );
         } catch (error) {
             if (!(error instanceof LibrarianError)) throw error;
