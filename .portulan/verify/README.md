@@ -268,8 +268,10 @@ Observations, each run on this tree and reverted, with the tree asserted clean a
 | a log entry dated 2026-07-29, eleven lines | **red** on the budget, naming file, line, date and count |
 | the same entry trimmed to ten | green, and the count printed as `1` rather than `0` |
 | the cutoff lowered to 2026-07-24, binding 36 entries | **red** on 30, including both merged 2026-07-28 entries — and on **none** of the six added here, which is how their length is a measurement rather than a hand count |
-| a Markdown file in `../handoffs/` whose name carries no date | **red**, naming the file |
+| a Markdown file in `../handoffs/` whose name carries no date | **red**, naming the file; correspondence still runs |
+| `../handoffs/` holding **only** undated Markdown | **red** naming the files, plus a second red saying neither correspondence check could run — it was **exit 2 naming nothing** until the reorder below |
 | an undated **non**-Markdown file there (`notes.txt`) | green — the audit's scope is `*.md`, measured rather than assumed |
+| `../handoffs/` holding nothing readable at all | **exit 2** — the only branch that is honestly *could not run* |
 | `../handoffs/` emptied | **exit 2** — could not check correspondence |
 | every entry removed from the log | **exit 2** — could not enumerate the record |
 | the whole recipe under `LC_ALL=C`, `en_US.UTF-8`, `tr_TR.UTF-8` | green and identical in all three |
@@ -305,6 +307,18 @@ ships to catch the first one. Its scope stops at `*.md` on purpose, and that is 
 claimed: a `notes.txt` there passes. Widening the matcher would red the untracked debris a working tree
 collects, which buys less than it costs — but it means the audit covers the shape a real handoff would
 take, not the whole directory.
+
+**And the audit was unreachable in the one case it existed for — the inversion of this recipe's own
+founding rule.** It reported *after* the correspondence precondition, so a directory holding only undated
+Markdown exited `2`, *could not run*, while the list of offending filenames was already sitting in a temp
+file. `verify-preconditions-fail-closed` says *could not look* must never read as *nothing wrong*; this
+was **I looked and found it** reading as *could not look* — the same lie told the other way round, and
+the one that costs the operator the diagnosis rather than the alarm. The audit now reports first, and the
+three outcomes separate: undated Markdown present is **red** naming the files and saying plainly that
+neither correspondence check could run; nothing readable at all is the only honest `2`; a stray alongside
+real handoffs is red while correspondence still runs. Raised as a suppressed low-confidence note on #73,
+twice — round 3 filed it as [#78](https://github.com/sleepy-panda-works/portulan/issues/78) under the
+review bound, and the maintainer then authorised a further round, which is what fixed it.
 
 **Both recipes then turned out to have a false green, found in review of that same change.** Neither
 checked whether `git ls-files` succeeded. When it failed the list came back empty, every loop iterated
@@ -443,7 +457,9 @@ inside its own store → **exit 2**. Delete the generator → **exit 2** from th
   a Markdown parser and the trigger is malformed quoting of the log's own syntax inside the log; an
   unknown date invented that way still fails 4a visibly. Same family as the `links` check not treating
   code spans as code, recorded above.
-- **The stray-file audit stops at `*.md`.** A `notes.txt` in `../handoffs/` is not examined.
+- **The stray-file audit stops at `*.md`.** A `notes.txt` in `../handoffs/` is not examined — so a
+  directory holding only non-Markdown files is *could not run* rather than a finding, which is correct
+  but worth knowing before reading that exit 2.
 - **The entry budget counts lines, which is not the thing anyone cares about.** Ten lines of dense
   pointer and ten lines of padding score the same, and an entry can satisfy it by moving prose into a
   handoff nobody reads. It is a rail against unbounded growth in the file every session loads to boot,

@@ -136,6 +136,15 @@ the merged #72 and for one further round to be addressed. Recorded so a later re
 four rounds and conclude the bound failed: rounds one and two were the bound's, three was its triage
 path, four is a maintainer override of it.
 
+Round four **re-raised #78's finding verbatim**, which is worth noting about the channel rather than
+about the reviewer: a suppressed note is not withdrawn by being triaged, and it will keep arriving every
+round until the code changes. With the round authorised, it was fixed rather than pointed at the issue
+a second time. The audit now reports **before** the precondition, and the three outcomes separate —
+undated Markdown present is red naming the files plus a second red saying neither correspondence check
+could run; nothing readable at all is the only honest `2`; a stray beside real handoffs is red while
+correspondence still runs. All four branches measured, plus the restored tree. **#78 is closed by this
+change and should be closed on merge, not before** — it describes `main` accurately until then.
+
 ## A third false green — or rather, the first false RED
 
 Writing this session's own Session log entry turned the recipe red on the seam attestation the entry
