@@ -388,6 +388,40 @@ describe("the Claude Code backend", () => {
         }
     });
 
+    test("a write gate wires the Bash hook, or its shell coverage is a matcher nothing reaches", () => {
+        // The load-bearing half of the shell-write fix, and the half with no visible effect in THIS
+        // repository — whose policy already gates shell commands, so `Bash` is a matcher either way.
+        // A policy carrying ONLY a write prohibition is where the omission shows: without this, the
+        // runner is never invoked for a Bash call and `matchesRule`'s shell-write branch is dead
+        // code. A capability that validates and loads nothing is this repository's most expensive
+        // recurring defect, so it is asserted on the shape that would hide it.
+        const onlyAWrite = policy({
+            rules: [{ id: "ban", tier: "prohibited", action: { write: "docs/vision.md" }, reason: "constitution" }],
+        });
+        const settings = claudeCode(parse(onlyAWrite)).artifact.value;
+        assert.ok(
+            settings.hooks.PreToolUse.some((h) => h.matcher === "Bash"),
+            "a shell write reaches the gate only if the hook is wired for Bash",
+        );
+    });
+
+    test("no Bash PERMISSION rule joins it — the shell half is the hook's alone, and the note says so", () => {
+        // `Bash(prefix:*)` matches a literal command prefix while the path sits anywhere in the
+        // command, so the DSL cannot express "any command writing this file". The patterns that would
+        // fit — `Bash(cp:*)` — gate the utility rather than the path, which is a larger rule than the
+        // policy declares. So this coverage fails open with the hook, and that is reported on every
+        // run rather than left for a reader to infer from an absence.
+        const result = claudeCode(parse(policy()));
+        const permissions = [...result.artifact.value.permissions.deny, ...result.artifact.value.permissions.ask];
+        assert.ok(!permissions.some((p) => /^Bash\((cp|sed|tee|mv|rm)/.test(p)), "gating the utility is not gating the path");
+        assert.ok(
+            result.notes.some((n) => /FAILS OPEN/.test(n) && /heredoc/.test(n)),
+            "the layer that fails open, and what it misses, are both named",
+        );
+        const gate = result.compiled.find((c) => c.id === "ban");
+        assert.match(gate.surface, /hook: a Bash command writing \.\/docs\/vision\.md/, "the surface distinguishes the two halves");
+    });
+
     test("the Stop hook is wired to the session-end runner", () => {
         const settings = claudeCode(parse(policy())).artifact.value;
         assert.ok(settings.hooks.Stop?.length > 0, "the Stop-gate is the other half of milestone 4");
@@ -788,6 +822,94 @@ describe("the shared matcher", () => {
             assert.ok(matchesRule(rule, tool, { file_path: "/repo/docs/vision.md" }), tool);
         }
         assert.ok(!matchesRule(rule, "Read", { file_path: "/repo/docs/vision.md" }), "reading it is not editing it");
+    });
+
+    // A `write:` rule names a PATH, and for one milestone it reached only the three tools carrying a
+    // `file_path` — so `echo x >> docs/vision.md` was gated by neither layer. The permission rule
+    // rejected the tool and the matcher fell through to false. These are the shell spellings that
+    // must now reach the gate, and, below them, the ones that still do not.
+
+    for (const [label, command] of [
+        ["append", "echo x >> docs/vision.md"],
+        ["truncate", "echo x > docs/vision.md"],
+        ["no space after the operator", "echo x >docs/vision.md"],
+        ["a `./`-spelled target", "echo x > ./docs/vision.md"],
+        ["an absolute target", "echo x > /repo/docs/vision.md"],
+        ["a numbered fd", "echo x 2> docs/vision.md"],
+        ["later in a list", "git status; echo x >> docs/vision.md"],
+        ["after a `&&`", "ls && echo x > docs/vision.md"],
+        ["inside a subshell", "(cd . && echo x > docs/vision.md)"],
+        ["through a shell wrapper", 'bash -c "echo x >> docs/vision.md"'],
+        ["cp", "cp /tmp/x docs/vision.md"],
+        ["cp, quoted target", "cp /tmp/x 'docs/vision.md'"],
+        ["cp by absolute path", "/bin/cp /tmp/x docs/vision.md"],
+        ["cp behind sudo", "sudo cp /tmp/x docs/vision.md"],
+        ["mv", "mv /tmp/x docs/vision.md"],
+        ["rm", "rm -f docs/vision.md"],
+        ["ln", "ln -sf /tmp/x docs/vision.md"],
+        ["tee, at the end of a pipeline", "cat /tmp/x | tee docs/vision.md"],
+        ["dd, through `of=`", "dd if=/dev/null of=docs/vision.md"],
+        ["install", "install -m 644 /tmp/x docs/vision.md"],
+        ["truncate(1)", "truncate -s 0 docs/vision.md"],
+        ["patch", "patch docs/vision.md < /tmp/d.diff"],
+        ["sed -i", "sed -i '' 's/a/b/' docs/vision.md"],
+        ["sed -i.bak", "sed -i.bak s/a/b/ docs/vision.md"],
+        ["sed -i behind an assignment", "LC_ALL=C sed -i '' s/a/b/ docs/vision.md"],
+        ["perl -pi", "perl -pi -e 's/a/b/' docs/vision.md"],
+    ]) {
+        test(`a write rule reaches the shell spelling: ${label}`, () => {
+            const rule = { tier: "prohibited", action: { write: "docs/vision.md" } };
+            assert.ok(matchesRule(rule, "Bash", { command }), command);
+        });
+    }
+
+    for (const [label, command] of [
+        // Reading the file is Auto by this policy, and a matcher that contradicts a declared tier is
+        // worse than one that admits a gap. This is why the in-place editors need their flag.
+        ["reading it with cat", "cat docs/vision.md"],
+        ["grepping it", "grep -n foo docs/vision.md"],
+        ["diffing it", "git diff docs/vision.md"],
+        ["sed WITHOUT an in-place flag", "sed -n '1,5p' docs/vision.md"],
+        ["sed -E, which is not -i", "sed -E 's/a/b/' docs/vision.md"],
+        ["it as a redirected INPUT", "patch /tmp/other.md < docs/vision.md"],
+        // An operator inside quotes is not an operator.
+        ["the path named inside a quoted string", "echo 'x > docs/vision.md'"],
+        ["a sentence mentioning it", 'echo "writing to docs/vision.md is prohibited"'],
+        // The path boundary is the same one `matchesPath` enforces everywhere else.
+        ["a sibling file", "echo x > docs/plan.md"],
+        ["a lookalike suffix", "echo x > docs/not-vision.md"],
+        ["an ordinary command", "node cli/compile.mjs --check"],
+    ]) {
+        test(`a write rule does NOT fire on: ${label}`, () => {
+            const rule = { tier: "prohibited", action: { write: "docs/vision.md" } };
+            assert.ok(!matchesRule(rule, "Bash", { command }), command);
+        });
+    }
+
+    test("the shell half of a write gate is a table, and its limits are asserted rather than implied", () => {
+        // Recorded as a test for the same reason two-wrapper nesting is, one block up: anyone tempted
+        // to read the shell coverage as complete meets the counterexamples. `compile.mjs` says so in
+        // prose and ../.portulan/gate-map.md lists them among the honest holes; this is the half that
+        // fails loudly if somebody later widens the claim without widening the matcher.
+        const rule = { tier: "prohibited", action: { write: "docs/vision.md" } };
+        for (const [why, command] of [
+            ["a heredoc", "cat > $TARGET <<'EOF'\nx\nEOF"],
+            ["an interpolated variable", "echo x > $VISION"],
+            ["a runtime assembling the write itself", `python3 -c "open('docs/vision.md','w').write('x')"`],
+            ["a writer outside the table", "ex -sc wq docs/vision.md"],
+            ["two shell wrappers", `bash -c "bash -c 'echo x > docs/vision.md'"`],
+        ]) {
+            assert.ok(!matchesRule(rule, "Bash", { command }), `${why} is a stated hole, not coverage`);
+        }
+    });
+
+    test("a read rule is NOT given shell coverage — the scope is write, and it says so", () => {
+        // Deliberate rather than forgotten. Reading a path through a shell has no bounded table —
+        // `cat`, `head`, `awk`, `git show`, any language runtime — so a matcher for it would be the
+        // ambitious parser the floor backend's own comment warns against, buying false confidence
+        // with false reds. No `read` rule in this repository's policy is gated in any case.
+        const rule = { tier: "gated", action: { read: "docs/vision.md" } };
+        assert.ok(!matchesRule(rule, "Bash", { command: "cat docs/vision.md" }));
     });
 
     test("a path rule does not match a lookalike suffix", () => {
