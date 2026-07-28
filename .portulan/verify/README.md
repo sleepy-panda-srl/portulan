@@ -257,6 +257,12 @@ parsed run: scalar`. Put a jq program in a workflow the recipe does not name →
 instrument → **exit 2** from the wrapper. Take `jq` off the `PATH` → **exit 2**, from the wrapper's
 guard and again from the instrument run alone. Clean tree → **green, 7 programs, 24 fixtures**.
 
+Two more were added when the binding rule was tightened, because the first version of it would have
+trapped a change rather than caught one: the **same** program appearing in a second workflow → **green,
+8 programs**, both sites exercised by the same fixtures, where requiring exactly one call site made an
+exit `2` that no anchor could ever satisfy. Two **different** programs under one anchor → **2**, with
+both sites named — there the fixture would be asserting about a filter nobody chose for it.
+
 **And the dependency claim above is measured rather than argued.** "`jq` ships on `ubuntu-latest`, so
 this does not become a permanently-red recipe" was a prediction until the first CI run on
 [#64](https://github.com/sleepy-panda-works/portulan/pull/64) printed `filters: 7 jq program(s) in 2
