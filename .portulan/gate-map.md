@@ -146,10 +146,11 @@ file: where a rule and its clarification live apart, only the rule gets read.)_
   measurement is in [`compile/gate.mjs`](compile/gate.mjs)'s own header.
 - `force-push-without-a-lease` — bare `--force`. `--force-with-lease` is Auto above; the lease is the
   whole difference, and it is why these are two rules rather than one with a caveat.
-- `change-repository-settings` — **visibility above all**. And `change-settings-through-the-api`,
-  because branch protection and collaborators are changed through `gh api` rather than `gh repo edit`;
-  this repository's own floor was configured that way, so a rule naming only the first would have had a
-  sentence broader than its matcher.
+- `change-repository-settings` — **visibility above all**. `gh repo edit` and nothing beside it now:
+  branch protection, collaborators and rulesets are changed through `gh api`, which is **no longer
+  gated** — see the amendment below. So this rule's matcher is narrower than the settings surface its
+  name suggests, which is said here rather than left to be inferred, because a sentence broader than its
+  matcher is exactly the defect this section refuses elsewhere.
 - `create-a-repository` and `delete-a-repository`. `rename-or-transfer-a-repository` is named too and
   compiles to **nothing** — a transfer is ordinarily a web-UI action and no permission rule reaches it.
 - `tag-a-release` and `publish-a-release`; `publish-to-a-package-registry`, which covers a plugin
@@ -161,6 +162,31 @@ The last two compile to **nothing**, and the policy says why in its own words ra
 reader to notice the absence: neither has a tool-level surface a permission rule can reach. A matcher
 pretending to cover "send a message outward" would be worse than the honest gap, because it would read
 as enforcement. They stay prompt-level, and the compiler prints them as refusals on every run.
+
+**Reaching repository settings through `gh api` was Gated until 2026-07-28, and a measurement removed
+the rule rather than a change of mind.** (Named by its action here, not by its id: the rule is gone, and
+citing an id no policy declares is the dangling pointer this document's own rail refuses.) It gated
+`gh api` whole, reads included, and its own reason accepted the cost:
+*"a gated read is a small cost against a settings change nobody approved"*. Measured against a working
+session the cost was not small — branch-protection and ruleset reads are ordinary traffic, and every one
+of them stopped for a dialog the maintainer had not asked for.
+
+The narrower rule was never available. Both matchers here are **prefix** matchers — `matchesRule` in
+[`compile/gate.mjs`](compile/gate.mjs) and the emitted `Bash(gh api:*)` on the host — and neither
+language has negation, so *"`gh api` except when it writes"* cannot be said in either. The two are not
+separable by prefix in any case: `gh api` switches to `POST` on its own the moment a request parameter
+is added, so `gh api repos/x/y -f name=z` is a write with no `-X` in it. A rule spelled `gh api -X`
+would have read as a gate and missed the ordinary write — the failure
+[`../cli/compile.mjs`](../cli/compile.mjs) already names, where a matcher clever enough to generalise is
+clever enough to be wrong quietly.
+
+**What holds now is the floor, and only the floor.** For the agent identity the App's permission set
+refuses these calls outright, which is the load-bearing half and is unchanged. What is gone is the
+local, per-action stop on *the maintainer's own credentials*: a session running as him can now call
+`gh api -X PATCH` against repository settings with no prompt. That is a real loosening, taken
+deliberately on 2026-07-28, and it is recorded here rather than left to be found in a diff. If it is
+ever to be bought back, the place is the token's scopes — see [The platform floor](#the-platform-floor)
+— not a cleverer matcher.
 
 ## Prohibited — what no yes makes acceptable
 
