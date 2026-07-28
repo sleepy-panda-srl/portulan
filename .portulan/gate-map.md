@@ -340,11 +340,21 @@ Corrected here rather than left, because a gate map that overstates a hole is as
    | a compound-statement keyword | `if true; then git push --force …; fi` |
    | a loop body | `for x in 1; do git push --force …; done` |
    | a brace group | `{ git push --force …; }` |
+   | a leading redirection | `2>&1 git push --force …`, `> /tmp/log git push --force …` |
 
    Stripping a **named table** of leaders would close the common ones the way the writer table does,
    and is deliberately not done: that table has no natural edge — `nice`, `time`, `nohup`, `timeout`,
    `command`, `stdbuf`, `doas` — and one missing entry buys exactly the false confidence this list
    exists to deny. Asserted as tests rather than only written down.
+
+   **The last row is not like the others, and the difference is worth stating rather than hiding
+   inside a shared refusal.** A leading redirection has a *closed* grammar — an optional file
+   descriptor, one of `<` `>` `>>` `<>` `>&` `&>`, and a word — so unlike the leader table it could be
+   stripped completely, with an edge a reader could check. It is left open here only because the same
+   change would be a matcher change on the same day this entry stopped overclaiming, and one of those
+   at a time is the honest order. Named as a decision rather than a limit, so the next reader knows
+   which of these two rows is waiting on judgement and which is waiting on a parser nobody should
+   write.
 
    **This entry said "now closed at the hook" without qualification until 2026-07-28**, which was a
    sentence broader than its matcher — hole 5, one entry down, in the paragraph claiming to have
