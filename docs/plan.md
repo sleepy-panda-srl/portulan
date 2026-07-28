@@ -1475,7 +1475,17 @@ the seam applies here too: no client-identifying references)_
   failure printed a rounded figure alone, so 1025 bytes read as *"1.0 KB against a budget of 1 KB"*, a
   sentence arguing against its own verdict; and `run()` reported *index current* for a workspace
   declaring budgets and no index, a green about a file that does not exist. Suite 492 → **496**.
-  Nothing was refused. **Milestone 5 stays open:** the scheduled
+  Nothing was refused. · **Round two found the ninth fail-open, and this session had written it.** No
+  new threads; two suppressed notes named one defect in two files — the containment test behind the
+  index's siting rule read a leading `..` in a *filename* as a traversal, so an index declared at
+  `memory/..index.md` was written into the store, reported `ok`, and counted by `doctor` as a second
+  record. The check chosen over a filename exemption **because** an exemption would be a door any
+  record could use had its door in the containment test. Fixed as one exported `isInside` that
+  `doctor` imports rather than restates, on the evidence that two copies of the rule drifted
+  identically before either shipped. Suite 496 → **499**. It cost a maintainer's ruling rather than an
+  implementer's judgement: the finding was only in the suppressed channel, where rule 3 says notes are
+  never a reason to push again while rule 4 leaves two fix-rounds, and he ruled fix — inside the bound,
+  as fix-round two of two. **Milestone 5 stays open:** the scheduled
   librarian and proposals-as-PRs are session 1, and the close needs its own fresh-context checkpoint.
   Seam scan clean across files, commit message, and branch name. Handoff:
   [`.portulan/handoffs/2026-07-28-the-index-is-the-rail.md`](../.portulan/handoffs/2026-07-28-the-index-is-the-rail.md).

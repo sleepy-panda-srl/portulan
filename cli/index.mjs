@@ -76,6 +76,35 @@ const NOT_A_RECORD = new Set(["README.md"]);
 
 const KB = 1024;
 
+/**
+ * Is `child` inside `parent`? Exported because `doctor` asks the same question about the same two
+ * paths, and the obvious spelling — `!path.relative(parent, child).startsWith("..")` — is wrong in a
+ * way that fails OPEN.
+ *
+ * A name beginning with `..` is an ordinary filename, not a traversal: `path.relative` of
+ * `memory/..index.md` against `memory/` is `..index.md`, which `startsWith("..")` calls *outside*.
+ * Measured end to end before this was written — an index declared at `memory/..index.md` was written
+ * into the store, reported `ok`, and `doctor` then counted it as a second record, reporting it for
+ * stating no retirement condition. That is precisely the outcome the siting rule exists to prevent,
+ * in the check chosen over a filename exemption **because** an exemption would be a door any record
+ * could walk through. The door was in the containment test. Found by Copilot on #72, in the
+ * suppressed half of the round; ninth fail-open found in this repository's scaffolding, and the
+ * first one written by the change that cites the class.
+ *
+ * Only `..` exactly, or `..` followed by a separator, means outside. An absolute result means the
+ * two paths share no root and cannot contain one another.
+ *
+ * It lives here and `doctor` imports it, on the reasoning that already put `compile`'s accounting
+ * behind one import: two copies of a rule drift, and these two copies drifted into the identical
+ * defect before either had shipped.
+ */
+export function isInside(parent, child) {
+    const rel = path.relative(parent, child);
+    if (rel === "") return true;
+    if (path.isAbsolute(rel)) return false;
+    return rel !== ".." && !rel.startsWith(`..${path.sep}`);
+}
+
 // ===========================================================================================
 // Titles
 // ===========================================================================================
@@ -282,9 +311,9 @@ export function inspect(dir, { write = false } = {}) {
     // An index inside the store it indexes is refused, not special-cased. `doctor` counts every
     // `.md` in the store as a record: sited there, the index would be counted, sized into the KB
     // figure, and reported for stating no retirement condition. The alternative — excluding it by
-    // name — is a hiding place any record could use, and this repository has found eight fail-opens
+    // name — is a hiding place any record could use, and this repository had found eight fail-opens
     // of that shape in its own scaffolding.
-    if (workspace.slots?.memory && !path.relative(storeDir, indexPath).startsWith("..")) {
+    if (workspace.slots?.memory && isInside(storeDir, indexPath)) {
         throw new IndexError(
             `${declaredIndex} sits inside the store it indexes (${workspace.slots.memory}) — ` +
                 "`doctor` would count it as a record. Site the index beside the store, not in it",

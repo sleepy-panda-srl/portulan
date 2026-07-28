@@ -31,6 +31,9 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 // ../.portulan/compile/gate.mjs import the matcher instead of writing a second one. Zero
 // dependencies on both sides, so nothing is added to what this tool needs to run.
 import { parse, backends } from "./compile.mjs";
+// The containment test the memory-index siting rule turns on, imported for the reason directly
+// above: the copy that used to live here drifted into the identical fail-open as the original.
+import { isInside } from "./index.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const DEFAULT_SCHEMA = path.resolve(HERE, "..", "spec", "workspace.schema.json");
@@ -775,12 +778,18 @@ export async function inspect(workspaceDir, options = {}) {
     // walks below — sized into the KB figure and reported for stating no retirement condition. The
     // repair is a siting rule rather than an exemption by filename: teaching one name to hide from a
     // walk is a door any record could use, which is the fail-open class this repository has now found
-    // eight of in its own scaffolding.
+    // eight of in its own scaffolding — and then this check turned out to be the ninth, in the very
+    // containment test that was supposed to be the door-less alternative. See `isInside`.
     if (workspace.memory?.index?.path && workspace.slots?.memory) {
         const storeDir = path.resolve(dir, workspace.slots.memory);
         const indexPath = path.resolve(dir, workspace.memory.index.path);
-        const inside = !path.relative(storeDir, indexPath).startsWith("..");
-        if (inside) {
+        // Imported rather than restated. This check and `index`'s had two copies of one containment
+        // rule and both carried the same fail-open: `!path.relative(…).startsWith("..")` calls a file
+        // named `..index.md` *outside* the directory it sits in, because a leading `..` in a filename
+        // is not a traversal. Measured — such an index was written into the store, and this walk then
+        // counted it as a record. Same reasoning as `parse`/`backends` from ./compile.mjs above: a
+        // rule with two copies drifts, and these two drifted identically before either shipped.
+        if (isInside(storeDir, indexPath)) {
             fail(
                 "cross",
                 `memory.index.path (\`${workspace.memory.index.path}\`) sits inside slots.memory ` +
