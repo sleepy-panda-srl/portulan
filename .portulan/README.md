@@ -44,6 +44,7 @@ are the point:
 | [`tools/`](tools/) | Operator tooling — how this repository is *run*, as distinct from how a change is checked |
 | [`repos/`](repos/) | Repo cards — one per repository this workspace covers |
 | [`memory/`](memory/) | Durable facts with provenance, one per file |
+| [`memory-index.md`](memory-index.md) | The generated index of that store — one line per record, built by [`../cli/index.mjs`](../cli/index.mjs) and never by hand. It sits *beside* the store rather than in it, because `doctor` counts every `.md` in the store as a record |
 | [`tasks/`](tasks/) | Task files: the atomic unit of work and of context |
 | [`handoffs/`](handoffs/) | Decisions and their why, carried across sessions and windows |
 | [`proposals/`](proposals/) | Agent-drafted rule changes waiting on the human gate |
@@ -83,8 +84,14 @@ Honest limits, each with the milestone that closes it:
   administrators — so what still rests on review is the tiers above the floor, not the floor. _(The exact
   context string matters when cross-checking branch protection: it is the job id, not the workflow's
   display name.)_
-- **No generated memory index.** [`memory/`](memory/) is a flat directory. The size-budgeted index is
-  *built, never hand-maintained* ([`../core/operating/memory.md`](../core/operating/memory.md)), so
-  writing one by hand now would contradict the doctrine it implements; it arrives with the scheduled
-  librarian at milestone 5.
+- **A generated memory index, as of milestone 5 — and no librarian yet.**
+  [`memory-index.md`](memory-index.md) is emitted from [`memory/`](memory/) by
+  [`../cli/index.mjs`](../cli/index.mjs), and the `index` recipe byte-compares it and fails on a
+  breach of the budgets [`workspace.json`](workspace.json) declares. It is *built, never
+  hand-maintained* ([`../core/operating/memory.md`](../core/operating/memory.md)) in the checkable
+  sense: every field on a line comes from the record it points at, so there is nothing in the file an
+  editor could put out of step with the store. **What has not arrived is the scheduled librarian** —
+  reindexing on a cadence, the sealed-stamp re-validation nag, staleness by record age (which needs
+  git, and `doctor` reads only the tree), proposal nagging and demotion drafts. Regenerating is a
+  command someone runs today.
 - **No packs and no rituals.** Nothing this build does yet repeats often enough to earn one.

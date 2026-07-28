@@ -12,7 +12,7 @@ A memory moves through four states; each has an owner and a budget.
 |---|---|
 | **Capture** | The Learn phase writes a candidate memory — a fact, a decision, or a rule — with its provenance. |
 | **Consolidate** | Off the hot path, candidates are merged, de-duplicated, and sharpened into durable form. Contradictions surface rather than silently overwrite. |
-| **Index** | A size-budgeted index is generated so the right memory is recalled without loading all of it. The index is built, never hand-maintained. |
+| **Index** | A size-budgeted index is generated so the right memory is recalled without loading all of it. The index is built, never hand-maintained — every field on a line is derived from the record it points at, so there is nothing in the file an editor could put out of step with the store. |
 | **Retire** | A memory whose incident can no longer occur, or whose rule was superseded, is demoted or deleted. Memory that only grows becomes noise. |
 
 _(Provenance: Letta — per-agent memory and sleep-time consolidation; Anthropic context engineering —
@@ -20,9 +20,17 @@ an attention budget per layer, hence the generated, size-budgeted index.)_
 
 A budget here is a rail, not an aim. When a layer breaches its budget, the remedy is consolidation —
 merge, compress, retire — never squeezing past the breach, and never raising the budget in the same
-change that broke it. The machinery that turns a breach into a red arrives with the librarian in
-milestone 5; until it does, this sentence binds review, the way everything on this page did before
-there was a schema to check against.
+change that broke it. **The breach is machinery as of milestone 5**: a workspace declares its budgets
+in the manifest, the index is generated rather than written, and a verify recipe goes red when either
+the index or the store is over. The procedure that answers a red is
+[`../skills/consolidate/SKILL.md`](../skills/consolidate/SKILL.md).
+
+**The other half of that sentence is not machinery, and saying so is the point.** Nothing checks that
+a budget was not simply raised in the change the breach appeared in — refusing that needs a checker
+that reads history, and a check that reads history produces false reds in a shallow CI checkout,
+which is worse than no check at all. So the breach is a rail and the *remedy* is a rule the human
+gate holds. Written down rather than implied, because a rule nothing checks that is presented as one
+that does is the failure this page would otherwise be demonstrating.
 
 ## One fact per memory, with provenance
 

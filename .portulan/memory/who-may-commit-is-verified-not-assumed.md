@@ -1,4 +1,4 @@
-# Who may commit here is a measurement, not GitHub's reputation
+# Who may commit is verified, not assumed
 
 **type:** rule
 **scope:** workspace — this repository's access posture and the contribution channel

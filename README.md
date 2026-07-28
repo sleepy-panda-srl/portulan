@@ -34,7 +34,7 @@ run `node cli/doctor.mjs examples` to watch it validate.
 | `plugin/` | [The Claude Code adapter](plugin/): the `/portulan` boot skill, and why the agent bindings below sit at the root rather than here |
 | `agents/` | [The three personas bound to this host's tools](agents/) — `implementer`, `reviewer`, `librarian`. A platform-fixed location: the default agents directory of a plugin whose root is this repository. The doctrine they bind stays in [`core/personas/`](core/personas/) |
 | `.claude-plugin/` | The [plugin](.claude-plugin/plugin.json) and [marketplace](.claude-plugin/marketplace.json) manifests that make this repository an installable plugin feed |
-| `cli/` | The `npx` CLI: `init` · `doctor` · `compile` · `vendor` · `index` · `upgrade`. [`doctor`](cli/doctor.mjs), [`plugin-lint`](cli/plugin-lint.mjs) and [`compile`](cli/compile.mjs) exist so far |
+| `cli/` | The `npx` CLI: `init` · `doctor` · `compile` · `vendor` · `index` · `upgrade`. [`doctor`](cli/doctor.mjs), [`plugin-lint`](cli/plugin-lint.mjs), [`compile`](cli/compile.mjs) and [`index`](cli/index.mjs) exist so far |
 | `.claude/` | [The compiled enforcement](.claude/settings.json) — permissions and hooks generated from [`.portulan/gates.json`](.portulan/gates.json). Generated, committed so it is reviewable, and held to its source by the `compile` verify recipe, which holds the compiled platform floor in [`.portulan/compile/`](.portulan/compile/) the same way. Nothing else in this directory is tracked |
 | `examples/` | [A fictional, public demo workspace](examples/) — two products, read end to end |
 | `.portulan/` | [This repository's own workspace](.portulan/) — Portulan applied to building Portulan |

@@ -684,6 +684,10 @@ export async function inspect(workspaceDir, options = {}) {
     // ../.portulan/memory/a-mandate-nothing-checks-is-already-broken.md: the mandate was written in
     // the same change as the key, and nothing looked.
     if (workspace.gates) resolvePath(workspace.gates, "file", "gates");
+    // Added with the `memory` object in Workspace Definition 2.3, in the same change as the key —
+    // because the `gates` line above records what happens when it is not: a manifest naming a file
+    // that does not exist, validating GREEN, for one whole checkpoint.
+    if (workspace.memory?.index?.path) resolvePath(workspace.memory.index.path, "file", "memory.index.path");
     (workspace.products ?? []).forEach((product, i) => {
         resolvePath(product.product, "file", `products[${i}].product`);
         if (product.affordances) resolvePath(product.affordances, "file", `products[${i}].affordances`);
@@ -753,6 +757,37 @@ export async function inspect(workspaceDir, options = {}) {
 
     if (workspace.packs?.length) {
         report("cross", `${workspace.packs.length} pack(s) declared — a declaration only: the plugin machinery exists as of milestone 3, but resolving a pack to an installed one still needs the feed (milestone 6)`);
+    }
+
+    // Workspace Definition 2.3's two conditional constraints, here for the same reason the
+    // `repository`/`tree` pair above is: `dependentRequired` is not in the subset spec/README.md
+    // declares, so the schema cannot carry either of them and ../spec/slots.md says so.
+    if (workspace.memory && !workspace.slots?.memory) {
+        fail(
+            "cross",
+            "`memory` declares an index and budgets with no `slots.memory` store to index — the object " +
+                "configures a store rather than replacing one, and an index of nothing renders empty, " +
+                "compares equal to an empty committed file, and passes",
+        );
+    }
+
+    // An index inside the store it indexes is counted as a record by the retirement and provenance
+    // walks below — sized into the KB figure and reported for stating no retirement condition. The
+    // repair is a siting rule rather than an exemption by filename: teaching one name to hide from a
+    // walk is a door any record could use, which is the fail-open class this repository has now found
+    // eight of in its own scaffolding.
+    if (workspace.memory?.index?.path && workspace.slots?.memory) {
+        const storeDir = path.resolve(dir, workspace.slots.memory);
+        const indexPath = path.resolve(dir, workspace.memory.index.path);
+        const inside = !path.relative(storeDir, indexPath).startsWith("..");
+        if (inside) {
+            fail(
+                "cross",
+                `memory.index.path (\`${workspace.memory.index.path}\`) sits inside slots.memory ` +
+                    `(\`${workspace.slots.memory}\`), where this validator counts it as a record. ` +
+                    "Site the generated index beside the store, not in it",
+            );
+        }
     }
 
     // ---- claims against the tree

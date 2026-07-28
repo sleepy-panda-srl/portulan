@@ -57,6 +57,7 @@ experience a failure. *(Binding non-goal: no ceremony that can't scale down.)*
 | `affordances` | path | no | criterion — *agent-affordances slot*; constitution — the agent-native / AX row of the influence map |
 | `tree` | path | **for `kind: repository`** | criterion — *lints workspace claims against the tree*; content — [`../examples/`](../examples/), the first workspace whose repositories are not present |
 | `packs` | structured | no | constitution — thesis 1's cascade, `core < pack < workspace` |
+| `memory` | structured | no | criterion — milestone 5, *generated size-budgeted index whose budget is a rail*; [`memory.md`](../core/operating/memory.md) — the Index and Consolidate states of the lifecycle |
 | `provenance` | record field | **on every rule** | criterion — *provenance slot*; [proposal 0002](../.portulan/proposals/0002-sealed-provenance.md), adopted |
 
 ## `kind` — which of the three workspaces this is
@@ -400,6 +401,51 @@ resolve a name *against*, which is milestone 6. Until the second exists this slo
 declaration, and `doctor` says so rather than pretending to verify it — the wording of that note was
 updated when the first half landed, because a note naming a prerequisite that already exists sends a
 reader to wait for something that arrived.
+
+## `memory` — what the store's index is called, and what memory may cost
+
+Added at 2.3. `slots.memory` is the store; this object is the machine configuration around it — the
+same split as `slots.gates` (the argument, in prose) and `gates` (the policy, compiled), and for the
+same reason: one is content a human reads, the other is fields a tool dispatches on.
+
+It exists because [`memory.md`](../core/operating/memory.md) has described a *generated, size-budgeted*
+index since milestone 1 and neither adjective had a machine behind it. The index is emitted by
+[`../cli/index.mjs`](../cli/index.mjs), committed, and byte-compared by a verify recipe — generated so
+the store is the single source, committed so a change to what is always loaded is reviewable in a diff.
+
+| Field | What it is |
+|---|---|
+| `index.path` | Where the generated index is written. Must resolve **outside** `slots.memory` — see below. |
+| `index.budget.lines` | The most lines the index may hold. One line per record, so this is a rail on record count. |
+| `index.budget.columns` | The most columns one line may hold — refused, never truncated. |
+| `store.budget.kilobytes` | The most the store's records may total, in 1024-byte KB. |
+
+**Two budgets rather than one, because they are different axes.** The index is what gets loaded to
+decide what else to load, so its line count is what memory costs on every recall. It cannot see the
+other axis at all: a store whose record count never moves can grow without limit in bytes, and nothing
+in the index would change. The `columns` cap closes the hole a line budget has — one enormous line
+absorbing what the budget counts.
+
+**Nothing is defaulted**, on the `floor` object's rule from 2.2: a default here would be this
+specification setting a policy for every workspace that ever adopts it, in a key nobody typed. An
+undeclared number is not checked. A number that is declared and is not a positive integer is
+**refused** — `lines: 0` would otherwise read as falsy, switching the rail off in the key that exists
+to switch it on, and the subset has no `minimum` with which to say so in the schema.
+
+**What `doctor` checks:** that `index.path` resolves; that `slots.memory` is present whenever this
+object is; and that `index.path` does **not** resolve inside `slots.memory`. The last is the one worth
+arguing. `doctor`'s store report walks every `.md` in the store, so an index living there is counted as
+a record, sized into the KB figure, and reported for stating no retirement condition — a report about
+the store that includes a file the store does not hold. The alternative repair was to exempt the
+index's filename from the walk, and that was rejected: an exemption by name is a door any record could
+walk through, and this repository has found eight fail-opens of that shape in its own scaffolding. A
+siting rule has no such door.
+
+**What no checker establishes:** that a budget was not simply raised in the change that breached it.
+That rule is [`memory.md`](../core/operating/memory.md)'s and the human gate's — refusing a raise needs
+a check that reads git history, which produces false reds in a shallow CI checkout. The limit is
+recorded in [`../.portulan/verify/README.md`](../.portulan/verify/README.md) with the measurement
+behind it, rather than left for a reader to assume the rail covers both halves.
 
 ## `provenance` — a record field, not a manifest key
 

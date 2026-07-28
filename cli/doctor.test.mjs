@@ -255,7 +255,7 @@ describe("the schema validator implements exactly the declared subset", () => {
 
 describe("the schema declares which Workspace Definition version it implements", () => {
     test("the shipped schema carries it in `$id`", () => {
-        assert.deepEqual(schemaVersion(SCHEMA), { major: 2, minor: 2 });
+        assert.deepEqual(schemaVersion(SCHEMA), { major: 2, minor: 3 });
     });
 
     test("a schema whose `$id` does not carry one is refused", () => {
@@ -531,6 +531,57 @@ describe("provenance is parsed into the two forms the constitution names", () =>
         const { findings } = await inspect(dir, { schema: SCHEMA });
         assert.equal(severities(checks(findings, "cross"), "fail").length, 1);
         assert.match(text(checks(findings, "cross")), /share the id/);
+    });
+
+    // Workspace Definition 2.3. Both are conditional dependencies, and `dependentRequired` is not in
+    // the subset — so neither is expressible in the schema and both are checked here, exactly as the
+    // `repository`/`tree` pair above is.
+    test("`memory` without a `slots.memory` store is refused", async () => {
+        const m = wellFormed();
+        m.memory = { index: { path: "memory-index.md" } };
+        const dir = tree(scratch(), { ...minimalFiles, "workspace.json": JSON.stringify(m) });
+        const { findings } = await inspect(dir, { schema: SCHEMA });
+        const failures = severities(checks(findings, "cross"), "fail");
+        assert.equal(failures.length, 1);
+        assert.match(text(failures), /slots\.memory/);
+    });
+
+    test("an index sited inside the store it indexes is refused", async () => {
+        // Sited there it is counted as a record by this validator's own retirement and provenance
+        // walks — so the report about the store would include a file the store does not hold. The
+        // repair is a siting rule and not an exemption by filename, because an exemption is a door
+        // any record could walk through.
+        const m = wellFormed();
+        m.slots.memory = "memory/";
+        m.memory = { index: { path: "memory/INDEX.md" } };
+        const dir = tree(scratch(), {
+            ...minimalFiles,
+            "workspace.json": JSON.stringify(m),
+            "memory/INDEX.md": "# Memory index\n",
+        });
+        const { findings } = await inspect(dir, { schema: SCHEMA });
+        const failures = severities(checks(findings, "cross"), "fail");
+        assert.equal(failures.length, 1);
+        assert.match(text(failures), /inside slots\.memory/);
+    });
+
+    test("an index beside the store is fine, and its path must resolve", async () => {
+        const m = wellFormed();
+        m.slots.memory = "memory/";
+        m.memory = { index: { path: "memory-index.md" } };
+        const files = {
+            ...minimalFiles,
+            "workspace.json": JSON.stringify(m),
+            "memory/a-fact.md": "**type:** rule\n**provenance:** `form=link` `href=https://example.invalid/1`\n\n**Retire when:** never.\n",
+        };
+        const missing = tree(scratch(), files);
+        const absent = await inspect(missing, { schema: SCHEMA });
+        assert.match(text(severities(checks(absent.findings, "paths"), "fail")), /memory\.index\.path/);
+
+        const present = tree(scratch(), { ...files, "memory-index.md": "# Memory index\n" });
+        const { findings } = await inspect(present, { schema: SCHEMA });
+        assert.equal(severities(checks(findings, "cross"), "fail").length, 0);
+        assert.equal(severities(checks(findings, "paths"), "fail").length, 0);
     });
 
     test("a link href containing whitespace is rejected", () => {

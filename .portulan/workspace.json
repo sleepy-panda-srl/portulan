@@ -1,6 +1,6 @@
 {
   "portulan": {
-    "spec": "2.2"
+    "spec": "2.3"
   },
   "name": "portulan",
   "summary": "Sleepy Panda Works building Portulan: one maintainer, coding agents under a supervised-build protocol, a docs-first repository whose product is its files.",
@@ -67,8 +67,29 @@
         "run": "./.portulan/verify/workflow-filters.sh",
         "requires": ["bash", "jq", "node"],
         "doc": "verify/README.md"
+      },
+      {
+        "id": "index",
+        "run": "./.portulan/verify/index.sh",
+        "requires": ["bash", "git", "node"],
+        "doc": "verify/README.md"
       }
     ]
+  },
+
+  "memory": {
+    "index": {
+      "path": "memory-index.md",
+      "budget": {
+        "lines": 60,
+        "columns": 140
+      }
+    },
+    "store": {
+      "budget": {
+        "kilobytes": 200
+      }
+    }
   },
 
   "products": [

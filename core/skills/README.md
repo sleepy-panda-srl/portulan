@@ -37,6 +37,12 @@ authored against it and are now declared by the plugin manifest, alongside the b
 remaining spec-driven ritual named in the vision's influence map — needs the Workspace spec to exist
 first, so it is deferred to a `packs/rituals/` skill.)
 
+**Milestone 5 — [`consolidate`](consolidate/SKILL.md) joins them**, the third universal skill: the
+repair a breached memory budget calls for, and the on-demand form of the librarian's scheduled pass.
+It is the first skill here written against a rail rather than against a habit — the budget it answers
+to is declared in a manifest and a verify recipe goes red on it — which is why its "when to use it"
+can name a machine-produced trigger instead of a judgement call.
+
 **What checks them:** [`../../.portulan/verify/plugin.sh`](../../.portulan/verify/plugin.sh) on every
 pull request — frontmatter present, `description` non-empty, and a `name` that is kebab-case. The
 `name` is required here although the platform treats it as optional, so that a skill's invocation name
