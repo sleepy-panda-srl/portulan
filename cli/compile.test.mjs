@@ -984,6 +984,14 @@ describe("the shared matcher", () => {
         ["after a `&&`", "ls && echo x > docs/vision.md"],
         ["inside a subshell", "(cd . && echo x > docs/vision.md)"],
         ["through a shell wrapper", 'bash -c "echo x >> docs/vision.md"'],
+        // A wrapper that is not first on the line. The `shell` branch grew segment composition for
+        // this in an earlier commit on this branch; the `write` branch did not, and the gap it left
+        // was the worse of the two — the CONSTITUTION reachable behind any separator plus one
+        // wrapper, while the same wrapper alone answered `deny`. Measured stepping aside before the
+        // fix. Found by Copilot review on #60, five commits after the sibling was fixed.
+        ["a wrapper after a `;`", 'git status; bash -c "echo x >> docs/vision.md"'],
+        ["a wrapper after `&&`", 'ls && bash -c "cp /tmp/x docs/vision.md"'],
+        ["a `$'…'` wrapper, mid-line", "ls && bash -c $'echo x > docs/vision.md'"],
         // The same `$'…'` gap on the write side. `shellWords` glued the `$` onto the front, so
         // `$'docs/vision.md'` tokenised as `$docs/vision.md` and the constitution's gate missed it.
         ["a `$'…'` redirect target", "echo x > $'docs/vision.md'"],

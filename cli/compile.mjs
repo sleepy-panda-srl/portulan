@@ -787,7 +787,27 @@ export function matchesRule(rule, tool, input = {}) {
         // any other change past its own grader — and it was reachable inside a session, with only the
         // platform floor stopping it from landing. See `shellWrites` above for what this covers and,
         // more to the point, for what it does not.
-        if (tool === "Bash") return spellings(input.command).some((s) => shellWrites(s, action.write));
+        if (tool === "Bash") {
+            // Whole line and per segment, exactly as the `shell` branch above — and for the same
+            // reason, arrived at the hard way. That branch grew segment composition when a wrapper
+            // that was not first on the line turned out to escape it. This branch did not, and the
+            // gap it left is the worse of the two: `git status; bash -c "echo x >> docs/vision.md"`
+            // stepped aside where the same wrapper alone answers `deny`, so the CONSTITUTION was
+            // reachable behind any separator plus one wrapper. Measured 2026-07-28.
+            //
+            // A fix landing in one carrier and not its sibling is the defect class this repository
+            // has a standing ruling about; it happened here between two branches of one function,
+            // five commits apart. Found by Copilot review on #60, not by the session that wrote the
+            // first half.
+            //
+            // Both calls read the RAW command so the unwrap budget stays at one level, which is what
+            // keeps hole 1's two-wrapper counterexample true on this side too.
+            const writes = (s) => shellWrites(s, action.write);
+            return (
+                spellings(input.command).some(writes) ||
+                commandSegments(input.command).some((seg) => spellings(seg).some(writes))
+            );
+        }
     }
     if (typeof action.read === "string" && READ_TOOLS.includes(tool)) {
         return matchesPath(input.file_path, action.read);

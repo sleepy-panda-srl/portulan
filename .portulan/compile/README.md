@@ -65,7 +65,7 @@ fails open — which is why it is in the honest-holes list in [`../gate-map.md`]
 A `write:` rule names a **path**, not a tool. For one milestone it compiled to `Edit`, `Write` and
 `NotebookEdit` and stopped there, so a `Bash` call reached neither layer: the permission rule rejects the
 tool, and the shared matcher returned false because `action.shell` was undefined. `echo x >> docs/vision.md`
-was therefore an unGated write to this repository's constitution — the one file whose rule says that an
+was therefore an ungated write to this repository's constitution — the one file whose rule says that an
 agent able to edit it "can launder any other change past its own grader".
 
 [`../../cli/compile.mjs`](../../cli/compile.mjs) now answers for `Bash` on a `write:` rule, over the same
