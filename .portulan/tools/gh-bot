@@ -133,9 +133,11 @@ case "${1:-}" in
             if [ -n "$endpoint" ]; then shown="\`$endpoint\`"; else shown="<no endpoint found in these arguments>"; fi
             printf 'gh-bot: this identity is for PULL REQUEST CONVERSATION, and %s is not one of its endpoints.\n' "$shown" >&2
             printf '        Allowed: issue/review comments, review replies, reviews, `graphql`, `/installation/repositories`.\n' >&2
-            printf '        Settings — rulesets, branch protection, collaborators — are not this identity'"'"'s: its App\n' >&2
-            printf '        holds no `administration`, so GitHub refuses them whatever this script admits. The maintainer\n' >&2
-            printf '        reaches them with plain `gh api`. See ../gate-map.md, "The honest holes".\n' >&2
+            printf '        Settings — rulesets, branch protection, collaborators — are not this identity'"'"'s, and the\n' >&2
+            printf '        two halves differ. A CHANGE there GitHub refuses anyway: this App holds no `administration`.\n' >&2
+            printf '        A READ it may NOT refuse — a ruleset read rides on `metadata` and answers 200 — and this\n' >&2
+            printf '        script refuses that by choice, which is where it is narrower than the policy.\n' >&2
+            printf '        The maintainer reaches both with plain `gh api`. See ../gate-map.md, "The honest holes".\n' >&2
             exit 2
         fi
         ;;
