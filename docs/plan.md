@@ -41,7 +41,7 @@ sleepy-panda-works/
 │   ├── agents/                   Claude Code agent bindings of core/personas/ — a platform-fixed
 │   │                             location: the default agents dir of the repo-rooted plugin
 │   ├── cli/                      init · doctor · compile · vendor · index · upgrade
-│   │                             (today: doctor + plugin-lint + compile, standalone; absorbed at M7)
+│   │                             (today: doctor + compile, absorbed at M7 · plugin-lint, on no M7 list)
 │   ├── examples/                 fictional demo workspace
 │   ├── .portulan/                this repo's own workspace — customer zero, dogfooding
 │   ├── evals/                    golden tasks, A/B harness, CI eval gate
@@ -1573,3 +1573,14 @@ _The seam applies here too: no client-identifying references._
   librarian and proposals-as-PRs are session 1, and the close needs its own fresh-context checkpoint.
   Seam scan clean across files, commit message, and branch name. Handoff:
   [`.portulan/handoffs/2026-07-28-the-index-is-the-rail.md`](../.portulan/handoffs/2026-07-28-the-index-is-the-rail.md).
+
+- 2026-07-28 · post-M4 — no milestone row touched · **The record gets its rail, and the log mandate gets
+  one carrier** — [#73](https://github.com/sleepy-panda-works/portulan/pull/73). Six sessions that had a
+  handoff and no Session log entry get dated reconstructions; `dod.md` condition 6 stops restating the
+  log mandate narrower than the log itself states it; `plan.md`'s topology and `identity.md`'s CLI row
+  stop understating what the CLI absorbs; an entry becomes a pointer of at most 10 lines, forward-only.
+  The correspondence check runs both ways and **by count** — drafted as presence, it was green on the
+  very record it was minted from, caught at the session-open checkpoint; it reds on `origin/main`'s own
+  plan.md. · Fidelity: session-open APPROVE-WITH-ADJUSTMENTS (11) and pre-commit APPROVE-WITH-ADJUSTMENTS
+  (4), all folded in; the implementation ran ahead of the first verdict, recorded in the handoff. Seam
+  scan clean. Handoff: [`…rail.md`](../.portulan/handoffs/2026-07-28-the-record-gets-its-rail.md).

@@ -300,7 +300,13 @@ else
     # 4d. The newest entry attests the seam.
     last=$(cut -f2 "$tmp/entries" | tail -1)
     entry=$(awk -v s="$last" 'NR==s{f=1} f && NR>s && (/^- 2[0-9][0-9][0-9]-/ || /^## /){exit} f{print}' "$PLAN")
-    if printf '%s' "$entry" | tr '\n' ' ' | grep -qiE 'seam scan[^.]{0,120}clean'; then
+    # `[[:space:]]+` between the two words, not a single space, and it is a false-red fix rather than a
+    # relaxation. `tr` turns each newline into a space and leaves the continuation indent standing, so an
+    # attestation that happens to wrap between "seam" and "scan" arrives as `seam   scan` and reads as
+    # ABSENT. Every entry since this check landed had passed on the accident of wrapping elsewhere; the
+    # first one that did not was written by the session adding these lines, and the check caught it. The
+    # words must still be adjacent, and `clean` still within 120 characters that contain no full stop.
+    if printf '%s' "$entry" | tr '\n' ' ' | grep -qiE 'seam[[:space:]]+scan[^.]{0,120}clean'; then
         pass "record — the newest Session log entry carries a seam attestation"
     else
         fail "record — the newest Session log entry ($PLAN:$last) carries no seam attestation"

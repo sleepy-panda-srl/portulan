@@ -273,6 +273,8 @@ Observations, each run on this tree and reverted, with the tree asserted clean a
 | `../handoffs/` emptied | **exit 2** — could not check correspondence |
 | every entry removed from the log | **exit 2** — could not enumerate the record |
 | the whole recipe under `LC_ALL=C`, `en_US.UTF-8`, `tr_TR.UTF-8` | green and identical in all three |
+| an attestation wrapping between "seam" and "scan" | green — it was **red** before the fix noted below |
+| an entry carrying no attestation at all | **red**, unchanged — the negative control for that fix |
 
 `tr_TR.UTF-8` is in that list on purpose: it is the locale where case-insensitive matching stops
 behaving, and the seam half of this same check is a `grep -i`.
@@ -284,6 +286,17 @@ left four dates standing and printed `ok … (4 date(s))` over a directory with 
 test the older direction had always carried was the thing the rewrite dropped; it is back, with the
 reason in the code rather than in this file alone. Reading a *derived* list is not reading the tree, and
 the derived list is the one that stays confident once the tree is gone.
+
+**And the seam half turned out to carry a false red, found by the session's own entry.** The check joins
+an entry's lines with `tr '\n' ' '`, which leaves the two-space continuation indent standing, so an
+attestation that happens to wrap between *seam* and *scan* arrives as `seam   scan` and matched nothing.
+The words are now separated by `[[:space:]]+`. This is a correction, not a relaxation — they must still
+be adjacent, and *clean* must still follow within 120 characters containing no full stop; an entry with
+no attestation at all is still red, asserted as the negative control. Every entry written since the check
+landed on 2026-07-27 had passed on the accident of wrapping somewhere else, which is worth saying plainly:
+the check was one line-break away from a false red for a year of entries, and it took writing a
+sentence that wrapped in the wrong place to find out. A false red is the failure that gets a whole recipe
+switched off — this file has said so since milestone 2 — and it was sitting inside the recipe that says it.
 
 **The stray-file audit is the same lesson pointed forward.** Both directions enumerate by a dated
 filename, so a handoff named anything else is not failed — it is uncounted, which is worse. A **Markdown**
