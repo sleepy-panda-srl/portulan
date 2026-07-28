@@ -158,9 +158,12 @@ jobs:
                   --jq '[.head.sha, (.draft|tostring)] | join("|")'); then
               unread="could not read pull request #${PR_NUMBER}"
             else
-              IFS='|' read -r head draft <<EOF
-          $pr
-          EOF
+              # A here-string, not a here-doc. A here-doc body would have to sit at exactly this
+              # block scalar's indent — ten spaces, no more, no fewer — for YAML to strip it back to
+              # column 0. One space either way and, because `|` is not IFS whitespace, `read` keeps
+              # the difference: `head` becomes `   <sha>`, matches no `commit_id`, and the job waits
+              # out its whole budget over invisible characters. A here-string has no such coupling.
+              IFS='|' read -r head draft <<<"$pr"
               if [ -z "${head:-}" ] || [ "$head" = "null" ]; then
                 unread="pull request #${PR_NUMBER} reported no head SHA"
               fi
@@ -229,9 +232,7 @@ jobs:
                       matched_id="$id"
                     fi
                   done
-                done <<EOF
-          $reviews
-          EOF
+                done <<<"$reviews"
 
                 if [ "$matched" -eq 1 ]; then
                   printf 'GREEN — Copilot has reviewed the current head commit.\n'
