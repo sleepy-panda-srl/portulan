@@ -136,6 +136,25 @@ it with a patch.
 
 Fix-round **one** of the two the bound allows; this handoff rides the same push.
 
+**Round two carried no thread and two suppressed low-confidence notes, and both were right** — both in
+`librarian.yml`, which has **never executed**, which is where a defect is most expensive because it
+first shows at 06:00 on a Monday with nobody watching. Fixed rather than filed, and the judgement is
+recorded because rule 3 says notes are never a reason to push again: these are defects this change
+introduced, found before merge, with the fix in hand.
+
+The first is the mirror of a defect the pre-commit checkpoint had just fixed. That checkpoint caught
+the idempotence step reading a *branch* where it meant a *pull request*; the note caught the repair
+scoping the question to an **open** one — so a same-day re-dispatch after the day's pass had already
+*merged* would take the stranded-branch error path and fail the job over work that went perfectly. Both
+directions of one question, one round apart. The second: the label went to a re-resolved branch name
+rather than to the URL `create` had just printed, and answering that wrongly leaves the pull request
+open and unlabelled with a required context red.
+
+**Four of the six findings on this pull request came through the suppressed channel**, which
+`copilot-reviewed` passes regardless of and which has no Resolve control — the same pattern as #72 and
+#73, and the standing argument for [#66](https://github.com/sleepy-panda-works/portulan/issues/66).
+That is fix-round **two**, the last the bound allows; anything further becomes an issue.
+
 ## Open questions
 
 - **The two repository secrets are the maintainer's, and they gate the demonstration.** `gh secret
