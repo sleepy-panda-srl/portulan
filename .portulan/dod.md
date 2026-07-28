@@ -28,9 +28,17 @@ A change is done when **all** of the following hold.
    The term list lives outside this repository. _Why: this history **is** public, since 2026-07-27, and
    cannot be cleaned afterwards — only rewritten, which is worse and leaves its own trace. The condition
    this clause was written under has arrived, so it binds harder now than when it was drafted, not less._
-6. **The plan reflects reality.** If the work moved milestone state, the same change updates
-   [`../docs/plan.md`](../docs/plan.md) — Status column and Session log — so the next session boots from
-   the truth rather than from an optimistic memory of it.
+6. **The plan reflects reality.** Every session appends its Session log entry to
+   [`../docs/plan.md`](../docs/plan.md) — unconditionally, in the shape and within the budget that
+   file's **Session log header** sets out. This condition **cites** that mandate and deliberately does
+   not restate it, not even the budget's number: the header is the one carrier. The **Status column**
+   is the conditional half, and moves only when the work moved milestone state. _Why the split is
+   spelled out: this condition used to read "if the work moved milestone state, the same change updates
+   … Status column and Session log", which made the log entry conditional too — a second, narrower
+   carrier of a rule the plan already stated in full. Five handoff-documented sessions went unlogged
+   under it before a two-day review counted them. Both halves of the log↔handoff correspondence, and
+   the entry budget, are now rails in `docs.sh`'s `record` check rather than prose anyone must
+   remember._
 7. **The supervisor checkpoint passed**, in a fresh context, and is recorded — for anything
    milestone-affecting.
 8. **The session ended with a dated handoff** in [`handoffs/`](handoffs/). Five lines is enough; absent
