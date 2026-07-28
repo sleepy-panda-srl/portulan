@@ -106,6 +106,22 @@ even when its proposed remedy would have made the record worse.
 Fix-round **one** of the two the bound allows; this handoff and the Session log entry ride the same
 push rather than spawning a round of their own, per rule 2.
 
+**Round two carried one suppressed low-confidence note, and it was right.** The first survey of that
+round read the body as empty; re-checking before closing found the block present — the failure the
+rule *a round is empty only when the block is ABSENT* exists to catch, met by the session that was
+quoting it. The note: *"counts the entries dated after the cutoff and goes red above 10"* reads as a
+cap on **how many** entries a date may have, when the budget is 10 **lines per entry**. It is right,
+and the sentence was in the single carrier of the rule this change introduces — a doctrine sentence
+that misstates its own rail, which `dod.md` condition 4 refuses and which #57's rewording records as
+having cost a session-blocking question.
+
+**Fixed rather than filed, and the judgement is on the record because the bound says otherwise.** Rule 3
+holds that suppressed notes get a reply and are never a reason to push again. It was overridden here on
+one ground: this is not review feedback to iterate on, it is a defect **this session introduced** into
+doctrine, found before merge, with the fix in hand. Filing an issue would have meant knowingly merging a
+false sentence into the file every session boots from. That is fix-round **two**, the last the bound
+allows; anything further becomes an issue and the pull request merges.
+
 ## A third false green — or rather, the first false RED
 
 Writing this session's own Session log entry turned the recipe red on the seam attestation the entry

@@ -131,8 +131,10 @@ it when it was set keep their length — two of them are dated that same day and
 rewriting a merged record to satisfy a rule written after it destroys the record in order to enforce a
 budget. A cutoff rather than a list, on the handoff cadence's own precedent. So the budget binds nothing
 at the moment it is introduced, and the rail says so out loud rather than leaving it to be inferred from
-a green: [`../.portulan/verify/docs.sh`](../.portulan/verify/docs.sh)'s `record` check counts the entries
-dated after the cutoff and goes red above 10, printing that count on every run._
+a green: [`../.portulan/verify/docs.sh`](../.portulan/verify/docs.sh)'s `record` check **fails if any one
+entry dated after the cutoff runs past 10 lines** — the budget is per entry, never a cap on how many
+entries a date may have — and prints how many entries it examined on every run, so a green states its own
+coverage rather than implying it._
 
 _The seam applies here too: no client-identifying references._
 
