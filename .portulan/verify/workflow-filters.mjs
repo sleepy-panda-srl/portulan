@@ -504,18 +504,30 @@ function auditForUncoveredWorkflows() {
 // not there; a program no anchor names is a filter running in CI that nothing exercises. Neither is
 // a verdict about the workflows, and neither may pass: both are exit 2, which is `./doctor.sh`'s
 // answer to the same disagreement.
+//
+// What an anchor must select is one **distinct** program, not one call site. Two workflows running
+// the identical filter is a thing that will happen — `.head.sha` is not an exotic thing to want —
+// and requiring exactly one *site* would answer that with an exit 2 no anchor could ever satisfy,
+// which is a rail that traps the change rather than catching it. So identical programs bind to the
+// same fixtures and each site is exercised; two *different* programs under one anchor stays exit 2,
+// because there the fixture would be asserting about a filter nobody chose for it.
 function bind(programs) {
     const bound = new Map(programs.map((program) => [program, []]));
+    const identity = (program) => `${program.flags.join(" ")} ${program.filter}`;
     for (const testCase of CASES) {
         const hits = programs.filter((program) => program.filter.includes(testCase.anchor));
-        if (hits.length !== 1) {
+        const distinct = new Set(hits.map(identity));
+        if (distinct.size !== 1) {
             throw new CouldNotRun(
                 `fixture \`${testCase.id}\` anchors on \`${testCase.anchor}\`, which matches `
-                    + `${hits.length} of the ${programs.length} jq program(s) in the workflows rather `
-                    + "than exactly one — the workflow changed and this fixture table did not",
+                    + `${distinct.size} distinct jq program(s) of the ${programs.length} in the `
+                    + "workflows rather than exactly one — "
+                    + (distinct.size === 0
+                        ? "the workflow changed and this fixture table did not"
+                        : `the anchor no longer says which: ${[...hits.map((h) => h.at)].join(", ")}`),
             );
         }
-        bound.get(hits[0]).push(testCase);
+        for (const hit of hits) bound.get(hit).push(testCase);
     }
     const orphans = [...bound].filter(([, cases]) => cases.length === 0);
     if (orphans.length) {
@@ -596,7 +608,14 @@ export function run() {
         let failed = 0;
         for (const [program, cases] of bound) {
             say();
-            say(`${program.at}  jq ${program.flags.join(" ")} '${program.filter}'`);
+            // Printed as the workflow spells it, then as this recipe runs it. Collapsing the two
+            // would have the report claim the file says `jq -r` where it says `gh api --jq`, and
+            // the gap between those two is where the gojq limit lives.
+            say(
+                program.spelling === "--jq"
+                    ? `${program.at}  gh api --jq '${program.filter}'   → run here as: jq -r`
+                    : `${program.at}  jq ${program.flags.join(" ")} '${program.filter}'`,
+            );
             for (const testCase of cases) {
                 const faults = runCase(program, testCase);
                 if (faults.length === 0) {
