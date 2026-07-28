@@ -42,7 +42,7 @@ left inside "any writer outside the table", because it is the likeliest escape a
 
 `matchers.add("Bash")` for a write gate. Without it the runner is never invoked for a `Bash` call and the
 whole shell half is a matcher nothing reaches — the manifest-field-that-loads-nothing defect, arriving as a
-matcher this time. It changes **nothing** in this repository's `settings.json`, whose policy already gates
+matcher this time. It changes **nothing** in this repository's `.claude/settings.json`, whose policy already gates
 shell commands, which is exactly why its absence would not have been noticed here. Asserted against a
 policy carrying only a write rule.
 
@@ -92,8 +92,17 @@ coarse matcher's false reds land on the people doing the work, which is how this
 
 ## State
 
-Six recipes green, suite **378** (was 309 on `main`; 350 before the checkpoint). Rebased onto `bf46153`;
-`.claude/settings.json` is byte-identical, so `verify/compile.sh` is green with no artifact change.
+Seven recipes green, suite **442** — 378 when this handoff was first written, 309 on `main` before the
+change, 350 before the supervisor checkpoint. `.claude/settings.json` is byte-identical, so
+`verify/compile.sh` is green with no artifact change.
+
+The gap between 378 and 442 is the review, and it is the part of this record worth keeping. Fourteen
+Copilot rounds found **three further live bypasses of the constitution gate** — a wrapper that was not
+first on the line, a CRLF continuation, and an escaped quote closing a run early — each one a spelling the
+supervisor checkpoint's own attack pass had not tried. Three of them were the `write` branch missing a fix
+the `shell` branch had already received, which is the defect class this handoff cites two sections up while
+demonstrating it. A hole list is only ever checked by somebody attacking the matcher; that held for the
+checkpoint, and it held again for a reviewer after it.
 
 Open PRs [#53](https://github.com/sleepy-panda-works/portulan/pull/53) and
 [#55](https://github.com/sleepy-panda-works/portulan/pull/55) touch all five of these files and will
