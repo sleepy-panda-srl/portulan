@@ -164,8 +164,21 @@ jobs:
               # the difference: `head` becomes `   <sha>`, matches no `commit_id`, and the job waits
               # out its whole budget over invisible characters. A here-string has no such coupling.
               IFS='|' read -r head draft <<<"$pr"
+              # Not `unread`, and not a retry. The two failures are different in kind and only one of
+              # them is worth waiting on: a transport error means the answer is unknown and may arrive
+              # on the next poll, but this is a SUCCESSFUL read whose answer is that the pull request
+              # has no head. Waiting cannot make a well-formed answer say something else, so twenty
+              # minutes of polling would buy nothing and bury a precise fault under the generic
+              # timeout message twenty minutes later.
+              #
+              # The first cut of this file failed here immediately — "refusing to guess". Folding it
+              # into the retry loop was a regression introduced by the rewrite that added waiting, and
+              # it was caught by a suppressed low-confidence Copilot note on #63 that nothing but this
+              # pull request's own surfacing step would have shown anyone.
               if [ -z "${head:-}" ] || [ "$head" = "null" ]; then
-                unread="pull request #${PR_NUMBER} reported no head SHA"
+                printf '::error::pull request #%s reported no head SHA — refusing to guess.\n' "$PR_NUMBER"
+                printf 'The API answered and the answer was malformed, which no amount of waiting fixes.\n'
+                exit 1
               fi
             fi
 
