@@ -548,13 +548,22 @@ export function githubRuleset(parsed, options = {}) {
     }
 
     const rules = [];
+    // Both halves of the condition are load-bearing, and the second was missing for one round. The
+    // pair is **compiled from `propose` rules**, so a policy with none of them asked for no
+    // pull-request requirement — emitting one because `floor.checks` happens to be declared is the
+    // compiler inventing policy, which is the single thing this backend must not do. It also broke
+    // the accounting silently: those two ruleset rules would have sat in the artifact with no policy
+    // rule credited for compiling them, so the matrix and `doctor` would have described a floor
+    // missing two of its own rules. Found by review, round 3.
+    const declaresPropose = parsed.rules.some((r) => r.tier === "propose");
     const hasChecks = floor.checks.length > 0;
+    const emitPullRequestPair = hasChecks && declaresPropose;
 
     // The propose tier and the floor's pull-request pair. Emitted together or not at all: a
     // `pull_request` rule without `required_status_checks` imports cleanly, reads as a configured
     // floor, and lets a red pull request merge. Half a mapping is the silent weakening this
     // repository keeps finding, so the refusal names the missing declaration instead.
-    if (hasChecks) {
+    if (emitPullRequestPair) {
         rules.push({
             type: "pull_request",
             parameters: {
@@ -586,7 +595,7 @@ export function githubRuleset(parsed, options = {}) {
 
     for (const rule of parsed.rules) {
         if (rule.tier === "propose") {
-            if (hasChecks) {
+            if (emitPullRequestPair) {
                 compiled.push({ id: rule.id, tier: rule.tier, surface: "pull_request · required_status_checks" });
             } else {
                 refused.push({
@@ -632,6 +641,15 @@ export function githubRuleset(parsed, options = {}) {
     notes.push(
         `every rule here applies to one declared ref, \`refs/heads/${floor.branch}\`, and to nothing else. A policy rule naming an action on any other branch is not covered by this export even where it compiled.`,
     );
+    // A declaration nothing compiles is reported, never dropped in silence — the manifest-field-that-
+    // loads-nothing defect, arriving from the policy side this time.
+    if (hasChecks && !declaresPropose) {
+        notes.push(
+            `this floor declares ${floor.checks.length} status check(s) and the policy carries no \`propose\` rule, so no ` +
+                `\`pull_request\` or \`required_status_checks\` rule is emitted. Requiring checks presupposes pull requests, and ` +
+                `this backend will not add that requirement on a workspace's behalf. The checks are a declaration nothing compiles.`,
+        );
+    }
     notes.push(
         "this export carries the three rule types the milestone-4 criterion names and no more. It does not reproduce a repository's whole protection surface, so importing it beside classic branch protection ADDS a layer rather than replacing one — and removing classic protection afterwards would drop whatever this ruleset does not carry.",
     );

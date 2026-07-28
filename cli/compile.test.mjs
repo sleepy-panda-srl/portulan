@@ -531,6 +531,32 @@ describe("the floor backend", () => {
         for (const r of result.refused) assert.match(r.why, /no `floor`/, "the reason must name what is missing");
     });
 
+    test("checks declared with NO propose rule emit nothing — the pair is compiled, never assumed", () => {
+        // Found by review, round 3. `pull_request` + `required_status_checks` were emitted whenever
+        // `floor.checks` was non-empty, whether or not any rule said changes go by pull request. Two
+        // things wrong with that, and the second is the worse one. It invents policy: an exported
+        // floor requiring pull requests that nothing in the policy asked for. And it breaks the
+        // accounting — those two ruleset rules would sit in the artifact with no rule credited for
+        // compiling them, so `--matrix` and `doctor` would describe a floor that is missing two of
+        // its rules, which is the failure this backend's whole reporting layer exists to prevent.
+        const p = withFloor();
+        p.rules = p.rules.filter((r) => r.tier !== "propose");
+        const result = githubRuleset(parse(p));
+        const types = result.artifact.value.rules.map((r) => r.type);
+        assert.ok(!types.includes("pull_request"), "no rule asked for a pull-request requirement");
+        assert.ok(!types.includes("required_status_checks"));
+        assert.ok(types.includes("non_fast_forward"), "the ref rules that WERE asked for still compile");
+
+        // Every emitted ruleset rule is credited to a policy rule. Asserted directly, because it is
+        // the property that was silently false rather than the symptom that was visible.
+        const surfaces = new Set(result.compiled.flatMap((c) => c.surface.split(" · ")));
+        for (const type of types) assert.ok(surfaces.has(type), `\`${type}\` is in the artifact and no rule compiled to it`);
+
+        // And the orphaned declaration is reported rather than dropped in silence: a manifest field
+        // that validates and compiles nothing is this repository's most expensive recurring defect.
+        assert.ok(result.notes.some((n) => /no `propose` rule/.test(n)), "declared checks nothing compiles must be named");
+    });
+
     test("a floor declaring no checks refuses the pull-request rule TOO — the mapping is a pair", () => {
         // Emitting `pull_request` alone would import cleanly, read as a configured floor, and let a
         // red pull request merge. Half a mapping is the silent weakening this repository keeps

@@ -123,7 +123,7 @@ green throughout — is pinned by the suite.
 
 ## Spec 2.1 → 2.2
 
-Suite 244 → **295**, both figures measured (at `fab592d` and at head) rather than derived.
+Suite 244 → **296**, both figures measured (at `fab592d` and at head) rather than derived.
 
 Additive: the optional `floor` object in the gate policy — `branch`, `checks`, `reviews`,
 `resolve_conversations`. All four exist because they vary per repository and the export would otherwise
@@ -201,7 +201,17 @@ pre-commit checkpoint, and now says so.
 **The first attempt at the red test for that fix passed before the fix**, because it asserted on the
 context name and an unrelated unpinned-check note in the same check class already mentions it. Tightened
 to the cross-check's own sentence. Worth recording: a red test that is green is not a test, and only
-running it first showed that. Suite 289 → 295.
+running it first showed that.
+
+**A third round found one more, and it is the sharpest of the seven.** The `pull_request` +
+`required_status_checks` pair was emitted whenever `floor.checks` was non-empty — whether or not any rule
+said changes go by pull request. That is the compiler **inventing policy**, which is the one thing this
+backend must not do; and it broke the accounting silently, because those two ruleset rules would have sat
+in the artifact with no policy rule credited for compiling them. The matrix and `doctor` would have
+described a floor missing two of its own rules, in the reporting layer built to prevent exactly that. The
+pair is now emitted only when a `propose` rule exists, every emitted rule is asserted to be credited to a
+policy rule, and a `floor.checks` declaration with no `propose` rule is **reported** rather than dropped.
+Suite 289 → 296.
 
 ## What is left
 
