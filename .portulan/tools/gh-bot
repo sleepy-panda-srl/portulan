@@ -11,7 +11,9 @@
 # Scope, deliberately narrow: this is for PULL REQUEST CONVERSATION ONLY — comments, review
 # replies, resolving threads. Commits and pushes keep the maintainer's identity, because the
 # build's provenance discipline requires his authorship on the commit record. Do not use this to
-# push. See ../gate-map.md, "Which identity acts".
+# push. See ../gate-map.md, "Which identity acts". Since 2026-07-28 that scope is a list this file
+# checks rather than a sentence it asks you to have read — see the `api` arm below, and read the
+# paragraph above it for what the list is worth and what it is not.
 #
 # Exit 2 if the token could not be minted, so a misconfiguration cannot be mistaken for a
 # GitHub refusal — the same contract as the verify recipes.
@@ -36,6 +38,41 @@ fi
 # identity is for, and an agent that hits a dead end here will reach for plain `gh` and post as the
 # maintainer — the failure this whole mechanism exists to prevent. The refusal must always name the
 # sanctioned spelling.
+#
+# ## Why `api` grew an endpoint allowlist, 2026-07-28
+#
+# `gh api` is the one subcommand here that reaches every endpoint GitHub has, so the subcommand
+# refusals above said nothing about it — and this wrapper is a spelling no compiled gate can see.
+# A shell gate in ../gates.json compiles to `Bash(<prefix>:*)`, a literal prefix match against the
+# command as typed, so `./.portulan/tools/gh-bot api …` matches no rule; ../../cli/compile.mjs's
+# `spellings()` peels `sh -c` and knows nothing of this path. The wrapper is *also* allowlisted by
+# hand in `.claude/settings.local.json` on the maintainer's machine, so on that host it runs
+# unattended.
+#
+# This grew against the `gh api` gate, and that gate was removed on 2026-07-28. So the allowlist below
+# is now NARROWER than the policy it once backstopped: a ruleset read is unattended through plain
+# `gh api` and refused here. Deliberate, and a statement about the PRINCIPAL rather than the endpoint —
+# this token is minted by the repository and should reach the smallest surface that does its job, while
+# the maintainer's own credentials are his to spend. See ../gate-map.md, "The honest holes", hole 4.
+#
+# **What that was actually worth, measured 2026-07-28 rather than argued.** The installation's whole
+# permission set is `{"metadata": "read", "pull_requests": "write"}` — no `administration` — so:
+#
+#   PATCH repos/{owner}/{repo}/rulesets/{id}      403 Resource not accessible by integration
+#   GET   repos/{owner}/{repo}/branches/main/protection
+#                                                 403 Resource not accessible by integration
+#   GET   repos/{owner}/{repo}/rulesets           200 — ruleset READ rides on `metadata`
+#
+# So the settings CHANGE the gate exists to stop was already refused by the platform, which is the
+# floor doing exactly the job ../../core/operating/autonomy.md gives it. The read was not: the gate
+# covers reads on purpose ("a gated read is a small cost"), and through this wrapper one succeeded
+# silently. This allowlist is what stops that being silent, and it is the layer that keeps holding
+# on the day someone widens the App — the permission set is a live setting no file here can pin.
+#
+# **Still a guard against habit, and it must not be read as more.** An agent with shell access can
+# mint the token itself and call `gh` directly. That is true of every local layer in this repository,
+# including the compiled permission rules; the rail is the App's permission set, and it is named as
+# such in ../gate-map.md rather than implied by this code being here.
 case "${1:-}" in
     pr)
         printf 'gh-bot: use the API form so the action is unambiguous, e.g.\n' >&2
@@ -47,6 +84,60 @@ case "${1:-}" in
     repo|release|auth|secret|ssh-key|gpg-key)
         printf 'gh-bot: `gh %s` is not for the agent identity — see ../gate-map.md, "Which identity acts"\n' "$1" >&2
         exit 2
+        ;;
+    api)
+        # Find the endpoint: the first argument that is not a flag and not a flag's value. Scanning
+        # for "the first thing containing a slash" would be shorter and wrong — `-f body='see
+        # repos/x/y'` contains one — and taking `$2` would be wrong the other way, since `gh api -X
+        # PATCH repos/…` puts the method there. Options that consume the next argument are listed
+        # rather than guessed, because a missed one shifts the scan onto that option's VALUE.
+        endpoint=""
+        skip=0
+        for arg in "${@:2}"; do
+            if [ "$skip" -eq 1 ]; then skip=0; continue; fi
+            case "$arg" in
+                -X|--method|-F|--field|-f|--raw-field|-H|--header|-q|--jq|-t|--template|--cache|--hostname|-p|--preview|--input)
+                    skip=1 ;;
+                -*) ;;
+                *) endpoint="$arg"; break ;;
+            esac
+        done
+        endpoint="${endpoint#/}"
+
+        # The endpoints this identity is for. Every path segment is spelled — `[^/]+`, never `.*` —
+        # because a pattern able to cross a `/` is how an allowlist quietly admits the subtree it
+        # meant to exclude, and `repos/*/*/pulls/*` under `case` globbing would have matched
+        # `repos/o/r/pulls/1/merge`. Anchored at both ends for the same reason.
+        #
+        # `graphql` is admitted and is this guard's honest boundary: one endpoint carrying arbitrary
+        # queries, which no allowlist here can inspect. It is what `resolveReviewThread` is spelled
+        # through, and GitHub refuses that to any App regardless — `FORBIDDEN — Resource not
+        # accessible by integration`, measured 2026-07-27 and recorded in ../gate-map.md. So what
+        # bounds GraphQL is the permission set, exactly as it bounds everything else here.
+        conversation='^(graphql'
+        conversation+='|installation/repositories'
+        conversation+='|repos/[^/]+/[^/]+/issues/[0-9]+/comments'
+        conversation+='|repos/[^/]+/[^/]+/issues/comments/[0-9]+'
+        conversation+='|repos/[^/]+/[^/]+/pulls/[0-9]+/(comments|reviews)'
+        conversation+='|repos/[^/]+/[^/]+/pulls/[0-9]+/comments/[0-9]+/replies'
+        conversation+='|repos/[^/]+/[^/]+/pulls/(comments|reviews)/[0-9]+'
+        conversation+=')$'
+
+        # An endpoint this scan could not identify is refused, never admitted. "Could not tell" must
+        # not resolve to "allow" — the same contract ../verify/README.md holds every recipe to, and
+        # the reason `--help` lands here too rather than being special-cased into a hole.
+        if ! [[ "$endpoint" =~ $conversation ]]; then
+            # An if/else rather than `${endpoint:+…}${endpoint:-…}`, which prints the endpoint TWICE
+            # when it is set — the `:-` arm falls through to the value, not to nothing. Caught by
+            # reading the refusal this prints instead of only checking that it fired.
+            if [ -n "$endpoint" ]; then shown="\`$endpoint\`"; else shown="<no endpoint found in these arguments>"; fi
+            printf 'gh-bot: this identity is for PULL REQUEST CONVERSATION, and %s is not one of its endpoints.\n' "$shown" >&2
+            printf '        Allowed: issue/review comments, review replies, reviews, `graphql`, `/installation/repositories`.\n' >&2
+            printf '        Settings — rulesets, branch protection, collaborators — are not this identity'"'"'s: its App\n' >&2
+            printf '        holds no `administration`, so GitHub refuses them whatever this script admits. The maintainer\n' >&2
+            printf '        reaches them with plain `gh api`. See ../gate-map.md, "The honest holes".\n' >&2
+            exit 2
+        fi
         ;;
 esac
 
