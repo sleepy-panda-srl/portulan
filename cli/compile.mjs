@@ -1042,7 +1042,8 @@ export function claudeCode(parsed, options = {}) {
     if (shellWriteGates.length) {
         notes.push(
             `${shellWriteGates.length} write gate(s) — ${shellWriteGates.join(", ")} — also match a Bash command that writes the ` +
-                `path: a \`>\`/\`>>\` redirection into it, or one of \`${[...FILE_WRITERS].join("`, `")}\` naming it, or ` +
+                `path: a \`>\`/\`>>\` redirection into it, or one of \`${[...FILE_WRITERS].join("`, `")}\` naming it ` +
+                    `OR naming a directory it lives in (\`rm -rf docs\` reaches \`docs/vision.md\`), or ` +
                 `\`${[...IN_PLACE_EDITORS].join("`/`")}\` under an in-place flag. This half is the HOOK's alone and therefore ` +
                 `FAILS OPEN if the hook does: \`Bash(prefix:*)\` matches a command prefix while the path sits anywhere in the ` +
                 `command, so no permission rule expresses it. A heredoc whose TARGET is interpolated, an interpolated ` +
