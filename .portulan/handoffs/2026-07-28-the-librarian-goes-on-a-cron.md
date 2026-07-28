@@ -188,7 +188,18 @@ chaining short-circuits the *whole* member chain, so `result.proposals?.filter(�
 `0` rather than throwing when a workspace declares no `slots.proposals`. Measured — `examples` takes
 that path on every real run and always has. Two tests pin it, so the next reader does not re-derive it.
 
-**Everything after round four becomes an issue**, and [#82](https://github.com/sleepy-panda-works/portulan/issues/82)
+**Round five carried two notes, both minor, both about this session's own just-written code**, and both
+are the two-carriers class in miniature. `lastTouched`'s docstring still said *a file git cannot date is
+refused* after the fix had made that false of the untracked case — a comment and its code disagreeing
+about a failure mode, in the function whose whole subject is which failures are which. And a `doctor`
+fixture pointed `memory.index.path` at a file it never wrote, so those tests were red for two reasons
+where one was under test; the assertion was scoped to the right message either way, but a fixture red
+for two reasons is one a later reader cannot trust at a glance. Both fixed.
+
+**Every unresolved thread was answered inline**, on the maintainer's instruction, rather than in the
+pull-request body where earlier rounds' replies went.
+
+**Everything after round five becomes an issue**, and [#82](https://github.com/sleepy-panda-works/portulan/issues/82)
 is the one that remains: the handoff-series index the row gained mid-flight.
 
 ## Open questions

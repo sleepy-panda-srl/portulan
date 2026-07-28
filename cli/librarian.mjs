@@ -243,9 +243,12 @@ function historyRoot(dir) {
  * that the entire store was touched on the day of the last rebase. Author date survives a rebase,
  * which is the property that makes it the honest answer to *when was this written*.
  *
- * A file git cannot date is **refused**. Treating it as new is the fail-open — the single record
- * nothing can date is precisely the one a staleness pass must not wave through — and treating it as
- * ancient is a false red on a file somebody just wrote.
+ * Returns `null` for a path that is **not in `HEAD`** — untracked, or staged and not yet committed.
+ * That is not a refusal and not a fail-open: such a file is *new*, and nothing in the history this
+ * pass reads is older than a file's absence from that history, so age 0 is the precise answer. A path
+ * that **is** in `HEAD` and still has no date is refused, because that is a fact about the checkout
+ * rather than about the store. The reasoning for the split, and the two defects that produced it, are
+ * at the call site below rather than repeated here.
  */
 function lastTouched(root, relative) {
     const out = git(root, ["log", "-1", "--format=%as", "--", relative], `date ${relative}`);
