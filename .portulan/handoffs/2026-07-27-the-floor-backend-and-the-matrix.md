@@ -213,16 +213,29 @@ pair is now emitted only when a `propose` rule exists, every emitted rule is ass
 policy rule, and a `floor.checks` declaration with no `propose` rule is **reported** rather than dropped.
 Suite 289 → 309.
 
-**And the second rebase cost something the merge hid.** `main` moved six commits mid-session, one of them
-adding path-escape validation to the very function this branch had rewritten. The auto-merge kept both
-files' prose and dropped that block out of the rewritten function body — a clean merge, no conflict, a
-guard silently gone. It came back only because its **tests travelled separately and went red**: nine of
-them, naming a validation nobody had deleted on purpose. Restored verbatim with a note saying why it is
-being re-added, and the tests retargeted from `compile()` to the renamed `parse()`.
+**And the second rebase produced this session's third false claim — this one entirely mine, and the worst
+of the three, because I asserted a mechanism that had not happened and then generalised a lesson from it.**
 
-Worth keeping as the shape rather than the incident: **a clean auto-merge of a rewritten function is where
-a guard disappears**, and what saved it was that the guard and its tests lived in different files. Had they
-been co-located, both halves would have merged away together and nothing would have been red.
+What actually happened: `main` moved six commits mid-session, one of which added path-escape validation to
+`parse()`, the function this branch had rewritten. The rebase brought its tests too, and nine of them went
+red. I read that as the auto-merge having silently dropped the validation, "restored" the block, and wrote
+a handoff paragraph, a plan entry and a commit message about *a clean auto-merge being where a guard
+disappears*.
+
+**None of it was true.** The block came through the rebase untouched. The nine reds were entirely the
+`compile()` → `parse()` rename: main's tests called the old name. `git show <commit>:cli/compile.mjs`
+would have settled it in one command, and I did not run it. What my "restore" actually produced was a
+**second copy of a load-bearing validator** — the outcome that comment warned against, created by the
+comment's own author — which a later Copilot round caught. Duplicate removed; the surviving block is
+main's, unedited.
+
+The lesson that survives is smaller and less flattering than the one I invented: **diagnose a red before
+narrating it.** A failing test tells you something is wrong, not what. And the generalisation I reached for
+was appealing precisely because it made a merge, rather than a misreading, responsible.
+
+_(The commit message on `ca872e8` carries the false version and cannot be amended without rewriting a
+pushed commit others may have fetched. It stands, corrected here and in the plan — which is the same
+choice this repository has made before about a merged record.)_
 
 **A fourth round found one more, and it arrived in the half nobody reads.** Copilot's *suppressed*
 low-confidence section — no Resolve control, no effect on the merge gate, visible only to someone who opens

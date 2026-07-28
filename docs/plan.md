@@ -1213,14 +1213,18 @@ the seam applies here too: no client-identifying references)_
   `required_status_checks` pair was emitted whenever `floor.checks` was non-empty, whether or not any rule
   said changes go by pull request — the compiler **inventing policy**, and breaking its own accounting in
   silence, since those two ruleset rules would have sat in the artifact with no policy rule credited for
-  them. Every emitted rule type is now asserted to be credited to one. · **The second rebase cost
-  something the merge hid, and only a test caught it.** `main` moved six commits mid-session, one of which
-  added path-escape validation to the very function this branch had rewritten; the auto-merge kept both
-  files' prose and dropped that block out of the rewritten body — a clean merge that silently removed a
-  guard. It came back because its **tests travelled separately and went red**, nine of them naming a
-  validation nobody had deleted on purpose. Restored, with the tests retargeted to the renamed stage. That
-  is the second time this session that `main` moving under it produced a false state, and the first time a
-  test rather than a supervisor was what noticed. · **A fourth round found one more, in the half nobody
+  them. Every emitted rule type is now asserted to be credited to one. · **The second rebase produced this session's third
+  false claim, and this one was entirely the implementer's.** `main` moved six commits mid-session, one
+  adding path-escape validation to `parse()` — the function this branch had rewritten — and nine of its
+  tests went red on the rebase. That was read as the auto-merge having silently dropped the validation,
+  and a paragraph here, one in the handoff and a commit message were written about *a clean auto-merge
+  being where a guard disappears*. **None of it was true**: the block came through untouched, the reds
+  were entirely the `compile()` → `parse()` rename, and `git show <commit>:cli/compile.mjs` would have
+  settled it in one command. The "restore" instead created a **second copy of a load-bearing validator**
+  — the exact outcome its own comment warned against — caught by a later Copilot round and removed. The
+  surviving lesson is smaller and less flattering than the invented one: **diagnose a red before
+  narrating it**, and be suspicious of a generalisation that makes a merge rather than a misreading
+  responsible. The commit message on `ca872e8` carries the false version and stands, corrected here. · **A fourth round found one more, in the half nobody
   reads** — Copilot's *suppressed* low-confidence section, which carries no Resolve control and blocks
   nothing: `readCount()` rehydrated only the reasons `REASONS` declares and dropped any other stored key,
   so a reason this file can emit without the constant declaring it would reset to 0 on every read, never
