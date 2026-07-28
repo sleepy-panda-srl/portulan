@@ -856,6 +856,14 @@ describe("the shared matcher", () => {
         ["a `then` branch", "if true; then git push --force origin main; fi"],
         ["a `do` body", "for x in 1; do git push --force origin main; done"],
         ["a brace group", "{ git push --force origin main; }"],
+        // A leading redirection is the one row of this table with a CLOSED grammar — an optional fd,
+        // one of `< > >> <> >& &>`, and a word — so unlike the leader names it could be stripped with
+        // an edge a reader could check. Left open deliberately, and asserted here so the choice is
+        // visible rather than looking like an oversight. Found by Copilot review on #60.
+        ["a leading `2>&1`", "2>&1 git push --force origin main"],
+        ["a leading `>` to a file", "> /tmp/log git push --force origin main"],
+        ["a leading `2>/dev/null`", "2>/dev/null git push --force origin main"],
+        ["a leading `<`", "< /dev/null git push --force origin main"],
     ]) {
         test(`the limit is asserted, not just documented: a leader still escapes — ${label}`, () => {
             const rule = { tier: "gated", action: { shell: "git push --force" } };
