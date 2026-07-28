@@ -186,6 +186,35 @@ silently re-attributes everything typed afterwards, which is the failure this me
   trivially. The real enforcement is the App's permission set: that token cannot push, cannot merge, and
   cannot change settings, so the worst case is a comment in the wrong voice rather than a change in the
   wrong hands.
+- **`gh api` is allowlisted by endpoint, since 2026-07-28 — and the sentence above is why that is a
+  guard rather than a fix.** `api` is the one subcommand that reaches everything GitHub has, so the
+  subcommand refusals said nothing about it, and this wrapper is a spelling no rule in
+  [`../gates.json`](../gates.json) can see: a shell gate compiles to `Bash(<prefix>:*)`, a literal
+  prefix match against the command as typed. It grew against that file's `gh api` gate, which was
+  removed on 2026-07-28 — so this allowlist is now **narrower than the policy**, refusing a ruleset
+  read that plain `gh api` performs unattended. Deliberate: it bounds a token this repository mints,
+  and narrower is the safe direction for that. Measured before deciding what to do about it — the
+  installation holds `metadata: read` and `pull_requests: write` and no `administration`, so:
+
+  | Attempted through `gh-bot` | GitHub |
+  |---|---|
+  | `PATCH repos/{owner}/{repo}/rulesets/{id}` | `403 Resource not accessible by integration` |
+  | `GET repos/{owner}/{repo}/branches/main/protection` | `403 Resource not accessible by integration` |
+  | `GET repos/{owner}/{repo}/rulesets` | **`200`** — ruleset reads ride on `metadata` |
+
+  The settings *change* was already refused by the platform, which is the floor working. The **read**
+  was not, and that rule gates reads on purpose, so the wrapper now refuses any endpoint outside
+  pull-request conversation *before* it mints a token — a refused call never creates a credential. Its
+  limits, stated because a guard nobody knows the edges of gets trusted as a rail: `graphql` is admitted
+  and carries arbitrary queries, and the whole check is bypassable by minting a token and calling `gh`
+  directly. The rail is the permission set. [`../gate-map.md`](../gate-map.md) carries this as hole 4,
+  and [`../../cli/gh-bot.test.mjs`](../../cli/gh-bot.test.mjs) asserts both directions offline.
+- **Widening this App's permissions is a gate-policy change, not a settings tweak.** Step 1 says *Pull
+  requests → Read and write, and nothing else*, and the bullets above are what that sentence is holding
+  up: two of them stop being true the moment `administration` is granted, and nothing in this repository
+  would notice. The permission set is a live setting no file here pins — the same limit
+  [`../gate-map.md`](../gate-map.md) records for branch protection. Read it back at the supervised
+  checkpoints; change it only alongside the gate map.
 - ~~**The end-to-end path is unverified until the App exists.**~~ **Verified 2026-07-25.** The App is
   installed on `sleepy-panda-works/portulan` only, with `pull_requests: write` and `metadata: read`; a
   token minted through this path listed exactly that one repository, was **refused** repository contents,
