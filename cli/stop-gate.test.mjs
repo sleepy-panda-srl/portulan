@@ -139,6 +139,48 @@ describe("the block counter — one count PER REASON, since task 0007", () => {
     });
 });
 
+describe("the reason list and the counter file cannot drift apart", () => {
+    // Found by a Copilot review, in the *suppressed* half — the low-confidence section of the review
+    // body, which carries no Resolve control and blocks nothing, so it is only read by someone who
+    // goes looking. It was right, and it is the same defect `REASONS` was introduced to prevent,
+    // one layer down: the constant exists so the counter, the clearing rule and the message agree
+    // about what a reason is, and `readCount` filtered by it while `bumpCount` accepted anything.
+
+    test("a stored reason outside REASONS is preserved, counted, and still capped", () => {
+        // The failure it produces is silent and weakening: the count resets to 0 on every read, so
+        // that reason can never reach its own cap and the gate keeps arguing until the ceiling of
+        // nine. A gate that is quietly three times more patient about one reason is the exact
+        // asymmetry task 0007 existed to remove, reintroduced through a drifted list.
+        const dir = scratch();
+        assert.equal(bumpCount("s", ["surprise"], dir).counts.surprise, 1);
+        assert.equal(bumpCount("s", ["surprise"], dir).counts.surprise, 2, "the count survives the round trip");
+        assert.equal(bumpCount("s", ["surprise"], dir).counts.surprise, 3);
+        const past = bumpCount("s", ["surprise"], dir);
+        assert.ok(past.counts.surprise > MAX_BLOCKS);
+        assert.equal(
+            verdict({ problems: [{ reason: "surprise", text: "x" }], counts: past.counts, total: past.total }).action,
+            "release",
+            "an unlisted reason must still reach its own cap, not ride to the ceiling",
+        );
+        // And the known reasons are still defaulted, so nothing else changes shape.
+        for (const reason of REASONS) assert.equal(past.counts[reason], 0);
+    });
+
+    test("every reason the runner can emit is declared in REASONS", () => {
+        // The runtime now degrades safely, which is not the same as the lists agreeing. This binds
+        // them at test time so a new refusal reason added to `collectProblems` without being added to
+        // `REASONS` is RED in CI rather than a gate quietly becoming more patient about it. A source
+        // check rather than a behavioural one, deliberately: `collectProblems` needs a real tree and
+        // a real recipe run, and the thing worth binding is the declaration, not the run.
+        const source = fs.readFileSync(new URL("../.portulan/compile/stop.mjs", import.meta.url), "utf8");
+        const emitted = [...source.matchAll(/reason:\s*"([a-z-]+)"/g)].map((m) => m[1]);
+        assert.ok(emitted.length >= 2, "the parser must be finding the reasons at all");
+        for (const reason of new Set(emitted)) {
+            assert.ok(REASONS.includes(reason), `stop.mjs emits reason \`${reason}\`, which REASONS does not declare`);
+        }
+    });
+});
+
 describe("consecutive semantics — a reason's counter clears only when THAT reason clears", () => {
     test("an observed green recipe clears the recipe count", () => {
         const dir = scratch();
