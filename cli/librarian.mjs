@@ -363,12 +363,25 @@ export function passWorkspace(dir, { asOf, write = false } = {}) {
     const rel = (p) => path.relative(root, fs.realpathSync(p)).split(path.sep).join("/");
 
     // ---- reindex
-    let index = { declared: false, drifted: false, findings: [] };
+    //
+    // **Drift is read BEFORE the write, and that ordering is the whole of it.** `inspect` in write
+    // mode regenerates the index and *then* compares, so it never reports drift — it has just removed
+    // it. Reading `drifted` off that result therefore said "current" about an index the pass had
+    // regenerated one line earlier, and the Session log entry it generates said "no index drift" in
+    // the same breath: a machine-written record of what a run did, wrong about the one thing the run
+    // actually changed. Raised by Copilot on #81, in the suppressed half of the round, against three
+    // sites at once. So the check runs first and unconditionally, and the write follows.
+    let index = { declared: false, regenerated: false, findings: [] };
     try {
-        const result = inspectIndex(dir, { write });
+        const before = inspectIndex(dir, { write: false });
+        const regenerated = write && before.findings.some((f) => f.check === "index");
+        const result = write ? inspectIndex(dir, { write: true }) : before;
         index = {
             declared: result.declared,
-            drifted: result.findings.some((f) => f.check === "index"),
+            // In check mode this is *drift found and not repaired*; in write mode it is *drift found
+            // and repaired*. Both are "the index was out of date when the pass arrived", which is the
+            // fact the record is reporting, and the mode says which half happened.
+            regenerated: write ? regenerated : before.findings.some((f) => f.check === "index"),
             findings: result.findings.map((f) => f.message),
         };
     } catch (cause) {
@@ -509,7 +522,7 @@ export function renderRecord(results, { asOf }) {
                     ? ` — ${r.counts.uncommitted} not yet committed, so undated here and never stale`
                     : "") +
                 ". Index: " +
-                (r.index.declared ? (r.index.drifted ? "**had drifted and was regenerated**" : "current") : "none declared") +
+                (r.index.declared ? (r.index.regenerated ? "**was out of date and has been regenerated**" : "current") : "none declared") +
                 ".",
             "",
         );
@@ -632,7 +645,7 @@ export function renderLogEntry(results, { asOf, handoff }) {
     const stale = declared.reduce((n, r) => n + r.stale.length, 0);
     const seals = declared.reduce((n, r) => n + r.seals.filter((s) => s.due).length, 0);
     const proposals = declared.reduce((n, r) => n + (r.proposals?.filter((p) => p.due).length ?? 0), 0);
-    const reindexed = declared.filter((r) => r.index.drifted).map((r) => r.name);
+    const reindexed = declared.filter((r) => r.index.regenerated).map((r) => r.name);
 
     return (
         [

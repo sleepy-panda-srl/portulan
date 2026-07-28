@@ -73,6 +73,14 @@ permissions:
   # `contents: write` is what pushes the branch, and it is the only elevation in this file. The
   # repository default is `read` (measured), so every other workflow here keeps the floor.
   contents: write
+  # And `pull-requests: read` for the idempotence check, which is not optional the way it looks.
+  # **Declaring `permissions` at all sets every unnamed scope to `none`** — it is a replacement, not
+  # an addition to the default — so with `contents: write` alone `gh pr list` would have been refused,
+  # the check would have taken the stranded-branch error path, and the workflow would have failed on
+  # its very first run with a message about a branch when the cause was a token. Raised by Copilot on
+  # #81. Read is enough: nothing here writes to a pull request with this token — the App opens and
+  # labels it.
+  pull-requests: read
 
 concurrency:
   # Two passes writing the same dated branch would race on the same three files. Never cancel the one
