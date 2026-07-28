@@ -1324,3 +1324,72 @@ the seam applies here too: no client-identifying references)_
   byte-identical through five review rounds. · Seam scan clean across files, commit message, and branch
   name. Handoff:
   [`.portulan/handoffs/2026-07-28-milestone-four-closes.md`](../.portulan/handoffs/2026-07-28-milestone-four-closes.md).
+
+- 2026-07-28 · post-M4 — no milestone row touched · **The awaited-half checker stopped reporting a wait
+  as a failure**, merged as [#63](https://github.com/sleepy-panda-works/portulan/pull/63) (`87a9168`).
+  The first cut answered a three-state question with two colours: *the round has not arrived yet* and
+  *no round is coming* were both red. The first was **guaranteed** — Copilot cannot review a commit that
+  did not exist when the run started, so every push produced a red by construction — and the second was
+  **permanent**, because ruleset `copilot auto-review on pull requests` carries
+  `review_draft_pull_requests: false` and a draft is never sent. The job now waits inside its own run:
+  pending while the round is outstanding, which blocks a merge exactly as hard; red only for a round that
+  never came, on a 20-minute budget, or an API that stays unreadable. · **The click is gone.** Dropping
+  the `pull_request_review` trigger removed the `action_required` hold that had cost one maintainer
+  approval per pull request, and a class of false red caused by the agent's own replies — which are
+  submitted as reviews — re-running the check mid-round. **Measured live on the pull request itself:**
+  green at 125s over five polls on `d4db12b` and 3m12s on `1a61a54`, neither needing an approval. · **One
+  relaxation, named rather than buried:** a draft now reports success. A draft cannot merge and
+  `ready_for_review` re-runs the real check, so this opens nothing — but the seconds between that click
+  and the new run reporting are covered by **nothing but the merge being Gated and human, a guard that
+  expires the moment auto-merge is enabled** — and an earlier version of this change claimed
+  `workspace-verify`, `pr-labeled` and conversation resolution covered them. They do not: the
+  first two run on draft pushes and are already green on that SHA, and there are no threads to resolve
+  because Copilot never reviewed the draft. Caught by a fresh-context supervisor, not by the implementer.
+  · **The half no gate can see is now printed.** Copilot's low-confidence comments live in the review
+  body — no thread, no Resolve control, no effect on `required_conversation_resolution` — and catching
+  them was a manual sweep somebody had to remember;
+  [`verify-preconditions-fail-closed.md`](../.portulan/memory/verify-preconditions-fail-closed.md)
+  records one that was right, sat three days, and appears nowhere in the record of addressed feedback.
+  The job now extracts them into its summary, distinguishing *absent* from *unparseable* from *parsed*,
+  because collapsing the first two would print `Read, not assumed` over a parse that failed — the false
+  green that workflow exists to refuse, reintroduced by the step added to prevent a different one. · **The
+  step justified itself on its own diff:** six rounds, **nine suppressed notes, none of them threaded,
+  four of them real** — a here-doc coupling, a regression where a malformed API answer was treated as an
+  awaited one, a timeout that named the reviewer when the fault was the transport, and that false green.
+  Four more were refusals of a single claim, made in round two and remade in round six: that jq's `join`
+  errors on null — measured, it treats null as the empty string and exits 0. The ninth, a table header,
+  landed although the reason given for it was wrong. · **A patch-aware exemption was designed and
+  dropped**, which is the useful half. It would have let a rebase preserving the branch diff keep its
+  Copilot round — attractive, because `strict: true` means merging one pull request re-arms the gate on
+  every other. It was rejected because its risk argument was refuted by
+  [`1d4e9fb`](https://github.com/sleepy-panda-works/portulan/commit/1d4e9fb)'s own commit message: that
+  incident was survived because a guard and its tests sat in different files, *"co-located, both halves
+  would have merged away together and nothing would have been red"* — the backstop it leaned on was
+  recorded as luck. Graded **APPROVE-WITH-CHANGES** by a fresh-context supervisor which also corrected the
+  framing that the advisory check *"guarantees nothing"*: #49 shows the maintainer waiting for green
+  before merging, so what is missing is the rail, not the behaviour. ·
+  **The feedback loop got a bound, ruled the same day it was made mandatory.** Measured over the 30 most
+  recently merged pull requests: **110 Copilot rounds, 3.7 each, 29% finding nothing at all, twelve
+  needing four or more, #49 needing nine.** The driver is *pushes*, not findings — `review_on_push: true`
+  spawns a round per push, and round three of this very pull request was spawned by a **handoff
+  correction**, a documentation-only push. So: one push per round, records land last, threads block but
+  low-confidence notes do not, and after two fix-rounds the remainder becomes an issue.
+  [`a-review-loop-needs-a-bound.md`](../.portulan/memory/a-review-loop-needs-a-bound.md) is new and is
+  explicit that **nothing checks it**. The guarantee is untouched. · **Two claims-drift siblings were
+  fixed in the same stroke**, per the rule that the defect class sets a fix's scope: the gate map called
+  this check *"a required status check"* four paragraphs above saying it is *"not yet required,
+  deliberately"*, and the memory record promised three limits and listed two. · **Deferred rather than
+  smuggled in:** [#65](https://github.com/sleepy-panda-works/portulan/issues/65) executing the workflow's
+  own `--jq` filters in the suite, [#66](https://github.com/sleepy-panda-works/portulan/issues/66)
+  promoting suppressed notes into real threads so `CLEAN` becomes a complete signal,
+  [#67](https://github.com/sleepy-panda-works/portulan/issues/67) measuring whether Copilot reviews
+  **fork** pull requests — which now blocks the floor join, because the repository is public and a
+  required check that never reports on forks would red out every outside contribution. · **A declaration
+  that had been false since #54 was repaired:** `labels.json` declared an intake vocabulary of which
+  `improvement` and `feedback` did not exist on GitHub, so two of the three issue forms were wired to
+  labels nothing could apply; `bug`'s live description was GitHub's stock *"Something isn't working"*
+  rather than the declared *"Something does not do what the files say it does"*, which is the distinction
+  this repository turns on. All ten declared labels now match name, colour and description. · This check
+  is **still not required** and this change does not make it one. · Seam scan clean across files, commit
+  messages, and branch name. Handoff:
+  [`.portulan/handoffs/2026-07-28-awaiting-a-review-is-not-a-failure.md`](../.portulan/handoffs/2026-07-28-awaiting-a-review-is-not-a-failure.md).
