@@ -1,9 +1,19 @@
 {
   "portulan": {
-    "spec": "2.1"
+    "spec": "2.2"
   },
 
   "why": "gate-map.md",
+
+  "floor": {
+    "branch": "main",
+    "checks": [
+      { "context": "workspace-verify", "integration_id": 15368 },
+      { "context": "pr-labeled", "integration_id": 15368 }
+    ],
+    "reviews": 0,
+    "resolve_conversations": true
+  },
 
   "rules": [
     {
