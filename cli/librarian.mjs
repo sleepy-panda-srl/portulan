@@ -653,22 +653,69 @@ export function renderLogEntry(results, { asOf, handoff }) {
 // The command
 // ===========================================================================================
 
-export function run(argv, say = console.log) {
-    const args = [...argv];
-    const take = (flag) => {
-        const i = args.indexOf(flag);
-        if (i === -1) return undefined;
-        const [, value] = args.splice(i, 2);
-        return value;
+const USAGE = "usage: node cli/librarian.mjs [--as-of YYYY-MM-DD] [--write] [--log <path>] <workspace-dir> [...]";
+
+/**
+ * Parse `argv` strictly, or throw `LibrarianError`.
+ *
+ * **Strictly**, because the permissive version fails silently in both directions and this tool runs
+ * unattended. An unknown flag was dropped, so `--wrtie` produced a run that reported everything it
+ * found and wrote nothing — a success message over work that did not happen. And a value-bearing flag
+ * with no value ate the next argument, so `--log .portulan` set the log path to a *workspace* and then
+ * passed over no workspaces at all: a green having examined nothing, which is the enumeration
+ * fail-open this repository has now found five of in its own scaffolding. Raised by Copilot on #81.
+ *
+ * The residual limit, stated rather than left to be found: `--log .portulan` is *not* detectable here.
+ * `.portulan` is a perfectly good value and any `--flag value` grammar consumes it. What catches that
+ * caller is the layer above — no workspaces left, so `run` prints the usage and exits 2 rather than
+ * reporting a green over an empty list. That check is now the only thing standing between the typo and
+ * a pass that examined nothing, which is why it is asserted in the suite rather than assumed.
+ *
+ * `cli/compile.mjs` parses explicitly for the same reason; this now matches it.
+ */
+export function parseArgs(argv) {
+    const opts = { asOf: undefined, logPath: undefined, write: false, dirs: [] };
+    const value = (flag, next) => {
+        // A flag's value may not be another flag. Without this, `--log --write .portulan` sets the log
+        // path to `--write` and silently drops the mode the caller asked for.
+        if (next === undefined || next.startsWith("--")) {
+            throw new LibrarianError(`${flag} needs a value.\n${USAGE}`);
+        }
+        return next;
     };
 
-    const asOfArg = take("--as-of");
-    const logPath = take("--log");
-    const write = args.includes("--write");
-    const dirs = args.filter((a) => !a.startsWith("--"));
+    for (let i = 0; i < argv.length; i += 1) {
+        const arg = argv[i];
+        switch (arg) {
+            case "--as-of":
+                opts.asOf = value(arg, argv[(i += 1)]);
+                break;
+            case "--log":
+                opts.logPath = value(arg, argv[(i += 1)]);
+                break;
+            case "--write":
+                opts.write = true;
+                break;
+            default:
+                if (arg.startsWith("--")) throw new LibrarianError(`unknown option ${JSON.stringify(arg)}.\n${USAGE}`);
+                opts.dirs.push(arg);
+        }
+    }
+    return opts;
+}
+
+export function run(argv, say = console.log) {
+    let asOfArg, logPath, write, dirs;
+    try {
+        ({ asOf: asOfArg, logPath, write, dirs } = parseArgs(argv));
+    } catch (error) {
+        if (!(error instanceof LibrarianError)) throw error;
+        say(`  ✗ ${error.message}`);
+        return 2;
+    }
 
     if (dirs.length === 0) {
-        say("usage: node cli/librarian.mjs [--as-of YYYY-MM-DD] [--write] [--log <path>] <workspace-dir> [...]");
+        say(USAGE);
         return 2;
     }
 

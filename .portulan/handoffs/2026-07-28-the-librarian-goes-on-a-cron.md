@@ -114,6 +114,28 @@ classifying prose, and a red on a proposal whose only fault is the maintainer's 
 recipe gets switched off. Two of the fourteen record their outcome under `**Status.**` rather than
 `**Decision.**`, which is a real shape in a real store and not one to fail over.
 
+## The review round, under the bound
+
+One Copilot round on [#81](https://github.com/sleepy-panda-works/portulan/pull/81), **one thread, no
+suppressed-notes block** — checked for its absence rather than inferred from an empty list, since that
+block populates late and is the channel with no Resolve control.
+
+The finding was real and is the class this repository keeps finding in its own scaffolding: `run`'s
+argument parsing was permissive, so an unknown flag was **dropped**. `--wrtie` therefore produced a run
+that read the store, reported everything it found, and wrote nothing — a success message over work that
+never happened, in a tool that runs unattended. A value-bearing flag with no value was the same shape
+one turn on: `--log --write a` would have set the log path to `--write` and silently dropped the mode.
+Parsing is now an explicit loop, matching `compile.mjs`, with three tests.
+
+**Half the comment is not fixable where it was raised, and the code now says so.** `--log .portulan`
+cannot be caught at the parse layer — `.portulan` is a good value and any `--flag value` grammar
+consumes it. What catches that caller is the empty-workspace-list check one layer up, which was already
+there and is now the *only* thing between the typo and a pass that examined nothing. So it is asserted
+rather than assumed. Answering a finding with the limit of its own remedy is worth more than answering
+it with a patch.
+
+Fix-round **one** of the two the bound allows; this handoff rides the same push.
+
 ## Open questions
 
 - **The two repository secrets are the maintainer's, and they gate the demonstration.** `gh secret
