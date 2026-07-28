@@ -235,7 +235,16 @@ Closed by giving the `write:` action a shell half in the matcher both halves of 
 
 - a `>` or `>>` **redirection** into the path, and
 - a **named table** of file-writing commands naming it — `cp`, `mv`, `ln`, `rm`, `tee`, `dd`, `install`,
-  `truncate`, `shred`, `patch`, plus `sed`, `gsed`, `perl` and `ruby` under an in-place flag.
+  `truncate`, `shred`, `patch`, plus `sed`, `gsed`, `perl` and `ruby` under an in-place flag — or naming a
+  **directory the path lives in**, because `rm -rf docs` destroys the constitution as thoroughly as
+  `rm -rf docs/vision.md` does, and a gate decided by a trailing slash is not a gate.
+
+Both halves read the line the way a shell does, which took a second pass to get right: commands are
+separated by `;`, `&&`, `|`, a subshell, **and a newline**, and a writer hiding behind `{`, `then` or `do`
+is still a writer. The first version treated a newline as ordinary whitespace, so the plainest spelling
+there is — two lines, the write on the second — folded into one command whose head was `git status` and
+reached nothing. A **heredoc body** is skipped, because it is text being written rather than commands being
+run; the line that opens it still gates, and so does anything after the terminator.
 
 A table rather than a parser, for the reason the floor backend's own recognition is a table: a limit a
 reader can measure beats a matcher clever enough to be wrong quietly. **`git` is deliberately not in it**,
@@ -293,30 +302,47 @@ is healthy. A permission rule does not fail open. So [`compile/gate.mjs`](compil
 step aside silently on any internal error, handing the decision back to the layer that cannot be removed by
 a syntax error.
 
-**The honest holes, named because they are the ones to know.** Four of them, and the first is smaller than
+**The honest holes, named because they are the ones to know.** Five of them, and the first is smaller than
 an earlier draft of this paragraph claimed — that draft said the wrapper spelling "falls through to the
 host's default mode", which was true *before* the hook existed and false of the shipped configuration. A
 pre-commit supervisor measured it and found the hook's `ask` governing and its sentence reaching the agent.
 Corrected here rather than left, because a gate map that overstates a hole is as wrong as one that hides it.
 
 1. **Spellings neither layer sees.** The permission rule matches a literal prefix; the hook peels **one**
-   shell wrapper. Two wrappers, a heredoc, an interpolated variable, or a command assembled at runtime
-   reach neither. For a `write:` rule's shell half the same sentence has its own list: a heredoc, an
-   interpolated path, a language runtime writing the file itself (`python3 -c "open(…,'w')"`), or any
-   writer outside the table above. Both lists are asserted as tests rather than only written down, so
-   anyone tempted to call this layer a rail meets the counterexample.
-2. **A gate whose only layer is the hook — and the hook is the one that fails open.** New with the shell
+   shell wrapper. Two wrappers, a heredoc *whose target is interpolated*, an interpolated variable, or a
+   command assembled at runtime reach neither. For a `write:` rule's shell half the list is its own:
+   an interpolated path, a language runtime writing the file itself (`python3 -c "open(…,'w')"`), a
+   writer outside the table above, and a program that **invokes** a writer (`find -exec cp`, `xargs cp`)
+   — parsing those to find the real command is the ambitious parser this repository keeps refusing.
+   Quoting is honoured to one level, so a write-shaped string inside a `node -e` script can produce a
+   false **red**; measured on this repository's own tooling while testing this very change. Every entry
+   is asserted as a test rather than only written down, so anyone tempted to call this layer a rail
+   meets the counterexample.
+
+   _This list was wrong when first published — four items, five missing, the plainest of them a
+   newline. It was corrected by a fresh-context supervisor that tried to defeat the matcher instead of
+   reading it. A hole list is a claim like any other, and the only thing that checks it is somebody
+   attacking it._
+2. **A gated command that was not the first word on the line used to reach nothing — now closed at the
+   hook, still open at the permission layer.** `ls && git push --force origin main` matched no gate at
+   all until 2026-07-28: the matcher prefix-matched the whole command string, so **every** Gated outward
+   action here was defeated by putting anything in front of it. The hook now splits a line into its
+   commands and matches each. The permission rule still does not — `Bash(git push --force:*)` is a
+   prefix pattern on the host, and nothing in that DSL reaches a command in second position — so this
+   is the second gate whose reach beyond the first word is the hook's alone. Found by the supervisor
+   pass on the write gate, and fixed there because it is the same defect one action kind over.
+3. **A gate whose only layer is the hook — and the hook is the one that fails open.** New with the shell
    half of `edit-the-constitution`, above. Everywhere else the permission rule is the gate and the hook
    adds reach; there, the hook *is* the reach, because no `Bash(prefix:*)` pattern can name a path sitting
    anywhere in a command. A syntax error in [`compile/gate.mjs`](compile/gate.mjs) removes tool-level
    coverage of shell writes to the constitution and leaves the `Edit`/`Write` denials standing, which is a
    partial gate that looks from the outside exactly like a whole one. `compile` names the affected rules in
    a note on every run for that reason.
-3. **A local `allow` rule beside the compiled gates is unmeasured.** `.claude/settings.local.json` is
+4. **A local `allow` rule beside the compiled gates is unmeasured.** `.claude/settings.local.json` is
    git-ignored, so an adopter's own allow rules sit invisibly next to these. A compiled `deny`/`ask` beats
    an `allow` for the *same* pattern; what a broad local `Bash` allow does to the *wrapper* spelling has
    not been measured, and is not claimed either way.
-4. **A rule whose sentence is broader than its matcher.** Guarded against by splitting rather than by
+5. **A rule whose sentence is broader than its matcher.** Guarded against by splitting rather than by
    trusting prose — `rename-or-transfer-a-repository` compiles to nothing and says so, rather than hiding
    inside a neighbour's matcher.
 4. **This repository ships a wrapper of its own, and holes 1 and 2 meet in it.** Added 2026-07-28.
