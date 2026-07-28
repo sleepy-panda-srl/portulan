@@ -240,8 +240,14 @@ describe("refusing what it cannot compile", () => {
     // These arrived on `main` in `f545228` while the floor backend was in flight, written against the
     // `compile()` name this branch renamed to `parse()` when the tier partition moved into the
     // backends. Retargeted, not rewritten: the validation is the shared stage's either way, and it is
-    // where they were always aimed. Their going red on the rebase is what surfaced that the merge had
-    // silently dropped the validation itself out of the rewritten function body.
+    // where they were always aimed.
+    //
+    // Their nine reds on the rebase were **entirely** this rename, and reading them as something else
+    // cost a defect. The first diagnosis was that the merge had dropped the validation itself; it had
+    // not — the block came through untouched — and "restoring" it added a second copy of a
+    // load-bearing validator, which a Copilot round then caught. `git show <commit>:cli/compile.mjs`
+    // would have settled it in one command before any of that. Recorded here rather than only in the
+    // handoff, because this is where the next person meets these tests.
     for (const kind of ["write", "read"]) {
         test(`a ${kind} target climbing out with \`..\` refuses`, () => {
             // The sibling of the absolute case, one spelling over: `../secrets/` emits
