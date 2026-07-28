@@ -30,7 +30,8 @@ matcher that contradicts a declared tier is worse than one that admits a gap.
 literal command prefix while the path sits at an arbitrary position, so that DSL cannot express it at all.
 It is the first gate here whose only layer is [`../compile/gate.mjs`](../compile/gate.mjs) — a broken hook
 removes it silently while the `Edit`/`Write` denials stay standing, so the gate still reads as whole from
-outside. Recorded as a fourth entry in the gate map's honest-holes list, and printed by `compile` as a note
+outside. Recorded in the gate map's honest-holes list — by description rather than by ordinal, because
+#61 landed a hole of its own the same day and every number in that list moved — and printed by `compile` as a note
 on every run rather than left to be inferred from an absence.
 
 **`git` is deliberately outside the table**, though `git checkout -- docs/vision.md` overwrites the file.
