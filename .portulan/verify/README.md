@@ -257,6 +257,14 @@ parsed run: scalar`. Put a jq program in a workflow the recipe does not name →
 instrument → **exit 2** from the wrapper. Take `jq` off the `PATH` → **exit 2**, from the wrapper's
 guard and again from the instrument run alone. Clean tree → **green, 7 programs, 24 fixtures**.
 
+**And the dependency claim above is measured rather than argued.** "`jq` ships on `ubuntu-latest`, so
+this does not become a permanently-red recipe" was a prediction until the first CI run on
+[#64](https://github.com/sleepy-panda-works/portulan/pull/64) printed `filters: 7 jq program(s) in 2
+workflow file(s), 24 fixture(s), run through jq-1.7` and went green. Worth the sentence because the
+runner's jq is **1.7** and the maintainer's is **1.7.1** — two versions, same 24 answers, which is the
+first evidence anyone here has that these programs are not pinned to one build. It is not evidence
+about gojq, which is the interpreter that actually runs them in the workflows.
+
 ## Known limits
 
 - **Anchors are not checked.** A link to `file.md#section` verifies only that `file.md` exists. Checking

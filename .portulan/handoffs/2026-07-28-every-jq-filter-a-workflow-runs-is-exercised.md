@@ -34,8 +34,9 @@ rather than a copy of them.
 - **`jq` is the first dependency here that is neither bash, a POSIX utility, nor `node`** —
   `../identity.md` owns that line and now states it. Same test milestone 2 applied to `node`: nothing
   is installed before it runs. It is not the `claude plugin validate` case, which stays out of the
-  recipes because it would exit `2` on every CI run — `jq` ships on `ubuntu-latest`, and the pull
-  request's own `workspace-verify` run is the measurement of that claim rather than this sentence.
+  recipes because it would exit `2` on every CI run — `jq` ships on `ubuntu-latest`, **measured on
+  #64's first `workspace-verify` run** rather than predicted: `run through jq-1.7`, green. The runner's
+  jq is 1.7 and the maintainer's is 1.7.1, and the 24 answers are identical on both.
 - **The filters are never written down.** A copy is a second carrier of one fact that keeps passing
   while the original drifts. A fixture names an **anchor** — a selector saying which program it answers
   for — and the program itself is lifted out of the file.

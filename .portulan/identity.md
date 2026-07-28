@@ -59,8 +59,9 @@ the paragraph you are reading, and is what keeps *could not run* distinguishable
 jq's own behaviour: two merge-gate workflows branch on what a jq program prints for null input, and no
 other tool can answer for that. Same test as milestone 2 applied to a different binary — the property
 that matters is not the letter *bash*, it is that nothing is installed before it runs, and `jq` is
-present on the maintainer's machine and on `ubuntu-latest` alike. The cost is stated rather than
-hidden: on a machine without it that recipe exits `2`, and the six others still run.
+present on the maintainer's machine and on `ubuntu-latest` alike — **measured on the first CI run of
+that recipe, `jq-1.7` on the runner against `jq-1.7.1` locally**, rather than assumed. The cost is
+stated rather than hidden: on a machine without it that recipe exits `2`, and the six others still run.
 
 **One tool is deliberately outside that line.** `claude plugin validate --strict` — the authority on the
 Claude Code plugin contract — is run by hand at the supervised checkpoints and before a release, and is
