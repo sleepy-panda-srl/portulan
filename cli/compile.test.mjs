@@ -845,6 +845,8 @@ describe("the shared matcher", () => {
         // spelling, which is what a session would actually type.
         ["a plain wrapper, mid-line", "git push --force", 'ls && bash -c "git push --force origin main"'],
         ["a wrapper after a `;`", "gh pr merge", 'git status; bash -c "gh pr merge 60"'],
+        // The escaped-quote spelling on the shell side — same defect as the write case, same commit.
+        ["after an escaped quote", "git push --force", 'echo "x\\""; git push --force origin main'],
     ]) {
         test(`a gated command is gated wherever it sits on the line: ${label}`, () => {
             assert.ok(matchesRule({ tier: "gated", action: { shell: target } }, "Bash", { command }), command);
@@ -994,6 +996,11 @@ describe("the shared matcher", () => {
         // as an operator and flushed the word instead of continuing it — the LF spelling denied and
         // the CRLF spelling stepped aside, which made the constitution reachable by editing the file
         // on Windows. Both are asserted so the pair cannot drift apart again.
+        // An escaped quote inside `"…"`. The run closed at the `\"`, the real closing quote opened a
+        // new one, and the `;` was swallowed inside it — so the line never split and the write was
+        // never evaluated. A false GREEN on the constitution, from a spelling that appears whenever a
+        // commit message or JSON blob contains a quote.
+        ['an escaped quote before the separator', 'echo "x\\""; cp /tmp/x docs/vision.md'],
         ["a CRLF continuation before the path", "cp /tmp/x \\\r\ndocs/vision.md"],
         ["a CRLF continuation after `>`", "echo x > \\\r\ndocs/vision.md"],
         ["an LF continuation, the control", "cp /tmp/x \\\ndocs/vision.md"],

@@ -454,10 +454,29 @@ function shellWords(command) {
             // target tokenises as `docs/vision.md"`, trailing quote and all, and fails to match
             // anyway. Right branch, wrong reason, which `a-stated-enforcer-must-be-the-real-one`
             // counts as the same defect one size down.)
-            const end = command.indexOf(c, i + 1);
-            text += end === -1 ? command.slice(i + 1) : command.slice(i + 1, end);
+            // Scanned rather than `indexOf`, for the escaped-quote reason above: inside `"…"` a
+            // `\"` is a literal quote and must not end the run. The escape is resolved into the word,
+            // so `cp /tmp/x "docs/\"v\".md"` compares as the path a shell would pass.
+            //
+            // `$'…'` reaches here with its `$` already dropped and is read as a single-quoted run, so
+            // ANSI-C escape sequences (`\n`, `\t`, `\x41`) are NOT decoded — a stated limit, and the
+            // ambitious parser this file refuses to become. A path spelled with them escapes; that is
+            // hole 1's "interpolated path" neighbourhood rather than a new one.
+            let j = i + 1;
+            let run = "";
+            while (j < command.length) {
+                if (c === '"' && command[j] === "\\" && j + 1 < command.length) {
+                    run += command[j + 1];
+                    j += 2;
+                    continue;
+                }
+                if (command[j] === c) break;
+                run += command[j];
+                j += 1;
+            }
+            text += run;
             open = true;
-            i = end === -1 ? command.length : end;
+            i = j >= command.length ? command.length : j;
             continue;
         }
         if (c === "\\" && i + 1 < command.length) {
@@ -650,6 +669,19 @@ function commandSegments(raw) {
     for (let i = 0; i < command.length; i += 1) {
         const c = command[i];
         if (quote) {
+            // Inside `"…"` a backslash escapes the next character, so `\"` is a literal quote and does
+            // NOT close the run. Without this, `echo "x\""; git push --force …` closed early, the real
+            // closing quote opened a new run, and the `;` was swallowed inside it — no split, no
+            // segment, no gate. Measured stepping aside where the unescaped spelling answers `ask`,
+            // and the same shape reached `cp /tmp/x docs/vision.md`, so it was a false green on the
+            // constitution too. Found by Copilot review on #60.
+            //
+            // Single quotes are deliberately NOT included: POSIX gives `'…'` no escapes at all, so a
+            // backslash there is a literal backslash and honouring it would invent a hole.
+            if (quote === '"' && c === "\\" && i + 1 < command.length) {
+                i += 1;
+                continue;
+            }
             if (c === quote) quote = null;
             continue;
         }
