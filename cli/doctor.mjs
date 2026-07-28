@@ -33,7 +33,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import { parse, backends } from "./compile.mjs";
 // The containment test the memory-index siting rule turns on, imported for the reason directly
 // above: the copy that used to live here drifted into the identical fail-open as the original.
-import { isInside } from "./index.mjs";
+import { isInside, recordType } from "./index.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const DEFAULT_SCHEMA = path.resolve(HERE, "..", "spec", "workspace.schema.json");
@@ -330,7 +330,10 @@ export function parseProvenance(source) {
     return { present: true, fields: Object.keys(fields).length ? fields : null, raw };
 }
 
-const recordType = (source) => (source.match(/^\s*\*\*type:\*\*\s*(\S+)/im)?.[1] ?? "").toLowerCase();
+// A record's declared `**type:**` — imported from ./index.mjs rather than spelled again here. Three
+// tools ask this of the same records and all three carried their own regex, which is half of what #74
+// is about; the direction of the import is set by ./index.mjs already being this module's dependency
+// for `isInside`, so putting the one carrier there keeps the graph acyclic.
 
 // The retirement condition is a template field, not a schema one (core/templates/memory-entry.md):
 // the line a demotion pass retires by. Anchored to the bolded field at line start, so prose that
@@ -762,9 +765,34 @@ export async function inspect(workspaceDir, options = {}) {
         report("cross", `${workspace.packs.length} pack(s) declared — a declaration only: the plugin machinery exists as of milestone 3, but resolving a pack to an installed one still needs the feed (milestone 6)`);
     }
 
-    // Workspace Definition 2.3's two conditional constraints, here for the same reason the
+    // Workspace Definition 2.3's and 2.4's conditional constraints, here for the same reason the
     // `repository`/`tree` pair above is: `dependentRequired` is not in the subset spec/README.md
-    // declares, so the schema cannot carry either of them and ../spec/slots.md says so.
+    // declares, so the schema cannot carry any of them and ../spec/slots.md says so.
+    //
+    // The count went one → three in a single MINOR at 2.3 and three → five at 2.4. That is the
+    // thing to watch rather than absorb quietly: every one of them is a rule the schema states
+    // nowhere, so a workspace validated by some other tool against the published schema alone would
+    // pass shapes this validator refuses. `../spec/README.md` carries the running count for exactly
+    // that reason.
+    if (workspace.librarian && !workspace.slots?.memory) {
+        fail(
+            "cross",
+            "`librarian` declares a scheduled pass with no `slots.memory` store to age — the object " +
+                "configures a store rather than replacing one, and a pass over nothing reports that " +
+                "nothing is stale, which is indistinguishable from a healthy store",
+        );
+    }
+
+    if (workspace.librarian?.staleness?.proposal_days !== undefined && !workspace.slots?.proposals) {
+        fail(
+            "cross",
+            "`librarian.staleness.proposal_days` nags about proposals in a workspace that declares no " +
+                "`slots.proposals` — a threshold nothing can ever cross. The pass reports *not asked* " +
+                "here, which is not the same answer as *none pending*, and a policy that can never fire " +
+                "reads as configured to anyone who greps for it",
+        );
+    }
+
     if (workspace.memory && !workspace.slots?.memory) {
         fail(
             "cross",
@@ -1159,7 +1187,8 @@ export async function inspect(workspaceDir, options = {}) {
     // growing and a store quietly fine print identically unless something says which. Size and
     // count are what doctor can honestly see — it reads the tree and never git, and in a fresh
     // clone every file's mtime is checkout time, so an age report from here would be fabrication.
-    // Staleness is the librarian's (milestone 5), which may legitimately ask git.
+    // Staleness is ./librarian.mjs's, the scheduled pass, which may legitimately ask git — and which
+    // is not a verify recipe precisely so that asking is safe. Built at milestone 5.
     report(
         "retirement",
         stats.records
@@ -1172,7 +1201,7 @@ export async function inspect(workspaceDir, options = {}) {
               (stats.unassessed
                   ? `; ${stats.unassessed} unreadable and never assessed`
                   : "") +
-              ". Size and count only: ages live in git, which doctor does not read, so staleness is the librarian's (milestone 5)"
+              ". Size and count only: ages live in git, which doctor does not read, so staleness belongs to `cli/librarian.mjs` — the scheduled pass, which may ask git and does"
             : "no memory records — nothing measured, nothing awaiting retirement",
     );
 

@@ -46,8 +46,12 @@ Agents may draft memory — they are well placed to notice what a task taught �
 promote it into the curated layer. Generated context that no human accepted degrades the window;
 curated context improves it, and the difference is measurable. So capture is agent work, and
 consolidation into the curated layer is a reviewed step. _(Provenance: ETH Zurich, arXiv:2602.11988 —
-generated context hurts, curated helps. The scheduled librarian that runs consolidation, indexing, and
-retirement arrives in milestone 5; core defines the lifecycle it executes.)_
+generated context hurts, curated helps. The scheduled librarian arrives in milestone 5, in two parts:
+**indexing and retirement are built** — a pass that regenerates the index, ages every record from git,
+nags a sealed stamp's owner, chases undecided proposals and drafts demotions, filed as a pull request
+nobody has to remember to open. **Scheduled consolidation is the half still to come**, in the same
+milestone; the `consolidate` skill is the procedure and a human still starts it. Core defines the
+lifecycle either way.)_
 
 ## Storage follows ownership
 
@@ -87,8 +91,10 @@ where this doctrine would otherwise start overclaiming:
   one does. Substance is human review's job, held to the bar in `../skills/codify/SKILL.md` step 1.
 - **A sealed rule still cannot be retired on evidence.** The librarian cannot see the incident, so it
   cannot judge whether the incident can still recur. It **nags the owner to re-validate** on the stamp's
-  date instead — a scheduled question rather than silent rot. That logic arrives in milestone 5; until
-  then the sealed form defers retirement rather than enabling it.
+  date instead — a scheduled question rather than silent rot. **That logic runs as of milestone 5**: the
+  interval is `librarian.staleness.sealed_days` in the workspace manifest, and the nag is dated from the
+  stamp's own `date=` rather than from the file's last commit, so editing a sealed record's prose does
+  not buy it another interval. Undeclared means unnagged — nothing here is defaulted.
 - **A workspace can seal everything and opt out of retirement entirely.** Which is why the *sealed
   proportion* is reported as a health signal rather than left to be noticed — by `doctor`, from
   milestone 2. Until it runs, nothing counts seals and nothing rejects a rule that carries no provenance

@@ -125,3 +125,5 @@ appearing one last time in the probe used to close it.
 _Not closed by this: the **version**-update side from PR #22. Version-update jobs have no REST endpoint, so
 no probe here can speak to them; that is read at Insights → Dependency graph → Dependabot, and the first
 scheduled run is the Monday after this._
+
+**Pull request:** [#23](https://github.com/sleepy-panda-works/portulan/pull/23) — the change that filed this.

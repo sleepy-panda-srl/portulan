@@ -119,3 +119,5 @@ scale down*, *No auto-generated curated context*), read against the maintainer's
 2026-07-27. The measured gaps come from a read of the current tree at `b9722da`, cited inline above.
 
 **Decision.** Marius Cetanas — pending.
+
+**Pull request:** [#52](https://github.com/sleepy-panda-works/portulan/pull/52) — the change that filed this.

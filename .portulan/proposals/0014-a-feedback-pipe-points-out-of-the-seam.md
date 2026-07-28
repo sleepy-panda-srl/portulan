@@ -106,3 +106,5 @@ looks like it is.
 read against the maintainer's directive and the no-external-pull-requests ruling of 2026-07-27.
 
 **Decision.** Marius Cetanas — pending.
+
+**Pull request:** [#52](https://github.com/sleepy-panda-works/portulan/pull/52) — the change that filed this.

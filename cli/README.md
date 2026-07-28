@@ -5,8 +5,11 @@ Eventually the `npx` CLI that wraps the file-based mechanics for hosts beyond Cl
 enforcement) · `vendor` (self-contained `AGENTS.md` + `.portulan/`) · `index` · `upgrade`. That
 packaging is **milestone 7**.
 
-Two of those exist now — `doctor` because milestone 2 needed it, `compile` because milestone 4 did —
-plus one tool that is not on that list at all, because milestone 3 needed it.
+Three of those exist now — `doctor` because milestone 2 needed it, `compile` because milestone 4 did,
+`index` because milestone 5 did — plus **two** tools that are not on that list at all, because
+milestone 3 and milestone 5 needed them. Being off the list is a fact about `docs/vision.md`, which
+names six subcommands and is human-owned: whether `plugin-lint` or `librarian` ever joins them is the
+maintainer's call and not an implementer's, so neither is described here as *coming to the CLI*.
 
 ## What is here today
 
@@ -21,6 +24,8 @@ plus one tool that is not on that list at all, because milestone 3 needed it.
 | [`index.mjs`](index.mjs) | The memory index generator: a workspace's store becomes a generated, size-budgeted index, and the budgets it declares become a red. Every field on an index line is derived from the record it points at, so the file has no hand-maintained half. It writes an over-budget index rather than refusing to — the remedy is consolidation, and consolidating needs the artifact to consolidate from. |
 | [`index.test.mjs`](index.test.mjs) | Its test suite, written first. Derivation, drift and cost only — nothing in here can establish that the index is any good at *recall*, which is an eval question. |
 | [`stop-gate.test.mjs`](stop-gate.test.mjs) | The exception to "written first": it covers the Stop-gate runner ([`../.portulan/compile/stop.mjs`](../.portulan/compile/stop.mjs)), and it exists because a supervisor found a fail-open and a forever-block in a runner nothing tested at all. Its cap arithmetic and date handling — deliberately not its I/O. |
+| [`librarian.mjs`](librarian.mjs) | The scheduled librarian's pass: reindex, record age from git, the sealed-stamp re-validation nag, proposal nagging, demotion drafts. The one tool here that reads **history** — `doctor` reads the tree and says so — which is why it belongs to a scheduled job rather than to a verify recipe: a check that reads history is a false-red generator in a shallow checkout. It renders no verdict, so it has no exit 1. |
+| [`librarian.test.mjs`](librarian.test.mjs) | Its test suite, written first, on real scratch git repositories rather than an injected clock — a fake history proves nothing about the one call this tool exists to make. |
 | [`fixtures/`](fixtures/) | Known-bad manifests, and a workspace whose repo card has drifted from its tree. |
 
 ```
@@ -28,6 +33,7 @@ node cli/doctor.mjs <workspace-dir> [<workspace-dir> ...]
 node cli/plugin-lint.mjs <plugin-root> [<plugin-root> ...]
 node cli/compile.mjs [--workspace <dir>] [--check]
 node cli/index.mjs [--check] <workspace-dir> [<workspace-dir> ...]
+node cli/librarian.mjs [--as-of YYYY-MM-DD] [--write] [--log <path>] <workspace-dir> [...]
 ```
 
 The two validators: exit `0` when every workspace or plugin root validates · `1` when at least one does

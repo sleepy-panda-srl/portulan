@@ -84,14 +84,21 @@ Honest limits, each with the milestone that closes it:
   administrators — so what still rests on review is the tiers above the floor, not the floor. _(The exact
   context string matters when cross-checking branch protection: it is the job id, not the workflow's
   display name.)_
-- **A generated memory index, as of milestone 5 — and no librarian yet.**
+- **A generated memory index and a scheduled librarian, both as of milestone 5.**
   [`memory-index.md`](memory-index.md) is emitted from [`memory/`](memory/) by
   [`../cli/index.mjs`](../cli/index.mjs), and the `index` recipe byte-compares it and fails on a
   breach of the budgets [`workspace.json`](workspace.json) declares. It is *built, never
   hand-maintained* ([`../core/operating/memory.md`](../core/operating/memory.md)) in the checkable
   sense: every field on a line comes from the record it points at, so there is nothing in the file an
-  editor could put out of step with the store. **What has not arrived is the scheduled librarian** —
-  reindexing on a cadence, the sealed-stamp re-validation nag, staleness by record age (which needs
-  git, and `doctor` reads only the tree), proposal nagging and demotion drafts. Regenerating is a
-  command someone runs today.
+  editor could put out of step with the store. The **scheduled librarian** exists as of 2026-07-28
+  ([`../cli/librarian.mjs`](../cli/librarian.mjs), scheduled weekly by
+  [`../.github/workflows/librarian.yml`](../.github/workflows/librarian.yml)): it reindexes, ages every
+  record from git, nags a sealed stamp's owner to re-validate, chases undecided proposals and drafts
+  demotions, and files the result as a pull request. **It has not filed one yet** — that waits on the
+  merge and on the two repository secrets the workflow needs, which are the maintainer's. **A pass is a session** (the maintainer's ruling,
+  2026-07-28), so it ends with a dated handoff in [`handoffs/`](handoffs/) and one Session log entry,
+  exactly as a human session does; the `record` check does not know the difference and does not need
+  to. Two halves of the librarian's charter are **still on demand**: mining incidents and reviews into
+  proposals, and running consolidation. On this store nothing currently fires — the thresholds are 90
+  / 180 / 30 days and the oldest record is days old — and the pass says so rather than staying silent.
 - **No packs and no rituals.** Nothing this build does yet repeats often enough to earn one.

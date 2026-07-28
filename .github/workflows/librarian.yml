@@ -1,0 +1,252 @@
+# The scheduled librarian: a weekly pass over the curated layer, filed as a pull request.
+#
+# The pass itself is `cli/librarian.mjs` — reindex, staleness, the sealed-stamp re-validation nag,
+# proposal nagging, demotion drafts. This file is only the scheduler and the filing clerk, the same
+# split as `.portulan/gates.json` and `cli/compile.mjs`, or `.portulan/workspace.json` and
+# `verify.yml`. A team adopting Portulan on another host writes their own scheduler; the pass is what
+# ships.
+#
+# ## Why a pass gets a pull request at all
+#
+# `core/operating/evolution.md`: the human gate is the guarantee, so the work is to make it cheap —
+# never to bypass it. A librarian that edited memory directly would be the unsupervised
+# self-evolution `docs/vision.md` names as a binding non-goal. A librarian that only printed to a log
+# nobody reads would be the mandate nothing checks. A pull request is the shape that is both
+# reviewable and impossible to ignore, and it is the one `core/personas/librarian.md` already
+# promises: "Everything it produces … is a Propose-tier artifact filed as a PR for human review."
+#
+# ## The thing this workflow is built around: a repository cannot open its own reviewable pull request
+#
+# Measured, not assumed. GitHub does not start workflow runs for events raised by a workflow's own
+# `GITHUB_TOKEN` — the recursion guard, with `workflow_dispatch` and `repository_dispatch` as the only
+# documented exceptions. `main` requires `workspace-verify` and `pr-labeled`, both of which run on
+# `pull_request`. So a pull request opened by `GITHUB_TOKEN` never gets either check, sits at
+# `BLOCKED` forever, and cannot merge. A librarian that files an unmergeable pull request has filed a
+# decoration.
+#
+# The way out is that the pull request must be *opened* by an identity that is not `GITHUB_TOKEN`, and
+# this repository already has exactly one: the `portulan-agent` GitHub App. So the work is split by
+# what each credential is for:
+#
+#   push the branch    GITHUB_TOKEN, scoped `contents: write` here and nowhere else in this repository
+#   open the request   an App installation token — a different actor, so the checks run
+#   label it           the App again, so the `labeled` event is also App-raised and re-runs `pr-labeled`
+#
+# That split is not a workaround dressed up as a design. It matches what the two credentials are
+# *for*: the App may talk about code and may not write it (`.portulan/tools/README.md`), and the
+# workflow token may write to this repository and may not act as anyone. Proposal
+# `.portulan/proposals/0015-the-librarian-files-as-the-agent.md` records the permission change this
+# needed and the reasoning, because a settings change with no proposal behind it is a floor nobody
+# can audit — the `0009`/`0010`/`0011` precedent.
+#
+# ## There is no update path, deliberately
+#
+# One pass, one branch, one pull request, named for the pass date. If today's already exists, this job
+# reports that and stops. Pushing an update would raise `synchronize` from `GITHUB_TOKEN` — which by
+# the paragraph above starts no runs — so the pull request's new head would carry no checks and the
+# thing that was mergeable a minute ago would not be. An update path here is a way to break a pull
+# request that was already fine, so there is none. Re-running the same day is a no-op, which is the
+# strongest form of the idempotence a scheduled job owes.
+#
+# ## Full history, and why the pass insists
+#
+# `fetch-depth: 0`. `actions/checkout` is shallow by default; in a shallow clone `git log -1` returns
+# nothing for a file whose only commit was truncated away, so every record would read as undated and
+# every threshold would fire or none would — a verdict about the checkout wearing the words of a
+# verdict about the store. `cli/librarian.mjs` refuses a shallow repository outright rather than
+# reporting from one, which is why this line is load-bearing rather than an optimisation in reverse.
+
+name: librarian
+
+on:
+  schedule:
+    # Mondays, 06:00 UTC. The cadence is the maintainer's (2026-07-28), and it lives here rather than
+    # in `.portulan/workspace.json` on purpose: how often a host runs a job is the host's scheduler,
+    # not the workspace's content, and a cron expression in a manifest nothing reads would be
+    # configuration pretending to be policy. GitHub delays scheduled runs under load and disables them
+    # in repositories with no activity for 60 days; both are stated so a missing Monday reads as the
+    # platform rather than as a broken pass.
+    - cron: "0 6 * * 1"
+  workflow_dispatch:
+
+permissions:
+  # `contents: write` is what pushes the branch, and it is the only elevation in this file. The
+  # repository default is `read` (measured), so every other workflow here keeps the floor.
+  contents: write
+
+concurrency:
+  # Two passes writing the same dated branch would race on the same three files. Never cancel the one
+  # already running: it may have pushed and not yet opened the pull request, and cancelling there
+  # leaves a branch nothing points at.
+  group: librarian
+  cancel-in-progress: false
+
+jobs:
+  librarian-pass:
+    runs-on: ubuntu-latest
+    # A fork running this on its own schedule would push to itself and fail at the App token, which is
+    # noise rather than a finding. Named so the skip is legible in the run list.
+    if: github.repository == 'sleepy-panda-works/portulan'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Has today's pass already been filed?
+        id: existing
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -uo pipefail
+          date=$(date -u +%F)
+          branch="librarian/${date}"
+          printf 'date=%s\n' "$date" >>"$GITHUB_OUTPUT"
+          printf 'branch=%s\n' "$branch" >>"$GITHUB_OUTPUT"
+
+          if ! git ls-remote --exit-code --heads origin "$branch" >/dev/null 2>&1; then
+            printf 'filed=no\n' >>"$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          # The branch exists — but *filed* means a pull request exists, not a branch. The two come
+          # apart in the case this workflow is most likely to meet: the credentials step below
+          # deliberately refuses rather than opening something unmergeable, and leaves the branch
+          # pushed. A second dispatch that read the branch alone would then print "nothing to do" and
+          # exit 0 over a branch nobody can see, which is a green covering the exact failure the
+          # refusal was designed to make loud. That sequence is not hypothetical: it is what setting
+          # the secrets up looks like — dispatch, refuse, fix, dispatch again.
+          #
+          # No `--jq`, deliberately. `workflow-filters` requires every jq program a workflow runs to be
+          # executed against fixtures by that recipe, and it exits 2 the moment a workflow it does not
+          # cover contains a jq token — measured here, which is the audit working. A table row from
+          # plain `gh pr list` answers the only question this step asks, and it fails in the safe
+          # direction: no output (no match, or a network failure) takes the loud branch below, never
+          # the "nothing to do" one.
+          if [ -n "$(gh pr list --head "$branch" --state open --limit 1)" ]; then
+            printf '::notice::%s already has an open pull request — this pass has run today. Nothing to do.\n' "$branch"
+            printf 'filed=yes\n' >>"$GITHUB_OUTPUT"
+            exit 0
+          fi
+          printf '::error::%s is pushed with no open pull request — an earlier run filed nothing. Open one from that branch, or delete it and re-run.\n' "$branch"
+          exit 1
+
+      - name: Run the pass
+        if: steps.existing.outputs.filed == 'no'
+        id: pass
+        shell: bash
+        env:
+          DATE: ${{ steps.existing.outputs.date }}
+        run: |
+          set -uo pipefail
+          # `--write` regenerates each index, writes the dated handoff, and — with `--log` — appends
+          # one Session log entry. A pass is a session (the maintainer's ruling, 2026-07-28), and a
+          # session here ends with a handoff and a log line; `.portulan/verify/docs.sh`'s `record`
+          # check enforces both correspondences, so a pass that wrote only one of them would turn
+          # its own pull request red.
+          node cli/librarian.mjs --as-of "$DATE" --write --log docs/plan.md .portulan examples | tee "$RUNNER_TEMP/pass.txt"
+          rc=${PIPESTATUS[0]}
+          if [ "$rc" -ne 0 ]; then
+            printf '::error::the librarian pass exited %s — it could not run, so nothing is filed\n' "$rc"
+            exit "$rc"
+          fi
+          {
+            printf '### The pass\n\n```\n'
+            cat "$RUNNER_TEMP/pass.txt"
+            printf '```\n'
+          } >>"$GITHUB_STEP_SUMMARY"
+
+      - name: Nothing changed?
+        if: steps.existing.outputs.filed == 'no'
+        id: diff
+        shell: bash
+        run: |
+          set -uo pipefail
+          # Belt and braces. A pass always writes a handoff and a log entry, so this should never be
+          # empty — but a pull request with no diff cannot be opened, and finding that out from
+          # GitHub's error rather than from our own check is how a job's real failure gets buried
+          # under a symptom.
+          if [ -z "$(git status --porcelain)" ]; then
+            printf '::error::the pass changed nothing, which it is not supposed to be able to do\n'
+            exit 1
+          fi
+          git status --porcelain
+
+      - name: Commit and push the branch
+        if: steps.existing.outputs.filed == 'no'
+        shell: bash
+        env:
+          BRANCH: ${{ steps.existing.outputs.branch }}
+          DATE: ${{ steps.existing.outputs.date }}
+        run: |
+          set -uo pipefail
+          # `github-actions[bot]`, because that is the identity that is actually pushing. Committing
+          # as the maintainer would be the fabricated contemporaneity this repository refuses, and
+          # committing as `portulan-agent[bot]` would be worse — that App holds no `contents` write
+          # and did not push this. `.portulan/gate-map.md` carries the identity table, and this is
+          # the third row in it.
+          git config user.name  'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git checkout -b "$BRANCH"
+          git add -A
+          git commit -m "The librarian's pass of ${DATE}"
+          git push -u origin "$BRANCH"
+
+      - name: Open the pull request as the agent
+        if: steps.existing.outputs.filed == 'no'
+        shell: bash
+        env:
+          BRANCH: ${{ steps.existing.outputs.branch }}
+          DATE: ${{ steps.existing.outputs.date }}
+          PORTULAN_BOT_APP_ID: ${{ secrets.PORTULAN_BOT_APP_ID }}
+          APP_KEY: ${{ secrets.PORTULAN_BOT_PRIVATE_KEY }}
+        run: |
+          set -uo pipefail
+          if [ -z "${PORTULAN_BOT_APP_ID:-}" ] || [ -z "${APP_KEY:-}" ]; then
+            printf '::error::the App credentials are not configured, so this pull request would be opened by GITHUB_TOKEN and would never get its required checks. The branch %s is pushed and waiting; see .portulan/tools/README.md\n' "$BRANCH"
+            exit 1
+          fi
+          # The minter reads a key FILE, not a value — `.portulan/tools/gh-bot-token.mjs`, unchanged.
+          # `RUNNER_TEMP` is wiped with the runner; the key never touches the workspace, so it cannot
+          # be committed by the step above even in principle.
+          key="$RUNNER_TEMP/app.pem"
+          umask 077
+          printf '%s\n' "$APP_KEY" >"$key"
+          export PORTULAN_BOT_PRIVATE_KEY="$key"
+          token=$(node .portulan/tools/gh-bot-token.mjs) || {
+            printf '::error::could not mint an App installation token\n'
+            exit 1
+          }
+          export GH_TOKEN="$token"
+
+          body=$(cat <<'EOF'
+          The scheduled librarian's pass. Every line in this branch is derived — a filename, a date git
+          recorded, a count, or a retirement condition quoted verbatim out of a record. The pass composes
+          no sentence of its own, which is what makes it safe to file on a cron.
+
+          **Nothing here is a decision.** The nags are addressed to the maintainer and none of them is
+          answered by re-running the pass. The handoff in this diff is the report; read it there.
+
+          Opened by the agent identity rather than by `GITHUB_TOKEN` — a pull request raised by the
+          repository's own token starts no `pull_request` runs, so `workspace-verify` and `pr-labeled`
+          would never report and this could never merge. See `.github/workflows/librarian.yml`.
+          EOF
+          )
+          gh pr create \
+            --base main --head "$BRANCH" \
+            --title "The librarian's pass of ${DATE}" \
+            --body "$body" || {
+              printf '::error::could not open the pull request; the branch %s is pushed and waiting\n' "$BRANCH"
+              exit 1
+            }
+
+          # Labelled with the App too, and the actor matters as much as the label: `pr-labeled` ran
+          # once already on `opened` and failed, because the label could not exist before the pull
+          # request did. An App-raised `labeled` event re-runs it; the same call made with
+          # `GITHUB_TOKEN` would set the label and start no run, leaving a red check over a labelled
+          # pull request. `workspace` is from the declared set in `.portulan/labels.json` — an
+          # undeclared one fails the whole call.
+          gh pr edit "$BRANCH" --add-label workspace || {
+            printf '::error::the pull request is open and unlabelled — `pr-labeled` stays red until somebody adds a label from .portulan/labels.json\n'
+            exit 1
+          }

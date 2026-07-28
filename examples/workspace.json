@@ -1,6 +1,6 @@
 {
   "portulan": {
-    "spec": "2.3",
+    "spec": "2.4",
     "workspace": "0.1.0"
   },
   "name": "rooftop",
@@ -55,6 +55,13 @@
       "budget": {
         "kilobytes": 11
       }
+    }
+  },
+
+  "librarian": {
+    "staleness": {
+      "record_days": 180,
+      "sealed_days": 365
     }
   },
 

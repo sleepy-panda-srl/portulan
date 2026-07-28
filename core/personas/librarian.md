@@ -46,9 +46,14 @@ rules are on the retirement watch — distinct from the implementer's and review
 ## Provenance & status
 
 Re-expressed from public practice (Letta — consolidation; compounding engineering — codify; ETH Zurich
-— curated beats generated). **Invocable on demand now**; the *scheduled* librarian that runs these
-passes automatically (reindex, staleness, proposal-nagging, demotion drafts) arrives in **milestone
-5** — this persona is the contract it will execute. The `tools:` list is **capability classes** at
+— curated beats generated). Invocable on demand, and **schedulable as of milestone 5**: `cli/librarian.mjs`
+runs reindex, staleness (the sealed-stamp re-validation nag, and record age from git), proposal nagging
+and demotion drafts, and renders what it found as a record a workspace's scheduler files as a pull
+request — this persona is the contract it executes. Two halves of the charter above are **still on-demand only**: mining incidents and reviews
+into proposals (the `codify` pass), and running consolidation, both of which the milestone-5 row now
+names and a later session in that milestone builds. The distinction matters when reading this page —
+*it drafts and never accepts* is true of both halves; *it runs without being asked* is true of the
+first four. The `tools:` list is **capability classes** at
 engine altitude; milestone 3 bound them to concrete host tools in
 [`../../agents/librarian.md`](../../agents/librarian.md). The binding cannot express the
 constraint that matters most here — *drafts everything, accepts nothing* is a property of what the agent

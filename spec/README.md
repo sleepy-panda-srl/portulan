@@ -63,19 +63,23 @@ whole test, and it is deliberately strict — a day-one workspace has no proposa
 memory yet, and it must still validate. Ceremony that cannot scale down is a binding non-goal.
 
 Required: `portulan.spec`, `name`, `kind`, `slots.identity`, `slots.principles`, `slots.gates`, `verify`
-— plus, as of 2.3, **three** conditional requirements, none of which the schema can express (the subset
-has no `dependentRequired`, so `doctor` enforces all three and [`slots.md`](slots.md) says so):
+— plus, as of 2.4, **five** conditional requirements, none of which the schema can express (the subset
+has no `dependentRequired`, so `doctor` enforces all five and [`slots.md`](slots.md) says so):
 `tree` when `kind` is `repository`; `slots.memory` when `memory` is declared, since the object
-configures a store rather than replacing one; and `memory.index.path` resolving **outside**
-`slots.memory`, since an index inside the store is counted as a record by `doctor`'s own store report.
-Everything else is optional. [`slots.md`](slots.md) argues each one.
+configures a store rather than replacing one; `memory.index.path` resolving **outside**
+`slots.memory`, since an index inside the store is counted as a record by `doctor`'s own store report;
+`slots.memory` when `librarian` is declared, since a pass over nothing reports that nothing is stale;
+and `slots.proposals` when `librarian.staleness.proposal_days` is, since a threshold nothing can ever
+cross reads as configured to anyone who greps for it. Everything else is optional.
+[`slots.md`](slots.md) argues each one.
 
-That the count went from one to three in a single MINOR is worth noticing rather than absorbing. Each
-is a genuine dependency between two keys and none can be written in the declared subset, so the gap
-between *what the schema says* and *what a conforming manifest must satisfy* is widening — and a
-constraint invisible to someone reading the schema alone is a real cost, stated here rather than
-discovered. The subset earns its narrowness by being implementable completely and honestly; the price
-is this list, and the list is the thing to watch if it keeps growing.
+That the count went from one to three in a single MINOR, and from three to five in the next, is worth
+noticing rather than absorbing. Each is a genuine dependency between two keys and none can be written
+in the declared subset, so the gap between *what the schema says* and *what a conforming manifest must
+satisfy* is widening — and a constraint invisible to someone reading the schema alone is a real cost,
+stated here rather than discovered. The subset earns its narrowness by being implementable completely
+and honestly; the price is this list, and the list is the thing to watch if it keeps growing. Two
+MINORs at +2 each is the growth rate to hold the next bump against.
 
 Note the distinction that does the work here: the *definition* carries a slot, while an *instance* may
 leave it empty. "The Workspace Definition has a product-layer slot" and "every workspace must declare a
@@ -83,7 +87,7 @@ product" are different claims, and only the first is true.
 
 ## Versioning and migrations
 
-`portulan.spec` is `MAJOR.MINOR`, and the current version is **2.3**.
+`portulan.spec` is `MAJOR.MINOR`, and the current version is **2.4**.
 
 _(This line read `2.0` for two MINOR bumps after the schema had moved past it — the version of the
 spec, stated wrongly in the spec's own README, while the `$id` beside it was right. It is recorded

@@ -129,3 +129,5 @@ cluster, all in this repository and carrying no client material, so no seal is n
 
 **Decision.** _Pending — Marius Cetanas._ The first draft was decided **revise, not accept**; this is that
 revision. Written by an implementer agent (Claude Opus 5).
+
+**Pull request:** [#30](https://github.com/sleepy-panda-works/portulan/pull/30) — the change that filed this.

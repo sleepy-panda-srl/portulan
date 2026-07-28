@@ -2,7 +2,7 @@
 
 > Generated from `memory/` by `node cli/index.mjs`. Do not edit by hand: it is regenerated
 > and byte-compared, so a hand-edit survives exactly until the next run.
-> 23 record(s) · budget 40 lines.
+> 24 record(s) · budget 40 lines.
 
 - [A branch syncs with main before it merges](memory/a-branch-syncs-with-main-before-it-merges.md) — rule
 - [A checker must refuse what it cannot check](memory/a-checker-must-refuse-what-it-cannot-check.md) — rule
@@ -15,6 +15,7 @@
 - [A public criterion must be demonstrable from this repo](memory/a-public-criterion-must-be-demonstrable-from-this-repo.md) — rule
 - [A review is awaited not just resolved](memory/a-review-is-awaited-not-just-resolved.md) — rule
 - [A review loop needs a bound](memory/a-review-loop-needs-a-bound.md) — rule
+- [A scheduled agent needs its own identity](memory/a-scheduled-agent-needs-its-own-identity.md) — rule
 - [A shared stage must not hold one backends opinion](memory/a-shared-stage-must-not-hold-one-backends-opinion.md) — rule
 - [A stated enforcer must be the real one](memory/a-stated-enforcer-must-be-the-real-one.md) — rule
 - [Agent activity is attributable](memory/agent-activity-is-attributable.md) — rule
