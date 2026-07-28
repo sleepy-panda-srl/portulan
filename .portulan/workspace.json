@@ -81,13 +81,13 @@
     "index": {
       "path": "memory-index.md",
       "budget": {
-        "lines": 60,
+        "lines": 40,
         "columns": 140
       }
     },
     "store": {
       "budget": {
-        "kilobytes": 200
+        "kilobytes": 120
       }
     }
   },
