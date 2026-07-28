@@ -220,6 +220,44 @@ prompt — turning "no agent edits it, ever" into "no agent edits it unless some
 session-open checkpoint, before the schema was written, by a supervisor counting the classes in this file
 against the three the implementer had planned.
 
+### The shell half, and why the strongest rule here had the weakest layer
+
+**A `write:` rule names a path, not a tool** — and for one milestone it reached only the tools that carry a
+`file_path`. `Edit`, `Write` and `NotebookEdit` were denied; `echo x >> docs/vision.md` through `Bash` was
+denied by **neither** layer, because the permission rule rejects the tool and the shared matcher fell
+through to *false*. The rule's own sentence is what that cost: an agent that can edit the constitution can
+launder any other change past its own grader, and within a session nothing local stopped it. The platform
+floor still refused it at the merge — but the floor is a rail for what *lands*, not for what an agent does
+to the file it is graded against while it works.
+
+Closed by giving the `write:` action a shell half in the matcher both halves of the compiler share,
+[`../cli/compile.mjs`](../cli/compile.mjs). It recognises two things and no more:
+
+- a `>` or `>>` **redirection** into the path, and
+- a **named table** of file-writing commands naming it — `cp`, `mv`, `ln`, `rm`, `tee`, `dd`, `install`,
+  `truncate`, `shred`, `patch`, plus `sed`, `gsed`, `perl` and `ruby` under an in-place flag.
+
+A table rather than a parser, for the reason the floor backend's own recognition is a table: a limit a
+reader can measure beats a matcher clever enough to be wrong quietly. **`git` is deliberately not in it**,
+though `git checkout -- docs/vision.md` and `git restore` both overwrite the file — the head of those
+commands is `git`, so admitting it would gate `git diff docs/vision.md` and `git log` alongside them, and a
+gate on reading the constitution is a rule this policy does not declare. It is the likeliest uncovered
+writer in this repository, so it is named here rather than left inside "any writer outside the table".
+
+**Reading the file through a shell is untouched** — `cat`, `grep`, `sed -n` and `git diff` all pass — because reading it is Auto here, and a
+matcher that contradicts a declared tier is worse than one that admits a gap. In the other direction the
+matcher is deliberately coarse: it fires on *any* argument of a writing command, so `cp docs/vision.md
+/tmp/backup` is refused although it only reads. Argument grammars differ per command, so "the last word is
+the destination" is true of a subset only, and being wrong about it is a false green on the one file that
+must not change.
+
+**This half is the hook's alone, and so it fails open with the hook.** No permission rule stands beside it,
+and that is not an omission: `Bash(prefix:*)` matches a literal command *prefix* while the path sits at an
+arbitrary position in the command, so that DSL cannot express *any command writing this file*. The patterns
+that would fit — `Bash(cp:*)` — gate the utility rather than the path, which is a far larger rule than this
+policy declares. So the strongest tier in this file has, in its shell half, the weaker of the two layers.
+`compile` prints that on every run rather than leaving it to be discovered.
+
 ## What the compiler refuses
 
 [`../cli/compile.mjs`](../cli/compile.mjs) turns [`gates.json`](gates.json) into
@@ -263,13 +301,22 @@ Corrected here rather than left, because a gate map that overstates a hole is as
 
 1. **Spellings neither layer sees.** The permission rule matches a literal prefix; the hook peels **one**
    shell wrapper. Two wrappers, a heredoc, an interpolated variable, or a command assembled at runtime
-   reach neither. This is asserted as a test rather than only written down, so anyone tempted to call this
-   layer a rail meets the counterexample.
-2. **A local `allow` rule beside the compiled gates is unmeasured.** `.claude/settings.local.json` is
+   reach neither. For a `write:` rule's shell half the same sentence has its own list: a heredoc, an
+   interpolated path, a language runtime writing the file itself (`python3 -c "open(…,'w')"`), or any
+   writer outside the table above. Both lists are asserted as tests rather than only written down, so
+   anyone tempted to call this layer a rail meets the counterexample.
+2. **A gate whose only layer is the hook — and the hook is the one that fails open.** New with the shell
+   half of `edit-the-constitution`, above. Everywhere else the permission rule is the gate and the hook
+   adds reach; there, the hook *is* the reach, because no `Bash(prefix:*)` pattern can name a path sitting
+   anywhere in a command. A syntax error in [`compile/gate.mjs`](compile/gate.mjs) removes tool-level
+   coverage of shell writes to the constitution and leaves the `Edit`/`Write` denials standing, which is a
+   partial gate that looks from the outside exactly like a whole one. `compile` names the affected rules in
+   a note on every run for that reason.
+3. **A local `allow` rule beside the compiled gates is unmeasured.** `.claude/settings.local.json` is
    git-ignored, so an adopter's own allow rules sit invisibly next to these. A compiled `deny`/`ask` beats
    an `allow` for the *same* pattern; what a broad local `Bash` allow does to the *wrapper* spelling has
    not been measured, and is not claimed either way.
-3. **A rule whose sentence is broader than its matcher.** Guarded against by splitting rather than by
+4. **A rule whose sentence is broader than its matcher.** Guarded against by splitting rather than by
    trusting prose — `rename-or-transfer-a-repository` compiles to nothing and says so, rather than hiding
    inside a neighbour's matcher.
 4. **This repository ships a wrapper of its own, and holes 1 and 2 meet in it.** Added 2026-07-28.

@@ -42,13 +42,71 @@ a message it cannot reach would be inert while reading as active, which is the d
 [`../memory/a-manifest-field-can-validate-and-load-nothing.md`](../memory/a-manifest-field-can-validate-and-load-nothing.md)
 already exists to name.
 
-The split earns its place somewhere else: **the hook covers what the permission pattern cannot.**
-`Bash(git push:*)` is a literal prefix match, so `bash -c "git push …"` is invisible to it — measured.
-[`gate.mjs`](gate.mjs) peels one shell wrapper before matching, so that spelling reaches a gate, and in
-exactly that case the permission layer has nothing to say, so the hook's decision *and* its sentence
-are what the agent gets. Demonstrated live, both directions.
+The split earns its place somewhere else: **the hook covers what the permission pattern cannot.** Two
+things, now:
 
-Two layers, two jobs: one cannot fail open, the other covers more ground.
+1. **The wrapper spelling.** `Bash(git push:*)` is a literal prefix match, so `bash -c "git push …"` is
+   invisible to it — measured. [`gate.mjs`](gate.mjs) peels one shell wrapper before matching, so that
+   spelling reaches a gate. Demonstrated live, both directions.
+2. **A shell write to a path a `write:` rule protects.** `Edit(./docs/vision.md)` denies three tools;
+   `echo x >> docs/vision.md` is a fourth way to the same bytes, and it was gated by neither layer until
+   the matcher grew a shell half. See [the boundary below](#the-shell-half-of-a-write-gate-is-a-table).
+
+In exactly those cases the permission layer has nothing to say, so the hook's decision *and* its sentence
+are what the agent gets.
+
+Two layers, two jobs: one cannot fail open, the other covers more ground. **The second case is the one
+place where that trade is uncomfortable**, because there the ground is covered *only* by the layer that
+fails open — which is why it is in the honest-holes list in [`../gate-map.md`](../gate-map.md) and why
+`compile` prints it as a note on every run.
+
+## The shell half of a write gate is a table
+
+A `write:` rule names a **path**, not a tool. For one milestone it compiled to `Edit`, `Write` and
+`NotebookEdit` and stopped there, so a `Bash` call reached neither layer: the permission rule rejects the
+tool, and the shared matcher returned false because `action.shell` was undefined. `echo x >> docs/vision.md`
+was therefore an unGated write to this repository's constitution — the one file whose rule says that an
+agent able to edit it "can launder any other change past its own grader".
+
+[`../../cli/compile.mjs`](../../cli/compile.mjs) now answers for `Bash` on a `write:` rule, over the same
+one-wrapper spellings as everything else. It recognises exactly two shapes:
+
+| Shape | Example |
+|---|---|
+| A `>` or `>>` redirection into the path, at any point in a list or pipeline | `ls && echo x > docs/vision.md` |
+| A command from a **named table** naming the path — `cp`, `mv`, `ln`, `rm`, `tee`, `dd`, `install`, `truncate`, `shred`, `patch`; and `sed`, `gsed`, `perl`, `ruby` **under an in-place flag** | `sed -i '' s/a/b/ docs/vision.md` |
+
+**Why a table and not a parser.** The same reason the floor backend recognises ref rules by exact spelling:
+a limit a reader can measure is worth more than a matcher clever enough to be wrong quietly. What it leaves
+open is not a rounding error and is not presented as one — a heredoc, an interpolated path, a command
+assembled at runtime, a language runtime writing the file itself, or any writer absent from that table. This
+closes the spelling reached for by accident or convenience; it does not close one constructed on purpose,
+and nothing at this layer could.
+
+The absentee worth naming is **`git`**: `git checkout -- docs/vision.md` and `git restore` overwrite the
+file and are not gated. Deliberate — the head of those commands is `git`, so covering them would gate
+`git diff docs/vision.md` and `git log` in the same stroke, and reading the constitution is Auto. The
+generic sentence would have hidden the one escape a session here is actually likely to take.
+
+**Two deliberate asymmetries**, both of which look like bugs until you have the reason:
+
+- **Reads are untouched.** `cat`, `grep`, `git diff` and `sed -n` all pass, and the in-place editors are
+  gated only under their flag. Reading the constitution is Auto in this policy, and a matcher that
+  contradicts a declared tier is worse than one that admits a gap.
+- **Every argument of a writing command counts, not just its destination.** `cp docs/vision.md /tmp/backup`
+  only reads, and is refused anyway. Argument grammars differ per command (`dd of=`, `tee f1 f2`,
+  `install -t dir src`), so "the last word is the destination" holds for a subset only, and being wrong
+  about it is a false **green** on the file that must not change. A false red costs one prompt on a rare
+  operation; a false green costs the laundering the rule exists to prevent.
+
+**No permission pattern accompanies it.** `Bash(prefix:*)` matches a command prefix while the path sits at
+an arbitrary position, so that DSL cannot express *any command writing this file*; the patterns that would
+fit — `Bash(cp:*)`, `Bash(sed -i:*)` — gate the utility rather than the path, which is a much larger rule
+than the policy declares. The compiler does add `Bash` to the emitted `PreToolUse` matchers for a write
+gate, and that line is load-bearing: without it the runner is never invoked for a Bash call and the whole
+shell half is a matcher nothing reaches. It changes no artifact in *this* repository, whose policy already
+gates shell commands — which is exactly why its absence would not have been noticed here, and why the suite
+asserts it against a policy carrying only a write rule.
 
 ## Why Gated is `ask` and the constitution is `deny`
 
@@ -249,6 +307,10 @@ merge would need to explain itself.
   variable, a command assembled at runtime — all still escape. Asserted as a test rather than only
   written here, so that anyone tempted to call this layer a rail meets the counterexample. What must
   not happen *regardless of spelling* belongs on the platform floor.
+- **The shell half of a `write:` gate is a table of writers, and only the hook carries it.** Its
+  contents and its holes are above; the part that belongs in a limits list is that this is the one
+  gate here with no permission rule beneath it, so a broken hook removes it silently while the
+  `Edit`/`Write` denials stay standing and the gate still reads as whole from outside.
 - **This layer is a convenience above a rail, not the rail.** The floor — branch protection, required
   checks, PR-as-gate — refuses a push at the server whatever any local file says. `autonomy.md` calls
   the floor "the gate that holds when everything above it fails", and this is the thing above it.
@@ -286,6 +348,7 @@ Both runners are watchers. So:
 |---|---|
 | `permissions` deny/ask | a headless session was told to push to a **scratch bare remote**; the push was refused and the remote held 0 refs, with an ordinary command succeeding in the same session as the positive control. The maintainer then ran the same command by hand and it succeeded — so *blocked* is distinguishable from *impossible*. |
 | [`gate.mjs`](gate.mjs) | the same push written `bash -c "git push …"`, the spelling the permission pattern cannot see: refused, carrying this policy's own sentence verbatim. |
+| [`gate.mjs`](gate.mjs), shell half of a write gate | **Run against the runner, not against a host, and the row says which.** Five payloads were fed to `gate.mjs` on stdin on 2026-07-28, as the host would: `echo x >> docs/vision.md`, `bash -c "sed -i .bak s/a/b/ docs/vision.md"` and `cp /tmp/x docs/vision.md` each returned `permissionDecision: "deny"` carrying `edit-the-constitution`'s own sentence; `cat docs/vision.md` and `git status` produced no output and exit 0 — the runner stepping aside, which is the positive control that distinguishes *refused* from *refuses everything*. What this does **not** establish is that the host invokes the hook for a `Bash` call at all, which is the same boundary every row here has: emission and decision are what a pull request can prove, and loading is measured at the supervised checkpoints. Until one runs, the shell half of this gate is demonstrated in the runner and **inferred** in the host. |
 | [`stop.mjs`](stop.mjs), recipe half | one dead link planted; a session told to reply `done` was refused three times carrying the recipe's output naming file and line, then released at the cap. Green, it ended in one turn. |
 | [`stop.mjs`](stop.mjs), handoff half | recipe left **green** so the block could only come from this half; today's handoff moved aside and a scratch file making the session count as work. Refused three times naming the exact date, then released. **Run before the reset ruling**, when there was one cap of three and no reset at all — so that release came from the single cap. Under the arithmetic session 0 *ended* with, the same run's bound would have been the ceiling of nine, which is exactly the asymmetry the maintainer named; per-reason counters return it to the handoff's own cap of three. |
 | [`stop.mjs`](stop.mjs), per-reason counters | the recipe half re-run live on the real tree after the change: one dead link planted, four attempts, blocked at `recipe 1/3`, `2/3`, `3/3`, then released naming *"the cap of 3 consecutive refusals for `recipe`"* — the reason, not just the number. A green tree allowed the stop in one attempt as the positive control. The handoff half was **not** re-run live by the session that made the change, and this row said so rather than quietly counting it as covered — the branch cannot fire in this tree on a day when any session has already written a dated handoff. **The milestone-4 close checkpoint then ran it**, in an isolated clone where that constraint does not apply: recipe green throughout, blocked `handoff 1/3 → 3/3`, released on the fourth naming its own cap of three rather than the ceiling of nine. So the one acceptance criterion of [`../tasks/0007-per-reason-stop-gate-counters.md`](../tasks/0007-per-reason-stop-gate-counters.md) that was suite-only is now a live observation too, and it was made by a fresh context rather than by the session that wanted it to pass. |

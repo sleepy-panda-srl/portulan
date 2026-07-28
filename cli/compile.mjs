@@ -317,6 +317,176 @@ export function spellings(raw) {
     return out;
 }
 
+// The shell spellings of a write, recognised by table. Below, `shellWrites` asks one question of a
+// command — *does it name the protected path in a position where that path is being written* — and
+// these are the two ways it can answer yes without parsing a shell.
+//
+// A table rather than a parser, for the reason `REF_RULES` further down is a table: recognition by
+// exact spelling is a limit a reader can measure, and a matcher clever enough to generalise is clever
+// enough to be wrong quietly.
+
+// `git` is deliberately absent, though `git checkout -- <path>` and `git restore` both overwrite a file.
+// The head of those commands is `git`, so admitting it would gate `git diff <path>` and `git log` in the
+// same stroke — and a gate on READING a path is a rule no policy here declares. It is the likeliest
+// uncovered writer in this repository, which is why ../.portulan/gate-map.md names it rather than leaving
+// it inside "any writer outside the table".
+/** Commands whose job is to write, replace or remove a file they NAME on their own command line. */
+const FILE_WRITERS = new Set(["cp", "mv", "ln", "rm", "tee", "dd", "install", "truncate", "shred", "patch"]);
+
+/**
+ * Editors that READ their arguments by default and write them only under an in-place flag.
+ *
+ * Separated from the table above rather than folded into it, because folding them in would gate
+ * `sed -n '1,5p' docs/vision.md` — which is a *read*, and which this policy declares Auto. A matcher
+ * that contradicts a declared tier is worse than one that admits a gap.
+ */
+const IN_PLACE_EDITORS = new Set(["sed", "gsed", "perl", "ruby"]);
+
+/** Words that stand in front of the command that actually runs. Recognised, not parsed: `sudo cp …` is seen, `sudo -u someone cp …` is not. */
+const COMMAND_PREFIXES = new Set(["sudo", "env", "command", "builtin", "exec", "nohup", "nice", "time"]);
+
+const ASSIGNMENT = /^[A-Za-z_][A-Za-z0-9_]*=/;
+const OPERATOR = /[|&;<>()]/;
+
+/** A shell command split into words, with unquoted operators kept as words of their own. */
+function shellWords(command) {
+    const words = [];
+    let text = "";
+    let open = false; // a word has begun — so an empty `""` argument survives as a word
+    const flush = () => {
+        if (open) words.push({ text, op: false });
+        text = "";
+        open = false;
+    };
+    for (let i = 0; i < command.length; i += 1) {
+        const c = command[i];
+        if (c === "'" || c === '"') {
+            // Quoted runs are taken whole, so an operator INSIDE quotes stays literal — without this,
+            // `echo "x > docs/vision.md"` would read as a redirection into the constitution.
+            const end = command.indexOf(c, i + 1);
+            text += end === -1 ? command.slice(i + 1) : command.slice(i + 1, end);
+            open = true;
+            i = end === -1 ? command.length : end;
+            continue;
+        }
+        if (c === "\\" && i + 1 < command.length) {
+            text += command[i + 1];
+            open = true;
+            i += 1;
+            continue;
+        }
+        if (/\s/.test(c)) {
+            flush();
+            continue;
+        }
+        if (OPERATOR.test(c)) {
+            flush();
+            let run = c;
+            while (i + 1 < command.length && OPERATOR.test(command[i + 1])) {
+                run += command[i + 1];
+                i += 1;
+            }
+            words.push({ text: run, op: true });
+            continue;
+        }
+        text += c;
+        open = true;
+    }
+    flush();
+    return words;
+}
+
+/** Those words folded into `{ head, args, redirects }` per command in a pipeline or list. */
+function shellSegments(command) {
+    const segments = [];
+    let current = { head: null, args: [], redirects: [] };
+    let pending = null;
+    const close = () => {
+        if (current.head !== null || current.args.length || current.redirects.length) segments.push(current);
+        current = { head: null, args: [], redirects: [] };
+    };
+    for (const word of shellWords(command)) {
+        if (word.op) {
+            // `>` `>>` `2>` `&>` — whatever follows is written, whatever the command is. `<` and `<<`
+            // introduce something READ, so the word after them is skipped rather than counted: a
+            // heredoc's delimiter is not a file, and `patch f < d.diff` must not credit `d.diff`.
+            if (word.text.includes(">")) pending = "written";
+            else if (word.text.includes("<")) pending = "read";
+            else {
+                pending = null;
+                close();
+            }
+            continue;
+        }
+        if (pending) {
+            if (pending === "written") current.redirects.push(word.text);
+            pending = null;
+            continue;
+        }
+        if (current.head === null) {
+            if (ASSIGNMENT.test(word.text) || COMMAND_PREFIXES.has(word.text.split("/").pop())) continue;
+            current.head = word.text.split("/").pop();
+            continue;
+        }
+        current.args.push(word.text);
+    }
+    close();
+    return segments;
+}
+
+/** Does this segment write the files it names? */
+function writesWhatItNames({ head, args }) {
+    if (head === null) return false;
+    if (FILE_WRITERS.has(head)) return true;
+    // `-i`, `-i.bak`, `-pi`, `--in-place`, `--in-place=.bak`. A long option other than `--in-place`
+    // cannot match, because the single-dash form requires a letter run and `-` is not one.
+    return IN_PLACE_EDITORS.has(head) && args.some((a) => /^--in-place(=|$)/.test(a) || /^-[a-zA-Z]*i/.test(a));
+}
+
+/** Does a word name the target — quoted, `./`-prefixed, absolute, or after an `of=`-style `=`? */
+function namesTarget(word, target) {
+    const eq = word.indexOf("=");
+    const candidates = eq > 0 ? [word, word.slice(eq + 1)] : [word];
+    return candidates.some((c) => {
+        const clean = c.replace(/^\.\//, "");
+        // `matchesPath` compares against a leading-separator tail, because the host hands it absolute
+        // paths. A command line hands over relative ones, so a relative word is given the separator
+        // the comparison needs rather than a second matcher being written for it.
+        return clean !== "" && matchesPath(clean.startsWith("/") ? clean : `/${clean}`, target);
+    });
+}
+
+/**
+ * Does this shell command write a path a `write:` rule protects?
+ *
+ * The permission layer cannot ask this. `Bash(prefix:*)` matches a literal command PREFIX and the
+ * path sits at an arbitrary position in the command, so there is no pattern in that DSL which means
+ * "any command writing this file" — which makes this the hook's coverage alone, exactly like the
+ * wrapper spelling above, and it fails open on the same terms.
+ *
+ * **Stated at its real size, because the boundary is the point.** Two recognitions, both by table:
+ * a `>`/`>>` redirection into the path, and a file-writing command that names it. What that leaves
+ * open is not a rounding error — a heredoc, an interpolated variable, a command assembled at
+ * runtime, a language runtime writing the file itself (`python -c`, `node -e`), or simply a writer
+ * absent from the table. This closes the spelling reached for by accident or convenience; it does
+ * not close one constructed on purpose, and no matcher here could. What must not happen regardless
+ * of spelling belongs on the platform floor — ../core/operating/autonomy.md.
+ *
+ * **Every named argument of a writer counts, not only its destination.** `cp docs/vision.md /tmp/x`
+ * reads the protected path rather than writing it, and this matches it anyway. Deliberate: argument
+ * grammars differ per command (`dd of=`, `tee f1 f2`, `install -t dir src`), so "the last word is
+ * the destination" is true of a subset only, and being wrong about it is a false GREEN on a rule
+ * whose whole reason is that the file must not change. A false red here costs one prompt on a rare
+ * operation; a false green costs the laundering the rule exists to prevent.
+ */
+export function shellWrites(command, target) {
+    for (const segment of shellSegments(String(command ?? ""))) {
+        if (segment.redirects.some((word) => namesTarget(word, target))) return true;
+        if (writesWhatItNames(segment) && segment.args.some((word) => namesTarget(word, target))) return true;
+    }
+    return false;
+}
+
 /** Does a path handed over by the host fall under a policy target? */
 export function matchesPath(candidate, target) {
     if (typeof candidate !== "string" || candidate === "") return false;
@@ -351,8 +521,16 @@ export function matchesRule(rule, tool, input = {}) {
             action.shell.endsWith("/") ? s.startsWith(action.shell) : s === action.shell || s.startsWith(`${action.shell} `),
         );
     }
-    if (typeof action.write === "string" && WRITE_TOOLS.includes(tool)) {
-        return matchesPath(input.file_path ?? input.notebook_path, action.write);
+    if (typeof action.write === "string") {
+        if (WRITE_TOOLS.includes(tool)) return matchesPath(input.file_path ?? input.notebook_path, action.write);
+        // A `write:` rule names a PATH, not a tool. For one milestone it reached only the three tools
+        // that carry a `file_path`, so `echo x >> docs/vision.md` through Bash was gated by neither
+        // layer: the permission rule rejects the tool, and this matcher fell through to `false`. The
+        // rule's own sentence is what that cost — an agent that can edit the constitution can launder
+        // any other change past its own grader — and it was reachable inside a session, with only the
+        // platform floor stopping it from landing. See `shellWrites` above for what this covers and,
+        // more to the point, for what it does not.
+        if (tool === "Bash") return spellings(input.command).some((s) => shellWrites(s, action.write));
     }
     if (typeof action.read === "string" && READ_TOOLS.includes(tool)) {
         return matchesPath(input.file_path, action.read);
@@ -375,11 +553,15 @@ export function matchesRule(rule, tool, input = {}) {
 // nothing. The uniform shape is what lets the matrix and `doctor` read every backend the same way
 // without either of them knowing what a backend does.
 
-/** A workspace-relative path becomes a host permission pattern. A trailing `/` means the subtree. */
-function pattern(tool, target) {
+/** A workspace-relative path, as the host spells it. A trailing `/` means the subtree. */
+function pathSpec(target) {
     const clean = target.replace(/^\.\//, "").replace(/^\/+/, "");
-    const spec = clean.endsWith("/") ? `./${clean}**` : `./${clean}`;
-    return `${tool}(${spec})`;
+    return clean.endsWith("/") ? `./${clean}**` : `./${clean}`;
+}
+
+/** A workspace-relative path becomes a host permission pattern. */
+function pattern(tool, target) {
+    return `${tool}(${pathSpec(target)})`;
 }
 
 // Which tiers this backend gates. `auto` and `propose` are refused wholesale, on the maintainer's
@@ -423,6 +605,12 @@ const HOST_TIER_NOT_A_GATE = {
  *
  * The hook returns the SAME decision as the permission rule on purpose. A hook returning `deny` for
  * a Gated action would turn a per-action prompt into a hard block, which is the tier above it.
+ *
+ * One line of that mapping has no permission half. A `write:` rule also gates the SHELL spellings of
+ * a write — see `shellWrites` above — and no `Bash(prefix:*)` pattern can express "a command writing
+ * this path", so that half is the hook's alone and fails open with it. Emitted anyway, because the
+ * alternative was leaving `echo x >> docs/vision.md` gated by nothing at all, and reported in the
+ * backend's `notes` on every run so the weaker layer is never inferred from silence.
  */
 export function claudeCode(parsed, options = {}) {
     // The header names the policy file that was ACTUALLY read. It was a literal for one round, so a
@@ -437,6 +625,7 @@ export function claudeCode(parsed, options = {}) {
     const deny = [];
     const ask = [];
     const matchers = new Set();
+    const shellWriteGates = [];
 
     for (const rule of parsed.rules) {
         if (!HOST_GATE_TIERS.has(rule.tier)) {
@@ -451,7 +640,8 @@ export function claudeCode(parsed, options = {}) {
             continue;
         }
         const into = rule.tier === "prohibited" ? deny : ask;
-        const emitted = [];
+        const emitted = []; // permission patterns — the layer that cannot fail open
+        const hookOnly = []; // coverage the permission DSL cannot express, carried by the hook alone
         if (rule.kind === "shell") {
             emitted.push(`Bash(${rule.target}:*)`);
             matchers.add("Bash");
@@ -460,9 +650,33 @@ export function claudeCode(parsed, options = {}) {
                 emitted.push(pattern(tool, rule.target));
                 matchers.add(tool);
             }
+            if (rule.kind === "write") {
+                // The hook is wired for Bash so that a shell spelling of this write reaches
+                // `matchesRule`, which now answers for it. **This line is the load-bearing half.**
+                // The matcher alone would be inert in any workspace whose policy declares no shell
+                // gate: `Bash` would be absent from the matchers below, the runner would never be
+                // invoked for a Bash call, and the coverage would exist only in a function nothing
+                // calls — the manifest-field-that-validates-and-loads-nothing defect
+                // (../.portulan/memory/a-manifest-field-can-validate-and-load-nothing.md), arriving
+                // this time as a matcher nothing reaches. It changes no artifact in THIS repository,
+                // whose policy already gates shell commands, which is precisely why it would not have
+                // been noticed here.
+                //
+                // No permission pattern joins it, and that is not an omission: `Bash(prefix:*)`
+                // matches a literal command prefix while the path sits at an arbitrary position, so
+                // the DSL has no way to say "any command writing this file". The only patterns that
+                // would fit — `Bash(cp:*)`, `Bash(sed -i:*)` — gate the utility rather than the path,
+                // which is a different and much larger rule than the policy declares.
+                matchers.add("Bash");
+                hookOnly.push(`hook: a Bash command writing ${pathSpec(rule.target)}`);
+                shellWriteGates.push(rule.id);
+            }
         }
         into.push(...emitted);
-        compiled.push({ id: rule.id, tier: rule.tier, surface: emitted.join(" · ") });
+        // The hook-only clause is carried in the SURFACE and not in `into`. It is not a permission
+        // pattern, and a reader of the matrix has to be able to tell which half of a gate would
+        // survive a broken hook.
+        compiled.push({ id: rule.id, tier: rule.tier, surface: [...emitted, ...hookOnly].join(" · ") });
     }
 
     // A policy that declares gates and emits none must not report success. This is the workflow's
@@ -497,12 +711,29 @@ export function claudeCode(parsed, options = {}) {
         },
     };
 
+    // The shell half of every write gate, reported on every run rather than left for a reader to
+    // infer from the absence of a `Bash` entry in `deny`. It is the one place in this artifact where
+    // a gate is carried by the layer that fails open, so a note that only appeared when something
+    // went wrong would be a note nobody ever reads.
+    const notes = [];
+    if (shellWriteGates.length) {
+        notes.push(
+            `${shellWriteGates.length} write gate(s) — ${shellWriteGates.join(", ")} — also match a Bash command that writes the ` +
+                `path: a \`>\`/\`>>\` redirection into it, or one of \`${[...FILE_WRITERS].join("`, `")}\` naming it, or ` +
+                `\`${[...IN_PLACE_EDITORS].join("`/`")}\` under an in-place flag. This half is the HOOK's alone and therefore ` +
+                `FAILS OPEN if the hook does: \`Bash(prefix:*)\` matches a command prefix while the path sits anywhere in the ` +
+                `command, so no permission rule expresses it. A heredoc, an interpolated variable, a command assembled at ` +
+                `runtime, a runtime writing the file itself (\`python -c\`), or any writer outside that table still reaches ` +
+                `the path. The platform floor is what covers those.`,
+        );
+    }
+
     return {
         backend: "claude-code",
         label: "Claude Code",
         compiled,
         refused,
-        notes: [],
+        notes,
         artifact: { path: ARTIFACT_PATHS["claude-code"], value, text: render(value) },
     };
 }
