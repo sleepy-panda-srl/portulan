@@ -33,7 +33,10 @@ is the machine check that fires when an agent tries to end a task: it runs the t
 blocks "done" if the recipe is not green. The engine defines the contract — a task declares its verify
 recipe; the gate runs it on Stop. The recipe resolves down the cascade — the **workspace** sets the
 default, a **repo card** overrides it, a **task** may specialize — and the **compiler** wires the gate
-to the host.
+to the host. _(The cascade is the contract; the runner shipped in milestone 4 reads the **workspace
+default only**, and the repo-card and task steps arrive with the CLI in milestone 7. Named here because
+a sentence describing resolution a runner does not perform is a capability claim, and this file is the
+one that legislates against those. Found at the milestone-4 close.)_
 
 The runner arrived in milestone 4, and two of its properties are contract rather than detail. A recipe
 that **could not run** blocks exactly as a red one does: "nothing looked" must never be read as "nothing
