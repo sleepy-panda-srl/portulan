@@ -265,7 +265,12 @@ describe("a budget or a threshold that is not a positive integer", () => {
     const KEYS = [
         ["librarian.staleness.record_days", (m, v) => ((m.librarian = { staleness: { record_days: v } }), m)],
         ["librarian.staleness.sealed_days", (m, v) => ((m.librarian = { staleness: { sealed_days: v } }), m)],
-        ["memory.index.budget.lines", (m, v) => ((m.memory = { index: { path: "i.md", budget: { lines: v } } }), m)],
+        // `memory-index.md` rather than a name nothing writes: `doctor` validates that
+        // `memory.index.path` resolves, so a fixture pointing at a file the tree does not contain
+        // adds an unrelated FAIL beside the one under test and dulls the signal. The `find` below is
+        // already scoped to the positive-integer message, so it was precise either way — but a
+        // fixture that is red for two reasons is one a later reader cannot trust at a glance.
+        ["memory.index.budget.lines", (m, v) => ((m.memory = { index: { path: "memory-index.md", budget: { lines: v } } }), m)],
         ["memory.store.budget.kilobytes", (m, v) => ((m.memory = { store: { budget: { kilobytes: v } } }), m)],
     ];
 
@@ -277,7 +282,7 @@ describe("a budget or a threshold that is not a positive integer", () => {
             test(`${name}: ${JSON.stringify(bad)} is a failure, not a green`, async () => {
                 const m = set(wellFormed(), bad);
                 m.slots.memory = "memory/";
-                const dir = tree(scratch(), { ...minimalFiles, "memory/r.md": "x\n", "workspace.json": JSON.stringify(m) });
+                const dir = tree(scratch(), { ...minimalFiles, "memory/r.md": "x\n", "memory-index.md": "i\n", "workspace.json": JSON.stringify(m) });
                 const { findings } = await inspect(dir, { schema: SCHEMA });
                 const hit = severities(findings, "fail").find((f) => /positive integer/.test(f.message));
                 assert.ok(hit, `expected a positive-integer failure for ${name}`);
@@ -288,7 +293,7 @@ describe("a budget or a threshold that is not a positive integer", () => {
         test(`${name}: a string is refused too, by the schema`, async () => {
             const m = set(wellFormed(), "90");
             m.slots.memory = "memory/";
-            const dir = tree(scratch(), { ...minimalFiles, "memory/r.md": "x\n", "workspace.json": JSON.stringify(m) });
+            const dir = tree(scratch(), { ...minimalFiles, "memory/r.md": "x\n", "memory-index.md": "i\n", "workspace.json": JSON.stringify(m) });
             const { findings } = await inspect(dir, { schema: SCHEMA });
             assert.ok(severities(findings, "fail").some((f) => f.message.includes(name.split(".").pop())));
         });
@@ -296,7 +301,7 @@ describe("a budget or a threshold that is not a positive integer", () => {
         test(`${name}: a positive integer passes`, async () => {
             const m = set(wellFormed(), 90);
             m.slots.memory = "memory/";
-            const dir = tree(scratch(), { ...minimalFiles, "memory/r.md": "x\n", "workspace.json": JSON.stringify(m) });
+            const dir = tree(scratch(), { ...minimalFiles, "memory/r.md": "x\n", "memory-index.md": "i\n", "workspace.json": JSON.stringify(m) });
             const { findings } = await inspect(dir, { schema: SCHEMA });
             const bad = severities(findings, "fail").filter((f) => /positive integer/.test(f.message));
             assert.deepEqual(bad, []);
