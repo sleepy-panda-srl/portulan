@@ -99,6 +99,20 @@ Reversible but consequential: it changes what the repository says, or how it beh
 - `change-a-verify-recipe` — and *relaxing* a check is the case to scrutinise hardest, because it is the
   one change that makes every future "green" mean less.
 
+**An idea that adds an axis, a mode, or a surface starts as a proposal.** It is written into
+[`proposals/`](proposals/) and ruled on there — never opened as an implementation pull request with
+tests. _Why, measured on two arcs that both reached a maintainer's ruling and paid very different
+prices for it: [#53](https://github.com/sleepy-panda-works/portulan/pull/53) and
+[#55](https://github.com/sleepy-panda-works/portulan/pull/55) **built** a three-mode autonomy axis over
+the four tiers and hardened it through seven review rounds, with regression tests for each finding,
+before the ruling that declined it — "the single posture `main` already runs is sufficient", declined as
+unnecessary rather than rejected as wrong — so the entire build was waste, and what survived is the
+reasoning, which a proposal carries at a fraction of the cost. Against that, proposals
+[`0012`](proposals/0012-a-desktop-app-is-a-host-not-a-surface.md)–[`0014`](proposals/0014-a-feedback-pipe-points-out-of-the-seam.md)
+put the desktop surface's constitutional questions to the maintainer at **zero build waste**, and
+`0012` still gates milestone 11. Both routes ended at the same place — a ruling — and only one of them
+paid for it in code._
+
 ### Gated — explicit human approval, per action, before it happens
 
 Outward-facing or hard to undo. The agent prepares the action and asks; it does not proceed on inference,
@@ -604,6 +618,28 @@ that has not seen the implementer's window:
 
 If supervision is unavailable in a session, that is stated plainly and the maintainer reviews the diff.
 A milestone is never self-certified.
+
+**Doctrine, tier and floor work takes a checkpoint even when no row moves.** Work that touches
+**doctrine, the autonomy tiers, or the platform floor** takes a **fresh-context pre-commit
+checkpoint**, even when no milestone row moves. [`dod.md`](dod.md) condition 7 carries the obligation
+and cites this sentence for the trigger. _Why: the triage threshold above already classes this work as
+full-lane, but until this sentence nothing said that a full-lane change **off** the milestone row needed
+the supervisor a milestone-moving one gets — so the trigger was milestone status, while this gate map
+holds blast radius to be the real measure. Priced on the arc that ran without it: the Dependabot work
+took **no checkpoint at any of the three**, and **two of its three defects were found by Copilot rather
+than by the implementer**._
+
+**Session-open runs `clarify` against the milestone row itself.** When a row's criterion reads two ways,
+the criterion is an **input** to the ritual, not merely its context. _Why: milestone 4's row said
+"Copilot ruleset export", which an implementer could read as a GitHub-Copilot integration or as a GitHub
+repository-ruleset export — two unrelated deliverables, one of which would have been built by guessing.
+The ambiguity cost a **session-blocking question** to the maintainer, and the `clarify` skill that exists
+to catch exactly this went unused, because nothing pointed it at the criterion._
+
+_Both sentences are the maintainer's, taken 2026-07-28 on the two-day review's R3. Neither is enforced by
+machinery today: like the checkpoint table above them, they are read and honoured rather than compiled,
+and the audit behind the first is the Dependabot arc named in it rather than a sweep of every past
+session._
 
 ## The platform floor
 

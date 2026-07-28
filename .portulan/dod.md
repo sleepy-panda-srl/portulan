@@ -39,8 +39,14 @@ A change is done when **all** of the following hold.
    under it before a two-day review counted them. Both halves of the log↔handoff correspondence, and
    the entry budget, are now rails in `docs.sh`'s `record` check rather than prose anyone must
    remember._
-7. **The supervisor checkpoint passed**, in a fresh context, and is recorded — for anything
-   milestone-affecting.
+7. **The supervisor checkpoint passed**, in a fresh context, and is recorded. **Which** work requires
+   one is stated in [`gate-map.md`](gate-map.md) → *Supervised-build checkpoints*, and this condition
+   **cites** that rule rather than restating it. _Why the split is spelled out: this condition read "for
+   anything milestone-affecting", which is narrower than the gate map's own full-lane boundary and
+   narrower than the trigger now recorded beside it — a second, narrower carrier of one rule, which is
+   the shape condition 6 was repaired **out of** one change earlier, and the defect this repository
+   names more often than any other. The Dependabot arc ran checkpointless under the old wording with
+   nothing in this file to say it should not have._
 8. **The session ended with a dated handoff** in [`handoffs/`](handoffs/). Five lines is enough; absent
    is not. _Why: the Session log in [`../docs/plan.md`](../docs/plan.md) records what landed, and the
    handoff records why — and the why is the part a later session cannot reconstruct from the diff. It is
