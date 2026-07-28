@@ -874,6 +874,26 @@ describe("the shared matcher", () => {
         });
     }
 
+    // A heredoc opener is detected on a RAW line, so `<<EOF` inside a quoted string or after a `#`
+    // set the delimiter on text that opened nothing — and everything after it was swallowed looking
+    // for a terminator that never came. That is a fail-open manufactured by a defensive step: worse
+    // than the gap it closes, because a gated command on any later line went invisible.
+    //
+    // Fixed by treating an unterminated opener as no opener. The last two cases are the controls that
+    // stop the fix from degenerating into "keep everything" — a real heredoc's body is data and must
+    // still be stripped. Found by Copilot review on #60.
+    const force = { tier: "gated", action: { shell: "git push --force" } };
+    for (const [label, command, gated] of [
+        ["`<<EOF` inside a quoted string", 'echo "not a heredoc <<EOF"\ngit push --force origin main', true],
+        ["`<<EOF` in a comment", "# <<EOF\ngit push --force origin main", true],
+        ["a real heredoc, command after it", "cat <<EOF\nhello\nEOF\ngit push --force origin main", true],
+        ["a gated command INSIDE a real heredoc body", "cat <<EOF\ngit push --force origin main\nEOF", false],
+    ]) {
+        test(`a heredoc opener that opens nothing does not hide the line after it: ${label}`, () => {
+            assert.equal(matchesRule(force, "Bash", { command }), gated, command);
+        });
+    }
+
     test("the limit is asserted, not just documented: two wrappers still escape", () => {
         // Recorded as a test so that anyone tempted to call this layer a rail meets the counterexample.
         // The platform floor is what covers this — ../core/operating/autonomy.md.

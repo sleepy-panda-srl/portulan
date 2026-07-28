@@ -380,15 +380,38 @@ const SEGMENT_LEADERS = new Set(["{", "}", "!", "then", "else", "elif", "do", "d
 function stripHeredocs(command) {
     const out = [];
     let delimiter = null;
+    let held = []; // lines after an opener whose terminator has not been seen yet
     for (const line of command.split("\n")) {
         if (delimiter !== null) {
-            if (line.trim() === delimiter) delimiter = null;
+            if (line.trim() === delimiter) {
+                // A real heredoc. Its body is data, not command text, so both the body and the
+                // terminator line go.
+                delimiter = null;
+                held = [];
+                continue;
+            }
+            held.push(line);
             continue;
         }
         out.push(line);
         const opened = /<<-?\s*(['"]?)([A-Za-z_][A-Za-z0-9_]*)\1/.exec(line);
         if (opened) delimiter = opened[2];
     }
+    // **An opener with no terminator was not an opener.** The regex reads a raw line, so `<<EOF`
+    // inside a quoted string or after a `#` sets `delimiter` on text that opens nothing — and the
+    // loop above would then swallow every remaining line looking for a word that never comes.
+    //
+    // That is a FAIL-OPEN manufactured by a defensive step, which is worse than the parsing gap it
+    // was added to close: a gated command on any later line becomes invisible to every matcher
+    // downstream. Measured on the runner before this branch existed —
+    // `echo "not a heredoc <<EOF"\ngit push --force origin main` stepped aside where the bare
+    // command answers `ask`, and `# <<EOF` did the same. Found by Copilot review on #60.
+    //
+    // Giving the lines back is the fail-CLOSED direction and costs only a false red: a genuine
+    // heredoc always has its terminator, so this branch cannot reach one. What it does not close is
+    // a mis-detected opener whose delimiter happens to appear later anyway; that is stated in the
+    // gate map rather than chased with a quote-aware parser this file refuses to grow.
+    if (delimiter !== null) out.push(...held);
     return out.join("\n");
 }
 

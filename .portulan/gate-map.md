@@ -319,6 +319,17 @@ Corrected here rather than left, because a gate map that overstates a hole is as
    is asserted as a test rather than only written down, so anyone tempted to call this layer a rail
    meets the counterexample.
 
+   One more, added 2026-07-28 and narrower than it was that morning: **a heredoc opener that opens
+   nothing, whose delimiter word happens to appear on a later line anyway.** Openers are found on the
+   raw line, so `<<EOF` inside a quoted string or after a `#` sets a delimiter on text that opened
+   nothing. Until this date the lines that followed were then swallowed whole looking for a terminator
+   that never came — a fail-open manufactured by a defensive step, and the plainest bypass yet found
+   here, since it hid a gated command on *any* later line. An unterminated opener is now treated as no
+   opener, which closes it in the fail-closed direction at the cost of a possible false red. What
+   remains is only the coincidence case, and closing that needs a quote-aware parser this repository
+   refuses to grow. Found by Copilot review, against a matcher three rounds of review had already
+   improved.
+
    _This list was wrong when first published — four items, five missing, the plainest of them a
    newline. It was corrected by a fresh-context supervisor that tried to defeat the matcher instead of
    reading it. A hole list is a claim like any other, and the only thing that checks it is somebody
