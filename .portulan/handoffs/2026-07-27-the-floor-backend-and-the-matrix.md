@@ -123,7 +123,7 @@ green throughout — is pinned by the suite.
 
 ## Spec 2.1 → 2.2
 
-Suite 255 → **307**, both measured (at `9e5f285` and at head) rather than derived — the base is not 244 because six commits landed on `main` mid-session and this branch was rebased onto them.
+Suite 255 → **309**, both measured (at `9e5f285` and at head) rather than derived — the base is not 244 because six commits landed on `main` mid-session and this branch was rebased onto them.
 
 Additive: the optional `floor` object in the gate policy — `branch`, `checks`, `reviews`,
 `resolve_conversations`. All four exist because they vary per repository and the export would otherwise
@@ -211,7 +211,7 @@ in the artifact with no policy rule credited for compiling them. The matrix and 
 described a floor missing two of its own rules, in the reporting layer built to prevent exactly that. The
 pair is now emitted only when a `propose` rule exists, every emitted rule is asserted to be credited to a
 policy rule, and a `floor.checks` declaration with no `propose` rule is **reported** rather than dropped.
-Suite 289 → 307.
+Suite 289 → 309.
 
 **And the second rebase cost something the merge hid.** `main` moved six commits mid-session, one of them
 adding path-escape validation to the very function this branch had rewritten. The auto-merge kept both
@@ -223,6 +223,19 @@ being re-added, and the tests retargeted from `compile()` to the renamed `parse(
 Worth keeping as the shape rather than the incident: **a clean auto-merge of a rewritten function is where
 a guard disappears**, and what saved it was that the guard and its tests lived in different files. Had they
 been co-located, both halves would have merged away together and nothing would have been red.
+
+**A fourth round found one more, and it arrived in the half nobody reads.** Copilot's *suppressed*
+low-confidence section — no Resolve control, no effect on the merge gate, visible only to someone who opens
+the review body — pointed out that `readCount()` rehydrated only the reasons `REASONS` declares and dropped
+any other stored key. A reason this file emits without the constant declaring it would have reset to 0 on
+every read: never reaching its own cap, released only by the ceiling of nine. That is exactly the asymmetry
+task 0007 removed, reintroduced through a drifted list and silent in the direction of *more* patience — in
+the file whose own comment says the constant exists so the pieces cannot disagree about what a reason is.
+
+Fixed in two places rather than one, because making the runtime survive drift is not the same as preventing
+it: every stored key is carried forward and then the known reasons are defaulted, so an undeclared reason is
+still counted and still capped; and the suite now binds every `reason:` literal in this file to `REASONS`,
+so a new reason added without declaring it is red in CI. Suite 307 → 309.
 
 ## What is left
 

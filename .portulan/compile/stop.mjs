@@ -106,8 +106,18 @@ function readCount(file) {
         // No counter yet, or an unreadable one. Either way this session has spent nothing — the
         // stricter direction, since a session that cannot read its budget has not used it.
     }
+    // Every stored key is carried forward, THEN the known reasons are defaulted to 0. The order and
+    // the carry-forward both matter. Filtering by `REASONS` alone dropped any other key, so a reason
+    // this file can emit but the constant does not declare would have reset to 0 on every read —
+    // never reaching its own cap, and released only by the ceiling of nine. That is precisely the
+    // asymmetry task 0007 removed, reintroduced through a drifted list, and silent in the direction
+    // of more patience. The constant exists so the counter, the clearing rule and the message agree
+    // about what a reason is; it must not be the thing that also decides what may be *counted*.
+    // Found by review, in the suppressed half of a Copilot round. The suite additionally binds every
+    // reason this file emits to `REASONS`, so drift is red in CI rather than only survivable here.
     const counts = {};
-    for (const reason of REASONS) counts[reason] = Number(stored.counts?.[reason]) || 0;
+    for (const [reason, value] of Object.entries(stored.counts ?? {})) counts[reason] = Number(value) || 0;
+    for (const reason of REASONS) counts[reason] ??= 0;
     return { counts, total: Number(stored.total) || 0 };
 }
 
