@@ -103,7 +103,9 @@ manifest being absent, not by the audit.
 
 `docs.sh` needs `bash`, `git`, and a handful of POSIX utilities — `grep`, `sed`, `awk`, `wc`, `sort`,
 `cut`, `tail`, `tr`, `dirname`, `mktemp`, and `rm` as of milestone 4 — and nothing else, which is worth
-preserving: a recipe that needs a toolchain is a recipe that stops being run.
+preserving: a recipe that needs a toolchain is a recipe that stops being run. The `record` work of
+2026-07-28 added no utility to that list: a first draft compared two date lists with `comm` and would
+have, but counting per date is a `grep -c` and the dependency came back out.
 
 **Every recipe now checks its own list before it runs a check**, exiting `2` — and **the `for need in …`
 line inside each recipe is the source of truth** for what that recipe requires. The Needs column above
@@ -192,7 +194,7 @@ less.
 | `links` | Every relative Markdown link resolves. | The engine is a web of cross-references between doctrine, templates, personas, and skills — progressive disclosure *is* those links. A dead link in a framework about context engineering is a product defect, not a docs defect. |
 | `kernel` | [`../../core/engine.md`](../../core/engine.md) stays within 60 lines. | The always-loaded layer is the scarcest thing the framework spends, and the budget is constitutional. A budget that lives only in prose is the first thing a busy session negotiates with. |
 | `map` | Every top-level entry appears in the root `README.md` layout table. | Agent legibility: a repository whose own map omits directories teaches an agent a false shape of the ground. This one exists because that had already happened — see below. |
-| `record` | Every Session log date since 2026-07-25 has a dated handoff in `../handoffs/`, and the newest log entry carries a seam attestation. | The Session log and the handoffs are the repository's memory of *how* things were decided, and a session that leaves no record cannot be audited afterwards — which stopped being hypothetical the day a merged doctrine rewrite (#32/#33) turned out to have neither. The floor date is the day the handoff cadence became a maintainer ruling; earlier entries predate the mandate. |
+| `record` | The Session log and `../handoffs/` correspond **both ways** — every log date since 2026-07-25 has a handoff of that date, and every date carries at least as many log entries as it has handoffs; no Markdown file in `../handoffs/` escapes that count by being named without a date; every log entry dated after 2026-07-28 is within the log's 10-line budget; and the newest entry carries a seam attestation. | The Session log and the handoffs are the repository's memory of *how* things were decided, and a session that leaves no record cannot be audited afterwards — which stopped being hypothetical the day a merged doctrine rewrite (#32/#33) turned out to have neither, and again when a two-day review found **five** handoff-documented sessions with no log entry. The budget half exists because the same review found entries at 105 lines against a log that asks for one line per session: an entry that swells into a record makes the file every session must read to boot cost more each time, and moves the *why* out of the handoff written to hold it. Both floors are forward-only cutoffs — the day each rule became a ruling — because a rule cannot bind a record written before it without rewriting that record to suit it. |
 | `parse` | Every tracked `.json` file is well-formed. | From milestone 2 the repository's policy layer *is* JSON. A manifest that does not parse gates nothing, and it fails at the moment it is needed rather than when it is written. |
 | `doctor` | Both workspaces conform to the Workspace Definition, their paths resolve, their claims match the tree, and every rule carries checkable provenance. It also reports the memory store's count and size, and names any record stating no `Retire when:` condition — reported, never failed, because nothing legislates the field. The budget rail that *does* fail arrived at milestone 5 and is [`index.sh`](index.sh), one recipe over; the retirement condition stays a note here, because it is still the field nothing legislates. For this repository the suite is stricter: a live record without the field turns `tests` red. | The workspace layer is where a team's policy lives, and until this existed every "this workspace conforms" sentence in the repository was an assertion. Its first run found three rules whose provenance the repository had already mandated and not held. |
 | `tests` | The test suites pass. | The validators are the first things here that can be *subtly* wrong rather than visibly broken — a schema keyword silently ignored looks identical to one enforced. A linter can be judged by reading it; a validator cannot. |
@@ -231,6 +233,65 @@ and went green only once the record was repaired. Its observation procedure is o
 seam line from the newest entry and run the recipe ([the 0007 rule](../gate-map.md): a watcher earns its
 place by being watched). Forcing the date half red is a bigger move on today's tree: every logged date
 has more than one handoff, so it takes deleting all of a date's handoffs, not one.
+
+**The counting direction, the stray-file audit and the entry budget were added 2026-07-28**, from the
+two-day review that found five handoff-documented sessions with no Session log entry and entries grown
+to 105 lines against a log asking for one per session.
+
+**Red-first here means the real record, not a fixture.** Run against `docs/plan.md` as it stood on
+`origin/main` — the record the review was written about — the counting direction exits **1** and names
+the arrears exactly:
+
+```
+FAIL  record — date(s) with fewer Session log entries than handoffs
+        2026-07-27 — 14 handoff(s), 13 Session log entr(ies)
+        2026-07-28 — 5 handoff(s), 2 Session log entr(ies)
+```
+
+With the reconstructions written it exits **0**. Nothing else in the recipe moved between those two runs.
+
+**That is the second design, and the first one is the lesson.** The direction was drafted as *presence*
+— every handoff date has at least one entry of that date — and it was **green on the exact record it was
+minted from**, because each of the five unlogged sessions shared its date with a sibling that had been
+logged. A rail that passes its own founding incident is decoration with a green next to it, and this
+repository already fails other people's prose for less. Caught at the session-open supervisor
+checkpoint, which is where the design was still cheap to change. Counting costs the same `grep` and
+catches five of the six incidents the presence form catches none of.
+
+Observations, each run on this tree and reverted, with the tree asserted clean afterwards:
+
+| Move | Result |
+|---|---|
+| clean tree | green; `31 handoff(s)`, `0 entr(ies) dated after 2026-07-28` |
+| the base record from `origin/main` | **red**, naming 2026-07-27 and 2026-07-28 with both counts |
+| a handoff dated 2026-07-29, no entry of that date | **red** on the counting direction alone — 4a stayed green, which is what makes the two separable |
+| a log entry dated 2026-07-29, eleven lines | **red** on the budget, naming file, line, date and count |
+| the same entry trimmed to ten | green, and the count printed as `1` rather than `0` |
+| the cutoff lowered to 2026-07-24, binding 36 entries | **red** on 30, including both merged 2026-07-28 entries — and on **none** of the six added here, which is how their length is a measurement rather than a hand count |
+| a Markdown file in `../handoffs/` whose name carries no date | **red**, naming the file |
+| an undated **non**-Markdown file there (`notes.txt`) | green — the audit's scope is `*.md`, measured rather than assumed |
+| `../handoffs/` emptied | **exit 2** — could not check correspondence |
+| every entry removed from the log | **exit 2** — could not enumerate the record |
+| the whole recipe under `LC_ALL=C`, `en_US.UTF-8`, `tr_TR.UTF-8` | green and identical in all three |
+
+`tr_TR.UTF-8` is in that list on purpose: it is the locale where case-insensitive matching stops
+behaving, and the seam half of this same check is a `grep -i`.
+
+**The procedure found a false green in the check it was written for, one step after it was written** —
+the 0007 rule arriving on its own machinery. The first draft read handoff dates straight out of the
+manifest, and the manifest is the git **index** plus untracked files. Emptying `../handoffs/` therefore
+left four dates standing and printed `ok … (4 date(s))` over a directory with nothing in it. The `[ -f ]`
+test the older direction had always carried was the thing the rewrite dropped; it is back, with the
+reason in the code rather than in this file alone. Reading a *derived* list is not reading the tree, and
+the derived list is the one that stays confident once the tree is gone.
+
+**The stray-file audit is the same lesson pointed forward.** Both directions enumerate by a dated
+filename, so a handoff named anything else is not failed — it is uncounted, which is worse. A **Markdown**
+file in `../handoffs/` that is not a dated handoff is now a FAIL naming it. The set is empty today; it
+ships to catch the first one. Its scope stops at `*.md` on purpose, and that is measured rather than
+claimed: a `notes.txt` there passes. Widening the matcher would red the untracked debris a working tree
+collects, which buys less than it costs — but it means the audit covers the shape a real handoff would
+take, not the whole directory.
 
 **Both recipes then turned out to have a false green, found in review of that same change.** Neither
 checked whether `git ls-files` succeeded. When it failed the list came back empty, every loop iterated
@@ -350,13 +411,31 @@ inside its own store → **exit 2**. Delete the generator → **exit 2** from th
   reviews that way), and Markdown link *syntax* quoted inside a code span — while writing about this
   check — is treated as a real link and fails. Skipping spans needs a small parser; until then, write
   paths as links when you want them checked, and avoid quoting link syntax verbatim.
-- **`record` corresponds by date, not by session — and reads presence, not truth.** Two sessions closing
-  on one day are satisfied by one handoff: the milestone-3-close session of 2026-07-27 has a Session log
-  entry and no handoff of its own, and the check cannot see that, because the dependabot handoff shares
-  the date. And the seam half checks that the newest entry *contains* an attestation, never that the
-  attestation is honest — a false "seam scan clean" passes exactly as a true one does. Both are the
-  known cost of a check cheap enough to exist; per-session correspondence needs the log to name its
-  handoff, which is a convention change, not a bigger grep.
+- **`record` corresponds by date, not by session, and counting only narrows that — it does not close
+  it.** Two sessions closing on one day are still satisfied by one handoff: the milestone-3-close
+  session of 2026-07-27 has a Session log entry and no handoff of its own, and 4a cannot see that,
+  because the dependabot handoff shares the date. The counting direction has its own two:
+  **an extra entry on a date offsets a missing one** — log two entries for one session and a second
+  session's handoff goes uncounted — and **a session spanning midnight reds honestly but wrongly**, its
+  handoff on one date and its entry on the other. The first is a real hole; the second is a false red
+  that a reader can resolve in one look, which is the direction to err in. **The convention change that
+  unblocks the per-session version has now landed**: an entry must link its handoff, so the tight rail
+  is a grep over entry bodies rather than a rule nobody agreed to yet. It is not written, and until it
+  is, this is the limit. And the seam half checks that the newest entry *contains* an attestation, never
+  that the attestation is honest — a false "seam scan clean" passes exactly as a true one does.
+- **The entry parser reads a line, not a document.** An entry is delimited by a line *starting* with
+  `- YYYY-MM-DD ·`, so quoting that shape unindented inside an entry splits it in two — and a 20-line
+  entry can pass all-green that way, its phantom half dated before the cutoff. Found by a supervisor
+  probing the parser rather than the record. It is left as a limit rather than fixed, because the fix is
+  a Markdown parser and the trigger is malformed quoting of the log's own syntax inside the log; an
+  unknown date invented that way still fails 4a visibly. Same family as the `links` check not treating
+  code spans as code, recorded above.
+- **The stray-file audit stops at `*.md`.** A `notes.txt` in `../handoffs/` is not examined.
+- **The entry budget counts lines, which is not the thing anyone cares about.** Ten lines of dense
+  pointer and ten lines of padding score the same, and an entry can satisfy it by moving prose into a
+  handoff nobody reads. It is a rail against unbounded growth in the file every session loads to boot,
+  not a measure of whether an entry is any good — condition 2 of [`../dod.md`](../dod.md) still owns
+  that and still cannot be mechanised.
 - **`index` checks what memory costs, never whether it is any good.** Derivation and size are
   machine questions; whether these lines lead a reader to the right record is not, and no green here
   should be read as answering it. That is an eval question (milestone 8) and a naming question for

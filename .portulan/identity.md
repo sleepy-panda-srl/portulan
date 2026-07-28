@@ -40,7 +40,7 @@ Deliberately thin, and it stays thin:
 | `doctor` · `plugin-lint` · `compile` | Zero-dependency JavaScript on Node, run from the repository | now — [`../cli/`](../cli/) |
 | Tests | `node --test`, node's own runner — no framework, no install | now — every `*.test.mjs` under [`../cli/`](../cli/), four as of milestone 4 |
 | Plugin packaging | Claude Code plugin + marketplace manifests, engine skills, personas as agents | now — [`../plugin/`](../plugin/) and [`../.claude-plugin/`](../.claude-plugin/) |
-| CLI | TypeScript on Node via `npx` — absorbs `doctor` | milestone 7 |
+| CLI | TypeScript on Node via `npx` — absorbs `doctor`, `plugin-lint` and `compile` | milestone 7 |
 
 No framework, no build step, no service, and no package manager: nothing here is installed before it
 runs.

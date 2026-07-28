@@ -41,7 +41,7 @@ sleepy-panda-works/
 │   ├── agents/                   Claude Code agent bindings of core/personas/ — a platform-fixed
 │   │                             location: the default agents dir of the repo-rooted plugin
 │   ├── cli/                      init · doctor · compile · vendor · index · upgrade
-│   │                             (today: doctor + plugin-lint, standalone; the CLI absorbs them at M7)
+│   │                             (today: doctor + plugin-lint + compile, standalone; absorbed at M7)
 │   ├── examples/                 fictional demo workspace
 │   ├── .portulan/                this repo's own workspace — customer zero, dogfooding
 │   ├── evals/                    golden tasks, A/B harness, CI eval gate
@@ -116,8 +116,25 @@ portulan.works defensively; knockout trademark sweep classes 9/42 cleared 27 Jul
 
 ## Session log
 
-_(append one line per session: date · milestone · what landed · supervisor fidelity note —
-the seam applies here too: no client-identifying references)_
+_One entry per session. **This is the mandate for the log line**, and
+[`../.portulan/dod.md`](../.portulan/dod.md) condition 6 cites it rather than restating it — a mandate
+with two carriers is obeyed at the narrower one, which is not a hypothetical here: that condition read
+"if the work moved milestone state", and five handoff-documented sessions went unlogged under it._
+
+_An entry is a **pointer, not a record**: date · milestone · what landed · supervisor fidelity note ·
+the seam attestation · links to the handoff and the pull request, in **at most 10 lines**. The why lives
+in the handoff; an entry that explains itself has taken the handoff's job and moved it into the file
+every session must read to boot._
+
+_**Forward-only: the budget binds entries dated after 2026-07-28.** The entries that were already over
+it when it was set keep their length — two of them are dated that same day and were already merged, and
+rewriting a merged record to satisfy a rule written after it destroys the record in order to enforce a
+budget. A cutoff rather than a list, on the handoff cadence's own precedent. So the budget binds nothing
+at the moment it is introduced, and the rail says so out loud rather than leaving it to be inferred from
+a green: [`../.portulan/verify/docs.sh`](../.portulan/verify/docs.sh)'s `record` check counts the entries
+dated after the cutoff and goes red above 10, printing that count on every run._
+
+_The seam applies here too: no client-identifying references._
 
 - 2026-07-24 · M0 (Bootstrap) · Private `sleepy-panda-works/portulan` created and pushed
   (commit `f04dedd`): Apache-2.0 license + NOTICE, README stub, directory scaffold per the
@@ -1292,6 +1309,29 @@ the seam applies here too: no client-identifying references)_
   `CONTRIBUTING.md`, the tier-model work) were not touched. · Seam scan clean across files, commit
   message, and branch name. Handoff:
   [`.portulan/handoffs/2026-07-27-the-desktop-is-a-host.md`](../.portulan/handoffs/2026-07-27-the-desktop-is-a-host.md).
+
+- 2026-07-27 · post-M4-session-0 — no milestone row touched · **Who may commit here, verified rather than
+  assumed** — [#54](https://github.com/sleepy-panda-works/portulan/pull/54), merged 2026-07-28 as
+  `75ef3fa`. Ruling: anyone may clone and view, only team members commit, and **external pull requests
+  are not accepted** — outside participation is proposals and feedback. The access surface was read back
+  from the API rather than inferred from the platform default: one admin collaborator, no outside
+  collaborators, `default_repository_permission: read`, nothing needing revocation. Three issue forms
+  shipped with it, blank issues off, their intake labels a **separate array** from the pull-request
+  policy so a pull request cannot satisfy the label gate by being labelled `feedback`. · Supervisor
+  fidelity: no fresh-context checkpoint is recorded. · *Reconstruction, written 2026-07-28; seam scan
+  re-run clean.* Handoff: [`2026-07-27-who-may-commit.md`](../.portulan/handoffs/2026-07-27-who-may-commit.md).
+
+- 2026-07-27 · post-M4-session-0 — no milestone row touched · **The review lands before the merge, not
+  after it** — [#56](https://github.com/sleepy-panda-works/portulan/pull/56), merged 2026-07-28 as
+  `d35a1f1`. Ruling, from the maintainer reading closed pull requests and finding merges that had beaten
+  their review: a pull request cannot merge until Copilot's round **on the head being merged** has been
+  awaited, not merely requested. `main` already required resolution, which covers *resolved*; nothing
+  covered *awaited*. So `commit_id` is compared against the live head read from the API rather than the
+  event payload, and all three "could not look" paths fail closed. Not made required in the same change,
+  per proposal `0004`'s lesson. · Supervisor fidelity: no fresh-context checkpoint is recorded. ·
+  *Reconstruction, written 2026-07-28; seam scan re-run clean.* Handoff:
+  [`2026-07-27-the-review-lands-before-the-merge.md`](../.portulan/handoffs/2026-07-27-the-review-lands-before-the-merge.md).
+
 - 2026-07-28 · M4 (Enforcement compiler) · **Milestone closed on a fresh-context verdict that re-measured
   rather than replayed — and that ran the one demonstration the implementing session could not.** [#57](https://github.com/sleepy-panda-works/portulan/pull/57)
   merged as `6b6f591`; this change moves the row to done and carries the two non-gating fixes the close
@@ -1393,6 +1433,50 @@ the seam applies here too: no client-identifying references)_
   is **still not required** and this change does not make it one. · Seam scan clean across files, commit
   messages, and branch name. Handoff:
   [`.portulan/handoffs/2026-07-28-awaiting-a-review-is-not-a-failure.md`](../.portulan/handoffs/2026-07-28-awaiting-a-review-is-not-a-failure.md).
+
+- 2026-07-28 · post-M4 — no milestone row touched · **Every jq filter a workflow runs is executed, not
+  described** — [#64](https://github.com/sleepy-panda-works/portulan/pull/64), merged as `d826f20`. The
+  seventh verify recipe lifts each `--jq` program out of the workflows' parsed `run:` scalars and runs it
+  against fixtures, so no filter is copied and none can drift; coverage is asserted both ways, and an
+  anchor matching nothing exits 2 rather than passing. It brings the first dependency into `verify/` that
+  is neither bash, a POSIX utility nor `node` — **`jq`** — measured present on `ubuntu-latest` rather
+  than assumed. One Copilot round, one true finding: a promised byte-for-byte comparison that
+  `spawnSync`'s utf8 decoding had quietly widened. · Supervisor fidelity: no fresh-context checkpoint is
+  recorded. · *Reconstruction, written 2026-07-28; seam scan re-run clean.* Handoff:
+  [`2026-07-28-every-jq-filter-a-workflow-runs-is-exercised.md`](../.portulan/handoffs/2026-07-28-every-jq-filter-a-workflow-runs-is-exercised.md).
+
+- 2026-07-28 · post-M4 — no milestone row touched · **The wrapper the gate could not see, and the
+  boundary that held anyway** — [#62](https://github.com/sleepy-panda-works/portulan/pull/62) (`f4782ef`)
+  and [#61](https://github.com/sleepy-panda-works/portulan/pull/61) (`52d4367`). A report that
+  `gh-bot api …` bypasses `change-settings-through-the-api` was right about the gate and wrong about the
+  consequence: measured live, the App holds `metadata: read` + `pull_requests: write` and no
+  `administration`, so the settings **PATCH** already 403s while a ruleset **read** 200s. The gate came
+  off rather than growing a cleverer matcher, and an endpoint allowlist moved **inside the wrapper**,
+  before the token is minted. Two gate-map claims the measurement disproved were corrected. · Supervisor
+  fidelity: none recorded. · *Reconstruction, written 2026-07-28; seam scan re-run clean.* Handoff:
+  [`2026-07-28-the-wrapper-the-gate-could-not-see.md`](../.portulan/handoffs/2026-07-28-the-wrapper-the-gate-could-not-see.md).
+
+- 2026-07-28 · post-M4 — no milestone row touched · **A write gate reached the shell spellings of a
+  write** — [#59](https://github.com/sleepy-panda-works/portulan/pull/59) (`9cb7db5`, a gate-map row and
+  the `auto` refusal reason the compiler emits) and
+  [#60](https://github.com/sleepy-panda-works/portulan/pull/60) (`985236e`). `edit-the-constitution`, the
+  one `prohibited` rule, did not cover `echo x >> docs/vision.md`: the permission rule rejects the tool
+  and the matcher's `write` branch was guarded by a write-tool list, so both layers fell through. It now
+  reads redirections and a named table of writing commands, and the same defect one action kind over —
+  any wrapper before a Gated command — was fixed in the same stroke. **Fourteen Copilot rounds found
+  three further live bypasses** the supervisor's attack pass had missed; suite 309 → **442**. · Fidelity:
+  PASS WITH FIXES (the hole list was wrong — five more, closed). · *Reconstruction; seam scan re-run clean.* Handoff: [`2026-07-28-a-write-gate-reaches-the-shell.md`](../.portulan/handoffs/2026-07-28-a-write-gate-reaches-the-shell.md).
+
+- 2026-07-28 · Doctrine — no milestone row touched · **The mode axis was declined**, and until this
+  reconstruction the ruling had no record. [#53](https://github.com/sleepy-panda-works/portulan/pull/53)
+  (three autonomy modes over the four tiers) and [#55](https://github.com/sleepy-panda-works/portulan/pull/55)
+  (customer zero declares `auto`) were both **closed unmerged** on the maintainer's ruling: *the single
+  posture `main` already runs is sufficient* — the tier table plus the platform floor gives this
+  workspace everything the axis asked for except promptless merges, and **the merge keeps its human**.
+  **Declined as unnecessary, not rejected as wrong**: the rename ruling, tighten-only,
+  unclaimed-binds-nobody, the fail-closed clamp and seven rounds of hardening stay retrievable in the
+  closed pull requests. `docs/vision.md` was never touched. · No handoff records the closure, which is a
+  cadence gap in its own right. · *Reconstruction from the two closure comments; seam scan re-run clean.*
 
 - 2026-07-28 · M5 (Memory lifecycle & librarian), session 0 of 1–2 · **The index stopped being a promise
   and the budget stopped being a sentence.** `core/operating/memory.md` has described a *generated,

@@ -7,7 +7,8 @@
 #   links   every relative Markdown link resolves            (docs that lie are worse than no docs)
 #   kernel  core/engine.md stays inside its line budget      (the always-loaded layer is the scarce one)
 #   map     the root README lists every top-level entry      (agent legibility: the map matches the ground)
-#   record  every log date has a dated handoff; newest entry attests the seam (no record = unauditable)
+#   record  a date has at least as many log entries as handoffs and vice versa, entries stay within
+#           their line budget, newest attests the seam        (a session with no record is unauditable)
 #
 # Exit 0 green · 1 red · 2 could not run. The Stop-gate (milestone 4) calls this;
 # until it exists, the definition of done in ../dod.md requires running it by hand.
@@ -136,29 +137,102 @@ else
 fi
 
 # --------------------------------------------------------------------- 4. record
-# Two correspondence checks on the session record, added 2026-07-27 after an audit found a merged
+# Five checks on the session record. 4a and 4d were added 2026-07-27, after an audit found a merged
 # doctrine rewrite (#32/#33) with no handoff and no Session log entry, and the newest entry missing
-# its seam attestation. Correspondence is by DATE, not by session: two sessions closing on one day
-# are satisfied by one handoff — a stated limit, not a claim (see ./README.md, Known limits). The
-# floor is 2026-07-25, the day the handoff cadence became a maintainer ruling (docs/plan.md,
-# Session log) — entries before it predate the mandate and are not retro-bound. The seam check
-# reads PRESENCE of an attestation in the newest entry, never whether its verdict is honest.
+# its seam attestation. 4b, 4b' and 4c were added 2026-07-28, after a two-day review found five
+# handoff-documented sessions with no Session log entry at all, and log entries that had grown from
+# the "one entry per session" the log asks for to 105 lines.
+#
+# Correspondence runs BOTH ways and is by DATE, not by session — but the reverse direction compares
+# COUNTS, which is the difference between a rail and a decoration here. Presence was the first draft:
+# it was green on the exact record it was minted from, because each of the five unlogged sessions
+# shared a date with a sibling that had been logged. Counting reds on that record. Both remaining
+# limits are in ./README.md rather than restated here.
+#
+# Two floors, each forward-only and each a cutoff rather than a list, because a rule written after a
+# record cannot bind it without rewriting the record to suit the rule:
+#   CADENCE_FLOOR       2026-07-25, the day the handoff cadence became a maintainer ruling.
+#   ENTRY_BUDGET_CUTOFF 2026-07-28. Entries dated AFTER it are bound; the entries already over budget
+#                       when it was set — two of them dated that same day and already merged — keep
+#                       their length. So this half binds nothing at the moment it is introduced,
+#                       stated here rather than left to be inferred from a green, and 4c prints the
+#                       count it examined on every run so the green never implies more than it saw.
+#
+# The seam check reads PRESENCE of an attestation in the newest entry, never whether it is honest.
 PLAN=docs/plan.md
 HANDOFFS=.portulan/handoffs
 HANDOFFS_RE=${HANDOFFS//./\\.}   # dots escaped: the path is a literal in a regex context
 CADENCE_FLOOR=2026-07-25
+ENTRY_BUDGET=10
+ENTRY_BUDGET_CUTOFF=2026-07-28
 if [ ! -f "$PLAN" ]; then
     fail "record — $PLAN is missing"
 else
+    # The entry list is the input set for three of the five checks below, so building it is a
+    # PRECONDITION: an empty list would let two of them pass having examined nothing. One pass,
+    # emitting DATE<TAB>START<TAB>LINES. Trailing blank lines belong to the gap between entries,
+    # not to the entry, so they are not charged against the budget.
+    awk '
+        function flush() {
+            if (date != "") {
+                while (n > 0 && bt > 0) { n--; bt-- }
+                printf "%s\t%d\t%d\n", date, start, n
+            }
+        }
+        /^- 2[0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9] ·/ {
+            flush(); date = substr($0, 3, 10); start = NR; n = 1; bt = 0; next
+        }
+        date != "" && /^## / { flush(); date = ""; next }
+        date != "" { n++; if ($0 ~ /^[[:space:]]*$/) bt++; else bt = 0 }
+        END { flush() }
+    ' "$PLAN" >"$tmp/entries"
+    if [ ! -s "$tmp/entries" ]; then
+        printf 'verify: no Session log entries found in %s — cannot enumerate the record\n' "$PLAN" >&2
+        exit 2
+    fi
+    # One date per entry, repeats intact — 4b counts them, so collapsing here would erase the signal.
+    # Where a `sort -u` is taken below it carries `LC_ALL=C`: these are byte comparisons and the
+    # ordering should not depend on the machine's locale. Measured under C, en_US.UTF-8 and
+    # tr_TR.UTF-8 — the last on purpose, since 4d's match is case-insensitive and that is the locale
+    # where case stops behaving.
+    cut -f1 "$tmp/entries" >"$tmp/logdates"
+
+    # Every Markdown file under the handoffs directory, split into dated handoffs and anything else.
+    # Enumerating them is a precondition: with none enumerable the two directions below would report
+    # ok over an empty set, which is the false green this recipe has minted rules about.
+    #
+    # `[ -f ]` is load-bearing and was learned the expensive way: the first draft of this read the
+    # dates straight out of the manifest, and the manifest is the INDEX plus untracked files. Emptying
+    # the handoffs directory therefore left four dates standing and printed `ok … (4 date(s))` over a
+    # directory with nothing in it — found by this check's own observation procedure, one step after
+    # it was written. A handoff that git knows about and the tree does not is not a handoff.
+    #
+    # The `*)` arm is the other half of the same lesson: a file here whose name carries no date is
+    # invisible to a check that enumerates by date, so it would be silently uncounted rather than
+    # reported. Discovery is audited against the shape it assumes, the way `doctor.sh` and
+    # `plugin.sh` already audit theirs. The set is empty today; it ships to guard the next one.
+    : >"$tmp/handoffdates"
+    : >"$tmp/strays"
+    while IFS= read -r h; do
+        [ -f "$h" ] || continue
+        base=${h##*/}
+        case "$base" in
+            [0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]-*.md)
+                printf '%s\n' "${base:0:10}" >>"$tmp/handoffdates" ;;
+            *) printf '%s\n' "$h" >>"$tmp/strays" ;;
+        esac
+    done < <(grep "^${HANDOFFS_RE}/.*\.md$" "$manifest")
+    if [ ! -s "$tmp/handoffdates" ]; then
+        printf 'verify: no dated handoff files under %s/ — cannot check correspondence\n' "$HANDOFFS" >&2
+        exit 2
+    fi
+
+    # 4a. Every Session log date since the cadence floor has a handoff of that date.
     : >"$tmp/record"
     while IFS= read -r d; do
         [[ "$d" < "$CADENCE_FLOOR" ]] && continue
-        found=0
-        while IFS= read -r h; do
-            [ -f "$h" ] && found=1 && break
-        done < <(grep "^${HANDOFFS_RE}/${d}-.*\.md$" "$manifest")
-        [ "$found" -eq 1 ] || printf '%s\n' "$d" >>"$tmp/record"
-    done < <(sed -n 's/^- \(2[0-9]\{3\}-[0-9]\{2\}-[0-9]\{2\}\) ·.*/\1/p' "$PLAN" | sort -u)
+        grep -qxF -- "$d" "$tmp/handoffdates" || printf '%s\n' "$d" >>"$tmp/record"
+    done < <(LC_ALL=C sort -u "$tmp/logdates")
 
     if [ -s "$tmp/record" ]; then
         fail "record — Session log date(s) since $CADENCE_FLOOR with no dated handoff in $HANDOFFS/"
@@ -167,16 +241,69 @@ else
         pass "record — every Session log date since $CADENCE_FLOOR has a dated handoff"
     fi
 
-    last=$(grep -n '^- 2[0-9]\{3\}-[0-9]\{2\}-[0-9]\{2\} ·' "$PLAN" | tail -1 | cut -d: -f1)
-    if [ -z "$last" ]; then
-        fail "record — no Session log entries found in $PLAN"
+    # 4b. And the reverse, BY COUNT rather than by presence: a date carries at least as many Session
+    # log entries as it has handoffs. Presence was the first draft and it was the weaker rail by a
+    # long way — it was GREEN on the very record it was minted from, because each of the five
+    # unlogged sessions shared its date with a sibling that had been logged. Counting is red on that
+    # same tree (2026-07-27: 13 entries against 14 handoffs; 2026-07-28: 2 against 5) and green once
+    # the entries are written, which is what red-first is supposed to mean.
+    #
+    # No floor is needed on this side: dates before the cadence ruling have zero handoffs and `>=`
+    # is satisfied by anything. What it cannot see is stated in ./README.md rather than here — an
+    # extra entry on a date can offset a missing one, and a session spanning midnight reds honestly.
+    : >"$tmp/orphans"
+    while IFS= read -r d; do
+        hc=$(grep -cxF -- "$d" "$tmp/handoffdates")
+        lc=$(grep -cxF -- "$d" "$tmp/logdates")
+        [ "$lc" -ge "$hc" ] ||
+            printf '%s — %s handoff(s), %s Session log entr(ies)\n' "$d" "$hc" "$lc" >>"$tmp/orphans"
+    done < <(LC_ALL=C sort -u "$tmp/handoffdates")
+
+    if [ -s "$tmp/orphans" ]; then
+        fail "record — date(s) with fewer Session log entries than handoffs"
+        sed 's/^/        /' "$tmp/orphans"
     else
-        entry=$(awk -v s="$last" 'NR==s{f=1} f && NR>s && (/^- 2[0-9][0-9][0-9]-/ || /^## /){exit} f{print}' "$PLAN")
-        if printf '%s' "$entry" | tr '\n' ' ' | grep -qiE 'seam scan[^.]{0,120}clean'; then
-            pass "record — the newest Session log entry carries a seam attestation"
-        else
-            fail "record — the newest Session log entry ($PLAN:$last) carries no seam attestation"
-        fi
+        pass "record — every date has at least as many log entries as handoffs ($(wc -l <"$tmp/handoffdates" | tr -d '[:space:]') handoff(s))"
+    fi
+
+    # 4b'. And no MARKDOWN file in the handoffs directory escaped that count by being named otherwise.
+    # The scope is Markdown deliberately and the sentences below say so: the enumeration above greps
+    # `*.md`, so a `notes.txt` here passes — measured, not assumed. Widening it would red the untracked
+    # debris a working tree collects (`.DS_Store` and friends), which is a worse trade than the gap.
+    if [ -s "$tmp/strays" ]; then
+        fail "record — Markdown file(s) in $HANDOFFS/ whose name carries no date, so no check counts them"
+        sed 's/^/        /' "$tmp/strays"
+    else
+        pass "record — every Markdown file in $HANDOFFS/ is a dated handoff"
+    fi
+
+    # 4c. An entry dated after the budget cutoff is a pointer, not a record: at most 10 lines.
+    : >"$tmp/budget"
+    bound=0
+    while IFS=$'\t' read -r d start lines; do
+        [[ "$d" > "$ENTRY_BUDGET_CUTOFF" ]] || continue
+        bound=$((bound + 1))
+        [ "$lines" -gt "$ENTRY_BUDGET" ] &&
+            printf '%s:%s (%s) is %s lines\n' "$PLAN" "$start" "$d" "$lines" >>"$tmp/budget"
+    done <"$tmp/entries"
+
+    # The bound count is printed on the red branch as well as the green one. A green that named what it
+    # examined while a red did not would be the honest half of a claim: both carriers of this rule say
+    # the count is printed on every run, and a sentence true only of successes is how that starts drifting.
+    if [ -s "$tmp/budget" ]; then
+        fail "record — $bound entr(ies) dated after $ENTRY_BUDGET_CUTOFF, $(wc -l <"$tmp/budget" | tr -d '[:space:]') over the ${ENTRY_BUDGET}-line budget"
+        sed 's/^/        /' "$tmp/budget"
+    else
+        pass "record — $bound entr(ies) dated after $ENTRY_BUDGET_CUTOFF, all within ${ENTRY_BUDGET} lines"
+    fi
+
+    # 4d. The newest entry attests the seam.
+    last=$(cut -f2 "$tmp/entries" | tail -1)
+    entry=$(awk -v s="$last" 'NR==s{f=1} f && NR>s && (/^- 2[0-9][0-9][0-9]-/ || /^## /){exit} f{print}' "$PLAN")
+    if printf '%s' "$entry" | tr '\n' ' ' | grep -qiE 'seam scan[^.]{0,120}clean'; then
+        pass "record — the newest Session log entry carries a seam attestation"
+    else
+        fail "record — the newest Session log entry ($PLAN:$last) carries no seam attestation"
     fi
 fi
 
