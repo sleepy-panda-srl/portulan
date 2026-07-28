@@ -207,7 +207,7 @@ silently re-attributes everything typed afterwards, which is the failure this me
   pull-request conversation *before* it mints a token — a refused call never creates a credential. Its
   limits, stated because a guard nobody knows the edges of gets trusted as a rail: `graphql` is admitted
   and carries arbitrary queries, and the whole check is bypassable by minting a token and calling `gh`
-  directly. The rail is the permission set. [`../gate-map.md`](../gate-map.md) carries this as hole 4,
+  directly. The rail is the permission set. [`../gate-map.md`](../gate-map.md) carries this as hole 6,
   and [`../../cli/gh-bot.test.mjs`](../../cli/gh-bot.test.mjs) asserts both directions offline.
 - **Widening this App's permissions is a gate-policy change, not a settings tweak.** Step 1 says *Pull
   requests → Read and write, and nothing else*, and the bullets above are what that sentence is holding

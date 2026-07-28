@@ -73,7 +73,7 @@ describe("gh-bot — the endpoint allowlist", () => {
     //
     // The GET is refused even though plain `gh api` may now perform it unattended. That is not drift:
     // this wrapper bounds a token the repository mints, and narrower than the policy is the safe
-    // direction for it. See ../.portulan/gate-map.md, hole 4.
+    // direction for it. See ../.portulan/gate-map.md, hole 6.
     for (const args of [
         ["api", "repos/o/r/rulesets"],
         ["api", "-X", "PATCH", "repos/o/r/rulesets/1"],
@@ -193,7 +193,7 @@ describe("gh-bot — the wrapper spelling stays uncovered", () => {
         //
         // This also pinned `gh api` as a live rule target until 2026-07-28, when reaching settings
         // through `gh api` stopped being Gated and the rule was removed. The assertion went with it:
-        // hole 4 never rested on that one rule existing, only on the prefix matching every shell gate
+        // hole 6 never rested on that one rule existing, only on the prefix matching every shell gate
         // here shares. Checking the prefix property directly is what that assertion was reaching for.
         const policy = JSON.parse(fs.readFileSync(path.join(REPO, ".portulan", "gates.json"), "utf8"));
         const targets = policy.rules.map((r) => r.action?.shell).filter(Boolean);
@@ -205,7 +205,7 @@ describe("gh-bot — the wrapper spelling stays uncovered", () => {
         const wrapper = "./.portulan/tools/gh-bot api repos/o/r/rulesets";
         assert.ok(
             !targets.some((t) => wrapper === t || wrapper.startsWith(`${t} `)),
-            "no shell target prefix-matches the wrapper spelling — which is what makes hole 4 a hole",
+            "no shell target prefix-matches the wrapper spelling — which is what makes hole 6 a hole",
         );
     });
 });

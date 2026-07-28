@@ -160,7 +160,7 @@ file: where a rule and its clarification live apart, only the rule gets read.)_
   `200`. So for the agent identity a settings **change** is refused by GitHub — the half
   [`../core/operating/autonomy.md`](../core/operating/autonomy.md) calls the floor, demonstrated here
   rather than repeated, and the evidence the amendment below leans on when it says the floor is what is
-  left holding. The wrapper carries an endpoint allowlist besides; hole 4 describes it, and describes
+  left holding. The wrapper carries an endpoint allowlist besides; hole 6 describes it, and describes
   what it is not.
 - `create-a-repository` and `delete-a-repository`. `rename-or-transfer-a-repository` is named too and
   compiles to **nothing** — a transfer is ordinarily a web-UI action and no permission rule reaches it.
@@ -302,7 +302,7 @@ is healthy. A permission rule does not fail open. So [`compile/gate.mjs`](compil
 step aside silently on any internal error, handing the decision back to the layer that cannot be removed by
 a syntax error.
 
-**The honest holes, named because they are the ones to know.** Five of them, and the first is smaller than
+**The honest holes, named because they are the ones to know.** Six of them, and the first is smaller than
 an earlier draft of this paragraph claimed — that draft said the wrapper spelling "falls through to the
 host's default mode", which was true *before* the hook existed and false of the shipped configuration. A
 pre-commit supervisor measured it and found the hook's `ask` governing and its sentence reaching the agent.
@@ -345,12 +345,12 @@ Corrected here rather than left, because a gate map that overstates a hole is as
 5. **A rule whose sentence is broader than its matcher.** Guarded against by splitting rather than by
    trusting prose — `rename-or-transfer-a-repository` compiles to nothing and says so, rather than hiding
    inside a neighbour's matcher.
-4. **This repository ships a wrapper of its own, and holes 1 and 2 meet in it.** Added 2026-07-28.
+6. **This repository ships a wrapper of its own, and holes 1 and 4 meet in it.** Added 2026-07-28.
    [`tools/gh-bot`](tools/gh-bot) runs `gh` under the agent identity, so `./.portulan/tools/gh-bot …`
    is a spelling no compiled rule sees: every shell gate here compiles to a `Bash(<prefix>:*)` match
    against the literal command, and [`compile/gate.mjs`](compile/gate.mjs)'s one level of unwrapping
    knows `sh -c` and nothing about this path. On the maintainer's machine the wrapper is also
-   allowlisted by hand, which is hole 2 with the unmeasured part removed — the entries are for
+   allowlisted by hand, which is hole 4 with the unmeasured part removed — the entries are for
    different spellings, so no precedence question arises and the wrapper simply runs unattended.
 
    **This was found against the `gh api` gate, and that gate no longer exists.** Reaching repository
@@ -441,7 +441,7 @@ bypassable.
 
 _Precise about **writes**, and that precision is load-bearing rather than pedantic. The token also holds
 `metadata: read`, which is a real read surface: repository ruleset reads ride on it. So "nothing else"
-is true of what this identity can change and false of what it can see, and hole 4 above is where the
+is true of what this identity can change and false of what it can see, and hole 6 above is where the
 difference cost something._
 
 **Live since 2026-07-25.** The App exists, is installed on this repository alone, and has posted its
