@@ -74,7 +74,7 @@ Written at the same level of detail, because a legibility report that lists only
   [`../../../cli/`](../../../cli/), counting them before it runs them, so a suite added there is covered
   without this bullet changing: four as of milestone 4, over `doctor`, `plugin-lint`, the enforcement
   compiler [`../../../cli/compile.mjs`](../../../cli/compile.mjs), and the Stop-gate runner's arithmetic
-  in [`../../compile/stop.mjs`](../../compile/stop.mjs). Nothing tests the six verify recipes themselves
+  in [`../../compile/stop.mjs`](../../compile/stop.mjs). Nothing tests the seven verify recipes themselves
   ([`../../tasks/0004-a-harness-for-the-verify-recipes.md`](../../tasks/0004-a-harness-for-the-verify-recipes.md)),
   and there is no other product code yet. Treat green as "the modules those suites reach behave, and the
   documents are internally consistent" — never as "the product works".

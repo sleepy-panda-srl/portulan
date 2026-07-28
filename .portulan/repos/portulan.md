@@ -7,7 +7,7 @@ has been public and permanent since 2026-07-27.
 
 **Build / test / run.**
 - build: none — no build step yet; the CLI arrives at milestone 7
-- test: `./.portulan/verify/docs.sh` — the default recipe, and the one the Stop-gate runs automatically since milestone 4 (see [`../../core/operating/verification.md`](../../core/operating/verification.md)). Five more are declared in [`../workspace.json`](../workspace.json) and all six run in CI: `json.sh`, `doctor.sh`, `tests.sh`, `plugin.sh`, `compile.sh`
+- test: `./.portulan/verify/docs.sh` — the default recipe, and the one the Stop-gate runs automatically since milestone 4 (see [`../../core/operating/verification.md`](../../core/operating/verification.md)). Six more are declared in [`../workspace.json`](../workspace.json) and all seven run in CI: `json.sh`, `doctor.sh`, `tests.sh`, `plugin.sh`, `compile.sh`, `workflow-filters.sh`
 - run: `./.portulan/verify/doctor.sh` — the nearest thing to running the product: it validates both workspaces against the Workspace Definition. From milestone 3 there is a second sense of "run": install the repository as a Claude Code plugin and invoke `/portulan`, which boots the engine ([`../../plugin/`](../../plugin/))
 
 **Gates.** Inherits [`../gate-map.md`](../gate-map.md) with no deviations. Two worth keeping in front of

@@ -61,6 +61,12 @@
         "run": "./.portulan/verify/compile.sh",
         "requires": ["bash", "node"],
         "doc": "verify/README.md"
+      },
+      {
+        "id": "workflow-filters",
+        "run": "./.portulan/verify/workflow-filters.sh",
+        "requires": ["bash", "jq", "node"],
+        "doc": "verify/README.md"
       }
     ]
   },
