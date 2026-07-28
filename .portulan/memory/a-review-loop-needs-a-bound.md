@@ -10,7 +10,7 @@ obligation to answer Copilot is not withdrawn, the unbounded iteration is.
 
 **The measurement that changed it**, over the 30 most recently merged pull requests:
 
-| | |
+| Measure | Over the 30 most recently merged pull requests |
 |---|---|
 | Copilot rounds | **110** across 30 pull requests — **3.7 each** |
 | Rounds that found nothing at all | **32 (29%)** |

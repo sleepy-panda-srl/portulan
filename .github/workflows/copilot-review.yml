@@ -273,14 +273,35 @@ jobs:
                     # Copilot wraps them in `<details><summary>Comments suppressed due to low
                     # confidence (N)</summary>`. Matched on that phrase and not on `<details>`, because
                     # the body carries a second, uninteresting one — `Show a summary per file`.
-                    count=$(printf '%s\n' "$body" \
-                      | sed -n 's/.*Comments suppressed due to low confidence (\([0-9][0-9]*\)).*/\1/p' \
-                      | head -1)
-                    notes=$(printf '%s\n' "$body" | awk '
-                      /Comments suppressed due to low confidence/ { f = 1; next }
+                    # ONE matcher for all three questions — is the block there, what is its count,
+                    # what is in it. The first cut asked with `grep`, `sed` and `awk` separately, so
+                    # the three could disagree about the same line the moment Copilot's markup moved:
+                    # a change of case alone made the detector say "absent" while the extractor would
+                    # happily have read it. Same case-insensitive test, three answers, no drift.
+                    MARK='comments suppressed due to low confidence'
+                    present=$(printf '%s\n' "$body" | awk -v m="$MARK" \
+                      'index(tolower($0), m) { print "yes"; exit }')
+                    count=$(printf '%s\n' "$body" | awk -v m="$MARK" \
+                      'index(tolower($0), m) { if (match($0, /\([0-9]+\)/)) print substr($0, RSTART+1, RLENGTH-2); exit }')
+                    notes=$(printf '%s\n' "$body" | awk -v m="$MARK" '
+                      index(tolower($0), m) { f = 1; next }
                       f && /<\/details>/ { exit }
                       f { print }')
-                    if [ -n "${count:-}" ] && [ -n "${notes:-}" ]; then
+                    # THREE outcomes, not two. The block being absent and the block being
+                    # unparseable are different facts, and only one of them licenses the word
+                    # "none". Collapsing them would print a positive claim — `Read, not assumed` —
+                    # over a parse that failed, so a change to Copilot's markup would silently turn
+                    # this step off while it kept reporting healthily. That is the false green this
+                    # entire file exists to refuse, reintroduced by the step added to prevent a
+                    # different one. Caught by a suppressed low-confidence note on #63, in round
+                    # five, about the very mechanism that surfaced it.
+                    if [ -z "${present:-}" ]; then
+                      report="No suppressed low-confidence comments on the round for \`${head}\`. Read, not assumed — the section is absent from the body, not merely unfound."
+                      printf 'suppressed low-confidence notes: none on this round\n'
+                    elif [ -z "${count:-}" ] || [ -z "${notes:-}" ]; then
+                      report="**Could not parse the suppressed-comments block** on the round for \`${head}\`, though the body contains one. Copilot's markup has probably changed — read the review body by hand and fix the extraction. **This is not a report of zero notes.**"
+                      printf 'suppressed low-confidence notes: PARSE FAILED — block present, extraction empty\n'
+                    else
                       # Built by appending rather than as one multi-line literal: a continuation line
                       # would have to sit at column 0 to avoid leading spaces in the output, and a
                       # column-0 line ENDS this YAML block scalar. That broke the file once already
@@ -292,9 +313,6 @@ jobs:
                       report="${report} Address or refuse each one in a reply, per the standing"
                       report="${report} feedback-loop rule."$'\n\n'"${notes}"
                       printf 'suppressed low-confidence notes: %s — printed to the job summary\n' "$count"
-                    else
-                      report="No suppressed low-confidence comments on the round for \`${head}\`. Read, not assumed."
-                      printf 'suppressed low-confidence notes: none on this round\n'
                     fi
                   fi
 
