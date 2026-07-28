@@ -53,7 +53,7 @@ fi
 # is now NARROWER than the policy it once backstopped: a ruleset read is unattended through plain
 # `gh api` and refused here. Deliberate, and a statement about the PRINCIPAL rather than the endpoint —
 # this token is minted by the repository and should reach the smallest surface that does its job, while
-# the maintainer's own credentials are his to spend. See ../gate-map.md, "The honest holes", hole 4.
+# the maintainer's own credentials are his to spend. See ../gate-map.md, "The honest holes", hole 6.
 #
 # **What that was actually worth, measured 2026-07-28 rather than argued.** The installation's whole
 # permission set is `{"metadata": "read", "pull_requests": "write"}` — no `administration` — so:

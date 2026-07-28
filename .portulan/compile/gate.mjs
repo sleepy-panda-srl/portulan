@@ -40,18 +40,29 @@
 // is the defect this repository already has a rule about.
 //
 // So the split earns its keep somewhere else: **this layer covers what the permission pattern
-// cannot.** `Bash(git push:*)` is a prefix match against the literal command, so
-// `bash -c "git push …"` is invisible to it — measured, and the reason
-// `../../core/operating/autonomy.md` calls the platform floor the gate that holds when this layer
-// fails. This runner unwraps one level of `sh -c` / `bash -c` / `zsh -c` before matching, so the
-// wrapper spelling reaches a gate. In exactly that case the permission layer has nothing to say,
-// so this decision AND its sentence are what the agent gets.
+// cannot.** Two things, and in both the permission layer has nothing to say, so this decision AND
+// its sentence are what the agent gets:
+//
+//   1. The WRAPPER spelling. `Bash(git push:*)` is a prefix match against the literal command, so
+//      `bash -c "git push …"` is invisible to it — measured, and the reason
+//      `../../core/operating/autonomy.md` calls the platform floor the gate that holds when this
+//      layer fails. This runner unwraps one level of `sh -c` / `bash -c` / `zsh -c` before matching.
+//   2. A SHELL WRITE to a path a `write:` rule protects. `Edit(./docs/vision.md)` denies three
+//      tools, and `echo x >> docs/vision.md` is a fourth way to the same bytes. `matchesRule` now
+//      answers for `Bash` on a write rule, by a table of redirections and file-writing commands
+//      that `../../cli/compile.mjs` states in full.
 //
 // Two layers, two jobs: the permission rule cannot fail open, and this one covers more ground.
+// **The second case above is the uncomfortable one**, and it is named in `../gate-map.md`'s
+// honest-holes list rather than left here: it is the only gate whose sole layer is this file, so
+// every "fails open" sentence above is, for shell writes to the constitution, the whole story
+// rather than a footnote about a lost message.
+//
 // **One level of unwrapping, and no more.** Deeper nesting, a heredoc, an interpolated variable, a
 // command assembled at runtime — all still escape, and no amount of parsing here would close that.
-// Anything that must not happen regardless of spelling belongs on the platform floor, not in a
-// matcher.
+// The same is true one layer over: a write spelled through a runtime (`python3 -c`) or a writer
+// outside that table reaches the file. Anything that must not happen regardless of spelling belongs
+// on the platform floor, not in a matcher.
 
 import fs from "node:fs";
 import path from "node:path";

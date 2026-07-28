@@ -308,6 +308,12 @@ export function spellings(raw) {
     const wrapper = /^(?:\/usr\/bin\/env\s+)?(?:ba|z|da)?sh\s+-[a-zA-Z]*c\s+(.*)$/s.exec(command);
     if (wrapper) {
         let inner = wrapper[1].trim();
+        // The same `$'…'` / `$"…"` forms `shellWords` strips, at the other site that reads a quote.
+        // Two sites, because a wrapped command is unwrapped HERE and a word is tokenised THERE, and
+        // fixing one left `bash -c $'git push --force origin main'` still stepping aside while
+        // `cp /tmp/x $'docs/vision.md'` had started denying — measured, and the reason this is not
+        // one edit. Found by Copilot on #60.
+        if (inner[0] === "$" && (inner[1] === "'" || inner[1] === '"')) inner = inner.slice(1);
         const quote = inner[0];
         if ((quote === '"' || quote === "'") && inner.endsWith(quote) && inner.length > 1) {
             inner = inner.slice(1, -1);
@@ -315,6 +321,453 @@ export function spellings(raw) {
         if (inner.trim()) out.push(inner.trim());
     }
     return out;
+}
+
+// The shell spellings of a write, recognised by table. Below, `shellWrites` asks one question of a
+// command — *does it name the protected path in a position where that path is being written* — and
+// these are the two ways it can answer yes without parsing a shell.
+//
+// A table rather than a parser, for the reason `REF_RULES` further down is a table: recognition by
+// exact spelling is a limit a reader can measure, and a matcher clever enough to generalise is clever
+// enough to be wrong quietly.
+
+// `git` is deliberately absent, though `git checkout -- <path>` and `git restore` both overwrite a file.
+// The head of those commands is `git`, so admitting it would gate `git diff <path>` and `git log` in the
+// same stroke — and a gate on READING a path is a rule no policy here declares. It is the likeliest
+// uncovered writer in this repository, which is why ../.portulan/gate-map.md names it rather than leaving
+// it inside "any writer outside the table".
+/** Commands whose job is to write, replace or remove a file they NAME on their own command line. */
+export const FILE_WRITERS = new Set(["cp", "mv", "ln", "rm", "tee", "dd", "install", "truncate", "shred", "patch"]);
+
+/**
+ * Editors that READ their arguments by default and write them only under an in-place flag.
+ *
+ * Separated from the table above rather than folded into it, because folding them in would gate
+ * `sed -n '1,5p' docs/vision.md` — which is a *read*, and which this policy declares Auto. A matcher
+ * that contradicts a declared tier is worse than one that admits a gap.
+ */
+export const IN_PLACE_EDITORS = new Set(["sed", "gsed", "perl", "ruby"]);
+
+/** Words that stand in front of the command that actually runs. Recognised, not parsed: `sudo cp …` is seen, `sudo -u someone cp …` is not. */
+const COMMAND_PREFIXES = new Set(["sudo", "env", "command", "builtin", "exec", "nohup", "nice", "time"]);
+
+const ASSIGNMENT = /^[A-Za-z_][A-Za-z0-9_]*=/;
+
+// A NEWLINE is a command separator and belongs in this class, which it did not for one review round.
+// The Bash tool receives multi-line scripts constantly, so
+//
+//     git status
+//     cp /tmp/x docs/vision.md
+//
+// folded into ONE segment whose head was `git` — not a writer — and the whole table half fell through
+// to false. The most ordinary spelling there is, and it defeated the gate while the redirection half
+// (which reads no head) kept working, so the coverage looked alive. Found by the fresh-context
+// supervisor at the pre-merge checkpoint.
+const OPERATOR = /[|&;<>()\n\r]/;
+
+// Words that lead a segment without being the command in it. `{ cp … ; }`, `if …; then cp …`, and
+// `for …; do cp …` all put one of these where the head goes, which hid a writer behind it. Not a
+// grammar — a list of leaders, and `find -exec cp` / `xargs cp` stay uncovered because parsing THEIR
+// flags to find the real command is the ambitious parser this file keeps refusing to become.
+const SEGMENT_LEADERS = new Set(["{", "}", "!", "then", "else", "elif", "do", "done", "fi", "esac"]);
+
+/**
+ * Drop heredoc BODIES, keeping the line that opens them.
+ *
+ * A heredoc body is data being written, not commands being run, so reading it as commands is simply
+ * wrong — and it became wrong the moment a newline started separating commands, because that is what
+ * turned each body line into its own segment. Measured immediately and expensively: this change's own
+ * commit, whose message quoted `cp /tmp/x docs/vision.md` as the escape being fixed, was refused by the
+ * gate it was adding. A matcher that blocks you from describing an attack is not being cautious.
+ *
+ * The opening line stays, so `cat > docs/vision.md <<'EOF'` still gates — the redirection is on it.
+ * What is dropped is the text between the delimiter and its terminator, which no shell executes.
+ */
+function stripHeredocs(command) {
+    const out = [];
+    let delimiter = null;
+    let held = []; // lines after an opener whose terminator has not been seen yet
+    for (const line of command.split("\n")) {
+        if (delimiter !== null) {
+            if (line.trim() === delimiter) {
+                // A real heredoc. Its body is data, not command text, so both the body and the
+                // terminator line go.
+                delimiter = null;
+                held = [];
+                continue;
+            }
+            held.push(line);
+            continue;
+        }
+        out.push(line);
+        const opened = /<<-?\s*(['"]?)([A-Za-z_][A-Za-z0-9_]*)\1/.exec(line);
+        if (opened) delimiter = opened[2];
+    }
+    // **An opener with no terminator was not an opener.** The regex reads a raw line, so `<<EOF`
+    // inside a quoted string or after a `#` sets `delimiter` on text that opens nothing — and the
+    // loop above would then swallow every remaining line looking for a word that never comes.
+    //
+    // That is a FAIL-OPEN manufactured by a defensive step, which is worse than the parsing gap it
+    // was added to close: a gated command on any later line becomes invisible to every matcher
+    // downstream. Measured on the runner before this branch existed —
+    // `echo "not a heredoc <<EOF"\ngit push --force origin main` stepped aside where the bare
+    // command answers `ask`, and `# <<EOF` did the same. Found by Copilot review on #60.
+    //
+    // Giving the lines back is the fail-CLOSED direction and costs only a false red: a genuine
+    // heredoc always has its terminator, so this branch cannot reach one. What it does not close is
+    // a mis-detected opener whose delimiter happens to appear later anyway; that is stated in the
+    // gate map rather than chased with a quote-aware parser this file refuses to grow.
+    if (delimiter !== null) out.push(...held);
+    return out.join("\n");
+}
+
+/** A shell command split into words, with unquoted operators kept as words of their own. */
+function shellWords(command) {
+    const words = [];
+    let text = "";
+    let open = false; // a word has begun — so an empty `""` argument survives as a word
+    const flush = () => {
+        if (open) words.push({ text, op: false });
+        text = "";
+        open = false;
+    };
+    for (let i = 0; i < command.length; i += 1) {
+        const c = command[i];
+        // `$'…'` (ANSI-C quoting) and `$"…"` (locale translation) are quoting forms whose `$` is not
+        // part of the word. Without this the `$` glued onto the front — `$'docs/vision.md'` tokenised
+        // as `$docs/vision.md` — and no target matched. Measured on the runner before this branch:
+        // `bash -c $'git push --force origin main'` stepped aside where the plain wrapper answers
+        // `ask`, and `cp /tmp/x $'docs/vision.md'` stepped aside where the plain target denies. So
+        // this was a live bypass of both a Gated shell target and the constitution's write gate,
+        // sitting inside the claim one line down that quoting is honoured. Found by Copilot on #60.
+        //
+        // **Two forms and no more, because this grammar is closed.** `$(…)` is command substitution
+        // and deliberately stays out: its content is a command to run, not a word to read, and
+        // reading it as a word is precisely how a matcher becomes clever and wrong quietly. That one
+        // is hole 1's "command assembled at runtime", where it belongs.
+        if (c === "$" && (command[i + 1] === "'" || command[i + 1] === '"')) continue;
+        if (c === "'" || c === '"') {
+            // Quoted runs are taken whole, and the quotes are stripped: `cp /tmp/x 'docs/vision.md'`
+            // must reach the gate, which is what goes red if this branch is removed. (An earlier
+            // draft of this comment claimed it was what stops `echo "x > docs/vision.md"` reading as
+            // a redirection. Measured at the pre-merge checkpoint: false — without this branch that
+            // target tokenises as `docs/vision.md"`, trailing quote and all, and fails to match
+            // anyway. Right branch, wrong reason, which `a-stated-enforcer-must-be-the-real-one`
+            // counts as the same defect one size down.)
+            // Scanned rather than `indexOf`, for the escaped-quote reason above: inside `"…"` a
+            // `\"` is a literal quote and must not end the run. The escape is resolved into the word,
+            // so `cp /tmp/x "docs/\"v\".md"` compares as the path a shell would pass.
+            //
+            // `$'…'` reaches here with its `$` already dropped and is read as a single-quoted run, so
+            // ANSI-C escape sequences (`\n`, `\t`, `\x41`) are NOT decoded — a stated limit, and the
+            // ambitious parser this file refuses to become. A path spelled with them escapes; that is
+            // hole 1's "interpolated path" neighbourhood rather than a new one.
+            let j = i + 1;
+            let run = "";
+            while (j < command.length) {
+                if (c === '"' && command[j] === "\\" && j + 1 < command.length) {
+                    run += command[j + 1];
+                    j += 2;
+                    continue;
+                }
+                if (command[j] === c) break;
+                run += command[j];
+                j += 1;
+            }
+            text += run;
+            open = true;
+            i = j >= command.length ? command.length : j;
+            continue;
+        }
+        if (c === "\\" && i + 1 < command.length) {
+            // A backslash-newline is a line continuation: both characters vanish, and the word
+            // continues on the next line. Appending the newline instead would have glued it into the
+            // middle of a path, which no target matches.
+            // `\r\n` is consumed as a PAIR. Skipping one character left the `\n` behind, and a
+            // newline is an operator here, so a CRLF continuation flushed the word instead of
+            // continuing it: `cp /tmp/x \\<CRLF>docs/vision.md` stepped aside where the LF spelling
+            // answers `deny` — the constitution, reachable by editing the file on Windows. Measured
+            // both ways, 2026-07-28. Found by Copilot review on #60.
+            if (command[i + 1] === "\r" && command[i + 2] === "\n") {
+                i += 2;
+                continue;
+            }
+            if (command[i + 1] === "\n" || command[i + 1] === "\r") {
+                i += 1;
+                continue;
+            }
+            text += command[i + 1];
+            open = true;
+            i += 1;
+            continue;
+        }
+        // Operators are tested BEFORE whitespace, because a newline is both and the separator reading
+        // is the load-bearing one.
+        if (OPERATOR.test(c)) {
+            flush();
+            let run = c;
+            while (i + 1 < command.length && OPERATOR.test(command[i + 1])) {
+                run += command[i + 1];
+                i += 1;
+            }
+            words.push({ text: run, op: true });
+            continue;
+        }
+        if (/\s/.test(c)) {
+            flush();
+            continue;
+        }
+        text += c;
+        open = true;
+    }
+    flush();
+    return words;
+}
+
+/** Those words folded into `{ head, args, redirects }` per command in a pipeline or list. */
+function shellSegments(command) {
+    const segments = [];
+    let current = { head: null, args: [], redirects: [] };
+    let pending = null;
+    const close = () => {
+        if (current.head !== null || current.args.length || current.redirects.length) segments.push(current);
+        current = { head: null, args: [], redirects: [] };
+    };
+    for (const word of shellWords(command)) {
+        if (word.op) {
+            // `>` `>>` `2>` `&>` — whatever follows is written, whatever the command is. `<` and `<<`
+            // introduce something READ, so the word after them is SKIPPED rather than ending the
+            // segment: `tee < /tmp/in docs/vision.md` keeps `tee` as the head and its real argument
+            // as an argument, which is what goes red if this branch is removed. (An earlier draft
+            // justified it with `patch f < d.diff` instead. Measured: that one is safe either way,
+            // because without this branch the `<` merely closes the segment and `d.diff` becomes a
+            // head rather than an argument. A branch defended by a hazard that cannot happen is a
+            // branch nobody can review.)
+            if (word.text.includes(">")) pending = "written";
+            else if (word.text.includes("<")) pending = "read";
+            else {
+                pending = null;
+                close();
+            }
+            continue;
+        }
+        if (pending) {
+            if (pending === "written") current.redirects.push(word.text);
+            pending = null;
+            continue;
+        }
+        if (current.head === null) {
+            const bare = word.text.split("/").pop();
+            if (ASSIGNMENT.test(word.text) || COMMAND_PREFIXES.has(bare) || SEGMENT_LEADERS.has(bare)) continue;
+            current.head = bare;
+            continue;
+        }
+        current.args.push(word.text);
+    }
+    close();
+    return segments;
+}
+
+/** Does this segment write the files it names? */
+function writesWhatItNames({ head, args }) {
+    if (head === null) return false;
+    if (FILE_WRITERS.has(head)) return true;
+    // `-i`, `-i.bak`, `-pi`, `--in-place`, `--in-place=.bak`. A long option other than `--in-place`
+    // cannot match, because the single-dash form requires a letter run and `-` is not one.
+    return IN_PLACE_EDITORS.has(head) && args.some((a) => /^--in-place(=|$)/.test(a) || /^-[a-zA-Z]*i/.test(a));
+}
+
+/**
+ * A path as typed on a command line, reduced to the spelling the tail comparison can read.
+ *
+ * `matchesPath` compares tails literally, which is right for the host's own clean absolute paths and
+ * wrong for anything a person types: `docs/./vision.md` and `docs//vision.md` are the constitution
+ * and neither ends with `/docs/vision.md`. Both were live escapes for one review round. `..` is
+ * resolved for the same reason and in the same place — `foo/../docs/vision.md` is the file too.
+ */
+function normalisePath(p) {
+    const absolute = p.startsWith("/");
+    const out = [];
+    for (const part of p.split("/")) {
+        if (part === "" || part === ".") continue;
+        if (part === ".." && out.length && out[out.length - 1] !== "..") out.pop();
+        else out.push(part);
+    }
+    return (absolute ? "/" : "") + out.join("/");
+}
+
+/**
+ * The directories a target lives under, as exact paths: `a/b/c.md` -> `a`, `a/b`.
+ *
+ * No trailing slash, and that is the whole correctness of it. Spelled `a/` these would be SUBTREE
+ * patterns, and `matchesPath` would then report every file under the directory as a hit — so
+ * `cp foo docs/plan.md` matched a rule protecting `docs/vision.md`, which is a false red on an
+ * ordinary edit to an unrelated file. Caught by this change's own probe before it left the worktree.
+ */
+function ancestors(target) {
+    const parts = normalisePath(target.replace(/\/+$/, "")).split("/").filter(Boolean);
+    return parts.slice(0, -1).map((_, i) => parts.slice(0, i + 1).join("/"));
+}
+
+/**
+ * Does a word name the target — quoted, `./`-prefixed, absolute, messy, or after an `of=`-style `=`?
+ *
+ * With `orAncestor`, a word naming a DIRECTORY the target lives in counts too. That is what makes
+ * `rm -rf docs` and `mv docs docs.bak` reach a rule protecting `docs/vision.md`: destroying the
+ * container destroys the file, and a gate that reads `rm -rf docs/` and misses `rm -rf docs` is
+ * decided by a trailing slash. Ancestors apply to a writer's arguments only, never to a redirection
+ * target — `> docs` writes a file called `docs`, it does not remove a directory.
+ */
+function namesTarget(word, target, orAncestor = false) {
+    const eq = word.indexOf("=");
+    const candidates = eq > 0 ? [word, word.slice(eq + 1)] : [word];
+    return candidates.some((c) => {
+        const clean = normalisePath(c);
+        if (clean === "") return false;
+        // A relative word is given the leading separator the tail comparison needs, rather than a
+        // second matcher being written for it.
+        const rooted = clean.startsWith("/") ? clean : `/${clean}`;
+        // The target itself. A subtree target wants the candidate to look like a directory, which is
+        // what lets `rm -rf .portulan` reach a rule written `.portulan/`.
+        if (matchesPath(target.endsWith("/") ? `${rooted}/` : rooted, target)) return true;
+        // A directory the target lives in, named EXACTLY — `rm -rf docs`, never `cp x docs/plan.md`.
+        return orAncestor && ancestors(target).some((a) => matchesPath(rooted, a));
+    });
+}
+
+/**
+ * The commands in a shell line, as SOURCE text, split on unquoted separators.
+ *
+ * The shell matcher below prefix-matches a command string, which meant a gate held only when its
+ * command came FIRST: `ls && git push --force origin main` reached no gate, and neither did
+ * `git status; gh pr merge 60` or `cd . && gh repo delete foo`. Every Gated outward action in
+ * ../.portulan/gates.json was defeated by putting anything in front of it.
+ *
+ * That is the same defect as the `write:` one this change began with — a matcher reading only the
+ * head of a command string — one action kind over, so it is fixed in the same stroke rather than
+ * left as a sibling nobody comes back for. Found by the fresh-context supervisor at the pre-merge
+ * checkpoint, which is exactly the class it was asked to hunt.
+ *
+ * Quoting is respected, so `echo "git push --force"` still splits into one segment that no gate
+ * matches; and each segment keeps the whitespace boundary the prefix match relies on, so
+ * `--force-with-lease` stays Auto.
+ */
+function commandSegments(raw) {
+    // `String(raw ?? "")`, for the reason `spellings` does the same: `matchesRule` promises never to
+    // throw, and a Bash payload carrying no `command` — a malformed host message, a renamed field, a
+    // test — would otherwise reach `stripHeredocs` and die on `.split`.
+    //
+    // What that costs is not an exception some caller reports. ../.portulan/compile/gate.mjs catches
+    // and steps aside, so the throw would SILENTLY remove the shell-write half of the constitution
+    // gate — hole 3, the half with no permission rule beneath it. Introduced earlier on this branch
+    // by the segment-composition fix, which began passing the raw payload here in place of a spelling
+    // that had already been stringified. Found by Copilot review on #60.
+    const command = stripHeredocs(String(raw ?? ""));
+    const out = [];
+    let start = 0;
+    let quote = null;
+    for (let i = 0; i < command.length; i += 1) {
+        const c = command[i];
+        if (quote) {
+            // Inside `"…"` a backslash escapes the next character, so `\"` is a literal quote and does
+            // NOT close the run. Without this, `echo "x\""; git push --force …` closed early, the real
+            // closing quote opened a new run, and the `;` was swallowed inside it — no split, no
+            // segment, no gate. Measured stepping aside where the unescaped spelling answers `ask`,
+            // and the same shape reached `cp /tmp/x docs/vision.md`, so it was a false green on the
+            // constitution too. Found by Copilot review on #60.
+            //
+            // Single quotes are deliberately NOT included: POSIX gives `'…'` no escapes at all, so a
+            // backslash there is a literal backslash and honouring it would invent a hole.
+            if (quote === '"' && c === "\\" && i + 1 < command.length) {
+                i += 1;
+                continue;
+            }
+            if (c === quote) quote = null;
+            continue;
+        }
+        if (c === "'" || c === '"') {
+            quote = c;
+            continue;
+        }
+        if (c === "\\") {
+            // The same CRLF pair, in the other reader. No spelling was measured behaving differently
+            // here — a continuation split into two segments still leaves a gated command at the head
+            // of one — so this is fixed for the reason the session kept re-learning rather than for a
+            // failing case: one carrier corrected and its sibling left is how the last three defects
+            // on this branch happened.
+            i += command[i + 1] === "\r" && command[i + 2] === "\n" ? 2 : 1;
+            continue;
+        }
+        // `#` is NOT treated as starting a comment, and that is a decision rather than an oversight.
+        // `echo ok #; git push --force origin main` therefore segments as though the comment were
+        // code and answers `ask`, which a real shell would not — a false RED, measured 2026-07-28.
+        //
+        // Taking it would mean deciding where a comment begins, and the failure mode of getting that
+        // wrong runs the other way. A `#` opens a comment only at a word boundary and only outside
+        // quotes; a reader that skipped from the first `#` would swallow the rest of
+        // `echo "a#b"; git push --force origin main` — a real gated command, measured answering `ask`
+        // today — and turn a false red into a false GREEN. The docblock on `shellWrites` states the
+        // exchange rate: a false red costs one prompt on a rare spelling, a false green costs the
+        // laundering the rule exists to prevent.
+        //
+        // Both spellings are asserted in the suite so this stays a choice rather than drift.
+        // Reported by Copilot review on #60 and declined on those grounds.
+        if (";|&()\n\r".includes(c)) {
+            out.push(command.slice(start, i));
+            start = i + 1;
+        }
+    }
+    out.push(command.slice(start));
+    return out.map((s) => s.trim()).filter(Boolean);
+}
+
+/**
+ * Does this shell command write a path a `write:` rule protects?
+ *
+ * The permission layer cannot ask this. `Bash(prefix:*)` matches a literal command PREFIX and the
+ * path sits at an arbitrary position in the command, so there is no pattern in that DSL which means
+ * "any command writing this file" — which makes this the hook's coverage alone, exactly like the
+ * wrapper spelling above, and it fails open on the same terms.
+ *
+ * **Stated at its real size, because the boundary is the point.** Two recognitions, both by table:
+ * a `>`/`>>` redirection into the path, and a file-writing command that names it — or names a
+ * directory the path lives in, since removing the container removes the file.
+ *
+ * A heredoc is NOT on that list, and the omission is worth stating rather than leaving to be read as
+ * one: the body is stripped and the command line survives, so `cat > docs/vision.md <<EOF` is reached
+ * and gated — asserted in the suite. What escapes is an interpolated TARGET, heredoc or not, which is
+ * the first item below. The emitted note said "a heredoc" flatly until 2026-07-28 and overstated the
+ * hole; a gate map that overstates a hole is as wrong as one that hides it, and so is a compiler note.
+ *
+ * What that leaves open, listed because a hole list that is wrong is worse than none: an
+ * interpolated path (`> $VISION`), a command assembled at runtime, a language runtime writing the
+ * file itself (`python3 -c`), a writer absent from the table (`ex`, and `git checkout` deliberately
+ * — see above), a program that INVOKES a writer (`find -exec cp`, `xargs cp`) because parsing their
+ * flags to find the real command is the parser this file refuses to become, and two shell wrappers.
+ * Quoting is respected only to one level of nesting, so a write-shaped string inside a `node -e`
+ * script can produce a false RED — measured on this repository's own tooling.
+ *
+ * The first version of this shipped a four-item hole list that was missing five holes, including
+ * the plainest spelling there is: a newline. A fresh-context supervisor found them by trying to
+ * defeat the matcher rather than by reading it, which is the only way that list gets checked.
+ *
+ * This closes the spelling reached for by accident or convenience; it does not close one
+ * constructed on purpose, and no matcher here could. What must not happen regardless of spelling
+ * belongs on the platform floor — ../core/operating/autonomy.md.
+ *
+ * **Every named argument of a writer counts, not only its destination.** `cp docs/vision.md /tmp/x`
+ * reads the protected path rather than writing it, and this matches it anyway. Deliberate: argument
+ * grammars differ per command (`dd of=`, `tee f1 f2`, `install -t dir src`), so "the last word is
+ * the destination" is true of a subset only, and being wrong about it is a false GREEN on a rule
+ * whose whole reason is that the file must not change. A false red here costs one prompt on a rare
+ * operation; a false green costs the laundering the rule exists to prevent.
+ */
+export function shellWrites(command, target) {
+    for (const segment of shellSegments(stripHeredocs(String(command ?? "")))) {
+        if (segment.redirects.some((word) => namesTarget(word, target))) return true;
+        if (writesWhatItNames(segment) && segment.args.some((word) => namesTarget(word, target, true))) return true;
+    }
+    return false;
 }
 
 /** Does a path handed over by the host fall under a policy target? */
@@ -347,12 +800,60 @@ export function matchesRule(rule, tool, input = {}) {
         // promises are one, waiting for the first gated rule written in the path form. Fixed on that
         // basis rather than on an incident. An ordinary command prefix keeps its whitespace boundary,
         // or `git push` would cover `git pushall`. Found by a Copilot review comment on #31.
-        return spellings(input.command).some((s) =>
-            action.shell.endsWith("/") ? s.startsWith(action.shell) : s === action.shell || s.startsWith(`${action.shell} `),
-        );
+        //
+        // Each spelling is tested WHOLE and per segment. Whole, because a path-prefix target is
+        // matched against the command as written; per segment, because a gated command that is not
+        // the first thing on the line is still that command — see `commandSegments`.
+        const hit = (s) =>
+            action.shell.endsWith("/") ? s.startsWith(action.shell) : s === action.shell || s.startsWith(`${action.shell} `);
+        // `spellings` is applied to each SEGMENT as well as to the whole line, and the second call is
+        // not redundant. Unwrapping was anchored at the start of the command, so a wrapper that was
+        // not the first thing on the line never got unwrapped: `ls && bash -c "git push --force
+        // origin main"` stepped aside, while both halves of it worked alone — the wrapper spelling is
+        // hole 1's "one level, peeled", and mid-line reach is hole 2. Two claims that each held and
+        // did not compose, which is how a gap survives a reader checking either one.
+        //
+        // Found while writing a regression test for the `$'…'` form Copilot reported; the plain-quote
+        // spelling turned out to escape the same way, so this is wider than the report.
+        //
+        // **Both calls read the RAW command, and that is the whole care in this line.** The first
+        // draft segmented each *spelling* and unwrapped again — which peeled TWO levels for a nested
+        // wrapper and made `bash -c "bash -c 'git push origin HEAD'"` match, contradicting hole 1's
+        // documented and asserted limit. The suite caught it, which is what that counterexample test
+        // is for. Reading the raw command in both branches keeps the budget at exactly one unwrap.
+        const segments = commandSegments(input.command);
+        return spellings(input.command).some(hit) || segments.some((seg) => spellings(seg).some(hit));
     }
-    if (typeof action.write === "string" && WRITE_TOOLS.includes(tool)) {
-        return matchesPath(input.file_path ?? input.notebook_path, action.write);
+    if (typeof action.write === "string") {
+        if (WRITE_TOOLS.includes(tool)) return matchesPath(input.file_path ?? input.notebook_path, action.write);
+        // A `write:` rule names a PATH, not a tool. For one milestone it reached only the three tools
+        // that carry a `file_path`, so `echo x >> docs/vision.md` through Bash was gated by neither
+        // layer: the permission rule rejects the tool, and this matcher fell through to `false`. The
+        // rule's own sentence is what that cost — an agent that can edit the constitution can launder
+        // any other change past its own grader — and it was reachable inside a session, with only the
+        // platform floor stopping it from landing. See `shellWrites` above for what this covers and,
+        // more to the point, for what it does not.
+        if (tool === "Bash") {
+            // Whole line and per segment, exactly as the `shell` branch above — and for the same
+            // reason, arrived at the hard way. That branch grew segment composition when a wrapper
+            // that was not first on the line turned out to escape it. This branch did not, and the
+            // gap it left is the worse of the two: `git status; bash -c "echo x >> docs/vision.md"`
+            // stepped aside where the same wrapper alone answers `deny`, so the CONSTITUTION was
+            // reachable behind any separator plus one wrapper. Measured 2026-07-28.
+            //
+            // A fix landing in one carrier and not its sibling is the defect class this repository
+            // has a standing ruling about; it happened here between two branches of one function,
+            // five commits apart. Found by Copilot review on #60, not by the session that wrote the
+            // first half.
+            //
+            // Both calls read the RAW command so the unwrap budget stays at one level, which is what
+            // keeps hole 1's two-wrapper counterexample true on this side too.
+            const writes = (s) => shellWrites(s, action.write);
+            return (
+                spellings(input.command).some(writes) ||
+                commandSegments(input.command).some((seg) => spellings(seg).some(writes))
+            );
+        }
     }
     if (typeof action.read === "string" && READ_TOOLS.includes(tool)) {
         return matchesPath(input.file_path, action.read);
@@ -375,22 +876,45 @@ export function matchesRule(rule, tool, input = {}) {
 // nothing. The uniform shape is what lets the matrix and `doctor` read every backend the same way
 // without either of them knowing what a backend does.
 
-/** A workspace-relative path becomes a host permission pattern. A trailing `/` means the subtree. */
-function pattern(tool, target) {
+/** A workspace-relative path, as the host spells it. A trailing `/` means the subtree. */
+function pathSpec(target) {
     const clean = target.replace(/^\.\//, "").replace(/^\/+/, "");
-    const spec = clean.endsWith("/") ? `./${clean}**` : `./${clean}`;
-    return `${tool}(${spec})`;
+    return clean.endsWith("/") ? `./${clean}**` : `./${clean}`;
+}
+
+/** A workspace-relative path becomes a host permission pattern. */
+function pattern(tool, target) {
+    return `${tool}(${pathSpec(target)})`;
 }
 
 // Which tiers this backend gates. `auto` and `propose` are refused wholesale, on the maintainer's
 // ruling of 2026-07-27: the compiler emits restriction only, never permission. A compiler whose
-// output can only ever ADD a gate cannot loosen an existing check by having a bug — and the
-// alternative, emitting `allow` for the Auto tier, would silence prompts the maintainer answers by
-// hand today.
+// output can only ever ADD a gate cannot loosen an existing check by having a bug.
+//
+// ## What the ruling costs — which this comment used to leave to the reader's imagination
+//
+// Refusing to emit `allow` does not make the Auto tier free. It moves the tier's price off this
+// repository. The host prompts for any command it has not been told about, so every Auto action is
+// answered by hand, and those answers pile up in the host's own settings files, which are
+// per-machine, unreviewable, absent from every diff, and — for a workflow built on throwaway
+// worktrees — lost along with the branch that earned them. Measured on one host, 2026-07-28: 404 hand-added allow
+// entries, of which exactly ONE corresponded to an Auto rule in ../.portulan/gates.json. So the
+// tier is unattended in POLICY and heavily attended in PRACTICE, and those are not the same claim.
+// The refusal string below used to make the first one and read as the second.
+//
+// ## The ruling stands, on a different sentence than before
+//
+// "Emitting `allow` would loosen a check" is not the hazard, or not obviously so: `git push` is
+// Auto and `git push --force` is Gated, and whether a narrower `ask` still outranks a broader
+// `allow` is a host precedence question **this repository has never measured** — so no argument
+// here should rest on it. The hazard that does not depend on that answer: an allow prefix reaches
+// every spelling beneath it, including the ones no rule here names. `git push --mirror` is
+// destructive and appears in no tier of ../.portulan/gates.json. An allow on the prefix would
+// clear it silently, and nothing in this policy would notice.
 const HOST_GATE_TIERS = new Set(["gated", "prohibited"]);
 
 const HOST_TIER_NOT_A_GATE = {
-    auto: "tier `auto` is unattended by definition — there is nothing to enforce, and emitting an allow rule would loosen a check rather than add one",
+    auto: "tier `auto` is unattended by policy, not by the host — this backend emits no `allow` rule for it, which is what keeps the compiler additive, and the prompts that omission leaves are paid by hand in the host's own settings, outside this repository",
     propose: "tier `propose` is enforced by the platform floor — pull requests, required checks, review — not by a tool-level permission rule on this machine",
 };
 
@@ -404,6 +928,12 @@ const HOST_TIER_NOT_A_GATE = {
  *
  * The hook returns the SAME decision as the permission rule on purpose. A hook returning `deny` for
  * a Gated action would turn a per-action prompt into a hard block, which is the tier above it.
+ *
+ * One line of that mapping has no permission half. A `write:` rule also gates the SHELL spellings of
+ * a write — see `shellWrites` above — and no `Bash(prefix:*)` pattern can express "a command writing
+ * this path", so that half is the hook's alone and fails open with it. Emitted anyway, because the
+ * alternative was leaving `echo x >> docs/vision.md` gated by nothing at all, and reported in the
+ * backend's `notes` on every run so the weaker layer is never inferred from silence.
  */
 export function claudeCode(parsed, options = {}) {
     // The header names the policy file that was ACTUALLY read. It was a literal for one round, so a
@@ -418,6 +948,7 @@ export function claudeCode(parsed, options = {}) {
     const deny = [];
     const ask = [];
     const matchers = new Set();
+    const shellWriteGates = [];
 
     for (const rule of parsed.rules) {
         if (!HOST_GATE_TIERS.has(rule.tier)) {
@@ -432,7 +963,8 @@ export function claudeCode(parsed, options = {}) {
             continue;
         }
         const into = rule.tier === "prohibited" ? deny : ask;
-        const emitted = [];
+        const emitted = []; // permission patterns — the layer that cannot fail open
+        const hookOnly = []; // coverage the permission DSL cannot express, carried by the hook alone
         if (rule.kind === "shell") {
             emitted.push(`Bash(${rule.target}:*)`);
             matchers.add("Bash");
@@ -441,9 +973,33 @@ export function claudeCode(parsed, options = {}) {
                 emitted.push(pattern(tool, rule.target));
                 matchers.add(tool);
             }
+            if (rule.kind === "write") {
+                // The hook is wired for Bash so that a shell spelling of this write reaches
+                // `matchesRule`, which now answers for it. **This line is the load-bearing half.**
+                // The matcher alone would be inert in any workspace whose policy declares no shell
+                // gate: `Bash` would be absent from the matchers below, the runner would never be
+                // invoked for a Bash call, and the coverage would exist only in a function nothing
+                // calls — the manifest-field-that-validates-and-loads-nothing defect
+                // (../.portulan/memory/a-manifest-field-can-validate-and-load-nothing.md), arriving
+                // this time as a matcher nothing reaches. It changes no artifact in THIS repository,
+                // whose policy already gates shell commands, which is precisely why it would not have
+                // been noticed here.
+                //
+                // No permission pattern joins it, and that is not an omission: `Bash(prefix:*)`
+                // matches a literal command prefix while the path sits at an arbitrary position, so
+                // the DSL has no way to say "any command writing this file". The only patterns that
+                // would fit — `Bash(cp:*)`, `Bash(sed -i:*)` — gate the utility rather than the path,
+                // which is a different and much larger rule than the policy declares.
+                matchers.add("Bash");
+                hookOnly.push(`hook: a Bash command writing ${pathSpec(rule.target)}`);
+                shellWriteGates.push(rule.id);
+            }
         }
         into.push(...emitted);
-        compiled.push({ id: rule.id, tier: rule.tier, surface: emitted.join(" · ") });
+        // The hook-only clause is carried in the SURFACE and not in `into`. It is not a permission
+        // pattern, and a reader of the matrix has to be able to tell which half of a gate would
+        // survive a broken hook.
+        compiled.push({ id: rule.id, tier: rule.tier, surface: [...emitted, ...hookOnly].join(" · ") });
     }
 
     // A policy that declares gates and emits none must not report success. This is the workflow's
@@ -478,12 +1034,31 @@ export function claudeCode(parsed, options = {}) {
         },
     };
 
+    // The shell half of every write gate, reported on every run rather than left for a reader to
+    // infer from the absence of a `Bash` entry in `deny`. It is the one place in this artifact where
+    // a gate is carried by the layer that fails open, so a note that only appeared when something
+    // went wrong would be a note nobody ever reads.
+    const notes = [];
+    if (shellWriteGates.length) {
+        notes.push(
+            `${shellWriteGates.length} write gate(s) — ${shellWriteGates.join(", ")} — also match a Bash command that writes the ` +
+                `path: a \`>\`/\`>>\` redirection into it, or one of \`${[...FILE_WRITERS].join("`, `")}\` naming it ` +
+                    `OR naming a directory it lives in (\`rm -rf docs\` reaches \`docs/vision.md\`), or ` +
+                `\`${[...IN_PLACE_EDITORS].join("`/`")}\` under an in-place flag. This half is the HOOK's alone and therefore ` +
+                `FAILS OPEN if the hook does: \`Bash(prefix:*)\` matches a command prefix while the path sits anywhere in the ` +
+                `command, so no permission rule expresses it. A heredoc whose TARGET is interpolated, an interpolated ` +
+                `variable, a command assembled at ` +
+                `runtime, a runtime writing the file itself (\`python3 -c\`), or any writer outside that table still reaches ` +
+                `the path. The platform floor is what covers those.`,
+        );
+    }
+
     return {
         backend: "claude-code",
         label: "Claude Code",
         compiled,
         refused,
-        notes: [],
+        notes,
         artifact: { path: ARTIFACT_PATHS["claude-code"], value, text: render(value) },
     };
 }
@@ -691,6 +1266,11 @@ export function githubRuleset(parsed, options = {}) {
  */
 function floorRefusal(rule, floor) {
     if (rule.tier === "auto") {
+        // "Unattended by definition" is literally true on THIS backend, and true only here: a branch
+        // ruleset has no prompt to pay, so an Auto rule left out of it costs nobody anything. The
+        // host backend carried the identical phrase and it was false there — see the comment above
+        // `HOST_GATE_TIERS`. Same words, one backend apart, one of them wrong. Do not carry either
+        // version across without re-deriving it for the backend it lands in.
         return "tier `auto` is unattended by definition — the floor exists to refuse what an agent may not do alone, and an action needing nobody's approval needs no ref gate.";
     }
     if (rule.kind === "none") {

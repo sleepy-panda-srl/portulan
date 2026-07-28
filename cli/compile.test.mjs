@@ -34,6 +34,8 @@ import {
     matchesRule,
     matchesPath,
     policyPath,
+    FILE_WRITERS,
+    IN_PLACE_EDITORS,
 } from "./compile.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -386,6 +388,47 @@ describe("the Claude Code backend", () => {
         for (const tool of ["Edit", "Write", "NotebookEdit"]) {
             assert.match(denied, new RegExp(`${tool}\\(`), `${tool} can write and must be covered`);
         }
+    });
+
+    test("a write gate wires the Bash hook, or its shell coverage is a matcher nothing reaches", () => {
+        // The load-bearing half of the shell-write fix, and the half with no visible effect in THIS
+        // repository — whose policy already gates shell commands, so `Bash` is a matcher either way.
+        // A policy carrying ONLY a write prohibition is where the omission shows: without this, the
+        // runner is never invoked for a Bash call and `matchesRule`'s shell-write branch is dead
+        // code. A capability that validates and loads nothing is this repository's most expensive
+        // recurring defect, so it is asserted on the shape that would hide it.
+        const onlyAWrite = policy({
+            rules: [{ id: "ban", tier: "prohibited", action: { write: "docs/vision.md" }, reason: "constitution" }],
+        });
+        const settings = claudeCode(parse(onlyAWrite)).artifact.value;
+        assert.ok(
+            settings.hooks.PreToolUse.some((h) => h.matcher === "Bash"),
+            "a shell write reaches the gate only if the hook is wired for Bash",
+        );
+    });
+
+    test("no Bash PERMISSION rule joins it — the shell half is the hook's alone, and the note says so", () => {
+        // `Bash(prefix:*)` matches a literal command prefix while the path sits anywhere in the
+        // command, so the DSL cannot express "any command writing this file". The patterns that would
+        // fit — `Bash(cp:*)` — gate the utility rather than the path, which is a larger rule than the
+        // policy declares. So this coverage fails open with the hook, and that is reported on every
+        // run rather than left for a reader to infer from an absence.
+        const result = claudeCode(parse(policy()));
+        const permissions = [...result.artifact.value.permissions.deny, ...result.artifact.value.permissions.ask];
+        // Derived from the real tables rather than a hand-listed subset. This read
+        // `/^Bash\((cp|sed|tee|mv|rm)/` until 2026-07-28 — five of the fourteen — so a change that
+        // began emitting `Bash(ln:*)` or `Bash(dd:*)` would have passed while violating exactly the
+        // guarantee this asserts. Found by Copilot review on #60. Deriving it means the next entry
+        // added to either table is covered without anyone remembering to widen a regex.
+        const utilities = [...FILE_WRITERS, ...IN_PLACE_EDITORS];
+        const leaked = permissions.filter((p) => utilities.some((u) => p.startsWith(`Bash(${u}`)));
+        assert.deepEqual(leaked, [], "gating the utility is not gating the path");
+        assert.ok(
+            result.notes.some((n) => /FAILS OPEN/.test(n) && /heredoc/.test(n)),
+            "the layer that fails open, and what it misses, are both named",
+        );
+        const gate = result.compiled.find((c) => c.id === "ban");
+        assert.match(gate.surface, /hook: a Bash command writing \.\/docs\/vision\.md/, "the surface distinguishes the two halves");
     });
 
     test("the Stop hook is wired to the session-end runner", () => {
@@ -775,6 +818,143 @@ describe("the shared matcher", () => {
         assert.ok(!matchesRule({ action: { shell: "git push" } }, "Bash", { command: "git pushall" }));
     });
 
+    // A SIBLING of the write defect, found by the same supervisor pass and fixed in the same stroke.
+    // The shell matcher prefix-matched the whole command string, so every Gated outward action in
+    // ../.portulan/gates.json was defeated by putting anything at all in front of it. Measured on the
+    // real runner before the fix: `ls && git push --force origin main` reached no gate.
+
+    for (const [label, target, command] of [
+        ["after `&&`", "git push --force", "ls && git push --force origin main"],
+        ["after `;`", "git push --force", "git status; git push --force origin main"],
+        ["after a newline", "git push --force", "git status\ngit push --force origin main"],
+        ["a merge, mid-line", "gh pr merge", "echo hi && gh pr merge 60"],
+        ["a repo delete, mid-line", "gh repo delete", "cd . && gh repo delete foo"],
+        ["a publish after a pipe", "npm publish", "echo y | npm publish"],
+        ["a path-prefix target, mid-line", "./.portulan/verify/", "ls && ./.portulan/verify/docs.sh"],
+        // ANSI-C and locale quoting of the wrapper payload. `spellings()` stripped a leading `'` or
+        // `"` and nothing else, so the `$` survived and the inner command never matched — a bypass
+        // costing one character. Measured stepping aside before the fix. The mid-line form is the
+        // one that matters most: it composes with the separator gap this block already covers.
+        ["a `$'…'` wrapper payload", "git push --force", "bash -c $'git push --force origin main'"],
+        ['a `$"…"` wrapper payload', "git push --force", 'bash -c $"git push --force origin main"'],
+        ["a `$'…'` wrapper, mid-line", "git push --force", "ls && bash -c $'git push --force origin main'"],
+        // The wider one, found writing the case above: a wrapper that is not the first thing on the
+        // line escaped in EVERY quoting form, plain ones included. Unwrapping was anchored at the
+        // start of the command and segmentation ran separately, so hole 1's "one wrapper, peeled"
+        // and hole 2's mid-line reach each held alone and did not compose. This is the plain-quote
+        // spelling, which is what a session would actually type.
+        ["a plain wrapper, mid-line", "git push --force", 'ls && bash -c "git push --force origin main"'],
+        ["a wrapper after a `;`", "gh pr merge", 'git status; bash -c "gh pr merge 60"'],
+        // The escaped-quote spelling on the shell side — same defect as the write case, same commit.
+        ["after an escaped quote", "git push --force", 'echo "x\\""; git push --force origin main'],
+    ]) {
+        test(`a gated command is gated wherever it sits on the line: ${label}`, () => {
+            assert.ok(matchesRule({ tier: "gated", action: { shell: target } }, "Bash", { command }), command);
+        });
+    }
+
+    test("splitting the line does not widen any gate — the Auto spellings stay Auto", () => {
+        // The load-bearing control on the fix above. `--force-with-lease` is Auto by the maintainer's
+        // ruling of 2026-07-27, and a segment matcher that re-gated it would be the compiler taking
+        // back an ungating — worse than the hole it closes.
+        const force = { tier: "gated", action: { shell: "git push --force" } };
+        assert.ok(!matchesRule(force, "Bash", { command: "git push --force-with-lease origin main" }));
+        assert.ok(!matchesRule(force, "Bash", { command: "ls && git push --force-with-lease origin main" }), "mid-line too");
+        assert.ok(!matchesRule(force, "Bash", { command: "git pushall --force" }), "the word boundary still holds");
+        assert.ok(!matchesRule(force, "Bash", { command: 'echo "git push --force"' }), "quoted text is not a command");
+    });
+
+    // The other half of the segment fix, asserted so the gate map's hole 2 cannot drift back to
+    // claiming "closed" unqualified. Splitting on SEPARATORS reaches a command after `&&`, `;`, `|`
+    // or a newline; it does not reach a word sitting in front of a command INSIDE a segment. These
+    // are ordinary shell, not exotic spellings, and each was measured stepping aside on the runner
+    // while the bare command answers `ask`.
+    //
+    // Left open on purpose. A named table of leaders would close the common ones the way the writer
+    // table does, but that table has no natural edge — `nice`, `time`, `nohup`, `timeout`, `command`,
+    // `stdbuf`, `doas` — and one missing entry buys the false confidence this suite exists to deny.
+    // Found by Copilot review on #60, against the paragraph that had just claimed the hole closed.
+    for (const [label, command] of [
+        ["a leading assignment", "FOO=bar git push --force origin main"],
+        ["`env`", "env git push --force origin main"],
+        ["`sudo`", "sudo git push --force origin main"],
+        ["a `then` branch", "if true; then git push --force origin main; fi"],
+        ["a `do` body", "for x in 1; do git push --force origin main; done"],
+        ["a brace group", "{ git push --force origin main; }"],
+        // A leading redirection is the one row of this table with a CLOSED grammar — an optional fd,
+        // one of `< > >> <> >& &>`, and a word — so unlike the leader names it could be stripped with
+        // an edge a reader could check. Left open deliberately, and asserted here so the choice is
+        // visible rather than looking like an oversight. Found by Copilot review on #60.
+        ["a leading `2>&1`", "2>&1 git push --force origin main"],
+        ["a leading `>` to a file", "> /tmp/log git push --force origin main"],
+        ["a leading `2>/dev/null`", "2>/dev/null git push --force origin main"],
+        ["a leading `<`", "< /dev/null git push --force origin main"],
+    ]) {
+        test(`the limit is asserted, not just documented: a leader still escapes — ${label}`, () => {
+            const rule = { tier: "gated", action: { shell: "git push --force" } };
+            assert.ok(!matchesRule(rule, "Bash", { command }), command);
+            // The control: strip the leader and the same line is gated, so this is the leader
+            // escaping rather than the target being wrong.
+            assert.ok(matchesRule(rule, "Bash", { command: "git push --force origin main" }));
+        });
+    }
+
+    // A heredoc opener is detected on a RAW line, so `<<EOF` inside a quoted string or after a `#`
+    // set the delimiter on text that opened nothing — and everything after it was swallowed looking
+    // for a terminator that never came. That is a fail-open manufactured by a defensive step: worse
+    // than the gap it closes, because a gated command on any later line went invisible.
+    //
+    // Fixed by treating an unterminated opener as no opener. The last two cases are the controls that
+    // stop the fix from degenerating into "keep everything" — a real heredoc's body is data and must
+    // still be stripped. Found by Copilot review on #60.
+    const force = { tier: "gated", action: { shell: "git push --force" } };
+    for (const [label, command, gated] of [
+        ["`<<EOF` inside a quoted string", 'echo "not a heredoc <<EOF"\ngit push --force origin main', true],
+        ["`<<EOF` in a comment", "# <<EOF\ngit push --force origin main", true],
+        ["a real heredoc, command after it", "cat <<EOF\nhello\nEOF\ngit push --force origin main", true],
+        ["a gated command INSIDE a real heredoc body", "cat <<EOF\ngit push --force origin main\nEOF", false],
+    ]) {
+        test(`a heredoc opener that opens nothing does not hide the line after it: ${label}`, () => {
+            assert.equal(matchesRule(force, "Bash", { command }), gated, command);
+        });
+    }
+
+    // `matchesRule` documents that it never throws, and that promise is load-bearing rather than
+    // tidy: ../.portulan/compile/gate.mjs catches and steps aside, so an exception here does not
+    // surface as an error — it silently removes whatever gate was being evaluated. For the shell
+    // half of `edit-the-constitution` that is the only layer there is (hole 3), so a throw is a
+    // fail-open wearing a stack trace.
+    //
+    // It threw on all four of these until 2026-07-28, introduced on this branch by the fix that
+    // began passing the raw payload to `commandSegments` instead of an already-stringified spelling.
+    // Found by Copilot review on #60.
+    for (const input of [{}, { command: undefined }, { command: null }, { command: 123 }, { command: {} }]) {
+        test(`the never-throws contract holds for a Bash payload of ${JSON.stringify(input)}`, () => {
+            const rule = { tier: "gated", action: { shell: "git push --force" } };
+            assert.equal(matchesRule(rule, "Bash", input), false, "a payload with no readable command matches nothing");
+        });
+    }
+
+    // `#` does not start a comment here, deliberately. Both directions are pinned, because the pair
+    // is the argument: taking the false red away means deciding where a comment begins, and getting
+    // that wrong swallows a real command instead of a commented one. Reported by Copilot on #60 and
+    // declined on the exchange rate `shellWrites`'s docblock states — a false red costs one prompt,
+    // a false green costs the laundering.
+    test("a `#` comment is read as code — a false RED, and the safe direction", () => {
+        const rule = { tier: "gated", action: { shell: "git push --force" } };
+        assert.ok(
+            matchesRule(rule, "Bash", { command: "echo ok #; git push --force origin main" }),
+            "a real shell ignores this; the matcher does not, and asks",
+        );
+    });
+
+    test("a `#` inside quotes never hides the command after it", () => {
+        // The case a comment-skipping reader would break. If this ever returns false, the matcher has
+        // started treating quoted text as a comment and a gated command has gone invisible.
+        const rule = { tier: "gated", action: { shell: "git push --force" } };
+        assert.ok(matchesRule(rule, "Bash", { command: 'echo "a#b"; git push --force origin main' }));
+    });
+
     test("the limit is asserted, not just documented: two wrappers still escape", () => {
         // Recorded as a test so that anyone tempted to call this layer a rail meets the counterexample.
         // The platform floor is what covers this — ../core/operating/autonomy.md.
@@ -788,6 +968,222 @@ describe("the shared matcher", () => {
             assert.ok(matchesRule(rule, tool, { file_path: "/repo/docs/vision.md" }), tool);
         }
         assert.ok(!matchesRule(rule, "Read", { file_path: "/repo/docs/vision.md" }), "reading it is not editing it");
+    });
+
+    // A `write:` rule names a PATH, and for one milestone it reached only the three tools carrying a
+    // `file_path` — so `echo x >> docs/vision.md` was gated by neither layer. The permission rule
+    // rejected the tool and the matcher fell through to false. These are the shell spellings that
+    // must now reach the gate, and, below them, the ones that still do not.
+
+    for (const [label, command] of [
+        ["append", "echo x >> docs/vision.md"],
+        ["truncate", "echo x > docs/vision.md"],
+        ["no space after the operator", "echo x >docs/vision.md"],
+        ["a `./`-spelled target", "echo x > ./docs/vision.md"],
+        ["an absolute target", "echo x > /repo/docs/vision.md"],
+        ["a numbered fd", "echo x 2> docs/vision.md"],
+        ["later in a list", "git status; echo x >> docs/vision.md"],
+        ["after a `&&`", "ls && echo x > docs/vision.md"],
+        ["inside a subshell", "(cd . && echo x > docs/vision.md)"],
+        ["through a shell wrapper", 'bash -c "echo x >> docs/vision.md"'],
+        // A wrapper that is not first on the line. The `shell` branch grew segment composition for
+        // this in an earlier commit on this branch; the `write` branch did not, and the gap it left
+        // was the worse of the two — the CONSTITUTION reachable behind any separator plus one
+        // wrapper, while the same wrapper alone answered `deny`. Measured stepping aside before the
+        // fix. Found by Copilot review on #60, five commits after the sibling was fixed.
+        ["a wrapper after a `;`", 'git status; bash -c "echo x >> docs/vision.md"'],
+        // A CRLF line continuation. `\r\n` was consumed one character at a time, so the `\n` survived
+        // as an operator and flushed the word instead of continuing it — the LF spelling denied and
+        // the CRLF spelling stepped aside, which made the constitution reachable by editing the file
+        // on Windows. Both are asserted so the pair cannot drift apart again.
+        // An escaped quote inside `"…"`. The run closed at the `\"`, the real closing quote opened a
+        // new one, and the `;` was swallowed inside it — so the line never split and the write was
+        // never evaluated. A false GREEN on the constitution, from a spelling that appears whenever a
+        // commit message or JSON blob contains a quote.
+        ['an escaped quote before the separator', 'echo "x\\""; cp /tmp/x docs/vision.md'],
+        ["a CRLF continuation before the path", "cp /tmp/x \\\r\ndocs/vision.md"],
+        ["a CRLF continuation after `>`", "echo x > \\\r\ndocs/vision.md"],
+        ["an LF continuation, the control", "cp /tmp/x \\\ndocs/vision.md"],
+        ["a wrapper after `&&`", 'ls && bash -c "cp /tmp/x docs/vision.md"'],
+        ["a `$'…'` wrapper, mid-line", "ls && bash -c $'echo x > docs/vision.md'"],
+        // The same `$'…'` gap on the write side. `shellWords` glued the `$` onto the front, so
+        // `$'docs/vision.md'` tokenised as `$docs/vision.md` and the constitution's gate missed it.
+        ["a `$'…'` redirect target", "echo x > $'docs/vision.md'"],
+        ["a `$'…'` target to a writer", "cp /tmp/x $'docs/vision.md'"],
+        ["cp", "cp /tmp/x docs/vision.md"],
+        ["cp, quoted target", "cp /tmp/x 'docs/vision.md'"],
+        ["cp by absolute path", "/bin/cp /tmp/x docs/vision.md"],
+        ["cp behind sudo", "sudo cp /tmp/x docs/vision.md"],
+        ["mv", "mv /tmp/x docs/vision.md"],
+        ["rm", "rm -f docs/vision.md"],
+        ["ln", "ln -sf /tmp/x docs/vision.md"],
+        ["tee, at the end of a pipeline", "cat /tmp/x | tee docs/vision.md"],
+        ["dd, through `of=`", "dd if=/dev/null of=docs/vision.md"],
+        ["install", "install -m 644 /tmp/x docs/vision.md"],
+        ["truncate(1)", "truncate -s 0 docs/vision.md"],
+        ["patch", "patch docs/vision.md < /tmp/d.diff"],
+        ["sed -i", "sed -i '' 's/a/b/' docs/vision.md"],
+        ["sed -i.bak", "sed -i.bak s/a/b/ docs/vision.md"],
+        ["sed -i behind an assignment", "LC_ALL=C sed -i '' s/a/b/ docs/vision.md"],
+        ["perl -pi", "perl -pi -e 's/a/b/' docs/vision.md"],
+    ]) {
+        test(`a write rule reaches the shell spelling: ${label}`, () => {
+            const rule = { tier: "prohibited", action: { write: "docs/vision.md" } };
+            assert.ok(matchesRule(rule, "Bash", { command }), command);
+        });
+    }
+
+    for (const [label, command] of [
+        // Reading the file is Auto by this policy, and a matcher that contradicts a declared tier is
+        // worse than one that admits a gap. This is why the in-place editors need their flag.
+        ["reading it with cat", "cat docs/vision.md"],
+        ["grepping it", "grep -n foo docs/vision.md"],
+        ["diffing it", "git diff docs/vision.md"],
+        ["sed WITHOUT an in-place flag", "sed -n '1,5p' docs/vision.md"],
+        ["sed -E, which is not -i", "sed -E 's/a/b/' docs/vision.md"],
+        ["it as a redirected INPUT", "patch /tmp/other.md < docs/vision.md"],
+        // An operator inside quotes is not an operator.
+        ["the path named inside a quoted string", "echo 'x > docs/vision.md'"],
+        ["a sentence mentioning it", 'echo "writing to docs/vision.md is prohibited"'],
+        // The path boundary is the same one `matchesPath` enforces everywhere else.
+        ["a sibling file", "echo x > docs/plan.md"],
+        ["a lookalike suffix", "echo x > docs/not-vision.md"],
+        ["an ordinary command", "node cli/compile.mjs --check"],
+    ]) {
+        test(`a write rule does NOT fire on: ${label}`, () => {
+            const rule = { tier: "prohibited", action: { write: "docs/vision.md" } };
+            assert.ok(!matchesRule(rule, "Bash", { command }), command);
+        });
+    }
+
+    // Everything below was found by the fresh-context supervisor at the pre-merge checkpoint, after
+    // the first round of this change shipped a four-item hole list that was missing five holes. Each
+    // one was a live escape: measured false on the matcher AND confirmed to write the file in a real
+    // shell. They are tests rather than prose because a hole list is a claim, and this repository
+    // grades an overstated coverage as a defect (dod.md, condition 4).
+
+    for (const [label, command] of [
+        // The most ordinary spelling there is. `\n` was not a separator, so the whole line folded
+        // into one segment whose head was the FIRST command — never the writer.
+        ["a writer on the second line", "git status\ncp /tmp/x docs/vision.md"],
+        ["a remover on the second line", "git status\nrm -f docs/vision.md"],
+        ["an in-place edit on the third line", "a\nb\nsed -i '' s/x/y/ docs/vision.md"],
+        ["a backslash-newline continuation", "cp /tmp/x \\\ndocs/vision.md"],
+        // A leader is not a command: `{`, `then` and `do` sat where the head goes and hid the writer.
+        ["inside a brace group", "{ cp /tmp/x docs/vision.md; }"],
+        ["inside if/then", "if true; then cp /tmp/x docs/vision.md; fi"],
+        ["inside a for loop", "for f in a; do cp /tmp/x docs/vision.md; done"],
+        ["inside a piped while loop", "echo a | while read f; do rm -f docs/vision.md; done"],
+        // A tail comparison is not a path normaliser, and neither spelling ends with the literal tail.
+        ["a `/./` in the path", "echo x > docs/./vision.md"],
+        ["a doubled slash", "echo x > docs//vision.md"],
+        ["a `..` climbing back in", "echo x > foo/../docs/vision.md"],
+        ["a `/./` in a writer's argument", "cp /tmp/x docs/./vision.md"],
+        // Destroying the container destroys the file, and a trailing slash decided it.
+        ["removing the parent directory", "rm -rf docs"],
+        ["removing the parent directory, with a slash", "rm -rf docs/"],
+        ["moving the parent directory away", "mv docs docs.bak"],
+    ]) {
+        test(`a write rule reaches the shell spelling: ${label}`, () => {
+            const rule = { tier: "prohibited", action: { write: "docs/vision.md" } };
+            assert.ok(matchesRule(rule, "Bash", { command }), command);
+        });
+    }
+
+    test("a subtree write target is reached whether or not the command spells the trailing slash", () => {
+        const rule = { tier: "prohibited", action: { write: ".portulan/" } };
+        assert.ok(matchesRule(rule, "Bash", { command: "rm -rf .portulan/" }));
+        assert.ok(matchesRule(rule, "Bash", { command: "rm -rf .portulan" }), "the slash must not decide it");
+        assert.ok(matchesRule(rule, "Bash", { command: "rm -rf .portulan/compile" }), "and neither does depth");
+    });
+
+    test("naming a SIBLING under the protected file's directory is not naming the directory", () => {
+        // The ancestor rule earns `rm -rf docs`, and it must not earn anything else. Spelling the
+        // ancestors as subtree patterns made every file under `docs/` a hit, so an ordinary edit to
+        // `docs/plan.md` — which this policy gates at `propose`, not `prohibited` — was refused.
+        const rule = { tier: "prohibited", action: { write: "docs/vision.md" } };
+        assert.ok(!matchesRule(rule, "Bash", { command: "cp foo docs/plan.md" }));
+        assert.ok(!matchesRule(rule, "Bash", { command: "rm -f docs/plan.md" }));
+        assert.ok(!matchesRule(rule, "Bash", { command: "echo x > docs/not-vision.md" }));
+    });
+
+    test("the shell half of a write gate is a table, and its limits are asserted rather than implied", () => {
+        // Recorded as a test for the same reason two-wrapper nesting is, one block up: anyone tempted
+        // to read the shell coverage as complete meets the counterexamples. `compile.mjs` says so in
+        // prose and ../.portulan/gate-map.md lists them among the honest holes; this is the half that
+        // fails loudly if somebody later widens the claim without widening the matcher.
+        const rule = { tier: "prohibited", action: { write: "docs/vision.md" } };
+        for (const [why, command] of [
+            ["an interpolated path", "echo x > $VISION"],
+            ["a heredoc whose target is interpolated", "cat > $TARGET <<'EOF'\nx\nEOF"],
+            ["a runtime assembling the write itself", `python3 -c "open('docs/vision.md','w').write('x')"`],
+            ["a writer outside the table", "ex -sc wq docs/vision.md"],
+            ["two shell wrappers", `bash -c "bash -c 'echo x > docs/vision.md'"`],
+            // A program that INVOKES a writer. Parsing THEIR flags to find the real command is the
+            // ambitious parser this design refuses to become, so these are disclosed instead.
+            ["find -exec invoking a writer", "find . -name x -exec cp {} docs/vision.md ;"],
+            ["xargs invoking a writer", "echo /tmp/x | xargs -I{} cp {} docs/vision.md"],
+        ]) {
+            assert.ok(!matchesRule(rule, "Bash", { command }), `${why} is a stated hole, not coverage`);
+        }
+    });
+
+    test("a heredoc BODY is data, not commands — and this one was measured the hard way", () => {
+        // Once a newline separated commands, every line of a heredoc body became its own segment. The
+        // commit that fixed the newline hole was itself REFUSED by this gate, because its message
+        // quoted `cp /tmp/x docs/vision.md` as the escape being closed. A matcher that stops you
+        // describing an attack has stopped being cautious and started being wrong: a heredoc body is
+        // text being written, and no shell runs it.
+        const write = { tier: "prohibited", action: { write: "docs/vision.md" } };
+        const force = { tier: "gated", action: { shell: "git push --force" } };
+        assert.ok(!matchesRule(write, "Bash", { command: "git commit -F - <<'MSG'\nfixed: cp /tmp/x docs/vision.md\nMSG" }));
+        assert.ok(!matchesRule(write, "Bash", { command: "cat <<'EOF' > /tmp/notes\nrm -rf docs\nEOF" }));
+        assert.ok(!matchesRule(force, "Bash", { command: "git commit -F - <<'MSG'\nls && git push --force escaped\nMSG" }));
+        assert.ok(!matchesRule(write, "Bash", { command: "cat <<-EOF > /tmp/x\n  sed -i '' s/a/b/ docs/vision.md\n\tEOF" }), "<<- too");
+    });
+
+    test("dropping the body does not drop the line that opens it, nor what follows the terminator", () => {
+        // The half that would turn the fix above into a hole. The redirection lives on the OPENING
+        // line, so it must still gate; and a real command after the terminator is a real command.
+        const rule = { tier: "prohibited", action: { write: "docs/vision.md" } };
+        assert.ok(matchesRule(rule, "Bash", { command: "tee docs/vision.md <<'EOF'\nx\nEOF" }));
+        assert.ok(matchesRule(rule, "Bash", { command: "cat <<'EOF' > /tmp/x\nharmless\nEOF\ncp /tmp/x docs/vision.md" }));
+    });
+
+    test("a heredoc naming the path literally IS covered — the coverage is not understated either", () => {
+        // Filed under limits by an earlier draft, which had it backwards. A heredoc redirects like
+        // anything else; what escapes is the interpolated TARGET, tested above. Understating coverage
+        // is the same defect as overstating it — both make the hole list untrue.
+        const rule = { tier: "prohibited", action: { write: "docs/vision.md" } };
+        assert.ok(matchesRule(rule, "Bash", { command: "cat > docs/vision.md <<'EOF'\nx\nEOF" }));
+        assert.ok(matchesRule(rule, "Bash", { command: "cat <<'EOF' > docs/vision.md\nx\nEOF" }));
+    });
+
+    test("a redirected INPUT is skipped rather than ending the command it feeds", () => {
+        // The `<` branch is load-bearing here and nowhere else: `tee` keeps its head and its real
+        // argument. Asserted because the branch survived a mutation with zero tests red, which means
+        // nothing was checking it — and an unchecked branch in a security matcher is the shape this
+        // repository has a memory entry about.
+        const rule = { tier: "prohibited", action: { write: "docs/vision.md" } };
+        assert.ok(matchesRule(rule, "Bash", { command: "tee < /tmp/in docs/vision.md" }));
+        assert.ok(!matchesRule(rule, "Bash", { command: "patch /tmp/other.md < docs/vision.md" }), "and it is still an input");
+    });
+
+    test("a writer READING the protected path is refused too — the stated coarse direction", () => {
+        // Asserted rather than only claimed in four prose carriers. `cp P /tmp/backup` only reads,
+        // and is refused, because argument grammars differ per command and guessing which word is the
+        // destination is a false GREEN on the file that must not change.
+        const rule = { tier: "prohibited", action: { write: "docs/vision.md" } };
+        assert.ok(matchesRule(rule, "Bash", { command: "cp docs/vision.md /tmp/backup" }));
+    });
+
+    test("a read rule is NOT given shell coverage — the scope is write, and it says so", () => {
+        // Deliberate rather than forgotten. Reading a path through a shell has no bounded table —
+        // `cat`, `head`, `awk`, `git show`, any language runtime — so a matcher for it would be the
+        // ambitious parser the floor backend's own comment warns against, buying false confidence
+        // with false reds. No `read` rule in this repository's policy is gated in any case.
+        const rule = { tier: "gated", action: { read: "docs/vision.md" } };
+        assert.ok(!matchesRule(rule, "Bash", { command: "cat docs/vision.md" }));
     });
 
     test("a path rule does not match a lookalike suffix", () => {
