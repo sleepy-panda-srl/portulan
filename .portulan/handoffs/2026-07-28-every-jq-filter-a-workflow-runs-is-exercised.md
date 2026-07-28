@@ -1,12 +1,20 @@
 # Handoff — every jq filter a workflow runs is exercised
 
-**State.** Branch `every-jq-filter-a-workflow-runs-is-exercised`, **stacked on
-`awaiting-a-review-is-not-a-failure`** ([#63](https://github.com/sleepy-panda-works/portulan/pull/63),
-open) at `cd7ba9e`, because the four `--jq` filters this covers exist only there — `main` still carries
-the two-filter version. Base it anywhere else and the fixtures describe filters that are not in the
-tree. **The stacked-PR order applies:** merge #63, confirm this one retargeted to `main`, and only then
-delete that branch (`../memory/`, learned on #10). Seven verify recipes green, each read for its exit
-code; suite 309/309; seam scan clean across files, commit message and branch name.
+**State.** Branch `every-jq-filter-a-workflow-runs-is-exercised`,
+[#64](https://github.com/sleepy-panda-works/portulan/pull/64), **based on `main`**. It opened stacked
+on [#63](https://github.com/sleepy-panda-works/portulan/pull/63), because the four `--jq` filters it
+covers existed only there; #63 merged at 11:22:03Z and GitHub **retargeted this one to `main` by
+itself** — the benign half of the stacked-PR trap, which bites only when the base *branch* is deleted
+before the base *merges* (#10). Rebased onto `origin/main` afterwards, since `main` had moved two
+further commits and refuses a merge from behind it (`strict`, proposal `0011`); the #63 commits dropped
+by patch-id. Seven verify recipes green, each read for its exit code; suite 309/309; seam scan clean
+across files, commit messages and branch name.
+
+**The rebase was the first unplanned test of the design, and it passed.** #63's rounds four and five
+rewrote the middle of `copilot-review.yml` and moved the requested-reviewers filter from line 341 to
+370. The recipe followed it with no edit and no red, because no line number — and no copy of any
+filter — is written down anywhere in it. That is the property the fixture table was built for,
+demonstrated by an event nobody arranged.
 
 **The occasion.** #63's own handoff carried one follow-up rather than smuggling it in: *the regression
 harness stubs `gh`, so the workflow's `--jq` filters are executed against null-bearing input only as a
@@ -71,6 +79,20 @@ this recipe's reader, which is the sharpest form task `0004` has taken yet: it i
 carrying logic that can be subtly wrong rather than visibly broken, and what stands behind it is a
 second reading of the same file agreeing with the first.
 
-**For the next session.** Nothing carried. If #63 changes a filter under further review rounds, this
-recipe answers in the right direction by construction: the fixtures either still pass, or they name
-what moved.
+**The review round, under the new bound.** One Copilot round on #64, two inline comments carrying one
+true finding: the header promised a byte-for-byte comparison of jq's stdout while `spawnSync` ran with
+`encoding: "utf8"`, so the code compared decoded strings. For valid UTF-8 the two agree and nothing was
+passing that should have failed — but the promise was wider than the code, inside a recipe whose whole
+subject is checks claiming more than they establish. Fixed by keeping the promise: no `encoding`, and
+the verdict is `Buffer.equals`, which also closes the case the review named (two different invalid
+sequences both decode to U+FFFD and compared equal). Demonstrated on the one non-ASCII fixture —
+replacing the em dash in `pr-labels.yml`'s summary program with a hyphen is three bytes for one, and it
+comes back FAIL.
+
+Answered under [`../memory/a-review-loop-needs-a-bound.md`](../memory/a-review-loop-needs-a-bound.md),
+which landed on `main` while this branch was open: **one push per round** (both comments batched into
+one), **records last** (this handoff correction rides that same push rather than spawning a round of
+its own — rule 2 exists for exactly the handoff-only push it would otherwise have been), threads
+answered because threads block, and this is fix-round one of the two the bound allows.
+
+**For the next session.** Nothing carried.
