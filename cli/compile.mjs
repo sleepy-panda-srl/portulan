@@ -652,6 +652,20 @@ function commandSegments(raw) {
             i += 1;
             continue;
         }
+        // `#` is NOT treated as starting a comment, and that is a decision rather than an oversight.
+        // `echo ok #; git push --force origin main` therefore segments as though the comment were
+        // code and answers `ask`, which a real shell would not — a false RED, measured 2026-07-28.
+        //
+        // Taking it would mean deciding where a comment begins, and the failure mode of getting that
+        // wrong runs the other way. A `#` opens a comment only at a word boundary and only outside
+        // quotes; a reader that skipped from the first `#` would swallow the rest of
+        // `echo "a#b"; git push --force origin main` — a real gated command, measured answering `ask`
+        // today — and turn a false red into a false GREEN. The docblock on `shellWrites` states the
+        // exchange rate: a false red costs one prompt on a rare spelling, a false green costs the
+        // laundering the rule exists to prevent.
+        //
+        // Both spellings are asserted in the suite so this stays a choice rather than drift.
+        // Reported by Copilot review on #60 and declined on those grounds.
         if (";|&()\n\r".includes(c)) {
             out.push(command.slice(start, i));
             start = i + 1;

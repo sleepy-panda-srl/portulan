@@ -933,6 +933,26 @@ describe("the shared matcher", () => {
         });
     }
 
+    // `#` does not start a comment here, deliberately. Both directions are pinned, because the pair
+    // is the argument: taking the false red away means deciding where a comment begins, and getting
+    // that wrong swallows a real command instead of a commented one. Reported by Copilot on #60 and
+    // declined on the exchange rate `shellWrites`'s docblock states — a false red costs one prompt,
+    // a false green costs the laundering.
+    test("a `#` comment is read as code — a false RED, and the safe direction", () => {
+        const rule = { tier: "gated", action: { shell: "git push --force" } };
+        assert.ok(
+            matchesRule(rule, "Bash", { command: "echo ok #; git push --force origin main" }),
+            "a real shell ignores this; the matcher does not, and asks",
+        );
+    });
+
+    test("a `#` inside quotes never hides the command after it", () => {
+        // The case a comment-skipping reader would break. If this ever returns false, the matcher has
+        // started treating quoted text as a comment and a gated command has gone invisible.
+        const rule = { tier: "gated", action: { shell: "git push --force" } };
+        assert.ok(matchesRule(rule, "Bash", { command: 'echo "a#b"; git push --force origin main' }));
+    });
+
     test("the limit is asserted, not just documented: two wrappers still escape", () => {
         // Recorded as a test so that anyone tempted to call this layer a rail meets the counterexample.
         // The platform floor is what covers this — ../core/operating/autonomy.md.
