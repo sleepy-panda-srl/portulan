@@ -95,15 +95,16 @@ checkpoints. What this change *can* do, and does:
 
 ## Provenance
 
-`form=link` `href=PENDING` — the change that builds the scheduled librarian, read against
-`.portulan/tools/README.md`'s 2026-07-26 measurement and GitHub's documented recursion guard. The
-number lands on this branch's final push, once the pull request exists. The first draft **guessed** it
-as `#80`, and the guess was wrong — `#80` had been opened by a different session an hour earlier, which
-is also the collision this branch should expect on `docs/plan.md`. So `docs.sh`'s new `proposal` check
-is red on this one file until then, and the red is correct rather than inconvenient: nothing has filed
-this yet.
+`form=link` `href=https://github.com/sleepy-panda-works/portulan/pull/81` — the change that builds the
+scheduled librarian, read against `.portulan/tools/README.md`'s 2026-07-26 measurement and GitHub's
+documented recursion guard. Written once the pull request existed, and the reason it was not written
+earlier is worth keeping: the first draft **guessed** the number as `#80` and the guess was wrong —
+`#80` had been opened by a different session an hour before, which is also the collision this branch
+should expect on `docs/plan.md`. A pointer that cannot be known yet is a red on `docs.sh`'s new
+`proposal` check until it is, and that red is correct rather than inconvenient: until this pull request
+existed, nothing had filed this.
 
 **Decision.** Marius Cetanas — **accepted, 2026-07-28**, choosing route (a) over (b) and (c) at this
 session's opening checkpoint.
 
-**Pull request:** written on this branch's final push — see **Provenance** above.
+**Pull request:** [#81](https://github.com/sleepy-panda-works/portulan/pull/81) — the change that filed this.
