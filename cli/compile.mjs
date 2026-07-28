@@ -390,9 +390,9 @@ function pattern(tool, target) {
 //
 // Refusing to emit `allow` does not make the Auto tier free. It moves the tier's price off this
 // repository. The host prompts for any command it has not been told about, so every Auto action is
-// answered by hand, and those answers pile up in the host's own settings files: per-machine,
-// unreviewable, absent from every diff, and — for a workflow built on throwaway worktrees — lost
-// along with the branch that earned them. Measured on one host, 2026-07-28: 404 hand-added allow
+// answered by hand, and those answers pile up in the host's own settings files, which are
+// per-machine, unreviewable, absent from every diff, and — for a workflow built on throwaway
+// worktrees — lost along with the branch that earned them. Measured on one host, 2026-07-28: 404 hand-added allow
 // entries, of which exactly ONE corresponded to an Auto rule in ../.portulan/gates.json. So the
 // tier is unattended in POLICY and heavily attended in PRACTICE, and those are not the same claim.
 // The refusal string below used to make the first one and read as the second.
