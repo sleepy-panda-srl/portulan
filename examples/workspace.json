@@ -47,13 +47,13 @@
     "index": {
       "path": "memory-index.md",
       "budget": {
-        "lines": 20,
+        "lines": 14,
         "columns": 140
       }
     },
     "store": {
       "budget": {
-        "kilobytes": 20
+        "kilobytes": 11
       }
     }
   },

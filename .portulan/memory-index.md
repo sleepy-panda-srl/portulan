@@ -2,7 +2,7 @@
 
 > Generated from `memory/` by `node cli/index.mjs`. Do not edit by hand: it is regenerated
 > and byte-compared, so a hand-edit survives exactly until the next run.
-> 23 record(s) · budget 60 lines.
+> 23 record(s) · budget 40 lines.
 
 - [A branch syncs with main before it merges](memory/a-branch-syncs-with-main-before-it-merges.md) — rule
 - [A checker must refuse what it cannot check](memory/a-checker-must-refuse-what-it-cannot-check.md) — rule

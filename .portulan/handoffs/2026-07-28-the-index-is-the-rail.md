@@ -17,10 +17,24 @@ and proposals-as-PRs — are session 1.
   enormous line absorbing what the line budget counts. Nothing defaulted — the `floor` object's rule
   from 2.2, for the same reason.
 
-- **The numbers are the maintainer's and they are generous: 60 lines / 200 KB against 23 records and
-  88.8 KB.** That is several milestones of headroom — a ceiling rather than a rail that fires on its
-  own. It was put to him with that trade-off stated and he chose it, so the demonstration is forced, and
-  every record of it says forced rather than describing it as a rail firing naturally.
+- **The numbers are the maintainer's: 40 lines / 120 KB against 23 records and 88.8 KB**, and they were
+  set twice. He first chose 60 / 200 from three options, then reversed to the recommended 40 / 120 when
+  the consequence was flagged back at him — that 60 / 200 is a **ceiling** several milestones away
+  rather than a rail that fires on its own. Recorded as a reversal rather than presented as a first
+  answer, because the reasoning is the useful part: a rail nobody reaches teaches nothing, and the cost
+  of setting it too tight (an interrupted session with nothing to consolidate) is smaller and more
+  visible than the cost of setting it too loose (a store that grows for a year while a green check says
+  it is fine). At 40 / 120 the index sits at **72%** of its budget and the store at **74%** of its own —
+  the two axes bind at about the same time, which is the property to keep if either number moves again.
+
+  The demonstration is still **forced**, and every record says so: 29 lines under a budget of 40 is not
+  a rail firing naturally, and no arithmetic makes it one.
+
+  Applying the reversal exercised the coupling this change documents. The line budget is written into
+  the index header, so changing it **staled both indexes** and the recipe went red until they were
+  regenerated — the budget could not move without dragging the generated file it governs into the same
+  diff. That is the whole of what stands behind the no-raise rule, and it was observed rather than
+  assumed.
 
 - **Titles come from filenames, not from headings.** The plan had them derived from each record's H1.
   The session-open supervisor found that **24 of the 27 live records have no H1** — the template
