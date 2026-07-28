@@ -162,11 +162,11 @@
               "additionalProperties": false,
               "properties": {
                 "lines": {
-                  "description": "The most lines the generated index may hold. With one line per record this is a rail on record COUNT, which is the cost memory imposes on every recall.",
+                  "description": "The most lines the generated index may hold. With one line per record this is a rail on record COUNT, which is the cost memory imposes on every recall. Must be a POSITIVE INTEGER: the subset has no `minimum`, so `type: number` is the strongest constraint expressible here and `cli/index.mjs` refuses zero, negative and non-integer values with exit 2 rather than reading them as undeclared — a budget of `0` is falsy, and would otherwise switch the rail off in the key that exists to switch it on.",
                   "type": "number"
                 },
                 "columns": {
-                  "description": "The most columns any one index line may hold. Closes the hole a line budget has — one enormous line absorbing what the budget counts — and is refused rather than truncated, since a silently shortened title is a generated file disagreeing with its source.",
+                  "description": "The most columns any one index line may hold. Closes the hole a line budget has — one enormous line absorbing what the budget counts — and is refused rather than truncated, since a silently shortened title is a generated file disagreeing with its source. A positive integer, on the same terms as `lines`.",
                   "type": "number"
                 }
               }
@@ -184,7 +184,7 @@
               "additionalProperties": false,
               "properties": {
                 "kilobytes": {
-                  "description": "The most kilobytes (1024 bytes) the store's records may total — the same measure `doctor`'s retirement report already prints, so the report and the rail cannot disagree about what was measured.",
+                  "description": "The most kilobytes (1024 bytes) the store's records may total — the same measure `doctor`'s retirement report already prints, so the report and the rail cannot disagree about what was measured. A positive integer, on the same terms as `lines`.",
                   "type": "number"
                 }
               }

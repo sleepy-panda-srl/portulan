@@ -1441,7 +1441,7 @@ the seam applies here too: no client-identifying references)_
   its first run against the tree** — the third check here to do so, after `map` and `doctor`:
   `who-may-commit-is-verified-not-assumed.md` carried the heading *"Who may commit here is a measurement,
   not GitHub's reputation"*, so the store held two answers to what that record is called. The heading
-  yielded, because the filename is what the one inbound reference uses. · Suite **442 → 490**, both
+  yielded, because the filename is what the one inbound reference uses. · Suite **442 → 490** before the review round and **496** after, all
   measured rather than derived; all eight recipes green; thirteen forced observations on a scratch copy
   of the real tree, every distinct verdict red or `2` with its own sentence, the tree clean at both ends.
   · Supervised in two fresh Fable 5 contexts. **Session-open: APPROVE-WITH-ADJUSTMENTS**, ten required,
@@ -1462,7 +1462,20 @@ the seam applies here too: no client-identifying references)_
   from the one dated carrier, four of them already stale before this change and one — a workflow
   comment — made stale by it. The numbers are **removed** rather than corrected, because the bullet in
   `affordances.md` claimed in one breath that a suite could be added *"without this bullet changing"* and
-  hard-coded the figure in the next. **Milestone 5 stays open:** the scheduled
+  hard-coded the figure in the next. · **The Copilot round found six real defects across both
+  channels — four of them in the suppressed half**, which `copilot-reviewed` passes regardless of and
+  which carries no Resolve control; the third round here where the reviewer's least-certain comments
+  held the real findings. Answered in one push, per the bound. The one worth keeping: `inspect` wrote
+  the index without ensuring its parent directory existed, so an index declared at
+  `notes/memory-index.md` with no `notes/` threw an uncaught ENOENT, node exited 1, and the recipe
+  passed that through as a **red** — *the index has drifted*, about a store nothing had judged, for a
+  fact about the filesystem. That is `a-checker-must-refuse-what-it-cannot-check` inside the change
+  that cites it, and **the fixture that triggers it was already in the suite**: the relative-link test
+  uses that exact path and stopped one call short of writing through it. Also real — the store-size
+  failure printed a rounded figure alone, so 1025 bytes read as *"1.0 KB against a budget of 1 KB"*, a
+  sentence arguing against its own verdict; and `run()` reported *index current* for a workspace
+  declaring budgets and no index, a green about a file that does not exist. Suite 492 → **496**.
+  Nothing was refused. **Milestone 5 stays open:** the scheduled
   librarian and proposals-as-PRs are session 1, and the close needs its own fresh-context checkpoint.
   Seam scan clean across files, commit message, and branch name. Handoff:
   [`.portulan/handoffs/2026-07-28-the-index-is-the-rail.md`](../.portulan/handoffs/2026-07-28-the-index-is-the-rail.md).

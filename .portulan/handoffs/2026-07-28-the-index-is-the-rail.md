@@ -118,6 +118,42 @@ session's own sweep and missed by both checkpoints — `affordances.md` still to
 **memory has no generated index**, in the file whose whole purpose is telling an agent what it may rely
 on.
 
+## The Copilot round, and the one finding that mattered
+
+Seven findings across both channels — **three threads** and **four suppressed notes** — and six were
+real. Answered in one push, per the bound.
+
+The thread worth carrying: **`inspect` wrote the index without ensuring its parent directory existed.**
+With `memory.index.path` set to `notes/memory-index.md` and no `notes/`, `writeFileSync` threw an
+uncaught ENOENT out of `run()`, node exited **1**, and `index.sh` passed that through as a **red** — *the
+index has drifted*, said about a store nothing had judged, for what is a fact about the filesystem.
+That is `a-checker-must-refuse-what-it-cannot-check` happening inside the change that cites it. The
+sharper half: **the fixture that triggers it was already in the suite** — the relative-link test uses
+exactly `notes/memory-index.md` — and stopped one call short, exercising `render` and never
+`inspect({write:true})`. A fixture that reaches the defect and a test that does not are not the same
+thing, which is worth more than the patch.
+
+Two more were real and neither is cosmetic. The store-size failure printed `kb.toFixed(1)` alone, so at
+1025 bytes it read *"1.0 KB against a budget of 1 KB"* — a sentence that argues against its own verdict,
+inside the message announcing a breach. It now carries exact bytes. And `run()` printed *"index current,
+within budget"* for a workspace that declares budgets and **no** index: a green about a file that does
+not exist, from a tool whose entire subject is generated artifacts.
+
+The remaining three: a `${slot}${file}` concatenation that garbles the path in two messages when
+`slots.memory` lacks its trailing slash (both sites fixed together — the second was found only in the
+suppressed half), and the schema descriptions now stating the *positive integer* constraint the
+implementation enforces and the keyword subset cannot express.
+
+**Four of the six came from the suppressed block**, which `copilot-reviewed` passes regardless of and
+which has no Resolve control. That is now the third round in this repository where the reviewer's
+least-certain half held real defects, and it is the whole argument for
+[`a-review-loop-needs-a-bound.md`](../memory/a-review-loop-needs-a-bound.md) rule 3 reading *notes are
+worth reading, not worth blocking on* rather than *notes are noise*.
+
+Nothing was refused. `doctor`'s retirement note rounds the same way as the store-size message and is
+deliberately **left alone**: it states a size and compares it with nothing, so there is no verdict for
+the rounding to contradict.
+
 ## Open questions
 
 - **Should a workflow-layer check refuse a budget raise in the same pull request that takes the index
