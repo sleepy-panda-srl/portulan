@@ -384,13 +384,32 @@ function pattern(tool, target) {
 
 // Which tiers this backend gates. `auto` and `propose` are refused wholesale, on the maintainer's
 // ruling of 2026-07-27: the compiler emits restriction only, never permission. A compiler whose
-// output can only ever ADD a gate cannot loosen an existing check by having a bug — and the
-// alternative, emitting `allow` for the Auto tier, would silence prompts the maintainer answers by
-// hand today.
+// output can only ever ADD a gate cannot loosen an existing check by having a bug.
+//
+// ## What the ruling costs — which this comment used to leave to the reader's imagination
+//
+// Refusing to emit `allow` does not make the Auto tier free. It moves the tier's price off this
+// repository. The host prompts for any command it has not been told about, so every Auto action is
+// answered by hand, and those answers pile up in the host's own settings files: per-machine,
+// unreviewable, absent from every diff, and — for a workflow built on throwaway worktrees — lost
+// along with the branch that earned them. Measured on one host, 2026-07-28: 404 hand-added allow
+// entries, of which exactly ONE corresponded to an Auto rule in ../.portulan/gates.json. So the
+// tier is unattended in POLICY and heavily attended in PRACTICE, and those are not the same claim.
+// The refusal string below used to make the first one and read as the second.
+//
+// ## The ruling stands, on a different sentence than before
+//
+// "Emitting `allow` would loosen a check" is not the hazard, or not obviously so: `git push` is
+// Auto and `git push --force` is Gated, and whether a narrower `ask` still outranks a broader
+// `allow` is a host precedence question **this repository has never measured** — so no argument
+// here should rest on it. The hazard that does not depend on that answer: an allow prefix reaches
+// every spelling beneath it, including the ones no rule here names. `git push --mirror` is
+// destructive and appears in no tier of ../.portulan/gates.json. An allow on the prefix would
+// clear it silently, and nothing in this policy would notice.
 const HOST_GATE_TIERS = new Set(["gated", "prohibited"]);
 
 const HOST_TIER_NOT_A_GATE = {
-    auto: "tier `auto` is unattended by definition — there is nothing to enforce, and emitting an allow rule would loosen a check rather than add one",
+    auto: "tier `auto` is unattended by policy, not by the host — refusing it keeps this compiler additive, and the prompts that refusal leaves are paid by hand in the host's own settings, outside this repository",
     propose: "tier `propose` is enforced by the platform floor — pull requests, required checks, review — not by a tool-level permission rule on this machine",
 };
 
@@ -691,6 +710,11 @@ export function githubRuleset(parsed, options = {}) {
  */
 function floorRefusal(rule, floor) {
     if (rule.tier === "auto") {
+        // "Unattended by definition" is literally true on THIS backend, and true only here: a branch
+        // ruleset has no prompt to pay, so an Auto rule left out of it costs nobody anything. The
+        // host backend carried the identical phrase and it was false there — see the comment above
+        // `HOST_GATE_TIERS`. Same words, one backend apart, one of them wrong. Do not carry either
+        // version across without re-deriving it for the backend it lands in.
         return "tier `auto` is unattended by definition — the floor exists to refuse what an agent may not do alone, and an action needing nobody's approval needs no ref gate.";
     }
     if (rule.kind === "none") {
