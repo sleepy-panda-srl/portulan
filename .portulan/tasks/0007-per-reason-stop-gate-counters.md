@@ -84,7 +84,11 @@ decisions rather than as details, because each had a defensible opposite:
   can never release a later stop on the strength of a problem that has since been fixed. Pinned by a test
   rather than left to be inferred from the zeroing.
 
-One acceptance criterion is met **by the suite rather than by a live run**, and
-[`../compile/README.md`](../compile/README.md)'s observation table says so in the row itself: the handoff
-branch cannot fire in this tree on a day when any session has already written a dated handoff. The
-recipe branch was re-run live end-to-end after the change and released naming its own reason.
+One acceptance criterion was met **by the suite rather than by a live run** when this task closed, and
+[`../compile/README.md`](../compile/README.md)'s observation table said so in the row itself rather than
+counting it as covered: the handoff branch cannot fire in this tree on a day when any session has already
+written a dated handoff. The recipe branch was re-run live end-to-end and released naming its own reason.
+**The milestone-4 close checkpoint then ran the handoff branch too**, in an isolated clone — recipe green
+throughout, blocked `handoff 1/3 → 3/3`, released on its own cap of three rather than on the ceiling of
+nine. Every criterion here now has a live observation behind it, and the one that was hardest to get was
+observed by a fresh context rather than by the session that wanted it to pass.

@@ -233,9 +233,10 @@ The lesson that survives is smaller and less flattering than the one I invented:
 narrating it.** A failing test tells you something is wrong, not what. And the generalisation I reached for
 was appealing precisely because it made a merge, rather than a misreading, responsible.
 
-_(The commit message on `ca872e8` carries the false version and cannot be amended without rewriting a
-pushed commit others may have fetched. It stands, corrected here and in the plan — which is the same
-choice this repository has made before about a merged record.)_
+_(The commit message carries the false version and cannot be amended without rewriting a pushed commit
+others may have fetched. It stands, corrected here and in the plan — which is the same choice this
+repository has made before about a merged record. On `main` the sha is **`1d4e9fb`**: the rebase-merge
+replayed `ca872e8`, so the original is unreachable from `main` and citing it sends a reader nowhere.)_
 
 **A fourth round found one more, and it arrived in the half nobody reads.** Copilot's *suppressed*
 low-confidence section — no Resolve control, no effect on the merge gate, visible only to someone who opens
