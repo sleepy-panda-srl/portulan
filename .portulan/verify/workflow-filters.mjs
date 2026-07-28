@@ -513,7 +513,15 @@ function auditForUncoveredWorkflows() {
 // because there the fixture would be asserting about a filter nobody chose for it.
 function bind(programs) {
     const bound = new Map(programs.map((program) => [program, []]));
-    const identity = (program) => `${program.flags.join(" ")} ${program.filter}`;
+    // NUL as an ESCAPE, never as a literal byte. It is the right separator — neither a flag nor a jq
+    // program can contain one, so no two distinct programs can collide into a single identity — and
+    // the raw byte shipped here once, caught by a Copilot round on #64. It is invisible in every
+    // sense that matters: `file` called this source *binary data*, and `grep -n "identity = "` on
+    // this very line exited 1 — a **silent false negative**, in a repository whose recipes are built
+    // out of grep. Git rendered the diff as text only because the byte sat past the first 8000,
+    // which is luck rather than safety: a few hundred lines earlier and the whole instrument would
+    // have arrived in review as `Binary files differ`.
+    const identity = (program) => `${program.flags.join(" ")}\u0000${program.filter}`;
     for (const testCase of CASES) {
         const hits = programs.filter((program) => program.filter.includes(testCase.anchor));
         const distinct = new Set(hits.map(identity));
