@@ -438,8 +438,11 @@ arguing. `doctor`'s store report walks every `.md` in the store, so an index liv
 a record, sized into the KB figure, and reported for stating no retirement condition — a report about
 the store that includes a file the store does not hold. The alternative repair was to exempt the
 index's filename from the walk, and that was rejected: an exemption by name is a door any record could
-walk through, and this repository has found eight fail-opens of that shape in its own scaffolding. A
-siting rule has no such door.
+walk through, and this repository had found eight fail-opens of that shape in its own scaffolding. A
+siting rule has no such door — though the rule still has to be *tested* correctly, and the first cut of
+this one was the ninth: it read a leading `..` in a **filename** as a traversal, so `memory/..index.md`
+was judged outside the store it plainly sits in, written there, and counted as a record. The door was
+not in the design; it was in the containment test.
 
 **What no checker establishes:** that a budget was not simply raised in the change that breached it.
 That rule is [`memory.md`](../core/operating/memory.md)'s and the human gate's — refusing a raise needs

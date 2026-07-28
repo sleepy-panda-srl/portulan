@@ -5,7 +5,7 @@
 
 **State.** Clauses 1–3 of the row, in one pull request: `cli/index.mjs` + its suite, the eighth verify
 recipe `index.sh`, `core/skills/consolidate/SKILL.md`, spec 2.2 → 2.3, and `doctor`'s three new checks.
-Suite 442 → 490. All eight recipes green. Clauses 4 and 5 — the scheduled librarian's first real PR,
+Suite 442 → 499. All eight recipes green. Clauses 4 and 5 — the scheduled librarian's first real PR,
 and proposals-as-PRs — are session 1.
 
 ## Decisions, and why
@@ -149,6 +149,25 @@ which has no Resolve control. That is now the third round in this repository whe
 least-certain half held real defects, and it is the whole argument for
 [`a-review-loop-needs-a-bound.md`](../memory/a-review-loop-needs-a-bound.md) rule 3 reading *notes are
 worth reading, not worth blocking on* rather than *notes are noise*.
+
+**Round two found the ninth fail-open, and this session wrote it.** No new threads — the three were
+already answered — but two suppressed notes named the same defect in `index` and in `doctor`: the
+containment test spelled `!path.relative(parent, child).startsWith("..")`, which reads a leading `..`
+in a **filename** as a traversal. Measured end to end before it was believed: an index declared at
+`memory/..index.md` was written *into* the store, `run` reported `ok`, and `doctor` then counted it as
+a second record and flagged it for stating no retirement condition — about a file that is not a record
+at all. That is exactly the outcome the siting rule exists to prevent, in the check chosen over a
+filename exemption **because** an exemption would be *a door any record could walk through*. The door
+was not in the design. It was in the containment test.
+
+Fixed as **one** exported `isInside`, imported by `doctor` rather than restated — the reasoning that
+already put `compile`'s accounting behind one import, and now with evidence: the two copies of this
+rule drifted into the identical defect before either had shipped.
+
+It cost a judgement the maintainer made rather than the implementer: the finding was **only** in the
+suppressed channel, where rule 3 says notes are *never a reason to push again*, while rule 4 leaves two
+fix-rounds. He ruled fix — inside the bound, as fix-round two of two. Anything further on this pull
+request becomes an issue.
 
 Nothing was refused. `doctor`'s retirement note rounds the same way as the store-size message and is
 deliberately **left alone**: it states a size and compares it with nothing, so there is no verdict for

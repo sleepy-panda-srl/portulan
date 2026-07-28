@@ -27,6 +27,7 @@ import {
     IndexError,
     titleOf,
     headingOf,
+    isInside,
     readStore,
     render,
     inspect,
@@ -535,11 +536,41 @@ describe("what this tool refuses to judge", () => {
         assert.throws(() => inspect(dir), IndexError);
     });
 
+    test("a filename beginning with `..` is a name, not a way out of the store", () => {
+        // Copilot, #72, suppressed half. `!path.relative(parent, child).startsWith("..")` calls
+        // `memory/..index.md` OUTSIDE `memory/`, because a leading `..` in a filename is not a
+        // traversal — a fail-open in the check chosen over a filename exemption precisely because an
+        // exemption would be a door any record could use.
+        assert.equal(isInside("/x/memory", "/x/memory/..index.md"), true);
+        assert.equal(isInside("/x/memory", "/x/memory/..a/INDEX.md"), true);
+        assert.equal(isInside("/x/memory", "/x/memory/INDEX.md"), true);
+        assert.equal(isInside("/x/memory", "/x/memory"), true);
+        assert.equal(isInside("/x/memory", "/x/memory-index.md"), false);
+        assert.equal(isInside("/x/memory", "/x/notes/i.md"), false);
+        assert.equal(isInside("/x/memory", "/x"), false);
+    });
+
+    test("an index named `..something` inside the store is refused, end to end", () => {
+        // The measured consequence before the fix: the index was written into the store, `run`
+        // reported ok, and `doctor` counted it as a second record — reporting it for stating no
+        // retirement condition, about a file that is not a record at all.
+        const manifest = wellFormed({
+            memory: {
+                index: { path: "memory/..index.md", budget: { lines: 60, columns: 140 } },
+                store: { budget: { kilobytes: 200 } },
+            },
+        });
+        const dir = workspace({ "memory/a-first.md": record("rule") }, manifest);
+        assert.throws(() => inspect(dir, { write: true }), IndexError);
+        assert.equal(fs.readdirSync(path.join(dir, "memory")).sort().join(","), "a-first.md");
+    });
+
     test("an index sited inside the store it indexes", () => {
         // `doctor`'s store report counts every `.md` in the store; an index living there is counted
         // as a record, sized into the KB figure, and reported for stating no retirement condition.
         // Refused rather than special-cased: a name-based exemption is a hiding place, and this
-        // repository has found eight fail-opens of that shape in its own scaffolding.
+        // repository had found eight fail-opens of that shape in its own scaffolding — and this check
+        // became the ninth before it shipped, which is the test two above this one.
         const manifest = wellFormed({
             memory: {
                 index: { path: "memory/INDEX.md", budget: { lines: 60, columns: 140 } },

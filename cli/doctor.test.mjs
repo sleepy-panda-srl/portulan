@@ -565,6 +565,22 @@ describe("provenance is parsed into the two forms the constitution names", () =>
         assert.match(text(failures), /inside slots\.memory/);
     });
 
+    test("an index named `..something` inside the store is refused too", async () => {
+        // Copilot, #72. The containment test read a leading `..` in a FILENAME as a traversal, so a
+        // file plainly inside the store was judged outside it — and this walk then counted it as a
+        // record. Both copies of the rule carried it; there is one copy now, imported.
+        const m = wellFormed();
+        m.slots.memory = "memory/";
+        m.memory = { index: { path: "memory/..index.md" } };
+        const dir = tree(scratch(), {
+            ...minimalFiles,
+            "workspace.json": JSON.stringify(m),
+            "memory/..index.md": "# Memory index\n",
+        });
+        const { findings } = await inspect(dir, { schema: SCHEMA });
+        assert.match(text(severities(checks(findings, "cross"), "fail")), /inside slots\.memory/);
+    });
+
     test("an index beside the store is fine, and its path must resolve", async () => {
         const m = wellFormed();
         m.slots.memory = "memory/";
