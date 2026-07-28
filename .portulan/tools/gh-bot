@@ -118,9 +118,17 @@ case "${1:-}" in
         conversation+='|installation/repositories'
         conversation+='|repos/[^/]+/[^/]+/issues/[0-9]+/comments'
         conversation+='|repos/[^/]+/[^/]+/issues/comments/[0-9]+'
-        conversation+='|repos/[^/]+/[^/]+/pulls/[0-9]+/(comments|reviews)'
+        conversation+='|repos/[^/]+/[^/]+/pulls/[0-9]+/comments'
         conversation+='|repos/[^/]+/[^/]+/pulls/[0-9]+/comments/[0-9]+/replies'
-        conversation+='|repos/[^/]+/[^/]+/pulls/(comments|reviews)/[0-9]+'
+        # A review by id, and that review's comments. Both are real routes and both were refused
+        # until 2026-07-28 — measured, `…/pulls/61/reviews/4796335478` answers 200. The list form
+        # is the `(/…)?` arm.
+        conversation+='|repos/[^/]+/[^/]+/pulls/[0-9]+/reviews(/[0-9]+(/comments)?)?'
+        # A review COMMENT by id. `pulls/reviews/<id>` was admitted here too and is not a route at
+        # all — measured 404 on the same day. An allowlist that admits a path GitHub cannot serve
+        # is not harmful, it is unreviewable: it reads as a considered decision about a surface
+        # that does not exist.
+        conversation+='|repos/[^/]+/[^/]+/pulls/comments/[0-9]+'
         conversation+=')$'
 
         # An endpoint this scan could not identify is refused, never admitted. "Could not tell" must
