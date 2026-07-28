@@ -165,7 +165,7 @@ export function readStore(dir, workspace) {
         } catch (cause) {
             // Present and unreadable is not "absent". Skipping it would drop a record from the index
             // silently, which is precisely the shape a generated file must never have.
-            throw new IndexError(`cannot read the record ${slot}${file} — ${cause.code ?? cause.message}`);
+            throw new IndexError(`cannot read the record ${path.join(slot, file)} — ${cause.code ?? cause.message}`);
         }
         bytes += Buffer.byteLength(source);
         records.push({
@@ -299,7 +299,7 @@ export function inspect(dir, { write = false } = {}) {
         if (r.heading && normalize(r.heading) !== normalize(r.title)) {
             fail(
                 "title",
-                `${workspace.slots.memory}${r.file} carries the heading "${r.heading}", which is not its filename's title ` +
+                `${path.join(workspace.slots.memory, r.file)} carries the heading "${r.heading}", which is not its filename's title ` +
                     `"${r.title}". A record may hold two carriers of its name; it may not hold two answers — ` +
                     "rename the file or reword the heading",
             );
@@ -309,7 +309,24 @@ export function inspect(dir, { write = false } = {}) {
 
     const expected = render(workspace, store);
 
-    if (write) fs.writeFileSync(indexPath, expected);
+    if (write) {
+        // The artifact's own directory is created, and a write that still fails is an IndexError
+        // rather than a throw. Both halves matter, and the second is the one with teeth: an uncaught
+        // ENOENT here exits node with 1, which `index.sh` passes through as a RED — "the index has
+        // drifted", said about a store nothing had judged, for what is a configuration problem.
+        // That is `a-checker-must-refuse-what-it-cannot-check` exactly, and the suite already
+        // carried the fixture that triggers it (`notes/memory-index.md`) while stopping one call
+        // short of writing through it. Found by Copilot on #72.
+        try {
+            fs.mkdirSync(path.dirname(indexPath), { recursive: true });
+            fs.writeFileSync(indexPath, expected);
+        } catch (cause) {
+            throw new IndexError(
+                `cannot write the index at ${declaredIndex} — ${cause.code ?? cause.message}. ` +
+                    "Refusing rather than reporting a verdict about the store: this is a fact about the filesystem, not about memory",
+            );
+        }
+    }
 
     let actual = null;
     try {
@@ -381,9 +398,16 @@ function budgetFindings(memory, store, expected, fail) {
     if (kilobytes) {
         const kb = store.bytes / KB;
         if (kb > kilobytes) {
+            // The exact byte count rides along with the rounded figure, because rounding alone can
+            // print a sentence that contradicts its own verdict: 1025 bytes is `1.0 KB` against a
+            // budget of `1 KB`, which reads as within budget in the message announcing that it is
+            // not. A red whose sentence argues against it is worse than no message. Found by Copilot
+            // on #72. (`doctor`'s retirement note rounds the same way and is left alone: it states a
+            // size and compares it with nothing, so there is no verdict for the rounding to
+            // contradict.)
             fail(
                 "budget",
-                `the store is ${kb.toFixed(1)} KB against a budget of ${kilobytes} KB. ` +
+                `the store is ${kb.toFixed(1)} KB (${store.bytes} bytes) against a budget of ${kilobytes} KB (${kilobytes * KB} bytes). ` +
                     "This is the axis the index cannot see: record count can hold still while the store grows",
             );
         }
@@ -426,7 +450,15 @@ export function run(argv, say = console.log) {
         for (const f of result.findings) say(`  ✗ ${dir}: ${f.message}`);
         if (result.findings.length && worst < 1) worst = 1;
         if (!result.findings.length) {
-            say(`  ok ${dir}: ${check ? "index current" : "index written"}, within budget`);
+            // A workspace may declare budgets and no index — rail the store's size, generate
+            // nothing. Saying "index current" there is a green about a file that does not exist,
+            // which is the one sentence a tool whose subject is generated artifacts must not print.
+            // Found by Copilot on #72, in the suppressed half of the round.
+            say(
+                result.path === null
+                    ? `  ok ${dir}: no index declared; store within budget`
+                    : `  ok ${dir}: ${check ? "index current" : "index written"}, within budget`,
+            );
         }
     }
 

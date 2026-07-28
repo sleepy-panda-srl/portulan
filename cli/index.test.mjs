@@ -356,6 +356,22 @@ describe("the budget is a rail", () => {
         assert.match(text(bad), /column/i);
     });
 
+    test("the store-size red carries exact bytes, so its sentence cannot contradict its verdict", () => {
+        // Copilot, #72. `kb.toFixed(1)` alone prints `1.0 KB against a budget of 1 KB` at 1025
+        // bytes — a message that reads as within budget inside the finding announcing it is not.
+        const manifest = wellFormed({
+            memory: {
+                index: { path: "memory-index.md", budget: { lines: 600, columns: 140 } },
+                store: { budget: { kilobytes: 1 } },
+            },
+        });
+        const dir = workspace({ "memory/a-first.md": "x".repeat(1025) + "\n" }, manifest);
+        const bad = failures(inspect(dir, { write: true }));
+        assert.equal(bad.length, 1);
+        assert.match(text(bad), /1026 bytes/);
+        assert.match(text(bad), /1024 bytes/);
+    });
+
     test("red when the store is over its size budget, in KB", () => {
         // The axis the index cannot see: 23 records can grow to any size with the index unchanged.
         const manifest = wellFormed({
@@ -451,6 +467,35 @@ describe("--check compares and never repairs", () => {
         assert.deepEqual(fs.readFileSync(indexPath), before);
     });
 
+    test("creates the index's own directory rather than throwing ENOENT through the recipe", () => {
+        // Copilot, #72. `notes/memory-index.md` with no `notes/` threw an uncaught ENOENT out of
+        // `run()`, node exited 1, and the recipe passed that through as a RED — "the index has
+        // drifted", about a store nothing had judged, for a filesystem fact. The fixture for this
+        // path was already in this file, one call short of writing through it.
+        const manifest = wellFormed({
+            memory: { index: { path: "notes/memory-index.md", budget: { lines: 60, columns: 140 } } },
+        });
+        const dir = workspace({ "memory/a-first.md": record("rule") }, manifest);
+        assert.equal(failures(inspect(dir, { write: true })).length, 0);
+        assert.ok(fs.existsSync(path.join(dir, "notes", "memory-index.md")));
+        assert.equal(run(["--check", dir]), 0);
+    });
+
+    test("a write it cannot perform is exit 2, never a verdict about the store", () => {
+        const manifest = wellFormed({
+            memory: { index: { path: "locked/memory-index.md", budget: { lines: 60, columns: 140 } } },
+        });
+        const dir = workspace({ "memory/a-first.md": record("rule") }, manifest);
+        const locked = path.join(dir, "locked");
+        fs.mkdirSync(locked);
+        fs.chmodSync(locked, 0o500);
+        try {
+            assert.throws(() => inspect(dir, { write: true }), IndexError);
+        } finally {
+            fs.chmodSync(locked, 0o700);
+        }
+    });
+
     test("red when the index is declared and absent", () => {
         const dir = workspace({ "memory/a-first.md": record("rule") });
         const bad = failures(inspect(dir));
@@ -526,6 +571,19 @@ describe("run", () => {
         const dir = workspace({ "memory/a-first.md": record("rule") });
         assert.equal(run([dir]), 0);
         assert.equal(run(["--check", dir]), 0);
+    });
+
+    test("does not report an index current when the workspace declares none", () => {
+        // Copilot, #72, from the suppressed half. A workspace may rail its store's size and generate
+        // no index — a coherent shape — and `run` said `ok … index written, within budget` about a
+        // file that does not exist. A green about a nonexistent artifact is the one sentence a tool
+        // whose subject is generated artifacts must not print.
+        const manifest = wellFormed({ memory: { store: { budget: { kilobytes: 200 } } } });
+        const dir = workspace({ "memory/a-first.md": record("rule") }, manifest);
+        const lines = [];
+        assert.equal(run([dir], (s) => lines.push(s)), 0);
+        assert.match(lines.join("\n"), /no index declared/);
+        assert.doesNotMatch(lines.join("\n"), /index (current|written)/);
     });
 
     test("exits 1 when a workspace is stale", () => {
