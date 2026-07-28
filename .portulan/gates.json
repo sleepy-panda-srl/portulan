@@ -48,12 +48,6 @@
       "reason": "Repository settings — visibility above all — are Gated. Visibility is also an authorization hold that lives outside this repository entirely."
     },
     {
-      "id": "change-settings-through-the-api",
-      "tier": "gated",
-      "action": { "shell": "gh api" },
-      "reason": "Branch protection, collaborators and rulesets are changed through the API, not through `gh repo edit` — this repository's own platform floor was configured that way. Gated for the same reason and by the same sentence. `gh api` also reads, and a gated read is a small cost against a settings change nobody approved."
-    },
-    {
       "id": "create-a-repository",
       "tier": "gated",
       "action": { "shell": "gh repo create" },

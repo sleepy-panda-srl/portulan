@@ -15,7 +15,6 @@
       "Bash(git push --delete:*)",
       "Bash(gh pr merge:*)",
       "Bash(gh repo edit:*)",
-      "Bash(gh api:*)",
       "Bash(gh repo create:*)",
       "Bash(gh repo delete:*)",
       "Bash(git tag:*)",
