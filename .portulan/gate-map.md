@@ -277,6 +277,60 @@ drift, and because the lint that milestone shipped **cannot catch this one**: it
 status-check name against the tree, and "the App does not exist" is prose about a fact outside the tree
 entirely. Found by grepping for stale claims by hand. That is the honest boundary of the machinery._
 
+## Merge discipline — the review is awaited, not just resolved
+
+**A pull request may not merge until Copilot's feedback has been *awaited* and *resolved*.** The
+maintainer's ruling, 2026-07-27, and the occasion is the useful part: browsing closed pull requests, he
+found merges that had landed **before** Copilot's round on the final push arrived. The review was
+requested, the review happened, and its feedback reached a pull request that was already closed — so it
+was disregarded by nobody in particular, which is the worst way for it to happen.
+
+The two halves need different mechanisms, and only one of them existed:
+
+| Half | What it means | What enforces it |
+|---|---|---|
+| **Resolved** | No Copilot thread is left unaddressed | `required_conversation_resolution` on `main` — already in the floor below |
+| **Awaited** | The round on the **current head** has landed | [`../.github/workflows/copilot-review.yml`](../.github/workflows/copilot-review.yml) — new |
+
+**Awaited was the gap.** The Copilot ruleset *requests* a review on every pull request; nothing made a
+merge wait for one. So a merge could land in the window between the final push and the review arriving,
+and did. That is
+[`memory/a-mandate-nothing-checks-is-already-broken.md`](memory/a-mandate-nothing-checks-is-already-broken.md)
+again — a reviewer everyone relied on, with nothing making the reliance real.
+
+**The head SHA is the whole design.** A review of an *earlier* commit does not satisfy the check, because
+that is precisely the defect: the review existed and described a different tree than the one merging. The
+check matches every review's `commit_id` against the pull request's current head and re-runs on
+`synchronize`, so pushing puts it back to pending. It also **fails closed** — an unreadable API is
+`could not look`, never `nothing wrong`.
+
+**Three limits, named rather than found later.** The reviewer's login is a platform fact the workflow
+hard-codes, and a rename would show up as a permanent red rather than a silent pass — the failure
+direction to prefer, but a fragility to know about. Resolution still does not mean *adjudication*:
+a reviewer can resolve its own thread, as recorded in the floor section below. This rule makes the round
+**happen before the merge**; it does not make anyone agree with it.
+
+And the third was **measured on the pull request that added the workflow**, which is how a watcher is
+supposed to earn its place. The `pull_request_review` re-trigger fires but **does not self-serve**: the
+triggering actor is the bot, and GitHub held the run as `action_required`, awaiting a maintainer's
+*Approve and run*. So the check does not flip itself green when the review lands — a human clears it, by
+approving that run or by re-running the `pull_request` job, which is not bot-triggered. **The awaited
+guarantee therefore costs one click per pull request.** That is a real cost and it is the honest price of
+the rule; the alternative is a merge that does not wait at all. Nobody should describe this workflow as
+fully automatic.
+
+**It composes with the autonomy mode; it does not substitute for one.** A mode governs whether the
+*agent* raises a ship-step prompt. This is a required status check — a floor row — and floor rows hold at
+every mode. So under `gated` a merge waits for both the maintainer's approval and this check; under
+`auto` the approval prompt is gone and **this check still holds**. Anyone reading `auto` as *"nothing
+waits"* should read this row again.
+
+**Not yet required, deliberately** — the same reason as `pr-labeled` before it, from
+[`proposals/0004-ci-runs-every-declared-recipe.md`](proposals/0004-ci-runs-every-declared-recipe.md): a
+required context that has never reported blocks every open pull request that does not carry the workflow,
+and `enforce_admins` leaves nobody able to force past it. The workflow merges first; it joins the floor
+after, by one command that is a repository-settings change and therefore **Gated**.
+
 ## The triage threshold
 
 Core defines two lanes and leaves the boundary to the workspace

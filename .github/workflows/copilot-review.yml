@@ -1,0 +1,139 @@
+# A pull request waits for the Copilot round on the commit it is actually merging.
+#
+# The policy is `.portulan/gate-map.md` → *Merge discipline*, and this file is only the checker — the
+# same split as `.portulan/gates.json` and `cli/compile.mjs`.
+#
+# ## Why this exists: resolution was only half the rule
+#
+# `main` already requires conversation resolution, which covers the RESOLVED half — a Copilot thread
+# cannot be ignored. Nothing covered the AWAITED half. Copilot is *requested* on every pull request by
+# repository ruleset and nothing made a merge wait for it, so a merge could land in the window between
+# the final push and the review arriving — and did: the maintainer found closed pull requests where
+# Copilot's round on the last push landed after the merge, its feedback disregarded by nobody in
+# particular. That is the shape of `.portulan/memory/a-mandate-nothing-checks-is-already-broken.md`: a
+# reviewer everyone relied on, with nothing making the reliance real.
+#
+# ## The current head SHA is the whole point
+#
+# A review on an EARLIER commit must not satisfy this. That is the exact defect being closed — the
+# review existed, it just described a different tree than the one merging. So every review is matched on
+# `commit_id` against the pull request's current head, and `synchronize` re-runs this check on every
+# push, which puts it back to pending the moment the branch moves.
+#
+# ## It fails CLOSED
+#
+# If the API cannot be read, this reports FAILURE and says why. "Could not look" is never "nothing
+# wrong" — `.portulan/memory/verify-preconditions-fail-closed.md`, and the same three-code discipline
+# the verify recipes use. The cost is that a GitHub API outage blocks merges; the alternative is a gate
+# that opens whenever it is unwell, which is not a gate.
+#
+# ## The fragile part, named rather than hidden
+#
+# **Which login is "Copilot" is a platform fact this file hard-codes**, and it is the thing most likely
+# to break silently — a rename would make this check red on every pull request (loud, fixable) or, worse,
+# match nothing while looking healthy. The set below is matched case-insensitively and covers the
+# spellings observed on this repository (`copilot-pull-request-reviewer[bot]` raising threads on #44,
+# and `Copilot`). A rename shows up as a permanent red with the observed logins printed, which is the
+# failure direction to prefer.
+
+name: copilot review
+
+on:
+  pull_request:
+    types: [opened, reopened, ready_for_review, synchronize]
+  # A review arriving is the event that turns this green. Without it the check would sit red until
+  # something else pushed, which would train everyone to ignore it.
+  #
+  # **MEASURED LIMIT, 2026-07-27, on the pull request that added this file.** The re-trigger fires but
+  # does not self-serve: the triggering actor is the bot `Copilot`, and GitHub held the run as
+  # `action_required` — awaiting a maintainer's *Approve and run*. So the sequence is: push (red, no
+  # review yet) → Copilot reviews → this run is QUEUED FOR APPROVAL, not green. A human clears it, either
+  # by approving that run or by re-running the original `pull_request` job, which is not bot-triggered
+  # and needs no approval.
+  #
+  # That is stated here rather than discovered by whoever first watches this sit red. It is a real cost:
+  # the check is not fully self-serving, and the "awaited" guarantee therefore costs one click per pull
+  # request. It is still the right shape — the alternative is a merge that does not wait at all — but
+  # anyone tempted to describe this workflow as fully automatic should read this paragraph first.
+  pull_request_review:
+    types: [submitted, edited, dismissed]
+
+permissions:
+  pull-requests: read
+
+jobs:
+  copilot-reviewed:
+    runs-on: ubuntu-latest
+    steps:
+      - name: A Copilot review exists for the current head commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          set -uo pipefail
+          # No globbing: the reviewer logins below contain `[bot]`, which an unquoted
+          # expansion would treat as a character class and match against filenames.
+          set -f
+
+          # The reviewer logins that count. Lower-case; compared lower-cased.
+          REVIEWERS='copilot-pull-request-reviewer[bot] copilot copilot[bot]'
+
+          if [ -z "${PR_NUMBER:-}" ]; then
+            printf '::error::no pull request number in the event payload — cannot tell what to check\n'
+            exit 1
+          fi
+
+          # The head SHA is read from the API rather than from the payload. On `pull_request_review`
+          # the payload's pull_request block is a snapshot taken when the review was submitted, and a
+          # push racing a review would have this compare against a head that had already moved.
+          if ! head=$(gh api "repos/${GITHUB_REPOSITORY}/pulls/${PR_NUMBER}" --jq '.head.sha'); then
+            printf '::error::could not read pull request #%s — refusing to report success on an unread pull request\n' "$PR_NUMBER"
+            exit 1
+          fi
+          if [ -z "$head" ] || [ "$head" = "null" ]; then
+            printf '::error::pull request #%s reported no head SHA — refusing to guess\n' "$PR_NUMBER"
+            exit 1
+          fi
+
+          # `--paginate`, because a pull request with a long review history would otherwise have its
+          # newest reviews on a page this never fetched — a check that silently examines the first
+          # thirty of forty reviews is the fail-open in miniature.
+          if ! reviews=$(gh api --paginate "repos/${GITHUB_REPOSITORY}/pulls/${PR_NUMBER}/reviews" \
+                --jq '.[] | "\(.user.login)\t\(.commit_id)\t\(.state)"'); then
+            printf '::error::could not read the reviews on #%s — "could not look" is not "nothing wrong"\n' "$PR_NUMBER"
+            exit 1
+          fi
+
+          printf 'head commit: %s\n' "$head"
+
+          matched=0
+          seen=''
+          while IFS=$'\t' read -r login commit state; do
+            [ -n "${login:-}" ] || continue
+            lower=$(printf '%s' "$login" | tr '[:upper:]' '[:lower:]')
+            seen="$seen $lower"
+            for candidate in $REVIEWERS; do
+              # A DISMISSED review is an invalidated one — it must not satisfy the await.
+              if [ "$lower" = "$candidate" ] && [ "$commit" = "$head" ] && [ "$state" != "DISMISSED" ]; then
+                printf 'found: %s reviewed %s (%s)\n' "$login" "$commit" "$state"
+                matched=1
+              fi
+            done
+          done <<EOF
+          $reviews
+          EOF
+
+          if [ "$matched" -eq 1 ]; then
+            printf 'GREEN — Copilot has reviewed the current head commit.\n'
+            exit 0
+          fi
+
+          printf '::error::no Copilot review for the current head commit (%s).\n' "$head"
+          printf 'A pull request may not merge until Copilot has reviewed the commit it is actually\n'
+          printf 'merging, and until that feedback is resolved. Conversation resolution covers the\n'
+          printf 'resolved half; this covers the awaited half. If the branch was just pushed, wait —\n'
+          printf 'Copilot is requested automatically. NOTE: when the review lands, the re-run is\n'
+          printf 'bot-triggered and GitHub holds it as action_required, so a maintainer approves that\n'
+          printf 'run (or re-runs this job) to clear the check. Measured 2026-07-27.\n'
+          printf 'Review authors seen on this pull request:%s\n' "${seen:- none}"
+          exit 1
