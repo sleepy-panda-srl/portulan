@@ -88,3 +88,5 @@ stated in [`../../spec/slots.md`](../../spec/slots.md) **with its cost named** �
 schema does not carry, because the subset has no `dependentRequired`; spec 1.0 → **2.0** with the
 migration written up in [`../../spec/README.md`](../../spec/README.md); and every manifest moved to 2.0,
 which was fourteen files and **zero content edits**, exactly as the acceptance argument predicted.
+
+**Pull request:** [#15](https://github.com/sleepy-panda-works/portulan/pull/15) — the change that filed this.

@@ -203,3 +203,5 @@ examples-versus-class defect is `core/operating/autonomy.md` and
 component can read as active while being inert.
 
 **Decision.** Marius Cetanas — pending.
+
+**Pull request:** [#52](https://github.com/sleepy-panda-works/portulan/pull/52) — the change that filed this.

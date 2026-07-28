@@ -67,7 +67,7 @@ export class IndexError extends Error {
 // a legitimate shape and the one every workspace had yesterday. Same reasoning as ./compile.mjs's
 // KNOWN_SPECS, and the same refusal for anything outside the set: a tool that reads a manifest it
 // does not understand reports about a workspace it may have misread.
-const KNOWN_SPECS = new Set(["2.0", "2.1", "2.2", "2.3"]);
+const KNOWN_SPECS = new Set(["2.0", "2.1", "2.2", "2.3", "2.4"]);
 
 // The store's own signpost, not a record. `doctor` excludes exactly this name from its walk, so the
 // two tools agree on what the store contains; disagreeing would put a record in the index that the
@@ -116,6 +116,18 @@ export function isInside(parent, child) {
 //
 // The three records that DO carry an H1 are the reason for the check below rather than an argument
 // against the rule. Two carriers of a name are tolerable; two answers are not.
+
+/**
+ * A record's declared `**type:**`, lowercased — `""` when it declares none.
+ *
+ * The one carrier. Three tools ask this of the same records — this one puts it on every index line,
+ * `./doctor.mjs` decides by it which records provenance is mandatory on, and `./librarian.mjs` needs
+ * it because thesis 4's mandates are rule-scoped — and all three carried their own spelling of the
+ * regex, which is half of what issue #74 is about. It lives here rather than in `./doctor.mjs`
+ * because that module already imports `isInside` from this one, and the reverse direction would make
+ * the graph a cycle for no gain.
+ */
+export const recordType = (source) => (source.match(/^\s*\*\*type:\*\*\s*(\S+)/im)?.[1] ?? "").toLowerCase();
 
 /** `a-review-loop-needs-a-bound.md` → `A review loop needs a bound`. */
 export function titleOf(filename) {
@@ -203,7 +215,7 @@ export function readStore(dir, workspace) {
             // `untyped` rather than a failure: `doctor` already reports a record with no `**type:**`
             // line, and legislating one field in two tools with two severities is how two checkers
             // start disagreeing about one store.
-            type: (source.match(/^\s*\*\*type:\*\*\s*(\S+)/im)?.[1] ?? "untyped").toLowerCase(),
+            type: recordType(source) || "untyped",
             heading: headingOf(source),
         });
     }

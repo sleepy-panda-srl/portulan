@@ -122,3 +122,5 @@ being attempted and rejected. The direct-push demonstration in [`0001`](0001-pla
 could be run because a rejected push changes nothing; a merge attempt that is *not* refused would land
 the change, so it is deliberately not run — the same reasoning that leaves the ruleset-bypass interaction
 untested in [`../gate-map.md`](../gate-map.md).
+
+**Pull request:** [#46](https://github.com/sleepy-panda-works/portulan/pull/46) — the change that filed this.

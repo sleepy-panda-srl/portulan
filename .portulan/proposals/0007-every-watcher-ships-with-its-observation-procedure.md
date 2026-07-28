@@ -107,3 +107,5 @@ limits carried with it — that nothing in this repository can check the rule, a
 a safe red test. Applied in a change separate from the one that proposed it, the same sequence
 [`0006-dependabot-security-updates.md`](0006-dependabot-security-updates.md) followed, so that the record
 shows a decision taken rather than a proposal that applied itself.
+
+**Pull request:** [#28](https://github.com/sleepy-panda-works/portulan/pull/28) — the change that filed this.

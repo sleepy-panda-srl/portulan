@@ -68,3 +68,5 @@ would do.
 This is the first retirement condition in this workspace to have fired and been acted on, which was the
 strongest argument for doing it by hand rather than waiting for the librarian: milestone 5's demotion pass
 now has one real instance to learn its shape from instead of a specification of one.
+
+**Pull request:** [#8](https://github.com/sleepy-panda-works/portulan/pull/8) — the change that filed this.

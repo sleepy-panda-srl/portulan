@@ -1,14 +1,17 @@
 #!/usr/bin/env bash
 # Portulan workspace — verify recipe for a docs-first repository.
 #
-# Four checks. Only the kernel budget was a rule this repo had already stated; links and map were
-# minted from the defect that this recipe's first run exposed (see ./README.md, Provenance), and
-# record from the 2026-07-27 audit that found a merged arc with no record at all:
-#   links   every relative Markdown link resolves            (docs that lie are worse than no docs)
-#   kernel  core/engine.md stays inside its line budget      (the always-loaded layer is the scarce one)
-#   map     the root README lists every top-level entry      (agent legibility: the map matches the ground)
-#   record  a date has at least as many log entries as handoffs and vice versa, entries stay within
-#           their line budget, newest attests the seam        (a session with no record is unauditable)
+# Five checks. Only the kernel budget was a rule this repo had already stated; links and map were
+# minted from the defect that this recipe's first run exposed (see ./README.md, Provenance), record
+# from the 2026-07-27 audit that found a merged arc with no record at all, and proposal from milestone
+# 5, where "a rule change is a proposal as a pull request" turned out to bind nothing:
+#   links     every relative Markdown link resolves          (docs that lie are worse than no docs)
+#   kernel    core/engine.md stays inside its line budget    (the always-loaded layer is the scarce one)
+#   map       the root README lists every top-level entry    (agent legibility: the map matches the ground)
+#   record    a date has at least as many log entries as handoffs and vice versa, entries stay within
+#             their line budget, newest attests the seam      (a session with no record is unauditable)
+#   proposal  every proposal is numbered, records an outcome, and names the pull request that filed it
+#                                                             (a rule you cannot trace to its review)
 #
 # Exit 0 green · 1 red · 2 could not run. The Stop-gate (milestone 4) calls this;
 # until it exists, the definition of done in ../dod.md requires running it by hand.
@@ -329,6 +332,91 @@ else
         pass "record — the newest Session log entry carries a seam attestation"
     else
         fail "record — the newest Session log entry ($PLAN:$last) carries no seam attestation"
+    fi
+fi
+
+# ------------------------------------------------------------------- 5. proposal
+# Three checks on the proposal series, added 2026-07-28 with the scheduled librarian.
+#
+# `core/operating/evolution.md` has said since milestone 1 that a rule change is a **proposal as a
+# pull request** — "reviewable, diff-able, and revertable like any other change". Every one of the
+# fourteen here did in fact arrive that way, and nothing recorded which pull request, so the sentence
+# bound a convention rather than a mechanism: nothing could take a rule and reach the review that
+# accepted it, and nothing would notice a proposal that had skipped the gate entirely. Red-first
+# against the real tree — all fourteen failed 5c before the pointers were written.
+#
+# What these deliberately do NOT check is whether a proposal is accepted, pending or rejected. That
+# reading is `cli/librarian.mjs`'s, where a wrong answer costs one line in a report a human skims;
+# here it would be a grep classifying prose, and a red on a proposal whose only fault is the
+# maintainer's phrasing is how a whole recipe gets switched off (./README.md). This is the same
+# severity split `doctor` takes with retirement conditions: report what is legible, fail only on shape.
+PROPOSALS=.portulan/proposals
+PROPOSALS_RE=${PROPOSALS//./\\.}
+PR_URL='https://github\.com/sleepy-panda-works/portulan/pull/[0-9][0-9]*'
+
+# Enumerated from the tree, `[ -f ]` guarded — the manifest is the git index plus untracked files, and
+# a proposal git knows about that the tree does not is not a proposal. 4b' learned that the expensive
+# way and this check inherits it rather than rediscovering it.
+: >"$tmp/proposals"
+: >"$tmp/pstrays"
+while IFS= read -r p; do
+    [ -f "$p" ] || continue
+    base=${p##*/}
+    case "$base" in
+        README.md) continue ;;
+        [0-9][0-9][0-9][0-9]-*.md) printf '%s\n' "$p" >>"$tmp/proposals" ;;
+        *) printf '%s\n' "$p" >>"$tmp/pstrays" ;;
+    esac
+done < <(grep "^${PROPOSALS_RE}/.*\.md$" "$manifest")
+
+# The audit reports before the precondition, and nothing is printed when there is nothing to find —
+# both orderings are 4b''s lesson applied rather than re-learned. A green must not open a run that
+# ends in "could not check", and a finding must not be hidden by a precondition that had its evidence.
+if [ ! -s "$tmp/proposals" ] && [ ! -s "$tmp/pstrays" ]; then
+    printf 'verify: no Markdown file under %s/ — cannot check the proposal series\n' "$PROPOSALS" >&2
+    exit 2
+fi
+
+# 5a. A file here whose name carries no number is invisible to a series that enumerates by one.
+if [ -s "$tmp/pstrays" ]; then
+    fail "proposal — file(s) in $PROPOSALS/ outside the NNNN-slug.md series, so no check counts them"
+    sed 's/^/        /' "$tmp/pstrays"
+else
+    pass "proposal — every Markdown file in $PROPOSALS/ is a numbered proposal ($(wc -l <"$tmp/proposals" | tr -d '[:space:]') examined)"
+fi
+
+if [ ! -s "$tmp/proposals" ]; then
+    fail "proposal — no NUMBERED proposal in $PROPOSALS/, so neither field check could run"
+else
+    # 5b. It records an outcome, under either of the two field names this series actually uses.
+    # `**Decision.**` is what core/templates/proposal.md prescribes; two proposals record the outcome
+    # under `**Status.**` instead, and both are real shapes in a real store. Accepting both is not
+    # laxity — it is refusing to red a correct record over a synonym, and the one carrier of *which
+    # word* would have to be the template, which nothing compiles.
+    : >"$tmp/pfields"
+    : >"$tmp/plinks"
+    while IFS= read -r p; do
+        grep -qiE '^\*\*(decision|status)\b' "$p" || printf '%s\n' "$p" >>"$tmp/pfields"
+        grep -qE "^\*\*Pull request:\*\*.*($PR_URL)" "$p" || printf '%s\n' "$p" >>"$tmp/plinks"
+    done <"$tmp/proposals"
+
+    if [ -s "$tmp/pfields" ]; then
+        fail "proposal — $(wc -l <"$tmp/pfields" | tr -d '[:space:]') proposal(s) record no outcome (no \`**Decision.**\` or \`**Status.**\` field)"
+        sed 's/^/        /' "$tmp/pfields"
+    else
+        pass "proposal — every proposal records an outcome ($(wc -l <"$tmp/proposals" | tr -d '[:space:]') examined)"
+    fi
+
+    # 5c. It names the pull request that filed it. This is the half that makes "proposals as pull
+    # requests" a mechanism: from any rule you can reach the review that accepted it, and a proposal
+    # committed straight to `main` — which the platform floor forbids and which nothing here would
+    # otherwise notice — has no number to name. The URL shape is asserted rather than any `#N`, since
+    # a bare `#31` is also how this repository writes a reference to an issue.
+    if [ -s "$tmp/plinks" ]; then
+        fail "proposal — $(wc -l <"$tmp/plinks" | tr -d '[:space:]') proposal(s) name no pull request (\`**Pull request:**\` with a full URL)"
+        sed 's/^/        /' "$tmp/plinks"
+    else
+        pass "proposal — every proposal names the pull request that filed it ($(wc -l <"$tmp/proposals" | tr -d '[:space:]') examined)"
     fi
 fi
 

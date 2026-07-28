@@ -60,12 +60,17 @@ agent does here, and this section is written to be followed by a human once.
      > authorship there records a decision a person actually took.
    - **Uncheck "Active" under Webhook.** There is no webhook receiver, and leaving it on produces
      delivery failures forever.
-   - *Repository permissions:* **Pull requests → Read and write**, and nothing else. That covers comments
-     and review replies. It does **not** cover resolving a review thread: GitHub refuses
-     `resolveReviewThread` to any App with `Resource not accessible by integration`, so resolving stays the
-     maintainer's — see [`../gate-map.md`](../gate-map.md). Leave Contents at "No access" — the agent reads
-     the repository through the maintainer's own credentials, and this token is deliberately not able to
-     write code.
+   - *Repository permissions:* **Pull requests → Read and write** and **Contents → Read-only**, and
+     nothing else. *(The App as installed today holds pull-requests write and no contents at all; the
+     Contents line is what step 1 of the librarian setup below applies.)* Pull-requests write covers comments and review replies. It does **not** cover
+     resolving a review thread: GitHub refuses `resolveReviewThread` to any App with `Resource not
+     accessible by integration`, so resolving stays the maintainer's — see
+     [`../gate-map.md`](../gate-map.md). **Contents read-only** is the one permission this App has
+     ever been given beyond its original two, ruled on 2026-07-28; it exists so the scheduled librarian
+     can *open* a pull request, which GitHub refuses without it. Contents **write** stays out, and that is the line that
+     matters: this token still cannot push a commit, which is what makes "the permission set is the
+     enforcement" true. [`../proposals/0015-the-librarian-files-as-the-agent.md`](../proposals/0015-the-librarian-files-as-the-agent.md)
+     carries the decision and its cost.
    - *Where can this App be installed:* **Only on this account.**
 2. **Note the App ID** from the App's settings page.
 3. **Generate the private key — this is a click, not a command.** On the App's settings page, scroll to
@@ -149,6 +154,44 @@ without guessing:
 | Is the shell configured? | `echo "$PORTULAN_BOT_APP_ID"` |
 | Does the whole path work? | step 7 above |
 
+### Setup for the scheduled librarian — two secrets, added 2026-07-28
+
+**Also not steps an agent can take**, and for the stronger of the two reasons: handling a credential is
+outside what an agent does here, and changing repository settings is Gated regardless. The scheduled
+pass in [`../../.github/workflows/librarian.yml`](../../.github/workflows/librarian.yml) mints its own
+installation token through `gh-bot-token.mjs`, which needs the same two values your shell already has —
+this time as repository secrets, because a workflow has no `~/.zshenv`.
+
+1. **Widen the App to `contents: read`** on the App's settings page, per
+   [`../proposals/0015-the-librarian-files-as-the-agent.md`](../proposals/0015-the-librarian-files-as-the-agent.md).
+   GitHub then asks the installation to accept the new permission — until you accept it on the
+   *installed* App, the setting on the App page is a request rather than a grant, and a token minted
+   in between still gets the 422. Read it back with:
+
+   ```
+   gh api /orgs/sleepy-panda-works/installations --jq '.installations[] | select(.app_id==4390104) | .permissions'
+   ```
+
+2. **Add the two secrets**, from the values already in your environment, so nothing is retyped:
+
+   ```
+   gh secret set PORTULAN_BOT_APP_ID -R sleepy-panda-works/portulan --body "$PORTULAN_BOT_APP_ID"
+   ```
+
+   ```
+   gh secret set PORTULAN_BOT_PRIVATE_KEY -R sleepy-panda-works/portulan < "$PORTULAN_BOT_PRIVATE_KEY"
+   ```
+
+   The second reads the `.pem` from the path your shell already exports, so the key is never pasted into
+   a terminal and never lands in shell history. It still leaves the private key in GitHub's secret store
+   as well as on your disk, which is a second copy of a credential and worth knowing rather than
+   discovering: rotating it means regenerating the key on the App page and re-running both the `mv` in
+   step 4 above and this command.
+
+**Until both are done the workflow refuses to file anything.** It checks for the secrets and fails the
+job with the reason, leaving its branch pushed and waiting, rather than opening a pull request with
+`GITHUB_TOKEN` that could never merge.
+
 ## How the agent uses it
 
 Only for pull-request conversation:
@@ -167,13 +210,24 @@ silently re-attributes everything typed afterwards, which is the failure this me
   maintainer's git identity because the build's provenance discipline requires his authorship on the
   commit record. The App's permissions cannot write code at all, which is the enforcement rather than the
   intention. See [`../gate-map.md`](../gate-map.md).
-- **The App cannot open a pull request, only talk on one.** Creating one requires repository-contents
-  read, which this installation is refused; GitHub answers `not all refs are readable` (HTTP 422).
-  Measured 2026-07-26. This is the contents refusal working rather than a gap to close — granting
-  contents to buy better attribution on one artifact would give the token the ability to write code,
-  which is the whole thing this design is trading for. So a pull request is opened with the maintainer's
-  credentials and its body says, in the artifact, that an agent wrote it; every comment and review reply
-  afterwards comes from the bot. Recorded in [`../gate-map.md`](../gate-map.md).
+- ~~**The App cannot open a pull request, only talk on one.**~~ **Superseded 2026-07-28** — the
+  measurement stands, the reasoning did not. The measurement: creating a pull request requires
+  repository-contents read, which this installation was refused, and GitHub answers `not all refs are
+  readable` (HTTP 422). Measured 2026-07-26. What was written beside it was that granting contents
+  "would give the token the ability to **write code**". It would not: `contents: read` is read, write is
+  a separate permission, and the two were conflated in the sentence. It was also written while this
+  repository was **private**; since 2026-07-27 it is public, so that scope grants the ability to read
+  what any stranger can already read, and nothing re-read the sentence when the visibility changed.
+  The widening is **ruled and not yet applied** — Marius accepted it on 2026-07-28, and changing an
+  App's permissions and accepting them on the installation are his acts, not an agent's. Read the live
+  set back at the supervised checkpoints rather than from this paragraph. Once applied, the App opens
+  the scheduled librarian's pull request — see
+  [`../proposals/0015-the-librarian-files-as-the-agent.md`](../proposals/0015-the-librarian-files-as-the-agent.md),
+  which also prices what the widening does still cost: visibility is a live setting, and a repository
+  made private again would turn this back into a real grant with nobody re-deriving it. **Write is still
+  refused**, so the bullet above — the permission set cannot write code — is unchanged, and a pull
+  request opened by a person or a session still goes under the maintainer's credentials with the
+  attribution in the body. Recorded in [`../gate-map.md`](../gate-map.md).
 - **The token is short-lived but real.** An installation token lasts an hour and can comment as the bot
   for that hour. It is minted per command and never stored, which is the mitigation; there is no way to
   make a credential harmless.

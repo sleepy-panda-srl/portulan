@@ -28,9 +28,17 @@ binding non-goal — no unsupervised self-evolution. See `../templates/proposal.
 The human gate is the guarantee, so the work is to make it cheap — not to bypass it:
 
 - **Proposals as PRs** — a rule change is reviewable, diff-able, and revertable like any other change.
-- **The librarian nags** — a scheduled pass mines incidents and PR reviews into draft proposals and
-  chases stale ones, so the backlog is drafted *for* the human rather than *by* them. _(The codify
-  ritual; provenance: compounding engineering. Built in milestone 5.)_
+  As of milestone 5 that is machinery rather than a convention: a proposal **names the pull request
+  that filed it**, and a verify recipe fails one that does not. The sentence was true before and
+  nothing recorded it, so no rule could be traced back to the review that accepted it, and a proposal
+  that had skipped the gate entirely would have looked identical to one that had not.
+- **The librarian nags** — a scheduled pass chases what is going stale, so the backlog is drafted
+  *for* the human rather than *by* them. **Built at milestone 5**: record age from git, the
+  sealed-stamp re-validation nag, undecided proposals, and demotion drafts, on a cadence, filed as a
+  pull request. What a workspace supplies is the schedule and an identity the job can file under —
+  the pass itself is the part that ships. **Mining incidents and PR reviews into draft proposals is the half not yet scheduled** —
+  the same milestone, a later session; `../skills/codify/SKILL.md` is its on-demand form and is how it
+  gets done today. _(The codify ritual; provenance: compounding engineering.)_
 - **Evals decide where they can** — once golden tasks exist, a rule change carries evidence and is
   merged or rejected on the eval result rather than on taste. _(Milestone 8.)_
 

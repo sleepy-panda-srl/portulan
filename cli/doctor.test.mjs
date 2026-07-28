@@ -255,7 +255,7 @@ describe("the schema validator implements exactly the declared subset", () => {
 
 describe("the schema declares which Workspace Definition version it implements", () => {
     test("the shipped schema carries it in `$id`", () => {
-        assert.deepEqual(schemaVersion(SCHEMA), { major: 2, minor: 3 });
+        assert.deepEqual(schemaVersion(SCHEMA), { major: 2, minor: 4 });
     });
 
     test("a schema whose `$id` does not carry one is refused", () => {

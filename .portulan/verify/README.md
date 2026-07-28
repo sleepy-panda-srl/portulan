@@ -24,7 +24,7 @@ nothing more specific applies. Run any of them from anywhere in the tree:
 
 | Recipe | Covers | Needs |
 |---|---|---|
-| [`docs.sh`](docs.sh) — default | links · kernel budget · repo map · record correspondence | `bash`, `git`, POSIX text utilities |
+| [`docs.sh`](docs.sh) — default | links · kernel budget · repo map · record correspondence · the proposal series | `bash`, `git`, POSIX text utilities |
 | [`json.sh`](json.sh) | every tracked `.json` file parses | the above, plus `node` |
 | [`doctor.sh`](doctor.sh) | both workspaces validate: schema, paths, cross-references, claims against the tree, provenance — plus the memory store's growth report (count, size, records stating no retirement condition; notes, never failures) | `bash`, `git`, `node` |
 | [`tests.sh`](tests.sh) | every `*.test.mjs` under [`../../cli/`](../../cli/) passes — counted by `find` first, then run by a recursive glob over that same set | `bash`, `node` |
@@ -201,6 +201,7 @@ less.
 | `compile` | [`../../.claude/settings.json`](../../.claude/settings.json) is byte-identical to what [`../gates.json`](../gates.json) compiles to. | The artifact is generated *and* committed — generated so the policy is the single source, committed so the gate wiring is reviewable in a diff. That combination invites exactly one failure: a hand-edit that works until the next compile silently reverts it. This is the check that makes that loud. |
 | `filters` | Every jq program in [`../../.github/workflows/`](../../.github/workflows/) produces exactly the bytes and exactly the exit status the shell around it branches on. The programs are read out of the parsed `run:` scalars and never restated here; the fixtures carry null and empty inputs alongside ordinary ones. | Two merge gates are decided by jq's answer for null — `copilot-review.yml` refuses a pull request whose `head.sha` came back empty from `join("|")`, and the required `pr-labeled` check treats *no output from `jq -er`* as "the policy declares no labels". Both behaviours were asserted by prose and by a harness that stubs `gh`, and executed by nothing. A filter is the one kind of code in this repository that can be wrong in a way review cannot see: it looks like a selector and behaves like a program. |
 | `index` | Each workspace's committed memory index is byte-identical to what its store renders, no record's heading disagrees with its filename, and neither the index's line count nor the store's size is over the budget the manifest declares. | `core/operating/memory.md` has promised a *generated, size-budgeted* index since milestone 1, and until milestone 5 both halves were prose: the index did not exist, and the budget was a sentence binding review. A budget that lives only in prose is the first thing a busy session negotiates with — the same argument the `kernel` row makes, applied to the layer that decides what else gets loaded. The heading check is here because the store may hold two carriers of a record's name and must not hold two answers; it found a real disagreement on its first run. |
+| `proposal` | Every Markdown file in [`../proposals/`](../proposals/) is a numbered `NNNN-slug.md`; every proposal records an outcome under `**Decision.**` or `**Status.**`; and every proposal names, by full URL, the pull request that filed it. | `core/operating/evolution.md` has said since milestone 1 that a rule change is a *proposal as a pull request* — "reviewable, diff-able, and revertable". All fourteen had in fact arrived that way and **not one recorded which pull request**, so the sentence bound a convention: nothing could get from a rule to the review that accepted it, and a proposal committed straight to `main` would have looked identical to one that went through the gate. Red-first against the real tree — all fourteen failed before the pointers were resolved, mechanically, through GitHub's own commit→pull-request mapping. What it deliberately does **not** check is whether a proposal is accepted, pending or rejected: that reading is `cli/librarian.mjs`'s, where a wrong answer costs a line in a report, while here it would be a grep classifying prose and a red on a proposal whose only fault is the maintainer's phrasing — which is how a whole recipe gets switched off. |
 | `plugin` | Both packaging manifests parse and agree; every component path resolves inside the tree — after canonicalisation, so a symlink out of it is an escape rather than containment; every declared skill and agent is a real artifact with a kebab-case `name` and a non-empty `description`. | From milestone 3 the repository *is* a distribution channel, and a marketplace declaring no plugins — or a skill path resolving to nothing — installs cleanly and delivers nothing. The platform's own validator reports the empty-marketplace case as a *warning*, which is the severity a milestone walks past. |
 
 ## Provenance
@@ -430,8 +431,68 @@ inside its own store → **exit 2**. Delete the generator → **exit 2** from th
 `workspace.json` into the tree → **exit 2**, the list disagreeing with the audit. Take `node` off the
 `PATH` → **exit 2** from the guard. Clean tree at both ends → **green**.
 
+The `proposal` check was added 2026-07-28, at milestone 5, against a sentence
+[`../../core/operating/evolution.md`](../../core/operating/evolution.md) had carried since milestone 1:
+a rule change is a *proposal as a pull request*. All fourteen had arrived that way and none recorded
+which one — the fifth time here that a stated rule turned out to bind nothing. **Red-first against the
+real tree**, which is the strongest form this repository asks for: all fourteen failed, and the
+pointers were then resolved **mechanically** — the commit that added each file, then GitHub's own
+commit→pull-request mapping, which resolves rebase-merged commits (measured: `5f1a91b` → `#73`) —
+rather than reconstructed from anyone's memory of which pull request that was.
+
+Its observation procedure ([the 0007 rule](../gate-map.md)), seven moves measured on a scratch copy of
+the tree at the commit that added it. Control → **green**, three lines naming 15 examined. Delete one
+proposal's pointer → **red, exit 1**, naming that file alone. Replace the URL with a bare `#8` →
+**red**: the URL shape is asserted deliberately, since `#8` is also how this repository writes an
+issue reference. Rename a `**Decision.**` field → **red** on the outcome check while the other two stay
+green, which is what keeps the three repairs distinct. Drop a `notes.md` beside the proposals → **red**
+as a stray, and the two field checks still run and still report 15. Leave **only** the stray → **two**
+reds, the stray named and *neither field check could run* — not exit 2, because the diagnosis had
+already been made. Empty the directory entirely → **exit 2**, and printing no verdict line before it.
+Those last two orderings are 4b′'s lesson reused rather than re-learned: report a finding before a
+precondition that would hide it, and report nothing at all when there is nothing to find.
+
+### The scheduled librarian's observation procedure
+
+Not a verify recipe — [`../../cli/librarian.mjs`](../../cli/librarian.mjs) renders no verdict and has
+no exit 1 — but a **watcher**, so [`0007`](../proposals/0007-every-watcher-ships-with-its-observation-procedure.md)
+binds it. Measured on a scratch clone whose final commit is this change, so every file is tracked and
+dated as it will be after the merge.
+
+Run twice on an unchanged store with the same `--as-of` → **byte-identical** handoffs. That is the
+no-churn claim measured rather than argued: the record carries dates, never *N days ago*, so its diff
+moves only when the store or a threshold does. Every threshold lowered to 1 day → all three nags fire
+together — 23 records stale, 5 proposals nagged, and in the demo workspace the **one** sealed rule due,
+naming its owner and the date it was sealed. Against the real thresholds (90 / 180 / 30) → **nothing
+fires, and every section says so in those words**, which is the point: a store five days old has
+nothing stale in it, and a pass that reported otherwise would be tuned rather than true.
+
+**Three refusals, each measured:** a shallow clone → **exit 2** naming shallowness, because
+`actions/checkout` is shallow by default and every record would otherwise read as undated; a threshold
+of `0` → **exit 2**, refused rather than read as undeclared; a directory git has never seen → **exit
+2**. And one **non**-refusal that was a refusal for an hour and should not have been: an *uncommitted*
+record is reported as undated and never stale, with the count printed. The first draft refused it, and
+the first thing it refused was a proposal this session had just written — which turns `tests.sh` red on
+a correct tree and makes a verify recipe depend on git history, the one thing the split between this
+pass and the recipes exists to prevent. Found by running the pass, not by reading it.
+
 ## Known limits
 
+- **The librarian's record is not byte-checked, and nothing can check it.** Every other generated file
+  here is byte-compared by a recipe — `memory-index.md` by `index`, the compiled artifacts by
+  `compile`. The pass's handoff is the first committed artifact in this repository that a machine
+  writes and no rail verifies, and the reason is not shallow checkouts: its content is **time**
+  dependent, so a record crossing a threshold changes it with no change to the tree, and a
+  byte-compare would go red on a store nobody touched. What stands in for a rail is that it is a
+  *dated* record rather than a current-state claim — a handoff, like the thirty-four beside it, true
+  as of the date in its own filename and never re-derived. One consequence worth knowing: because
+  `docs.sh` walks every tracked `.md`, a later change that deletes a record the pass's handoff links
+  goes red on `links` until the handoff is edited. That is a partial accidental rail and a small churn
+  tax on unrelated changes, and both halves are stated rather than only the flattering one.
+- **A new proposal's pointer cannot exist before its pull request does**, so `proposal` is red on a
+  branch that adds one until the number is known. The red is accurate — nothing has filed it yet — and
+  it costs no extra push in practice, because [`a-review-loop-needs-a-bound`](../memory/a-review-loop-needs-a-bound.md)
+  rule 2 already lands the records last, and the pointer rides that push.
 - **Anchors are not checked.** A link to `file.md#section` verifies only that `file.md` exists. Checking
   fragments needs a heading parser, and the failure it would catch is milder than the one it would add:
   false reds train people to stop trusting the recipe.

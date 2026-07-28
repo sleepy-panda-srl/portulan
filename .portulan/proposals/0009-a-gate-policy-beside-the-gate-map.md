@@ -76,3 +76,5 @@ document that still says "open" about a settled question is a false claim in the
    *"Copilot ruleset export"* clause was reworded to name a **GitHub repository-ruleset export**, which is
    that configuration, positioned in the backend matrix as the floor backend. The doctrine sentence was
    left exactly as written; the row moved to meet it.
+
+**Pull request:** [#31](https://github.com/sleepy-panda-works/portulan/pull/31) — the change that filed this.

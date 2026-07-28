@@ -51,5 +51,9 @@ in [`../../operating/`](../../operating/) as doctrine). A lesson that will not r
 
 It **enforces** the discipline that turns incidents into a compacting history instead of repeated
 pain, and it keeps provenance attached so the rule can later be **retired** when its incident is
-designed out. This is the on-demand form of what the scheduled **librarian** runs as a batch pass in
-**milestone 5** — same ritual, same output shape. _(See [`../../personas/librarian.md`](../../personas/librarian.md).)_
+designed out. This is the on-demand form of what the scheduled **librarian** will run as a batch pass —
+same ritual, same output shape. The librarian is scheduled as of milestone 5 and **this** pass is not
+one of the four it runs: it ages records, nags a sealed stamp's owner, chases undecided proposals and
+drafts demotions, all of which read the *store*, while mining reads incidents and pull-request reviews.
+That half is named in the same milestone's row and is not built, so today the way an incident becomes a
+proposal is a person running this skill. _(See [`../../personas/librarian.md`](../../personas/librarian.md).)_

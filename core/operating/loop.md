@@ -39,7 +39,9 @@ The loop runs inside a finite attention window, so context is managed, not hoard
   read differently by every writer. It also makes the series sort chronologically for free. An unbroken
   series is what makes the record machine-readable: the session-end gate arrived in milestone 4 — it
   checks that a handoff dated today exists, never its length or its shape — and the librarian that mines
-  the series is milestone 5. _(Provenance: Cognition. See `../templates/handoff.md`.)_
+  the series is milestone 5, named in that row and not yet built. What milestone 5 did build **writes**
+  to the series rather than reading it: a scheduled pass is a session, so it ends with a dated handoff
+  like any other. _(Provenance: Cognition. See `../templates/handoff.md`.)_
 - **Subagents are context firewalls.** Fan work out to a persona with its own window and return only
   the conclusion; the parent's budget stays clean. Read in parallel, write from one place. _(See
   `../personas/`. Provenance: HumanLayer; Cognition — read-parallel / write-isolated.)_

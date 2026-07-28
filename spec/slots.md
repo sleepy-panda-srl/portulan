@@ -349,12 +349,23 @@ everywhere turned out to be a hole: deleting one line degraded the whole claims-
 GREEN, exit 0. A `repository` workspace *is* the policy layer of a repository that is present, so it
 always has an answer; `demo` and `portfolio` genuinely do not, and stay exempt.
 
-**This is the one rule here the schema does not carry, and that is a real cost.** A conditional
+**This was the first rule here the schema does not carry, and that is a real cost.** A conditional
 dependency between two keys needs `if`/`then` or `dependentRequired`, and neither is in the subset
 [`README.md`](README.md) declares — so the constraint lives in `doctor` as a cross-field check, invisible
 to anyone reading the schema alone. Stated loudly rather than hidden, because "read the schema to know
-the contract" is otherwise false in exactly one place, and an unmarked exception is worse than a marked
-one.
+the contract" is otherwise false in these places, and an unmarked exception is worse than a marked one.
+
+**It is now one of five**, and [`README.md`](README.md) keeps the running count because the number is
+the thing to watch. Two arrived with `memory` at 2.3 — a declared `memory` object needs a
+`slots.memory` store to index, and `memory.index.path` must resolve *outside* it — and two more with
+`librarian` at 2.4:
+
+- **`librarian` requires `slots.memory`.** There is nothing to age otherwise, and a pass over an absent
+  store reports that nothing is stale, which is indistinguishable from a healthy one.
+- **`librarian.staleness.proposal_days` requires `slots.proposals`.** A threshold nothing can ever
+  cross reads as configured to anyone who greps for it. The pass itself reports *not asked* in that
+  case, which is deliberately not the same answer as *none pending* — but a policy that can only ever
+  print *not asked* is a policy nobody meant to write.
 
 **What `doctor` checks:** the path resolves to a directory; and that a `repository` workspace has one.
 With `tree` present, every path-shaped claim
@@ -535,8 +546,9 @@ Each of these was a candidate; none is an oversight.
   schema acquires slots nobody fills.
 - **A sealed-owner registry.** Sealed stamps name an owner as free text; a workspace-level list of valid
   owners would let `doctor` catch typos. Deferred: it adds a required-to-maintain list for a check that
-  catches a mild failure, and the librarian's nagging (milestone 5) is the mechanism that will actually
-  need it.
+  catches a mild failure. The librarian's nagging is the mechanism that would actually need it, and as
+  of milestone 5 it exists and reads the owner as free text — so this is a deferral with a live consumer
+  rather than a speculative one, and the first typo'd owner is the incident that would settle it.
 - **A per-host capability matrix.** The vision's `doctor` includes a per-host capability report, but that
   is generated from the host and the compiled gates, not declared by the team. It belongs with the
   enforcement backends in milestone 4.
