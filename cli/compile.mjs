@@ -409,7 +409,7 @@ function pattern(tool, target) {
 const HOST_GATE_TIERS = new Set(["gated", "prohibited"]);
 
 const HOST_TIER_NOT_A_GATE = {
-    auto: "tier `auto` is unattended by policy, not by the host — refusing it keeps this compiler additive, and the prompts that refusal leaves are paid by hand in the host's own settings, outside this repository",
+    auto: "tier `auto` is unattended by policy, not by the host — this backend emits no `allow` rule for it, which is what keeps the compiler additive, and the prompts that omission leaves are paid by hand in the host's own settings, outside this repository",
     propose: "tier `propose` is enforced by the platform floor — pull requests, required checks, review — not by a tool-level permission rule on this machine",
 };
 
