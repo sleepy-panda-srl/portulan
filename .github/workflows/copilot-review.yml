@@ -20,12 +20,35 @@
 # `commit_id` against the pull request's current head, and `synchronize` re-runs this check on every
 # push, which puts it back to pending the moment the branch moves.
 #
-# ## It fails CLOSED
+# ## Waiting is not failing — the three states this check used to collapse into one
 #
-# If the API cannot be read, this reports FAILURE and says why. "Could not look" is never "nothing
-# wrong" — `.portulan/memory/verify-preconditions-fail-closed.md`, and the same three-code discipline
-# the verify recipes use. The cost is that a GitHub API outage blocks merges; the alternative is a gate
-# that opens whenever it is unwell, which is not a gate.
+# **AMENDED 2026-07-28.** The first cut had two outcomes for a question with three answers, so *awaiting*
+# was reported in the same colour as *broken*:
+#
+# | State | What it means | First cut | Now |
+# |---|---|---|---|
+# | Awaited | requested, not answered yet | **failure** | the job stays *in progress* — a pending check |
+# | Not owed | the ruleset does not request a round here | **failure**, permanently | success, with the reason printed |
+# | Missing | the round never came, or the API is unreadable | failure | failure, after the wait budget |
+#
+# The first row was guaranteed noise: Copilot cannot have reviewed a commit that did not exist when the
+# run started, so **every push produced a red check by construction**, and the reviews measured on this
+# repository landed 1m53s–3m47s later (#49, #54, #57, 2026-07-28). A red X that is *expected* on every
+# push is how a gate gets read as background weather. A pending check says the true thing — the answer is
+# not in yet — and it blocks a merge just as hard, which is the part that has to keep working.
+#
+# The second row was worse, because it never cleared: ruleset `copilot auto-review on pull requests` is
+# `review_draft_pull_requests: false`, so on a draft **no round is ever coming** and the old check red-X'd
+# every push for the life of the draft. See the `draft` branch below for why reporting success there does
+# not open the gate, and for the one window it does leave.
+#
+# ## It still fails CLOSED
+#
+# An unreadable API is never taken as an answer — it is retried, and if it is still unreadable when the
+# wait budget runs out, this reports FAILURE and prints the last error. "Could not look" is never
+# "nothing wrong" — `.portulan/memory/verify-preconditions-fail-closed.md`, and the same three-code
+# discipline the verify recipes use. The cost is that a GitHub API outage blocks merges; the alternative
+# is a gate that opens whenever it is unwell, which is not a gate.
 #
 # ## The fragile part, named rather than hidden
 #
@@ -41,29 +64,36 @@ name: copilot review
 on:
   pull_request:
     types: [opened, reopened, ready_for_review, synchronize]
-  # A review arriving is the event that turns this green. Without it the check would sit red until
-  # something else pushed, which would train everyone to ignore it.
+  # `pull_request_review` WAS a trigger here and is deliberately gone — **removed 2026-07-28**, with the
+  # measurement that killed it, because the reason it was added is now served by waiting instead.
   #
-  # **MEASURED LIMIT, 2026-07-27, on the pull request that added this file.** The re-trigger fires but
-  # does not self-serve: the triggering actor is the bot `Copilot`, and GitHub held the run as
-  # `action_required` — awaiting a maintainer's *Approve and run*. So the sequence is: push (red, no
-  # review yet) → Copilot reviews → this run is QUEUED FOR APPROVAL, not green. A human clears it, either
-  # by approving that run or by re-running the original `pull_request` job, which is not bot-triggered
-  # and needs no approval.
+  # It was there to turn the check green when the review landed. It could not: the triggering actor is
+  # the bot `Copilot`, so GitHub held the run as `action_required`, awaiting a maintainer's *Approve and
+  # run*. The awaited guarantee therefore cost one click per pull request. It also fired on reviews that
+  # could not possibly change the answer — the agent's own replies to Copilot are submitted as reviews
+  # (`portulan-agent[bot]`, empty body), and each one re-ran this check and printed a fresh failure while
+  # the round was still in flight: three such runs on 2026-07-27 alone (20:35:57 ×2, 21:26:26).
   #
-  # That is stated here rather than discovered by whoever first watches this sit red. It is a real cost:
-  # the check is not fully self-serving, and the "awaited" guarantee therefore costs one click per pull
-  # request. It is still the right shape — the alternative is a merge that does not wait at all — but
-  # anyone tempted to describe this workflow as fully automatic should read this paragraph first.
-  pull_request_review:
-    types: [submitted, edited, dismissed]
+  # The job now waits for the review inside the run it already has, on the `pull_request` event, which is
+  # not bot-triggered and needs no approval. **The click is gone and so is that class of false red.**
+  # The cost of dropping it: if the wait budget expires before the review lands, nothing re-triggers the
+  # check — a maintainer re-runs the job, which is the same click as before but only in the rare case
+  # rather than every time.
 
 permissions:
   pull-requests: read
 
+# A push supersedes the run waiting on the commit it replaced. Without this, the old run keeps polling a
+# head that is no longer the head, for up to the full budget, on a runner it does not need.
+concurrency:
+  group: copilot-review-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
 jobs:
   copilot-reviewed:
     runs-on: ubuntu-latest
+    # The wait budget below is 20 minutes; this is the backstop for a job that hangs somewhere else.
+    timeout-minutes: 25
     steps:
       - name: A Copilot review exists for the current head commit
         env:
@@ -78,62 +108,143 @@ jobs:
           # The reviewer logins that count. Lower-case; compared lower-cased.
           REVIEWERS='copilot-pull-request-reviewer[bot] copilot copilot[bot]'
 
+          # 20 minutes against a measured 1m53s–3m47s (#49, #54, #57, 2026-07-28) — five times the
+          # slowest round observed. Long enough that expiry means something went wrong rather than
+          # something was slow, which is the only way the red at the end of it is worth reading.
+          WAIT_SECONDS=1200
+          # 30s, not 5s: the budget is 40 polls of two reads each, well inside the 1,000/hour that
+          # `GITHUB_TOKEN` gets per repository even with every open pull request waiting at once.
+          POLL_SECONDS=30
+
           if [ -z "${PR_NUMBER:-}" ]; then
             printf '::error::no pull request number in the event payload — cannot tell what to check\n'
             exit 1
           fi
 
-          # The head SHA is read from the API rather than from the payload. On `pull_request_review`
-          # the payload's pull_request block is a snapshot taken when the review was submitted, and a
-          # push racing a review would have this compare against a head that had already moved.
-          if ! head=$(gh api "repos/${GITHUB_REPOSITORY}/pulls/${PR_NUMBER}" --jq '.head.sha'); then
-            printf '::error::could not read pull request #%s — refusing to report success on an unread pull request\n' "$PR_NUMBER"
-            exit 1
-          fi
-          if [ -z "$head" ] || [ "$head" = "null" ]; then
-            printf '::error::pull request #%s reported no head SHA — refusing to guess\n' "$PR_NUMBER"
-            exit 1
-          fi
-
-          # `--paginate`, because a pull request with a long review history would otherwise have its
-          # newest reviews on a page this never fetched — a check that silently examines the first
-          # thirty of forty reviews is the fail-open in miniature.
-          if ! reviews=$(gh api --paginate "repos/${GITHUB_REPOSITORY}/pulls/${PR_NUMBER}/reviews" \
-                --jq '.[] | "\(.user.login)\t\(.commit_id)\t\(.state)"'); then
-            printf '::error::could not read the reviews on #%s — "could not look" is not "nothing wrong"\n' "$PR_NUMBER"
-            exit 1
-          fi
-
-          printf 'head commit: %s\n' "$head"
-
-          matched=0
+          head=''
           seen=''
-          while IFS=$'\t' read -r login commit state; do
-            [ -n "${login:-}" ] || continue
-            lower=$(printf '%s' "$login" | tr '[:upper:]' '[:lower:]')
-            seen="$seen $lower"
-            for candidate in $REVIEWERS; do
-              # A DISMISSED review is an invalidated one — it must not satisfy the await.
-              if [ "$lower" = "$candidate" ] && [ "$commit" = "$head" ] && [ "$state" != "DISMISSED" ]; then
-                printf 'found: %s reviewed %s (%s)\n' "$login" "$commit" "$state"
-                matched=1
+          unread=''
+          first_head=''
+
+          while : ; do
+            # Reset per poll: these describe one look at the pull request, not the accumulation of
+            # every look. An authors-seen line that grew by a full review history every 30 seconds
+            # would be unreadable in the one place it matters, the failure at the end.
+            seen=''
+            unread=''
+
+            # The head SHA is read from the API rather than from the payload, and re-read on every
+            # poll — a push during the wait must not be answered against the head this run started on.
+            #
+            # `|` and not a tab, in both `read`s below, and the reason is a bash rule rather than a
+            # preference: **a tab is IFS whitespace**, so `IFS=$'\t' read` drops a leading empty field
+            # and collapses adjacent separators. A null `head.sha` would arrive as `<tab>false` and be
+            # read as `head=false`, sailing past the "no head SHA" guard below to spend the whole
+            # budget comparing reviews against the string `false`. `|` is not IFS whitespace, so the
+            # empty field survives and the guard fires. Neither a SHA, a login, nor a review state can
+            # contain one.
+            if ! pr=$(gh api "repos/${GITHUB_REPOSITORY}/pulls/${PR_NUMBER}" \
+                  --jq '[.head.sha, (.draft|tostring)] | join("|")'); then
+              unread="could not read pull request #${PR_NUMBER}"
+            else
+              IFS='|' read -r head draft <<EOF
+          $pr
+          EOF
+              if [ -z "${head:-}" ] || [ "$head" = "null" ]; then
+                unread="pull request #${PR_NUMBER} reported no head SHA"
               fi
-            done
-          done <<EOF
+            fi
+
+            # A failed or empty read is NOT an answer — fall through to the retry. Only the budget
+            # running out turns "could not look" into a verdict, and that verdict is red.
+            if [ -z "$unread" ]; then
+              if [ -z "$first_head" ]; then
+                first_head="$head"
+                printf 'head commit: %s\n' "$head"
+              elif [ "$head" != "$first_head" ]; then
+                printf 'SUPERSEDED — the branch moved from %s to %s while this run waited.\n' "$first_head" "$head"
+                printf 'The run for the new head owns that commit; this one has nothing left to answer.\n'
+                # Exit 0 is safe here and only here: this run reports against %s, which is no longer
+                # the head, and a merge is gated on the check runs of the head commit. Reaching this
+                # branch at all means `cancel-in-progress` did not get there first.
+                exit 0
+              fi
+
+              # NOTHING TO REVIEW — ruleset `copilot auto-review on pull requests` carries
+              # `review_draft_pull_requests: false`, so a draft is never sent to Copilot and no round
+              # is owed. Failing here would be a red that no push, no wait, and no review could clear.
+              #
+              # Reporting success does not open the gate: GitHub refuses to merge a draft at all, and
+              # `ready_for_review` is in the trigger list above, so the real check runs the moment the
+              # pull request stops being one. **The window it does leave, named rather than found
+              # later:** marking ready does not change the SHA, so for the seconds between that click
+              # and the new run reporting, the head's newest check run is this success. Merging inside
+              # it would also have to beat `workspace-verify`, `pr-labeled`, and conversation
+              # resolution, and would have to be deliberate.
+              if [ "$draft" = "true" ]; then
+                printf 'NOT APPLICABLE — #%s is a draft, and the ruleset does not request Copilot on drafts.\n' "$PR_NUMBER"
+                printf 'A draft cannot merge; this check runs for real on ready_for_review.\n'
+                exit 0
+              fi
+
+              # `--paginate`, because a pull request with a long review history would otherwise have
+              # its newest reviews on a page this never fetched — a check that silently examines the
+              # first thirty of forty reviews is the fail-open in miniature.
+              if ! reviews=$(gh api --paginate "repos/${GITHUB_REPOSITORY}/pulls/${PR_NUMBER}/reviews" \
+                    --jq '.[] | [.user.login, .commit_id, .state] | join("|")'); then
+                unread="could not read the reviews on #${PR_NUMBER}"
+              else
+                matched=0
+                while IFS='|' read -r login commit state; do
+                  [ -n "${login:-}" ] || continue
+                  lower=$(printf '%s' "$login" | tr '[:upper:]' '[:lower:]')
+                  seen="$seen $lower"
+                  for candidate in $REVIEWERS; do
+                    # A DISMISSED review is an invalidated one — it must not satisfy the await.
+                    if [ "$lower" = "$candidate" ] && [ "$commit" = "$head" ] && [ "$state" != "DISMISSED" ]; then
+                      printf 'found: %s reviewed %s (%s)\n' "$login" "$commit" "$state"
+                      matched=1
+                    fi
+                  done
+                done <<EOF
           $reviews
           EOF
 
-          if [ "$matched" -eq 1 ]; then
-            printf 'GREEN — Copilot has reviewed the current head commit.\n'
-            exit 0
-          fi
+                if [ "$matched" -eq 1 ]; then
+                  printf 'GREEN — Copilot has reviewed the current head commit.\n'
+                  exit 0
+                fi
+              fi
+            fi
 
-          printf '::error::no Copilot review for the current head commit (%s).\n' "$head"
+            [ "$SECONDS" -lt "$WAIT_SECONDS" ] || break
+
+            if [ -n "$unread" ]; then
+              printf 'waiting (%ss of %ss): %s — retrying\n' "$SECONDS" "$WAIT_SECONDS" "$unread"
+            else
+              printf 'waiting (%ss of %ss): no Copilot review for %s yet\n' "$SECONDS" "$WAIT_SECONDS" "$head"
+            fi
+            sleep "$POLL_SECONDS"
+          done
+
+          printf '::error::no Copilot review for the current head commit (%s) after %ss of waiting.\n' \
+            "${head:-unknown}" "$SECONDS"
           printf 'A pull request may not merge until Copilot has reviewed the commit it is actually\n'
           printf 'merging, and until that feedback is resolved. Conversation resolution covers the\n'
-          printf 'resolved half; this covers the awaited half. If the branch was just pushed, wait —\n'
-          printf 'Copilot is requested automatically. NOTE: when the review lands, the re-run is\n'
-          printf 'bot-triggered and GitHub holds it as action_required, so a maintainer approves that\n'
-          printf 'run (or re-runs this job) to clear the check. Measured 2026-07-27.\n'
+          printf 'resolved half; this covers the awaited half. Rounds on this repository land in\n'
+          printf 'under four minutes, so a full budget spent waiting is a fault, not slowness:\n'
+          printf 'check that the Copilot ruleset is still active and that the reviewer login below\n'
+          printf 'has not been renamed, then re-run this job — it is not bot-triggered and needs no\n'
+          printf 'approval. Measured 2026-07-28.\n'
+          if [ -n "$unread" ]; then
+            printf 'The last read of the API failed: %s\n' "$unread"
+          fi
           printf 'Review authors seen on this pull request:%s\n' "${seen:- none}"
+          # Diagnostic only — nothing above depends on it. It separates "Copilot was never asked"
+          # from "Copilot was asked and did not answer", which are different faults with different
+          # fixes; Copilot leaves this list once it submits, so absence alone proves nothing.
+          if requested=$(gh api "repos/${GITHUB_REPOSITORY}/pulls/${PR_NUMBER}/requested_reviewers" \
+                --jq '[.users[].login] | join(" ")'); then
+            printf 'Reviewers requested and still unanswered:%s\n' "${requested:+ $requested}"
+          fi
           exit 1
