@@ -222,59 +222,76 @@ else
             *) printf '%s\n' "$h" >>"$tmp/strays" ;;
         esac
     done < <(grep "^${HANDOFFS_RE}/.*\.md$" "$manifest")
-    if [ ! -s "$tmp/handoffdates" ]; then
-        printf 'verify: no dated handoff files under %s/ — cannot check correspondence\n' "$HANDOFFS" >&2
-        exit 2
-    fi
-
-    # 4a. Every Session log date since the cadence floor has a handoff of that date.
-    : >"$tmp/record"
-    while IFS= read -r d; do
-        [[ "$d" < "$CADENCE_FLOOR" ]] && continue
-        grep -qxF -- "$d" "$tmp/handoffdates" || printf '%s\n' "$d" >>"$tmp/record"
-    done < <(LC_ALL=C sort -u "$tmp/logdates")
-
-    if [ -s "$tmp/record" ]; then
-        fail "record — Session log date(s) since $CADENCE_FLOOR with no dated handoff in $HANDOFFS/"
-        sed 's/^/        /' "$tmp/record"
-    else
-        pass "record — every Session log date since $CADENCE_FLOOR has a dated handoff"
-    fi
-
-    # 4b. And the reverse, BY COUNT rather than by presence: a date carries at least as many Session
-    # log entries as it has handoffs. Presence was the first draft and it was the weaker rail by a
-    # long way — it was GREEN on the very record it was minted from, because each of the five
-    # unlogged sessions shared its date with a sibling that had been logged. Counting is red on that
-    # same tree (2026-07-27: 13 entries against 14 handoffs; 2026-07-28: 2 against 5) and green once
-    # the entries are written, which is what red-first is supposed to mean.
+    # 4b'. The stray audit reports BEFORE the correspondence precondition, and the order is the point.
+    # It ran after it until 2026-07-28: a directory holding only undated Markdown then exited 2 —
+    # *could not run* — while `$tmp/strays` already held the names that were the whole defect. That is
+    # the exact inversion of `../memory/verify-preconditions-fail-closed.md`. There, *could not look*
+    # must never read as *nothing wrong*; here, **I looked and found it** was reading as *could not
+    # look*, which is the same lie told the other way round and costs the operator the diagnosis.
     #
-    # No floor is needed on this side: dates before the cadence ruling have zero handoffs and `>=`
-    # is satisfied by anything. What it cannot see is stated in ./README.md rather than here — an
-    # extra entry on a date can offset a missing one, and a session spanning midnight reds honestly.
-    : >"$tmp/orphans"
-    while IFS= read -r d; do
-        hc=$(grep -cxF -- "$d" "$tmp/handoffdates")
-        lc=$(grep -cxF -- "$d" "$tmp/logdates")
-        [ "$lc" -ge "$hc" ] ||
-            printf '%s — %s handoff(s), %s Session log entr(ies)\n' "$d" "$hc" "$lc" >>"$tmp/orphans"
-    done < <(LC_ALL=C sort -u "$tmp/handoffdates")
-
-    if [ -s "$tmp/orphans" ]; then
-        fail "record — date(s) with fewer Session log entries than handoffs"
-        sed 's/^/        /' "$tmp/orphans"
-    else
-        pass "record — every date has at least as many log entries as handoffs ($(wc -l <"$tmp/handoffdates" | tr -d '[:space:]') handoff(s))"
-    fi
-
-    # 4b'. And no MARKDOWN file in the handoffs directory escaped that count by being named otherwise.
-    # The scope is Markdown deliberately and the sentences below say so: the enumeration above greps
-    # `*.md`, so a `notes.txt` here passes — measured, not assumed. Widening it would red the untracked
-    # debris a working tree collects (`.DS_Store` and friends), which is a worse trade than the gap.
+    # The scope is Markdown deliberately: the enumeration above greps `*.md`, so a `notes.txt` here
+    # passes — measured, not assumed. Widening it would red the untracked debris a working tree
+    # collects (`.DS_Store` and friends), which is a worse trade than the gap.
     if [ -s "$tmp/strays" ]; then
         fail "record — Markdown file(s) in $HANDOFFS/ whose name carries no date, so no check counts them"
         sed 's/^/        /' "$tmp/strays"
     else
-        pass "record — every Markdown file in $HANDOFFS/ is a dated handoff"
+        # The count is printed for the same reason 4c prints its own: on an empty directory this
+        # sentence is vacuously true, and a green that does not say it examined nothing reads as a
+        # green that examined something.
+        pass "record — every Markdown file in $HANDOFFS/ is a dated handoff ($(wc -l <"$tmp/handoffdates" | tr -d '[:space:]') examined)"
+    fi
+
+    if [ ! -s "$tmp/handoffdates" ] && [ ! -s "$tmp/strays" ]; then
+        # Nothing whatever to look at. This is the only branch that is honestly *could not run*.
+        printf 'verify: no Markdown file under %s/ — cannot check correspondence\n' "$HANDOFFS" >&2
+        exit 2
+    fi
+
+    if [ ! -s "$tmp/handoffdates" ]; then
+        # Markdown is present and none of it is dated. The cause is known and was just named
+        # file by file, so the honest verdict is RED. Exit 2 here would report "could not look"
+        # over a diagnosis the recipe had already made.
+        fail "record — no DATED handoff in $HANDOFFS/, so neither correspondence check could run"
+    else
+        # 4a. Every Session log date since the cadence floor has a handoff of that date.
+        : >"$tmp/record"
+        while IFS= read -r d; do
+            [[ "$d" < "$CADENCE_FLOOR" ]] && continue
+            grep -qxF -- "$d" "$tmp/handoffdates" || printf '%s\n' "$d" >>"$tmp/record"
+        done < <(LC_ALL=C sort -u "$tmp/logdates")
+
+        if [ -s "$tmp/record" ]; then
+            fail "record — Session log date(s) since $CADENCE_FLOOR with no dated handoff in $HANDOFFS/"
+            sed 's/^/        /' "$tmp/record"
+        else
+            pass "record — every Session log date since $CADENCE_FLOOR has a dated handoff"
+        fi
+
+        # 4b. And the reverse, BY COUNT rather than by presence: a date carries at least as many
+        # Session log entries as it has handoffs. Presence was the first draft and it was the weaker
+        # rail by a long way — it was GREEN on the very record it was minted from, because each of the
+        # five unlogged sessions shared its date with a sibling that had been logged. Counting is red
+        # on that same tree (2026-07-27: 13 entries against 14 handoffs; 2026-07-28: 2 against 5) and
+        # green once the entries are written, which is what red-first is supposed to mean.
+        #
+        # No floor is needed on this side: dates before the cadence ruling have zero handoffs and `>=`
+        # is satisfied by anything. What it cannot see is stated in ./README.md rather than here — an
+        # extra entry on a date can offset a missing one, and a session spanning midnight reds honestly.
+        : >"$tmp/orphans"
+        while IFS= read -r d; do
+            hc=$(grep -cxF -- "$d" "$tmp/handoffdates")
+            lc=$(grep -cxF -- "$d" "$tmp/logdates")
+            [ "$lc" -ge "$hc" ] ||
+                printf '%s — %s handoff(s), %s Session log entr(ies)\n' "$d" "$hc" "$lc" >>"$tmp/orphans"
+        done < <(LC_ALL=C sort -u "$tmp/handoffdates")
+
+        if [ -s "$tmp/orphans" ]; then
+            fail "record — date(s) with fewer Session log entries than handoffs"
+            sed 's/^/        /' "$tmp/orphans"
+        else
+            pass "record — every date has at least as many log entries as handoffs ($(wc -l <"$tmp/handoffdates" | tr -d '[:space:]') handoff(s))"
+        fi
     fi
 
     # 4c. An entry dated after the budget cutoff is a pointer, not a record: at most 10 lines.
