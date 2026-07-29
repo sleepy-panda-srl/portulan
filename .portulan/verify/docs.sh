@@ -14,7 +14,7 @@
 #   proposal  every proposal is numbered, records an outcome, and names the pull request that filed it
 #                                                             (a rule you cannot trace to its review)
 #   plan      no milestone row carries an amendment argument or a session note, every row parses into
-#             its five cells, and its Status cell stays inside a character budget
+#             its five cells, and its Status cell stays inside a byte budget
 #                                                             (the scoreboard is law, not an archive)
 #
 # Exit 0 green · 1 red · 2 could not run. The Stop-gate (milestone 4) calls this;
@@ -452,7 +452,7 @@ fi
 # `Session N of` appears in eight Session log entries, and every `docs/milestones/*.md` contains
 # `**Criterion amended` by design — it is the relocated argument. A rail that fired on the archive it
 # just created would be unusable on the first run, so both markers are matched **inside a row only**.
-PLAN_STATUS_BUDGET=500
+PLAN_STATUS_BUDGET=500   # bytes; see 6c below for the derivation
 if [ ! -f "$PLAN" ]; then
     : # already reported by the record check above; nothing here to add
 else
@@ -500,7 +500,7 @@ else
     # 6b′. A row this check cannot parse is a REFUSAL, not a pass. 6c reads the Status cell as the
     # sixth pipe-separated field, which is only the Status cell while a row has exactly five cells and
     # no escaped `\|` inside one. Nothing in Markdown stops a future row carrying one, and the first
-    # draft of 6c simply skipped such a row: a 611-character Status cell with one `\|` in it passed
+    # draft of 6c simply skipped such a row: a 613-byte Status cell with one `\|` in it passed
     # green, while the summary line went on claiming 12 rows examined. That is the fail-open this whole
     # recipe mints rules about — `../memory/a-checker-must-refuse-what-it-cannot-check.md` — and it
     # would have shipped inside the change that added the rail. Reported before 6c runs, so the
@@ -518,13 +518,23 @@ else
         pass "plan — every milestone row parses into its five cells ($rowcount row(s) examined)"
     fi
 
-    # 6c. The Status cell is a verdict, not a narrative. The budget is a CHARACTER count because the
-    # cell is one line by construction — a line budget here would be the number 1 and would bound
-    # nothing. 500 was picked from the relocated rows' own post-split sizes rather than chosen for
-    # roundness: the largest Status cell after the move is 385 (milestone 11, of which 135 characters
-    # are a single proposal path), and the largest signed verdict is 309 (milestone 5). 500 leaves
-    # about 30% headroom so the next close does not red on a character, and still cannot hold a
-    # session note or an evidence narrative — the cell it replaces was 16,505.
+    # 6c. The Status cell is a verdict, not a narrative. The budget is a size count rather than a line
+    # count because the cell is one line by construction — a line budget here would be the number 1
+    # and would bound nothing.
+    #
+    # **It counts BYTES, and it says so because that is what it measures.** `awk`'s `length()` is
+    # byte-based on the `mawk` that Ubuntu runners ship, and these cells are full of em dashes and
+    # middle dots at three bytes each — so a budget labelled "characters" would have printed a number
+    # the reader could not reproduce, in a check whose whole subject is claims that outrun what was
+    # measured. Bytes is also the honest unit for this rail: what a Status cell costs the session
+    # reading it is its size, not its codepoint count. Raised as a suppressed low-confidence note on
+    # this rail's own pull request, in four carriers at once.
+    #
+    # 500 was picked from the relocated rows' own post-split sizes rather than chosen for roundness:
+    # after the move the largest Status cell is 387 bytes (milestone 11, of which 137 are a single
+    # proposal path) and the largest signed verdict is 311 (milestone 5). 500 leaves about 30%
+    # headroom so the next close does not red on a byte, and still cannot hold a session note or an
+    # evidence narrative — the cell it replaces was 16,505.
     #
     # Every row is bound, including `todo` ones: a row's Status is where this table drifted last time
     # and the cheapest place for it to drift again.
@@ -536,15 +546,15 @@ else
     awk -F'|' -v b="$PLAN_STATUS_BUDGET" -v p="$PLAN" '
         /^\| *[0-9]+ *\|/ && NF == 7 {
             n = length($6)
-            if (n > b) printf "%s:%d (milestone %s) Status is %d characters, over %d\n", p, NR, $2+0, n, b
+            if (n > b) printf "%s:%d (milestone %s) Status is %d bytes, over %d\n", p, NR, $2+0, n, b
         }
     ' "$PLAN" >>"$tmp/planstatus"
     readable=$(awk -F'|' '/^\| *[0-9]+ *\|/ && NF == 7' "$PLAN" | wc -l | tr -d '[:space:]')
     if [ -s "$tmp/planstatus" ]; then
-        fail "plan — $(wc -l <"$tmp/planstatus" | tr -d '[:space:]') Status cell(s) over the ${PLAN_STATUS_BUDGET}-character budget"
+        fail "plan — $(wc -l <"$tmp/planstatus" | tr -d '[:space:]') Status cell(s) over the ${PLAN_STATUS_BUDGET}-byte budget"
         sed 's/^/        /' "$tmp/planstatus"
     else
-        pass "plan — every Status cell is within ${PLAN_STATUS_BUDGET} characters ($readable of $rowcount row(s) readable)"
+        pass "plan — every Status cell is within ${PLAN_STATUS_BUDGET} bytes ($readable of $rowcount row(s) readable)"
     fi
 fi
 
