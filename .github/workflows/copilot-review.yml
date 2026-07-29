@@ -374,7 +374,9 @@ jobs:
                       # the block instead of one YAML had parsed.
                       report="**${count} comment(s) suppressed as low confidence** on the round for \`${head}\`."
                       report="${report}"$'\n'"They carry no thread and no Resolve control, so nothing"
-                      report="${report} else in this pull request will ever mention them again."
+                      report="${report} gates on them: unanswered, they simply stand. This job"
+                      report="${report} quotes them into the verdict review so they are visible"
+                      report="${report} on the pull request rather than only here."
                       report="${report} Address or refuse each one, per the standing feedback-loop"
                       report="${report} rule, in ONE batched pull-request comment — a note has no"
                       report="${report} thread to sit on, which is why it is answered there and an"
