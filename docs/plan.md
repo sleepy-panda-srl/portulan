@@ -1632,3 +1632,14 @@ _The seam applies here too: no client-identifying references._
   · Seam scan clean by construction — this pass composes no new prose at run time, so its
   diff carries nothing the scan had not already passed.
   Handoff: [`2026-07-29`](../.portulan/handoffs/2026-07-29-librarian-pass.md).
+
+- 2026-07-29 · Post-M5 reconciliation · **The milestone table stops being its own archive** —
+  [#96](https://github.com/sleepy-panda-works/portulan/pull/96). 55,643 characters of amendment
+  argument, session note and close evidence move **verbatim** into [`milestones/`](milestones/); the
+  table goes 63,420 → 11,142. The fidelity note **splits**: the signed verdict stays in Status with
+  what the close left undemonstrated, and cites the file. `docs.sh` gains a sixth check, `plan` —
+  four assertions, each forced red, retroactive because relocation preserves what a rewrite destroys.
+  #88 #89 #90 fold in, closing on merge; 0016 names M6 as per-agent memory's arrival. **The
+  handoff-series budget stays open and the maintainer's** — one pass is not the trigger. · Fidelity:
+  session-open (5 changes) and pre-commit (4), which caught M5's row losing a deliverable. Seam scan
+  clean over diff, message and branch. Handoff: [`…own-archive.md`](../.portulan/handoffs/2026-07-29-the-table-stops-being-its-own-archive.md).

@@ -2,7 +2,7 @@
 
 **Status.** Accepted — landed with the post-M5 reconciliation.
 
-**Pull request:** https://github.com/sleepy-panda-works/portulan/pull/PENDING
+**Pull request:** https://github.com/sleepy-panda-works/portulan/pull/96
 
 ## The claim
 

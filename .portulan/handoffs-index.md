@@ -2,9 +2,10 @@
 
 > Generated from `handoffs/` by `node cli/index.mjs`. Do not edit by hand: it is regenerated
 > and byte-compared, so a hand-edit survives exactly until the next run.
-> 37 handoff(s), newest first. No budget: the series is append-only, so
+> 38 handoff(s), newest first. No budget: the series is append-only, so
 > the only remedy a budget could ask for is one this project rules out.
 
+- 2026-07-29 · [The table stops being its own archive, and the rows keep the law](handoffs/2026-07-29-the-table-stops-being-its-own-archive.md)
 - 2026-07-29 · [Handoff — the librarian mines and consolidates, and the checkpoint found the work it would have lost](handoffs/2026-07-29-the-librarian-mines-and-consolidates.md)
 - 2026-07-29 · [Handoff — the librarian's scheduled pass](handoffs/2026-07-29-librarian-pass.md)
 - 2026-07-28 · [Handoff — the wrapper the gate could not see, and the boundary that held anyway](handoffs/2026-07-28-the-wrapper-the-gate-could-not-see.md)
