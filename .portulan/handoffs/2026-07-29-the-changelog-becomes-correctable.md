@@ -63,8 +63,12 @@ fourth — the entry narrated the sixth recipe and the eighth and skipped `workf
 
 ## For the next session
 
-- **The tag is owed.** `v0.2.0` merges before it is tagged, per the v0.1.0 ordering. Between merge and
-  tag, `README.md` and `product.md` name a release that does not exist; **the window should be short**.
+- **The tag is owed.** `v0.2.0` merges before it is tagged, per the v0.1.0 ordering. **No file asserts
+  the tag exists**: `README.md` and `product.md` name the newest *release entry*, which is true from the
+  merge onward and stays true after tagging. That wording is the review round's doing — the first draft
+  said "is the current release", which the reviewer caught five times across both channels, and which
+  this bullet then described as a window to be tolerated rather than a sentence to be fixed. Still, an
+  entry and its tag should not stay apart for long.
 - **#98 should ride [#105](https://github.com/sleepy-panda-works/portulan/pull/105), not a new branch.**
   That pull request already owns `docs/plan.md` and `docs/milestones/m06.md` and has written the option
   analysis into m06.md. Amending row 6 from anywhere else puts two branches on one milestone row — the

@@ -24,7 +24,7 @@ workspace, their memory, their evals. Building at that layer is the bet: *design
 they were written down here; the value being added is the re-expression into something a team other than
 its author can adopt in an afternoon.
 
-**Stage, honestly.** Pre-release, and public since 27 July 2026; `v0.2.0` is the current release. The
+**Stage, honestly.** Pre-release, and public since 27 July 2026; the newest release entry is `0.2.0`. The
 engine, this workspace, the enforcement compiler and the memory lifecycle are authored; the CLI
 milestone 7 describes — `init`, `vendor`, `upgrade`, `new`, `feedback` — is not. What that release
 contains, and what it does not,
