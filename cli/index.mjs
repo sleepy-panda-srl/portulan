@@ -482,7 +482,8 @@ function compareOrWrite({ dir, declaredPath, indexPath, expected, write, series,
         } catch (cause) {
             throw new IndexError(
                 `cannot write the index at ${declaredPath} — ${cause.code ?? cause.message}. ` +
-                    `Refusing rather than reporting a verdict about the ${source}: this is a fact about the filesystem, not about memory`,
+                    `Refusing rather than reporting a verdict about the ${source}: this is a fact about the filesystem, ` +
+                    `not about the ${source}`,
             );
         }
     }
