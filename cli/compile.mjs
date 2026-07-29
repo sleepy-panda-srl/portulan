@@ -1368,6 +1368,194 @@ export function policyPath(workspaceRoot, workspaceDir = ".portulan") {
     return path.join(workspaceRoot, workspaceDir, "gates.json");
 }
 
+// ===========================================================================================
+// Pack-contributed gate fragments — the cascade's middle layer
+// ===========================================================================================
+//
+// The cascade is `core < pack < workspace`, and until now no pack contributed to the gate policy —
+// ../.portulan/packs/tools/README.md called that "the cascade's missing middle". The floor was ruled
+// before any of it was built (../.portulan/proposals/0010-prohibited-as-a-fourth-universal-tier.md,
+// agreed 2026-07-27): **packs may only tighten.** A pack may raise a tier or add a prohibition; it may
+// never demote another layer's classification, because a composed-in third-party artifact able to
+// demote `push` to Auto would be a dependency with the power to disarm the gate containing it — and
+// the demotion would look exactly like configuration.
+//
+// That ruling is why the policy was modelled as a list of id-addressed rules with no dependence on
+// being the only source. This is the merge step it was shaped for: an addition, not a redesign.
+
+/** The tier partial order, weakest to strongest. Tightening moves UP it and never down. */
+const TIER_ORDER = ["auto", "propose", "gated", "prohibited"];
+
+/** Where a tier sits in the partial order; `-1` for anything that is not a tier. */
+export const tierRank = (tier) => TIER_ORDER.indexOf(tier);
+
+/**
+ * Resolve one declared pack name — the canonical `category/name` — against a list of roots, in order.
+ *
+ * Root-parameterized rather than deriving one location, because the two shapes that matter are not
+ * the same tree: a workspace composing a pack that ships beside it resolves under its own `packs/`,
+ * while an adopter installing from a feed resolves inside the installed plugin. One resolver, told
+ * where to look, so the second case is the same code path rather than a parallel one discovered later.
+ *
+ * Returns `{ name, category, pack, dir, manifest }` with `dir` null when nothing matched.
+ */
+export function resolvePack(name, roots = []) {
+    const parts = String(name).split("/");
+    if (parts.length !== 2 || !parts[0] || !parts[1]) {
+        return { name, category: null, pack: null, dir: null, manifest: null, why: "not in `category/name` form" };
+    }
+    const [category, pack] = parts;
+    // A name is a name, never a path: a `..` segment here would resolve a declared pack outside every
+    // root it was supposed to be searched in.
+    if (!SLUG.test(category) || !SLUG.test(pack)) {
+        return { name, category: null, pack: null, dir: null, manifest: null, why: "`category/name` must both be slugs" };
+    }
+    for (const root of roots) {
+        const dir = path.join(root, category, pack);
+        const manifest = path.join(dir, "pack.json");
+        if (fs.existsSync(manifest)) return { name, category, pack, dir, manifest, why: null };
+    }
+    return { name, category, pack, dir: null, manifest: null, why: "no pack.json under any resolution root" };
+}
+
+/**
+ * The roots a declared pack name is resolved against for a workspace on disk.
+ *
+ * Derived from the manifest's `tree` rather than declared, because adding a key for it would be a
+ * Workspace Definition change nobody decided — and a slot before its consumer is the mistake that
+ * specification was written to avoid. A workspace with no `tree` gets no roots, and its declared packs
+ * are reported unresolvable rather than failed: the same answer `tree`'s absence already gives every
+ * other claim that needs a tree to check.
+ */
+export function packRoots(workspaceDir, workspace) {
+    const tree = workspace?.tree;
+    if (typeof tree === "string" && tree.trim()) return [path.resolve(workspaceDir, tree, "packs")];
+    return [];
+}
+
+/**
+ * What the packs a workspace declares contribute. Reads each resolved `pack.json` and collects its
+ * gate fragments. It does NOT validate the manifest against the Pack Definition — `doctor` does that,
+ * and this compiler must not depend on `doctor` having been run: the two have no ordering between
+ * them. What it depends on instead is `parse`, which validates every composed rule exactly as it
+ * validates a hand-written one, so a malformed fragment is refused by the same code either way.
+ */
+export function packContributions(workspaceRoot, workspaceDir = ".portulan", options = {}) {
+    const base = path.join(workspaceRoot, workspaceDir);
+    let manifest;
+    try {
+        manifest = JSON.parse(fs.readFileSync(path.join(base, "workspace.json"), "utf8"));
+    } catch {
+        // No manifest, or unreadable. `doctor` is the tool that judges a manifest; this one only needs
+        // to know what is composed, and with nothing to go on the answer is nothing.
+        return { contributions: [], unresolved: [] };
+    }
+    const declared = manifest?.packs;
+    if (!Array.isArray(declared) || declared.length === 0) return { contributions: [], unresolved: [] };
+
+    const roots = options.packRoots ?? packRoots(base, manifest);
+    const contributions = [];
+    const unresolved = [];
+    for (const name of declared) {
+        const found = resolvePack(name, roots);
+        if (!found.dir) {
+            unresolved.push(found);
+            continue;
+        }
+        const packManifest = readJson(found.manifest, `the pack manifest for \`${name}\``);
+        contributions.push({ pack: name, dir: found.dir, fragments: packManifest?.contributes?.gates ?? [] });
+    }
+    return { contributions, unresolved };
+}
+
+/**
+ * Compose pack-contributed fragments onto a workspace policy. **Tighten-only, and it throws.**
+ *
+ * A demotion is refused loudly rather than dropped quietly, because the two are not the same event: a
+ * backend refusing a rule it cannot express is a coverage gap, while a pack moving `gated` to
+ * `propose` is an attempt to disarm a gate, and a build that continues past it has published an
+ * artifact weaker than the policy it claims to compile. Failing closed is right *here* and wrong in
+ * ./compile/gate.mjs for a reason worth keeping straight: this runs at build time against a file you
+ * can edit, while that runs on every tool call and a refusal there makes the session undriveable.
+ *
+ * `auto` is barred by the Pack Definition's tier enum, so a schema-valid pack cannot express a
+ * demotion to unattended at all. It is checked again here anyway — this compiler does not depend on
+ * the schema having been applied, and an unranked tier reaching the comparison would otherwise sort
+ * below everything and read as a tightening of nothing.
+ */
+export function composeFragments(policy, contributions) {
+    const rules = [...(policy?.rules ?? [])];
+    const at = new Map(rules.map((rule, i) => [rule?.id, i]));
+    const added = [];
+    const tightened = [];
+
+    for (const { pack, fragments } of contributions) {
+        for (const fragment of fragments ?? []) {
+            const id = fragment?.id;
+            const rank = tierRank(fragment?.tier);
+            if (rank < 0) {
+                throw new CompileError(
+                    `pack \`${pack}\` contributes fragment \`${id}\` with tier ${JSON.stringify(fragment?.tier)}, ` +
+                        `which is not one of ${TIER_ORDER.join(" / ")}. An unrecognised tier is not a fragment to skip.`,
+                );
+            }
+            if (fragment.tier === "auto") {
+                throw new CompileError(
+                    `pack \`${pack}\` contributes fragment \`${id}\` at tier \`auto\`. A pack may only ADD ` +
+                        `restriction, and \`auto\` is the absence of it — the Pack Definition leaves \`auto\` out ` +
+                        `of the tier enum for this reason.`,
+                );
+            }
+            if (!at.has(id)) {
+                at.set(id, rules.length);
+                rules.push(fragment);
+                added.push({ pack, id, tier: fragment.tier });
+                continue;
+            }
+            const base = rules[at.get(id)];
+            const baseRank = tierRank(base?.tier);
+            // A tier is not the whole rule. Raising the tier while REPLACING the action removes the
+            // matcher and passes every rank comparison — measured on this repository's own policy: a
+            // fragment `{id: force-push-without-a-lease, tier: prohibited, action: {none: …}}` was
+            // reported as `tightens gated → prohibited` and the emitted `Bash(git push --force:*)`
+            // gate DISAPPEARED, leaving the workspace strictly less cautious about the exact action
+            // the rule exists to gate. Ids are greppable by design and ship in core, so knowing one
+            // is not a barrier. A pack may raise a rule's tier; it may not redefine what the rule
+            // matches. Found by the pre-commit supervisor, which is the checkpoint's whole argument.
+            if (rank <= baseRank) {
+                throw new CompileError(
+                    `pack \`${pack}\` would move rule \`${id}\` from \`${base?.tier}\` to ` +
+                        `\`${fragment.tier}\`, which does not tighten it. Packs may only tighten: a pack may ` +
+                        `raise a tier or add a prohibition, never demote another layer's classification ` +
+                        `(../.portulan/proposals/0010-prohibited-as-a-fourth-universal-tier.md). The workspace ` +
+                        `owns its own policy and may still set this tier in its own gate map.`,
+                );
+            }
+            const shape = (rule) => {
+                const action = rule?.action;
+                if (!action || typeof action !== "object" || Array.isArray(action)) return null;
+                const kinds = Object.keys(action);
+                return kinds.length === 1 ? `${kinds[0]}:${action[kinds[0]]}` : null;
+            };
+            const here = shape(fragment);
+            const there = shape(base);
+            if (here === null || there === null || here !== there) {
+                throw new CompileError(
+                    `pack \`${pack}\` would tighten rule \`${id}\` to \`${fragment.tier}\` while CHANGING what it ` +
+                        `matches (${there ?? "unreadable"} → ${here ?? "unreadable"}). A pack may raise a rule's ` +
+                        `tier; it may not redefine the action, because replacing the matcher removes the gate ` +
+                        `while every tier comparison still reads as a tightening. To gate a different action, ` +
+                        `contribute a NEW id; to change what an existing rule matches, edit the workspace's own ` +
+                        `gate map, which owns its policy.`,
+                );
+            }
+            rules[at.get(id)] = fragment;
+            tightened.push({ pack, id, from: base.tier, to: fragment.tier });
+        }
+    }
+    return { policy: { ...policy, rules }, added, tightened };
+}
+
 function readJson(file, what) {
     let raw;
     try {
@@ -1458,9 +1646,24 @@ export function run(argv, options = {}) {
 
         const policyFile = policyPath(workspaceRoot);
         const policy = readJson(policyFile, "the gate policy");
-        const parsed = parse(policy);
+        // The cascade's middle layer, composed before the policy is parsed so that a pack's fragment
+        // is validated by exactly the code that validates a hand-written rule.
+        const { contributions, unresolved } = packContributions(workspaceRoot);
+        const composed = composeFragments(policy, contributions);
+        const parsed = parse(composed.policy);
         const source = path.relative(workspaceRoot, policyFile).split(path.sep).join("/");
         const columns = backends(parsed, { source });
+
+        // Printed before the backends, because a rule's provenance changes how its compiled line reads
+        // — and an unresolvable pack is a declaration the workspace believes it composed.
+        for (const a of composed.added) say(`pack    ${a.pack.padEnd(30)} adds \`${a.id}\` (${a.tier})`);
+        for (const t of composed.tightened) {
+            say(`pack    ${t.pack.padEnd(30)} tightens \`${t.id}\` ${t.from} → ${t.to}`);
+        }
+        for (const u of unresolved) {
+            say(`pack    ${u.name.padEnd(30)} UNRESOLVED — ${u.why}; it contributes nothing`);
+        }
+        if (composed.added.length || composed.tightened.length || unresolved.length) say();
 
         if (showMatrix) {
             printMatrix(say, parsed, columns, { source });

@@ -36,6 +36,7 @@ import {
     run,
     parseProvenance,
     schemaVersion,
+    packSchemaVersion,
 } from "./doctor.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -1607,5 +1608,117 @@ describe("the positive-integer failure message says only what is true of this tr
         m.librarian = { staleness: { record_days: 0 } };
         const dir = tree(scratch(), { ...minimalFiles, "memory/r.md": "x\n", "workspace.json": JSON.stringify(m) });
         assert.throws(() => passWorkspace(dir, { asOf: "2026-06-15" }), LibrarianError);
+    });
+});
+
+// ---------------------------------------------------------------- packs
+
+// Milestone 6. This slot reported a COUNT for four milestones and said so — "a declaration only" —
+// because there was no format to validate a pack against and nowhere to resolve a name. Both now
+// exist, and the tests below are the difference between resolving and counting.
+
+const PACK_SCHEMA = JSON.parse(fs.readFileSync(path.join(REPO, "spec", "pack.schema.json"), "utf8"));
+
+const packManifest = (over = {}) => ({
+    portulan: { pack: "1.0" },
+    name: "checkpoints",
+    category: "rituals",
+    contributes: { personas: ["personas/supervisor.md"] },
+    ...over,
+});
+
+describe("the packs a workspace declares", () => {
+    test("the shipped Pack Definition compiles under the declared subset", () => {
+        assert.doesNotThrow(() => compileSchema(PACK_SCHEMA));
+    });
+
+    test("a declared pack that resolves and validates is reported with what it contributes", async () => {
+        const dir = tree(scratch(), {
+            ...minimalFiles,
+            "workspace.json": JSON.stringify({ ...wellFormed(), packs: ["rituals/checkpoints"] }),
+            "packs/rituals/checkpoints/pack.json": JSON.stringify(packManifest()),
+        });
+        const { findings, stats } = await inspect(dir, { schema: SCHEMA });
+        assert.equal(severities(checks(findings, "packs"), "fail").length, 0, text(findings));
+        assert.equal(stats.packs, 1);
+        assert.match(text(checks(findings, "packs")), /resolves to .*checkpoints/);
+        assert.match(text(checks(findings, "packs")), /1 persona/);
+    });
+
+    test("a pack manifest that violates the Pack Definition fails, naming the violation", async () => {
+        const dir = tree(scratch(), {
+            ...minimalFiles,
+            "workspace.json": JSON.stringify({ ...wellFormed(), packs: ["rituals/checkpoints"] }),
+            // `auto` is not in the fragment tier enum — the half of tighten-only that shape enforces.
+            "packs/rituals/checkpoints/pack.json": JSON.stringify(
+                packManifest({
+                    contributes: { gates: [{ id: "x", tier: "auto", action: { shell: "s" }, reason: "r" }] },
+                }),
+            ),
+        });
+        const { findings } = await inspect(dir, { schema: SCHEMA });
+        const failures = severities(checks(findings, "packs"), "fail");
+        assert.ok(failures.length > 0, "an auto fragment must not validate");
+        assert.match(text(failures), /not one of the permitted values/);
+    });
+
+    test("a declared pack that does not resolve is a FAILURE where a root exists", async () => {
+        const dir = tree(scratch(), {
+            ...minimalFiles,
+            "workspace.json": JSON.stringify({ ...wellFormed(), packs: ["rituals/absent"] }),
+        });
+        const { findings } = await inspect(dir, { schema: SCHEMA });
+        assert.match(text(severities(checks(findings, "packs"), "fail")), /does not resolve/);
+    });
+
+    // The `tree` precedent: with nowhere to search, the claim is unverifiable rather than wrong.
+    test("a declared pack on a workspace with no tree is REPORTED, never failed", async () => {
+        const manifest = { ...wellFormed(), kind: "portfolio", packs: ["rituals/absent"] };
+        delete manifest.tree;
+        const dir = tree(scratch(), { ...minimalFiles, "workspace.json": JSON.stringify(manifest) });
+        const { findings } = await inspect(dir, { schema: SCHEMA });
+        assert.equal(severities(checks(findings, "packs"), "fail").length, 0, text(findings));
+        assert.match(text(checks(findings, "packs")), /no \`tree\`/);
+    });
+
+    // Normative in spec/pack.schema.json, and for one pre-commit checkpoint implemented nowhere while
+    // `doctor` printed "validates against Pack Definition 99.0" — a conformance claim about a contract
+    // it had never seen. DoD condition 4, inside the change that introduced the sentence.
+    test("a pack declaring a version AHEAD of this doctor is refused rather than graded", async () => {
+        for (const ahead of ["99.0", "1.9", "2.0"]) {
+            const dir = tree(scratch(), {
+                ...minimalFiles,
+                "workspace.json": JSON.stringify({ ...wellFormed(), packs: ["rituals/checkpoints"] }),
+                "packs/rituals/checkpoints/pack.json": JSON.stringify(packManifest({ portulan: { pack: ahead } })),
+            });
+            const { findings, stats } = await inspect(dir, { schema: SCHEMA });
+            const failures = severities(checks(findings, "packs"), "fail");
+            assert.ok(failures.length > 0, `Pack Definition ${ahead} must be refused`);
+            assert.match(text(failures), /Refusing to grade it/);
+            assert.equal(stats.packs, 0, "a refused pack is not counted as validated");
+        }
+    });
+
+    test("a pack declaring an EARLIER minor on the same major is still graded", async () => {
+        const dir = tree(scratch(), {
+            ...minimalFiles,
+            "workspace.json": JSON.stringify({ ...wellFormed(), packs: ["rituals/checkpoints"] }),
+            "packs/rituals/checkpoints/pack.json": JSON.stringify(packManifest({ portulan: { pack: "1.0" } })),
+        });
+        const { stats } = await inspect(dir, { schema: SCHEMA });
+        assert.equal(stats.packs, 1);
+    });
+
+    test("the two version trains are read by different functions and do not collide", () => {
+        assert.deepEqual(packSchemaVersion(PACK_SCHEMA), { major: 1, minor: 0 });
+        assert.deepEqual(schemaVersion(SCHEMA), { major: 2, minor: 5 });
+        // The workspace reader must not accept the pack `$id` as a workspace version.
+        assert.throws(() => schemaVersion({ $id: "https://portulan.dev/spec/pack/1.0/pack.schema.json" }));
+    });
+
+    test("this repository's own declared pack resolves and validates", async () => {
+        const { findings } = await inspect(path.join(REPO, ".portulan"), { schema: SCHEMA });
+        assert.equal(severities(checks(findings, "packs"), "fail").length, 0, text(findings));
+        assert.match(text(checks(findings, "packs")), /rituals\/checkpoints/);
     });
 });

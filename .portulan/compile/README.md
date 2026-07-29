@@ -342,7 +342,7 @@ One consequence is honest and unmeasured: a broad local `Bash` allow sits invisi
 gates. A compiled `deny`/`ask` beats an `allow` on the *same* pattern; what a broad local allow does to
 the **wrapper** spelling has not been measured and is not claimed either way.
 
-## Designed for, not built: pack-contributed gate rules
+## Pack-contributed gate rules — designed for at milestone 4, built at milestone 6
 
 The cascade is `core < pack < workspace`, and
 [`../../packs/tools/README.md`](../../packs/tools/README.md) has promised since it was written that a tool
@@ -360,12 +360,59 @@ a hostile or careless pack can do is make a workspace *more* cautious, which is 
 The **workspace** may still override explicitly in its own gate map, because it owns its policy — with
 core's `prohibited` entries excepted, since those are grantable only through the evolution gate.
 
-**Nothing is built.** No pack exists, and a slot before its consumer is the mistake the Workspace
-Definition was written to avoid. What was done instead is smaller and is the same move as modelling
-`products` as an array with one product: the policy is a **list of id-addressed rules with no dependence on
-being the only source**, so a future merge step — later layers tightening earlier ones — is an addition
-rather than a redesign. The compiler's accounting already reports per-rule outcomes, which is the shape a
-merge would need to explain itself.
+**This was designed for and deliberately not built at milestone 4** — no pack existed, and a slot before
+its consumer is the mistake the Workspace Definition was written to avoid. What was done instead was
+smaller, and is the same move as modelling `products` as an array with one product: the policy is a
+**list of id-addressed rules with no dependence on being the only source**, so the merge step would be an
+addition rather than a redesign.
+
+**It was built at milestone 6, and the prediction held** — the merge is an addition. `compile` now
+resolves the packs a workspace declares, reads each `pack.json`, and composes its `contributes.gates`
+fragments onto the policy **before `parse` runs**, so a fragment is validated by exactly the code that
+validates a hand-written rule. Three outcomes, all printed:
+
+| Outcome | What it means |
+|---|---|
+| **adds** | The fragment names an id no lower layer carries. A pure addition. |
+| **tightens** | The fragment names an existing id at a **stronger** tier, carrying that rule's action unchanged. The tier is raised and the move is printed, `from → to`. |
+| **refused** | The fragment would move an id to the same tier or weaker, **or** would change what the rule matches. **This throws**, and the build stops. |
+
+**Tightening has two axes, and the second one was nearly missed.** A first version compared only the
+tier. That is not tighten-only: a fragment naming an existing id at a stronger tier **replaces the whole
+rule, including its action**, so raising the tier while swapping the matcher passes every rank check and
+removes the gate. Measured against this repository's live policy before it was closed — a fragment
+`{id: force-push-without-a-lease, tier: prohibited, action: {none: …}}` was reported as
+`tightens gated → prohibited` and the emitted `Bash(git push --force:*)` gate **disappeared**, leaving
+the workspace strictly less cautious about the exact action the rule exists to gate. Rule ids are
+greppable by design and ship in `core/`, so knowing one is not a barrier.
+
+So a fragment naming an existing id must carry that rule's action **unaltered**. A pack that wants to
+gate a different action contributes a **new id**; changing what an existing rule matches belongs to the
+workspace, which owns its policy. The tier is checked first, so a demotion is still reported as a
+demotion rather than as an action change.
+
+_Found by the pre-commit supervisor, on a session whose own pre-commit checkpoint was the thing that
+caught it. That is the argument for the checkpoint restated as evidence, and it is the second time a
+fresh context has found a hole in this file's subject by attacking the matcher rather than reading it._
+
+**A demotion is refused loudly rather than dropped quietly**, because the two are different events: a
+backend refusing a rule it cannot express is a coverage gap, while a pack moving `gated` to `propose` is
+an attempt to disarm a gate, and a build that continues past it has published an artifact weaker than the
+policy it claims to compile. Failing closed is right *here* and wrong in [`gate.mjs`](gate.mjs) for a
+reason worth keeping straight: this runs at build time against a file you can edit, while that runs on
+every tool call and a refusal there makes the session undriveable.
+
+**Two layers enforce tighten-only, and neither is sufficient alone.** The Pack Definition leaves `auto`
+out of its tier enum, so a schema-valid pack cannot express a demotion to unattended *at all* — that is
+the half a manifest's shape can enforce without seeing the layer beneath it. The relative comparison is
+this compiler's, because tightening is relative to the tier an id already holds and no manifest can see
+that. The compiler re-checks `auto` anyway: it does not depend on the schema having been applied, and
+`doctor` and `compile` have no ordering between them.
+
+**What the check cannot see**, stated because a guarantee is only as good as its boundary: the workspace
+may still override any of this explicitly in its own gate map — it owns its policy — with core's
+`prohibited` entries excepted, since those are grantable only through the evolution gate. Tighten-only
+binds packs, not the layer composing them.
 
 ## The limits, stated where somebody will meet them
 

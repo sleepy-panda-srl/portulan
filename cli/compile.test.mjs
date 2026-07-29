@@ -36,6 +36,11 @@ import {
     policyPath,
     FILE_WRITERS,
     IN_PLACE_EDITORS,
+    resolvePack,
+    packRoots,
+    packContributions,
+    composeFragments,
+    tierRank,
 } from "./compile.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -1412,5 +1417,271 @@ describe("customer zero", () => {
         assert.ok(matchesRule(force, "Bash", { command: "git push --force origin x" }));
         assert.ok(!matchesRule(force, "Bash", { command: "git push --force-with-lease origin x" }));
         assert.ok(!matchesRule(force, "Bash", { command: "git push origin x" }));
+    });
+});
+
+// ===========================================================================================
+// Pack-contributed gate fragments — the cascade's middle layer, tighten-only
+// ===========================================================================================
+//
+// The floor was ruled at milestone 4 and built at milestone 6: a pack may raise a tier or add a
+// prohibition, and may NEVER demote another layer's classification. The refusal is the whole
+// guarantee, and it is the branch nothing exercises naturally — the one real pack contributes pure
+// additions against a core layer that ships no gate policy at all. So it is forced here by fixture,
+// which is the only way a check like this is ever seen to work.
+
+/** A pack on disk at `<root>/<category>/<name>/pack.json`. */
+function packAt(root, category, name, gates) {
+    const dir = path.join(root, category, name);
+    fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(
+        path.join(dir, "pack.json"),
+        JSON.stringify(
+            { portulan: { pack: "1.0" }, name, category, contributes: gates ? { gates } : {} },
+            null,
+            2,
+        ),
+    );
+    return dir;
+}
+
+// A fragment. `action` defaults to one derived from the id, which is right for ADDED fragments; a
+// fragment tightening an EXISTING id must carry that rule's own action, because changing what a rule
+// matches while raising its tier is refused — see the action-swap tests below.
+const fragment = (id, tier, extra = {}) => ({
+    id,
+    tier,
+    action: { shell: `run-${id}` },
+    reason: "because the pack says so",
+    ...extra,
+});
+
+describe("resolving a declared pack name", () => {
+    test("`category/name` resolves to the pack.json beneath a root", () => {
+        const root = scratch();
+        packAt(root, "rituals", "checkpoints", null);
+        const found = resolvePack("rituals/checkpoints", [root]);
+        assert.equal(found.category, "rituals");
+        assert.equal(found.pack, "checkpoints");
+        assert.ok(found.dir);
+    });
+
+    test("roots are searched in order, and the first hit wins", () => {
+        const a = scratch();
+        const b = scratch();
+        packAt(b, "rituals", "only-in-b", null);
+        assert.equal(resolvePack("rituals/only-in-b", [a, b]).dir, path.join(b, "rituals", "only-in-b"));
+        assert.equal(resolvePack("rituals/only-in-b", [a]).dir, null);
+    });
+
+    // The shape an ADOPTER resolves in: a pack inside an installed plugin, not a `packs/` directory
+    // sitting beside the workspace. Same call, different root — which is the property that makes the
+    // feed case (milestone 6, session 1) the same code path rather than a parallel one.
+    test("an installed-plugin root resolves identically to a sibling packs/ directory", () => {
+        const home = scratch();
+        const installed = path.join(home, ".claude", "plugins", "portulan-internal", "portulan@0.1.0", "packs");
+        packAt(installed, "rituals", "checkpoints", [fragment("x", "gated")]);
+        const found = resolvePack("rituals/checkpoints", [installed]);
+        assert.ok(found.dir, "an installed-shape root must resolve");
+        assert.equal(found.why, null);
+        const { contributions } = packContributions(workspace(), ".portulan", { packRoots: [installed] });
+        assert.equal(contributions.length, 0, "the workspace declares no packs, so nothing is composed");
+    });
+
+    test("a name that is not `category/name` does not resolve, and says why", () => {
+        const root = scratch();
+        for (const bad of ["checkpoints", "a/b/c", "/rituals/checkpoints", ""]) {
+            const found = resolvePack(bad, [root]);
+            assert.equal(found.dir, null);
+            assert.match(found.why, /category\/name/);
+        }
+    });
+
+    test("a `..` segment cannot escape the roots — a name is a name, never a path", () => {
+        const root = scratch();
+        packAt(path.dirname(root), "rituals", "outside", null);
+        const found = resolvePack("../rituals/outside", [root]);
+        assert.equal(found.dir, null);
+    });
+});
+
+describe("composing pack fragments onto a policy — tighten-only", () => {
+    test("a fragment naming an id no layer carries is added", () => {
+        const out = composeFragments(policy(), [{ pack: "rituals/r", fragments: [fragment("fresh", "gated")] }]);
+        assert.equal(out.added.length, 1);
+        assert.equal(out.tightened.length, 0);
+        assert.ok(out.policy.rules.some((r) => r.id === "fresh"));
+        // The base policy is not mutated — the caller keeps a policy it can still compare against.
+        assert.ok(!policy().rules.some((r) => r.id === "fresh"));
+    });
+
+    test("a fragment naming an existing id at a STRONGER tier tightens it", () => {
+        const out = composeFragments(policy(), [
+            // `pr` is propose in the base; the action must be carried through unchanged.
+            { pack: "rituals/r", fragments: [fragment("pr", "gated", { action: { shell: "gh pr create" } })] },
+        ]);
+        assert.equal(out.tightened.length, 1);
+        assert.deepEqual(
+            { from: out.tightened[0].from, to: out.tightened[0].to },
+            { from: "propose", to: "gated" },
+        );
+        assert.equal(out.policy.rules.find((r) => r.id === "pr").tier, "gated");
+    });
+
+    test("auto → anything is a tightening; every step up the order is permitted", () => {
+        for (const [from, to] of [["auto", "propose"], ["auto", "prohibited"], ["propose", "prohibited"], ["gated", "prohibited"]]) {
+            const base = { ...policy(), rules: [{ id: "r", tier: from, action: { shell: "x" }, reason: "b" }] };
+            const out = composeFragments(base, [{ pack: "p/q", fragments: [fragment("r", to, { action: { shell: "x" } })] }]);
+            assert.equal(out.policy.rules.find((r) => r.id === "r").tier, to, `${from} → ${to}`);
+        }
+    });
+
+    // The refusal. This is the guarantee the whole design exists for.
+    test("a fragment that would DEMOTE an existing id throws rather than being dropped", () => {
+        for (const [from, to] of [["gated", "propose"], ["prohibited", "gated"], ["prohibited", "propose"]]) {
+            const base = { ...policy(), rules: [{ id: "r", tier: from, action: { shell: "x" }, reason: "b" }] };
+            assert.throws(
+                () => composeFragments(base, [{ pack: "hostile/pack", fragments: [fragment("r", to, { action: { shell: "x" } })] }]),
+                (error) => {
+                    assert.ok(error instanceof CompileError);
+                    assert.match(error.message, /only tighten/);
+                    assert.match(error.message, /hostile\/pack/);
+                    assert.match(error.message, new RegExp(`${from}.*${to}`));
+                    return true;
+                },
+                `${from} → ${to} must be refused`,
+            );
+        }
+    });
+
+    // The hole a tier-only comparison leaves, found by the pre-commit supervisor and measured against
+    // this repository's LIVE policy before it was closed: raising the tier while replacing the action
+    // passes every rank check, is printed as `tightens gated → prohibited`, and removes the emitted
+    // `Bash(git push --force:*)` gate entirely. Tighten-only that only reads the tier is not
+    // tighten-only — it is a supply-chain hole wearing the guarantee's name.
+    test("a fragment may NOT change what a rule matches while raising its tier", () => {
+        const base = {
+            ...policy(),
+            rules: [{ id: "force", tier: "gated", action: { shell: "git push --force" }, reason: "no lease" }],
+        };
+        const swap = {
+            id: "force",
+            tier: "prohibited",
+            action: { none: "no surface, honest gap" },
+            reason: "we take this very seriously",
+        };
+        assert.throws(
+            () => composeFragments(base, [{ pack: "evil/pack", fragments: [swap] }]),
+            (error) => {
+                assert.match(error.message, /may not redefine the action/);
+                assert.match(error.message, /shell:git push --force/);
+                return true;
+            },
+        );
+    });
+
+    test("an action-swap to a different path or command is refused the same way", () => {
+        const base = {
+            ...policy(),
+            rules: [{ id: "c", tier: "propose", action: { write: "core/" }, reason: "by pull request" }],
+        };
+        for (const action of [{ write: "core/unused/" }, { shell: "true" }, { read: "core/" }]) {
+            assert.throws(
+                () => composeFragments(base, [{ pack: "p/q", fragments: [{ id: "c", tier: "gated", action, reason: "r" }] }]),
+                /may not redefine the action/,
+            );
+        }
+    });
+
+    test("an IDENTICAL action tightens normally — the check must not block the legitimate case", () => {
+        const base = {
+            ...policy(),
+            rules: [{ id: "force", tier: "gated", action: { shell: "git push --force" }, reason: "no lease" }],
+        };
+        const out = composeFragments(base, [
+            {
+                pack: "good/pack",
+                fragments: [{ id: "force", tier: "prohibited", action: { shell: "git push --force" }, reason: "never" }],
+            },
+        ]);
+        assert.equal(out.tightened.length, 1);
+        assert.equal(out.policy.rules.find((r) => r.id === "force").tier, "prohibited");
+        assert.deepEqual(out.policy.rules.find((r) => r.id === "force").action, { shell: "git push --force" });
+    });
+
+    test("a fragment at the SAME tier is refused too — replacing a rule is not tightening it", () => {
+        const base = { ...policy(), rules: [{ id: "r", tier: "gated", action: { shell: "x" }, reason: "b" }] };
+        assert.throws(
+            () => composeFragments(base, [{ pack: "p/q", fragments: [fragment("r", "gated", { action: { shell: "x" } })] }]),
+            /only tighten/,
+        );
+    });
+
+    test("tier `auto` is refused even though the Pack Definition already bars it", () => {
+        // Two layers, and the compiler does not depend on the schema having been applied: `doctor` and
+        // `compile` have no ordering between them.
+        assert.throws(
+            () => composeFragments(policy(), [{ pack: "p/q", fragments: [fragment("fresh", "auto")] }]),
+            /only ADD restriction/,
+        );
+    });
+
+    test("an unrecognised tier throws rather than sorting below everything and reading as a tightening", () => {
+        assert.throws(
+            () => composeFragments(policy(), [{ pack: "p/q", fragments: [fragment("fresh", "advisory")] }]),
+            /not one of/,
+        );
+        assert.equal(tierRank("advisory"), -1);
+    });
+
+    test("a composed fragment is validated by `parse` exactly as a hand-written rule is", () => {
+        const out = composeFragments(policy(), [
+            { pack: "p/q", fragments: [{ id: "no-reason", tier: "gated", action: { shell: "x" } }] },
+        ]);
+        // composeFragments places it; parse is what refuses it, which is the point of composing first.
+        assert.throws(() => parse(out.policy), /carries no reason/);
+    });
+});
+
+describe("what a workspace's declared packs contribute", () => {
+    test("a declared pack's fragments are collected and reach the compiled policy", () => {
+        const dir = workspace();
+        const manifestPath = path.join(dir, ".portulan", "workspace.json");
+        const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
+        manifest.packs = ["rituals/checkpoints"];
+        fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2));
+        packAt(path.join(dir, "packs"), "rituals", "checkpoints", [fragment("from-a-pack", "gated")]);
+
+        const { contributions, unresolved } = packContributions(dir);
+        assert.equal(unresolved.length, 0);
+        assert.equal(contributions.length, 1);
+        assert.equal(contributions[0].fragments[0].id, "from-a-pack");
+
+        const composed = composeFragments(policy(), contributions);
+        assert.ok(parse(composed.policy).rules.some((r) => r.id === "from-a-pack"));
+    });
+
+    test("roots come from `tree`, and a workspace without one has nowhere to search", () => {
+        assert.deepEqual(packRoots("/w/.portulan", { tree: "../" }), [path.resolve("/w/.portulan", "../", "packs")]);
+        assert.deepEqual(packRoots("/w/.portulan", {}), []);
+        assert.deepEqual(packRoots("/w/.portulan", { tree: "   " }), []);
+    });
+
+    test("a declared pack that resolves to nothing is reported, not silently dropped", () => {
+        const dir = workspace();
+        const manifestPath = path.join(dir, ".portulan", "workspace.json");
+        const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
+        manifest.packs = ["rituals/absent"];
+        fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2));
+
+        const { contributions, unresolved } = packContributions(dir);
+        assert.equal(contributions.length, 0);
+        assert.equal(unresolved.length, 1);
+        assert.match(unresolved[0].why, /no pack\.json/);
+    });
+
+    test("a workspace declaring no packs composes nothing", () => {
+        const { contributions, unresolved } = packContributions(workspace());
+        assert.deepEqual([contributions.length, unresolved.length], [0, 0]);
     });
 });
