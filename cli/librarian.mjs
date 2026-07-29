@@ -402,6 +402,12 @@ export function passWorkspace(dir, { asOf, reviews } = {}) {
             declared: result.declared,
             drifted: result.findings.some((f) => f.check === "index"),
             series: { memory: of("memory"), handoffs: of("handoffs") },
+            // The store index as the store renders it *now* — not the bytes on disk. Consolidation's
+            // headroom is a pressure signal, and reading the committed file gets the direction wrong
+            // exactly when it matters: a store that just grew has a committed index one line short, so
+            // pressure would be under-reported at the moment it rose. `null` when a title disagreement
+            // stopped the render, which `index.sh` is red for anyway.
+            expected: result.series.memory.expected,
             findings: result.findings.map((f) => f.message),
         };
     } catch (cause) {
@@ -553,7 +559,7 @@ export function passWorkspace(dir, { asOf, reviews } = {}) {
         // pressure is the difference between consolidating on a calendar and consolidating on a red.
         headroom: {
             store: budgetHeadroom(counts.bytes / 1024, workspace.memory?.store?.budget?.kilobytes),
-            index: budgetHeadroom(indexLines(dir, workspace), workspace.memory?.index?.budget?.lines),
+            index: budgetHeadroom(renderedLines(index.expected), workspace.memory?.index?.budget?.lines),
         },
     };
 
@@ -772,25 +778,21 @@ export function budgetHeadroom(actual, budget) {
     return { actual: Number(actual.toFixed(1)), budget, percent: Math.round((actual / budget) * 100) };
 }
 
-/** The committed index's line count, or 0 when a workspace declares none. Read, never generated. */
-function indexLines(dir, workspace) {
-    const declared = workspace.memory?.index?.path;
-    if (!declared) return 0;
-    try {
-        const text = fs.readFileSync(path.resolve(dir, declared), "utf8");
-        return text.split("\n").length - (text.endsWith("\n") ? 1 : 0);
-    } catch {
-        // Absent is not zero-and-fine, but it is `index`'s finding to report and not this pass's to
-        // duplicate: the reindex above already carries it, and a workspace whose index is missing has
-        // that as a red on every pull request. **Zero here OVERSTATES the headroom** — it reads as no
-        // lines used, which is maximum room — so the honest cost of this branch is that it makes an
-        // unreadable index look like an empty one in the pressure report alone. That is the trade, and
-        // the comment said the opposite of it until Copilot caught it on #85 round three: a sentence
-        // asserting a *direction* is the kind that is easy to write backwards and impossible for any
-        // check here to catch. Same class as `c479b0a`, same file, one milestone apart.
-        return 0;
-    }
-}
+/**
+ * Lines in the index a store renders **now** — the number the `lines` budget is denominated in.
+ *
+ * The rendered text, never the committed file. Reading the committed bytes was the first cut and got
+ * the direction wrong exactly where a pressure signal must not: a store that has just grown carries a
+ * committed index one line short, so the headroom would look *larger* the moment it got smaller. Two
+ * of Copilot's rounds on #85 walked into this from opposite ends — one caught a comment describing the
+ * trade backwards, the next caught that the trade should not have been taken at all.
+ *
+ * `null` in, `0` out, and it means *nothing to measure*: either the workspace declares no index, or a
+ * title disagreement stopped the render — and that is `index`'s red on every pull request, not a
+ * number for this report to invent.
+ */
+const renderedLines = (expected) =>
+    expected === null || expected === undefined ? 0 : expected.split("\n").length - (expected.endsWith("\n") ? 1 : 0);
 
 // ===========================================================================================
 // The record the pass writes
