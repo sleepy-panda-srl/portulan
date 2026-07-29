@@ -248,7 +248,8 @@ silently re-attributes everything typed afterwards, which is the failure this me
   removed on 2026-07-28 — so this allowlist is now **narrower than the policy**, refusing a ruleset
   read that plain `gh api` performs unattended. Deliberate: it bounds a token this repository mints,
   and narrower is the safe direction for that. Measured before deciding what to do about it — the
-  installation holds `metadata: read` and `pull_requests: write` and no `administration`, so:
+  installation holds `contents: read` (added 2026-07-29), `metadata: read` and `pull_requests: write`,
+  and no `administration`, so:
 
   | Attempted through `gh-bot` | GitHub |
   |---|---|

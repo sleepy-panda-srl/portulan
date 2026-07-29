@@ -56,7 +56,15 @@ fi
 # the maintainer's own credentials are his to spend. See ../gate-map.md, "The honest holes", hole 6.
 #
 # **What that was actually worth, measured 2026-07-28 rather than argued.** The installation's whole
-# permission set is `{"metadata": "read", "pull_requests": "write"}` — no `administration` — so:
+# permission set is `{"contents": "read", "metadata": "read", "pull_requests": "write"}` — `contents`
+# added 2026-07-29 for the scheduled librarian, per ../proposals/0015 — and no `administration`, so:
+#
+# **The labels endpoint is deliberately not on the allowlist below, and the librarian does not use this
+# wrapper for it.** Adding a label rides the Issues API, which is not pull-request conversation; the
+# workflow mints its own token through ./gh-bot-token.mjs and calls `gh pr edit` there. That the App
+# can label at all was measured 2026-07-29 — added and removed on a closed pull request, then confirmed
+# live on #85, where an App-raised `labeled` event re-ran `pr-labeled` and cleared it. Named here so
+# the absence reads as a scope decision rather than an oversight.
 #
 #   PATCH repos/{owner}/{repo}/rulesets/{id}      403 Resource not accessible by integration
 #   GET   repos/{owner}/{repo}/branches/main/protection
