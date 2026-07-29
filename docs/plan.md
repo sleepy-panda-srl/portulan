@@ -1696,3 +1696,13 @@ _The seam applies here too: no client-identifying references._
   tree — two rounds caught this entry and the README both saying it *asserts* one, and skills declared
   where agents are conventional. · Fidelity: no new checkpoint. Seam scan clean over diff, message and
   branch. Handoff: [`…correctable.md`](../.portulan/handoffs/2026-07-29-the-changelog-becomes-correctable.md).
+- 2026-07-29 · M6 (Sleepy Panda workspace & private feed) · **The cascade gets its middle layer**
+  — [#105](https://github.com/sleepy-panda-works/portulan/pull/105). `spec/pack.schema.json` lands on
+  its own version train; the Workspace Definition did not move and is byte-identical, because no
+  constraint changed and `doctor` refuses a manifest ahead of the schema's own `$id`. The
+  `rituals/checkpoints` pack is authored — three checkpoint skills, a `supervisor` persona, the four
+  verdicts. Declared packs now **resolve** and validate rather than being counted, and gate fragments
+  merge **tighten-only on two axes** — the second found by the pre-commit checkpoint, which deleted a
+  live gate to prove it. Task 0008 fixed first. Resolution **from a feed** is unrun and named. Suite
+  669; eight recipes green. · Fidelity: session-open A-W-A (12), pre-commit REQUEST-CHANGES (2+1), all
+  folded. Seam scan clean. Handoff: [`2026-07-29`](../.portulan/handoffs/2026-07-29-the-cascade-gets-its-middle-layer.md).
