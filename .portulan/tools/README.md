@@ -232,9 +232,12 @@ silently re-attributes everything typed afterwards, which is the failure this me
   for that hour. It is minted per command and never stored, which is the mitigation; there is no way to
   make a credential harmless.
 - **"Conversation and nothing else" is very slightly generous to itself.** Pull-requests write also lets
-  the App *submit a review* — including an approving one. That is inert here because the required approving
-  review count is zero, and it becomes load-bearing the moment a second reviewer exists and that count
-  rises. Worth knowing before it does.
+  the App *submit a review* — including an approving one. Since 2026-07-29 that capability is exercised
+  deliberately: `copilot-review.yml`'s second step submits the round's **derived verdict** as the App —
+  see [`../gate-map.md`](../gate-map.md) → *Merge discipline* — so "inert", which this bullet said until
+  then, is no longer the word. What is still true is that it gates nothing: the required approving review
+  count is zero, so the approval is display, not gate. It becomes load-bearing the moment that count
+  rises, which is priced in the gate map and arrives, if ever, as its own proposal.
 - **Nothing enforces that the agent uses this instead of the maintainer's `gh`.** The wrapper refuses a
   few obviously-wrong subcommands as a guard against habit, but an agent with shell access can bypass it
   trivially. The real enforcement is the App's permission set: that token cannot push, cannot merge, and

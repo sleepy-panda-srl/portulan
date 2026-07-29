@@ -53,6 +53,16 @@
 # green it extracts them into the run's job summary. **It changes no verdict** — a note is not a blocker,
 # and making it one would be a different rule than the one the maintainer gave.
 #
+# ## And since 2026-07-29 the round's outcome is displayed as a review
+#
+# A second step computes what the round amounts to and submits it as a real review by the agent
+# identity: APPROVE on a clean round, APPROVE with the suppressed notes quoted when they are the
+# round's only content — "approve with suggestions" — and nothing when the round raised inline
+# comments, because threads and conversation resolution already carry findings. Copilot itself cannot
+# say any of this: the platform submits every Copilot round as a COMMENT review, by design. The four
+# branches, the staleness sweep, and what the step is NOT live in that step's own comment below; the
+# policy half is `.portulan/gate-map.md` → *Merge discipline*.
+#
 # ## It still fails CLOSED
 #
 # An unreadable API is never taken as an answer — it is retried, and if it is still unreadable when the
@@ -101,7 +111,22 @@ on:
 # not that the token is incapable of more. Said this way because the sentence here used to claim it
 # "grants exactly the review-request call and nothing else", which is a stated limit the platform does
 # not enforce — `a-stated-enforcer-must-be-the-real-one` binds this file's prose as much as its shell.
+#
+# One write this scope still does NOT carry, measured rather than inferred: an APPROVING review.
+# `can_approve_pull_request_reviews` is `false` at organisation and repository (read back 2026-07-29,
+# `gh api repos/{owner}/{repo}/actions/permissions/workflow`), so the verdict step below could not
+# submit its approval on this token even with the write scope — and that refusal standing is a
+# feature: the derived verdict rides an App installation token minted in-step, so the identity that
+# runs unattended jobs and the identity that speaks about code stay distinct.
+#
+# `contents: read` is declared for the checkout the verdict step needs (the token minter lives in the
+# tree), and the declaration is the point rather than the present need: this file's first run under a
+# block that omitted it checked out anyway, because public contents need no scope. What the omission
+# really was is a visibility coupling — a repository made private again would have a review gate that
+# cannot fetch itself, discovered at the worst moment. Named now, while it is free. Raised by Copilot
+# on #95.
 permissions:
+  contents: read
   pull-requests: write
 
 # A push supersedes the run waiting on the commit it replaced. Without this, the old run keeps polling a
@@ -116,7 +141,15 @@ jobs:
     # The wait budget below is 20 minutes; this is the backstop for a job that hangs somewhere else.
     timeout-minutes: 25
     steps:
+      # The tree is needed for exactly one thing: the token minter the verdict step runs
+      # (`.portulan/tools/gh-bot-token.mjs`). Shallow is fine — nothing here reads git history.
+      # Pinned to a full-length SHA because the organisation and this repository both set
+      # `sha_pinning_required: true`; the same pin as the other workflows, so Dependabot bumps them
+      # together.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
       - name: A Copilot review exists for the current head commit
+        id: await
         env:
           GH_TOKEN: ${{ github.token }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
@@ -172,8 +205,13 @@ jobs:
             # budget comparing reviews against the string `false`. `|` is not IFS whitespace, so the
             # empty field survives and the guard fires. Neither a SHA, a login, nor a review state can
             # contain one.
+            # The third field is the author's login, and it exists for the verdict step: an
+            # App-authored pull request can never receive the App's own approval (the platform
+            # refuses self-approval), so the verdict step needs to know who opened this. A ghost
+            # author (`user: null`) arrives as an empty field, which equals no login and skips
+            # nothing it shouldn't.
             if ! pr=$(gh api "repos/${GITHUB_REPOSITORY}/pulls/${PR_NUMBER}" \
-                  --jq '[.head.sha, (.draft|tostring)] | join("|")'); then
+                  --jq '[.head.sha, (.draft|tostring), .user.login] | join("|")'); then
               unread="could not read pull request #${PR_NUMBER}"
             else
               # A here-string, not a here-doc. A here-doc body would have to sit at exactly this
@@ -181,7 +219,7 @@ jobs:
               # column 0. One space either way and, because `|` is not IFS whitespace, `read` keeps
               # the difference: `head` becomes `   <sha>`, matches no `commit_id`, and the job waits
               # out its whole budget over invisible characters. A here-string has no such coupling.
-              IFS='|' read -r head draft <<<"$pr"
+              IFS='|' read -r head draft author <<<"$pr"
               # Not `unread`, and not a retry. The two failures are different in kind and only one of
               # them is worth waiting on: a transport error means the answer is unknown and may arrive
               # on the next poll, but this is a SUCCESSFUL read whose answer is that the pull request
@@ -282,10 +320,17 @@ jobs:
                   # blocker, and making it one would be a different rule than the one the maintainer
                   # gave. What it must not do is go quiet when it could not look — that is the false
                   # green this whole file exists to refuse — so an unreadable body says so.
+                  # `notes_state` rides to the verdict step below, and its four values are the four
+                  # facts the parse can establish — none, present, unparsable, unread. The verdict
+                  # approves on the first two only: the last two are "could not look", and a verdict
+                  # computed over an unread channel is the false green this file refuses.
                   report=''
+                  notes_state=''
+                  notes_file=''
                   if ! body=$(gh api "repos/${GITHUB_REPOSITORY}/pulls/${PR_NUMBER}/reviews/${matched_id}" \
                         --jq '.body // ""'); then
                     report='**Could not read review body `'"${matched_id}"'`.** Sweep `/pulls/'"${PR_NUMBER}"'/reviews` by hand — this section is not evidence of absence.'
+                    notes_state='unread'
                     printf 'suppressed low-confidence notes: COULD NOT READ review %s\n' "$matched_id"
                   else
                     # Copilot wraps them in `<details><summary>Comments suppressed due to low
@@ -315,9 +360,11 @@ jobs:
                     # five, about the very mechanism that surfaced it.
                     if [ -z "${present:-}" ]; then
                       report="No suppressed low-confidence comments on the round for \`${head}\`. Read, not assumed — the section is absent from the body, not merely unfound."
+                      notes_state='none'
                       printf 'suppressed low-confidence notes: none on this round\n'
                     elif [ -z "${count:-}" ] || [ -z "${notes:-}" ]; then
                       report="**Could not parse the suppressed-comments block** on the round for \`${head}\`, though the body contains one. Copilot's markup has probably changed — read the review body by hand and fix the extraction. **This is not a report of zero notes.**"
+                      notes_state='unparsable'
                       printf 'suppressed low-confidence notes: PARSE FAILED — block present, extraction empty\n'
                     else
                       # Built by appending rather than as one multi-line literal: a continuation line
@@ -330,6 +377,12 @@ jobs:
                       report="${report} else in this pull request will ever mention them again."
                       report="${report} Address or refuse each one in a reply, per the standing"
                       report="${report} feedback-loop rule."$'\n\n'"${notes}"
+                      notes_state='present'
+                      # The raw notes, filed for the verdict step: a review body travels badly
+                      # through GITHUB_OUTPUT (a delimiter collision away from truncation), and
+                      # RUNNER_TEMP is shared between steps of one job.
+                      notes_file="$RUNNER_TEMP/copilot-notes.md"
+                      printf '%s\n' "$notes" >"$notes_file"
                       printf 'suppressed low-confidence notes: %s — printed to the job summary\n' "$count"
                     fi
                   fi
@@ -342,6 +395,18 @@ jobs:
                   else
                     printf '%s\n' "$report"
                   fi
+                  # Only this exit sets `round=green`, which is the verdict step's whole gate: the
+                  # draft and SUPERSEDED exits above are 0 too, and neither describes a round the
+                  # verdict may act on.
+                  {
+                    printf 'round=green\n'
+                    printf 'head=%s\n' "$head"
+                    printf 'review_id=%s\n' "$matched_id"
+                    printf 'author=%s\n' "${author:-}"
+                    printf 'notes_state=%s\n' "$notes_state"
+                    printf 'notes_count=%s\n' "${count:-0}"
+                    printf 'notes_file=%s\n' "$notes_file"
+                  } >>"$GITHUB_OUTPUT"
                   exit 0
                 fi
               fi
@@ -474,3 +539,245 @@ jobs:
             attempted) printf 'A re-request was attempted at %ss with no result recorded.\n' "$rerequest_at" ;;
           esac
           exit 1
+
+      # THE VERDICT, CARRIED WHERE THE PLATFORM CAN DISPLAY IT — added 2026-07-29, on the
+      # maintainer's directive that a clean round read as an approval. Copilot cannot say it: the
+      # platform submits every Copilot round as a COMMENT review — never an approval, never a
+      # request for changes — by GitHub's deliberate design, re-checked against the docs the day
+      # this shipped. So the round's outcome is COMPUTED here and submitted as a real review by the
+      # agent identity, which is the identity this repository already uses to talk about code
+      # without writing it (`.portulan/gate-map.md`, "Which identity acts"). Derived, never judged:
+      #
+      #   clean round (no inline comment, no suppressed note)  ->  APPROVE
+      #   suppressed notes only                                ->  APPROVE with the notes quoted in
+      #                                                            the body — "approve with
+      #                                                            suggestions"; the body says the
+      #                                                            approval is NOT their disposal
+      #   any inline comment                                   ->  no review. Threads and
+      #                                                            conversation resolution already
+      #                                                            carry findings; a second gate on
+      #                                                            a gated thing would be machinery
+      #                                                            pretending to be policy. A prior
+      #                                                            same-head approval is dismissed.
+      #   notes present but unread or unparsable               ->  no review, loudly, and a prior
+      #                                                            same-head approval is dismissed
+      #                                                            here too. Approving over an
+      #                                                            unread channel is the false
+      #                                                            green this whole file refuses.
+      #
+      # WHAT THIS IS NOT. Not the merge gate: required approving reviews are 0 and every merge is
+      # the maintainer's; an absent verdict blocks nothing that was open before it. Not required: a
+      # failed submission is a loud warning, never a red — the step above already answered the
+      # question a merge waits on, and a verdict layer that can red a mergeable pull request would
+      # be a new false-red class in the file whose history is the removal of false reds.
+      #
+      # STALENESS. Nothing here relies on `dismiss_stale_reviews`. The head is re-read immediately
+      # before acting and the step aborts as SUPERSEDED if it moved; and before any verdict branch,
+      # on every run that computes one, any App approval naming a commit that is no longer the head
+      # is dismissed — `cancel-in-progress` can land an approval AFTER the push that made it stale,
+      # and an orphaned green chip would satisfy a future required count. A run that never reaches
+      # the sweep (a fork, an App author, an unreadable read, a failed mint) sweeps nothing, which
+      # is why the wording is "every run that computes a verdict" and not "every run".
+      #
+      # SELF-APPROVAL. The platform refuses an author approving its own pull request, and the App
+      # authors the weekly librarian pull request. So App-authored pull requests get no derived
+      # verdict, stated rather than attempted: the maintainer's own review is the verdict there,
+      # which those pull requests already required.
+      #
+      # OBSERVATION (proposal 0007: a watcher earns its place by being watched). Every run prints
+      # which branch it took, to the log and the job summary. The pull request that shipped this
+      # step exercised two branches live, recorded in its body: the findings branch on its first
+      # head, approve-with-suggestions on its second. Each other branch is unvouched until a round
+      # exercises it, and names its test in advance: the plain approve on the first clean round
+      # with no notes, suppression-plus-dismissal on the first finding round that follows an
+      # approval, the self-approval skip on the next librarian pull request, the no-credentials
+      # skip on the first fork. The App dismissing its own approval is likewise unmeasured until it
+      # fires — as is the mid-wait re-request above (#88, merged via #96), which no run had yet
+      # reached when this shipped — and every refusal prints as a warning AND a summary line, never
+      # a log line alone: a warning in a green run's log as the entire notification mechanism is
+      # the incident behind proposal 0006.
+      - name: The round's verdict is carried as a review
+        if: steps.await.outputs.round == 'green'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          AWAITED_HEAD: ${{ steps.await.outputs.head }}
+          REVIEW_ID: ${{ steps.await.outputs.review_id }}
+          AUTHOR: ${{ steps.await.outputs.author }}
+          NOTES_STATE: ${{ steps.await.outputs.notes_state }}
+          NOTES_COUNT: ${{ steps.await.outputs.notes_count }}
+          NOTES_FILE: ${{ steps.await.outputs.notes_file }}
+          PORTULAN_BOT_APP_ID: ${{ secrets.PORTULAN_BOT_APP_ID }}
+          APP_KEY: ${{ secrets.PORTULAN_BOT_PRIVATE_KEY }}
+        run: |
+          set -uo pipefail
+          # Same reason as the step above: reviewer logins contain `[bot]`, which an unquoted
+          # expansion would treat as a character class.
+          set -f
+
+          # Loud or not at all. `say` is the ordinary voice; `warn` is for every skip-by-fault and
+          # every refusal, and both write the job summary as well as the log.
+          say() {
+            printf '%s\n' "$1"
+            if [ -n "${GITHUB_STEP_SUMMARY:-}" ]; then
+              printf '%s\n\n' "$1" >>"$GITHUB_STEP_SUMMARY"
+            fi
+          }
+          warn() {
+            printf '::warning::%s\n' "$1"
+            if [ -n "${GITHUB_STEP_SUMMARY:-}" ]; then
+              printf '**%s**\n\n' "$1" >>"$GITHUB_STEP_SUMMARY"
+            fi
+          }
+
+          if [ -z "${PORTULAN_BOT_APP_ID:-}" ] || [ -z "${APP_KEY:-}" ]; then
+            warn "no verdict: the App credentials are not available to this run (a fork, or secrets unset). The check above already answered the awaited half; only the displayed approval is missing."
+            exit 0
+          fi
+          if [ "$AUTHOR" = 'portulan-agent[bot]' ]; then
+            say "no verdict: this pull request is App-authored and the platform refuses self-approval — the maintainer's own review is the verdict here."
+            exit 0
+          fi
+
+          # The head, re-read at the last moment rather than trusted from the step above: a push
+          # during the gap makes this run's verdict about a tree that is no longer the one merging.
+          # Byte-identical to the read above on purpose — one program, two sites, one set of
+          # fixtures in `.portulan/verify/workflow-filters.mjs`.
+          if ! pr=$(gh api "repos/${GITHUB_REPOSITORY}/pulls/${PR_NUMBER}" \
+                --jq '[.head.sha, (.draft|tostring), .user.login] | join("|")'); then
+            warn "no verdict: could not re-read pull request #${PR_NUMBER} — a verdict must not be computed against a head it could not confirm."
+            exit 0
+          fi
+          IFS='|' read -r head draft author_now <<<"$pr"
+          if [ -z "${head:-}" ] || [ "$head" = "null" ]; then
+            warn "no verdict: the re-read reported no head SHA."
+            exit 0
+          fi
+          if [ "$head" != "$AWAITED_HEAD" ]; then
+            say "SUPERSEDED — the branch moved from ${AWAITED_HEAD} to ${head} after the round was matched; the run for the new head owns the verdict."
+            exit 0
+          fi
+
+          # The round's inline comments, counted. `--paginate` merges REST array pages into ONE
+          # array (measured on this repository, gh 2.96.0), so `length` over the file is the whole
+          # count; `arrays` refuses a non-array body, because an error object would otherwise count
+          # its keys and read as findings — and `-e` turns that refusal into a non-zero exit.
+          if ! gh api --paginate "repos/${GITHUB_REPOSITORY}/pulls/${PR_NUMBER}/reviews/${REVIEW_ID}/comments?per_page=100" \
+                >"$RUNNER_TEMP/round-comments.json"; then
+            warn "no verdict: could not read the round's inline comments — could not look is never nothing wrong."
+            exit 0
+          fi
+          if ! findings=$(jq -e 'arrays | length' "$RUNNER_TEMP/round-comments.json"); then
+            warn "no verdict: the round's comment listing did not parse as an array."
+            exit 0
+          fi
+          # One integer and nothing else. If `--paginate` ever stops merging pages into one array,
+          # `length` prints one figure per page, the numeric test below errors and evaluates false,
+          # and a misparsed listing would read as a clean round — validate the corpus shape, never
+          # the tool.
+          case "$findings" in
+            ''|*[!0-9]*)
+              warn "no verdict: the comment count read as '$(printf '%s' "$findings" | tr '\n' ',')', not one integer — refusing to branch on a misparsed figure."
+              exit 0
+              ;;
+          esac
+
+          # The minter reads a key FILE, not a value — the same handling as librarian.yml, and
+          # RUNNER_TEMP for the same reason: wiped with the runner, unreachable by any commit.
+          key="$RUNNER_TEMP/app.pem"
+          umask 077
+          printf '%s\n' "$APP_KEY" >"$key"
+          export PORTULAN_BOT_PRIVATE_KEY="$key"
+          if ! token=$(node .portulan/tools/gh-bot-token.mjs); then
+            warn "no verdict: could not mint an App installation token."
+            exit 0
+          fi
+
+          # The sweep: every App approval naming a commit that is no longer the head is dismissed,
+          # before any verdict branch, on every run that computes one. GITHUB_TOKEN reads; only the
+          # App token acts. Byte-identical to the reviews read above — one program, two sites, one
+          # set of fixtures.
+          if ! reviews=$(gh api --paginate "repos/${GITHUB_REPOSITORY}/pulls/${PR_NUMBER}/reviews" \
+                --jq '.[] | [.user.login, .commit_id, .state, (.id|tostring)] | join("|")'); then
+            warn "no verdict: could not read the reviews for the stale-approval sweep."
+            exit 0
+          fi
+          approved_here=''
+          while IFS='|' read -r login commit state id; do
+            [ "$login" = 'portulan-agent[bot]' ] || continue
+            [ "$state" = 'APPROVED' ] || continue
+            if [ "$commit" = "$head" ]; then
+              # The newest active approval on this head wins; there should only ever be one.
+              approved_here="$id"
+            elif GH_TOKEN="$token" gh api --silent -X PUT \
+                  "repos/${GITHUB_REPOSITORY}/pulls/${PR_NUMBER}/reviews/${id}/dismissals" \
+                  -f message="Superseded: this derived verdict named ${commit}, and the head is now ${head}. Dismissed by the step that submitted it."; then
+              say "dismissed a stale derived approval (review ${id}, named ${commit})."
+            else
+              warn "could not dismiss stale derived approval ${id} (named ${commit}) — an approval chip may be displayed that no round on the current head earned. Dismiss it by hand."
+            fi
+          done <<<"$reviews"
+
+          if [ "$NOTES_STATE" = 'unread' ] || [ "$NOTES_STATE" = 'unparsable' ]; then
+            # A chip from an earlier round may not outlive a round this step cannot read — the
+            # same-head dismissal lives here as well as under the findings branch, because "no
+            # verdict" and "the old verdict stands" are different sentences.
+            if [ -n "$approved_here" ]; then
+              if GH_TOKEN="$token" gh api --silent -X PUT \
+                    "repos/${GITHUB_REPOSITORY}/pulls/${PR_NUMBER}/reviews/${approved_here}/dismissals" \
+                    -f message="Withdrawn: the newest round on ${head} carries a notes channel this step could not read, so no derived approval may stand on it."; then
+                say "dismissed the derived approval on this head — the newest round's notes channel is ${NOTES_STATE}."
+              else
+                warn "could not dismiss the derived approval ${approved_here} on this head, though the newest round's notes channel is ${NOTES_STATE} — dismiss it by hand."
+              fi
+            fi
+            warn "no verdict: the round's suppressed-notes channel is ${NOTES_STATE} — an approval computed over an unread channel would be a false green. Sweep /pulls/${PR_NUMBER}/reviews by hand."
+            exit 0
+          fi
+
+          if [ "$findings" -gt 0 ]; then
+            if [ -n "$approved_here" ]; then
+              if GH_TOKEN="$token" gh api --silent -X PUT \
+                    "repos/${GITHUB_REPOSITORY}/pulls/${PR_NUMBER}/reviews/${approved_here}/dismissals" \
+                    -f message="Withdrawn: the round on ${head} raised ${findings} inline comment(s) after this approval was derived."; then
+                say "dismissed the derived approval on this head — the newest round raised findings."
+              else
+                warn "could not dismiss the derived approval ${approved_here} on this head, though the newest round raised findings — dismiss it by hand."
+              fi
+            fi
+            say "no verdict: the round on ${head} raised ${findings} inline comment(s) — threads and conversation resolution carry them."
+            exit 0
+          fi
+
+          if [ -n "$approved_here" ]; then
+            say "verdict already displayed: review ${approved_here} approves ${head}. A re-run submits nothing twice."
+            exit 0
+          fi
+
+          if [ "$NOTES_STATE" = 'present' ] && [ ! -s "${NOTES_FILE:-/nonexistent}" ]; then
+            warn "no verdict: the notes were reported present and their file is missing or empty — refusing to approve over notes this step cannot quote."
+            exit 0
+          fi
+
+          # The body composes fixed sentences, derived values, and Copilot's own quoted notes — no
+          # free prose at run time, the same discipline that makes the librarian safe to file on a
+          # cron.
+          run_url="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+          if [ "$NOTES_STATE" = 'present' ]; then
+            body="**Derived verdict: approve, with Copilot's suggestions attached.**"$'\n\n'
+            body="${body}Copilot's round on \`${head}\` raised no inline comment. Its ${NOTES_COUNT} suppressed low-confidence note(s) are quoted below: they carry no thread and no gate, and this approval is not their disposal — each still owes an address-or-refuse reply under the standing feedback-loop rule."$'\n\n'
+            body="${body}$(cat "$NOTES_FILE")"$'\n\n'
+          else
+            body="**Derived verdict: approve.**"$'\n\n'
+            body="${body}Copilot's round on \`${head}\` raised no inline comment and no suppressed low-confidence note."$'\n\n'
+          fi
+          body="${body}Computed from that round by [\`copilot-review.yml\`](${run_url}) and submitted by the agent identity — derived, never judged. The merge gate is unchanged: the maintainer decides."
+
+          if GH_TOKEN="$token" gh api --silent -X POST \
+                "repos/${GITHUB_REPOSITORY}/pulls/${PR_NUMBER}/reviews" \
+                -f commit_id="$head" -f event=APPROVE -f body="$body"; then
+            say "APPROVED — derived from Copilot's round on ${head} (${NOTES_COUNT:-0} suppressed note(s); submitted as the agent identity)."
+          else
+            warn "the verdict could not be submitted — no approval is displayed, and the check above is unaffected. Re-run this job to retry."
+            exit 0
+          fi
