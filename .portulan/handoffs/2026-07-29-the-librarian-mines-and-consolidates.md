@@ -6,7 +6,7 @@
 **State.** The row's three remaining clauses, in one pull request: the handoff-series index
 ([#82](https://github.com/sleepy-panda-works/portulan/issues/82)), mining over both corpora, and
 scheduled consolidation. Spec 2.4 → **2.5**, additive: a top-level `handoffs` object with `index.path`
-and nothing else. Suite 584 → **623**; all eight recipes green, each exit code read. Folded in on the
+and nothing else. Suite 584 → **629**; all eight recipes green, each exit code read. Folded in on the
 maintainer's rulings and the PR #43 sibling rule: [#84](https://github.com/sleepy-panda-works/portulan/issues/84),
 [#83](https://github.com/sleepy-panda-works/portulan/issues/83), and
 [#77](https://github.com/sleepy-panda-works/portulan/issues/77)'s class in two files.
@@ -169,6 +169,22 @@ asserted an index **had been** regenerated, while the regeneration is the last t
 and can fail — and the record cannot know the outcome when it writes it, because it *has* to be written
 first, being itself a member of an indexed series. All three now state what is true at that moment. The
 test asserts the **ordering** rather than the wording, so the next rename cannot quietly re-invert it.
+
+**Round four — no threads, three notes, and the session shipped a fresh instance of the class it spent
+the day fixing.** Two of them found that this handoff said the suite was **623** while the Session log
+entry for the same session said **626** — one number, two carriers, disagreeing with each other and
+both stale against a tree measuring **629**. Written minutes apart, by the session whose diff corrects
+three other instances of exactly this, in the two files that *are* the record. Both now read 629,
+measured rather than remembered.
+
+The lesson is not *check your numbers*, which is advice nothing enforces. It is that **a figure copied
+into a record at the moment of writing is stale from that moment**, and this repository has two records
+per session that both want it. The carriers cannot be collapsed — a handoff and a log entry are read by
+different people at different times — so what would actually hold is a check that reads the suite's own
+output, which is milestone 8's telemetry clause and is named there rather than invented here. The third
+note was the triaged `EACCES` one, re-raised verbatim, which is what
+[`../memory/a-review-loop-needs-a-bound.md`](../memory/a-review-loop-needs-a-bound.md) says a triaged
+note does until the code changes.
 
 **Round three — no threads, two notes, both real, and this is where the bound bit.** Both fix-rounds
 were spent, so [`../memory/a-review-loop-needs-a-bound.md`](../memory/a-review-loop-needs-a-bound.md)
