@@ -685,13 +685,33 @@ export function mineReviews(reviews, { treeRoot }) {
         );
     }
 
-    const findings = reviews.filter((c) => c && !c.in_reply_to_id);
+    // **Every element must be comment-shaped, and an element that is not is a refusal.** The version
+    // this was built against emits one flat array from `--paginate` — measured on gh 2.96.0 over four
+    // pages: 385 objects, one array — but a shape surprise here fails in the worst possible direction.
+    // Fed the array-of-pages `--slurp` produces, the earlier reading counted each inner array as a
+    // finding (an array carries no `in_reply_to_id`) and then skipped it for having no `path`, and
+    // reported *no path has drawn findings on two or more distinct pull requests* over a corpus it had
+    // entirely misread. Refusing on shape closes that whatever any `gh` does, which is the version this
+    // check should be written against. Raised by Copilot on #85 round two, whose stated mechanism does
+    // not hold here and whose hazard does.
+    for (const c of reviews) {
+        if (!c || typeof c !== "object" || Array.isArray(c) || typeof c.pull_request_url !== "string") {
+            throw new LibrarianError(
+                `the review corpus holds an element that is not a review comment (${Array.isArray(c) ? "an array" : typeof c}` +
+                    ", with no `pull_request_url`). One flat array of comments is the shape this reads; an array of " +
+                    "PAGES is what `--slurp` produces and is not it. Refusing rather than reporting *none recurring* " +
+                    "over a corpus it could not read",
+            );
+        }
+    }
+
+    const findings = reviews.filter((c) => !c.in_reply_to_id);
     const replies = reviews.length - findings.length;
 
     const pulls = new Map();
     for (const c of findings) {
         if (!c.path) continue;
-        const pull = String(c.pull_request_url ?? "").split("/").pop();
+        const pull = c.pull_request_url.split("/").pop();
         if (!pulls.has(c.path)) pulls.set(c.path, new Set());
         pulls.get(c.path).add(pull);
     }
@@ -788,8 +808,16 @@ const plural = (n, one, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
  * One function rather than the expression written twice, because it was written twice and both copies
  * branched on the pair-wide flag. A workspace declaring only one of the two indexes then read
  * "current" about the other, which does not exist.
+ *
+ * **It reports drift, never a repair, and the tense is the whole of it.** This record is composed
+ * before `run` regenerates anything — it has to be, since the record is itself a member of one of the
+ * indexed series — and the regeneration can still fail. *Has been regenerated* is therefore a sentence
+ * the artifact cannot know to be true at the moment it writes it, and in a local run or a partial
+ * failure it is a committed record asserting work that did not happen. What is true when this is
+ * written is that the index was out of date **when the pass arrived**, so that is what it says. Raised
+ * by Copilot on #85 round two, in the suppressed channel, against three sites at once.
  */
-const indexState = (s) => (s.declared ? (s.drifted ? "**was out of date and has been regenerated**" : "current") : "none declared");
+const indexState = (s) => (s.declared ? (s.drifted ? "**was out of date when this pass arrived**" : "current") : "none declared");
 
 /** The pass's handoff: what it looked at, what it found, and the date all of that is true as of. */
 export function renderRecord(results, { asOf }) {
@@ -1049,7 +1077,9 @@ export function renderLogEntry(results, { asOf, handoff }) {
             "  `cli/librarian.mjs` rather than by a person: " + `${plural(declared.length, "workspace")} passed,`,
             `  ${stale} stale record(s), ${seals} sealed stamp(s) due for re-validation, ` +
                 `${proposals} proposal(s) nagged` +
-                (reindexed.length ? `, index regenerated for ${reindexed.join(", ")}.` : ", no index drift."),
+                // Drift found, not drift repaired: this entry is appended before `run` regenerates,
+                // and a log line is permanent. Same correction as `indexState`, same round.
+                (reindexed.length ? `, index drift found in ${reindexed.join(", ")}.` : ", no index drift."),
             `  · Mined: ${incidents} incident(s) with nothing pointing back at them, ${paths} path(s) drawing`,
             `  repeat review findings, ${shared} record group(s) citing one incident.`,
             "  · No supervisor checkpoint: a scheduled pass makes no decision for one to grade.",
@@ -1170,7 +1200,9 @@ export function run(argv, say = console.log) {
                     `${result.seals.filter((s) => s.due).length} seal(s) due, ` +
                     `${result.proposals?.filter((p) => p.due).length ?? 0} proposal(s) nagged, ` +
                     `${result.mining.incidents.candidates.length} incident(s) to codify` +
-                    (result.index.drifted ? ", index regenerated" : ""),
+                    // The regeneration is the last thing this command does, so at this point drift is
+                    // all that is known. The line that says it was regenerated is printed below, after.
+                    (result.index.drifted ? ", index drift found" : ""),
             );
         } catch (error) {
             if (!(error instanceof LibrarianError)) throw error;

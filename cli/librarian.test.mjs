@@ -681,7 +681,17 @@ describe("run", () => {
         );
         const out = say();
         assert.equal(run(["--as-of", "2026-06-15", "--write", path.join(dir, ".portulan")], out), 0);
-        assert.match(out.lines.join("\n"), /index regenerated/);
+        const printed = out.lines.join("\n");
+        // **Two sentences now, and the order is the assertion.** The pass's summary is printed before
+        // anything is regenerated, so it can only report *drift found*; the regeneration line comes
+        // after the work it describes. Claiming the repair in the earlier line is what Copilot caught
+        // on #85 round two — a record asserting work that had not happened yet and could still fail.
+        assert.match(printed, /index drift found/);
+        assert.match(printed, /regenerated scratch's index/);
+        assert.ok(
+            printed.indexOf("index drift found") < printed.indexOf("regenerated scratch's index"),
+            "the claim of a repair must come after the repair, not before it",
+        );
     });
 
     test("a workspace with no proposals slot does not crash the summary", () => {
@@ -1287,5 +1297,52 @@ describe("the report never claims an index is current when none is declared", ()
         const series = record.split("\n").find((l) => l.startsWith("**Handoff series.**"));
         assert.match(series, /Index: none declared/);
         assert.doesNotMatch(series, /Index: current/);
+    });
+});
+
+describe("a review corpus of the wrong shape is refused, never half-read", () => {
+    // Copilot, #85 round two, whose stated mechanism is **wrong for this gh** and whose hazard is
+    // real. It claimed `gh api --paginate` does not emit one JSON array without `--slurp`. Measured on
+    // gh 2.96.0 against this repository's four pages: plain `--paginate` gives **one flat array of
+    // 385 objects**, and `--slurp` gives **four nested arrays** — so the suggested remedy is what
+    // would break the parser, not what would save it.
+    //
+    // What is real is what the pass did with such a corpus: every inner array counted as a finding
+    // (an array has no `in_reply_to_id`) and then had no `path`, so it was skipped — and the report
+    // said *no path has drawn findings on two or more distinct pull requests* over a corpus it had
+    // entirely misread. A false green produced by a shape nobody validated, which is worth closing
+    // whatever any gh version does, because it closes the class rather than the version.
+    test("an array of pages is refused rather than read as an array of comments", () => {
+        const dir = repo({ ".portulan/memory/a-fact.md": [linked(), "2026-06-01"] }, { workspace: MANIFEST({ tree: "../", librarian: { staleness: STALENESS } }) });
+        const slurped = [[{ pull_request_url: "x/1", path: "a.md", in_reply_to_id: null }]];
+        assert.throws(
+            () => passWorkspace(path.join(dir, ".portulan"), { asOf: "2026-06-15", reviews: slurped }),
+            (e) => {
+                assert.ok(e instanceof LibrarianError);
+                assert.match(e.message, /not a review comment/i);
+                return true;
+            },
+        );
+    });
+
+    test("an element with no `pull_request_url` is refused, not counted against an empty key", () => {
+        const dir = repo({ ".portulan/memory/a-fact.md": [linked(), "2026-06-01"] }, { workspace: MANIFEST({ tree: "../", librarian: { staleness: STALENESS } }) });
+        assert.throws(
+            () => passWorkspace(path.join(dir, ".portulan"), { asOf: "2026-06-15", reviews: [{ path: "a.md" }] }),
+            LibrarianError,
+        );
+    });
+
+    test("the real shape still passes, so the refusal is not a blanket one", () => {
+        const dir = repo(
+            { ".portulan/memory/a-fact.md": [linked(), "2026-06-01"], "a.md": ["x\n", "2026-06-01"] },
+            { workspace: MANIFEST({ tree: "../", librarian: { staleness: STALENESS } }) },
+        );
+        const real = [
+            { pull_request_url: "https://api.github.com/repos/o/r/pulls/1", path: "a.md", in_reply_to_id: null },
+            { pull_request_url: "https://api.github.com/repos/o/r/pulls/2", path: "a.md", in_reply_to_id: null },
+        ];
+        const result = passWorkspace(path.join(dir, ".portulan"), { asOf: "2026-06-15", reviews: real });
+        assert.deepEqual(result.mining.reviews.paths.map((p) => p.path), ["a.md"]);
     });
 });
