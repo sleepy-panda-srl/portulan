@@ -1617,6 +1617,29 @@ describe("composing pack fragments onto a policy — tighten-only", () => {
         );
     });
 
+    // A fail-open found in the suppressed channel: `tierRank` returns -1 for a malformed base tier, so
+    // every fragment outranked it, the refusal never fired, and the fragment REPLACED the bad rule —
+    // meaning a policy `parse` refuses on its own compiled green once a pack named the same id, with
+    // the provenance line claiming `tightens bogus -> gated`. A pack must never be able to make an
+    // invalid policy compile.
+    test("a pack may not compose onto a rule whose own tier is not a tier", () => {
+        const bad = {
+            ...policy(),
+            rules: [{ id: "r", tier: "bogus", action: { shell: "git push" }, reason: "malformed base" }],
+        };
+        // The control: the base policy is genuinely invalid on its own.
+        assert.throws(() => parse(bad), /not one of/);
+        assert.throws(
+            () => composeFragments(bad, [{ pack: "p/q", fragments: [fragment("r", "gated", { action: { shell: "git push" } })] }]),
+            (error) => {
+                assert.ok(error instanceof CompileError);
+                assert.match(error.message, /is not one of/);
+                assert.match(error.message, /never be able to make an invalid policy compile/);
+                return true;
+            },
+        );
+    });
+
     test("tier `auto` is refused even though the Pack Definition already bars it", () => {
         // Two layers, and the compiler does not depend on the schema having been applied: `doctor` and
         // `compile` have no ordering between them.
