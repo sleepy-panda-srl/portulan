@@ -59,7 +59,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 
-import { inspect as inspectIndex, IndexError, recordType, dateOf } from "./index.mjs";
+import { inspect as inspectIndex, IndexError, recordType, dateOf, isInside } from "./index.mjs";
 import { parseProvenance } from "./doctor.mjs";
 
 /** Windows separators never reach a Markdown link: a backslash there is a filename character. */
@@ -728,9 +728,22 @@ export function mineReviews(reviews, { treeRoot }) {
     // Review history is append-only, so without this the pass nags weekly and forever about a file
     // nobody can open, and no action anyone takes will ever clear it. The count of what was dropped
     // rides along, because *some were ignored* and *there were none* must not print the same way.
+    //
+    // **Contained before it is probed**, and the containment is not belt-and-braces: a review comment's
+    // `path` is external data, and `path.resolve` walks straight out of the tree on an absolute path or
+    // a `../` chain. Measured on #85 round seven before it was closed — `/etc/hosts` came back as *still
+    // in the tree*, because it resolves to itself and exists; the `../` spellings were dropped only by
+    // the accident of their targets not existing on that machine. So the pass would have stat'd the
+    // runner's filesystem on a corpus it does not author, unattended, weekly. `isInside` is this
+    // repository's one implementation of the question, extracted after two copies of it drifted into the
+    // identical fail-open — a third copy here would have been that mistake a third time.
+    const inTree = (p) => {
+        const full = path.resolve(treeRoot, p);
+        return isInside(treeRoot, full) && fs.existsSync(full);
+    };
     const recurring = [...pulls.entries()].map(([p, s]) => ({ path: p, pulls: s.size })).filter((p) => p.pulls >= 2);
     const paths = recurring
-        .filter((p) => fs.existsSync(path.resolve(treeRoot, p.path)))
+        .filter((p) => inTree(p.path))
         .sort((a, b) => b.pulls - a.pulls || a.path.localeCompare(b.path));
 
     return { comments: reviews.length, findings: findings.length, replies, gone: recurring.length - paths.length, paths };

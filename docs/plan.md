@@ -1613,7 +1613,7 @@ _The seam applies here too: no client-identifying references._
   mining incidents and pull-request reviews into **candidates** — the maintainer's ruling, since a
   generated proposal could never name the pull request that filed it — and consolidation as distance
   plus a question. Spec 2.4 → **2.5**: `handoffs.index.path`, no budget, and the absence is enforced by
-  the schema rather than only argued. Suite 584 → **629**; eight recipes green. #84, #83 and #77's class
+  the schema rather than only argued. Suite 584 → **635**; eight recipes green. #84, #83 and #77's class
   folded in. · Fidelity: session-open APPROVE-WITH-ADJUSTMENTS (12) — it measured the mining signal and
   narrowed the claim rather than the query — and pre-commit (5), one of them work the pass would have
   lost at a date boundary. Seam scan clean. Handoff: [`…consolidates.md`](../.portulan/handoffs/2026-07-29-the-librarian-mines-and-consolidates.md).
