@@ -431,27 +431,33 @@ export function inspect(rawRoot) {
             fail("skills", `plugin.json skills path ${path.relative(root, skillRoot)} is not a directory`);
             continue;
         }
-        // A skills path may point straight at one skill (the `"./"` form) or at a directory of them.
-        if (fs.existsSync(path.join(skillRoot, "SKILL.md"))) {
-            skillDirs.add(skillRoot);
+        // A skills path may point straight at one skill (the `"./"` form), at a directory of them, or
+        // at a pack-shaped tree with them nested deeper — see expandDeclaredSkillRoot below.
+        const expanded = expandDeclaredSkillRoot(skillRoot);
+        if (expanded.unreadable !== undefined) {
+            fail("skills", `${path.relative(root, skillRoot)} could not be read — ${expanded.unreadable}`);
             continue;
         }
-        let entries;
-        try {
-            entries = fs.readdirSync(skillRoot, { withFileTypes: true });
-        } catch (error) {
-            fail("skills", `${path.relative(root, skillRoot)} could not be read — ${error.code ?? error.message}`);
-            continue;
-        }
-        const children = entries.filter((e) => e.isDirectory());
-        if (children.length === 0) {
+        if (expanded.empty) {
             fail(
                 "skills",
                 `plugin.json declares ${path.relative(root, skillRoot)} but it contains no skill`,
             );
             continue;
         }
-        for (const child of children) skillDirs.add(path.join(skillRoot, child.name));
+        for (const dir of expanded.found) skillDirs.add(dir);
+        for (const dir of expanded.barren) {
+            fail("skills", `${path.relative(root, dir)}/ has no SKILL.md`);
+        }
+        for (const dir of expanded.truncated) {
+            fail(
+                "skills",
+                `${path.relative(root, dir)}/ has subdirectories this validator did not search — the ` +
+                    `walk below a declared skills path stops ${MAX_DECLARED_SKILL_DEPTH} levels down. ` +
+                    `Declare the deeper directory as its own skills path, or flatten the tree; what ` +
+                    `this check must never do is go green over what it could not reach`,
+            );
+        }
     }
 
     for (const dir of [...skillDirs].sort()) {
@@ -672,6 +678,89 @@ function walkForSkills(root, dir = root, depth = 0, found = []) {
         walkForSkills(root, path.join(dir, entry.name), depth + 1, found);
     }
     return found;
+}
+
+// The depth a DECLARED skills root is searched to, counted from the root itself. Three is what the
+// pack shape needs — `<pack>/skills/<skill>/SKILL.md` — and it is deliberately its own bound rather
+// than MAX_WALK_DEPTH, which governs the undeclared-skill sweep over a whole tree. One is a search of
+// something the manifest pointed at; the other is a sweep of everything it did not.
+const MAX_DECLARED_SKILL_DEPTH = 3;
+
+/**
+ * Expand one DECLARED skills root into the skill directories beneath it.
+ *
+ * For one milestone this resolved a declared root exactly two ways — the root IS one skill (it holds
+ * `SKILL.md`), or its IMMEDIATE children are — and nothing deeper. A pack shipping
+ * `<root>/<pack>/skills/<skill>/SKILL.md` therefore resolved `<root>/<pack>` as a skill directory and
+ * failed it with `has no SKILL.md`, which blocked packs from carrying skills — most of what a pack is
+ * for (../.portulan/tasks/0008-a-declared-skills-path-sees-one-level-down.md).
+ *
+ * Three results, because the fix must not buy depth with silence:
+ *   `found`     — directories holding a SKILL.md, at any depth within the bound.
+ *   `barren`    — a directory under the root that is not a skill and holds none beneath it. This is
+ *                 the real failure the one-level version already caught, kept with its own wording.
+ *   `truncated` — where the bound stopped the search with subdirectories still unlooked-at. Reported
+ *                 rather than passed over: a check that goes green on what it could not reach is the
+ *                 `docs.sh` `map` hole and the `git ls-files` precondition, a third time.
+ *
+ * A skill directory is a leaf — skills do not nest inside skills — so the walk stops descending the
+ * moment it finds one. Symlinked directories are not descended, which is `Dirent.isDirectory()`'s
+ * own behaviour rather than a new rule here; the escape refusal on the declared path itself is
+ * `escapes()` and does not loosen.
+ */
+function expandDeclaredSkillRoot(skillRoot) {
+    const found = [];
+    const truncated = [];
+    const barren = [];
+
+    const walk = (dir, depth) => {
+        if (fs.existsSync(path.join(dir, "SKILL.md"))) {
+            found.push(dir);
+            return true;
+        }
+        let entries;
+        try {
+            entries = fs.readdirSync(dir, { withFileTypes: true });
+        } catch {
+            // An unreadable subtree below a declared root is not a verdict about packaging; the
+            // declared path's own readability is judged by the caller, which reports it.
+            return false;
+        }
+        const children = entries.filter((e) => e.isDirectory() && !SKIP_DIRS.has(e.name));
+        if (children.length === 0) return false;
+        if (depth >= MAX_DECLARED_SKILL_DEPTH) {
+            truncated.push(dir);
+            return false;
+        }
+        let any = false;
+        for (const child of children) {
+            if (walk(path.join(dir, child.name), depth + 1)) any = true;
+        }
+        return any;
+    };
+
+    // The `"./"` form: the root is itself one skill. Checked before the expansion so a root holding
+    // both a SKILL.md and subdirectories stays one skill rather than becoming several.
+    if (fs.existsSync(path.join(skillRoot, "SKILL.md"))) {
+        return { found: [skillRoot], barren, truncated, empty: false };
+    }
+
+    let entries;
+    try {
+        entries = fs.readdirSync(skillRoot, { withFileTypes: true });
+    } catch (error) {
+        return { unreadable: error.code ?? error.message };
+    }
+    const children = entries.filter((e) => e.isDirectory() && !SKIP_DIRS.has(e.name));
+    if (children.length === 0) return { found, barren, truncated, empty: true };
+
+    // Attribution is per immediate child rather than per branch: a barren branch reported at every
+    // level of itself is one defect wearing three failures.
+    for (const child of children) {
+        const dir = path.join(skillRoot, child.name);
+        if (!walk(dir, 1)) barren.push(dir);
+    }
+    return { found, barren, truncated, empty: false };
 }
 
 // ===========================================================================================

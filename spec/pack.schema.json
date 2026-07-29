@@ -1,0 +1,201 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://portulan.dev/spec/pack/1.0/pack.schema.json",
+  "title": "Portulan Pack Definition v1.0",
+  "description": "The manifest at the root of a pack. A pack is the cascade's middle layer — core < pack < workspace < repo card < task — and this manifest declares what it contributes to that cascade: skills, personas, verify recipes, and gate-policy fragments. It is an index, not a container, for the same reason the Workspace Definition is: the content lives in the files the paths point at. Written in the same deliberately small subset of JSON Schema 2020-12 — see spec/README.md for the subset, for what validates this, and for why a pack carries its own version train rather than the Workspace Definition's.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["portulan", "name", "category", "contributes"],
+
+  "properties": {
+    "portulan": {
+      "description": "Version block. `pack` is the Pack Definition version this manifest is written against. It is deliberately NOT the Workspace Definition version: a pack and a workspace are different artifacts validated against different contracts, and one number governing both would make a bump in either mean a change in the other. `doctor` refuses a manifest naming a version ahead of the one it implements rather than grading it against a contract it was not written for.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["pack"],
+      "properties": {
+        "pack": {
+          "description": "Pack Definition version, MAJOR.MINOR. A MAJOR bump means a migration exists.",
+          "type": "string",
+          "pattern": "^[0-9]+\\.[0-9]+$"
+        },
+        "version": {
+          "description": "Optional version of this pack's own content, SemVer. Distinct from `pack` above, which versions the contract. A pack shipped through a feed is pinned by consumers on this, and it moves independently of the engine — the plugin-tag namespacing measured in .portulan/handoffs/2026-07-26-the-tag-and-the-install.md becomes the right shape on the day this field first diverges from the engine's own version.",
+          "type": "string",
+          "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+        }
+      }
+    },
+
+    "name": {
+      "description": "Stable identifier for this pack, unique within its category. The canonical reference a workspace's `packs` array carries is `category/name` — this manifest owns that form, and resolution maps it to an installed pack. The workspace schema deliberately keeps `packs` items as free strings: tightening them to this shape would be a constraint a manifest could newly fail, which is a MAJOR bump on the other train.",
+      "$ref": "#/$defs/slug"
+    },
+
+    "category": {
+      "description": "Which of the three pack kinds this is, spelled as the directory that holds it so the canonical `category/name` reference and the tree agree by construction. The distinction is not decorative: a stack pack profiles a language or framework, a tool pack integrates a tool or MCP server and ships the gate classification for each, and a ritual pack carries a repeatable procedure that composes onto the loop.",
+      "enum": ["stacks", "tools", "rituals"]
+    },
+
+    "summary": {
+      "description": "One line an agent can read before loading anything else.",
+      "type": "string",
+      "minLength": 1
+    },
+
+    "doc": {
+      "description": "Where this pack's content, rationale and honest limits are written up. The `why` half, kept in Markdown, in the same split the Workspace Definition uses for `gates` and `slots.gates`: this manifest is the machine-readable index, and the prose it points at is what a human reads.",
+      "$ref": "#/$defs/filePath"
+    },
+
+    "contributes": {
+      "description": "What this pack adds to the cascade. Every key is optional and an absent key contributes nothing of that kind — but the object itself is required, because a pack contributing nothing is a plugin, not a pack, and the manifest should say which it is rather than leaving it to be inferred from four absences.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "skills": {
+          "description": "Skill roots this pack ships, each a directory that either IS one skill (holding SKILL.md) or CONTAINS them. Resolution walks to a bounded depth and reports when it stops rather than reporting green over what it did not look at — see .portulan/tasks/0008-a-declared-skills-path-sees-one-level-down.md, the defect that made the bound explicit.",
+          "type": "array",
+          "uniqueItems": true,
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/dirPath" }
+        },
+        "personas": {
+          "description": "Persona files this pack ships, each carrying the five-part contract core/personas/README.md fixes: a `tools:` allow-list, a charter, autonomy reach in tier vocabulary, a memory scope, and a read/write posture. The memory scope is the persona's own field and is deliberately not duplicated here — a pack distributes per-persona material its adopter does not own, and where that material's scope is declared is a question core/operating/memory.md holds open rather than one this schema should pre-empt.",
+          "type": "array",
+          "uniqueItems": true,
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/filePath" }
+        },
+        "verify": {
+          "description": "Verify recipes this pack offers. DECLARED, not merged: nothing today folds these into a workspace's recipe set, and a workspace runs the recipes its own manifest declares. Said here rather than left to be discovered, because a recipe that looks composed and is not would be a green covering something nobody ran.",
+          "type": "array",
+          "uniqueItems": true,
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/recipe" }
+        },
+        "gates": {
+          "description": "Gate-policy fragments — the cascade's missing middle, and the contribution that needs care, because an installed pack reaching the gate map means a dependency can change what an agent is allowed to do. The floor is the maintainer's ruling of 2026-07-27 recorded in .portulan/proposals/0010-prohibited-as-a-fourth-universal-tier.md: a pack may raise a tier or add a prohibition, and may NEVER demote another layer's classification. Enforcement is split between this schema and the merge step, and the split is stated rather than implied — see `$defs/fragment`.",
+          "type": "array",
+          "uniqueItems": true,
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/fragment" }
+        }
+      }
+    }
+  },
+
+  "$defs": {
+    "slug": {
+      "description": "A lowercase hyphenated identifier. Defined once and referenced everywhere an id is used or named, so the constraint cannot drift between the field that declares an id and the field that points at one.",
+      "type": "string",
+      "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
+    },
+
+    "filePath": {
+      "description": "A relative path to a file inside this pack, resolved from the PACK root. The leading character may not be `/` (no absolute paths), `:` is excluded (no URLs), and `.` is excluded so that neither `./` nor `../` can begin a value. That last exclusion is where this differs from the Workspace Definition's equivalent, and it is deliberate: a workspace may legitimately point at a constitution that lives beside it, but a pack reaching outside its own directory is reaching into the adopter's tree, which is the one direction the cascade does not run. Barring it in the pattern makes the escape unexpressible rather than merely discouraged. Must not end in `/`.",
+      "type": "string",
+      "pattern": "^[^#?:/.]([^#?:]*[^#?:/])?$",
+      "minLength": 1
+    },
+
+    "dirPath": {
+      "description": "A relative path to a directory inside this pack — the same rules as `filePath`, and must end in `/`, so the intent is legible without touching the filesystem.",
+      "type": "string",
+      "pattern": "^[^#?:/.][^#?:]*/$",
+      "minLength": 2
+    },
+
+    "recipe": {
+      "description": "One verify recipe: what to run, and what it needs in order to run at all. The same shape the Workspace Definition uses, repeated rather than shared because the two schemas are on separate version trains and a shared definition would couple their bumps — which is the coupling this split exists to avoid.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "run"],
+      "properties": {
+        "id": { "$ref": "#/$defs/slug" },
+        "run": {
+          "description": "The command, as it would be typed from the repository root.",
+          "type": "string",
+          "minLength": 1
+        },
+        "requires": {
+          "description": "The tools the recipe needs. Declared rather than discovered, because a recipe that cannot run must be distinguishable from one that ran and failed — the difference between exit 2 and exit 1.",
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "doc": {
+          "description": "Where the recipe's checks and their known limits are written up. Resolved from the PACK root, like every other path in this manifest — unlike the sibling `run`, which is a command line and is therefore written as it would be typed from the repository root.",
+          "$ref": "#/$defs/filePath"
+        }
+      }
+    },
+
+    "fragment": {
+      "description": "One gate-policy fragment: an id-addressed rule this pack contributes, in the same shape .portulan/gates.json already uses, because that policy was deliberately modelled as a list of id-addressed rules with no dependence on being the only source so that a merge step would be an addition rather than a redesign (.portulan/compile/README.md). WHERE THE TIGHTEN-ONLY RULE IS ENFORCED, stated plainly because a schema implying a guarantee it does not carry is the defect this project names most often: tightening is relative to what the same id already holds in the layer beneath, and a manifest cannot see that layer. So the shape forecloses what shape can — `auto` is not in the tier enum below, which makes demotion-to-unattended unexpressible in a pack at all — and the remaining comparisons are the merge step's. TIGHTENING HAS TWO AXES AND THE MERGE CHECKS BOTH. The tier may only rise. The `action` may not change at all: a fragment naming an existing id must carry that rule's action unaltered, because raising the tier while replacing the matcher passes every tier comparison, is reported as a tightening, and removes the gate — measured, on a real policy, as a fragment that took `git push --force` from gated to prohibited and deleted the emitted gate in the same move. A pack that wants to gate a different action contributes a NEW id; changing what an existing rule matches belongs to the workspace, which owns its policy. Neither layer is sufficient alone, and a release that consumes fragments without the merge's refusals would be trusting what it claims to check.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "tier", "action", "reason"],
+      "properties": {
+        "id": {
+          "description": "The rule this fragment declares or tightens. A fragment naming an id no lower layer carries is a pure addition; one naming an existing id is a tightening, and is refused at the merge unless its tier is stronger AND its action is identical. Ids are greppable by design and ship in core, so knowing one is not a barrier — which is exactly why the action must be preserved rather than trusted.",
+          "$ref": "#/$defs/slug"
+        },
+        "tier": {
+          "description": "The tier this fragment asserts. THREE values where core names four: `auto` is deliberately absent. A pack may only ever add restriction, and `auto` is the absence of restriction — it compiles to nothing (the compiler emits `ask` and `deny`, never `allow`), so a pack declaring it could only be attempting to demote an id a lower layer restricts. Barring it here is the one part of the rule a manifest's shape can enforce on its own, and it costs a pack nothing it should want: a pack with no opinion about an action simply omits the fragment.",
+          "enum": ["propose", "gated", "prohibited"]
+        },
+        "action": {
+          "description": "What the rule matches, in the workspace's own action vocabulary rather than any host's — the same four kinds .portulan/gates.json uses. `none` is the honest one: an action with no tool-level surface, named so the gap is visible instead of implied by a sentence covering more than its matcher does. Exactly one kind per fragment: the branches below each close themselves, which is what makes `{\"write\": …, \"shell\": …}` fail rather than silently matching on whichever the compiler happened to read first.",
+          "type": "object",
+          "oneOf": [
+            {
+              "description": "A path this rule protects from writes.",
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["write"],
+              "properties": { "write": { "$ref": "#/$defs/actionPath" } }
+            },
+            {
+              "description": "A path this rule governs reads of.",
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["read"],
+              "properties": { "read": { "$ref": "#/$defs/actionPath" } }
+            },
+            {
+              "description": "A command prefix, matched as a shell command rather than as a tool name.",
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["shell"],
+              "properties": {
+                "shell": { "type": "string", "minLength": 1 }
+              }
+            },
+            {
+              "description": "No tool-level surface. The value is the explanation of why, which is the whole point of the kind: a matcher pretending to cover this would be worse than the honest gap.",
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["none"],
+              "properties": {
+                "none": { "type": "string", "minLength": 1 }
+              }
+            }
+          ]
+        },
+        "reason": {
+          "description": "Why the rule exists, in the pack author's own words, and what the agent should do instead. Required rather than optional because a rule with no rationale is taste, and because this sentence is what an adopter reads when a pack they installed refuses something — a refusal whose reason is a pack name is indistinguishable from a bug.",
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+
+    "actionPath": {
+      "description": "A path a gate rule matches, resolved from the ADOPTER's repository root rather than from the pack — a pack gating its own directory would be gating files nobody edits. Same no-absolute, no-URL rules as `path`, and `../` is excluded for the same reason.",
+      "type": "string",
+      "pattern": "^[^#?:/][^#?:]*$",
+      "minLength": 1
+    }
+  }
+}

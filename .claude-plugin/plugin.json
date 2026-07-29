@@ -19,6 +19,7 @@
   ],
   "skills": [
     "./core/skills/",
-    "./plugin/skills/"
+    "./plugin/skills/",
+    "./packs/rituals/"
   ]
 }

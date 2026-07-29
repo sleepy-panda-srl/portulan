@@ -1,12 +1,16 @@
 # spec/
 
-The **Workspace Definition** — the contract between the engine and a team's own layer. `core/` is
-mechanism and is identical for everyone; a workspace is the half that is theirs, and this directory is
-what makes that half machine-readable instead of a folder convention.
+The contracts between the engine and the layers above it. `core/` is mechanism and is identical for
+everyone; a workspace is the half that is theirs, and a pack is the composable middle. This directory is
+what makes both machine-readable instead of a folder convention.
 
-- [`workspace.schema.json`](workspace.schema.json) — the manifest schema, normative.
-- [`slots.md`](slots.md) — every slot: what it holds, why it exists, where it was derived from, and what
-  `doctor` checks about it. The rationale lives there; this file is the orientation.
+- [`workspace.schema.json`](workspace.schema.json) — the **Workspace Definition**: the manifest at a
+  workspace root. Normative.
+- [`pack.schema.json`](pack.schema.json) — the **Pack Definition**: the manifest at a pack root, added at
+  milestone 6, declaring what the pack contributes to the cascade. Normative, and on **its own version
+  train** — see [Versioning](#versioning-and-migrations).
+- [`slots.md`](slots.md) — every workspace slot: what it holds, why it exists, where it was derived from,
+  and what `doctor` checks about it. The rationale lives there; this file is the orientation.
 
 ## The manifest is an index, not a container
 
@@ -104,7 +108,19 @@ product" are different claims, and only the first is true.
 
 ## Versioning and migrations
 
-`portulan.spec` is `MAJOR.MINOR`, and the current version is **2.5**.
+**Two schemas, two version trains.** They are separate because they version different contracts, and one
+number governing both would make a bump in either mean a change in the other:
+
+| Schema | Manifest key | Current | What it governs |
+|---|---|---|---|
+| [`workspace.schema.json`](workspace.schema.json) | `portulan.spec` | **2.5** | the Workspace Definition — the manifest at a workspace root |
+| [`pack.schema.json`](pack.schema.json) | `portulan.pack` | **1.0** | the Pack Definition — the manifest at a pack root, added at milestone 6 |
+
+The rules below apply to each train independently. `portulan.spec` is `MAJOR.MINOR`, and the current
+Workspace Definition version is **2.5** — unchanged by the Pack Definition's arrival, because
+`workspace.schema.json` is byte-identical across that change: `packs` already existed as an array of
+strings and was deliberately left that way, since tightening its items to the canonical `category/name`
+form would be a constraint an existing manifest could newly fail, which is a MAJOR.
 
 _(This line read `2.0` for two MINOR bumps after the schema had moved past it — the version of the
 spec, stated wrongly in the spec's own README, while the `$id` beside it was right. It is recorded
@@ -162,6 +178,10 @@ workspace with no constitution slot and a green report.
 |---|---|---|
 | Every `.json` file parses | [`../.portulan/verify/json.sh`](../.portulan/verify/json.sh) | **Built.** Well-formedness only — it does not read the schema. |
 | Manifest conforms to the schema | [`../cli/doctor.mjs`](../cli/doctor.mjs) | **Built.** Names the violated constraint and its location. |
+| A declared pack **resolves** | `doctor` | **Built** (milestone 6). Roots are derived from `tree`; a workspace with no `tree` has its packs reported *unverifiable* rather than failed. Resolution **from a feed** is not demonstrated — the resolver takes roots as an argument so that case is the same code path, but it has not been run that way. |
+| A pack manifest conforms to the Pack Definition | `doctor` | **Built** (milestone 6). Same validator, same subset, a different schema and version train. |
+| Pack gate fragments merge **tighten-only** | [`../cli/compile.mjs`](../cli/compile.mjs) | **Built** (milestone 6). Two layers and two axes: `auto` is absent from the Pack Definition's tier enum, so a demotion to unattended is unexpressible; the comparison against the composed base is the compiler's, and both a weakened **tier** and a changed **action** throw rather than being dropped. The action half is the one a tier-only check misses — raising the tier while swapping the matcher removes the gate and still reads as a tightening. |
+| A pack declaring a version ahead of `doctor` | `doctor` | **Built** (milestone 6). Refused rather than graded, symmetric with the workspace train, and on the Pack Definition's own `$id`. |
 | Path slots resolve to real files | `doctor` | **Built.** File-versus-directory too; a slot resolving outside the workspace is reported, never failed. |
 | Workspace claims match the tree | `doctor` | **Built, where a tree is declared** — repo-card build/test/run lines and layout, and the gate map's required-check claim. A workspace with no `tree` has those claims *reported unverifiable*. |
 | A rule's provenance is well-formed | `doctor` | **Built.** On `type: rule` records in the `memory` slot; the form only, never the truth. |

@@ -406,13 +406,25 @@ workspace that cannot say which packs it composes leaves an agent to infer the m
 resolution order. The portfolio workspace at milestone 6 ships as a private-feed plugin composing premium
 packs — a manifest that cannot express that forces a MAJOR bump one milestone after v1.
 
-An array of names in cascade order, empty by default. **What `doctor` checks:** that the names are
-unique. Resolving a pack to an installed plugin needed two things: the plugin machinery, which landed at
-milestone 3 ([`../plugin/`](../plugin/) and [`../.claude-plugin/`](../.claude-plugin/)), and a feed to
-resolve a name *against*, which is milestone 6. Until the second exists this slot is still a
-declaration, and `doctor` says so rather than pretending to verify it — the wording of that note was
-updated when the first half landed, because a note naming a prerequisite that already exists sends a
-reader to wait for something that arrived.
+An array of names in cascade order, empty by default. Each name is the canonical `category/name` form
+the Pack Definition owns ([`pack.schema.json`](pack.schema.json)) — but the items stay **free strings**
+here, deliberately. Tightening them to that shape would be a constraint a manifest could newly fail,
+which is a MAJOR bump, and the two schemas are on separate version trains precisely so neither forces
+the other's hand.
+
+**What `doctor` checks**, as of milestone 6: that the names are unique, that each **resolves** to a
+`pack.json` under a resolution root, and that the manifest it finds **validates against the Pack
+Definition**. It reports what each pack contributes. Resolution roots are derived from `tree` rather
+than declared — a slot before its consumer is the mistake this specification was written to avoid — so
+a workspace with no `tree` has nowhere to search and its declared packs are reported *unverifiable*
+rather than failed, which is the same answer `tree`'s absence already gives every other claim that
+needs one.
+
+**What is still not demonstrated is resolution from a FEED.** The roots searched today are the
+workspace's own tree; an adopter installing a pack from a private marketplace resolves inside the
+installed plugin instead. The resolver takes its roots as an argument for exactly that reason — so the
+feed case is the same code path rather than a parallel one — but it has not yet been run that way, and
+this sentence is what says so.
 
 ## `memory` — what the store's index is called, and what memory may cost
 

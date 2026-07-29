@@ -360,6 +360,51 @@ describe("the skills the plugin declares", () => {
         assert.match(messages(inspect(root).findings), /hollow/);
     });
 
+    // ../.portulan/tasks/0008-a-declared-skills-path-sees-one-level-down.md. The declared root was
+    // resolved exactly two ways — itself, or its immediate children — so the shape a pack actually
+    // ships was reported as a skill directory with no SKILL.md. Its three acceptance criteria are the
+    // three tests below, in order: resolve at depth, keep the real failure loud, and report the bound.
+    test("a pack-shaped tree resolves skills nested below the declared root", () => {
+        const root = fixture({ skip: ["skills"] });
+        write(root, "skills/rituals-demo/skills/greet/SKILL.md", SKILL("greet", "Greets. Use when greeting."));
+        assert.equal(fails(inspect(root).findings).length, 0, messages(inspect(root).findings));
+        assert.equal(inspect(root).stats.skills, 1);
+    });
+
+    test("a directory under the declared root holding no skill at any depth still fails", () => {
+        const root = fixture();
+        fs.mkdirSync(path.join(root, "skills", "hollow", "deeper"), { recursive: true });
+        // Attributed to the immediate child rather than to every level of the branch, and still in
+        // the words the one-level version used — depth must not buy silence.
+        const text = messages(inspect(root).findings);
+        assert.match(text, /hollow\/ has no SKILL\.md/);
+        assert.doesNotMatch(text, /hollow\/deeper\/ has no SKILL\.md/);
+    });
+
+    test("a skill deeper than the bound is reported as unsearched rather than passed over", () => {
+        const root = fixture({ skip: ["skills"] });
+        write(root, "skills/a/b/c/d/SKILL.md", SKILL("d", "Too deep to reach."));
+        const text = messages(inspect(root).findings);
+        assert.match(text, /did not search/);
+        assert.match(text, /a\/b\/c\//);
+    });
+
+    test("a skill at exactly the bound is found", () => {
+        const root = fixture({ skip: ["skills"] });
+        write(root, "skills/a/b/c/SKILL.md", SKILL("c", "At the limit. Use at the limit."));
+        assert.equal(fails(inspect(root).findings).length, 0, messages(inspect(root).findings));
+    });
+
+    test("the one-skill `./` form keeps working, and a root that is itself a skill stays one skill", () => {
+        const root = fixture({ skip: ["skills"], plugin: { skills: ["./solo/"] } });
+        write(root, "solo/SKILL.md", SKILL("solo", "One skill at the declared path."));
+        // A subdirectory beside it must not turn one skill into two — the root's own SKILL.md is
+        // checked before the expansion for exactly this.
+        fs.mkdirSync(path.join(root, "solo", "reference"), { recursive: true });
+        assert.equal(fails(inspect(root).findings).length, 0, messages(inspect(root).findings));
+        assert.equal(inspect(root).stats.skills, 1);
+    });
+
     test("a SKILL.md with no frontmatter is a failure", () => {
         const root = fixture();
         write(root, "skills/greet/SKILL.md", "# Greet\n\nNo frontmatter here.\n");

@@ -1,0 +1,34 @@
+{
+  "portulan": {
+    "pack": "1.0",
+    "version": "0.1.0"
+  },
+
+  "name": "checkpoints",
+  "category": "rituals",
+  "summary": "Supervised-build checkpoints: a fresh-context supervisor grades the plan at session-open, the diff at pre-commit, and the demonstration at milestone-close, in a fixed verdict vocabulary.",
+  "doc": "README.md",
+
+  "contributes": {
+    "skills": ["skills/"],
+
+    "personas": ["personas/supervisor.md"],
+
+    "gates": [
+      {
+        "id": "commit-without-the-hooks",
+        "tier": "gated",
+        "action": { "shell": "git commit --no-verify" },
+        "reason": "`--no-verify` skips the local hooks, and on a workspace that compiles its gate policy into them that is the one spelling which turns a compiled gate back into a convention. It is a narrower prefix than an ordinary `git commit`, so it is matched ahead of whatever tier that carries. If the hooks are wrong, change the policy through the evolution gate rather than stepping around it for one commit — a bypass leaves no trace in the record that a policy change would have left."
+      },
+      {
+        "id": "self-certify-a-checkpoint",
+        "tier": "prohibited",
+        "action": {
+          "none": "No tool-level surface, and naming it rather than inventing a matcher is the point. A checkpoint verdict is a paragraph written into a record, so the act of grading your own work is indistinguishable at the tool layer from the act of recording someone else's grade. What makes the rule real is the fresh context, which no permission rule can observe — see the honest-limits section of README.md."
+        },
+        "reason": "The context that did the work may not also supply the verdict on it. A supervisor sharing the implementer's window has already read every rationalisation the implementer wrote for itself, which is the failure the fresh-context requirement exists to prevent, and a verdict produced that way looks exactly like one that was not."
+      }
+    ]
+  }
+}

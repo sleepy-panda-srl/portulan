@@ -30,13 +30,17 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 // it looks like enforcement that quietly stopped covering something. Same reasoning that has
 // ../.portulan/compile/gate.mjs import the matcher instead of writing a second one. Zero
 // dependencies on both sides, so nothing is added to what this tool needs to run.
-import { parse, backends } from "./compile.mjs";
+import { parse, backends, resolvePack, packRoots } from "./compile.mjs";
 // The containment test the memory-index siting rule turns on, imported for the reason directly
 // above: the copy that used to live here drifted into the identical fail-open as the original.
 import { isInside, recordType } from "./index.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const DEFAULT_SCHEMA = path.resolve(HERE, "..", "spec", "workspace.schema.json");
+// The Pack Definition is a SEPARATE contract on its own version train — see spec/README.md. A pack
+// and a workspace are different artifacts, and one number governing both would make a bump in
+// either mean a change in the other.
+const DEFAULT_PACK_SCHEMA = path.resolve(HERE, "..", "spec", "pack.schema.json");
 
 /** Raised when `doctor` cannot run at all. Always exit 2, never 1. */
 export class DoctorError extends Error {
@@ -526,6 +530,23 @@ const PATH_SLOTS = {
  * validator that cannot tell which version of the contract it implements cannot honestly say a
  * manifest conforms to it.
  */
+/**
+ * The Pack Definition version a schema implements, read from its `$id` — the same argument as
+ * `schemaVersion` above, on the other version train. Separate rather than shared because the two
+ * `$id` shapes differ deliberately (`/spec/2.5/` and `/spec/pack/1.0/`), and a single regex loose
+ * enough to read both would read `/spec/pack/1.0/` as Workspace Definition version 1.0.
+ */
+export function packSchemaVersion(schema) {
+    const match = /\/spec\/pack\/([0-9]+)\.([0-9]+)\//.exec(schema.$id ?? "");
+    if (!match) {
+        throw new DoctorError(
+            "the pack schema's `$id` does not carry a `/spec/pack/MAJOR.MINOR/` segment, so `doctor` " +
+                "cannot tell which Pack Definition version it implements",
+        );
+    }
+    return { major: Number(match[1]), minor: Number(match[2]) };
+}
+
 export function schemaVersion(schema) {
     const match = /\/spec\/([0-9]+)\.([0-9]+)\//.exec(schema.$id ?? "");
     if (!match) {
@@ -535,6 +556,11 @@ export function schemaVersion(schema) {
         );
     }
     return { major: Number(match[1]), minor: Number(match[2]) };
+}
+
+function loadPackSchema({ packSchema, packSchemaPath }) {
+    if (packSchema) return packSchema;
+    return loadSchema({ schemaPath: packSchemaPath ?? DEFAULT_PACK_SCHEMA });
 }
 
 function loadSchema({ schema, schemaPath }) {
@@ -560,11 +586,12 @@ function loadSchema({ schema, schemaPath }) {
  */
 export async function inspect(workspaceDir, options = {}) {
     const schema = loadSchema(options);
+    const packSchema = loadPackSchema(options);
     const dir = path.resolve(workspaceDir);
     const findings = [];
     // `unretirable` counts records stating no `Retire when:` condition — retirable by a human
     // re-reading them, never by the condition-driven pass, which is the sense that matters here.
-    const stats = { records: 0, rules: 0, sealed: 0, linked: 0, claims: 0, unverifiable: 0, bytes: 0, unretirable: 0, unassessed: 0 };
+    const stats = { records: 0, rules: 0, sealed: 0, linked: 0, claims: 0, unverifiable: 0, bytes: 0, unretirable: 0, unassessed: 0, packs: 0 };
     const fail = (check, message) => findings.push({ severity: "fail", check, message });
     const report = (check, message) => findings.push({ severity: "report", check, message });
 
@@ -762,7 +789,78 @@ export async function inspect(workspaceDir, options = {}) {
     }
 
     if (workspace.packs?.length) {
-        report("cross", `${workspace.packs.length} pack(s) declared — a declaration only: the plugin machinery exists as of milestone 3, but resolving a pack to an installed one still needs the feed (milestone 6)`);
+        // Resolution, not a count. Until milestone 6 this reported how many packs were declared and
+        // said so — "a declaration only" — because there was no format to validate one against and
+        // nowhere to resolve a name. Both now exist. What is still NOT demonstrated here is resolution
+        // from a FEED: the roots below are the tree this workspace already declares, and an adopter
+        // installing a pack from a private marketplace resolves inside the installed plugin instead.
+        // The resolver takes its roots as an argument for exactly that reason — the second case is the
+        // same code path, not a parallel one — but this repository has not yet run it.
+        const roots = options.packRoots ?? packRoots(dir, workspace);
+        for (const name of workspace.packs) {
+            const found = resolvePack(name, roots);
+            if (!found.dir) {
+                // A workspace with no `tree` has no root to search, so its declared packs are
+                // *unverifiable* rather than *wrong* — the same answer `tree`'s absence already gives
+                // every other claim needing a tree. Where a root exists, resolution was claimed and a
+                // miss is a failure.
+                if (roots.length === 0) {
+                    stats.unverifiable += 1;
+                    report("packs", `\`${name}\` cannot be resolved — this workspace declares no \`tree\`, so there is no packs root to search`);
+                } else {
+                    fail("packs", `\`${name}\` does not resolve — ${found.why}`);
+                }
+                continue;
+            }
+            let manifest;
+            try {
+                manifest = JSON.parse(fs.readFileSync(found.manifest, "utf8"));
+            } catch (cause) {
+                fail("packs", `\`${name}\` resolves to ${path.relative(dir, found.manifest)} but its manifest is unreadable — ${cause.message}`);
+                continue;
+            }
+            // Refuse before grading, exactly as the workspace train does: a manifest written against a
+            // contract this validator does not implement produces confident nonsense — a key added in a
+            // later MINOR comes back as an unexpected property and the report blames the author for
+            // using the spec correctly. This sentence is normative in spec/pack.schema.json, and for one
+            // pre-commit checkpoint it was normative there and implemented nowhere, while `doctor`
+            // printed "validates against Pack Definition 99.0" — a conformance claim about a contract it
+            // had never seen.
+            const declaredPack = /^([0-9]+)\.([0-9]+)$/.exec(manifest?.portulan?.pack ?? "");
+            if (declaredPack) {
+                const [major, minor] = [Number(declaredPack[1]), Number(declaredPack[2])];
+                const here = packSchemaVersion(packSchema);
+                if (major !== here.major || minor > here.minor) {
+                    fail(
+                        "packs",
+                        `\`${name}\` declares Pack Definition ${major}.${minor}; this \`doctor\` implements ` +
+                            `${here.major}.${here.minor}. Refusing to grade it rather than reporting against a ` +
+                            `contract it was not written for.`,
+                    );
+                    continue;
+                }
+            }
+
+            const errors = validate(packSchema, manifest);
+            if (errors.length) {
+                for (const e of errors) {
+                    fail("packs", `\`${name}\` manifest${e.pointer ? ` at \`${e.pointer}\`` : ""}: ${e.message}`);
+                }
+                continue;
+            }
+            stats.packs += 1;
+            const c = manifest.contributes ?? {};
+            const parts = [
+                c.skills?.length ? `${c.skills.length} skill path(s)` : null,
+                c.personas?.length ? `${c.personas.length} persona(s)` : null,
+                c.verify?.length ? `${c.verify.length} recipe(s), declared and not merged` : null,
+                c.gates?.length ? `${c.gates.length} gate fragment(s)` : null,
+            ].filter(Boolean);
+            report(
+                "packs",
+                `\`${name}\` resolves to ${path.relative(dir, found.dir)} and validates against Pack Definition ${manifest.portulan.pack} — contributes ${parts.length ? parts.join(", ") : "nothing"}`,
+            );
+        }
     }
 
     // Workspace Definition 2.3's and 2.4's conditional constraints, here for the same reason the

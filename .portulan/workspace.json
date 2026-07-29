@@ -116,5 +116,5 @@
     }
   ],
 
-  "packs": []
+  "packs": ["rituals/checkpoints"]
 }
