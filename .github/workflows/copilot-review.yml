@@ -377,7 +377,7 @@ jobs:
                       report="${report} gates on them: unanswered, they simply stand. If this"
                       report="${report} round raised no inline comment, the verdict review quotes"
                       report="${report} them onto the pull request; if it did, there is no verdict"
-                      report="${report} review and THIS SUMMARY is the only place they appear."
+                      report="${report} review and THIS REPORT is the only place they appear."
                       report="${report} Address or refuse each one, per the standing feedback-loop"
                       report="${report} rule, in ONE batched pull-request comment — a note has no"
                       report="${report} thread to sit on, which is why it is answered there and an"
@@ -388,7 +388,7 @@ jobs:
                       # RUNNER_TEMP is shared between steps of one job.
                       notes_file="$RUNNER_TEMP/copilot-notes.md"
                       printf '%s\n' "$notes" >"$notes_file"
-                      printf 'suppressed low-confidence notes: %s — printed to the job summary\n' "$count"
+                      printf 'suppressed low-confidence notes: %s\n' "$count"
                     fi
                   fi
 

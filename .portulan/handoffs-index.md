@@ -2,11 +2,12 @@
 
 > Generated from `handoffs/` by `node cli/index.mjs`. Do not edit by hand: it is regenerated
 > and byte-compared, so a hand-edit survives exactly until the next run.
-> 44 handoff(s), newest first. No budget: the series is append-only, so
+> 45 handoff(s), newest first. No budget: the series is append-only, so
 > the only remedy a budget could ask for is one this project rules out.
 
 - 2026-07-29 · [Handoff — the verdict is derived, and the field that cannot take the name](handoffs/2026-07-29-the-verdict-is-derived.md)
 - 2026-07-29 · [The table stops being its own archive, and the rows keep the law](handoffs/2026-07-29-the-table-stops-being-its-own-archive.md)
+- 2026-07-29 · [Handoff — the sweep that should have run the first time](handoffs/2026-07-29-the-sweep-that-should-have-run.md)
 - 2026-07-29 · [Handoff — the librarian mines and consolidates, and the checkpoint found the work it would have lost](handoffs/2026-07-29-the-librarian-mines-and-consolidates.md)
 - 2026-07-29 · [Handoff — the doctrine catches up with a split it did not see coming](handoffs/2026-07-29-the-doctrine-catches-up-with-a-split.md)
 - 2026-07-29 · [Handoff — the changelog becomes correctable, and 0.2.0 is cut](handoffs/2026-07-29-the-changelog-becomes-correctable.md)

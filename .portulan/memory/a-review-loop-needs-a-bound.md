@@ -31,13 +31,15 @@ obligation to answer Copilot is not withdrawn, the unbounded iteration is.
 3. **Threads block; suppressed notes do not — and they are answered in different places.** An
    unresolved thread is the gate (`required_conversation_resolution`), and each one is answered **as a
    reply on that thread** — `POST /repos/{o}/{r}/pulls/{n}/comments/{comment_id}/replies` — never as a
-   general pull-request comment. The thread is the unit the platform resolves and the unit a reader
-   opens; an answer that does not sit on it leaves the gate closed and the reader hunting for a summary
-   somewhere else on the page. The low-confidence notes in a review *body* carry **no thread and no
-   comment id**, so there is nowhere for a reply to sit: they are answered once, in a single batch, as a
-   pull-request comment. **That is the exception, not the pattern** — a note is answered in a general
-   comment *because the platform gives it nowhere better*, and one batched reply for a round's threads
-   would be a choice to answer in the wrong place. They are **never a reason to push again**.
+   general pull-request comment. **The gate stays closed until the thread is resolved** — reply
+   *placement* never opens it, per rule 1 — so what a misplaced answer costs is not the gate but the two
+   things that lead to it: the reader hunting for a summary somewhere else on the page, and whoever
+   resolves finding nothing on the thread to judge. The low-confidence notes in a review *body* carry
+   **no thread and no comment id**, so there is nowhere for a reply to sit: they are answered once, in
+   a single batch, as a pull-request comment. **That is the exception, not the pattern** — a note is
+   answered in a general comment *because the platform gives it nowhere better*, and one batched reply
+   for a round's threads would be a choice to answer in the wrong place. They are **never a reason to
+   push again**.
 4. **Two fix-rounds, then triage.** After the second round of fixes, whatever remains becomes an issue
    linking the comment. It does not become another push, and it does not hold the merge.
 
