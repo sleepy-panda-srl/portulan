@@ -293,8 +293,7 @@ Observations, each run on this tree and reverted, with the tree asserted clean a
 | the whole recipe under `LC_ALL=C`, `en_US.UTF-8`, `tr_TR.UTF-8` | green and identical in all three |
 | an attestation wrapping between "seam" and "scan" | green — it was **red** before the fix noted below |
 | an attestation following an unindented `- 2026-…` bullet **inside** an entry | green — it was **red** until 2026-07-29, see below |
-| an entry carrying no attestation at all | **red**, unchanged — the negative control for both fixes |
-| an entry carrying no attestation at all | **red**, unchanged — the negative control for that fix |
+| an entry carrying no attestation at all | **red**, unchanged — the negative control for both seam fixes: each widens what the scan can *see*, and neither may widen what counts as an attestation |
 
 `tr_TR.UTF-8` is in that list on purpose: it is the locale where case-insensitive matching stops
 behaving, and the seam half of this same check is a `grep -i`.
