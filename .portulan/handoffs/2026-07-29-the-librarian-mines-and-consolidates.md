@@ -238,14 +238,40 @@ natural run is 2026-08-03; every staleness threshold is unfired against a four-d
 nags were measured only under forced one-day thresholds; mining reads the smaller review channel; and
 consolidation's steps 3 and 4 stay human. **#86 is filed, not merged** — that gate is the maintainer's.
 
-## And a platform fact the demonstration itself turned up: Copilot does not review the App's pull request
+## And a platform fact the demonstration itself turned up: Copilot is requested on the App's pull request and does not answer
 
 Found after the close checkpoint had signed, by reading #86's own checks rather than by looking for it.
 **`copilot-reviewed` is RED on [#86](https://github.com/sleepy-panda-works/portulan/pull/86), and the
-cause is that the pull request has no reviews at all** — not one, ~25 minutes after filing. The
-comparison is the measurement: [#85](https://github.com/sleepy-panda-works/portulan/pull/85), opened by
-the maintainer, drew **eight** Copilot reviews; [#87](https://github.com/sleepy-panda-works/portulan/pull/87),
-also his, drew one within minutes; #86, opened by `portulan-agent`, drew **zero**.
+cause is that the pull request has no reviews at all** — not one, forty minutes after filing, against
+two to five on a maintainer-opened one.
+
+**The first reading of this was wrong in the direction that mattered, and the correction is the
+finding.** The comparison drawn first was review *counts* — eight on
+[#85](https://github.com/sleepy-panda-works/portulan/pull/85), one on
+[#87](https://github.com/sleepy-panda-works/portulan/pull/87), zero here — which reads as *Copilot was
+never engaged on the App's pull request*. It was. `requested_reviewers` on #86 holds **`Copilot`**,
+while #85 and #87 hold **nothing** — precisely because their reviews had already landed and GitHub
+clears the request on delivery. So the counts were measuring the wrong end: the two maintainer pull
+requests look "engaged" only in hindsight.
+
+**Requested and silent** is a different fact from *never asked*, and it points at a different repair.
+
+**And the repair was then found, by trying the one lever that existed.** `copilot-review.yml` waits
+twenty minutes — five times the measured 1m53s–3m47s — and timed out on this head having seen no
+review; its own diagnostic printed *Reviewers requested and still unanswered:* with **nothing after
+it**, and sent the reader to check the ruleset and the reviewer login, neither of which was the cause.
+Re-requesting Copilot explicitly on the same head produced a review in **about ninety seconds**.
+
+So the shape is: **auto-requested, accepted, silent past the budget; explicitly re-requested, answered
+at once.** The durable fix belongs in the workflow — the librarian should request Copilot by name after
+`gh pr create`, the way it already labels by name rather than trusting a default — and the second fix
+belongs in `copilot-review.yml`, whose timeout message offers two hypotheses and neither is *the author
+of this pull request is a bot*. Both are the maintainer's to file.
+
+Three readings of one fact in twenty minutes, each corrected by the next: *Copilot was never engaged* →
+*requested and silent* → *requested, silent, and answers a re-request immediately*. Recorded in that
+order rather than tidied into the last one, because the middle reading is what a weekly pass would hit
+and the first is what a reviewer would have concluded from the counts alone.
 
 **It does not block this close, and the reason is worth stating rather than assuming.** `main`'s
 required contexts are exactly `["workspace-verify", "pr-labeled"]`, read from the branch-protection
