@@ -1690,9 +1690,9 @@ _The seam applies here too: no client-identifying references._
   section outlived the tree it described.** `plugin/README.md` still reported `Skills (3)` and
   `Tagged v0.1.0`: a third carrier of the class the cut fixed twice, missed because the sibling sweep was
   never run — two were found by reading and the class was called closed. Found by the maintainer's
-  requested **second-opinion Fable 5 review, which returned after the merge and tag**, so the fix is a
-  follow-up rather than an adjustment. The milestone-3 figures stay **as measured** and now say so; a
-  milestone-5 paragraph is added, because that section accretes one per milestone in `core/` and had
-  skipped it. The live count stays `plugin-lint`'s, asserted against the tree. · Fidelity: no new
-  checkpoint — this is the named residual of a graded change. Seam scan clean over diff, message and
+  requested **second-opinion Fable 5 review, which returned after the merge and tag**. The milestone-3
+  figures stay **as measured**; a milestone-5 paragraph is added, because that section accretes one per
+  milestone in `core/` and had skipped it. The live count stays `plugin-lint`'s, **derived** from the
+  tree — two rounds caught this entry and the README both saying it *asserts* one, and skills declared
+  where agents are conventional. · Fidelity: no new checkpoint. Seam scan clean over diff, message and
   branch. Handoff: [`…correctable.md`](../.portulan/handoffs/2026-07-29-the-changelog-becomes-correctable.md).
