@@ -56,7 +56,7 @@ Retroactivity is honest exactly when compliance destroys nothing, and the conser
 establishes that here rather than asserting it.
 
 The scoping is the other half. Both text patterns are anchored to table rows because
-`[Ss]ession [0-9]+ of` matches **8 Session log entries** and **8 of the 9 new milestone files** carry
+`[Ss]ession [0-9]+ of` matches **8 Session log entries** and **8 of the 11 new milestone files** carry
 `**Criterion amended` — that being the relocated argument. A file-wide grep would have redded the
 archive it had just created, on its first run. The session-note pattern is also deliberately wider than
 the shape the brief named: milestone 3 used a lowercase bullet-led `· session N of` where 4 and 5 used
