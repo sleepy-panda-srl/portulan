@@ -317,8 +317,11 @@ jobs:
           # request did. An App-raised `labeled` event re-runs it; the same call made with
           # `GITHUB_TOKEN` would set the label and start no run, leaving a red check over a labelled
           # pull request. `workspace` is from the declared set in `.portulan/labels.json` — an
-          # undeclared one fails the whole call.
-          gh pr edit "$url" --add-label workspace || {
-            printf '::error::the pull request is open and unlabelled — `pr-labeled` stays red until somebody adds a label from .portulan/labels.json\n'
+          # undeclared one fails the whole call. `agent-driven` is from that file's OWNERSHIP
+          # vocabulary — a different question (who drives this, not what it touched), invisible to
+          # `pr-labeled` by design, applied here mechanically because this is the pull request
+          # nobody is present to label. The maintainer's ruling, 2026-07-29.
+          gh pr edit "$url" --add-label workspace --add-label agent-driven || {
+            printf '::error::the pull request is open and missing its labels — `pr-labeled` stays red until somebody adds a label from .portulan/labels.json\n'
             exit 1
           }
