@@ -13,8 +13,9 @@
 #             their line budget, newest attests the seam      (a session with no record is unauditable)
 #   proposal  every proposal is numbered, records an outcome, and names the pull request that filed it
 #                                                             (a rule you cannot trace to its review)
-#   plan      no milestone row carries an amendment argument or a session note, and its Status cell
-#             stays inside a character budget                 (the scoreboard is law, not an archive)
+#   plan      no milestone row carries an amendment argument or a session note, every row parses into
+#             its five cells, and its Status cell stays inside a character budget
+#                                                             (the scoreboard is law, not an archive)
 #
 # Exit 0 green · 1 red · 2 could not run. The Stop-gate (milestone 4) calls this;
 # until it exists, the definition of done in ../dod.md requires running it by hand.
@@ -424,7 +425,11 @@ else
 fi
 
 # ----------------------------------------------------------------------- 6. plan
-# Three checks on the milestone table, added 2026-07-29 by the post-M5 reconciliation.
+# Four checks on the milestone table, added 2026-07-29 by the post-M5 reconciliation. The count is
+# stated here and matters: this recipe treats its own coverage reporting as a correctness property —
+# `record` 4c prints the number of entries it examined on every run for exactly that reason — so a
+# header claiming three checks over four is the same defect one altitude up. It said three until the
+# fourth (6b′) was added at the pre-commit checkpoint.
 #
 # The table had become the archive it was supposed to index: 63,420 characters of row, of which only
 # 11% was criterion. One Status cell held 16,505 characters on a single line. The history was not

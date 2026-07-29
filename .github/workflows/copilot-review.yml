@@ -429,7 +429,7 @@ jobs:
             if [ "$requested_read" -eq 0 ]; then
               printf 'Whether a round was ever requested could NOT be read, so this message names no\n'
               printf 'cause: the two faults below have different repairs and nothing here distinguishes\n'
-              printf 'them. Read %s/pulls/%s/requested_reviewers by hand.\n' "$GITHUB_REPOSITORY" "$PR_NUMBER"
+              printf 'them. Read repos/%s/pulls/%s/requested_reviewers by hand.\n' "$GITHUB_REPOSITORY" "$PR_NUMBER"
             elif [ -z "$requested" ]; then
               printf 'NOTHING WAS REQUESTED, and that is a different fault from a reviewer going silent.\n'
               printf 'The request was never created for this actor — the condition under which this first\n'
