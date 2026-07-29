@@ -58,8 +58,17 @@ useful half of the lesson.
 
 Three sibling staleness defects went in the same stroke: the Stop-gate paragraph describing the
 pre-M4-session-1 cap; `product.md` calling this repository **private** (public since 27 July) and the
-enforcement compiler unbuilt; and both prose carriers naming `v0.1.0`. The pre-commit checkpoint found a
+enforcement compiler unbuilt; and the prose carriers naming `v0.1.0`. The pre-commit checkpoint found a
 fourth — the entry narrated the sixth recipe and the eighth and skipped `workflow-filters`, the seventh.
+
+**Corrected after the fact: that sentence said "both prose carriers" and there were three.** The
+maintainer's requested second opinion found `plugin/README.md`'s own `## Status` section still reading
+`Skills (3)` and `Tagged v0.1.0` — a section frozen at milestone 3 while its siblings in `core/` accrete
+a paragraph per milestone. **The sweep that would have caught it was never run**: two carriers were found
+by reading, the class was declared closed, and no `git grep` confirmed the count. That is the same
+undercount shape this repository has a rule about, committed inside the change whose subject is stale
+carriers. Fixed on `plugin-status-names-a-superseded-release`, and this paragraph is the correction the
+old changelog rule would have forbidden.
 
 ## For the next session
 
