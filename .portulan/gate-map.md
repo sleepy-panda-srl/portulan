@@ -93,6 +93,15 @@ Reversible but consequential: it changes what the repository says, or how it beh
   [`../.github/workflows/pr-labels.yml`](../.github/workflows/pr-labels.yml) checks it and
   [`memory/every-pull-request-carries-a-label.md`](memory/every-pull-request-carries-a-label.md) carries
   the reasoning. Which label is right is judgement; that there is one is not.
+
+  Since 2026-07-29 an agent-driven pull request also carries **`agent-driven`** — **beside its area
+  label, never instead of one**. It comes from [`labels.json`](labels.json)'s separate *ownership*
+  vocabulary, which answers *who drives this* rather than *what it touched*, and is invisible to the
+  at-least-one check by construction. The maintainer's ruling (2026-07-29, verbatim: *"go with option
+  B, wire the agent-driven label"*): ownership rides authorship — the assignee field cannot take an
+  App's name, per [#95](https://github.com/sleepy-panda-works/portulan/pull/95)'s measurement — and
+  the label is what makes it filterable. The librarian applies it mechanically to the pull request
+  nobody is present to open; a session applies it in its `gh pr create`.
 - `change-doctrine` — [`../core/`](../core/), a template, a persona, or a skill.
 - `change-this-workspace` — anything here, including this file and [`gates.json`](gates.json).
 - `change-the-plan` — the Status column or the Session log in [`../docs/plan.md`](../docs/plan.md).
