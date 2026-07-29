@@ -292,6 +292,8 @@ Observations, each run on this tree and reverted, with the tree asserted clean a
 | every entry removed from the log | **exit 2** — could not enumerate the record |
 | the whole recipe under `LC_ALL=C`, `en_US.UTF-8`, `tr_TR.UTF-8` | green and identical in all three |
 | an attestation wrapping between "seam" and "scan" | green — it was **red** before the fix noted below |
+| an attestation following an unindented `- 2026-…` bullet **inside** an entry | green — it was **red** until 2026-07-29, see below |
+| an entry carrying no attestation at all | **red**, unchanged — the negative control for both fixes |
 | an entry carrying no attestation at all | **red**, unchanged — the negative control for that fix |
 
 `tr_TR.UTF-8` is in that list on purpose: it is the locale where case-insensitive matching stops
@@ -304,6 +306,23 @@ left four dates standing and printed `ok … (4 date(s))` over a directory with 
 test the older direction had always carried was the thing the rewrite dropped; it is back, with the
 reason in the code rather than in this file alone. Reading a *derived* list is not reading the tree, and
 the derived list is the one that stays confident once the tree is gone.
+
+**And a third false red in the same half, fixed 2026-07-29 — this one because the check held two
+definitions of one thing.** The seam scan re-derived where the newest entry *ends* with its own regex,
+`^- 2[0-9][0-9][0-9]-`, looser than the `^- YYYY-MM-DD ·` the entry parser requires. An unindented
+`- 2026-…` without the middle dot therefore did not start a new entry as far as every other check was
+concerned, but did end this one's scan — so an attestation sitting after such a line read as absent.
+
+The fix is not a tighter regex. **The scan now reads the entry's start and length from the parser**, so
+the second definition is gone rather than corrected, and the two cannot drift apart again. That is the
+repair this repository names most often — a fact with two carriers drifts at the weaker one — applied to
+the check that exists to catch it, which is why it is worth more than the narrow bug it closes.
+
+Raised as a suppressed low-confidence note on round 6 of
+[#73](https://github.com/sleepy-panda-works/portulan/pull/73), triaged to
+[#79](https://github.com/sleepy-panda-works/portulan/issues/79) under the review bound rather than fixed
+there, and fixed here. Measured red-first on the merged tree, with the genuine-absence case asserted as
+the negative control and the 2026-07-28 wrap case asserted as a regression guard.
 
 **And the seam half turned out to carry a false red, found by the session's own entry.** The check joins
 an entry's lines with `tr '\n' ' '`, which leaves the two-space continuation indent standing, so an
