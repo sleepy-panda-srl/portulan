@@ -168,10 +168,23 @@ file: where a rule and its clarification live apart, only the rule gets read.)_
 
   **What stands where that gate stood is the platform, and it was measured rather than assumed.**
   [`tools/gh-bot`](tools/gh-bot) runs `gh` on the agent identity's token and reaches every endpoint
-  `gh api` does. That App holds `metadata: read` and `pull_requests: write` and no `administration`:
-  measured 2026-07-28, a ruleset `PATCH` and a branch-protection read both answered
+  `gh api` does. That App holds `contents: read`, `metadata: read` and `pull_requests: write`, and no
+  `administration`: measured 2026-07-28, a ruleset `PATCH` and a branch-protection read both answered
   `403 Resource not accessible by integration`, while a ruleset *read* rode on `metadata` and answered
-  `200`. So for the agent identity a settings **change** is refused by GitHub — the half
+  `200`. **`contents: read` was added 2026-07-29** — proposal [`0015`](proposals/0015-the-librarian-files-as-the-agent.md),
+  the maintainer's ruling, applied and accepted on the installation so the scheduled librarian can open
+  a pull request at all. It changes nothing in the paragraph around it: the refusals above turn on
+  `administration`, which is still absent, and **read is read** — the scope grants seeing what any
+  stranger can already see in a public repository. Write is still refused, so *the permission set is the
+  enforcement, not the wrapper* is unchanged.
+
+  _This line and the two below it are re-measured at each supervised checkpoint and never written from
+  memory: **the permission set is a live setting no file here can pin**, and it went stale in all three
+  carriers within an hour of the grant. Raised by the reviewing session of 2026-07-29 against `main`;
+  the read-back is `gh api /orgs/sleepy-panda-works/installations --jq '.installations[] |
+  select(.app_id==4390104) | .permissions'`._
+
+  So for the agent identity a settings **change** is refused by GitHub — the half
   [`../core/operating/autonomy.md`](../core/operating/autonomy.md) calls the floor, demonstrated here
   rather than repeated, and the evidence the amendment below leans on when it says the floor is what is
   left holding. The wrapper carries an endpoint allowlist besides; hole 6 describes it, and describes

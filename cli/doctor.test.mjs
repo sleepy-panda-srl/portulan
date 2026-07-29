@@ -1578,3 +1578,34 @@ describe("a `handoffs` object with no index configures nothing", () => {
         assert.match(text(failures), /index/);
     });
 });
+
+describe("the positive-integer failure message says only what is true of this tree", () => {
+    // #84, and the rider that came with the ruling to fold it in: a corrected failure message is a
+    // claim like any other, so something has to bind what it now asserts. The old sentence said a
+    // non-positive value "reads as *undeclared* to the tool that consumes it" — true of nothing here,
+    // since both consumers refuse it outright. This pins the repair from both sides, because a
+    // message is the one artifact a reader has the least room to check.
+    test("it does not claim a consumer reads the value as undeclared", async () => {
+        const m = wellFormed();
+        m.slots.memory = "memory/";
+        m.librarian = { staleness: { record_days: 0 } };
+        const dir = tree(scratch(), { ...minimalFiles, "memory/r.md": "x\n", "workspace.json": JSON.stringify(m) });
+        const { findings } = await inspect(dir, { schema: SCHEMA });
+        const hit = severities(findings, "fail").find((f) => /positive integer/.test(f.message));
+        assert.ok(hit);
+        assert.doesNotMatch(hit.message, /undeclared/i);
+        assert.doesNotMatch(hit.message, /switch(es)? the rail off/i);
+    });
+
+    test("and the behaviour it DOES assert is the one the consumers have", async () => {
+        // The message's remaining claim is that the consuming tool refuses such a value rather than
+        // reading it as absent. Asserted against the consumer itself, so the message and the code
+        // cannot drift apart the way the old sentence had already drifted from them.
+        const { LibrarianError, passWorkspace } = await import("./librarian.mjs");
+        const m = wellFormed();
+        m.slots.memory = "memory/";
+        m.librarian = { staleness: { record_days: 0 } };
+        const dir = tree(scratch(), { ...minimalFiles, "memory/r.md": "x\n", "workspace.json": JSON.stringify(m) });
+        assert.throws(() => passWorkspace(dir, { asOf: "2026-06-15" }), LibrarianError);
+    });
+});
