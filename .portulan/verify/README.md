@@ -517,7 +517,7 @@ four checks reporting ok over zero rows is the false green this recipe has minte
 
 **The negative half was demonstrated too, and it is the half that decides the scoping.** Both markers
 exist in this tree, legitimately, outside the milestone rows: `[Ss]ession [0-9]+ of` matches **8 Session
-log entries**, and **8 of the 11 files in `docs/milestones/`** contain `**Criterion amended` — because
+log entries**, and **8 of the 12 files in `docs/milestones/`** contain `**Criterion amended` — because
 that is the relocated argument, which is the whole point of them. A file-wide grep for either would have
 redded the archive this same change created, on its first run. Anchoring both patterns to a
 milestone-row match — `^\| *[0-9]+ *\|` — is therefore not tidiness; it is the difference between a
