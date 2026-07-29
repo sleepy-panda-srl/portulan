@@ -616,8 +616,15 @@ export function mineIncidents(series, curated) {
     const linked = incidents.filter((i) => isLinked(i.file)).length;
 
     const newest = incidents.reduce((a, b) => (a === null || (b.date && b.date > a) ? b.date : a), null);
+    // `>=`, and the boundary is worth a sentence because the strict version loses work permanently.
+    // A pass runs in the morning and a session writes its handoff that afternoon; with `>` that
+    // handoff is outside this window — the pass had not seen it — and outside every later one too,
+    // because `since` only ever moves forward. It would survive nowhere but the unlinked ratio. The
+    // cost of `>=` is the opposite and is bounded: an incident dated the same day as a pass can be
+    // listed by that pass and by the next one, once. Dates are the granularity the series carries, so
+    // one repeat is the price of never dropping a day, and that is the direction to err in.
     const inWindow = since
-        ? (i) => i.date !== null && i.date > since
+        ? (i) => i.date !== null && i.date >= since
         : (i) => i.date !== null && i.date === newest;
 
     const candidates = incidents

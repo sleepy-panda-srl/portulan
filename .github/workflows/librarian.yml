@@ -187,7 +187,10 @@ jobs:
           # same structural argument the App key below rests on rather than a rule to remember.
           if ! gh api --paginate "repos/${GITHUB_REPOSITORY}/pulls/comments?per_page=100" >"$RUNNER_TEMP/reviews.json"; then
             printf '::error::could not fetch the review corpus. This is a failure to look, not a finding — a pass that filed *no recurring paths* over a fetch that failed would be reporting a green it never earned.\n'
-            exit 1
+            # 2, matching the step above and the recipes: *could not run* is not a verdict. GitHub
+            # treats every non-zero the same, so this buys nothing from the platform — it is for
+            # whoever reads the log, and one convention with an exception in it is not a convention.
+            exit 2
           fi
 
       - name: Run the pass

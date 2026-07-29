@@ -957,6 +957,23 @@ describe("passWorkspace — mining incidents", () => {
         assert.deepEqual(result.mining.incidents.candidates.map((c) => c.file), ["2026-06-01-after.md"]);
     });
 
+    test("an incident dated the same day as the last pass is inside the window, not lost to it", () => {
+        // The boundary is `>=`, and the strict version loses work permanently: a pass runs at 06:00
+        // and the session that day writes its handoff in the afternoon, so `>` puts it outside this
+        // window — the pass had not seen it — and outside every later one, because `since` only moves
+        // forward. It would survive nowhere but the ratio. Found at the pre-commit checkpoint.
+        const dir = repo(
+            {
+                ".portulan/memory/a-fact.md": [linked(), "2026-06-01"],
+                ".portulan/handoffs/2026-03-01-librarian-pass.md": [pass("The librarian's scheduled pass"), "2026-03-01"],
+                ".portulan/handoffs/2026-03-01-same-afternoon.md": [pass("Same afternoon"), "2026-03-01"],
+            },
+            { workspace: WITH_HANDOFFS({ librarian: { staleness: STALENESS } }) },
+        );
+        const result = passWorkspace(path.join(dir, ".portulan"), { asOf: "2026-06-15" });
+        assert.deepEqual(result.mining.incidents.candidates.map((c) => c.file), ["2026-03-01-same-afternoon.md"]);
+    });
+
     test("a linked incident inside the window is not a candidate", () => {
         const dir = repo(
             {

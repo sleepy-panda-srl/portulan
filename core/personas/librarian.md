@@ -50,13 +50,22 @@ Re-expressed from public practice (Letta — consolidation; compounding engineer
 runs reindex over both generated indexes, staleness (the sealed-stamp re-validation nag, and record age
 from git), proposal nagging, demotion drafts, **mining** and **consolidation**, and renders what it
 found as a record a workspace's scheduler files as a pull request — this persona is the contract it
-executes. The whole charter above now runs unasked; what is bounded is not *when* it runs but *what it
-concludes*. **Mining yields candidates, never proposals** — an incident nothing points back at, a path
-reviewers keep finding things in — and the `codify` skill is the pass a human runs on one, because the
-argument is the proposal. **Consolidation yields a distance and a question** — how close each budget is
-to its rail, and which records cite one incident — because merging is for records that are one
-*mechanism*, and one incident routinely teaches several. So *it drafts and never accepts* is true of
-everything here, and it is the sentence that does the work. The `tools:` list is **capability classes** at
+executes.
+
+**Every subject in the charter above is now reached on a cadence, and one of them is reached less
+deeply than the charter describes — which is the distinction between this persona and that tool.** A
+persona invoked with a window can read an incident and write the argument; an unattended pass cannot,
+and must not pretend to. So **the scheduled pass mines to a candidate and stops**: an incident nothing
+in the curated layer points back at, a path reviewers keep leaving findings on. The proposal itself is
+[`../skills/codify/SKILL.md`](../skills/codify/SKILL.md) run by whoever picks the candidate up —
+because the argument *is* the proposal, and a template filled from derived fields has everything except
+it. Consolidation is bounded the same way and for the same reason: the pass reports how close each
+budget is to its rail and which records cite one incident, as a **question**, because merging is for
+records that are one *mechanism* and one incident routinely teaches several.
+
+Read the charter as *what this role is answerable for* and the paragraph above as *how much of it a
+machine on a cron can carry alone*. **What holds across both is the sentence that does the work here:
+it drafts and never accepts.** The `tools:` list is **capability classes** at
 engine altitude; milestone 3 bound them to concrete host tools in
 [`../../agents/librarian.md`](../../agents/librarian.md). The binding cannot express the
 constraint that matters most here — *drafts everything, accepts nothing* is a property of what the agent
