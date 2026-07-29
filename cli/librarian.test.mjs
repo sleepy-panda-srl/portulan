@@ -1367,3 +1367,33 @@ describe("headroom is measured from what the store renders now", () => {
         assert.ok(after.actual > before.actual, `pressure must rise with the store: ${before.actual} → ${after.actual}`);
     });
 });
+
+describe("a reviewed path is only ever probed inside the tree", () => {
+    // Copilot, #85 round seven. `path.resolve(treeRoot, p.path)` escapes on an absolute path or a
+    // `../` walk, so a malformed — or hostile — review comment could have this pass stat the runner's
+    // filesystem, and could have an out-of-tree path that happens to exist read as *still in the tree*.
+    // The corpus is external data and the pass runs unattended, which is the combination that makes a
+    // containment slip worth closing rather than arguing about likelihood.
+    //
+    // `isInside` is the repository's one implementation of this question, extracted after two copies
+    // of it drifted into the identical fail-open. A third copy here would have been the same mistake
+    // a third time.
+    const comment = (pull, filePath) => ({
+        pull_request_url: `https://api.github.com/repos/o/r/pulls/${pull}`,
+        path: filePath,
+        in_reply_to_id: null,
+    });
+
+    for (const escape of ["../../../../etc/hosts", "/etc/hosts", "kept/../../outside.md"]) {
+        test(`a path escaping the tree (${escape}) is dropped, never probed as in-tree`, () => {
+            const dir = repo(
+                { ".portulan/memory/a-fact.md": [linked(), "2026-06-01"], "kept.md": ["x\n", "2026-06-01"] },
+                { workspace: MANIFEST({ tree: "../", librarian: { staleness: STALENESS } }) },
+            );
+            const reviews = [comment(1, escape), comment(2, escape), comment(1, "kept.md"), comment(2, "kept.md")];
+            const result = passWorkspace(path.join(dir, ".portulan"), { asOf: "2026-06-15", reviews });
+            assert.deepEqual(result.mining.reviews.paths.map((p) => p.path), ["kept.md"]);
+            assert.equal(result.mining.reviews.gone, 1);
+        });
+    }
+});

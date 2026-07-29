@@ -6,7 +6,7 @@
 **State.** The row's three remaining clauses, in one pull request: the handoff-series index
 ([#82](https://github.com/sleepy-panda-works/portulan/issues/82)), mining over both corpora, and
 scheduled consolidation. Spec 2.4 → **2.5**, additive: a top-level `handoffs` object with `index.path`
-and nothing else. Suite 584 → **629**; all eight recipes green, each exit code read. Folded in on the
+and nothing else. Suite 584 → **635**; all eight recipes green, each exit code read. Folded in on the
 maintainer's rulings and the PR #43 sibling rule: [#84](https://github.com/sleepy-panda-works/portulan/issues/84),
 [#83](https://github.com/sleepy-panda-works/portulan/issues/83), and
 [#77](https://github.com/sleepy-panda-works/portulan/issues/77)'s class in two files.
