@@ -1373,7 +1373,7 @@ export function policyPath(workspaceRoot, workspaceDir = ".portulan") {
 // ===========================================================================================
 //
 // The cascade is `core < pack < workspace`, and until now no pack contributed to the gate policy —
-// ../.portulan/packs/tools/README.md called that "the cascade's missing middle". The floor was ruled
+// ../packs/tools/README.md called that "the cascade's missing middle". The floor was ruled
 // before any of it was built (../.portulan/proposals/0010-prohibited-as-a-fourth-universal-tier.md,
 // agreed 2026-07-27): **packs may only tighten.** A pack may raise a tier or add a prohibition; it may
 // never demote another layer's classification, because a composed-in third-party artifact able to
@@ -1532,6 +1532,22 @@ export function composeFragments(policy, contributions) {
             }
             const base = rules[at.get(id)];
             const baseRank = tierRank(base?.tier);
+            // The base's tier must BE a tier before any comparison means anything. Without this,
+            // `tierRank` returns -1 for a malformed base and every fragment outranks it, so the
+            // refusal below never fires and the fragment REPLACES the malformed rule — a policy
+            // `parse` refuses on its own compiles green once a pack happens to name the same id.
+            // Measured: a base rule at tier `bogus` was refused by `parse` alone, and accepted after
+            // composition, reported as `tightens bogus → gated`. That is a fail-open in gate
+            // machinery healed by a dependency, and the printed provenance claims a tightening from
+            // a tier that is not one. Found by review, in the suppressed channel.
+            if (baseRank < 0) {
+                throw new CompileError(
+                    `pack \`${pack}\` contributes a fragment for \`${id}\`, but the policy's own rule \`${id}\` ` +
+                        `declares tier ${JSON.stringify(base?.tier)}, which is not one of ${TIER_ORDER.join(" / ")}. ` +
+                        `Refusing to compose onto a rule whose tier cannot be compared — fix the workspace's gate ` +
+                        `policy first. A pack must never be able to make an invalid policy compile.`,
+                );
+            }
             // A tier is not the whole rule. Raising the tier while REPLACING the action removes the
             // matcher and passes every rank comparison — measured on this repository's own policy: a
             // fragment `{id: force-push-without-a-lease, tier: prohibited, action: {none: …}}` was
