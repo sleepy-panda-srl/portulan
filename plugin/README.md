@@ -136,7 +136,9 @@ manifest and not for the marketplace; guessing a URL would be a claim about some
 **Milestone 3 — the plugin installs from the remote, and everything it ships arrives.** A machine with
 no local copy of this repository adds the marketplace by GitHub shorthand, installs, and the host reports
 `Skills (3)` and `Agents (3)  reviewer, librarian, implementer`, with
-`${CLAUDE_PLUGIN_ROOT}/core/engine.md` readable at 43 lines. Tagged `v0.1.0`.
+`${CLAUDE_PLUGIN_ROOT}/core/engine.md` readable at 43 lines. **Measured at `v0.1.0`, 2026-07-26** — the
+figures are that install's output and stay as measured, because the paragraph below is an argument about
+what that particular run reported and re-measuring them would falsify it.
 
 That second count is the whole of milestone 3, session 1: the same install once reported **`Agents (0)`**
 — every file shipped, both validators green — and it is what produced the `agents/` arrangement above.
@@ -167,3 +169,12 @@ strangers' machines, denying their pushes and blocking their sessions over a pol
 See [`../.portulan/memory/a-plugin-payload-can-enforce-on-strangers.md`](../.portulan/memory/a-plugin-payload-can-enforce-on-strangers.md).
 When Portulan ships gate enforcement *for* an adopter, it will be by compiling **their** policy into
 **their** workspace — never by shipping ours inside the payload.
+
+**A fourth skill ships as of milestone 5.** [`consolidate`](../core/skills/consolidate/SKILL.md) joined
+`clarify` and `codify` in [`../core/skills/`](../core/skills/), beside the boot skill here — so the
+payload now carries **four**, and the milestone-3 measurement above is a record of an older tree rather
+than a current inventory. **The count is deliberately not restated as a number anyone must maintain:**
+[`plugin-lint`](../cli/plugin-lint.mjs) finds skills and agents by convention and asserts the count
+against the tree on every pull request, which is the carrier that cannot go stale. This paragraph exists
+because the section above accretes one paragraph per milestone and skipped this one — and a `## Status`
+heading over figures nobody refreshed is how `Skills (3)` outlived the tree that produced it.
