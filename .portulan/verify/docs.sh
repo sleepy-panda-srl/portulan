@@ -324,8 +324,18 @@ else
     fi
 
     # 4d. The newest entry attests the seam.
+    #
+    # The entry's extent is READ FROM THE PARSER above — its start line and its own line count — rather
+    # than re-derived here. Until 2026-07-29 this line carried a second regex, `^- 2[0-9][0-9][0-9]-`,
+    # which is looser than the `^- YYYY-MM-DD ·` the parser requires: an unindented `- 2026-…` without
+    # the middle dot did not start a new entry as far as everything above was concerned, but did end
+    # this scan, so an attestation sitting after such a line read as ABSENT. A **false red**, and the
+    # cause was two carriers of one definition — *where does an entry end* — disagreeing, in the check
+    # this repository added to stop exactly that. Reusing the parser's answer is not a tighter regex;
+    # it removes the second definition, so the two cannot drift apart again.
     last=$(cut -f2 "$tmp/entries" | tail -1)
-    entry=$(awk -v s="$last" 'NR==s{f=1} f && NR>s && (/^- 2[0-9][0-9][0-9]-/ || /^## /){exit} f{print}' "$PLAN")
+    span=$(cut -f3 "$tmp/entries" | tail -1)
+    entry=$(awk -v s="$last" -v n="$span" 'NR >= s && NR < s + n' "$PLAN")
     # `[[:space:]]+` between the two words, not a single space, and it is a false-red fix rather than a
     # relaxation. `tr` turns each newline into a space and leaves the continuation indent standing, so an
     # attestation that happens to wrap between "seam" and "scan" arrives as `seam   scan` and reads as

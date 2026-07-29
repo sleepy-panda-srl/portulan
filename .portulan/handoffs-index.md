@@ -13,6 +13,7 @@
 - 2026-07-29 · [Handoff — the changelog becomes correctable, and 0.2.0 is cut](handoffs/2026-07-29-the-changelog-becomes-correctable.md)
 - 2026-07-29 · [Handoff — the cascade gets its middle layer, and tighten-only gets its second axis](handoffs/2026-07-29-the-cascade-gets-its-middle-layer.md)
 - 2026-07-29 · [Handoff — ownership rides authorship, and the label makes it filterable](handoffs/2026-07-29-ownership-rides-authorship.md)
+- 2026-07-29 · [Handoff — one definition of where a Session log entry ends](handoffs/2026-07-29-one-definition-of-where-an-entry-ends.md)
 - 2026-07-29 · [Handoff — the librarian's scheduled pass](handoffs/2026-07-29-librarian-pass.md)
 - 2026-07-29 · [Handoff — a reply belongs where the comment is](handoffs/2026-07-29-a-reply-belongs-where-the-comment-is.md)
 - 2026-07-28 · [Handoff — the wrapper the gate could not see, and the boundary that held anyway](handoffs/2026-07-28-the-wrapper-the-gate-could-not-see.md)
