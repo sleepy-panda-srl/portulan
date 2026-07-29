@@ -40,7 +40,7 @@ run `node cli/doctor.mjs examples` to watch it validate.
 | `.portulan/` | [This repository's own workspace](.portulan/) — Portulan applied to building Portulan |
 | `evals/` | Golden tasks, the A/B harness, the CI eval gate |
 | `.github/` | CI workflows — runs every verify recipe the workspace declares, on every pull request — and the [Dependabot config](.github/dependabot.yml) that watches the Actions pins those workflows are held to |
-| `docs/` | [`vision.md`](docs/vision.md) (the constitution) and [`plan.md`](docs/plan.md) (the milestone map) |
+| `docs/` | [`vision.md`](docs/vision.md) (the constitution), [`plan.md`](docs/plan.md) (the milestone map), and [`milestones/`](docs/milestones/) — one file per milestone holding the amendment arguments, session notes and close evidence that used to live inside the table's rows. The row is the law; the file is the legislative history |
 
 ## Read next
 

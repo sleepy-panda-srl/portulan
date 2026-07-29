@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
 # Portulan workspace — verify recipe for a docs-first repository.
 #
-# Five checks. Only the kernel budget was a rule this repo had already stated; links and map were
+# Six checks. Only the kernel budget was a rule this repo had already stated; links and map were
 # minted from the defect that this recipe's first run exposed (see ./README.md, Provenance), record
-# from the 2026-07-27 audit that found a merged arc with no record at all, and proposal from milestone
-# 5, where "a rule change is a proposal as a pull request" turned out to bind nothing:
+# from the 2026-07-27 audit that found a merged arc with no record at all, proposal from milestone
+# 5, where "a rule change is a proposal as a pull request" turned out to bind nothing, and plan from
+# the post-M5 reconciliation, which found 63,420 characters of row and only 11% of it criterion:
 #   links     every relative Markdown link resolves          (docs that lie are worse than no docs)
 #   kernel    core/engine.md stays inside its line budget    (the always-loaded layer is the scarce one)
 #   map       the root README lists every top-level entry    (agent legibility: the map matches the ground)
@@ -12,6 +13,8 @@
 #             their line budget, newest attests the seam      (a session with no record is unauditable)
 #   proposal  every proposal is numbered, records an outcome, and names the pull request that filed it
 #                                                             (a rule you cannot trace to its review)
+#   plan      no milestone row carries an amendment argument or a session note, and its Status cell
+#             stays inside a character budget                 (the scoreboard is law, not an archive)
 #
 # Exit 0 green · 1 red · 2 could not run. The Stop-gate (milestone 4) calls this;
 # until it exists, the definition of done in ../dod.md requires running it by hand.
@@ -417,6 +420,126 @@ else
         sed 's/^/        /' "$tmp/plinks"
     else
         pass "proposal — every proposal names the pull request that filed it ($(wc -l <"$tmp/proposals" | tr -d '[:space:]') examined)"
+    fi
+fi
+
+# ----------------------------------------------------------------------- 6. plan
+# Three checks on the milestone table, added 2026-07-29 by the post-M5 reconciliation.
+#
+# The table had become the archive it was supposed to index: 63,420 characters of row, of which only
+# 11% was criterion. One Status cell held 16,505 characters on a single line. The history was not
+# junk — amendment arguments with their expansion/narrowing verdicts, session notes, close-evidence
+# narratives, every word of it reviewed and merged — but it was in the wrong place, because the row
+# is what a session reads to learn what it must build and the criterion had become the hardest thing
+# in it to find. That history now lives in `docs/milestones/mN.md`, moved verbatim, and these three
+# checks are what stop it flowing back.
+#
+# **This rail is RETROACTIVE, and that is deliberate — the opposite call from `record`'s two floors.**
+# There, a cutoff was mandatory: a rule written after a record cannot bind it without rewriting the
+# record to suit the rule, so `ENTRY_BUDGET_CUTOFF` binds nothing that already existed. Here the
+# remedy is **relocation**, which preserves a merged record byte-for-byte, so every historical row can
+# satisfy this rail without one word being lost or altered. A cutoff would buy nothing and cost the
+# rail its whole subject, since the rows that motivated it are precisely the old ones. Retroactivity
+# is honest exactly when compliance destroys nothing, and this is that case.
+#
+# Scope is the milestone-table rows of docs/plan.md and nothing else, which is load-bearing rather
+# than tidy. A file-wide grep for either marker would red the very records this change preserves:
+# `Session N of` appears in eight Session log entries, and every `docs/milestones/*.md` contains
+# `**Criterion amended` by design — it is the relocated argument. A rail that fired on the archive it
+# just created would be unusable on the first run, so both markers are matched **inside a row only**.
+PLAN_STATUS_BUDGET=500
+if [ ! -f "$PLAN" ]; then
+    : # already reported by the record check above; nothing here to add
+else
+    # A milestone row starts with a pipe and a number. The header, the separator, the Session log's
+    # `- YYYY-MM-DD ·` entries and ordinary prose all fail that shape, so none of them is examined.
+    : >"$tmp/rows"
+    grep -nE '^\| *[0-9]+ *\|' "$PLAN" >"$tmp/rows"
+    if [ ! -s "$tmp/rows" ]; then
+        # Enumerating the table is a precondition: with no rows found, all three checks below would
+        # report ok having examined nothing, which is the false green this recipe mints rules about.
+        printf 'verify: no milestone rows found in %s — cannot check the table\n' "$PLAN" >&2
+        exit 2
+    fi
+    rowcount=$(wc -l <"$tmp/rows" | tr -d '[:space:]')
+
+    # 6a. An amendment ARGUMENT belongs in the milestone's file. The row keeps the amended criterion
+    # text — the binding words — plus, where the amendment added an obligation, that obligation
+    # verbatim. What it must not keep is the case for the change: the provenance, the
+    # expansion-or-narrowing check, the alternatives weighed. The literal is the heading this project
+    # has used for every one of them since milestone 1, and the bounded pointer the rows now carry
+    # (`**Amended <date> (<direction>; argument in …)`) deliberately does not match it.
+    : >"$tmp/planamend"
+    grep -nE '^\| *[0-9]+ *\|' "$PLAN" | grep -F '**Criterion amended' >>"$tmp/planamend" || true
+    if [ -s "$tmp/planamend" ]; then
+        fail "plan — milestone row(s) carrying an amendment argument; it belongs in docs/milestones/"
+        cut -d: -f1 "$tmp/planamend" | sed 's/^/        docs\/plan.md:/'
+    else
+        pass "plan — no milestone row carries an amendment argument ($rowcount row(s) examined)"
+    fi
+
+    # 6b. Session notes likewise. The pattern is wider than any one spelling on purpose: the rows
+    # this was minted from used BOTH `(Session 0 of 1–2, …` (milestones 4 and 5) and a lowercase
+    # bullet-led `· session 1 of 1–2, …` (milestone 3). A rail matching only the first would have
+    # reported green over the second, which was 4,126 characters of the table when this was written.
+    # Matching the shape rather than the punctuation is the difference between a rail and a decoration.
+    : >"$tmp/plansess"
+    grep -nE '^\| *[0-9]+ *\|' "$PLAN" | grep -E '[Ss]ession [0-9]+ of' >>"$tmp/plansess" || true
+    if [ -s "$tmp/plansess" ]; then
+        fail "plan — milestone row(s) carrying a session note; it belongs in docs/milestones/"
+        cut -d: -f1 "$tmp/plansess" | sed 's/^/        docs\/plan.md:/'
+    else
+        pass "plan — no milestone row carries a session note ($rowcount row(s) examined)"
+    fi
+
+    # 6b′. A row this check cannot parse is a REFUSAL, not a pass. 6c reads the Status cell as the
+    # sixth pipe-separated field, which is only the Status cell while a row has exactly five cells and
+    # no escaped `\|` inside one. Nothing in Markdown stops a future row carrying one, and the first
+    # draft of 6c simply skipped such a row: a 611-character Status cell with one `\|` in it passed
+    # green, while the summary line went on claiming 12 rows examined. That is the fail-open this whole
+    # recipe mints rules about — `../memory/a-checker-must-refuse-what-it-cannot-check.md` — and it
+    # would have shipped inside the change that added the rail. Reported before 6c runs, so the
+    # diagnosis arrives before the check that depends on it.
+    : >"$tmp/planshape"
+    awk -F'|' -v p="$PLAN" '
+        /^\| *[0-9]+ *\|/ && NF != 7 {
+            printf "%s:%d (milestone %s) has %d pipe-separated field(s), not 7 — an escaped pipe?\n", p, NR, $2+0, NF
+        }
+    ' "$PLAN" >>"$tmp/planshape"
+    if [ -s "$tmp/planshape" ]; then
+        fail "plan — $(wc -l <"$tmp/planshape" | tr -d '[:space:]') milestone row(s) this check cannot parse; the Status budget below cannot see them"
+        sed 's/^/        /' "$tmp/planshape"
+    else
+        pass "plan — every milestone row parses into its five cells ($rowcount row(s) examined)"
+    fi
+
+    # 6c. The Status cell is a verdict, not a narrative. The budget is a CHARACTER count because the
+    # cell is one line by construction — a line budget here would be the number 1 and would bound
+    # nothing. 500 was picked from the relocated rows' own post-split sizes rather than chosen for
+    # roundness: the largest Status cell after the move is 385 (milestone 11, of which 135 characters
+    # are a single proposal path), and the largest signed verdict is 309 (milestone 5). 500 leaves
+    # about 30% headroom so the next close does not red on a character, and still cannot hold a
+    # session note or an evidence narrative — the cell it replaces was 16,505.
+    #
+    # Every row is bound, including `todo` ones: a row's Status is where this table drifted last time
+    # and the cheapest place for it to drift again.
+    # The count this reports is the number of rows it could actually READ, not the number that exist.
+    # They differ exactly when 6b′ fired, and printing `$rowcount` here would have this check claim
+    # coverage of a row it had just been told it cannot parse — a green whose number is borrowed from
+    # a different question. Same discipline as `record` 4c printing the count it examined on every run.
+    : >"$tmp/planstatus"
+    awk -F'|' -v b="$PLAN_STATUS_BUDGET" -v p="$PLAN" '
+        /^\| *[0-9]+ *\|/ && NF == 7 {
+            n = length($6)
+            if (n > b) printf "%s:%d (milestone %s) Status is %d characters, over %d\n", p, NR, $2+0, n, b
+        }
+    ' "$PLAN" >>"$tmp/planstatus"
+    readable=$(awk -F'|' '/^\| *[0-9]+ *\|/ && NF == 7' "$PLAN" | wc -l | tr -d '[:space:]')
+    if [ -s "$tmp/planstatus" ]; then
+        fail "plan — $(wc -l <"$tmp/planstatus" | tr -d '[:space:]') Status cell(s) over the ${PLAN_STATUS_BUDGET}-character budget"
+        sed 's/^/        /' "$tmp/planstatus"
+    else
+        pass "plan — every Status cell is within ${PLAN_STATUS_BUDGET} characters ($readable of $rowcount row(s) readable)"
     fi
 fi
 

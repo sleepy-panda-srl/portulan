@@ -91,8 +91,11 @@ on:
   # check — a maintainer re-runs the job, which is the same click as before but only in the rare case
   # rather than every time.
 
+# `write`, not `read`, as of 2026-07-29 — for the one POST below that re-requests Copilot mid-wait.
+# A `permissions:` block REPLACES the default, so every scope not named here is `none`; widening this
+# one key grants exactly the review-request call and nothing else in the repository.
 permissions:
-  pull-requests: read
+  pull-requests: write
 
 # A push supersedes the run waiting on the commit it replaced. Without this, the old run keeps polling a
 # head that is no longer the head, for up to the full budget, on a runner it does not need.
@@ -123,6 +126,14 @@ jobs:
           # slowest round observed. Long enough that expiry means something went wrong rather than
           # something was slow, which is the only way the red at the end of it is worth reading.
           WAIT_SECONDS=1200
+          # Halfway. Late enough that an ordinary round (under four minutes here) has long since
+          # landed and the re-request is never sent to a reviewer that was merely working; early
+          # enough that the ~90s answer it buys still fits inside the budget with minutes to spare.
+          REREQUEST_AFTER=600
+          # none → attempted → sent | failed. Never "attempted" at the end unless the shell died
+          # between the two assignments below.
+          rerequest_state=none
+          rerequest_at=''
           # 30s, not 5s: the budget is 40 polls of two reads each, well inside the 1,000/hour that
           # `GITHUB_TOKEN` gets per repository even with every open pull request waiting at once.
           POLL_SECONDS=30
@@ -329,6 +340,46 @@ jobs:
               fi
             fi
 
+            # ONE re-request, halfway through the budget — issue #88, and it is measured rather than
+            # guessed. On #86, the scheduled librarian's first real pull request, the auto-request was
+            # made and ACCEPTED (`requested_reviewers` read `["Copilot"]`) and no review came in the
+            # full twenty minutes. An explicit re-request then produced one in about **ninety
+            # seconds**. So waiting alone bought nothing and asking again bought everything, and the
+            # difference is not slowness — maintainer-opened pull requests here draw rounds in
+            # 1m53s–3m47s.
+            #
+            # The repair goes HERE rather than in `librarian.yml` because the fault is not the
+            # librarian's: any App- or bot-authored pull request meets it, and this file is the one
+            # place every pull request passes through. It also sidesteps the thing that is NOT
+            # established — whether an explicit request made *seconds* after `gh pr create` behaves
+            # like the silent auto-request or like the answered late one. Only the late case is
+            # measured, and only the late case is what this does.
+            #
+            # Once, not per poll: re-requesting in a loop would be a write amplified 20× against a
+            # reviewer that may simply be busy. A failed POST is printed and never fatal — the verdict
+            # below is still the wait's to render, and a re-request that could not be made is not a
+            # finding about the review.
+            # `rerequest_state` records what was ESTABLISHED, not what was intended. It is set before
+            # the POST so the attempt happens once either way, and then corrected by the result —
+            # because a line reading "Copilot was re-requested" after a POST that failed would be this
+            # file claiming a cause it had not established, which is the exact defect the #89 half of
+            # this same change removes from the timeout message. `rerequest_at` holds the second the
+            # attempt actually happened rather than the second it was scheduled for, so the verdict
+            # below has one carrier for that fact instead of two that can disagree.
+            if [ "$rerequest_state" = none ] && [ "$SECONDS" -ge "$REREQUEST_AFTER" ]; then
+              rerequest_at="$SECONDS"
+              rerequest_state=attempted
+              if gh api --method POST \
+                    "repos/${GITHUB_REPOSITORY}/pulls/${PR_NUMBER}/requested_reviewers" \
+                    -f 'reviewers[]=Copilot' >/dev/null; then
+                rerequest_state=sent
+                printf 're-requested Copilot at %ss — measured to answer in ~90s on #86 (2026-07-29).\n' "$rerequest_at"
+              else
+                rerequest_state=failed
+                printf 'could not re-request Copilot at %ss; continuing to wait.\n' "$rerequest_at"
+              fi
+            fi
+
             [ "$SECONDS" -lt "$WAIT_SECONDS" ] || break
 
             if [ -n "$unread" ]; then
@@ -345,6 +396,22 @@ jobs:
           # returned — possibly minutes stale, possibly not the head any more. Naming that SHA as the
           # commit with no review would send a reader to investigate a reviewer that may have answered
           # perfectly well. The verdict is red either way; only the sentence differs.
+          # The request list is read BEFORE the verdict is composed, and that ordering is the whole of
+          # issue #89. It used to be printed *after* a paragraph that named two causes — a dead ruleset
+          # or a renamed login — and on #86 neither was the cause: the check's own last two lines were
+          # `Review authors seen: none` and `Reviewers requested and still unanswered:` **empty**. The
+          # data that distinguished the faults was already computed, one line below prose that sent the
+          # reader past it. A message that names a cause it has not established is the same defect as a
+          # checker that reports what it could not check
+          # (`.portulan/memory/a-checker-must-refuse-what-it-cannot-check.md`), pointed at a diagnostic
+          # instead of a verdict. The check is right to fail here; only the sentence was wrong.
+          requested=''
+          requested_read=0
+          if requested=$(gh api "repos/${GITHUB_REPOSITORY}/pulls/${PR_NUMBER}/requested_reviewers" \
+                --jq '[.users[].login] | join(" ")'); then
+            requested_read=1
+          fi
+
           if [ -n "$unread" ]; then
             printf '::error::could not confirm a Copilot review on #%s after %ss — the API was still unreadable at the last attempt: %s\n' \
               "$PR_NUMBER" "$SECONDS" "$unread"
@@ -356,18 +423,47 @@ jobs:
               "$head" "$SECONDS"
             printf 'A pull request may not merge until Copilot has reviewed the commit it is actually\n'
             printf 'merging, and until that feedback is resolved. Conversation resolution covers the\n'
-            printf 'resolved half; this covers the awaited half. Rounds on this repository land in\n'
-            printf 'under four minutes, so a full budget spent waiting is a fault, not slowness:\n'
-            printf 'check that the Copilot ruleset is still active and that the reviewer login below\n'
-            printf 'has not been renamed, then re-run this job — it is not bot-triggered and needs no\n'
-            printf 'approval. Measured 2026-07-28.\n'
+            printf 'resolved half; this covers the awaited half.\n\n'
+            # THREE outcomes, because the answer to "was a round even requested?" has three states and
+            # only two of them license naming a cause. Each names the repair that fits ITS fault.
+            if [ "$requested_read" -eq 0 ]; then
+              printf 'Whether a round was ever requested could NOT be read, so this message names no\n'
+              printf 'cause: the two faults below have different repairs and nothing here distinguishes\n'
+              printf 'them. Read %s/pulls/%s/requested_reviewers by hand.\n' "$GITHUB_REPOSITORY" "$PR_NUMBER"
+            elif [ -z "$requested" ]; then
+              printf 'NOTHING WAS REQUESTED, and that is a different fault from a reviewer going silent.\n'
+              printf 'The request was never created for this actor — the condition under which this first\n'
+              printf 'fired, on #86, was that **the author was a bot**, which no earlier version of this\n'
+              printf 'message considered. Check that the Copilot ruleset applies to pull requests from\n'
+              printf 'this author, then re-run the job.\n'
+              # What the mid-wait re-request established, and only that. `sent` is the only state that
+              # licenses "asking again did not help"; `failed` means the second experiment never ran.
+              case "$rerequest_state" in
+                sent)     printf 'A re-request WAS accepted at %ss and still produced no round, so asking again is not the repair here.\n' "$rerequest_at" ;;
+                failed)   printf 'The mid-wait re-request at %ss could NOT be sent, so whether asking again would have worked is untested.\n' "$rerequest_at" ;;
+                none)     printf 'The wait ended before the %ss re-request point, so no re-request was attempted.\n' "$REREQUEST_AFTER" ;;
+              esac
+            else
+              printf 'REQUESTED AND UNANSWERED — the reviewer holds the request and did not deliver:\n'
+              printf '  %s\n' "$requested"
+              printf 'That is the ruleset-and-login fault. Rounds here land in under four minutes, so a\n'
+              printf 'full budget spent waiting is a fault rather than slowness: check the Copilot\n'
+              printf 'ruleset is still active and that the login above has not been renamed, then re-run\n'
+              printf 'this job — it is not bot-triggered and needs no approval. Measured 2026-07-28.\n'
+            fi
           fi
-          printf 'Review authors seen on this pull request:%s\n' "${seen:- none}"
-          # Diagnostic only — nothing above depends on it. It separates "Copilot was never asked"
-          # from "Copilot was asked and did not answer", which are different faults with different
-          # fixes; Copilot leaves this list once it submits, so absence alone proves nothing.
-          if requested=$(gh api "repos/${GITHUB_REPOSITORY}/pulls/${PR_NUMBER}/requested_reviewers" \
-                --jq '[.users[].login] | join(" ")'); then
+          printf '\nReview authors seen on this pull request:%s\n' "${seen:- none}"
+          # Printed for both verdicts. Copilot leaves this list once it submits, so absence alone
+          # proves nothing about whether it was ever asked — which is exactly why the branch above
+          # says what it establishes and stops there.
+          if [ "$requested_read" -eq 1 ]; then
             printf 'Reviewers requested and still unanswered:%s\n' "${requested:+ $requested}"
+          else
+            printf 'Reviewers requested and still unanswered: COULD NOT READ\n'
           fi
+          case "$rerequest_state" in
+            sent)     printf 'Copilot was re-requested once during this wait, at %ss — accepted.\n' "$rerequest_at" ;;
+            failed)   printf 'A re-request was attempted at %ss and the call FAILED.\n' "$rerequest_at" ;;
+            attempted) printf 'A re-request was attempted at %ss with no result recorded.\n' "$rerequest_at" ;;
+          esac
           exit 1

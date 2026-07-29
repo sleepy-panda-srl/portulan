@@ -24,7 +24,7 @@ nothing more specific applies. Run any of them from anywhere in the tree:
 
 | Recipe | Covers | Needs |
 |---|---|---|
-| [`docs.sh`](docs.sh) — default | links · kernel budget · repo map · record correspondence · the proposal series | `bash`, `git`, POSIX text utilities |
+| [`docs.sh`](docs.sh) — default | links · kernel budget · repo map · record correspondence · the proposal series · the milestone table | `bash`, `git`, POSIX text utilities |
 | [`json.sh`](json.sh) | every tracked `.json` file parses | the above, plus `node` |
 | [`doctor.sh`](doctor.sh) | both workspaces validate: schema, paths, cross-references, claims against the tree, provenance — plus the memory store's growth report (count, size, records stating no retirement condition; notes, never failures) | `bash`, `git`, `node` |
 | [`tests.sh`](tests.sh) | every `*.test.mjs` under [`../../cli/`](../../cli/) passes — counted by `find` first, then run by a recursive glob over that same set | `bash`, `node` |
@@ -216,6 +216,7 @@ less.
 | `filters` | Every jq program in [`../../.github/workflows/`](../../.github/workflows/) produces exactly the bytes and exactly the exit status the shell around it branches on. The programs are read out of the parsed `run:` scalars and never restated here; the fixtures carry null and empty inputs alongside ordinary ones. | Two merge gates are decided by jq's answer for null — `copilot-review.yml` refuses a pull request whose `head.sha` came back empty from `join("|")`, and the required `pr-labeled` check treats *no output from `jq -er`* as "the policy declares no labels". Both behaviours were asserted by prose and by a harness that stubs `gh`, and executed by nothing. A filter is the one kind of code in this repository that can be wrong in a way review cannot see: it looks like a selector and behaves like a program. |
 | `index` | Each workspace's committed memory index is byte-identical to what its store renders, no record's heading disagrees with its filename, and neither the index's line count nor the store's size is over the budget the manifest declares. | `core/operating/memory.md` has promised a *generated, size-budgeted* index since milestone 1, and until milestone 5 both halves were prose: the index did not exist, and the budget was a sentence binding review. A budget that lives only in prose is the first thing a busy session negotiates with — the same argument the `kernel` row makes, applied to the layer that decides what else gets loaded. The heading check is here because the store may hold two carriers of a record's name and must not hold two answers; it found a real disagreement on its first run. |
 | `proposal` | Every Markdown file in [`../proposals/`](../proposals/) is a numbered `NNNN-slug.md`; every proposal records an outcome under `**Decision.**` or `**Status.**`; and every proposal names, by full URL, the pull request that filed it. | `core/operating/evolution.md` has said since milestone 1 that a rule change is a *proposal as a pull request* — "reviewable, diff-able, and revertable". All fourteen had in fact arrived that way and **not one recorded which pull request**, so the sentence bound a convention: nothing could get from a rule to the review that accepted it, and a proposal committed straight to `main` would have looked identical to one that went through the gate. Red-first against the real tree — all fourteen failed before the pointers were resolved, mechanically, through GitHub's own commit→pull-request mapping. What it deliberately does **not** check is whether a proposal is accepted, pending or rejected: that reading is `cli/librarian.mjs`'s, where a wrong answer costs a line in a report, while here it would be a grep classifying prose and a red on a proposal whose only fault is the maintainer's phrasing — which is how a whole recipe gets switched off. |
+| `plan` | No milestone row in [`../../docs/plan.md`](../../docs/plan.md) carries an amendment argument (`**Criterion amended`) or a session note (`[Ss]ession N of`); every row parses into its five cells; and every row's Status cell stays within 500 characters. The two text patterns are matched **inside a milestone-table row only**. | The table is what a session reads to learn what it must build, and it had become the archive of how each row got that way: 63,420 characters of row, **11% of it criterion**, one Status cell holding 16,505 characters on a single line. None of that history was junk — it is the amendment arguments, the expansion/narrowing verdicts and the close evidence that make a criterion auditable — but in the row it buried the binding words, and the file every session boots from paid for it on every boot. The history now lives in [`../../docs/milestones/`](../../docs/milestones/), moved verbatim, and this is what stops it flowing back. The Status budget is a **character** count because the cell is one line by construction, so a line budget here would be the number 1 and would bound nothing. Unlike `record`'s two floors this rail is deliberately **retroactive**: there, a cutoff was mandatory because a rule written after a record cannot bind it without rewriting the record to suit the rule; here the remedy is *relocation*, which preserves a merged record byte-for-byte, so every historical row can comply without one word being lost. Retroactivity is honest exactly when compliance destroys nothing. |
 | `plugin` | Both packaging manifests parse and agree; every component path resolves inside the tree — after canonicalisation, so a symlink out of it is an escape rather than containment; every declared skill and agent is a real artifact with a kebab-case `name` and a non-empty `description`. | From milestone 3 the repository *is* a distribution channel, and a marketplace declaring no plugins — or a skill path resolving to nothing — installs cleanly and delivers nothing. The platform's own validator reports the empty-marketplace case as a *warning*, which is the severity a milestone walks past. |
 
 ## Provenance
@@ -484,6 +485,40 @@ reds, the stray named and *neither field check could run* — not exit 2, becaus
 already been made. Empty the directory entirely → **exit 2**, and printing no verdict line before it.
 Those last two orderings are 4b′'s lesson reused rather than re-learned: report a finding before a
 precondition that would hide it, and report nothing at all when there is nothing to find.
+
+The `plan` check was added 2026-07-29 by the post-M5 reconciliation, and it is the first rail here that
+binds **retroactively**. The measurement that produced it: the twelve milestone rows held **63,420**
+characters, of which only 11% was criterion — 17k of amendment argument, 6.6k of session notes, and
+~32k of Status, one cell of which (milestone 4) was **16,505 characters on a single line**. The
+reconciliation moved **55,643** characters into `docs/milestones/mN.md` verbatim and left 10,565 in
+the table; the rail is what makes that a state rather than a moment.
+
+Its observation procedure ([the 0007 rule](../gate-map.md)), seven moves measured on a scratch copy of the
+tree at the commit that added it. Control → **green**, three lines each naming 12 rows examined. Type
+`**Criterion amended with Marius, …**` back into milestone 9's row → **red, exit 1**, naming
+`docs/plan.md` and the line. Type a session note back in the `(Session 0 of 1–2, …` spelling → **red**;
+type it in the lowercase bullet-led `· session 1 of 1–2, …` spelling **milestone 3 actually used** →
+**red as well**, which is the move that justifies matching the shape rather than one punctuation: a rail
+written to the first spelling alone would have reported green over 4,126 characters of the table it was
+minted from. Grow a Status cell to **501** characters → **red**, naming the milestone and both numbers;
+at **500** it is green, so the boundary is measured rather than assumed. Put an escaped `\|` inside a
+611-character Status cell → **red**, naming the row and the field count it got instead of seven. That
+last one was a fail-open the pre-commit supervisor found *inside the change that added this rail*: the
+budget reads the Status cell as the sixth pipe-separated field, so a row it cannot split simply fell
+out of the loop and passed — a 611-character cell green, under a summary line still claiming twelve
+rows examined. Now the unparseable row is a refusal in its own right and the budget's line reports how
+many rows it could **read** rather than how many exist, which is `record` 4c's discipline reused:
+a check may not borrow its coverage number from a different question. Remove the milestone rows
+entirely → **exit 2**, `no milestone rows found`, because enumerating the table is a precondition and
+four checks reporting ok over zero rows is the false green this recipe has minted rules about.
+
+**The negative half was demonstrated too, and it is the half that decides the scoping.** Both markers
+exist in this tree, legitimately, outside the milestone rows: `[Ss]ession [0-9]+ of` matches **8 Session
+log entries**, and **8 of the 9 files in `docs/milestones/`** contain `**Criterion amended` — because
+that is the relocated argument, which is the whole point of them. A file-wide grep for either would have
+redded the archive this same change created, on its first run. Anchoring both patterns to `^\| *[0-9]+
+*\|` is therefore not tidiness; it is the difference between a rail and an unusable one, and the green
+above is over a tree where all sixteen of those matches are present.
 
 ### The scheduled librarian's observation procedure
 
