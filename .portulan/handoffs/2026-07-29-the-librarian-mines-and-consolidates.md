@@ -238,6 +238,33 @@ natural run is 2026-08-03; every staleness threshold is unfired against a four-d
 nags were measured only under forced one-day thresholds; mining reads the smaller review channel; and
 consolidation's steps 3 and 4 stay human. **#86 is filed, not merged** — that gate is the maintainer's.
 
+## And a platform fact the demonstration itself turned up: Copilot does not review the App's pull request
+
+Found after the close checkpoint had signed, by reading #86's own checks rather than by looking for it.
+**`copilot-reviewed` is RED on [#86](https://github.com/sleepy-panda-works/portulan/pull/86), and the
+cause is that the pull request has no reviews at all** — not one, ~25 minutes after filing. The
+comparison is the measurement: [#85](https://github.com/sleepy-panda-works/portulan/pull/85), opened by
+the maintainer, drew **eight** Copilot reviews; [#87](https://github.com/sleepy-panda-works/portulan/pull/87),
+also his, drew one within minutes; #86, opened by `portulan-agent`, drew **zero**.
+
+**It does not block this close, and the reason is worth stating rather than assuming.** `main`'s
+required contexts are exactly `["workspace-verify", "pr-labeled"]`, read from the branch-protection
+API — `copilot-reviewed` is not among them, which is why #86 is `MERGEABLE` with it red. The
+milestone's clause is *files its first real pull request*, and that is demonstrated.
+
+**What it does put a question against is the merge doctrine, one layer on.**
+[`a-review-is-awaited-not-just-resolved.md`](../memory/a-review-is-awaited-not-just-resolved.md) and the
+loop bound both hold that a merge waits for a Copilot round on the head it merges. If the reviewer
+never arrives on an App-opened pull request, the librarian's weekly filing can never satisfy that on its
+own terms — so either the doctrine gains an explicit carve-out for a scheduled pass, or the pass's work
+is reviewed by the human who merges it and the doctrine says so. **That is a maintainer's question, not
+an implementer's**, and it is the same shape as the one
+[#67](https://github.com/sleepy-panda-works/portulan/issues/67) already asks about fork pull requests —
+*does the reviewer arrive for this actor?* — now answered for one actor and still open for the other.
+
+One measurement, one actor, one repository: this is not established as a general rule about GitHub
+Copilot, and the next pass is the cheap way to see whether it holds.
+
 ## Next action
 
 The post-M5 reconciliation the maintainer deferred: a handoff-series budget, amendment blocks →
