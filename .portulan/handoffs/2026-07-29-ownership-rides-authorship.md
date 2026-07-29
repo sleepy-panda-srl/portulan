@@ -31,9 +31,13 @@ disturbs `pr-labeled` (it re-runs and re-greens; the policy refuses only the unl
 
 ## The wiring, split the way the repository splits everything
 
-Where nobody is present, machinery: `librarian.yml` now labels its weekly pull request
-`--add-label workspace --add-label agent-driven` in the same App-raised call — first natural
-demonstration is Monday's pass, 2026-08-03. Where a session is present, convention with a home: the
+Where nobody is present, machinery: `librarian.yml` now labels its weekly pull request `workspace`
+(fatal on failure — the gated area label) and then `agent-driven` in its **own best-effort call**,
+split in this pull request's round one so the optional ownership label can never take the required
+one down — first natural demonstration is Monday's pass, 2026-08-03. This paragraph said "in the
+same App-raised call" until round two's suppressed note caught it describing the coupling the same
+pull request had already removed — the stale-carrier class, caught in the record that was writing
+it down. Where a session is present, convention with a home: the
 gate map's Propose tier now says an agent-driven pull request carries `agent-driven` **beside its
 area label, never instead of one**, applied in the session's own `gh pr create`.
 
