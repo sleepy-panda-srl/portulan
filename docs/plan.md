@@ -1643,3 +1643,14 @@ _The seam applies here too: no client-identifying references._
   handoff-series budget stays open and the maintainer's** — one pass is not the trigger. · Fidelity:
   session-open (5 changes) and pre-commit (4), which caught M5's row losing a deliverable. Seam scan
   clean over diff, message and branch. Handoff: [`…own-archive.md`](../.portulan/handoffs/2026-07-29-the-table-stops-being-its-own-archive.md).
+
+- 2026-07-29 · post-M5 · **The round's verdict is displayed, and the assignee field is refuted** —
+  [#95](https://github.com/sleepy-panda-works/portulan/pull/95). Copilot cannot approve — the platform
+  submits every round as `COMMENTED` — so `copilot-review.yml` computes the verdict and the agent
+  identity submits it: approve on a clean round, approve with the notes quoted on a notes-only one,
+  nothing over findings or an unread channel; stale approvals swept per verdict-computing run.
+  Assignee measured impossible — only `marius-cetanas` is assignable; the 404, read-back, and options
+  land in the gate map. The two owed repairs it once carried were shipped meanwhile by #96 as #88/#89,
+  and better; the rebase dropped this branch's duplicates. Suite 635; eight recipes green. · Fidelity:
+  session-open APPROVE-WITH-ADJUSTMENTS (10), pre-commit (5), folded. Seam scan clean. Handoff:
+  [`2026-07-29`](../.portulan/handoffs/2026-07-29-the-verdict-is-derived.md).
