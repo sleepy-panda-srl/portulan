@@ -216,13 +216,32 @@ nothing could read.
   `EACCES`-reads-as-absent refusal in `compareOrWrite`, and — recorded even though its fix rode this
   session — the `indexLines` comment class, since what recurred is the class rather than the line.
 
+## The demonstration ran, and milestone 5 closed
+
+[#85](https://github.com/sleepy-panda-works/portulan/pull/85) merged as `4ccb672`. `librarian.yml` was
+then dispatched against `main` and **filed [#86](https://github.com/sleepy-panda-works/portulan/pull/86)
+end to end**: authored by `app/portulan-agent`, branch `librarian/2026-07-29`, labelled `workspace` by
+the App, and — the platform fact the whole session-1 design turns on — **`workspace-verify` and
+`pr-labeled` both *ran* and reported** on its head, which a pull request opened by `GITHUB_TOKEN` never
+gets. `MERGEABLE`. Its diff is exactly what a pass should write: the dated pass record, one Session log
+entry, and the handoff index regenerated **to include the record the pass had just written** — the
+ordering fix, unattended, on the real path.
+
+**The close checkpoint verified it in a way this session could not have.** It recomputed the pass
+independently on the same tree and corpus and found **all three files byte-identical** to what the
+workflow produced — the strongest honesty check a derived record admits, and a stronger claim than
+*the recipes are green*.
+
+**Verdict: CLOSE**, and the fidelity note is in the row. What it names as undemonstrated is worth
+carrying forward: the **cron event has never fired** — #86 came from `workflow_dispatch`, and the first
+natural run is 2026-08-03; every staleness threshold is unfired against a four-day-old store, so the
+nags were measured only under forced one-day thresholds; mining reads the smaller review channel; and
+consolidation's steps 3 and 4 stay human. **#86 is filed, not merged** — that gate is the maintainer's.
+
 ## Next action
 
-Merge, then the demonstration: dispatch `librarian.yml`, confirm the pull request it files carries both
-required contexts on its head and is mergeable, then a fresh-context milestone-close checkpoint. The
-App still needs `contents: read` **accepted on the installation** — read back with
-`gh api /orgs/sleepy-panda-works/installations --jq '.installations[] | select(.app_id==4390104) | .permissions'`;
-both secrets are set.
+The post-M5 reconciliation the maintainer deferred: a handoff-series budget, amendment blocks →
+pointers, and the per-agent-memory note in `core/operating/memory.md`. Then milestone 6.
 
 ## Recoverability
 
