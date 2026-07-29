@@ -1726,3 +1726,13 @@ _The seam applies here too: no client-identifying references._
   — prose plus two workflow strings, no logic touched; YAML re-parsed, since that file records a
   block-scalar break that once passed the shell tests. Seam scan clean over diff, message and branch.
   Handoff: [`…comment-is.md`](../.portulan/handoffs/2026-07-29-a-reply-belongs-where-the-comment-is.md).
+- 2026-07-29 · post-M6-session-0 · Doctrine — no milestone row touched · **The sweep that should have run
+  the first time** — closes [#114](https://github.com/sleepy-panda-works/portulan/issues/114). #110 fixed
+  rule 1's claim that a reply *clears the gate* and left it standing in **rule 3**; the gate clears on
+  **resolution**, which `gate-map.md` makes the maintainer's. Found at #110's two-fix-round bound and
+  triaged under rule 4, so that change shipped a record contradicting itself, knowingly. Also
+  `THIS SUMMARY` → `THIS REPORT`, true where `$GITHUB_STEP_SUMMARY` is unset. **Fifth time a fix hit the
+  reported sentence and not its siblings — and the sweep run to prevent that missed one too**, which the
+  checkpoint caught eleven lines below the fixed line. · Fidelity: pre-commit Fable 5, fresh context,
+  **before the commit**, one blocking finding folded. Seam scan clean over diff, message and branch.
+  Handoff: [`…should-have-run.md`](../.portulan/handoffs/2026-07-29-the-sweep-that-should-have-run.md).
