@@ -1346,3 +1346,24 @@ describe("a review corpus of the wrong shape is refused, never half-read", () =>
         assert.deepEqual(result.mining.reviews.paths.map((p) => p.path), ["a.md"]);
     });
 });
+
+describe("headroom is measured from what the store renders now", () => {
+    test("a record added and not reindexed RAISES the reported pressure, never lowers it", () => {
+        // Copilot, #85 round six, and the sharper end of the note round three raised about the same
+        // function. Reading the committed index gets a pressure signal exactly backwards: a store that
+        // has just grown carries an index one line short, so the headroom would read *larger* at the
+        // moment it got smaller — the one direction a consolidation trigger must never fail in.
+        const m = MANIFEST({
+            librarian: { staleness: STALENESS },
+            memory: { index: { path: "memory-index.md", budget: { lines: 20 } } },
+        });
+        const dir = repo({ ".portulan/memory/a-first.md": [linked(), "2026-06-01"] }, { workspace: m });
+        const before = passWorkspace(path.join(dir, ".portulan"), { asOf: "2026-06-15" }).consolidation.headroom.index;
+
+        // A second record, and deliberately NO regenerate — the committed index is now stale.
+        tree(dir, { ".portulan/memory/b-second.md": linked() });
+        const after = passWorkspace(path.join(dir, ".portulan"), { asOf: "2026-06-15" }).consolidation.headroom.index;
+
+        assert.ok(after.actual > before.actual, `pressure must rise with the store: ${before.actual} → ${after.actual}`);
+    });
+});
