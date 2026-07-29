@@ -1716,3 +1716,13 @@ _The seam applies here too: no client-identifying references._
   other carried the deliverable — caught by reading, not by any rail. · Fidelity: no criterion touched;
   the row-7 amendment this branch carried is **withdrawn** under the ruling. Seam scan clean over diff,
   message and branch. Handoff: [`…a-split.md`](../.portulan/handoffs/2026-07-29-the-doctrine-catches-up-with-a-split.md).
+- 2026-07-29 · post-M5 · Doctrine — no milestone row touched · **A reply belongs where the comment is.**
+  The loop rule split threads from notes on whether they *block* and never said **where each is
+  answered**, while rule 1's "a round is answered once" reads as licensing one summary comment for
+  everything. Both now say it: a thread is answered **on the thread**, a note in one batched
+  pull-request comment **because the platform gives it nowhere else** — the exception, not the pattern.
+  `copilot-review.yml`'s two report strings say the same, since they are what a session reads at the
+  moment it acts. Raised by the maintainer after reading a round on #106. · Fidelity: no new checkpoint
+  — prose plus two workflow strings, no logic touched; YAML re-parsed, since that file records a
+  block-scalar break that once passed the shell tests. Seam scan clean over diff, message and branch.
+  Handoff: [`…correctable.md`](../.portulan/handoffs/2026-07-29-the-changelog-becomes-correctable.md).
