@@ -99,7 +99,7 @@ Reversible but consequential: it changes what the repository says, or how it beh
   vocabulary, which answers *who drives this* rather than *what it touched*, and is invisible to the
   at-least-one check by construction. The maintainer's ruling (2026-07-29, verbatim: *"go with option
   B, wire the agent-driven label"*): ownership rides authorship — the assignee field cannot take an
-  App's name, per [#95](https://github.com/sleepy-panda-works/portulan/pull/95)'s measurement — and
+  App's name, per the measurement recorded in *Which identity acts* below — and
   the label is what makes it filterable. The librarian applies it mechanically to the pull request
   nobody is present to open; a session applies it in its `gh pr create`.
 - `change-doctrine` — [`../core/`](../core/), a template, a persona, or a skill.
@@ -520,7 +520,10 @@ on. If ownership-as-assignee is ever wanted anyway, both routes are the maintain
 an agent's: a machine-user account (a second credential to create, hold, and audit — priced before
 wanted), or the status quo, authorship plus the declared label set. Nothing here substitutes for the
 field, and this paragraph exists so the 404 is a recorded measurement rather than a surprise
-re-discovered per session.
+re-discovered per session. **Ruled 2026-07-29** (the maintainer, verbatim: *"go with option B, wire
+the agent-driven label"*): the status quo stands — authorship carries ownership, the machine-user
+route is declined — and the [`agent-driven`](labels.json) label from that file's ownership vocabulary
+is the filterable mark; the Propose tier above carries who applies it, and when.
 
 What makes the commit half honest rather than the same convention-reliance rejected for comments is that
 **every merge is Gated**: the maintainer approves each one, so his name on a commit that reached `main`

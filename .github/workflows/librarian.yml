@@ -332,6 +332,6 @@ jobs:
           # Raised by Copilot on #99. The maintainer's ruling, 2026-07-29; unvouched as an
           # App-actor call until a scheduled pass demonstrates it.
           if ! gh pr edit "$url" --add-label agent-driven; then
-            printf '::warning::could not apply agent-driven to %s — ownership is display, not gate; apply it by hand\n' "$url"
-            printf '**Could not apply `agent-driven` to %s** — ownership is display, not gate; apply it by hand.\n\n' "$url" >>"$GITHUB_STEP_SUMMARY"
+            printf '::warning::could not apply agent-driven to %s — ownership is display, not gate. Create the label if it is missing (declaring it in labels.json does not create it), then apply it by hand.\n' "$url"
+            printf '**Could not apply `agent-driven` to %s** — ownership is display, not gate. Create the label if it is missing (declaring it in labels.json does not create it), then apply it by hand.\n\n' "$url" >>"$GITHUB_STEP_SUMMARY"
           fi
