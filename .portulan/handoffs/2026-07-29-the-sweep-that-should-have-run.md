@@ -36,16 +36,18 @@ Every one was a `git grep` away. **This change ran the sweep before claiming the
 sweep still missed one** — which is the finding, and it is worse than the four above.
 
 The grep covered gate/clear/block in the record and `summary` in the workflow, and reported no further
-carrier. **The pre-commit checkpoint then found `copilot-review.yml:391`** — an emitted string,
+carrier. **The pre-commit checkpoint then found one in `copilot-review.yml`** — an emitted string reading
 `printed to the job summary`, **eleven lines below the sentence this change was fixing, inside the same
-block** — false on exactly the fallback path that convicted `THIS SUMMARY`. So an earlier draft of this
-handoff and of the Session log entry both said *"found no further carrier"*, and both were **false when
-written**. They are corrected here rather than quietly softened.
+block** — false on exactly the fallback path that convicted `THIS SUMMARY`. _(Quoted as it stood **before
+this change**, which removes that clause; it is not in the merged file, and a record naming a line number
+in a file it is itself editing goes stale on merge.)_ So an earlier draft of this handoff and of the
+Session log entry both said *"found no further carrier"*, and both were **false when written**. They are
+corrected here rather than quietly softened.
 
-**What the sweep got wrong is instructive: it grepped for the word, not for the claim.** `summary` as a
-literal missed nothing — line 391 contains it. What missed it was reading the hits and stopping at the
-one already known, because the fix was in hand and the grep felt like confirmation rather than
-inspection. A sweep that ends when it finds what you expected is not a sweep.
+**What the sweep got wrong is instructive: it grepped for the word, not for the claim.** The literal
+`summary` missed nothing — **in the pre-fix file that line contained it**. What missed it was reading the
+hits and stopping at the one already known, because the fix was in hand and the grep felt like
+confirmation rather than inspection. A sweep that ends when it finds what you expected is not a sweep.
 
 **Five instances now, and the fifth was inside the change written to close the fourth.** The honest
 summary is not that this class is closed. It is that nothing in the repository can close it: no rail sees
