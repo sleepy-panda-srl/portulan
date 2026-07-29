@@ -781,7 +781,13 @@ function indexLines(dir, workspace) {
         return text.split("\n").length - (text.endsWith("\n") ? 1 : 0);
     } catch {
         // Absent is not zero-and-fine, but it is `index`'s finding to report and not this pass's to
-        // duplicate: the reindex above already carries it. Zero here would understate the headroom.
+        // duplicate: the reindex above already carries it, and a workspace whose index is missing has
+        // that as a red on every pull request. **Zero here OVERSTATES the headroom** — it reads as no
+        // lines used, which is maximum room — so the honest cost of this branch is that it makes an
+        // unreadable index look like an empty one in the pressure report alone. That is the trade, and
+        // the comment said the opposite of it until Copilot caught it on #85 round three: a sentence
+        // asserting a *direction* is the kind that is easy to write backwards and impossible for any
+        // check here to catch. Same class as `c479b0a`, same file, one milestone apart.
         return 0;
     }
 }

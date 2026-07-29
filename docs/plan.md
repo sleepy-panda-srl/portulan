@@ -1606,3 +1606,14 @@ _The seam applies here too: no client-identifying references._
   recipes green. · Fidelity: session-open APPROVE-WITH-ADJUSTMENTS (7), all folded in — it refuted the
   filing design from this repository's own record. Seam scan clean. Handoff:
   [`…cron.md`](../.portulan/handoffs/2026-07-28-the-librarian-goes-on-a-cron.md).
+
+- 2026-07-29 · M5 (Memory lifecycle & librarian), session 2 of 1–2 · The librarian mines and
+  consolidates, and indexes the series it writes to — [#85](https://github.com/sleepy-panda-works/portulan/pull/85).
+  The row's last three clauses: a generated index over the handoff series ([#82](https://github.com/sleepy-panda-works/portulan/issues/82)),
+  mining incidents and pull-request reviews into **candidates** — the maintainer's ruling, since a
+  generated proposal could never name the pull request that filed it — and consolidation as distance
+  plus a question. Spec 2.4 → **2.5**: `handoffs.index.path`, no budget, and the absence is enforced by
+  the schema rather than only argued. Suite 584 → **626**; eight recipes green. #84, #83 and #77's class
+  folded in. · Fidelity: session-open APPROVE-WITH-ADJUSTMENTS (12) — it measured the mining signal and
+  narrowed the claim rather than the query — and pre-commit (5), one of them work the pass would have
+  lost at a date boundary. Seam scan clean. Handoff: [`…consolidates.md`](../.portulan/handoffs/2026-07-29-the-librarian-mines-and-consolidates.md).
