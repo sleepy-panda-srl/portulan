@@ -7,9 +7,11 @@
 **State.** The public-repo mechanism half of milestone 6 is built and open as a pull request: the Pack
 Definition, the first pack, resolution, and the tighten-only merge. `portulan-internal` does not exist
 and the Sleepy Panda product task is untouched — both Gated, both session 1. The row moved `todo →
-in-progress`; the milestone is **not** closed. Suite 635 → 669, eight recipes green. Supervision:
+in-progress`; the milestone is **not** closed. Suite 635 → 673, eight recipes green. Supervision:
 session-open APPROVE-WITH-ADJUSTMENTS (12), pre-commit REQUEST-CHANGES (2 blockers + 1 minor), all
-folded in before the push.
+folded in before the push. Two Copilot rounds answered inside the loop's bound: three inline findings
+(all real, all fixed) and two suppressed notes — one fixed, one declined with a count of this
+repository's own gate rules rather than an argument.
 
 ## Decisions + why — the reasons are the payload
 
