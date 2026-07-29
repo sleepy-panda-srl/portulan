@@ -31,7 +31,7 @@ nothing more specific applies. Run any of them from anywhere in the tree:
 | [`plugin.sh`](plugin.sh) | the packaging: both manifests parse and agree, component paths resolve, declared skills and agents are real | `bash`, `git`, `node` |
 | [`compile.sh`](compile.sh) | both compiled artifacts — [`../../.claude/settings.json`](../../.claude/settings.json) and [`../compile/github-ruleset.json`](../compile/github-ruleset.json) — are exactly what [`../gates.json`](../gates.json) compiles to | `bash`, `node` |
 | [`workflow-filters.sh`](workflow-filters.sh) | every jq program the workflows run, lifted out of the parsed `run:` scalars and executed against null-bearing fixtures — exact stdout, exact exit status | `bash`, `node`, `jq` |
-| [`index.sh`](index.sh) | both workspaces' generated memory indexes are exactly what their stores render, and neither the index nor the store is over the budget its manifest declares | `bash`, `git`, `node` |
+| [`index.sh`](index.sh) | every generated index a workspace declares — the memory store's, and since 2.5 the handoff series' — is exactly what its source renders, and neither the store index nor the store is over the budget its manifest declares | `bash`, `git`, `node` |
 
 Exit `0` green · `1` red · `2` could not run — and that third code is why each recipe declares its needs
 in the manifest rather than discovering them: a recipe that *could not run* must never be mistaken for
@@ -49,15 +49,25 @@ neither a verdict about the repository nor "could not run" — the wrapper is wh
 had before: [`workflow-filters.sh`](workflow-filters.sh) declares `jq`, guards it in the same
 `for need in …` line as `node`, and needed no edit to this paragraph or to CI to be enforced.
 
-**The eighth is [`index.sh`](index.sh)**, and it is [`compile.sh`](compile.sh)'s shape applied to a
-second generated artifact: the memory index is emitted by [`../../cli/index.mjs`](../../cli/index.mjs)
-from the store, committed so a change to what is always loaded is reviewable in a diff, and
-byte-compared here so a hand-edit survives exactly until the next run. It carries **two distinct
-reds**, because they have two distinct repairs — *out of date* is fixed by running the generator,
-*over budget* is fixed by consolidating the store
-([`../../core/skills/consolidate/SKILL.md`](../../core/skills/consolidate/SKILL.md)) — and a recipe
-that reported one verdict for both would send an author to regenerate a file that is already correct
-and still too big.
+**The eighth is [`index.sh`](index.sh)**, and it is [`compile.sh`](compile.sh)'s shape applied to
+generated artifacts: an index is emitted by [`../../cli/index.mjs`](../../cli/index.mjs) from the
+series it covers, committed so a change to what is always loaded is reviewable in a diff, and
+byte-compared here so a hand-edit survives exactly until the next run. It carries **distinct reds for
+distinct repairs** — *out of date* is fixed by running the generator, *over budget* by consolidating
+the store ([`../../core/skills/consolidate/SKILL.md`](../../core/skills/consolidate/SKILL.md)), a
+disagreeing heading by editing the record, an undated handoff by renaming it — because a recipe
+reporting one verdict for all of them would send an author to regenerate a file that is already
+correct and still too big.
+
+**Since Workspace Definition 2.5 it covers two series, and only one of them is budgeted.** The handoff
+series gets an index and no rail on its size, which is the argued absence rather than an oversight:
+consolidation is a budget's only permitted remedy, and a handoff series is append-only — held to the
+Session log by the `record` check above, one per session. Retiring a handoff to buy headroom would
+either red that check or destroy the record it exists to keep, so every repair such a budget could ask
+for is already barred. A rail whose only legal answer is *do nothing* is one that gets switched off,
+which is the failure this whole file is written against. [`../../spec/slots.md`](../../spec/slots.md)
+carries the argument; whether the series wants a rail on some other axis is the maintainer's question
+and is deferred, not answered.
 
 **[`compile.sh`](compile.sh) never writes.** It recompiles in memory and byte-compares. A verify recipe
 that repairs what it is checking always passes, which is a fail-open dressed as a convenience — and this
@@ -153,8 +163,12 @@ rather than replace them, is kept rather than pending.
 The claim is still bounded, and the bound was demonstrated within hours of being written. The suites are
 read off the tree rather than named in a list: `tests.sh` counts every `*.test.mjs` under
 [`../../cli/`](../../cli/) with `find`, then runs that same set through a recursive glob — so a suite
-added to `cli/` is covered without this paragraph changing. Four as of milestone 4, covering `doctor`,
-`plugin-lint`, the enforcement compiler, and the Stop-gate runner's arithmetic.
+added to `cli/` is covered without this paragraph changing.
+_(This sentence used to end with the count, and [#77](https://github.com/sleepy-panda-works/portulan/issues/77)
+is filed about exactly that: a paragraph claiming to be self-maintaining and then hard-coding the
+number that makes it not. It was stale when filed and stale again twice since. The figure is gone
+rather than corrected, because `tests.sh` prints the live one on every run and that carrier cannot be
+wrong. `spec/README.md` carried a sibling of this defect and lost its count in the same change.)_
 **Nothing tests the recipes themselves** — `docs.sh`, `json.sh`, `doctor.sh`, `tests.sh`, `plugin.sh`,
 `compile.sh`, `workflow-filters.sh` and `index.sh` are verified by being run, which is a weaker claim
 than it sounds, and it is weakest on `workflow-filters.sh`: its reader of the workflow files is code
@@ -430,6 +444,25 @@ absent*. Set a budget to `0` → **exit 2**, refused rather than read as undecla
 inside its own store → **exit 2**. Delete the generator → **exit 2** from the wrapper. Drop a third
 `workspace.json` into the tree → **exit 2**, the list disagreeing with the audit. Take `node` off the
 `PATH` → **exit 2** from the guard. Clean tree at both ends → **green**.
+
+**The handoff series joined this check at Workspace Definition 2.5**, and it gets its own eight moves
+rather than inheriting the ones above — the machinery is shared, the two derived fields are not. Add a
+handoff and do not regenerate → **red, exit 1**, *out of date against the series*. Delete the committed
+handoff index → **red**, *declared and absent*. Strip a handoff's `# ` heading → **red**, naming the
+file and the missing heading, **and nothing is written**: a title the generator would have to invent is
+the one thing a generated file must not contain. Rename a handoff so its filename carries no date →
+**red**, a *different* check with a different repair, because the first is fixed by editing the file and
+the second by renaming it. Edit a handoff's prose without touching its heading → **green**, the same
+deliberate property the store's index has: a line is a date, a title and a path, so the index goes stale
+on the series' **membership** rather than on a session's wording. Site the index inside
+`slots.handoffs` → **exit 2**, and `doctor` red beside it, which is two enforcers of one siting rule
+and neither redundant — the generator physically cannot render a series it would be a member of, while
+`doctor` is what catches a hand-placed file the generator never saw. Declare `handoffs` with no
+`slots.handoffs` → **exit 2**, and `doctor` red. And the eighth, which is the one worth knowing:
+**declare a budget on the handoff index → `doctor` RED**, `unexpected property `budget``, because the
+schema sets `additionalProperties: false` and 2.5 deliberately gives that object one key. The argued
+absence in [`../../spec/slots.md`](../../spec/slots.md) is therefore enforced rather than merely
+explained — a workspace cannot quietly acquire the rail whose every legal remedy is barred.
 
 The `proposal` check was added 2026-07-28, at milestone 5, against a sentence
 [`../../core/operating/evolution.md`](../../core/operating/evolution.md) had carried since milestone 1:

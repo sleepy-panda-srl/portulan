@@ -1,7 +1,8 @@
 # The scheduled librarian: a weekly pass over the curated layer, filed as a pull request.
 #
-# The pass itself is `cli/librarian.mjs` — reindex, staleness, the sealed-stamp re-validation nag,
-# proposal nagging, demotion drafts. This file is only the scheduler and the filing clerk, the same
+# The pass itself is `cli/librarian.mjs` — reindex (both series), staleness, the sealed-stamp
+# re-validation nag, proposal nagging, demotion drafts, mining incidents and pull-request reviews into
+# candidates, and consolidation. This file is only the scheduler and the filing clerk, the same
 # split as `.portulan/gates.json` and `cli/compile.mjs`, or `.portulan/workspace.json` and
 # `verify.yml`. A team adopting Portulan on another host writes their own scheduler; the pass is what
 # ships.
@@ -73,7 +74,8 @@ permissions:
   # `contents: write` is what pushes the branch, and it is the only elevation in this file. The
   # repository default is `read` (measured), so every other workflow here keeps the floor.
   contents: write
-  # And `pull-requests: read` for the idempotence check, which is not optional the way it looks.
+  # And `pull-requests: read` for the idempotence check and the review-corpus fetch, which is not
+  # optional the way it looks.
   # **Declaring `permissions` at all sets every unnamed scope to `none`** — it is a replacement, not
   # an addition to the default — so with `contents: write` alone `gh pr list` would have been refused,
   # the check would have taken the stranded-branch error path, and the workflow would have failed on
@@ -137,13 +139,56 @@ jobs:
           # re-dispatch after the day's pass had already merged would take the error path below and
           # fail the job over work that had gone perfectly. Raised by Copilot on #81, in the suppressed
           # half of the round.
-          if [ -n "$(gh pr list --head "$branch" --state all --limit 1)" ]; then
+          # **The exit status is read, and it is read separately from the output.** Issue #83: empty
+          # stdout was taken as *no pull request exists*, but a transient API failure, an auth failure
+          # and a rate limit all produce empty stdout too — and the job then announced *the branch is
+          # pushed with nothing filed*, which is a confident diagnosis of the wrong thing and sends
+          # whoever reads it to look at a branch when the cause is the network. *Could not look* must
+          # not report as *I looked and found nothing*
+          # (`.portulan/memory/a-checker-must-refuse-what-it-cannot-check.md`), so a failed call is
+          # exit 2 — could-not-run — and never a verdict about the branch.
+          if ! existing=$(gh pr list --head "$branch" --state all --limit 1); then
+            printf '::error::could not ask GitHub whether %s already has a pull request. This is a failure to look, not a finding — nothing is filed and nothing is concluded.\n' "$branch"
+            exit 2
+          fi
+          if [ -n "$existing" ]; then
             printf '::notice::%s already has a pull request — this pass has run today. Nothing to do.\n' "$branch"
             printf 'filed=yes\n' >>"$GITHUB_OUTPUT"
             exit 0
           fi
-          printf '::error::%s is pushed with no open pull request — an earlier run filed nothing. Open one from that branch, or delete it and re-run.\n' "$branch"
+          # `--state all` above, so the message may not say *open*: it said so until #83, four lines
+          # under the check whose wording it contradicted — the same fact carried twice, drifting at
+          # the weaker carrier, which is this repository's signature defect in miniature.
+          printf '::error::%s is pushed and no pull request of any state was filed from it — an earlier run filed nothing. Open one from that branch, or delete it and re-run.\n' "$branch"
           exit 1
+
+      - name: Fetch the pull-request review corpus
+        if: steps.existing.outputs.filed == 'no'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -uo pipefail
+          # The mining half's second corpus. `cli/librarian.mjs` makes no network call by design, so
+          # the fetch lives here and every line of the *reading* is exercised by the suite against a
+          # fixture rather than at 06:00 on a Monday.
+          #
+          # `--paginate` is load-bearing rather than tidy: without it this returns the first page, and
+          # a recurrence count over an unexamined corpus reports *none recurring* — a false green over
+          # a partial read, which is the enumeration fail-open this repository has now fixed five times.
+          #
+          # No `--jq`, deliberately, and for the reason the step above gives: `workflow-filters`
+          # requires every jq program a workflow runs to be executed against fixtures, and it exits 2
+          # the moment a workflow it does not cover contains a jq token. Handing the raw API shape to
+          # a tool with a test suite is strictly better than shaping it in untested shell.
+          #
+          # `RUNNER_TEMP`, never the workspace: the corpus is other people's review prose, and a file
+          # that cannot be reached by `git add -A` cannot be committed by the step that runs it — the
+          # same structural argument the App key below rests on rather than a rule to remember.
+          if ! gh api --paginate "repos/${GITHUB_REPOSITORY}/pulls/comments?per_page=100" >"$RUNNER_TEMP/reviews.json"; then
+            printf '::error::could not fetch the review corpus. This is a failure to look, not a finding — a pass that filed *no recurring paths* over a fetch that failed would be reporting a green it never earned.\n'
+            exit 1
+          fi
 
       - name: Run the pass
         if: steps.existing.outputs.filed == 'no'
@@ -153,12 +198,16 @@ jobs:
           DATE: ${{ steps.existing.outputs.date }}
         run: |
           set -uo pipefail
-          # `--write` regenerates each index, writes the dated handoff, and — with `--log` — appends
-          # one Session log entry. A pass is a session (the maintainer's ruling, 2026-07-28), and a
-          # session here ends with a handoff and a log line; `.portulan/verify/docs.sh`'s `record`
-          # check enforces both correspondences, so a pass that wrote only one of them would turn
-          # its own pull request red.
-          node cli/librarian.mjs --as-of "$DATE" --write --log docs/plan.md .portulan examples | tee "$RUNNER_TEMP/pass.txt"
+          # `--write` writes the dated handoff, appends one Session log entry with `--log`, and
+          # regenerates each index — in that order, which is not an implementation detail: a pass is a
+          # session, so the handoff it writes is a member of the series the handoff index covers, and
+          # an index regenerated first would be stale in the commit this job pushes. `index.sh` would
+          # then red this pull request, and the failure would arrive unattended on the first real run.
+          #
+          # A pass is a session (the maintainer's ruling, 2026-07-28), and a session here ends with a
+          # handoff and a log line; `.portulan/verify/docs.sh`'s `record` check enforces both
+          # correspondences, so a pass that wrote only one of them would turn its own pull request red.
+          node cli/librarian.mjs --as-of "$DATE" --write --log docs/plan.md --reviews "$RUNNER_TEMP/reviews.json" .portulan examples | tee "$RUNNER_TEMP/pass.txt"
           rc=${PIPESTATUS[0]}
           if [ "$rc" -ne 0 ]; then
             printf '::error::the librarian pass exited %s — it could not run, so nothing is filed\n' "$rc"

@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://portulan.dev/spec/2.4/workspace.schema.json",
-  "title": "Portulan Workspace Definition v2.4",
+  "$id": "https://portulan.dev/spec/2.5/workspace.schema.json",
+  "title": "Portulan Workspace Definition v2.5",
   "description": "The manifest at the root of a workspace. It is an index, not a container: it names the slots the engine resolves against and points at the Markdown that holds each slot's content and rationale. Written in a deliberately small subset of JSON Schema 2020-12 — see spec/README.md for the subset and for what validates it.",
   "type": "object",
   "additionalProperties": false,
@@ -188,6 +188,26 @@
                   "type": "number"
                 }
               }
+            }
+          }
+        }
+      }
+    },
+
+    "handoffs": {
+      "description": "Optional, added in 2.5. What the handoff series' generated index is called — the same split as `memory` above, and for the same reason: `slots.handoffs` is the series, this is the machine configuration over it. One key and no more. There is deliberately NO budget here, and the absence is the considered half: a budget's only permitted remedy is consolidation — merge, compress, retire (core/operating/memory.md) — and a handoff series is append-only by construction, one per session, held to the Session log by a verify recipe's count-based correspondence. Retiring a handoff to buy headroom would either red that check or destroy the record it exists to keep, and raising the budget in the change that breached it is the one repair that doctrine rules out. Every remedy such a budget could ask for is barred, which makes it a rail designed to be broken. Whether the series should be budgeted on some other axis is a maintainer's question, deferred rather than answered here — and a key that exists but must never be set would be this specification pre-empting that answer in the shape of an invitation.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "index": {
+          "description": "The generated index over the handoff series. Built by `cli/index.mjs` and byte-compared by a verify recipe on the same terms as the memory index: every field on a line is derived from the series — the ISO date off the filename, the title off the record's own H1 — so nothing in the file can be edited into disagreement with what it indexes. Its path must resolve OUTSIDE `slots.handoffs`: a file in that directory whose name carries no date already fails the `record` check, and one that did carry a date would be counted as a handoff by the correspondence check. Sited beside the series, both stay true without either check learning a filename to ignore.",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["path"],
+          "properties": {
+            "path": {
+              "description": "Where the generated index is written, relative to the workspace root.",
+              "$ref": "#/$defs/filePath"
             }
           }
         }

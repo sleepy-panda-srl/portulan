@@ -38,10 +38,14 @@ The loop runs inside a finite attention window, so context is managed, not hoard
   checkable has to say what the checker looks at; a date buried in prose would need parsing and would be
   read differently by every writer. It also makes the series sort chronologically for free. An unbroken
   series is what makes the record machine-readable: the session-end gate arrived in milestone 4 — it
-  checks that a handoff dated today exists, never its length or its shape — and the librarian that mines
-  the series is milestone 5, named in that row and not yet built. What milestone 5 did build **writes**
-  to the series rather than reading it: a scheduled pass is a session, so it ends with a dated handoff
-  like any other. _(Provenance: Cognition. See `../templates/handoff.md`.)_
+  checks that a handoff dated today exists, never its length or its shape — and milestone 5 built the
+  librarian that **reads** the series, in three ways that only an unbroken one allows. It generates an
+  index over it, every field derived. It ages it from git. And it mines it: an incident nothing in the
+  curated layer points back at is a candidate for the `codify` skill, because a rule whose incident
+  cannot be traced can never be retired on evidence. The pass also **writes** to the series — a
+  scheduled pass is a session, so it ends with a dated handoff like any other — which is why nothing
+  regenerates that index until the pass's own record is on disk. _(Provenance: Cognition. See
+  `../templates/handoff.md`.)_
 - **Subagents are context firewalls.** Fan work out to a persona with its own window and return only
   the conclusion; the parent's budget stays clean. Read in parallel, write from one place. _(See
   `../personas/`. Provenance: HumanLayer; Cognition — read-parallel / write-isolated.)_

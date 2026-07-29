@@ -1,0 +1,42 @@
+# Handoff index — portulan
+
+> Generated from `handoffs/` by `node cli/index.mjs`. Do not edit by hand: it is regenerated
+> and byte-compared, so a hand-edit survives exactly until the next run.
+> 35 handoff(s), newest first. No budget: the series is append-only, so
+> the only remedy a budget could ask for is one this project rules out.
+
+- 2026-07-28 · [Handoff — the wrapper the gate could not see, and the boundary that held anyway](handoffs/2026-07-28-the-wrapper-the-gate-could-not-see.md)
+- 2026-07-28 · [Handoff — the rows name what they owe](handoffs/2026-07-28-the-rows-name-what-they-owe.md)
+- 2026-07-28 · [Handoff — the record gets its rail, and the log mandate gets one carrier](handoffs/2026-07-28-the-record-gets-its-rail.md)
+- 2026-07-28 · [Handoff — the librarian goes on a cron, and a repository cannot open its own pull request](handoffs/2026-07-28-the-librarian-goes-on-a-cron.md)
+- 2026-07-28 · [Handoff — the index is the rail, and the store had nothing to consolidate](handoffs/2026-07-28-the-index-is-the-rail.md)
+- 2026-07-28 · [Handoff — milestone 4 closes, and the close checkpoint ran the demo the session could not](handoffs/2026-07-28-milestone-four-closes.md)
+- 2026-07-28 · [Handoff — every jq filter a workflow runs is exercised](handoffs/2026-07-28-every-jq-filter-a-workflow-runs-is-exercised.md)
+- 2026-07-28 · [Handoff — awaiting a review is a pending check, not a failed one](handoffs/2026-07-28-awaiting-a-review-is-not-a-failure.md)
+- 2026-07-28 · [Handoff — a `write:` rule named a path and gated three tools](handoffs/2026-07-28-a-write-gate-reaches-the-shell.md)
+- 2026-07-27 · [2026-07-27 — Who may commit, and the three doors for everyone else](handoffs/2026-07-27-who-may-commit.md)
+- 2026-07-27 · [Handoff — the third tool was missing from the map](handoffs/2026-07-27-the-third-tool-was-missing-from-the-map.md)
+- 2026-07-27 · [Handoff — 2026-07-27 · the reviewer was right, and the form it used could not be answered](handoffs/2026-07-27-the-reviewer-was-right-and-nobody-could-tell.md)
+- 2026-07-27 · [2026-07-27 — The review lands before the merge, not after it](handoffs/2026-07-27-the-review-lands-before-the-merge.md)
+- 2026-07-27 · [Handoff — the public flip](handoffs/2026-07-27-the-public-flip.md)
+- 2026-07-27 · [Handoff — the label check joins the platform floor](handoffs/2026-07-27-the-label-check-joins-the-floor.md)
+- 2026-07-27 · [Handoff — the gate is the decision, not the keystroke (a reconstruction)](handoffs/2026-07-27-the-gate-is-the-decision-not-the-keystroke.md)
+- 2026-07-27 · [Handoff — the floor backend, the matrix, and the report that found its first defect on its first run](handoffs/2026-07-27-the-floor-backend-and-the-matrix.md)
+- 2026-07-27 · [Handoff — the gate map stopped being a document](handoffs/2026-07-27-the-enforcement-compiler.md)
+- 2026-07-27 · [Handoff — planning the Desktop, user extensibility, and the feedback sender](handoffs/2026-07-27-the-desktop-is-a-host.md)
+- 2026-07-27 · [Handoff — the audit remediation: four categories, four pull requests](handoffs/2026-07-27-the-audit-remediation.md)
+- 2026-07-27 · [Handoff — nothing merges from behind `main`, and everything that merges is labelled](handoffs/2026-07-27-nothing-merges-behind-main.md)
+- 2026-07-27 · [Handoff — memory growth rails (maintainer directive)](handoffs/2026-07-27-memory-growth-rails.md)
+- 2026-07-27 · [Handoff — the security half, and then everything that was watching nothing](handoffs/2026-07-27-dependabot-security-and-the-watchers.md)
+- 2026-07-26 · [Handoff — the install said `Agents (0)`, and everything else follows from that](handoffs/2026-07-26-the-tag-and-the-install.md)
+- 2026-07-26 · [Handoff — the plugin, and what measuring two validators cost](handoffs/2026-07-26-plugin-and-public-marketplace.md)
+- 2026-07-25 · [Handoff — the Workspace Definition, derived and instantiated](handoffs/2026-07-25-workspace-definition-v1.md)
+- 2026-07-25 · [Handoff — step 1 of the required-check rename](handoffs/2026-07-25-rename-required-check-step-1.md)
+- 2026-07-25 · [Handoff — the required check now says what it asserts](handoffs/2026-07-25-rename-required-check-complete.md)
+- 2026-07-25 · [Handoff — the platform floor stops being convention](handoffs/2026-07-25-platform-floor-applied.md)
+- 2026-07-25 · [Handoff — milestone 1, session 3: the workspace layer and the first verified run](handoffs/2026-07-25-m1-session-3.md)
+- 2026-07-25 · [Handoff — clearing the open items before milestone 2](handoffs/2026-07-25-loose-ends-before-m2.md)
+- 2026-07-25 · [Handoff — handoff cadence made uniform](handoffs/2026-07-25-handoff-cadence.md)
+- 2026-07-25 · [Handoff — `doctor`, the demo workspace, and the first red on real content](handoffs/2026-07-25-doctor-and-the-demo-workspace.md)
+- 2026-07-25 · [Handoff — CI reads the manifest instead of a hand-maintained list](handoffs/2026-07-25-ci-runs-declared-recipes.md)
+- 2026-07-25 · [Handoff — the agent gets its own GitHub identity](handoffs/2026-07-25-agent-bot-identity.md)

@@ -47,13 +47,16 @@ rules are on the retirement watch — distinct from the implementer's and review
 
 Re-expressed from public practice (Letta — consolidation; compounding engineering — codify; ETH Zurich
 — curated beats generated). Invocable on demand, and **schedulable as of milestone 5**: `cli/librarian.mjs`
-runs reindex, staleness (the sealed-stamp re-validation nag, and record age from git), proposal nagging
-and demotion drafts, and renders what it found as a record a workspace's scheduler files as a pull
-request — this persona is the contract it executes. Two halves of the charter above are **still on-demand only**: mining incidents and reviews
-into proposals (the `codify` pass), and running consolidation, both of which the milestone-5 row now
-names and a later session in that milestone builds. The distinction matters when reading this page —
-*it drafts and never accepts* is true of both halves; *it runs without being asked* is true of the
-first four. The `tools:` list is **capability classes** at
+runs reindex over both generated indexes, staleness (the sealed-stamp re-validation nag, and record age
+from git), proposal nagging, demotion drafts, **mining** and **consolidation**, and renders what it
+found as a record a workspace's scheduler files as a pull request — this persona is the contract it
+executes. The whole charter above now runs unasked; what is bounded is not *when* it runs but *what it
+concludes*. **Mining yields candidates, never proposals** — an incident nothing points back at, a path
+reviewers keep finding things in — and the `codify` skill is the pass a human runs on one, because the
+argument is the proposal. **Consolidation yields a distance and a question** — how close each budget is
+to its rail, and which records cite one incident — because merging is for records that are one
+*mechanism*, and one incident routinely teaches several. So *it drafts and never accepts* is true of
+everything here, and it is the sentence that does the work. The `tools:` list is **capability classes** at
 engine altitude; milestone 3 bound them to concrete host tools in
 [`../../agents/librarian.md`](../../agents/librarian.md). The binding cannot express the
 constraint that matters most here — *drafts everything, accepts nothing* is a property of what the agent

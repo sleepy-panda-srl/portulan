@@ -27,6 +27,7 @@ import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { inspect as inspectIndex } from "./index.mjs";
 import {
     LibrarianError,
     parseArgs,
@@ -729,13 +730,28 @@ describe("run", () => {
     });
 
     test("the flags it does understand still parse, in any order", () => {
-        assert.deepEqual(parseArgs(["--as-of", "2026-06-15", "--write", "--log", "docs/plan.md", "a", "b"]), {
+        assert.deepEqual(parseArgs(["--as-of", "2026-06-15", "--write", "--log", "docs/plan.md", "--reviews", "r.json", "a", "b"]), {
             asOf: "2026-06-15",
             logPath: "docs/plan.md",
+            reviewsPath: "r.json",
             write: true,
             dirs: ["a", "b"],
         });
-        assert.deepEqual(parseArgs(["a", "--write"]), { asOf: undefined, logPath: undefined, write: true, dirs: ["a"] });
+        assert.deepEqual(parseArgs(["a", "--write"]), {
+            asOf: undefined,
+            logPath: undefined,
+            reviewsPath: undefined,
+            write: true,
+            dirs: ["a"],
+        });
+    });
+
+    test("`--reviews` needs a value, and a flag is not one", () => {
+        // The same trap `--log` was measured to have: without this, `--reviews --write` sets the path
+        // to `--write` and drops the mode, and the pass then reports *not asked* about a corpus it was
+        // handed — a fail-open with a flag in front of it.
+        assert.throws(() => parseArgs(["--reviews"]), LibrarianError);
+        assert.throws(() => parseArgs(["--reviews", "--write", "a"]), LibrarianError);
     });
 
     test("`--as-of` must be a date, not a word", () => {
@@ -842,3 +858,366 @@ describe("the live workspaces", () => {
 function today() {
     return new Date().toISOString().slice(0, 10);
 }
+
+// ===========================================================================================
+// The handoff series — reported, never railed
+// ===========================================================================================
+
+const WITH_HANDOFFS = (extra = {}) => {
+    const m = MANIFEST(extra);
+    return { ...m, slots: { ...m.slots, handoffs: "handoffs/" } };
+};
+
+const pass = (name, body = "What happened.") => `# Handoff — ${name}\n\n${body}\n`;
+
+describe("passWorkspace — the handoff series", () => {
+    test("reports count, oldest and size, and drafts nothing", () => {
+        // The row that added this clause bars a budget on the series and gives the reason: a handoff
+        // series is append-only, so consolidation — the one remedy a budget may ask for — would mean
+        // deleting the record the series exists to keep. A staleness THRESHOLD has the same problem
+        // one layer down: `record_days` drafts a demotion, and a demotion draft against an
+        // append-only series recommends exactly that deletion, weekly, forever.
+        const dir = repo(
+            {
+                ".portulan/memory/a-fact.md": [linked(), "2026-06-01"],
+                ".portulan/handoffs/2026-01-10-old.md": [pass("Old"), "2026-01-10"],
+                ".portulan/handoffs/2026-06-01-new.md": [pass("New"), "2026-06-01"],
+            },
+            { workspace: WITH_HANDOFFS({ librarian: { staleness: STALENESS } }) },
+        );
+        const result = passWorkspace(path.join(dir, ".portulan"), { asOf: "2026-06-15" });
+        assert.equal(result.handoffs.declared, true);
+        assert.equal(result.handoffs.count, 2);
+        assert.equal(result.handoffs.oldest.file, "2026-01-10-old.md");
+        assert.equal(result.handoffs.oldest.days, 156);
+        assert.ok(result.handoffs.bytes > 0);
+        // The store's own drafts are untouched by the series: nothing here adds to them.
+        assert.deepEqual(result.drafts.map((d) => d.file), []);
+    });
+
+    test("a handoff older than record_days is not stale, because the threshold does not reach here", () => {
+        const dir = repo(
+            {
+                ".portulan/memory/a-fact.md": [linked(), "2026-06-01"],
+                ".portulan/handoffs/2020-01-01-ancient.md": [pass("Ancient"), "2020-01-01"],
+            },
+            { workspace: WITH_HANDOFFS({ librarian: { staleness: STALENESS } }) },
+        );
+        const result = passWorkspace(path.join(dir, ".portulan"), { asOf: "2026-06-15" });
+        assert.equal(result.stale.length, 0);
+        assert.equal(result.drafts.length, 0);
+        assert.equal(result.handoffs.oldest.file, "2020-01-01-ancient.md");
+    });
+
+    test("a workspace with no handoffs slot reports *not declared*, not *empty*", () => {
+        const dir = repo({ ".portulan/memory/a-fact.md": [linked(), "2026-06-01"] }, { workspace: MANIFEST({ librarian: { staleness: STALENESS } }) });
+        const result = passWorkspace(path.join(dir, ".portulan"), { asOf: "2026-06-15" });
+        assert.equal(result.handoffs.declared, false);
+        assert.equal(result.handoffs.count, null);
+    });
+});
+
+// ===========================================================================================
+// Mining
+// ===========================================================================================
+
+describe("passWorkspace — mining incidents", () => {
+    test("counts the whole series and lists only what the window holds", () => {
+        // The ratio is the trend and never becomes noise; the LIST is scoped, because a list of every
+        // uncodified incident is the same 25 lines every week for a series that only grows.
+        const dir = repo(
+            {
+                ".portulan/memory/a-fact.md": [
+                    "**type:** rule\n**scope:** workspace\n**provenance:** `form=link` `href=../handoffs/2026-01-10-old.md`\n\nA rule.\n\n**Retire when:** never.\n",
+                    "2026-06-01",
+                ],
+                ".portulan/handoffs/2026-01-10-old.md": [pass("Old"), "2026-01-10"],
+                ".portulan/handoffs/2026-06-01-recent.md": [pass("Recent"), "2026-06-01"],
+            },
+            { workspace: WITH_HANDOFFS({ librarian: { staleness: STALENESS } }) },
+        );
+        const result = passWorkspace(path.join(dir, ".portulan"), { asOf: "2026-06-15" });
+        assert.equal(result.mining.incidents.total, 2);
+        assert.equal(result.mining.incidents.linked, 1);
+        assert.deepEqual(result.mining.incidents.candidates.map((c) => c.file), ["2026-06-01-recent.md"]);
+    });
+
+    test("the window is everything after the newest pass record, once one exists", () => {
+        const dir = repo(
+            {
+                ".portulan/memory/a-fact.md": [linked(), "2026-06-01"],
+                ".portulan/handoffs/2026-01-10-before.md": [pass("Before"), "2026-01-10"],
+                ".portulan/handoffs/2026-03-01-librarian-pass.md": [pass("The librarian's scheduled pass"), "2026-03-01"],
+                ".portulan/handoffs/2026-06-01-after.md": [pass("After"), "2026-06-01"],
+            },
+            { workspace: WITH_HANDOFFS({ librarian: { staleness: STALENESS } }) },
+        );
+        const result = passWorkspace(path.join(dir, ".portulan"), { asOf: "2026-06-15" });
+        assert.equal(result.mining.incidents.since, "2026-03-01");
+        assert.deepEqual(result.mining.incidents.candidates.map((c) => c.file), ["2026-06-01-after.md"]);
+    });
+
+    test("a linked incident inside the window is not a candidate", () => {
+        const dir = repo(
+            {
+                ".portulan/memory/a-fact.md": [
+                    "**type:** rule\n**scope:** workspace\n**provenance:** `form=link` `href=../handoffs/2026-06-01-recent.md`\n\nA rule.\n\n**Retire when:** never.\n",
+                    "2026-06-02",
+                ],
+                ".portulan/handoffs/2026-06-01-recent.md": [pass("Recent"), "2026-06-01"],
+            },
+            { workspace: WITH_HANDOFFS({ librarian: { staleness: STALENESS } }) },
+        );
+        const result = passWorkspace(path.join(dir, ".portulan"), { asOf: "2026-06-15" });
+        assert.deepEqual(result.mining.incidents.candidates, []);
+    });
+
+    test("a proposal linking an incident counts as codified too", () => {
+        // Measured on the real tree before it was written: a rule minted by one session took its
+        // provenance from the PROPOSAL that session filed rather than from the handoff, so a query
+        // that read only memory records called that incident uncodified. The finding it produces is
+        // still real — nothing points back to the session — but it is a different finding, and the
+        // candidate's wording says which.
+        const dir = repo(
+            {
+                ".portulan/memory/a-fact.md": [linked(), "2026-06-01"],
+                ".portulan/proposals/0001-a-thing.md": [
+                    "# 0001 — A thing\n\nSee `../handoffs/2026-06-01-recent.md`.\n\n**Decision.** pending\n",
+                    "2026-06-02",
+                ],
+                ".portulan/handoffs/2026-06-01-recent.md": [pass("Recent"), "2026-06-01"],
+            },
+            {
+                workspace: (() => {
+                    const m = WITH_HANDOFFS({ librarian: { staleness: STALENESS } });
+                    return { ...m, slots: { ...m.slots, proposals: "proposals/" } };
+                })(),
+            },
+        );
+        const result = passWorkspace(path.join(dir, ".portulan"), { asOf: "2026-06-15" });
+        assert.equal(result.mining.incidents.linked, 1);
+        assert.deepEqual(result.mining.incidents.candidates, []);
+    });
+});
+
+describe("passWorkspace — mining pull-request reviews", () => {
+    const comment = (pull, filePath, replyTo = null, at = "2026-06-10T00:00:00Z") => ({
+        pull_request_url: `https://api.github.com/repos/o/r/pulls/${pull}`,
+        path: filePath,
+        in_reply_to_id: replyTo,
+        created_at: at,
+    });
+
+    test("null is *not asked*, which is not *none recurring*", () => {
+        const dir = repo({ ".portulan/memory/a-fact.md": [linked(), "2026-06-01"] }, { workspace: MANIFEST({ tree: "../", librarian: { staleness: STALENESS } }) });
+        const result = passWorkspace(path.join(dir, ".portulan"), { asOf: "2026-06-15" });
+        assert.equal(result.mining.reviews, null);
+    });
+
+    test("a path drawing comments on two distinct pull requests recurs; one does not", () => {
+        // Two is not a tuning knob, it is what *recurring* means — `core/skills/codify/SKILL.md`
+        // triggers on "a pattern, not a one-off". A threshold here would be policy, and policy is
+        // declared in the manifest; this is a definition, so it is not.
+        const dir = repo(
+            {
+                ".portulan/memory/a-fact.md": [linked(), "2026-06-01"],
+                "cli/doctor.mjs": ["// a file the tree really holds\n", "2026-06-01"],
+                "docs/plan.md": ["# Plan\n", "2026-06-01"],
+            },
+            { workspace: MANIFEST({ tree: "../", librarian: { staleness: STALENESS } }) },
+        );
+        const reviews = [comment(1, "cli/doctor.mjs"), comment(2, "cli/doctor.mjs"), comment(3, "docs/plan.md")];
+        const result = passWorkspace(path.join(dir, ".portulan"), { asOf: "2026-06-15", reviews });
+        assert.deepEqual(result.mining.reviews.paths.map((p) => [p.path, p.pulls]), [["cli/doctor.mjs", 2]]);
+        assert.equal(result.mining.reviews.gone, 0);
+    });
+
+    test("two comments on ONE pull request are one occurrence, not a pattern", () => {
+        const dir = repo({ ".portulan/memory/a-fact.md": [linked(), "2026-06-01"] }, { workspace: MANIFEST({ tree: "../", librarian: { staleness: STALENESS } }) });
+        const reviews = [comment(1, "cli/doctor.mjs"), comment(1, "cli/doctor.mjs")];
+        const result = passWorkspace(path.join(dir, ".portulan"), { asOf: "2026-06-15", reviews });
+        assert.deepEqual(result.mining.reviews.paths, []);
+    });
+
+    test("a reply is not a finding — only the comment that opens a thread is one", () => {
+        // Measured on this repository rather than argued, and the partition is exact: of 376 inline
+        // review comments, all 189 from the reviewer open a thread and all 187 replies — 162 the
+        // agent identity's, 25 the maintainer's — carry `in_reply_to_id`. So *a finding is a thread
+        // opener* separates them with no list of logins to maintain, which matters because the
+        // reviewer here is itself a bot: excluding bots would have excluded the findings.
+        //
+        // Counting replies would also invert the signal. Every reply we write is one more comment on
+        // a path we were answering a question about, so the harder a finding was argued, the more it
+        // would look like a place reviewers keep finding things.
+        const dir = repo({ ".portulan/memory/a-fact.md": [linked(), "2026-06-01"] }, { workspace: MANIFEST({ tree: "../", librarian: { staleness: STALENESS } }) });
+        const reviews = [comment(1, "cli/doctor.mjs", 111), comment(2, "cli/doctor.mjs", 222)];
+        const result = passWorkspace(path.join(dir, ".portulan"), { asOf: "2026-06-15", reviews });
+        assert.deepEqual(result.mining.reviews.paths, []);
+        assert.equal(result.mining.reviews.replies, 2);
+        assert.equal(result.mining.reviews.findings, 0);
+    });
+
+    test("a path the tree no longer holds is dropped, and the drop is counted", () => {
+        // Found by running the pass against this repository's real review corpus rather than by
+        // reading the code: `cli/mode.mjs` came back with findings on two pull requests, and that file
+        // does not exist — the mode axis was ruled dead and both its pull requests closed unmerged.
+        // A weekly nag pointing at a deleted file is a nag nobody can act on, and it never stops,
+        // because review history is append-only. The count is reported rather than the drop being
+        // silent: *we ignored some* and *there were none* must not print the same way.
+        const dir = repo(
+            { ".portulan/memory/a-fact.md": [linked(), "2026-06-01"], "kept.md": ["x\n", "2026-06-01"] },
+            { workspace: MANIFEST({ tree: "../", librarian: { staleness: STALENESS } }) },
+        );
+        const reviews = [
+            comment(1, "kept.md"),
+            comment(2, "kept.md"),
+            comment(1, "deleted.md"),
+            comment(2, "deleted.md"),
+        ];
+        const result = passWorkspace(path.join(dir, ".portulan"), { asOf: "2026-06-15", reviews });
+        assert.deepEqual(result.mining.reviews.paths.map((p) => p.path), ["kept.md"]);
+        assert.equal(result.mining.reviews.gone, 1);
+    });
+
+    test("a workspace that makes no claims about a tree is not asked about its reviews", () => {
+        const dir = repo({ ".portulan/memory/a-fact.md": [linked(), "2026-06-01"] }, { workspace: MANIFEST({ librarian: { staleness: STALENESS } }) });
+        const result = passWorkspace(path.join(dir, ".portulan"), { asOf: "2026-06-15", reviews: [comment(1, "a"), comment(2, "a")] });
+        assert.equal(result.mining.reviews, null);
+    });
+
+    test("review data that is not an array is refused, never read as absent", () => {
+        const dir = repo({ ".portulan/memory/a-fact.md": [linked(), "2026-06-01"] }, { workspace: MANIFEST({ tree: "../", librarian: { staleness: STALENESS } }) });
+        assert.throws(() => passWorkspace(path.join(dir, ".portulan"), { asOf: "2026-06-15", reviews: { message: "Not Found" } }), LibrarianError);
+    });
+});
+
+// ===========================================================================================
+// Consolidation
+// ===========================================================================================
+
+describe("passWorkspace — scheduled consolidation", () => {
+    const withHref = (href, fact = "A rule.") =>
+        `**type:** rule\n**scope:** workspace\n**provenance:** \`form=link\` \`href=${href}\`\n\n${fact}\n\n**Retire when:** never.\n`;
+
+    test("two records citing one incident are raised as a question, never as a merge", () => {
+        // `core/skills/consolidate/SKILL.md` step 2 merges records that are one MECHANISM. Sharing an
+        // incident is not that: measured on this repository, all three shared-incident groups are
+        // deliberately distinct facts, because one incident teaches several mechanisms. So the pass
+        // asks and does not conclude.
+        const dir = repo(
+            {
+                ".portulan/memory/a-first.md": [withHref("../handoffs/2026-01-10-old.md"), "2026-06-01"],
+                ".portulan/memory/b-second.md": [withHref("../handoffs/2026-01-10-old.md"), "2026-06-01"],
+                ".portulan/memory/c-alone.md": [withHref("../handoffs/2026-02-02-other.md"), "2026-06-01"],
+            },
+            { workspace: MANIFEST({ librarian: { staleness: STALENESS } }) },
+        );
+        const result = passWorkspace(path.join(dir, ".portulan"), { asOf: "2026-06-15" });
+        assert.equal(result.consolidation.shared.length, 1);
+        assert.deepEqual(result.consolidation.shared[0].files, ["a-first.md", "b-second.md"]);
+        assert.match(result.consolidation.shared[0].question, /one mechanism/i);
+    });
+
+    test("headroom is reported as a distance, so pressure is visible before the rail fires", () => {
+        const dir = repo(
+            { ".portulan/memory/a-first.md": [linked(), "2026-06-01"] },
+            {
+                workspace: MANIFEST({
+                    librarian: { staleness: STALENESS },
+                    memory: { index: { path: "memory-index.md", budget: { lines: 10 } }, store: { budget: { kilobytes: 1 } } },
+                }),
+            },
+        );
+        const result = passWorkspace(path.join(dir, ".portulan"), { asOf: "2026-06-15" });
+        assert.equal(result.consolidation.headroom.store.budget, 1);
+        assert.ok(result.consolidation.headroom.store.percent > 0);
+        assert.equal(result.consolidation.headroom.index.budget, 10);
+    });
+
+    test("an undeclared budget has no headroom to report, and says so rather than reporting zero", () => {
+        const dir = repo({ ".portulan/memory/a-first.md": [linked(), "2026-06-01"] }, { workspace: MANIFEST({ librarian: { staleness: STALENESS } }) });
+        const result = passWorkspace(path.join(dir, ".portulan"), { asOf: "2026-06-15" });
+        assert.equal(result.consolidation.headroom.store, null);
+        assert.equal(result.consolidation.headroom.index, null);
+    });
+});
+
+// ===========================================================================================
+// The ordering the pass cannot get wrong
+// ===========================================================================================
+
+describe("a pass leaves the tree it just wrote to green", () => {
+    const say = () => {
+        const lines = [];
+        const fn = (s) => lines.push(s);
+        fn.lines = lines;
+        return fn;
+    };
+
+    test("the handoff index covers the handoff the pass itself writes", () => {
+        // **This is the fail-open the session-open checkpoint found, and it would have arrived on the
+        // first real run.** A pass is a session, so it ends by writing a dated handoff INTO
+        // `slots.handoffs` — a member of the series the handoff index covers. Regenerate that index
+        // during the pass, as the memory index used to be, and it is stale in the very commit the pass
+        // pushes: `index.sh` reds the pull request, `workspace-verify` fails, and the pull request
+        // this milestone's criterion is demonstrated by cannot merge. Nobody is watching at 06:00 on
+        // a Monday.
+        //
+        // The assertion is deliberately end-to-end rather than a check that some function was called
+        // in some order: what has to be true is that the TREE the pass leaves behind passes the recipe
+        // that guards it.
+        const m = MANIFEST({
+            librarian: { staleness: STALENESS },
+            memory: { index: { path: "memory-index.md" } },
+            handoffs: { index: { path: "handoffs-index.md" } },
+        });
+        m.slots.handoffs = "handoffs/";
+        const dir = repo(
+            {
+                ".portulan/memory/r.md": [linked(), "2026-06-01"],
+                ".portulan/handoffs/2026-06-01-x.md": ["# Handoff — x\n\nBody.\n", "2026-06-01"],
+            },
+            { workspace: m },
+        );
+
+        const out = say();
+        assert.equal(run(["--as-of", "2026-06-15", "--write", path.join(dir, ".portulan")], out), 0);
+
+        // The record the pass wrote is really in the series...
+        const written = path.join(dir, ".portulan/handoffs/2026-06-15-librarian-pass.md");
+        assert.ok(fs.existsSync(written), "the pass wrote its own handoff");
+
+        // ...and the index the recipe checks already knows about it.
+        const verdict = inspectIndex(path.join(dir, ".portulan"));
+        assert.deepEqual(
+            verdict.findings.map((f) => f.message),
+            [],
+            "the tree a pass leaves behind must pass `index.sh` — otherwise the pull request it files cannot merge",
+        );
+        assert.match(fs.readFileSync(path.join(dir, ".portulan/handoffs-index.md"), "utf8"), /2026-06-15-librarian-pass\.md/);
+    });
+
+    test("a pass that could not write its record does not regenerate an index either", () => {
+        // An index regenerated over a series missing the handoff that belongs in it is *current about
+        // the wrong tree* — worse than stale, because it is confidently wrong and the recipe agrees
+        // with it.
+        const m = MANIFEST({ librarian: { staleness: STALENESS }, memory: { index: { path: "memory-index.md" } } });
+        m.slots.handoffs = "handoffs/";
+        const dir = repo(
+            {
+                ".portulan/memory/r.md": [linked(), "2026-06-01"],
+                ".portulan/handoffs/2026-06-01-x.md": ["# Handoff — x\n\nBody.\n", "2026-06-01"],
+            },
+            { workspace: m },
+        );
+        // Make the series unwritable so the record cannot land.
+        fs.chmodSync(path.join(dir, ".portulan/handoffs"), 0o500);
+        try {
+            const out = say();
+            assert.equal(run(["--as-of", "2026-06-15", "--write", path.join(dir, ".portulan")], out), 2);
+            assert.equal(fs.existsSync(path.join(dir, ".portulan/memory-index.md")), false);
+        } finally {
+            fs.chmodSync(path.join(dir, ".portulan/handoffs"), 0o700);
+        }
+    });
+});

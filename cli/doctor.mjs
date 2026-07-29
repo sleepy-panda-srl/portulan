@@ -791,6 +791,15 @@ export async function inspect(workspaceDir, options = {}) {
     // Raised by Copilot on #81, suppressed half. The memory budgets are checked the same way, and were
     // missing it too — a sibling of the same class, fixed in the same stroke rather than left for the
     // next round to find.
+    //
+    // **The message stated a downstream behaviour this tree does not have**, and that is issue #84,
+    // fixed here. It said a zero or negative value *reads as undeclared to the tool that consumes it* —
+    // which was true of nothing: both consumers, `cli/index.mjs`'s `budgetNumber` and
+    // `cli/librarian.mjs`'s `threshold`, refuse such a value outright with exit 2. What the sentence
+    // described was the hazard those refusals exist to prevent, written in the present tense as though
+    // it survived them. ../.portulan/dod.md condition 4 refuses a claim of a capability that does not
+    // exist; this was the same error pointed the other way, a claim of a *defect* that does not exist,
+    // inside a failure message — where a reader has the least room to check it.
     const positive = (v) => typeof v === "number" && Number.isInteger(v) && v > 0;
     for (const [where, value] of [
         ["memory.index.budget.lines", workspace.memory?.index?.budget?.lines],
@@ -804,9 +813,9 @@ export async function inspect(workspaceDir, options = {}) {
             fail(
                 "schema",
                 `${where} is ${JSON.stringify(value)}, which is not a positive integer. The declared keyword ` +
-                    "subset has no `minimum` and cannot say `integer`, so this is checked here — and it matters " +
-                    "because a zero or negative value reads as *undeclared* to the tool that consumes it and " +
-                    "switches the rail off in the key that exists to switch it on",
+                    "subset has no `minimum` and cannot say `integer`, so this is checked here — and it is " +
+                    "checked at pull-request time so a policy defect does not first surface in an unattended " +
+                    "run, where the consuming tool refuses it with exit 2 and nobody is watching",
             );
         }
     }
@@ -851,6 +860,33 @@ export async function inspect(workspaceDir, options = {}) {
                 `memory.index.path (\`${workspace.memory.index.path}\`) sits inside slots.memory ` +
                     `(\`${workspace.slots.memory}\`), where this validator counts it as a record. ` +
                     "Site the generated index beside the store, not in it",
+            );
+        }
+    }
+
+    // The handoff series gets both of the memory index's conditional requirements, added at 2.5, and
+    // gets them here rather than in a second copy of the reasoning: they are the same two rules about
+    // the same kind of object. What differs is only which walk would swallow a badly-sited index —
+    // `doctor`'s store report there, `docs.sh`'s date correspondence here.
+    if (workspace.handoffs && !workspace.slots?.handoffs) {
+        fail(
+            "cross",
+            "`handoffs` declares an index with no `slots.handoffs` series to index — the object " +
+                "configures a series rather than replacing one, and an index of nothing renders empty, " +
+                "compares equal to an empty committed file, and passes",
+        );
+    }
+
+    if (workspace.handoffs?.index?.path && workspace.slots?.handoffs) {
+        const seriesDir = path.resolve(dir, workspace.slots.handoffs);
+        const indexPath = path.resolve(dir, workspace.handoffs.index.path);
+        if (isInside(seriesDir, indexPath)) {
+            fail(
+                "cross",
+                `handoffs.index.path (\`${workspace.handoffs.index.path}\`) sits inside slots.handoffs ` +
+                    `(\`${workspace.slots.handoffs}\`). A Markdown file there is either counted as a handoff by ` +
+                    "the `record` check's date correspondence, or failed by it for carrying no date. " +
+                    "Site the generated index beside the series, not in it",
             );
         }
     }
