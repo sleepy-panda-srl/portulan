@@ -53,7 +53,7 @@ sleepy-panda-works/
 
 ## Milestones
 
-Status legend: `todo` · `in-progress` · `done (date; supervisor — the verdict in one clause; evidence: that milestone's file, where the record was long enough to need one)`
+Status legend: `todo` · `in-progress` · `done (date; supervisor — the verdict in one clause; evidence: that milestone's file)`
 
 | # | Milestone | Sessions | Exit criterion | Status |
 |---|---|---|---|---|
