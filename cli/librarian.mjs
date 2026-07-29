@@ -850,6 +850,19 @@ export function renderRecord(results, { asOf }) {
         "**State.** Every figure below is **as of " + asOf + "**, read from git history rather than from the",
         "filesystem, and nothing here is a decision. This pass drafts; the maintainer disposes.",
         "",
+        // Counts are read before this record is written, and the ordering is forced rather than
+        // incidental: a pass IS a session, so it ends by writing a dated handoff INTO the very series
+        // it just counted. Regenerating an index any earlier would leave it stale in the commit the
+        // job pushes, `index.sh` would red the pull request, and a scheduled pass could never file
+        // anything mergeable. So the series count here is always one lower than the index regenerated
+        // in the same pull request, and on #86 a reviewer read that gap as an off-by-one — correctly
+        // noticing it, wrongly diagnosing it, because nothing in the artifact said why. A number that
+        // needs an explanation it does not carry is what gets read as a defect (issue #90).
+        "**What the counts include.** They are as of **read time**, taken before this record existed, so",
+        "every series figure below **excludes the handoff this pass is about to write**. Expect the",
+        "regenerated index in the same pull request to show exactly one more: the two numbers describe",
+        "the series this pass examined and the series as it now stands, and both are true.",
+        "",
     ];
 
     for (const r of results) {

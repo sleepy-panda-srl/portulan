@@ -109,3 +109,16 @@ where this doctrine would otherwise start overclaiming:
 Memory is scoped to the agent or persona that uses it, not dumped into one shared pool. A reviewer's
 memory and an implementer's memory answer different questions; merging them spends the budget of each
 on the other's concerns. _(Provenance: Letta; see `../personas/`.)_
+
+**This scoping has no first instance yet, and it arrives in milestone 6.** Said plainly because the
+alternative is a page describing an enforcement that does not exist — the failure this repository names
+more often than any other, and the one `.portulan/dod.md` condition 4 exists to catch: a document may
+describe machinery only if the machinery exists *or* the sentence names the milestone where it does.
+Every store shipped so far is a **workspace's**, shared by whatever agent reads it, and the one agent
+here that runs unattended and repeatedly — the scheduled librarian of milestone 5 — deliberately keeps
+**no state at all** between runs: every figure it reports is recomputed from git and the tree, which is
+what makes two passes over an unchanged store byte-identical. Statelessness there is a property worth
+keeping, not a gap to paper over, so it is not the first instance and was not made into one. Milestone 6
+is, because a **pack** is the first thing this framework distributes that carries per-persona material
+its adopter does not own — which is the first point at which *whose* memory this is has an answer that
+matters. _(Recorded as [`.portulan/proposals/0016-per-agent-memory-has-no-first-instance-yet.md`](../../.portulan/proposals/0016-per-agent-memory-has-no-first-instance-yet.md).)_
