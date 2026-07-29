@@ -8,8 +8,9 @@
 //
 // ## Why it exists: two merge gates branch on what jq prints for null
 //
-// `.github/workflows/copilot-review.yml` reads a pull request as `[.head.sha, (.draft|tostring)] |
-// join("|")` and then guards on the first field being empty. `.github/workflows/pr-labels.yml` —
+// `.github/workflows/copilot-review.yml` reads a pull request as `[.head.sha, (.draft|tostring),
+// .user.login] | join("|")` and then guards on the first field being empty (the third field, the
+// author, feeds the verdict step's self-approval skip). `.github/workflows/pr-labels.yml` —
 // a **required** status check — decides that a policy declares no labels by `jq -er` producing no
 // output. Both behaviours are jq's, both are load-bearing, and until this file nothing executed
 // either of them.
@@ -117,17 +118,38 @@ const CASES = [
     {
         id: "pr-normal",
         anchor: ".head.sha",
-        why: "the ordinary read — SHA, separator, draft flag",
-        input: '{"head":{"sha":"6a05f59","ref":"topic"},"draft":false,"number":54}',
-        stdout: "6a05f59|false\n",
+        why: "the ordinary read — SHA, separator, draft flag, author",
+        input: '{"head":{"sha":"6a05f59","ref":"topic"},"draft":false,"number":54,'
+            + '"user":{"login":"marius-cetanas"}}',
+        stdout: "6a05f59|false|marius-cetanas\n",
         status: 0,
     },
     {
         id: "pr-draft",
         anchor: ".head.sha",
         why: "a draft is `true` in the second field, which is the whole NOT APPLICABLE branch",
-        input: '{"head":{"sha":"6a05f59"},"draft":true}',
-        stdout: "6a05f59|true\n",
+        input: '{"head":{"sha":"6a05f59"},"draft":true,"user":{"login":"marius-cetanas"}}',
+        stdout: "6a05f59|true|marius-cetanas\n",
+        status: 0,
+    },
+    {
+        id: "pr-app-author",
+        anchor: ".head.sha",
+        why: "the exact third field the verdict step's self-approval skip compares against — the "
+            + "platform refuses an App approving its own pull request, so this string is the whole "
+            + "reason the field exists",
+        input: '{"head":{"sha":"6a05f59"},"draft":false,"user":{"login":"portulan-agent[bot]"}}',
+        stdout: "6a05f59|false|portulan-agent[bot]\n",
+        status: 0,
+    },
+    {
+        id: "pr-ghost-author",
+        anchor: ".head.sha",
+        why: "GitHub returns `user: null` for a deleted account. The author field goes EMPTY — not "
+            + "an error — and an empty login can never equal the App's, so the verdict proceeds "
+            + "rather than skipping or crashing",
+        input: '{"head":{"sha":"6a05f59"},"draft":false,"user":null}',
+        stdout: "6a05f59|false|\n",
         status: 0,
     },
     {
@@ -137,7 +159,7 @@ const CASES = [
             + "the one the workflow's no-head-SHA guard rests on, and the shape the stubbed harness "
             + "asserts without executing",
         input: '{"head":{"sha":null},"draft":false}',
-        stdout: "|false\n",
+        stdout: "|false|\n",
         status: 0,
     },
     {
@@ -146,7 +168,7 @@ const CASES = [
         why: "and a null `head` object reaches the same guard by the same route — `.head.sha` on "
             + "null is null, not an error, so this does not fail the read either",
         input: '{"head":null,"draft":false}',
-        stdout: "|false\n",
+        stdout: "|false|\n",
         status: 0,
     },
     // ---- copilot-review.yml: the reviews read -------------------------------------------------
@@ -217,6 +239,44 @@ const CASES = [
         input: '{"id":7}',
         stdout: "\n",
         status: 0,
+    },
+    // ---- copilot-review.yml: the round's inline-comment count ---------------------------------
+    {
+        id: "count-none",
+        anchor: "arrays",
+        why: "a clean round — zero inline comments — is the approve branch's whole predicate. `-e` "
+            + "does not turn 0 into a failure: it fails on false and null, and 0 is neither",
+        input: "[]",
+        stdout: "0\n",
+        status: 0,
+    },
+    {
+        id: "count-two",
+        anchor: "arrays",
+        why: "inline comments suppress the verdict — threads and conversation resolution carry "
+            + "findings, so any non-zero count takes the no-review branch",
+        input: '[{"id":1,"path":"a.md"},{"id":2,"path":"b.md"}]',
+        stdout: "2\n",
+        status: 0,
+    },
+    {
+        id: "count-error-object",
+        anchor: "arrays",
+        why: "an error body must not count its keys as findings: bare `length` over "
+            + '`{"message":…}` would print 2 and read as two comments. `arrays` yields nothing '
+            + "for a non-array, and `-e` turns no-output into exit 4 — the no-verdict path",
+        input: '{"message":"Not Found","documentation_url":"x"}',
+        stdout: "",
+        status: 4,
+    },
+    {
+        id: "count-null",
+        anchor: "arrays",
+        why: "and a null body takes the same refusal by the same route — no output, exit 4, no "
+            + "verdict computed from a read that answered nothing",
+        input: "null",
+        stdout: "",
+        status: 4,
     },
     // ---- copilot-review.yml: the requested-reviewers diagnostic --------------------------------
     {
