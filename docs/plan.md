@@ -1725,4 +1725,4 @@ _The seam applies here too: no client-identifying references._
   moment it acts. Raised by the maintainer after reading a round on #106. · Fidelity: no new checkpoint
   — prose plus two workflow strings, no logic touched; YAML re-parsed, since that file records a
   block-scalar break that once passed the shell tests. Seam scan clean over diff, message and branch.
-  Handoff: [`…correctable.md`](../.portulan/handoffs/2026-07-29-the-changelog-becomes-correctable.md).
+  Handoff: [`…comment-is.md`](../.portulan/handoffs/2026-07-29-a-reply-belongs-where-the-comment-is.md).

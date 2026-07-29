@@ -21,7 +21,11 @@ obligation to answer Copilot is not withdrawn, the unbounded iteration is.
 
 1. **One push per round.** Fixes are batched; a round is answered once, not per finding. **This bounds
    pushes, not replies** — every thread still gets its own, per rule 3. The two are different currencies:
-   a push costs a whole round, a reply costs nothing and is the only thing that clears the gate.
+   a push costs a whole round; a reply costs nothing. **A reply is not itself the gate.**
+   `required_conversation_resolution` clears when a thread is **resolved**, and resolving is a judgement
+   that a point is settled — [`../gate-map.md`](../gate-map.md) makes it the maintainer's, travelling with
+   his merge approval and never ahead of it. The reply is what the loop obliges; the resolution is what
+   opens the gate, and they are not the same act or the same person's.
 2. **Records land last.** The handoff and the `docs/plan.md` Session log go in the final push or after
    the merge — never between rounds.
 3. **Threads block; suppressed notes do not — and they are answered in different places.** An
