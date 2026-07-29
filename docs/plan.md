@@ -1617,3 +1617,13 @@ _The seam applies here too: no client-identifying references._
   folded in. · Fidelity: session-open APPROVE-WITH-ADJUSTMENTS (12) — it measured the mining signal and
   narrowed the claim rather than the query — and pre-commit (5), one of them work the pass would have
   lost at a date boundary. Seam scan clean. Handoff: [`…consolidates.md`](../.portulan/handoffs/2026-07-29-the-librarian-mines-and-consolidates.md).
+
+- 2026-07-29 · M5 (Memory lifecycle & librarian) · **Scheduled librarian pass**, filed by
+  `cli/librarian.mjs` rather than by a person: 2 workspaces passed,
+  0 stale record(s), 0 sealed stamp(s) due for re-validation, 0 proposal(s) nagged, no index drift.
+  · Mined: 1 incident(s) with nothing pointing back at them, 23 path(s) drawing
+  repeat review findings, 3 record group(s) citing one incident.
+  · No supervisor checkpoint: a scheduled pass makes no decision for one to grade.
+  · Seam scan clean by construction — this pass composes no new prose at run time, so its
+  diff carries nothing the scan had not already passed.
+  Handoff: [`2026-07-29`](../.portulan/handoffs/2026-07-29-librarian-pass.md).
