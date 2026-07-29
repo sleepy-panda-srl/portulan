@@ -41,7 +41,34 @@ records how things were found. This is per *release* and records what a reader g
 
 ## Unreleased
 
-_Nothing yet._
+**Packs become real: the cascade's middle layer.** `core < pack < workspace` has been the architecture
+since the constitution and was implemented in nothing — a workspace's `packs` array was a list of names
+that `doctor` counted. Now [`spec/pack.schema.json`](spec/pack.schema.json), the **Pack Definition**,
+says what a pack contributes to that cascade: skills, personas, verify recipes, and gate-policy
+fragments. A declared pack **resolves** to a manifest, validates against the Definition, and its
+contributions reach the tools that consume them.
+
+**A pack's gate fragments may only ever add restriction.** A pack contributing to the gate map means an
+installed dependency can change what an agent is allowed to do, so the rule is that a pack may raise a
+tier or add a prohibition and may **never** demote one. Enforced on two axes and in two layers: `auto` is
+absent from the fragment tier enum, so a demotion to unattended is unexpressible in a manifest at all;
+and [`cli/compile.mjs`](cli/compile.mjs) refuses — loudly, at build time — both a weakened tier and a
+**changed action**. That second axis is the one a tier-only check misses: raising a rule's tier while
+replacing what it matches removes the gate and still reads as a tightening.
+
+**The first pack: [`rituals/checkpoints`](packs/rituals/checkpoints/README.md).** The supervised-build
+ritual this project runs on itself, now a distributable artifact — session-open, pre-commit and
+milestone-close skills, a `supervisor` persona, and the verdict vocabulary. It carries no Sleepy Panda
+specifics and does not set the adopter's triage boundary, because a ritual that cannot scale down is one
+that gets switched off wholesale.
+
+**A pack can ship skills at last.** A declared skills path resolved one level down, so the natural pack
+layout failed as *"has no SKILL.md"*. The walk is now bounded at three levels and **reports where it
+stopped** rather than going green over what it did not reach.
+
+**Version trains split.** The Pack Definition versions independently of the Workspace Definition, which
+stays at 2.5 and is byte-unchanged: one number governing both contracts would make a bump in either mean
+a change in the other.
 
 ## 0.2.0 — 2026-07-29
 
