@@ -1704,5 +1704,5 @@ _The seam applies here too: no client-identifying references._
   verdicts. Declared packs now **resolve** and validate rather than being counted, and gate fragments
   merge **tighten-only on two axes** — the second found by the pre-commit checkpoint, which deleted a
   live gate to prove it. Task 0008 fixed first. Resolution **from a feed** is unrun and named. Suite
-  669; eight recipes green. · Fidelity: session-open A-W-A (12), pre-commit REQUEST-CHANGES (2+1), all
-  folded. Seam scan clean. Handoff: [`2026-07-29`](../.portulan/handoffs/2026-07-29-the-cascade-gets-its-middle-layer.md).
+  673; eight recipes green. · Fidelity: session-open A-W-A (12), pre-commit REQUEST-CHANGES (2+1), all
+  folded; two Copilot rounds answered. Seam scan clean. Handoff: [`2026-07-29`](../.portulan/handoffs/2026-07-29-the-cascade-gets-its-middle-layer.md).
