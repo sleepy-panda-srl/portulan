@@ -1676,3 +1676,13 @@ _The seam applies here too: no client-identifying references._
   this is a rename plus a declared absence inside the change #96's two checkpoints already graded, and
   the `links` and `plan` rails are what verify it. Seam scan clean over diff, message and branch.
   Handoff: [`…own-archive.md`](../.portulan/handoffs/2026-07-29-the-table-stops-being-its-own-archive.md).
+- 2026-07-29 · post-M5 — no milestone row touched · **The changelog stops being a file nobody may
+  correct, and `v0.2.0` is cut** — [#106](https://github.com/sleepy-panda-works/portulan/pull/106),
+  closing [#94](https://github.com/sleepy-panda-works/portulan/issues/94). `## Unreleased` called
+  milestone 4 open for a day, and #85/#87 saw it and were *forbidden* to fix it by the write-at-the-cut
+  rule. Ruled: it **accumulates**; and **cut 0.2.0 now**, the session-open supervisor's option that
+  neither the issue nor the session had named. Three sibling stale claims fixed, two hand-copied figures
+  caught. · Fidelity: session-open **REFUSE** on a premise it could not check, cure applied; pre-commit
+  **APPROVE-WITH-ADJUSTMENTS**, four required, all folded; **both ran late — implementation preceded the
+  first, the commit the second.** Seam scan clean over diff, message and branch. Handoff:
+  [`…correctable.md`](../.portulan/handoffs/2026-07-29-the-changelog-becomes-correctable.md).
