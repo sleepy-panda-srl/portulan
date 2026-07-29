@@ -375,8 +375,10 @@ jobs:
                       report="**${count} comment(s) suppressed as low confidence** on the round for \`${head}\`."
                       report="${report}"$'\n'"They carry no thread and no Resolve control, so nothing"
                       report="${report} else in this pull request will ever mention them again."
-                      report="${report} Address or refuse each one in a reply, per the standing"
-                      report="${report} feedback-loop rule."$'\n\n'"${notes}"
+                      report="${report} Address or refuse each one, per the standing feedback-loop"
+                      report="${report} rule, in ONE batched pull-request comment — a note has no"
+                      report="${report} thread to sit on, which is why it is answered there and an"
+                      report="${report} inline comment never is."$'\n\n'"${notes}"
                       notes_state='present'
                       # The raw notes, filed for the verdict step: a review body travels badly
                       # through GITHUB_OUTPUT (a delimiter collision away from truncation), and
@@ -765,7 +767,7 @@ jobs:
           run_url="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
           if [ "$NOTES_STATE" = 'present' ]; then
             body="**Derived verdict: approve, with Copilot's suggestions attached.**"$'\n\n'
-            body="${body}Copilot's round on \`${head}\` raised no inline comment. Its ${NOTES_COUNT} suppressed low-confidence note(s) are quoted below: they carry no thread and no gate, and this approval is not their disposal — each still owes an address-or-refuse reply under the standing feedback-loop rule."$'\n\n'
+            body="${body}Copilot's round on \`${head}\` raised no inline comment. Its ${NOTES_COUNT} suppressed low-confidence note(s) are quoted below: they carry no thread and no gate, and this approval is not their disposal — each still owes an address-or-refuse reply under the standing feedback-loop rule, in ONE batched pull-request comment. That is the exception a note earns by having no thread to sit on; an inline comment is answered on its own thread, never folded into a summary."$'\n\n'
             body="${body}$(cat "$NOTES_FILE")"$'\n\n'
           else
             body="**Derived verdict: approve.**"$'\n\n'

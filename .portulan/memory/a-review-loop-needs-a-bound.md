@@ -19,12 +19,21 @@ obligation to answer Copilot is not withdrawn, the unbounded iteration is.
 
 ## The rule
 
-1. **One push per round.** Fixes are batched; a round is answered once, not per finding.
+1. **One push per round.** Fixes are batched; a round is answered once, not per finding. **This bounds
+   pushes, not replies** — every thread still gets its own, per rule 3. The two are different currencies:
+   a push costs a whole round, a reply costs nothing and is the only thing that clears the gate.
 2. **Records land last.** The handoff and the `docs/plan.md` Session log go in the final push or after
    the merge — never between rounds.
-3. **Threads block; suppressed notes do not.** Unresolved Copilot threads are still the gate
-   (`required_conversation_resolution`). The low-confidence notes in a review *body* are answered once,
-   in a single batch, and are **never a reason to push again**.
+3. **Threads block; suppressed notes do not — and they are answered in different places.** An
+   unresolved thread is the gate (`required_conversation_resolution`), and each one is answered **as a
+   reply on that thread** — `POST /repos/{o}/{r}/pulls/{n}/comments/{comment_id}/replies` — never as a
+   general pull-request comment. The thread is the unit the platform resolves and the unit a reader
+   opens; an answer that does not sit on it leaves the gate closed and the reader hunting for a summary
+   somewhere else on the page. The low-confidence notes in a review *body* carry **no thread and no
+   comment id**, so there is nowhere for a reply to sit: they are answered once, in a single batch, as a
+   pull-request comment. **That is the exception, not the pattern** — a note is answered in a general
+   comment *because the platform gives it nowhere better*, and one batched reply for a round's threads
+   would be a choice to answer in the wrong place. They are **never a reason to push again**.
 4. **Two fix-rounds, then triage.** After the second round of fixes, whatever remains becomes an issue
    linking the comment. It does not become another push, and it does not hold the merge.
 
