@@ -59,7 +59,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 
-import { inspect as inspectIndex, IndexError, recordType } from "./index.mjs";
+import { inspect as inspectIndex, IndexError, recordType, dateOf } from "./index.mjs";
 import { parseProvenance } from "./doctor.mjs";
 
 /** Windows separators never reach a Markdown link: a backslash there is a filename character. */
@@ -77,7 +77,7 @@ export class LibrarianError extends Error {
 // no pass, which is the shape every workspace had yesterday. Same reasoning and same refusal as
 // ./index.mjs's KNOWN_SPECS: a tool that reads a manifest it does not understand reports about a
 // workspace it may have misread.
-const KNOWN_SPECS = new Set(["2.0", "2.1", "2.2", "2.3", "2.4"]);
+const KNOWN_SPECS = new Set(["2.0", "2.1", "2.2", "2.3", "2.4", "2.5"]);
 
 // The store's own signpost, not a record — the one name ./index.mjs and ./doctor.mjs both exclude.
 // Three tools now share this judgement and none of them shares the code, which is issue #74; this
@@ -317,9 +317,14 @@ const listMarkdown = (dir) => {
  * clock so that a test asserting "90 days" does not start failing on a date nobody chose. The command
  * defaults it to today.
  *
- * With `write`, the memory index is regenerated; without it, drift is reported and nothing is touched.
+ * **This function never writes.** It reads the tree and returns what it found; `run` does the writing,
+ * and does it in an order this function cannot get wrong — see the reindex block below.
+ *
+ * `reviews` is the pull-request review corpus, or `undefined` for *not asked*. It is passed in rather
+ * than fetched because this file makes no network call: the workflow fetches, and every line of the
+ * reading is then exercised by the suite against a fixture instead of at 06:00 on a Monday.
  */
-export function passWorkspace(dir, { asOf, write = false } = {}) {
+export function passWorkspace(dir, { asOf, reviews } = {}) {
     parseDate(asOf, "--as-of");
 
     const manifestPath = path.join(dir, "workspace.json");
@@ -365,26 +370,29 @@ export function passWorkspace(dir, { asOf, write = false } = {}) {
     // a refusal that names the right rule for the wrong reason, on a store that is perfectly fine.
     const rel = (p) => path.relative(root, fs.realpathSync(p)).split(path.sep).join("/");
 
-    // ---- reindex
+    // ---- reindex: READ ONLY, always
     //
-    // **Drift is read BEFORE the write, and that ordering is the whole of it.** `inspect` in write
-    // mode regenerates the index and *then* compares, so it never reports drift — it has just removed
-    // it. Reading `drifted` off that result therefore said "current" about an index the pass had
-    // regenerated one line earlier, and the Session log entry it generates said "no index drift" in
-    // the same breath: a machine-written record of what a run did, wrong about the one thing the run
-    // actually changed. Raised by Copilot on #81, in the suppressed half of the round, against three
-    // sites at once. So the check runs first and unconditionally, and the write follows.
-    let index = { declared: false, regenerated: false, findings: [] };
+    // **This pass reads; the command writes, and only after the record is on disk.** The ordering is
+    // load-bearing now that a second series is indexed: a pass is a session, so it ends by writing a
+    // dated handoff INTO `slots.handoffs` — the very series the handoff index covers. An index
+    // regenerated here would be stale the moment the record landed, and the pull request the pass
+    // files would carry a handoff index that `index.sh` reds. The pass would have broken the one
+    // demonstration it exists to produce, on its first real run, with nobody watching.
+    //
+    // Reading drift here and writing later also makes an earlier fix structural instead of careful.
+    // `inspect` in write mode regenerates and *then* compares, so it never reports drift — it has
+    // just removed it — and reading `drifted` off that result said "current" about an index the pass
+    // had regenerated a line earlier, putting "no index drift" into a machine-written record of the
+    // one thing the run had changed (Copilot, #81, suppressed half, three sites at once). With no
+    // write on this path there is no ordering left to get wrong.
+    let index = { declared: false, drifted: false, series: {}, findings: [] };
     try {
-        const before = inspectIndex(dir, { write: false });
-        const regenerated = write && before.findings.some((f) => f.check === "index");
-        const result = write ? inspectIndex(dir, { write: true }) : before;
+        const result = inspectIndex(dir, { write: false });
+        const drifted = (which) => result.findings.some((f) => f.check === "index" && f.series === which);
         index = {
             declared: result.declared,
-            // In check mode this is *drift found and not repaired*; in write mode it is *drift found
-            // and repaired*. Both are "the index was out of date when the pass arrived", which is the
-            // fact the record is reporting, and the mode says which half happened.
-            regenerated: write ? regenerated : before.findings.some((f) => f.check === "index"),
+            drifted: result.findings.some((f) => f.check === "index"),
+            series: { memory: drifted("memory"), handoffs: drifted("handoffs") },
             findings: result.findings.map((f) => f.message),
         };
     } catch (cause) {
@@ -400,6 +408,12 @@ export function passWorkspace(dir, { asOf, write = false } = {}) {
     const records = [];
     const seals = [];
     const drafts = [];
+    // Every curated-layer document's text, kept for the link scan mining runs below. The curated
+    // layer is the memory store and the proposal series and nothing else: a handoff referenced from
+    // another handoff is one session mentioning another, not a rule tracing its incident.
+    const curated = [];
+    // Records grouped by the incident they cite, for consolidation's step-2 question.
+    const byIncident = new Map();
 
     for (const file of listMarkdown(storeDir)) {
         const full = path.join(storeDir, file);
@@ -409,6 +423,10 @@ export function passWorkspace(dir, { asOf, write = false } = {}) {
         } catch (cause) {
             throw new LibrarianError(`cannot read the record ${path.join(memorySlot, file)} — ${cause.code ?? cause.message}`);
         }
+        curated.push(source);
+        const incident = provenanceHref(source);
+        if (incident) byIncident.set(incident, [...(byIncident.get(incident) ?? []), file]);
+
         const touched = lastTouched(root, rel(full));
         // An uncommitted record has no age and is never stale: it cannot have gone untouched for
         // longer than it has existed in the history this pass reads.
@@ -462,6 +480,7 @@ export function passWorkspace(dir, { asOf, write = false } = {}) {
         for (const file of listMarkdown(proposalDir)) {
             const full = path.join(proposalDir, file);
             const source = fs.readFileSync(full, "utf8");
+            curated.push(source);
             const touched = lastTouched(root, rel(full));
             const days = touched === null ? 0 : daysBetween(touched, asOf);
             const pending = proposalPending(source);
@@ -478,9 +497,257 @@ export function passWorkspace(dir, { asOf, write = false } = {}) {
     // The handoffs slot rides along so the command knows where a pass record belongs without
     // re-reading the manifest — and reads it from the slot rather than assuming the directory name,
     // which is the whole reason slots exist.
-    const handoffs = workspace.slots?.handoffs ? path.resolve(dir, workspace.slots.handoffs) : null;
+    const handoffsDir = workspace.slots?.handoffs ? path.resolve(dir, workspace.slots.handoffs) : null;
 
-    return { dir, name, declared: true, thresholds, index, records, stale, seals, drafts, proposals, counts, handoffs };
+    // ---- the handoff series: aged and reported, never railed
+    //
+    // The milestone-5 row scopes staleness to this series as well as the store, and the same row bars
+    // a budget on it — an append-only series has no consolidation to offer, so every remedy a budget
+    // could ask for is barred. A staleness THRESHOLD carries that problem one layer down:
+    // `record_days` exists to draft a demotion, and a demotion draft here recommends deleting the
+    // record the series exists to keep, weekly, forever. So the ages are read and reported — count,
+    // oldest, size — and no threshold reaches them.
+    const series = { declared: false, count: null, oldest: null, bytes: 0, files: [] };
+    if (handoffsDir) {
+        series.declared = true;
+        series.count = 0;
+        for (const file of listMarkdown(handoffsDir)) {
+            const full = path.join(handoffsDir, file);
+            let source;
+            try {
+                source = fs.readFileSync(full, "utf8");
+            } catch (cause) {
+                throw new LibrarianError(
+                    `cannot read the handoff ${path.join(workspace.slots.handoffs, file)} — ${cause.code ?? cause.message}`,
+                );
+            }
+            const touched = lastTouched(root, rel(full));
+            const days = touched === null ? 0 : daysBetween(touched, asOf);
+            series.count += 1;
+            series.bytes += Buffer.byteLength(source);
+            series.files.push({ file, date: dateOf(file), lastTouched: touched, days });
+        }
+        series.oldest = series.files.reduce((a, b) => (a === null || b.days > a.days ? b : a), null);
+    }
+
+    const mining = {
+        incidents: mineIncidents(series, curated),
+        reviews: mineReviews(reviews, { treeRoot: workspace.tree ? path.resolve(dir, workspace.tree) : null }),
+    };
+
+    const consolidation = {
+        // Step 2 of core/skills/consolidate/SKILL.md, as a question rather than a verdict — see
+        // `sharedIncidents`.
+        shared: sharedIncidents(byIncident),
+        // Step 5's rail, read as a distance rather than a verdict. `index.sh` answers over/under at
+        // pull-request time; what it cannot say is *how close*, and a scheduled pass that reports
+        // pressure is the difference between consolidating on a calendar and consolidating on a red.
+        headroom: {
+            store: budgetHeadroom(counts.bytes / 1024, workspace.memory?.store?.budget?.kilobytes),
+            index: budgetHeadroom(indexLines(dir, workspace), workspace.memory?.index?.budget?.lines),
+        },
+    };
+
+    return {
+        dir,
+        name,
+        declared: true,
+        thresholds,
+        index,
+        records,
+        stale,
+        seals,
+        drafts,
+        proposals,
+        counts,
+        handoffsDir,
+        handoffs: series,
+        mining,
+        consolidation,
+    };
+}
+
+// ===========================================================================================
+// Mining — the half of the librarian that reads incidents rather than the store
+// ===========================================================================================
+//
+// `core/skills/codify/SKILL.md` is the on-demand form and the pass is the batch one: same ritual,
+// same output shape. What the pass does NOT do is author the proposal, and the reason is mechanical
+// as well as principled. `.portulan/verify/docs.sh`'s `proposal` check requires every proposal to
+// name the pull request that filed it; this pass writes its files BEFORE the pull request exists and
+// has no update path by design, so a generated proposal could never carry that pointer and would red
+// the librarian's own pull request on the recipe that shipped one session earlier. And a template
+// filled from derived fields is a stub with the argument missing — the part a human has to write is
+// exactly the part that makes it a proposal rather than a row in a report.
+//
+// So mining names CANDIDATES, in the shape the demotion drafts already established: a file, a fact
+// about it, and a fixed recommendation. The maintainer's ruling of 2026-07-29.
+
+/** The pass's own records, named by the constant `run` writes them under — not a guess at a shape. */
+const PASS_RECORD = /-librarian-pass\.md$/;
+
+/**
+ * Incidents the curated layer does not point back to.
+ *
+ * **The claim is the narrow one, and getting it right is the whole design.** This does not establish
+ * that an incident taught no rule — measured on the real tree, one unlinked handoff had in fact
+ * minted a rule whose provenance cited the *proposal* that session filed rather than the session. It
+ * establishes that **nothing in the curated layer points back to this incident**, which is true in
+ * that case too, and is itself the thing thesis 4 asks for: a rule links its incident so a later
+ * reader can judge whether it still applies. Read the wider way it would be a query with a known
+ * false positive; read this way it has none.
+ *
+ * **The ratio is the trend; the LIST is windowed.** 25 of this repository's 35 handoffs are unlinked,
+ * and a pass that listed all 25 would print the same 25 lines every week over a series that only
+ * grows — a nag nobody can finish, which is how a whole report gets skimmed. So the totals are always
+ * stated and the candidates are those since the last pass. The window's anchor is derived, not
+ * remembered: this pass keeps no state, and the newest pass record in the series *is* the record of
+ * when it last ran. Before there is one, the window is the newest date in the series — the last
+ * session's incidents, which is small, real, and does not pretend the backlog is not there.
+ */
+export function mineIncidents(series, curated) {
+    if (!series.declared) return { declared: false, total: null, linked: 0, since: null, candidates: [] };
+
+    const incidents = series.files.filter((f) => !PASS_RECORD.test(f.file));
+    const passes = series.files.filter((f) => PASS_RECORD.test(f.file) && f.date);
+    const since = passes.reduce((a, b) => (a === null || b.date > a ? b.date : a), null);
+
+    const isLinked = (file) => curated.some((source) => source.includes(file));
+    const linked = incidents.filter((i) => isLinked(i.file)).length;
+
+    const newest = incidents.reduce((a, b) => (a === null || (b.date && b.date > a) ? b.date : a), null);
+    const inWindow = since
+        ? (i) => i.date !== null && i.date > since
+        : (i) => i.date !== null && i.date === newest;
+
+    const candidates = incidents
+        .filter((i) => inWindow(i) && !isLinked(i.file))
+        .map((i) => ({
+            file: i.file,
+            date: i.date,
+            recommendation:
+                "Read it. If it taught a rule, run the `codify` skill; if it already did, add the link — " +
+                "a rule whose incident cannot be traced can never be retired on evidence.",
+        }));
+
+    return { declared: true, total: incidents.length, linked, since, window: since ? "since the last pass" : "the newest date in the series", candidates };
+}
+
+/**
+ * Paths pull-request reviewers keep leaving findings on.
+ *
+ * `codify/SKILL.md` triggers on "a review comment keeps reappearing across PRs — a pattern, not a
+ * one-off", and **two distinct pull requests is what *recurring* means** rather than a number someone
+ * chose. That is why there is no threshold in the manifest to declare: a tuning knob would be policy
+ * and policy belongs there, but a definition is not a knob.
+ *
+ * **A finding is a comment that OPENS a thread.** Measured on this repository rather than assumed,
+ * and the partition is exact: of 376 inline review comments, all 189 from the reviewer open threads
+ * and all 187 replies — 162 from the agent identity, 25 from the maintainer — carry
+ * `in_reply_to_id`. Filtering by login would have been the obvious spelling and is wrong here in the
+ * worst direction, because the reviewer is itself a bot: excluding bots excludes the findings.
+ * Counting replies would invert the signal outright — every reply is one more comment on a path we
+ * were answering about, so the harder a finding was argued the more it would look like a place
+ * reviewers keep finding things.
+ *
+ * **What this cannot see, stated because it is the larger half.** These are *inline* comments. The
+ * low-confidence notes GitHub collapses into a review body carry no path and never appear here — and
+ * on [#81](https://github.com/sleepy-panda-works/portulan/pull/81) that channel produced nine of
+ * eleven findings, eight of them real. So this mines the smaller channel, and the standing argument
+ * for [#66](https://github.com/sleepy-panda-works/portulan/issues/66) — promoting those notes into
+ * real threads — is now also an argument about what a scheduled pass can measure at all.
+ */
+export function mineReviews(reviews, { treeRoot }) {
+    // *Not asked* and *none found* must not print the same way — the rule the proposals pass already
+    // follows. A workspace with no `tree` makes claims about no repository, so it has nowhere to
+    // resolve a reviewed path against and its reviews are not a thing this pass can read.
+    if (reviews === undefined || reviews === null || !treeRoot) return null;
+    if (!Array.isArray(reviews)) {
+        throw new LibrarianError(
+            "the review corpus is not a JSON array. GitHub answers an error as an object, so reading this as " +
+                "*no reviews* would report *none recurring* over a fetch that failed — refusing instead",
+        );
+    }
+
+    const findings = reviews.filter((c) => c && !c.in_reply_to_id);
+    const replies = reviews.length - findings.length;
+
+    const pulls = new Map();
+    for (const c of findings) {
+        if (!c.path) continue;
+        const pull = String(c.pull_request_url ?? "").split("/").pop();
+        if (!pulls.has(c.path)) pulls.set(c.path, new Set());
+        pulls.get(c.path).add(pull);
+    }
+
+    // **A path the tree no longer holds is dropped.** Found by running this against the real corpus
+    // rather than by reading it: `cli/mode.mjs` came back recurring on two pull requests, and that
+    // file does not exist — the mode axis was ruled dead and both its pull requests closed unmerged.
+    // Review history is append-only, so without this the pass nags weekly and forever about a file
+    // nobody can open, and no action anyone takes will ever clear it. The count of what was dropped
+    // rides along, because *some were ignored* and *there were none* must not print the same way.
+    const recurring = [...pulls.entries()].map(([p, s]) => ({ path: p, pulls: s.size })).filter((p) => p.pulls >= 2);
+    const paths = recurring
+        .filter((p) => fs.existsSync(path.resolve(treeRoot, p.path)))
+        .sort((a, b) => b.pulls - a.pulls || a.path.localeCompare(b.path));
+
+    return { comments: reviews.length, findings: findings.length, replies, gone: recurring.length - paths.length, paths };
+}
+
+// ===========================================================================================
+// Consolidation — the mechanical half, and an honest account of the rest
+// ===========================================================================================
+
+/** A rule's provenance link, or null — the `href=` of a `form=link` stamp. */
+export function provenanceHref(source) {
+    return source.match(/^\s*\*\*provenance:\*\*.*?href=([^\s`]+)/im)?.[1] ?? null;
+}
+
+/**
+ * Records citing one incident, raised as a **question** and never as a merge.
+ *
+ * `core/skills/consolidate/SKILL.md` step 2 merges records that are one **mechanism**. Sharing an
+ * incident is not that, and this repository is the counter-example: all three of its shared-incident
+ * groups are deliberately distinct facts, because one incident teaches several mechanisms — the
+ * enforcement compiler alone minted three. So the pass surfaces the group and states the question a
+ * human answers; a pass that concluded *merge these* would be making the policy decision step 3
+ * forbids it from making about contradictions, one step earlier.
+ *
+ * Expected standing yield on this repository: **three groups**, all already judged separate. That is
+ * said out loud so a reader of the first real pass does not read three known answers as three open
+ * ones.
+ */
+export function sharedIncidents(byIncident) {
+    return [...byIncident.entries()]
+        .filter(([, files]) => files.length > 1)
+        .map(([incident, files]) => ({
+            incident,
+            files: [...files].sort(),
+            question:
+                "Are these one mechanism, or several lessons from one incident? Only the first is a merge — " +
+                "and a merge carries BOTH parents' provenance and both retirement conditions.",
+        }))
+        .sort((a, b) => a.incident.localeCompare(b.incident));
+}
+
+/** How close a measured figure is to its budget — `null` when nothing declared one to be close to. */
+export function budgetHeadroom(actual, budget) {
+    if (budget === undefined) return null;
+    return { actual: Number(actual.toFixed(1)), budget, percent: Math.round((actual / budget) * 100) };
+}
+
+/** The committed index's line count, or 0 when a workspace declares none. Read, never generated. */
+function indexLines(dir, workspace) {
+    const declared = workspace.memory?.index?.path;
+    if (!declared) return 0;
+    try {
+        const text = fs.readFileSync(path.resolve(dir, declared), "utf8");
+        return text.split("\n").length - (text.endsWith("\n") ? 1 : 0);
+    } catch {
+        // Absent is not zero-and-fine, but it is `index`'s finding to report and not this pass's to
+        // duplicate: the reindex above already carries it. Zero here would understate the headroom.
+        return 0;
+    }
 }
 
 // ===========================================================================================
@@ -525,10 +792,26 @@ export function renderRecord(results, { asOf }) {
                     ? ` — ${r.counts.uncommitted} not yet committed, so undated here and never stale`
                     : "") +
                 ". Index: " +
-                (r.index.declared ? (r.index.regenerated ? "**was out of date and has been regenerated**" : "current") : "none declared") +
+                (r.index.declared ? (r.index.series.memory ? "**was out of date and has been regenerated**" : "current") : "none declared") +
                 ".",
             "",
         );
+
+        // ---- the handoff series
+        if (!r.handoffs.declared) {
+            out.push("**Handoff series.** This workspace declares no `slots.handoffs` — not asked.", "");
+        } else {
+            out.push(
+                `**Handoff series.** ${plural(r.handoffs.count, "handoff")}, ` +
+                    `${(r.handoffs.bytes / 1024).toFixed(1)} KB, oldest ${r.handoffs.oldest ? `\`${r.handoffs.oldest.file}\` at ${plural(r.handoffs.oldest.days, "day")}` : "none — the series is empty"}. ` +
+                    "Index: " +
+                    (r.index.series.handoffs ? "**was out of date and has been regenerated**" : "current") +
+                    ". No threshold reaches this series and no demotion is drafted against it: it is " +
+                    "append-only, so the only repair a staleness draft could recommend is deleting the " +
+                    "record the series exists to keep.",
+                "",
+            );
+        }
 
         // ---- staleness
         if (t.record_days === undefined) {
@@ -608,6 +891,84 @@ export function renderRecord(results, { asOf }) {
             }
             out.push("");
         }
+
+        // ---- mining: incidents
+        const inc = r.mining.incidents;
+        if (!inc.declared) {
+            out.push("**Mining — incidents.** No `slots.handoffs` series to mine — not asked.", "");
+        } else {
+            out.push(
+                `**Mining — incidents.** ${plural(inc.total, "incident")} in the series; ${inc.linked} have ` +
+                    `something in the curated layer pointing back at them, ${inc.total - inc.linked} do not. ` +
+                    `Candidates below are ${inc.since ? `those since the last pass (${inc.since})` : "those of the newest date in the series, there being no earlier pass to measure from"}. ` +
+                    "The claim is the narrow one: nothing here says an incident taught no rule, only that no " +
+                    "rule or proposal points back to it — and a rule whose incident cannot be traced can " +
+                    "never be retired on evidence.",
+                "",
+            );
+            if (inc.candidates.length === 0) {
+                out.push("  - None in the window.", "");
+            } else {
+                for (const c of inc.candidates) {
+                    out.push(`  - \`${c.file}\` — ${c.date}. ${c.recommendation}`);
+                }
+                out.push("");
+            }
+        }
+
+        // ---- mining: pull-request reviews
+        if (r.mining.reviews === null) {
+            out.push(
+                "**Mining — pull-request reviews.** Not asked: no review corpus was supplied, or this " +
+                    "workspace declares no `tree` and so makes claims about no repository. *Not asked* is not " +
+                    "*none recurring*.",
+                "",
+            );
+        } else {
+            const rv = r.mining.reviews;
+            out.push(
+                `**Mining — pull-request reviews.** ${plural(rv.comments, "inline comment")}: ${rv.findings} open a ` +
+                    `thread and are findings, ${rv.replies} are replies and are not. ` +
+                    (rv.paths.length
+                        ? `${plural(rv.paths.length, "path")} still in the tree have drawn findings on two or more distinct pull requests. `
+                        : "No path still in the tree has drawn findings on two or more distinct pull requests. ") +
+                    (rv.gone ? `${plural(rv.gone, "other")} did and no longer exists, so they are dropped rather than nagged about forever. ` : "") +
+                    "Two is what *recurring* means rather than a number anyone chose. **Inline comments only** " +
+                    "— the low-confidence notes collapsed into a review body carry no path and cannot be seen " +
+                    "from here, and that is the larger channel.",
+                "",
+            );
+            for (const p of rv.paths) out.push(`  - \`${p.path}\` — findings on ${plural(p.pulls, "pull request")}`);
+            if (rv.paths.length) out.push("");
+        }
+
+        // ---- consolidation
+        const c = r.consolidation;
+        const head = (label, h, unit) =>
+            h === null ? `${label}: no budget declared` : `${label}: ${h.actual} of ${h.budget} ${unit} (${h.percent}%)`;
+        out.push(
+            `**Consolidation.** ${head("Store", c.headroom.store, "KB")}. ${head("Index", c.headroom.index, "lines")}. ` +
+                "Reported as a distance rather than a verdict: the `index` recipe already answers over or " +
+                "under at pull-request time, and what it cannot say is how close.",
+            "",
+        );
+        if (c.shared.length === 0) {
+            out.push("  - No two records cite one incident.", "");
+        } else {
+            out.push(`  - ${plural(c.shared.length, "group")} of records citing one incident — a question, not a verdict:`, "");
+            for (const g of c.shared) {
+                out.push(`    - \`${g.incident}\` ← ${g.files.map((f) => `\`${f}\``).join(", ")}`);
+                out.push(`      ${g.question}`);
+            }
+            out.push("");
+        }
+        out.push(
+            "  Steps 3 and 4 of `core/skills/consolidate/SKILL.md` — surfacing contradictions and " +
+                "compressing what survives — are **not automated here, and are not silently skipped**. " +
+                "Both need a reading of what two records mean, and a pass that guessed would be making " +
+                "the policy decision step 3 exists to forbid.",
+            "",
+        );
     }
 
     out.push(
@@ -648,8 +1009,15 @@ export function renderLogEntry(results, { asOf, handoff }) {
     const stale = declared.reduce((n, r) => n + r.stale.length, 0);
     const seals = declared.reduce((n, r) => n + r.seals.filter((s) => s.due).length, 0);
     const proposals = declared.reduce((n, r) => n + (r.proposals?.filter((p) => p.due).length ?? 0), 0);
-    const reindexed = declared.filter((r) => r.index.regenerated).map((r) => r.name);
+    const reindexed = declared.filter((r) => r.index.drifted).map((r) => r.name);
+    const incidents = declared.reduce((n, r) => n + r.mining.incidents.candidates.length, 0);
+    const paths = declared.reduce((n, r) => n + (r.mining.reviews?.paths.length ?? 0), 0);
+    const shared = declared.reduce((n, r) => n + r.consolidation.shared.length, 0);
 
+    // Nine lines, against the ten `.portulan/verify/docs.sh`'s `record` check allows every entry dated
+    // after 2026-07-28. The margin is one line and it is deliberate: this entry grew by one line when
+    // mining and consolidation joined it, so the next thing added here has to displace something
+    // rather than append — which is the right pressure on a generated record that a rail is watching.
     return (
         [
             `- ${asOf} · M5 (Memory lifecycle & librarian) · **Scheduled librarian pass**, filed by`,
@@ -657,6 +1025,8 @@ export function renderLogEntry(results, { asOf, handoff }) {
             `  ${stale} stale record(s), ${seals} sealed stamp(s) due for re-validation, ` +
                 `${proposals} proposal(s) nagged` +
                 (reindexed.length ? `, index regenerated for ${reindexed.join(", ")}.` : ", no index drift."),
+            `  · Mined: ${incidents} incident(s) with nothing pointing back at them, ${paths} path(s) drawing`,
+            `  repeat review findings, ${shared} record group(s) citing one incident.`,
             "  · No supervisor checkpoint: a scheduled pass makes no decision for one to grade.",
             "  · Seam scan clean by construction — this pass composes no new prose at run time, so its",
             "  diff carries nothing the scan had not already passed.",
@@ -669,7 +1039,8 @@ export function renderLogEntry(results, { asOf, handoff }) {
 // The command
 // ===========================================================================================
 
-const USAGE = "usage: node cli/librarian.mjs [--as-of YYYY-MM-DD] [--write] [--log <path>] <workspace-dir> [...]";
+const USAGE =
+    "usage: node cli/librarian.mjs [--as-of YYYY-MM-DD] [--write] [--log <path>] [--reviews <path>] <workspace-dir> [...]";
 
 /**
  * Parse `argv` strictly, or throw `LibrarianError`.
@@ -690,7 +1061,7 @@ const USAGE = "usage: node cli/librarian.mjs [--as-of YYYY-MM-DD] [--write] [--l
  * `cli/compile.mjs` parses explicitly for the same reason; this now matches it.
  */
 export function parseArgs(argv) {
-    const opts = { asOf: undefined, logPath: undefined, write: false, dirs: [] };
+    const opts = { asOf: undefined, logPath: undefined, reviewsPath: undefined, write: false, dirs: [] };
     const value = (flag, next) => {
         // A flag's value may not be another flag. Without this, `--log --write .portulan` sets the log
         // path to `--write` and silently drops the mode the caller asked for.
@@ -709,6 +1080,9 @@ export function parseArgs(argv) {
             case "--log":
                 opts.logPath = value(arg, argv[(i += 1)]);
                 break;
+            case "--reviews":
+                opts.reviewsPath = value(arg, argv[(i += 1)]);
+                break;
             case "--write":
                 opts.write = true;
                 break;
@@ -721,9 +1095,9 @@ export function parseArgs(argv) {
 }
 
 export function run(argv, say = console.log) {
-    let asOfArg, logPath, write, dirs;
+    let asOfArg, logPath, reviewsPath, write, dirs;
     try {
-        ({ asOf: asOfArg, logPath, write, dirs } = parseArgs(argv));
+        ({ asOf: asOfArg, logPath, reviewsPath, write, dirs } = parseArgs(argv));
     } catch (error) {
         if (!(error instanceof LibrarianError)) throw error;
         say(`  ✗ ${error.message}`);
@@ -743,11 +1117,24 @@ export function run(argv, say = console.log) {
         return 2;
     }
 
+    let reviews;
+    if (reviewsPath !== undefined) {
+        // Read here rather than inside the pass so a corpus that cannot be read is a refusal about a
+        // file, not a verdict about a workspace — and so `passWorkspace` keeps its property of
+        // touching nothing but the tree it was pointed at.
+        try {
+            reviews = JSON.parse(fs.readFileSync(reviewsPath, "utf8"));
+        } catch (cause) {
+            say(`  ✗ cannot read the review corpus at ${reviewsPath} — ${cause.message}`);
+            return 2;
+        }
+    }
+
     const results = [];
     let worst = 0;
     for (const dir of dirs) {
         try {
-            const result = passWorkspace(dir, { asOf, write });
+            const result = passWorkspace(dir, { asOf, reviews });
             results.push(result);
             if (!result.declared) {
                 say(`  · ${dir}: declares no librarian pass`);
@@ -756,8 +1143,9 @@ export function run(argv, say = console.log) {
             say(
                 `  ok ${dir}: ${plural(result.counts.records, "record")}, ${result.stale.length} stale, ` +
                     `${result.seals.filter((s) => s.due).length} seal(s) due, ` +
-                    `${result.proposals?.filter((p) => p.due).length ?? 0} proposal(s) nagged` +
-                    (result.index.regenerated ? ", index regenerated" : ""),
+                    `${result.proposals?.filter((p) => p.due).length ?? 0} proposal(s) nagged, ` +
+                    `${result.mining.incidents.candidates.length} incident(s) to codify` +
+                    (result.index.drifted ? ", index regenerated" : ""),
             );
         } catch (error) {
             if (!(error instanceof LibrarianError)) throw error;
@@ -768,7 +1156,7 @@ export function run(argv, say = console.log) {
         }
     }
 
-    const filing = results.find((r) => r.declared && r.handoffs);
+    const filing = results.find((r) => r.declared && r.handoffsDir);
     if (write && results.some((r) => r.declared) && !filing) {
         // A pass is a session (the maintainer's ruling, 2026-07-28), and a session ends with a dated
         // handoff. A workspace with nowhere to put one cannot end a session, so this is said out loud
@@ -778,7 +1166,7 @@ export function run(argv, say = console.log) {
     } else if (write && filing) {
         const record = renderRecord(results, { asOf });
         const name = `${asOf}-librarian-pass.md`;
-        const target = path.join(filing.handoffs, name);
+        const target = path.join(filing.handoffsDir, name);
         try {
             fs.mkdirSync(path.dirname(target), { recursive: true });
             fs.writeFileSync(target, record);
@@ -801,6 +1189,31 @@ export function run(argv, say = console.log) {
         } catch (cause) {
             say(`  ✗ cannot write the pass record — ${cause.code ?? cause.message}`);
             worst = 2;
+        }
+    }
+
+    // ---- the indexes, LAST, and that is the ordering this whole split exists for.
+    //
+    // A pass is a session, so it just wrote a dated handoff into `slots.handoffs` — a member of the
+    // series the handoff index covers. Regenerated any earlier, that index would be stale in the very
+    // commit the pass pushes, and `index.sh` would red the pull request the pass exists to file. The
+    // failure would have arrived on the first real run, unattended, on the one artifact this
+    // milestone's criterion names. So the rule is one sentence with no exceptions in it: **nothing
+    // regenerates an index until every record this pass writes is on disk.**
+    //
+    // Only in write mode, and never when the record could not be written: an index regenerated over a
+    // series missing the handoff that belongs in it would be current about the wrong tree.
+    if (write && worst < 2) {
+        for (const r of results) {
+            if (!r.declared) continue;
+            try {
+                inspectIndex(r.dir, { write: true });
+                if (r.index.drifted) say(`  ok regenerated ${r.name}'s index`);
+            } catch (cause) {
+                if (!(cause instanceof IndexError)) throw cause;
+                say(`  ✗ ${r.dir}: the index could not be regenerated — ${cause.message}`);
+                worst = 2;
+            }
         }
     }
 

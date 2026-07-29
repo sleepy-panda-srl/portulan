@@ -46,12 +46,15 @@ Agents may draft memory — they are well placed to notice what a task taught �
 promote it into the curated layer. Generated context that no human accepted degrades the window;
 curated context improves it, and the difference is measurable. So capture is agent work, and
 consolidation into the curated layer is a reviewed step. _(Provenance: ETH Zurich, arXiv:2602.11988 —
-generated context hurts, curated helps. The scheduled librarian arrives in milestone 5, in two parts:
-**indexing and retirement are built** — a pass that regenerates the index, ages every record from git,
-nags a sealed stamp's owner, chases undecided proposals and drafts demotions, filed as a pull request
-nobody has to remember to open. **Scheduled consolidation is the half still to come**, in the same
-milestone; the `consolidate` skill is the procedure and a human still starts it. Core defines the
-lifecycle either way.)_
+generated context hurts, curated helps. The scheduled librarian arrived in milestone 5: a pass that
+regenerates each generated index, ages every record from git, nags a sealed stamp's owner, chases
+undecided proposals, drafts demotions, and **runs consolidation** — filed as a pull request nobody has
+to remember to open. What consolidation means on a schedule is bounded rather than claimed: the pass
+reports how close each budget is to its rail, and surfaces records citing one incident as a
+**question**, because `../skills/consolidate/SKILL.md` merges records that are one *mechanism* and one
+incident routinely teaches several. Its steps 3 and 4 — surfacing contradictions and compressing what
+survives — are not automated and the pass says so in its own report rather than omitting them. Core
+defines the lifecycle either way.)_
 
 ## Storage follows ownership
 

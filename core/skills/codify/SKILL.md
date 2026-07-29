@@ -51,9 +51,15 @@ in [`../../operating/`](../../operating/) as doctrine). A lesson that will not r
 
 It **enforces** the discipline that turns incidents into a compacting history instead of repeated
 pain, and it keeps provenance attached so the rule can later be **retired** when its incident is
-designed out. This is the on-demand form of what the scheduled **librarian** will run as a batch pass —
-same ritual, same output shape. The librarian is scheduled as of milestone 5 and **this** pass is not
-one of the four it runs: it ages records, nags a sealed stamp's owner, chases undecided proposals and
-drafts demotions, all of which read the *store*, while mining reads incidents and pull-request reviews.
-That half is named in the same milestone's row and is not built, so today the way an incident becomes a
-proposal is a person running this skill. _(See [`../../personas/librarian.md`](../../personas/librarian.md).)_
+designed out. This is the on-demand form of what the scheduled **librarian** runs as a batch pass —
+same ritual, same subject. As of milestone 5 the librarian mines both corpora on a cadence: the
+incident series, for a session nothing in the curated layer points back at, and pull-request reviews,
+for a path findings keep landing on across separate pull requests.
+
+**What it hands you is a candidate, and this skill is what turns one into a proposal.** The pass names
+the file and states the fact; it does not fill in the template, because the argument *is* the proposal
+— the incident, the altitude, and how the rule earns its place are the three things a derived field
+cannot supply, and they are steps 1 to 3 above. A stub carrying everything except them would also be
+unfileable in practice: a proposal must name the pull request that filed it, and a pass writing files
+before that pull request exists has no pointer to write. So the loop is *the librarian finds; a person
+runs this*. _(See [`../../personas/librarian.md`](../../personas/librarian.md).)_

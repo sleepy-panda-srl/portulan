@@ -67,7 +67,7 @@ export class IndexError extends Error {
 // a legitimate shape and the one every workspace had yesterday. Same reasoning as ./compile.mjs's
 // KNOWN_SPECS, and the same refusal for anything outside the set: a tool that reads a manifest it
 // does not understand reports about a workspace it may have misread.
-const KNOWN_SPECS = new Set(["2.0", "2.1", "2.2", "2.3", "2.4"]);
+const KNOWN_SPECS = new Set(["2.0", "2.1", "2.2", "2.3", "2.4", "2.5"]);
 
 // The store's own signpost, not a record. `doctor` excludes exactly this name from its walk, so the
 // two tools agree on what the store contains; disagreeing would put a record in the index that the
@@ -157,6 +157,33 @@ export function headingOf(source) {
     return first?.match(/^#[ \t]+(.+?)[ \t]*$/)?.[1] ?? null;
 }
 
+/**
+ * A handoff's date, read from the leading `YYYY-MM-DD` of its filename — or `null`.
+ *
+ * ../core/operating/loop.md fixes the form as `YYYY-MM-DD-{slug}.md` and argues why the date is in the
+ * filename rather than in the prose: a date buried in a document needs parsing and is written
+ * differently by every author, while a filename sorts chronologically for free. This reads the carrier
+ * that rule already established rather than adding a second one.
+ *
+ * **Validated, not merely matched.** `2026-13-45-impossible.md` matches the shape and names no day. An
+ * index whose leading column is an unparseable string is a chronological index that is not
+ * chronological, and every consumer downstream — the pass that ages the series, a reader scanning for
+ * a month — would be reading a slug. The round-trip through `Date.UTC` is the cheapest complete check:
+ * it rejects month 13, day 45, and 30 February, none of which a regex can see.
+ *
+ * `null` is a refusal, never a default. ../.portulan/verify/docs.sh already fails an undated file in
+ * the series; this is not a second opinion about that rule but the generator being unable to derive a
+ * field it must emit.
+ */
+export function dateOf(filename) {
+    const m = filename.match(/^(\d{4})-(\d{2})-(\d{2})-/);
+    if (!m) return null;
+    const [, y, mo, d] = m;
+    const at = new Date(Date.UTC(Number(y), Number(mo) - 1, Number(d)));
+    const iso = `${y}-${mo}-${d}`;
+    return at.toISOString().slice(0, 10) === iso ? iso : null;
+}
+
 // Compared with punctuation and case removed, because a filename cannot carry either. "Who may
 // commit is verified, not assumed" is the same title as `who-may-commit-is-verified-not-assumed.md`
 // and must not be reported as a disagreement — a check that reds on a comma is a false-red machine,
@@ -175,6 +202,28 @@ const normalize = (s) => s.toLowerCase().replace(/[^a-z0-9]+/g, "");
  * empty index compares equal to an empty committed one and passes — the enumeration fail-open this
  * repository has now fixed four times (../.portulan/memory/verify-preconditions-fail-closed.md).
  */
+/**
+ * The `.md` files of a series, sorted, or an `IndexError`.
+ *
+ * One enumeration for both series, because the failure it guards is the same one and this repository
+ * has now fixed it four times: an unreadable directory returning `[]` renders an empty index, and an
+ * empty index compares byte-equal to an empty committed one and passes
+ * (../.portulan/memory/verify-preconditions-fail-closed.md). A second copy of this three-line function
+ * is a second place for that to be got wrong.
+ */
+function listSeries(seriesDir, slot, what) {
+    let names;
+    try {
+        names = fs.readdirSync(seriesDir);
+    } catch (cause) {
+        throw new IndexError(
+            `cannot read the ${what} at ${slot} — ${cause.code ?? cause.message}. ` +
+                "Refusing to render an index of nothing: an empty index compares equal to an empty committed one and would pass",
+        );
+    }
+    return names.filter((n) => n.endsWith(".md") && !NOT_A_RECORD.has(n)).sort();
+}
+
 export function readStore(dir, workspace) {
     const slot = workspace?.slots?.memory;
     if (!slot) {
@@ -185,17 +234,7 @@ export function readStore(dir, workspace) {
     }
 
     const storeDir = path.resolve(dir, slot);
-    let names;
-    try {
-        names = fs.readdirSync(storeDir);
-    } catch (cause) {
-        throw new IndexError(
-            `cannot read the memory store at ${slot} — ${cause.code ?? cause.message}. ` +
-                "Refusing to render an index of nothing: an empty index compares equal to an empty committed one and would pass",
-        );
-    }
-
-    const files = names.filter((n) => n.endsWith(".md") && !NOT_A_RECORD.has(n)).sort();
+    const files = listSeries(storeDir, slot, "memory store");
     const records = [];
     let bytes = 0;
 
@@ -218,6 +257,46 @@ export function readStore(dir, workspace) {
             type: recordType(source) || "untyped",
             heading: headingOf(source),
         });
+    }
+
+    return { records, bytes };
+}
+
+/**
+ * Read a workspace's handoff series.
+ *
+ * Returns `{ records: [{ file, date, heading }], bytes }`, **newest first** — reverse filename order,
+ * which is reverse chronological because the filename leads with the date. Two handoffs of the same
+ * date fall in reverse slug order, which carries no claim about which was written first; nothing in
+ * the series records that, and inventing an order would be the generated file asserting something its
+ * source does not say.
+ *
+ * `date` and `heading` may be `null`. They are not repaired here — the judge reports them, with a
+ * different repair for each, and emits no index at all while either is missing.
+ */
+export function readHandoffs(dir, workspace) {
+    const slot = workspace?.slots?.handoffs;
+    if (!slot) {
+        throw new IndexError(
+            "the manifest declares a `handoffs` index but no `slots.handoffs` series — there is nothing to index. " +
+                "The declared JSON Schema subset has no `dependentRequired` (spec/README.md), so this is checked here and by `doctor`",
+        );
+    }
+
+    const seriesDir = path.resolve(dir, slot);
+    const files = listSeries(seriesDir, slot, "handoff series").reverse();
+    const records = [];
+    let bytes = 0;
+
+    for (const file of files) {
+        let source;
+        try {
+            source = fs.readFileSync(path.join(seriesDir, file), "utf8");
+        } catch (cause) {
+            throw new IndexError(`cannot read the handoff ${path.join(slot, file)} — ${cause.code ?? cause.message}`);
+        }
+        bytes += Buffer.byteLength(source);
+        records.push({ file, date: dateOf(file), heading: headingOf(source) });
     }
 
     return { records, bytes };
@@ -266,6 +345,53 @@ export function render(workspace, store) {
     return [...header, ...entries].join("\n") + "\n";
 }
 
+/**
+ * The handoff index as text.
+ *
+ * Two derived fields per line — the date off the filename, the title off the record's own H1 — and the
+ * link. The title carrier differs from the store's **because the evidence differs**: a memory record
+ * usually has no heading, so its filename is the only title it has; a handoff always has one, and its
+ * filename leads with a date, so `titleOf` would render `2026 07 28 the librarian goes on a cron`. A
+ * generator that picked one rule for both series would be choosing consistency over correctness in the
+ * one file whose whole claim is that it agrees with its source.
+ *
+ * The header states the absent budget rather than leaving its absence to be read as an oversight — the
+ * argument is in spec/slots.md and ../core/operating/memory.md, and this is the sentence a reader of
+ * the artifact gets.
+ *
+ * **The H1 is printed as written, and the redundancy that produces is deliberate.** Every handoff here
+ * opens `# Handoff — …`, so every line of the index repeats the word. Stripping that prefix was the
+ * obvious tidy-up and is refused: it is a rule about the series' *content*, which this generator does
+ * not own, and it would render two handoffs differently for a difference that really exists between
+ * them — a generated file quietly normalising its source is the failure this whole file is built to
+ * make impossible. If the repetition is worth removing, the repair is to reword the headings, which
+ * changes the fact rather than the report of it.
+ */
+export function renderHandoffIndex(workspace, series) {
+    const indexPath = workspace?.handoffs?.index?.path;
+    const slot = workspace.slots.handoffs;
+
+    const posix = (p) => p.split(path.sep).join(path.posix.sep);
+    const from = path.posix.dirname(posix(indexPath));
+
+    const header = [
+        `# Handoff index — ${workspace.name}`,
+        "",
+        `> Generated from \`${slot}\` by \`node cli/index.mjs\`. Do not edit by hand: it is regenerated`,
+        `> and byte-compared, so a hand-edit survives exactly until the next run.`,
+        `> ${series.records.length} handoff(s), newest first. No budget: the series is append-only, so`,
+        `> the only remedy a budget could ask for is one this project rules out.`,
+        "",
+    ];
+
+    const entries = series.records.map((r) => {
+        const href = path.posix.relative(from, path.posix.join(posix(slot), r.file));
+        return `- ${r.date} · [${r.heading}](${href})`;
+    });
+
+    return [...header, ...entries].join("\n") + "\n";
+}
+
 /** The number of lines in a rendered index — the unit the `lines` budget is denominated in. */
 const lineCount = (text) => text.split("\n").length - (text.endsWith("\n") ? 1 : 0);
 
@@ -303,68 +429,60 @@ export function inspect(dir, { write = false } = {}) {
     }
 
     const findings = [];
-    const fail = (check, message) => findings.push({ severity: "fail", check, message });
+    const fail = (series, check, message) => findings.push({ severity: "fail", series, check, message });
 
-    const memory = workspace.memory;
-    if (!memory) return { dir, declared: false, path: null, expected: null, findings };
+    const memory = judgeMemory(dir, workspace, { write, fail });
+    const handoffs = judgeHandoffs(dir, workspace, { write, fail });
 
-    const declaredIndex = memory.index?.path;
-    if (!declaredIndex) {
-        // A budget with no index is coherent — a workspace may rail its store's size and generate
-        // nothing — so this is not an error. There is simply no file to render.
-        const store = readStore(dir, workspace);
-        budgetFindings(memory, store, null, fail);
-        return { dir, declared: true, path: null, expected: null, findings };
-    }
+    return {
+        dir,
+        declared: memory.declared || handoffs.declared,
+        series: { memory, handoffs },
+        findings,
+    };
+}
 
-    const indexPath = path.resolve(dir, declaredIndex);
-    const storeDir = path.resolve(dir, workspace.slots?.memory ?? "");
-
-    // An index inside the store it indexes is refused, not special-cased. `doctor` counts every
-    // `.md` in the store as a record: sited there, the index would be counted, sized into the KB
-    // figure, and reported for stating no retirement condition. The alternative — excluding it by
-    // name — is a hiding place any record could use, and this repository had found eight fail-opens
-    // of that shape in its own scaffolding.
-    if (workspace.slots?.memory && isInside(storeDir, indexPath)) {
+/**
+ * Refuse an index sited inside the series it indexes, and return its resolved path.
+ *
+ * One rule, one implementation, two series — and it is refused rather than special-cased for the same
+ * reason in both. In the store, `doctor` counts every `.md` as a record, so an index living there is
+ * counted, sized into the KB figure, and reported for stating no retirement condition. In the handoff
+ * series, `docs.sh`'s correspondence check counts every dated `.md` as a handoff and fails every
+ * undated one, so an index there is either an extra handoff or a red. The alternative repair —
+ * excluding the index's filename from each walk — is a door any record could use, and this repository
+ * had found eight fail-opens of that shape in its own scaffolding before it stopped taking that door.
+ */
+function siteOutside(dir, declaredPath, slot, word) {
+    const indexPath = path.resolve(dir, declaredPath);
+    if (slot && isInside(path.resolve(dir, slot), indexPath)) {
         throw new IndexError(
-            `${declaredIndex} sits inside the store it indexes (${workspace.slots.memory}) — ` +
-                "`doctor` would count it as a record. Site the index beside the store, not in it",
+            `${declaredPath} sits inside the ${word} it indexes (${slot}) — a walk over that directory ` +
+                `would count the index as one of its members. Site the index beside the ${word}, not in it`,
         );
     }
+    return indexPath;
+}
 
-    const store = readStore(dir, workspace);
-
-    // Titles first, and alone. A disagreement means there is no correct line to emit for that
-    // record, so rendering anyway would produce a generated file the generator knows is wrong.
-    for (const r of store.records) {
-        if (r.heading && normalize(r.heading) !== normalize(r.title)) {
-            fail(
-                "title",
-                `${path.join(workspace.slots.memory, r.file)} carries the heading "${r.heading}", which is not its filename's title ` +
-                    `"${r.title}". A record may hold two carriers of its name; it may not hold two answers — ` +
-                    "rename the file or reword the heading",
-            );
-        }
-    }
-    if (findings.length) return { dir, declared: true, path: indexPath, expected: null, findings };
-
-    const expected = render(workspace, store);
-
+/**
+ * Write (when asked) and byte-compare one generated index.
+ *
+ * Shared, because the ways this goes wrong are the same ways for every series and each has already
+ * been paid for once. **Never written in check mode** — a verify recipe that repairs what it is
+ * checking always passes, the property ../.portulan/verify/compile.sh was built around. **A failed
+ * write is an `IndexError`, not a red** — an uncaught ENOENT here exits node with 1, which `index.sh`
+ * passes through as "the index has drifted", said about a series nothing had judged, for what is a
+ * configuration problem (`a-checker-must-refuse-what-it-cannot-check`; found by Copilot on #72).
+ */
+function compareOrWrite({ dir, declaredPath, indexPath, expected, write, series, source, fail }) {
     if (write) {
-        // The artifact's own directory is created, and a write that still fails is an IndexError
-        // rather than a throw. Both halves matter, and the second is the one with teeth: an uncaught
-        // ENOENT here exits node with 1, which `index.sh` passes through as a RED — "the index has
-        // drifted", said about a store nothing had judged, for what is a configuration problem.
-        // That is `a-checker-must-refuse-what-it-cannot-check` exactly, and the suite already
-        // carried the fixture that triggers it (`notes/memory-index.md`) while stopping one call
-        // short of writing through it. Found by Copilot on #72.
         try {
             fs.mkdirSync(path.dirname(indexPath), { recursive: true });
             fs.writeFileSync(indexPath, expected);
         } catch (cause) {
             throw new IndexError(
-                `cannot write the index at ${declaredIndex} — ${cause.code ?? cause.message}. ` +
-                    "Refusing rather than reporting a verdict about the store: this is a fact about the filesystem, not about memory",
+                `cannot write the index at ${declaredPath} — ${cause.code ?? cause.message}. ` +
+                    `Refusing rather than reporting a verdict about the ${source}: this is a fact about the filesystem, not about memory`,
             );
         }
     }
@@ -375,16 +493,99 @@ export function inspect(dir, { write = false } = {}) {
     } catch { /* absent — reported below, and never repaired here */ }
 
     if (actual === null) {
-        fail("index", `${declaredIndex} is declared and absent — run \`node cli/index.mjs ${dir}\` to generate it`);
+        fail(series, "index", `${declaredPath} is declared and absent — run \`node cli/index.mjs ${dir}\` to generate it`);
     } else if (!actual.equals(Buffer.from(expected, "utf8"))) {
-        // Byte-compared, and never written in check mode. A verify recipe that repairs what it is
-        // checking always passes — the property ../.portulan/verify/compile.sh was built around.
-        fail("index", `${declaredIndex} is out of date against the store — run \`node cli/index.mjs ${dir}\` to regenerate it`);
+        fail(series, "index", `${declaredPath} is out of date against the ${source} — run \`node cli/index.mjs ${dir}\` to regenerate it`);
+    }
+}
+
+/** The memory store's index and its budgets. */
+function judgeMemory(dir, workspace, { write, fail }) {
+    const memory = workspace.memory;
+    if (!memory) return { declared: false, path: null, expected: null };
+
+    const declaredPath = memory.index?.path;
+    if (!declaredPath) {
+        // A budget with no index is coherent — a workspace may rail its store's size and generate
+        // nothing — so this is not an error. There is simply no file to render.
+        const store = readStore(dir, workspace);
+        budgetFindings(memory, store, null, fail);
+        return { declared: true, path: null, expected: null };
     }
 
+    const indexPath = siteOutside(dir, declaredPath, workspace.slots?.memory, "store");
+    const store = readStore(dir, workspace);
+
+    // Titles first, and alone. A disagreement means there is no correct line to emit for that
+    // record, so rendering anyway would produce a generated file the generator knows is wrong.
+    let broken = 0;
+    for (const r of store.records) {
+        if (r.heading && normalize(r.heading) !== normalize(r.title)) {
+            broken += 1;
+            fail(
+                "memory",
+                "title",
+                `${path.join(workspace.slots.memory, r.file)} carries the heading "${r.heading}", which is not its filename's title ` +
+                    `"${r.title}". A record may hold two carriers of its name; it may not hold two answers — ` +
+                    "rename the file or reword the heading",
+            );
+        }
+    }
+    // Scoped to this series, not to the whole run. A broken record title says nothing about whether
+    // the handoff index is current, and returning early on the shared list would have made one
+    // series' defect silence the other's verdict — a green by omission, which is the shape this file
+    // exists to refuse.
+    if (broken) return { declared: true, path: indexPath, expected: null };
+
+    const expected = render(workspace, store);
+    compareOrWrite({ dir, declaredPath, indexPath, expected, write, series: "memory", source: "store", fail });
     budgetFindings(memory, store, expected, fail);
 
-    return { dir, declared: true, path: indexPath, expected, findings };
+    return { declared: true, path: indexPath, expected };
+}
+
+/**
+ * The handoff series' index. No budget — see spec/slots.md: every remedy a budget could ask for on an
+ * append-only series is barred, so a rail here is one built to be broken.
+ */
+function judgeHandoffs(dir, workspace, { write, fail }) {
+    const declaredPath = workspace.handoffs?.index?.path;
+    if (!declaredPath) return { declared: false, path: null, expected: null };
+
+    const indexPath = siteOutside(dir, declaredPath, workspace.slots?.handoffs, "series");
+    const series = readHandoffs(dir, workspace);
+
+    // Two derived fields, two ways to be underivable, two repairs — so two checks. `date` is repaired
+    // by renaming the file; `title` by editing it. One "handoff malformed" would send an author to
+    // the wrong one half the time.
+    let broken = 0;
+    for (const r of series.records) {
+        const where = path.join(workspace.slots.handoffs, r.file);
+        if (r.date === null) {
+            broken += 1;
+            fail(
+                "handoffs",
+                "date",
+                `${where} does not lead with a valid YYYY-MM-DD date, so the index has no date to put on its line. ` +
+                    "core/operating/loop.md fixes the form as `YYYY-MM-DD-{slug}.md` — rename the file",
+            );
+        }
+        if (r.heading === null) {
+            broken += 1;
+            fail(
+                "handoffs",
+                "title",
+                `${where} carries no \`# \` heading on its first non-blank line, so the index has no title to put on its line. ` +
+                    "A handoff's title is its H1 — the filename leads with a date and would render as one. Give it a heading",
+            );
+        }
+    }
+    if (broken) return { declared: true, path: indexPath, expected: null };
+
+    const expected = renderHandoffIndex(workspace, series);
+    compareOrWrite({ dir, declaredPath, indexPath, expected, write, series: "handoffs", source: "series", fail });
+
+    return { declared: true, path: indexPath, expected };
 }
 
 // A declared budget must be a positive integer. Without this, `lines: 0` — or `lines: -1`, or
@@ -415,6 +616,7 @@ function budgetFindings(memory, store, expected, fail) {
         const count = lineCount(expected);
         if (count > lines) {
             fail(
+                "memory",
                 "budget",
                 `the index is ${count} lines against a budget of ${lines} — over by ${count - lines}. ` +
                     "Consolidate the store (merge, compress, retire); raising the budget in the change that broke it " +
@@ -427,6 +629,7 @@ function budgetFindings(memory, store, expected, fail) {
         for (const line of expected.split("\n")) {
             if (line.length > columns) {
                 fail(
+                    "memory",
                     "budget",
                     `an index line is ${line.length} columns against a cap of ${columns}: ${JSON.stringify(line.slice(0, 60) + "…")}. ` +
                         "Shorten the record's filename — the cap exists so one long line cannot absorb what the line budget counts",
@@ -447,6 +650,7 @@ function budgetFindings(memory, store, expected, fail) {
             // size and compares it with nothing, so there is no verdict for the rounding to
             // contradict.)
             fail(
+                "memory",
                 "budget",
                 `the store is ${kb.toFixed(1)} KB (${store.bytes} bytes) against a budget of ${kilobytes} KB (${kilobytes * KB} bytes). ` +
                     "This is the axis the index cannot see: record count can hold still while the store grows",
@@ -485,21 +689,26 @@ export function run(argv, say = console.log) {
         }
 
         if (!result.declared) {
-            say(`  · ${dir}: declares no memory index`);
+            say(`  · ${dir}: declares no index`);
             continue;
         }
         for (const f of result.findings) say(`  ✗ ${dir}: ${f.message}`);
         if (result.findings.length && worst < 1) worst = 1;
         if (!result.findings.length) {
-            // A workspace may declare budgets and no index — rail the store's size, generate
-            // nothing. Saying "index current" there is a green about a file that does not exist,
-            // which is the one sentence a tool whose subject is generated artifacts must not print.
-            // Found by Copilot on #72, in the suppressed half of the round.
-            say(
-                result.path === null
-                    ? `  ok ${dir}: no index declared; store within budget`
-                    : `  ok ${dir}: ${check ? "index current" : "index written"}, within budget`,
-            );
+            // Each series is named separately, and a series that generates nothing says so. A
+            // workspace may declare budgets and no index — rail the store's size, generate nothing —
+            // and saying "index current" there is a green about a file that does not exist, which is
+            // the one sentence a tool whose subject is generated artifacts must not print. Found by
+            // Copilot on #72, in the suppressed half of the round; the same trap has two doors now
+            // that there are two series, and a workspace declaring one index would otherwise get a
+            // sentence that reads as covering both.
+            const state = check ? "current" : "written";
+            const parts = [];
+            if (result.series.memory.declared) {
+                parts.push(result.series.memory.path === null ? "no store index declared; store within budget" : `store index ${state}, within budget`);
+            }
+            if (result.series.handoffs.declared) parts.push(`handoff index ${state}`);
+            say(`  ok ${dir}: ${parts.join("; ")}`);
         }
     }
 

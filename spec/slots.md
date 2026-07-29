@@ -58,6 +58,7 @@ experience a failure. *(Binding non-goal: no ceremony that can't scale down.)*
 | `tree` | path | **for `kind: repository`** | criterion — *lints workspace claims against the tree*; content — [`../examples/`](../examples/), the first workspace whose repositories are not present |
 | `packs` | structured | no | constitution — thesis 1's cascade, `core < pack < workspace` |
 | `memory` | structured | no | criterion — milestone 5, *generated size-budgeted index whose budget is a rail*; [`memory.md`](../core/operating/memory.md) — the Index and Consolidate states of the lifecycle |
+| `handoffs` | structured | no | criterion — milestone 5 as amended, *a generated index over the handoff series*; [`loop.md`](../core/operating/loop.md) — the librarian that mines the series |
 | `provenance` | record field | **on every rule** | criterion — *provenance slot*; [proposal 0002](../.portulan/proposals/0002-sealed-provenance.md), adopted |
 
 ## `kind` — which of the three workspaces this is
@@ -460,6 +461,54 @@ That rule is [`memory.md`](../core/operating/memory.md)'s and the human gate's �
 a check that reads git history, which produces false reds in a shallow CI checkout. The limit is
 recorded in [`../.portulan/verify/README.md`](../.portulan/verify/README.md) with the measurement
 behind it, rather than left for a reader to assume the rail covers both halves.
+
+## `handoffs` — an index over a series nobody can consolidate
+
+Added at 2.5, and it is deliberately one key. `slots.handoffs` is the series; this object says where
+its generated index goes. The same split as `memory` above, built by the same generator, byte-compared
+by the same recipe.
+
+| Field | What it is |
+|---|---|
+| `index.path` | Where the generated index is written. Must resolve **outside** `slots.handoffs` — see below. |
+
+**Why it exists.** [`loop.md`](../core/operating/loop.md) has said since the handoff-cadence rule landed
+that *"the librarian that mines the series is milestone 5"*, and the series had no index at all while
+the store it sits beside had one. Measured on this repository the day the milestone-5 row was amended:
+the handoff series was **3.4×** the memory store. The layer with the index was the small one.
+
+**Every field on a line is derived, and the two carriers differ from the store's on purpose.** A
+record's title is its **filename** — [`memory-entry.md`](../core/templates/memory-entry.md) prescribes
+no heading, and most records carry none, so the filename is the only title every record has. A
+handoff's title is its **H1**: the filename leads with an ISO date and continues as a slug, so a
+filename-derived title reads `2026 07 28 the librarian goes on a cron` — a string no reader navigates
+by and no cross-reference uses. Every handoff in this repository carries an H1, so the heading is the
+carrier that actually exists here, and one that does not is **failed** rather than titled from its
+filename: a generated line whose title the generator invented is the one thing a generated file must
+not contain. The date is derived from the filename, which is where the cadence rule already puts it.
+
+**Its siting rule has two enforcers rather than one, and neither is redundant.** An index inside
+`slots.handoffs` is either counted as a handoff by `docs.sh`'s date-correspondence check — inflating
+one side of a count the Session log is held to — or, carrying no date, failed by the same check for
+exactly that. `index` refuses the siting outright, because it cannot render a series it would then be
+a member of. The second enforcer is not a second opinion: the generator physically cannot proceed,
+while the recipe is what catches a hand-placed file the generator never saw.
+
+**There is no budget here, and the absence is the argued half.** A budget's only permitted remedy is
+consolidation — merge, compress, retire ([`memory.md`](../core/operating/memory.md)) — and a handoff
+series is append-only by construction: one per session, dated, held to the Session log by a count-based
+correspondence. Retiring a handoff to buy headroom would either red that check or destroy the record it
+exists to keep, and raising the budget in the change that breached it is the one repair that doctrine
+rules out. Every remedy such a budget could ask for is barred, which makes it a rail designed to be
+broken — and a rail that fires with no legal repair is how a whole recipe gets switched off. Whether
+the series should be railed on some other axis is a **maintainer's question**, deferred to the
+reconciliation that follows milestone 5 rather than pre-answered here in the shape of an unused key.
+
+**What the pass reads that this object does not configure.** Record ages come from git for both series,
+and the handoff series is **reported** — count, oldest, total size — with no threshold and no demotion
+draft. That is not an omission: `librarian.staleness.record_days` drafts a demotion, and drafting one
+against an append-only series would recommend the single repair the paragraph above rules out, weekly,
+forever.
 
 ## `provenance` — a record field, not a manifest key
 

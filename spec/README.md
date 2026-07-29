@@ -63,23 +63,40 @@ whole test, and it is deliberately strict — a day-one workspace has no proposa
 memory yet, and it must still validate. Ceremony that cannot scale down is a binding non-goal.
 
 Required: `portulan.spec`, `name`, `kind`, `slots.identity`, `slots.principles`, `slots.gates`, `verify`
-— plus, as of 2.4, **five** conditional requirements, none of which the schema can express (the subset
-has no `dependentRequired`, so `doctor` enforces all five and [`slots.md`](slots.md) says so):
+— plus the conditional requirements listed here, none of which the schema can express (the subset
+has no `dependentRequired`, so `doctor` enforces every one and [`slots.md`](slots.md) says so):
 `tree` when `kind` is `repository`; `slots.memory` when `memory` is declared, since the object
 configures a store rather than replacing one; `memory.index.path` resolving **outside**
 `slots.memory`, since an index inside the store is counted as a record by `doctor`'s own store report;
 `slots.memory` when `librarian` is declared, since a pass over nothing reports that nothing is stale;
-and `slots.proposals` when `librarian.staleness.proposal_days` is, since a threshold nothing can ever
-cross reads as configured to anyone who greps for it. Everything else is optional.
+`slots.proposals` when `librarian.staleness.proposal_days` is, since a threshold nothing can ever
+cross reads as configured to anyone who greps for it; and, as of 2.5, the same two the memory index
+carries, applied to the handoff series — `slots.handoffs` when `handoffs` is declared, and
+`handoffs.index.path` resolving **outside** `slots.handoffs`, since a file sited in that directory is
+either counted as a handoff by the `record` check's correspondence or failed by it for carrying no
+date. Everything else is optional.
+
 [`slots.md`](slots.md) argues each one.
 
-That the count went from one to three in a single MINOR, and from three to five in the next, is worth
+_The opening of that paragraph used to carry the count. The number is gone rather than corrected, and
+the list is now the only carrier: a sentence that hard-codes the figure it must maintain by hand is the
+defect [#77](https://github.com/sleepy-panda-works/portulan/issues/77) is filed about, one file over,
+and adding to the list at 2.5 is exactly the edit that would have left it stale again — which is how
+this one was noticed._
+
+That the count went from one to three in a single MINOR, then to five, and now to seven, is worth
 noticing rather than absorbing. Each is a genuine dependency between two keys and none can be written
 in the declared subset, so the gap between *what the schema says* and *what a conforming manifest must
 satisfy* is widening — and a constraint invisible to someone reading the schema alone is a real cost,
 stated here rather than discovered. The subset earns its narrowness by being implementable completely
-and honestly; the price is this list, and the list is the thing to watch if it keeps growing. Two
-MINORs at +2 each is the growth rate to hold the next bump against.
+and honestly; the price is this list, and the list is the thing to watch if it keeps growing. **Three
+MINORs at +2 each** is the growth rate to hold the next bump against, and 2.5's two are the same two
+`memory` brought — a series needs a store and its index must sit outside it — which is an argument for
+generalising the pair before a third series arrives, rather than for adding it again.
+
+_These figures are history rather than state: what 2.3 and 2.4 added cannot change, so they do not go
+stale the way the removed count did. The one forward-looking sentence is the growth rate, and it is
+dated by the version it names._
 
 Note the distinction that does the work here: the *definition* carries a slot, while an *instance* may
 leave it empty. "The Workspace Definition has a product-layer slot" and "every workspace must declare a
@@ -87,7 +104,7 @@ product" are different claims, and only the first is true.
 
 ## Versioning and migrations
 
-`portulan.spec` is `MAJOR.MINOR`, and the current version is **2.4**.
+`portulan.spec` is `MAJOR.MINOR`, and the current version is **2.5**.
 
 _(This line read `2.0` for two MINOR bumps after the schema had moved past it — the version of the
 spec, stated wrongly in the spec's own README, while the `$id` beside it was right. It is recorded

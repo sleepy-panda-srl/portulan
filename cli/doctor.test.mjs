@@ -311,7 +311,7 @@ describe("a budget or a threshold that is not a positive integer", () => {
 
 describe("the schema declares which Workspace Definition version it implements", () => {
     test("the shipped schema carries it in `$id`", () => {
-        assert.deepEqual(schemaVersion(SCHEMA), { major: 2, minor: 4 });
+        assert.deepEqual(schemaVersion(SCHEMA), { major: 2, minor: 5 });
     });
 
     test("a schema whose `$id` does not carry one is refused", () => {
@@ -619,6 +619,52 @@ describe("provenance is parsed into the two forms the constitution names", () =>
         const failures = severities(checks(findings, "cross"), "fail");
         assert.equal(failures.length, 1);
         assert.match(text(failures), /inside slots\.memory/);
+    });
+
+    // Workspace Definition 2.5. The handoff series gets the same two conditional dependencies, and
+    // they are tested rather than assumed to follow from the memory pair: the two checks share an
+    // argument and not a line of code, and the second copy of a containment rule is exactly what
+    // drifted last time (`isInside` exists because two copies of it carried one fail-open).
+    test("`handoffs` without a `slots.handoffs` series is refused", async () => {
+        const m = wellFormed();
+        m.handoffs = { index: { path: "handoffs-index.md" } };
+        const dir = tree(scratch(), { ...minimalFiles, "workspace.json": JSON.stringify(m) });
+        const { findings } = await inspect(dir, { schema: SCHEMA });
+        const failures = severities(checks(findings, "cross"), "fail");
+        assert.equal(failures.length, 1);
+        assert.match(text(failures), /slots\.handoffs/);
+    });
+
+    test("a handoff index sited inside the series it indexes is refused", async () => {
+        // A different walk swallows it here than in the store's case, and the message says which: a
+        // Markdown file in `slots.handoffs` is either counted as a handoff by `docs.sh`'s date
+        // correspondence — inflating one side of a count the Session log is held to — or failed by
+        // the same check for carrying no date.
+        const m = wellFormed();
+        m.slots.handoffs = "handoffs/";
+        m.handoffs = { index: { path: "handoffs/INDEX.md" } };
+        const dir = tree(scratch(), {
+            ...minimalFiles,
+            "workspace.json": JSON.stringify(m),
+            "handoffs/INDEX.md": "# Handoff index\n",
+        });
+        const { findings } = await inspect(dir, { schema: SCHEMA });
+        const failures = severities(checks(findings, "cross"), "fail");
+        assert.equal(failures.length, 1);
+        assert.match(text(failures), /inside slots\.handoffs/);
+    });
+
+    test("a handoff index named `..something` inside the series is refused too", async () => {
+        const m = wellFormed();
+        m.slots.handoffs = "handoffs/";
+        m.handoffs = { index: { path: "handoffs/..index.md" } };
+        const dir = tree(scratch(), {
+            ...minimalFiles,
+            "workspace.json": JSON.stringify(m),
+            "handoffs/..index.md": "# Handoff index\n",
+        });
+        const { findings } = await inspect(dir, { schema: SCHEMA });
+        assert.match(text(severities(checks(findings, "cross"), "fail")), /inside slots\.handoffs/);
     });
 
     test("an index named `..something` inside the store is refused too", async () => {

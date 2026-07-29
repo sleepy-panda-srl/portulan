@@ -27,9 +27,12 @@ import {
     IndexError,
     titleOf,
     headingOf,
+    dateOf,
     isInside,
     readStore,
+    readHandoffs,
     render,
+    renderHandoffIndex,
     inspect,
     run,
 } from "./index.mjs";
@@ -613,7 +616,10 @@ describe("run", () => {
         const dir = workspace({ "memory/a-first.md": record("rule") }, manifest);
         const lines = [];
         assert.equal(run([dir], (s) => lines.push(s)), 0);
-        assert.match(lines.join("\n"), /no index declared/);
+        // `no store index declared` rather than `no index declared` since 2.5: with two series, a
+        // sentence that names neither reads as covering both, which is the same over-claim in a
+        // smaller font.
+        assert.match(lines.join("\n"), /no store index declared/);
         assert.doesNotMatch(lines.join("\n"), /index (current|written)/);
     });
 
@@ -659,4 +665,200 @@ describe("the live stores", () => {
             assert.equal(text(failures(result)), "");
         });
     }
+});
+
+// ---------------------------------------------------------------- the handoff series
+
+// Added at 2.5. The generator gained a second series rather than a second copy of itself: the
+// enumeration, the siting refusal, the byte comparison and the write are one implementation, and only
+// what a line is made of differs. Two copies of that machinery would drift, and the two copies this
+// repository has already shipped both drifted into the identical defect before either was merged
+// (../.portulan/memory/ — `isInside` was extracted for exactly this reason).
+//
+// What differs is the title carrier, and it differs on evidence rather than taste: a memory record's
+// title is its filename because most records carry no heading, while every handoff carries one and its
+// filename leads with a date, so `titleOf` would render `2026 07 28 the librarian goes on a cron`.
+
+/** A handoff in the shape ../core/templates/handoff.md prescribes — an H1 first, always. */
+const handoff = (title, body = "What happened, and why.") => `# ${title}\n\n${body}\n`;
+
+// Only the handoff series is configured here — `memory` is dropped, so these fixtures need no store on
+// disk and a finding can only have come from the series under test. The live-tree binding at the end
+// is what exercises both series in one workspace.
+const withSeries = (over = {}) =>
+    wellFormed({
+        memory: undefined,
+        slots: {
+            identity: "identity.md",
+            principles: "principles.md",
+            gates: "gate-map.md",
+            handoffs: "handoffs/",
+        },
+        handoffs: { index: { path: "handoffs-index.md" } },
+        ...over,
+    });
+
+describe("a handoff's date comes from its filename", () => {
+    test("reads the ISO date a dated filename leads with", () => {
+        assert.equal(dateOf("2026-07-28-the-librarian-goes-on-a-cron.md"), "2026-07-28");
+        assert.equal(dateOf("2026-01-01-a.md"), "2026-01-01");
+    });
+
+    test("returns null when the filename carries none", () => {
+        // ../core/operating/loop.md fixes the form as `YYYY-MM-DD-{slug}.md`, and ../.portulan/verify/docs.sh
+        // already fails an undated file in the series. This is not a second opinion about that rule:
+        // the generator cannot derive a field it needs, so it has nothing to emit.
+        assert.equal(dateOf("the-librarian-goes-on-a-cron.md"), null);
+        assert.equal(dateOf("2026-7-8-short-fields.md"), null);
+    });
+
+    test("refuses a date-shaped prefix that is not a date", () => {
+        // `2026-13-45` sorts fine and means nothing. A generated index whose dates are unparseable
+        // strings is a chronological index that is not chronological.
+        assert.equal(dateOf("2026-13-45-impossible.md"), null);
+    });
+});
+
+describe("rendering the handoff index", () => {
+    test("one line per handoff: the date, the H1, and a link", () => {
+        const dir = workspace(
+            {
+                "handoffs/2026-07-01-the-first-one.md": handoff("The first one"),
+                "handoffs/2026-07-28-the-second-one.md": handoff("The second one, with a comma"),
+            },
+            withSeries(),
+        );
+        const out = renderHandoffIndex(JSON.parse(fs.readFileSync(path.join(dir, "workspace.json"), "utf8")), readHandoffs(dir, JSON.parse(fs.readFileSync(path.join(dir, "workspace.json"), "utf8"))));
+        assert.match(out, /- 2026-07-01 · \[The first one\]\(handoffs\/2026-07-01-the-first-one\.md\)/);
+        assert.match(out, /- 2026-07-28 · \[The second one, with a comma\]\(handoffs\/2026-07-28-the-second-one\.md\)/);
+    });
+
+    test("the title is the H1, never the filename", () => {
+        // The whole reason this series has its own title rule. `titleOf` here would emit
+        // `2026 07 28 the librarian goes on a cron`, which is not the name of anything.
+        const dir = workspace(
+            { "handoffs/2026-07-28-the-librarian-goes-on-a-cron.md": handoff("The librarian goes on a cron") },
+            withSeries(),
+        );
+        inspect(dir, { write: true });
+        const out = fs.readFileSync(path.join(dir, "handoffs-index.md"), "utf8");
+        assert.match(out, /\[The librarian goes on a cron\]/);
+        assert.doesNotMatch(out, /2026 07 28/);
+    });
+
+    test("newest first, so the index opens on what just happened", () => {
+        const dir = workspace(
+            {
+                "handoffs/2026-07-01-older.md": handoff("Older"),
+                "handoffs/2026-07-28-newer.md": handoff("Newer"),
+            },
+            withSeries(),
+        );
+        inspect(dir, { write: true });
+        const out = fs.readFileSync(path.join(dir, "handoffs-index.md"), "utf8");
+        assert.ok(out.indexOf("Newer") < out.indexOf("Older"), "newest should lead");
+    });
+});
+
+describe("what the handoff index refuses to guess", () => {
+    test("a handoff with no H1 fails, and is never titled from its filename", () => {
+        const dir = workspace(
+            { "handoffs/2026-07-28-no-heading-here.md": "Just prose, no heading.\n" },
+            withSeries(),
+        );
+        const bad = failures(inspect(dir, { write: true }));
+        assert.equal(bad.length, 1);
+        assert.equal(bad[0].check, "title");
+        assert.equal(bad[0].series, "handoffs");
+        assert.match(text(bad), /no `# ` heading/i);
+        assert.equal(fs.existsSync(path.join(dir, "handoffs-index.md")), false, "nothing is written when a line cannot be derived");
+    });
+
+    test("a handoff whose filename carries no date fails, with a different repair", () => {
+        const dir = workspace({ "handoffs/no-date-at-all.md": handoff("No date at all") }, withSeries());
+        const bad = failures(inspect(dir, { write: true }));
+        assert.equal(bad.length, 1);
+        assert.equal(bad[0].check, "date");
+        assert.equal(bad[0].series, "handoffs");
+        assert.match(text(bad), /YYYY-MM-DD/);
+    });
+
+    test("an index sited inside the series is refused, not special-cased", () => {
+        // Same rule as the memory index and a second reason for it: a file in `slots.handoffs` is
+        // either counted as a handoff by docs.sh's date correspondence, or failed by it for carrying
+        // no date. Both are wrong answers about a generated artifact.
+        const dir = workspace(
+            { "handoffs/2026-07-28-a.md": handoff("A") },
+            withSeries({ handoffs: { index: { path: "handoffs/index.md" } } }),
+        );
+        assert.throws(() => inspect(dir, { write: true }), (e) => {
+            assert.ok(e instanceof IndexError);
+            assert.match(e.message, /sits inside the series it indexes/);
+            return true;
+        });
+    });
+
+    test("a `handoffs` object with no `slots.handoffs` is refused", () => {
+        const dir = workspace(
+            {},
+            withSeries({
+                slots: { identity: "identity.md", principles: "principles.md", gates: "gate-map.md", memory: "memory/" },
+            }),
+        );
+        assert.throws(() => inspect(dir, { write: true }), (e) => {
+            assert.ok(e instanceof IndexError);
+            assert.match(e.message, /no `slots\.handoffs`/);
+            return true;
+        });
+    });
+
+    test("a workspace declaring no `handoffs` object indexes its store and says nothing about the series", () => {
+        const dir = workspace({ "memory/a-first.md": record("rule") });
+        const result = inspect(dir, { write: true });
+        assert.equal(result.series.handoffs.declared, false);
+        assert.equal(failures(result).length, 0);
+    });
+});
+
+describe("the handoff index is byte-compared like the store's", () => {
+    test("red when a handoff was added and the index was not regenerated", () => {
+        const dir = workspace({ "handoffs/2026-07-01-a.md": handoff("A") }, withSeries());
+        inspect(dir, { write: true });
+        tree(dir, { "handoffs/2026-07-28-b.md": handoff("B") });
+        const bad = failures(inspect(dir));
+        assert.equal(bad.length, 1);
+        assert.equal(bad[0].check, "index");
+        assert.equal(bad[0].series, "handoffs");
+        assert.match(text(bad), /out of date/i);
+    });
+
+    test("--check does not write the file it disagrees with", () => {
+        const dir = workspace({ "handoffs/2026-07-01-a.md": handoff("A") }, withSeries());
+        inspect(dir, { write: true });
+        const before = fs.readFileSync(path.join(dir, "handoffs-index.md"));
+        tree(dir, { "handoffs/2026-07-28-b.md": handoff("B") });
+        inspect(dir);
+        assert.deepEqual(fs.readFileSync(path.join(dir, "handoffs-index.md")), before);
+    });
+
+    test("no budget is declarable, so no budget finding can be raised over the series", () => {
+        // The absence is the design (spec/slots.md): every remedy a budget could ask for on an
+        // append-only series is barred, so a rail here is one built to be broken. Asserted rather
+        // than left to the schema, because `additionalProperties: false` is checked by `doctor` and
+        // this generator is what would have to implement the rail.
+        const dir = workspace(
+            Object.fromEntries(Array.from({ length: 40 }, (_, i) => [`handoffs/2026-07-${String(i + 1).padStart(2, "0")}-h.md`, handoff(`H${i}`)])),
+            withSeries(),
+        );
+        const bad = failures(inspect(dir, { write: true }));
+        assert.equal(bad.filter((f) => f.series === "handoffs" && f.check === "budget").length, 0);
+    });
+});
+
+describe("the live handoff series", () => {
+    test(".portulan's handoff index is current", () => {
+        const result = inspect(path.join(REPO, ".portulan"));
+        assert.equal(result.series.handoffs.declared, true);
+        assert.equal(text(failures(result).filter((f) => f.series === "handoffs")), "");
+    });
 });
