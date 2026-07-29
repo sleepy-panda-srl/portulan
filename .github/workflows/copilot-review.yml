@@ -92,8 +92,15 @@ on:
   # rather than every time.
 
 # `write`, not `read`, as of 2026-07-29 — for the one POST below that re-requests Copilot mid-wait.
-# A `permissions:` block REPLACES the default, so every scope not named here is `none`; widening this
-# one key grants exactly the review-request call and nothing else in the repository.
+#
+# A `permissions:` block REPLACES the default, so every scope not named here is `none`: this job can
+# still touch nothing outside pull requests. What the widening does NOT buy is a single call —
+# `pull-requests: write` is the smallest scope GitHub offers that includes requesting a reviewer, and
+# it carries the rest of the pull-request write surface (labels, comments, edits, merge state) with
+# it. The restraint is that this job makes exactly one write and the scope is the floor for making it,
+# not that the token is incapable of more. Said this way because the sentence here used to claim it
+# "grants exactly the review-request call and nothing else", which is a stated limit the platform does
+# not enforce — `a-stated-enforcer-must-be-the-real-one` binds this file's prose as much as its shell.
 permissions:
   pull-requests: write
 

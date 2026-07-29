@@ -436,7 +436,7 @@ fi
 # junk — amendment arguments with their expansion/narrowing verdicts, session notes, close-evidence
 # narratives, every word of it reviewed and merged — but it was in the wrong place, because the row
 # is what a session reads to learn what it must build and the criterion had become the hardest thing
-# in it to find. That history now lives in `docs/milestones/mN.md`, moved verbatim, and these three
+# in it to find. That history now lives in `docs/milestones/mN.md`, moved verbatim, and these four
 # checks are what stop it flowing back.
 #
 # **This rail is RETROACTIVE, and that is deliberate — the opposite call from `record`'s two floors.**
@@ -461,7 +461,7 @@ else
     : >"$tmp/rows"
     grep -nE '^\| *[0-9]+ *\|' "$PLAN" >"$tmp/rows"
     if [ ! -s "$tmp/rows" ]; then
-        # Enumerating the table is a precondition: with no rows found, all three checks below would
+        # Enumerating the table is a precondition: with no rows found, all four checks below would
         # report ok having examined nothing, which is the false green this recipe mints rules about.
         printf 'verify: no milestone rows found in %s — cannot check the table\n' "$PLAN" >&2
         exit 2
