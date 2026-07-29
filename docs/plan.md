@@ -1736,3 +1736,14 @@ _The seam applies here too: no client-identifying references._
   checkpoint caught eleven lines below the fixed line. · Fidelity: pre-commit Fable 5, fresh context,
   **before the commit**, one blocking finding folded. Seam scan clean over diff, message and branch.
   Handoff: [`…should-have-run.md`](../.portulan/handoffs/2026-07-29-the-sweep-that-should-have-run.md).
+
+- 2026-07-29 · post-M5 — no milestone row touched · **One definition of where a Session log entry ends**
+  — [#115](https://github.com/sleepy-panda-works/portulan/pull/115). `record` held two: the parser's
+  strict `- YYYY-MM-DD ·` and the seam scan's looser `- 2###-`, so an unindented dated bullet inside an
+  entry ended that scan without starting a new entry, and an attestation after it read as absent — a
+  false red, pre-existing since 2026-07-27 and the third in this check's seam half in two days. Fixed by
+  **deleting the second definition**: the scan now reads the entry's extent from the parser, so nothing
+  is left to drift. Red-first on the merged tree, with genuine absence asserted as the negative control
+  and the 2026-07-28 wrap case as a regression guard. Closes
+  [#79](https://github.com/sleepy-panda-works/portulan/issues/79). · Seam scan clean. Handoff:
+  [`2026-07-29-one-definition…md`](../.portulan/handoffs/2026-07-29-one-definition-of-where-an-entry-ends.md).
