@@ -1699,14 +1699,33 @@ describe("the packs a workspace declares", () => {
         }
     });
 
+    // Written against a SYNTHETIC schema one minor ahead, because the shipped Pack Definition is 1.0
+    // and there is no earlier minor to name yet. An earlier draft asserted this with `1.0` — the
+    // current version — so it proved only that the current version is graded, under a name claiming
+    // more. Found by review; the fix is to make the test do what its name says rather than rename it
+    // down, since MINOR-behind-still-graded is a real rule that will matter at the first pack bump.
     test("a pack declaring an EARLIER minor on the same major is still graded", async () => {
+        const ahead = { ...PACK_SCHEMA, $id: "https://portulan.dev/spec/pack/1.5/pack.schema.json" };
         const dir = tree(scratch(), {
             ...minimalFiles,
             "workspace.json": JSON.stringify({ ...wellFormed(), packs: ["rituals/checkpoints"] }),
             "packs/rituals/checkpoints/pack.json": JSON.stringify(packManifest({ portulan: { pack: "1.0" } })),
         });
-        const { stats } = await inspect(dir, { schema: SCHEMA });
-        assert.equal(stats.packs, 1);
+        const { findings, stats } = await inspect(dir, { schema: SCHEMA, packSchema: ahead });
+        assert.equal(severities(checks(findings, "packs"), "fail").length, 0, text(findings));
+        assert.equal(stats.packs, 1, "1.0 against a 1.5 validator must still be graded");
+    });
+
+    test("a pack whose `contributes.gates` is not an array is refused with a diagnostic", async () => {
+        const dir = tree(scratch(), {
+            ...minimalFiles,
+            "workspace.json": JSON.stringify({ ...wellFormed(), packs: ["rituals/checkpoints"] }),
+            "packs/rituals/checkpoints/pack.json": JSON.stringify(
+                packManifest({ contributes: { gates: "not-an-array" } }),
+            ),
+        });
+        const { findings } = await inspect(dir, { schema: SCHEMA });
+        assert.match(text(severities(checks(findings, "packs"), "fail")), /expected type `array`/);
     });
 
     test("the two version trains are read by different functions and do not collide", () => {

@@ -1463,7 +1463,19 @@ export function packContributions(workspaceRoot, workspaceDir = ".portulan", opt
             continue;
         }
         const packManifest = readJson(found.manifest, `the pack manifest for \`${name}\``);
-        contributions.push({ pack: name, dir: found.dir, fragments: packManifest?.contributes?.gates ?? [] });
+        const fragments = packManifest?.contributes?.gates;
+        // Checked here rather than left to `composeFragments` iterating it: a manifest is a file a
+        // human edits, `doctor` may not have run (the two tools have no ordering between them), and a
+        // non-array here would surface as a bare TypeError naming neither the pack nor the field.
+        // `?? []` covers absent, not malformed — those are different failures and only one is benign.
+        if (fragments !== undefined && !Array.isArray(fragments)) {
+            throw new CompileError(
+                `the pack manifest for \`${name}\` declares \`contributes.gates\` as ` +
+                    `${Array.isArray(fragments) ? "an array" : typeof fragments} rather than an array. ` +
+                    `Refusing to compose it — run \`doctor\` to validate the pack against the Pack Definition.`,
+            );
+        }
+        contributions.push({ pack: name, dir: found.dir, fragments: fragments ?? [] });
     }
     return { contributions, unresolved };
 }

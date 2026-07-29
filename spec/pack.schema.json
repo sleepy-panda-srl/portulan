@@ -192,7 +192,7 @@
     },
 
     "actionPath": {
-      "description": "A path a gate rule matches, resolved from the ADOPTER's repository root rather than from the pack — a pack gating its own directory would be gating files nobody edits. Same no-absolute, no-URL rules as `path`, and `../` is excluded for the same reason.",
+      "description": "A path a gate rule matches, resolved from the ADOPTER's repository root rather than from the pack — a pack gating its own directory would be gating files nobody edits. No absolute paths and no URLs. UNLIKE the pack-internal `filePath` and `dirPath`, a leading `.` is permitted and must be, because the action vocabulary's real values include `./` and `.portulan/`; that also means this pattern does NOT exclude `../`, and saying so is the point. Containment is not a pattern's job — a `../` chain passes any regex and still escapes, which is why cli/compile.mjs resolves its policy path and checks containment AFTER resolution rather than by pattern alone. What bounds the damage here is the direction of the whole mechanism: a fragment can only ever ADD restriction, and the compiler emits `ask` and `deny` and never `allow`, so a fragment naming a path outside the adopter's tree gates something nobody touches. That is noise, not a breach — and it is stated rather than papered over with a pattern that would look like a containment check while being none.",
       "type": "string",
       "pattern": "^[^#?:/][^#?:]*$",
       "minLength": 1
