@@ -19,10 +19,10 @@ drift: the rule made a **known-false sentence unfixable**, and it stayed false f
 close of a second milestone. A rule whose only compliant response to a falsehood is to leave it standing
 is the shape
 [`.portulan/memory/a-mandate-nothing-checks-is-already-broken.md`](.portulan/memory/a-mandate-nothing-checks-is-already-broken.md)
-names. The maintainer's ruling, 2026-07-29, on
-[#94](https://github.com/sleepy-panda-works/portulan/issues/94) — recorded verbatim, with the two
-alternatives he declined, in the pull request that closes it. It settles the half that issue routed to
-him, not merely the stale sentence that prompted it._
+names. The maintainer's ruling, 2026-07-29 — recorded verbatim, with the two alternatives he declined,
+in a comment on [#94](https://github.com/sleepy-panda-works/portulan/issues/94) and again in the pull
+request that closes it. It settles the half that issue routed to him, not merely the stale sentence that
+prompted it._
 
 _**What accumulating does not license.** The bar is still what a *reader of a release* gets, not what a
 session did: the Session log in [`docs/plan.md`](docs/plan.md) is the per-session record and this file
@@ -80,7 +80,10 @@ argues the policy; `gates` points at the policy that compiles. Rule ids are cite
 membership is checked both ways.
 
 **A sixth verify recipe**, `compile`, so a policy edited without recompiling fails CI with no workflow
-edit — the fourth payout of the mechanism in proposal 0004.
+edit — the fourth payout of the mechanism in proposal 0004. **A seventh**, `workflow-filters`, executes
+every `jq` filter a workflow runs against fixtures rather than trusting it to be read correctly by eye —
+a rail over the one layer of this repository that CI could not otherwise check, since a workflow's own
+logic never runs until the event fires.
 
 **The platform floor, compiled from the same policy.** A second backend emits an importable GitHub
 repository ruleset — `pull_request`, `required_status_checks` (**strict**, unconditionally),
