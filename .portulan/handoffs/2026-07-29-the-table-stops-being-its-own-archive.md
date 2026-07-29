@@ -89,3 +89,32 @@ on exactly one check before this handoff landed — `proposal`, because 0016 cou
 request before that pull request existed, which is the documented Known limit and clears with this push.
 
 **Seam scan clean** over the diff, the commit message and the branch name.
+
+## Follow-up after the merge — #101
+
+Two rulings arrived after `7726c50` landed, both correcting the same misjudgement of mine.
+
+**Milestone 9 had no file**, because it has never been worked and the reconciliation had nothing to
+move out of row 9. I had already made this mistake once, about milestones 0 and 1, and given the same
+reason. The maintainer's objection is the better one both times and it is not about duplication: **a
+gap behind one row invites the inference that some rows are exempt from carrying their history**,
+which is precisely the reading the fidelity-note split exists to prevent one column over. Declaring
+the absence costs one file. Leaving it inferred costs the property.
+
+The generalisable form, since I got it wrong twice: *the unit is the series, not the row.* Asking
+"does this row have anything to relocate?" gives the wrong answer, because the file's job is not only
+to hold history — it is to make the presence of history checkable at a glance. A missing file is
+indistinguishable from an unwritten one, which is the same shape as *nothing to report* versus *did
+not look*, a distinction this repository's own recipes are built to preserve.
+
+**The series is zero-padded** — `m0..m9` → `m00..m09` — because a directory that grew past nine
+entries sorts 0, 1, 10, 11, 2, 3. All 24 references in `docs/plan.md` moved with the files; `links`
+passing over the renamed tree is what proves none was missed, rather than my having checked.
+
+**Three denominators moved with them** and were enumerated *before* pushing rather than found by
+review: the root README's "a file per milestone that has one" (now "one file per milestone", true
+again), and "8 of the 11" in both `verify/README.md` and this handoff, now 8 of 12. That count is
+load-bearing — it is the measurement justifying why the `plan` rail is anchored to table rows rather
+than grepping the file tree. This is the class the six review rounds above found five separate times,
+and the only reason it did not cost a seventh is that it was treated as a known failure mode instead
+of a surprise.

@@ -1665,3 +1665,14 @@ _The seam applies here too: no client-identifying references._
   own at create. Forward-only, no backfill. Suite 635; eight recipes green. · Fidelity: session-open
   APPROVE-WITH-ADJUSTMENTS (5), pre-commit (3), all folded in. Seam scan clean. Handoff:
   [`2026-07-29`](../.portulan/handoffs/2026-07-29-ownership-rides-authorship.md).
+
+- 2026-07-29 · Post-M5 reconciliation, follow-up · **Milestone 9 gets its file, and the series is
+  zero-padded** — [#101](https://github.com/sleepy-panda-works/portulan/pull/101). Two maintainer
+  rulings on one property: a gap behind a row reads as an exemption, so row 9's absence of history is
+  now **stated** rather than inferred; and `m0..m9` become `m00..m09` so the directory sorts. All 24
+  references in this file moved with the files, and `links` passing over the renamed tree is the
+  proof. Three denominators moved with them — the root README, `verify/README.md` and the handoff —
+  enumerated up front because that is the class #96 found five times. · Fidelity: no new checkpoint;
+  this is a rename plus a declared absence inside the change #96's two checkpoints already graded, and
+  the `links` and `plan` rails are what verify it. Seam scan clean over diff, message and branch.
+  Handoff: [`…own-archive.md`](../.portulan/handoffs/2026-07-29-the-table-stops-being-its-own-archive.md).
