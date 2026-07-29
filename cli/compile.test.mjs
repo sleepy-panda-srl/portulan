@@ -1680,6 +1680,42 @@ describe("what a workspace's declared packs contribute", () => {
         assert.match(unresolved[0].why, /no pack\.json/);
     });
 
+    // `?? []` covers an ABSENT key, not a malformed one — those are different failures and only one
+    // is benign. Without this the value reaches `composeFragments` and surfaces as a bare TypeError
+    // naming neither the pack nor the field. Found by review.
+    test("a pack whose `contributes.gates` is not an array is refused, not iterated", () => {
+        const dir = workspace();
+        const manifestPath = path.join(dir, ".portulan", "workspace.json");
+        const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
+        manifest.packs = ["rituals/broken"];
+        fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2));
+        const packDir = path.join(dir, "packs", "rituals", "broken");
+        fs.mkdirSync(packDir, { recursive: true });
+        for (const bad of ["a string", { id: "x" }, 7]) {
+            fs.writeFileSync(
+                path.join(packDir, "pack.json"),
+                JSON.stringify({ portulan: { pack: "1.0" }, name: "broken", category: "rituals", contributes: { gates: bad } }),
+            );
+            assert.throws(() => packContributions(dir), (error) => {
+                assert.ok(error instanceof CompileError);
+                assert.match(error.message, /rather than an array/);
+                assert.match(error.message, /rituals\/broken/);
+                return true;
+            });
+        }
+    });
+
+    test("an ABSENT `contributes.gates` is benign — a pack need not contribute gates", () => {
+        const dir = workspace();
+        const manifestPath = path.join(dir, ".portulan", "workspace.json");
+        const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
+        manifest.packs = ["rituals/quiet"];
+        fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2));
+        packAt(path.join(dir, "packs"), "rituals", "quiet", null);
+        const { contributions } = packContributions(dir);
+        assert.deepEqual(contributions[0].fragments, []);
+    });
+
     test("a workspace declaring no packs composes nothing", () => {
         const { contributions, unresolved } = packContributions(workspace());
         assert.deepEqual([contributions.length, unresolved.length], [0, 0]);
