@@ -1696,13 +1696,13 @@ _The seam applies here too: no client-identifying references._
   tree — two rounds caught this entry and the README both saying it *asserts* one, and skills declared
   where agents are conventional. · Fidelity: no new checkpoint. Seam scan clean over diff, message and
   branch. Handoff: [`…correctable.md`](../.portulan/handoffs/2026-07-29-the-changelog-becomes-correctable.md).
-- 2026-07-29 · M6 (Sleepy Panda workspace & private feed) · **The cascade gets its middle layer**
-  — [#105](https://github.com/sleepy-panda-works/portulan/pull/105). `spec/pack.schema.json` lands on
-  its own version train; the Workspace Definition did not move and is byte-identical, because no
-  constraint changed and `doctor` refuses a manifest ahead of the schema's own `$id`. The
-  `rituals/checkpoints` pack is authored — three checkpoint skills, a `supervisor` persona, the four
-  verdicts. Declared packs now **resolve** and validate rather than being counted, and gate fragments
-  merge **tighten-only on two axes** — the second found by the pre-commit checkpoint, which deleted a
-  live gate to prove it. Task 0008 fixed first. Resolution **from a feed** is unrun and named. Suite
-  673; eight recipes green. · Fidelity: session-open A-W-A (12), pre-commit REQUEST-CHANGES (2+1), all
-  folded; two Copilot rounds answered. Seam scan clean. Handoff: [`2026-07-29`](../.portulan/handoffs/2026-07-29-the-cascade-gets-its-middle-layer.md).
+- 2026-07-29 · M6 (Sleepy Panda workspace & private feed) · **The cascade gets its middle layer** —
+  [#105](https://github.com/sleepy-panda-works/portulan/pull/105). `spec/pack.schema.json` on its own
+  version train, the Workspace Definition byte-identical; the `rituals/checkpoints` pack authored;
+  declared packs now **resolve** and validate rather than being counted; gate fragments merge
+  **tighten-only on two axes**, the second found by the pre-commit checkpoint deleting a live gate to
+  prove it. Task 0008 fixed first; #108 filed for what it triaged. Row 6 **amended** on his ruling to
+  collect the per-agent-memory debt (#98). `portulan-internal` created, **verified private by negative
+  control**, publishing nothing — resolution *from* it stays unrun. Suite 673; eight recipes green. ·
+  Fidelity: session-open A-W-A (12), pre-commit REQUEST-CHANGES (2+1), amendment A-W-A (4), all folded;
+  three Copilot rounds answered. Seam scan clean. Handoff: [`2026-07-29`](../.portulan/handoffs/2026-07-29-the-cascade-gets-its-middle-layer.md).
