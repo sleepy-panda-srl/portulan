@@ -171,14 +171,17 @@ When Portulan ships gate enforcement *for* an adopter, it will be by compiling *
 **their** workspace — never by shipping ours inside the payload.
 
 **A fourth skill ships as of milestone 5.** [`consolidate`](../core/skills/consolidate/SKILL.md) joined
-`clarify` and `codify` in [`../core/skills/`](../core/skills/), beside the boot skill here — so the
-payload now carries **four**, and the milestone-3 measurement above is a record of an older tree rather
-than a current inventory. **The live count is not restated here as a number anyone must maintain:**
-[`plugin-lint`](../cli/plugin-lint.mjs) finds skills and agents by convention and **derives** the totals
-from the tree on every pull request, so the figure it prints cannot disagree with what ships. It does not
-check them against an expected number, and saying it did would claim a guarantee it does not make — what
-it *refuses* is the structural defect that would make a count a lie: a declared `agents` key, which
-suppresses the scan entirely. A `.md` stranded outside `./agents/` is deliberately a **note**, because
-the validator cannot tell a fixture from a binding. This paragraph exists because the section above
+`clarify` and `codify` in [`../core/skills/`](../core/skills/); together with the boot skill in
+[`skills/`](skills/) here, the payload now carries **four** — so the milestone-3 measurement above is a
+record of an older tree rather than a current inventory. **The live count is not restated here as a
+number anyone must maintain:** [`plugin-lint`](../cli/plugin-lint.mjs) **derives** the totals from the
+tree on every pull request, so the figure it prints cannot disagree with what ships. **The two are found
+differently, and the difference is the platform's**: skills are read from the paths
+[`plugin.json`](../.claude-plugin/plugin.json) *declares*, while agents are found by **convention** at
+`./agents/`, the one directory the host scans. Neither is checked against an expected number, and saying
+so would claim a guarantee this validator does not make. What it *refuses* is the structural defect that
+would make a count a lie — a declared `agents` key, which suppresses the agent scan entirely. A skill
+outside every declared path, or a `.md` stranded outside `./agents/`, is deliberately a **note**: the
+validator cannot tell a fixture from a binding. This paragraph exists because the section above
 accretes one paragraph per milestone and skipped this one — and a `## Status` heading over figures nobody
 refreshed is how `Skills (3)` outlived the tree that produced it.
