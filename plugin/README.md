@@ -173,8 +173,12 @@ When Portulan ships gate enforcement *for* an adopter, it will be by compiling *
 **A fourth skill ships as of milestone 5.** [`consolidate`](../core/skills/consolidate/SKILL.md) joined
 `clarify` and `codify` in [`../core/skills/`](../core/skills/), beside the boot skill here — so the
 payload now carries **four**, and the milestone-3 measurement above is a record of an older tree rather
-than a current inventory. **The count is deliberately not restated as a number anyone must maintain:**
-[`plugin-lint`](../cli/plugin-lint.mjs) finds skills and agents by convention and asserts the count
-against the tree on every pull request, which is the carrier that cannot go stale. This paragraph exists
-because the section above accretes one paragraph per milestone and skipped this one — and a `## Status`
-heading over figures nobody refreshed is how `Skills (3)` outlived the tree that produced it.
+than a current inventory. **The live count is not restated here as a number anyone must maintain:**
+[`plugin-lint`](../cli/plugin-lint.mjs) finds skills and agents by convention and **derives** the totals
+from the tree on every pull request, so the figure it prints cannot disagree with what ships. It does not
+check them against an expected number, and saying it did would claim a guarantee it does not make — what
+it *refuses* is the structural defect that would make a count a lie: a declared `agents` key, which
+suppresses the scan entirely. A `.md` stranded outside `./agents/` is deliberately a **note**, because
+the validator cannot tell a fixture from a binding. This paragraph exists because the section above
+accretes one paragraph per milestone and skipped this one — and a `## Status` heading over figures nobody
+refreshed is how `Skills (3)` outlived the tree that produced it.
