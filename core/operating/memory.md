@@ -110,16 +110,20 @@ Memory is scoped to the agent or persona that uses it, not dumped into one share
 memory and an implementer's memory answer different questions; merging them spends the budget of each
 on the other's concerns. _(Provenance: Letta; see `../personas/`.)_
 
-**This scoping has no first instance yet, and milestone 6 is where the first one is owed.** *Owed*
-rather than *arrives*, because that is the whole of what has been established: the milestone-6 row does
-not name per-agent memory as a deliverable, and
-[`0016`](../../.portulan/proposals/0016-per-agent-memory-has-no-first-instance-yet.md) declines to
-promise it will. Writing *arrives* would make this page and that proposal disagree about the same
-fact — and a doctrine sentence claiming a delivery date the row does not carry is the defect
-[`a-doctrine-promise-belongs-in-the-row-it-names.md`](../../.portulan/memory/a-doctrine-promise-belongs-in-the-row-it-names.md)
-exists to catch, which would put it in this page rather than in the row. Whether milestone 6's
-criterion should be amended to name it, or this sentence reworded again once it is, is the
-maintainer's and is open. Said plainly because the
+**The first instance is declared at milestone 6 and validated at milestone 7**, and it takes two rows
+because the scoping has two halves. **Milestone 6 declares:** the resolving pack's persona declares its
+memory scope, and the resolution demonstration shows that scope landing in the **adopting workspace's
+own layer** — declared by the pack, owned and populated only by the adopter, empty until earned. The
+deliverable there is the scoping *demonstrated*, never a populated store. **Milestone 7 validates:** that
+row already has `doctor` checking a persona against its five-part contract, and the memory scope is one
+of those parts, so it is where a declaration stops being prose a checker can read but not honour.
+
+**Settled by the maintainer on 2026-07-29** — verbatim, *"row 6 declares, row 7 validates"* — after two
+sessions put the same question to him within the hour without knowing of each other and were given
+different answers. The record of both, and of the third option that reconciles them, is
+[#98](https://github.com/sleepy-panda-works/portulan/issues/98) and
+[`docs/milestones/m06.md`](../../docs/milestones/m06.md). Neither row needed a criterion edit to carry
+this: both already demanded their half. Said plainly because the
 alternative is a page describing an enforcement that does not exist — the failure this repository names
 more often than any other, and the one `.portulan/dod.md` condition 4 exists to catch: a document may
 describe machinery only if the machinery exists *or* the sentence names the milestone where it does.
@@ -127,7 +131,7 @@ Every store shipped so far is a **workspace's**, shared by whatever agent reads 
 here that runs unattended and repeatedly — the scheduled librarian of milestone 5 — deliberately keeps
 **no state at all** between runs: every figure it reports is recomputed from git and the tree, which is
 what makes two passes over an unchanged store byte-identical. Statelessness there is a property worth
-keeping, not a gap to paper over, so it is not the first instance and was not made into one. Milestone 6
-is where the question lands, because a **pack** is the first thing this framework distributes that
-carries per-persona material its adopter does not own — which is the first point at which *whose*
-memory this is has an answer that matters. _(Recorded as [`.portulan/proposals/0016-per-agent-memory-has-no-first-instance-yet.md`](../../.portulan/proposals/0016-per-agent-memory-has-no-first-instance-yet.md).)_
+keeping, not a gap to paper over, so it is not the first instance and was not made into one. **Milestone
+6 is where the question lands**, because a **pack** is the first thing this framework distributes that
+carries per-persona material its adopter does not own — which is the first point at which *whose* memory
+this is has an answer that matters, and therefore the first place a declaration has anything to declare. _(Recorded as [`.portulan/proposals/0016-per-agent-memory-has-no-first-instance-yet.md`](../../.portulan/proposals/0016-per-agent-memory-has-no-first-instance-yet.md).)_

@@ -4,6 +4,19 @@
 
 **Pull request:** https://github.com/sleepy-panda-works/portulan/pull/96
 
+**Superseded in part, 2026-07-29.** This proposal's *claim* stands and its verification is unchanged;
+what has moved is the answer to the question it deliberately left open. It named **milestone 6** as
+where the first instance was owed, and declined to promise the milestone-6 row would build it. On
+[#98](https://github.com/sleepy-panda-works/portulan/issues/98) the maintainer settled it as a **split**
+— verbatim, *"row 6 declares, row 7 validates"*. **Milestone 6 declares**: the resolving pack's persona
+declares its memory scope, and the resolution demonstration shows that scope landing in the adopting
+workspace's own layer. **Milestone 7 validates**: `doctor` already owes a check of a persona against its
+five-part contract, and the memory scope is one of those parts. Neither row needed a criterion edit to
+carry its half. So this proposal's instinct — that a pack is the first artifact distributing per-persona
+material an adopter does not own — is **vindicated for the declaring half** and was never the whole
+answer. Left standing rather than rewritten: a proposal records what was argued when it was argued, and
+editing the argument to match a later ruling destroys the record that makes the ruling legible.
+
 ## The claim
 
 [`core/operating/memory.md`](../../core/operating/memory.md) ends with **Per-agent, not global**:
