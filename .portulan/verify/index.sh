@@ -1,9 +1,18 @@
 #!/usr/bin/env bash
-# Portulan workspace — verify recipe: the memory index is generated, current, and within budget.
+# Portulan workspace — verify recipe: every generated index is current, and the budgeted one is
+# within budget.
 #
 # One check, run against both workspaces this repository owns:
-#   index   the committed index is exactly what the store renders, and neither the index nor the
-#           store is over the budget its manifest declares
+#   index   every generated index a workspace declares is exactly what its source renders, and
+#           neither the store's index nor the store itself is over the budget its manifest declares
+#
+# **Two series since Workspace Definition 2.5**, and only one of them is budgeted. The memory store
+# has an index and a rail on its size; the handoff series has an index and no rail, because
+# consolidation is a budget's only permitted remedy and a handoff series is append-only — retiring a
+# handoff to buy headroom would either red ./docs.sh's `record` correspondence or destroy the record
+# it exists to keep. ../../spec/slots.md carries the argument. It is not merely documented: the
+# schema gives `handoffs.index` one key, so a workspace that declares a budget there is a `doctor`
+# failure rather than a workspace that quietly acquired the rail.
 #
 # ../../core/operating/memory.md has said since milestone 1 that the index is "generated, never
 # hand-maintained" and that a budget is "a rail, not an aim". Until this recipe existed, both
@@ -15,10 +24,12 @@
 # is checking always passes. The generator's write mode is one flag away, which is precisely why
 # the flag is not passed here.
 #
-# **The two reds are different defects with different repairs**, and the tool keeps them apart:
+# **The reds are different defects with different repairs**, and the tool keeps them apart:
 #   out of date  →  run `node cli/index.mjs .portulan examples`
 #   over budget  →  consolidate the store (../../core/skills/consolidate/SKILL.md) — merge,
 #                   compress, retire — and never by raising the budget in the change that broke it
+#   heading      →  a record's H1 disagrees with its filename: edit the record
+#   date         →  a handoff's filename does not lead with YYYY-MM-DD: rename the file
 # A single "index check failed" would send an author to regenerate a file that is already correct
 # and still too big.
 #
@@ -81,7 +92,7 @@ if [ "$present" != "$named" ]; then
     exit 2
 fi
 
-printf 'index: checking the generated memory index of %s\n' "$(printf '%s' "$named" | tr '\n' ' ')"
+printf 'index: checking every generated index declared by %s\n' "$(printf '%s' "$named" | tr '\n' ' ')"
 
 node cli/index.mjs --check "${WORKSPACES[@]}"
 status=$?
