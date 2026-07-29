@@ -1716,7 +1716,7 @@ _The seam applies here too: no client-identifying references._
   other carried the deliverable — caught by reading, not by any rail. · Fidelity: no criterion touched;
   the row-7 amendment this branch carried is **withdrawn** under the ruling. Seam scan clean over diff,
   message and branch. Handoff: [`…a-split.md`](../.portulan/handoffs/2026-07-29-the-doctrine-catches-up-with-a-split.md).
-- 2026-07-29 · post-M5 · Doctrine — no milestone row touched · **A reply belongs where the comment is.**
+- 2026-07-29 · post-M6-session-0 · Doctrine — no milestone row touched · **A reply belongs where the comment is.**
   The loop rule split threads from notes on whether they *block* and never said **where each is
   answered**, while rule 1's "a round is answered once" reads as licensing one summary comment for
   everything. Both now say it: a thread is answered **on the thread**, a note in one batched
