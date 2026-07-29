@@ -1561,3 +1561,20 @@ describe("exit codes: 0 validates, 1 does not, 2 could not run", () => {
         assert.equal(await run([path.join(REPO, ".portulan")], { quiet: true, schema: poison }), 2);
     });
 });
+
+describe("a `handoffs` object with no index configures nothing", () => {
+    // Copilot, #85 round one. `memory` tolerates an object with no `index` — a workspace may rail its
+    // store's size and generate nothing — but `handoffs` has one key and no budget, so `handoffs: {}`
+    // is a no-op that reads as configured to anyone who greps for it. Unlike the two conditional
+    // requirements around it, this one IS expressible in the declared subset, so the schema carries it.
+    test("`handoffs: {}` is refused by the schema, not tolerated", async () => {
+        const m = wellFormed();
+        m.slots.handoffs = "handoffs/";
+        m.handoffs = {};
+        const dir = tree(scratch(), { ...minimalFiles, "workspace.json": JSON.stringify(m), "handoffs/2026-01-01-a.md": "# A\n" });
+        const { findings } = await inspect(dir, { schema: SCHEMA });
+        const failures = severities(checks(findings, "schema"), "fail");
+        assert.ok(failures.length >= 1);
+        assert.match(text(failures), /index/);
+    });
+});

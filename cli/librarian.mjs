@@ -385,14 +385,23 @@ export function passWorkspace(dir, { asOf, reviews } = {}) {
     // had regenerated a line earlier, putting "no index drift" into a machine-written record of the
     // one thing the run had changed (Copilot, #81, suppressed half, three sites at once). With no
     // write on this path there is no ordering left to get wrong.
+    // **Per series, and that is not tidiness.** `declared` here means *this series has an index file*
+    // — `path !== null`, so a workspace declaring budgets and no index is correctly *none declared*.
+    // The pair-wide flag was what both report sites branched on, and a workspace declaring only one of
+    // the two indexes then had "current" printed about an index that does not exist: the exact
+    // sentence `./index.mjs`'s `run` was fixed for on #72, reproduced in the record the pass files.
+    // Raised on #85 round one in both channels at once, which is what a two-site defect looks like.
     let index = { declared: false, drifted: false, series: {}, findings: [] };
     try {
         const result = inspectIndex(dir, { write: false });
-        const drifted = (which) => result.findings.some((f) => f.check === "index" && f.series === which);
+        const of = (which) => ({
+            declared: result.series[which].path !== null,
+            drifted: result.findings.some((f) => f.check === "index" && f.series === which),
+        });
         index = {
             declared: result.declared,
             drifted: result.findings.some((f) => f.check === "index"),
-            series: { memory: drifted("memory"), handoffs: drifted("handoffs") },
+            series: { memory: of("memory"), handoffs: of("handoffs") },
             findings: result.findings.map((f) => f.message),
         };
     } catch (cause) {
@@ -773,6 +782,15 @@ function indexLines(dir, workspace) {
 
 const plural = (n, one, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 
+/**
+ * One series' index, in a sentence — and *none declared* is a state, never a synonym for *current*.
+ *
+ * One function rather than the expression written twice, because it was written twice and both copies
+ * branched on the pair-wide flag. A workspace declaring only one of the two indexes then read
+ * "current" about the other, which does not exist.
+ */
+const indexState = (s) => (s.declared ? (s.drifted ? "**was out of date and has been regenerated**" : "current") : "none declared");
+
 /** The pass's handoff: what it looked at, what it found, and the date all of that is true as of. */
 export function renderRecord(results, { asOf }) {
     const out = [
@@ -799,7 +817,7 @@ export function renderRecord(results, { asOf }) {
                     ? ` — ${r.counts.uncommitted} not yet committed, so undated here and never stale`
                     : "") +
                 ". Index: " +
-                (r.index.declared ? (r.index.series.memory ? "**was out of date and has been regenerated**" : "current") : "none declared") +
+                indexState(r.index.series.memory) +
                 ".",
             "",
         );
@@ -812,7 +830,7 @@ export function renderRecord(results, { asOf }) {
                 `**Handoff series.** ${plural(r.handoffs.count, "handoff")}, ` +
                     `${(r.handoffs.bytes / 1024).toFixed(1)} KB, oldest ${r.handoffs.oldest ? `\`${r.handoffs.oldest.file}\` at ${plural(r.handoffs.oldest.days, "day")}` : "none — the series is empty"}. ` +
                     "Index: " +
-                    (r.index.series.handoffs ? "**was out of date and has been regenerated**" : "current") +
+                    indexState(r.index.series.handoffs) +
                     ". No threshold reaches this series and no demotion is drafted against it: it is " +
                     "append-only, so the only repair a staleness draft could recommend is deleting the " +
                     "record the series exists to keep.",

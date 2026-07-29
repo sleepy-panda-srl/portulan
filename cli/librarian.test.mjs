@@ -1238,3 +1238,54 @@ describe("a pass leaves the tree it just wrote to green", () => {
         }
     });
 });
+
+describe("the report never claims an index is current when none is declared", () => {
+    // Copilot, #85 round one, in **both** channels at once — a thread on the handoff site, a
+    // suppressed low-confidence note on the store site, one defect. `index.declared` means *some
+    // index is declared*, and both report sites branched on it, so a workspace declaring only one of
+    // the two got "current" printed about an index that does not exist.
+    //
+    // It is the same sentence `cli/index.mjs`'s `run` was fixed for on #72 — "a green about a
+    // nonexistent artifact is the one sentence a tool whose subject is generated artifacts must not
+    // print" — and this change ported that fix to `run` and not to the record the pass files. The
+    // per-series flag is now carried rather than derived from the pair.
+    const say = () => {
+        const lines = [];
+        const fn = (s) => lines.push(s);
+        fn.lines = lines;
+        return fn;
+    };
+
+    test("a workspace with only a HANDOFF index says nothing about a store index", () => {
+        const m = MANIFEST({ librarian: { staleness: STALENESS }, handoffs: { index: { path: "handoffs-index.md" } } });
+        m.slots.handoffs = "handoffs/";
+        const dir = repo(
+            {
+                ".portulan/memory/r.md": [linked(), "2026-06-01"],
+                ".portulan/handoffs/2026-06-01-x.md": ["# Handoff — x\n\nBody.\n", "2026-06-01"],
+            },
+            { workspace: m },
+        );
+        run(["--as-of", "2026-06-15", "--write", path.join(dir, ".portulan")], say());
+        const record = renderRecord([passWorkspace(path.join(dir, ".portulan"), { asOf: "2026-06-15" })], { asOf: "2026-06-15" });
+        const store = record.split("\n").find((l) => l.startsWith("**Store.**"));
+        assert.match(store, /Index: none declared/);
+    });
+
+    test("a workspace with only a STORE index says nothing about a handoff index", () => {
+        const m = MANIFEST({ librarian: { staleness: STALENESS }, memory: { index: { path: "memory-index.md" } } });
+        m.slots.handoffs = "handoffs/";
+        const dir = repo(
+            {
+                ".portulan/memory/r.md": [linked(), "2026-06-01"],
+                ".portulan/handoffs/2026-06-01-x.md": ["# Handoff — x\n\nBody.\n", "2026-06-01"],
+            },
+            { workspace: m },
+        );
+        run(["--as-of", "2026-06-15", "--write", path.join(dir, ".portulan")], say());
+        const record = renderRecord([passWorkspace(path.join(dir, ".portulan"), { asOf: "2026-06-15" })], { asOf: "2026-06-15" });
+        const series = record.split("\n").find((l) => l.startsWith("**Handoff series.**"));
+        assert.match(series, /Index: none declared/);
+        assert.doesNotMatch(series, /Index: current/);
+    });
+});

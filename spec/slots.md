@@ -472,6 +472,14 @@ by the same recipe.
 |---|---|
 | `index.path` | Where the generated index is written. Must resolve **outside** `slots.handoffs` — see below. |
 
+`index` is **required whenever `handoffs` is present**, which is the one way this object differs from
+`memory`. There an object with no `index` is coherent: a workspace may rail its store's size and
+generate nothing. Here there is no budget and exactly one key, so `handoffs: {}` configures nothing —
+a no-op that reads as configured to anyone who greps for it, the same failure
+`librarian.staleness.proposal_days` without `slots.proposals` is refused for. Unlike the two
+conditional requirements below, this one *is* expressible in the declared subset, so the schema
+carries it rather than `doctor`.
+
 **Why it exists.** [`loop.md`](../core/operating/loop.md) has said since the handoff-cadence rule landed
 that *"the librarian that mines the series is milestone 5"*, and the series had no index at all while
 the store it sits beside had one. Measured on this repository the day the milestone-5 row was amended:
