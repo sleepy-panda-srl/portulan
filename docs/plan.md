@@ -1654,3 +1654,14 @@ _The seam applies here too: no client-identifying references._
   and better; the rebase dropped this branch's duplicates. Suite 635; eight recipes green. · Fidelity:
   session-open APPROVE-WITH-ADJUSTMENTS (10), pre-commit (5), folded. Seam scan clean. Handoff:
   [`2026-07-29`](../.portulan/handoffs/2026-07-29-the-verdict-is-derived.md).
+
+- 2026-07-29 · post-M5 · **Ownership rides authorship, and the label makes it filterable** —
+  [#99](https://github.com/sleepy-panda-works/portulan/pull/99). The maintainer ruled on #95's
+  refutation (verbatim: "go with option B, wire the agent-driven label"): `agent-driven` lands in
+  `labels.json` as a third OWNERSHIP vocabulary — beside an area label, never instead of one,
+  invisible to the at-least-one check by construction — created live, applied to open #95 and #96 by
+  the agent's hand under the maintainer's credentials (attributed on each), and wired: the librarian
+  labels the pull request nobody opens (unvouched until the 2026-08-03 pass), a session labels its
+  own at create. Forward-only, no backfill. Suite 635; eight recipes green. · Fidelity: session-open
+  APPROVE-WITH-ADJUSTMENTS (5), pre-commit (3), all folded in. Seam scan clean. Handoff:
+  [`2026-07-29`](../.portulan/handoffs/2026-07-29-ownership-rides-authorship.md).

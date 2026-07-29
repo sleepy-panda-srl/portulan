@@ -317,11 +317,21 @@ jobs:
           # request did. An App-raised `labeled` event re-runs it; the same call made with
           # `GITHUB_TOKEN` would set the label and start no run, leaving a red check over a labelled
           # pull request. `workspace` is from the declared set in `.portulan/labels.json` — an
-          # undeclared one fails the whole call. `agent-driven` is from that file's OWNERSHIP
-          # vocabulary — a different question (who drives this, not what it touched), invisible to
-          # `pr-labeled` by design, applied here mechanically because this is the pull request
-          # nobody is present to label. The maintainer's ruling, 2026-07-29.
-          gh pr edit "$url" --add-label workspace --add-label agent-driven || {
-            printf '::error::the pull request is open and missing its labels — `pr-labeled` stays red until somebody adds a label from .portulan/labels.json\n'
+          # undeclared one fails the whole call.
+          gh pr edit "$url" --add-label workspace || {
+            printf '::error::the pull request is open and unlabelled — `pr-labeled` stays red until somebody adds a label from .portulan/labels.json\n'
             exit 1
           }
+
+          # `agent-driven` — the OWNERSHIP vocabulary in the same file, a different question (who
+          # drives this, not what it touched) — in its OWN call, deliberately: the area label above
+          # is what `pr-labeled` gates on, and a failure to apply the ownership label (deleted from
+          # GitHub, say — declaring in labels.json does not create it) must not take the required
+          # label down with it. Ownership is display, not gate, so its failure warns in both
+          # channels and reds nothing — the same fail-direction split as the derived verdict.
+          # Raised by Copilot on #99. The maintainer's ruling, 2026-07-29; unvouched as an
+          # App-actor call until a scheduled pass demonstrates it.
+          if ! gh pr edit "$url" --add-label agent-driven; then
+            printf '::warning::could not apply agent-driven to %s — ownership is display, not gate; apply it by hand\n' "$url"
+            printf '**Could not apply `agent-driven` to %s** — ownership is display, not gate; apply it by hand.\n\n' "$url" >>"$GITHUB_STEP_SUMMARY"
+          fi
