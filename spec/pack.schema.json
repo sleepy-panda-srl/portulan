@@ -20,7 +20,7 @@
           "pattern": "^[0-9]+\\.[0-9]+$"
         },
         "version": {
-          "description": "Optional version of this pack's own content, SemVer. Distinct from `pack` above, which versions the contract. A pack shipped through a feed is pinned by consumers on this, and it moves independently of the engine — the plugin-tag namespacing measured in .portulan/handoffs/2026-07-26-the-tag-and-the-install.md becomes the right shape on the day this field first diverges from the engine's own version.",
+          "description": "Optional version of this pack's own content, SemVer. Distinct from `pack` above, which versions the contract. A pack shipped through a feed is pinned by consumers on this, and it moves independently of the engine. THIS FIELD IS HOW INDEPENDENT VERSIONING IS EXPRESSED, and a git tag is not — re-derived by measurement on CLI 2.1.220, 2026-07-29, because an earlier note in .portulan/handoffs/2026-07-26-the-tag-and-the-install.md reached the opposite guess and said its own basis had gone stale. What was measured: an installed marketplace is not a git working clone at all (no `.git`; contents carry a `.gcs-sha` marker), and an install is cached at `<marketplace>/<plugin>/<version>/` with several versions of one plugin coexisting, resolved from the manifest's version field. Tags cannot participate in that path. Re-measure on CLI upgrade — this is a fact about one version.",
           "type": "string",
           "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
         }

@@ -81,18 +81,48 @@ repository's own gate rules rather than an argument.
   M6-close the doctrine sentence names a *closed* milestone that did not deliver, and `dod.md`
   condition 4 fails outright rather than softly.
 
-- **The plugin-tag namespacing conclusion needs re-deriving.**
-  [`the-tag-and-the-install`](2026-07-26-the-tag-and-the-install.md) says its basis went stale and the
-  conclusion "needs re-deriving before milestone 6 leans on it… the day a pack is versioned
-  independently of the engine." The Pack Definition's `portulan.version` field is that day. **Not done
-  here** — it bears on how a pack is released from the private feed, which is session 1's subject.
+## Done later in the same session, on the maintainer's direct instructions
+
+- **The plugin-tag obligation is discharged, and the guess inverted.**
+  [`the-tag-and-the-install`](2026-07-26-the-tag-and-the-install.md) asked for a re-derivation "the day a
+  pack is versioned independently of the engine", which `portulan.version` made today. Measured on CLI
+  2.1.220: an installed marketplace is **not a git clone at all** (no `.git`; a `.gcs-sha` marker
+  instead), and installs are cached at `<marketplace>/<plugin>/<version>/` with several versions
+  coexisting, resolved from the manifest's version field. *Decorative for installation* survives;
+  *because the clone carries no tags* does not — it was wrong twice, first because the clone did carry
+  one and now because there is no clone. **Independent pack versioning is expressed by
+  `portulan.version`, and a tag neither helps nor participates.** Scope: measured against the only
+  marketplace installed on that machine, which is not this project's; it is the platform's mechanism,
+  not our feed through it. It refuted a sentence this session had itself written into
+  `spec/pack.schema.json` before measuring — corrected in the same change.
+
+- **`sleepy-panda-works/portulan-internal` exists**, created on his explicit approval. **Verified
+  PRIVATE by negative control, not assertion**: the authenticated API reports `private: true`, and an
+  unauthenticated GET returns **404** from both `api.github.com` and `github.com`. It carries a
+  marketplace manifest with `plugins: []` and a README, and **publishes nothing** — how the ritual pack
+  resolves *from* it is recorded there as an open design question for a supervised session-open
+  checkpoint rather than settled by the change that created the repository. The seam is restated in that
+  README, because private changes who can read a thing, not where client material may exist.
+
+- **Issue [#108](https://github.com/sleepy-panda-works/portulan/issues/108) opened** — he corrected my
+  standing assumption that issues are his alone and delegated it. It carries the triaged `plugin-lint`
+  finding: a truncated or unreadable branch is also reported as barren.
+
+- **Rebased across six commits from `main`** after the `v0.2.0` cut landed. Two conflicts, both in files
+  two sessions touched at once: the Session log took **both** sides, since it is append-only and neither
+  supersedes the other; the handoff index was **regenerated** rather than hand-merged, because every
+  field on its lines is derived. `plugin.json` merged clean and carries both changes. The rebase also
+  surfaced a new obligation and it was met: `CHANGELOG.md`'s `## Unreleased` now **accumulates** by a
+  ruling that landed hours earlier, so this branch became the first change required to write into it —
+  and would otherwise have been the first to falsify it.
 
 ## For the next session
 
-Session 1 is the Gated half and none of it can be prepared unilaterally: create
-`sleepy-panda-works/portulan-internal` as a **private** repo with a marketplace manifest, resolve
-`rituals/checkpoints` from that feed (the resolver already takes its roots as an argument, so this
-should be a new root and not new code — if it turns out to need new code, that is the finding), and run
-a Sleepy Panda product task through the full loop from a private-feed install. The seam holds with a
+Session 1 is what remains, and the Gated half of it is now unblocked: the feed **exists**. What is left
+is to decide how `rituals/checkpoints` resolves from a private feed when the pack's content is universal
+and lives in the public repo — the question recorded in that repository's README, and one for a
+session-open checkpoint rather than an implementer — then demonstrate it, and run a Sleepy Panda product
+task through the full loop from a private-feed install. The amended row now also owes the persona's
+memory scope landing in the adopter's own layer, which exists in no form today. The seam holds with a
 thesis-6 edge: the public repo keeps mechanism only, anything Sleepy-Panda-specific lives in the private
 feed, and the ritual pack must stay free of both.
