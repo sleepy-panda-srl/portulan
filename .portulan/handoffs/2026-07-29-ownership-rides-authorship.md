@@ -41,14 +41,17 @@ it down. Where a session is present, convention with a home: the
 gate map's Propose tier now says an agent-driven pull request carries `agent-driven` **beside its
 area label, never instead of one**, applied in the session's own `gh pr create`.
 
-## One stitch deferred, named rather than hidden
+## The stitch, deferred and then landed where it said it would
 
-The gate map's ownership paragraph — the one that posed this question — lives on #95's branch, not on
-`main`, so recording the ruling inside it cannot happen from this branch without riding #95. That
-sentence lands in this pull request's strict-mode rebase push after #95 merges, and the pull request
-body says so. Known-benign adjacencies, stated: #96 rewrites `docs/plan.md` (relocation) while this
-branch tail-appends one entry — clean either order, and the handoff index regenerates; #95 appends to
-`librarian.yml`'s end while this branch edits its label call — non-overlapping hunks.
+The gate map's ownership paragraph — the one that posed this question — lived on #95's branch until
+#95 merged, so recording the ruling inside it could not happen from this branch at first. The pull
+request body named the deferral; the strict-mode rebase push after #95's merge landed it: the ruling
+sentence sits in that paragraph now, the Propose paragraph's citation was upgraded from a #95 link to
+the section that carries the measurement, and round three's triaged wording fix rode along (the
+librarian's failure message now says create-then-apply, since a missing label defeats a bare
+apply-by-hand). Both rebases resolved as predicted: #96's relocation against this branch's
+tail-appended entry, #95's `librarian.yml` tail against this branch's label-call edit — non-overlapping
+in both directions, the handoff index regenerated rather than hand-merged.
 
 ## Fidelity
 
