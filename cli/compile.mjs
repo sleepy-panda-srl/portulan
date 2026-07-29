@@ -1399,8 +1399,14 @@ export const tierRank = (tier) => TIER_ORDER.indexOf(tier);
  *
  * Returns `{ name, category, pack, dir, manifest }` with `dir` null when nothing matched.
  */
-export function resolvePack(name, roots = []) {
-    const parts = String(name).split("/");
+export function resolvePack(rawName, roots = []) {
+    // Coerced once, and the COERCED value is what every return carries. This compiler reads
+    // `workspace.json` without validating it — `doctor` is the tool that judges a manifest, and the
+    // two have no ordering between them — so `packs` may hold a number or an object, and the caller
+    // formats what comes back (`.padEnd()`), which on a non-string throws a TypeError that aborts the
+    // whole compile instead of reporting one unresolvable pack. Found by review.
+    const name = String(rawName);
+    const parts = name.split("/");
     if (parts.length !== 2 || !parts[0] || !parts[1]) {
         return { name, category: null, pack: null, dir: null, manifest: null, why: "not in `category/name` form" };
     }
@@ -1462,7 +1468,7 @@ export function packContributions(workspaceRoot, workspaceDir = ".portulan", opt
             unresolved.push(found);
             continue;
         }
-        const packManifest = readJson(found.manifest, `the pack manifest for \`${name}\``);
+        const packManifest = readJson(found.manifest, `the pack manifest for \`${found.name}\``);
         const fragments = packManifest?.contributes?.gates;
         // Checked here rather than left to `composeFragments` iterating it: a manifest is a file a
         // human edits, `doctor` may not have run (the two tools have no ordering between them), and a
@@ -1470,12 +1476,12 @@ export function packContributions(workspaceRoot, workspaceDir = ".portulan", opt
         // `?? []` covers absent, not malformed — those are different failures and only one is benign.
         if (fragments !== undefined && !Array.isArray(fragments)) {
             throw new CompileError(
-                `the pack manifest for \`${name}\` declares \`contributes.gates\` as ` +
+                `the pack manifest for \`${found.name}\` declares \`contributes.gates\` as ` +
                     `${Array.isArray(fragments) ? "an array" : typeof fragments} rather than an array. ` +
                     `Refusing to compose it — run \`doctor\` to validate the pack against the Pack Definition.`,
             );
         }
-        contributions.push({ pack: name, dir: found.dir, fragments: fragments ?? [] });
+        contributions.push({ pack: found.name, dir: found.dir, fragments: fragments ?? [] });
     }
     return { contributions, unresolved };
 }

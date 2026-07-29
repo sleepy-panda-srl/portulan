@@ -1716,6 +1716,24 @@ describe("what a workspace's declared packs contribute", () => {
         assert.deepEqual(contributions[0].fragments, []);
     });
 
+    // `compile` reads workspace.json WITHOUT validating it, so `packs` may hold anything. The printer
+    // calls `.padEnd()` on the name, which on a number aborts the whole compile rather than reporting
+    // one unresolvable pack. Found by review, in the suppressed channel.
+    test("a non-string pack name is reported, not a crash", () => {
+        const dir = workspace();
+        const manifestPath = path.join(dir, ".portulan", "workspace.json");
+        const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
+        manifest.packs = [7, { name: "x" }, null, true];
+        fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2));
+        const { contributions, unresolved } = packContributions(dir);
+        assert.equal(contributions.length, 0);
+        assert.equal(unresolved.length, 4);
+        for (const u of unresolved) {
+            assert.equal(typeof u.name, "string", "every reported name must be printable");
+            assert.doesNotThrow(() => u.name.padEnd(30));
+        }
+    });
+
     test("a workspace declaring no packs composes nothing", () => {
         const { contributions, unresolved } = packContributions(workspace());
         assert.deepEqual([contributions.length, unresolved.length], [0, 0]);
