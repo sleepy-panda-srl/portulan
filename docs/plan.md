@@ -1747,3 +1747,14 @@ _The seam applies here too: no client-identifying references._
   and the 2026-07-28 wrap case as a regression guard. Closes
   [#79](https://github.com/sleepy-panda-works/portulan/issues/79). · Seam scan clean. Handoff:
   [`2026-07-29-one-definition…md`](../.portulan/handoffs/2026-07-29-one-definition-of-where-an-entry-ends.md).
+
+- 2026-07-30 · post-M5 — no milestone row touched · **The register of which rails have been seen to fire**
+  — [#120](https://github.com/sleepy-panda-works/portulan/pull/120). All four premises held on a live
+  re-read, so nothing was built: `verify.yml`, `workspace.json` and branch protection are untouched. The
+  gap was evidential. Counted from check-run annotations, `workspace-verify` has failed **5 times in 416
+  runs** and **one rail of eight** had ever been observed red on a pull request — and none of the five was
+  a drill. `tests` forced red then green on [#118](https://github.com/sleepy-panda-works/portulan/pull/118),
+  closed unmerged: run `30532642890` **failure**, `verify recipe tests exited 1`, and `BLOCKED` from
+  `mergeStateStatus` with the other two checks green; then `30532774286` **success** and `CLEAN`. Six
+  rails still unfired. · Seam scan clean. Handoff:
+  [`2026-07-30-the-tests-rail…md`](../.portulan/handoffs/2026-07-30-the-tests-rail-has-been-seen-to-fire.md).
