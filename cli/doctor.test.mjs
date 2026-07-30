@@ -1818,3 +1818,24 @@ describe("--pack-root names a resolution root outside the workspace's tree", () 
         assert.equal(await run(["--pack-root", dir], { quiet: true }), 2, "a flag with no workspace left is not a workspace");
     });
 });
+
+describe("--pack-root fails closed in doctor too, not only in index", () => {
+    // Copilot, round 7 on #117 — the SIBLING class, and the maintainer's ruling of 2026-07-27 names it:
+    // "never ship a change that corrects one wrong claim while knowingly leaving its neighbours." The
+    // file-vs-directory check was added to `index` for a round-6 finding and not to the other two tools
+    // that take the same flag. Three carriers, one fix.
+    test("a root that is a FILE is refused", async () => {
+        const dir = tree(scratch(), { ...minimalFiles, "workspace.json": JSON.stringify(wellFormed()) });
+        assert.equal(await run(["--pack-root", path.join(dir, "workspace.json"), dir], { quiet: true }), 2);
+    });
+
+    test("a root that does not exist is still refused", async () => {
+        const dir = tree(scratch(), { ...minimalFiles, "workspace.json": JSON.stringify(wellFormed()) });
+        assert.equal(await run(["--pack-root", path.join(dir, "nope"), dir], { quiet: true }), 2);
+    });
+
+    test("a directory is accepted", async () => {
+        const dir = tree(scratch(), { ...minimalFiles, "workspace.json": JSON.stringify(wellFormed()) });
+        assert.notEqual(await run(["--pack-root", dir, dir], { quiet: true }), 2);
+    });
+});

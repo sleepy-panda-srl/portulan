@@ -1853,3 +1853,19 @@ describe("named pack roots REPLACE the derived one, and the divergence is pinned
         assert.deepEqual(fs.readFileSync(path.join(dir, ".claude", "settings.json")), first);
     });
 });
+
+describe("--pack-root fails closed in compile too — the third carrier of one rule", () => {
+    test("a root that is a FILE is refused rather than silently ignored", () => {
+        // Copilot, round 7. The dangerous shape here is specific: a file-valued root made pack resolution
+        // fail and produced a MISLEADING GREEN compile that had simply ignored the intended root — which is
+        // worse than the exit 2 the argument deserves, because a green is what a session acts on.
+        const dir = workspace();
+        assert.equal(run(["--workspace", dir, "--pack-root", path.join(dir, ".portulan", "gates.json")], { quiet: true }), 2);
+    });
+
+    test("a directory is still accepted", () => {
+        const dir = workspace();
+        const feed = scratch();
+        assert.equal(run(["--workspace", dir, "--pack-root", feed], { quiet: true }), 0);
+    });
+});
