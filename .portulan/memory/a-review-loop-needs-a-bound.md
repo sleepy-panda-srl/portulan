@@ -45,9 +45,18 @@ counting answering pushes gives **five**. **The push governs** — because rule 
 be batched, so a push that clears several reviews at once is the rule working rather than a discount being
 taken. **Note the direction, since it is not what you would guess:** here the push unit yields the *smaller*
 count, so it is not simply the stricter reading — it is the one the rest of the file already prices.
-Correspondingly, a review answered across several pushes costs one round **per push**. Added 2026-07-30
-after the first fresh-context re-derivation of #105 returned a different number from the errata's, and the
-gap turned out to be this unit rather than the arithmetic.
+Correspondingly, a review answered across several pushes costs one round **per push**.
+
+**This clause was derived rather than dictated, and then ratified.** It was added 2026-07-30 after the first
+fresh-context re-derivation of #105 returned a different number from the errata's and the gap turned out to
+be the unit rather than the arithmetic. It was written as a derivation, flagged as one on
+[#119](https://github.com/sleepy-panda-works/portulan/pull/119) with the alternative quantified (on the
+review reading #105 is **six**, on the push reading **five**), and put to the maintainer rather than merged
+under his name. **He ratified it verbatim on 2026-07-30 — *"yes, push is the unit — that's what I meant"*** —
+so the sentence now carries the same authority as the rest of the definition. Recorded this way because the
+distinction it turns on is the one this whole rule exists to protect: a clause an implementer inferred and a
+clause the maintainer ruled are different things, and a record that blurs them is the defect, not the tidy
+version.
 
 **A records-only correction counts.** A push that fixes nothing but a record — a figure the reviewer caught
 disagreeing with itself across carriers — still spends a round, because it is still a push answering a
