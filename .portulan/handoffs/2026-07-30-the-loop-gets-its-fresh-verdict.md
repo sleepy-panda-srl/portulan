@@ -68,6 +68,21 @@ had gone stale during the checkpoint itself ([#136](https://github.com/sleepy-pa
 merged mid-verdict) — and a second fresh context re-measured the complete diff, returning
 APPROVE-WITH-ADJUSTMENTS with five.
 
+## The thesis got a live data point, against itself
+
+**Copilot caught a weakening in the kernel that both fresh contexts missed.** `engine.md`'s loop line
+was drafted as *"a verdict from a context that did not implement"* while `loop.md` says *"a context that
+has not seen the implementation"*. Those are not the same rule: a context that watched the work happen
+without typing satisfies the first and is exactly the primed case the second excludes. The kernel is the
+**always-loaded** layer, so an agent that read only `engine.md` would have carried the weaker rule.
+
+Two fresh-context checkpoints read that line and passed it. An outside reader of the diff found it.
+That is **incident 4 of [`0018`](../proposals/0018-a-verdict-from-the-context-that-did-the-work-is-not-a-verdict.md)
+repeating inside the change that cites incident 4** — the #133 class, prose about a mechanism claiming
+something the mechanism does not, in a pull request whose subject is who may grade prose. It is recorded
+as evidence **for** the proposal's stated limit rather than against the rule: a fresh context is not a
+superset of an outside diff-reader, the two classes are disjoint, and 0018 says so before this happened.
+
 ## A breach, recorded as one
 
 **The doctrine commit was committed, pushed to a public history, and

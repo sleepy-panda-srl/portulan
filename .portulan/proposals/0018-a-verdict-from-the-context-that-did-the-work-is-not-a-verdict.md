@@ -177,6 +177,13 @@ that the context which wrote it was fresh.
   transfers to a codebase, a larger team, or a different cadence.
 - **Incident 4 is a counterexample as much as an example.** A fresh context is not a superset of an
   outside diff-reader; on #129 it was a strict complement, and the two classes were **disjoint**.
+  **It then repeated on this proposal's own pull request, which is recorded rather than tidied away.**
+  `core/engine.md`'s loop line was drafted as *"a verdict from a context that did not implement"* — a
+  measurably weaker rule than `loop.md`'s *"has not seen the implementation"*, since a context that
+  watched the work without typing satisfies the first and is the primed case the second excludes — and
+  it sat in the **always-loaded kernel**. Both fresh-context checkpoints read that line and passed it;
+  an outside reader of the diff caught it. The rule this proposal states would not, on its own, have
+  found the defect in the sentence stating it.
 - **The cost is real and is not priced here.** A second context per full-lane change costs latency and
   tokens. Core states the obligation; **the workspace prices it** by where it sets the lane threshold,
   which is the only place the trade-off can be made with knowledge of the team's actual blast radius.
