@@ -380,10 +380,17 @@ export function inspect(rawRoot) {
             // Deliberately narrow. Pointing at another PUBLIC repository is a legal shape nobody has
             // ruled against, and it stays counted-and-reported below — widening this to every off-tree
             // source would be this lint inventing a policy rather than enforcing one.
+            // Matched as a NAME, never as a substring. `includes` false-positives on an unrelated public
+            // repository whose name merely contains the feed's — `someone-else/portulan-internal-tools` —
+            // and a false red in a rail is how the whole rail gets switched off. Found by Copilot on #117,
+            // round 5. Split on everything that can delimit a repository or package name, so
+            // `owner/portulan-internal`, an `https://` URL and an `scp`-style `git@host:owner/name.git`
+            // all reduce to the same segment set.
             const target = [entry.source?.repo, entry.source?.url, entry.source?.package]
                 .filter((v) => typeof v === "string")
                 .join(" ");
-            if (PRIVATE_FEEDS.some((feed) => target.includes(feed))) {
+            const segments = new Set(target.split(/[\s/:@]+/).map((seg) => seg.replace(/\.git$/, "")));
+            if (PRIVATE_FEEDS.some((feed) => segments.has(feed))) {
                 fail(
                     "market",
                     `${label} ("${name ?? "?"}") is sourced from the private feed (\`${target}\`). ` +

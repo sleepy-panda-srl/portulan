@@ -1261,3 +1261,59 @@ describe("empty means readable-and-zero, never could-not-look", () => {
         assert.equal(failures(inspect(dir)).filter((f) => f.series === "scopes").length, 0);
     });
 });
+
+describe("a pack cannot read outside itself through a declared persona path", () => {
+    test("a `..` path in contributes.personas is refused, not resolved", () => {
+        // Copilot, round 5 on #117. `resolvePack` guards the pack NAME against `..` — with a comment
+        // saying a `..` segment there "would resolve a declared pack outside every root it was supposed
+        // to be searched in" — and the persona paths INSIDE the manifest had no such guard. A composed
+        // pack is third-party content by construction, which is the whole reason its gate fragments may
+        // only tighten; a manifest that can name any path on the filesystem reads files the adopter
+        // never offered it, and would put their contents into a committed index.
+        const outside = path.join(scratch(), "secret.md");
+        fs.writeFileSync(outside, "---\nname: x\n---\n\n## Memory scope\n\nSomething private.\n");
+        const dir = withPack({
+            "packs/rituals/checkpoints/pack.json": packManifest({
+                contributes: { personas: ["../../../" + path.relative(path.dirname(path.dirname(path.dirname(outside))), outside)] },
+            }),
+        });
+        assert.throws(
+            () => inspect(dir, { write: true }),
+            (e) => e instanceof IndexError && /outside the pack/i.test(e.message),
+        );
+    });
+
+    test("an absolute path is refused on the same rule", () => {
+        const dir = withPack({
+            "packs/rituals/checkpoints/pack.json": packManifest({ contributes: { personas: ["/etc/hosts"] } }),
+        });
+        assert.throws(
+            () => inspect(dir, { write: true }),
+            (e) => e instanceof IndexError && /outside the pack/i.test(e.message),
+        );
+    });
+
+    test("an ordinary nested path inside the pack still resolves", () => {
+        const dir = withPack({
+            "packs/rituals/checkpoints/pack.json": packManifest({ contributes: { personas: ["roles/supervisor.md"] } }),
+            "packs/rituals/checkpoints/roles/supervisor.md": persona("supervisor"),
+        });
+        const result = inspect(dir, { write: true });
+        assert.equal(failures(result).filter((f) => f.series === "scopes").length, 0);
+    });
+});
+
+describe("the generated index is valid Markdown, not just correct text", () => {
+    test("no strong-emphasis span is broken across a line", () => {
+        // Copilot, round 5. Markdown strong emphasis cannot span a newline, so a `**…**` split across
+        // two rendered lines prints the asterisks literally — and the committed index already showed it.
+        // A generated artifact that renders wrong is the same class as one that says something wrong.
+        const dir = withPack();
+        inspect(dir, { write: true });
+        const out = fs.readFileSync(path.join(dir, "personas-index.md"), "utf8");
+        for (const line of out.split("\n")) {
+            const stars = (line.match(/\*\*/g) ?? []).length;
+            assert.equal(stars % 2, 0, `unbalanced ** on: ${line}`);
+        }
+    });
+});

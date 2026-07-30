@@ -447,9 +447,23 @@ export function readScopes(dir, workspace, options = {}) {
         }
 
         for (const rel of personas ?? []) {
+            // **A declared persona path must stay inside the pack.** `resolvePack` already refuses a `..`
+            // in the pack NAME, on the reasoning that it "would resolve a declared pack outside every root
+            // it was supposed to be searched in" — and the paths inside the manifest had no such guard, so
+            // `../../../somewhere` or an absolute path read a file the adopter never offered and put a
+            // digest of its contents into a committed index. A composed pack is third-party content by
+            // construction: that is the whole reason its gate fragments may only ever tighten, and the same
+            // reasoning binds what it may read. Found by Copilot on #117, round 5.
+            const file = path.resolve(found.dir, rel);
+            if (!isInside(found.dir, file)) {
+                throw new IndexError(
+                    `pack \`${found.name}\` declares the persona ${JSON.stringify(rel)}, which resolves outside the pack ` +
+                        "directory. A pack may only contribute files it ships — refusing to read it",
+                );
+            }
             let source;
             try {
-                source = fs.readFileSync(path.resolve(found.dir, rel), "utf8");
+                source = fs.readFileSync(file, "utf8");
             } catch (cause) {
                 throw new IndexError(
                     `pack \`${found.name}\` declares the persona ${rel}, which cannot be read — ${cause.code ?? cause.message}. ` +
@@ -588,8 +602,12 @@ export function renderScopeIndex(workspace, series) {
         "",
         "> Generated from the packs this workspace composes by `node cli/index.mjs`. Do not edit by hand:",
         "> it is regenerated and byte-compared, so a hand-edit survives exactly until the next run.",
-        `> ${series.scopes.length} declared scope(s). Each location is **owned and populated only by this`,
-        "> workspace** and is empty until earned — the pack declares the scope and carries none of its",
+        // Every emphasis span stays on ONE line. Markdown strong emphasis cannot cross a newline, so a
+        // `**…**` split across two rendered lines prints its asterisks literally — which the committed
+        // index did, until Copilot pointed at it. A generated artifact that RENDERS wrong is the same class
+        // as one that says something wrong, and `cli/index.test.mjs` now asserts balanced `**` per line.
+        `> ${series.scopes.length} declared scope(s). **Owned and populated only by this workspace.**`,
+        "> Each location is empty until earned — the pack declares the scope and carries none of its",
         "> contents. Nothing reads these locations: `doctor` gains a check of a persona against its",
         "> five-part contract at milestone 7, which is not a check of what is in them.",
         "",
