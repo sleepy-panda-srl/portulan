@@ -46,8 +46,25 @@ The human gate is the guarantee, so the work is to make it cheap — not to bypa
 - **Evals decide where they can** — once golden tasks exist, a rule change carries evidence and is
   merged or rejected on the eval result rather than on taste. _(Milestone 8.)_
 
-## Portulan is customer zero
+## The supervised cycle
 
-The framework is built the way it tells teams to build. The two-tier supervised build — an implementer
-plus a fresh-context supervisor grading against the constitution — is this doctrine turned on Portulan's
-own construction. If the doctrine will not hold for its own repository, it is not ready to ship.
+The framework is built the way it tells teams to build, and that cycle is doctrine an adopter receives
+rather than a story about this repository. **Work is agent-drafted and fresh-context-graded at three
+moments**: the plan before building starts, the diff before it goes outward, and the exit criteria at
+the close — where done is *demonstrated, not asserted* (`verification.md`). Two conditions hold the
+cycle up and neither is optional. The unit of work carries **hard exit criteria** fixed before it
+begins, so the close has a standard to grade rather than an impression. And **every session ends by
+writing the record** (`loop.md`), so the context arriving at the next moment inherits the reasoning
+instead of re-deriving it — a graded moment whose grader must first reconstruct what was decided is
+grading its own reconstruction.
+
+The altitudes stay separate, and the separation is the part that travels. Core states that the three
+moments exist and that the grader has not done the work. **A workspace composes its checkpoint ritual**,
+names the moments in its own vocabulary, sets the threshold that decides which work earns them, and says
+who grades. Core names no ritual, no pack and no model: the cascade runs core < pack < workspace, so a
+core doc naming a specific pack would invert it.
+
+**Portulan is customer zero.** The two-tier supervised build — an implementer plus a fresh-context
+supervisor grading against the constitution — is this principle turned on the framework's own
+construction: the instance it generalises from, not the principle itself. If the doctrine will not hold
+for its own repository, it is not ready to ship.

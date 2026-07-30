@@ -9,9 +9,11 @@ tools: [read, search, run-verify]
 > The persona whose whole value is what it has **not** read. A supervisor sharing the implementer's
 > window has already absorbed every rationalisation the implementer wrote for itself, and will grade
 > the work against the reasoning that produced it rather than against the standard. Freshness is the
-> mechanism; the verdict is only its output. _(Provenance: subagents as context firewalls, HumanLayer;
-> read-isolated review, Cognition. See [`../README.md`](../README.md) for what this pack ships and what
-> it cannot enforce.)_
+> mechanism; the verdict is only its output. The obligation itself is core's — the full lane's verdict
+> comes from a context that has not seen the implementation
+> ([`../../../../core/operating/loop.md`](../../../../core/operating/loop.md)); this persona is one way
+> to staff it. _(Provenance: subagents as context firewalls, HumanLayer; read-isolated review,
+> Cognition. See [`../README.md`](../README.md) for what this pack ships and what it cannot enforce.)_
 
 ## Charter
 

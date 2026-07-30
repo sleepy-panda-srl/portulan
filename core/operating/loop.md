@@ -60,7 +60,13 @@ Not every task earns the full loop. A one-line fix should not carry a plan docum
 two lanes; the workspace sets the threshold between them.
 
 - **Full lane** — for change with real blast radius: all five phases, the plan written down, the
-  failing test first.
+  failing test first, and the verdict from a **context that has not seen the implementation** — a fresh
+  window, a different agent, or a human. A verdict primed by the implementing context measures
+  agreement, not correctness: the context that did the work has already read every rationalisation it
+  wrote for itself, and grades the change against the reasoning that produced it rather than against
+  the standard. Who reviews, and at which moments, is the workspace's; that it is not the implementer
+  is the mechanism. _(Provenance: agentic craft — last-mile review focus, Karpathy / Hashimoto;
+  Cognition — read-isolated review. See `../personas/reviewer.md`.)_
 - **Triage lane** — for small, low-blast, reversible change: research → implement → verify collapse into
   one pass and the plan is a sentence. Verify and the Stop-gate still hold — they never scale down.
 
