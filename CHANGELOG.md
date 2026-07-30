@@ -70,6 +70,12 @@ alternative, copying universal content into the private side, would have put a s
 where no public check can see it. Measured on Claude Code 2.1.220 before it was relied on, including that
 a `sha` pointing at a commit from before the pack existed is **refused**.
 
+**The two feeds point one way only, and `plugin-lint` enforces it.** The private feed sources a pack from
+this repository; no entry in this repository's marketplace may be sourced from a private feed. A public
+entry pointing into a private one is a dead pointer for every stranger — the fetch 404s on a repository
+they cannot see — and publishes the private feed's structure besides. Neither is visible from inside this
+tree, so it is a refusal rather than a note. Preventive: no such entry has ever existed.
+
 **`--pack-root` on `compile`, `doctor` and `index`.** A resolution root can now be named on the command
 line, searched *before* the one derived from `tree`. The resolver has taken roots as an argument since the
 Pack Definition landed and nothing set them, so the from-a-feed case existed in the code and had no way in

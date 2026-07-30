@@ -1767,5 +1767,5 @@ _The seam applies here too: no client-identifying references._
   caller**, `--pack-root` on three tools, where two replaced the derived root and one appended, compiling
   green from the local copy until pre-commit attacked it. `portulan-internal` publishes; spec **2.6** lands
   a pack-declared scope **empty** in the adopter's layer, held by a content-derived digest, forced red three
-  ways on two carriers. Suite 713, eight recipes. · Fidelity: session-open A-W-A (12), pre-commit A-W-A (7),
+  ways on two carriers. Suite 721, eight recipes. · Fidelity: session-open A-W-A (12), pre-commit A-W-A (7),
   all folded. Seam scan over diff, message and branch: clean. Handoff: [`2026-07-30`](../.portulan/handoffs/2026-07-30-the-feed-points-and-the-public-repo-carries.md).

@@ -1225,3 +1225,39 @@ describe("the scope digest covers what the comment says it covers", () => {
         assert.notEqual(a, b);
     });
 });
+
+describe("empty means readable-and-zero, never could-not-look", () => {
+    test("a declared location that cannot be enumerated is refused, not reported empty", () => {
+        // The enumeration fail-open this repository has now fixed five times: an unreadable directory
+        // returning nothing is indistinguishable from an empty one, and "empty until earned" is the
+        // feature's own success state — so here the confusion would read as the design working.
+        // Exit 2 (`IndexError`), never a pass: it is a fact about the filesystem, not about the scope.
+        const dir = withPack();
+        inspect(dir, { write: true });
+        const landed = path.join(dir, "personas", "supervisor");
+        fs.chmodSync(landed, 0o000);
+        try {
+            assert.throws(
+                () => inspect(dir),
+                (e) => e instanceof IndexError && /cannot be read|cannot enumerate/i.test(e.message) && /supervisor/.test(e.message),
+            );
+        } finally {
+            fs.chmodSync(landed, 0o755);
+        }
+    });
+
+    test("a readable, empty location is green — the state of every landing on day one", () => {
+        const dir = withPack();
+        inspect(dir, { write: true });
+        assert.equal(failures(inspect(dir)).filter((f) => f.series === "scopes").length, 0);
+    });
+
+    test("an ABSENT location is green too, and that is a different fact from unreadable", () => {
+        // Absent is the fresh-clone state, because git carries no empty directory. Refusing it would
+        // red every checkout; confusing it with unreadable would hide a real filesystem failure.
+        const dir = withPack();
+        inspect(dir, { write: true });
+        fs.rmSync(path.join(dir, "personas", "supervisor"), { recursive: true });
+        assert.equal(failures(inspect(dir)).filter((f) => f.series === "scopes").length, 0);
+    });
+});
