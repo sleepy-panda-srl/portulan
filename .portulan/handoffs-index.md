@@ -2,9 +2,10 @@
 
 > Generated from `handoffs/` by `node cli/index.mjs`. Do not edit by hand: it is regenerated
 > and byte-compared, so a hand-edit survives exactly until the next run.
-> 46 handoff(s), newest first. No budget: the series is append-only, so
+> 47 handoff(s), newest first. No budget: the series is append-only, so
 > the only remedy a budget could ask for is one this project rules out.
 
+- 2026-07-30 · [Handoff — the tests rail has been seen to fire](handoffs/2026-07-30-the-tests-rail-has-been-seen-to-fire.md)
 - 2026-07-29 · [Handoff — the verdict is derived, and the field that cannot take the name](handoffs/2026-07-29-the-verdict-is-derived.md)
 - 2026-07-29 · [The table stops being its own archive, and the rows keep the law](handoffs/2026-07-29-the-table-stops-being-its-own-archive.md)
 - 2026-07-29 · [Handoff — the sweep that should have run the first time](handoffs/2026-07-29-the-sweep-that-should-have-run.md)
