@@ -126,3 +126,54 @@ task through the full loop from a private-feed install. The amended row now also
 memory scope landing in the adopter's own layer, which exists in no form today. The seam holds with a
 thesis-6 edge: the public repo keeps mechanism only, anything Sleepy-Panda-specific lives in the private
 feed, and the ritual pack must stay free of both.
+
+### Amended 2026-07-30 — the Copilot round count above is wrong, and "round" now has a definition
+
+_Append-only. The sentence in **State** is left standing exactly as written; what follows corrects it
+rather than replacing it, in the shape the [2026-07-25 errata](2026-07-25-handoff-cadence.md) established —
+original text untouched, correction dated. Directed by the maintainer, 2026-07-30, together with the
+ruling it applies._
+
+**The claim.** **State** above reads *"Two Copilot rounds answered inside the loop's bound"*. Both halves
+are wrong — the count, and the compliance.
+
+**What was measured, 2026-07-30, on `/pulls/105/reviews` and `/pulls/105/comments`.** Eight Copilot
+submissions, all `COMMENTED`, between 15:06 and 16:08 UTC on 2026-07-29, each on a **distinct commit**.
+**Not one was empty** — every submission carried at least one finding once the suppressed channel is read.
+Two carried inline threads: three findings on the branch as opened, and one later.
+
+**The count under the definition is four.** A round is a Copilot review answered with a push, and a
+records-only correction counts — [`a-review-loop-needs-a-bound.md`](../memory/a-review-loop-needs-a-bound.md),
+ruled 2026-07-30. Four pushes answered Copilot on this branch, named by the hashes that survived the
+rebase onto `main`:
+
+| Push | What it answered |
+|---|---|
+| `d814e0a` — *Round one* | the three inline findings on the branch as opened |
+| `9c19064` — *Round two* | two suppressed notes |
+| `e09a49a` — *the suite figure* | a figure this pull request's own three records disagreed on, raised both inline and suppressed |
+| `c6b6a25` — *invalid gate policy, absent provenance path* | two suppressed notes, one of them the `tierRank` fail-open |
+
+**So rule 4's bound was exceeded by two, and the compliance claim is withdrawn.** It allows two
+fix-rounds; this branch took four.
+
+**Why this is errata and not a fault.** No definition of *round* existed on 2026-07-29 — that is the gap
+the same ruling closed, and it is why three merged records could each pick a different number in good
+faith. A session cannot be over a bound whose unit is undefined. **What it can fairly be faulted for is
+narrower, and worth keeping:** it asserted compliance with a bound it had never established it could
+measure.
+
+**Where "two" came from, and why "three" is no better.** The sentence entered at `e09a49a` — the commit
+titled *"The three records agreed on a suite figure that two review rounds had moved"*, which was itself
+the third push answering Copilot. **The claim was false at the moment it was written, by the act that
+wrote it.** The Session log's *three* was written 37 minutes later at `384a17d` and was true for the seven
+minutes until `c6b6a25` became the fourth. Neither figure was a misreading of the same evidence; both were
+snapshots of a count still moving.
+
+**The root cause is rule 2, not arithmetic.** *Records land last* — and here they landed **second**, at
+`0719f19`, before a single fix round had been pushed, then were patched at `e09a49a` and again at
+`384a17d`, and still stopped one push short of the end. Three carriers written mid-loop and never
+reconciled to its end is not a coincidence of three numbers; it is the mechanical consequence of writing
+them while the count could still move. Had they landed after `c6b6a25` they would have been written once,
+and all three would have said four. **This is the first demonstrated cost of breaking rule 2, and it is
+recorded in the rule.**

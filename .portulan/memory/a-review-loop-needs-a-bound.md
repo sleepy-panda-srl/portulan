@@ -17,6 +17,69 @@ obligation to answer Copilot is not withdrawn, the unbounded iteration is.
 | Pull requests needing 4+ rounds | **12 of 30** |
 | Worst | #49 at nine rounds; #44 and #57 at eight |
 
+_Units, stated 2026-07-30 alongside the definition below, because the definition put this table in
+different units than the rule it justifies: every figure here counts **submissions** — a Copilot review
+arriving on a push — and not the fix-rounds rule 4 bounds. The file says so itself one section down, in
+the same breath as the 29%: those were "pushes Copilot had nothing to say about", which a fix-round
+cannot be, since a fix-round is a push answering something. **Re-labelled, not re-counted** — the numbers
+are as measured on 2026-07-28 and nobody has re-derived the corpus in fix-rounds. The retire threshold at
+the foot of this file is in these same submission units._
+
+## What one round is — added 2026-07-30
+
+**A round is a Copilot review this session answers with a push.** Rule 4's bound counts those pushes and
+nothing else. **The maintainer's ruling, Marius Cetanas, 2026-07-30**, taken because the four rules below
+had been counting rounds since 2026-07-28 without ever defining one — and because three merged records of
+[#105](https://github.com/sleepy-panda-works/portulan/pull/105) had by then disagreed three ways about how
+many it received, none of them matching any countable thing on the pull request.
+
+**A records-only correction counts.** A push that fixes nothing but a record — a figure the reviewer caught
+disagreeing with itself across carriers — still spends a round, because it is still a push answering a
+finding. Ruled the same day against the alternative, which was an exemption a session could route fixes
+through. Rule 2 keeps records out of the *middle* of the loop; it does not make them free when they are
+the answer.
+
+**What is therefore NOT a round.** Each of these was counted as one somewhere before today:
+
+- **A submission.** `review_on_push: true` means Copilot reviews every push, so submissions count pushes
+  rather than fix-rounds — including the submission on the branch as opened, which precedes any fix.
+- **A submission carrying no inline thread.** The suppressed channel carries most of this repository's real
+  findings — 14 of 19 on #85, 9 of 11 on #81, and on #105 the `tierRank` fail-open that let an invalid gate
+  policy compile. A definition counting only threads would make the channel that finds the most cost the
+  least, and would leave a session free to push indefinitely so long as the findings arrived suppressed.
+- **A finding, and a reply.** Rule 1 settles both already: fixes are batched, so a round is answered once
+  and not per finding, and a reply costs nothing.
+
+**Measuring it takes two queries, and the reviewer has two logins.** The findings are in
+`/pulls/N/reviews` (the review *bodies*, which is where suppressed notes live) and `/pulls/N/comments`
+(the inline threads). The fix-rounds are not in the API at all — they are the pushes that answered, read
+from `git log`. **The reviewer is `copilot-pull-request-reviewer[bot]` on `/reviews` and plain `Copilot`
+on `/comments`**: a filter on either login returns **zero** from the other endpoint, which is how #105's
+count was first mis-measured as zero.
+[`copilot-review.yml`](../../.github/workflows/copilot-review.yml) already hard-codes both spellings, so
+this is a trap for anyone counting by hand rather than a defect in the workflow.
+
+**Measured on #105, the pull request that forced the definition.** Eight submissions, all `COMMENTED`,
+each on a distinct commit, and **not one of them empty** — every submission carried at least one finding
+once the suppressed channel is read. Two carried inline threads (three findings, then one). **Four pushes
+answered them** — `d814e0a`, `9c19064`, `e09a49a`, `c6b6a25` — so #105 ran **two rounds past this bound**.
+It was not knowably over at the time, because the definition did not exist until today; that is what makes
+the correction to its three records errata rather than a fault, and it is recorded that way in
+[the handoff](../handoffs/2026-07-29-the-cascade-gets-its-middle-layer.md) and the Session log.
+
+**This definition is forward-only, from 2026-07-30, and four earlier records are deliberately left
+alone.** They state Copilot round counts written before the word meant anything precise —
+`docs/plan.md`'s two entries of 2026-07-26, the [tag-and-install handoff](../handoffs/2026-07-26-the-tag-and-the-install.md)
+of the same date, and [`../verify/README.md`](../verify/README.md) on #64 — and each uses *round* in the
+loose submission sense that was all it had. **Not correcting them is this repository's own rule about
+rules:** both record floors in `docs.sh` are forward-only cutoffs, *"because a rule written after a record
+cannot bind it without rewriting the record to suit the rule."* A definition reaches further than a rule,
+though — it changes how a reader parses old text rather than what an old author owed — which is why the
+cutoff is stated here instead of left to be inferred from four uncorrected records. **#105 is corrected on
+a different ground entirely, and the distinction is what makes its errata defensible rather than
+retroactive:** its three carriers **contradicted each other**, which was a defect on any definition and was
+one before this one existed. A single earlier record saying *three rounds* contradicts nothing.
+
 ## The rule
 
 1. **One push per round.** Fixes are batched; a round is answered once, not per finding. **This bounds
@@ -53,6 +116,16 @@ nothing to say about, each still costing a full cycle. Measured on
 correction**, a documentation-only push that could not have needed review. Rule 2 exists for that
 observation alone.
 
+**Rule 2 turned out to protect something bigger than a wasted round, measured 2026-07-30 on #105.** Its
+records landed **second** — before a single fix round had been pushed — were patched twice as the loop ran,
+and still stopped one push short of the end. The result was three merged carriers disagreeing about how
+many rounds the pull request had received, at two, three and neither. **That is not three misreadings of
+one fact; it is the mechanical consequence of writing a record while the number it states can still
+move.** Had the records landed after the final push they would have been written once and all three would
+have agreed. So rule 2's cost is not only the round a documentation push spawns — it is that a record
+written mid-loop is *a claim about a total that has not happened yet*, and the errata to fix it is
+permanent. Read this as the reason rule 2 is not the soft one of the four.
+
 **And the loop had no fixed point.** Its stopping condition was *"Copilot is silent"*, but every fix is
 new input to the next round, so it terminated by luck rather than by convergence. Nine rounds on #49 is
 what that looks like. Rules 1 and 4 give it a bound that does not depend on the reviewer running out of
@@ -80,6 +153,15 @@ pushes since the last round, or refuse a push touching only `handoffs/` while a 
 rule 4 needs the *invalid* judgment that no check can make. Until then this is a habit with a record,
 and the record is honest about which it is.
 
+**The 2026-07-30 definition does not change that, but it does change what a human can audit.** Rule 4 is
+still not mechanisable — *did this push answer a finding* is the same judgment as before, and a machine
+counting pushes since the first submission would charge the bound for pushes that answered nothing. What
+the definition buys is that the count is now **re-derivable after the fact** by a reader with `git log`
+and the two endpoints, which is how #105 was found to be two rounds over. An unmechanisable rule whose
+compliance cannot even be checked in hindsight is not a habit with a record; it is a number nobody can
+dispute. That was the actual gap, and it is the half that closed.
+
 **Retire when:** Copilot review stops being part of this repository's review path, or the rounds-per-
-pull-request figure is measured below 2.0 for a full milestone, at which point the bound is costing more
-attention than the iteration it prevents.
+pull-request figure is measured below 2.0 **in the submission units of the table above, not in fix-rounds**
+(the units clause was added 2026-07-30 with the definition; the threshold itself is unchanged) for a full
+milestone, at which point the bound is costing more attention than the iteration it prevents.
