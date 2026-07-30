@@ -113,11 +113,19 @@ refusals. Each was forced RED before its green was believed, on the
   `--repo-root`, `doctor` looks for a manifest in each named repository, refuses a full workspace there,
   and refuses a pointer aimed at a third workspace.
 
-**Why these three are `doctor`'s and not the schema's**, stated because it looks like an oversight and is
-not: all three are expressible in the declared subset. But `doctor` returns at *the manifest must conform
-first* when the schema fails, so a shape the schema refused would never reach the sentence the refusal
-exists to print — and the whole point of this rule is that a reader learns *why* two workspaces are one
-too many. The schema permits the shape; `doctor` refuses it in the ruling's words.
+**Why these are `doctor`'s and not the schema's**, stated because it looks like an oversight and is not —
+and the answer differs between the first two and the third.
+
+The **first two** *are* expressible in the declared subset; a branch-level permit-list would carry either.
+They are `doctor`'s by **choice**, because `doctor` returns at *the manifest must conform first* when the
+schema fails, so a shape the schema refused would never reach the sentence the refusal exists to print —
+and the whole point of this rule is that a reader learns *why* two workspaces are one too many. The schema
+permits the shape; `doctor` refuses it in the ruling's words.
+
+The **third is not expressible in any schema at all** — this subset, full 2020-12, or any other. It reads
+a manifest in *another repository*, and no contract over a single document can see one. It is `doctor`'s
+by **necessity**. Neither joins the count of constraints [`../../spec/README.md`](../../spec/README.md)
+keeps, and that page argues why: every entry there is a dependency between two keys of one manifest.
 
 ## The honest limits
 

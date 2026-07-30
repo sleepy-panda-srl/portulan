@@ -684,8 +684,8 @@ export async function inspect(workspaceDir, options = {}) {
                 "residence",
                 `this manifest declares \`kind: "pointer"\` and also carries ` +
                     `${carried.map((k) => `\`${k}\``).join(", ")} — ${GOVERNS}. A pointer names its ` +
-                    "governor and holds nothing else; the moment it holds slots of its own there are two " +
-                    "policy layers for one repository and nothing holding them in agreement",
+                    "governor and holds no policy of its own; the moment it holds any of it there are " +
+                    "two policy layers for one repository and nothing holding them in agreement",
             );
         }
         // A pointer is not a small workspace, it is a different object: no slots to resolve, no
