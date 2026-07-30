@@ -57,9 +57,11 @@ const SLUG = /^[a-z0-9]+(-[a-z0-9]+)*$/;
 // rather than pattern-matched on "private": visibility is a live GitHub setting no file can read, so the
 // only honest form is a list this repository maintains. `docs/plan.md`'s topology is the declaring
 // authority for what is on it, and the name is already public there — what is refused is a *pointer*,
-// not a mention. A feed added to the topology and not added here is the drift this comment exists to
-// make findable; the list is short enough to keep by hand and a rail is what a one-way rule needs to be.
-const PRIVATE_FEEDS = ["portulan-internal"];
+// not a mention. Entries are `owner/name`, not bare names: matching a name alone refused an unrelated
+// public repository that happened to share it, which is a false red in a rail, and a false red is how a
+// whole rail gets switched off. A feed added to the topology and not added here is the drift this comment
+// exists to make findable; the list is short enough to keep by hand.
+const PRIVATE_FEEDS = ["sleepy-panda-works/portulan-internal"];
 // Deliberately permissive about pre-release and build metadata, strict about the three numbers:
 // the platform compares version strings, and this repository's own convention is SemVer from
 // v0.1.0 (../docs/plan.md, Protocol → Versioning).
@@ -394,10 +396,15 @@ export function inspect(rawRoot) {
             // through a case-sensitive membership test. Found by Copilot one round after the rail landed —
             // a rail a different capitalisation gets past is not a rail, which is why this went past the
             // review loop's two-fix-round bound rather than to triage (the precedent is #105).
-            const segments = new Set(
-                target.toLowerCase().split(/[\s/:@]+/).map((seg) => seg.replace(/\.git$/, "")),
-            );
-            if (PRIVATE_FEEDS.some((feed) => segments.has(feed.toLowerCase()))) {
+            // Matched as **owner/name**, not name alone. Matching the repo segment by itself refused
+            // `someone-else/portulan-internal` — an unrelated public repository — which contradicts this
+            // rail's own stated narrowness, and a false red is how a whole rail gets switched off. Copilot,
+            // #117 round 8. Lowercased on both sides because GitHub names are case-insensitive (round 6),
+            // and adjacent segment PAIRS are compared so `owner/name`, an https URL and an scp-style
+            // `git@host:owner/name.git` all reduce to the same set.
+            const segments = target.toLowerCase().split(/[\s/:@]+/).map((seg) => seg.replace(/\.git$/, "")).filter(Boolean);
+            const pairs = new Set(segments.slice(0, -1).map((seg, i) => `${seg}/${segments[i + 1]}`));
+            if (PRIVATE_FEEDS.some((feed) => pairs.has(feed.toLowerCase()))) {
                 fail(
                     "market",
                     `${label} ("${name ?? "?"}") is sourced from the private feed (\`${target}\`). ` +

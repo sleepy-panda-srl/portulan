@@ -1343,3 +1343,43 @@ describe("a malformed pack manifest fails CLOSED, never as a crash", () => {
         assert.match(lines.join("\n"), /not a directory/i);
     });
 });
+
+describe("a symlink cannot get a pack past either containment guard", () => {
+    // Copilot, round 8 on #117. Round 6 closed the LEXICAL traversal and left two symlink doors open in
+    // the same two guards. `path.resolve` is textual; `readFileSync` follows links. So the guard proved a
+    // string was inside the pack and then read whatever the filesystem pointed at — which is the
+    // fail-open shape this repository names most, arriving one round after its own repair.
+    test("a persona symlinked out of the pack is refused, not read", () => {
+        const outside = path.join(scratch(), "secret.md");
+        fs.writeFileSync(outside, "---\nname: x\n---\n\n## Memory scope\n\nSomething private.\n");
+        const dir = withPack();
+        const link = path.join(dir, "packs", "rituals", "checkpoints", "personas", "supervisor.md");
+        fs.rmSync(link);
+        fs.symlinkSync(outside, link);
+        assert.throws(
+            () => inspect(dir, { write: true }),
+            (e) => e instanceof IndexError && /outside the pack/i.test(e.message),
+        );
+    });
+
+    test("a `memory` SYMLINK does not slip past the pack-carries-no-records refusal", () => {
+        // The other door: `packRecords` matched the segment `memory/`, and a symlink named `memory` is
+        // neither a directory it recurses into nor a file under one — so it was invisible to a check whose
+        // whole subject is what the pack ships.
+        const store = scratch();
+        fs.writeFileSync(path.join(store, "smuggled.md"), record("rule"));
+        const dir = withPack();
+        fs.symlinkSync(store, path.join(dir, "packs", "rituals", "checkpoints", "memory"));
+        const result = (() => { try { return inspect(dir, { write: true }); } catch (e) { return e; } })();
+        if (result instanceof Error) {
+            assert.match(result.message, /memory/i);
+        } else {
+            assert.equal(failures(result).some((f) => f.series === "scopes" && f.check === "contents"), true, text(failures(result)));
+        }
+    });
+
+    test("an ordinary persona file inside the pack still resolves", () => {
+        const dir = withPack();
+        assert.equal(failures(inspect(dir, { write: true })).filter((f) => f.series === "scopes").length, 0);
+    });
+});
