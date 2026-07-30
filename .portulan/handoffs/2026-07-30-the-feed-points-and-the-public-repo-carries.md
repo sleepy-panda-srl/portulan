@@ -1,7 +1,7 @@
 # Handoff — the feed points, the public repository carries, and a scope lands empty
 
 **Date:** 2026-07-30 · **M6, session 1** · Branch `m6-the-feed-resolves-and-a-scope-lands`, opened as a
-pull request against `main` — the number is in the Session log entry, which is written last on purpose
+pull request against `main` as [#117](https://github.com/sleepy-panda-works/portulan/pull/117)
 
 **State.** Three of milestone 6's four remaining clauses are demonstrated. `portulan-internal`
 **publishes** two plugins; the `rituals/checkpoints` pack **resolves from it**; and a pack-declared

@@ -761,6 +761,14 @@ not a working copy. Those are per-recipe facts, and a drill is how each one stop
   recalls from these locations yet, so a rail would be measuring a store no code reads. The axis such a
   rail should use is per-persona rather than per-workspace, and that belongs to the row where something
   finally reads them.
+- **A base-suite figure cannot be measured from `git archive`.** Comparing "suite before" against "suite
+  after" wants the tree at the base commit, and the obvious way to get one — `git archive <sha> | tar -x`
+  — produces a **false red**: several suites bind this repository's *live* workspaces and read git, so a
+  tree with no `.git` fails on the wrong thing and looks exactly like a regression. Clone to a scratch
+  directory and check out the base instead. Measured at milestone 6 session 1, by a fresh-context
+  reviewer who hit it while re-deriving a figure this project's records had quoted — and it is the same
+  class as `actions/checkout` being shallow by default, which is already written down one bullet's worth
+  of trust further up.
 - **A present-but-empty store is a green.** It renders an index of `0 record(s)`, which matches a
   committed index of the same, and passes. That is correct — a workspace may legitimately have no
   memory yet — and it is the closest relative of the enumeration fail-opens above, so it is named:
