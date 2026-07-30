@@ -179,10 +179,13 @@ describe("the schema validator implements exactly the declared subset", () => {
 
     test("reports the violated constraint and where it was violated", () => {
         const errors = validate(SCHEMA, { ...wellFormed(), kind: "example" });
+        // Length first, so an unexpected empty result is an assertion failure naming the count rather
+        // than a TypeError from indexing `errors[0]`. Copilot, round 1 on #135.
+        assert.equal(errors.length, 2, errors.map((e) => `${e.pointer} ${e.message}`).join("\n"));
         assert.match(errors[0].message, /enum/);
         assert.equal(errors[0].pointer, "/kind");
 
-        // This asserted `errors.length === 1` until 2.7, and the second error is the measured cost of
+        // The count above was `1` until 2.7, and the second error is the measured cost of
         // the top-level `oneOf` that arrived with the pointer kind. It is not noise and it is not
         // located vaguely: `kind` discriminates the two forms, so a value in neither enum fails BOTH,
         // and the extra error says exactly that — this manifest is neither a governing workspace nor a
@@ -190,7 +193,6 @@ describe("the schema validator implements exactly the declared subset", () => {
         // this test exists to hold. The blast radius is exactly this case: an unknown KEY, a `#fragment`
         // slot and a bad path still produce one error each, because the forms constrain only `kind`,
         // `slots`, `verify` and `governed_by`.
-        assert.equal(errors.length, 2, errors.map((e) => `${e.pointer} ${e.message}`).join("\n"));
         assert.equal(errors[1].pointer, "");
         assert.match(errors[1].message, /not exactly one \(oneOf\)/);
     });
@@ -2059,11 +2061,29 @@ describe("a repository is governed by exactly one workspace", () => {
 
     test("--repo-root fails closed on the same two inputs --pack-root does", async () => {
         // The sibling class, and the ruling of 2026-07-27: never fix one carrier and leave its
-        // neighbours. Both flags now run through one helper, so there is no second copy to drift.
+        // neighbours. The first draft of this comment claimed both flags ran through one helper while
+        // `--pack-root` still carried its own copy — a comment asserting a refactor nobody had done,
+        // caught by Copilot on round 1. They share `directoryRoot` now, so the claim is true; the two
+        // flags below are asserted TOGETHER so a future divergence reds here rather than drifting.
         const dir = tree(scratch(), { ...minimalFiles, "workspace.json": JSON.stringify(wellFormed()) });
-        assert.equal(await run(["--repo-root", path.join(dir, "workspace.json"), dir], { quiet: true }), 2, "a FILE is not a root");
-        assert.equal(await run(["--repo-root", path.join(dir, "nope"), dir], { quiet: true }), 2, "a missing root is not a root");
-        assert.equal(await run(["--repo-root", dir], { quiet: true }), 2, "a flag with no workspace left is not a workspace");
-        assert.notEqual(await run(["--repo-root", dir, dir], { quiet: true }), 2, "a directory is accepted");
+        for (const flag of ["--repo-root", "--pack-root"]) {
+            assert.equal(await run([flag, path.join(dir, "workspace.json"), dir], { quiet: true }), 2, `${flag}: a FILE is not a root`);
+            assert.equal(await run([flag, path.join(dir, "nope"), dir], { quiet: true }), 2, `${flag}: a missing root is not a root`);
+            assert.equal(await run([flag, dir], { quiet: true }), 2, `${flag}: a flag with no workspace left is not a workspace`);
+            assert.notEqual(await run([flag, dir, dir], { quiet: true }), 2, `${flag}: a directory is accepted`);
+        }
+    });
+
+    test("a pointer at a named root that names no governor is reported, never refused", async () => {
+        // A manifest at a named root is read, never validated — it is somebody else's workspace. So a
+        // malformed pointer there must not be compared against this workspace's name, which produced
+        // "names `undefined` as its governor": a conflicting-governor refusal for a manifest that names
+        // no governor at all. Copilot, round 1 on #135.
+        const dir = portfolio(["tipar-api"]);
+        const root = checkouts({ "tipar-api": { portulan: { spec: "2.7" }, name: "tipar-api", kind: "pointer" } });
+        const { findings } = await inspect(dir, { schema: SCHEMA, repoRoots: [root] });
+        assert.equal(severities(checks(findings, "residence"), "fail").length, 0, text(findings));
+        assert.match(text(checks(findings, "residence")), /names no governing workspace/);
+        assert.doesNotMatch(text(findings), /undefined/);
     });
 });
