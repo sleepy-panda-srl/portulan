@@ -118,11 +118,19 @@ leaves its sibling is the defect this repository names most often._
 **The residence refusals are deliberately NOT in that list, and the distinction is the reason it can
 still be trusted.** `doctor` refuses a pointer carrying governing slots, a governing workspace carrying a
 `governed_by`, and — where a `--repo-root` makes it visible — a repository named by one workspace and
-governed by another. All three are expressible in the subset. They are enforced in `doctor` anyway,
-because the schema's own failures return at *the manifest must conform first*, so a shape the schema
-refused would never print the sentence the refusal exists to print. That is a choice about **where a rule
-is stated**, not a constraint the schema cannot carry — so the count of things the schema cannot express
-stays at nine.
+governed by another. The **first two** are expressible in the subset — a branch-level permit-list would
+carry either — and they are enforced in `doctor` anyway, because the schema's own failures return at *the
+manifest must conform first*, so a shape the schema refused would never print the sentence the refusal
+exists to print. So for those two this is a choice about **where a rule is stated**, not a constraint the
+schema cannot carry.
+
+The **third is not expressible in any schema at all** — this subset, full 2020-12, or any other: it reads
+a manifest in *another repository*, and no contract over a single document can see one. It still does not
+join the list, and the reason is what keeps that list meaningful: every entry there is a dependency
+between two keys **of one manifest**, which is the thing a reader of the schema alone would expect to find
+and does not. A check that needs a second repository is not in that category, and folding it in would make
+the count measure two different things at once. **The count stays at nine**, and it counts what it always
+counted.
 
 [`slots.md`](slots.md) argues each one.
 
@@ -138,9 +146,12 @@ can be written in the declared subset, so the gap between *what the schema says*
 manifest must satisfy* is widening — and a constraint invisible to someone reading the schema alone is a
 real cost, stated here rather than discovered. The subset earns its narrowness by being implementable
 completely and honestly; the price is this list, and the list is the thing to watch if it keeps growing.
-**Four MINORs at +2 each** was the growth rate to hold the next bump against, and 2.4's, 2.5's and 2.6's
-pairs are the *same* pair three times over — a series needs a store and its index must sit outside it —
-which was an argument for generalising it rather than adding it again.
+**Four MINORs at +2 each** was the growth rate to hold the next bump against, and **2.3's, 2.5's and
+2.6's** pairs are the *same* pair three times over — a series needs a store and its index must sit outside
+it — which was an argument for generalising it rather than adding it again. _(2.4's pair is `librarian`'s
+and is a different one: a pass needs a store to age, and a proposal threshold needs a proposal series.
+An earlier draft of this sentence read "2.4's, 2.5's and 2.6's", which would have made the repeating pair
+four bumps old instead of three and misattributed `memory`'s contribution to `librarian`.)_
 
 **2.7 is the first MINOR since 2.2 that adds nothing to this list**, and that is the reason its pointer
 requirement went into the schema's `oneOf` instead. The generalisation the paragraph above kept asking for

@@ -1928,6 +1928,27 @@ describe("a repository is governed by exactly one workspace", () => {
         assert.match(notes, /did not run here/);
     });
 
+    test("`summary` is on the pointer's permit-list, and the list is railed rather than described", async () => {
+        // The pre-commit checkpoint found `slots.md` claiming a pointer carries "nothing but
+        // `governed_by`" while `POINTER_KEYS` deliberately admits `summary` — prose overstating its own
+        // mechanism by one key. The prose is corrected; this is the half that stops it drifting back,
+        // because nothing held the permit-list before and a future tightening would have broken no test.
+        const dir = tree(scratch(), {
+            "workspace.json": JSON.stringify(pointer({ summary: "Governed by the Sleepy Panda portfolio workspace." })),
+        });
+        const { findings } = await inspect(dir, { schema: SCHEMA });
+        assert.equal(severities(findings, "fail").length, 0, text(findings));
+
+        // And the negative half: a key that is NOT on the list is still refused, so the exemption is the
+        // list rather than a general softening.
+        const bad = tree(scratch(), {
+            "workspace.json": JSON.stringify(pointer({ packs: ["rituals/checkpoints"] })),
+        });
+        const { findings: refused } = await inspect(bad, { schema: SCHEMA });
+        assert.equal(severities(checks(refused, "residence"), "fail").length, 1, text(refused));
+        assert.match(text(checks(refused, "residence")), /`packs`/);
+    });
+
     test("a pointer with no feed names its governor and does not invent a delivery", async () => {
         const m = pointer();
         m.governed_by = { workspace: "sleepy-panda" };
