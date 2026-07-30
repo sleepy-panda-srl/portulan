@@ -1427,10 +1427,22 @@ export async function run(argv, options = {}) {
                 i += 1;
                 if (root === undefined || root.startsWith("-")) throw new DoctorError("--pack-root needs a directory");
                 // Not there is a filesystem fact, not a pack that failed to resolve; reporting it as the
-                // latter sends a reader to the one file that is not at fault.
-                if (!fs.existsSync(root)) {
+                // latter sends a reader to the one file that is not at fault. And existence is not enough:
+                // `existsSync` is true for a FILE, so one was accepted and every later resolution failure
+                // was misattributed to the workspace. Three tools take this flag and only `index` had the
+                // directory check, which is the sibling class the 2026-07-27 ruling names — found by
+                // Copilot on #117, round 7, one round after the same defect was fixed in `index` alone.
+                let rootStat = null;
+                try {
+                    rootStat = fs.statSync(root);
+                } catch (cause) {
                     throw new DoctorError(
-                        `--pack-root ${root} does not exist — refusing to report a pack unresolvable against a root nothing looked in`,
+                        `--pack-root ${root} cannot be read — ${cause.code ?? cause.message}. Refusing to report a pack unresolvable against a root nothing looked in`,
+                    );
+                }
+                if (!rootStat.isDirectory()) {
+                    throw new DoctorError(
+                        `--pack-root ${root} is not a directory — a resolution root is a directory packs are looked up under`,
                     );
                 }
                 namedRoots.push(path.resolve(root));

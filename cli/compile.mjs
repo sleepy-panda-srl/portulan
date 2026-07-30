@@ -1721,9 +1721,23 @@ export function run(argv, options = {}) {
                 // A root that is not there is a fact about the filesystem, not a pack that failed to
                 // resolve — and reporting it as the latter sends an author to the one file that is not
                 // at fault. Same distinction as ../.portulan/memory/verify-preconditions-fail-closed.md.
-                if (!fs.existsSync(root)) {
+                //
+                // A FILE is the sharper case here than in the other two tools, and the reason is what this
+                // one emits: a file-valued root made resolution fail and produced a **misleading green
+                // compile** that had simply ignored the intended root. A green is what a session acts on,
+                // so it is worse than the exit 2 the argument deserves. Third carrier of one rule, found by
+                // Copilot on #117, round 7 — the sibling class the 2026-07-27 ruling names.
+                let rootStat = null;
+                try {
+                    rootStat = fs.statSync(root);
+                } catch (cause) {
                     throw new CompileError(
-                        `--pack-root ${root} does not exist — refusing to report a pack unresolvable against a root nothing looked in`,
+                        `--pack-root ${root} cannot be read — ${cause.code ?? cause.message}. Refusing to report a pack unresolvable against a root nothing looked in`,
+                    );
+                }
+                if (!rootStat.isDirectory()) {
+                    throw new CompileError(
+                        `--pack-root ${root} is not a directory — a resolution root is a directory packs are looked up under`,
                     );
                 }
                 namedRoots.push(path.resolve(root));
