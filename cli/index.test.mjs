@@ -29,6 +29,7 @@ import {
     headingOf,
     dateOf,
     isInside,
+    memoryScopeOf,
     readStore,
     readHandoffs,
     render,
@@ -860,5 +861,352 @@ describe("the live handoff series", () => {
         const result = inspect(path.join(REPO, ".portulan"));
         assert.equal(result.series.handoffs.declared, true);
         assert.equal(text(failures(result).filter((f) => f.series === "handoffs")), "");
+    });
+});
+
+// ---------------------------------------------------------------- persona memory scopes
+
+// The third series, added at Workspace Definition 2.6 for milestone 6's landing clause. It differs
+// from the other two in where it is derived FROM: the memory store and the handoff series are
+// directories this workspace owns, while a scope is declared by a persona inside a pack the
+// workspace merely composes. So the source is the cascade, not the tree — which is the whole point.
+// `../docs/milestones/m06.md` binds the demonstration to three observations, and the last two are
+// what these tests exist to make mechanical: the location must be shown CONNECTED to the declared
+// scope (a positive control), and the pack must be shown carrying none of the contents.
+
+const persona = (name, scope = "Its own supervisor memory: classes of defect this codebase produces.") =>
+    `---\nname: ${name}\ndescription: Grades work it did not do.\ntools: [read]\n---\n\n` +
+    `# Persona — ${name}\n\n## Charter\n\nGrades one checkpoint.\n\n` +
+    `## Memory scope\n\n${scope}\n\n## Read / write posture\n\nReads broadly.\n`;
+
+const packManifest = (over = {}) =>
+    JSON.stringify(
+        {
+            portulan: { pack: "1.0", version: "0.1.0" },
+            name: "checkpoints",
+            category: "rituals",
+            summary: "A ritual pack for the fixtures.",
+            doc: "README.md",
+            contributes: { personas: ["personas/supervisor.md"] },
+            ...over,
+        },
+        null,
+        2,
+    );
+
+/** Only the scopes series is configured, for the same isolation reason `withSeries` gives. */
+const withScopes = (over = {}) =>
+    wellFormed({
+        portulan: { spec: "2.6" },
+        memory: undefined,
+        tree: "./",
+        packs: ["rituals/checkpoints"],
+        slots: {
+            identity: "identity.md",
+            principles: "principles.md",
+            gates: "gate-map.md",
+            personas: "personas/",
+        },
+        personas: { index: { path: "personas-index.md" } },
+        ...over,
+    });
+
+/** A workspace composing one pack that ships one persona, both on disk. */
+const withPack = (files = {}, manifest = withScopes()) =>
+    workspace(
+        {
+            "packs/rituals/checkpoints/pack.json": packManifest(),
+            "packs/rituals/checkpoints/README.md": "# checkpoints\n",
+            "packs/rituals/checkpoints/personas/supervisor.md": persona("supervisor"),
+            ...files,
+        },
+        manifest,
+    );
+
+describe("a persona's declared memory scope lands in the adopter's layer", () => {
+    test("the location is created, and created EMPTY", () => {
+        // m06.md observation 1, and the maintainer's ruling of 2026-07-29: `present and empty` binds
+        // literally. Not a marker file, not a .gitkeep — nothing. The connection is carried by the
+        // index, which is why it can be.
+        const dir = withPack();
+        inspect(dir, { write: true });
+        const landed = path.join(dir, "personas", "supervisor");
+        assert.equal(fs.existsSync(landed), true, "the location should be created by the landing step");
+        assert.deepEqual(fs.readdirSync(landed), [], "and it should hold nothing at all");
+    });
+
+    test("the location is in the ADOPTER's layer, never in the pack", () => {
+        // m06.md observation 3 as a siting assertion rather than as prose.
+        const dir = withPack();
+        inspect(dir, { write: true });
+        assert.equal(fs.existsSync(path.join(dir, "personas", "supervisor")), true);
+        assert.equal(fs.existsSync(path.join(dir, "packs", "rituals", "checkpoints", "personas", "supervisor")), false);
+    });
+
+    test("the index names the persona, the pack it came from, and the location", () => {
+        const dir = withPack();
+        inspect(dir, { write: true });
+        const out = fs.readFileSync(path.join(dir, "personas-index.md"), "utf8");
+        assert.match(out, /supervisor/);
+        assert.match(out, /rituals\/checkpoints/);
+        assert.match(out, /personas\/supervisor\//);
+    });
+
+    test("the scope's text reaches the index, so the index moves when the scope does", () => {
+        // The positive control m06.md calls the load-bearing one and the easiest to skip: what
+        // distinguishes `arrived` from `a directory somebody made`. If the pack reworded its
+        // persona's scope and this file did not move, the connection would be decorative.
+        const dir = withPack();
+        inspect(dir, { write: true });
+        const before = fs.readFileSync(path.join(dir, "personas-index.md"), "utf8");
+
+        tree(dir, { "packs/rituals/checkpoints/personas/supervisor.md": persona("supervisor", "Something else entirely.") });
+        inspect(dir, { write: true });
+        const after = fs.readFileSync(path.join(dir, "personas-index.md"), "utf8");
+
+        assert.notEqual(before, after, "a reworded scope must change the generated index");
+    });
+
+    test("a scope reworded without regenerating is red, not silently tolerated", () => {
+        const dir = withPack();
+        inspect(dir, { write: true });
+        tree(dir, { "packs/rituals/checkpoints/personas/supervisor.md": persona("supervisor", "Reworded.") });
+        const bad = failures(inspect(dir));
+        assert.equal(bad.length, 1);
+        assert.equal(bad[0].series, "scopes");
+        assert.equal(bad[0].check, "index");
+        assert.match(text(bad), /out of date/);
+    });
+});
+
+describe("what the scopes index refuses to guess", () => {
+    test("a persona carrying no Memory scope section fails, and nothing is written", () => {
+        // The five-part contract's fourth part. Refusing here is derivation declining to invent a
+        // scope, not contract validation — that arrives at milestone 7 under `row 6 declares, row 7
+        // validates` (core/operating/memory.md).
+        const dir = withPack({
+            "packs/rituals/checkpoints/personas/supervisor.md":
+                "---\nname: supervisor\n---\n\n# Persona — supervisor\n\n## Charter\n\nGrades.\n",
+        });
+        const bad = failures(inspect(dir, { write: true }));
+        assert.equal(bad.length, 1);
+        assert.equal(bad[0].series, "scopes");
+        assert.equal(bad[0].check, "scope");
+        assert.match(text(bad), /Memory scope/);
+        assert.equal(fs.existsSync(path.join(dir, "personas-index.md")), false, "nothing is written when a line cannot be derived");
+    });
+
+    test("a declared pack that does not resolve is reported, never skipped", () => {
+        const dir = withPack({}, withScopes({ packs: ["rituals/checkpoints", "rituals/absent"] }));
+        const bad = failures(inspect(dir, { write: true }));
+        assert.equal(bad.some((f) => f.series === "scopes" && f.check === "pack"), true);
+        assert.match(text(bad), /rituals\/absent/);
+    });
+
+    test("an index sited inside the layer it indexes is refused", () => {
+        const dir = withPack({}, withScopes({ personas: { index: { path: "personas/personas-index.md" } } }));
+        assert.throws(() => inspect(dir, { write: true }), (e) => e instanceof IndexError && /sits inside/.test(e.message));
+    });
+
+    test("an index declared with no layer to land in is refused", () => {
+        const dir = withPack({}, withScopes({ slots: { identity: "identity.md", principles: "principles.md", gates: "gate-map.md" } }));
+        assert.throws(() => inspect(dir, { write: true }), (e) => e instanceof IndexError && /slots\.personas/.test(e.message));
+    });
+
+    test("a workspace declaring no packs declares no scopes, and that is not a failure", () => {
+        const dir = withPack({}, withScopes({ packs: [] }));
+        const result = inspect(dir, { write: true });
+        assert.equal(failures(result).filter((f) => f.series === "scopes").length, 0);
+    });
+});
+
+describe("the two controls the landing clause turns on", () => {
+    test("negative control: a location no composed persona declares is reported orphaned", () => {
+        // `a directory somebody made` — the shape m06.md names. Without this sweep the layer would
+        // accept any directory and the positive control would only ever look at the ones it expected.
+        const dir = withPack({ "personas/invented/.keep": "" });
+        const bad = failures(inspect(dir, { write: true }));
+        assert.equal(bad.some((f) => f.series === "scopes" && f.check === "orphan"), true);
+        assert.match(text(bad), /invented/);
+    });
+
+    test("a location that has EARNED records is not an orphan and not a failure", () => {
+        // Empty is the correct end state on day one, never a permanent requirement. A rail that
+        // reddened once the adopter wrote their first record would be a rail against the feature.
+        const dir = withPack();
+        inspect(dir, { write: true });
+        tree(dir, { "personas/supervisor/a-defect-class.md": record("rule") });
+        assert.equal(failures(inspect(dir)).filter((f) => f.series === "scopes").length, 0);
+    });
+
+    test("observation 3: a pack shipping memory records of its own is refused", () => {
+        // The pack declares the scope and must carry none of its contents — thesis 6 from the
+        // distributing side. A pack that shipped records would be core-and-packs absorbing the
+        // adopter's specifics, which the constitution forbids.
+        const dir = withPack({ "packs/rituals/checkpoints/memory/a-record.md": record("rule") });
+        const bad = failures(inspect(dir, { write: true }));
+        assert.equal(bad.some((f) => f.series === "scopes" && f.check === "contents"), true);
+        assert.match(text(bad), /carries/i);
+    });
+});
+
+describe("--check never lands anything", () => {
+    test("check mode creates no location, so a verify recipe cannot manufacture its own green", () => {
+        const dir = withPack();
+        inspect(dir);
+        assert.equal(fs.existsSync(path.join(dir, "personas", "supervisor")), false);
+        assert.equal(fs.existsSync(path.join(dir, "personas-index.md")), false);
+    });
+});
+
+describe("the live scopes series", () => {
+    test(".portulan's persona-scope index is current", () => {
+        const result = inspect(path.join(REPO, ".portulan"));
+        assert.equal(result.series.scopes.declared, true);
+        assert.equal(text(failures(result).filter((f) => f.series === "scopes")), "");
+    });
+});
+
+describe("the summary names every series, including the third", () => {
+    test("a workspace declaring only scopes is not reported as declaring no index", () => {
+        // The comment in `run` says a series that generates nothing must say so, and that "the same
+        // trap has two doors now that there are two series". A third series is a third door, and the
+        // first draft of this feature walked straight through it: `index` printed a green naming the
+        // store and the handoffs and silently omitted the scopes it had just written.
+        const dir = withPack();
+        const lines = [];
+        const code = run([dir], (s) => lines.push(s));
+        assert.equal(code, 0);
+        assert.match(lines.join("\n"), /scope index written/);
+    });
+
+    test("--check says current where a write says written, for the scopes series too", () => {
+        const dir = withPack();
+        run([dir], () => {});
+        const lines = [];
+        assert.equal(run(["--check", dir], (s) => lines.push(s)), 0);
+        assert.match(lines.join("\n"), /scope index current/);
+    });
+});
+
+describe("a scope line's link resolves to the location it names", () => {
+    test("the href carries the trailing slash its label does", () => {
+        // A label saying `personas/supervisor/` beside an href saying `personas/supervisor` is the
+        // generated file disagreeing with itself about the one fact it exists to carry.
+        const dir = withPack();
+        inspect(dir, { write: true });
+        const out = fs.readFileSync(path.join(dir, "personas-index.md"), "utf8");
+        assert.match(out, /\[personas\/supervisor\/\]\(personas\/supervisor\/\)/);
+    });
+
+    test("a scope whose first sentence runs long is truncated visibly, never silently", () => {
+        const long = "A".repeat(200) + ".";
+        const dir = withPack({ "packs/rituals/checkpoints/personas/supervisor.md": persona("supervisor", long) });
+        inspect(dir, { write: true });
+        const out = fs.readFileSync(path.join(dir, "personas-index.md"), "utf8");
+        assert.match(out, /…/, "a cut must be visible in the artifact");
+    });
+
+    test("a colon does not end a sentence: the clause after it is the informative half", () => {
+        const dir = withPack();
+        inspect(dir, { write: true });
+        const out = fs.readFileSync(path.join(dir, "personas-index.md"), "utf8");
+        assert.match(out, /classes of defect/, "the text after the colon carries the meaning");
+    });
+});
+
+describe("a pack root can be named on the command line", () => {
+    // Adjustment 6 of the milestone-6 session-open checkpoint. `resolvePack` was root-parameterized at
+    // session 0 precisely so an installed-from-a-feed pack would be the same code path — but nothing
+    // SET those roots, so the parameter was reachable only from a test. "Zero new resolver code" was
+    // true and "only a new root" was not: a root needs a caller.
+    test("a pack outside the workspace's own tree resolves from a named root", () => {
+        const feed = tree(scratch(), {
+            "rituals/checkpoints/pack.json": packManifest(),
+            "rituals/checkpoints/README.md": "# checkpoints\n",
+            "rituals/checkpoints/personas/supervisor.md": persona("supervisor"),
+        });
+        // No `packs/` in this workspace's own tree at all — so a green here cannot have come from it.
+        const dir = workspace({}, withScopes({ tree: undefined }));
+        const lines = [];
+        assert.equal(run(["--pack-root", feed, dir], (s) => lines.push(s)), 0);
+        assert.match(lines.join("\n"), /scope index written/);
+        assert.deepEqual(fs.readdirSync(path.join(dir, "personas", "supervisor")), []);
+    });
+
+    test("without the root, the same workspace reports the pack unresolved", () => {
+        const dir = workspace({}, withScopes({ tree: undefined }));
+        const lines = [];
+        assert.equal(run([dir], (s) => lines.push(s)), 1);
+        assert.match(lines.join("\n"), /does not resolve/);
+    });
+
+    test("a named root is searched before the workspace's own, so a feed install cannot be faked by the tree", () => {
+        const feed = tree(scratch(), {
+            "rituals/checkpoints/pack.json": packManifest(),
+            "rituals/checkpoints/README.md": "# checkpoints\n",
+            "rituals/checkpoints/personas/supervisor.md": persona("supervisor", "From the feed."),
+        });
+        const dir = withPack();
+        run(["--pack-root", feed, dir], () => {});
+        const out = fs.readFileSync(path.join(dir, "personas-index.md"), "utf8");
+        assert.match(out, /From the feed\./);
+    });
+
+    test("--pack-root with no directory is exit 2, never a verdict", () => {
+        const dir = withPack();
+        const lines = [];
+        assert.equal(run(["--pack-root"], (s) => lines.push(s)), 2);
+        assert.equal(run(["--pack-root", "--check", dir], (s) => lines.push(s)), 2);
+    });
+
+    test("a named root that does not exist is exit 2, not a pack that failed to resolve", () => {
+        // The distinction `verify-preconditions-fail-closed` is about: "I was told to look somewhere
+        // that is not there" is a configuration fact, and reporting it as `does not resolve` would send
+        // an author to look at their manifest.
+        const dir = withPack();
+        const lines = [];
+        assert.equal(run(["--pack-root", path.join(dir, "nope"), dir], (s) => lines.push(s)), 2);
+        assert.match(lines.join("\n"), /nope/);
+    });
+});
+
+describe("what the orphan sweep sees, measured rather than named", () => {
+    test("a stray FILE under the layer is reported, not only a stray directory", () => {
+        // Pre-commit checkpoint, adjustment 4: the sweep tested `isDirectory()` and skipped everything
+        // else, so a `.md` dropped into the layer passed silently — a checker's coverage is measured, not
+        // named (`a-checkers-coverage-is-measured-not-named`).
+        const dir = withPack();
+        inspect(dir, { write: true });
+        tree(dir, { "personas/stray-notes.md": "Notes nobody declared.\n" });
+        const bad = failures(inspect(dir));
+        assert.equal(bad.some((f) => f.series === "scopes" && f.check === "orphan"), true);
+        assert.match(text(bad), /stray-notes\.md/);
+    });
+
+    test("a record inside a DECLARED location is still fine — that is earned memory", () => {
+        const dir = withPack();
+        inspect(dir, { write: true });
+        tree(dir, { "personas/supervisor/a-defect-class.md": record("rule") });
+        assert.equal(failures(inspect(dir)).filter((f) => f.series === "scopes").length, 0);
+    });
+});
+
+describe("the scope digest covers what the comment says it covers", () => {
+    test("a provenance aside containing a markdown link is stripped, nested parens and all", () => {
+        // Pre-commit checkpoint, adjustment 7: `_\([^)]*\)_` cannot pass a `)` from a link target, so the
+        // one aside the shipped persona actually carries was digest input while the comment said asides
+        // were dropped. A checker whose comment overstates it is the same defect as prose that does.
+        const withLink = "Its own memory.\n\n_(See [memory.md](../../core/operating/memory.md).)_";
+        const withoutAside = "Its own memory.";
+        const a = memoryScopeOf(persona("supervisor", withLink));
+        const b = memoryScopeOf(persona("supervisor", withoutAside));
+        assert.equal(a, b, "the aside must not reach the digest input");
+    });
+
+    test("a reworded SCOPE still moves, so stripping asides did not blunt the control", () => {
+        const a = memoryScopeOf(persona("supervisor", "One thing."));
+        const b = memoryScopeOf(persona("supervisor", "Another thing."));
+        assert.notEqual(a, b);
     });
 });

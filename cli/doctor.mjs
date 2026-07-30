@@ -989,6 +989,32 @@ export async function inspect(workspaceDir, options = {}) {
         }
     }
 
+    // The scopes layer, at 2.6, gets the same pair for the third time. What differs is only which walk
+    // would swallow a badly-sited index: the store report there, `docs.sh`'s date correspondence for the
+    // handoffs, and here `index`'s orphan sweep — a generated file inside the layer would be read by the
+    // one check whose whole job is telling an arrived location from a directory somebody made.
+    if (workspace.personas && !workspace.slots?.personas) {
+        fail(
+            "cross",
+            "`personas` declares an index with no `slots.personas` layer to index — the object " +
+                "configures a layer rather than replacing one, and a scope with nowhere to land is a " +
+                "declaration nothing can honour",
+        );
+    }
+
+    if (workspace.personas?.index?.path && workspace.slots?.personas) {
+        const layerDir = path.resolve(dir, workspace.slots.personas);
+        const indexPath = path.resolve(dir, workspace.personas.index.path);
+        if (isInside(layerDir, indexPath)) {
+            fail(
+                "cross",
+                `personas.index.path (\`${workspace.personas.index.path}\`) sits inside slots.personas ` +
+                    `(\`${workspace.slots.personas}\`), where \`index\`'s orphan sweep would examine it as an ` +
+                    "undeclared persona location. Site the generated index beside the layer, not in it",
+            );
+        }
+    }
+
     // ---- claims against the tree
     const treeRoot = workspace.tree ? path.resolve(dir, workspace.tree) : null;
     const claimTargets = [];
@@ -1386,17 +1412,40 @@ function display(target) {
 export async function run(argv, options = {}) {
     const say = options.quiet ? () => {} : (line = "") => process.stdout.write(`${line}\n`);
     try {
-        const dirs = argv.filter((a) => !a.startsWith("-"));
+        // `--pack-root <dir>`, repeatable: resolution roots that REPLACE the one derived from `tree`
+        // rather than being searched ahead of it. `inspect` has read `options.packRoots` since session 0
+        // and no caller set it, so the path shaped for an adopter resolving from an installed feed had no
+        // way in from a command line. Replacement rather than precedence so that "it resolved from the
+        // feed" cannot be satisfied by a copy in the local tree at all — the three tools disagreed about
+        // this once, and `../cli/compile.mjs`'s `namedRootsOption` carries what that cost. Host
+        // plugin-cache discovery is deliberately not built here.
+        const namedRoots = [];
+        const dirs = [];
+        for (let i = 0; i < argv.length; i += 1) {
+            if (argv[i] === "--pack-root") {
+                const root = argv[i + 1];
+                i += 1;
+                if (root === undefined || root.startsWith("-")) throw new DoctorError("--pack-root needs a directory");
+                // Not there is a filesystem fact, not a pack that failed to resolve; reporting it as the
+                // latter sends a reader to the one file that is not at fault.
+                if (!fs.existsSync(root)) {
+                    throw new DoctorError(
+                        `--pack-root ${root} does not exist — refusing to report a pack unresolvable against a root nothing looked in`,
+                    );
+                }
+                namedRoots.push(path.resolve(root));
+            } else if (!argv[i].startsWith("-")) dirs.push(argv[i]);
+        }
         if (dirs.length === 0) {
             if (!options.quiet) {
-                process.stderr.write("usage: node cli/doctor.mjs <workspace-dir> [<workspace-dir> ...]\n");
+                process.stderr.write("usage: node cli/doctor.mjs [--pack-root <dir>]... <workspace-dir> [<workspace-dir> ...]\n");
             }
             return 2;
         }
 
         let failed = 0;
         for (const dir of dirs) {
-            const { findings, stats } = await inspect(dir, options);
+            const { findings, stats } = await inspect(dir, namedRoots.length ? { ...options, packRoots: namedRoots } : options);
             const bad = findings.filter((f) => f.severity === "fail");
             say(display(dir));
             for (const f of findings) say(`  ${ICON[f.severity]} ${f.check.padEnd(10)} ${f.message}`);

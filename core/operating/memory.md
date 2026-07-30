@@ -118,6 +118,16 @@ deliverable there is the scoping *demonstrated*, never a populated store. **Mile
 row already has `doctor` checking a persona against its five-part contract, and the memory scope is one
 of those parts, so it is where a declaration stops being prose a checker can read but not honour.
 
+**The declaration exists as of milestone 6, session 1**, and what it is *not* is the load-bearing half.
+The `rituals/checkpoints` pack's supervisor persona declares its scope; a composed workspace lands one
+directory per declared scope in its own layer, generated into an index that is byte-compared, and the
+location is **empty**. Nothing reads it, nothing recalls from it, nothing consolidates it, and no budget
+rails it. It is a declared scope with an owner, not a working memory — said here because a page describing
+a capability that exists only as an empty location is the defect [`../../.portulan/dod.md`](../../.portulan/dod.md)
+condition 4 exists to catch. This is the **doctrine's** carrier of that limit; the specification states it
+for the slot and the generated index prints it on its own face, deliberately, because a limit stated only
+where a reader already knows to look is stated at the narrowest carrier.
+
 **Settled by the maintainer on 2026-07-29** — verbatim, *"row 6 declares, row 7 validates"* — after two
 sessions put the same question to him within the hour without knowing of each other and were given
 different answers. The record of both, and of the third option that reconciles them, is

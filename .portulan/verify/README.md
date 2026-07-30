@@ -749,7 +749,18 @@ not a working copy. Those are per-recipe facts, and a drill is how each one stop
   a subdirectory of it leave the index, the KB budget and the store report together, in silence. No
   workspace does this today; the plausible accident is an `archive/` directory arriving with the
   librarian's demotion drafts at milestone 5, session 1, which is why it is written down now rather
-  than discovered then.
+  than discovered then. **Still open as [issue #76](https://github.com/sleepy-panda-works/portulan/issues/76),
+  and milestone 6 session 1 deliberately did not settle it:** the per-persona scope layer that arrived
+  with Workspace Definition 2.6 is a second store, and siting it *inside* `slots.memory` would have been
+  the cheapest thing to build and would have made this limit load-bearing — a nested store railed by a
+  budget the walk cannot see. It is sited outside instead, so #76 stays a question about the store rather
+  than a decision taken as a side effect of an unrelated feature.
+- **The scope layer has no budget, and its locations are checked for existence rather than contents.**
+  `index` reports **anything** under `slots.personas` that no composed pack declares — a stray file as much
+  as a stray directory — and refuses a pack that ships records of its own. What it does not do is count or size what an adopter puts there: nothing
+  recalls from these locations yet, so a rail would be measuring a store no code reads. The axis such a
+  rail should use is per-persona rather than per-workspace, and that belongs to the row where something
+  finally reads them.
 - **A present-but-empty store is a green.** It renders an index of `0 record(s)`, which matches a
   committed index of the same, and passes. That is correct — a workspace may legitimately have no
   memory yet — and it is the closest relative of the enumeration fail-opens above, so it is named:
