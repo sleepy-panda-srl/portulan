@@ -7,7 +7,7 @@ pull request against `main` as [#117](https://github.com/sleepy-panda-works/port
 **publishes** two plugins; the `rituals/checkpoints` pack **resolves from it**; and a pack-declared
 persona memory scope **lands empty in the adopting workspace's own layer**, on the feed adopter and on
 customer zero, each forced red three ways. Workspace Definition **2.6** is the mechanism, and it did not
-exist in any form when the session opened. Suite 674 → 713, eight recipes green. **The row does not
+exist in any form when the session opened. Suite 674 → 721, eight recipes green. **The row does not
 close:** the Sleepy Panda product task through the full loop remains, scoped by the maintainer to
 Portulan first and Tipar API next. Supervision: session-open APPROVE-WITH-ADJUSTMENTS (12), all folded
 in; pre-commit APPROVE-WITH-ADJUSTMENTS (7), all folded in — one of them a fail-open in the flag the
@@ -127,6 +127,38 @@ fix. Rule:
 
 **One property, three consequences — and only two were designed for.** *An empty directory cannot travel:*
 not into a plugin payload, not into a commit, and **not into a link**. The third is the one that got out.
+
+## The second pass on both rulings, and what its riders changed
+
+The reviewing session re-derived both maintainer answers at source and returned five riders. **Four
+changed the tree; one was already true.**
+
+- **The pin is now byte-compared, not just declared** — all six installed files hash identical to
+  `git show 5a707e3:packs/rituals/checkpoints/…`. A pin nobody compares is a claim about a fetch nobody
+  checked.
+- **The split is stated out loud, and it is the sentence the close must be held to:** the pointing pack
+  demonstrates resolution *mechanics* and nothing about private *carriage*; the portfolio workspace, whose
+  content is native to the feed, demonstrates the carriage. Together they cover the clause; neither does
+  alone. #113 closes on the merge that lands that wording.
+- **The reverse direction is railed** — `plugin-lint` refuses a public marketplace entry sourced from a
+  private feed, because a stranger's fetch 404s and the entry publishes the private feed's structure, and
+  neither is visible from inside this tree. Preventive; no such entry ever existed.
+- **"Empty" now means readable-and-zero** — a declared location that exists and cannot be enumerated is
+  exit 2. This feature makes that confusion unusually dangerous: empty is the *success state*, so an
+  unreadable location reported as empty reads as the design working. Absent stays green and is a third fact.
+- **Observation 2 got its strongest available form.** A record written *through* the declared scope landed
+  at the location and the workspace store report did not move — 26 records, 97.8 KB before and after, index
+  unchanged, tree restored. Arrived-because-connected rather than because-mkdir, and it measures the
+  separate-store claim the prose had only asserted.
+
+**Already satisfied on arrival:** the doctrine's *nothing reads it, nothing consolidates it* half, which the
+Session-0 verification flagged as live residue. This change discharges it.
+
+**Not actioned, and deliberately.** Session 0's records disagree about the Copilot round count — three in
+the Session log, two in the handoff and #105. `/pulls/105/reviews` holds **eight** Copilot submissions, so
+neither figure matches the raw count and "round" is nowhere defined tightly enough to settle it. Editing a
+merged record to an indefensible number is worse than a visible disagreement; it goes to the maintainer's
+queue.
 
 ## For the next session
 

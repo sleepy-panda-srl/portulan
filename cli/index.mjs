@@ -879,6 +879,25 @@ function judgeScopes(dir, workspace, { write, fail, packRoots: extraRoots }) {
                 );
             }
         }
+        // **Empty means readable-and-zero, never could-not-look.** A declared location that exists and
+        // cannot be enumerated is refused with exit 2, because the feature's own success state IS an
+        // empty directory — so the enumeration fail-open this repository has fixed four times would here
+        // read as the design working rather than as a broken read. Absent is a third, different fact and
+        // stays green: git carries no empty directory, so absent is the state of every fresh clone.
+        for (const s of series.scopes) {
+            const location = path.resolve(dir, s.location);
+            if (!fs.existsSync(location)) continue;
+            try {
+                fs.readdirSync(location);
+            } catch (cause) {
+                throw new IndexError(
+                    `the persona memory location ${s.location} exists and cannot be read — ${cause.code ?? cause.message}. ` +
+                        "Refusing to report it empty: empty is this feature's success state, so an unreadable " +
+                        "location reported as empty would read as the design working",
+                );
+            }
+        }
+
         for (const e of present ?? []) {
             if (e.isDirectory() && declared.has(e.name)) continue;
             // Directories AND files. The first draft tested `isDirectory()` and skipped everything else,

@@ -114,6 +114,30 @@ a note and exit 0, because a plugin that ships no agents is legitimate. What bin
 [`../.portulan/tasks/0005-lint-the-persona-agent-binding.md`](../.portulan/tasks/0005-lint-the-persona-agent-binding.md)
 — a persona with no binding is not legitimate, and that is the check that can say so.
 
+## The two feeds point one way only
+
+This repository is the **public** marketplace. `sleepy-panda-works/portulan-internal` is the **private**
+one, and it delivers a pack whose bytes live here — sourced `git-subdir` at this repository's `packs/`,
+pinned to a commit. That is the maintainer's ruling of 2026-07-30 on
+[#113](https://github.com/sleepy-panda-works/portulan/issues/113), and it is the answer *storage follows
+ownership* forces: universal content belongs in the layer that authored it, and hiding the two-tier
+checkpoint ritual behind a private pointer would paywall the one artifact adopters were owed.
+
+**The reverse is forbidden, and it is a rail rather than a preference.** No entry in this repository's
+marketplace manifest may be sourced from a private feed. Two failure modes, and the second is why prose
+would not have been enough:
+
+- For every stranger the fetch **404s** — a public catalogue entry advertising something they cannot
+  obtain.
+- The entry would publish the private feed's internal structure in a file anyone can read.
+
+Neither is visible from inside this tree, because no resolution attempt here can tell a private repository
+from a nonexistent one. So [`../cli/plugin-lint.mjs`](../cli/plugin-lint.mjs) refuses it by name, against a
+short list it maintains — visibility is a live GitHub setting no file can read, so a maintained list is the
+only honest form. **Preventive, not corrective:** no such entry has ever existed, which is exactly when the
+rule is cheap. Pointing at another *public* repository stays a note rather than a failure — a legal shape
+nobody has ruled against, and widening the refusal to cover it would be a lint inventing policy.
+
 ## What checks this
 
 - [`../.portulan/verify/plugin.sh`](../.portulan/verify/plugin.sh), on every pull request: the manifests

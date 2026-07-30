@@ -52,6 +52,14 @@ export class PluginLintError extends Error {
 }
 
 const SLUG = /^[a-z0-9]+(-[a-z0-9]+)*$/;
+
+// The private feeds this project ships, named so a public manifest cannot be sourced from one. Named
+// rather than pattern-matched on "private": visibility is a live GitHub setting no file can read, so the
+// only honest form is a list this repository maintains. `docs/plan.md`'s topology is the declaring
+// authority for what is on it, and the name is already public there — what is refused is a *pointer*,
+// not a mention. A feed added to the topology and not added here is the drift this comment exists to
+// make findable; the list is short enough to keep by hand and a rail is what a one-way rule needs to be.
+const PRIVATE_FEEDS = ["portulan-internal"];
 // Deliberately permissive about pre-release and build metadata, strict about the three numbers:
 // the platform compares version strings, and this repository's own convention is SemVer from
 // v0.1.0 (../docs/plan.md, Protocol → Versioning).
@@ -361,6 +369,30 @@ export function inspect(rawRoot) {
             continue;
         }
         if (typeof entry.source !== "string") {
+            // **One direction only.** The private feed may point at this repository — that is the
+            // maintainer's #113 ruling, "the feed points, the public repository carries" — and this
+            // repository may never point back. A public entry sourced from the private feed is a **dead
+            // pointer for every stranger**, since the fetch 404s on a repository they cannot see, and it
+            // publishes the private feed's internal structure in a manifest anyone can read. Refused
+            // rather than noted, because the two failure modes are invisible from inside this tree: no
+            // resolution attempt here can tell a private repository from a nonexistent one.
+            //
+            // Deliberately narrow. Pointing at another PUBLIC repository is a legal shape nobody has
+            // ruled against, and it stays counted-and-reported below — widening this to every off-tree
+            // source would be this lint inventing a policy rather than enforcing one.
+            const target = [entry.source?.repo, entry.source?.url, entry.source?.package]
+                .filter((v) => typeof v === "string")
+                .join(" ");
+            if (PRIVATE_FEEDS.some((feed) => target.includes(feed))) {
+                fail(
+                    "market",
+                    `${label} ("${name ?? "?"}") is sourced from the private feed (\`${target}\`). ` +
+                        "A public marketplace may not point into a private one: the fetch 404s for every " +
+                        "stranger, and the entry publishes the private feed's structure. The ruling is " +
+                        "one-way — the feed points at this repository, never the reverse",
+                );
+                continue;
+            }
             // A github / url / git-subdir / npm source is legal and points outside this tree, so
             // nothing here can resolve it. Counted and reported, never silently skipped — the same
             // rule doctor applies to a workspace that declares no tree.

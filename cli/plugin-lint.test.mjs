@@ -722,3 +722,70 @@ describe("the frontmatter parser", () => {
         );
     });
 });
+
+// -------------------------------------------------------------- the one-way rule between the feeds
+
+describe("a public marketplace entry may not point into a private feed", () => {
+    // The reverse direction of the maintainer's #113 ruling. The feed points at the public repository;
+    // the public repository must never point back. Two reasons, and the second is the one that makes it
+    // a rail rather than a preference: a public entry sourced from `portulan-internal` is a **dead
+    // pointer for every stranger** — the fetch 404s on a repository they cannot see — and it leaks the
+    // private feed's internal structure into a manifest anyone can read. Preventive: no such entry
+    // exists today, which is exactly when a rule is cheap.
+    test("a `github` source naming the private feed is refused", async () => {
+        const root = fixture({
+            marketplace: {
+                name: "demo-market",
+                owner: { name: "Someone" },
+                plugins: [
+                    { name: "demo", source: "./", version: "0.1.0" },
+                    { name: "premium", source: { source: "github", repo: "sleepy-panda-works/portulan-internal" } },
+                ],
+            },
+        });
+        const { findings } = await inspect(root);
+        assert.match(messages(findings), /private feed/i);
+    });
+
+    test("a `git-subdir` source naming the private feed is refused too — the same rule, the other spelling", async () => {
+        const root = fixture({
+            marketplace: {
+                name: "demo-market",
+                owner: { name: "Someone" },
+                plugins: [
+                    { name: "demo", source: "./", version: "0.1.0" },
+                    {
+                        name: "premium",
+                        source: { source: "git-subdir", url: "https://github.com/sleepy-panda-works/portulan-internal", path: "packs" },
+                    },
+                ],
+            },
+        });
+        const { findings } = await inspect(root);
+        assert.match(messages(findings), /private feed/i);
+    });
+
+    test("an ordinary off-tree source is still a note, not a failure", async () => {
+        // The rule is narrow on purpose. Pointing at some other public repository is a real shape the
+        // platform supports and this lint cannot resolve — it stays counted-and-reported, which is the
+        // answer it already gave. Widening the refusal to every off-tree source would forbid a shape
+        // nobody has ruled against.
+        const root = fixture({
+            marketplace: {
+                name: "demo-market",
+                owner: { name: "Someone" },
+                plugins: [
+                    { name: "demo", source: "./", version: "0.1.0" },
+                    { name: "other", source: { source: "github", repo: "someone-else/public-thing" } },
+                ],
+            },
+        });
+        const { findings } = await inspect(root);
+        assert.doesNotMatch(messages(findings), /private feed/i);
+    });
+
+    test("this repository's own marketplace carries no such pointer", async () => {
+        const { findings } = await inspect(REPO);
+        assert.doesNotMatch(messages(findings), /private feed/i);
+    });
+});
