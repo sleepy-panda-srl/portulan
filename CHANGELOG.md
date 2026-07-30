@@ -85,7 +85,8 @@ keys — `slots.personas`, the layer, and `personas.index.path`, a generated ind
 by a pack declares its memory scope in prose; a composing workspace now lands one **empty** directory per
 declared scope in the layer it owns, and the index makes the arrival checkable: every field on a line is
 derived from the pack, including a digest over the scope's own text, so a pack that rewords a scope turns
-the byte comparison red. A sweep reports any location no composed persona declares, and a pack that ships
+the byte comparison red. The location is **named**, not linked — an empty directory is not something git
+carries, so a link would resolve only on the machine that generated it. A sweep reports any location no composed persona declares, and a pack that ships
 memory records of its own is refused — storage follows ownership in both directions. Nothing reads these
 locations yet: `doctor` validates a persona against its five-part contract at milestone 7, which is the
 maintainer's *"row 6 declares, row 7 validates"* split. A MINOR: nothing tightened, no migration owed.

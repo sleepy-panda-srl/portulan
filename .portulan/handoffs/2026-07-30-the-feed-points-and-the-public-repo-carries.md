@@ -113,9 +113,20 @@ transcript then reads as evidence.
 Three smaller defects of my own, all caught by tests written for them rather than by reading: `index`
 printed a green naming the store and the handoffs while silently omitting the scope index it had just
 written — the third door through a trap whose own comment said "two doors now"; the index line's href lost
-the trailing slash its label carried, a generated file disagreeing with itself about the one fact it
-exists to carry; and the scope sentence broke on a colon, rendering `Its own supervisor memory:` and
-nothing informative.
+the trailing slash its label carried; and the scope sentence broke on a colon, rendering `Its own
+supervisor memory:` and nothing informative.
+
+**And then CI found the one neither checkpoint could, which is worth more than any of them.** That href
+should not have existed at all. The index *linked* each location, `links` passed here — where the generator
+had just made the directory — and failed on a clean checkout, because the location is **empty** and git
+records no empty directory. A local false green **in a generated file**, faithfully reproducible by
+regenerating. Locations are now **named** as inline code, not linked. The exemption repair was available and
+refused for the reason this repository always refuses it. Reproduced in both directions before believing the
+fix. Rule:
+[`a-generated-file-must-not-point-at-what-git-cannot-carry`](../memory/a-generated-file-must-not-point-at-what-git-cannot-carry.md).
+
+**One property, three consequences — and only two were designed for.** *An empty directory cannot travel:*
+not into a plugin payload, not into a commit, and **not into a link**. The third is the one that got out.
 
 ## For the next session
 

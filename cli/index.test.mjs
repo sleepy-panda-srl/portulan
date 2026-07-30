@@ -1089,14 +1089,29 @@ describe("the summary names every series, including the third", () => {
     });
 });
 
-describe("a scope line's link resolves to the location it names", () => {
-    test("the href carries the trailing slash its label does", () => {
-        // A label saying `personas/supervisor/` beside an href saying `personas/supervisor` is the
-        // generated file disagreeing with itself about the one fact it exists to carry.
+describe("a scope line names its location and does NOT link to it", () => {
+    test("the location is inline code, never a markdown link", () => {
+        // Caught in CI, green locally, which is the whole lesson. The first version emitted
+        // `[personas/supervisor/](personas/supervisor/)` and the `links` check passed on the author's
+        // disk — where the directory exists — and FAILED on a fresh checkout, because the location is
+        // EMPTY and git does not carry an empty directory. A link asserts a resolvable target; this path
+        // is a declaration, and may legitimately not exist yet. So it is named, not linked.
         const dir = withPack();
         inspect(dir, { write: true });
         const out = fs.readFileSync(path.join(dir, "personas-index.md"), "utf8");
-        assert.match(out, /\[personas\/supervisor\/\]\(personas\/supervisor\/\)/);
+        assert.match(out, /`personas\/supervisor\/`/);
+        assert.doesNotMatch(out, /\]\(personas\/supervisor/, "a link would be unresolvable in any clone");
+    });
+
+    test("no line in the rendered index is a relative link at all", () => {
+        // The rail this feature must not break: `.portulan/verify/docs.sh`'s `links` check walks every
+        // relative link in every tracked Markdown file. A generated file is the worst place to put one
+        // that cannot resolve, because regenerating reproduces it.
+        const dir = withPack();
+        inspect(dir, { write: true });
+        const body = fs.readFileSync(path.join(dir, "personas-index.md"), "utf8")
+            .split("\n").filter((l) => l.startsWith("- ")).join("\n");
+        assert.doesNotMatch(body, /\]\(/, "scope lines must carry no markdown links");
     });
 
     test("a scope whose first sentence runs long is truncated visibly, never silently", () => {

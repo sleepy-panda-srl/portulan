@@ -583,10 +583,6 @@ export function renderHandoffIndex(workspace, series) {
  * empty location, and it says so on its own face rather than in a session record nobody re-reads.
  */
 export function renderScopeIndex(workspace, series) {
-    const indexPath = workspace?.personas?.index?.path;
-    const posix = (p) => p.split(path.sep).join(path.posix.sep);
-    const from = path.posix.dirname(posix(indexPath));
-
     const header = [
         `# Persona memory scopes — ${workspace.name}`,
         "",
@@ -599,13 +595,17 @@ export function renderScopeIndex(workspace, series) {
         "",
     ];
 
-    const entries = series.scopes.map((s) => {
-        // `path.posix.relative` drops the trailing slash, and the label carries one — a generated file
-        // disagreeing with itself about the one fact it exists to carry. Restored rather than dropped
-        // from the label, because the slash is what says *directory* to a reader who never opens it.
-        const href = `${path.posix.relative(from, s.location.replace(/\/$/, "")) || "."}/`;
-        return `- \`${s.persona}\` · ${s.pack} · [${s.location}](${href}) · scope \`${scopeDigest(s.scope)}\` — ${firstSentence(s.scope)}`;
-    });
+    // The location is NAMED, never LINKED, and the reason is the same property the whole design rests on:
+    // the location is empty, git does not carry an empty directory, and so it does not exist in a fresh
+    // clone. A markdown link asserts a resolvable target; this path is a *declaration* that may
+    // legitimately not exist yet. The first version linked it, `docs.sh`'s `links` check passed on the
+    // author's disk — where the directory had just been created — and failed in CI on a clean checkout.
+    // That is a **local false green in a generated file**, which regenerating would faithfully reproduce.
+    // Exempting the filename from the link walk was the other repair available and is refused for the
+    // reason this repository always refuses it: an exemption is a door every other record can use.
+    const entries = series.scopes.map((s) =>
+        `- \`${s.persona}\` · ${s.pack} · \`${s.location}\` · scope \`${scopeDigest(s.scope)}\` — ${firstSentence(s.scope)}`,
+    );
 
     return [...header, ...entries].join("\n") + "\n";
 }
