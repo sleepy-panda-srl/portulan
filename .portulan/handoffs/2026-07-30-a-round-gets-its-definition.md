@@ -1,145 +1,191 @@
-# Handoff — a round gets its definition, and three records get their errata
+# Handoff — a round gets its definition, and the first count under it was still wrong
 
 **Date:** 2026-07-30 · **Doctrine — no milestone row touched** · Branch
-`a-review-round-gets-its-definition`
+`a-review-round-gets-its-definition` · [#119](https://github.com/sleepy-panda-works/portulan/pull/119)
 
-**State.** `a-review-loop-needs-a-bound.md` has built a four-rule bound on counting rounds since
-2026-07-28 without ever defining one. It does now, on the maintainer's ruling of 2026-07-30: **a round is
-a Copilot review this session answers with a push**, and a records-only correction counts. Applying it,
-[#105](https://github.com/sleepy-panda-works/portulan/pull/105) received **four** — two past the bound —
-and its three merged carriers, which had said two, three and two, are corrected: visibly-marked errata on
-the handoff, the count fixed in the Session log. **The pull-request body is not yet corrected**; it is
-outward and awaits his go-ahead. Nothing in `cli/` moved.
+**State.** `a-review-loop-needs-a-bound.md` built a four-rule bound on counting rounds from 2026-07-28
+without ever defining one. It has a definition now, on the maintainer's ruling of 2026-07-30: **a round is a
+Copilot review this session answers with a push**, the **push** is the unit, and a records-only correction
+counts. Applying it, [#105](https://github.com/sleepy-panda-works/portulan/pull/105) received **five** —
+three past the bound — and its three merged carriers, which had said two, three and two, are corrected: an
+append-only errata block on the handoff, the count fixed in the Session log, and an errata block appended to
+the pull-request body plus the same text as a comment (posted 2026-07-30T10:15:08Z, on his explicit
+instruction rather than taken). Nothing in `cli/` moved. Rebased onto `main` after #120 and #117 merged;
+741/741, eight recipes green.
 
-## The question was put before anything was edited, and that was the point
+**The number in this change was wrong once already, and that is the story worth carrying.** The first pass
+said **four**. The fresh-context pre-commit checkpoint re-derived it and returned **five**; the missing push
+is more interesting than the digit.
 
-The disagreement was relayed with a count already measured — eight Copilot submissions on
-`/pulls/105/reviews` — and an instruction to rule on the definition first. That ordering earned its keep
-twice, and neither would have survived editing-first:
+## The count, and why four was wrong
 
-- **Eight is not the answer either.** The relay's own figure is the submission count, and submissions
-  count *pushes*: `review_on_push: true` means every push draws one, including the one on the branch as
-  opened, before any fix exists to answer with. A session that had gone straight to correcting the records
-  would have written **eight** into three carriers and been wrong a fourth way, with the errata spent.
-- **Neither written number was a misreading.** `git log -S` dates them: *two* entered at `e09a49a` at
-  15:20 UTC, *three* at `384a17d` at 15:57, and the fourth fix push landed at 16:04. Each was a true
-  snapshot of a count still moving. There was no error to find in the reading, which is why no amount of
-  re-measurement would have settled it and only a definition could.
+`08d7d10` answered review 4's inline finding — a `filePath` description claiming a containment its pattern
+did not deliver — and it was **never a reviewed head**. It rode inside the push whose head Copilot reviewed
+next. So #105 has **ten commits on `main` against eight reviewed heads**, and the first count enumerated the
+eight heads and read their subjects. A fix arriving as a passenger is invisible to that method.
+
+| Push (by reviewed head) | Answers Copilot? |
+|---|---|
+| `cea9ca4` — branch as opened | — nothing to answer yet |
+| `0719f19` — records | no |
+| `d814e0a` — *Round one* | **yes (1)** — three inline findings |
+| `9c19064` — *Round two* | **yes (2)** — two suppressed notes |
+| `e09a49a` — the suite figure | **yes (3)** — raised suppressed, twice |
+| `a328ebf`, carrying **`08d7d10`** | **yes (4)** — review 4's inline `filePath` overclaim |
+| `384a17d`, carrying `397d733` | no — records, and a self-driven re-derivation |
+| `c6b6a25` — `tierRank` + provenance | **yes (5)** — two suppressed notes |
+
+**Count pushes, then look inside each one.** The commits the API names are heads, not work. This is now in
+the rule, because the method matters more than the answer.
+
+## The question was put before anything was edited, and that earned its keep twice
+
+- **Eight was never the answer either.** The relay arrived with eight submissions already measured, and
+  submissions count *pushes*: `review_on_push: true` draws one per push, including on the branch as opened,
+  before any fix exists to answer with. A session that had gone straight to correcting the records would
+  have written **eight** into three carriers and been wrong a fourth way, with the errata spent.
+- **Neither written number was a misreading.** `git log -S` dates them: *two* entered at `e09a49a`
+  (15:20 UTC), *three* at `384a17d` (15:57). By the time *three* was written the true count was already
+  four, and `c6b6a25` made five seven minutes later. **Neither figure was right even for an instant** — an
+  earlier draft of this handoff claimed *three* was true for seven minutes, and the recount disproved it.
 
 ## Decisions + why — the reasons are the payload
 
-- **A round is a push, not a submission — because rule 1 already said so and rule 4 inherited it.** Rule 1
-  prices the currency explicitly: *"a push costs a whole round; a reply costs nothing."* Defining a round
-  as a submission would have put rules 1 and 4 in different units inside one file. *Alternative
-  considered and rejected on the merits:* **a round is a submission carrying a blocking inline thread.**
-  It is the reading that would have made #105's records nearly right — two inline-bearing submissions,
-  bound exactly met, minimal errata — and it is wrong, because it prices this repository's most productive
-  channel at zero. The suppressed notes carried 14 of 19 findings on #85, 9 of 11 on #81, and on #105 the
-  `tierRank` fail-open that let an invalid gate policy compile. A definition under which a session may push
-  forever provided the findings arrive suppressed is a bound in name only.
+- **The push is the unit, and that sentence had to be added explicitly.** *A review answered with a push* and
+  *the pushes that answer* come apart when one review is answered across two pushes — which #105 does:
+  review 4's inline and suppressed findings were answered by **different** pushes, 34 minutes apart.
+  Reviews-answered gives six; answering-pushes gives five. The push governs, because rule 1 already prices
+  the currency (*"a push costs a whole round"*) and because the alternative lets a session split one answer
+  across many pushes and be charged once. **The checkpoint found this as an ambiguity, not a typo:** as first
+  written the definition did not decide it, and two readers applying it reached two numbers.
+
+- **A round is a push, not a submission.** *Alternative considered and rejected on the merits:* a round is a
+  submission carrying a blocking inline thread. It is the reading that would have made #105's records nearly
+  right — two inline-bearing submissions, bound met, minimal errata — and it is wrong, because it prices this
+  repository's most productive channel at zero. Measured 2026-07-30: **17 suppressed notes against 6 inline
+  comments on #85, and 11 against 3 on #81.**
 
 - **A records-only correction spends a round** (his ruling, same day). `e09a49a` fixed nothing but a suite
-  figure the reviewer had caught disagreeing with itself, and it counts. The alternative was an exemption
-  for documentation pushes, which is a category a session gets to assign to its own commit — the bound
-  would have been optional and the option would have been the implementer's.
+  figure the reviewer had caught disagreeing with itself, and it counts. The alternative was an exemption for
+  documentation pushes — a category a session assigns to its own commit, which would make the bound optional
+  and the option the implementer's.
 
-- **Defining the term broke the file's own table, so the same change fixed it.** The headline measurement —
-  110 rounds over 30 pull requests, **29% finding nothing at all** — cannot be in fix-rounds: a fix-round
-  answers something by construction, so *"a round that found nothing"* is not expressible in the new units.
-  The figures count submissions. **Established from the file's own text rather than by re-measuring** — its
-  "Why it holds" already says those rounds were "pushes Copilot had nothing to say about" — so the table is
-  **re-labelled, not re-counted**, and the retire threshold at the foot is marked as carrying the same
-  submission units. **Left undone deliberately and named here:** nobody has re-derived that 30-pull-request
-  corpus in fix-rounds, so the 2.0 retire threshold has never been evaluated in the units the rule now
-  defines. Leaving it silent was the one thing not available — a file holding two carriers of *what a round
-  is* is precisely the defect [#115](https://github.com/sleepy-panda-works/portulan/pull/115) shipped a fix
-  for four days ago, in this same check's neighbourhood.
+- **Defining the term broke the file's own table, so the same change fixed it — in more places than the first
+  pass found.** The headline measurement (110 rounds, **29% finding nothing at all**) cannot be in fix-rounds:
+  a fix-round answers something by construction. Those figures count submissions, established from the file's
+  own *"pushes Copilot had nothing to say about"* rather than by re-measuring, so the table is **re-labelled,
+  not re-counted**. The first pass re-headed the table and left **five** other places in the same file saying
+  "round" where they meant submission — including *"Nine rounds on #49"* three sections below a table row now
+  reading *nine submissions*. All five are re-worded, each marked as a re-wording. A file holding two
+  carriers of *what a round is* is exactly the defect
+  [#115](https://github.com/sleepy-panda-works/portulan/pull/115) shipped a fix for **earlier the same day**
+  — it merged 07:53:48Z, roughly two hours before this branch's first commit, not "four days ago" as the
+  first draft said.
 
-- **The root cause is rule 2, and that is the finding worth keeping.** *Records land last.* On #105 they
-  landed **second**, at `0719f19`, before a single fix round had been pushed; they were patched at
-  `e09a49a` and again at `384a17d`; and they still stopped one push short of the end. Three carriers
-  disagreeing about one number is not a coincidence of three sessions' arithmetic — it is what writing a
-  record mid-loop *is*: a claim about a total that has not happened yet. Had they landed after `c6b6a25`
-  they would have been written once and all three would have said four. Rule 2 was justified until today by
-  a wasted round on #63; it now has a demonstrated cost that is permanent rather than merely expensive, and
-  the rule records it.
+- **Two figures were propagated from memory without being re-derived, in a rule about counting.** "14 of 19
+  on #85, 9 of 11 on #81" reproduces under no method anyone stated; the re-measurement above replaces it.
+  That is the very failure this change was opened to fix, committed inside the fix.
 
-- **Errata names the breach and dates the definition** (his ruling). The count is corrected, the
-  *"inside the loop's bound"* compliance claim is **withdrawn**, and the withdrawal says the breach is
-  retrospective: no definition existed on 2026-07-29, so the session could not have known. **What it is
-  still fairly faulted for is narrower and stated rather than softened** — it asserted compliance with a
-  bound it had never established it could measure. Shape taken from the
-  [2026-07-25 errata](2026-07-25-handoff-cadence.md): append-only, dated, original text untouched.
+- **The root cause is rule 2.** *Records land last.* On #105 they landed **second**, at `0719f19`, before a
+  single fix round; were patched **three times** as the loop ran — `e09a49a`, inside `08d7d10`'s push, and
+  `384a17d`; and still stopped one push short of the end. Three carriers disagreeing is not three sessions'
+  arithmetic going wrong — it is what writing a record mid-loop *is*: a claim about a total that has not
+  happened yet. Had they landed after `c6b6a25` they would have been written once and all three would have
+  said five. Rule 2 was justified until now by one wasted round on #63; it has a permanent cost on the
+  record, and the rule states it.
 
-- **The siblings were looked for and deliberately not fixed, which is the reportable half.** His ruling of
-  2026-07-27 sets a fix's scope by defect class rather than by the task's literal boundary, so the sweep
-  ran: **four** merged records state Copilot round counts — two `docs/plan.md` entries of 2026-07-26, the
-  tag-and-install handoff of that date, and `verify/README.md` on #64. **None is corrected.** All four
-  predate the definition and three predate the rule, and this repository's own answer to *may a new rule
-  bind an old record* is the two forward-only cutoffs in `docs.sh`: it may not, "without rewriting the
-  record to suit the rule". **What made #105 different is not the definition but that its three carriers
-  contradicted each other** — a defect on any reading of the word, and one that existed before this
-  reading did. The cutoff is written into the rule rather than left implicit, because a *definition*
-  reaches further than a rule does: it changes how a reader parses old text, so four silently uncorrected
-  records would have become four records in unstated units.
+- **Errata names the breach and dates the definition** (his ruling). Count corrected, the *"inside the loop's
+  bound"* compliance claim **withdrawn**, and the withdrawal says the breach is retrospective: no definition
+  existed on 2026-07-29. **What it is still fairly faulted for is narrower, and stated rather than softened**
+  — it asserted compliance with a bound it had never established it could measure. Shape from the
+  [2026-07-25 errata](2026-07-25-handoff-cadence.md): append-only, dated, original text untouched, verified by
+  `--numstat` reporting **0 deletions** on the merged handoff.
+
+- **The sibling census was wrong, and correcting it broke the ground it rested on.** The first sweep reported
+  **four** records stating round counts, using a narrower pattern than the claim it was testing. The real
+  figures: **seventeen** records match a numeric round count, **nine** state one for a specific pull request,
+  carrying **twelve** claims. Worse, the sweep's stated ground — *#105 was corrected because its carriers
+  contradicted each other* — **proves too much**: `verify/README.md` says *"Two Copilot rounds on #64"* while
+  [the jq handoff](2026-07-28-every-jq-filter-a-workflow-runs-is-exercised.md) says *"One Copilot round on
+  #64"*, and #64 in fact drew **four** submissions, so neither is even the submission count. That is #105's
+  exact shape. **So the honest ground is narrower: #105 was corrected because the maintainer directed it**;
+  the three-way disagreement is why the directive was warranted, not an independent licence. #64's pair stays
+  under the forward-only cutoff, **named rather than quietly spared** — a cutoff only ever applied where
+  nobody is looking is not a cutoff.
 
 - **The Session log entry was corrected in place, within its 10-line budget.** A merged entry dated after
-  2026-07-28 is a pointer capped at ten lines and #105's was already at ten, so an errata block inside it
-  was unavailable. The correction is the word, the count, and a pointer to where the errata lives; the
-  reasoning sits in the handoff, which is the division of labour the budget exists to enforce. The
-  budget counts lines and not characters — that line already ran to 145 — so nothing was displaced.
+  2026-07-28 is a pointer capped at ten lines and #105's was already at ten, so an errata block inside it was
+  unavailable. The correction is the count plus a pointer to where the errata lives; the reasoning sits here.
+  The budget counts lines, not characters — that line already ran to 145 — so nothing was displaced.
 
 ## The side measurement, recorded where counting happens
 
 **The reviewer has two logins, and which one you get depends on the endpoint:**
 `copilot-pull-request-reviewer[bot]` on `/pulls/N/reviews`, plain `Copilot` on `/pulls/N/comments`. A query
 filtered on either returns **zero** from the other, which is how #105's count was first mis-measured as
-zero. Recorded in the amended rule rather than only in the gate map, because the rule now defines a
-countable thing and the trap belongs with the instructions for counting it.
-[`copilot-review.yml`](../../.github/workflows/copilot-review.yml) already hard-codes both spellings, so
-this is a hazard for hand-counting and not a defect. `.portulan/gate-map.md` knew both names existed, but
-recorded the fact as a thread-*resolution* observation — who cleared the gate — which is why it did not
+zero. Recorded in the amended rule rather than only in the gate map, because the rule now defines a countable
+thing and the trap belongs with the instructions for counting it. `.portulan/gate-map.md` knew both names
+existed but recorded it as a thread-*resolution* observation — who cleared the gate — which is why it did not
 prevent a mis-count.
 
-**Copilot challenged the mapping in round two, and the challenge is what produced the evidence.** It read
+**Copilot challenged the mapping in round two, and the challenge produced the evidence.** It read
 `copilot-review.yml`'s header — `copilot-pull-request-reviewer[bot]` "raising threads on #44" — as
 contradicting the endpoint split, and proposed dropping the mapping for "both logins are observed". That
 would have removed the only useful part: *which endpoint gives which*. Settled by measuring instead, across
 ten pull requests spanning the whole history (#44, #49, #57, #63, #81, #85, #95, #105, #115, #119) — the
 split holds every time, with no overlap in either direction, **including on #44 itself**. The header and the
-gate map both name the *actor* by its review login, which is not a claim about `/comments`. **The finding
-was wrong and still worth its round:** two carriers were loose enough to make a correct, measured statement
-look false, and that near-contradiction is now resolved in the rule rather than left for the next counter to
-re-derive.
+gate map both name the *actor* by its review login, which was never a claim about `/comments`. **The finding
+was wrong and still worth its round:** two carriers were loose enough to make a measured statement look
+false, and that near-contradiction is now resolved in the rule rather than left for the next counter.
 
-## Open — the maintainer's, and outward
+## What the supervision cost and bought
 
-**PR #105's body still says two.** It is the third carrier and the only one outside the tree: correcting
-it modifies public content on a merged pull request, so it is his to release rather than mine to take. The
-proposed shape is a marked, dated errata block **appended** to the body with the original sentence left
-standing — the same treatment the handoff got, since a merged body silently rewritten is the failure this
-whole change is about. The text is drafted and ready to post via `./.portulan/tools/gh-bot`.
+This session ran **without** a session-open checkpoint and reached pre-commit only when the maintainer called
+for one, after the records were written, committed and pushed. It returned **REQUEST-CHANGES** on nine
+adjustments; the count was one of them, and all nine are folded in here.
+
+**The verdict is the argument for the checkpoint and the argument against skipping it, in one document.** A
+change whose entire subject was that counts need defined units shipped a wrong count, an undecided unit, a
+false census, a self-undermining justification, five stale unit-words, two figures carried unre-derived from
+memory, and a claim about its own outward state that had stopped being true seven minutes after the last
+commit. **Copilot's rounds caught none of it.** They are calibrated to the diff; every one of these lived in
+whether the diff's *claims about the world* were true — which is precisely the gap the fresh-context pass
+exists to cover, and the reason its cost is not optional on doctrine work.
+
+**#119's own loop, under its own definition.** Two Copilot fix-rounds: round one fixed a table still headed
+"rounds" beside a note claiming it had been re-labelled; round two settled the login mapping by measurement.
+Round three came back empty. That is the bound reached and observed on the pull request that defines it. The
+push folding these nine adjustments answers the **supervisor**, not Copilot, so it spends no round — and if
+the submission it draws carries findings, rule 4 routes them to an issue rather than a third fix-round.
+
+## Open — outward, and the maintainer's
+
+**PR #105's body errata now says four, and four is wrong.** It was posted at 10:15:08Z under his direction,
+before the recount. A follow-up correcting it to five is drafted and **not posted**: it is public content on
+a merged pull request and his to release, exactly as the first one was. Until then #105 carries an errata
+block whose count is one short — better than the original *two*, still not right — and this handoff is the
+record of that gap rather than a claim it does not exist.
 
 ## For the next session
 
-**The M6 close verifies this fix rather than naming the disagreement.** The Fable 5 verification of
-2026-07-30 left two residue items for the close, and item 2 was conditional: *if still unreconciled by
-close time, the close names it; if fixed, the close verifies the fix.* It is fixed in-tree — so the close
-re-derives four from `/reviews`, `/comments` and `git log`, confirms the errata is append-only, and checks
-whether the PR body was ever brought into line. **Item 1 is untouched by this change and still owed**: the
+**The M6 close verifies this fix and must re-derive the count itself.** The Fable 5 verification of
+2026-07-30 left two residue items; item 2 was conditional — *if still unreconciled by close time, the close
+names it; if fixed, the close verifies the fix.* It is fixed in-tree, so the close re-derives from
+`/reviews`, `/comments` and `git log`, confirms the errata is append-only, and checks whether #105's body was
+brought to five. **Do not re-derive it from any table in this repository, including the ones in this
+handoff** — an earlier version of every one of them said four. **Item 1 is untouched and still owed:** the
 close's doctrine rewording must state what the first instance is *not* — nothing reads it, nothing
 consolidates it — and must not be ticked on #109's interim wording.
 
-**This branch spent both its rounds and stops there, which is the definition being observed rather than
-just written.** Round one fixed a table still headed "rounds" beside a note claiming it had been
-re-labelled; round two settled the login mapping by measuring ten pull requests. Both were pushes
-answering Copilot, so both count — **`#119` is at rule 4's bound**, and anything further becomes an issue
-rather than a third push. Under the definition this branch replaces, round two would have been free: its
-findings arrived only in the suppressed channel.
+**Left undone and named rather than left to be discovered.** Nobody has re-derived the 30-pull-request corpus
+in fix-rounds, so the 2.0 retire threshold has never been evaluated in the units the rule now defines. And
+**#105's loop ended with live findings** — its final submission carried two that no push ever answered.
+Unanswered findings cost zero rounds by construction, so rule-4 compliance and a loop abandoned mid-feedback
+are indistinguishable from outside; whether those two reached triage is established nowhere.
 
-**Next action.** Open the pull request for his review and merge; the PR-body errata needs his go-ahead
-separately.
+**Next action.** #119 is open with all nine adjustments folded in and wants the **second pre-commit pass** the
+checkpoint's verdict asks for. The #105 body follow-up needs his go-ahead separately.
 
-**Recoverability.** Documentation and one memory rule; nothing in `cli/`, no settings, nothing outward
-taken. The verify recipes are green, so the tree can be committed or discarded whole. The one irreversible
-act available here — editing a merged pull request's body — has deliberately not been taken.
+**Recoverability.** Documentation and one memory rule; nothing in `cli/`, no settings. Verify recipes green,
+so the tree can be committed or discarded whole. One outward act has been taken on this branch — #105's body
+and comment errata, on his explicit instruction — and it is the one thing here a revert would **not** undo.

@@ -1705,7 +1705,7 @@ _The seam applies here too: no client-identifying references._
   collect the per-agent-memory debt (#98). `portulan-internal` created, **verified private by negative
   control**, publishing nothing — resolution *from* it stays unrun. Suite 673; eight recipes green. ·
   Fidelity: session-open A-W-A (12), pre-commit REQUEST-CHANGES (2+1), amendment A-W-A (4), all folded;
-  **four** Copilot rounds answered, two past rule 4's bound — count corrected 2026-07-30, errata in the handoff. Seam scan clean. Handoff: [`2026-07-29`](../.portulan/handoffs/2026-07-29-the-cascade-gets-its-middle-layer.md).
+  **five** Copilot rounds answered, three past rule 4's bound — count corrected 2026-07-30, errata in the handoff. Seam scan clean. Handoff: [`2026-07-29`](../.portulan/handoffs/2026-07-29-the-cascade-gets-its-middle-layer.md).
 - 2026-07-29 · post-M6-session-0 — no milestone row touched · **The doctrine catches up with a split it
   did not see coming** — closes [#98](https://github.com/sleepy-panda-works/portulan/issues/98). Two
   sessions put one question to the maintainer within the hour, unaware of each other, and were told
@@ -1770,13 +1770,13 @@ _The seam applies here too: no client-identifying references._
   ways on two carriers. Suite 721, eight recipes. · Fidelity: session-open A-W-A (12), pre-commit A-W-A (7),
   all folded. Seam scan over diff, message and branch: clean. Handoff: [`2026-07-30`](../.portulan/handoffs/2026-07-30-the-feed-points-and-the-public-repo-carries.md).
 
-- 2026-07-30 · Doctrine — no milestone row touched · **A round gets its definition, and three records get
-  their errata** — `a-review-loop-needs-a-bound.md` had built a four-rule bound on counting rounds since
-  2026-07-28 without defining one. **The maintainer's ruling: a round is a Copilot review answered with a push**,
-  and a records-only correction counts. [#105](https://github.com/sleepy-panda-works/portulan/pull/105)
-  received **four**, two past the bound — its carriers had said two, three and two, and eight, the raw
-  submission count, is no answer either. Errata on the handoff (append-only, breach named, definition
-  dated), count fixed here; **the PR body is outward and still says two**. Root cause is **rule 2** — the
-  records landed second and never caught the loop's end. Table re-labelled to submissions, not re-counted.
-  · Seam scan clean. Handoff:
+- 2026-07-30 · Doctrine — no milestone row touched · **A round gets its definition, and the first count under
+  it was still wrong** — [#119](https://github.com/sleepy-panda-works/portulan/pull/119). A four-rule bound
+  had counted rounds since 2026-07-28 with no definition. **The maintainer's ruling: a round is a Copilot review answered
+  with a push, the push is the unit, records-only fixes count.** [#105](https://github.com/sleepy-panda-works/portulan/pull/105)
+  received **five**, three past the bound — carriers said two, three, two; eight is the submission count. The
+  first pass said **four** and the fresh-context pre-commit caught it: `08d7d10` answered inline and was
+  never a reviewed head, so ten commits sit behind eight heads. Errata append-only, breach named, definition
+  dated; #105's body carries its own, posted on his instruction. Root cause **rule 2**. · Seam scan clean.
+  Handoff:
   [`…a-round-gets-its-definition.md`](../.portulan/handoffs/2026-07-30-a-round-gets-its-definition.md).
