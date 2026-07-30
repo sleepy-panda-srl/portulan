@@ -403,8 +403,15 @@ fail-closed and therefore the safe one, but it means a local green is the weaker
 Nothing in the criterion asks for this, and it is included anyway, which needs justifying. The cascade is
 `core < pack < workspace < repo card < task`; every layer but one is addressable from a manifest, and a
 workspace that cannot say which packs it composes leaves an agent to infer the middle of its own
-resolution order. The portfolio workspace at milestone 6 ships as a private-feed plugin composing premium
-packs — a manifest that cannot express that forces a MAJOR bump one milestone after v1.
+resolution order. The portfolio workspace at milestone 6 ships as a private-feed plugin composing a pack
+delivered by that feed — a manifest that cannot express that forces a MAJOR bump one milestone after v1.
+
+_(This sentence said **premium** packs until milestone 6, session 1, and no shipped pack is premium: the
+one the portfolio workspace composes is the universal checkpoint ritual, delivered by the private feed and
+authored in the public engine. The prediction was reasonable and turned out not to be what milestone 6
+built, so it is corrected to what the tree shows rather than left as a promise about a pack nobody wrote.
+Whether a premium pack should exist at all is a commercial question for the maintainer, not a gap this
+file may quietly keep open.)_
 
 An array of names in cascade order, empty by default. Each name is the canonical `category/name` form
 the Pack Definition owns ([`pack.schema.json`](pack.schema.json)) — but the items stay **free strings**
@@ -529,6 +536,70 @@ and the handoff series is **reported** — count, oldest, total size — with no
 draft. That is not an omission: `librarian.staleness.record_days` drafts a demotion, and drafting one
 against an append-only series would recommend the single repair the paragraph above rules out, weekly,
 forever.
+
+## `personas` — where a pack-declared memory scope lands, and how anyone can tell it did
+
+Added at **2.6**, as a pair: `slots.personas` is the adopter's per-persona layer, one directory per
+persona whose memory scope a composed pack declares, and `personas.index.path` is the generated artifact
+over it. The same split as `memory` and `handoffs`, built by the same generator, byte-compared by the same
+recipe.
+
+| Field | What it is |
+|---|---|
+| `slots.personas` | The layer. One directory per declared scope, each **empty until earned**. |
+| `personas.index.path` | Where the generated index goes. Must resolve **outside** `slots.personas`. |
+
+**Why it exists.** [`memory.md`](../core/operating/memory.md) has said since milestone 1 that memory is
+per-agent rather than global, and until milestone 6 nothing in this project had a per-agent store: every
+store shipped was a *workspace's*, shared by whatever agent read it. A **pack** is the first artifact this
+framework distributes that carries per-persona material its adopter does not own, which is the first point
+at which *whose* memory this is has an answer that matters — the maintainer's ruling of 2026-07-29,
+verbatim, *"row 6 declares, row 7 validates"*.
+
+**This series' source is the cascade, not the tree — the only one of the three.** The memory store and the
+handoff series are directories the workspace owns and the generator walks. A scope is declared by a persona
+*inside a pack the workspace merely composes*, so finding it means resolving `packs` the way `compile` and
+`doctor` already resolve it. One consequence is worth stating because it looks like a bug the first time:
+a workspace can be handed a resolution root on the command line (`--pack-root`), so the same workspace
+renders the same index whether the pack came from beside it or from a private feed. Every field on a line
+is content-derived, so the artifact is **path-independent** — measured at milestone 6, session 1, where
+customer zero and a feed-installed adopter produced the identical scope digest.
+
+**Declared rather than derived from `slots.memory`, and both halves of that are the argument.** Not
+derived, because a path this specification computed would be Portulan choosing a location inside every
+adopter's workspace in a key nobody typed — the rule every memory budget here already obeys. And not a
+subdirectory of the store, for two reasons that point the same way: doctrine holds per-agent memory apart
+precisely so a reviewer's recall does not spend the implementer's budget, and a store nested inside the
+store would be counted by the `kilobytes` rail while being invisible to the flat walk that counts it —
+[issue #76](https://github.com/sleepy-panda-works/portulan/issues/76). Siting the layer outside leaves that
+issue open to be decided on its own merits instead of settled as a side effect of this one.
+
+**A location is literally empty, and that is a ruling rather than a reading.** *"Present and empty"* could
+mean *empty of records* — a marker file inside stating whose scope it is — and the maintainer ruled on
+2026-07-30 that it binds literally. Which has a consequence the design leans on: **git does not record an
+empty directory**, so the location cannot travel in a plugin payload at all. The declaration travels in the
+index; the directory is created in the adopter's own layer when the adopter runs the landing. An absent
+location is therefore never a finding — it is the state of every fresh clone.
+
+**Two controls, and the second one is what makes the first mean anything.** The index is the *positive*
+control: every field on a line is derived from the pack, including a digest over the declared scope's own
+text, so a pack that rewords a scope moves this file and the byte comparison tells the adopter. A first
+sentence alone would have let a pack reword everything after it invisibly. The *negative* control is a
+sweep for **anything** under the layer that no composed persona declares — a stray file as much as a stray
+directory, since the first implementation tested only directories and let a `.md` dropped in pass in silence.
+Without it the layer would accept anything and the positive control would only ever examine locations it
+already expected, which is
+[`a-manifest-field-can-validate-and-load-nothing`](../.portulan/memory/a-manifest-field-can-validate-and-load-nothing.md)
+wearing this feature's clothes. A third check runs at the *distributing* side: a pack shipping memory
+records of its own is refused, because storage follows ownership and a pack absorbing an adopter's records
+is the constitution's thesis 6 violated from the direction the adopter cannot see.
+
+**What no part of this reads, said plainly.** Nothing recalls from these locations, nothing consolidates
+them, and no budget rails them. `doctor` validates a persona against its five-part contract at **milestone
+7** — that is the *validates* half of the ruling above, and it is named here rather than implied so this
+page cannot be read as describing enforcement that does not exist. There is no budget for the same reason:
+there is nothing yet to budget, and the axis such a rail should use is per-persona rather than
+per-workspace, which belongs to the row where something finally reads these locations.
 
 ## `provenance` — a record field, not a manifest key
 

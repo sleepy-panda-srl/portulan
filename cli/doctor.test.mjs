@@ -312,7 +312,7 @@ describe("a budget or a threshold that is not a positive integer", () => {
 
 describe("the schema declares which Workspace Definition version it implements", () => {
     test("the shipped schema carries it in `$id`", () => {
-        assert.deepEqual(schemaVersion(SCHEMA), { major: 2, minor: 5 });
+        assert.deepEqual(schemaVersion(SCHEMA), { major: 2, minor: 6 });
     });
 
     test("a schema whose `$id` does not carry one is refused", () => {
@@ -653,6 +653,38 @@ describe("provenance is parsed into the two forms the constitution names", () =>
         const failures = severities(checks(findings, "cross"), "fail");
         assert.equal(failures.length, 1);
         assert.match(text(failures), /inside slots\.handoffs/);
+    });
+
+    // Workspace Definition 2.6. The scopes layer gets the same two conditional dependencies as the
+    // other two series, for the third time and on the same terms: the argument is shared, the code is
+    // not, and `index` refusing them is not `doctor` refusing them — a manifest checked at one carrier
+    // is checked at the narrower one, which is the defect this repository names most often.
+    test("`personas` without a `slots.personas` layer is refused", async () => {
+        const m = wellFormed();
+        m.personas = { index: { path: "personas-index.md" } };
+        const dir = tree(scratch(), { ...minimalFiles, "workspace.json": JSON.stringify(m) });
+        const { findings } = await inspect(dir, { schema: SCHEMA });
+        const failures = severities(checks(findings, "cross"), "fail");
+        assert.equal(failures.length, 1);
+        assert.match(text(failures), /slots\.personas/);
+    });
+
+    test("a scope index sited inside the layer it indexes is refused", async () => {
+        // The walk that swallows it here is the orphan sweep: `index` reports any directory under the
+        // layer that no composed persona declares, and a generated file sited there would be examined
+        // by the very check that exists to tell an arrived location from an invented one.
+        const m = wellFormed();
+        m.slots.personas = "personas/";
+        m.personas = { index: { path: "personas/INDEX.md" } };
+        const dir = tree(scratch(), {
+            ...minimalFiles,
+            "workspace.json": JSON.stringify(m),
+            "personas/INDEX.md": "# Persona memory scopes\n",
+        });
+        const { findings } = await inspect(dir, { schema: SCHEMA });
+        const failures = severities(checks(findings, "cross"), "fail");
+        assert.equal(failures.length, 1);
+        assert.match(text(failures), /inside slots\.personas/);
     });
 
     test("a handoff index named `..something` inside the series is refused too", async () => {
@@ -1730,7 +1762,7 @@ describe("the packs a workspace declares", () => {
 
     test("the two version trains are read by different functions and do not collide", () => {
         assert.deepEqual(packSchemaVersion(PACK_SCHEMA), { major: 1, minor: 0 });
-        assert.deepEqual(schemaVersion(SCHEMA), { major: 2, minor: 5 });
+        assert.deepEqual(schemaVersion(SCHEMA), { major: 2, minor: 6 });
         // The workspace reader must not accept the pack `$id` as a workspace version.
         assert.throws(() => schemaVersion({ $id: "https://portulan.dev/spec/pack/1.0/pack.schema.json" }));
     });
@@ -1739,5 +1771,50 @@ describe("the packs a workspace declares", () => {
         const { findings } = await inspect(path.join(REPO, ".portulan"), { schema: SCHEMA });
         assert.equal(severities(checks(findings, "packs"), "fail").length, 0, text(findings));
         assert.match(text(checks(findings, "packs")), /rituals\/checkpoints/);
+    });
+});
+
+// -------------------------------------------------------------- a pack root named on the command line
+
+describe("--pack-root names a resolution root outside the workspace's tree", () => {
+    // Adjustment 6 of the milestone-6 session-open checkpoint. `inspect` has read `options.packRoots`
+    // since session 0 and no caller set it — so the from-a-feed path existed in the resolver and had no
+    // way in from a command line. `doctor` matters most of the three, because it is the tool that
+    // validates a resolved pack against the Pack Definition rather than merely finding it.
+    test("a pack in a named root resolves and is validated", async () => {
+        const feed = tree(scratch(), {
+            "rituals/checkpoints/pack.json": JSON.stringify({
+                portulan: { pack: "1.0", version: "0.1.0" },
+                name: "checkpoints",
+                category: "rituals",
+                summary: "A ritual pack living outside the workspace's tree.",
+                doc: "README.md",
+                contributes: {},
+            }),
+            "rituals/checkpoints/README.md": "# checkpoints\n",
+        });
+        const m = wellFormed();
+        m.packs = ["rituals/checkpoints"];
+        delete m.tree;
+        m.kind = "demo";
+        const dir = tree(scratch(), { ...minimalFiles, "workspace.json": JSON.stringify(m) });
+
+        const withRoot = await inspect(dir, { schema: SCHEMA, packRoots: [feed] });
+        assert.equal(severities(checks(withRoot.findings, "packs"), "fail").length, 0, text(withRoot.findings));
+        assert.equal(withRoot.stats.packs, 1);
+
+        // The negative control: the same workspace without the root cannot resolve it.
+        const without = await inspect(dir, { schema: SCHEMA });
+        assert.equal(without.stats.packs, 0);
+    });
+
+    test("run() passes the flag through, and refuses a root that is not there", async () => {
+        const m = wellFormed();
+        m.packs = ["rituals/checkpoints"];
+        m.kind = "demo";
+        delete m.tree;
+        const dir = tree(scratch(), { ...minimalFiles, "workspace.json": JSON.stringify(m) });
+        assert.equal(await run(["--pack-root", path.join(dir, "nope"), dir], { quiet: true }), 2);
+        assert.equal(await run(["--pack-root", dir], { quiet: true }), 2, "a flag with no workspace left is not a workspace");
     });
 });

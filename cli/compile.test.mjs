@@ -1762,3 +1762,94 @@ describe("what a workspace's declared packs contribute", () => {
         assert.deepEqual([contributions.length, unresolved.length], [0, 0]);
     });
 });
+
+// ===========================================================================================
+// A pack root can be named on the command line
+// ===========================================================================================
+//
+// Adjustment 6 of the milestone-6 session-open checkpoint. `packContributions` has taken an
+// `options.packRoots` since session 0 and `run` never set it, so the parameter shaped for the
+// from-a-feed case was reachable only from a test. "Zero new resolver code" was true; "only a new
+// root" was not — a root needs a caller, and this is it.
+
+describe("--pack-root names a resolution root outside the workspace's tree", () => {
+    test("a fragment from a pack in a named root reaches the compiled policy", () => {
+        const dir = workspace();
+        const feed = scratch();
+        packAt(feed, "rituals", "checkpoints", [fragment("commit-without-the-hooks", "gated")]);
+
+        const w = path.join(dir, ".portulan", "workspace.json");
+        const manifest = JSON.parse(fs.readFileSync(w, "utf8"));
+        manifest.packs = ["rituals/checkpoints"];
+        // No `packs/` under this workspace's own tree, so a green cannot have come from it.
+        fs.writeFileSync(w, JSON.stringify(manifest, null, 2));
+
+        assert.equal(run(["--workspace", dir, "--pack-root", feed], { quiet: true }), 0);
+        const compiled = JSON.parse(fs.readFileSync(path.join(dir, ".claude", "settings.json"), "utf8"));
+        assert.match(JSON.stringify(compiled), /commit-without-the-hooks|run-commit-without-the-hooks/);
+    });
+
+    test("without the flag the same workspace reports the pack UNRESOLVED", () => {
+        const dir = workspace();
+        const w = path.join(dir, ".portulan", "workspace.json");
+        const manifest = JSON.parse(fs.readFileSync(w, "utf8"));
+        manifest.packs = ["rituals/checkpoints"];
+        fs.writeFileSync(w, JSON.stringify(manifest, null, 2));
+        assert.equal(run(["--workspace", dir], { quiet: true }), 0, "an unresolved pack contributes nothing and is not a red");
+    });
+
+    test("--pack-root with no directory is refused", () => {
+        const dir = workspace();
+        assert.equal(run(["--workspace", dir, "--pack-root"], { quiet: true }), 2);
+    });
+
+    test("a named root that does not exist is refused rather than reported as an unresolvable pack", () => {
+        const dir = workspace();
+        assert.equal(run(["--workspace", dir, "--pack-root", path.join(dir, "nope")], { quiet: true }), 2);
+    });
+});
+
+describe("named pack roots REPLACE the derived one, and the divergence is pinned", () => {
+    // Found by the pre-commit checkpoint on this change, by attacking the flag rather than reading it.
+    // `compile` appended the derived root after the named ones while `doctor` and `index` replaced it —
+    // three tools, two semantics, and every prose carrier described only one. Demonstrated then: this
+    // workspace with `--pack-root <an empty directory>` compiled GREEN from the copy in its own tree,
+    // which is exactly the thing the flag's stated purpose rules out.
+    test("a pack present ONLY in the workspace's tree does not resolve when a root is named", () => {
+        const dir = workspace();
+        // The pack ships beside the workspace, under the root `tree` derives.
+        packAt(path.join(dir, "packs"), "rituals", "checkpoints", [fragment("commit-without-the-hooks", "gated")]);
+        const w = path.join(dir, ".portulan", "workspace.json");
+        const manifest = JSON.parse(fs.readFileSync(w, "utf8"));
+        manifest.packs = ["rituals/checkpoints"];
+        fs.writeFileSync(w, JSON.stringify(manifest, null, 2));
+
+        // Without the flag it resolves from the tree, which is the ordinary case and must keep working.
+        assert.equal(run(["--workspace", dir], { quiet: true }), 0);
+        const fromTree = JSON.parse(fs.readFileSync(path.join(dir, ".claude", "settings.json"), "utf8"));
+        assert.match(JSON.stringify(fromTree), /commit-without-the-hooks/);
+
+        // With an empty root named, the derived one is OUT OF SCOPE: the fragment must be gone.
+        const empty = scratch();
+        assert.equal(run(["--workspace", dir, "--pack-root", empty], { quiet: true }), 0);
+        const fromFeed = JSON.parse(fs.readFileSync(path.join(dir, ".claude", "settings.json"), "utf8"));
+        assert.doesNotMatch(
+            JSON.stringify(fromFeed),
+            /commit-without-the-hooks/,
+            "a named root must not fall back to the tree — that is the copy the flag exists to exclude",
+        );
+    });
+
+    test("passing no root leaves the derived path byte-identical", () => {
+        const dir = workspace();
+        packAt(path.join(dir, "packs"), "rituals", "checkpoints", [fragment("commit-without-the-hooks", "gated")]);
+        const w = path.join(dir, ".portulan", "workspace.json");
+        const m = JSON.parse(fs.readFileSync(w, "utf8"));
+        m.packs = ["rituals/checkpoints"];
+        fs.writeFileSync(w, JSON.stringify(m, null, 2));
+        run(["--workspace", dir], { quiet: true });
+        const first = fs.readFileSync(path.join(dir, ".claude", "settings.json"));
+        run(["--workspace", dir], { quiet: true });
+        assert.deepEqual(fs.readFileSync(path.join(dir, ".claude", "settings.json")), first);
+    });
+});

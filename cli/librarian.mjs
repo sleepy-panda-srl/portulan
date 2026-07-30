@@ -77,7 +77,7 @@ export class LibrarianError extends Error {
 // no pass, which is the shape every workspace had yesterday. Same reasoning and same refusal as
 // ./index.mjs's KNOWN_SPECS: a tool that reads a manifest it does not understand reports about a
 // workspace it may have misread.
-const KNOWN_SPECS = new Set(["2.0", "2.1", "2.2", "2.3", "2.4", "2.5"]);
+const KNOWN_SPECS = new Set(["2.0", "2.1", "2.2", "2.3", "2.4", "2.5", "2.6"]);
 
 // The store's own signpost, not a record — the one name ./index.mjs and ./doctor.mjs both exclude.
 // Three tools now share this judgement and none of them shares the code, which is issue #74; this

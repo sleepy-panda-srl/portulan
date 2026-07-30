@@ -1440,6 +1440,29 @@ export function packRoots(workspaceDir, workspace) {
 }
 
 /**
+ * The `options` object for `packContributions` when roots were named on the command line.
+ *
+ * **Named roots REPLACE the root derived from `tree`; they are not searched ahead of it.** The first
+ * implementation appended the derived root after the named ones here, while `doctor` and `index` — both
+ * of which spell this as `options.packRoots ?? packRoots(…)` — replaced it. Three tools, two semantics,
+ * and every prose carrier described only one of them. The pre-commit checkpoint on the change that added
+ * the flag found it by attacking it: a workspace with the pack sitting in its own tree, given
+ * `--pack-root <an empty directory>`, compiled **green from the local copy** — which is exactly the thing
+ * the flag exists to exclude, since the whole point is that "the pack resolved from the feed" must not be
+ * satisfiable by a copy lying around. Replacement is the semantics that serves that, so replacement is
+ * what all three now do, and `cli/compile.test.mjs` pins the divergent case rather than trusting the
+ * prose to hold the three in line.
+ *
+ * Returns `{}` when nothing was named, so the derived-only path stays byte-identical to what it was
+ * before the flag existed — a caller that passes no roots must not take a different branch, which is the
+ * property that keeps the flag a *surface* on the existing behaviour rather than a second one.
+ */
+export function namedRootsOption(workspaceRoot, namedRoots) {
+    if (!namedRoots?.length) return {};
+    return { packRoots: [...namedRoots] };
+}
+
+/**
  * What the packs a workspace declares contribute. Reads each resolved `pack.json` and collects its
  * gate fragments. It does NOT validate the manifest against the Pack Definition — `doctor` does that,
  * and this compiler must not depend on `doctor` having been run: the two have no ordering between
@@ -1668,6 +1691,14 @@ export function run(argv, options = {}) {
         let workspaceRoot = process.cwd();
         let check = false;
         let showMatrix = false;
+        // Named pack roots, which REPLACE the root derived from `tree` rather than being searched ahead
+        // of it — see `namedRootsOption` for why that distinction cost a checkpoint finding.
+        // `packContributions` has taken `options.packRoots` since session 0 — shaped so that an adopter
+        // resolving from an installed feed travels the same code path as a workspace whose packs ship
+        // beside it — and nothing ever set it, so the parameter was reachable only from a test.
+        // Discovery of a host's plugin cache is deliberately NOT built here; that path is host-shaped,
+        // and an explicit flag is the honest surface until a row owns the discovery.
+        const namedRoots = [];
         for (let i = 0; i < argv.length; i += 1) {
             if (argv[i] === "--check") check = true;
             else if (argv[i] === "--matrix") showMatrix = true;
@@ -1675,6 +1706,19 @@ export function run(argv, options = {}) {
                 workspaceRoot = argv[i + 1];
                 i += 1;
                 if (workspaceRoot === undefined) throw new CompileError("--workspace needs a directory");
+            } else if (argv[i] === "--pack-root") {
+                const root = argv[i + 1];
+                i += 1;
+                if (root === undefined || root.startsWith("--")) throw new CompileError("--pack-root needs a directory");
+                // A root that is not there is a fact about the filesystem, not a pack that failed to
+                // resolve — and reporting it as the latter sends an author to the one file that is not
+                // at fault. Same distinction as ../.portulan/memory/verify-preconditions-fail-closed.md.
+                if (!fs.existsSync(root)) {
+                    throw new CompileError(
+                        `--pack-root ${root} does not exist — refusing to report a pack unresolvable against a root nothing looked in`,
+                    );
+                }
+                namedRoots.push(path.resolve(root));
             } else throw new CompileError(`unknown argument ${JSON.stringify(argv[i])}`);
         }
 
@@ -1682,7 +1726,7 @@ export function run(argv, options = {}) {
         const policy = readJson(policyFile, "the gate policy");
         // The cascade's middle layer, composed before the policy is parsed so that a pack's fragment
         // is validated by exactly the code that validates a hand-written rule.
-        const { contributions, unresolved } = packContributions(workspaceRoot);
+        const { contributions, unresolved } = packContributions(workspaceRoot, ".portulan", namedRootsOption(workspaceRoot, namedRoots));
         const composed = composeFragments(policy, contributions);
         const parsed = parse(composed.policy);
         const source = path.relative(workspaceRoot, policyFile).split(path.sep).join("/");

@@ -62,6 +62,34 @@ milestone-close skills, a `supervisor` persona, and the verdict vocabulary. It c
 specifics and does not set the adopter's triage boundary, because a ritual that cannot scale down is one
 that gets switched off wholesale.
 
+**A pack now resolves from a private feed, and the feed points rather than copies.** The
+`portulan-internal` marketplace publishes the checkpoint ritual pack by sourcing this repository's
+`packs/` directory through `git-subdir`, pinned to a commit — so the private feed owns the entry, the
+version, the pin and the access gate, while the bytes stay in the public layer that authored them. The
+alternative, copying universal content into the private side, would have put a second carrier of one file
+where no public check can see it. Measured on Claude Code 2.1.220 before it was relied on, including that
+a `sha` pointing at a commit from before the pack existed is **refused**.
+
+**`--pack-root` on `compile`, `doctor` and `index`.** A resolution root can now be named on the command
+line, searched *before* the one derived from `tree`. The resolver has taken roots as an argument since the
+Pack Definition landed and nothing set them, so the from-a-feed case existed in the code and had no way in
+from a shell. Named roots **replace** the derived one rather than preceding it, on purpose: a
+demonstration that a pack resolved *from the feed* must not be satisfiable by a copy sitting in the local
+tree at all. Two of the three tools replaced and one appended when this first landed — a workspace with the
+pack in its own tree compiled green against an empty named root — so the divergence is now pinned by a test
+rather than held in line by prose. What is still not built is *discovery* — nothing finds a
+host's plugin cache on its own.
+
+**Workspace Definition 2.6: a pack-declared memory scope lands in the adopter's own layer.** Two optional
+keys — `slots.personas`, the layer, and `personas.index.path`, a generated index over it. A persona shipped
+by a pack declares its memory scope in prose; a composing workspace now lands one **empty** directory per
+declared scope in the layer it owns, and the index makes the arrival checkable: every field on a line is
+derived from the pack, including a digest over the scope's own text, so a pack that rewords a scope turns
+the byte comparison red. A sweep reports any location no composed persona declares, and a pack that ships
+memory records of its own is refused — storage follows ownership in both directions. Nothing reads these
+locations yet: `doctor` validates a persona against its five-part contract at milestone 7, which is the
+maintainer's *"row 6 declares, row 7 validates"* split. A MINOR: nothing tightened, no migration owed.
+
 **A pack can ship skills at last.** A declared skills path resolved one level down, so the natural pack
 layout failed as *"has no SKILL.md"*. The walk is now bounded at three levels and **reports where it
 stopped** rather than going green over what it did not reach.

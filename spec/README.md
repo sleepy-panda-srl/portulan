@@ -113,14 +113,22 @@ number governing both would make a bump in either mean a change in the other:
 
 | Schema | Manifest key | Current | What it governs |
 |---|---|---|---|
-| [`workspace.schema.json`](workspace.schema.json) | `portulan.spec` | **2.5** | the Workspace Definition — the manifest at a workspace root |
+| [`workspace.schema.json`](workspace.schema.json) | `portulan.spec` | **2.6** | the Workspace Definition — the manifest at a workspace root |
 | [`pack.schema.json`](pack.schema.json) | `portulan.pack` | **1.0** | the Pack Definition — the manifest at a pack root, added at milestone 6 |
 
 The rules below apply to each train independently. `portulan.spec` is `MAJOR.MINOR`, and the current
-Workspace Definition version is **2.5** — unchanged by the Pack Definition's arrival, because
-`workspace.schema.json` is byte-identical across that change: `packs` already existed as an array of
+Workspace Definition version is **2.6**. It did **not** move when the Pack Definition arrived, because
+`workspace.schema.json` was byte-identical across that change: `packs` already existed as an array of
 strings and was deliberately left that way, since tightening its items to the canonical `category/name`
 form would be a constraint an existing manifest could newly fail, which is a MAJOR.
+
+**2.6 is a MINOR, and it is one on the definition rather than by assertion:** it adds two optional keys —
+`slots.personas` and `personas` — and tightens nothing. Every manifest valid at 2.5 is valid at 2.6, so
+no migration exists and none is owed; `examples/` stays on 2.4 untouched, which is the property a MINOR is
+supposed to have. The pair is what makes a pack-declared persona memory scope checkable rather than prose,
+and [`slots.md`](slots.md) carries the argument for why the layer is **declared** rather than derived from
+`slots.memory`. Contrast this with the bump refused one session earlier, where the intent was 2.5 → 2.6
+and nothing in the schema had moved at all — the discipline is the same in both directions.
 
 _(This line read `2.0` for two MINOR bumps after the schema had moved past it — the version of the
 spec, stated wrongly in the spec's own README, while the `$id` beside it was right. It is recorded
@@ -178,7 +186,7 @@ workspace with no constitution slot and a green report.
 |---|---|---|
 | Every `.json` file parses | [`../.portulan/verify/json.sh`](../.portulan/verify/json.sh) | **Built.** Well-formedness only — it does not read the schema. |
 | Manifest conforms to the schema | [`../cli/doctor.mjs`](../cli/doctor.mjs) | **Built.** Names the violated constraint and its location. |
-| A declared pack **resolves** | `doctor` | **Built** (milestone 6). Roots are derived from `tree`; a workspace with no `tree` has its packs reported *unverifiable* rather than failed. Resolution **from a feed** is not demonstrated — the resolver takes roots as an argument so that case is the same code path, but it has not been run that way. |
+| A declared pack **resolves** | `doctor` | **Built** (milestone 6). Roots are derived from `tree`, and named roots may be given with `--pack-root`, which **replace** the derived one rather than preceding it, so a from-a-feed demonstration cannot be satisfied by a copy in the local tree at all. A workspace with no `tree` and no named root has its packs reported *unverifiable* rather than failed. Resolution **from a feed is demonstrated** as of milestone 6, session 1: the checkpoint ritual pack installed from the private `portulan-internal` marketplace and resolved from the install root, which is the same code path the derived one takes. What is still undemonstrated is *discovery* — nothing finds a host's plugin cache on its own, so the root is named rather than found. |
 | A pack manifest conforms to the Pack Definition | `doctor` | **Built** (milestone 6). Same validator, same subset, a different schema and version train. |
 | Pack gate fragments merge **tighten-only** | [`../cli/compile.mjs`](../cli/compile.mjs) | **Built** (milestone 6). Two layers and two axes: `auto` is absent from the Pack Definition's tier enum, so a demotion to unattended is unexpressible; the comparison against the composed base is the compiler's, and both a weakened **tier** and a changed **action** throw rather than being dropped. The action half is the one a tier-only check misses — raising the tier while swapping the matcher removes the gate and still reads as a tightening. |
 | A pack declaring a version ahead of `doctor` | `doctor` | **Built** (milestone 6). Refused rather than graded, symmetric with the workspace train, and on the Pack Definition's own `$id`. |

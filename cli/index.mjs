@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // `index` — the memory index generator, and the rail on what memory may cost.
 //
-//   node cli/index.mjs [--check] <workspace-dir> [<workspace-dir> ...]
+//   node cli/index.mjs [--check] [--pack-root <dir>]... <workspace-dir> [<workspace-dir> ...]
 //
 // Exit 0 every index is current and within budget · 1 one is not · 2 could not run.
 //
@@ -50,9 +50,18 @@
 // because the subcommand is called `index`, and npm packaging conventionally wants that name for a
 // package entry point. The collision is inherited deliberately rather than discovered.)
 
+import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
+
+// The cascade, imported rather than re-derived. The scopes series is the one series whose source is
+// not a directory this workspace owns: a persona's memory scope is declared inside a pack the
+// workspace merely composes, so finding it means resolving the `packs` array exactly the way the
+// compiler and `doctor` already resolve it. A second resolver here would be a second answer to
+// "which pack is that" — and issue #74 already records what a memory store cost this project when
+// three copies decided what counted as a record.
+import { resolvePack, packRoots } from "./compile.mjs";
 
 /** Raised when `index` cannot run, or cannot judge honestly. Always exit 2, never 1. */
 export class IndexError extends Error {
@@ -67,7 +76,7 @@ export class IndexError extends Error {
 // a legitimate shape and the one every workspace had yesterday. Same reasoning as ./compile.mjs's
 // KNOWN_SPECS, and the same refusal for anything outside the set: a tool that reads a manifest it
 // does not understand reports about a workspace it may have misread.
-const KNOWN_SPECS = new Set(["2.0", "2.1", "2.2", "2.3", "2.4", "2.5"]);
+const KNOWN_SPECS = new Set(["2.0", "2.1", "2.2", "2.3", "2.4", "2.5", "2.6"]);
 
 // The store's own signpost, not a record. `doctor` excludes exactly this name from its walk, so the
 // two tools agree on what the store contains; disagreeing would put a record in the index that the
@@ -302,6 +311,165 @@ export function readHandoffs(dir, workspace) {
     return { records, bytes };
 }
 
+/**
+ * The `## Memory scope` section of a persona file, normalized, or `null` if it carries none.
+ *
+ * The fourth part of the five-part persona contract (../core/personas/README.md). Read as a section
+ * rather than a frontmatter key because that is where the contract puts it, and inventing a key would
+ * make every persona this project already ships non-conforming to a contract nobody changed.
+ */
+export function memoryScopeOf(source) {
+    const m = source.match(/^##[ \t]+Memory scope[ \t]*$([\s\S]*?)(?=^##[ \t]|$(?![\s\S]))/im);
+    if (!m) return null;
+    // Collapsed to one line, and parenthetical provenance asides dropped, so the digest is stable
+    // against reflowing: a scope rewrapped to a different column width is the same declaration, and a
+    // rail that reddened on it would teach authors to distrust the rail. What it is deliberately NOT
+    // stable against is a changed word — which is the entire point of digesting this text.
+    // `_(…)_` non-greedily to the first `)_`, NOT `[^)]*`: the one aside the shipped supervisor persona
+    // carries contains a markdown link, whose own `)` defeated the character class — so the aside was
+    // digest input while this comment said asides were dropped. Found by the pre-commit checkpoint.
+    const body = m[1].replace(/_\([\s\S]*?\)_/g, " ").replace(/\s+/g, " ").trim();
+    return body || null;
+}
+
+/**
+ * The first sentence of a scope — the legible half of an index line, cut VISIBLY when it runs long.
+ *
+ * A colon does not end a sentence here, and that is a measured choice rather than a grammatical one:
+ * the shipped supervisor persona opens `Its own supervisor memory: classes of defect …`, and breaking
+ * on the colon rendered a line that named the persona twice and said nothing. The clause after the
+ * colon is the informative half.
+ *
+ * When the sentence is longer than the budget it is truncated with an ellipsis rather than quietly
+ * clipped — a generated file that shortens its source without saying so is the defect `render` above
+ * refuses for the same reason. Completeness is the digest's job, not this text's.
+ */
+const SENTENCE_BUDGET = 120;
+const firstSentence = (scope) => {
+    const sentence = (scope.match(/^([\s\S]*?\.)(\s|$)/) ?? [null, scope])[1].trim();
+    if (sentence.length <= SENTENCE_BUDGET) return sentence;
+    const clipped = sentence.slice(0, SENTENCE_BUDGET);
+    const atWord = clipped.lastIndexOf(" ");
+    return `${(atWord > 40 ? clipped.slice(0, atWord) : clipped).trimEnd()}…`;
+};
+
+/** Eight hex of sha-256 over the normalized scope — the complete half, since a first sentence is not. */
+const scopeDigest = (scope) => crypto.createHash("sha256").update(scope, "utf8").digest("hex").slice(0, 8);
+
+/**
+ * Every file a pack ships that would be a memory record — anything under a `memory/` directory.
+ *
+ * Bounded by construction rather than by a depth constant: it walks the pack it was handed and nothing
+ * above it. `memory/` is the name the Workspace Definition's store slot carries in both live
+ * manifests, so it is the name a pack author would reach for if they were going to make this mistake.
+ */
+function packRecords(packDir, rel = "", out = []) {
+    let entries;
+    try {
+        entries = fs.readdirSync(path.join(packDir, rel), { withFileTypes: true });
+    } catch (cause) {
+        throw new IndexError(
+            `cannot read the pack directory ${path.join(packDir, rel)} — ${cause.code ?? cause.message}. ` +
+                "Refusing to report that a pack carries no records of its own when it could not be enumerated",
+        );
+    }
+    for (const e of entries.sort((a, b) => a.name.localeCompare(b.name))) {
+        const child = rel ? path.posix.join(rel, e.name) : e.name;
+        if (e.isDirectory()) packRecords(packDir, child, out);
+        else if (/(^|\/)memory\//.test(child)) out.push(child);
+    }
+    return out;
+}
+
+/**
+ * Read the per-persona memory scopes a workspace's composed packs declare.
+ *
+ * Returns `{ scopes: [{ persona, pack, location, scope }], unresolved, carrying, broken }`.
+ *
+ * **The one series whose source is the cascade rather than the tree.** A workspace declares `packs`;
+ * each pack's manifest declares `contributes.personas`; each persona declares its memory scope. What
+ * lands in the adopter's layer is one location per persona — declared by the pack, owned and populated
+ * only by the adopter (../docs/milestones/m06.md; thesis 6 of ../docs/vision.md, storage follows
+ * ownership). That is also why nothing here reads or writes a record: the scope is a declaration, and
+ * the contents are the adopter's to earn.
+ *
+ * Unresolvable packs, packs carrying records of their own, and personas declaring no scope are all
+ * RETURNED rather than thrown — each is a verdict about the composition and belongs in the findings
+ * list beside the index's own. What throws is only what makes the render underivable at all.
+ */
+export function readScopes(dir, workspace, options = {}) {
+    const slot = workspace?.slots?.personas;
+    if (!slot) {
+        throw new IndexError(
+            "the manifest declares a `personas` index but no `slots.personas` layer — there is nowhere for a scope to land. " +
+                "The declared JSON Schema subset has no `dependentRequired` (spec/README.md), so this is checked here and by `doctor`",
+        );
+    }
+
+    const declared = Array.isArray(workspace?.packs) ? workspace.packs : [];
+    const roots = options.packRoots ?? packRoots(dir, workspace);
+    const posixSlot = slot.split(path.sep).join(path.posix.sep).replace(/\/$/, "");
+
+    const scopes = [];
+    const unresolved = [];
+    const carrying = [];
+    const broken = [];
+
+    for (const name of declared) {
+        const found = resolvePack(name, roots);
+        if (!found.dir) {
+            unresolved.push(found);
+            continue;
+        }
+
+        let manifest;
+        try {
+            manifest = JSON.parse(fs.readFileSync(found.manifest, "utf8"));
+        } catch (cause) {
+            throw new IndexError(
+                `cannot read the pack manifest for \`${found.name}\` at ${found.manifest} — ${cause.code ?? cause.message}. ` +
+                    "Refusing to render a scope index over a pack whose declaration could not be read",
+            );
+        }
+
+        // Observation 3 of the landing clause, checked at the DISTRIBUTING side. A pack shipping
+        // records would be core-and-packs absorbing the adopter's specifics, and it is invisible from
+        // the adopter's own layer — which is exactly why the check lives here.
+        for (const rel of packRecords(found.dir)) carrying.push({ pack: found.name, file: rel });
+
+        const personas = manifest?.contributes?.personas;
+        if (personas !== undefined && !Array.isArray(personas)) {
+            throw new IndexError(
+                `the pack manifest for \`${found.name}\` declares \`contributes.personas\` as ${typeof personas} rather than an array. ` +
+                    "Refusing rather than reading past it — run `doctor` to validate the pack against the Pack Definition",
+            );
+        }
+
+        for (const rel of personas ?? []) {
+            let source;
+            try {
+                source = fs.readFileSync(path.resolve(found.dir, rel), "utf8");
+            } catch (cause) {
+                throw new IndexError(
+                    `pack \`${found.name}\` declares the persona ${rel}, which cannot be read — ${cause.code ?? cause.message}. ` +
+                        "Refusing to render an index that would silently omit a declared persona",
+                );
+            }
+
+            const persona = path.posix.basename(rel.split(path.sep).join(path.posix.sep), ".md");
+            const scope = memoryScopeOf(source);
+            if (scope === null) {
+                broken.push({ pack: found.name, persona, file: rel });
+                continue;
+            }
+            scopes.push({ persona, pack: found.name, location: `${posixSlot}/${persona}/`, scope });
+        }
+    }
+
+    scopes.sort((a, b) => `${a.pack}/${a.persona}`.localeCompare(`${b.pack}/${b.persona}`));
+    return { scopes, unresolved, carrying, broken };
+}
+
 // ===========================================================================================
 // Rendering
 // ===========================================================================================
@@ -392,6 +560,55 @@ export function renderHandoffIndex(workspace, series) {
     return [...header, ...entries].join("\n") + "\n";
 }
 
+/**
+ * The per-persona scope index — the artifact that makes a landing checkable.
+ *
+ * Every field on a line is derived from the pack that declared the scope, so nothing in the file can
+ * be edited into disagreement with the cascade. That is the same property the other two indexes have,
+ * and here it carries more weight than in either: this file **is** the positive control the landing
+ * clause demands (../docs/milestones/m06.md). A location without a line here is a directory somebody
+ * made; a line whose digest no longer matches the persona is a scope that moved without the adopter
+ * being told.
+ *
+ * The digest is over the whole normalized scope, and the sentence beside it is only the legible half.
+ * A first sentence alone would let a pack reword everything after it invisibly — which is the exact
+ * shape of `a-checkers-coverage-is-measured-not-named`.
+ *
+ * **What this file is not**, stated here because the alternative is a page describing machinery that
+ * does not exist (`.portulan/dod.md` condition 4): nothing reads these locations, nothing recalls from
+ * them, and nothing consolidates them. Row 6 declares the scope and shows it landing; `doctor` gains
+ * the persona-contract check at milestone 7 (`row 6 declares, row 7 validates`, the maintainer's
+ * ruling of 2026-07-29 — ../core/operating/memory.md). Until then this is a declared scope with an
+ * empty location, and it says so on its own face rather than in a session record nobody re-reads.
+ */
+export function renderScopeIndex(workspace, series) {
+    const indexPath = workspace?.personas?.index?.path;
+    const posix = (p) => p.split(path.sep).join(path.posix.sep);
+    const from = path.posix.dirname(posix(indexPath));
+
+    const header = [
+        `# Persona memory scopes — ${workspace.name}`,
+        "",
+        "> Generated from the packs this workspace composes by `node cli/index.mjs`. Do not edit by hand:",
+        "> it is regenerated and byte-compared, so a hand-edit survives exactly until the next run.",
+        `> ${series.scopes.length} declared scope(s). Each location is **owned and populated only by this`,
+        "> workspace** and is empty until earned — the pack declares the scope and carries none of its",
+        "> contents. Nothing reads these locations: `doctor` gains a check of a persona against its",
+        "> five-part contract at milestone 7, which is not a check of what is in them.",
+        "",
+    ];
+
+    const entries = series.scopes.map((s) => {
+        // `path.posix.relative` drops the trailing slash, and the label carries one — a generated file
+        // disagreeing with itself about the one fact it exists to carry. Restored rather than dropped
+        // from the label, because the slash is what says *directory* to a reader who never opens it.
+        const href = `${path.posix.relative(from, s.location.replace(/\/$/, "")) || "."}/`;
+        return `- \`${s.persona}\` · ${s.pack} · [${s.location}](${href}) · scope \`${scopeDigest(s.scope)}\` — ${firstSentence(s.scope)}`;
+    });
+
+    return [...header, ...entries].join("\n") + "\n";
+}
+
 /** The number of lines in a rendered index — the unit the `lines` budget is denominated in. */
 const lineCount = (text) => text.split("\n").length - (text.endsWith("\n") ? 1 : 0);
 
@@ -411,7 +628,7 @@ const lineCount = (text) => text.split("\n").length - (text.endsWith("\n") ? 1 :
  * disagrees with its filename* is repaired by editing the record. A single "index check failed"
  * would send an author to regenerate a file that is already correct and still too big.
  */
-export function inspect(dir, { write = false } = {}) {
+export function inspect(dir, { write = false, packRoots: extraRoots } = {}) {
     const manifestPath = path.join(dir, "workspace.json");
     let workspace;
     try {
@@ -433,11 +650,12 @@ export function inspect(dir, { write = false } = {}) {
 
     const memory = judgeMemory(dir, workspace, { write, fail });
     const handoffs = judgeHandoffs(dir, workspace, { write, fail });
+    const scopes = judgeScopes(dir, workspace, { write, fail, packRoots: extraRoots });
 
     return {
         dir,
-        declared: memory.declared || handoffs.declared,
-        series: { memory, handoffs },
+        declared: memory.declared || handoffs.declared || scopes.declared,
+        series: { memory, handoffs, scopes },
         findings,
     };
 }
@@ -589,6 +807,118 @@ function judgeHandoffs(dir, workspace, { write, fail }) {
     return { declared: true, path: indexPath, expected };
 }
 
+/**
+ * The persona scopes series: its index, the landing itself, and the two controls the clause turns on.
+ *
+ * **Write mode creates the locations; check mode never does.** A verify recipe that materialised what
+ * it is checking always passes — the property `../.portulan/verify/compile.sh` was built around, and
+ * the reason `--check` is the flag the recipe passes and `--write` is the one it does not.
+ *
+ * The locations are created **empty**, and empty is not a state git records — so a fresh clone has the
+ * index and no directories, which is correct and is why the index is the carrier of the declaration
+ * rather than the directory. An absent location is therefore never a finding; what *is* a finding is a
+ * location under this layer that no composed persona declares (the negative control), because without
+ * that sweep the layer would accept anything at all and the positive control would only ever examine the
+ * ones it already expected.
+ */
+function judgeScopes(dir, workspace, { write, fail, packRoots: extraRoots }) {
+    const declaredPath = workspace.personas?.index?.path;
+    if (!declaredPath) return { declared: false, path: null, expected: null };
+
+    const slot = workspace.slots?.personas;
+    const indexPath = siteOutside(dir, declaredPath, slot, "layer");
+    const series = readScopes(dir, workspace, { packRoots: extraRoots });
+
+    // Four ways this goes wrong, four repairs, so four checks rather than one "scopes malformed".
+    for (const p of series.unresolved) {
+        fail(
+            "scopes",
+            "pack",
+            `\`${p.name}\` is declared in \`packs\` and does not resolve — ${p.why}. ` +
+                "A scope cannot land from a pack that is not there; resolve the pack or stop declaring it",
+        );
+    }
+    for (const b of series.broken) {
+        fail(
+            "scopes",
+            "scope",
+            `pack \`${b.pack}\` contributes the persona \`${b.persona}\` (${b.file}), which carries no \`## Memory scope\` ` +
+                "section — the fourth part of the five-part persona contract (core/personas/README.md). " +
+                "There is nothing to land, and this generator will not invent a scope for it",
+        );
+    }
+    for (const c of series.carrying) {
+        fail(
+            "scopes",
+            "contents",
+            `pack \`${c.pack}\` carries ${c.file}, which is a memory record. A pack declares a scope and carries ` +
+                "**none** of its contents: the store belongs to the adopter's layer (docs/vision.md thesis 6 — " +
+                "storage follows ownership). Delete it from the pack",
+        );
+    }
+
+    if (series.unresolved.length || series.broken.length || series.carrying.length) {
+        return { declared: true, path: indexPath, expected: null };
+    }
+
+    // The negative control. Only over directories that exist — an absent layer means nothing has landed
+    // yet, which is the state of every fresh clone.
+    if (slot) {
+        const layer = path.resolve(dir, slot);
+        const declared = new Set(series.scopes.map((s) => s.persona));
+        let present = null;
+        try {
+            present = fs.readdirSync(layer, { withFileTypes: true });
+        } catch (cause) {
+            // ENOENT is the ordinary state; anything else is a filesystem fact, not a verdict.
+            if (cause.code !== "ENOENT") {
+                throw new IndexError(
+                    `cannot read the persona layer at ${slot} — ${cause.code ?? cause.message}. ` +
+                        "Refusing to report that no location is orphaned when the layer could not be enumerated",
+                );
+            }
+        }
+        for (const e of present ?? []) {
+            if (e.isDirectory() && declared.has(e.name)) continue;
+            // Directories AND files. The first draft tested `isDirectory()` and skipped everything else,
+            // so a `.md` dropped straight into the layer passed in silence — found by the pre-commit
+            // checkpoint, and the same shape as `a-checkers-coverage-is-measured-not-named`: a sweep
+            // whose description says "anything undeclared" while its code says "any directory".
+            const where = path.posix.join(slot.replace(/\/$/, ""), e.name) + (e.isDirectory() ? "/" : "");
+            fail(
+                "scopes",
+                "orphan",
+                `${where} is under the persona layer and no composed pack declares it. ` +
+                    "This layer holds one directory per declared scope and nothing else — what is not declared is " +
+                    "something somebody made, which is exactly what this sweep exists to tell apart from a scope " +
+                    "that arrived. Remove it, or compose the pack that declares it",
+            );
+        }
+    }
+
+    const expected = renderScopeIndex(workspace, series);
+    compareOrWrite({ dir, declaredPath, indexPath, expected, write, series: "scopes", source: "packs this workspace composes", fail });
+
+    // The landing itself, and it happens after the index is written rather than before: if the render
+    // could not be derived there is nothing to land, and a directory created for a scope no index
+    // records is the orphan the sweep above exists to catch.
+    if (write) {
+        for (const s of series.scopes) {
+            const location = path.resolve(dir, s.location);
+            try {
+                fs.mkdirSync(location, { recursive: true });
+            } catch (cause) {
+                throw new IndexError(
+                    `cannot create the persona memory location at ${s.location} — ${cause.code ?? cause.message}. ` +
+                        "Refusing rather than reporting a verdict about a landing that did not happen",
+                );
+            }
+        }
+    }
+
+    return { declared: true, path: indexPath, expected };
+}
+
 // A declared budget must be a positive integer. Without this, `lines: 0` — or `lines: -1`, or
 // `lines: "60"` — reads as falsy and turns the rail OFF, silently, in a key whose whole purpose is
 // to be on. The schema cannot catch it: the declared keyword subset has no `minimum`, so `type:
@@ -665,19 +995,51 @@ function budgetFindings(memory, store, expected, fail) {
 // ===========================================================================================
 
 export function run(argv, say = console.log) {
-    const check = argv.includes("--check");
-    const dirs = argv.filter((a) => a !== "--check");
+    let check = false;
+    const dirs = [];
+    // Named pack roots, which REPLACE a workspace's own derived root rather than being searched ahead
+    // of it. `resolvePack` was root-parameterized at session 0 so an installed-from-a-feed pack would
+    // travel the same code path as one shipping beside the workspace — but nothing set those roots, so
+    // the parameter was reachable only from a test. Replacement rather than precedence on purpose: a
+    // demonstration that "the pack resolved from the feed" must not be satisfiable by a copy sitting in
+    // the local tree at all. The three tools that take this flag disagreed about it once, and
+    // ./compile.mjs's `namedRootsOption` carries what that cost.
+    // What is deliberately NOT built is discovery of a host's plugin cache — that path is host-shaped,
+    // and a flag is the honest surface until some row owns the discovery.
+    const roots = [];
+    for (let i = 0; i < argv.length; i += 1) {
+        if (argv[i] === "--check") check = true;
+        else if (argv[i] === "--pack-root") {
+            const dir = argv[i + 1];
+            i += 1;
+            if (dir === undefined || dir.startsWith("--")) {
+                say("  ✗ --pack-root needs a directory");
+                return 2;
+            }
+            roots.push(path.resolve(dir));
+        } else dirs.push(argv[i]);
+    }
 
     if (dirs.length === 0) {
-        say("usage: node cli/index.mjs [--check] <workspace-dir> [<workspace-dir> ...]");
+        say("usage: node cli/index.mjs [--check] [--pack-root <dir>]... <workspace-dir> [<workspace-dir> ...]");
         return 2;
+    }
+
+    for (const root of roots) {
+        // A root that is not there is a configuration fact, not a pack that failed to resolve. Reporting
+        // it as the latter would send an author to look at the one file that is not at fault — the same
+        // distinction ../.portulan/memory/verify-preconditions-fail-closed.md was written for.
+        if (!fs.existsSync(root)) {
+            say(`  ✗ --pack-root ${root} does not exist — refusing to report a pack unresolvable against a root nothing looked in`);
+            return 2;
+        }
     }
 
     let worst = 0;
     for (const dir of dirs) {
         let result;
         try {
-            result = inspect(dir, { write: !check });
+            result = inspect(dir, { write: !check, packRoots: roots.length ? roots : undefined });
         } catch (error) {
             if (!(error instanceof IndexError)) throw error;
             say(`  ✗ ${dir}: ${error.message}`);
@@ -702,13 +1064,16 @@ export function run(argv, say = console.log) {
             // the one sentence a tool whose subject is generated artifacts must not print. Found by
             // Copilot on #72, in the suppressed half of the round; the same trap has two doors now
             // that there are two series, and a workspace declaring one index would otherwise get a
-            // sentence that reads as covering both.
+            // sentence that reads as covering both. **Three doors since 2.6**, and the first draft of
+            // the scopes series walked through the new one: `index` printed a green naming the store
+            // and the handoffs and silently omitted the scope index it had just written.
             const state = check ? "current" : "written";
             const parts = [];
             if (result.series.memory.declared) {
                 parts.push(result.series.memory.path === null ? "no store index declared; store within budget" : `store index ${state}, within budget`);
             }
             if (result.series.handoffs.declared) parts.push(`handoff index ${state}`);
+            if (result.series.scopes.declared) parts.push(`scope index ${state}`);
             say(`  ok ${dir}: ${parts.join("; ")}`);
         }
     }
