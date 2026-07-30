@@ -2074,6 +2074,29 @@ describe("a repository is governed by exactly one workspace", () => {
         }
     });
 
+    test("a manifest at a named root with an unrecognised kind is reported, never refused", async () => {
+        // The sibling of the missing-governor case below, and it SURVIVED that fix — a manifest with no
+        // `kind`, or a kind this validator does not know, fell into the governing branch and was refused
+        // as `kind: "undefined"`. Copilot, round 4 on #135, one round after round 1 fixed its twin. Both
+        // follow from one fact: a manifest at a named root is read, never validated, so this check
+        // refuses only what a manifest clearly DECLARES.
+        const dir = portfolio(["tipar-api", "lantern"]);
+        const root = checkouts({
+            "tipar-api": { portulan: { spec: "2.7" }, name: "tipar-api" },
+            lantern: { portulan: { spec: "2.7" }, name: "lantern", kind: "something-else" },
+        });
+        const { findings } = await inspect(dir, { schema: SCHEMA, repoRoots: [root] });
+        assert.equal(severities(checks(findings, "residence"), "fail").length, 0, text(findings));
+        assert.match(text(checks(findings, "residence")), /no recognisable `kind`/);
+        assert.doesNotMatch(text(findings), /kind: "undefined"/);
+
+        // The negative control: a kind this validator DOES know is still refused, so the report is for
+        // shapes doctor cannot read rather than an escape any manifest can take.
+        const governing = checkouts({ "tipar-api": { ...wellFormed(), name: "tipar-api" } });
+        const { findings: refused } = await inspect(dir, { schema: SCHEMA, repoRoots: [governing] });
+        assert.equal(severities(checks(refused, "residence"), "fail").length, 1, text(refused));
+    });
+
     test("a pointer at a named root that names no governor is reported, never refused", async () => {
         // A manifest at a named root is read, never validated — it is somebody else's workspace. So a
         // malformed pointer there must not be compared against this workspace's name, which produced
