@@ -176,8 +176,8 @@ meant a submission — a fix-round cannot be a push Copilot had nothing to say a
 not re-measured, exactly as the table above was.)_
 
 **Rule 2 turned out to protect something bigger than a wasted round, measured 2026-07-30 on #105.** Its
-records landed **second** — before a single fix round had been pushed — were patched twice as the loop ran,
-and still stopped one push short of the end. The result was three merged carriers disagreeing about how
+records landed **second** — before a single fix round had been pushed — were patched **three times** as the
+loop ran, and still stopped one push short of the end. The result was three merged carriers disagreeing about how
 many rounds the pull request had received — two, three and two, and the true figure was five, so **no
 carrier was right and no two carriers agreed**. **That is not three misreadings of
 one fact; it is the mechanical consequence of writing a record while the number it states can still

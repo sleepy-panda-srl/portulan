@@ -159,11 +159,24 @@ commit. **Copilot's rounds caught none of it.** They are calibrated to the diff;
 whether the diff's *claims about the world* were true — which is precisely the gap the fresh-context pass
 exists to cover, and the reason its cost is not optional on doctrine work.
 
-**#119's own loop, under its own definition.** Two Copilot fix-rounds: round one fixed a table still headed
-"rounds" beside a note claiming it had been re-labelled; round two settled the login mapping by measurement.
-Round three came back empty. That is the bound reached and observed on the pull request that defines it. The
-push folding these nine adjustments answers the **supervisor**, not Copilot, so it spends no round — and if
-the submission it draws carries findings, rule 4 routes them to an issue rather than a third fix-round.
+**#119's own loop, under its own definition — and it went past its own bound.** Round one fixed a table
+still headed "rounds" beside a note claiming it had been re-labelled; round two settled the login mapping by
+measurement; round three was empty. That was the bound reached on the pull request that defines it, and this
+handoff said at that point that anything further would become an issue rather than a third fix-round.
+
+**Then Copilot's round on the adjustments push found that the rule's own rule-2 paragraph still said the
+#105 records were "patched twice" where the errata beside it said three times — and that was fixed, not
+triaged.** So **#119 took three fix-rounds against a bound of two**, and the sentence promising otherwise is
+withdrawn rather than quietly deleted. **The reason, stated so it can be judged:** filing an issue would have
+meant merging a rule that contradicts itself about a count, inside the change whose entire thesis is that
+carriers must not disagree about counts. The defect *was* the thesis. Going past the bound deliberately and
+recording it is the precedent #105 and #117 both set — memory has it as *"taken deliberately both times"* —
+and what makes it a precedent rather than an excuse is that the breach is named in the record every time,
+which is the whole reason this pull request exists.
+
+**Worth noting against the alternative reading:** under the rejected definition (only inline threads count),
+this finding arrived suppressed and would have cost nothing, so #119 would have looked compliant while
+shipping a self-contradicting rule. The bound is more honest when it is harder to satisfy.
 
 ## Open — outward, and the maintainer's
 
