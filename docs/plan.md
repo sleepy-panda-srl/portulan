@@ -1772,7 +1772,7 @@ _The seam applies here too: no client-identifying references._
 
 - 2026-07-30 · Doctrine — no milestone row touched · **A round gets its definition, and three records get
   their errata** — `a-review-loop-needs-a-bound.md` had built a four-rule bound on counting rounds since
-  2026-07-28 without ever defining one. His ruling: **a round is a Copilot review answered with a push**,
+  2026-07-28 without defining one. **The maintainer's ruling: a round is a Copilot review answered with a push**,
   and a records-only correction counts. [#105](https://github.com/sleepy-panda-works/portulan/pull/105)
   received **four**, two past the bound — its carriers had said two, three and two, and eight, the raw
   submission count, is no answer either. Errata on the handoff (append-only, breach named, definition
