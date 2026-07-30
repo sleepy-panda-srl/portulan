@@ -101,8 +101,12 @@ and carries nothing else.
 anywhere else would be invisible to the one thing that most needs to read it, and a repository governed
 from a feed would be indistinguishable from a repository that never adopted Portulan.
 
-**What `doctor` checks:** that a pointer carries `governed_by` and nothing but `governed_by` — the
-schema requires the first through its `oneOf`, `doctor` refuses the second in the ruling's own words. It
+**What `doctor` checks:** that a pointer carries `governed_by`, and that it carries no *governing* keys —
+no slots, no recipes, no products, no packs, no store. The permit-list is exactly `portulan`, `name`,
+`kind`, `governed_by` and an optional `summary`; `summary` is on it because one line an agent reads before
+loading anything else costs nothing and is the difference between "governed elsewhere" and a bare name.
+The schema requires `governed_by` through its `oneOf`, and `doctor` refuses anything outside the
+permit-list in the ruling's own words. It
 also skips every governing-workspace check for a pointer **and says so**: a pointer declares no recipes,
 so `verify.default` alone would fail every compliant one, and a check that vanishes without a word is
 worse than one that admits what it could not reach.
