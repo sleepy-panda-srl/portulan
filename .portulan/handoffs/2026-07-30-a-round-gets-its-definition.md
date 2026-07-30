@@ -101,6 +101,17 @@ this is a hazard for hand-counting and not a defect. `.portulan/gate-map.md` kne
 recorded the fact as a thread-*resolution* observation — who cleared the gate — which is why it did not
 prevent a mis-count.
 
+**Copilot challenged the mapping in round two, and the challenge is what produced the evidence.** It read
+`copilot-review.yml`'s header — `copilot-pull-request-reviewer[bot]` "raising threads on #44" — as
+contradicting the endpoint split, and proposed dropping the mapping for "both logins are observed". That
+would have removed the only useful part: *which endpoint gives which*. Settled by measuring instead, across
+ten pull requests spanning the whole history (#44, #49, #57, #63, #81, #85, #95, #105, #115, #119) — the
+split holds every time, with no overlap in either direction, **including on #44 itself**. The header and the
+gate map both name the *actor* by its review login, which is not a claim about `/comments`. **The finding
+was wrong and still worth its round:** two carriers were loose enough to make a correct, measured statement
+look false, and that near-contradiction is now resolved in the rule rather than left for the next counter to
+re-derive.
+
 ## Open — the maintainer's, and outward
 
 **PR #105's body still says two.** It is the third carrier and the only one outside the tree: correcting
@@ -118,6 +129,13 @@ re-derives four from `/reviews`, `/comments` and `git log`, confirms the errata 
 whether the PR body was ever brought into line. **Item 1 is untouched by this change and still owed**: the
 close's doctrine rewording must state what the first instance is *not* — nothing reads it, nothing
 consolidates it — and must not be ticked on #109's interim wording.
+
+**This branch spent both its rounds and stops there, which is the definition being observed rather than
+just written.** Round one fixed a table still headed "rounds" beside a note claiming it had been
+re-labelled; round two settled the login mapping by measuring ten pull requests. Both were pushes
+answering Copilot, so both count — **`#119` is at rule 4's bound**, and anything further becomes an issue
+rather than a third push. Under the definition this branch replaces, round two would have been free: its
+findings arrived only in the suppressed channel.
 
 **Next action.** Open the pull request for his review and merge; the PR-body errata needs his go-ahead
 separately.
