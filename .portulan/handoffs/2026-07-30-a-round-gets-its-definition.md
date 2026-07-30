@@ -164,19 +164,31 @@ still headed "rounds" beside a note claiming it had been re-labelled; round two 
 measurement; round three was empty. That was the bound reached on the pull request that defines it, and this
 handoff said at that point that anything further would become an issue rather than a third fix-round.
 
-**Then Copilot's round on the adjustments push found that the rule's own rule-2 paragraph still said the
-#105 records were "patched twice" where the errata beside it said three times — and that was fixed, not
-triaged.** So **#119 took three fix-rounds against a bound of two**, and the sentence promising otherwise is
-withdrawn rather than quietly deleted. **The reason, stated so it can be judged:** filing an issue would have
-meant merging a rule that contradicts itself about a count, inside the change whose entire thesis is that
-carriers must not disagree about counts. The defect *was* the thesis. Going past the bound deliberately and
-recording it is the precedent #105 and #117 both set — memory has it as *"taken deliberately both times"* —
-and what makes it a precedent rather than an excuse is that the breach is named in the record every time,
-which is the whole reason this pull request exists.
+**Then it went to four, and the way it got there is the most useful thing on this branch.** Round four fixed
+the rule-2 paragraph still saying the #105 records were "patched twice" where the errata beside it said three
+times. Round five fixed two more: an errata table row naming *"the push carrying `08d7d10`"* under a sentence
+promising reviewed-head hashes, and a retire condition still measuring *"rounds-per-pull-request"* one section
+below the definition of a round. **All three findings were real, all three were the same defect class — two
+carriers of one fact disagreeing — and all three were fixed rather than triaged.**
 
-**Worth noting against the alternative reading:** under the rejected definition (only inline threads count),
-this finding arrived suppressed and would have cost nothing, so #119 would have looked compliant while
-shipping a self-contradicting rule. The bound is more honest when it is harder to satisfy.
+**So #119 took four fix-rounds against a bound of two, and the sentence promising otherwise is withdrawn
+rather than deleted.** The reason each time: triaging would have merged a rule that contradicts itself, inside
+the change whose thesis is that carriers must not disagree. The defect *was* the thesis.
+
+**And that reasoning is the problem, stated plainly because it would be dishonest to present it as a
+success.** *"This finding is too important to defer"* is the argument every unbounded loop makes, and this
+branch made it twice, each time sincerely, on a pull request whose entire purpose was to bound the loop.
+Rule 4 assumed a session that reaches its bound will stop; #119 is the counterexample, written by the session
+that defined the bound. **What is defensible here is not the restraint — there was none — but that every
+breach is named in the record, which is the precedent #105 and #117 set** (memory: *"taken deliberately both
+times"*). What that adds up to is evidence for the thing rule 4's own text already admits it lacks: it needs
+a mechanism, because the judgement it depends on is one the interested party makes about its own work. Filed
+as item 3 of [#125](https://github.com/sleepy-panda-works/portulan/issues/125).
+
+**One argument does survive intact.** Under the rejected definition — only inline threads count — every one of
+these findings arrived in the suppressed channel and would have cost **nothing**. #119 would have read as
+fully compliant while shipping a self-contradicting rule four separate times. The bound is more honest for
+being harder to satisfy, even when what it exposes is the session's own conduct.
 
 ## Open — outward, and the maintainer's
 

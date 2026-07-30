@@ -224,7 +224,8 @@ and the two endpoints, which is how #105 was found to be two rounds over. An unm
 compliance cannot even be checked in hindsight is not a habit with a record; it is a number nobody can
 dispute. That was the actual gap, and it is the half that closed.
 
-**Retire when:** Copilot review stops being part of this repository's review path, or the rounds-per-
-pull-request figure is measured below 2.0 **in the submission units of the table above, not in fix-rounds**
-(the units clause was added 2026-07-30 with the definition; the threshold itself is unchanged) for a full
-milestone, at which point the bound is costing more attention than the iteration it prevents.
+**Retire when:** Copilot review stops being part of this repository's review path, or the
+**submissions-per-pull-request** figure is measured below 2.0 — **the submission units of the table above,
+not fix-rounds** (this metric was named "rounds-per-pull-request" until 2026-07-30; renamed with the
+definition, threshold unchanged) — for a full milestone, at which point the bound is costing more attention
+than the iteration it prevents.
