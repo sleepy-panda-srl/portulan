@@ -789,3 +789,42 @@ describe("a public marketplace entry may not point into a private feed", () => {
         assert.doesNotMatch(messages(findings), /private feed/i);
     });
 });
+
+describe("the private-feed refusal matches a name, not a substring", () => {
+    test("a public repo whose name merely CONTAINS the feed's is not refused", async () => {
+        // Copilot, round 5 on #117. `target.includes(feed)` false-positives on an unrelated public
+        // repository — the intent is to block a pointer TO the private feed by name, and a substring
+        // match blocks anything whose name happens to contain it. A false red in a rail is how the
+        // whole rail gets switched off.
+        const root = fixture({
+            marketplace: {
+                name: "demo-market",
+                owner: { name: "Someone" },
+                plugins: [
+                    { name: "demo", source: "./", version: "0.1.0" },
+                    { name: "tools", source: { source: "github", repo: "someone-else/portulan-internal-tools" } },
+                ],
+            },
+        });
+        const { findings } = await inspect(root);
+        assert.doesNotMatch(messages(findings), /private feed/i);
+    });
+
+    test("the real feed is still refused, by every spelling of its name", async () => {
+        for (const source of [
+            { source: "github", repo: "sleepy-panda-works/portulan-internal" },
+            { source: "git-subdir", url: "https://github.com/sleepy-panda-works/portulan-internal", path: "packs" },
+            { source: "url", url: "git@github.com:sleepy-panda-works/portulan-internal.git" },
+        ]) {
+            const root = fixture({
+                marketplace: {
+                    name: "demo-market",
+                    owner: { name: "Someone" },
+                    plugins: [{ name: "demo", source: "./", version: "0.1.0" }, { name: "premium", source }],
+                },
+            });
+            const { findings } = await inspect(root);
+            assert.match(messages(findings), /private feed/i, JSON.stringify(source));
+        }
+    });
+});
