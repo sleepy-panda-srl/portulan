@@ -6,6 +6,7 @@
 > the only remedy a budget could ask for is one this project rules out.
 
 - 2026-07-30 · [Handoff — the tests rail has been seen to fire](handoffs/2026-07-30-the-tests-rail-has-been-seen-to-fire.md)
+- 2026-07-30 · [Handoff — the loop gets its fresh verdict, and the build cycle stops being an anecdote](handoffs/2026-07-30-the-loop-gets-its-fresh-verdict.md)
 - 2026-07-30 · [Handoff — the feed points, the public repository carries, and a scope lands empty](handoffs/2026-07-30-the-feed-points-and-the-public-repo-carries.md)
 - 2026-07-30 · [One repository, one governing workspace](handoffs/2026-07-30-one-repository-one-governing-workspace.md)
 - 2026-07-30 · [Handoff — a round gets its definition, and the first count under it was still wrong](handoffs/2026-07-30-a-round-gets-its-definition.md)

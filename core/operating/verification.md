@@ -22,7 +22,8 @@ of its own. A context grading its own implementation is not an independent measu
 verdict comes from a context that has not seen the implementation. This is a limit on the **verifier**,
 not a fourth rung on the hierarchy: a fresh reviewer of an unexercised change still has nothing to
 grade, and climbing the hierarchy remains the work. _(Provenance: read-isolated review — Cognition;
-last-mile review focus — agentic craft. The measured argument, and its limits, are in proposal 0018.)_
+last-mile review focus — agentic craft. The measured argument, and its limits, are recorded as
+[`../../.portulan/proposals/0018-a-verdict-from-the-context-that-did-the-work-is-not-a-verdict.md`](../../.portulan/proposals/0018-a-verdict-from-the-context-that-did-the-work-is-not-a-verdict.md).)_
 
 ## The failing test is the spec
 
