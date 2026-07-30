@@ -925,7 +925,7 @@ const withPack = (files = {}, manifest = withScopes()) =>
 
 describe("a persona's declared memory scope lands in the adopter's layer", () => {
     test("the location is created, and created EMPTY", () => {
-        // m06.md observation 1, and the maintainer's ruling of 2026-07-29: `present and empty` binds
+        // m06.md observation 1, and the maintainer's ruling of 2026-07-30: `present and empty` binds
         // literally. Not a marker file, not a .gitkeep — nothing. The connection is carried by the
         // index, which is why it can be.
         const dir = withPack();

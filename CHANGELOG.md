@@ -77,11 +77,11 @@ they cannot see — and publishes the private feed's structure besides. Neither 
 tree, so it is a refusal rather than a note. Preventive: no such entry has ever existed.
 
 **`--pack-root` on `compile`, `doctor` and `index`.** A resolution root can now be named on the command
-line, searched *before* the one derived from `tree`. The resolver has taken roots as an argument since the
+line, and a named root **replaces** the one derived from `tree` rather than being searched ahead of it: when
+one is given, the derived root is not searched at all. The resolver has taken roots as an argument since the
 Pack Definition landed and nothing set them, so the from-a-feed case existed in the code and had no way in
-from a shell. Named roots **replace** the derived one rather than preceding it, on purpose: a
-demonstration that a pack resolved *from the feed* must not be satisfiable by a copy sitting in the local
-tree at all. Two of the three tools replaced and one appended when this first landed — a workspace with the
+from a shell. Replacement rather than precedence, on purpose: a demonstration that a pack resolved *from the
+feed* must not be satisfiable by a copy sitting in the local tree at all. Two of the three tools replaced and one appended when this first landed — a workspace with the
 pack in its own tree compiled green against an empty named root — so the divergence is now pinned by a test
 rather than held in line by prose. What is still not built is *discovery* — nothing finds a
 host's plugin cache on its own.
