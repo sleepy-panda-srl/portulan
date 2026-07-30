@@ -931,11 +931,24 @@ export async function inspect(workspaceDir, options = {}) {
                             "two has to become a pointer, and which one is the customer's choice — both " +
                             "residences carry full functionality, so nothing is lost either way",
                     );
-                } else if (other.governed_by?.workspace !== workspace.name) {
+                } else if (other.governed_by?.workspace === undefined) {
+                    // A manifest at a named root is read, never validated — `doctor` grades one workspace
+                    // per run and this is somebody else's. So a pointer there may be malformed, and
+                    // comparing its missing governor against this workspace's name would refuse it for
+                    // "naming `undefined`", which reads as a conflicting governor and is not one. Found by
+                    // Copilot, round 1 on #135. Reported rather than failed, on the same reasoning as the
+                    // unreadable manifest above: a broken pointer is not evidence of double governance.
+                    report(
+                        "residence",
+                        `\`${name}\` carries a pointer at ${display(found)} that names no governing ` +
+                            "workspace. That is a defect in that manifest and `doctor` says so where it " +
+                            "runs; it is not evidence about governance, so nothing is refused here",
+                    );
+                } else if (other.governed_by.workspace !== workspace.name) {
                     fail(
                         "residence",
                         `\`${name}\` is named by this workspace (\`${workspace.name}\`) but its pointer ` +
-                            `names \`${other.governed_by?.workspace}\` as its governor, and ${GOVERNS} — ` +
+                            `names \`${other.governed_by.workspace}\` as its governor, and ${GOVERNS} — ` +
                             "two workspaces both believing they govern one repository is that failure with " +
                             "the second copy moved one directory away",
                     );
@@ -1591,53 +1604,40 @@ export async function run(argv, options = {}) {
         const namedRoots = [];
         const repoRoots = [];
         const dirs = [];
-        const directoryRoot = (flag, value) => {
+        // ONE validator for both flags, and it is one because a reviewer caught the comment claiming so
+        // while `--pack-root` still carried its own copy (Copilot, round 1 on #135). Two inputs have to
+        // fail closed here and each has a real incident behind it: a root that is **not there** is a
+        // filesystem fact rather than a pack that failed to resolve, and reporting it as the latter sends
+        // a reader to the one file that is not at fault; and existence is not enough, because
+        // `existsSync` is true for a FILE, so one was accepted and every later resolution failure was
+        // misattributed to the workspace. Three tools take `--pack-root` and only `index` had the
+        // directory check — the sibling class the 2026-07-27 ruling names, found by Copilot on #117 round
+        // 7, one round after the same defect was fixed in `index` alone. `what` keeps each flag's message
+        // specific: sharing the check must not cost the reader the sentence that says what a root is FOR.
+        const directoryRoot = (flag, value, what) => {
             if (value === undefined || value.startsWith("-")) throw new DoctorError(`${flag} needs a directory`);
             let stat = null;
             try {
                 stat = fs.statSync(value);
             } catch (cause) {
                 throw new DoctorError(
-                    `${flag} ${value} cannot be read — ${cause.code ?? cause.message}. Refusing to report against a root nothing looked in`,
+                    `${flag} ${value} cannot be read — ${cause.code ?? cause.message}. Refusing to report ${what.unresolvable} against a root nothing looked in`,
                 );
             }
             if (!stat.isDirectory()) {
-                throw new DoctorError(`${flag} ${value} is not a directory — a resolution root is a directory things are looked up under`);
+                throw new DoctorError(`${flag} ${value} is not a directory — a resolution root is a directory ${what.holds} are looked up under`);
             }
             return path.resolve(value);
         };
+        const PACK_ROOT = { unresolvable: "a pack unresolvable", holds: "packs" };
+        const REPO_ROOT = { unresolvable: "a repository ungoverned", holds: "repositories" };
         for (let i = 0; i < argv.length; i += 1) {
             if (argv[i] === "--repo-root") {
-                // Fails closed on exactly the two inputs `--pack-root` learned to fail closed on, and
-                // through the same helper rather than a second copy of the reasoning: a missing root and
-                // a root that is a FILE both exited 0 somewhere in this repository before they exited 2,
-                // and the second one was found only after the first had been fixed in one tool of three.
-                repoRoots.push(directoryRoot("--repo-root", argv[i + 1]));
+                repoRoots.push(directoryRoot("--repo-root", argv[i + 1], REPO_ROOT));
                 i += 1;
             } else if (argv[i] === "--pack-root") {
-                const root = argv[i + 1];
+                namedRoots.push(directoryRoot("--pack-root", argv[i + 1], PACK_ROOT));
                 i += 1;
-                if (root === undefined || root.startsWith("-")) throw new DoctorError("--pack-root needs a directory");
-                // Not there is a filesystem fact, not a pack that failed to resolve; reporting it as the
-                // latter sends a reader to the one file that is not at fault. And existence is not enough:
-                // `existsSync` is true for a FILE, so one was accepted and every later resolution failure
-                // was misattributed to the workspace. Three tools take this flag and only `index` had the
-                // directory check, which is the sibling class the 2026-07-27 ruling names — found by
-                // Copilot on #117, round 7, one round after the same defect was fixed in `index` alone.
-                let rootStat = null;
-                try {
-                    rootStat = fs.statSync(root);
-                } catch (cause) {
-                    throw new DoctorError(
-                        `--pack-root ${root} cannot be read — ${cause.code ?? cause.message}. Refusing to report a pack unresolvable against a root nothing looked in`,
-                    );
-                }
-                if (!rootStat.isDirectory()) {
-                    throw new DoctorError(
-                        `--pack-root ${root} is not a directory — a resolution root is a directory packs are looked up under`,
-                    );
-                }
-                namedRoots.push(path.resolve(root));
             } else if (!argv[i].startsWith("-")) dirs.push(argv[i]);
         }
         if (dirs.length === 0) {

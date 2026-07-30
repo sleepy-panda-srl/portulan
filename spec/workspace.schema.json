@@ -9,14 +9,14 @@
 
   "oneOf": [
     {
-      "description": "A GOVERNING workspace — the ordinary form, and the only one that existed before 2.7. It carries the team's policy layer, so `slots` and `verify` are required of it. They sit here rather than in the top-level `required` because a pointer is a manifest too and carries neither; stating the requirement per form keeps it IN the schema, where a third-party validator reading the published contract can see it, rather than moving it into `doctor` as an eighth constraint the schema cannot express (spec/README.md keeps that count, and says the growing gap is the thing to watch).",
+      "description": "A GOVERNING workspace — the ordinary form, and the only one that existed before 2.7. It carries the team's policy layer, so `slots` and `verify` are required of it. They sit here rather than in the top-level `required` because a pointer is a manifest too and carries neither; stating the requirement per form keeps it IN the schema, where a third-party validator reading the published contract can see it, rather than moving it into `doctor` as another constraint the schema cannot express (spec/README.md keeps the running count of those, and says the growing gap is the thing to watch — an ordinal here would be a second carrier of that number, which is the drift this bump is partly repairing).",
       "properties": {
         "kind": { "enum": ["repository", "demo", "portfolio"] }
       },
       "required": ["slots", "verify"]
     },
     {
-      "description": "A POINTER — added at 2.7 with the residence ruling of 2026-07-30 (.portulan/proposals/0017). It names the workspace that governs this repository and carries nothing else. What it does NOT constrain is deliberate: this form requires `governed_by` and forbids nothing, because a manifest declaring `kind: \"pointer\"` beside a full set of slots must reach `doctor` and be refused THERE, in the ruling's own sentence. A schema that failed it would make `doctor` return at `the manifest must conform first`, and the sentence the refusal exists to print would never print.",
+      "description": "A POINTER — added at 2.7 with the residence ruling of 2026-07-30 (.portulan/proposals/0017). Its INTENT is a thin manifest naming the workspace that governs this repository and carrying no policy layer of its own. What this branch actually constrains is narrower than that intent, deliberately, and the gap is stated rather than glossed: it requires `governed_by` and forbids nothing, so a manifest declaring `kind: \"pointer\"` beside a full set of slots is schema-VALID here and is refused by `doctor` instead — in the ruling's own sentence, which is the point. A branch that failed such a shape would make `doctor` return at `the manifest must conform first`, and the sentence the refusal exists to print would never print. `doctor` holds the permit-list: `portulan`, `name`, `kind`, `governed_by`, and an optional `summary`.",
       "properties": {
         "kind": { "enum": ["pointer"] }
       },
@@ -61,7 +61,7 @@
     },
 
     "governed_by": {
-      "description": "Optional, added in 2.7, and valid ONLY on a `pointer` — the sibling `oneOf` requires it there, and `doctor` refuses it beside any governing kind, because a workspace that carries a full policy layer AND names another as its governor is the dual management the ruling refuses. It names the governing workspace by its `name`, and, where the workspace is delivered through a private feed rather than checked out beside this repository, the feed it ships through. Nothing here is dereferenced: resolving a pointer to the workspace it names needs a host's plugin cache, which is discovery, which is milestone 7's — so this key is read and reported, never fetched.",
+      "description": "Optional, added in 2.7. REQUIRED of a `pointer` — the sibling `oneOf` enforces that — and MEANINGFUL only there, but not forbidden elsewhere by this schema: a governing kind carrying it validates here and is refused by `doctor`, because a workspace that carries a full policy layer AND names another as its governor is the dual management the ruling refuses, and that refusal has to reach a reader as a sentence rather than as a schema error. It names the governing workspace by its `name`, and, where the workspace is delivered through a private feed rather than checked out beside this repository, the feed it ships through. Nothing here is dereferenced: resolving a pointer to the workspace it names needs a host's plugin cache, which is discovery, which is milestone 7's — so this key is read and reported, never fetched.",
       "type": "object",
       "additionalProperties": false,
       "required": ["workspace"],
