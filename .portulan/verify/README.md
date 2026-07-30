@@ -205,7 +205,7 @@ less.
 
 | Check | The rule | Why it is machinery rather than a reminder |
 |---|---|---|
-| `links` | Every relative Markdown link resolves. | The engine is a web of cross-references between doctrine, templates, personas, and skills — progressive disclosure *is* those links. A dead link in a framework about context engineering is a product defect, not a docs defect. |
+| `links` | Every relative Markdown link resolves **in the repository** — against the tracked set, not against the disk the check is running on. | The engine is a web of cross-references between doctrine, templates, personas, and skills — progressive disclosure *is* those links. A dead link in a framework about context engineering is a product defect, not a docs defect. And the domain is half the rule: a check that asks the filesystem answers a question about one machine, which is how a green stood in front of an author while CI went red on the same commit ([#121](https://github.com/sleepy-panda-works/portulan/issues/121)). |
 | `kernel` | [`../../core/engine.md`](../../core/engine.md) stays within 60 lines. | The always-loaded layer is the scarcest thing the framework spends, and the budget is constitutional. A budget that lives only in prose is the first thing a busy session negotiates with. |
 | `map` | Every top-level entry appears in the root `README.md` layout table. | Agent legibility: a repository whose own map omits directories teaches an agent a false shape of the ground. This one exists because that had already happened — see below. |
 | `record` | The Session log and `../handoffs/` correspond **both ways** — every log date since 2026-07-25 has a handoff of that date, and every date carries at least as many log entries as it has handoffs; no Markdown file in `../handoffs/` escapes that count by being named without a date; every log entry dated after 2026-07-28 is within the log's 10-line budget; and the newest entry carries a seam attestation. | The Session log and the handoffs are the repository's memory of *how* things were decided, and a session that leaves no record cannot be audited afterwards — which stopped being hypothetical the day a merged doctrine rewrite (#32/#33) turned out to have neither, and again when a two-day review found **five** handoff-documented sessions with no log entry. The budget half exists because the same review found entries at 105 lines against a log that asks for one line per session: an entry that swells into a record makes the file every session must read to boot cost more each time, and moves the *why* out of the handoff written to hold it. Both floors are forward-only cutoffs — the day each rule became a ruling — because a rule cannot bind a record written before it without rewriting that record to suit it. |
@@ -240,6 +240,65 @@ list now arrives on stdin), and the red→green transcript is in
 [`../handoffs/2026-07-25-workspace-definition-v1.md`](../handoffs/2026-07-25-workspace-definition-v1.md).
 Worth recording because the lesson generalises past this check: a false red is not a milder failure than
 a false green, it is the one that gets the whole recipe switched off.
+
+**The `links` check kept its rule and changed its DOMAIN on 2026-07-30**, which is the more interesting
+half of a check's design and the one this recipe had got wrong since milestone 1. The rule was always
+*every relative link resolves*; the domain was `[ -e ]`, the filesystem — so the check answered a question
+about the machine it ran on. The two diverge exactly when git cannot carry what the disk holds, and in
+milestone 6 they diverged inside a **generated** file: a link to a deliberately empty directory, green in
+front of the author who had just created it, red in CI on the clean checkout
+([#121](https://github.com/sleepy-panda-works/portulan/issues/121), and the retirement condition in
+[`../memory/a-generated-file-must-not-point-at-what-git-cannot-carry.md`](../memory/a-generated-file-must-not-point-at-what-git-cannot-carry.md)).
+Resolution now reads `git ls-files --cached`; **enumeration** deliberately still reads
+`--cached --others --exclude-standard`, because the two lists want opposite directions — scanning more
+files can only find more defects, while resolving against more paths can only hide them.
+
+**Seven shapes passed the old test, and counting them is the point.** Forced red before the change and
+re-run after it, in a throwaway clone of this tree so that symlinks, submodules and non-ASCII names could
+actually be committed — twenty-five link shapes in three documents. Green before and red after, every one:
+an **empty directory**; an **ignored** path; a **wrong-case file**; a **wrong-case directory**; an
+**untracked** path; a path that **escapes the root and re-enters** through the absolute filesystem (`..`
+that walks off the top and lands somewhere real); and an **absolute** target from a root-level document,
+which resolves here and 404s in every renderer because a leading slash means the *site* root.
+
+Also red before and after, and correctly: an absent target, a trailing slash on a tracked file, an escape
+that lands nowhere, and a path reached by walking *through* a tracked symlink. Also green before and after,
+and correctly: a tracked file, a tracked symlink itself, `a/../b` landing back inside, a name with a space,
+a directory with and without its trailing slash, `./`, `.`, `../` naming the root, and a `#fragment`.
+
+That is **one defect with seven faces**, not seven defects, and the same-class sweep is why six of them
+were found at all — the reported instance was the empty directory, and the other six came from asking what
+else answers "is this on my disk" when the question is "does the repository carry it".
+
+**Two false REDS the change would have introduced, both found by a fresh context attacking it rather than
+by any run.** Neither fires on a path this tree carries today, which is why nothing would have caught them
+until the day someone committed one. First: `git ls-files` **C-quotes** any path with a byte outside
+printable ASCII, so a committed `docs/naïve.md` comes back as `"docs/na\303\257ve.md"` and the resolution
+table keys the quoted spelling — a correctly tracked file reported as untracked, with `git add` unable to
+discharge it. `core.quotePath=false` on both `ls-files` reads closes it, and it closes the same latent
+defect in the `map` check, which shares the enumeration and would have reported a top-level entry named
+`"docs`. Second: `normalize()` returned the same value for a `..` that walks off the root and for a path
+that lands exactly *on* the root, so `./`, `.` and `../` from a subdirectory were red as *"escapes the
+repository root"* — a false red carrying a confidently wrong reason, which is worse than either alone.
+
+**Two limits this review surfaced and did not fix**, recorded under Known limits below on this page's own
+rule that a limit written down is not a limit managed: a `%`-encoded target (`two%20words.md`) is a false
+red, because a renderer decodes the escape and this check does not; and a target containing nested
+parentheses is truncated at extraction. Both predate this change and neither is reachable from a path in
+this tree.
+
+**Two findings from writing it, both worth more than the fix.** The first draft's *diagnosis* was
+misaligned — awk emitted an empty middle field, bash treats a run of tabs as one delimiter because tab is
+IFS whitespace, and every field after it shifted left, so three of the seven reds named the wrong repair
+while the count was perfectly correct. Caught only because the drill asserts the **message**; a drill that
+had checked the number would have passed. And the diagnosis arm had no fallback, so an unknown code would
+have silently reused the previous iteration's `note` and attached one link's explanation to another's
+line. Both are the recipe's own recurring class — a fail-open in the scaffolding around a check rather than
+in the check — and the cost of the fix is honest: **+0.09s**, one extra `git ls-files` and one `awk` pass.
+Measured rather than estimated, three alternating pairs on the same tree: 0.802–0.817s before,
+0.891–0.959s after, so about **11%** on the recipe the Stop-gate runs at every commit. Worth stating
+because a default recipe's runtime is a budget like any other, and the honest version of this number is a
+range rather than the flattering single reading.
 
 The `record` check was added 2026-07-27, after a fresh-context audit found that the day's #32/#33
 doctrine-rewrite arc had merged with **no handoff and no Session log entry**, and that the newest log
@@ -669,6 +728,14 @@ places that bites: the runner's checkout is shallow, so anything reading `git lo
 and green everywhere else; and the two `links` reds above exist precisely because a clean checkout is
 not a working copy. Those are per-recipe facts, and a drill is how each one stops being a guess.
 
+**One of those three is now closed, and the sibling beside it is not.** `links` stopped asking the
+filesystem on 2026-07-30 ([#121](https://github.com/sleepy-panda-works/portulan/issues/121)) — it
+resolves against the tracked set, so it answers the same question here and in CI, and the two reds above
+could not happen again. `doctor`'s claim resolution is the **same class pointing the other way** — a
+false *red* rather than a false green — and it is deliberately not fixed in the same change: it lives in
+a tested JS tool with a different repair, and bundling it would have put an unforced rewrite inside a
+milestone-close diff. Named here rather than left as a symmetry a reader has to notice.
+
 ## Known limits
 
 - **The librarian's record is not byte-checked, and nothing can check it.** Every other generated file
@@ -691,11 +758,24 @@ not a working copy. Those are per-recipe facts, and a drill is how each one stop
   false reds train people to stop trusting the recipe.
 - **External URLs are not fetched.** Deliberate. A verify recipe that needs the network fails for reasons
   unrelated to the change under test, and a flaky gate is worse than no gate.
-- **Link targets are matched by the filesystem's rules, not GitHub's.** On a case-insensitive volume —
-  the macOS default — the existence test accepts `Core/engine.md` for `core/engine.md`, so a wrong-case
-  link passes locally and 404s once the repository is browsed on GitHub or cloned onto Linux. Resolving
-  targets against `git ls-files` instead would close it; until then this is a known false green, recorded
-  rather than left to be discovered.
+- ~~**Link targets are matched by the filesystem's rules, not GitHub's.**~~ **Closed 2026-07-30**, by the
+  repair this bullet named: `links` resolves against `git ls-files --cached` and compares byte-exactly, so
+  `Core/engine.md` for `core/engine.md` is now red on every volume. Kept struck through rather than deleted
+  because the interesting part is the shape — it was recorded as a known false green, sat that way for
+  three days, and was closed only when an unrelated instance of the *same class* made someone go looking.
+  A limit written down is not a limit managed.
+- **A `%`-encoded target is a false red, and a nested-parenthesis target is not fully read.** Both are in
+  the extraction rather than the resolution, both predate the 2026-07-30 domain change, and both were found
+  by a fresh context attacking that change rather than by a run — no path in this tree reaches either. A
+  target written with `%20` where the file has a space reds, although a renderer decodes the escape and
+  finds the file; and a target containing parentheses is read only as far as the first closing one, because
+  the extracting pattern is not balanced-paren aware. Both are **described rather than written out here**,
+  and that is the third finding: the first draft of this bullet spelled both targets as real link syntax
+  and turned the recipe red on its own documentation, because this check scans raw text and backticks
+  exempt nothing — the same trap [`a-generated-file-must-not-point-at-what-git-cannot-carry`](../memory/a-generated-file-must-not-point-at-what-git-cannot-carry.md)
+  records two drafts of itself falling into. Decoding percent escapes is a small fix, deliberately not
+  bundled into a milestone-close diff; the parenthesis one needs a scan the pattern cannot express, which
+  is the same reason anchors are not checked.
 - **Code spans are not treated as code.** The `links` check scans raw text, so it neither skips fenced
   blocks and inline spans nor looks inside them. That cuts both ways, and both were observed the same
   day: a path written as a code span is never validated (two dead pointers in the plan survived several

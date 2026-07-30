@@ -60,10 +60,15 @@ Written at the same level of detail, because a legibility report that lists only
   it. The store is walked **flat**: records under a subdirectory of it are in no index and count
   against no budget. And the budget's *remedy* is not enforced — a breach is red, but nothing refuses
   a change that answers the breach by raising the number.
-- **`links` has two known false greens.** Wrong-case link targets pass on a case-insensitive volume, and
-  paths written as code spans are never checked at all. Both are recorded in
-  [`../../verify/README.md`](../../verify/README.md); the second has already cost this repository two
-  dead pointers that survived several reviews.
+- **`links` has one known false green, down from two.** Paths written as code spans are never checked at
+  all — that one stands, and has already cost this repository two dead pointers that survived several
+  reviews. The wrong-case one **closed 2026-07-30**: resolution moved from the filesystem to
+  `git ls-files --cached`, so a link now resolves if the repository carries it and not if this disk does
+  ([#121](https://github.com/sleepy-panda-works/portulan/issues/121)). What an agent may now rely on is
+  narrow and worth stating exactly: a green `links` means every relative target is **tracked**, so it
+  holds in a fresh clone and in CI. It still means nothing about a path inside a code span, and nothing
+  about whether the document at the other end says something true. Both recorded in
+  [`../../verify/README.md`](../../verify/README.md).
 - **`CODEOWNERS` exists but enforces nothing.** [`../../../CODEOWNERS`](../../../CODEOWNERS) routes
   review requests and records ownership; *Require review from Code Owners* is off in branch protection,
   because a solo maintainer cannot approve his own pull request and `enforce_admins` has no exemption for

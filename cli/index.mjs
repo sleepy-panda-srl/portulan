@@ -662,6 +662,12 @@ export function renderScopeIndex(workspace, series) {
     // That is a **local false green in a generated file**, which regenerating would faithfully reproduce.
     // Exempting the filename from the link walk was the other repair available and is refused for the
     // reason this repository always refuses it: an exemption is a door every other record can use.
+    //
+    // Since 2026-07-30 `links` resolves against `git ls-files --cached` (#121), so linking the location
+    // would now be a consistent red rather than a local green. That changes nothing here, and the
+    // distinction is worth keeping straight: the check improved, the reason did not. Naming the location
+    // is right because the path is a declaration, and it would still be right in a workspace `vendor`
+    // shipped to a host that runs no recipes at all.
     const entries = series.scopes.map((s) =>
         `- \`${s.persona}\` · ${s.pack} · \`${s.location}\` · scope \`${scopeDigest(s.scope)}\` — ${firstSentence(s.scope)}`,
     );
