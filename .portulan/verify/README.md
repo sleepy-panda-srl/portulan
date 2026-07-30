@@ -568,9 +568,10 @@ pass and the recipes exists to prevent. Found by running the pass, not by readin
 
 ### The forced-red drills — which rails have been seen to fire
 
-Everything above this line is a recipe forced red **locally**, which is where a check earns its design.
-This subsection is the other seam: which rails have been observed red **in CI, on a pull request**,
-where the block actually happens. Milestone 8's amendment asks for *scheduled forced-red drills — every
+Everything above this line was gathered **locally** — recipes forced red at a desk, which is where a
+check earns its design, and one watcher's observation procedure beside them. This subsection is the
+other seam: which rails have been observed red **in CI, on a pull request**, where the block actually
+happens. Milestone 8's amendment asks for *scheduled forced-red drills — every
 rail forced red on a calendar and required to fire*; the calendar is that milestone's, and this is the
 register it writes into, opened with one drill run ahead of it because the survey below found it nearly
 empty.
