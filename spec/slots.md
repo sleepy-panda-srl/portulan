@@ -42,17 +42,18 @@ experience a failure. *(Binding non-goal: no ceremony that can't scale down.)*
 | `name` | manifest | **yes** | constitution — workspaces ship as plugins through a feed, so they need a stable identifier |
 | `kind` | manifest | **yes** | content — [`three-workspaces-not-one.md`](../.portulan/memory/three-workspaces-not-one.md); constitution — *Reference workspaces* |
 | `summary` | manifest | no | constitution — attention budgets per layer |
-| `slots.identity` | path | **yes** | constitution — thesis 1 *(identity, stack, glossary)*; content — [`identity.md`](../.portulan/identity.md) |
-| `slots.principles` | path | **yes** | criterion — *constitution … slots (team principles)*; content — [`principles.md`](../.portulan/principles.md) |
+| `slots.identity` | path | **for a governing kind** | constitution — thesis 1 *(identity, stack, glossary)*; content — [`identity.md`](../.portulan/identity.md) |
+| `slots.principles` | path | **for a governing kind** | criterion — *constitution … slots (team principles)*; content — [`principles.md`](../.portulan/principles.md) |
 | `slots.constitution` | path | no | content — customer zero is graded against a document outside its workspace; constitution — spec-driven school, the constitution file |
-| `slots.gates` | path | **yes** | criterion — *gate map*; constitution — [`autonomy.md`](../core/operating/autonomy.md) puts the map in the workspace |
+| `slots.gates` | path | **for a governing kind** | criterion — *gate map*; constitution — [`autonomy.md`](../core/operating/autonomy.md) puts the map in the workspace |
 | `slots.dod` | path | no | constitution — thesis 1 *(DoD)*; [`verification.md`](../core/operating/verification.md) — core supplies the floor |
 | `slots.memory` | path | no | constitution — thesis 1 *(memory)*; [`memory.md`](../core/operating/memory.md) |
 | `slots.repos` | path | no | constitution — thesis 1 *(repo cards)*; [`repo-card.md`](../core/templates/repo-card.md) |
 | `slots.tasks` | path | no | content — [`tasks/`](../.portulan/tasks/); constitution — BMAD, the story file as atomic context unit |
 | `slots.handoffs` | path | no | content — [`handoffs/`](../.portulan/handoffs/); [`loop.md`](../core/operating/loop.md) — every session ends with one |
 | `slots.proposals` | path | no | content — [`proposals/`](../.portulan/proposals/); [`evolution.md`](../core/operating/evolution.md) |
-| `verify` | structured | **yes** | criterion — *verify recipes*; [`verification.md`](../core/operating/verification.md) — the workspace sets the default |
+| `verify` | structured | **for a governing kind** | criterion — *verify recipes*; [`verification.md`](../core/operating/verification.md) — the workspace sets the default |
+| `governed_by` | manifest | **for `kind: pointer`** | the maintainer's residence ruling, 2026-07-30 — [proposal 0017](../.portulan/proposals/0017-one-repository-one-governing-workspace.md); one repository, one governing workspace |
 | `products[]` | structured | no | criterion — *product-layer slot … portfolio-aware*; content — [`identity.md`](../.portulan/identity.md) |
 | `affordances` | path | no | criterion — *agent-affordances slot*; constitution — the agent-native / AX row of the influence map |
 | `tree` | path | **for `kind: repository`** | criterion — *lints workspace claims against the tree*; content — [`../examples/`](../examples/), the first workspace whose repositories are not present |
@@ -61,7 +62,7 @@ experience a failure. *(Binding non-goal: no ceremony that can't scale down.)*
 | `handoffs` | structured | no | criterion — milestone 5 as amended, *a generated index over the handoff series*; [`loop.md`](../core/operating/loop.md) — the librarian that mines the series |
 | `provenance` | record field | **on every rule** | criterion — *provenance slot*; [proposal 0002](../.portulan/proposals/0002-sealed-provenance.md), adopted |
 
-## `kind` — which of the three workspaces this is
+## `kind` — which of the four workspaces this is, and which of them governs
 
 The strongest single piece of evidence in the tree asked for this slot by name. The memory entry
 [`three-workspaces-not-one.md`](../.portulan/memory/three-workspaces-not-one.md) records its own
@@ -69,10 +70,46 @@ retirement condition as *"the Workspace Definition (milestone 2) names and disti
 formally"* — so the schema is not inventing a distinction, it is discharging one the workspace had
 already written down and was waiting on.
 
-`repository` · `demo` · `portfolio`. **What `doctor` checks:** that the value is one of the three. What it
-cannot check is the thing that matters — whether a `demo` workspace actually carries no real internal
-policy. That stays human review, and it is the reason the slot is required rather than inferred from a
-path: an author who has to type `demo` has been asked the question.
+`repository` · `demo` · `portfolio` — the three that **govern** — and, added at 2.7, `pointer`, which
+does not. **What `doctor` checks:** that the value is one of the four, and then which form the manifest
+must take (below). What it cannot check is the thing that matters about the first three — whether a
+`demo` workspace actually carries no real internal policy. That stays human review, and it is the reason
+the slot is required rather than inferred from a path: an author who has to type `demo` has been asked
+the question.
+
+### `pointer` — a repository whose workspace resides elsewhere
+
+Added at **2.7**, from the maintainer's residence ruling of 2026-07-30
+([proposal 0017](../.portulan/proposals/0017-one-repository-one-governing-workspace.md)):
+
+> A repository is governed by exactly one workspace. It carries its own full workspace, or a pointer to
+> the workspace that names it — never both.
+
+A team's workspace can reside in two places, and the choice is the customer's: **in the repository**, the
+shape customer zero has, self-contained and feed-independent; or **feed-side**, in a portfolio workspace
+that names the repository, which reaches many repositories at once and keeps team context out of product
+trees whose audiences may be wider. They are one artifact in two residences. What differs is reach and
+delivery; what does not differ is what the workspace contains, or what a customer can do with it.
+
+Which is exactly why both may not be present at once. Two residences of the same thing are not two
+things — they are one thing written down twice, with nothing holding the copies in agreement. `pointer`
+is what makes the second residence expressible without a second copy: a manifest that names its governor
+and carries nothing else.
+
+**Why a `kind` value rather than a separate file.** The boot skill looks for exactly one path,
+`${CLAUDE_PROJECT_DIR}/.portulan/workspace.json`, and does not search outward. A pointer that lived
+anywhere else would be invisible to the one thing that most needs to read it, and a repository governed
+from a feed would be indistinguishable from a repository that never adopted Portulan.
+
+**What `doctor` checks:** that a pointer carries `governed_by` and nothing but `governed_by` — the
+schema requires the first through its `oneOf`, `doctor` refuses the second in the ruling's own words. It
+also skips every governing-workspace check for a pointer **and says so**: a pointer declares no recipes,
+so `verify.default` alone would fail every compliant one, and a check that vanishes without a word is
+worse than one that admits what it could not reach.
+
+**What nothing checks:** that the workspace a pointer names exists, or governs, or is green. Resolving
+`governed_by` needs a host's plugin cache, and this tool does not do discovery — see
+[`README.md`](README.md)'s coverage table, where the gap has its own row.
 
 ## `slots.identity` and `slots.principles` — and why they are two
 
@@ -336,7 +373,7 @@ reasons, and the second is the stronger one.
   is the one it sits in. It is not a demo, and it has no single tree either — so kind-dispatch would
   demand a lint it cannot run, one milestone after v1.
 - **It disables a check class on a self-declared field.** `kind` is typed by an author, and `doctor`
-  checks only that it is one of three values. A whole category of checking that switches itself off
+  checks only that it is one of the permitted values. A whole category of checking that switches itself off
   because somebody wrote `demo` is a fail-open with a doorbell on it — this repository has now recorded
   three of that shape ([`../.portulan/memory/verify-preconditions-fail-closed.md`](../.portulan/memory/verify-preconditions-fail-closed.md)),
   every one of them in gate machinery.
@@ -356,10 +393,11 @@ dependency between two keys needs `if`/`then` or `dependentRequired`, and neithe
 to anyone reading the schema alone. Stated loudly rather than hidden, because "read the schema to know
 the contract" is otherwise false in these places, and an unmarked exception is worse than a marked one.
 
-**It is now one of five**, and [`README.md`](README.md) keeps the running count because the number is
+**It is now one of nine**, and [`README.md`](README.md) keeps the running count because the number is
 the thing to watch. Two arrived with `memory` at 2.3 — a declared `memory` object needs a
-`slots.memory` store to index, and `memory.index.path` must resolve *outside* it — and two more with
-`librarian` at 2.4:
+`slots.memory` store to index, and `memory.index.path` must resolve *outside* it — two more with
+`librarian` at 2.4, and then that same store-and-siting pair twice again: over the handoff series at 2.5
+and over the per-persona scope layer at 2.6. The two `librarian` brought:
 
 - **`librarian` requires `slots.memory`.** There is nothing to age otherwise, and a pass over an absent
   store reports that nothing is stale, which is indistinguishable from a healthy one.

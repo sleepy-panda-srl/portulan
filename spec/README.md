@@ -52,13 +52,31 @@ Two rules follow, and both were forced by real defects rather than chosen for ti
    embedded in a larger repository may legitimately reach for a shared document, and a hard failure
    would make the schema wrong about a case it cannot see.
 
-## The three kinds
+## The four kinds — three that govern, and one that points
 
-`kind` is required, and it is not bookkeeping. A **demo** workspace is written to be read by strangers
-and must carry no real internal policy; a **repository** workspace is a team dogfooding on their own
-product; a **portfolio** workspace covers many products at once. Confusing them produces the two failures
-that actually cost something: real internal policy published in a demo, or a demo written as merely
-illustrative when it is the only complete worked example an evaluator will ever read.
+`kind` is required, and it is not bookkeeping. Three kinds **govern**: a **demo** workspace is written to
+be read by strangers and must carry no real internal policy; a **repository** workspace is a team
+dogfooding on their own product; a **portfolio** workspace covers many products at once. Confusing those
+three produces the two failures that actually cost something: real internal policy published in a demo, or
+a demo written as merely illustrative when it is the only complete worked example an evaluator will ever
+read.
+
+The fourth, **`pointer`**, added at 2.7, governs nothing. It names the workspace that governs this
+repository and carries no slots of its own — a repository whose policy layer resides elsewhere says so in
+one thin manifest instead of keeping a second copy nothing holds in agreement. That is the maintainer's
+residence ruling of 2026-07-30 in the schema
+([proposal 0017](../.portulan/proposals/0017-one-repository-one-governing-workspace.md)):
+
+> A repository is governed by exactly one workspace. It carries its own full workspace, or a pointer to
+> the workspace that names it — never both.
+
+The two residences a customer may choose between — the workspace in the repository, or the workspace in a
+portfolio that names the repository — deliver **full functionality either way**, and the mechanism that
+makes that a property rather than a promise is that every feature keys to a workspace **slot** and never
+to a residence. Nothing in `doctor`, `compile` or `index` asks where the manifest lives. The proposal
+carries the one place where that is not yet true, and it is a discovery gap rather than a feature gap: the
+boot skill searches the project directory only, so a repository governed from a feed boots to a pointer's
+honest report rather than to a resolved workspace.
 
 ## Required versus optional
 
@@ -66,19 +84,45 @@ A slot is **required** only when a workspace without it breaks a promise the eng
 whole test, and it is deliberately strict — a day-one workspace has no proposals, no handoffs, and no
 memory yet, and it must still validate. Ceremony that cannot scale down is a binding non-goal.
 
-Required: `portulan.spec`, `name`, `kind`, `slots.identity`, `slots.principles`, `slots.gates`, `verify`
-— plus the conditional requirements listed here, none of which the schema can express (the subset
-has no `dependentRequired`, so `doctor` enforces every one and [`slots.md`](slots.md) says so):
+Required of every manifest: `portulan.spec`, `name`, `kind`. Required **per form**, and stated in the
+schema itself by the top-level `oneOf` added at 2.7: `slots` and `verify` of a governing workspace —
+with `slots.identity`, `slots.principles` and `slots.gates` inside `slots` — and `governed_by` of a
+`pointer`. Those live in the schema rather than in this list deliberately: the list below is the price
+of the subset's narrowness, and a new constraint belongs in it only when the subset genuinely cannot
+express the constraint.
+
+Then the conditional requirements, none of which the schema can express (the subset has no
+`dependentRequired`, so `doctor` enforces every one and [`slots.md`](slots.md) says so):
 `tree` when `kind` is `repository`; `slots.memory` when `memory` is declared, since the object
 configures a store rather than replacing one; `memory.index.path` resolving **outside**
 `slots.memory`, since an index inside the store is counted as a record by `doctor`'s own store report;
 `slots.memory` when `librarian` is declared, since a pass over nothing reports that nothing is stale;
 `slots.proposals` when `librarian.staleness.proposal_days` is, since a threshold nothing can ever
-cross reads as configured to anyone who greps for it; and, as of 2.5, the same two the memory index
+cross reads as configured to anyone who greps for it; as of 2.5, the same two the memory index
 carries, applied to the handoff series — `slots.handoffs` when `handoffs` is declared, and
 `handoffs.index.path` resolving **outside** `slots.handoffs`, since a file sited in that directory is
 either counted as a handoff by the `record` check's correspondence or failed by it for carrying no
-date. Everything else is optional.
+date; and, as of 2.6, that same pair a third time over the per-persona scope layer — `slots.personas`
+when `personas` is declared, and `personas.index.path` resolving **outside** `slots.personas`, since
+`index`'s orphan sweep would examine a file sited there as an undeclared persona location.
+Everything else is optional.
+
+_The 2.6 pair was enforced in `doctor` from the day the keys landed and was missing from this list until
+2.7 — the list said seven while the validator refused nine. Nothing was wrong in the mechanism; the prose
+about it was wrong, which is the class [#133](https://github.com/sleepy-panda-works/portulan/issues/133)
+is filed about and the reason the count below is now read off `cli/doctor.mjs` rather than incremented by
+hand. [`slots.md`](slots.md) carried the same fact and said **five**, stale by two bumps; both are
+corrected in the change that added the pointer kind, because a fix that repairs one carrier and knowingly
+leaves its sibling is the defect this repository names most often._
+
+**The residence refusals are deliberately NOT in that list, and the distinction is the reason it can
+still be trusted.** `doctor` refuses a pointer carrying governing slots, a governing workspace carrying a
+`governed_by`, and — where a `--repo-root` makes it visible — a repository named by one workspace and
+governed by another. All three are expressible in the subset. They are enforced in `doctor` anyway,
+because the schema's own failures return at *the manifest must conform first*, so a shape the schema
+refused would never print the sentence the refusal exists to print. That is a choice about **where a rule
+is stated**, not a constraint the schema cannot carry — so the count of things the schema cannot express
+stays at nine.
 
 [`slots.md`](slots.md) argues each one.
 
@@ -88,15 +132,20 @@ defect [#77](https://github.com/sleepy-panda-works/portulan/issues/77) is filed 
 and adding to the list at 2.5 is exactly the edit that would have left it stale again — which is how
 this one was noticed._
 
-That the count went from one to three in a single MINOR, then to five, and now to seven, is worth
-noticing rather than absorbing. Each is a genuine dependency between two keys and none can be written
-in the declared subset, so the gap between *what the schema says* and *what a conforming manifest must
-satisfy* is widening — and a constraint invisible to someone reading the schema alone is a real cost,
-stated here rather than discovered. The subset earns its narrowness by being implementable completely
-and honestly; the price is this list, and the list is the thing to watch if it keeps growing. **Three
-MINORs at +2 each** is the growth rate to hold the next bump against, and 2.5's two are the same two
-`memory` brought — a series needs a store and its index must sit outside it — which is an argument for
-generalising the pair before a third series arrives, rather than for adding it again.
+That the count went from one to three in a single MINOR, then to five, then to seven, and now stands at
+**nine**, is worth noticing rather than absorbing. Each is a genuine dependency between two keys and none
+can be written in the declared subset, so the gap between *what the schema says* and *what a conforming
+manifest must satisfy* is widening — and a constraint invisible to someone reading the schema alone is a
+real cost, stated here rather than discovered. The subset earns its narrowness by being implementable
+completely and honestly; the price is this list, and the list is the thing to watch if it keeps growing.
+**Four MINORs at +2 each** was the growth rate to hold the next bump against, and 2.4's, 2.5's and 2.6's
+pairs are the *same* pair three times over — a series needs a store and its index must sit outside it —
+which was an argument for generalising it rather than adding it again.
+
+**2.7 is the first MINOR since 2.2 that adds nothing to this list**, and that is the reason its pointer
+requirement went into the schema's `oneOf` instead. The generalisation the paragraph above kept asking for
+is still owed for the three index pairs; what 2.7 establishes is only that a new conditional requirement
+is a last resort rather than the default shape.
 
 _These figures are history rather than state: what 2.3 and 2.4 added cannot change, so they do not go
 stale the way the removed count did. The one forward-looking sentence is the growth rate, and it is
@@ -113,22 +162,39 @@ number governing both would make a bump in either mean a change in the other:
 
 | Schema | Manifest key | Current | What it governs |
 |---|---|---|---|
-| [`workspace.schema.json`](workspace.schema.json) | `portulan.spec` | **2.6** | the Workspace Definition — the manifest at a workspace root |
+| [`workspace.schema.json`](workspace.schema.json) | `portulan.spec` | **2.7** | the Workspace Definition — the manifest at a workspace root |
 | [`pack.schema.json`](pack.schema.json) | `portulan.pack` | **1.0** | the Pack Definition — the manifest at a pack root, added at milestone 6 |
 
 The rules below apply to each train independently. `portulan.spec` is `MAJOR.MINOR`, and the current
-Workspace Definition version is **2.6**. It did **not** move when the Pack Definition arrived, because
+Workspace Definition version is **2.7**. It did **not** move when the Pack Definition arrived, because
 `workspace.schema.json` was byte-identical across that change: `packs` already existed as an array of
 strings and was deliberately left that way, since tightening its items to the canonical `category/name`
 form would be a constraint an existing manifest could newly fail, which is a MAJOR.
 
-**2.6 is a MINOR, and it is one on the definition rather than by assertion:** it adds two optional keys —
-`slots.personas` and `personas` — and tightens nothing. Every manifest valid at 2.5 is valid at 2.6, so
-no migration exists and none is owed; `examples/` stays on 2.4 untouched, which is the property a MINOR is
-supposed to have. The pair is what makes a pack-declared persona memory scope checkable rather than prose,
-and [`slots.md`](slots.md) carries the argument for why the layer is **declared** rather than derived from
-`slots.memory`. Contrast this with the bump refused one session earlier, where the intent was 2.5 → 2.6
-and nothing in the schema had moved at all — the discipline is the same in both directions.
+**2.7 is a MINOR, and it is one on the definition rather than by assertion.** It adds a fourth `kind`
+value and one optional key, `governed_by`, and it moves `slots` and `verify` out of the top-level
+`required` into a `oneOf` branch that requires them of every governing kind. That last move is the one
+that has to be argued rather than asserted, because relaxing a `required` list *looks* like a
+weakening: it is not, because the branch re-imposes both on all three kinds that existed at 2.6, so no
+manifest that was valid becomes invalid and no manifest that was invalid becomes valid. Measured rather
+than reasoned — `node cli/doctor.mjs .portulan examples` is GREEN across the bump, with `examples/` still
+on **2.4 and untouched**, which is the property a MINOR is supposed to have. No migration exists and none
+is owed.
+
+**What the bump costs, stated rather than discovered.** `kind` discriminates the two forms, so a manifest
+whose `kind` is in neither enum now fails **twice**: once precisely, at `/kind`, and once at the root
+saying it is neither a governing workspace nor a pointer. The second error is true and the first is
+unchanged, but a reader who used to see one error sees two. The blast radius is exactly that case — an
+unknown key, a `#fragment` slot and a bad path each still produce one error, because the forms constrain
+only `kind`, `slots`, `verify` and `governed_by`. It is held there by a test rather than by this sentence.
+
+_(Contrast the bump refused earlier in milestone 6, where the intent was 2.5 → 2.6 and nothing in the
+schema had moved at all — the discipline is the same in both directions.)_
+
+**2.6 was a MINOR on the same terms**: two optional keys, `slots.personas` and `personas`, tightening
+nothing. The pair is what makes a pack-declared persona memory scope checkable rather than prose, and
+[`slots.md`](slots.md) carries the argument for why the layer is **declared** rather than derived from
+`slots.memory`.
 
 _(This line read `2.0` for two MINOR bumps after the schema had moved past it — the version of the
 spec, stated wrongly in the spec's own README, while the `$id` beside it was right. It is recorded
@@ -197,6 +263,10 @@ workspace with no constitution slot and a green report.
 | The recipes a workspace declares actually run | Stop-gate runner | **Built** (milestone 4), for the **default** recipe only, and outside `doctor` — which still reads recipes and executes none. A non-default recipe declaring a tool it does not have still passes. |
 | The gate policy compiles to host enforcement | `compile` | **Built** (milestone 4). Two backends — the Claude Code host and the GitHub repository ruleset that is the platform floor. Every rule ends as compiled or refused-with-a-reason, **per backend**, and each emitted artifact is held to the policy by a verify recipe. That the *host* honours it is not checkable here — CI installs nothing. |
 | What each backend cannot enforce | `doctor` · `compile --matrix` | **Built** (milestone 4). Per-backend coverage, the gates no backend compiles, and the floor's declared status checks against the tree's workflow jobs — the last of those a failure, the rest reports. Exported-versus-live drift is **not** checked: `doctor` does not fetch settings, and no recipe here makes a network call. |
+| One repository, one governing workspace | `doctor` | **Built** (2.7). Two refusals need only the manifest in hand: a `pointer` carrying governing slots, and a governing kind carrying a `governed_by`. Both print the ruling's own sentence, which is why they are `doctor`'s and not the schema's — a schema failure returns at *the manifest must conform first* and the sentence would never reach a reader. |
+| A repository named by one workspace and governed by another | `doctor --repo-root` | **Built** (2.7), **where visible**. Roots are named, never discovered — the same limit `--pack-root` carries, and for the same reason. Without a root the check **reports that it did not run** rather than passing quietly. Visibility is one-way: the refusal runs from the naming workspace outward, so a repository carrying a full workspace cannot see a portfolio that claims it. A workspace that names its **own** repository finds itself and is not two managers; that identity is compared on the real path. |
+| A pointer resolves to the workspace it names | — | **Not built**, and named rather than implied. Resolving `governed_by` needs a host's plugin cache, which is discovery — milestone 7's, alongside `init` asking the residence question and `vendor` performing the switch. `doctor` and the boot skill read the pointer and report it; neither fetches. |
+| A feed-side repo card's claims against a repo-side tree | — | **Not built** — the cross-repo claims-lint gap, priced in [proposal 0017](../.portulan/proposals/0017-one-repository-one-governing-workspace.md). A portfolio workspace declares no `tree`, so its cards' build/test/run and layout claims are *reported unverifiable*; repo-side the tree is present and the cards are not. No single CI run sees both halves. In-session validation does work, and `--repo-root` narrows the governance question specifically — neither closes this. |
 | A rule's link resolves | — | Not built, and not planned as a gate: dereferencing needs the network, and a gate that fails for reasons unrelated to the change under test is worse than no gate. |
 | Agent-legibility scored | `doctor` | Not built. The `affordances` slot is the input such an audit would read; it is not the audit. |
 

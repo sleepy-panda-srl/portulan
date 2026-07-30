@@ -38,6 +38,30 @@ of them would load another team's identity, another team's gate map, and another
 done, and would look exactly like success. If the project has no workspace, that is the answer; go to
 step 4.
 
+### 2a. If the manifest is a pointer, the workspace is somewhere else
+
+A manifest whose `kind` is `pointer` is **not** a workspace. It is one thin file saying that this
+repository's workspace resides elsewhere, and naming it: `governed_by.workspace` is the governing
+workspace's name, and `governed_by.feed`, where present, is the private feed it ships through. A
+repository is governed by exactly one workspace — its own, or a pointer to the workspace that names it,
+never both — so a pointer is the whole answer about residence, not a hint to be supplemented.
+
+**Report it and stop; do not improvise.** Say which workspace governs this repository, say that it is not
+installed here, and then go to step 4 and give that section's honest position — because that is the true
+one: you have the engine's universal mechanism and none of this team's policy. In particular:
+
+- **Do not fetch it.** Resolving `governed_by` to an installed plugin needs a host's plugin cache, and
+  nothing here discovers one. That arrives with the CLI at a later milestone.
+- **Do not read the pointer's neighbours as policy.** A pointer carries no slots, and a `.portulan/`
+  directory beside it holding files anyway is a defect worth reporting, not a workspace to load.
+- **Do not treat this as "no workspace".** The difference matters to the person you are reporting to: a
+  repository with no workspace has not adopted Portulan, while this one has and its policy layer is one
+  install away. Say which of the two you are looking at.
+
+If the user can install the named workspace — from the feed, or from a checkout beside this repository —
+that is the thing to ask for. Booting on a pointer and proceeding as though you had the policy layer is
+the same failure shape as booting on another team's workspace: it looks like a boot and it is not.
+
 ## 3. Read the slots the manifest names
 
 The manifest is an index, never a container: it names paths, and the prose lives in Markdown at the
