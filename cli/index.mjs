@@ -358,11 +358,19 @@ const firstSentence = (scope) => {
 const scopeDigest = (scope) => crypto.createHash("sha256").update(scope, "utf8").digest("hex").slice(0, 8);
 
 /**
- * Every file a pack ships that would be a memory record — anything under a `memory/` directory.
+ * Everything a pack ships that would be a memory record — any path with `memory` as a **segment**.
+ *
+ * The segment, not the prefix `memory/`: that reports a file under a `memory/` directory, the directory
+ * itself, and a **symlink named `memory`** — which is the case the prefix form missed, since a link is
+ * neither a directory this walk descends nor a file beneath one. Copilot found that bypass on #117 round
+ * 8, and this docstring described the prefix form for one round after the code stopped implementing it —
+ * a code/comment mismatch in a security-relevant check, which is `a-stated-enforcer-must-be-the-real-one`
+ * pointed at a comment instead of a rule.
  *
  * Bounded by construction rather than by a depth constant: it walks the pack it was handed and nothing
- * above it. `memory/` is the name the Workspace Definition's store slot carries in both live
- * manifests, so it is the name a pack author would reach for if they were going to make this mistake.
+ * above it, and it does not follow links — this answers *what does the pack carry*, and a link named
+ * `memory` is something it carries whatever it points at. `memory` is the name the Workspace Definition's
+ * store slot uses in both live manifests, so it is the name a pack author would reach for.
  */
 function packRecords(packDir, rel = "", out = []) {
     let entries;
