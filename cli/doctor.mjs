@@ -671,6 +671,11 @@ export async function inspect(workspaceDir, options = {}) {
     // Everything a pointer may carry. `summary` is here because one line an agent reads before loading
     // anything else costs nothing and is the difference between "governed elsewhere" and a bare name.
     const POINTER_KEYS = new Set(["portulan", "name", "summary", "kind", "governed_by"]);
+    // Read off the schema rather than written out again. The cross-repository check below needs to tell a
+    // kind it UNDERSTANDS from one it does not, and a second hand-maintained copy of that list is the
+    // defect class this whole change is partly about — one fact, two carriers, only one of them checked.
+    // Derived, so a fifth kind joins both at once or neither.
+    const KNOWN_KINDS = new Set(schema.properties?.kind?.enum ?? []);
 
     if (workspace.kind === "pointer") {
         const carried = Object.keys(workspace).filter((key) => !POINTER_KEYS.has(key)).sort();
@@ -923,7 +928,29 @@ export async function inspect(workspaceDir, options = {}) {
                     );
                     continue;
                 }
-                if (other.kind !== "pointer") {
+                // A manifest at a named root is READ, never validated — `doctor` grades one workspace per
+                // run and this is somebody else's. Everything below follows from that one fact, and it
+                // took two rounds to apply it consistently: this check refuses only what a manifest
+                // clearly DECLARES, and reports every shape it merely fails to understand. A refusal
+                // built on a field this run never validated would be a verdict about a workspace nobody
+                // graded.
+                //
+                // The first miss was a pointer with no `governed_by.workspace`, refused for "naming
+                // `undefined`" — a conflicting-governor verdict about a manifest naming no governor at
+                // all. The second was its sibling one field over, and it survived the fix to the first:
+                // a manifest with a MISSING or unrecognised `kind` fell into the governing branch and was
+                // refused as `kind: "undefined"`. Both found by Copilot on #135, rounds 1 and 4, which is
+                // the sibling class the 2026-07-27 ruling names — found here in the very change that
+                // quotes that ruling twice.
+                if (!KNOWN_KINDS.has(other.kind)) {
+                    report(
+                        "residence",
+                        `\`${name}\` has a manifest at ${display(found)} declaring no recognisable ` +
+                            `\`kind\` (${JSON.stringify(other.kind)}). That is a defect in that manifest ` +
+                            "and `doctor` says so where it runs; it is not evidence about governance, so " +
+                            "nothing is refused here",
+                    );
+                } else if (other.kind !== "pointer") {
                     fail(
                         "residence",
                         `\`${name}\` is named by this workspace and carries its own \`kind: ` +
@@ -932,12 +959,6 @@ export async function inspect(workspaceDir, options = {}) {
                             "residences carry full functionality, so nothing is lost either way",
                     );
                 } else if (other.governed_by?.workspace === undefined) {
-                    // A manifest at a named root is read, never validated — `doctor` grades one workspace
-                    // per run and this is somebody else's. So a pointer there may be malformed, and
-                    // comparing its missing governor against this workspace's name would refuse it for
-                    // "naming `undefined`", which reads as a conflicting governor and is not one. Found by
-                    // Copilot, round 1 on #135. Reported rather than failed, on the same reasoning as the
-                    // unreadable manifest above: a broken pointer is not evidence of double governance.
                     report(
                         "residence",
                         `\`${name}\` carries a pointer at ${display(found)} that names no governing ` +
