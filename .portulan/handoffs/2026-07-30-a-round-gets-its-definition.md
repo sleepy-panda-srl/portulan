@@ -5,7 +5,7 @@
 
 **State.** `a-review-loop-needs-a-bound.md` built a four-rule bound on counting rounds from 2026-07-28
 without ever defining one. It has a definition now, on the maintainer's ruling of 2026-07-30: **a round is a
-Copilot review this session answers with a push**, the **push** is the unit, and a records-only correction
+Copilot review the working session answers with a push**, the **push** is the unit, and a records-only correction
 counts. Applying it, [#105](https://github.com/sleepy-panda-works/portulan/pull/105) received **five** —
 three past the bound — and its three merged carriers, which had said two, three and two, are corrected: an
 append-only errata block on the handoff, the count fixed in the Session log, and an errata block appended to
@@ -51,13 +51,18 @@ the rule, because the method matters more than the answer.
 
 ## Decisions + why — the reasons are the payload
 
-- **The push is the unit, and that sentence had to be added explicitly.** *A review answered with a push* and
-  *the pushes that answer* come apart when one review is answered across two pushes — which #105 does:
-  review 4's inline and suppressed findings were answered by **different** pushes, 34 minutes apart.
-  Reviews-answered gives six; answering-pushes gives five. The push governs, because rule 1 already prices
-  the currency (*"a push costs a whole round"*) and because the alternative lets a session split one answer
-  across many pushes and be charged once. **The checkpoint found this as an ambiguity, not a typo:** as first
-  written the definition did not decide it, and two readers applying it reached two numbers.
+- **The push is the unit, and that sentence had to be added explicitly.** *Reviews answered* and *pushes that
+  answer* come apart whenever one push discharges more than one review — which #105 does: **`c6b6a25` answered
+  suppressed notes from two separate reviews at once**, the provenance path raised at 15:29:27Z and the
+  `tierRank` fail-open at 15:58:20Z. Reviews-answered gives **six**; answering-pushes gives **five**. **Note
+  the direction, because it is not the obvious one:** here the push unit yields the *smaller* count, so it is
+  not simply the stricter reading — it is the one rule 1 already prices (*"a push costs a whole round"*), and
+  rule 1 already requires fixes to be batched, so a push clearing several reviews is the rule working rather
+  than a discount. **The checkpoint found this as an ambiguity, not a typo:** as first written the definition
+  did not decide it, and two readers applying it reached two numbers. *An earlier draft of this bullet had the
+  mechanism backwards* — it claimed one review answered across two pushes, which yields the opposite
+  inequality; `e09a49a` was authored 15:20:51Z, three minutes **before** review 4 was raised, so it cannot
+  have answered it.
 
 - **A round is a push, not a submission.** *Alternative considered and rejected on the merits:* a round is a
   submission carrying a blocking inline thread. It is the reading that would have made #105's records nearly
@@ -161,7 +166,7 @@ exists to cover, and the reason its cost is not optional on doctrine work.
 
 **#119's own loop, under its own definition — and it went past its own bound.** Round one fixed a table
 still headed "rounds" beside a note claiming it had been re-labelled; round two settled the login mapping by
-measurement; round three was empty. That was the bound reached on the pull request that defines it, and this
+measurement; the third submission was empty. That was the bound reached on the pull request that defines it, and this
 handoff said at that point that anything further would become an issue rather than a third fix-round.
 
 **Then it went to four, and the way it got there is the most useful thing on this branch.** Round four fixed
@@ -180,8 +185,8 @@ success.** *"This finding is too important to defer"* is the argument every unbo
 branch made it twice, each time sincerely, on a pull request whose entire purpose was to bound the loop.
 Rule 4 assumed a session that reaches its bound will stop; #119 is the counterexample, written by the session
 that defined the bound. **What is defensible here is not the restraint — there was none — but that every
-breach is named in the record, which is the precedent #105 and #117 set** (memory: *"taken deliberately both
-times"*). What that adds up to is evidence for the thing rule 4's own text already admits it lacks: it needs
+breach is named in the record — the shape #105's own errata and #117's breach both take**, neither of them
+silent about going over, which is the only thing separating a priced breach from an unbounded loop. What that adds up to is evidence for the thing rule 4's own text already admits it lacks: it needs
 a mechanism, because the judgement it depends on is one the interested party makes about its own work. Filed
 as item 3 of [#125](https://github.com/sleepy-panda-works/portulan/issues/125).
 
@@ -190,22 +195,29 @@ these findings arrived in the suppressed channel and would have cost **nothing**
 fully compliant while shipping a self-contradicting rule four separate times. The bound is more honest for
 being harder to satisfy, even when what it exposes is the session's own conduct.
 
-## Open — outward, and the maintainer's
+## The outward record on #105, and why it carries two errata blocks
 
-**PR #105's body errata now says four, and four is wrong.** It was posted at 10:15:08Z under his direction,
-before the recount. A follow-up correcting it to five is drafted and **not posted**: it is public content on
-a merged pull request and his to release, exactly as the first one was. Until then #105 carries an errata
-block whose count is one short — better than the original *two*, still not right — and this handoff is the
-record of that gap rather than a claim it does not exist.
+**#105's body now holds two dated errata blocks, and the first one is left standing with its wrong figure
+visible.** The first said **four** and was posted 10:15:08Z on his instruction; the second says **five** and
+was posted after the second pre-commit pass independently re-derived that number, on his instruction that it
+be released *once the pass confirmed it*. The same text went up as a comment both times.
+
+**Overwriting the first block would have been the cheaper-looking choice and the wrong one.** Two visible
+corrections to one merged record read badly; a single correction quietly rewritten so the record looks like it
+was right the first time reads well and is a lie about how the count was arrived at. This pull request exists
+because three carriers disagreed and nobody could tell which had been edited when — so the one thing its own
+errata may not do is become unauditable. **The sequencing was the maintainer's:** hold the outward post until a
+fresh context confirmed the number, precisely because the number had already moved once.
 
 ## For the next session
 
 **The M6 close verifies this fix and must re-derive the count itself.** The Fable 5 verification of
 2026-07-30 left two residue items; item 2 was conditional — *if still unreconciled by close time, the close
 names it; if fixed, the close verifies the fix.* It is fixed in-tree, so the close re-derives from
-`/reviews`, `/comments` and `git log`, confirms the errata is append-only, and checks whether #105's body was
-brought to five. **Do not re-derive it from any table in this repository, including the ones in this
-handoff** — an earlier version of every one of them said four. **Item 1 is untouched and still owed:** the
+`/reviews`, `/comments` and `git log`, confirms the errata is append-only, and checks that #105's body
+carries **both** dated errata blocks — the original four and the five-correction above it. **Do not
+re-derive the count from any table in this repository, including the ones in this handoff** — an earlier
+version of every one of them said four. **Item 1 is untouched and still owed:** the
 close's doctrine rewording must state what the first instance is *not* — nothing reads it, nothing
 consolidates it — and must not be ticked on #109's interim wording.
 
@@ -215,8 +227,9 @@ in fix-rounds, so the 2.0 retire threshold has never been evaluated in the units
 Unanswered findings cost zero rounds by construction, so rule-4 compliance and a loop abandoned mid-feedback
 are indistinguishable from outside; whether those two reached triage is established nowhere.
 
-**Next action.** #119 is open with all nine adjustments folded in and wants the **second pre-commit pass** the
-checkpoint's verdict asks for. The #105 body follow-up needs his go-ahead separately.
+**Next action.** Nothing is owed in-tree. The second pre-commit pass returned **APPROVE-WITH-ADJUSTMENTS**
+and its adjustments are folded in; what remains is the maintainer's merge, and the #105 body follow-up he
+released separately.
 
 **Recoverability.** Documentation and one memory rule; nothing in `cli/`, no settings. Verify recipes green,
 so the tree can be committed or discarded whole. One outward act has been taken on this branch — #105's body

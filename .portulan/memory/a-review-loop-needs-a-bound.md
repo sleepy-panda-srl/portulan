@@ -21,29 +21,33 @@ _Units — the rows above were headed "rounds" until 2026-07-30 and are re-heade
 definition below put them in different units than the rule they justify: every figure counts
 **submissions** — a Copilot review arriving on a push — and not the fix-rounds rule 4 bounds. The
 numbers are untouched; only the unit they were always in is now named. The file says so itself one
-section down, in
-the same breath as the 29%: those were "pushes Copilot had nothing to say about", which a fix-round
-cannot be, since a fix-round is a push answering something. **Re-labelled, not re-counted** — the numbers
+section down, in the same breath as the 29%: those were "pushes Copilot had nothing to say about", which a fix-round
+cannot be, since a fix-round is a push answering something. **Re-labelled, not re-counted** — the figures
 are as measured on 2026-07-28 and nobody has re-derived the corpus in fix-rounds. The retire threshold at
 the foot of this file is in these same submission units._
 
 ## What one round is — added 2026-07-30
 
-**A round is a Copilot review this session answers with a push.** Rule 4's bound counts those pushes and
-nothing else. **The maintainer's ruling, Marius Cetanas, 2026-07-30**, taken because the four rules below
+**A round is a Copilot review the working session answers with a push.** Rule 4's bound counts those pushes
+and nothing else. **The maintainer's ruling, Marius Cetanas, 2026-07-30**, taken because the four rules below
 had been counting rounds since 2026-07-28 without ever defining one — and because three merged records of
 [#105](https://github.com/sleepy-panda-works/portulan/pull/105) had by then disagreed three ways about how
-many it received, none of them matching any countable thing on the pull request.
+many it received, none of them matching any countable thing on the pull request. _(Phrased "the working
+session" rather than "this session": a rule outlives the session that wrote it, and an indexical in a
+permanent definition means something different to every later reader.)_
 
-**The PUSH is the unit, and that sentence is load-bearing rather than a restatement.** *A review answered
-with a push* and *the pushes that answer* come apart the moment one review is answered across two pushes,
-which is not hypothetical: on #105 review 4 raised an inline finding and a suppressed one, and they were
-answered by **different** pushes five and thirty-four minutes apart. Counting reviews-answered gives six
-there; counting answering pushes gives five. **The push governs, so a review answered across several pushes
-costs one round per push** — because rule 1's currency is the push (*"a push costs a whole round"*) and
-rule 4 bounds pushes, and because the alternative lets a session split one answer across many pushes and be
-charged once. Added 2026-07-30 after the first fresh-context re-derivation of #105 returned a different
-number from the errata's, and the gap was this unit and not the arithmetic.
+**The PUSH is the unit, and that sentence is load-bearing rather than a restatement.** *Reviews answered* and
+*pushes that answer* come apart whenever one push discharges more than one review — which #105 does:
+**`c6b6a25` answered suppressed notes from two separate reviews at once**, the provenance path raised at
+15:29:27Z and the `tierRank` fail-open raised at 15:58:20Z. Counting reviews-answered gives **six** there;
+counting answering pushes gives **five**. **The push governs** — because rule 1's currency is the push
+(*"a push costs a whole round"*), because rule 4 bounds pushes, and because rule 1 already requires fixes to
+be batched, so a push that clears several reviews at once is the rule working rather than a discount being
+taken. **Note the direction, since it is not what you would guess:** here the push unit yields the *smaller*
+count, so it is not simply the stricter reading — it is the one the rest of the file already prices.
+Correspondingly, a review answered across several pushes costs one round **per push**. Added 2026-07-30
+after the first fresh-context re-derivation of #105 returned a different number from the errata's, and the
+gap turned out to be this unit rather than the arithmetic.
 
 **A records-only correction counts.** A push that fixes nothing but a record — a figure the reviewer caught
 disagreeing with itself across carriers — still spends a round, because it is still a push answering a
@@ -90,7 +94,7 @@ first** — it was raised against this very rule in review and cost a measuremen
 **Measured on #105, the pull request that forced the definition.** Eight submissions, all `COMMENTED`,
 each on a distinct commit, and **not one of them empty** — every submission carried at least one finding
 once the suppressed channel is read. Two carried inline threads (three findings, then one). **Five pushes
-answered them** — `d814e0a`, `9c19064`, `e09a49a`, the push carrying `08d7d10`, and `c6b6a25` — so #105 ran
+answered them** — `d814e0a`, `9c19064`, `e09a49a`, `a328ebf` (carrying `08d7d10`), and `c6b6a25` — so #105 ran
 **three rounds past this bound**.
 
 **The fifth push is the one a careless count loses, and losing it is instructive.** `08d7d10` answered
@@ -119,7 +123,7 @@ exists to correct: a method that can only see the well-formed instances reports 
 repository's own rule about rules:** both record floors in `docs.sh` are forward-only cutoffs, *"because a
 rule written after a record cannot bind it without rewriting the record to suit the rule."* A definition
 reaches further than a rule, though — it changes how a reader parses old text rather than what an old author
-owed — so the cutoff is stated here rather than left to be inferred from twelve uncorrected claims.
+owed — so the cutoff is stated here rather than left to be inferred from the uncorrected claims themselves.
 
 **An earlier draft of this paragraph said "four records" and gave a ground that would not hold.** It claimed
 #105 was corrected because *its carriers contradicted each other*, and that a lone earlier record
@@ -175,14 +179,14 @@ observation alone. _(This paragraph said "round" in all three places until 2026-
 meant a submission — a fix-round cannot be a push Copilot had nothing to say about — so they are re-worded,
 not re-measured, exactly as the table above was.)_
 
-**Rule 2 turned out to protect something bigger than a wasted round, measured 2026-07-30 on #105.** Its
+**Rule 2 turned out to protect something bigger than a wasted submission, measured 2026-07-30 on #105.** Its
 records landed **second** — before a single fix round had been pushed — were patched **three times** as the
 loop ran, and still stopped one push short of the end. The result was three merged carriers disagreeing about how
 many rounds the pull request had received — two, three and two, and the true figure was five, so **no
-carrier was right and no two carriers agreed**. **That is not three misreadings of
+carrier was right, and the two that agreed were both wrong**. **That is not three misreadings of
 one fact; it is the mechanical consequence of writing a record while the number it states can still
 move.** Had the records landed after the final push they would have been written once and all three would
-have agreed. So rule 2's cost is not only the round a documentation push spawns — it is that a record
+have agreed. So rule 2's cost is not only the submission a documentation push spawns — it is that a record
 written mid-loop is *a claim about a total that has not happened yet*, and the errata to fix it is
 permanent. Read this as the reason rule 2 is not the soft one of the four.
 
@@ -220,7 +224,7 @@ and the record is honest about which it is.
 still not mechanisable — *did this push answer a finding* is the same judgment as before, and a machine
 counting pushes since the first submission would charge the bound for pushes that answered nothing. What
 the definition buys is that the count is now **re-derivable after the fact** by a reader with `git log`
-and the two endpoints, which is how #105 was found to be two rounds over. An unmechanisable rule whose
+and the two endpoints, which is how #105 was found to be three rounds over. An unmechanisable rule whose
 compliance cannot even be checked in hindsight is not a habit with a record; it is a number nobody can
 dispute. That was the actual gap, and it is the half that closed.
 

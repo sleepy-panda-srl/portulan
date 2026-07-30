@@ -1772,11 +1772,11 @@ _The seam applies here too: no client-identifying references._
 
 - 2026-07-30 · Doctrine — no milestone row touched · **A round gets its definition, and the first count under
   it was still wrong** — [#119](https://github.com/sleepy-panda-works/portulan/pull/119). A four-rule bound
-  had counted rounds since 2026-07-28 with no definition. **The maintainer's ruling: a round is a Copilot review answered
-  with a push, the push is the unit, records-only fixes count.** [#105](https://github.com/sleepy-panda-works/portulan/pull/105)
-  received **five**, three past the bound — carriers said two, three, two; eight is the submission count. The
-  first pass said **four** and the fresh-context pre-commit caught it: `08d7d10` answered inline and was
-  never a reviewed head, so ten commits sit behind eight heads. Errata append-only, breach named, definition
-  dated; #105's body carries its own, posted on his instruction. Root cause **rule 2**. · Seam scan clean.
-  Handoff:
-  [`…a-round-gets-its-definition.md`](../.portulan/handoffs/2026-07-30-a-round-gets-its-definition.md).
+  had counted rounds since 2026-07-28 with no definition. **The maintainer's ruling — a round is a Copilot
+  review answered with a push; records-only fixes count** (*push-is-the-unit* is derived, not his words, and
+  flagged as such on the PR). [#105](https://github.com/sleepy-panda-works/portulan/pull/105) received
+  **five**, three past the bound — carriers said two, three, two; eight is the submission count. The first
+  pass said **four** and the fresh-context pre-commit caught it: `08d7d10` answered inline and was never a
+  reviewed head, so ten commits sit behind eight heads. Errata append-only, breach named, definition dated;
+  #105's body carries two blocks, four then five, both on his instruction. Root cause **rule 2**. · Seam scan
+  clean. Handoff: [`…a-round-gets-its-definition.md`](../.portulan/handoffs/2026-07-30-a-round-gets-its-definition.md).
