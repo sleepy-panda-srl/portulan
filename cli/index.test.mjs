@@ -1317,3 +1317,29 @@ describe("the generated index is valid Markdown, not just correct text", () => {
         }
     });
 });
+
+describe("a malformed pack manifest fails CLOSED, never as a crash", () => {
+    test("a non-string persona entry is an IndexError naming the pack, not a TypeError", () => {
+        // Copilot, round 6. `contributes.personas: [123]` parses, so the schema never sees it if `doctor`
+        // has not run — and `path.resolve` on a number threw a bare TypeError that escaped as an
+        // unanticipated crash rather than the exit 2 this module reserves for "could not judge". The
+        // surrounding code already prefers a named IndexError for every other malformed-manifest shape.
+        const dir = withPack({
+            "packs/rituals/checkpoints/pack.json": packManifest({ contributes: { personas: [123] } }),
+        });
+        assert.throws(
+            () => inspect(dir, { write: true }),
+            (e) => e instanceof IndexError && /rituals\/checkpoints/.test(e.message) && /not a string|string path/i.test(e.message),
+        );
+    });
+
+    test("--pack-root pointing at a FILE is refused, since the flag says it needs a directory", () => {
+        // Copilot, round 6. `existsSync` is true for a file, so the flag was accepted and every later
+        // resolution failure was then misattributed to the packs rather than to the argument.
+        const dir = withPack();
+        const file = path.join(dir, "identity.md");
+        const lines = [];
+        assert.equal(run(["--pack-root", file, dir], (s) => lines.push(s)), 2);
+        assert.match(lines.join("\n"), /not a directory/i);
+    });
+});

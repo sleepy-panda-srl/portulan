@@ -389,8 +389,15 @@ export function inspect(rawRoot) {
             const target = [entry.source?.repo, entry.source?.url, entry.source?.package]
                 .filter((v) => typeof v === "string")
                 .join(" ");
-            const segments = new Set(target.split(/[\s/:@]+/).map((seg) => seg.replace(/\.git$/, "")));
-            if (PRIVATE_FEEDS.some((feed) => segments.has(feed))) {
+            // **Lowercased on both sides.** GitHub repository names are case-insensitive, so
+            // `Sleepy-Panda-Works/Portulan-Internal` resolves to the same repository and walked straight
+            // through a case-sensitive membership test. Found by Copilot one round after the rail landed —
+            // a rail a different capitalisation gets past is not a rail, which is why this went past the
+            // review loop's two-fix-round bound rather than to triage (the precedent is #105).
+            const segments = new Set(
+                target.toLowerCase().split(/[\s/:@]+/).map((seg) => seg.replace(/\.git$/, "")),
+            );
+            if (PRIVATE_FEEDS.some((feed) => segments.has(feed.toLowerCase()))) {
                 fail(
                     "market",
                     `${label} ("${name ?? "?"}") is sourced from the private feed (\`${target}\`). ` +

@@ -454,6 +454,17 @@ export function readScopes(dir, workspace, options = {}) {
             // digest of its contents into a committed index. A composed pack is third-party content by
             // construction: that is the whole reason its gate fragments may only ever tighten, and the same
             // reasoning binds what it may read. Found by Copilot on #117, round 5.
+            // Checked before `path.resolve` touches it: a manifest is a file a human edits, `doctor` may
+            // not have run (the two tools have no ordering), and `path.resolve` on a number throws a bare
+            // TypeError that escapes as an unanticipated crash rather than the exit 2 this module reserves
+            // for "could not judge". Every other malformed-manifest shape here already gets a named
+            // `IndexError`; this one did not. Found by Copilot on #117, round 6.
+            if (typeof rel !== "string" || !rel.trim()) {
+                throw new IndexError(
+                    `pack \`${found.name}\` declares a persona entry that is not a string path — ${JSON.stringify(rel)}. ` +
+                        "Refusing rather than resolving it — run `doctor` to validate the pack against the Pack Definition",
+                );
+            }
             const file = path.resolve(found.dir, rel);
             if (!isInside(found.dir, file)) {
                 throw new IndexError(
@@ -1067,8 +1078,19 @@ export function run(argv, say = console.log) {
         // A root that is not there is a configuration fact, not a pack that failed to resolve. Reporting
         // it as the latter would send an author to look at the one file that is not at fault — the same
         // distinction ../.portulan/memory/verify-preconditions-fail-closed.md was written for.
-        if (!fs.existsSync(root)) {
-            say(`  ✗ --pack-root ${root} does not exist — refusing to report a pack unresolvable against a root nothing looked in`);
+        // Existence is not enough: `existsSync` is true for a FILE, and the flag's own usage says it needs
+        // a directory — so a file was accepted and every later resolution failure was misattributed to the
+        // packs rather than to the argument. A stat that throws fails closed for the same reason. Found by
+        // Copilot on #117, round 6.
+        let stat = null;
+        try {
+            stat = fs.statSync(root);
+        } catch (cause) {
+            say(`  ✗ --pack-root ${root} cannot be read — ${cause.code ?? cause.message}. Refusing to report a pack unresolvable against a root nothing looked in`);
+            return 2;
+        }
+        if (!stat.isDirectory()) {
+            say(`  ✗ --pack-root ${root} is not a directory — a resolution root is a directory packs are looked up under`);
             return 2;
         }
     }

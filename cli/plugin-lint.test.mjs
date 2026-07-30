@@ -828,3 +828,43 @@ describe("the private-feed refusal matches a name, not a substring", () => {
         }
     });
 });
+
+describe("the private-feed refusal cannot be bypassed by case", () => {
+    test("GitHub repo names are case-insensitive, so the rail must be too", async () => {
+        // Copilot, round 6 on #117 — a bypass of the rail added one round earlier. `Sleepy-Panda-Works/
+        // Portulan-Internal` resolves to the same repository and would have passed a case-sensitive
+        // membership test. A rail that a different capitalisation walks through is not a rail, which is
+        // why this went past the review loop's two-fix-round bound rather than to triage: the precedent
+        // is #105, which did the same to close a genuine fail-open.
+        for (const repo of [
+            "Sleepy-Panda-Works/Portulan-Internal",
+            "sleepy-panda-works/PORTULAN-INTERNAL",
+            "SLEEPY-PANDA-WORKS/portulan-internal",
+        ]) {
+            const root = fixture({
+                marketplace: {
+                    name: "demo-market",
+                    owner: { name: "Someone" },
+                    plugins: [{ name: "demo", source: "./", version: "0.1.0" }, { name: "premium", source: { source: "github", repo } }],
+                },
+            });
+            const { findings } = await inspect(root);
+            assert.match(messages(findings), /private feed/i, repo);
+        }
+    });
+
+    test("and the look-alike public repo still passes, in any case", async () => {
+        const root = fixture({
+            marketplace: {
+                name: "demo-market",
+                owner: { name: "Someone" },
+                plugins: [
+                    { name: "demo", source: "./", version: "0.1.0" },
+                    { name: "tools", source: { source: "github", repo: "Someone-Else/Portulan-Internal-Tools" } },
+                ],
+            },
+        });
+        const { findings } = await inspect(root);
+        assert.doesNotMatch(messages(findings), /private feed/i);
+    });
+});
