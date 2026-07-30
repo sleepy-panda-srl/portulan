@@ -4,9 +4,15 @@ A ritual pack: three checkpoints at which a **fresh context** grades work it did
 vocabulary its verdicts are written in. Composed by a workspace through its `packs` array as
 `rituals/checkpoints`.
 
-The premise is one sentence. **The context that did the work cannot supply the verdict on it** — not
-because it is dishonest, but because it has already read every rationalisation it wrote for itself, and
-will grade the work against the reasoning that produced it rather than against the standard.
+The premise is one sentence, and it is **core's**, not this pack's: on the full lane the verdict comes
+from a context that has not seen the implementation, because one primed by the implementing context
+measures agreement rather than correctness
+([`../../../core/operating/loop.md`](../../../core/operating/loop.md), and
+[`../../../core/operating/verification.md`](../../../core/operating/verification.md) for why that is a
+ceiling on the verifier rather than a rung on the hierarchy). What this pack adds is the **procedure**:
+three named moments, a persona to staff them, and the vocabulary the verdicts are written in. The
+premise moved into core on 2026-07-30; before that this file was where it was stated, which is why the
+sentence reads as a citation now and did not before.
 
 | Contributes | What |
 |---|---|

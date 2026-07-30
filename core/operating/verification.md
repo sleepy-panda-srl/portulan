@@ -14,6 +14,16 @@ done when the behaviour it claims has been *observed* — a test run, a command 
 checked — not when it merely type-checks. _(Provenance: verification-first practice — Cherny; agentic
 craft — Karpathy / Willison / Hashimoto.)_
 
+## The ceiling on self-verification
+
+The hierarchy orders the *evidence*; it does not say who may certify it, and the certifier has a ceiling
+of its own. A context grading its own implementation is not an independent measure of it, for the reason
+`loop.md` gives where it makes the fresh verdict a full-lane obligation — which is why on that lane the
+verdict comes from a context that has not seen the implementation. This is a limit on the **verifier**,
+not a fourth rung on the hierarchy: a fresh reviewer of an unexercised change still has nothing to
+grade, and climbing the hierarchy remains the work. _(Provenance: read-isolated review — Cognition;
+last-mile review focus — agentic craft. The measured argument, and its limits, are in proposal 0018.)_
+
 ## The failing test is the spec
 
 Where the change is code, the task's acceptance criteria are written first as a **failing test** —

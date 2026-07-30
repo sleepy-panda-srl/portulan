@@ -18,7 +18,8 @@ team's policy and identity. The repo card is per-repository. The task is the uni
 
 **research → plan → implement → verify → learn** — a cycle, not a waterfall. Small change takes the
 **triage lane** (one compressed pass); real blast radius takes the full lane (plan written, failing test
-first). Verify and the Stop-gate never scale down. → `operating/loop.md`
+first, the verdict from a context that did not implement). Verify and the Stop-gate never scale down.
+→ `operating/loop.md`
 
 ## Non-negotiables
 
