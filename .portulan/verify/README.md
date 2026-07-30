@@ -566,6 +566,108 @@ the first thing it refused was a proposal this session had just written — whic
 a correct tree and makes a verify recipe depend on git history, the one thing the split between this
 pass and the recipes exists to prevent. Found by running the pass, not by reading it.
 
+### The forced-red drills — which rails have been seen to fire
+
+Everything above this line is a recipe forced red **locally**, which is where a check earns its design.
+This subsection is the other seam: which rails have been observed red **in CI, on a pull request**,
+where the block actually happens. Milestone 8's amendment asks for *scheduled forced-red drills — every
+rail forced red on a calendar and required to fire*; the calendar is that milestone's, and this is the
+register it writes into, opened with one drill run ahead of it because the survey below found it nearly
+empty.
+
+**The survey, 2026-07-30.** [`../../.github/workflows/verify.yml`](../../.github/workflows/verify.yml)
+is the only workflow that has ever run a recipe, and it has failed **5 times in 416 runs**. Read from
+the check-run annotations rather than counted by eye — a red job carries a
+`verify recipe <id> exited <n>` annotation, which is the one place the failing recipe is named
+mechanically:
+
+| Run | Date | Recipe | What it was |
+|---|---|---|---|
+| [`30129932310`](https://github.com/sleepy-panda-works/portulan/actions/runs/30129932310) | 2026-07-24 | *none* | `actions/checkout@v4` refused for not being SHA-pinned — the job died before the loop |
+| [`30398437030`](https://github.com/sleepy-panda-works/portulan/actions/runs/30398437030) | 2026-07-28 | `docs` | `FAIL proposal — 1 proposal(s) name no pull request` |
+| [`30445601122`](https://github.com/sleepy-panda-works/portulan/actions/runs/30445601122) | 2026-07-29 | `docs` | the same, on the next branch to add a proposal |
+| [`30530100431`](https://github.com/sleepy-panda-works/portulan/actions/runs/30530100431) | 2026-07-30 | `docs` | `FAIL links — 1 unresolvable relative link(s)` |
+| [`30530283558`](https://github.com/sleepy-panda-works/portulan/actions/runs/30530283558) | 2026-07-30 | `docs` | the same link, after the first repair missed it |
+
+**So on the morning of 2026-07-30, one rail of eight had ever been seen to fire, and none had been
+fired on purpose.** The two `proposal` reds are the anticipated one Known limits below already
+predicts — a proposal's pointer cannot exist before its pull request does — and the two `links` reds
+were a genuine defect caught in flight, a local false green on a path that exists in a working copy
+and not in a clean checkout. Neither is a drill. A rail nobody has watched fire is a rail nobody has
+seen work, and seven of the eight were in that position.
+
+**Drill 1 — `tests`, 2026-07-30.** Run on
+[#118](https://github.com/sleepy-panda-works/portulan/pull/118), branch
+`drill-the-tests-rail-fires-the-block`, opened as a draft and **closed unmerged**; the branch carried
+nothing but the drill and was deleted after. Forced in **both** directions in two pushes, because a
+rail that only ever reds proves nothing about its green — a recipe hard-wired to fail would have
+produced the identical red transcript.
+
+| Push | Tree | Result |
+|---|---|---|
+| `45c931b` | `cli/drill.test.mjs` asserting `1 === 2` | run [`30532642890`](https://github.com/sleepy-panda-works/portulan/actions/runs/30532642890) → **failure**, annotation `verify recipe tests exited 1` |
+| `f89ed35` | the same file deleted, nothing else moved | run [`30532774286`](https://github.com/sleepy-panda-works/portulan/actions/runs/30532774286) → **success** |
+
+The red job's `tests` group, quoted:
+
+```
+##[group]tests — ./.portulan/verify/tests.sh
+tests: 8 test file(s) found
+...
+not ok 29 - forced-red drill: the tests recipe reports a failing assertion
+    error: |-
+      Expected values to be strictly equal:
+      1 !== 2
+    location: '/home/runner/work/portulan/portulan/cli/drill.test.mjs:24:1'
+...
+# tests 675
+# pass 674
+# fail 1
+##[endgroup]
+##[error]verify recipe tests exited 1
+```
+
+and the green job's, one line, which is the whole control: `tests: 7 test file(s) found`.
+
+**The block, read at the red head.** `gh pr view 118 --json mergeStateStatus` reported **`BLOCKED`**,
+and it went to `CLEAN` on the green push. Four things that transcript settles, each one an inference
+before it:
+
+- **The block came from this rail alone.** The full rollup at `45c931b` was `workspace-verify FAILURE`,
+  `pr-labeled SUCCESS`, `copilot-reviewed SUCCESS` — so nothing else was holding the merge, and
+  `BLOCKED` is attributable to one failing assertion in one test file.
+- **`mergeable` is not the field to read.** It said `MERGEABLE` at the same instant `mergeStateStatus`
+  said `BLOCKED`: it answers *does this conflict*, never *may this merge*.
+- **A draft pull request reports the real merge state.** `mergeStateStatus` never returned `DRAFT`
+  despite `isDraft: true` on both reads — the draft flag lives in `isDraft` and that field tracks the
+  checks. GraphQL's enum has a `DRAFT` member, which is why this was worth measuring rather than
+  assuming: a drill can be run start to finish inside a draft and still read the block it is drilling.
+- **A red recipe does not abort the loop.** `plugin` ran in the same job immediately after the
+  `::error::`, which is [`verify.yml`](../../.github/workflows/verify.yml)'s `set +e` observed rather
+  than read. Every declared recipe reports on a run where one of them is already red.
+
+**What the drill does not establish**, stated because `BLOCKED` is easy to read as more than it is: no
+merge was *attempted*, so what was measured is GitHub's own answer about whether the merge is
+available, not a refusal provoked at the API. Attempting one is barred anyway — the maintainer merges
+([`../gate-map.md`](../gate-map.md)) — and what stands behind that last inch is `enforce_admins: true`
+on the live protection, which no pull request can demonstrate about itself.
+
+**The register, after drill 1.** Six rails have still never been observed red in CI:
+
+| Seen to fire in CI | Not yet |
+|---|---|
+| `docs` (2026-07-28, incidental) · `tests` (2026-07-30, drill) | `json` · `doctor` · `plugin` · `compile` · `workflow-filters` · `index` |
+
+That gap is narrower than it looks in one respect and not in another, and both halves matter to
+whoever sets the calendar. All eight run through the **same** loop in the **same** job, so the shared
+half of the seam — a non-zero exit becoming `status=1`, becoming a failed check, becoming `BLOCKED` —
+is now covered twice by two different recipes and does not need covering eight times. What is *not*
+covered is anything recipe-specific about running under CI, and this page already documents three
+places that bites: the runner's checkout is shallow, so anything reading `git log` refuses or lies;
+`doctor` resolves claims against the filesystem, so a gitignored path is a permanent false red there
+and green everywhere else; and the two `links` reds above exist precisely because a clean checkout is
+not a working copy. Those are per-recipe facts, and a drill is how each one stops being a guess.
+
 ## Known limits
 
 - **The librarian's record is not byte-checked, and nothing can check it.** Every other generated file
