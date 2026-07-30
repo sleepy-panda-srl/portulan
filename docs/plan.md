@@ -1790,3 +1790,13 @@ _The seam applies here too: no client-identifying references._
   defect, seven faces**, including a false green recorded here three days earlier with this exact repair
   named → [`a-recorded-limit…`](../.portulan/memory/a-recorded-limit-is-not-a-managed-limit.md), applied to
   itself via [#130](https://github.com/sleepy-panda-works/portulan/issues/130) · [#131](https://github.com/sleepy-panda-works/portulan/issues/131). The feed's scope index was **stale with no rail able to say so**; errata appended, feed repaired under gate approval. Round 3 closes [#132](https://github.com/sleepy-panda-works/portulan/issues/132) — triaged under the loop's bound, then folded in **on his instruction**, the bound being his to lift. **Three sentences in this change claimed more than the mechanism did while every count was right**, which is the finding worth carrying. · Fidelity: session-open A-W-A (6), pre-commit A-W-A (10), both from the feed install, all folded. Seam scan clean. Handoff: [`2026-07-30-a-link…`](../.portulan/handoffs/2026-07-30-a-link-resolves-in-the-repository.md).
+
+- 2026-07-30 · M6 (Sleepy Panda workspace & private feed), session 2 close attempt · **The close asked for
+  changes** — [#129](https://github.com/sleepy-panda-works/portulan/pull/129) merged, then a fresh-context
+  **milestone-close returned REQUEST-CHANGES**. Clauses 1–4 **demonstrated**, re-derived and forced red
+  rather than replayed: pin 6/6 re-hashed, `--pack-root` shown to replace, tighten-only refused four ways,
+  all three landing observations re-observed on both carriers. **Clause 5 is half** — Portulan's run is this
+  tree's HEAD; the **Tipar half is asserted**, because no checkpoint ran or is recorded on a full-lane task
+  and no phase read the layer from a feed *install* (that session edited a clone — the substitution
+  `--pack-root` exists to refuse). Two repairs it found are filed here and in the feed. · Seam scan clean.
+  Handoff: [`2026-07-30-a-link…`](../.portulan/handoffs/2026-07-30-a-link-resolves-in-the-repository.md).
