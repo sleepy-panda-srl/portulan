@@ -65,8 +65,11 @@ Written at the same level of detail, because a legibility report that lists only
   reviews. The wrong-case one **closed 2026-07-30**: resolution moved from the filesystem to
   `git ls-files --cached`, so a link now resolves if the repository carries it and not if this disk does
   ([#121](https://github.com/sleepy-panda-works/portulan/issues/121)). What an agent may now rely on is
-  narrow and worth stating exactly: a green `links` means every relative target is **tracked**, so it
-  holds in a fresh clone and in CI. It still means nothing about a path inside a code span, and nothing
+  narrower than "every target is tracked", and the difference is the kind that matters: a green `links`
+  means every relative target resolves to **something the repository carries** — a tracked file, or a
+  directory holding at least one tracked file, since git records no directory of its own. So it holds in
+  a fresh clone and in CI, which is the whole point, but a *directory* target is satisfied by its
+  contents rather than by itself. It still means nothing about a path inside a code span, and nothing
   about whether the document at the other end says something true. Both recorded in
   [`../../verify/README.md`](../../verify/README.md).
 - **`CODEOWNERS` exists but enforces nothing.** [`../../../CODEOWNERS`](../../../CODEOWNERS) routes

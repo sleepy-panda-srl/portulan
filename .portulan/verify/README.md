@@ -734,7 +734,9 @@ resolves against the tracked set, so it answers the same question here and in CI
 could not happen again. `doctor`'s claim resolution is the **same class pointing the other way** — a
 false *red* rather than a false green — and it is deliberately not fixed in the same change: it lives in
 a tested JS tool with a different repair, and bundling it would have put an unforced rewrite inside a
-milestone-close diff. Named here rather than left as a symmetry a reader has to notice.
+milestone-close diff. Filed as [#131](https://github.com/sleepy-panda-works/portulan/issues/131) rather
+than left as a symmetry a reader has to notice, on the rule the same change minted:
+[`a-recorded-limit-is-not-a-managed-limit`](../memory/a-recorded-limit-is-not-a-managed-limit.md).
 
 ## Known limits
 
@@ -764,7 +766,8 @@ milestone-close diff. Named here rather than left as a symmetry a reader has to 
   because the interesting part is the shape — it was recorded as a known false green, sat that way for
   three days, and was closed only when an unrelated instance of the *same class* made someone go looking.
   A limit written down is not a limit managed.
-- **A `%`-encoded target is a false red, and a nested-parenthesis target is not fully read.** Both are in
+- **A `%`-encoded target is a false red, and a nested-parenthesis target is not fully read** —
+  [#130](https://github.com/sleepy-panda-works/portulan/issues/130). Both are in
   the extraction rather than the resolution, both predate the 2026-07-30 domain change, and both were found
   by a fresh context attacking that change rather than by a run — no path in this tree reaches either. A
   target written with `%20` where the file has a space reds, although a renderer decodes the escape and

@@ -1780,3 +1780,13 @@ _The seam applies here too: no client-identifying references._
   reviewed head, so ten commits sit behind eight heads. Errata append-only, breach named, definition dated;
   #105's body carries two blocks, four then five, both on his instruction. Root cause **rule 2**. · Seam scan
   clean. Handoff: [`…a-round-gets-its-definition.md`](../.portulan/handoffs/2026-07-30-a-round-gets-its-definition.md).
+
+- 2026-07-30 · M6 (Sleepy Panda workspace & private feed), session 2 · **A link resolves in the
+  repository, not on the disk the check runs on** — [#129](https://github.com/sleepy-panda-works/portulan/pull/129),
+  closing [#121](https://github.com/sleepy-panda-works/portulan/issues/121). The row's fourth clause is
+  **demonstrated for Portulan** — all five phases governed by feed-delivered artifacts, pin `5a707e3`
+  re-hashed not inherited — and does **not** close the row: his ruling of today is *both* products, so a
+  Tipar task is owed. `links` resolves against `git ls-files --cached`, enumeration keeps `--others`; **one
+  defect, seven faces**, including a false green recorded here three days earlier with this exact repair
+  named → [`a-recorded-limit…`](../.portulan/memory/a-recorded-limit-is-not-a-managed-limit.md), applied to
+  itself via [#130](https://github.com/sleepy-panda-works/portulan/issues/130) · [#131](https://github.com/sleepy-panda-works/portulan/issues/131). The feed's scope index was **stale with no rail able to say so**; errata appended, feed repaired under gate approval. Round 3 closes [#132](https://github.com/sleepy-panda-works/portulan/issues/132) — triaged under the loop's bound, then folded in **on his instruction**, the bound being his to lift. **Three sentences in this change claimed more than the mechanism did while every count was right**, which is the finding worth carrying. · Fidelity: session-open A-W-A (6), pre-commit A-W-A (10), both from the feed install, all folded. Seam scan clean. Handoff: [`2026-07-30-a-link…`](../.portulan/handoffs/2026-07-30-a-link-resolves-in-the-repository.md).
