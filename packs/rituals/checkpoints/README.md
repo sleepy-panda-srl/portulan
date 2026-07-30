@@ -6,10 +6,10 @@ vocabulary its verdicts are written in. Composed by a workspace through its `pac
 
 The premise is one sentence, and it is **core's**, not this pack's: on the full lane the verdict comes
 from a context that has not seen the implementation, because one primed by the implementing context
-measures agreement rather than correctness
-([`../../../core/operating/loop.md`](../../../core/operating/loop.md), and
-[`../../../core/operating/verification.md`](../../../core/operating/verification.md) for why that is a
-ceiling on the verifier rather than a rung on the hierarchy). What this pack adds is the **procedure**:
+measures agreement rather than correctness. That obligation is stated in
+[`../../../core/operating/loop.md`](../../../core/operating/loop.md), and
+[`../../../core/operating/verification.md`](../../../core/operating/verification.md) explains why it is
+a ceiling on the verifier rather than a rung on the hierarchy. What this pack adds is the **procedure**:
 three named moments, a persona to staff them, and the vocabulary the verdicts are written in. The
 premise moved into core on 2026-07-30; before that this file was where it was stated, which is why the
 sentence reads as a citation now and did not before.
