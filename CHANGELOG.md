@@ -68,6 +68,29 @@ reports which workspace governs and that it is not installed here, and distingui
 repository with no workspace at all. It does not fetch: resolving a pointer needs a host's plugin cache,
 which arrives with the CLI at a later milestone.
 
+**The loop's full lane gains a third obligation: the verdict comes from a context that has not seen the
+implementation.** Beside the written plan and the failing test,
+[`core/operating/loop.md`](core/operating/loop.md) now says who may supply a verdict — a fresh window, a
+different agent, or a human — because one primed by the implementing context measures agreement rather
+than correctness. The **triage lane is untouched** and so is the Stop-gate: the lane system is the valve
+that keeps this off one-line fixes, and where that lane begins is still the adopting workspace's
+threshold. [`core/operating/verification.md`](core/operating/verification.md) carries the companion — the
+hierarchy orders the *evidence* and says nothing about who may certify it, and that certifier has a
+ceiling of its own. It is a limit on the verifier, **not** a fourth rung: a fresh reviewer of an
+unexercised change still has nothing to grade.
+
+**The development cycle Portulan builds itself with is now doctrine an adopter receives.**
+[`core/operating/evolution.md`](core/operating/evolution.md)'s *Portulan is customer zero* paragraph was
+self-description; it is now a stated principle — work is agent-drafted and fresh-context-graded at three
+moments (the plan, the diff, the exit criteria), the unit of work carries hard exit criteria fixed
+before it starts, and every session ends by writing the record. Core states the principle and names no
+ritual, no pack and no model; a workspace composes its checkpoint ritual, sets the threshold and says
+who grades. Nothing here is enforced by machinery, and both proposals say so rather than implying a
+rail: no permission rule can observe whether the context reading a checkpoint has already seen the work.
+Arguments and limits — including that the evidence is one team's fortnight, n=1 — in
+[`0018`](.portulan/proposals/0018-a-verdict-from-the-context-that-did-the-work-is-not-a-verdict.md) and
+[`0019`](.portulan/proposals/0019-the-development-cycle-is-doctrine-not-anecdote.md).
+
 **Packs become real: the cascade's middle layer.** `core < pack < workspace` has been the architecture
 since the constitution and was implemented in nothing — a workspace's `packs` array was a list of names
 that `doctor` counted. Now [`spec/pack.schema.json`](spec/pack.schema.json), the **Pack Definition**,
