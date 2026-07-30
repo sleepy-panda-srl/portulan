@@ -2,7 +2,7 @@
 
 > Generated from `handoffs/` by `node cli/index.mjs`. Do not edit by hand: it is regenerated
 > and byte-compared, so a hand-edit survives exactly until the next run.
-> 45 handoff(s), newest first. No budget: the series is append-only, so
+> 46 handoff(s), newest first. No budget: the series is append-only, so
 > the only remedy a budget could ask for is one this project rules out.
 
 - 2026-07-29 · [Handoff — the verdict is derived, and the field that cannot take the name](handoffs/2026-07-29-the-verdict-is-derived.md)
