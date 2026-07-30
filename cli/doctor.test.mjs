@@ -1862,7 +1862,7 @@ describe("a repository is governed by exactly one workspace", () => {
     // red, because `verify.default` is checked unconditionally and a pointer declares no recipes. A
     // suite with only the reds would have shipped that.
 
-    /** A thin manifest that names its governor and carries nothing else. */
+    /** A thin manifest that names its governor and carries no policy layer — identity keys and an optional `summary` are the whole permit-list, which is what `extra` adds to below. */
     const pointer = (extra = {}) => ({
         portulan: { spec: "2.7" },
         name: "tipar-api",
