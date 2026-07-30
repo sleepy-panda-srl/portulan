@@ -77,6 +77,20 @@ validation works; the CI job that would check out both is not built.
 
 ## Verification
 
-Eight declared recipes GREEN. Suite **741 → 753**, measured. Seam scan over diff, message and branch:
-clean. Session-open checkpoint (fresh-context Fable 5): APPROVE-WITH-ADJUSTMENTS, nine adjustments, all
-folded, no drops.
+Eight declared recipes GREEN. Suite **741 → 754**, measured. Seam scan over diff, message and branch:
+clean.
+
+**Both checkpoints were fresh-context Fable 5, and both returned APPROVE-WITH-ADJUSTMENTS.** Session-open:
+nine adjustments, all folded, no drops — two of them defects this change would otherwise have shipped
+(above). Pre-commit: four adjustments, all folded, one drop taken. It re-ran every recipe, rebuilt every
+refusal from its own manifests, and replayed the bump against a 20-manifest battery; **every number in the
+diff survived measurement**, and what did not survive was four sentences claiming more than the mechanism
+did — **two of them inside the paragraphs arguing against exactly that**. The one drop is commit
+`291f14c`'s "all three are corrected", where `doctor` needed no correction: amending pushed history costs
+more than the clause's slack, so it stands and is named in the pull request instead.
+
+**The lesson worth carrying past this session:** the count correction in this change was the *point* of
+part of it, and the change still shipped a first draft that misattributed the repeating pair by one bump
+and overstated the pointer's permit-list by one key. Neither was catchable from the diff — both needed the
+world the diff describes to be re-measured, which is what the pre-commit pass is for and what Copilot
+cannot do.

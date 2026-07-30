@@ -1806,8 +1806,8 @@ _The seam applies here too: no client-identifying references._
   [`0017`](../.portulan/proposals/0017-one-repository-one-governing-workspace.md) and railed: the two
   configurations are **one artifact in two residences**, differing in reach and delivery, never in
   content-kind — so a second copy is refusable. Spec **2.7** adds `kind: pointer` + `governed_by`, a MINOR
-  keeping its requirement IN the schema via a top-level `oneOf`. Three red-first `doctor` refusals;
-  `--repo-root` makes the cross-repository one visible. Session-open caught **two defects before they
-  shipped** — every *compliant* pointer went RED, and the check refused customer zero's own self-naming
-  shape. One count, three carriers: nine·seven·five, both prose carriers fixed. M6 + M7 amendments
-  **drafted, not applied**. Suite 741 → 753, eight recipes. · Fidelity: session-open A-W-A (9), all folded. Seam scan clean. Handoff: [`2026-07-30-one-repository…`](../.portulan/handoffs/2026-07-30-one-repository-one-governing-workspace.md).
+  keeping its requirement IN the schema via a `oneOf`. Three red-first `doctor` refusals; `--repo-root`
+  makes the cross-repository one visible. Session-open caught **two defects before they shipped** — every
+  *compliant* pointer went RED, and the check refused customer zero's own self-naming shape; pre-commit
+  caught **four sentences claiming more than the mechanism, two inside the paragraphs prosecuting that**.
+  One count, three carriers: nine·seven·five, both prose carriers fixed. M6 + M7 amendments **drafted, not applied**. Suite 741 → 754, eight recipes. · Fidelity: session-open A-W-A (9), pre-commit A-W-A (4), all folded, one drop. Seam scan clean. Handoff: [`2026-07-30-one-repository…`](../.portulan/handoffs/2026-07-30-one-repository-one-governing-workspace.md).
