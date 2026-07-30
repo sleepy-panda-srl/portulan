@@ -62,7 +62,7 @@ experience a failure. *(Binding non-goal: no ceremony that can't scale down.)*
 | `handoffs` | structured | no | criterion — milestone 5 as amended, *a generated index over the handoff series*; [`loop.md`](../core/operating/loop.md) — the librarian that mines the series |
 | `provenance` | record field | **on every rule** | criterion — *provenance slot*; [proposal 0002](../.portulan/proposals/0002-sealed-provenance.md), adopted |
 
-## `kind` — which of the four workspaces this is, and which of them governs
+## `kind` — which of the four workspace kinds this is, and which of them govern
 
 The strongest single piece of evidence in the tree asked for this slot by name. The memory entry
 [`three-workspaces-not-one.md`](../.portulan/memory/three-workspaces-not-one.md) records its own
