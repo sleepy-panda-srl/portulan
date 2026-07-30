@@ -176,8 +176,8 @@ measure.
 titled *"The three records agreed on a suite figure that two review rounds had moved"*, which was itself
 the third push answering Copilot. **The claim was false at the moment it was written, by the act that
 wrote it.** The Session log's *three* was written 37 minutes later at `384a17d`, and by then the true count
-was already four — `08d7d10` had answered review 4 an hour earlier — with `c6b6a25` making five seven
-minutes after. Neither figure was a misreading of the same evidence; both were snapshots of a count still
+was already four — `08d7d10` had answered review 4 seven minutes earlier, at 15:50:49Z, twenty-six minutes
+after that review raised it — and `c6b6a25` made five at 16:04:47Z. Neither figure was a misreading of the same evidence; both were snapshots of a count still
 moving, and **neither was ever right even for an instant.**
 
 **The root cause is rule 2, not arithmetic.** *Records land last* — and here they landed **second**, at
