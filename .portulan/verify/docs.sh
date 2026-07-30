@@ -238,10 +238,12 @@ if [ "$awk_status" -ne 0 ]; then
     exit 2
 fi
 
-# `git add` is the right advice only when `git add` would work, and for three shapes it will not: a
-# path reached by walking THROUGH a tracked symlink, a path inside a submodule, and a path git quotes.
-# git refuses all three, so naming that repair sends an author to a command that fails. Answered from
-# the index rather than from the disk: mode 120000 is a symlink, 160000 a gitlink.
+# `git add` is the right advice only when `git add` would work, and for two shapes it will not: a path
+# reached by walking THROUGH a tracked symlink, and a path inside a submodule. git refuses both, so
+# naming that repair sends an author to a command that fails. Answered from the index rather than from
+# the disk: mode 120000 is a symlink, 160000 a gitlink. (An earlier draft listed a third — a path git
+# quotes — which `core.quotePath=false` above removed as a case entirely; it is named here only so it
+# is not restored.)
 blocked_by=''
 in_the_way() {
     local _p _mode
