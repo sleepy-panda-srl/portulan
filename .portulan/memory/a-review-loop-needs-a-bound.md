@@ -12,14 +12,16 @@ obligation to answer Copilot is not withdrawn, the unbounded iteration is.
 
 | Measure | Over the 30 most recently merged pull requests |
 |---|---|
-| Copilot rounds | **110** across 30 pull requests — **3.7 each** |
-| Rounds that found nothing at all | **32 (29%)** |
-| Pull requests needing 4+ rounds | **12 of 30** |
-| Worst | #49 at nine rounds; #44 and #57 at eight |
+| Copilot **submissions** | **110** across 30 pull requests — **3.7 each** |
+| Submissions that found nothing at all | **32 (29%)** |
+| Pull requests needing 4+ submissions | **12 of 30** |
+| Worst | #49 at nine submissions; #44 and #57 at eight |
 
-_Units, stated 2026-07-30 alongside the definition below, because the definition put this table in
-different units than the rule it justifies: every figure here counts **submissions** — a Copilot review
-arriving on a push — and not the fix-rounds rule 4 bounds. The file says so itself one section down, in
+_Units — the rows above were headed "rounds" until 2026-07-30 and are re-headed here, because the
+definition below put them in different units than the rule they justify: every figure counts
+**submissions** — a Copilot review arriving on a push — and not the fix-rounds rule 4 bounds. The
+numbers are untouched; only the unit they were always in is now named. The file says so itself one
+section down, in
 the same breath as the 29%: those were "pushes Copilot had nothing to say about", which a fix-round
 cannot be, since a fix-round is a push answering something. **Re-labelled, not re-counted** — the numbers
 are as measured on 2026-07-28 and nobody has re-derived the corpus in fix-rounds. The retire threshold at
