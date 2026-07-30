@@ -94,7 +94,7 @@ delivery; what does not differ is what the workspace contains, or what a custome
 Which is exactly why both may not be present at once. Two residences of the same thing are not two
 things — they are one thing written down twice, with nothing holding the copies in agreement. `pointer`
 is what makes the second residence expressible without a second copy: a manifest that names its governor
-and carries nothing else.
+and carries no policy layer of its own.
 
 **Why a `kind` value rather than a separate file.** The boot skill looks for exactly one path,
 `${CLAUDE_PROJECT_DIR}/.portulan/workspace.json`, and does not search outward. A pointer that lived
