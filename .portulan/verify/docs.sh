@@ -6,7 +6,8 @@
 # from the 2026-07-27 audit that found a merged arc with no record at all, proposal from milestone
 # 5, where "a rule change is a proposal as a pull request" turned out to bind nothing, and plan from
 # the post-M5 reconciliation, which found 63,420 characters of row and only 11% of it criterion:
-#   links     every relative Markdown link resolves          (docs that lie are worse than no docs)
+#   links     every relative Markdown link resolves IN THE REPOSITORY, not on this disk
+#                                                             (docs that lie are worse than no docs)
 #   kernel    core/engine.md stays inside its line budget    (the always-loaded layer is the scarce one)
 #   map       the root README lists every top-level entry    (agent legibility: the map matches the ground)
 #   record    a date has at least as many log entries as handoffs and vice versa, entries stay within
@@ -64,14 +65,81 @@ pass() { printf 'ok    %s\n' "$1"; }
 # GREEN having checked exactly nothing. A check that passes when it could not run is worse
 # than no check. Enumerating the tree is a precondition, so its failure is exit 2 —
 # "could not run" — never exit 0.
+#
+# **This list has two consumers now, and they pull in opposite directions — read both before
+# editing either.** This one is ENUMERATION: which files get scanned, where `--others` is the
+# strict direction because scanning a file that is not committed yet can only find more. The
+# `links` check below adds a second, deliberately NARROWER list for RESOLUTION: what counts as
+# existing, where `--others` is the loose direction and is excluded. Widening this list is safe;
+# widening that one re-opens #121.
+#
+# **`core.quotePath=false` is load-bearing, not tidiness.** By default `git ls-files` C-quotes any path
+# with a byte outside printable ASCII — `docs/naïve.md` comes back as `"docs/na\303\257ve.md"`, quotes
+# and all. Every consumer below then compares against a *transformed* list: the `links` resolution table
+# would key the quoted spelling and report a correctly tracked file as untracked, with `git add` unable
+# to discharge it, and `map` would report a top-level entry named `"docs` that no README table can
+# contain. Both are **false reds**, which this recipe's own README calls the failure that gets a check
+# switched off. The tree is all-ASCII today, so this is a latent defect being closed rather than an
+# observed one being fixed — found by a fresh context attacking the change, not by a red.
 manifest="$tmp/manifest"
-if ! git ls-files --cached --others --exclude-standard >"$manifest"; then
+if ! git -c core.quotePath=false ls-files --cached --others --exclude-standard >"$manifest"; then
     printf 'verify: git ls-files failed — cannot enumerate the tree\n' >&2
     exit 2
 fi
 
 # ---------------------------------------------------------------------- 1. links
-: >"$tmp/links"
+#
+# A target resolves if THE REPOSITORY carries it, never if this disk happens to. That distinction
+# is the whole check: `[ -e ]` answers a question about one machine, and the answer CI gives is
+# the one that matters, because CI checks out tracked files and nothing else. The two diverged in
+# milestone 6 inside a *generated* file — a link to a deliberately empty directory, green in front
+# of the author who had just created it, red on the clean checkout — which is
+# [#121](https://github.com/sleepy-panda-works/portulan/issues/121) and the retirement condition
+# in ../memory/a-generated-file-must-not-point-at-what-git-cannot-carry.md.
+#
+# **Six shapes passed under the old test, and they are one defect, not six.** Measured on this
+# tree before the change, each green then and red now: an **empty directory** (git records none);
+# an **ignored** path (git will never carry it); a **wrong-case** path on a case-insensitive
+# volume — the false green ./README.md had already recorded as known, with this fix named as its
+# repair; an **untracked** path (not committed yet, so absent in every clone); a path that
+# **escapes the root and re-enters** through the absolute filesystem; and an **absolute** target,
+# which resolves here and 404s in every renderer. Whatever the shape, the question the old test
+# asked was "is this on my disk", and that is never the question.
+#
+# **The disk may inform the message; it may never inform the verdict.** Below, git decides
+# resolvable-or-not, and only then is the filesystem consulted — to tell an author which of seven
+# repairs is theirs, since they differ completely and a single "unresolvable link" sends most
+# authors to edit a link that is fine. That asymmetry is the design, and reversing it is the bug.
+#
+# Normalisation is **lexical** — `a/b/../c` is folded by string surgery, never by `realpath` —
+# because resolving through the filesystem is the defect being fixed. `..` that walks off the root
+# is a red rather than a lookup, a trailing slash asserts a directory, and comparison is
+# byte-exact, which is what closes the wrong-case hole. Landing exactly ON the root is not an
+# escape and is green: `./`, `.` and `../` from a subdirectory all name a directory this repository
+# has, and folding those two cases together produced a false red with a confident wrong reason.
+
+# The RESOLUTION list: tracked paths ONLY. See the manifest comment above for why this is
+# narrower than the enumeration list and must stay so. Empty is a precondition failure, not a
+# tree where nothing resolves — this repository cannot have zero tracked files, and reporting
+# every link in it as broken would be a confident answer to a question that never ran.
+tracked="$tmp/tracked"
+if ! git -c core.quotePath=false ls-files --cached >"$tracked"; then
+    printf 'verify: git ls-files --cached failed — cannot establish what the repository carries\n' >&2
+    exit 2
+fi
+if [ ! -s "$tracked" ]; then
+    printf 'verify: the repository reports no tracked files — refusing to judge links against that\n' >&2
+    exit 2
+fi
+
+# Candidates, one per line, tab-separated: file, line, the file's directory, the resolvable path, and
+# the target **as written**. The last two differ by a `#fragment`, and both travel because the verdict
+# is about the path while the report must quote what the author typed — a finding that prints a
+# fragment-stripped path cannot be found by grepping for the line it came from.
+#
+# Extraction stays here (one grep per document, as before); resolution is a single awk pass, so the
+# check costs two subprocesses per document rather than two per link.
+: >"$tmp/cand"
 while IFS= read -r file; do
     case "$file" in *.md) ;; *) continue ;; esac
     [ -f "$file" ] || continue
@@ -87,15 +155,138 @@ while IFS= read -r file; do
         esac
         path=${target%%#*}                      # a #fragment is not checked, only the file
         [ -n "$path" ] || continue
-        [ -e "$dir/$path" ] || printf '%s:%s -> %s\n' "$file" "$line" "$target" >>"$tmp/links"
+        printf '%s\t%s\t%s\t%s\t%s\n' "$file" "$line" "$dir" "$path" "$target" >>"$tmp/cand"
     done < <(grep -nEo '\]\([^)]+\)' "$file" 2>/dev/null)
 done <"$manifest"
 
+# A tab inside a link **target** is the reachable way a record splits into the wrong number of fields,
+# and the parse arm below refuses rather than guesses — "could not run", never a verdict about links it
+# mis-read. One such link therefore refuses the whole recipe, which is the same trade every other
+# precondition here makes. (A tracked *path* containing a tab cannot get this far: git quotes control
+# characters regardless of `core.quotePath`. #68 is the rail that would make such a path impossible in
+# the first place.)
+: >"$tmp/links"
+awk -F'\t' -v tracked_file="$tracked" '
+    # Returns the repository-relative path, "" for the repository ROOT itself, or the sentinel for a
+    # `..` that walks off the top. Those last two must not be conflated: `./`, `.` and `../` from a
+    # child directory all name the root, which every renderer resolves and which this repository always
+    # carries — reporting them as an escape was a false red with a confidently wrong diagnosis, which is
+    # worse than either alone. The sentinel is a NUL-free byte no path can hold.
+    function normalize(dir, path,    joined, n, c, i, out, m, st) {
+        joined = (dir == "." ? path : dir "/" path)
+        n = split(joined, c, "/")
+        m = 0
+        for (i = 1; i <= n; i++) {
+            if (c[i] == "" || c[i] == ".") continue
+            if (c[i] == "..") { if (m == 0) return "\001"; m--; continue }
+            st[++m] = c[i]
+        }
+        if (m == 0) return ""
+        out = st[1]
+        for (i = 2; i <= m; i++) out = out "/" st[i]
+        return out
+    }
+    FILENAME == tracked_file {
+        have[$0] = 1; lower[tolower($0)] = 1
+        n = split($0, c, "/"); p = ""
+        for (i = 1; i < n; i++) { p = p c[i] "/"; dir[p] = 1; dirlower[tolower(p)] = 1 }
+        next
+    }
+    {
+        if (NF != 5) { parse_failed = 1; exit 2 }
+        # An absolute target is not a relative link at all. GitHub resolves a leading `/` against the
+        # SITE root, so `/core/engine.md` 404s in a browser while resolving perfectly well here once
+        # the empty first component is dropped — a green over a link that is broken everywhere it is
+        # actually read. Judged before normalisation, because normalisation is what hides it.
+        if ($4 ~ /^\//) { print $1 "\t" $2 "\t" $5 "\tabsolute\t-"; next }
+        wants_dir = ($4 ~ /\/$/)
+        norm = normalize($3, $4)
+        if (norm == "\001") { print $1 "\t" $2 "\t" $5 "\troot\t-"; next }
+        if (norm == "") next                    # the repository root itself; always carried
+        if (!wants_dir && (norm in have)) next
+        if ((norm "/") in dir) next
+        # Never empty. Tab is IFS whitespace in bash, so a run of two tabs reads as one delimiter
+        # and an empty middle field silently shifts every field after it left — which it did, and
+        # the drill caught it by asserting the message rather than the count.
+        why = "disk"
+        if (wants_dir && (norm in have)) why = "slash"
+        else if ((!wants_dir && (tolower(norm) in lower)) || ((tolower(norm) "/") in dirlower)) why = "case"
+        print $1 "\t" $2 "\t" $5 "\t" why "\t" norm
+    }
+    END { if (parse_failed) exit 2 }
+' "$tracked" "$tmp/cand" >"$tmp/findings"
+awk_status=$?
+
+if [ "$awk_status" -ne 0 ]; then
+    printf 'verify: a link record did not parse into five fields — a link target may contain a tab.\n' >&2
+    printf '        Refusing to report on links this recipe could not read.\n' >&2
+    exit 2
+fi
+
+# `git add` is the right advice only when `git add` would work, and for three shapes it will not: a
+# path reached by walking THROUGH a tracked symlink, a path inside a submodule, and a path git quotes.
+# git refuses all three, so naming that repair sends an author to a command that fails. Answered from
+# the index rather than from the disk: mode 120000 is a symlink, 160000 a gitlink.
+blocked_by=''
+in_the_way() {
+    local _p _mode
+    blocked_by=''
+    _p=$1
+    while [ "$_p" != "." ] && [ -n "$_p" ]; do
+        case "$_p" in */*) _p=${_p%/*} ;; *) _p='.' ;; esac
+        [ "$_p" = "." ] && break
+        _mode=$(git ls-files --stage -- "$_p" 2>/dev/null | cut -c1-6)
+        case "$_mode" in
+            120000) blocked_by="a tracked symlink at \`$_p\`"; return 0 ;;
+            160000) blocked_by="a submodule at \`$_p\`"; return 0 ;;
+        esac
+    done
+    return 1
+}
+
+# The seven repairs, told apart. git has already ruled; this only names which repair is owed.
+while IFS=$'\t' read -r file line target why norm; do
+    [ -n "$file" ] || continue
+    case "$why" in
+        root) note="escapes the repository root" ;;
+        absolute) note="an absolute path — a link between repository files must be relative, and a leading slash resolves against the site root when this is rendered" ;;
+        case) note="wrong case — the repository carries it spelled differently" ;;
+        slash) note="written with a trailing slash, but the repository carries a file at that path" ;;
+        disk)
+            if in_the_way "$norm"; then
+                note="not in the repository, and reached through $blocked_by — git does not index what lies beyond one"
+            elif [ -d "$norm" ]; then
+                note="a directory with no tracked file in it — git records no empty directory"
+            elif [ -e "$norm" ]; then
+                # Exit 1 is "not ignored"; anything above 1 is "could not answer", and reporting the
+                # second as the first is the fail-open this recipe keeps re-learning. The VERDICT is
+                # already git's and does not move either way — only the advice does.
+                git check-ignore -q -- "$norm"
+                case $? in
+                    0) note="ignored — git will never carry it" ;;
+                    1) note="untracked — \`git add\` it, or fix the link" ;;
+                    *) note="on this disk but not in the repository (\`git check-ignore\` could not say why)" ;;
+                esac
+            else
+                note="not in the repository"
+            fi
+            ;;
+        # Unreachable by construction, and guarded anyway: `note` carries the previous iteration's
+        # value, so a fall-through would attach one link's diagnosis to another's — a report that
+        # reads perfectly and sends an author to the wrong file. That class is why this arm exists.
+        *)
+            printf 'verify: the links check emitted the unknown diagnosis %s — refusing to render it\n' "$why" >&2
+            exit 2
+            ;;
+    esac
+    printf '%s:%s -> %s  (%s)\n' "$file" "$line" "$target" "$note" >>"$tmp/links"
+done <"$tmp/findings"
+
 if [ -s "$tmp/links" ]; then
-    fail "links — $(wc -l <"$tmp/links" | tr -d '[:space:]') unresolvable relative link(s)"
+    fail "links — $(wc -l <"$tmp/links" | tr -d '[:space:]') link(s) the repository does not carry"
     sed 's/^/        /' "$tmp/links"
 else
-    pass "links — every relative Markdown link resolves"
+    pass "links — every relative Markdown link resolves in the repository"
 fi
 
 # --------------------------------------------------------------------- 2. kernel
