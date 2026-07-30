@@ -97,14 +97,20 @@ fi
 # [#121](https://github.com/sleepy-panda-works/portulan/issues/121) and the retirement condition
 # in ../memory/a-generated-file-must-not-point-at-what-git-cannot-carry.md.
 #
-# **Six shapes passed under the old test, and they are one defect, not six.** Measured on this
+# **Seven shapes passed under the old test, and they are one defect, not seven.** Measured on this
 # tree before the change, each green then and red now: an **empty directory** (git records none);
-# an **ignored** path (git will never carry it); a **wrong-case** path on a case-insensitive
-# volume — the false green ./README.md had already recorded as known, with this fix named as its
-# repair; an **untracked** path (not committed yet, so absent in every clone); a path that
-# **escapes the root and re-enters** through the absolute filesystem; and an **absolute** target,
-# which resolves here and 404s in every renderer. Whatever the shape, the question the old test
-# asked was "is this on my disk", and that is never the question.
+# an **ignored** path (git will never carry it); a **wrong-case file** and, separately, a
+# **wrong-case directory** on a case-insensitive volume — the false green ./README.md had already
+# recorded as known, with this fix named as its repair; an **untracked** path (not committed yet, so
+# absent in every clone); a path that **escapes the root and re-enters** through the absolute
+# filesystem; and an **absolute** target, which resolves here and 404s in every renderer. Whatever
+# the shape, the question the old test asked was "is this on my disk", and that is never the question.
+#
+# The count is **seven and must stay level with ./README.md's census**, which enumerates the same
+# seven. An earlier draft of this comment said six, having folded the two wrong-case shapes into one
+# while that page listed them apart — the fourth time in this one change that prose about the
+# mechanism was wrong where the mechanism was right. They are listed apart because the repairs differ:
+# a file is compared against the tracked set, a directory only against the prefixes derived from it.
 #
 # **The disk may inform the message; it may never inform the verdict.** Below, git decides
 # resolvable-or-not, and only then is the filesystem consulted — to tell an author which of seven
