@@ -150,8 +150,14 @@ while IFS= read -r file; do
         target=${hit#*:}
         target=${target#"]("}
         target=${target%")"}
+        # `//host/path` is a protocol-relative EXTERNAL url, not a repository path. It is skipped here
+        # rather than three lines later, because it begins with `/` and would otherwise reach the
+        # absolute-path arm and be told it should have been relative — which is nonsense about a link
+        # that leaves the repository. Not a regression this change introduced: the old test resolved the
+        # same target as `<dir>///host/path` and went red too, so the shape has always been refused. What
+        # was new was a confident wrong *reason* for it, which is the class this whole check is about.
         case "$target" in
-            http://*|https://*|mailto:*|"#"*) continue ;;
+            http://*|https://*|mailto:*|//*|"#"*) continue ;;
         esac
         path=${target%%#*}                      # a #fragment is not checked, only the file
         [ -n "$path" ] || continue
@@ -168,10 +174,13 @@ done <"$manifest"
 : >"$tmp/links"
 awk -F'\t' -v tracked_file="$tracked" '
     # Returns the repository-relative path, "" for the repository ROOT itself, or the sentinel for a
-    # `..` that walks off the top. Those last two must not be conflated: `./`, `.` and `../` from a
-    # child directory all name the root, which every renderer resolves and which this repository always
-    # carries — reporting them as an escape was a false red with a confidently wrong diagnosis, which is
-    # worse than either alone. The sentinel is a NUL-free byte no path can hold.
+    # `..` that walks off the top. **Those last two must not be conflated**, and the first draft of this
+    # comment got the example wrong while the code was right, which is why the distinction is spelled out
+    # rather than illustrated: from a document in `docs/`, `./` and `.` normalise to `docs` — the child
+    # directory itself, resolved below by the directory-prefix rule, not by the root case — and only `../`
+    # reaches the root. Landing on the root is green, because this repository always carries it; walking
+    # off the top is red. Folding the two together produced a false red carrying a confidently wrong
+    # reason, which is worse than either alone. The sentinel is a byte no path can hold.
     function normalize(dir, path,    joined, n, c, i, out, m, st) {
         joined = (dir == "." ? path : dir "/" path)
         n = split(joined, c, "/")
@@ -283,7 +292,11 @@ while IFS=$'\t' read -r file line target why norm; do
 done <"$tmp/findings"
 
 if [ -s "$tmp/links" ]; then
-    fail "links — $(wc -l <"$tmp/links" | tr -d '[:space:]') link(s) the repository does not carry"
+    # "does not resolve in the repository", not "the repository does not carry" — three of the seven
+    # diagnoses (absolute, wrong case, trailing slash) fire on links whose target the repository DOES
+    # carry, in a spelling that will not resolve. A headline naming only the commonest cause is a
+    # headline that argues with three of its own findings.
+    fail "links — $(wc -l <"$tmp/links" | tr -d '[:space:]') link(s) that do not resolve in the repository"
     sed 's/^/        /' "$tmp/links"
 else
     pass "links — every relative Markdown link resolves in the repository"

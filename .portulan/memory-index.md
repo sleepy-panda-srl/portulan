@@ -2,7 +2,7 @@
 
 > Generated from `memory/` by `node cli/index.mjs`. Do not edit by hand: it is regenerated
 > and byte-compared, so a hand-edit survives exactly until the next run.
-> 26 record(s) · budget 40 lines.
+> 27 record(s) · budget 40 lines.
 
 - [A branch syncs with main before it merges](memory/a-branch-syncs-with-main-before-it-merges.md) — rule
 - [A checker must refuse what it cannot check](memory/a-checker-must-refuse-what-it-cannot-check.md) — rule
@@ -14,6 +14,7 @@
 - [A mechanical revert is not a narrative revert](memory/a-mechanical-revert-is-not-a-narrative-revert.md) — rule
 - [A plugin payload can enforce on strangers](memory/a-plugin-payload-can-enforce-on-strangers.md) — rule
 - [A public criterion must be demonstrable from this repo](memory/a-public-criterion-must-be-demonstrable-from-this-repo.md) — rule
+- [A recorded limit is not a managed limit](memory/a-recorded-limit-is-not-a-managed-limit.md) — rule
 - [A review is awaited not just resolved](memory/a-review-is-awaited-not-just-resolved.md) — rule
 - [A review loop needs a bound](memory/a-review-loop-needs-a-bound.md) — rule
 - [A scheduled agent needs its own identity](memory/a-scheduled-agent-needs-its-own-identity.md) — rule
