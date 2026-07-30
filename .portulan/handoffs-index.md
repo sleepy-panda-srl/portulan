@@ -2,11 +2,12 @@
 
 > Generated from `handoffs/` by `node cli/index.mjs`. Do not edit by hand: it is regenerated
 > and byte-compared, so a hand-edit survives exactly until the next run.
-> 50 handoff(s), newest first. No budget: the series is append-only, so
+> 51 handoff(s), newest first. No budget: the series is append-only, so
 > the only remedy a budget could ask for is one this project rules out.
 
 - 2026-07-30 · [Handoff — the tests rail has been seen to fire](handoffs/2026-07-30-the-tests-rail-has-been-seen-to-fire.md)
 - 2026-07-30 · [Handoff — the feed points, the public repository carries, and a scope lands empty](handoffs/2026-07-30-the-feed-points-and-the-public-repo-carries.md)
+- 2026-07-30 · [One repository, one governing workspace](handoffs/2026-07-30-one-repository-one-governing-workspace.md)
 - 2026-07-30 · [Handoff — a round gets its definition, and the first count under it was still wrong](handoffs/2026-07-30-a-round-gets-its-definition.md)
 - 2026-07-30 · [Handoff — a link resolves in the repository, and the loop runs from the feed](handoffs/2026-07-30-a-link-resolves-in-the-repository.md)
 - 2026-07-29 · [Handoff — the verdict is derived, and the field that cannot take the name](handoffs/2026-07-29-the-verdict-is-derived.md)
