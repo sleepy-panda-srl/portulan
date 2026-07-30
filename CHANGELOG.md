@@ -41,6 +41,33 @@ records how things were found. This is per *release* and records what a reader g
 
 ## Unreleased
 
+**One repository, one governing workspace.** A team's workspace can reside in two places — in the
+repository, or feed-side in a portfolio workspace that names it — and a customer may switch between them.
+What is now refused is **both at once**. The two residences are one artifact differing in reach and
+delivery, never in what the workspace contains, so a second copy is one thing written down twice with
+nothing holding the copies in agreement. Recorded as
+[proposal 0017](.portulan/proposals/0017-one-repository-one-governing-workspace.md), from the maintainer's
+ruling of 2026-07-30.
+
+**Workspace Definition 2.7 — the `pointer` kind.** A fourth `kind` that governs nothing: it names the
+workspace that governs this repository, through a new `governed_by`, and carries no slots of its own. A
+MINOR: `slots` and `verify` move out of the top-level `required` into a `oneOf` branch that re-imposes
+them on all three governing kinds, so no manifest that was valid becomes invalid and no migration is owed.
+`examples/` stays on 2.4, untouched. One cost, stated: a `kind` in neither form's enum now produces two
+errors rather than one, the precise `/kind` error unchanged and still first.
+
+**`doctor` refuses double governance.** A pointer carrying governing slots, and a governing workspace
+carrying a `governed_by`, are both RED with the rule's own sentence. With the new repeatable
+`--repo-root` — named roots, never discovered, exactly as `--pack-root` — a repository that a workspace
+*names* is also checked: a full workspace there, or a pointer aimed at a third workspace, is RED. Without
+that flag the check **reports that it did not run** rather than passing quietly. A pointer skips the
+governing-workspace checks and says so; a workspace that names its own repository is not two managers.
+
+**Booting a repository whose workspace lives elsewhere.** The `portulan` skill recognises a pointer,
+reports which workspace governs and that it is not installed here, and distinguishes that from a
+repository with no workspace at all. It does not fetch: resolving a pointer needs a host's plugin cache,
+which arrives with the CLI at a later milestone.
+
 **Packs become real: the cascade's middle layer.** `core < pack < workspace` has been the architecture
 since the constitution and was implemented in nothing — a workspace's `packs` array was a list of names
 that `doctor` counted. Now [`spec/pack.schema.json`](spec/pack.schema.json), the **Pack Definition**,
