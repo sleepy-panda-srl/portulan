@@ -179,9 +179,20 @@ describe("the schema validator implements exactly the declared subset", () => {
 
     test("reports the violated constraint and where it was violated", () => {
         const errors = validate(SCHEMA, { ...wellFormed(), kind: "example" });
-        assert.equal(errors.length, 1);
         assert.match(errors[0].message, /enum/);
         assert.equal(errors[0].pointer, "/kind");
+
+        // This asserted `errors.length === 1` until 2.7, and the second error is the measured cost of
+        // the top-level `oneOf` that arrived with the pointer kind. It is not noise and it is not
+        // located vaguely: `kind` discriminates the two forms, so a value in neither enum fails BOTH,
+        // and the extra error says exactly that — this manifest is neither a governing workspace nor a
+        // pointer. The precise one still comes first and still carries `/kind`, which is the property
+        // this test exists to hold. The blast radius is exactly this case: an unknown KEY, a `#fragment`
+        // slot and a bad path still produce one error each, because the forms constrain only `kind`,
+        // `slots`, `verify` and `governed_by`.
+        assert.equal(errors.length, 2, errors.map((e) => `${e.pointer} ${e.message}`).join("\n"));
+        assert.equal(errors[1].pointer, "");
+        assert.match(errors[1].message, /not exactly one \(oneOf\)/);
     });
 
     test("rejects an unknown key rather than ignoring it", () => {
@@ -312,7 +323,7 @@ describe("a budget or a threshold that is not a positive integer", () => {
 
 describe("the schema declares which Workspace Definition version it implements", () => {
     test("the shipped schema carries it in `$id`", () => {
-        assert.deepEqual(schemaVersion(SCHEMA), { major: 2, minor: 6 });
+        assert.deepEqual(schemaVersion(SCHEMA), { major: 2, minor: 7 });
     });
 
     test("a schema whose `$id` does not carry one is refused", () => {
@@ -1762,7 +1773,7 @@ describe("the packs a workspace declares", () => {
 
     test("the two version trains are read by different functions and do not collide", () => {
         assert.deepEqual(packSchemaVersion(PACK_SCHEMA), { major: 1, minor: 0 });
-        assert.deepEqual(schemaVersion(SCHEMA), { major: 2, minor: 6 });
+        assert.deepEqual(schemaVersion(SCHEMA), { major: 2, minor: 7 });
         // The workspace reader must not accept the pack `$id` as a workspace version.
         assert.throws(() => schemaVersion({ $id: "https://portulan.dev/spec/pack/1.0/pack.schema.json" }));
     });
@@ -1837,5 +1848,201 @@ describe("--pack-root fails closed in doctor too, not only in index", () => {
     test("a directory is accepted", async () => {
         const dir = tree(scratch(), { ...minimalFiles, "workspace.json": JSON.stringify(wellFormed()) });
         assert.notEqual(await run(["--pack-root", dir, dir], { quiet: true }), 2);
+    });
+});
+
+// ---------------------------------------------------- residence: one repository, one workspace
+
+describe("a repository is governed by exactly one workspace", () => {
+    // The maintainer's ruling of 2026-07-30, recorded in ../.portulan/proposals/0017 and railed here.
+    // Every one of these was forced RED before its refusal was believed, per proposal 0007 — and the
+    // green controls are not decoration: the first draft of this feature made every COMPLIANT pointer
+    // red, because `verify.default` is checked unconditionally and a pointer declares no recipes. A
+    // suite with only the reds would have shipped that.
+
+    /** A thin manifest that names its governor and carries nothing else. */
+    const pointer = (extra = {}) => ({
+        portulan: { spec: "2.7" },
+        name: "tipar-api",
+        kind: "pointer",
+        governed_by: { workspace: "sleepy-panda", feed: "portulan-internal" },
+        ...extra,
+    });
+
+    /** A portfolio workspace with cards for the repositories it covers. */
+    const portfolio = (cards) => {
+        const m = wellFormed();
+        m.name = "sleepy-panda";
+        m.kind = "portfolio";
+        delete m.tree;
+        m.slots.repos = "repos/";
+        const files = { ...minimalFiles, "workspace.json": JSON.stringify(m) };
+        for (const card of cards) files[`repos/${card}.md`] = `# ${card}\n\nA card.\n`;
+        return tree(scratch(), files);
+    };
+
+    /** `<root>/<repo>/.portulan/workspace.json`, the layout `--repo-root` looks under. */
+    const checkouts = (manifests) =>
+        tree(
+            scratch(),
+            Object.fromEntries(
+                Object.entries(manifests).map(([repo, m]) => [`${repo}/.portulan/workspace.json`, JSON.stringify(m)]),
+            ),
+        );
+
+    test("a pointer carrying governing slots is refused, in the ruling's own words", async () => {
+        const m = pointer({
+            slots: { identity: "identity.md", principles: "principles.md", gates: "gate-map.md" },
+            verify: { default: "docs", recipes: [{ id: "docs", run: "./verify.sh" }] },
+        });
+        const dir = tree(scratch(), { ...minimalFiles, "workspace.json": JSON.stringify(m) });
+        const { findings } = await inspect(dir, { schema: SCHEMA });
+        const failures = severities(checks(findings, "residence"), "fail");
+        assert.equal(failures.length, 1, text(findings));
+        assert.match(text(failures), /governed by exactly one workspace/);
+        // The keys are NAMED. A refusal that says "carries too much" sends the reader looking.
+        assert.match(text(failures), /`slots`, `verify`/);
+    });
+
+    test("a governing workspace that also points is refused, from the other side", async () => {
+        const m = wellFormed();
+        m.governed_by = { workspace: "sleepy-panda" };
+        const dir = tree(scratch(), { ...minimalFiles, "workspace.json": JSON.stringify(m) });
+        const { findings } = await inspect(dir, { schema: SCHEMA });
+        const failures = severities(checks(findings, "residence"), "fail");
+        assert.equal(failures.length, 1, text(findings));
+        assert.match(text(failures), /governed by exactly one workspace/);
+    });
+
+    test("a bare, compliant pointer is GREEN — and says what it did not check", async () => {
+        // The control that matters most. `verify.default` is checked unconditionally against a recipe
+        // list, so a pointer taking the ordinary path fails a check about a slot it CORRECTLY does not
+        // carry: green because the manifest is right, red because the validator did not know that.
+        const dir = tree(scratch(), { "workspace.json": JSON.stringify(pointer()) });
+        const { findings } = await inspect(dir, { schema: SCHEMA });
+        assert.equal(severities(findings, "fail").length, 0, text(findings));
+        const notes = text(checks(findings, "residence"));
+        assert.match(notes, /governed by `sleepy-panda`/);
+        assert.match(notes, /portulan-internal/);
+        // Skipped is SAID, never silent — the standing rule about a check that disappears.
+        assert.match(notes, /did not run here/);
+    });
+
+    test("a pointer with no feed names its governor and does not invent a delivery", async () => {
+        const m = pointer();
+        m.governed_by = { workspace: "sleepy-panda" };
+        const dir = tree(scratch(), { "workspace.json": JSON.stringify(m) });
+        const { findings } = await inspect(dir, { schema: SCHEMA });
+        assert.equal(severities(findings, "fail").length, 0, text(findings));
+        assert.doesNotMatch(text(checks(findings, "residence")), /delivered through/);
+    });
+
+    test("the schema requires `governed_by` of a pointer and `slots`/`verify` of a workspace", async () => {
+        // The requirement stayed IN the schema at 2.7 rather than moving into `doctor` — the `oneOf`
+        // carries it per form. Checked here so the split cannot rot into a doctor-only rule.
+        const m = pointer();
+        delete m.governed_by;
+        assert.notEqual(validate(SCHEMA, m).length, 0, "a pointer with no governor must not validate");
+
+        const w = wellFormed();
+        delete w.verify;
+        assert.notEqual(validate(SCHEMA, w).length, 0, "a governing workspace with no verify must not validate");
+
+        // And the MINOR property, stated as a test rather than as a sentence: every shape valid before
+        // 2.7 is valid at 2.7. `examples/` is the second instance and is still on 2.4.
+        assert.equal(validate(SCHEMA, wellFormed()).length, 0);
+        assert.equal(validate(SCHEMA, pointer()).length, 0);
+    });
+
+    test("a named repository carrying its own full workspace is refused", async () => {
+        const dir = portfolio(["tipar-api", "lantern"]);
+        const root = checkouts({
+            "tipar-api": { ...wellFormed(), name: "tipar-api", tree: "../" },
+            lantern: pointer({ name: "lantern" }),
+        });
+        const { findings } = await inspect(dir, { schema: SCHEMA, repoRoots: [root] });
+        const failures = severities(checks(findings, "residence"), "fail");
+        assert.equal(failures.length, 1, text(findings));
+        assert.match(text(failures), /tipar-api/);
+        assert.match(text(failures), /governed by exactly one workspace/);
+        // The compliant sibling is reported green in the same run, so the red is the card and not the run.
+        assert.match(text(checks(findings, "residence")), /`lantern` carries a pointer naming this workspace/);
+    });
+
+    test("a named repository pointing at a THIRD workspace is refused", async () => {
+        const dir = portfolio(["tipar-api"]);
+        const root = checkouts({ "tipar-api": pointer({ governed_by: { workspace: "some-other-portfolio" } }) });
+        const { findings } = await inspect(dir, { schema: SCHEMA, repoRoots: [root] });
+        const failures = severities(checks(findings, "residence"), "fail");
+        assert.equal(failures.length, 1, text(findings));
+        assert.match(text(failures), /some-other-portfolio/);
+    });
+
+    test("a workspace that names its OWN repository is not two managers", async () => {
+        // Customer zero's shape: `.portulan/` names the card `portulan`, so a root holding the Portulan
+        // checkout finds this very manifest. One workspace seen from outside is not two workspaces, and
+        // the first draft of this check refused the arrangement the ruling PERMITS. Caught at the
+        // session-open checkpoint, adjustment 2.
+        // Built the way a repository really sits: the workspace is `<repo>/.portulan/`, and the root
+        // holds the REPO. Comparison is on the real path, so the symlink is the point rather than a
+        // convenience — a lexical compare would miss the identity and print the false red.
+        const m = wellFormed();
+        m.name = "sleepy-panda";
+        m.slots.repos = "repos/";
+        m.tree = "../";
+        const repo = tree(scratch(), {
+            ".portulan/workspace.json": JSON.stringify(m),
+            ".portulan/identity.md": "# Identity\n",
+            ".portulan/principles.md": "# Principles\n",
+            ".portulan/gate-map.md": "# Gate map\n",
+            ".portulan/repos/itself.md": "# itself\n\nA card naming this very repository.\n",
+        });
+        const dir = path.join(repo, ".portulan");
+        const root = scratch();
+        fs.symlinkSync(repo, path.join(root, "itself"), "dir");
+        const { findings } = await inspect(dir, { schema: SCHEMA, repoRoots: [root] });
+        assert.equal(severities(checks(findings, "residence"), "fail").length, 0, text(findings));
+        assert.match(text(checks(findings, "residence")), /resolves to this manifest itself/);
+
+        // The negative control: a genuine second workspace at the same name is still refused, so the
+        // exemption is identity and not a hole any manifest at that path could walk through.
+        const other = checkouts({ itself: { ...wellFormed(), name: "a-second-workspace" } });
+        const second = await inspect(dir, { schema: SCHEMA, repoRoots: [other] });
+        assert.equal(severities(checks(second.findings, "residence"), "fail").length, 1, text(second.findings));
+    });
+
+    test("with no --repo-root, the un-run check says so rather than passing quietly", async () => {
+        const dir = portfolio(["tipar-api"]);
+        const { findings } = await inspect(dir, { schema: SCHEMA });
+        assert.equal(severities(checks(findings, "residence"), "fail").length, 0);
+        assert.match(text(checks(findings, "residence")), /was not checked/);
+        assert.match(text(checks(findings, "residence")), /1 repository /);
+    });
+
+    test("a named repository with no manifest is reported, never failed", async () => {
+        // Not governed by Portulan at all, and not checked out where this run could see it, are two
+        // different facts and this check distinguishes neither. Saying so beats guessing.
+        const dir = portfolio(["tipar-api"]);
+        const { findings } = await inspect(dir, { schema: SCHEMA, repoRoots: [scratch()] });
+        assert.equal(severities(checks(findings, "residence"), "fail").length, 0, text(findings));
+        assert.match(text(checks(findings, "residence")), /carries no manifest under any named root/);
+    });
+
+    test("an unreadable manifest at a named root is reported, never failed", async () => {
+        const dir = portfolio(["tipar-api"]);
+        const root = tree(scratch(), { "tipar-api/.portulan/workspace.json": "{ not json" });
+        const { findings } = await inspect(dir, { schema: SCHEMA, repoRoots: [root] });
+        assert.equal(severities(checks(findings, "residence"), "fail").length, 0, text(findings));
+        assert.match(text(checks(findings, "residence")), /could not be read/);
+    });
+
+    test("--repo-root fails closed on the same two inputs --pack-root does", async () => {
+        // The sibling class, and the ruling of 2026-07-27: never fix one carrier and leave its
+        // neighbours. Both flags now run through one helper, so there is no second copy to drift.
+        const dir = tree(scratch(), { ...minimalFiles, "workspace.json": JSON.stringify(wellFormed()) });
+        assert.equal(await run(["--repo-root", path.join(dir, "workspace.json"), dir], { quiet: true }), 2, "a FILE is not a root");
+        assert.equal(await run(["--repo-root", path.join(dir, "nope"), dir], { quiet: true }), 2, "a missing root is not a root");
+        assert.equal(await run(["--repo-root", dir], { quiet: true }), 2, "a flag with no workspace left is not a workspace");
+        assert.notEqual(await run(["--repo-root", dir, dir], { quiet: true }), 2, "a directory is accepted");
     });
 });
