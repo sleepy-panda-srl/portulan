@@ -54,28 +54,28 @@
       "additionalProperties": false,
       "properties": {
         "skills": {
-          "description": "Skill roots this pack ships, each a directory that either IS one skill (holding SKILL.md) or CONTAINS them. Resolution walks to a bounded depth and reports when it stops rather than reporting green over what it did not look at — see .portulan/tasks/0008-a-declared-skills-path-sees-one-level-down.md, the defect that made the bound explicit.",
+          "description": "Skill roots this pack ships, each a directory that either IS one skill (holding SKILL.md) or CONTAINS them. Resolution walks to a bounded depth and reports when it stops rather than reporting green over what it did not look at — see .portulan/tasks/0008-a-declared-skills-path-sees-one-level-down.md, the defect that made the bound explicit. DECLARED, not composed: the format declares this key and no engine step composes it. Precisely, because the difference is the whole point — `doctor` DOES read it, counting the paths into its pack report line, and opens none of them. Counting a declaration is not consuming it, and `verify` below draws the same distinction. The committed consumer is MILESTONE 7: row 7 of docs/plan.md has `doctor` validate a skill's frontmatter, and the vendored always-loaded composition is the `vendor` path that milestone ships (core/engine.md). Named here because a contribution kind with no reader is the one a reader most easily assumes is wired.",
           "type": "array",
           "uniqueItems": true,
           "minItems": 1,
           "items": { "$ref": "#/$defs/dirPath" }
         },
         "personas": {
-          "description": "Persona files this pack ships, each carrying the five-part contract core/personas/README.md fixes: a `tools:` allow-list, a charter, autonomy reach in tier vocabulary, a memory scope, and a read/write posture. The memory scope is the persona's own field and is deliberately not duplicated here — a pack distributes per-persona material its adopter does not own, and where that material's scope is declared is a question core/operating/memory.md holds open rather than one this schema should pre-empt.",
+          "description": "Persona files this pack ships, each carrying the five-part contract core/personas/README.md fixes: a `tools:` allow-list, a charter, autonomy reach in tier vocabulary, a memory scope, and a read/write posture. The memory scope is the persona's own field and is deliberately not duplicated here — a pack distributes per-persona material its adopter does not own. READ TODAY, unlike `skills` and `verify`: cli/index.mjs resolves and opens this key as of Workspace Definition 2.6, deriving each persona's declared scope into the adopting workspace's own layer, and it carries the containment check that goes with opening a path — see `$defs/filePath`. **Corrected at the milestone-6 close:** this note said where that material's scope is declared was a question core/operating/memory.md HOLDS OPEN. That file now settles it — the first instance is declared at milestone 6 and validated at milestone 7 — so the clause described the tree as it was before the page it cites was written.",
           "type": "array",
           "uniqueItems": true,
           "minItems": 1,
           "items": { "$ref": "#/$defs/filePath" }
         },
         "verify": {
-          "description": "Verify recipes this pack offers. DECLARED, not merged: nothing today folds these into a workspace's recipe set, and a workspace runs the recipes its own manifest declares. Said here rather than left to be discovered, because a recipe that looks composed and is not would be a green covering something nobody ran.",
+          "description": "Verify recipes this pack offers. DECLARED, not merged: nothing today folds these into a workspace's recipe set, and a workspace runs the recipes its own manifest declares. Said here rather than left to be discovered, because a recipe that looks composed and is not would be a green covering something nobody ran. MILESTONE 7 is where the composing consumer would arrive — it is the milestone that ships `vendor` (docs/plan.md row 7, core/engine.md) — but stated precisely rather than promised: NO row commits `vendor`, or anything else, to folding these into a workspace's recipe set. So the declare-only state above is not a gap someone has undertaken to close, and a reader should not treat milestone 7 as the date it ends.",
           "type": "array",
           "uniqueItems": true,
           "minItems": 1,
           "items": { "$ref": "#/$defs/recipe" }
         },
         "gates": {
-          "description": "Gate-policy fragments — the cascade's missing middle, and the contribution that needs care, because an installed pack reaching the gate map means a dependency can change what an agent is allowed to do. The floor is the maintainer's ruling of 2026-07-27 recorded in .portulan/proposals/0010-prohibited-as-a-fourth-universal-tier.md: a pack may raise a tier or add a prohibition, and may NEVER demote another layer's classification. Enforcement is split between this schema and the merge step, and the split is stated rather than implied — see `$defs/fragment`.",
+          "description": "Gate-policy fragments — the cascade's missing middle, and the contribution that needs care, because an installed pack reaching the gate map means a dependency can change what an agent is allowed to do. The floor is the maintainer's ruling of 2026-07-27 recorded in .portulan/proposals/0010-prohibited-as-a-fourth-universal-tier.md: a pack may raise a tier or add a prohibition, and may NEVER demote another layer's classification. Enforcement is split between this schema and the merge step, and the split is stated rather than implied — see `$defs/fragment`. READ TODAY, like `personas` and unlike `skills` and `verify`: cli/compile.mjs is the merge step, and it resolves this key when a pack root is given.",
           "type": "array",
           "uniqueItems": true,
           "minItems": 1,
