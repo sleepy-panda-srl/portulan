@@ -57,9 +57,19 @@ the answer.
 (the inline threads). The fix-rounds are not in the API at all — they are the pushes that answered, read
 from `git log`. **The reviewer is `copilot-pull-request-reviewer[bot]` on `/reviews` and plain `Copilot`
 on `/comments`**: a filter on either login returns **zero** from the other endpoint, which is how #105's
-count was first mis-measured as zero.
-[`copilot-review.yml`](../../.github/workflows/copilot-review.yml) already hard-codes both spellings, so
-this is a trap for anyone counting by hand rather than a defect in the workflow.
+count was first mis-measured as zero. **Measured 2026-07-30 across ten pull requests spanning this
+project's whole history** — #44, #49, #57, #63, #81, #85, #95, #105, #115, #119 — and every one returns
+exactly those two spellings, one per endpoint, with no overlap in either direction.
+
+**Two carriers here read as contradicting that, and do not.**
+[`copilot-review.yml`](../../.github/workflows/copilot-review.yml)'s header records
+`copilot-pull-request-reviewer[bot]` as "raising threads on #44", and [`../gate-map.md`](../gate-map.md)
+says the same of that pull request. Both name the **actor** that raised the thread, identified by the login
+its *review* carries — neither is a claim about what `/comments` returns for it, and on #44 `/comments`
+returns `Copilot` like everywhere else. The workflow matches on `/reviews` and never queries `/comments`,
+so its own behaviour is unaffected either way; both spellings are in its list, which is why a rename shows
+up as a red rather than as silence. **Recorded because the near-contradiction is what a hand-counter meets
+first** — it was raised against this very rule in review and cost a measurement to settle.
 
 **Measured on #105, the pull request that forced the definition.** Eight submissions, all `COMMENTED`,
 each on a distinct commit, and **not one of them empty** — every submission carried at least one finding
