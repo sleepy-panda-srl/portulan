@@ -152,7 +152,7 @@ answered Copilot on this branch, named by the hashes that survived the rebase on
 | `d814e0a` — *Round one* | the three inline findings on the branch as opened |
 | `9c19064` — *Round two* | two suppressed notes |
 | `e09a49a` — *the suite figure* | a figure this pull request's own three records disagreed on, raised **in the suppressed channel only**, twice |
-| the push carrying `08d7d10` | review 4's **inline** finding — a `filePath` description claiming a containment its pattern did not deliver |
+| `a328ebf`, carrying **`08d7d10`** | review 4's **inline** finding — a `filePath` description claiming a containment its pattern did not deliver |
 | `c6b6a25` — *invalid gate policy, absent provenance path* | two suppressed notes, one of them the `tierRank` fail-open |
 
 **So rule 4's bound was exceeded by three, and the compliance claim is withdrawn.** It allows two
