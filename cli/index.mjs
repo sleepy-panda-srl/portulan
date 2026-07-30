@@ -74,7 +74,8 @@ export class IndexError extends Error {
 // The Workspace Definition versions whose shape this tool reads. The `memory` object arrives at 2.3
 // and is optional, so an earlier manifest is read correctly — it simply declares no index, which is
 // a legitimate shape and the one every workspace had yesterday. Same reasoning as ./compile.mjs's
-// KNOWN_SPECS, and the same refusal for anything outside the set: a tool that reads a manifest it
+// KNOWN_GATE_POLICY_SPECS — which tracks the GATE-POLICY train, not this one — and the same refusal
+// for anything outside the set: a tool that reads a manifest it
 // does not understand reports about a workspace it may have misread.
 const KNOWN_SPECS = new Set(["2.0", "2.1", "2.2", "2.3", "2.4", "2.5", "2.6"]);
 

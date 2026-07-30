@@ -58,7 +58,14 @@ export class CompileError extends Error {
 // 2.1 stays known: the `floor` key 2.2 adds is optional, so a 2.1 policy is still a policy this
 // compiler reads correctly — it simply declares no floor, which is a legitimate shape and the one
 // every workspace had yesterday.
-const KNOWN_SPECS = new Set(["2.1", "2.2"]);
+//
+// **These are GATE-POLICY versions, not Workspace Definition versions**, and the name is about to be
+// misread by someone: the numbers overlap (`gates.json` is on 2.x and so is the Workspace Definition),
+// the constant is spelled the same as ./index.mjs's and ./librarian.mjs's, and those two DO track the
+// Workspace Definition. A fresh reviewer at milestone 6 session 1 sight-read this as a carrier left
+// stale by the 2.5 → 2.6 bump and had to measure to clear it. It is correctly untouched by any
+// Workspace Definition bump; renamed to say so, because the next reader may not measure.
+const KNOWN_GATE_POLICY_SPECS = new Set(["2.1", "2.2"]);
 
 const TIERS = new Set(["auto", "propose", "gated", "prohibited"]);
 
@@ -96,10 +103,10 @@ export function parse(policy) {
         throw new CompileError("the gate policy is not a JSON object");
     }
     const spec = policy.portulan?.spec;
-    if (!KNOWN_SPECS.has(String(spec))) {
+    if (!KNOWN_GATE_POLICY_SPECS.has(String(spec))) {
         throw new CompileError(
             `gate policy declares Workspace Definition ${JSON.stringify(spec)}, which this compiler does not implement ` +
-                `(knows: ${[...KNOWN_SPECS].join(", ")}). Refusing rather than compiling a policy it may misread.`,
+                `(knows: ${[...KNOWN_GATE_POLICY_SPECS].join(", ")}). Refusing rather than compiling a policy it may misread.`,
         );
     }
     if (!Array.isArray(policy.rules) || policy.rules.length === 0) {

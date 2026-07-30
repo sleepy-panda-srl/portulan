@@ -1760,12 +1760,12 @@ _The seam applies here too: no client-identifying references._
   [`2026-07-30-the-tests-rail…md`](../.portulan/handoffs/2026-07-30-the-tests-rail-has-been-seen-to-fire.md).
 
 - 2026-07-30 · M6 (Sleepy Panda workspace & private feed), session 1 · **The feed points, and the public
-  repository carries** — closes [#113](https://github.com/sleepy-panda-works/portulan/issues/113) on his
-  ruling, measured before it was put to him: a manifest holding none of a pack's bytes installs it from
-  another repository, and `path: "packs"` makes the install root a packs root — so the resolver needed **no
-  new code but a new caller**, now `--pack-root` on three tools. `portulan-internal` publishes; Workspace
-  Definition **2.6** lands a pack-declared scope **empty** in the adopter's layer, held by a content-derived
-  digest, forced red three ways on two carriers. Tipar's card is sealed, not invented. Suite 713, eight
-  recipes green. · Fidelity: session-open APPROVE-WITH-ADJUSTMENTS (12), all folded, one a drop — it caught
-  `sha` assumed from a schema and measured it. Seam scan over diff, message and branch: clean. Handoff:
-  [`2026-07-30`](../.portulan/handoffs/2026-07-30-the-feed-points-and-the-public-repo-carries.md).
+  repository carries** — [#117](https://github.com/sleepy-panda-works/portulan/pull/117), closing
+  [#113](https://github.com/sleepy-panda-works/portulan/issues/113) on his ruling, measured before it was
+  put to him: a manifest holding none of a pack's bytes installs it from another repository, and
+  `path: "packs"` makes the install root a packs root — so the resolver needed **no new code but a new
+  caller**, `--pack-root` on three tools, where two replaced the derived root and one appended, compiling
+  green from the local copy until pre-commit attacked it. `portulan-internal` publishes; spec **2.6** lands
+  a pack-declared scope **empty** in the adopter's layer, held by a content-derived digest, forced red three
+  ways on two carriers. Suite 713, eight recipes. · Fidelity: session-open A-W-A (12), pre-commit A-W-A (7),
+  all folded. Seam scan over diff, message and branch: clean. Handoff: [`2026-07-30`](../.portulan/handoffs/2026-07-30-the-feed-points-and-the-public-repo-carries.md).
