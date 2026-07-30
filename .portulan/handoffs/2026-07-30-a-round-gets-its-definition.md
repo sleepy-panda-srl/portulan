@@ -188,9 +188,10 @@ branch made it twice, each time sincerely, on a pull request whose entire purpos
 Rule 4 assumed a session that reaches its bound will stop; #119 is the counterexample, written by the session
 that defined the bound. **What is defensible here is not the restraint — there was none — but that every
 breach is named in the record — the shape #105's own errata and #117's breach both take**, neither of them
-silent about going over, which is the only thing separating a priced breach from an unbounded loop. What that adds up to is evidence for the thing rule 4's own text already admits it lacks: it needs
-a mechanism, because the judgement it depends on is one the interested party makes about its own work. Filed
-as item 3 of [#125](https://github.com/sleepy-panda-works/portulan/issues/125).
+silent about going over, which is the only thing separating a priced breach from an unbounded loop. What that
+adds up to is evidence for the thing rule 4's own text already admits it lacks: it needs a mechanism, because
+the judgement it depends on is one the interested party makes about its own work — which the rule states in
+its own honest-limits section, and which no issue improves on.
 
 **One argument does survive intact.** Under the rejected definition — only inline threads count — every one of
 these findings arrived in the suppressed channel and would have cost **nothing**. #119 would have read as
@@ -225,9 +226,16 @@ consolidates it — and must not be ticked on #109's interim wording.
 
 **Left undone and named rather than left to be discovered.** Nobody has re-derived the 30-pull-request corpus
 in fix-rounds, so the 2.0 retire threshold has never been evaluated in the units the rule now defines. And
-**#105's loop ended with live findings** — its final submission carried two that no push ever answered.
-Unanswered findings cost zero rounds by construction, so rule-4 compliance and a loop abandoned mid-feedback
-are indistinguishable from outside; whether those two reached triage is established nowhere.
+**#105's final submission carried two findings that no push answered — and both were triaged, promptly.**
+This handoff and issue #125 first claimed otherwise; measured afterwards, the claim was false.
+[#108](https://github.com/sleepy-panda-works/portulan/issues/108) was filed at 15:41:52Z for the plugin-lint
+finding and [#111](https://github.com/sleepy-panda-works/portulan/issues/111) at **16:10:38Z — 117 seconds
+after** the review that raised the `fragment.id` gap, and 24 minutes before the merge. So rule 4's triage
+clause did not merely execute on #105; it executed faster than the merge. **#125 is closed as refuted**, and
+the correction is recorded there. What survives is only the hypothetical: an unanswered finding costs zero
+rounds, so the bound cannot by itself tell a satisfied loop from an abandoned one — and #105 is now evidence
+*against* that mattering in practice. **The mistake is the same one this change exists to correct:** I looked
+for the findings in the records rather than in the place findings are triaged *to*, and reported absence.
 
 **Next action.** Nothing is owed in-tree. The second pre-commit pass returned **APPROVE-WITH-ADJUSTMENTS**
 and its adjustments are folded in; what remains is the maintainer's merge, and the #105 body follow-up he
