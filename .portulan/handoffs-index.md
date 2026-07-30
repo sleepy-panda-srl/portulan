@@ -7,7 +7,7 @@
 
 - 2026-07-30 · [Handoff — the tests rail has been seen to fire](handoffs/2026-07-30-the-tests-rail-has-been-seen-to-fire.md)
 - 2026-07-30 · [Handoff — the feed points, the public repository carries, and a scope lands empty](handoffs/2026-07-30-the-feed-points-and-the-public-repo-carries.md)
-- 2026-07-30 · [Handoff — a round gets its definition, and three records get their errata](handoffs/2026-07-30-a-round-gets-its-definition.md)
+- 2026-07-30 · [Handoff — a round gets its definition, and the first count under it was still wrong](handoffs/2026-07-30-a-round-gets-its-definition.md)
 - 2026-07-29 · [Handoff — the verdict is derived, and the field that cannot take the name](handoffs/2026-07-29-the-verdict-is-derived.md)
 - 2026-07-29 · [The table stops being its own archive, and the rows keep the law](handoffs/2026-07-29-the-table-stops-being-its-own-archive.md)
 - 2026-07-29 · [Handoff — the sweep that should have run the first time](handoffs/2026-07-29-the-sweep-that-should-have-run.md)
