@@ -51,7 +51,8 @@ export class CompileError extends Error {
     }
 }
 
-// The versions of the Workspace Definition whose gate policy this compiler understands. Checked
+// The GATE-POLICY spec versions this compiler understands — `gates.json`'s `portulan.spec`, which is a
+// different train from the Workspace Definition's despite the overlapping numbers. Checked
 // rather than ignored: `doctor` shipped for a day reading no version at all, so a manifest naming a
 // spec that had never existed validated green. Same class of hole, closed at birth this time.
 //
@@ -105,7 +106,7 @@ export function parse(policy) {
     const spec = policy.portulan?.spec;
     if (!KNOWN_GATE_POLICY_SPECS.has(String(spec))) {
         throw new CompileError(
-            `gate policy declares Workspace Definition ${JSON.stringify(spec)}, which this compiler does not implement ` +
+            `gate policy declares gate-policy spec ${JSON.stringify(spec)}, which this compiler does not implement ` +
                 `(knows: ${[...KNOWN_GATE_POLICY_SPECS].join(", ")}). Refusing rather than compiling a policy it may misread.`,
         );
     }

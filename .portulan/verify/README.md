@@ -755,9 +755,12 @@ not a working copy. Those are per-recipe facts, and a drill is how each one stop
   the cheapest thing to build and would have made this limit load-bearing — a nested store railed by a
   budget the walk cannot see. It is sited outside instead, so #76 stays a question about the store rather
   than a decision taken as a side effect of an unrelated feature.
-- **The scope layer has no budget, and its locations are checked for existence rather than contents.**
-  `index` reports **anything** under `slots.personas` that no composed pack declares — a stray file as much
-  as a stray directory — and refuses a pack that ships records of its own. What it does not do is count or size what an adopter puts there: nothing
+- **The scope layer has no budget, and a declared location is never required to exist.** An absent location
+  is the normal state — git carries no empty directory, so a fresh clone has the index and no directories —
+  and `index --check` passes over it. What it does check: a location that exists and cannot be *enumerated*
+  is exit 2 rather than reported empty (empty is this feature's success state, so the confusion would read
+  as the design working); **anything** under `slots.personas` that no composed pack declares is reported,
+  a stray file as much as a stray directory; and a pack that ships records of its own is refused. What it does not do is count or size what an adopter puts there: nothing
   recalls from these locations yet, so a rail would be measuring a store no code reads. The axis such a
   rail should use is per-persona rather than per-workspace, and that belongs to the row where something
   finally reads them.
