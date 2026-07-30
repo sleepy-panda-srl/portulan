@@ -58,7 +58,9 @@ the rule, because the method matters more than the answer.
   the direction, because it is not the obvious one:** here the push unit yields the *smaller* count, so it is
   not simply the stricter reading — it is the one rule 1 already prices (*"a push costs a whole round"*), and
   rule 1 already requires fixes to be batched, so a push clearing several reviews is the rule working rather
-  than a discount. **The checkpoint found this as an ambiguity, not a typo:** as first written the definition
+  than a discount. **Put to the maintainer as a derivation and ratified verbatim** — *"yes, push is the unit —
+  that's what I meant"* (2026-07-30) — with the alternative quantified first: on the review reading #105 is
+  six, on the push reading five. **The checkpoint found this as an ambiguity, not a typo:** as first written the definition
   did not decide it, and two readers applying it reached two numbers. *An earlier draft of this bullet had the
   mechanism backwards* — it claimed one review answered across two pushes, which yields the opposite
   inequality; `e09a49a` was authored 15:20:51Z, three minutes **before** review 4 was raised, so it cannot
