@@ -101,10 +101,17 @@ the rule, because the method matters more than the answer.
   [2026-07-25 errata](2026-07-25-handoff-cadence.md): append-only, dated, original text untouched, verified by
   `--numstat` reporting **0 deletions** on the merged handoff.
 
-- **The sibling census was wrong, and correcting it broke the ground it rested on.** The first sweep reported
-  **four** records stating round counts, using a narrower pattern than the claim it was testing. The real
-  figures: **seventeen** records match a numeric round count, **nine** state one for a specific pull request,
-  carrying **twelve** claims. Worse, the sweep's stated ground — *#105 was corrected because its carriers
+- **The sibling census was wrong three times, each time the same way, and that became the finding.** The
+  first sweep reported **four** records stating round counts. The correction reported nine records and twelve
+  claims. **Both were wrong, and so was the pattern behind the third attempt** — it matched a bare `on #73`
+  but not the same claim with the number **inside a markdown link**, and it still cannot see
+  `docs/plan.md`'s 2026-07-26 entry
+  because *"on the pull request"* wraps across a line break. What is defensible: **seventeen records match
+  across 33 lines, and at least ten claims in nine records name a specific pull request** — recorded as a
+  floor, not a figure. **Every failure had one cause: the pattern was narrower than the claim it tested**,
+  which is the same shape as the miscount this change exists to correct. A method that sees only the
+  well-formed instances reports the rest as absent. Worse, the sweep's stated ground — *#105 was corrected
+  because its carriers
   contradicted each other* — **proves too much**: `verify/README.md` says *"Two Copilot rounds on #64"* while
   [the jq handoff](2026-07-28-every-jq-filter-a-workflow-runs-is-exercised.md) says *"One Copilot round on
   #64"*, and #64 in fact drew **four** submissions, so neither is even the submission count. That is #105's
