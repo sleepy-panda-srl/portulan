@@ -105,9 +105,17 @@ the correction to its three records errata rather than a fault, and it is record
 [the handoff](../handoffs/2026-07-29-the-cascade-gets-its-middle-layer.md) and the Session log.
 
 **This definition is forward-only, from 2026-07-30, and every earlier record is deliberately left alone.**
-A grep for a numeric round count matches **seventeen** records in this tree; **nine** of them state a count
-for a *specific* pull request, carrying **twelve** such claims — `docs/plan.md` (three), and one or two each
-in [`../verify/README.md`](../verify/README.md) and seven handoffs. **Not correcting them is this
+A grep for a numeric round count matches **seventeen** records across **33 lines**; of those, **at least ten
+claims in nine records** name a specific pull request. **A floor rather than a figure, deliberately:** these
+are prose claims that wrap across lines, so any line-based grep undercounts them — `docs/plan.md`'s
+2026-07-26 entry states one and is invisible to the filter because *"on the pull request"* straddles a line
+break. **All three attempts at this census were wrong in the same way**, and the third is why the number is
+given as a bound: the pattern kept being narrower than the claim it was testing — first missing whole
+records, then missing every claim whose pull-request number sat **inside a markdown link** rather than bare,
+so that `on #73` matched and the linked form did not. **That is the standing
+hazard in auditing prose rather than code**, and it is the same shape as the miscount this whole change
+exists to correct: a method that can only see the well-formed instances reports the rest as absent.
+**Not correcting them is this
 repository's own rule about rules:** both record floors in `docs.sh` are forward-only cutoffs, *"because a
 rule written after a record cannot bind it without rewriting the record to suit the rule."* A definition
 reaches further than a rule, though — it changes how a reader parses old text rather than what an old author
