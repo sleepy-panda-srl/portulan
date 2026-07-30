@@ -868,3 +868,41 @@ describe("the private-feed refusal cannot be bypassed by case", () => {
         assert.doesNotMatch(messages(findings), /private feed/i);
     });
 });
+
+describe("the private-feed rail names an owner as well as a repo", () => {
+    test("an unrelated PUBLIC repo with the same name is a note, not a failure", async () => {
+        // Copilot, round 8. Matching the repo-name segment alone refused `someone-else/portulan-internal`,
+        // contradicting this rail's own stated narrowness — other public repositories stay counted and
+        // reported. The feed is an owner AND a name, so the rail matches the pair.
+        const root = fixture({
+            marketplace: {
+                name: "demo-market",
+                owner: { name: "Someone" },
+                plugins: [
+                    { name: "demo", source: "./", version: "0.1.0" },
+                    { name: "other", source: { source: "github", repo: "someone-else/portulan-internal" } },
+                ],
+            },
+        });
+        const { findings } = await inspect(root);
+        assert.doesNotMatch(messages(findings), /private feed/i);
+    });
+
+    test("the real feed is still refused, in any case and by every spelling", async () => {
+        for (const source of [
+            { source: "github", repo: "Sleepy-Panda-Works/Portulan-Internal" },
+            { source: "git-subdir", url: "https://github.com/sleepy-panda-works/portulan-internal", path: "packs" },
+            { source: "url", url: "git@github.com:sleepy-panda-works/portulan-internal.git" },
+        ]) {
+            const root = fixture({
+                marketplace: {
+                    name: "demo-market",
+                    owner: { name: "Someone" },
+                    plugins: [{ name: "demo", source: "./", version: "0.1.0" }, { name: "premium", source }],
+                },
+            });
+            const { findings } = await inspect(root);
+            assert.match(messages(findings), /private feed/i, JSON.stringify(source));
+        }
+    });
+});

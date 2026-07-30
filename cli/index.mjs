@@ -376,8 +376,17 @@ function packRecords(packDir, rel = "", out = []) {
     }
     for (const e of entries.sort((a, b) => a.name.localeCompare(b.name))) {
         const child = rel ? path.posix.join(rel, e.name) : e.name;
+        // `memory` as a SEGMENT, matched before anything is recursed into or classified. A symlink named
+        // `memory` is neither a directory this walk descends nor a file under `memory/`, so the old
+        // `memory/`-only pattern let a pack smuggle a whole store past a check whose entire subject is
+        // what the pack ships. Copilot, #117 round 8. Matching the segment closes it without following
+        // the link — which is the right trade: this walk answers "what does the pack CARRY", and a link
+        // named `memory` is something it carries whatever it points at.
+        if (/(^|\/)memory(\/|$)/.test(child)) {
+            out.push(child);
+            continue;
+        }
         if (e.isDirectory()) packRecords(packDir, child, out);
-        else if (/(^|\/)memory\//.test(child)) out.push(child);
     }
     return out;
 }
@@ -465,8 +474,21 @@ export function readScopes(dir, workspace, options = {}) {
                         "Refusing rather than resolving it — run `doctor` to validate the pack against the Pack Definition",
                 );
             }
+            // Containment is checked on the CANONICAL path, not the lexical one. `path.resolve` is textual
+            // and `readFileSync` **follows symlinks**, so the lexical check proved a string was inside the
+            // pack and then read whatever the filesystem pointed at — a pack shipping `personas/x.md` as a
+            // link out of the tree got arbitrary files hashed into a committed index. Found by Copilot on
+            // #117 round 8, one round after the lexical traversal was closed: the same guard, a second
+            // door. `cli/doctor.mjs` already resolves containment this way, so this follows an established
+            // pattern rather than inventing one.
             const file = path.resolve(found.dir, rel);
-            if (!isInside(found.dir, file)) {
+            let real = file;
+            let realPackDir = found.dir;
+            try {
+                realPackDir = fs.realpathSync(found.dir);
+                real = fs.realpathSync(file);
+            } catch { /* absent or unresolvable — the lexical check below still applies, then the read reports it */ }
+            if (!isInside(found.dir, file) || !isInside(realPackDir, real)) {
                 throw new IndexError(
                     `pack \`${found.name}\` declares the persona ${JSON.stringify(rel)}, which resolves outside the pack ` +
                         "directory. A pack may only contribute files it ships — refusing to read it",
