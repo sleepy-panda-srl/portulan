@@ -8,8 +8,8 @@ clause landed: there is a command line. `init`, `vendor` and `upgrade` are named
 ## What landed
 
 [#147](https://github.com/sleepy-panda-works/portulan/pull/147), open and awaiting the maintainer's
-merge. Suite **774/774**, eight recipes green, seam clean. Two Copilot rounds answered, both on the
-matcher's own repair.
+merge. Suite **774/774**, eight recipes green, seam clean. **Five Copilot rounds answered** — see the
+loop record at the end, which is worth reading before the next pull request opens.
 
 ## The rulings, and what the tree said about them
 
@@ -119,6 +119,22 @@ restored each time.
    language question. Cosmetic, but it sits in the paragraph the language ruling turns on.
 4. **The switch still owes a verb.** Deferring it moved the choice rather than removing it: either
    widening `vision.md`'s `vendor` gloss or minting a seventh subcommand, and both are his.
+5. **Routed off #147's fifth round, accepted and not fixed.** `spec/pack.schema.json`'s
+   `contributes.skills` note says *"nothing walks this key"* where it means *nothing walks it today* —
+   true as written, scoped by the next clause, and clearer if scoped in place. Held back because the
+   feedback loop's bound was already exceeded once on this pull request for defects it had itself
+   introduced, and taking a third cheap fix would make the bound whatever the next note argues for.
+   **Session 2 rewrites this paragraph anyway** when it builds the consumer; the scoping lands there.
+
+## Loop record, because the bound was tested rather than merely obeyed
+
+Five Copilot rounds: one inline thread, **eight suppressed notes**, every one swept **by hand** — the
+repair for #142 is *in this pull request*, so `main`'s matcher could not surface any of them, and one
+round's marker was the exact spelling it cannot see. Rounds 1–2 fixed. **Rounds 3–4 fixed over the
+two-round bound, declared in the open**, because both were defects this change introduced: a report
+citing four wrong line numbers, and a record contradicting itself about which pull requests were false
+zeros. Round 5 accepted, deferred, routed above. The bound held where it was meant to and bent only
+for self-inflicted defects, which is the distinction worth carrying forward.
 
 ## The packaged CLI, and the bug that made the checkpoint worth its cost
 
