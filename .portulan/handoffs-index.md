@@ -2,7 +2,7 @@
 
 > Generated from `handoffs/` by `node cli/index.mjs`. Do not edit by hand: it is regenerated
 > and byte-compared, so a hand-edit survives exactly until the next run.
-> 51 handoff(s), newest first. No budget: the series is append-only, so
+> 52 handoff(s), newest first. No budget: the series is append-only, so
 > the only remedy a budget could ask for is one this project rules out.
 
 - 2026-07-30 · [Handoff — the tests rail has been seen to fire](handoffs/2026-07-30-the-tests-rail-has-been-seen-to-fire.md)
