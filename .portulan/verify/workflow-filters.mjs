@@ -469,6 +469,17 @@ const BODY_CHROME = "### 🟢 Ready to approve\n\n<details>\n<summary>Review det
 const BODY_NONE = "## Pull request overview\n\nCopilot reviewed 15 files and generated no new comments.\n";
 const BODY_MOVED = "## Pull request overview\n\n<details>\n<summary>Review details</summary>\n"
     + "\nWe suppressed 1 remark.\n</details>\n";
+// A heading whose `#` is followed by a TAB rather than a space, and one whose text simply begins
+// with `t`. Both exist to hold the heading test to a POSIX character class: written as `[ \t]`, the
+// escape sits inside a bracket expression, where POSIX says a backslash is LITERAL — so a
+// conforming awk may read it as *space, backslash, or the letter t* and match `#thoughts` while
+// missing a real tab. gawk and BSD awk both take it as a tab, which is why the first cut passed
+// under both and was still implementation-dependent. Raised by Copilot on #147, in one thread and
+// two suppressed notes; the notes were swept BY HAND, because the repair for #142 is in this same
+// change and `main`'s matcher could not have surfaced them.
+const BODY_TAB_HEADING = "## Pull request overview\n\n#\tSuppressed comments (1)\n"
+    + "\n**a.md:1**\n* a note\n";
+const BODY_T_HEADING = "## Pull request overview\n\n#thoughts on the diff\n\nNothing to report.\n";
 
 const AWK_CASES = [
     // ---- copilot-review.yml: is the suppressed block there --------------------------------------
@@ -499,6 +510,29 @@ const AWK_CASES = [
             + "the current spelling, because the four interleave and none of them is",
         input: BODY_V3,
         stdout: "yes\n",
+        status: 0,
+    },
+    {
+        id: "present-tab-after-hash",
+        anchor: 'print "yes"',
+        why: "a heading separated from its `#` by a TAB. `[ \\t]` put the escape inside a bracket "
+            + "expression, where POSIX makes a backslash literal — so this is the case that says "
+            + "the class is a real blank class and not three characters that happen to include one",
+        input: BODY_TAB_HEADING,
+        stdout: "yes\n",
+        status: 0,
+    },
+    {
+        id: "present-t-word-not-a-heading",
+        anchor: 'print "yes"',
+        why: "and the other side of the same defect: `#thoughts` must NOT read as a heading with a "
+            + "separator. **This pair does not discriminate on the awks we run** — gawk and BSD awk "
+            + "both take `\\t` in a bracket as a tab, which is exactly why the old spelling passed "
+            + "everywhere and was still wrong. What these two pin is the INTENDED behaviour, so an "
+            + "awk that reads the backslash literally — the one this class exists for — reds here "
+            + "instead of silently matching `#thoughts` and missing a tab",
+        input: BODY_T_HEADING,
+        stdout: "",
         status: 0,
     },
     {
