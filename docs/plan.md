@@ -1825,6 +1825,6 @@ _The seam applies here too: no client-identifying references._
   (`2939050`), re-verified in a clean clone: eight recipes, 756/756, kernel 44/60. Two rebases; #135's own
   2026-07-30 M7 amendment is **drafted-not-applied** where #137's is **applied**, so #137's heading now names
   its subject and status rather than colliding — neither narrows the other. **Copilot's round carried a
-  suppressed note and the derived verdict said there were none:** `copilot-review.yml` greps a literal Copilot
-  has since changed, so its *could-not-parse* branch is unreachable and it reported an absence it had not
+  suppressed note and the derived verdict said there were none:** `copilot-review.yml` greps for a literal
+  that Copilot has since changed, so its *could-not-parse* branch is unreachable and it reported an absence it had not
   established — in the channel measured as carrying most real findings ([#142](https://github.com/sleepy-panda-works/portulan/issues/142)); the final round was swept by hand, clean. [#143](https://github.com/sleepy-panda-works/portulan/issues/143) records #137's checkpoint breach. · Seam scan clean. Handoff: [`2026-07-31-the-loop…`](../.portulan/handoffs/2026-07-31-the-loop-doctrine-merged-and-a-rail-was-found-blind.md).
