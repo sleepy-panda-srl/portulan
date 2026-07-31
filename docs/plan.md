@@ -1849,3 +1849,14 @@ _The seam applies here too: no client-identifying references._
   not quality. [`tipar#46`](https://github.com/sleepy-panda-works/tipar/pull/46) answered it and found
   two live vulnerabilities. Both rulings recorded in [`m06.md`](milestones/m06.md) as **readings of the
   row, not amendments**. · Seam scan clean. Handoff: [`2026-07-31-the-close…`](../.portulan/handoffs/2026-07-31-the-close-asked-for-changes-and-tipar-answered.md).
+
+- 2026-07-31 · M7 (CLI & onboarding), session 0 · **Three rulings applied; the rail that reads reviews
+  was matching a word Copilot had stopped using.** [#147](https://github.com/sleepy-panda-works/portulan/pull/147):
+  M6's close-hold and [#135](https://github.com/sleepy-panda-works/portulan/pull/135)'s residence amendment
+  ratified — the switch **left unassigned to any subcommand**, his call against the draft — plus a new
+  amendment composing a pack's **verify** recipes, additive-only. `skills` needed no ruling: clause (b)
+  committed that consumer **nine minutes after** the schema note denying it merged, on a branch it could not
+  see. [#142](https://github.com/sleepy-panda-works/portulan/issues/142): **four interleaved spellings**, so
+  `none` now rests on the word being absent from the body; **four false zeros** (#145, #144×2, #137, all since
+  answered by hand) — #140's is a **later-arriving review**, which no matcher reaches. The awk programs were
+  covered by nothing; `workflow-filters` runs them, forced red four ways. Suite 756, eight recipes. · Fidelity: session-open A-W-A (9), pre-commit A-W-A (6), all folded; the passes corrected my chronology and my false-zero set. Seam scan clean. Handoff: [`2026-07-31-the-rulings…`](../.portulan/handoffs/2026-07-31-the-rulings-and-a-matcher-reading-for-the-wrong-word.md).
