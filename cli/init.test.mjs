@@ -562,11 +562,17 @@ describe("nothing init writes over, and nothing it half-writes", () => {
         assert.equal(fs.existsSync(path.join(dir, ".portulan", "workspace.json")), false, "a refusal must leave no torso behind");
     });
 
-    test("the manifest is written LAST, so a failed run is retryable rather than wedged", () => {
+    test("the manifest is written LAST, so a failed run is retryable rather than wedged", async () => {
         // Written first, a half-completed run leaves a `workspace.json` that the residence check then
         // reads as a governed repository — and the retry is refused with a sentence that is false.
         // The order is asserted rather than trusted, because it is invisible at every other altitude.
         const files = draft({ residence: "in-repo", name: "acme", cycle: true, checkpoints: "rituals/checkpoints" }, scan(scratch()));
+        // `await`ed, and the await is the assertion's foundation rather than a formality. `run` is
+        // async; it happens to reach the write loop with nothing suspended today, so an un-awaited
+        // call observed the right order by accident. The moment `run` gains an `await` before
+        // writing, the `finally` below would restore `fs.writeFileSync` first and this test would
+        // observe an EMPTY list and pass — a regression guard that stops guarding exactly when the
+        // code it guards changes shape. Found by review on the pull request.
         const dir = scratch();
         const written = [];
         const realWrite = fs.writeFileSync;
@@ -575,10 +581,11 @@ describe("nothing init writes over, and nothing it half-writes", () => {
                 written.push(String(file));
                 return realWrite(file, ...rest);
             };
-            run(["--residence", "in-repo", dir], harness().options);
+            await run(["--residence", "in-repo", dir], harness().options);
         } finally {
             fs.writeFileSync = realWrite;
         }
+        assert.equal(written.length, files.size, "every drafted file must have been observed — an empty list would pass the order check vacuously");
         const manifestAt = written.findIndex((f) => f.endsWith("workspace.json"));
         assert.equal(manifestAt, files.size - 1, "workspace.json must be the last file written, not the first");
     });
