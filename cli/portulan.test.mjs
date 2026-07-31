@@ -101,7 +101,11 @@ test("modules are loaded lazily — help imports nothing", async () => {
 });
 
 test("an unbuilt subcommand exits 2 and names where it arrives — never 0", async () => {
-    for (const name of ["init", "vendor", "upgrade"]) {
+    // `init` left this list at milestone 7, session 1, when it was built. The list is written out
+    // rather than derived from `SUBCOMMANDS` on purpose: deriving it would make the assertion
+    // vacuously true the moment a subcommand's `module` was set, and the whole point is that a
+    // subcommand crossing from unbuilt to built is a change somebody looked at.
+    for (const name of ["vendor", "upgrade"]) {
         const h = harness();
         const code = await run([name], h.options);
         assert.equal(code, 2, `${name} must exit 2, not 0 — a silent success here is a fail-open`);
@@ -166,9 +170,18 @@ test("the usage screen lists all six and marks the unbuilt ones", () => {
     for (const entry of SUBCOMMANDS) {
         assert.match(text, new RegExp(`\\b${entry.name}\\b`), `usage must list ${entry.name}`);
     }
-    // Three not-built markers, one per unbuilt subcommand — counted rather than merely present, so
-    // a subcommand quietly losing its marker is a red.
-    assert.equal((text.match(/not built/g) ?? []).length, 3);
+    // One not-built marker per unbuilt subcommand — counted rather than merely present, so a
+    // subcommand quietly losing its marker is a red. The expected number is derived from
+    // `SUBCOMMANDS` rather than written as a literal: the literal was `3`, it became wrong the hour
+    // `init` was built, and a figure that has to be edited by hand every time a subcommand ships is
+    // a second carrier of how far this row has got. What is asserted is the invariant — one marker
+    // each, and none for a built one — which is the part that must never drift.
+    const unbuilt = SUBCOMMANDS.filter((entry) => !entry.module);
+    assert.equal((text.match(/not built/g) ?? []).length, unbuilt.length);
+    for (const entry of SUBCOMMANDS.filter((s) => s.module)) {
+        const line = text.split("\n").find((l) => l.trim().startsWith(entry.name));
+        assert.doesNotMatch(line, /not built/, `${entry.name} is built and must not be marked otherwise`);
+    }
     assert.match(text, /docs\/vision\.md names six/);
 });
 

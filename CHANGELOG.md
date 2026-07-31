@@ -42,13 +42,38 @@ records how things were found. This is per *release* and records what a reader g
 ## Unreleased
 
 **There is a command line.** One entry point over the six
-subcommands [`docs/vision.md`](docs/vision.md) names. Three of them — `doctor`, `compile`, `index` —
-dispatch to the tools that already existed, with each module imported **on demand** and each tool's
-exit code returned **unchanged**; verified byte-identical to invoking those tools directly. The other
-three — `init`, `vendor`, `upgrade` — are listed and **exit 2, naming the milestone they arrive at**,
-because a stub exiting 0 would be a fail-open exactly where a user trusts silence. `plugin-lint` and
-`librarian` are deliberately *not* behind it: `docs/vision.md` names six and is human-owned, so a
-seventh is the maintainer's call.
+subcommands [`docs/vision.md`](docs/vision.md) names. Four of them — `init`, `doctor`, `compile`,
+`index` — dispatch, with each module imported **on demand** and each tool's exit code returned
+**unchanged**; verified byte-identical to invoking those tools directly. The other two — `vendor` and
+`upgrade` — are listed and **exit 2, naming the milestone they arrive at**, because a stub exiting 0
+would be a fail-open exactly where a user trusts silence. `plugin-lint` and `librarian` are
+deliberately *not* behind it: `docs/vision.md` names six and is human-owned, so a seventh is the
+maintainer's call. _(This paragraph said three dispatch and three exit 2, which was true when the entry
+point landed and stopped being true when `init` was built in the next session. Corrected here rather
+than left for the release cut, on this file's own accumulate-and-correct rule.)_
+
+**`init` drafts a workspace for a repository that has none.** It **asks** where the workspace resides —
+in the repository, or in a workspace that names it — and writes a full workspace or a pointer
+accordingly. **There is no default residence**: a repository is governed by exactly one workspace, so
+the answer that decides which cannot be guessed at, and a run without one exits 2 asking the question.
+A codebase scan reads what the repository says about itself and writes down what it could **not**
+determine rather than inventing a plausible build command. Three refusals stand ahead of the first byte
+written: a repository already carrying a workspace or a pointer is never overwritten — moving between
+residences is a switch, and that subcommand is not built; **no existing file is written over**, because
+"is this repository governed?" and "is it safe to write here?" are different questions with different
+answers, and a `.portulan/` holding somebody's hand-written notes and no manifest answers no to the
+first; and any answer that is empty or malformed — a name, a governor, a pack id — is refused at the
+boundary rather than emitted for a validator to choke on. The manifest is written **last**, so a run
+that fails part-way leaves something a person can clear rather than a torso that reads as a workspace.
+
+The drafted workspace **binds the checkpoint ritual by default** and can opt out with `--no-cycle`; it
+carries a gate policy that compiles on both backends, a handoff series, and a verify recipe that
+**exits 2 until the adopting team says what green means for their repository** — a stub exiting 0 would
+put a false green under every gate on the day the workspace was created. What it deliberately does not
+carry is a working **session-end gate**: the runner that enforces it ships in no artifact an adopter
+receives, so the draft names where that arrives instead of implying a wire that is not there. There is
+no interactive interview yet either — the answers arrive as flags or as `--answers`, which is the
+substrate an interview would drive.
 
 **It ships as zero-dependency ESM, and that is now a ruling rather than a "for now".** Settled
 2026-07-31 against [`.portulan/identity.md`](.portulan/identity.md)'s older *TypeScript on Node*

@@ -7,11 +7,11 @@ packaging is **milestone 7**, and as of session 0 the entry point exists:
 [`portulan.mjs`](portulan.mjs), reached as `portulan <subcommand>` through the `bin` in the
 repository's `package.json`.
 
-**Three of the six dispatch; three exit 2.** `doctor`, `compile` and `index` exist — because
-milestones 2, 4 and 5 needed them — and the entry point calls their exported `run` and returns the
-code unchanged. `init`, `vendor` and `upgrade` are named in `docs/vision.md`, are not built, and say
-so: they exit **2 — could not run**, naming the milestone they arrive at, because a stub exiting 0
-would be a fail-open where a user is most likely to trust silence.
+**Four of the six dispatch; two exit 2.** `doctor`, `compile` and `index` exist because milestones 2, 4
+and 5 needed them, and `init` was built at milestone 7 session 1; the entry point calls each one's
+exported `run` and returns the code unchanged. `vendor` and `upgrade` are named in `docs/vision.md`,
+are not built, and say so: they exit **2 — could not run**, naming the milestone they arrive at,
+because a stub exiting 0 would be a fail-open where a user is most likely to trust silence.
 
 Beside the six sit **two** tools that are not on that list at all, because milestone 3 and milestone
 5 needed them. Being off the list is a fact about `docs/vision.md`, which names six subcommands and
@@ -23,8 +23,10 @@ the entry point, which is the same rule expressed in code rather than in a sente
 
 | File | What it is |
 |---|---|
-| [`portulan.mjs`](portulan.mjs) | **The entry point** the published package exposes as `portulan`, added at milestone 7. It dispatches and adds nothing: each subcommand's module is imported **on demand** — so `portulan --help` does not pay for `doctor`, and a tool that fails to parse takes down only its own subcommand — and the tool's exit code is returned **unchanged**, because re-mapping it here would put a second opinion about a workspace between the tool and its user. Verified byte-identical to direct invocation for all three built subcommands. |
+| [`portulan.mjs`](portulan.mjs) | **The entry point** the published package exposes as `portulan`, added at milestone 7. It dispatches and adds nothing: each subcommand's module is imported **on demand** — so `portulan --help` does not pay for `doctor`, and a tool that fails to parse takes down only its own subcommand — and the tool's exit code is returned **unchanged**, because re-mapping it here would put a second opinion about a workspace between the tool and its user. Verified byte-identical to direct invocation for the three built subcommands it wrapped when it landed; `init` joined them at session 1 and is exercised through the entry point as well as directly. |
 | [`portulan.test.mjs`](portulan.test.mjs) | Its test suite, written first. **Dispatch only**: which module is reached, that arguments arrive unchanged, that exit codes come back unchanged, and that every refusal exits `2`. It injects the loader rather than shelling out, because re-asserting what `doctor` or `index` already prove would make this file a second carrier of it — with one deliberate exception, a case that imports the real modules to check they still export `run`, since that is the single assumption the entry point rests on. |
+| [`init.mjs`](init.mjs) | **The onboarding subcommand**, added at milestone 7 session 1: it drafts a workspace for a repository that has none. It **asks** where that workspace resides — in the repository, or in a workspace that names it — and has **no default**, because a repository is governed by exactly one workspace and that answer is the one that cannot be guessed. It refuses ahead of the first byte written: never over an existing residence, and never a name, governor or pack id a validator would misread. What it emits is a **draft** — including a verify recipe that exits 2 until the adopting team declares what green means for them. |
+| [`init.test.mjs`](init.test.mjs) | Its test suite, written first. Its last group is the one that matters: it runs the real `doctor` against real drafted directories, in both residences, because a workspace nothing validated is a workspace nobody can trust. That group is what caught a drafted gate policy that parsed cleanly and compiled to a floor no rule reached. |
 | [`doctor.mjs`](doctor.mjs) | The Workspace Definition validator. Zero dependencies, no install step, run from the repository root. Two repeatable roots, both **named rather than discovered** because this tool does no discovery: `--pack-root` is where declared packs are looked up, and `--repo-root` (2.7) is where the repositories a workspace's cards NAME are checked out, so the residence ruling's cross-repository refusal has somewhere to look. Without a `--repo-root` that check reports that it did not run rather than passing quietly. |
 | [`doctor.test.mjs`](doctor.test.mjs) | Its test suite, on node's own runner. Written before the validator. |
 | [`plugin-lint.mjs`](plugin-lint.mjs) | The packaging validator: the plugin and marketplace manifests, the skills they declare, and the agents at `./agents/` that nothing declares. |
@@ -41,6 +43,7 @@ the entry point, which is the same rule expressed in code rather than in a sente
 ```
 portulan <subcommand> [options]          # or: node cli/portulan.mjs <subcommand> [options]
 
+node cli/init.mjs --residence <in-repo|pointer> [options] <repository-dir>
 node cli/doctor.mjs <workspace-dir> [<workspace-dir> ...]
 node cli/plugin-lint.mjs <plugin-root> [<plugin-root> ...]
 node cli/compile.mjs [--workspace <dir>] [--check]
@@ -51,7 +54,9 @@ node cli/librarian.mjs [--as-of YYYY-MM-DD] [--write] [--log <path>] [--reviews 
 The two validators: exit `0` when every workspace or plugin root validates · `1` when at least one does
 not · `2` could not run. `compile`: exit `0` when it wrote, or agreed under `--check` · `1` only under
 `--check`, when the artifact is missing or has drifted · `2` could not run — writing never returns `1`,
-because a run that rewrites the artifact has nothing to disagree with. `index` uses the same three
+because a run that rewrites the artifact has nothing to disagree with. `init` has only **two** codes —
+`0` it wrote · `2` it could not run — and the missing `1` is the point: it renders no verdict about
+anybody's workspace, so it has no red to report. `index` uses the same three
 codes and differs from `compile` in one way worth knowing before reading it: **writing can still return
 `1`**, because a budget breach is a verdict about the store rather than about the artifact, and the
 artifact is written anyway so there is something to consolidate from. Both workspaces this repository
