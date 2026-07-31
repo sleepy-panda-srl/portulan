@@ -2,9 +2,10 @@
 
 > Generated from `handoffs/` by `node cli/index.mjs`. Do not edit by hand: it is regenerated
 > and byte-compared, so a hand-edit survives exactly until the next run.
-> 52 handoff(s), newest first. No budget: the series is append-only, so
+> 53 handoff(s), newest first. No budget: the series is append-only, so
 > the only remedy a budget could ask for is one this project rules out.
 
+- 2026-07-31 · [Handoff — the loop doctrine merged, and the rail that watches reviews was found blind](handoffs/2026-07-31-the-loop-doctrine-merged-and-a-rail-was-found-blind.md)
 - 2026-07-30 · [Handoff — the tests rail has been seen to fire](handoffs/2026-07-30-the-tests-rail-has-been-seen-to-fire.md)
 - 2026-07-30 · [Handoff — the loop gets its fresh verdict, and the build cycle stops being an anecdote](handoffs/2026-07-30-the-loop-gets-its-fresh-verdict.md)
 - 2026-07-30 · [Handoff — the feed points, the public repository carries, and a scope lands empty](handoffs/2026-07-30-the-feed-points-and-the-public-repo-carries.md)

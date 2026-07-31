@@ -1819,3 +1819,12 @@ _The seam applies here too: no client-identifying references._
   rung. `evolution.md`'s customer-zero paragraph becomes **the cycle an adopter receives**: three graded
   moments, hard exit criteria, records every session. Triage lane, Stop-gate and the five-phase table
   untouched — that table binds both lanes. [`0018`](../.portulan/proposals/0018-a-verdict-from-the-context-that-did-the-work-is-not-a-verdict.md) · [`0019`](../.portulan/proposals/0019-the-development-cycle-is-doctrine-not-anecdote.md); row 7 drafts the instantiation half. · Fidelity: session-open A-W-A (9), pre-commit A-W-A (5) on the complete diff, both fresh contexts, all folded. **Breach recorded:** the doctrine commit went out before pre-commit ran; the handoff carries it. Seam scan clean. Handoff: [`2026-07-30-the-loop…`](../.portulan/handoffs/2026-07-30-the-loop-gets-its-fresh-verdict.md).
+
+- 2026-07-31 · post-M6 · Doctrine — no Status moved · **The loop doctrine merged, and the rail that watches
+  reviews was found blind** — [#137](https://github.com/sleepy-panda-works/portulan/pull/137) merged
+  (`2939050`), re-verified in a clean clone: eight recipes, 756/756, kernel 44/60. Two rebases; #135's own
+  2026-07-30 M7 amendment is **drafted-not-applied** where #137's is **applied**, so #137's heading now names
+  its subject and status rather than colliding — neither narrows the other. **Copilot's round carried a
+  suppressed note and the derived verdict said there were none:** `copilot-review.yml` greps a literal Copilot
+  has since changed, so its *could-not-parse* branch is unreachable and it reported an absence it had not
+  established — in the channel measured as carrying most real findings ([#142](https://github.com/sleepy-panda-works/portulan/issues/142)); the final round was swept by hand, clean. [#143](https://github.com/sleepy-panda-works/portulan/issues/143) records #137's checkpoint breach. · Seam scan clean. Handoff: [`2026-07-31-the-loop…`](../.portulan/handoffs/2026-07-31-the-loop-doctrine-merged-and-a-rail-was-found-blind.md).
