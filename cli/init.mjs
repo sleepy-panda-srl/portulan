@@ -235,7 +235,14 @@ export function resolveAnswers(flags) {
         feed: merged.feed ?? null,
         checkpoints: merged.checkpoints ?? DEFAULT_CHECKPOINTS,
         cycle: merged.cycle !== false,
-        packRoots: merged["pack-root"] ?? [],
+        // NORMALISED to an array, because the two sources disagree about shape. The flag is
+        // repeatable and accumulates into one; an answers file may reasonably give a single string,
+        // which the value check above accepts as a string like every other key. Everything
+        // downstream — `.length`, `.map`, `packResolves`'s `.some` — is array-shaped, so a string
+        // reaching here turned a perfectly valid answers file into `roots.some is not a function`:
+        // a real answer, refused with a message about somebody else's bug. Found by review on the
+        // pull request. Normalising here rather than at each use keeps one shape after this line.
+        packRoots: [merged["pack-root"] ?? []].flat(),
     };
 }
 

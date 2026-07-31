@@ -1,14 +1,17 @@
 # Handoff — `init` asks the one question it may not answer
 
 **Milestone 7, session 1.** The row's first unbuilt subcommand is built: `init` drafts a workspace for a
-repository that has none, in either residence, and `doctor` is green on what it emits. **Milestone
-state: M7 still in progress** — `vendor`, `upgrade`, `new`, `feedback`, `doctor`'s validation half, the
+repository that has none, in either residence, and `doctor` is green on what it emits — **the in-repo
+one with `--pack-root` named**, because the draft composes a pack by default and nothing discovers one.
+That condition travels with the claim everywhere it is made, here and in `docs/plan.md`: a green whose
+precondition lives only in a test comment is a green that will be quoted without it. **Milestone state:
+M7 still in progress** — `vendor`, `upgrade`, `new`, `feedback`, `doctor`'s validation half, the
 legibility score and verify composition are all untouched, and the row's four demonstrations are unrun.
 
 ## What landed
 
 `cli/init.mjs` + `cli/init.test.mjs` (written first), wired into `SUBCOMMANDS`; `init`'s exit-2 path and
-its place in the entry point's unbuilt-subcommand loop are gone. Suite **847/847**, up from 774 — 73 new
+its place in the entry point's unbuilt-subcommand loop are gone. Suite **850/850**, up from 774 — 75 new
 `init` cases, **20 of them written after the pre-commit checkpoint**, each red against the code as it
 stood. Eight recipes green. `npm pack` is **74 files, all 74 byte-identical to the git index**, so
 session 0's no-build-step property holds across the two files added.
@@ -42,8 +45,18 @@ reusable part. **Every one was demonstrated by running the tool, not by reading 
   importing it threw at module load — against its own header's promise, two hundred lines up, that an
   unreadable schema must not throw while loading.
 
-Also folded: the answers file's **values** are type-checked, not only its keys (`"cycle": "false"` is a
-truthy string and would have composed the pack the adopter was switching off).
+Also folded, from the same pass's minor set: the answers file's **values** are type-checked, not only
+its keys (`"cycle": "false"` is a truthy string and would have composed the pack the adopter was
+switching off); `--feed ""` is refused like every other empty value; both stranding refusals now name a
+next step; and `cli/README.md`'s claim that `init` is *exercised through the entry point* was soft —
+the only entry-point coverage was the run-export check — so the claim was made true with a real
+dispatch test rather than softened to match.
+
+**Copilot's round found one more, and it was right.** `resolveAnswers` returned `packRoots` unnormalised,
+so an answers file giving `"pack-root"` as a single string — which the value check accepts, like every
+other string key — reached `packResolves` and died on `.some`. A valid answers file became
+`could not run — roots.some is not a function`: a real answer refused with a message about somebody
+else's bug. Normalised at the merge, where one shape is established for everything downstream.
 
 ## The four rulings this session opened with
 
