@@ -2,14 +2,14 @@
 
 **Opens milestone 7.** Session 0 of the CLI & onboarding row, and the first session since
 [#146](https://github.com/sleepy-panda-works/portulan/pull/146) closed milestone 6. **Milestone state:
-M6 closed, M7 open and untouched as a deliverable** — this session moved the rulings and the rails that
-milestone 7 will be built on, and shipped none of the CLI. That is stated plainly because the row's
-headline is a package that does not yet exist.
+M6 closed, M7 in progress** — four rulings taken, the review rail repaired, and the row's packaging
+clause landed: there is a command line. `init`, `vendor` and `upgrade` are named by it and unbuilt.
 
 ## What landed
 
 [#147](https://github.com/sleepy-panda-works/portulan/pull/147), open and awaiting the maintainer's
-merge. One commit. Suite 756/756, eight recipes green, seam clean.
+merge. Suite **774/774**, eight recipes green, seam clean. Two Copilot rounds answered, both on the
+matcher's own repair.
 
 ## The rulings, and what the tree said about them
 
@@ -20,8 +20,9 @@ Four questions went to the maintainer at session-open, before a file was written
   installed before it runs*, and `cli/README.md:144` argues **both sides in one paragraph** — zero-dep
   ESM "rather than TypeScript, deliberately and for now" because a build step would break
   clone-and-check, then "the CLI at milestone 7 absorbs this file and takes the build with it". He took
-  the property over the plan. `identity.md:43` and the `build:` line in `repos/portulan.md` are owed a
-  correction by the session that ships the package, **not by this one** — they are not wrong yet.
+  the property over the plan. `identity.md:43`, the `build:` line in `repos/portulan.md` and the
+  `cli/README.md` paragraph are corrected **in this session**, since it went on to ship the package
+  and so falsified them itself.
 - **A composed pack's verify recipes reach the adopting workspace**, additive-only. `skills` never
   needed asking: row 7's clause (b) already committed that consumer. See below.
 - **The M6 close-hold and `#135`'s residence amendment ratified**, the latter **with the switch left
@@ -112,8 +113,34 @@ restored each time.
 4. **The switch still owes a verb.** Deferring it moved the choice rather than removing it: either
    widening `vision.md`'s `vendor` gloss or minting a seventh subcommand, and both are his.
 
+## The packaged CLI, and the bug that made the checkpoint worth its cost
+
+`package.json` + [`../../cli/portulan.mjs`](../../cli/portulan.mjs): one entry over the six names,
+three dispatching and three exiting 2. The dispatch adds nothing — each tool's `run` is imported on
+demand and its exit code returned unchanged, verified **byte-identical** to direct invocation for all
+three, red cases included.
+
+**The pre-commit checkpoint returned REQUEST-CHANGES on it, and the finding is the one a reading
+could not have produced.** npm installs a `bin` as a **symlink**. Node realpaths the main module for
+`import.meta.url` while `process.argv[1]` keeps the link path, so the ordinary guard every other tool
+here uses — a bare comparison of the two — is **false through the link**. The supervisor packed the
+tarball and installed it: `--version` printed nothing and exited 0, and `doctor` on a missing
+directory exited **0** where a checkout exits **1**. Every verdict silently became a success, on the
+route the README tells people to use.
+
+**Three things worth carrying from that.** The guard now realpaths, and `isMain()` is the one place in
+`cli/` that must — the other tools are right to keep the bare comparison, because nothing links them.
+The suite was **structurally blind** to it: sixteen tests injected the loader, and injection is
+precisely the path that skips the guard, so the fix ships with a test that spawns the file through a
+real symlink and **reds against the old guard**. And the check that found it was *install the artifact*,
+not *read the code* — the same lesson milestone 6 closed on, one layer out: **run a check in the layout
+the consumer gets.**
+
 ## What session 1 picks up
 
-The package and `init`, which this session did not reach. Everything it needs is ruled: plain `.mjs`,
-six subcommands, a named `--pack-root`, cycle-scaffolded by default with an opt-out. Read the two flags
-above first — the first one moves session 1's own scope.
+**`init`**, which this session did not reach — the package and its entry point landed, `init` did not.
+Everything it needs is ruled: plain `.mjs`, a named `--pack-root`, cycle-scaffolded by default with an
+opt-out, drafting rather than imposing. It slots into `SUBCOMMANDS` in `cli/portulan.mjs` by giving the
+`init` entry a `module`; the exit-2 path and its test disappear with it.
+
+Read the four open items above first — the validation-scope one moves session 1's own scope.

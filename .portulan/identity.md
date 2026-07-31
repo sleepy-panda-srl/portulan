@@ -37,19 +37,25 @@ Deliberately thin, and it stays thin:
 | Engine, packs, and spec prose | Markdown (`SKILL.md` / `AGENTS.md` conventions) | now |
 | Verify recipes | Bash + POSIX text utilities; every recipe but `docs` also needs `node`, and `workflow-filters` needs `jq` | now |
 | Workspace Definition | JSON Schema — a named subset — with JSON manifests | now |
-| `doctor` · `plugin-lint` · `compile` | Zero-dependency JavaScript on Node, run from the repository | now — [`../cli/`](../cli/) |
-| Tests | `node --test`, node's own runner — no framework, no install | now — every `*.test.mjs` under [`../cli/`](../cli/), four as of milestone 4 |
+| `doctor` · `plugin-lint` · `compile` · `index` · `librarian` | Zero-dependency JavaScript on Node, run from the repository | now — [`../cli/`](../cli/) |
+| Tests | `node --test`, node's own runner — no framework, no install | now — every `*.test.mjs` under [`../cli/`](../cli/), eight as of milestone 7 |
 | Plugin packaging | Claude Code plugin + marketplace manifests, engine skills, personas as agents | now — [`../plugin/`](../plugin/) and [`../.claude-plugin/`](../.claude-plugin/) |
-| CLI | TypeScript on Node via `npx` — absorbs `doctor` and `compile`; `plugin-lint` is on no milestone-7 list | milestone 7 |
+| CLI | **Zero-dependency ESM on Node** via `npx`, ruled 2026-07-31 against this row's earlier *TypeScript on Node* — a build step would end the property the paragraph below protects. One entry over the six `docs/vision.md` names, dispatching to `doctor`, `compile` and `index`; `plugin-lint` and `librarian` are on no milestone-7 list and adding a seventh is the maintainer's call | **partly now** — [`../cli/portulan.mjs`](../cli/portulan.mjs); `init`, `vendor` and `upgrade` exit 2 until later milestone-7 sessions |
 
-No framework, no build step, no service, and no package manager: nothing here is installed before it
-runs.
+No framework, no build step, no service, and nothing installed before it runs **from a checkout** —
+which is the property, stated with the boundary the CLI put on it. `package.json` exists as of
+milestone 7 and declares **no dependencies**: it names the `bin` that `npx @sleepy-panda-works/portulan`
+**will** expose once the maintainer publishes — publishing is Gated and has not happened, so the package
+is not on the registry today — and nothing else. `npm install` fetches nothing, and every tool here still
+runs as `node cli/<tool>.mjs` straight from a clone. What `npx` would install is the published package,
+on the user's machine and by their choice; what this repository asks of a contributor is still `git
+clone` and nothing after it.
 
 **Where the line sits now, precisely.** [`verify/docs.sh`](verify/docs.sh) needs `git`, `bash`, and the
 POSIX text utilities and nothing else, and it is the only one that stops there: every other recipe —
 [`verify/json.sh`](verify/json.sh), [`verify/doctor.sh`](verify/doctor.sh),
 [`verify/tests.sh`](verify/tests.sh), [`verify/plugin.sh`](verify/plugin.sh),
-[`verify/compile.sh`](verify/compile.sh) and
+[`verify/compile.sh`](verify/compile.sh), [`verify/index.sh`](verify/index.sh) and
 [`verify/workflow-filters.sh`](verify/workflow-filters.sh) — also needs `node`. Each recipe declares
 its own needs in [`workspace.json`](workspace.json), which is the authority on this line rather than
 the paragraph you are reading, and is what keeps *could not run* distinguishable from *ran and failed*.

@@ -1,20 +1,30 @@
 # cli/
 
-Eventually the `npx` CLI that wraps the file-based mechanics for hosts beyond Claude Code:
+The `npx` CLI that wraps the file-based mechanics for hosts beyond Claude Code:
 `init` (interview + codebase scan → drafted workspace) · `doctor` · `compile` (gates/verify → host
 enforcement) · `vendor` (self-contained `AGENTS.md` + `.portulan/`) · `index` · `upgrade`. That
-packaging is **milestone 7**.
+packaging is **milestone 7**, and as of session 0 the entry point exists:
+[`portulan.mjs`](portulan.mjs), reached as `portulan <subcommand>` through the `bin` in the
+repository's `package.json`.
 
-Three of those exist now — `doctor` because milestone 2 needed it, `compile` because milestone 4 did,
-`index` because milestone 5 did — plus **two** tools that are not on that list at all, because
-milestone 3 and milestone 5 needed them. Being off the list is a fact about `docs/vision.md`, which
-names six subcommands and is human-owned: whether `plugin-lint` or `librarian` ever joins them is the
-maintainer's call and not an implementer's, so neither is described here as *coming to the CLI*.
+**Three of the six dispatch; three exit 2.** `doctor`, `compile` and `index` exist — because
+milestones 2, 4 and 5 needed them — and the entry point calls their exported `run` and returns the
+code unchanged. `init`, `vendor` and `upgrade` are named in `docs/vision.md`, are not built, and say
+so: they exit **2 — could not run**, naming the milestone they arrive at, because a stub exiting 0
+would be a fail-open where a user is most likely to trust silence.
+
+Beside the six sit **two** tools that are not on that list at all, because milestone 3 and milestone
+5 needed them. Being off the list is a fact about `docs/vision.md`, which names six subcommands and
+is human-owned: whether `plugin-lint` or `librarian` ever joins them is the maintainer's call and not
+an implementer's, so neither is described here as *coming to the CLI* — and neither is wired behind
+the entry point, which is the same rule expressed in code rather than in a sentence.
 
 ## What is here today
 
 | File | What it is |
 |---|---|
+| [`portulan.mjs`](portulan.mjs) | **The entry point** the published package exposes as `portulan`, added at milestone 7. It dispatches and adds nothing: each subcommand's module is imported **on demand** — so `portulan --help` does not pay for `doctor`, and a tool that fails to parse takes down only its own subcommand — and the tool's exit code is returned **unchanged**, because re-mapping it here would put a second opinion about a workspace between the tool and its user. Verified byte-identical to direct invocation for all three built subcommands. |
+| [`portulan.test.mjs`](portulan.test.mjs) | Its test suite, written first. **Dispatch only**: which module is reached, that arguments arrive unchanged, that exit codes come back unchanged, and that every refusal exits `2`. It injects the loader rather than shelling out, because re-asserting what `doctor` or `index` already prove would make this file a second carrier of it — with one deliberate exception, a case that imports the real modules to check they still export `run`, since that is the single assumption the entry point rests on. |
 | [`doctor.mjs`](doctor.mjs) | The Workspace Definition validator. Zero dependencies, no install step, run from the repository root. Two repeatable roots, both **named rather than discovered** because this tool does no discovery: `--pack-root` is where declared packs are looked up, and `--repo-root` (2.7) is where the repositories a workspace's cards NAME are checked out, so the residence ruling's cross-repository refusal has somewhere to look. Without a `--repo-root` that check reports that it did not run rather than passing quietly. |
 | [`doctor.test.mjs`](doctor.test.mjs) | Its test suite, on node's own runner. Written before the validator. |
 | [`plugin-lint.mjs`](plugin-lint.mjs) | The packaging validator: the plugin and marketplace manifests, the skills they declare, and the agents at `./agents/` that nothing declares. |
@@ -29,6 +39,8 @@ maintainer's call and not an implementer's, so neither is described here as *com
 | [`fixtures/`](fixtures/) | Known-bad manifests, and a workspace whose repo card has drifted from its tree. |
 
 ```
+portulan <subcommand> [options]          # or: node cli/portulan.mjs <subcommand> [options]
+
 node cli/doctor.mjs <workspace-dir> [<workspace-dir> ...]
 node cli/plugin-lint.mjs <plugin-root> [<plugin-root> ...]
 node cli/compile.mjs [--workspace <dir>] [--check]
@@ -141,7 +153,14 @@ this repository owns and others may run, not as a contract shipped to them.
 [`../.portulan/tools/`](../.portulan/tools/) holds operator tooling. Putting a universal validator in
 either would have made it look local to the one workspace it happened to be written beside.
 
-Zero-dependency ESM on Node rather than TypeScript, deliberately and for now: a build step would mean
-this repository could no longer be checked by cloning it, which is the property
-[`../.portulan/identity.md`](../.portulan/identity.md) is protecting when it says nothing here is
-installed before it runs. The CLI at milestone 7 absorbs this file and takes the build with it.
+Zero-dependency ESM on Node rather than TypeScript — and as of **2026-07-31 that is a ruling rather
+than a "for now"**. The maintainer settled it at milestone 7's session-open, against
+[`../.portulan/identity.md`](../.portulan/identity.md)'s older *TypeScript on Node* line, on exactly
+the ground this paragraph already gave: a build step would mean this repository could no longer be
+checked by cloning it. So the CLI does **not** bring a build with it. The `package.json` milestone 7
+adds declares no dependencies and exists to carry the `bin`; `npm install` fetches nothing, and every
+tool here still runs as `node cli/<tool>.mjs` from a fresh clone.
+
+_(This paragraph previously closed with "the CLI at milestone 7 absorbs this file and takes the build
+with it" — a sentence whose "this file" had no clear referent and which predicted the opposite of
+what was ruled. Replaced rather than annotated, since nothing in it survived.)_

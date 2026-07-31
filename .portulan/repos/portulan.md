@@ -6,9 +6,9 @@ radius is the whole product — this is the only repository the product ships fr
 has been public and permanent since 2026-07-27.
 
 **Build / test / run.**
-- build: none — no build step yet; the CLI arrives at milestone 7
+- build: none, and as of the maintainer's ruling of 2026-07-31 that is permanent rather than pending — the CLI ships as zero-dependency ESM, so `package.json` (milestone 7) declares the `bin` and no dependencies, and `npm install` fetches nothing
 - test: `./.portulan/verify/docs.sh` — the default recipe, and the one the Stop-gate runs automatically since milestone 4 (see [`../../core/operating/verification.md`](../../core/operating/verification.md)). Seven more are declared in [`../workspace.json`](../workspace.json) and all eight run in CI, because CI runs every recipe the manifest declares: `json.sh`, `doctor.sh`, `tests.sh`, `plugin.sh`, `compile.sh`, `workflow-filters.sh`, `index.sh`
-- run: `./.portulan/verify/doctor.sh` — the nearest thing to running the product: it validates both workspaces against the Workspace Definition. From milestone 3 there is a second sense of "run": install the repository as a Claude Code plugin and invoke `/portulan`, which boots the engine ([`../../plugin/`](../../plugin/))
+- run: `node cli/portulan.mjs <subcommand>` since milestone 7 — the six `docs/vision.md` names, of which `doctor`, `compile` and `index` dispatch and `init`, `vendor`, `upgrade` exit 2 until later sessions. Or `./.portulan/verify/doctor.sh` — the nearest thing to running the product: it validates both workspaces against the Workspace Definition. From milestone 3 there is a second sense of "run": install the repository as a Claude Code plugin and invoke `/portulan`, which boots the engine ([`../../plugin/`](../../plugin/))
 
 **Gates.** Inherits [`../gate-map.md`](../gate-map.md) with no deviations. Two worth keeping in front of
 mind because they are unusual: [`../../docs/vision.md`](../../docs/vision.md) is never edited by an agent
@@ -17,7 +17,8 @@ decision, not by accident
 ([`../memory/repo-is-private-until-flip-clearance.md`](../memory/repo-is-private-until-flip-clearance.md)).
 
 **Layout.** [`../../core/`](../../core/) the engine · [`../../spec/`](../../spec/) the Workspace
-Definition · [`../../cli/`](../../cli/) `doctor`, `plugin-lint`, `compile` and their tests ·
+Definition · [`../../cli/`](../../cli/) the `portulan` entry point, `doctor`, `plugin-lint`, `compile`,
+`index`, `librarian` and their tests ·
 [`../../docs/`](../../docs/) constitution and plan · `.portulan/` this workspace ·
 [`../../examples/`](../../examples/) the demo workspace · [`../../plugin/`](../../plugin/) the Claude Code
 adapter — the boot skill · [`../../agents/`](../../agents/) the three personas bound to this host, at the
