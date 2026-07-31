@@ -11,7 +11,7 @@ legibility score and verify composition are all untouched, and the row's four de
 ## What landed
 
 `cli/init.mjs` + `cli/init.test.mjs` (written first), wired into `SUBCOMMANDS`; `init`'s exit-2 path and
-its place in the entry point's unbuilt-subcommand loop are gone. Suite **856/856**, up from 774 — 81 new
+its place in the entry point's unbuilt-subcommand loop are gone. Suite **858/858**, up from 774 — 83 new
 `init` cases, **20 of them written after the pre-commit checkpoint**, each red against the code as it
 stood. Eight recipes green. `npm pack` is **74 files, all 74 byte-identical to the git index**, so
 session 0's no-build-step property holds across the two files added.
@@ -52,7 +52,7 @@ next step; and `cli/README.md`'s claim that `init` is *exercised through the ent
 the only entry-point coverage was the run-export check — so the claim was made true with a real
 dispatch test rather than softened to match.
 
-## The loop record — five rounds, and the bound bent only where session 0's precedent allows
+## The loop record — six rounds, and the bound bent only where session 0's precedent allows
 
 **Round 1, one thread, real.** `resolveAnswers` returned `packRoots` unnormalised, so an answers file
 giving `"pack-root"` as a single string — which the value check accepts, like every other string key —
@@ -115,12 +115,26 @@ had asserted the *harmlessness* of exactly this — it passed `--pack-root` besi
 the manifest came out clean, which it did, by ignoring the flag. That assertion moved from "harmless" to
 "refused".
 
-**Why rounds 3, 4 and 5 were fixed rather than triaged:** every one is a defect this pull request
-introduced. Round 3's first was a false claim in a comment; round 4's was a write outside the
-repository; round 5's is the module contradicting its own stated stance. The bound exists to stop the
-loop growing on *new* input. It was never meant to let a session ship its own falsehood, its own escape,
-or its own contradiction because the counter ran out. **What would be triaged is the first finding that
-is not this change's fault** — and none of the five was.
+**Round 6, one thread: the same escape from the READ side, which round 4's fix did not close.**
+`residenceAt` used `existsSync`/`readFileSync` and ran *before* the symlink-aware collision check — so a
+`.portulan` symlink pointing at somebody else's workspace made `init` read a manifest **outside the
+repository** and announce *"this repository already carries a `repository` workspace"*, naming a
+workspace that is not in this repository at all. An out-of-repo read and a refusal that misdescribed
+what it found, in one sentence.
+
+**The lesson is about the shape of the round-4 fix, not about symlinks.** Guarding the write path left
+the guarantee reachable only when the read path happened not to fire first — and *a guarantee that
+depends on which check runs first is not a guarantee*. `residenceAt` now walks `.portulan` and
+`workspace.json` with `lstatSync` before it reads anything, and reports `symlink` as its own state.
+**This is the sibling class this repository already has a rule for** ([#91](https://github.com/sleepy-panda-works/portulan/issues/91)'s
+shape: a fix that misses its siblings), and the sibling here was one function away.
+
+**Why rounds 3–6 were fixed rather than triaged:** every one is a defect this pull request introduced.
+Round 3's first was a false claim in a comment; round 4's was a write outside the repository; round 5's
+was the module contradicting its own stated stance; round 6's was round 4's own fix, incomplete. The
+bound exists to stop the loop growing on *new* input. It was never meant to let a session ship its own
+falsehood, its own escape, its own contradiction, or its own half-fix because the counter ran out.
+**What would be triaged is the first finding that is not this change's fault** — and none of the six was.
 
 ## The four rulings this session opened with
 

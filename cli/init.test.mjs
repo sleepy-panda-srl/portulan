@@ -30,7 +30,7 @@ import path from "node:path";
 import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
-import { InitError, SLUG, slugify, parseArgs, scan, draft, collisions, run } from "./init.mjs";
+import { InitError, SLUG, slugify, parseArgs, scan, draft, collisions, residenceAt, run } from "./init.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO = path.resolve(HERE, "..");
@@ -668,6 +668,36 @@ describe("nothing init writes over, and nothing it half-writes", () => {
         assert.equal(await run(["--residence", "in-repo", dir], h.options), 2);
         assert.match(h.warned.join("\n"), /symlink/);
         assert.deepEqual(fs.readdirSync(outside), []);
+    });
+
+    test("a symlinked `.portulan` is never READ through either, not just never written through", async () => {
+        // The other half of the escape above, and it was reachable while only the write side was
+        // fixed: `residenceAt` ran first and followed the link, so `init` read a manifest OUTSIDE
+        // the repository and announced "this repository already carries a `repository` workspace",
+        // naming a workspace that is not in this repository at all. An out-of-repo read AND a
+        // refusal that misdescribed what it found. Found by review on the pull request.
+        const dir = scratch();
+        const elsewhere = scratch();
+        fs.mkdirSync(path.join(elsewhere, ".portulan"));
+        fs.writeFileSync(
+            path.join(elsewhere, ".portulan", "workspace.json"),
+            '{"portulan":{"spec":"2.7"},"name":"someone-elses","kind":"repository"}',
+        );
+        fs.symlinkSync(path.join(elsewhere, ".portulan"), path.join(dir, ".portulan"));
+        const h = harness();
+        assert.equal(await run(["--residence", "in-repo", dir], h.options), 2);
+        const said = h.warned.join("\n");
+        assert.match(said, /symlink/);
+        assert.doesNotMatch(said, /someone-elses/, "the refusal must not report a workspace it read from outside the repository");
+        assert.doesNotMatch(said, /already carries/, "that sentence would be a claim about this repository drawn from another one");
+    });
+
+    test("residenceAt reports a symlink as a symlink rather than resolving through it", () => {
+        const dir = scratch();
+        const elsewhere = scratch();
+        fs.symlinkSync(elsewhere, path.join(dir, ".portulan"));
+        assert.equal(residenceAt(dir).state, "symlink");
+        assert.equal(residenceAt(scratch()).state, "none");
     });
 
     test("a dangling symlink is refused rather than written over", () => {
