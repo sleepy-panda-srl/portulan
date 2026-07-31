@@ -98,8 +98,12 @@ says what a pack contributes to that cascade: skills, personas, verify recipes, 
 fragments. A declared pack **resolves** to a manifest, validates against the Definition, and its
 contributions reach the tools that consume them — **which is two of the four, and the Definition now
 says so kind by kind**: `compile` merges gate fragments, `index` opens personas, and skills and verify
-recipes are declared and consumed by nothing. Milestone 7 is where a consumer for those could arrive;
-no row commits one.
+recipes are declared and consumed by nothing. **Milestone 7 now commits a consumer for both**, which
+is a change from what this entry said while it was being accumulated: row 7's clause (b) requires a
+composed pack's skills to be invocable with parity to a core skill, and the maintainer's ruling of
+2026-07-31 added verify-recipe composition — additive-only, namespaced by pack, never the workspace's
+`verify.default`. The declare-only state is now a gap with a date on it rather than one nobody had
+undertaken to close.
 
 **A pack's gate fragments may only ever add restriction.** A pack contributing to the gate map means an
 installed dependency can change what an agent is allowed to do, so the rule is that a pack may raise a
