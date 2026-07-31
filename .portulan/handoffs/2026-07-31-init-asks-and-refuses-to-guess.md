@@ -11,7 +11,7 @@ legibility score and verify composition are all untouched, and the row's four de
 ## What landed
 
 `cli/init.mjs` + `cli/init.test.mjs` (written first), wired into `SUBCOMMANDS`; `init`'s exit-2 path and
-its place in the entry point's unbuilt-subcommand loop are gone. Suite **859/859**, up from 774 — 84 new
+its place in the entry point's unbuilt-subcommand loop are gone. Suite **861/861**, up from 774 — 86 new
 `init` cases, **20 of them written after the pre-commit checkpoint**, each red against the code as it
 stood. Eight recipes green. `npm pack` is **74 files, all 74 byte-identical to the git index**, so
 session 0's no-build-step property holds across the two files added.
@@ -52,7 +52,7 @@ next step; and `cli/README.md`'s claim that `init` is *exercised through the ent
 the only entry-point coverage was the run-export check — so the claim was made true with a real
 dispatch test rather than softened to match.
 
-## The loop record — eight rounds, and the bound bent only where session 0's precedent allows
+## The loop record — nine rounds, and the bound bent only where session 0's precedent allows
 
 **Round 1, one thread, real.** `resolveAnswers` returned `packRoots` unnormalised, so an answers file
 giving `"pack-root"` as a single string — which the value check accepts, like every other string key —
@@ -147,12 +147,20 @@ the next reader about assert's argument checking rather than about the missing l
 front of it. Small, and it is the same principle as everything above: a check whose failure does not say
 what is wrong has spent its cost without buying the thing checks are for.
 
-**Why rounds 3–8 were fixed rather than triaged:** every one is a defect this pull request introduced.
+**Round 9, one note, real.** `parseArgs` treated only a `--` prefix as a missing value, so
+`init --residence -h <dir>` consumed `-h` as the residence and then complained that `-h` is not one —
+blaming the user for a token they typed as a flag, and eating the likeliest thing to land there, which
+is a help request. `cli/doctor.mjs` already guarded on a single `-`; this file was the outlier among its
+siblings, which is the inverse of round 3's lesson and the same family. Any leading `-` is a missing
+value now, and the refusal names `--answers` as the route for a value that genuinely starts with one —
+an escape hatch that has its own test, because a rule whose exception is only described is a wall.
+
+**Why rounds 3–9 were fixed rather than triaged:** every one is a defect this pull request introduced.
 Round 3's first was a false claim in a comment; round 4's was a write outside the repository; round 5's
 was the module contradicting its own stated stance; round 6's was round 4's own fix, incomplete; round 7's was a fail-open in both walkers at once. The
 bound exists to stop the loop growing on *new* input. It was never meant to let a session ship its own
 falsehood, its own escape, its own contradiction, or its own half-fix because the counter ran out.
-**What would be triaged is the first finding that is not this change's fault** — and none of the eight was.
+**What would be triaged is the first finding that is not this change's fault** — and none of the nine was.
 
 ## The four rulings this session opened with
 
