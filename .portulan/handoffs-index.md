@@ -2,9 +2,10 @@
 
 > Generated from `handoffs/` by `node cli/index.mjs`. Do not edit by hand: it is regenerated
 > and byte-compared, so a hand-edit survives exactly until the next run.
-> 54 handoff(s), newest first. No budget: the series is append-only, so
+> 55 handoff(s), newest first. No budget: the series is append-only, so
 > the only remedy a budget could ask for is one this project rules out.
 
+- 2026-07-31 · [Handoff — the rulings applied, and a matcher reading for a word Copilot had stopped using](handoffs/2026-07-31-the-rulings-and-a-matcher-reading-for-the-wrong-word.md)
 - 2026-07-31 · [Handoff — the loop doctrine merged, and the rail that watches reviews was found blind](handoffs/2026-07-31-the-loop-doctrine-merged-and-a-rail-was-found-blind.md)
 - 2026-07-31 · [Handoff — the close asked for changes, and the Tipar drive answered it](handoffs/2026-07-31-the-close-asked-for-changes-and-tipar-answered.md)
 - 2026-07-30 · [Handoff — the tests rail has been seen to fire](handoffs/2026-07-30-the-tests-rail-has-been-seen-to-fire.md)
