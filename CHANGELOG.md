@@ -54,7 +54,10 @@ seventh is the maintainer's call.
 2026-07-31 against [`.portulan/identity.md`](.portulan/identity.md)'s older *TypeScript on Node*
 line, on the ground that file already gave: a build step would end this repository's ability to be
 checked by cloning it. `package.json` declares the `bin` and **no dependencies** — `npm install`
-fetches nothing, and every tool still runs as `node cli/<tool>.mjs` from a fresh clone.
+fetches nothing, and every tool still runs as `node cli/<tool>.mjs` from a fresh clone. **And it makes
+the packaged artifact checkable:** `npm pack` yields 72 files, **all 72 byte-identical to the tracked
+tree**, `package.json` included — so *no build step* is a property an adopter can verify rather than a
+claim they have to take.
 
 **One repository, one governing workspace.** A team's workspace can reside in two places — in the
 repository, or feed-side in a portfolio workspace that names it — and a customer may switch between them.
