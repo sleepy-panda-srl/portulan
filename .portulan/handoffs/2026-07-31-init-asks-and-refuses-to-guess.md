@@ -52,11 +52,40 @@ next step; and `cli/README.md`'s claim that `init` is *exercised through the ent
 the only entry-point coverage was the run-export check — so the claim was made true with a real
 dispatch test rather than softened to match.
 
-**Copilot's round found one more, and it was right.** `resolveAnswers` returned `packRoots` unnormalised,
-so an answers file giving `"pack-root"` as a single string — which the value check accepts, like every
-other string key — reached `packResolves` and died on `.some`. A valid answers file became
-`could not run — roots.some is not a function`: a real answer refused with a message about somebody
-else's bug. Normalised at the merge, where one shape is established for everything downstream.
+## The loop record — three rounds, and the bound bent only where session 0's precedent allows
+
+**Round 1, one thread, real.** `resolveAnswers` returned `packRoots` unnormalised, so an answers file
+giving `"pack-root"` as a single string — which the value check accepts, like every other string key —
+reached `packResolves` and died on `.some`. A valid answers file became `could not run — roots.some is
+not a function`: a real answer refused with a message about somebody else's bug. Normalised at the merge,
+where one shape is established for everything downstream.
+
+**Round 2, one suppressed note, real.** The write-order test called the async `run()` without awaiting.
+It observed the right order only because `run` reaches the write loop with nothing suspended — an
+accident of today's code. **The failure mode is the part worth keeping:** the moment `run` gains an
+`await` before writing, the `finally` restores `fs.writeFileSync` first, `written` is empty, and
+`findIndex` returns `-1` on nothing. A regression guard that stops guarding exactly when the code it
+guards changes shape. Awaited now, with a vacuity assertion so an empty list can never satisfy it.
+
+**Round 3, two suppressed notes, both real, both taken over the two-round bound — declared in the open,
+on session 0's precedent that the bound bends for defects the change itself introduced.**
+
+- **`scratch()`'s docstring said the directories cleaned themselves up, and nothing did.** Measured when
+  the note landed: **2375 leaked directories** under `os.tmpdir()`. A comment claiming a behaviour the
+  code does not have, in a file whose whole subject is checking claims. `cli/doctor.test.mjs` already
+  carried the correct pattern — one exit handler for all of them, because the per-directory form trips
+  node's ten-listener limit — **and a comment recording that a defect in an exemplar becomes a defect in
+  a family.** This file proved that from the other side by not being modelled on it. Now zero leak,
+  measured across a full run.
+- **The same test monkey-patched `fs.writeFileSync` globally.** Correct today, because tests within a
+  file run sequentially — but that makes the suite's correctness rest on a scheduling property no
+  assertion states. Moved to `t.mock.method`, which scopes the substitution to the test and restores it
+  even when an assertion throws first.
+
+**Why these two were fixed rather than triaged:** both are defects this pull request introduced, and the
+first is a false claim in a comment — the class this repository names most often. The bound exists to
+stop the loop growing on *new* input; it was never meant to let a session ship its own falsehood because
+the counter ran out.
 
 ## The four rulings this session opened with
 

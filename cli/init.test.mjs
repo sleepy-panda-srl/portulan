@@ -35,9 +35,23 @@ import { InitError, SLUG, slugify, parseArgs, scan, draft, collisions, run } fro
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO = path.resolve(HERE, "..");
 
-/** A scratch directory that cleans itself up. Real files, because the demonstration is on real files. */
+// ONE exit handler for every scratch directory, not one each — the per-directory form exceeds node's
+// default ten-listener limit partway through a suite this size and prints a MaxListenersExceededWarning.
+// That reason is not mine: `./doctor.test.mjs` records it, having hit it first, along with the lesson
+// that a defect in an exemplar becomes a defect in a family. This file proved the lesson from the other
+// side — it was written without the handler at all, and its own docstring said the directories cleaned
+// themselves up. **Measured when the note landed: 2375 leaked directories under `os.tmpdir()`.** A
+// comment claiming a behaviour the code does not have is this repository's dominant defect class, and
+// here it was in a file whose subject is checking claims. Found by review on the pull request.
+const SCRATCH = [];
+process.on("exit", () => {
+    for (const dir of SCRATCH) fs.rmSync(dir, { recursive: true, force: true });
+});
+
+/** A throwaway directory, removed when the process exits. Real files, because the demonstration is on real files. */
 function scratch(seed = {}) {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), "portulan-init-"));
+    SCRATCH.push(dir);
     for (const [rel, contents] of Object.entries(seed)) {
         const full = path.join(dir, rel);
         fs.mkdirSync(path.dirname(full), { recursive: true });
@@ -562,7 +576,7 @@ describe("nothing init writes over, and nothing it half-writes", () => {
         assert.equal(fs.existsSync(path.join(dir, ".portulan", "workspace.json")), false, "a refusal must leave no torso behind");
     });
 
-    test("the manifest is written LAST, so a failed run is retryable rather than wedged", async () => {
+    test("the manifest is written LAST, so a failed run is retryable rather than wedged", async (t) => {
         // Written first, a half-completed run leaves a `workspace.json` that the residence check then
         // reads as a governed repository — and the retry is refused with a sentence that is false.
         // The order is asserted rather than trusted, because it is invisible at every other altitude.
@@ -573,18 +587,20 @@ describe("nothing init writes over, and nothing it half-writes", () => {
         // writing, the `finally` below would restore `fs.writeFileSync` first and this test would
         // observe an EMPTY list and pass — a regression guard that stops guarding exactly when the
         // code it guards changes shape. Found by review on the pull request.
+        // `t.mock.method` rather than a hand-rolled patch-and-restore, so the substitution is SCOPED
+        // to this test and restored by the runner even if an assertion throws first. The hand-rolled
+        // form reassigned `fs.writeFileSync` globally: correct today, because tests within a file run
+        // sequentially, but it makes this suite's correctness depend on a scheduling property no
+        // assertion here states. Found by review on the pull request.
         const dir = scratch();
         const written = [];
-        const realWrite = fs.writeFileSync;
-        try {
-            fs.writeFileSync = (file, ...rest) => {
-                written.push(String(file));
-                return realWrite(file, ...rest);
-            };
-            await run(["--residence", "in-repo", dir], harness().options);
-        } finally {
-            fs.writeFileSync = realWrite;
-        }
+        const real = fs.writeFileSync;
+        t.mock.method(fs, "writeFileSync", (file, ...rest) => {
+            written.push(String(file));
+            return real(file, ...rest);
+        });
+        await run(["--residence", "in-repo", dir], harness().options);
+        fs.writeFileSync.mock.restore();
         assert.equal(written.length, files.size, "every drafted file must have been observed — an empty list would pass the order check vacuously");
         const manifestAt = written.findIndex((f) => f.endsWith("workspace.json"));
         assert.equal(manifestAt, files.size - 1, "workspace.json must be the last file written, not the first");
