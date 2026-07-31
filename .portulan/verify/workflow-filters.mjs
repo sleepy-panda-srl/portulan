@@ -826,7 +826,7 @@ function awkPrograms(file, text) {
         // quoted program, where the pattern already allows any whitespace. It never falls inside a
         // single-quoted program — and if it ever did, the token audit below is what says so, since a
         // corrupted program stops matching AWK_CALL and the two counts disagree.
-        const joined = code.map(({ text: line }) => line).join("\n").replace(/\\\n/g, " \n");
+        const joined = code.map(({ text: line }) => line).join("\n").replace(/\\\n/g, "\n");
         const tokens = (joined.match(AWK_TOKEN) ?? []).length;
         if (tokens === 0) continue;
         seen += tokens;
