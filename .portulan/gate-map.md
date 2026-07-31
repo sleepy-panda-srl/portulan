@@ -926,8 +926,10 @@ that blurs those two has mislaid the distinction it exists to record.
 
 **What it buys today is one watched dependency**, and the count belongs in the record rather than rounded
 up: the workflows under [`../.github/workflows/`](../.github/workflows/) are the tree's only manifests,
-`actions/checkout` — one SHA, pinned in each of the four — their only entry, and there is no
-`package.json` and no lockfile. The mechanism is the point and not the count — but a floor described as
+`actions/checkout` — one SHA, pinned in each of the four — their only entry. **Corrected at milestone 7:**
+this said there is no `package.json`. There is one now, at the root, carrying the CLI's `bin` — but it
+declares **no dependencies** and there is still **no lockfile**, so it adds nothing for a scanner to
+watch and the count above is unchanged. The mechanism is the point and not the count — but a floor described as
 broader than it is would be the same drift this rule was added to catch. _(Until 2026-07-29 this sentence
 named `verify.yml` as the only manifest, which had been false since the label and librarian workflows
 arrived carrying the same pin — the stale-count class again, corrected in the change that made

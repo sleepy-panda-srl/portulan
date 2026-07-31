@@ -41,6 +41,21 @@ records how things were found. This is per *release* and records what a reader g
 
 ## Unreleased
 
+**There is a command line.** One entry point over the six
+subcommands [`docs/vision.md`](docs/vision.md) names. Three of them — `doctor`, `compile`, `index` —
+dispatch to the tools that already existed, with each module imported **on demand** and each tool's
+exit code returned **unchanged**; verified byte-identical to invoking those tools directly. The other
+three — `init`, `vendor`, `upgrade` — are listed and **exit 2, naming the milestone they arrive at**,
+because a stub exiting 0 would be a fail-open exactly where a user trusts silence. `plugin-lint` and
+`librarian` are deliberately *not* behind it: `docs/vision.md` names six and is human-owned, so a
+seventh is the maintainer's call.
+
+**It ships as zero-dependency ESM, and that is now a ruling rather than a "for now".** Settled
+2026-07-31 against [`.portulan/identity.md`](.portulan/identity.md)'s older *TypeScript on Node*
+line, on the ground that file already gave: a build step would end this repository's ability to be
+checked by cloning it. `package.json` declares the `bin` and **no dependencies** — `npm install`
+fetches nothing, and every tool still runs as `node cli/<tool>.mjs` from a fresh clone.
+
 **One repository, one governing workspace.** A team's workspace can reside in two places — in the
 repository, or feed-side in a portfolio workspace that names it — and a customer may switch between them.
 What is now refused is **both at once**. The two residences are one artifact differing in reach and
