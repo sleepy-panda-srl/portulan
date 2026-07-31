@@ -846,11 +846,31 @@ exit 2
  * where this tool overwrites — the case where it knows least and where overwriting costs most.
  */
 export function residenceAt(target) {
-    const manifest = path.join(target, ".portulan", "workspace.json");
-    if (!fs.existsSync(manifest)) return { state: "none" };
+    // The path to the manifest is walked with `lstatSync` BEFORE anything is read, and that order is
+    // the whole of it. This function used `existsSync`/`readFileSync`, which follow symlinks — so a
+    // repository with a `.portulan` symlink pointing at somebody else's workspace made `init` read a
+    // manifest OUTSIDE the target and announce *"this repository already carries a `repository`
+    // workspace"*, naming a workspace that is not in this repository at all. Two failures in one
+    // sentence: an out-of-repo read, and a refusal that misdescribed what it found.
+    //
+    // It also ran ahead of the symlink-aware collision check, so the containment guarantee that check
+    // exists to give was reachable only when this function happened not to fire first. A guarantee
+    // that depends on which check runs first is not a guarantee. Found by review on the pull request,
+    // as the follow-up to the escape it is the other half of.
+    let here = target;
+    for (const segment of [".portulan", "workspace.json"]) {
+        here = path.join(here, segment);
+        let stat;
+        try {
+            stat = fs.lstatSync(here);
+        } catch {
+            return { state: "none" };
+        }
+        if (stat.isSymbolicLink()) return { state: "symlink", where: path.relative(target, here) };
+    }
     let parsed;
     try {
-        parsed = JSON.parse(fs.readFileSync(manifest, "utf8"));
+        parsed = JSON.parse(fs.readFileSync(here, "utf8"));
     } catch (error) {
         return { state: "unreadable", why: error.message };
     }
@@ -992,6 +1012,17 @@ export async function run(argv, options = {}) {
         // Before a byte: is this repository already governed? A repository is governed by exactly one
         // workspace, so finding one here is a refusal rather than a prompt to replace it.
         const existing = residenceAt(target);
+        if (existing.state === "symlink") {
+            // Handled here rather than left to the collision check below, so the containment refusal
+            // does not depend on which check happens to run first — and so nothing outside the
+            // repository was read in order to produce it.
+            throw new InitError(
+                `\`${existing.where}\` is a symlink, and \`init\` will not follow one out of the repository — not to write ` +
+                    `through it, and not to read a workspace manifest through it either. A manifest reached that way ` +
+                    `describes some other directory, so any verdict about "this repository" drawn from it would be about ` +
+                    `somewhere else. Replace the link with a real directory, or draft into a repository that has none.`,
+            );
+        }
         if (existing.state === "unreadable") {
             throw new InitError(
                 `could not read the workspace manifest already at \`${path.join(parsed.target, ".portulan", "workspace.json")}\` ` +
