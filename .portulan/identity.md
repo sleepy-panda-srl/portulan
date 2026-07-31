@@ -47,9 +47,15 @@ which is the property, stated with the boundary the CLI put on it. `package.json
 milestone 7 and declares **no dependencies**: it names the `bin` that `npx @sleepy-panda-works/portulan`
 **will** expose once the maintainer publishes — publishing is Gated and has not happened, so the package
 is not on the registry today — and nothing else. `npm install` fetches nothing, and every tool here still
-runs as `node cli/<tool>.mjs` straight from a clone. What `npx` would install is the published package,
-on the user's machine and by their choice; what this repository asks of a contributor is still `git
-clone` and nothing after it.
+runs as `node cli/<tool>.mjs` straight from a clone.
+
+**The `npx` path IS an install, and having no build step makes that a checkable claim rather than a
+preference: it installs the SAME BYTES.** Measured 2026-07-31 on `0f49868` — `npm pack` produces 72
+files and **all 72 are byte-identical to `git show HEAD:<path>`**, `package.json` included, with no
+exemption. This is milestone 6's install-cache byte-identity discipline turned on the package the CLI
+ships as, and it is what a build step would end: a compiled artifact cannot be compared to a tracked
+file, so *no build* stops being a taste and becomes a property an adopter can verify. Measured by hand
+so far — the rail is routed, not built (see the handoff).
 
 **Where the line sits now, precisely.** [`verify/docs.sh`](verify/docs.sh) needs `git`, `bash`, and the
 POSIX text utilities and nothing else, and it is the only one that stops there: every other recipe —

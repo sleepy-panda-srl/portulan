@@ -126,6 +126,42 @@ restored each time.
    introduced, and taking a third cheap fix would make the bound whatever the next note argues for.
    **Session 2 rewrites this paragraph anyway** when it builds the consumer; the scoping lands there.
 
+## The reviewing session's riders, folded — and the one that is routed
+
+All four rulings were **confirmed** by the reviewing session, at the maintainer's instruction, with
+riders. Three were already done: the four Q4 carriers swept in one change, the stale `skills` note
+fixed in the same change as the ruling, and the two Q3 refusals upheld (no seventh subcommand, no
+invented discovery). Three were new and two of them are now in the tree.
+
+- **The row's composition contract gained two clauses** (tightening the ratified amendment, not
+  reopening it, and recorded in `m07.md` as an amendment to the amendment). A composed recipe that
+  **cannot resolve is could-not-run, exit 2, never silently absent** — CI runs the recipe set the
+  manifest yields, so a quietly-missing composed recipe is a green over something nobody ran. And the
+  trust boundary is **named**: what bounds third-party recipe code in an adopter's CI is the **feed
+  pin** — resolution at a pinned version whose files hash to the commit claimed — not confidence in the
+  pack's author. The earlier text said only what the limits are *not*, which invites "unbounded".
+- **No build step is now a measured property, not a preference.** `npm pack` on `0f49868` yields **72
+  files, all 72 byte-identical to `git show HEAD:<path>`**, `package.json` included, **no exemption** —
+  the first cut of this check exempted `package.json` and the exemption was removed rather than kept.
+  So the `npx` path installs the *same bytes* the tree carries. This is milestone 6's install-cache
+  byte-identity discipline turned on the package, and it is precisely what a build step would end.
+
+**ROUTED, not built: the rail that would hold it.** Measuring this by hand once is the shape
+`workflow-filters.mjs`'s own header exists to refuse. It is not built here because it carries a real
+design question rather than only work: the check must compare the tarball against **git**, not against
+the working tree — comparing against the tree is trivially true and proves nothing — and a dirty working
+tree then produces a **false red** locally while being impossible in CI. Skipping on a dirty tree is a
+fail-open; reddening on one makes the suite unusable mid-edit. The honest shape is probably
+**could-not-run (exit 2) when any packed path differs from `HEAD`**, which is the three-code discipline
+applied to the check's own precondition — but that deserves deciding rather than improvising at session
+end. A ninth verify recipe would also move the "eight recipes" figure through every carrier in the tree,
+which is a sweep of its own.
+
+**Q2's shape, from the same relay: decide-when-real.** Build `vendor` against its committed clauses;
+bring the switch binding back to the maintainer as a question **when there is a concrete mechanism to
+point at**, rather than choosing a verb in the abstract. The deferral is not a gap — the amendment binds
+the *what* (exclusivity, pointer, parity) and only the *how* is open.
+
 ## Loop record, because the bound was tested rather than merely obeyed
 
 Five Copilot rounds: one inline thread, **eight suppressed notes**, every one swept **by hand** — the
