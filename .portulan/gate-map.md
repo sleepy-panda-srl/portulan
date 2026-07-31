@@ -694,8 +694,8 @@ from a context that has not seen the implementation
 ([`../core/operating/loop.md`](../core/operating/loop.md)), and the three-moment cycle is doctrine an
 adopter receives ([`../core/operating/evolution.md`](../core/operating/evolution.md)). What core
 deliberately does **not** supply is everything below: which work crosses the threshold, who grades, and
-in what vocabulary. That is this workspace's, and the table restates nothing core says — it names the
-moments in this repository's own words.
+in what vocabulary. **Those are this workspace's to set**, and the table restates nothing core says — it
+names the moments in this repository's own words.
 
 Three gates from [`../docs/plan.md`](../docs/plan.md), each requiring a supervisor in a **fresh context**
 that has not seen the implementer's window:
