@@ -118,14 +118,51 @@ describe("a pointer carries exactly what doctor permits and nothing else", () =>
         assert.equal(manifest.portulan.spec, "2.7", "the pointer kind arrived at 2.7 — an earlier spec cannot express it");
     });
 
-    test("a pointer carries no slots and no verify, whatever else is asked for", async () => {
+    test("a pointer carries no slots, no verify and no packs", async () => {
         const dir = scratch();
         const h = harness();
-        await run(["--residence", "pointer", "--governed-by", "acme-platform", "--pack-root", REPO, dir], h.options);
+        await run(["--residence", "pointer", "--governed-by", "acme-platform", dir], h.options);
         const manifest = ok(dir);
         assert.equal("slots" in manifest, false);
         assert.equal("verify" in manifest, false);
         assert.equal("packs" in manifest, false, "a pointer composes nothing — the governing workspace does");
+    });
+
+    test("options that mean nothing to a pointer are REFUSED, not quietly dropped", async () => {
+        // This case used to pass `--pack-root` alongside a pointer and assert the manifest came out
+        // clean — which it did, by ignoring the flag. That is the accepted-but-ignored shape this
+        // file's header claims not to have: an option a caller believes had an effect it never had.
+        // Found by review on the pull request; the assertion moved from "harmless" to "refused".
+        for (const argv of [
+            ["--pack-root", REPO],
+            ["--checkpoints", "rituals/other"],
+            ["--no-cycle"],
+        ]) {
+            const dir = scratch();
+            const h = harness();
+            const code = await run(["--residence", "pointer", "--governed-by", "acme-platform", ...argv, dir], h.options);
+            assert.equal(code, 2, `${argv[0]} must be refused with a pointer, not ignored`);
+            assert.match(h.warned.join("\n"), /does nothing with `--residence pointer`/);
+            assert.equal(fs.existsSync(path.join(dir, ".portulan")), false);
+        }
+    });
+
+    test("options that mean nothing to an in-repo workspace are refused the same way", async () => {
+        for (const argv of [["--feed", "acme-internal"], ["--governed-by", "acme-platform"]]) {
+            const dir = scratch();
+            const h = harness();
+            assert.equal(await run(["--residence", "in-repo", ...argv, dir], h.options), 2, `${argv[0]} must be refused`);
+            assert.match(h.warned.join("\n"), /does nothing with `--residence in-repo`/);
+        }
+    });
+
+    test("a default never trips the refusal — only what somebody actually asked for", async () => {
+        // `cycle` and `checkpoints` both have defaults, so their VALUES cannot distinguish a caller
+        // who typed them from one who did not. Keying the check on the resolved value would make a
+        // plain pointer run refuse itself over a choice the tool made.
+        const dir = scratch();
+        const h = harness();
+        assert.equal(await run(["--residence", "pointer", "--governed-by", "acme-platform", dir], h.options), 0, h.warned.join("\n"));
     });
 
     test("an optional feed is carried when given and absent when not", async () => {
