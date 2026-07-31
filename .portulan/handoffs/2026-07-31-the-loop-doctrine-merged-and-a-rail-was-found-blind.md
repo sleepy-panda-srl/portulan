@@ -2,7 +2,7 @@
 
 **Continues** [`2026-07-30-the-loop-gets-its-fresh-verdict.md`](2026-07-30-the-loop-gets-its-fresh-verdict.md).
 Same working stretch, past midnight: that handoff covers drafting [#137](https://github.com/sleepy-panda-works/portulan/pull/137)
-through its two checkpoints, this one covers landing it. **Milestone state: none moved.**
+through its two checkpoints; this one covers landing it. **Milestone state: none moved.**
 
 ## What landed
 
