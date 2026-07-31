@@ -227,7 +227,14 @@ export function resolveAnswers(flags) {
         merged[key] = value;
     }
 
+    // WHICH keys were actually supplied, kept apart from what they resolved to. `cycle` and
+    // `checkpoints` have defaults, so their values cannot tell a caller who typed them from a caller
+    // who did not — and the residence check below must refuse only what somebody asked for. A
+    // default that triggered a refusal would be the tool objecting to its own choice.
+    const given = new Set(Object.keys(merged));
+
     return {
+        given,
         residence: merged.residence ?? null,
         name: merged.name ?? null,
         summary: merged.summary ?? null,
@@ -265,6 +272,29 @@ export function validateAnswers(answers) {
                 `(${SLUG.source}). A workspace ships as a plugin through a feed, so its name is an identifier rather than a title.`,
         );
     }
+    // ACCEPTED-BUT-IGNORED is refused, because this file's header claims it refuses what it cannot
+    // act on and that claim has to be true. `--feed` and `--governed-by` mean nothing to a full
+    // workspace; `--pack-root`, `--checkpoints` and `--no-cycle` mean nothing to a pointer, which
+    // composes nothing. Silently dropping them lets a caller — or an answers file nobody re-reads —
+    // believe an option had an effect it never had, which is the same defect as `--summary ""`
+    // reaching a manifest: an answer accepted and then not honoured. Found by review on the pull
+    // request. Keyed on what was GIVEN, never on the resolved value, so a default never trips it.
+    const misplaced = {
+        "in-repo": ["feed", "governed-by"],
+        pointer: ["pack-root", "checkpoints", "cycle"],
+    }[answers.residence].filter((key) => answers.given.has(key));
+    if (misplaced.length) {
+        const spelling = (key) => (key === "cycle" ? "`--no-cycle`" : `\`--${key}\``);
+        throw new InitError(
+            `${misplaced.map(spelling).join(" and ")} ${misplaced.length > 1 ? "do" : "does"} nothing with ` +
+                `\`--residence ${answers.residence}\` — ${
+                    answers.residence === "pointer"
+                        ? "a pointer holds no policy of its own, so it composes no packs"
+                        : "a workspace that lives here has no governor and no feed to be delivered from"
+                }. Refused rather than ignored: an option accepted and then dropped is one you will believe had an effect.`,
+        );
+    }
+
     if (answers.residence === "pointer") {
         // Absent and invalid are different answers and take different refusals: telling an adopter
         // who typed a malformed governor to pass the flag they just passed sends them to the wrong

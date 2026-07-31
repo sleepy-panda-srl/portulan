@@ -11,7 +11,7 @@ legibility score and verify composition are all untouched, and the row's four de
 ## What landed
 
 `cli/init.mjs` + `cli/init.test.mjs` (written first), wired into `SUBCOMMANDS`; `init`'s exit-2 path and
-its place in the entry point's unbuilt-subcommand loop are gone. Suite **853/853**, up from 774 — 78 new
+its place in the entry point's unbuilt-subcommand loop are gone. Suite **856/856**, up from 774 — 81 new
 `init` cases, **20 of them written after the pre-commit checkpoint**, each red against the code as it
 stood. Eight recipes green. `npm pack` is **74 files, all 74 byte-identical to the git index**, so
 session 0's no-build-step property holds across the two files added.
@@ -52,7 +52,7 @@ next step; and `cli/README.md`'s claim that `init` is *exercised through the ent
 the only entry-point coverage was the run-export check — so the claim was made true with a real
 dispatch test rather than softened to match.
 
-## The loop record — four rounds, and the bound bent only where session 0's precedent allows
+## The loop record — five rounds, and the bound bent only where session 0's precedent allows
 
 **Round 1, one thread, real.** `resolveAnswers` returned `packRoots` unnormalised, so an answers file
 giving `"pack-root"` as a single string — which the value check accepts, like every other string key —
@@ -82,7 +82,7 @@ on session 0's precedent that the bound bends for defects the change itself intr
   assertion states. Moved to `t.mock.method`, which scopes the substitution to the test and restores it
   even when an assertion throws first.
 
-**Round 4, one THREAD — the most serious finding of the four, and I nearly missed it.** `collisions()`
+**Round 4, one THREAD — the most serious finding on this pull request, and I nearly missed it.** `collisions()`
 used `existsSync`/`statSync`, and **both follow symlinks**. So a repository containing a `.portulan`
 symlink took the entire drafted workspace *out of the repository*: measured, **nine files written into
 an unrelated directory, reported as success**. The refusal that exists to protect a curated layer walked
@@ -104,10 +104,23 @@ Fixing the escape also made the refusal unreadable — one symlinked `.portulan`
 files, and the message named the same cause ten times. Grouped by cause now: a refusal nobody finishes
 reading is a refusal that failed to explain.
 
-**Why rounds 3 and 4 were fixed rather than triaged:** every one is a defect this pull request
-introduced; round 3's first was a false claim in a comment, and round 4's is a write outside the
-repository. The bound exists to stop the loop growing on *new* input. It was never meant to let a
-session ship its own falsehood, or its own escape, because the counter ran out.
+**Round 5, one suppressed note, real: options accepted and then ignored.** `--feed` and `--governed-by`
+were accepted with `--residence in-repo`; `--pack-root`, `--checkpoints` and `--no-cycle` with
+`--residence pointer`. All silently dropped — in a file whose header says it *refuses rather than
+emitting what it cannot act on*. Same class as `--summary ""` reaching a manifest: an answer accepted and
+then not honoured, leaving a caller to believe an option had an effect it never had. Refused now, keyed
+on what was **given** rather than on the resolved value, because `cycle` and `checkpoints` have defaults
+and a default that tripped the refusal would be the tool objecting to its own choice. One existing test
+had asserted the *harmlessness* of exactly this — it passed `--pack-root` beside a pointer and checked
+the manifest came out clean, which it did, by ignoring the flag. That assertion moved from "harmless" to
+"refused".
+
+**Why rounds 3, 4 and 5 were fixed rather than triaged:** every one is a defect this pull request
+introduced. Round 3's first was a false claim in a comment; round 4's was a write outside the
+repository; round 5's is the module contradicting its own stated stance. The bound exists to stop the
+loop growing on *new* input. It was never meant to let a session ship its own falsehood, its own escape,
+or its own contradiction because the counter ran out. **What would be triaged is the first finding that
+is not this change's fault** — and none of the five was.
 
 ## The four rulings this session opened with
 
