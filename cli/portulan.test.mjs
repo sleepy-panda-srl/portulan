@@ -185,6 +185,27 @@ test("the usage screen lists all six and marks the unbuilt ones", () => {
     assert.match(text, /docs\/vision\.md names six/);
 });
 
+test("`init` really dispatches through the entry point, with the real loader", async () => {
+    // Every other case here injects the loader, which is right — re-asserting what `doctor` or
+    // `index` already prove would make this file a second carrier of it. But injection cannot show
+    // that a subcommand is REACHABLE, only that the dispatcher would reach it if the module were
+    // what the harness says. `cli/README.md` claims `init` is exercised through the entry point as
+    // well as directly, and until this test existed that claim rested on the run-export check alone
+    // — a softer thing than the sentence said. Found at the pre-commit checkpoint, in its minor set.
+    //
+    // Spawned rather than called, and that is forced rather than chosen: the dispatcher hands the
+    // subcommand its argv and NOTHING else — no `say`, no `warn` — because adding anything would put
+    // a second opinion between the tool and its user. So the subcommand writes to the real stdout,
+    // and the only place to observe it is a real process. The constraint that made this test awkward
+    // is the property the entry point exists to have.
+    //
+    // `init --help` proves dispatch without touching a filesystem: the text is `init`'s own.
+    const { execFileSync } = await import("node:child_process");
+    const text = execFileSync(process.execPath, [path.join(HERE, "portulan.mjs"), "init", "--help"], { encoding: "utf8" });
+    assert.match(text, /--residence/, "the text must be init's own, not the entry point's usage screen");
+    assert.doesNotMatch(text, /docs\/vision\.md names six/, "that line belongs to the entry point's own help, which is not what was asked for");
+});
+
 test("the real modules the manifest points at all export a run function", async () => {
     // The one test here that touches the real files. It imports them rather than running them: the
     // injected loader above makes every other case fast and hermetic, but nothing in those cases

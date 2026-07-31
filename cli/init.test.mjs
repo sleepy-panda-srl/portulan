@@ -442,6 +442,31 @@ describe("answers may come from a file, and flags win over it", () => {
         assert.match(h.warned.join("\n"), /answers/i);
     });
 
+    test("a single-string `pack-root` in the answers file works, and is not a crash", async () => {
+        // The flag is repeatable and accumulates into an array; an answers file may reasonably give
+        // one string, and the value check accepts it as a string like every other key. Everything
+        // downstream is array-shaped, so the string reached `packResolves` and died on `.some` —
+        // turning a valid answers file into `could not run — roots.some is not a function`, a real
+        // answer refused with a message about somebody else's bug. Found by review on the pull
+        // request; this case reds against the un-normalised code.
+        const dir = scratch();
+        const answers = path.join(dir, "answers.json");
+        fs.writeFileSync(answers, JSON.stringify({ residence: "in-repo", "pack-root": path.join(REPO, "packs") }));
+        const h = harness();
+        assert.equal(await run(["--answers", answers, dir], h.options), 0, h.warned.join("\n"));
+        assert.deepEqual(ok(dir).packs, ["rituals/checkpoints"]);
+    });
+
+    test("an array `pack-root` still works, and an unresolvable one is still refused", async () => {
+        // The other side of the normalisation: it must not turn the refusal into a pass.
+        const dir = scratch();
+        const answers = path.join(dir, "answers.json");
+        fs.writeFileSync(answers, JSON.stringify({ residence: "in-repo", "pack-root": [os.tmpdir()] }));
+        const h = harness();
+        assert.equal(await run(["--answers", answers, dir], h.options), 2);
+        assert.match(h.warned.join("\n"), /does not resolve/);
+    });
+
     test("an unknown key in the answers file is refused rather than silently dropped", async () => {
         // The common case is a typo. A silently-ignored `residnce` leaves the tool asking for an
         // answer the adopter believes they gave — the same reasoning as the schema's
