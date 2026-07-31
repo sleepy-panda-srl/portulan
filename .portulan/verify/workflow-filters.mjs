@@ -480,6 +480,16 @@ const BODY_MOVED = "## Pull request overview\n\n<details>\n<summary>Review detai
 const BODY_TAB_HEADING = "## Pull request overview\n\n#\tSuppressed comments (1)\n"
     + "\n**a.md:1**\n* a note\n";
 const BODY_T_HEADING = "## Pull request overview\n\n#thoughts on the diff\n\nNothing to report.\n";
+// A note whose quoted code block contains an INDENTED `#` comment mentioning the word. This is not
+// hypothetical: Copilot asked on #147 for the heading tests to tolerate leading whitespace, and the
+// review body carrying that request had exactly this shape — a snippet of this workflow, quoted back
+// at it, comment lines and all. Tolerating indentation would have matched quoted code as a section
+// marker on the round that proposed it. The fixture pins the refusal so the next reader meets the
+// measurement rather than the argument.
+const BODY_INDENTED_HASH = "## Pull request overview\n\n<details>\n<summary>Review details</summary>\n"
+    + "\n### Suppressed comments (1)\n\n**a.md:1**\n* a note quoting the workflow:\n```\n"
+    + "                    # THE SECTION MARKER MOVES, and suppress is the word it keeps\n"
+    + "                    SUPPRESS='suppress'\n```\n\n- **Files reviewed:** 1/1 changed files\n</details>\n";
 
 const AWK_CASES = [
     // ---- copilot-review.yml: is the suppressed block there --------------------------------------
@@ -599,6 +609,19 @@ const AWK_CASES = [
             + "however the markup nests it",
         input: BODY_V1 + "\n## Something after the block\n",
         stdout: "\n**core/engine.md:22**\n* a note\n",
+        status: 0,
+    },
+    {
+        id: "notes-survive-quoted-indented-hash",
+        anchor: "f && (/<\\/details>/",
+        why: "**the refusal, pinned.** A note quoting this workflow back at itself — indented `#` "
+            + "comment lines and all. The extractor must run past them to the stats list, because "
+            + "an indented `#` is content, not a section. If the heading tests ever tolerate "
+            + "leading whitespace, this fixture reds and says why before anything ships",
+        input: BODY_INDENTED_HASH,
+        stdout: "\n**a.md:1**\n* a note quoting the workflow:\n```\n"
+            + "                    # THE SECTION MARKER MOVES, and suppress is the word it keeps\n"
+            + "                    SUPPRESS='suppress'\n```\n\n",
         status: 0,
     },
     {
