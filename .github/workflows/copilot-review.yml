@@ -368,9 +368,23 @@ jobs:
                     count=$(printf '%s\n' "$body" | awk -v m="$SUPPRESS" \
                       '(/<summary/ || /^#+[[:blank:]]/) && index(tolower($0), m) { if (match($0, /\([0-9]+\)/)) print substr($0, RSTART+1, RLENGTH-2); exit }')
                     # Terminated by the closing tag, by the NEXT heading, or by the stats list
-                    # spelling 3 puts after the notes — without the last two, a spelling-3 block
+                    # spelling 4 puts after the notes — without the last two, a spelling-4 block
                     # quotes `Files reviewed: 3/3` onto the pull request as though Copilot had
                     # suppressed it.
+                    #
+                    # THE HEADING TESTS ARE ANCHORED AT COLUMN 0 DELIBERATELY, and it was put to the
+                    # test: Copilot asked on #147 for leading whitespace to be tolerated, in case a
+                    # heading is ever indented inside a `<details>`. Measured before answering — no
+                    # marker on #107, #140 or #144 is indented, every one sits at column 0, while
+                    # the review body making the request **itself** carried an indented `#` line
+                    # mentioning `suppress`, inside a quoted code block. Tolerating indentation
+                    # would therefore have matched quoted CODE as a section marker, on the very
+                    # round that proposed it, and would have ended the notes extraction at the
+                    # first indented comment in any quoted snippet. Column 0 is what separates a
+                    # section heading from content that merely looks like one, and in a repository
+                    # whose reviews routinely quote this file at itself that separation is
+                    # load-bearing. If an indented marker is ever observed, the fixture goes in
+                    # first and the anchor changes second.
                     notes=$(printf '%s\n' "$body" | awk -v m="$SUPPRESS" '
                       (/<summary/ || /^#+[[:blank:]]/) && index(tolower($0), m) { f = 1; next }
                       f && (/<\/details>/ || /^#+[[:blank:]]/ || /^- \*\*Files reviewed:/) { exit }
