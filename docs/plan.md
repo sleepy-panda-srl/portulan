@@ -1828,3 +1828,15 @@ _The seam applies here too: no client-identifying references._
   suppressed note and the derived verdict said there were none:** `copilot-review.yml` greps for a literal
   that Copilot has since changed, so its *could-not-parse* branch is unreachable and it reported an absence it had not
   established — in the channel measured as carrying most real findings ([#142](https://github.com/sleepy-panda-works/portulan/issues/142)); the final round was swept by hand, clean. [#143](https://github.com/sleepy-panda-works/portulan/issues/143) records #137's checkpoint breach. · Seam scan clean. Handoff: [`2026-07-31-the-loop…`](../.portulan/handoffs/2026-07-31-the-loop-doctrine-merged-and-a-rail-was-found-blind.md).
+
+
+- 2026-07-31 · M6 (Sleepy Panda workspace & private feed), session 2 continued · **The close asked for
+  changes, and the Tipar drive answered it.** Both repairs the milestone-close checkpoint named are
+  merged — [#136](https://github.com/sleepy-panda-works/portulan/pull/136) and the feed's `#4`, whose
+  link **resolved in the clone and escaped the install root**: [#121](https://github.com/sleepy-panda-works/portulan/issues/121)'s
+  class one level up — *run a check in the layout the CONSUMER gets*, in a repository with no CI. The
+  refused half is now [`tipar#46`](https://github.com/sleepy-panda-works/tipar/pull/46): a security audit
+  run through the full loop from the feed **install**, finding magic-link single use broken under
+  concurrency and `tipar.session` shipping without `Secure`. **M6 closes when it merges and the close
+  re-runs.** · Fidelity: session-open A-W-A (6), pre-commit A-W-A (5), both from the install; the race
+  control passed twice before it was made to fail. Seam scan clean. Handoff: [`2026-07-31-the-close…`](../.portulan/handoffs/2026-07-31-the-close-asked-for-changes-and-tipar-answered.md).
