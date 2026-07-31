@@ -1800,3 +1800,14 @@ _The seam applies here too: no client-identifying references._
   and no phase read the layer from a feed *install* (that session edited a clone — the substitution
   `--pack-root` exists to refuse). Two repairs it found are filed here and in the feed. · Seam scan clean.
   Handoff: [`2026-07-30-a-link…`](../.portulan/handoffs/2026-07-30-a-link-resolves-in-the-repository.md).
+
+- 2026-07-30 · Doctrine — no milestone row touched · **One repository, one governing workspace** —
+  [#135](https://github.com/sleepy-panda-works/portulan/pull/135). His residence ruling recorded as
+  [`0017`](../.portulan/proposals/0017-one-repository-one-governing-workspace.md) and railed: the two
+  configurations are **one artifact in two residences**, differing in reach and delivery, never in
+  content-kind — so a second copy is refusable. Spec **2.7** adds `kind: pointer` + `governed_by`, a MINOR
+  keeping its requirement IN the schema via a `oneOf`. Three red-first `doctor` refusals; `--repo-root`
+  makes the cross-repository one visible. Session-open caught **two defects before they shipped** — every
+  *compliant* pointer went RED, and the check refused customer zero's own self-naming shape; pre-commit
+  caught **four sentences claiming more than the mechanism, two inside the paragraphs prosecuting that**.
+  One count, three carriers: nine·seven·five, both prose carriers fixed. M6 + M7 amendments **drafted, not applied**. Suite 741 → 754, eight recipes. · Fidelity: session-open A-W-A (9), pre-commit A-W-A (4), all folded, one drop. Seam scan clean. Handoff: [`2026-07-30-one-repository…`](../.portulan/handoffs/2026-07-30-one-repository-one-governing-workspace.md).

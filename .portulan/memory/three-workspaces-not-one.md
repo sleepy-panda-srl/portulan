@@ -3,9 +3,16 @@
 **provenance:** `form=link` `href=../proposals/0003-demote-three-workspaces-entry.md`
 — demoted from `decision` and trimmed on 2026-07-25, when this entry's own retirement condition fired. It
 had read *"Retire when: the Workspace Definition (milestone 2) names and distinguishes the three
-formally"*, and milestone 2 did: `kind` is a required slot with exactly three values, argued in
+formally"*, and milestone 2 did: `kind` became a required slot with exactly three values, argued in
 [`../../spec/README.md`](../../spec/README.md) and validated by [`doctor`](../../cli/doctor.mjs). The
 general half went upward into the spec; what is below is the half that cannot.
+
+_Corrected 2026-07-30: that sentence read "is … exactly three values" in the present tense and went false
+at Workspace Definition 2.7, which adds a fourth — `pointer`, a repository whose workspace resides
+elsewhere ([`../proposals/0017-one-repository-one-governing-workspace.md`](../proposals/0017-one-repository-one-governing-workspace.md)).
+It is history now rather than state, so it is in the past tense. **The three that GOVERN are still three,
+and the table below is unchanged**: a pointer governs nothing, so it maps no directory here — this
+repository holds no instance of the fourth kind._
 
 Which of *this repository's* directories is which workspace kind:
 

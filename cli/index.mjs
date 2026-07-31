@@ -77,7 +77,7 @@ export class IndexError extends Error {
 // KNOWN_GATE_POLICY_SPECS — which tracks the GATE-POLICY train, not this one — and the same refusal
 // for anything outside the set: a tool that reads a manifest it
 // does not understand reports about a workspace it may have misread.
-const KNOWN_SPECS = new Set(["2.0", "2.1", "2.2", "2.3", "2.4", "2.5", "2.6"]);
+const KNOWN_SPECS = new Set(["2.0", "2.1", "2.2", "2.3", "2.4", "2.5", "2.6", "2.7"]);
 
 // The store's own signpost, not a record. `doctor` excludes exactly this name from its walk, so the
 // two tools agree on what the store contains; disagreeing would put a record in the index that the

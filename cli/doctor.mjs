@@ -654,6 +654,75 @@ export async function inspect(workspaceDir, options = {}) {
         return { dir, workspace, findings, stats };
     }
 
+    // ---- residence: exactly one workspace governs a repository
+    //
+    // The maintainer's ruling of 2026-07-30, recorded in ../.portulan/proposals/0017. Two of its three
+    // refusals are here, where a single manifest is enough to see the fault; the third needs to look
+    // outside this directory and is below, with the repo cards.
+    //
+    // These are `doctor`'s and not the schema's ON PURPOSE, and the reason is mechanical rather than
+    // stylistic: the schema's own failures return above at "the manifest must conform first", so a
+    // shape refused by the schema is a shape whose refusal never prints the sentence it exists to
+    // print. The rule is a sentence a human has to read — the whole point is that the reader learns
+    // *why* two workspaces are one too many — so the schema permits the shape and this refuses it.
+    const GOVERNS =
+        "a repository is governed by exactly one workspace — it carries its own full workspace, or a " +
+        "pointer to the workspace that names it, never both";
+    // Everything a pointer may carry. `summary` is here because one line an agent reads before loading
+    // anything else costs nothing and is the difference between "governed elsewhere" and a bare name.
+    const POINTER_KEYS = new Set(["portulan", "name", "summary", "kind", "governed_by"]);
+    // Read off the schema rather than written out again. The cross-repository check below needs to tell a
+    // kind it UNDERSTANDS from one it does not, and a second hand-maintained copy of that list is the
+    // defect class this whole change is partly about — one fact, two carriers, only one of them checked.
+    // Derived, so a fifth kind joins both at once or neither.
+    const KNOWN_KINDS = new Set(schema.properties?.kind?.enum ?? []);
+
+    if (workspace.kind === "pointer") {
+        const carried = Object.keys(workspace).filter((key) => !POINTER_KEYS.has(key)).sort();
+        if (carried.length) {
+            fail(
+                "residence",
+                `this manifest declares \`kind: "pointer"\` and also carries ` +
+                    `${carried.map((k) => `\`${k}\``).join(", ")} — ${GOVERNS}. A pointer names its ` +
+                    "governor and holds no policy of its own; the moment it holds any of it there are " +
+                    "two policy layers for one repository and nothing holding them in agreement",
+            );
+        }
+        // A pointer is not a small workspace, it is a different object: no slots to resolve, no
+        // recipes, no products, no packs, no store, no cards. Every check below reads one of those, so
+        // running them here would grade the absence of things a pointer correctly does not have —
+        // `verify.default` alone would fail every compliant pointer, naming a recipe list that is empty
+        // because the manifest is right. Skipped, and SAID, on the standing rule that a check which
+        // disappears without a word is worse than one that admits what it could not reach.
+        const feed = workspace.governed_by?.feed;
+        report(
+            "residence",
+            `governed by \`${workspace.governed_by?.workspace}\`` +
+                (feed ? `, delivered through \`${feed}\`` : "") +
+                " — no workspace resides here, and this manifest says so rather than improvising one. " +
+                "Nothing was fetched: resolving a pointer to the workspace it names is discovery, and " +
+                "the roots are named rather than found (milestone 7)",
+        );
+        report(
+            "residence",
+            "the governing-workspace checks did not run here — path slots, cross-field, packs, claims, " +
+                "enforcement, provenance and the store reports all read a policy layer this manifest " +
+                "correctly does not carry. They run where the workspace resides, and a green pointer is " +
+                "not a statement that the workspace it names is green",
+        );
+        return { dir, workspace, findings, stats };
+    }
+
+    if (workspace.governed_by) {
+        fail(
+            "residence",
+            `this manifest declares \`kind: "${workspace.kind}"\` — a governing workspace — and also a ` +
+                `\`governed_by\` pointer at \`${workspace.governed_by.workspace}\`, and ${GOVERNS}. This ` +
+                "is the refusal above from the other side: a workspace that carries the policy layer AND " +
+                "names another as its governor is the dual management the ruling refuses",
+        );
+    }
+
     // ---- path slots
     // Containment is judged between REAL paths on both sides. Resolving only the target would
     // report a false escape wherever the workspace's own path runs through a symlink — on macOS
@@ -786,6 +855,132 @@ export async function inspect(workspaceDir, options = {}) {
                 "is present, so it has an answer, and without one every repo-card and gate-map claim " +
                 "silently degrades from checked to unverifiable",
         );
+    }
+
+    // The residence ruling's third refusal, and the only one that has to look outside this directory:
+    // a repository this workspace NAMES must not carry a governing workspace of its own. Visibility is
+    // the whole difficulty — a portfolio workspace declares no `tree`, so it has no path to the
+    // repositories it covers — and it is bought the way the packs resolver buys its own, with named
+    // roots rather than discovery. `--repo-root` is to repo cards what `--pack-root` is to packs.
+    //
+    // What this does NOT do, stated because the asymmetry is real: the refusal runs from the naming
+    // workspace outward. A repository carrying a full workspace cannot see a portfolio that claims it,
+    // and nothing here changes that.
+    const repoRoots = options.repoRoots ?? [];
+    if (cardNames.size) {
+        if (repoRoots.length === 0) {
+            report(
+                "residence",
+                `governance of the ${cardNames.size} repositor${cardNames.size === 1 ? "y" : "ies"} this ` +
+                    "workspace names was not checked — no `--repo-root` was given, so nothing looked for " +
+                    "a workspace on that side. " +
+                    "Reported rather than passed over: the roots are named, never discovered, so silence " +
+                    "here would be indistinguishable from a clean result",
+            );
+        } else {
+            for (const name of [...cardNames].sort()) {
+                let found = null;
+                for (const root of repoRoots) {
+                    const candidate = path.join(root, name, ".portulan", "workspace.json");
+                    if (fs.existsSync(candidate)) {
+                        found = candidate;
+                        break;
+                    }
+                }
+                if (!found) {
+                    report(
+                        "residence",
+                        `\`${name}\` carries no manifest under any named root — either it is not governed ` +
+                            "by Portulan at all, or it is not checked out where this run could see it. " +
+                            "Those two are not distinguished here, and neither is a failure",
+                    );
+                    continue;
+                }
+                // A workspace that names its own repository finds ITSELF at the root — one manager seen
+                // twice, not two managers. Customer zero is exactly this shape: `.portulan/` names the
+                // card `portulan`, so the first run of this check against a root holding the Portulan
+                // checkout would have refused the very arrangement the ruling permits. Compared on the
+                // REAL path, because the root is commonly reached through a symlink and a lexical
+                // comparison would miss the identity and print a false red.
+                let identical = false;
+                try {
+                    identical = fs.realpathSync(found) === fs.realpathSync(manifestPath);
+                } catch { /* one of them moved mid-run; fall through and grade what is there */ }
+                if (identical) {
+                    report(
+                        "residence",
+                        `\`${name}\` resolves to this manifest itself — one workspace seen from outside, ` +
+                            "which is a workspace governing its own repository and is the arrangement the " +
+                            "ruling permits rather than the one it refuses",
+                    );
+                    continue;
+                }
+                let other;
+                try {
+                    other = JSON.parse(fs.readFileSync(found, "utf8"));
+                } catch (cause) {
+                    report(
+                        "residence",
+                        `\`${name}\` has a manifest at ${display(found)} that could not be read — ` +
+                            `${cause.message}. Reported, not failed: an unreadable file is not evidence of ` +
+                            "double governance, and refusing on it would make this check wrong about a " +
+                            "repository nobody looked into",
+                    );
+                    continue;
+                }
+                // A manifest at a named root is READ, never validated — `doctor` grades one workspace per
+                // run and this is somebody else's. Everything below follows from that one fact, and it
+                // took two rounds to apply it consistently: this check refuses only what a manifest
+                // clearly DECLARES, and reports every shape it merely fails to understand. A refusal
+                // built on a field this run never validated would be a verdict about a workspace nobody
+                // graded.
+                //
+                // The first miss was a pointer with no `governed_by.workspace`, refused for "naming
+                // `undefined`" — a conflicting-governor verdict about a manifest naming no governor at
+                // all. The second was its sibling one field over, and it survived the fix to the first:
+                // a manifest with a MISSING or unrecognised `kind` fell into the governing branch and was
+                // refused as `kind: "undefined"`. Both found by Copilot on #135, rounds 1 and 4, which is
+                // the sibling class the 2026-07-27 ruling names — found here in the very change that
+                // quotes that ruling twice.
+                if (!KNOWN_KINDS.has(other.kind)) {
+                    report(
+                        "residence",
+                        `\`${name}\` has a manifest at ${display(found)} declaring no recognisable ` +
+                            `\`kind\` (${JSON.stringify(other.kind)}). That is a defect in that manifest ` +
+                            "and `doctor` says so where it runs; it is not evidence about governance, so " +
+                            "nothing is refused here",
+                    );
+                } else if (other.kind !== "pointer") {
+                    fail(
+                        "residence",
+                        `\`${name}\` is named by this workspace and carries its own \`kind: ` +
+                            `"${other.kind}"\` workspace at ${display(found)}, and ${GOVERNS}. One of the ` +
+                            "two has to become a pointer, and which one is the customer's choice — both " +
+                            "residences carry full functionality, so nothing is lost either way",
+                    );
+                } else if (other.governed_by?.workspace === undefined) {
+                    report(
+                        "residence",
+                        `\`${name}\` carries a pointer at ${display(found)} that names no governing ` +
+                            "workspace. That is a defect in that manifest and `doctor` says so where it " +
+                            "runs; it is not evidence about governance, so nothing is refused here",
+                    );
+                } else if (other.governed_by.workspace !== workspace.name) {
+                    fail(
+                        "residence",
+                        `\`${name}\` is named by this workspace (\`${workspace.name}\`) but its pointer ` +
+                            `names \`${other.governed_by.workspace}\` as its governor, and ${GOVERNS} — ` +
+                            "two workspaces both believing they govern one repository is that failure with " +
+                            "the second copy moved one directory away",
+                    );
+                } else {
+                    report(
+                        "residence",
+                        `\`${name}\` carries a pointer naming this workspace — governed here, once`,
+                    );
+                }
+            }
+        }
     }
 
     if (workspace.packs?.length) {
@@ -1419,45 +1614,67 @@ export async function run(argv, options = {}) {
         // feed" cannot be satisfied by a copy in the local tree at all — the three tools disagreed about
         // this once, and `../cli/compile.mjs`'s `namedRootsOption` carries what that cost. Host
         // plugin-cache discovery is deliberately not built here.
+        //
+        // `--repo-root <dir>`, repeatable, is its sibling and is deliberately shaped the same way: the
+        // directories under which the repositories a workspace's cards NAME are checked out, so the
+        // residence ruling's third refusal has somewhere to look. Named rather than discovered for the
+        // same reason the pack roots are — finding a host's checkouts is discovery, and this tool does
+        // not do discovery. The two lists are separate because they answer different questions and a
+        // single `--root` would make a packs root and a checkout root interchangeable, which they are
+        // not: one holds `category/name` pack directories, the other holds repositories.
         const namedRoots = [];
+        const repoRoots = [];
         const dirs = [];
+        // ONE validator for both flags, and it is one because a reviewer caught the comment claiming so
+        // while `--pack-root` still carried its own copy (Copilot, round 1 on #135). Two inputs have to
+        // fail closed here and each has a real incident behind it: a root that is **not there** is a
+        // filesystem fact rather than a pack that failed to resolve, and reporting it as the latter sends
+        // a reader to the one file that is not at fault; and existence is not enough, because
+        // `existsSync` is true for a FILE, so one was accepted and every later resolution failure was
+        // misattributed to the workspace. Three tools take `--pack-root` and only `index` had the
+        // directory check — the sibling class the 2026-07-27 ruling names, found by Copilot on #117 round
+        // 7, one round after the same defect was fixed in `index` alone. `what` keeps each flag's message
+        // specific: sharing the check must not cost the reader the sentence that says what a root is FOR.
+        const directoryRoot = (flag, value, what) => {
+            if (value === undefined || value.startsWith("-")) throw new DoctorError(`${flag} needs a directory`);
+            let stat = null;
+            try {
+                stat = fs.statSync(value);
+            } catch (cause) {
+                throw new DoctorError(
+                    `${flag} ${value} cannot be read — ${cause.code ?? cause.message}. Refusing to report ${what.unresolvable} against a root nothing looked in`,
+                );
+            }
+            if (!stat.isDirectory()) {
+                throw new DoctorError(`${flag} ${value} is not a directory — a resolution root is a directory ${what.holds} are looked up under`);
+            }
+            return path.resolve(value);
+        };
+        const PACK_ROOT = { unresolvable: "a pack unresolvable", holds: "packs" };
+        const REPO_ROOT = { unresolvable: "a repository ungoverned", holds: "repositories" };
         for (let i = 0; i < argv.length; i += 1) {
-            if (argv[i] === "--pack-root") {
-                const root = argv[i + 1];
+            if (argv[i] === "--repo-root") {
+                repoRoots.push(directoryRoot("--repo-root", argv[i + 1], REPO_ROOT));
                 i += 1;
-                if (root === undefined || root.startsWith("-")) throw new DoctorError("--pack-root needs a directory");
-                // Not there is a filesystem fact, not a pack that failed to resolve; reporting it as the
-                // latter sends a reader to the one file that is not at fault. And existence is not enough:
-                // `existsSync` is true for a FILE, so one was accepted and every later resolution failure
-                // was misattributed to the workspace. Three tools take this flag and only `index` had the
-                // directory check, which is the sibling class the 2026-07-27 ruling names — found by
-                // Copilot on #117, round 7, one round after the same defect was fixed in `index` alone.
-                let rootStat = null;
-                try {
-                    rootStat = fs.statSync(root);
-                } catch (cause) {
-                    throw new DoctorError(
-                        `--pack-root ${root} cannot be read — ${cause.code ?? cause.message}. Refusing to report a pack unresolvable against a root nothing looked in`,
-                    );
-                }
-                if (!rootStat.isDirectory()) {
-                    throw new DoctorError(
-                        `--pack-root ${root} is not a directory — a resolution root is a directory packs are looked up under`,
-                    );
-                }
-                namedRoots.push(path.resolve(root));
+            } else if (argv[i] === "--pack-root") {
+                namedRoots.push(directoryRoot("--pack-root", argv[i + 1], PACK_ROOT));
+                i += 1;
             } else if (!argv[i].startsWith("-")) dirs.push(argv[i]);
         }
         if (dirs.length === 0) {
             if (!options.quiet) {
-                process.stderr.write("usage: node cli/doctor.mjs [--pack-root <dir>]... <workspace-dir> [<workspace-dir> ...]\n");
+                process.stderr.write("usage: node cli/doctor.mjs [--pack-root <dir>]... [--repo-root <dir>]... <workspace-dir> [<workspace-dir> ...]\n");
             }
             return 2;
         }
 
         let failed = 0;
         for (const dir of dirs) {
-            const { findings, stats } = await inspect(dir, namedRoots.length ? { ...options, packRoots: namedRoots } : options);
+            const roots = {
+                ...(namedRoots.length ? { packRoots: namedRoots } : {}),
+                ...(repoRoots.length ? { repoRoots } : {}),
+            };
+            const { findings, stats } = await inspect(dir, { ...options, ...roots });
             const bad = findings.filter((f) => f.severity === "fail");
             say(display(dir));
             for (const f of findings) say(`  ${ICON[f.severity]} ${f.check.padEnd(10)} ${f.message}`);
