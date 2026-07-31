@@ -863,8 +863,18 @@ export function residenceAt(target) {
         let stat;
         try {
             stat = fs.lstatSync(here);
-        } catch {
-            return { state: "none" };
+        } catch (error) {
+            // ONLY `ENOENT` means "nothing here". Every other error — EACCES above all — means the
+            // question could not be answered, and answering "no residence" to a question that could
+            // not be answered is the fail-open this repository names more often than any other:
+            // "nothing looked" reported as "nothing wrong". A permission error here would have let
+            // `init` proceed to write into a directory it could not even stat.
+            if (error.code === "ENOENT") return { state: "none" };
+            // `kind` is carried because the two ways of being unreadable need DIFFERENT sentences.
+            // Telling somebody with a permissions problem to "repair the JSON" is a refusal that
+            // misdescribes what it found — the defect the read-side symlink fix was about, arriving
+            // one round later in the message rather than in the check.
+            return { state: "unreadable", kind: "io", why: error.message };
         }
         if (stat.isSymbolicLink()) return { state: "symlink", where: path.relative(target, here) };
     }
@@ -872,7 +882,7 @@ export function residenceAt(target) {
     try {
         parsed = JSON.parse(fs.readFileSync(here, "utf8"));
     } catch (error) {
-        return { state: "unreadable", why: error.message };
+        return { state: "unreadable", kind: "parse", why: error.message };
     }
     return { state: "present", kind: parsed?.kind ?? "unknown", name: parsed?.name ?? null };
 }
@@ -914,9 +924,17 @@ export function collisions(target, files) {
             let stat;
             try {
                 stat = fs.lstatSync(here);
-            } catch {
-                // Absent — and nothing below an absent directory can exist either, so this path is
-                // clear and the walk stops.
+            } catch (error) {
+                if (error.code === "ENOENT") {
+                    // Absent — and nothing below an absent directory can exist either, so this path
+                    // is clear and the walk stops.
+                    break;
+                }
+                // Anything else — EACCES above all — means this path's state is UNKNOWN, and an
+                // unknown is not a clear. Declaring it clear would let the write loop start on the
+                // strength of a question nobody could answer, which is precisely the guarantee this
+                // function exists to give. Reported as a collision so the run refuses.
+                found.push({ rel, why: `\`${path.relative(target, here)}\` could not be examined (${error.code})` });
                 break;
             }
             const where = path.relative(target, here);
@@ -1024,11 +1042,17 @@ export async function run(argv, options = {}) {
             );
         }
         if (existing.state === "unreadable") {
+            const at = path.join(parsed.target, ".portulan");
             throw new InitError(
-                `could not read the workspace manifest already at \`${path.join(parsed.target, ".portulan", "workspace.json")}\` ` +
-                    `— ${existing.why}. Refusing to write over a manifest it cannot understand: a corrupt policy layer is ` +
-                    `the case where overwriting costs the most and this tool knows the least. Repair the JSON and run ` +
-                    `\`doctor\` on it, or — if it was never a workspace you meant to keep — move it aside and run this again.`,
+                existing.kind === "io"
+                    ? `could not examine \`${at}\` — ${existing.why}. Refusing rather than treating it as empty: ` +
+                      `a directory this tool cannot look into is a question it could not answer, and "nothing looked" ` +
+                      `must never be recorded as "nothing there". Fix the permissions and run this again.`
+                    : `could not read the workspace manifest already at \`${path.join(at, "workspace.json")}\` — ` +
+                      `${existing.why}. Refusing to write over a manifest it cannot understand: a corrupt policy layer ` +
+                      `is the case where overwriting costs the most and this tool knows the least. Repair the JSON and ` +
+                      `run \`doctor\` on it, or — if it was never a workspace you meant to keep — move it aside and run ` +
+                      `this again.`,
             );
         }
         if (existing.state === "present") {

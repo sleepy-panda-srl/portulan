@@ -692,6 +692,30 @@ describe("nothing init writes over, and nothing it half-writes", () => {
         assert.doesNotMatch(said, /already carries/, "that sentence would be a claim about this repository drawn from another one");
     });
 
+    test("an unreadable directory is could-not-run, never `no residence here`", async (t) => {
+        // Only ENOENT means "nothing here". Every other error — EACCES above all — means the
+        // question could not be answered, and answering "no residence" to an unanswerable question
+        // is the fail-open this repository names most: "nothing looked" reported as "nothing wrong".
+        // Found by review on the pull request, in both walkers at once.
+        const dir = scratch();
+        fs.mkdirSync(path.join(dir, ".portulan"));
+        fs.chmodSync(path.join(dir, ".portulan"), 0o000);
+        try {
+            const seen = residenceAt(dir);
+            // A root-run container can still stat through mode 0, in which case there is nothing to
+            // assert — say so rather than pretending the case was exercised.
+            if (seen.state === "none") {
+                t?.skip?.("this process can stat through a mode-000 directory; EACCES is unreachable here");
+                return;
+            }
+            assert.equal(seen.state, "unreadable");
+            const h = harness();
+            assert.equal(await run(["--residence", "in-repo", dir], h.options), 2);
+        } finally {
+            fs.chmodSync(path.join(dir, ".portulan"), 0o755);
+        }
+    });
+
     test("residenceAt reports a symlink as a symlink rather than resolving through it", () => {
         const dir = scratch();
         const elsewhere = scratch();
