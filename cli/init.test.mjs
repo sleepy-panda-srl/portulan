@@ -192,7 +192,10 @@ describe("nothing init writes can produce the manifest doctor still mishandles",
         [" ", /empty/i],
         ["Acme Platform", /slug|lowercase/i],
         ["acme_platform", /slug|lowercase/i],
-        ["-acme", /slug|lowercase/i],
+        // `-acme` used to sit here. It cannot reach the slug check from the command line any more —
+        // a leading `-` is a missing value now, refused earlier and for a better reason — so it moved
+        // to the answers-file case below, where it still reaches the slug branch and the coverage is
+        // kept rather than quietly lost to a change in a different check.
         ["acme-", /slug|lowercase/i],
         ["ACME", /slug|lowercase/i],
     ]) {
@@ -204,6 +207,17 @@ describe("nothing init writes can produce the manifest doctor still mishandles",
             assert.equal(fs.existsSync(path.join(dir, ".portulan")), false);
         });
     }
+
+    test("a dash-leading governor still meets the slug check, via the answers file", async () => {
+        // Where `-acme` went when the command line stopped letting it through. The answers file has
+        // no flag ambiguity, so the value arrives intact and the slug definition is what refuses it.
+        const dir = scratch();
+        const answers = path.join(dir, "answers.json");
+        fs.writeFileSync(answers, JSON.stringify({ residence: "pointer", "governed-by": "-acme" }));
+        const h = harness();
+        assert.equal(await run(["--answers", answers, dir], h.options), 2);
+        assert.match(h.warned.join("\n"), /slug|lowercase/i);
+    });
 
     test("the workspace name is held to the same definition", async () => {
         const dir = scratch();
@@ -565,6 +579,33 @@ describe("the command line refuses what it does not understand", () => {
 
     test("parseArgs throws InitError rather than returning a half-parsed shape", () => {
         assert.throws(() => parseArgs(["--residence"]), InitError, "a flag with no value must not read the next flag as its value");
+    });
+
+    test("a SINGLE-dash flag is a missing value too, not a value", async () => {
+        // `--residence -h <dir>` consumed `-h` as the residence and then complained that `-h` is not
+        // one — blaming the user for a token they typed as a flag, and eating the likeliest thing to
+        // land there, which is a help request. `cli/doctor.mjs` already guarded on `-`; this file was
+        // the outlier among its siblings. Found by review on the pull request.
+        for (const argv of [
+            ["--residence", "-h"],
+            ["--name", "-h"],
+            ["--governed-by", "-x"],
+        ]) {
+            const h = harness();
+            assert.equal(await run([...argv, scratch()], h.options), 2);
+            assert.match(h.warned.join("\n"), /needs a value/);
+            assert.doesNotMatch(h.warned.join("\n"), /is not a residence/, "the refusal must name the real problem, not a value the user never gave");
+        }
+    });
+
+    test("`--answers` remains the route for a value that really starts with a dash", async () => {
+        // The escape hatch the refusal points at has to exist, or the rule above is a wall.
+        const dir = scratch();
+        const answers = path.join(dir, "answers.json");
+        fs.writeFileSync(answers, JSON.stringify({ residence: "in-repo", summary: "-- a summary that leads with dashes --" }));
+        const h = harness();
+        assert.equal(await run(["--answers", answers, dir], h.options), 0, h.warned.join("\n"));
+        assert.match(ok(dir).summary, /^-- a summary/);
     });
 });
 

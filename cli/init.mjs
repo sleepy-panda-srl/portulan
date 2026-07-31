@@ -131,8 +131,20 @@ export function parseArgs(argv) {
             flags.cycle = false;
         } else if (VALUED.has(arg)) {
             const value = argv[i + 1];
-            if (value === undefined || value.startsWith("--")) {
-                throw new InitError(`\`${arg}\` needs a value — refusing to read the next argument as one`);
+            // ANY leading `-` is a missing value, not `--` only. `cli/doctor.mjs` already guards this
+            // way and `init` was the outlier: `init --residence -h <dir>` consumed `-h` as the
+            // residence and then complained that `-h` is not one, which blames the user for a token
+            // they typed as a flag. A help request is the likeliest thing to land here, and it was
+            // the likeliest thing to be eaten. Found by review on the pull request.
+            //
+            // A value that genuinely begins with `-` is not lost: `--answers` carries it, where the
+            // shape is a JSON string and nothing has to guess where a flag ends.
+            if (value === undefined || value.startsWith("-")) {
+                throw new InitError(
+                    `\`${arg}\` needs a value and the next argument is \`${value ?? "(nothing)"}\` — refusing to read a ` +
+                        `flag as one. If the value really does start with \`-\`, pass it through \`--answers\`, where it ` +
+                        `is a JSON string and nothing has to guess.`,
+                );
             }
             // An EMPTY value is given-but-invalid, and it is refused here for every flag rather than
             // per-field. `--summary ""` used to pass straight through `??` into the manifest, where
