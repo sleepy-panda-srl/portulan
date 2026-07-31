@@ -11,7 +11,7 @@ legibility score and verify composition are all untouched, and the row's four de
 ## What landed
 
 `cli/init.mjs` + `cli/init.test.mjs` (written first), wired into `SUBCOMMANDS`; `init`'s exit-2 path and
-its place in the entry point's unbuilt-subcommand loop are gone. Suite **858/858**, up from 774 — 83 new
+its place in the entry point's unbuilt-subcommand loop are gone. Suite **859/859**, up from 774 — 84 new
 `init` cases, **20 of them written after the pre-commit checkpoint**, each red against the code as it
 stood. Eight recipes green. `npm pack` is **74 files, all 74 byte-identical to the git index**, so
 session 0's no-build-step property holds across the two files added.
@@ -52,7 +52,7 @@ next step; and `cli/README.md`'s claim that `init` is *exercised through the ent
 the only entry-point coverage was the run-export check — so the claim was made true with a real
 dispatch test rather than softened to match.
 
-## The loop record — six rounds, and the bound bent only where session 0's precedent allows
+## The loop record — seven rounds, and the bound bent only where session 0's precedent allows
 
 **Round 1, one thread, real.** `resolveAnswers` returned `packRoots` unnormalised, so an answers file
 giving `"pack-root"` as a single string — which the value check accepts, like every other string key —
@@ -129,12 +129,24 @@ depends on which check runs first is not a guarantee*. `residenceAt` now walks `
 **This is the sibling class this repository already has a rule for** ([#91](https://github.com/sleepy-panda-works/portulan/issues/91)'s
 shape: a fix that misses its siblings), and the sibling here was one function away.
 
-**Why rounds 3–6 were fixed rather than triaged:** every one is a defect this pull request introduced.
+**Round 7, a thread and a note that are one defect in two places: both walkers read *any* `lstat`
+failure as "absent".** Only `ENOENT` means nothing is there; `EACCES` means the question could not be
+answered, and answering *no residence here* to an unanswerable question is **"nothing looked" recorded
+as "nothing wrong"** — the fail-open this repository names more often than any other, arriving inside
+the two functions whose entire job is to refuse before the first byte. `ENOENT` alone is absence now;
+everything else refuses.
+
+Fixing it immediately produced the round-6 defect one layer out: the refusal told a user with a
+permissions problem to **repair their JSON**. A refusal that misdescribes what it found is worth less
+than no refusal, because it sends the reader somewhere real and wrong. `residenceAt` now carries *which
+kind* of unreadable it met, and the two cases get different sentences.
+
+**Why rounds 3–7 were fixed rather than triaged:** every one is a defect this pull request introduced.
 Round 3's first was a false claim in a comment; round 4's was a write outside the repository; round 5's
-was the module contradicting its own stated stance; round 6's was round 4's own fix, incomplete. The
+was the module contradicting its own stated stance; round 6's was round 4's own fix, incomplete; round 7's was a fail-open in both walkers at once. The
 bound exists to stop the loop growing on *new* input. It was never meant to let a session ship its own
 falsehood, its own escape, its own contradiction, or its own half-fix because the counter ran out.
-**What would be triaged is the first finding that is not this change's fault** — and none of the six was.
+**What would be triaged is the first finding that is not this change's fault** — and none of the seven was.
 
 ## The four rulings this session opened with
 
