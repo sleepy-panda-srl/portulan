@@ -103,6 +103,30 @@ const JQ_TOKEN = /(?:^|[\s(|;&])(?:--jq|jq)(?=[\s'"]|$)/g;
 // one that is not is caught by the audit rather than skipped, because the token is still there.
 const JQ_CALL = /(?:^|[\s(|;&])(--jq|jq)((?:\s+-[^\s'"]+)*)\s+'([^']*)'/g;
 
+// --------------------------------------------------------------------------------- and awk
+//
+// **Added 2026-07-31 for [#142].** `copilot-review.yml` decides whether Copilot's suppressed
+// low-confidence notes exist by running awk over the review body, and that decision is the only
+// thing standing between the notes and oblivion. It was covered by nothing. Copilot renamed the
+// section — `Comments suppressed due to low confidence (N)` became `Suppressed comments (N)` — the
+// literal stopped matching, and the step reported "none" over a body that had one. The word this
+// recipe's green is read as is *the workflows' programs are exercised*, and it was true only of the
+// jq half.
+//
+// Everything below mirrors the jq machinery deliberately, down to the two-pass token audit: an
+// extraction that silently covered three of four programs is the same fail-open in a new costume.
+const AWK_TOKEN = /(?:^|[\s(|;&])awk(?=[\s'"]|$)/g;
+
+// An awk invocation this reader can act on: the token, its `-v NAME="$SHELL_VAR"` bindings, and the
+// program as a single-quoted string. `[^']*` spans newlines, which is what makes the multi-line
+// programs readable; the shell's line-continuations are joined before this runs, exactly as the
+// shell joins them.
+const AWK_CALL = /(?:^|[\s(|;&])awk((?:\s+-v\s+[A-Za-z_]\w*="\$[A-Za-z_]\w*")*)\s+'([^']*)'/g;
+
+// One `-v` binding, and the plain single-quoted shell assignment a binding resolves through.
+const AWK_BINDING = /-v\s+([A-Za-z_]\w*)="\$([A-Za-z_]\w*)"/g;
+const SHELL_ASSIGN = /^([A-Za-z_]\w*)='([^']*)'\s*$/;
+
 // ---------------------------------------------------------------------------------- the fixtures
 //
 // Each case names the program it answers for by `anchor` — a fragment that must appear in exactly
@@ -403,6 +427,189 @@ const CASES = [
     },
 ];
 
+// ------------------------------------------------------- the awk fixtures: real review bodies
+//
+// The inputs are markup Copilot actually emitted on this repository, read back from
+// `/pulls/N/reviews` on 2026-07-31 and trimmed in the note text only — every `<details>`,
+// `<summary>`, heading and blank line is as it arrived.
+//
+// **Four spellings, all of them live in the history**, found by the by-hand sweep #142 asked for.
+// Two axes vary independently — the container and the phrase — which is why there are four and not
+// two:
+//
+//   1. `<summary>Comments suppressed due to low confidence (N)</summary>` — #109, #129, #135, #137
+//   2. `### Comments suppressed due to low confidence (N)` — #107, and the earliest heading form
+//   3. `<summary>Suppressed comments (N)</summary>` — #137, #145
+//   4. `### Suppressed comments (N)` inside `<summary>Review details</summary>` — #140, #144
+//
+// That is the whole of #142 twice over: the matcher was written for 1, was silently defeated by 3
+// and 4, and 2 and 4 are not `<summary>` lines at all — so a repair scoped to summaries would have
+// looked correct while reading nothing.
+//
+// **They interleave.** 4, 3 and 4 again arrived at 05:52, 06:04 and 06:12 on 2026-07-31, so none of
+// them is "the current one" and a repair written against the newest would be the same mistake in a
+// newer costume. The fixtures below therefore assert all four containers-and-phrases, and a fix
+// that trades one literal for another passes some of these and fails the rest.
+//
+// A fixture writes down a *body*, never a program — the same rule the jq half states above. A body
+// is evidence about the platform and it goes stale honestly (Copilot changes it and a fixture
+// fails); a copied program goes stale silently, which is the defect this whole file exists against.
+const BODY_V1 = "## Pull request overview\n\n<details>\n"
+    + "<summary>Comments suppressed due to low confidence (2)</summary>\n"
+    + "\n**core/engine.md:22**\n* a note\n</details>\n";
+const BODY_V2 = "## Pull request overview\n\n<details>\n<summary>Suppressed comments (1)</summary>\n"
+    + "\n**.portulan/gate-map.md:698**\n* a note\n</details>\n";
+const BODY_V3 = "### 🟢 Ready to approve\n\n<details>\n<summary>Review details</summary>\n"
+    + "\n### Suppressed comments (1)\n\n**docs/plan.md:1823**\n* a note\n"
+    + "\n- **Files reviewed:** 3/3 changed files\n- **Comments generated:** 0 new\n</details>\n";
+const BODY_BENIGN = "## Pull request overview\n\n<details>\n<summary>Show a summary per file</summary>\n"
+    + "\n| File | Description |\n</details>\n";
+const BODY_CHROME = "### 🟢 Ready to approve\n\n<details>\n<summary>Review details</summary>\n"
+    + "\n- **Files reviewed:** 3/3 changed files\n- **Comments generated:** 0 new\n</details>\n";
+const BODY_NONE = "## Pull request overview\n\nCopilot reviewed 15 files and generated no new comments.\n";
+const BODY_MOVED = "## Pull request overview\n\n<details>\n<summary>Review details</summary>\n"
+    + "\nWe suppressed 1 remark.\n</details>\n";
+
+const AWK_CASES = [
+    // ---- copilot-review.yml: is the suppressed block there --------------------------------------
+    {
+        id: "present-v1-summary",
+        anchor: 'print "yes"',
+        why: "spelling 1, the one the old literal was written for — it must keep matching, because a "
+            + "repair that trades one literal for another passes the newer cases and fails here",
+        input: BODY_V1,
+        stdout: "yes\n",
+        status: 0,
+    },
+    {
+        id: "present-v2-summary",
+        anchor: 'print "yes"',
+        why: "**the #142 regression itself.** `Suppressed comments (1)` does not contain the old "
+            + "literal, so the step reported `Read, not assumed` over a body carrying a real note",
+        input: BODY_V2,
+        stdout: "yes\n",
+        status: 0,
+    },
+    {
+        id: "present-v3-heading",
+        anchor: 'print "yes"',
+        why: "**a heading rather than a summary**, and the reason the marker test is not scoped to "
+            + "`<summary>`: here the section is a markdown HEADING nested inside a `Review details` "
+            + "block. A summary-only repair would have looked right and read nothing. Not called "
+            + "the current spelling, because the four interleave and none of them is",
+        input: BODY_V3,
+        stdout: "yes\n",
+        status: 0,
+    },
+    {
+        id: "present-chrome-only",
+        anchor: 'print "yes"',
+        why: "the heading form with NO suppressed section — `Review details` and the stats list "
+            + "are on nearly every round, so matching them would report notes on every clean one",
+        input: BODY_CHROME,
+        stdout: "",
+        status: 0,
+    },
+    // ---- copilot-review.yml: how many notes ------------------------------------------------------
+    {
+        id: "count-v1-summary",
+        anchor: "RSTART+1",
+        why: "the count rides in the marker's parenthesis in all three spellings, so it is read from "
+            + "there rather than by counting note bodies — which no markup guarantees the shape of",
+        input: BODY_V1,
+        stdout: "2\n",
+        status: 0,
+    },
+    {
+        id: "count-v3-heading",
+        anchor: "RSTART+1",
+        why: "and the same read off a heading rather than a summary — the parenthesis is read the same "
+            + "way whichever container carries the marker",
+        input: BODY_V3,
+        stdout: "1\n",
+        status: 0,
+    },
+    {
+        id: "count-absent",
+        anchor: "RSTART+1",
+        why: "no block, no count — and an empty count is one of the two things that routes the step "
+            + "to `unparsable`, so it must be empty rather than `0`",
+        input: BODY_NONE,
+        stdout: "",
+        status: 0,
+    },
+    // ---- copilot-review.yml: what the notes say --------------------------------------------------
+    {
+        id: "notes-v2-summary",
+        anchor: "f && (/<\\/details>/",
+        why: "the block's lines, from just after the marker to the closing tag — this is the text the "
+            + "job summary prints and the verdict review quotes onto the pull request",
+        input: BODY_V2,
+        stdout: "\n**.portulan/gate-map.md:698**\n* a note\n",
+        status: 0,
+    },
+    {
+        id: "notes-v3-stops-at-stats",
+        anchor: "f && (/<\\/details>/",
+        why: "**the heading form's boundary.** Spelling 4 puts `- **Files reviewed:** 3/3` after the "
+            + "notes and inside the same `<details>`, so terminating only at `</details>` would "
+            + "quote Copilot's own statistics onto the pull request as suppressed findings",
+        input: BODY_V3,
+        stdout: "\n**docs/plan.md:1823**\n* a note\n\n",
+        status: 0,
+    },
+    {
+        id: "notes-stops-at-next-heading",
+        anchor: "f && (/<\\/details>/",
+        why: "and a heading after the block ends it too — a second section is not part of the notes, "
+            + "however the markup nests it",
+        input: BODY_V1 + "\n## Something after the block\n",
+        stdout: "\n**core/engine.md:22**\n* a note\n",
+        status: 0,
+    },
+    {
+        id: "notes-absent",
+        anchor: "f && (/<\\/details>/",
+        why: "no block, no notes. Empty here is the other half of the `unparsable` predicate",
+        input: BODY_BENIGN,
+        stdout: "",
+        status: 0,
+    },
+    // ---- copilot-review.yml: is absence actually evidence -----------------------------------------
+    {
+        id: "anywhere-word-absent",
+        anchor: 'print "the-word-is-here"',
+        why: "**this is what licenses the word `none`.** The old branch said `absent, not merely "
+            + "unfound` on the strength of the same literal that decided presence — a test that "
+            + "cannot tell `nothing here` from `I no longer recognise it`. Absence is now the word "
+            + "being missing from the WHOLE body, which is a fact about the body rather than about "
+            + "the matcher",
+        input: BODY_NONE,
+        stdout: "",
+        status: 0,
+    },
+    {
+        id: "anywhere-word-present-marker-not",
+        anchor: 'print "the-word-is-here"',
+        why: "**the markup-moved signature**, and the case that would have caught #142 the day it "
+            + "happened: the word is in the body, no marker matched, the two readings disagree. That "
+            + "routes to `unparsable` — read it by hand — instead of to a silent zero",
+        input: BODY_MOVED,
+        stdout: "the-word-is-here\n",
+        status: 0,
+    },
+    {
+        id: "anywhere-chrome-only",
+        anchor: 'print "the-word-is-here"',
+        why: "the ordinary clean round under the heading form: `Review details`, a stats list, and the "
+            + "word nowhere. It must stay silent, or `unparsable` would fire on nearly every round "
+            + "and the verdict would never approve — the cost that keeps this trade honest",
+        input: BODY_CHROME,
+        stdout: "",
+        status: 0,
+    },
+];
+
 // --------------------------------------------------------------------------------- reading a file
 
 // Every `run:` value in a workflow, as the shell would receive it — each line dedented, and
@@ -520,6 +727,82 @@ function jqPrograms(file, text) {
     return programs;
 }
 
+// Every awk program in one workflow file, with its `-v` bindings resolved to the values the shell
+// would pass.
+//
+// Two things differ from `jqPrograms` and both are forced by awk's shape here. The programs are
+// **multi-line**, so a `run:` value is rejoined into the text the shell receives — line
+// continuations included, exactly as the shell joins them — and matched as one string rather than
+// line by line. And the programs take **variables**: `-v m="$SUPPRESS"` means the matcher itself
+// lives in a shell assignment, so this reader resolves that assignment out of the same block. A
+// fixture that hardcoded `m` would be asserting about a value the workflow no longer uses, which is
+// the copied-carrier defect one level down.
+function awkPrograms(file, text) {
+    const values = runValues(text, file);
+
+    // Resolved per `run:` value, not per file: two steps may each set a variable of one name, and
+    // reaching across them would silently run a program under a neighbour's value.
+    const programs = [];
+    let seen = 0;
+    for (const value of values) {
+        const code = value.body.filter(({ text: line }) => !/^\s*#/.test(line));
+        const assigns = new Map();
+        for (const { text: line } of code) {
+            const assign = SHELL_ASSIGN.exec(line.trim());
+            if (assign) assigns.set(assign[1], assign[2]);
+        }
+
+        // The shell's own join, and the reason it is safe here: a `\` at end of line is a
+        // continuation only outside quotes, and no single-quoted program in these workflows ends a
+        // line with one. If that ever stops being true, the token audit below is what says so —
+        // a corrupted program stops matching AWK_CALL and the two counts disagree.
+        const joined = code.map(({ text: line }) => line).join("\n").replace(/\\\n\s*/g, " ");
+        const tokens = (joined.match(AWK_TOKEN) ?? []).length;
+        if (tokens === 0) continue;
+        seen += tokens;
+
+        let matches = 0;
+        for (const call of joined.matchAll(AWK_CALL)) {
+            matches += 1;
+            const [, bindingText, program] = call;
+            const vars = [];
+            for (const binding of bindingText.matchAll(AWK_BINDING)) {
+                const [, name, shellVar] = binding;
+                if (!assigns.has(shellVar)) {
+                    throw new CouldNotRun(
+                        `${value.at} — an awk program binds \`-v ${name}="$${shellVar}"\` and this `
+                            + `\`run:\` block never assigns \`${shellVar}\` as a single-quoted `
+                            + "literal; this reader will not guess the value a matcher runs under",
+                    );
+                }
+                vars.push({ name, value: assigns.get(shellVar) });
+            }
+            // Line number of the call, recovered from the pre-join text so a red cites the file.
+            const before = joined.slice(0, call.index);
+            const at = code[Math.min(before.split("\n").length - 1, code.length - 1)]?.n ?? value.at;
+            programs.push({ file, at: `${file}:${at}`, vars, program });
+        }
+        if (matches < tokens) {
+            throw new CouldNotRun(
+                `${value.at} — ${tokens} awk invocation(s) in the block and ${matches} readable; an `
+                    + "awk program not written as a single-quoted argument cannot be run here",
+            );
+        }
+    }
+
+    const raw = text
+        .split("\n")
+        .filter((line) => !/^\s*#/.test(line))
+        .reduce((total, line) => total + (line.match(AWK_TOKEN) ?? []).length, 0);
+    if (raw !== seen) {
+        throw new CouldNotRun(
+            `${file}: ${raw} awk token(s) in the file and ${seen} inside a parsed \`run:\` scalar. `
+                + "The two readings disagree, so this recipe cannot say it covered the file",
+        );
+    }
+    return programs;
+}
+
 // ------------------------------------------------------------------------------------- the checks
 
 function read(file) {
@@ -545,16 +828,22 @@ function auditForUncoveredWorkflows() {
         if (!/\.ya?ml$/.test(entry)) continue;
         const file = path.posix.join(WORKFLOW_DIR, entry);
         if (WORKFLOWS.includes(file)) continue;
-        const tokens = read(file)
-            .split("\n")
-            .filter((line) => !/^\s*#/.test(line))
-            .reduce((total, line) => total + (line.match(JQ_TOKEN) ?? []).length, 0);
-        if (tokens > 0) strays.push(`${file} (${tokens} jq token(s))`);
+        const lines = read(file).split("\n").filter((line) => !/^\s*#/.test(line));
+        const count = (pattern) =>
+            lines.reduce((total, line) => total + (line.match(pattern) ?? []).length, 0);
+        const jq = count(JQ_TOKEN);
+        const awk = count(AWK_TOKEN);
+        if (jq > 0 || awk > 0) {
+            const what = [jq > 0 ? `${jq} jq` : null, awk > 0 ? `${awk} awk` : null]
+                .filter(Boolean)
+                .join(" + ");
+            strays.push(`${file} (${what} token(s))`);
+        }
     }
     if (strays.length) {
         throw new CouldNotRun(
-            `a workflow runs jq and is not covered by this recipe: ${strays.join(", ")} — add it to `
-                + "WORKFLOWS with fixtures, or this recipe's green means less than it says",
+            `a workflow runs jq or awk and is not covered by this recipe: ${strays.join(", ")} — add `
+                + "it to WORKFLOWS with fixtures, or this recipe's green means less than it says",
         );
     }
 }
@@ -606,6 +895,88 @@ function bind(programs) {
         );
     }
     return bound;
+}
+
+// The awk half of `bind`, on the same rules and for the same reasons: an anchor selecting no
+// program means the workflow moved and the fixture table did not; a program no anchor names is a
+// matcher running in CI that nothing exercises, which is precisely how #142 survived.
+function bindAwk(programs) {
+    const bound = new Map(programs.map((program) => [program, []]));
+    const identity = (program) =>
+        `${program.vars.map((v) => `${v.name}=${v.value}`).join(" ")}\u0000${program.program}`;
+    for (const testCase of AWK_CASES) {
+        const hits = programs.filter((program) => program.program.includes(testCase.anchor));
+        const distinct = new Set(hits.map(identity));
+        if (distinct.size !== 1) {
+            throw new CouldNotRun(
+                `awk fixture \`${testCase.id}\` anchors on \`${testCase.anchor}\`, which matches `
+                    + `${distinct.size} distinct awk program(s) of the ${programs.length} in the `
+                    + "workflows rather than exactly one — "
+                    + (distinct.size === 0
+                        ? "the workflow changed and this fixture table did not"
+                        : `the anchor no longer says which: ${[...hits.map((h) => h.at)].join(", ")}`),
+            );
+        }
+        for (const hit of hits) bound.get(hit).push(testCase);
+    }
+    const orphans = [...bound].filter(([, cases]) => cases.length === 0);
+    if (orphans.length) {
+        throw new CouldNotRun(
+            "awk program(s) with no fixture: "
+                + orphans.map(([program]) => program.at).join("; ")
+                + " — a matcher this recipe does not exercise must not be reported as covered",
+        );
+    }
+    return bound;
+}
+
+// Byte comparison and the same three refusals as `runCase`. The program and its variables come from
+// the workflow; only the body and the expectation are the fixture's.
+function runAwkCase(program, testCase) {
+    const args = [];
+    for (const { name, value } of program.vars) args.push("-v", `${name}=${value}`);
+    args.push(program.program);
+    const result = spawnSync("awk", args, { input: testCase.input });
+    if (result.error) {
+        throw new CouldNotRun(
+            result.error.code === "ENOENT"
+                ? "awk is not on the path — this recipe cannot answer for a matcher it never ran"
+                : `awk could not be run — ${result.error.message}`,
+        );
+    }
+    if (result.status === null) {
+        throw new CouldNotRun(`awk was killed by ${result.signal} on fixture \`${testCase.id}\``);
+    }
+    const faults = [];
+    const expected = Buffer.from(testCase.stdout, "utf8");
+    if (!result.stdout.equals(expected)) {
+        faults.push(
+            `stdout ${JSON.stringify(result.stdout.toString("utf8"))}, `
+                + `expected ${JSON.stringify(testCase.stdout)}`,
+        );
+    }
+    if (result.status !== testCase.status) {
+        faults.push(`exit ${result.status}, expected ${testCase.status}`);
+    }
+    return faults;
+}
+
+// Which awk answered, for the same reason `jqVersion` names its binary: BSD awk and gawk are not
+// the same program, and this repository's CI and its maintainer's laptop do not run the same one.
+function awkVersion() {
+    // `awk --version` is gawk's; BSD awk answers `-W version` and writes to stderr. Both are tried
+    // and whatever comes back is reported verbatim rather than parsed into a shape.
+    for (const args of [["--version"], ["-W", "version"]]) {
+        const result = spawnSync("awk", args, { encoding: "utf8" });
+        if (result.error?.code === "ENOENT") break;
+        const text = `${result.stdout ?? ""}${result.stderr ?? ""}`.trim();
+        if (text) return text.split("\n")[0];
+    }
+    const probe = spawnSync("awk", ["BEGIN { print 1 }"], { encoding: "utf8" });
+    if (probe.error || probe.status !== 0) {
+        throw new CouldNotRun("awk is not on the path — this recipe cannot answer for a matcher it never ran");
+    }
+    return "an awk that reports no version";
 }
 
 // Which jq answered is part of the result, not trivia: the claim this recipe settles is about a
@@ -678,10 +1049,29 @@ export function run() {
             );
         }
 
+        const awkAll = [];
+        for (const file of WORKFLOWS) {
+            awkAll.push(...awkPrograms(file, read(file)));
+        }
+        // Same precondition as the jq half, and it is not a formality here either: the awk programs
+        // are the thing #142 found unexercised, so an extraction that reached none of them must
+        // refuse rather than print a clean report over a matcher nobody ran.
+        if (awkAll.length === 0) {
+            throw new CouldNotRun(
+                `no awk program found in ${WORKFLOWS.join(", ")} — refusing to report green having `
+                    + "run nothing. If the suppressed-notes matcher was removed, remove its fixtures too",
+            );
+        }
+
         const bound = bind(programs);
+        const boundAwk = bindAwk(awkAll);
         say(
             `filters: ${programs.length} jq program(s) in ${WORKFLOWS.length} workflow file(s), `
                 + `${CASES.length} fixture(s), run through ${jqVersion()}`,
+        );
+        say(
+            `         ${awkAll.length} awk program(s), ${AWK_CASES.length} fixture(s), `
+                + `run through ${awkVersion()}`,
         );
 
         let failed = 0;
@@ -708,11 +1098,32 @@ export function run() {
             }
         }
 
+        for (const [program, cases] of boundAwk) {
+            say();
+            // The program as one line, so a red names the matcher rather than a step. The `-v`
+            // bindings are printed with their RESOLVED values: what a reader needs to know on a red
+            // is what the matcher was, and in this workflow the matcher is the variable.
+            const vars = program.vars.map((v) => `-v ${v.name}='${v.value}'`).join(" ");
+            say(`${program.at}  awk ${vars} '${program.program.replace(/\s*\n\s*/g, " ").trim()}'`);
+            for (const testCase of cases) {
+                const faults = runAwkCase(program, testCase);
+                if (faults.length === 0) {
+                    say(`  ok    ${testCase.id} — ${testCase.why}`);
+                } else {
+                    failed += 1;
+                    say(`  FAIL  ${testCase.id} — ${testCase.why}`);
+                    for (const fault of faults) say(`        ${fault}`);
+                    say(`        input ${JSON.stringify(testCase.input)}`);
+                }
+            }
+        }
+
         say();
+        const total = CASES.length + AWK_CASES.length;
         say(
             failed === 0
                 ? "GREEN — verify recipe passed."
-                : `RED — ${failed} of ${CASES.length} fixture(s) failed; "done" is blocked.`,
+                : `RED — ${failed} of ${total} fixture(s) failed; "done" is blocked.`,
         );
         return failed === 0 ? 0 : 1;
     } catch (error) {

@@ -333,23 +333,72 @@ jobs:
                     notes_state='unread'
                     printf 'suppressed low-confidence notes: COULD NOT READ review %s\n' "$matched_id"
                   else
-                    # Copilot wraps them in `<details><summary>Comments suppressed due to low
-                    # confidence (N)</summary>`. Matched on that phrase and not on `<details>`, because
-                    # the body carries a second, uninteresting one — `Show a summary per file`.
-                    # ONE matcher for all three questions — is the block there, what is its count,
-                    # what is in it. The first cut asked with `grep`, `sed` and `awk` separately, so
-                    # the three could disagree about the same line the moment Copilot's markup moved:
-                    # a change of case alone made the detector say "absent" while the extractor would
-                    # happily have read it. Same case-insensitive test, three answers, no drift.
-                    MARK='comments suppressed due to low confidence'
-                    present=$(printf '%s\n' "$body" | awk -v m="$MARK" \
-                      'index(tolower($0), m) { print "yes"; exit }')
-                    count=$(printf '%s\n' "$body" | awk -v m="$MARK" \
-                      'index(tolower($0), m) { if (match($0, /\([0-9]+\)/)) print substr($0, RSTART+1, RLENGTH-2); exit }')
-                    notes=$(printf '%s\n' "$body" | awk -v m="$MARK" '
-                      index(tolower($0), m) { f = 1; next }
-                      f && /<\/details>/ { exit }
+                    # THE SECTION MARKER MOVES, AND IT DOES NOT MOVE IN ONE DIRECTION. Measured by
+                    # sweeping `/pulls/N/reviews` by hand on 2026-07-31 for #142, Copilot has
+                    # announced this section FOUR ways on this repository. Both axes vary
+                    # independently — the container (a `<summary>`, or a markdown heading nested
+                    # inside `<summary>Review details</summary>`) and the phrase:
+                    #
+                    #   1. `<summary>Comments suppressed due to low confidence (N)</summary>`  (#109,
+                    #      #129, #135, #137)
+                    #   2. `### Comments suppressed due to low confidence (N)`   (#107, 2026-07-29)
+                    #   3. `<summary>Suppressed comments (N)</summary>`                (#137, #145)
+                    #   4. `### Suppressed comments (N)`                               (#140, #144)
+                    #
+                    # The matcher was spelling 1 as a literal, so 3 and 4 did not contain it, the
+                    # step took its no-such-section branch, and it printed `Read, not assumed` over
+                    # bodies that carried real notes.
+                    #
+                    # **They INTERLEAVE rather than superseding one another** — on the morning of
+                    # 2026-07-31 spellings 4, 3 and 4 again arrived at 05:52, 06:04 and 06:12 — so
+                    # no spelling may be treated as the current one and no repair may be written
+                    # against the newest. That is the argument for the test below rather than a
+                    # decoration on it: a line that ANNOUNCES a section — a `<summary>` OR a
+                    # markdown heading — and contains `suppress`. The container varies, the phrase
+                    # varies, and `suppress` is the only thing all four have in common.
+                    # ONE matcher for all four questions — is the block there, what is its count,
+                    # what is in it, and is absence real. The first cut asked with `grep`, `sed` and
+                    # `awk` separately, so the three could disagree about the same line the moment
+                    # Copilot's markup moved: a change of case alone made the detector say "absent"
+                    # while the extractor would happily have read it. Same case-insensitive test,
+                    # four answers, no drift.
+                    SUPPRESS='suppress'
+                    present=$(printf '%s\n' "$body" | awk -v m="$SUPPRESS" \
+                      '(/<summary/ || /^#+[ \t]/) && index(tolower($0), m) { print "yes"; exit }')
+                    count=$(printf '%s\n' "$body" | awk -v m="$SUPPRESS" \
+                      '(/<summary/ || /^#+[ \t]/) && index(tolower($0), m) { if (match($0, /\([0-9]+\)/)) print substr($0, RSTART+1, RLENGTH-2); exit }')
+                    # Terminated by the closing tag, by the NEXT heading, or by the stats list
+                    # spelling 3 puts after the notes — without the last two, a spelling-3 block
+                    # quotes `Files reviewed: 3/3` onto the pull request as though Copilot had
+                    # suppressed it.
+                    notes=$(printf '%s\n' "$body" | awk -v m="$SUPPRESS" '
+                      (/<summary/ || /^#+[ \t]/) && index(tolower($0), m) { f = 1; next }
+                      f && (/<\/details>/ || /^#+[ \t]/ || /^- \*\*Files reviewed:/) { exit }
                       f { print }')
+                    # ABSENCE NEEDS POSITIVE EVIDENCE, which is the half #142 is really about. A
+                    # structural matcher is still a matcher: move the section again and the silent
+                    # failure returns. So `none` is licensed by the word `suppress` being absent
+                    # from the WHOLE BODY — not by a marker failing to match, which is exactly the
+                    # test that cannot tell "there is nothing here" from "I no longer recognise it".
+                    #
+                    # The two readings disagreeing — the word present, no marker matched — is the
+                    # signature of a markup move, and it routes to `unparsable`. The trade is
+                    # deliberate and it is not free: prose using the word in a body with no section
+                    # makes this step say "read it by hand" when there was nothing to read, and
+                    # `unparsable` suppresses the verdict, so that cost lands the same day and in
+                    # front of a person. A false zero costs nothing visible and hides findings for
+                    # an unknown number of rounds — which is what happened, on FOUR rounds measured
+                    # from this repository's own run logs: #145, #144 twice, and #137. Loud and
+                    # wrong is recoverable; quiet and wrong is what this file exists to refuse.
+                    #
+                    # ONE HOLE THIS DOES NOT CLOSE, named because the sweep found it and no body
+                    # matcher can reach it: on #140 the step reported none at 05:32:53Z and the
+                    # note-bearing review was submitted at 05:36:45Z, four minutes later, with no
+                    # further round to re-read it. That is a review landing after the last parse,
+                    # not a parse getting it wrong, and it is the awaited half of this file's own
+                    # subject arriving for the notes channel too.
+                    anywhere=$(printf '%s\n' "$body" | awk -v m="$SUPPRESS" \
+                      'index(tolower($0), m) { print "the-word-is-here"; exit }')
                     # THREE outcomes, not two. The block being absent and the block being
                     # unparseable are different facts, and only one of them licenses the word
                     # "none". Collapsing them would print a positive claim — `Read, not assumed` —
@@ -357,9 +406,15 @@ jobs:
                     # this step off while it kept reporting healthily. That is the false green this
                     # entire file exists to refuse, reintroduced by the step added to prevent a
                     # different one. Caught by a suppressed low-confidence note on #63, in round
-                    # five, about the very mechanism that surfaced it.
-                    if [ -z "${present:-}" ]; then
-                      report="No suppressed low-confidence comments on the round for \`${head}\`. Read, not assumed — the section is absent from the body, not merely unfound."
+                    # five, about the very mechanism that surfaced it — and then reintroduced anyway
+                    # by a literal, which is #142 and the reason the branch order below now tests
+                    # what it FOUND before it tests what it did not.
+                    if [ -z "${present:-}" ] && [ -n "${anywhere:-}" ]; then
+                      report="**Could not parse the review body** on the round for \`${head}\`: it uses the word \`suppress\` and no section marker — a \`<summary>\` or a heading — matched. Copilot's markup has probably moved again, which it has done twice already (#142). Sweep \`/pulls/${PR_NUMBER}/reviews\` by hand and teach this step the new spelling. **This is not a report of zero notes.**"
+                      notes_state='unparsable'
+                      printf 'suppressed low-confidence notes: PARSE FAILED — the word is in the body and no marker matched\n'
+                    elif [ -z "${present:-}" ]; then
+                      report="No suppressed low-confidence comments on the round for \`${head}\`. Read, not assumed — the word \`suppress\` does not occur anywhere in the review body, which is evidence of absence rather than a matcher failing to find what it was looking for."
                       notes_state='none'
                       printf 'suppressed low-confidence notes: none on this round\n'
                     elif [ -z "${count:-}" ] || [ -z "${notes:-}" ]; then
