@@ -846,18 +846,42 @@ function packResolves(roots, packId) {
 export function collisions(target, files) {
     const found = [];
     for (const rel of files.keys()) {
-        const full = path.join(target, rel);
-        if (fs.existsSync(full)) {
-            found.push({ rel, why: "already exists" });
-            continue;
-        }
-        let dir = path.dirname(full);
-        while (dir.startsWith(target) && dir !== target) {
-            if (fs.existsSync(dir) && !fs.statSync(dir).isDirectory()) {
-                found.push({ rel, why: `\`${path.relative(target, dir)}\` is in the way and is not a directory` });
+        // Walked from the target DOWN, one segment at a time, with `lstatSync` — never `statSync`,
+        // and never `existsSync`. Both of those FOLLOW symlinks, which is how the first version of
+        // this check let a `.portulan` symlink carry the whole drafted workspace out of the
+        // repository: `init` wrote nine files somewhere else entirely and reported success.
+        // Demonstrated on the pull request. `doctor` and `plugin-lint` already treat a symlink escape
+        // as significant; this is the same rule arriving at the tool that WRITES, where it matters
+        // more than at the tools that read.
+        //
+        // A symlink anywhere on the chain is a collision rather than something to resolve and permit.
+        // Resolving it would mean deciding whether the destination is "really" inside the repository,
+        // which is a containment judgement with a bad failure mode; refusing is a judgement with none.
+        const segments = rel.split("/");
+        let here = target;
+        for (let i = 0; i < segments.length; i++) {
+            here = path.join(here, segments[i]);
+            let stat;
+            try {
+                stat = fs.lstatSync(here);
+            } catch {
+                // Absent — and nothing below an absent directory can exist either, so this path is
+                // clear and the walk stops.
                 break;
             }
-            dir = path.dirname(dir);
+            const where = path.relative(target, here);
+            if (stat.isSymbolicLink()) {
+                found.push({ rel, why: `\`${where}\` is a symlink, and writing through it would leave the repository` });
+                break;
+            }
+            if (i === segments.length - 1) {
+                found.push({ rel, why: "already exists" });
+                break;
+            }
+            if (!stat.isDirectory()) {
+                found.push({ rel, why: `\`${where}\` is in the way and is not a directory` });
+                break;
+            }
         }
     }
     return found;
@@ -978,10 +1002,22 @@ export async function run(argv, options = {}) {
         // still stop the second.
         const clash = collisions(target, files);
         if (clash.length) {
+            // Grouped by CAUSE, not listed per path. One symlinked `.portulan` blocks every drafted
+            // file, and naming it ten times buries the single fact the reader needs under nine
+            // copies of it — a refusal nobody finishes reading is a refusal that failed to explain.
+            const byCause = new Map();
+            for (const { rel, why } of clash) (byCause.get(why) ?? byCause.set(why, []).get(why)).push(rel);
+            const summary = [...byCause]
+                .map(([why, rels]) =>
+                    rels.length > 2
+                        ? `${why} — blocking ${rels.length} drafted files, including \`${rels[0]}\``
+                        : `${why} — ${rels.map((r) => `\`${r}\``).join(", ")}`,
+                )
+                .join("; ");
             throw new InitError(
-                `refusing to write over ${clash.length} existing path(s) in \`${path.join(parsed.target, ".portulan")}\`: ` +
-                    `${clash.map((c) => `\`${c.rel}\` (${c.why})`).join("; ")}. \`init\` drafts a workspace where there is ` +
-                    `none; it does not merge into one somebody has started. Move or remove them, or draft into a clean ` +
+                `refusing to write into \`${path.join(parsed.target, ".portulan")}\`: ${summary}. \`init\` drafts a ` +
+                    `workspace where there is none; it does not merge into one somebody has started, and it does not ` +
+                    `follow a link out of the repository. Move or remove what is in the way, or draft into a clean ` +
                     `directory and copy across what you want to keep.`,
             );
         }
