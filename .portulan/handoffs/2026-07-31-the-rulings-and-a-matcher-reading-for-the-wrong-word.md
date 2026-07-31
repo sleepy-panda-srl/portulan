@@ -80,16 +80,22 @@ restored each time.
 
 ## Undemonstrated, named
 
-- **The new matcher has never parsed a live round.** Every historic round ran the old code; the
-  `unparsable` branch has fired only in fixtures. Its first live exercise is #147's own review, and it
-  will probably fire — Copilot's overview prose for a diff about suppressed notes will contain the word
-  with no marker. **That is the trade working, not a malfunction.**
+- **The new matcher has never parsed a live round**, and the prediction that #147's own round would
+  exercise the `unparsable` branch **did not come true**: that round carried a real suppressed block
+  (`<summary>Suppressed comments (2)</summary>`) so it took the `present` branch instead — under the
+  matcher on `main`, which is still the stale one, and which reported none. The two notes were swept
+  **by hand**. The `unparsable` branch remains fixture-only.
 - **The residual failure mode is a vocabulary move**, not a markup move: rename the section to
   something without `suppress` and the silent zero returns. The rule is word-anchored. A candidate for
   milestone 8's forced-red drills.
-- **CI's awk is unmeasured.** The fixtures ran under BSD awk locally; the recipe names its binary and
-  fails closed on ENOENT, but which awk `ubuntu-latest` answers with is undemonstrated until #147's
-  first run.
+- ~~CI's awk is unmeasured.~~ **Measured on #147's first run: `GNU Awk 5.2.1` on `ubuntu-latest`,
+  green**, against BSD `awk version 20200816` locally. Two implementations, same fixtures, so the
+  matcher's behaviour is cross-checked rather than assumed — which mattered within the hour, when
+  Copilot's first round found `[ \t]` putting an escape inside a bracket expression, where POSIX makes
+  a backslash literal. **Both awks read it as a tab, so both passed a spelling that was still
+  implementation-dependent** — a green from two implementations is not a portability proof. Replaced
+  with `[[:blank:]]` and pinned by two fixtures that state the intended behaviour, with the honest
+  note that they cannot discriminate on either awk we run.
 - **`verify` composition is committed, not built** — session 2, beside `vendor`.
 
 ## Open for the maintainer

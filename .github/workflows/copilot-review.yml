@@ -364,16 +364,16 @@ jobs:
                     # four answers, no drift.
                     SUPPRESS='suppress'
                     present=$(printf '%s\n' "$body" | awk -v m="$SUPPRESS" \
-                      '(/<summary/ || /^#+[ \t]/) && index(tolower($0), m) { print "yes"; exit }')
+                      '(/<summary/ || /^#+[[:blank:]]/) && index(tolower($0), m) { print "yes"; exit }')
                     count=$(printf '%s\n' "$body" | awk -v m="$SUPPRESS" \
-                      '(/<summary/ || /^#+[ \t]/) && index(tolower($0), m) { if (match($0, /\([0-9]+\)/)) print substr($0, RSTART+1, RLENGTH-2); exit }')
+                      '(/<summary/ || /^#+[[:blank:]]/) && index(tolower($0), m) { if (match($0, /\([0-9]+\)/)) print substr($0, RSTART+1, RLENGTH-2); exit }')
                     # Terminated by the closing tag, by the NEXT heading, or by the stats list
                     # spelling 3 puts after the notes — without the last two, a spelling-3 block
                     # quotes `Files reviewed: 3/3` onto the pull request as though Copilot had
                     # suppressed it.
                     notes=$(printf '%s\n' "$body" | awk -v m="$SUPPRESS" '
-                      (/<summary/ || /^#+[ \t]/) && index(tolower($0), m) { f = 1; next }
-                      f && (/<\/details>/ || /^#+[ \t]/ || /^- \*\*Files reviewed:/) { exit }
+                      (/<summary/ || /^#+[[:blank:]]/) && index(tolower($0), m) { f = 1; next }
+                      f && (/<\/details>/ || /^#+[[:blank:]]/ || /^- \*\*Files reviewed:/) { exit }
                       f { print }')
                     # ABSENCE NEEDS POSITIVE EVIDENCE, which is the half #142 is really about. A
                     # structural matcher is still a matcher: move the section again and the silent
