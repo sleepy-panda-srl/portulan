@@ -52,7 +52,7 @@ next step; and `cli/README.md`'s claim that `init` is *exercised through the ent
 the only entry-point coverage was the run-export check — so the claim was made true with a real
 dispatch test rather than softened to match.
 
-## The loop record — three rounds, and the bound bent only where session 0's precedent allows
+## The loop record — four rounds, and the bound bent only where session 0's precedent allows
 
 **Round 1, one thread, real.** `resolveAnswers` returned `packRoots` unnormalised, so an answers file
 giving `"pack-root"` as a single string — which the value check accepts, like every other string key —
@@ -93,11 +93,12 @@ failure mode, where refusing has none. `doctor` and `plugin-lint` already held t
 late at the one tool that **writes**, where it matters most.
 
 **How it was nearly missed is worth more than the fix.** I checked round 4 for new inline comments
-filtered on the login `Copilot` — and this thread is authored by `copilot-pull-request-reviewer`. Two
-logins for one actor, which [[portulan-gotchas]] already records, and the filter I reached for was the
-wrong one. The round looked empty because the sweep asked the wrong question, not because there was
-nothing there. **Sweep threads via GraphQL `reviewThreads`, never by filtering `/pulls/N/comments` on an
-author name.**
+filtered on the login `Copilot` — and this thread is authored by `copilot-pull-request-reviewer`. **One
+actor, two logins**, depending on which endpoint you ask; the filter I reached for was the wrong one, and
+the round looked empty because the sweep asked the wrong question rather than because there was nothing
+there. **Sweep threads via GraphQL `reviewThreads`, never by filtering `/pulls/N/comments` on an author
+name.** The rule this repository already had — survey *both* channels — is not enough on its own if the
+survey of one of them is keyed on a name that endpoint does not use.
 
 Fixing the escape also made the refusal unreadable — one symlinked `.portulan` blocks all ten drafted
 files, and the message named the same cause ten times. Grouped by cause now: a refusal nobody finishes
