@@ -11,7 +11,7 @@ legibility score and verify composition are all untouched, and the row's four de
 ## What landed
 
 `cli/init.mjs` + `cli/init.test.mjs` (written first), wired into `SUBCOMMANDS`; `init`'s exit-2 path and
-its place in the entry point's unbuilt-subcommand loop are gone. Suite **850/850**, up from 774 — 75 new
+its place in the entry point's unbuilt-subcommand loop are gone. Suite **853/853**, up from 774 — 78 new
 `init` cases, **20 of them written after the pre-commit checkpoint**, each red against the code as it
 stood. Eight recipes green. `npm pack` is **74 files, all 74 byte-identical to the git index**, so
 session 0's no-build-step property holds across the two files added.
@@ -82,10 +82,31 @@ on session 0's precedent that the bound bends for defects the change itself intr
   assertion states. Moved to `t.mock.method`, which scopes the substitution to the test and restores it
   even when an assertion throws first.
 
-**Why these two were fixed rather than triaged:** both are defects this pull request introduced, and the
-first is a false claim in a comment — the class this repository names most often. The bound exists to
-stop the loop growing on *new* input; it was never meant to let a session ship its own falsehood because
-the counter ran out.
+**Round 4, one THREAD — the most serious finding of the four, and I nearly missed it.** `collisions()`
+used `existsSync`/`statSync`, and **both follow symlinks**. So a repository containing a `.portulan`
+symlink took the entire drafted workspace *out of the repository*: measured, **nine files written into
+an unrelated directory, reported as success**. The refusal that exists to protect a curated layer walked
+straight through the one arrangement that defeats it. `lstatSync` now, with a symlink anywhere on the
+chain treated as a collision rather than resolved and permitted — resolving it would mean judging
+whether a destination is "really" inside the repository, which is a containment judgement with a bad
+failure mode, where refusing has none. `doctor` and `plugin-lint` already held this rule; it arrived
+late at the one tool that **writes**, where it matters most.
+
+**How it was nearly missed is worth more than the fix.** I checked round 4 for new inline comments
+filtered on the login `Copilot` — and this thread is authored by `copilot-pull-request-reviewer`. Two
+logins for one actor, which [[portulan-gotchas]] already records, and the filter I reached for was the
+wrong one. The round looked empty because the sweep asked the wrong question, not because there was
+nothing there. **Sweep threads via GraphQL `reviewThreads`, never by filtering `/pulls/N/comments` on an
+author name.**
+
+Fixing the escape also made the refusal unreadable — one symlinked `.portulan` blocks all ten drafted
+files, and the message named the same cause ten times. Grouped by cause now: a refusal nobody finishes
+reading is a refusal that failed to explain.
+
+**Why rounds 3 and 4 were fixed rather than triaged:** every one is a defect this pull request
+introduced; round 3's first was a false claim in a comment, and round 4's is a write outside the
+repository. The bound exists to stop the loop growing on *new* input. It was never meant to let a
+session ship its own falsehood, or its own escape, because the counter ran out.
 
 ## The four rulings this session opened with
 

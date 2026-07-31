@@ -606,6 +606,44 @@ describe("nothing init writes over, and nothing it half-writes", () => {
         assert.equal(manifestAt, files.size - 1, "workspace.json must be the last file written, not the first");
     });
 
+    test("a `.portulan` symlink cannot carry the draft out of the repository", async () => {
+        // Demonstrated on the pull request against the first version of this check, which used
+        // `existsSync`/`statSync` — both follow symlinks. `init` wrote NINE files into a directory
+        // outside the repository and reported success. The tool that writes needs the containment
+        // rule at least as much as the tools that read, and `doctor`/`plugin-lint` already have it.
+        const dir = scratch();
+        const outside = scratch();
+        fs.symlinkSync(outside, path.join(dir, ".portulan"));
+        const h = harness();
+        assert.equal(await run(["--residence", "in-repo", dir], h.options), 2);
+        assert.match(h.warned.join("\n"), /symlink/);
+        assert.deepEqual(fs.readdirSync(outside), [], "not one byte may be written through the link");
+    });
+
+    test("a symlink NESTED inside .portulan is refused too, not just the root one", async () => {
+        // The sibling of the case above: refusing only `.portulan` would leave `.portulan/verify`
+        // as an unguarded route to exactly the same escape.
+        const dir = scratch();
+        const outside = scratch();
+        fs.mkdirSync(path.join(dir, ".portulan"));
+        fs.symlinkSync(outside, path.join(dir, ".portulan", "verify"));
+        const h = harness();
+        assert.equal(await run(["--residence", "in-repo", dir], h.options), 2);
+        assert.match(h.warned.join("\n"), /symlink/);
+        assert.deepEqual(fs.readdirSync(outside), []);
+    });
+
+    test("a dangling symlink is refused rather than written over", () => {
+        // `existsSync` returns FALSE for a dangling link, so the old check would have walked straight
+        // past this one and created the file at the link's target. `lstatSync` sees the link itself.
+        const dir = scratch();
+        fs.mkdirSync(path.join(dir, ".portulan"));
+        fs.symlinkSync(path.join(dir, "nowhere"), path.join(dir, ".portulan", "identity.md"));
+        const files = draft({ residence: "in-repo", name: "acme", cycle: true, checkpoints: "rituals/checkpoints" }, scan(dir));
+        const found = collisions(dir, files);
+        assert.ok(found.some((c) => c.rel === ".portulan/identity.md" && /symlink/.test(c.why)));
+    });
+
     test("collisions reports the path AND the reason, so a refusal can be acted on", () => {
         const dir = scratch({ ".portulan/identity.md": "mine\n" });
         const files = draft({ residence: "in-repo", name: "acme", cycle: true, checkpoints: "rituals/checkpoints" }, scan(dir));

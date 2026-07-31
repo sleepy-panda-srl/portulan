@@ -1880,4 +1880,4 @@ _The seam applies here too: no client-identifying references._
   **NOT delivered and claimed nowhere: clause (a)'s session-end wire** (runner in no adopter artifact)
   **and the handoff-index rail**. **Running the tool caught what reading it could not:** a drafted policy
   that parsed and compiled to a floor no rule reached, then six more at pre-commit — two destructive, a
-  hand-written file overwritten and a partial write wedging its own retry. Swept 8 carriers + one false on `main`: the boot skill said *"there is no CLI"*. Suite 850, eight recipes, `npm pack` 74/74. · Fidelity: session-open A-W-A (8), pre-commit A-W-A (9), all folded. Seam scan clean. Handoff: [`2026-07-31-init-asks…`](../.portulan/handoffs/2026-07-31-init-asks-and-refuses-to-guess.md).
+  hand-written file overwritten and a partial write wedging its own retry. Swept 8 carriers + one false on `main`: the boot skill said *"there is no CLI"*. Suite 853, eight recipes, `npm pack` 74/74. · Fidelity: session-open A-W-A (8), pre-commit A-W-A (9), all folded. Seam scan clean. Handoff: [`2026-07-31-init-asks…`](../.portulan/handoffs/2026-07-31-init-asks-and-refuses-to-guess.md).
