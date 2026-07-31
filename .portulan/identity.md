@@ -38,9 +38,9 @@ Deliberately thin, and it stays thin:
 | Verify recipes | Bash + POSIX text utilities; every recipe but `docs` also needs `node`, and `workflow-filters` needs `jq` | now |
 | Workspace Definition | JSON Schema — a named subset — with JSON manifests | now |
 | `doctor` · `plugin-lint` · `compile` · `index` · `librarian` | Zero-dependency JavaScript on Node, run from the repository | now — [`../cli/`](../cli/) |
-| Tests | `node --test`, node's own runner — no framework, no install | now — every `*.test.mjs` under [`../cli/`](../cli/), eight as of milestone 7 |
+| Tests | `node --test`, node's own runner — no framework, no install | now — every `*.test.mjs` under [`../cli/`](../cli/), nine as of milestone 7 session 1 |
 | Plugin packaging | Claude Code plugin + marketplace manifests, engine skills, personas as agents | now — [`../plugin/`](../plugin/) and [`../.claude-plugin/`](../.claude-plugin/) |
-| CLI | **Zero-dependency ESM on Node** via `npx`, ruled 2026-07-31 against this row's earlier *TypeScript on Node* — a build step would end the property the paragraph below protects. One entry over the six `docs/vision.md` names, dispatching to `doctor`, `compile` and `index`; `plugin-lint` and `librarian` are on no milestone-7 list and adding a seventh is the maintainer's call | **partly now** — [`../cli/portulan.mjs`](../cli/portulan.mjs); `init`, `vendor` and `upgrade` exit 2 until later milestone-7 sessions |
+| CLI | **Zero-dependency ESM on Node** via `npx`, ruled 2026-07-31 against this row's earlier *TypeScript on Node* — a build step would end the property the paragraph below protects. One entry over the six `docs/vision.md` names, dispatching to `init`, `doctor`, `compile` and `index`; `plugin-lint` and `librarian` are on no milestone-7 list and adding a seventh is the maintainer's call | **partly now** — [`../cli/portulan.mjs`](../cli/portulan.mjs); `vendor` and `upgrade` exit 2 until later milestone-7 sessions |
 
 No framework, no build step, no service, and nothing installed before it runs **from a checkout** —
 which is the property, stated with the boundary the CLI put on it. `package.json` exists as of

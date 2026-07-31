@@ -153,6 +153,17 @@ keeps, and that page argues why: every entry there is a dependency between two k
   second workspace at the same name is still refused.
 - **Nothing resolves a pointer.** `doctor` and the boot skill read `governed_by` and report it; neither
   fetches. Resolving it needs a host's plugin cache, which is discovery, which is milestone 7's.
+- **A `.portulan/` directory holding files but NO manifest is not a residence — and is still never
+  written over.** _(Ruled by the maintainer 2026-07-31, when `init` was built and its first cut silently
+  replaced a hand-written `gate-map.md`.)_ The rule above turns on the **manifest**, which is what
+  declares a workspace and what the boot resolves; a directory of loose files declares nothing and
+  governs nothing, so calling it a residence would be a claim the tree cannot support. But *is this
+  repository governed?* and *is it safe to write here?* are two questions with two keys, and answering
+  the second with the first is how a tool destroys a human's curated layer while correctly reporting
+  that no workspace was present. `init` therefore refuses on **any** collision, names each path, and
+  offers no `--force`: a flag that overwrites files is the flag that eventually overwrites the wrong
+  ones. Recorded here rather than only in that session's handoff because it is a **definition**, and a
+  definition that lives in one session's record is one the next session re-argues.
 
 ## What this deliberately does not do
 

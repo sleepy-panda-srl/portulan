@@ -115,10 +115,13 @@ what it *enforces* is the thing an agent must not paper over:
   either way is the platform floor beneath — branch protection, required checks — where the team has
   configured one, and it is the only layer indifferent to how a command was spelled.
 - **Memory has no generated index.** Recall means reading the directory.
-- **There is no CLI, so nothing drafts a workspace for a team that has none.** `init` — the interview
-  and codebase scan that produces a draft for a human to curate — plus `compile`, `vendor`, `index` and
-  `upgrade`, all arrive with the CLI at a later milestone. What exists today is `doctor`, which validates
-  a workspace somebody has already written.
+- **The CLI is not published, so nothing is one `npx` away.** Four of the six subcommands are built and
+  run from a checkout — `init`, which drafts a workspace for a team that has none, plus `doctor`,
+  `compile` and `index`. `vendor` and `upgrade` are not built and exit 2 naming where they arrive. What
+  `init` drafts is a **draft**: a human curates it, and its verify recipe exits 2 until they say what
+  green means for their repository. _(This bullet said "there is no CLI" and listed `compile` and
+  `index` as arriving later; both had shipped at milestones 4 and 5, and the entry point at milestone 7.
+  Corrected at milestone 7 session 1, where the sweep that built `init` found it.)_
 
 State which of these apply to the workspace you just loaded, using its own documents. If a document
 claims an enforcement that does not exist, that is a defect worth reporting, not a detail to smooth

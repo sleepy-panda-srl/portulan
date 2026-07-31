@@ -7,11 +7,11 @@
 //
 // ## What it is NOT
 //
-// **Not a reimplementation.** `doctor`, `compile` and `index` already exist and are exercised by
-// their own suites; this dispatches to them and adds nothing to what they do. A wrapper that
-// re-derived any part of their behaviour would be a second carrier of one fact, which is the defect
-// this repository names more often than any other — so the dispatch imports each tool's exported
-// `run` and returns its exit code untouched.
+// **Not a reimplementation.** `doctor`, `compile`, `index` and `init` each live in their own file and
+// are exercised by their own suites; this dispatches to them and adds nothing to what they do. A
+// wrapper that re-derived any part of their behaviour would be a second carrier of one fact, which is
+// the defect this repository names more often than any other — so the dispatch imports each tool's
+// exported `run` and returns its exit code untouched.
 //
 // **Not a home for the two tools that are off the list.** `plugin-lint` and `librarian` exist in
 // `cli/` and are deliberately absent here. `docs/vision.md` names six, it is human-owned, and
@@ -20,11 +20,11 @@
 // does not own. They stay runnable exactly as they are today — `node cli/plugin-lint.mjs …` — and
 // every verify recipe still invokes them that way.
 //
-// ## Three of the six are not built
+// ## Two of the six are not built
 //
-// `init`, `vendor` and `upgrade` are milestone 7 work that has not landed. They are listed, and
+// `vendor` and `upgrade` are milestone 7 work that has not landed. They are listed, and
 // they exit **2 — could not run**, naming what is missing. The alternative shapes were both worse:
-// hiding them makes the package look like a three-command tool and the row like it is further along
+// hiding them makes the package look like a four-command tool and the row like it is further along
 // than it is, and stubbing them to exit 0 would be a fail-open in the one place a user is most
 // likely to trust silence. "Nothing looked" is never "nothing wrong" — the same three-code
 // discipline the verify recipes hold (`.portulan/memory/verify-preconditions-fail-closed.md`).
@@ -72,9 +72,8 @@ export const VERSION = (() => {
 export const SUBCOMMANDS = [
     {
         name: "init",
-        module: null,
-        arrives: "milestone 7, a later session",
-        summary: "interview + codebase scan → a drafted workspace the human curates",
+        module: "init.mjs",
+        summary: "draft a workspace for a repository that has none",
     },
     {
         name: "doctor",
@@ -171,7 +170,7 @@ export async function run(argv, options = {}) {
 
     // Loaded on demand, never at startup. Two reasons and both are measured elsewhere in this
     // repository: a tool that fails to parse takes down only its own subcommand rather than the
-    // whole command line, and the three modules together are large enough that eagerly importing
+    // whole command line, and the built modules together are large enough that eagerly importing
     // them would make `portulan --help` pay for `doctor`.
     let module;
     try {
@@ -182,7 +181,7 @@ export async function run(argv, options = {}) {
     }
 
     if (typeof module.run !== "function") {
-        // A guard rather than an assumption. The three tools export `run` today; if one stops, the
+        // A guard rather than an assumption. Every built tool exports `run` today; if one stops, the
         // failure must name itself here instead of surfacing as `module.run is not a function`.
         warn(`portulan: ${entry.module} does not export a \`run\` function — refusing to guess at its entry point.`);
         return 2;
