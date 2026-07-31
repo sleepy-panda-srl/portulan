@@ -52,7 +52,7 @@ next step; and `cli/README.md`'s claim that `init` is *exercised through the ent
 the only entry-point coverage was the run-export check — so the claim was made true with a real
 dispatch test rather than softened to match.
 
-## The loop record — seven rounds, and the bound bent only where session 0's precedent allows
+## The loop record — eight rounds, and the bound bent only where session 0's precedent allows
 
 **Round 1, one thread, real.** `resolveAnswers` returned `packRoots` unnormalised, so an answers file
 giving `"pack-root"` as a single string — which the value check accepts, like every other string key —
@@ -141,12 +141,18 @@ permissions problem to **repair their JSON**. A refusal that misdescribes what i
 than no refusal, because it sends the reader somewhere real and wrong. `residenceAt` now carries *which
 kind* of unreadable it met, and the two cases get different sentences.
 
-**Why rounds 3–7 were fixed rather than triaged:** every one is a defect this pull request introduced.
+**Round 8, one note, minor and still real.** The usage-screen test's `find` returns `undefined` when the
+formatting moves, and `assert.doesNotMatch(undefined, …)` throws a **TypeError** — a failure that tells
+the next reader about assert's argument checking rather than about the missing line. An `assert.ok` in
+front of it. Small, and it is the same principle as everything above: a check whose failure does not say
+what is wrong has spent its cost without buying the thing checks are for.
+
+**Why rounds 3–8 were fixed rather than triaged:** every one is a defect this pull request introduced.
 Round 3's first was a false claim in a comment; round 4's was a write outside the repository; round 5's
 was the module contradicting its own stated stance; round 6's was round 4's own fix, incomplete; round 7's was a fail-open in both walkers at once. The
 bound exists to stop the loop growing on *new* input. It was never meant to let a session ship its own
 falsehood, its own escape, its own contradiction, or its own half-fix because the counter ran out.
-**What would be triaged is the first finding that is not this change's fault** — and none of the seven was.
+**What would be triaged is the first finding that is not this change's fault** — and none of the eight was.
 
 ## The four rulings this session opened with
 

@@ -180,6 +180,11 @@ test("the usage screen lists all six and marks the unbuilt ones", () => {
     assert.equal((text.match(/not built/g) ?? []).length, unbuilt.length);
     for (const entry of SUBCOMMANDS.filter((s) => s.module)) {
         const line = text.split("\n").find((l) => l.trim().startsWith(entry.name));
+        // The `ok` first, because `find` returns undefined when the usage screen's formatting moves
+        // and `doesNotMatch(undefined, …)` throws a TypeError — a failure that tells the next reader
+        // about assert's argument checking rather than about the missing line. Found by review on the
+        // pull request.
+        assert.ok(line, `usage lists no line for the built subcommand \`${entry.name}\``);
         assert.doesNotMatch(line, /not built/, `${entry.name} is built and must not be marked otherwise`);
     }
     assert.match(text, /docs\/vision\.md names six/);
