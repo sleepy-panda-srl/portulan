@@ -809,11 +809,24 @@ function awkPrograms(file, text) {
             if (assign) assigns.set(assign[1], assign[2]);
         }
 
-        // The shell's own join, and the reason it is safe here: a `\` at end of line is a
-        // continuation only outside quotes, and no single-quoted program in these workflows ends a
-        // line with one. If that ever stops being true, the token audit below is what says so —
-        // a corrupted program stops matching AWK_CALL and the two counts disagree.
-        const joined = code.map(({ text: line }) => line).join("\n").replace(/\\\n\s*/g, " ");
+        // The shell's own join — with the NEWLINE KEPT and only the backslash dropped, which is the
+        // difference between a report that cites the right line and one that does not.
+        //
+        // The first cut collapsed `\` + newline into a single space, the way the shell does. That is
+        // faithful to the shell and wrong for this reader, because the line of a match is recovered
+        // by counting newlines before it: every collapsed continuation shifted every later program's
+        // reported line, and the four programs in `copilot-review.yml` were reported at 334, 335,
+        // 365 and 369 when they sit at 366, 368, 388 and 414. A diagnostic that sends a reader to
+        // the wrong line is worse than one that gives none, because the wrong line looks like an
+        // answer. Raised as a suppressed note by Copilot on #147 — correctly, and it understated it:
+        // the note predicted a shift for *later* calls, and in fact all four were wrong.
+        //
+        // Dropping the backslash and keeping the newline preserves the count exactly, and AWK_CALL
+        // still matches across it: the continuation only ever sits between the `-v` bindings and the
+        // quoted program, where the pattern already allows any whitespace. It never falls inside a
+        // single-quoted program — and if it ever did, the token audit below is what says so, since a
+        // corrupted program stops matching AWK_CALL and the two counts disagree.
+        const joined = code.map(({ text: line }) => line).join("\n").replace(/\\\n/g, " \n");
         const tokens = (joined.match(AWK_TOKEN) ?? []).length;
         if (tokens === 0) continue;
         seen += tokens;

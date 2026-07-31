@@ -63,11 +63,18 @@ newest would have been the same mistake in a newer costume.** The matcher now ke
 carrying the one word all four share, and — the half that matters more — `none` is licensed by that
 word being **absent from the whole body** rather than by a marker failing to match.
 
-**Four false zeros measured from this repository's own run logs:** #145, #144 twice, #137. Every note
-has since been addressed, all four **by hand**, and nothing guaranteed it. One of them, on #140, was
-about `spec/pack.schema.json:57` — the exact sentence #147 rewrites — and merged unanswered.
+**Four false zeros measured from this repository's own run logs:** #145, #144 twice, #137 — those four
+and no others. Every one of their notes has since been addressed, all four **by hand**, and nothing
+guaranteed it.
 
-**#140's own zero is a different hole and must not be filed with the others.** Its "none" was reported
+**#140 is NOT in that set, and the paragraph above said it was until Copilot caught the contradiction
+on this pull request's third round.** Its note — about `spec/pack.schema.json:57`, the exact sentence
+#147 rewrites, and it merged unanswered — was missed for a different reason, which is the next
+paragraph and the reason the sentence had to move rather than be softened. Naming a wrong cause for a
+real miss is worse than not naming one: it sends the next repair at the matcher, which is not what
+failed.
+
+**#140's zero is a different hole and must not be filed with the others.** Its "none" was reported
 at 05:32:53Z; the note-bearing review arrived at 05:36:45Z, four minutes later, with no further round.
 **A review landing after the last parse is invisible to any body matcher**, old or new. That is the
 *awaited* half of `copilot-review.yml`'s own subject arriving for the notes channel, and nothing closes
