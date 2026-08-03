@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // The PreToolUse gate runner — the *explanation* half of the enforcement compiler.
 //
-// Wired by `../../cli/compile.mjs` into `.claude/settings.json`. It reads the host's hook payload on
+// Wired by `./compile.mjs` into `.claude/settings.json`. It reads the host's hook payload on
 // stdin, finds which rule in `.portulan/gates.json` the attempted action matches, and returns that rule's
 // own sentence as the decision reason.
 //
@@ -50,7 +50,7 @@
 //   2. A SHELL WRITE to a path a `write:` rule protects. `Edit(./docs/vision.md)` denies three
 //      tools, and `echo x >> docs/vision.md` is a fourth way to the same bytes. `matchesRule` now
 //      answers for `Bash` on a write rule, by a table of redirections and file-writing commands
-//      that `../../cli/compile.mjs` states in full.
+//      that `./compile.mjs` states in full.
 //
 // Two layers, two jobs: the permission rule cannot fail open, and this one covers more ground.
 // **The second case above is the uncomfortable one**, and it is named in `../gate-map.md`'s

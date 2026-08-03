@@ -11,7 +11,7 @@ repository's `package.json`.
 **Five of the eight dispatch; three exit 2.** `doctor`, `compile` and `index` exist because milestones
 2, 4 and 5 needed them; `init` was built at milestone 7 session 1 and `new` at session 2. The entry
 point calls each one's exported `run` and returns the code unchanged. `vendor`, `upgrade` and
-`feedback` are named — the first two in `docs/vision.md`, the third in row 7 — are not built, and say
+`feedback` are named in `docs/vision.md` — all three — are not built, and say
 so: they exit **2 — could not run**, naming where they arrive, because a stub exiting 0 would be a
 fail-open where a user is most likely to trust silence.
 
@@ -45,7 +45,7 @@ the entry point, which is the same rule expressed in code rather than in a sente
 | [`compile.test.mjs`](compile.test.mjs) | Its test suite, likewise written first. Emission fidelity only — nothing in here can establish that a host *honours* what the compiler emits, which is a fact about a running host. |
 | [`index.mjs`](index.mjs) | The index generator, over **two** series since Workspace Definition 2.5: the memory store, which is size-budgeted so a breach is a red, and the handoff series, which is not — an append-only series has no consolidation to offer, so every remedy a budget could ask for is already barred. Every field on every line is derived from what it points at, so neither file has a hand-maintained half; the *carriers* differ per series and on evidence, a record's title being its filename and a handoff's its H1. It writes an over-budget index rather than refusing to — the remedy is consolidation, and consolidating needs the artifact to consolidate from. |
 | [`index.test.mjs`](index.test.mjs) | Its test suite, written first. Derivation, drift and cost only — nothing in here can establish that the index is any good at *recall*, which is an eval question. |
-| [`stop-gate.test.mjs`](stop-gate.test.mjs) | The exception to "written first": it covers the Stop-gate runner ([`../.portulan/cli/stop-gate.mjs`](stop-gate.mjs)), and it exists because a supervisor found a fail-open and a forever-block in a runner nothing tested at all. Its cap arithmetic and date handling — deliberately not its I/O. |
+| [`stop-gate.test.mjs`](stop-gate.test.mjs) | The exception to "written first": it covers the Stop-gate runner ([`stop-gate.mjs`](stop-gate.mjs)), and it exists because a supervisor found a fail-open and a forever-block in a runner nothing tested at all. Its cap arithmetic and date handling — deliberately not its I/O. |
 | [`librarian.mjs`](librarian.mjs) | The scheduled librarian's pass: reindex over both series, record age from git, the sealed-stamp re-validation nag, proposal nagging, demotion drafts, **mining** — incidents nothing in the curated layer points back at, and paths pull-request reviewers keep leaving findings on — and **consolidation**, read as budget distance plus the records citing one incident. The one tool here that reads **history** — `doctor` reads the tree and says so — which is why it belongs to a scheduled job rather than to a verify recipe: a check that reads history is a false-red generator in a shallow checkout. It renders no verdict, so it has no exit 1, and it **writes nothing itself**: the command writes, and only after the pass's own handoff is on disk, because that handoff is a member of the series one of the indexes covers. |
 | [`librarian.test.mjs`](librarian.test.mjs) | Its test suite, written first, on real scratch git repositories rather than an injected clock — a fake history proves nothing about the one call this tool exists to make. |
 | [`fixtures/`](fixtures/) | Known-bad manifests, and a workspace whose repo card has drifted from its tree. |
@@ -100,7 +100,7 @@ recipe the manifest declares.
 
 - **`doctor` never runs a verify recipe.** It reads them — which is why a recipe needing a tool it did
   not declare still passes it. Executing one is the Stop-gate runner
-  ([`../.portulan/cli/stop-gate.mjs`](stop-gate.mjs), milestone 4), and it runs the
+  ([`stop-gate.mjs`](stop-gate.mjs), milestone 4), and it runs the
   *default* recipe only.
 - **It never dereferences a link.** "Resolvable" means well-formed. A gate that needs the network fails
   for reasons unrelated to the change under test.

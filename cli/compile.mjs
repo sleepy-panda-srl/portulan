@@ -963,9 +963,16 @@ export function claudeCode(parsed, options = {}) {
     // So the path is derived from where THIS file actually is at compile time and expressed relative to
     // the project when it lands inside it — covering 1 and 2 with one rule rather than two special
     // cases. For 3 there is no project-relative spelling that exists, so an absolute path is emitted and
-    // `refused` records that the hook is pinned to this machine. Naming that is the point: a hook
-    // silently pinned to an absolute path is a policy that stops working when the package moves, and
-    // finding out by having no gate is the worst way to find out.
+    // a **note** records that the hook is pinned to this machine — see the `pinned` push below. Naming
+    // that is the point: a hook silently pinned to an absolute path is a policy that stops working when
+    // the package moves, and finding out by having no gate is the worst way to find out.
+    //
+    // This sentence said `refused` for one round, and `refused` carries rule-level compilation refusals
+    // only — nothing ever added the runner path to it. The pre-commit checkpoint found the recording
+    // missing entirely; the fix added it on the `notes` channel and left this line still naming the
+    // wrong one, so a reader following the comment would have looked in a place that never holds it.
+    // Copilot's round caught the remainder. A fix that leaves its own explanation pointing elsewhere is
+    // half a fix.
     const runnerDir = path.dirname(fileURLToPath(import.meta.url));
     // The project this policy is being compiled FOR. `claudeCode` is handed a parsed policy and not a
     // location, so the caller may say; `cwd` is the honest default because `compile` is run from the
