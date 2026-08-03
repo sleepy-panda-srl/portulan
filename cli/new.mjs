@@ -667,14 +667,26 @@ function wiring(kind, name, category, target) {
     switch (kind) {
         case "gate-policy":
             return ["", `Nothing reads it yet: add \`"gates": "${name}.json"\` to the workspace's \`workspace.json\`, then \`portulan compile\`.`];
-        case "skill":
-            // Conditional, because the unconditional form was a claim about a file that may not exist:
-            // `new skill --into <a plain directory>` printed "`contributes.skills` already declares it"
-            // with no `pack.json` anywhere. A tool asserting something about a manifest it did not read
-            // is the same defect class as prose asserting something about a tree nobody checked.
-            return ["", fs.existsSync(path.join(target ?? ".", "pack.json"))
-                ? "It is inside the pack's `skills/` root, which `contributes.skills` already declares — no manifest edit needed."
-                : "There is no `pack.json` here, so nothing declares this skill yet. Run `portulan new pack <name> --category <c>` and put the skill inside it, or add a `contributes.skills` root to the pack that should ship it."];
+        case "skill": {
+            // **Say only what was actually checked.** The previous version read whether a `pack.json`
+            // EXISTED and then made a claim about what it DECLARES — which is the same defect one level
+            // down: a pack declaring `contributes.skills: ["parts/"]` was told `skills/` is "already
+            // declared", and a skill landing under a declared root was told nothing declares it. Found
+            // by review, inside the fix for that exact class.
+            let roots = null;
+            try {
+                roots = JSON.parse(fs.readFileSync(path.join(target ?? ".", "pack.json"), "utf8"))?.contributes?.skills ?? [];
+            } catch {
+                roots = null;
+            }
+            if (roots === null) {
+                return ["", "No readable `pack.json` in that directory, so nothing declares this skill yet — put it inside a pack, or add a `contributes.skills` root to the pack that should ship it."];
+            }
+            if (roots.some((r) => String(r).replace(/\/+$/, "") === "skills")) {
+                return ["", "The pack declares `skills/` in `contributes.skills`, which is where this landed — no manifest edit needed."];
+            }
+            return ["", `That pack declares ${roots.length} skills root(s) and none of them is \`skills/\`, so nothing declares this skill yet — add a root that covers it, or move the skill.`];
+        }
         case "persona":
             return ["", `Nothing reads it yet: add \`"personas/${name}.md"\` to the pack manifest's \`contributes.personas\`.`];
         case "pack":

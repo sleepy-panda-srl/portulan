@@ -65,5 +65,6 @@ leave the repository governed by exactly one of them, never zero and never two.
 `upgrade` · verify-recipe composition · clause (b)'s parity · `feedback` · `init`'s interview loop · the
 agent-legibility score · pack-cache discovery ([#123](https://github.com/sleepy-panda-works/portulan/issues/123)) ·
 the **persona↔agent binding** check (the one row-7 validation family session 2 did not deliver, and the
-smallest remaining item) · and **six** demonstrations, not four — amendment 4's composed-recipe
-demonstration and clause (c)'s parity clause are row-owed and were missed by session 2's first plan.
+smallest remaining item) · and the row's **six** demonstrations, of which this task carries D4 — the enumeration is pinned in
+[`../../docs/milestones/m07.md`](../../docs/milestones/m07.md), because the number was claimed as four,
+six and seven before anything on the page settled it.
