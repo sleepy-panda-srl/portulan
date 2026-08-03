@@ -34,6 +34,11 @@ import { parse, backends, resolvePack, packRoots } from "./compile.mjs";
 // The containment test the memory-index siting rule turns on, imported for the reason directly
 // above: the copy that used to live here drifted into the identical fail-open as the original.
 import { isInside, recordType } from "./index.mjs";
+// One frontmatter parser for this repository, not two. `plugin-lint` minted it and has the tests that
+// pin its edges — an unterminated block, a block that is not first, a value with a colon in it — and a
+// second implementation here would be a second carrier of one contract, which is the defect this
+// repository names more often than any other.
+import { parseFrontmatter } from "./plugin-lint.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const DEFAULT_SCHEMA = path.resolve(HERE, "..", "spec", "workspace.schema.json");
@@ -536,6 +541,298 @@ const PATH_SLOTS = {
  * `$id` shapes differ deliberately (`/spec/2.5/` and `/spec/pack/1.0/`), and a single regex loose
  * enough to read both would read `/spec/pack/1.0/` as Workspace Definition version 1.0.
  */
+/**
+ * The five parts `core/personas/README.md` fixes, each with the pattern that finds it and the word a
+ * failure must use so a reader learns **which** part is missing rather than that "the contract" is unmet.
+ *
+ * The `tools:` allow-list is frontmatter and the other four are sections, which is why the first entry
+ * is matched differently — it is a field, not a heading, and a persona that writes it as a heading has
+ * not declared a tool grant a host can read.
+ */
+const PERSONA_PARTS = [
+    { part: "a `tools:` allow-list", find: (fields) => typeof fields?.tools === "string" && fields.tools.trim().length > 0 },
+    { part: "a Charter section", find: (_f, body) => /^##\s+Charter\b/im.test(body) },
+    { part: "an Autonomy reach section", find: (_f, body) => /^##\s+Autonomy reach\b/im.test(body) },
+    { part: "a Memory scope section", find: (_f, body) => /^##\s+Memory scope\b/im.test(body) },
+    { part: "a Read / write posture section", find: (_f, body) => /^##\s+Read\s*\/\s*write posture\b/im.test(body) },
+];
+
+/**
+ * How deep a declared skills root is walked, and it is a bound rather than a recursion.
+ *
+ * **Three, matching `cli/plugin-lint.mjs`'s `MAX_DECLARED_SKILL_DEPTH`.** The first cut here was 1 and
+ * cited `.portulan/tasks/0008-a-declared-skills-path-sees-one-level-down.md` as fixing it — which that
+ * task does not do: it fixes plugin-lint's bound, in a different tool, at 3. Two walkers over the same
+ * declared key disagreeing about how deep a skill may sit is the sibling-divergence class this
+ * repository already has a rule for, so the number is shared rather than independently chosen, and the
+ * task is cited for the *shape* it fixes rather than for a number it never gave this tool.
+ *
+ * **The bound reports when it stops.** That sentence was in this comment before it was true — the walk
+ * returned silently at the limit, so a pack whose only skill sat below it was reported as a root with
+ * nothing in it, and a skill with a bad name and an empty description passed. Found by the pre-commit
+ * checkpoint. Task 0008's own acceptance criterion is that a validator reaching the limit says so
+ * rather than reporting an absence it did not establish.
+ */
+const SKILL_DEPTH = 3;
+
+/**
+ * Open and validate what a pack contributes: its skills' frontmatter and its personas' five-part
+ * contract. Returns what was actually opened, so the caller's report line can say *opened* rather than
+ * *declared* — the distinction the whole check exists to make.
+ *
+ * **Containment is checked after resolution, never by pattern.** `spec/pack.schema.json` bars only the
+ * leading `../` form and says so in its own text; `a/../../x` matches it and still escapes, and a symlink
+ * matches nothing until it is followed. `cli/index.mjs` already models the answer for personas —
+ * `realpathSync` on both the pack directory and the file, compared after resolution — and this is that
+ * rule applied to the half of the manifest nothing had opened.
+ */
+export function validateContributions(packDir, contributes, { fail, report, pack }) {
+    let realPack;
+    try {
+        realPack = fs.realpathSync(packDir);
+    } catch (cause) {
+        fail("packs", `\`${pack}\` resolved to a directory that cannot be realpathed — ${cause.code ?? cause.message}`);
+        return { skills: 0, personas: 0 };
+    }
+
+    const inside = (target) => {
+        let real;
+        try {
+            real = fs.realpathSync(target);
+        } catch {
+            return null;
+        }
+        return real === realPack || real.startsWith(`${realPack}${path.sep}`) ? real : false;
+    };
+
+    let skills = 0;
+    let unreadableRoots = 0;
+    for (const rel of contributes.skills ?? []) {
+        const root = path.join(packDir, rel);
+        const contained = inside(root);
+        if (contained === false) {
+            fail(
+                "packs",
+                `\`${pack}\` declares the skills root \`${rel}\`, which resolves outside the pack. A pack reaching into the adopter's tree ` +
+                    `is the one direction the cascade does not run, and the path pattern bars only the leading \`../\` form — this is the check after resolution`,
+            );
+            continue;
+        }
+        if (contained === null) {
+            fail("packs", `\`${pack}\` declares the skills root \`${rel}\`, which could not be resolved`);
+            continue;
+        }
+        const found = walkSkills(contained, { fail, report, pack, rel });
+        // `null` means the walk could not look, which is NOT zero. Summing it as zero would put "0
+        // skill(s)" in the report line over a root nothing opened — the same "nothing looked recorded as
+        // nothing wrong" the walker itself refuses, arriving one layer out in the sentence a reader
+        // actually reads. Found by the test written for the walker, which is the argument for testing the
+        // report line and not only the finding.
+        if (found === null) unreadableRoots += 1;
+        else skills += found;
+    }
+
+    let personas = 0;
+    for (const rel of contributes.personas ?? []) {
+        const file = path.join(packDir, rel);
+        const contained = inside(file);
+        if (contained === false) {
+            fail("packs", `\`${pack}\` declares the persona \`${rel}\`, which resolves outside the pack`);
+            continue;
+        }
+        if (contained === null) {
+            fail("packs", `\`${pack}\` declares the persona \`${rel}\`, which is not there`);
+            continue;
+        }
+        let text;
+        try {
+            text = fs.readFileSync(contained, "utf8");
+        } catch (cause) {
+            fail("packs", `\`${pack}\`'s persona \`${rel}\` could not be read — ${cause.code ?? cause.message}. Only a missing file means absent`);
+            continue;
+        }
+        validatePersona(text, { fail, pack, rel });
+        personas += 1;
+    }
+
+    return { skills, personas, unreadableRoots };
+}
+
+/**
+ * One persona against the five-part contract, plus the tier no role may claim.
+ *
+ * **What this checks is PRESENCE, and that is narrower than "validated".** Four of the five parts are
+ * matched as headings, so a persona whose Charter, Autonomy reach, Memory scope and Read/write posture
+ * sections are all empty passes; and `tools:` is satisfied by any non-empty value, so `tools: []` passes.
+ * Both measured at the pre-commit checkpoint. The distinction matters because `core/operating/memory.md`
+ * frames this milestone as where a declared memory scope stops being prose a checker can read but not
+ * honour — a heading check reads it and does not honour it, and the sentence saying so belongs beside the
+ * check rather than only in the milestone's record.
+ */
+export function validatePersona(text, { fail, pack, rel }) {
+    const { fields, error } = parseFrontmatter(text);
+    if (!fields) {
+        fail("packs", `\`${pack}\`'s persona \`${rel}\` has no usable frontmatter${error ? ` — ${error}` : ""}, so it declares no \`tools:\` allow-list`);
+        return;
+    }
+    for (const { part, find } of PERSONA_PARTS) {
+        if (!find(fields, text)) {
+            fail("packs", `\`${pack}\`'s persona \`${rel}\` is missing ${part} — the five-part contract core/personas/README.md fixes`);
+        }
+    }
+    // Prohibited is the one tier no role may act in, so a persona declaring it as a reach claims a
+    // permission that does not exist for anyone.
+    //
+    // **The first cut of this check flagged the word anywhere in the reach section, and its first run
+    // false-redded this repository's own `checkpoints` supervisor** — whose reach section says
+    // *"**Prohibited is not a reach** and does not appear here"*. That file is obeying the rule by
+    // explaining it, and the checker could not tell disclaiming from claiming. A false red is the failure
+    // that gets a whole recipe switched off (`.portulan/memory/` records `json.sh` costing exactly that),
+    // so the matcher is narrowed to an affirmative mention.
+    //
+    // **The limit, restated after the pre-commit checkpoint measured it WIDER than the first wording
+    // admitted.** This is a prose heuristic and prose defeats it. The splitter breaks on sentence
+    // punctuation and blank lines, so a *block* — a bullet list, which is the ordinary way a reach
+    // section is written — counts as one unit: a negation **anywhere in the same block** suppresses the
+    // finding, not merely one in the same sentence. Both of these pass:
+    //
+    //     - Acts in Prohibited
+    //     - This role does not merge
+    //
+    //     Reach is Prohibited, and there is no ceiling above it
+    //
+    // The structural fix is a declared reach *field* the way `tools:` is a field — a persona-contract
+    // change, and not an implementer's to make. Named at this width so the gap is visible instead of
+    // assumed covered, which is the rule `core/operating/verification.md` legislates.
+    const reach = text.split(/^##\s+Autonomy reach\b.*$/im)[1]?.split(/^##\s/m)[0];
+    if (reach && claimsProhibited(reach)) {
+        fail(
+            "packs",
+            `\`${pack}\`'s persona \`${rel}\` names Prohibited in its Autonomy reach without disclaiming it. Prohibited is the one tier no ` +
+                `role may act in — a persona claiming it claims a permission nobody has (core/personas/README.md)`,
+        );
+    }
+}
+
+/** Walk one declared skills root to the fixed depth, validating each `SKILL.md` frontmatter. */
+function walkSkills(root, { fail, report, pack, rel }, depth = 0) {
+    let found = 0;
+    const own = path.join(root, "SKILL.md");
+    // `lstat`, not `existsSync` — the latter FOLLOWS links, and a `SKILL.md` symlinked out of the pack
+    // under a contained root was opened, validated and counted as the pack's own. Containment covered the
+    // declared root and not the files found beneath it, which is the half-guarantee shape session 1 paid
+    // for twice. Found by the pre-commit checkpoint.
+    let ownStat = null;
+    try {
+        ownStat = fs.lstatSync(own);
+    } catch (cause) {
+        if (cause.code !== "ENOENT") {
+            fail("packs", `\`${pack}\`'s \`${path.join(rel, "SKILL.md")}\` could not be examined — ${cause.code ?? cause.message}`);
+        }
+    }
+    if (ownStat?.isSymbolicLink()) {
+        fail(
+            "packs",
+            `\`${pack}\`'s \`${path.join(rel, "SKILL.md")}\` is a symlink. It is refused rather than followed: a link under a contained root ` +
+                `is how a pack ships a file it does not contain, and containment that checks only the declared root is not containment`,
+        );
+    } else if (ownStat?.isFile()) {
+        validateSkill(own, { fail, pack, rel: path.join(rel, "SKILL.md") });
+        found += 1;
+    }
+    if (depth >= SKILL_DEPTH) {
+        // Reported, never silent. Only when there is something below to miss: announcing a stop over an
+        // empty directory would be noise, and a note nobody can act on trains a reader to skip the ones
+        // they can.
+        let below = [];
+        try {
+            below = fs.readdirSync(root, { withFileTypes: true }).filter((e) => e.isDirectory());
+        } catch {
+            below = [];
+        }
+        if (below.length) {
+            report(
+                "packs",
+                `\`${pack}\`'s skills root \`${rel}\` has ${below.length} director(y/ies) below the ${SKILL_DEPTH}-level walk bound, and they were NOT looked at. ` +
+                    `A skill down there is neither validated nor counted — said out loud because a walk that stops quietly is a green over what it never opened`,
+            );
+        }
+        return found;
+    }
+
+    let entries;
+    try {
+        entries = fs.readdirSync(root, { withFileTypes: true });
+    } catch (cause) {
+        // Only ENOENT means absent. Anything else and the walk could not look, which must never be
+        // reported as a root with no skills in it — #108's shape, arriving in a new walker.
+        if (cause.code === "ENOENT") {
+            fail("packs", `\`${pack}\` declares the skills root \`${rel}\`, which is not there`);
+            return found;
+        }
+        fail(
+            "packs",
+            `\`${pack}\`'s skills root \`${rel}\` could not be read — ${cause.code ?? cause.message}. ` +
+                `Reported as unreadable rather than as empty: a walk that says "no skills here" over a directory it never opened is a green over nothing`,
+        );
+        return null;
+    }
+    for (const entry of entries) {
+        if (!entry.isDirectory()) continue;
+        found += walkSkills(path.join(root, entry.name), { fail, report, pack, rel: path.join(rel, entry.name) }, depth + 1);
+    }
+    return found;
+}
+
+/** One skill's frontmatter: the `name` and `description` that ARE the contract a host reads. */
+export function validateSkill(file, { fail, pack, rel }) {
+    let text;
+    try {
+        text = fs.readFileSync(file, "utf8");
+    } catch (cause) {
+        fail("packs", `\`${pack}\`'s skill \`${rel}\` could not be read — ${cause.code ?? cause.message}`);
+        return;
+    }
+    const { fields, error } = parseFrontmatter(text);
+    if (!fields) {
+        fail("packs", `\`${pack}\`'s skill \`${rel}\` has no usable frontmatter${error ? ` — ${error}` : ""}. For a skill the block IS the contract, not decoration`);
+        return;
+    }
+    if (typeof fields.name !== "string" || !SLUG_PATTERN.test(fields.name)) {
+        fail(
+            "packs",
+            `\`${pack}\`'s skill \`${rel}\` has \`name: ${fields.name ?? "(absent)"}\`, which is not kebab-case. ` +
+                `The name is required here although the platform treats it as optional, so a skill's invocation name comes from the skill rather than from where it sits`,
+        );
+    }
+    if (typeof fields.description !== "string" || !fields.description.trim()) {
+        fail(
+            "packs",
+            `\`${pack}\`'s skill \`${rel}\` has an empty \`description\`. It is the only line a host reads before deciding whether to load the body, ` +
+                `so it carries the trigger — an empty one produces a skill that is never selected`,
+        );
+    }
+}
+
+const SLUG_PATTERN = /^[a-z0-9]+(-[a-z0-9]+)*$/;
+
+/**
+ * Does this reach section CLAIM Prohibited, as opposed to disclaiming it?
+ *
+ * Sentence-scoped, because the two readings sit in the same section and differ only by a negation. A
+ * sentence mentioning the tier alongside `not` / `never` / `no role` / `nobody` / `cannot` is the
+ * disclaimer every well-written persona contains — this repository's own supervisor is one — and
+ * flagging it made a correct file red on the check's first run.
+ */
+function claimsProhibited(reach) {
+    for (const sentence of reach.split(/(?<=[.!?])\s+|\n{2,}/)) {
+        if (!/\bProhibited\b/.test(sentence)) continue;
+        if (/\b(?:not|never|no|nobody|none|cannot|can't|doesn't|does not|isn't|is not)\b/i.test(sentence)) continue;
+        return true;
+    }
+    return false;
+}
+
 export function packSchemaVersion(schema) {
     const match = /\/spec\/pack\/([0-9]+)\.([0-9]+)\//.exec(schema.$id ?? "");
     if (!match) {
@@ -1045,9 +1342,20 @@ export async function inspect(workspaceDir, options = {}) {
             }
             stats.packs += 1;
             const c = manifest.contributes ?? {};
+
+            // Milestone 7, the maintainer's ruling of 2026-08-03 on #150: the artifacts a pack ships are
+            // OPENED and validated, not counted. Until this landed, `doctor` counted these paths into the
+            // line below and read none of them — which is why spec/pack.schema.json could say an escaping
+            // `contributes.skills` value was "still inert". It is not inert once something opens it, so
+            // the containment check arrives in the same change as the opening.
+            const opened = validateContributions(found.dir, c, { fail, report, pack: name });
+
             const parts = [
-                c.skills?.length ? `${c.skills.length} skill path(s)` : null,
-                c.personas?.length ? `${c.personas.length} persona(s)` : null,
+                c.skills?.length
+                    ? `${opened.skills} skill(s) in ${c.skills.length} root(s)` +
+                      (opened.unreadableRoots ? `, ${opened.unreadableRoots} root(s) UNREAD — that count is over what was opened, not over what was declared` : "")
+                    : null,
+                c.personas?.length ? `${opened.personas} of ${c.personas.length} persona(s) opened` : null,
                 c.verify?.length ? `${c.verify.length} recipe(s), declared and not merged` : null,
                 c.gates?.length ? `${c.gates.length} gate fragment(s)` : null,
             ].filter(Boolean);

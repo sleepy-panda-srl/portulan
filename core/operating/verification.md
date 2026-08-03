@@ -45,9 +45,18 @@ blocks "done" if the recipe is not green. The engine defines the contract — a 
 recipe; the gate runs it on Stop. The recipe resolves down the cascade — the **workspace** sets the
 default, a **repo card** overrides it, a **task** may specialize — and the **compiler** wires the gate
 to the host. _(The cascade is the contract; the runner shipped in milestone 4 reads the **workspace
-default only**, and the repo-card and task steps arrive with the CLI in milestone 7. Named here because
-a sentence describing resolution a runner does not perform is a capability claim, and this file is the
-one that legislates against those. Found at the milestone-4 close.)_
+default only**. The repo-card and task steps are **not built, and no milestone owns them yet** — said in
+that form deliberately, because it is the honest one and this file is where the rule lives. Named here
+because a sentence describing resolution a runner does not perform is a capability claim, and this file
+is the one that legislates against those. Found at the milestone-4 close.
+**Re-pointed 2026-08-03, on the maintainer's ruling.** This sentence previously said the two steps
+"arrive with the CLI in milestone 7", which satisfied the rule in letter — it named a milestone — and
+failed it in fact: the milestone named never took the obligation on, and no later one carries it either,
+so the promise was carrier-less across the whole map. The two resolutions were to expand that row or to
+re-point this sentence; the maintainer took the second, on
+the ground that the runner ships in no artifact an adopter receives today, so building more of it buys
+an adopter nothing. The precedent for the wording is `spec/pack.schema.json`'s `verify` note, which held
+exactly this form until a ruling gave it an owner.)_
 
 The runner arrived in milestone 4, and two of its properties are contract rather than detail. A recipe
 that **could not run** blocks exactly as a red one does: "nothing looked" must never be read as "nothing

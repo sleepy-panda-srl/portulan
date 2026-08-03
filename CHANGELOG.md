@@ -48,9 +48,30 @@ subcommands [`docs/vision.md`](docs/vision.md) names. Four of them — `init`, `
 `upgrade` — are listed and **exit 2, naming the milestone they arrive at**, because a stub exiting 0
 would be a fail-open exactly where a user trusts silence. `plugin-lint` and `librarian` are
 deliberately *not* behind it: `docs/vision.md` names six and is human-owned, so a seventh is the
-maintainer's call. _(This paragraph said three dispatch and three exit 2, which was true when the entry
-point landed and stopped being true when `init` was built in the next session. Corrected here rather
-than left for the release cut, on this file's own accumulate-and-correct rule.)_
+maintainer's call. _(This paragraph said three dispatch and three exit 2, and then four and two.
+Each was true when written and stopped being true in the next session. Corrected here rather than left
+for the release cut, on this file's own accumulate-and-correct rule — and the counts now live in the
+paragraph below rather than being restated in two places, which is what made them go stale twice.)_
+
+**The list is eight, and two of them came from the plan rather than the constitution.**
+[`docs/vision.md`](docs/vision.md) names six subcommands and is human-owned; row 7 of
+[`docs/plan.md`](docs/plan.md) names `new` and `feedback` in its own ratified text. So the entry point
+carries eight, of which **five dispatch** — `init`, `doctor`, `compile`, `index`, `new` — and three
+(`vendor`, `upgrade`, `feedback`) exit 2 naming where they arrive.
+
+**You can scaffold your own layer without editing one of ours.** `portulan new` writes a skill,
+persona, pack, workspace, gate policy or repo card from a core template into a layer **you** own, and
+refuses to write into `core/` — checked after path resolution rather than by pattern, so a `..` chain
+and a symlinked destination are both refused rather than followed. Five of the six core templates did
+not exist before this and are new. What it emits is a **draft**: the placeholders are yours, and
+`doctor` is what says whether the result is any good.
+
+**`doctor` opens a pack's skills and personas instead of counting them.** A skill's frontmatter, a
+persona against the five-part contract in [`core/personas/README.md`](core/personas/README.md) — tools
+allow-list, charter, autonomy reach, memory scope, read/write posture — and the tier no role may claim.
+Opening those paths is what makes containment `doctor`'s problem, so the resolve-then-compare check
+lands in the same change, and a skills root that cannot be read is reported **unread** rather than
+counted as empty.
 
 **`init` drafts a workspace for a repository that has none.** It **asks** where the workspace resides —
 in the repository, or in a workspace that names it — and writes a full workspace or a pointer

@@ -637,9 +637,11 @@ records of its own is refused, because storage follows ownership and a pack abso
 is the constitution's thesis 6 violated from the direction the adopter cannot see.
 
 **What no part of this reads, said plainly.** Nothing recalls from these locations, nothing consolidates
-them, and no budget rails them. `doctor` validates a persona against its five-part contract at **milestone
-7** — that is the *validates* half of the ruling above, and it is named here rather than implied so this
-page cannot be read as describing enforcement that does not exist. There is no budget for the same reason:
+them, and no budget rails them. `doctor` validates a persona against its five-part contract **as of
+milestone 7 session 2** — that is the *validates* half of the ruling above, and it arrived rather than
+being promised. What it validates is the **presence** of the five parts, including a `## Memory scope`
+section; it does not read these locations or judge what a scope contains, which is why this paragraph's
+heading still holds. There is no budget for the same reason:
 there is nothing yet to budget, and the axis such a rail should use is per-persona rather than
 per-workspace, which belongs to the row where something finally reads these locations.
 

@@ -1672,6 +1672,18 @@ const packManifest = (over = {}) => ({
     ...over,
 });
 
+// The persona file the manifest above declares. It did not exist in these fixtures until milestone 7,
+// because until then `doctor` counted `contributes.personas` and opened nothing — so a fixture could
+// declare a persona it did not ship and stay green. Opening the key made that dishonest rather than
+// merely incomplete, and the fixture now carries what a real pack must: all five parts of the contract.
+const PACK_PERSONA = [
+    "---", "name: supervisor", "description: Grades work in a fresh context.", "tools: Read, Grep", "---", "",
+    "# Persona — supervisor", "", "## Charter", "It grades; it does not implement.", "",
+    "## Autonomy reach", "Acts in Auto to read. Prohibited is not a reach and does not appear here.", "",
+    "## Memory scope", "`personas/supervisor/` in the adopting workspace.", "",
+    "## Read / write posture", "Reads in parallel; writes only its verdict.", "",
+].join("\n");
+
 describe("the packs a workspace declares", () => {
     test("the shipped Pack Definition compiles under the declared subset", () => {
         assert.doesNotThrow(() => compileSchema(PACK_SCHEMA));
@@ -1682,6 +1694,7 @@ describe("the packs a workspace declares", () => {
             ...minimalFiles,
             "workspace.json": JSON.stringify({ ...wellFormed(), packs: ["rituals/checkpoints"] }),
             "packs/rituals/checkpoints/pack.json": JSON.stringify(packManifest()),
+            "packs/rituals/checkpoints/personas/supervisor.md": PACK_PERSONA,
         });
         const { findings, stats } = await inspect(dir, { schema: SCHEMA });
         assert.equal(severities(checks(findings, "packs"), "fail").length, 0, text(findings));
@@ -1755,6 +1768,7 @@ describe("the packs a workspace declares", () => {
             ...minimalFiles,
             "workspace.json": JSON.stringify({ ...wellFormed(), packs: ["rituals/checkpoints"] }),
             "packs/rituals/checkpoints/pack.json": JSON.stringify(packManifest({ portulan: { pack: "1.0" } })),
+            "packs/rituals/checkpoints/personas/supervisor.md": PACK_PERSONA,
         });
         const { findings, stats } = await inspect(dir, { schema: SCHEMA, packSchema: ahead });
         assert.equal(severities(checks(findings, "packs"), "fail").length, 0, text(findings));
@@ -2108,5 +2122,150 @@ describe("a repository is governed by exactly one workspace", () => {
         assert.equal(severities(checks(findings, "residence"), "fail").length, 0, text(findings));
         assert.match(text(checks(findings, "residence")), /names no governing workspace/);
         assert.doesNotMatch(text(findings), /undefined/);
+    });
+});
+
+// ---------------------------------------------------------------- what a pack ships (milestone 7)
+
+// Row 7's validation half, under the maintainer's ruling of 2026-08-03 on
+// https://github.com/sleepy-panda-works/portulan/issues/150: the **broad** reading. `doctor` validates a
+// skill's frontmatter, a persona against its five-part contract, a pack against its schema, and the
+// persona↔agent binding — and it does so for **a pack's** skills and personas, not only for what `new`
+// scaffolds. Seven carriers promised that split ("row 6 declares, row 7 validates") and the row's own
+// sentence was narrower than all seven; the ruling made the carriers right rather than re-pointing them.
+//
+// **Why these tests open real files rather than asserting on a manifest.** Until this landed, `doctor`
+// counted `contributes.skills` into a report line and opened nothing — and spec/pack.schema.json said in
+// as many words that an escaping value there "is still inert" *because* nothing opened it. Opening it is
+// what makes containment this tool's problem, so the containment case is here beside the contract cases.
+
+describe("a pack's skills and personas are validated, not counted", () => {
+    /** A workspace declaring one pack, plus a packs root holding it. Returns both directories. */
+    function withPack(contributes, files) {
+        const dir = scratch();
+        tree(dir, {
+            ...minimalFiles,
+            "workspace.json": JSON.stringify({ ...wellFormed(), packs: ["rituals/fixture"] }),
+        });
+        const root = scratch();
+        tree(root, {
+            "rituals/fixture/pack.json": JSON.stringify({
+                portulan: { pack: "1.0" },
+                name: "fixture",
+                category: "rituals",
+                contributes,
+            }),
+            ...Object.fromEntries(Object.entries(files).map(([k, v]) => [`rituals/fixture/${k}`, v])),
+        });
+        return { dir, root };
+    }
+
+    const goodSkill = "---\nname: my-check\ndescription: Does a thing, when a rail goes red.\n---\n\n# Skill\n";
+    const goodPersona = [
+        "---", "name: my-role", "description: A role.", "tools: Read, Grep", "---", "",
+        "# Persona — my role", "", "## Charter", "It reviews.", "", "## Autonomy reach", "Propose.", "",
+        "## Memory scope", "`personas/my-role/`.", "", "## Read / write posture", "Reads in parallel.", "",
+    ].join("\n");
+
+    test("a skill with no frontmatter is a failure, not a count", async () => {
+        const { dir, root } = withPack({ skills: ["skills/"] }, { "skills/my-check/SKILL.md": "# no frontmatter here\n" });
+        const { findings } = await inspect(dir, { schema: SCHEMA, packRoots: [root] });
+        assert.equal(severities(checks(findings, "packs"), "fail").length, 1, text(findings));
+        assert.match(text(findings), /frontmatter/i);
+    });
+
+    test("a skill whose name is not kebab-case is a failure", async () => {
+        const { dir, root } = withPack({ skills: ["skills/"] }, { "skills/my-check/SKILL.md": "---\nname: My Check\ndescription: x\n---\n" });
+        const { findings } = await inspect(dir, { schema: SCHEMA, packRoots: [root] });
+        assert.match(text(checks(findings, "packs")), /kebab|slug|lowercase/i);
+    });
+
+    test("a skill with an empty description is a failure — the description IS the trigger", async () => {
+        const { dir, root } = withPack({ skills: ["skills/"] }, { "skills/my-check/SKILL.md": "---\nname: my-check\ndescription:\n---\n" });
+        const { findings } = await inspect(dir, { schema: SCHEMA, packRoots: [root] });
+        assert.equal(severities(checks(findings, "packs"), "fail").length, 1, text(findings));
+    });
+
+    test("a well-formed skill passes and is reported as opened, not merely counted", async () => {
+        const { dir, root } = withPack({ skills: ["skills/"] }, { "skills/my-check/SKILL.md": goodSkill });
+        const { findings } = await inspect(dir, { schema: SCHEMA, packRoots: [root] });
+        assert.equal(severities(checks(findings, "packs"), "fail").length, 0, text(findings));
+        assert.match(text(checks(findings, "packs")), /1 skill\b|validates/);
+    });
+
+    test("a persona missing any one of the five parts fails, and the failure NAMES the part", async () => {
+        // Named individually so a reader learns which part is absent. "does not meet the contract" sends
+        // somebody to read five sections looking for the one that is missing.
+        for (const [part, pattern] of [
+            ["## Charter", /charter/i],
+            ["## Autonomy reach", /autonomy/i],
+            ["## Memory scope", /memory scope/i],
+            ["## Read / write posture", /posture/i],
+        ]) {
+            const stripped = goodPersona.split(part)[0];
+            const { dir, root } = withPack({ personas: ["personas/my-role.md"] }, { "personas/my-role.md": stripped });
+            const { findings } = await inspect(dir, { schema: SCHEMA, packRoots: [root] });
+            assert.equal(severities(checks(findings, "packs"), "fail").length >= 1, true, `${part}: ${text(findings)}`);
+            assert.match(text(checks(findings, "packs")), pattern, `the failure for a missing ${part} does not name it`);
+        }
+    });
+
+    test("a persona with no `tools:` allow-list fails — default-deny is the first part", async () => {
+        const { dir, root } = withPack({ personas: ["personas/my-role.md"] }, { "personas/my-role.md": goodPersona.replace("tools: Read, Grep\n", "") });
+        const { findings } = await inspect(dir, { schema: SCHEMA, packRoots: [root] });
+        assert.match(text(checks(findings, "packs")), /tools/i);
+    });
+
+    test("a persona claiming Prohibited as its reach fails — no role may act in that tier", async () => {
+        // core/personas/README.md fixes this, and until now nothing checked it. It is the clause a
+        // template cannot hold: prose telling an author not to claim it is not a rule, it is advice.
+        const { dir, root } = withPack(
+            { personas: ["personas/my-role.md"] },
+            { "personas/my-role.md": goodPersona.replace("Propose.", "Prohibited.") },
+        );
+        const { findings } = await inspect(dir, { schema: SCHEMA, packRoots: [root] });
+        assert.equal(severities(checks(findings, "packs"), "fail").length, 1, text(findings));
+        assert.match(text(checks(findings, "packs")), /Prohibited/);
+    });
+
+    test("a well-formed persona passes", async () => {
+        const { dir, root } = withPack({ personas: ["personas/my-role.md"] }, { "personas/my-role.md": goodPersona });
+        const { findings } = await inspect(dir, { schema: SCHEMA, packRoots: [root] });
+        assert.equal(severities(checks(findings, "packs"), "fail").length, 0, text(findings));
+    });
+
+    test("a skills root escaping the pack is refused after resolution, never followed", async () => {
+        // spec/pack.schema.json's `$defs/filePath` bars only the LEADING `../` form and says so; `a/../../x`
+        // matches the pattern and still escapes. The pattern was never the guard — and while nothing opened
+        // this key, an escaping value was inert. Opening it is what makes containment this tool's problem.
+        const { dir, root } = withPack({ skills: ["skills/"] }, { "skills/keep": "" });
+        const outside = scratch();
+        tree(outside, { "elsewhere/SKILL.md": "---\nname: x\ndescription: y\n---\n" });
+        fs.rmSync(path.join(root, "rituals/fixture/skills"), { recursive: true, force: true });
+        fs.symlinkSync(path.join(outside, "elsewhere"), path.join(root, "rituals/fixture/skills"));
+        const { findings } = await inspect(dir, { schema: SCHEMA, packRoots: [root] });
+        assert.equal(severities(checks(findings, "packs"), "fail").length, 1, text(findings));
+        assert.match(text(checks(findings, "packs")), /outside|escape|symlink|contain/i);
+    });
+
+    test("an unreadable skill root is could-not-read, never reported as barren", async () => {
+        // Only ENOENT means absent. A walk that reports "no skills here" over a directory it could not
+        // open is "nothing looked" recorded as "nothing wrong" — #108's shape, in a new walker.
+        const { dir, root } = withPack({ skills: ["skills/"] }, { "skills/my-check/SKILL.md": goodSkill });
+        const locked = path.join(root, "rituals/fixture/skills");
+        fs.chmodSync(locked, 0o000);
+        try {
+            const { findings } = await inspect(dir, { schema: SCHEMA, packRoots: [root] });
+            assert.match(text(checks(findings, "packs")), /could not|unreadable|EACCES/i);
+            // Asserted against the SUMMARY line specifically, not against every message. The first
+            // spelling of this was `doesNotMatch(text(findings), /no skills/)` and it failed against the
+            // explanatory message, which quotes the phrase in order to refuse it — an assertion that
+            // cannot tell a claim from a quotation of the claim.
+            const summary = checks(findings, "packs").map((f) => f.message).find((m) => /contributes/.test(m));
+            assert.ok(summary, "no summary line was reported at all");
+            assert.match(summary, /UNREAD/, "the summary counted skills without saying a root went unread");
+        } finally {
+            fs.chmodSync(locked, 0o755);
+        }
     });
 });

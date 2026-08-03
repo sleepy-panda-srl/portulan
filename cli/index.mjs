@@ -632,10 +632,13 @@ export function renderHandoffIndex(workspace, series) {
  *
  * **What this file is not**, stated here because the alternative is a page describing machinery that
  * does not exist (`.portulan/dod.md` condition 4): nothing reads these locations, nothing recalls from
- * them, and nothing consolidates them. Row 6 declares the scope and shows it landing; `doctor` gains
- * the persona-contract check at milestone 7 (`row 6 declares, row 7 validates`, the maintainer's
- * ruling of 2026-07-29 — ../core/operating/memory.md). Until then this is a declared scope with an
- * empty location, and it says so on its own face rather than in a session record nobody re-reads.
+ * them, and nothing consolidates them. Row 6 declares the scope and shows it landing; `doctor` GAINED
+ * the persona-contract check at milestone 7 session 2 (`row 6 declares, row 7 validates`, the
+ * maintainer's ruling of 2026-07-29 — ../core/operating/memory.md), so the *validates* half is no
+ * longer a future arrival. What it checks is the PRESENCE of the five parts, including a `## Memory
+ * scope` section — never what is in these locations, which stay unread by anything. So this remains a
+ * declared scope with an empty location, and it says so on its own face rather than in a session
+ * record nobody re-reads.
  */
 export function renderScopeIndex(workspace, series) {
     const header = [
@@ -649,8 +652,8 @@ export function renderScopeIndex(workspace, series) {
         // as one that says something wrong, and `cli/index.test.mjs` now asserts balanced `**` per line.
         `> ${series.scopes.length} declared scope(s). **Owned and populated only by this workspace.**`,
         "> Each location is empty until earned — the pack declares the scope and carries none of its",
-        "> contents. Nothing reads these locations: `doctor` gains a check of a persona against its",
-        "> five-part contract at milestone 7, which is not a check of what is in them.",
+        "> contents. Nothing reads these locations: `doctor` checks a persona against its five-part",
+        "> contract as of milestone 7, which is not a check of what is in them.",
         "",
     ];
 

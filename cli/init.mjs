@@ -162,7 +162,16 @@ export function parseArgs(argv) {
             else flags[key] = value;
             i++;
         } else if (arg.startsWith("-")) {
-            throw new InitError(`unknown option \`${arg}\` — run \`init --help\` for the ones this understands`);
+            // #155: this said "run `init --help`", which is not a command anybody can run. The tool is
+            // genuinely reachable two ways and the honest string differs per invocation, so both are
+            // named rather than one being derived — deriving it would mean the entry point telling the
+            // subcommand what name it was invoked under, and that entry point deliberately passes argv
+            // and nothing else, so the tool behaves identically either way. A better sentence is not
+            // worth trading that property for. The same fix is applied to `usage()` below.
+            throw new InitError(
+                `unknown option \`${arg}\` — run \`portulan init --help\` for the ones this understands, ` +
+                    `or \`node cli/init.mjs --help\` from a checkout`,
+            );
         } else {
             targets.push(arg);
         }
@@ -973,7 +982,10 @@ export function usage() {
     return [
         "portulan init — draft a workspace for a repository that has none",
         "",
-        "  init [options] <repository-directory>",
+        // Both spellings, for #155's reason: the tool is reachable through the entry point and from a
+        // checkout, and a usage line naming only one of them is wrong for whoever arrived the other way.
+        "  portulan init [options] <repository-directory>",
+        "  node cli/init.mjs [options] <repository-directory>      (from a checkout)",
         "",
         "  --residence <in-repo|pointer>  REQUIRED. Where this repository's workspace lives:",
         "                                 in the repository, or in a workspace that names it.",
