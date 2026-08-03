@@ -1047,6 +1047,13 @@ export async function run(argv, options = {}) {
             } else {
                 for (const rel of written) if (!preserved.has(rel)) fs.rmSync(path.join(dest, rel), { force: true });
                 for (const [rel, bytes] of preserved) fs.writeFileSync(path.join(dest, rel), bytes);
+                // The DIRECTORIES the partial write created, too. Removing the files and leaving
+                // `verify/` behind restores the destination's contents and not its shape — and the next
+                // run's `carveOut` refuses it for holding something beside the pointer, so a rollback
+                // that reported success wedges the retry it exists to make possible. That is `init`'s
+                // partial write with the failure moved one layer out, and it is what "rolled back"
+                // has to mean: entry for entry, not merely byte for byte. Copilot, round 6 on #164.
+                pruneEmpty(dest);
             }
         });
 
