@@ -566,13 +566,20 @@ jobs:
           # fixtures in `../../.portulan/verify/workflow-filters.mjs` — exactly as they were, so the
           # covered program stays the covered program.
           requested=''
+          requested_all=''
           requested_read=0
           if requested_all=$(gh api "repos/${GITHUB_REPOSITORY}/pulls/${PR_NUMBER}/requested_reviewers" \
                 --jq '[.users[].login] | join(" ")'); then
             requested_read=1
-            # `if`, not `[ … ] && …`: this job runs under `bash -e` (the `shell:` line), where a
+            # `if`, not `[ … ] && …`: a `run:` step with no `shell:` gets Actions' default, which is
+            # `bash -e {0}` — the runner prints it at the head of the step log, and it is where the
+            # `-e` comes from, since THIS FILE declares no `shell:` and no `defaults:`. Under `-e` a
             # trailing `&&` list whose test fails is the loop body's exit status, and the idiom is a
             # documented way to end a body non-zero. An `if` cannot do that whatever the test says.
+            # The citation was wrong here before Copilot's fourth round on #160 — it named a `shell:`
+            # line in this file, read off the runner's resolved-shell log line without checking that
+            # the file contained one. Right mechanism, wrong source, which is the class this whole
+            # pull request is about, committed for the fifth time inside it.
             for login in $requested_all; do
               lower=$(printf '%s' "$login" | tr '[:upper:]' '[:lower:]')
               for candidate in $REVIEWERS; do
@@ -660,10 +667,18 @@ jobs:
           # removes it is not observable from here in either case. So absence proves nothing about
           # whether a round was ever asked for, and nothing about whether it was answered, which is
           # why the branch above splits on this job's own accepted POST rather than on this line.
+          # The label says FILTERED because the list is — raised by Copilot on #160, after the filter
+          # that made it true landed one round earlier. Unqualified, it named the endpoint's whole
+          # answer while printing a subset of it, so a reader debugging a pull request that also has
+          # a human waiting would read `unanswered:` with nothing after it and conclude the human was
+          # gone too. The unfiltered list is printed beside it rather than dropped: it is one API read
+          # already in hand, and *which other reviewers are waiting* is the first thing anyone asks
+          # next.
           if [ "$requested_read" -eq 1 ]; then
-            printf 'Reviewers requested and still unanswered:%s\n' "${requested:+ $requested}"
+            printf 'Copilot requests still unanswered (filtered to %s):%s\n' "$REVIEWERS" "${requested:+ $requested}"
+            printf 'All reviewers requested and still unanswered:%s\n' "${requested_all:+ $requested_all}"
           else
-            printf 'Reviewers requested and still unanswered: COULD NOT READ\n'
+            printf 'Copilot requests still unanswered: COULD NOT READ\n'
           fi
           case "$rerequest_state" in
             sent)     printf 'Copilot was re-requested once during this wait, at %ss — accepted.\n' "$rerequest_at" ;;
