@@ -41,13 +41,11 @@ records how things were found. This is per *release* and records what a reader g
 
 ## Unreleased
 
-**There is a command line.** One entry point over the six
-subcommands [`docs/vision.md`](docs/vision.md) names. Four of them — `init`, `doctor`, `compile`,
-`index` — dispatch, with each module imported **on demand** and each tool's exit code returned
-**unchanged**; verified byte-identical to invoking those tools directly. The other two — `vendor` and
-`upgrade` — are listed and **exit 2, naming the milestone they arrive at**, because a stub exiting 0
+**There is a command line.** One entry point over the subcommands
+[`docs/vision.md`](docs/vision.md) names. They dispatch, with each module imported **on demand** and each tool's exit code returned
+**unchanged**; verified byte-identical to invoking those tools directly. The unbuilt ones are listed and **exit 2, naming the milestone they arrive at**, because a stub exiting 0
 would be a fail-open exactly where a user trusts silence. `plugin-lint` and `librarian` are
-deliberately *not* behind it: `docs/vision.md` names six and is human-owned, so a seventh is the
+deliberately *not* behind it: `docs/vision.md` is human-owned, so anything it does not name is the
 maintainer's call. _(This paragraph said three dispatch and three exit 2, and then four and two.
 Each was true when written and stopped being true in the next session. Corrected here rather than left
 for the release cut, on this file's own accumulate-and-correct rule — and the counts now live in the

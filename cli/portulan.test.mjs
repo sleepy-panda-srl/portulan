@@ -66,7 +66,7 @@ test("docs/vision.md's six lead the list, in its order and unaltered", () => {
     );
 });
 
-test("the additions past the six are exactly the two row 7 names", () => {
+test("the additions past the constitution's original six are exactly the two the row named", () => {
     // These two reached the CLI licensed by row 7 naming them in its own ratified text, and the
     // maintainer folded both into `docs/vision.md` on 2026-08-03 — so the constitution now names all
     // eight and this assertion pins the ORDER of the tail rather than a licence argument. Anything
@@ -164,7 +164,7 @@ test("every unbuilt subcommand names where it arrives, per dod.md condition 4", 
     }
 });
 
-test("an unknown subcommand exits 2 and lists the six", async () => {
+test("an unknown subcommand exits 2 and lists all eight", async () => {
     const h = harness();
     const code = await run(["lint"], h.options);
     assert.equal(code, 2);

@@ -51,7 +51,7 @@ installed here, and then go to step 4 and give that section's honest position �
 one: you have the engine's universal mechanism and none of this team's policy. In particular:
 
 - **Do not fetch it.** Resolving `governed_by` to an installed plugin needs a host's plugin cache, and
-  nothing here discovers one. **Discovery is milestone 7's**, owned by its row as of the 2026-08-03 amendment — and what arrives *here* is narrower than what arrives in the CLI: this skill reports discovery's answer honestly, including *not installed here*; resolving a pointer is the CLI's.
+  nothing here discovers one. **Discovery is milestone 7's**, owned by its row as of the 2026-08-03 amendment — and what arrives *here* is narrower than what arrives in the CLI: this skill **is scoped to** reporting discovery's answer honestly, including *not installed here*; resolving a pointer is the CLI's.
 - **Do not read the pointer's neighbours as policy.** A pointer carries no slots, and a `.portulan/`
   directory beside it holding files anyway is a defect worth reporting, not a workspace to load.
 - **Do not treat this as "no workspace".** The difference matters to the person you are reporting to: a

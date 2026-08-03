@@ -45,7 +45,7 @@
 // steps on purpose.
 //
 // Zero dependencies, no network, no install step — same constraints as ./doctor.mjs and
-// ./compile.mjs. Absorbed by the TypeScript CLI at milestone 7, where `index` is one of the six
+// ./compile.mjs. Absorbed by the zero-dependency ESM CLI at milestone 7, where `index` is one of the eight
 // subcommands ../docs/vision.md names. (A note for that session: this file is `cli/index.mjs`
 // because the subcommand is called `index`, and npm packaging conventionally wants that name for a
 // package entry point. The collision is inherited deliberately rather than discovered.)
@@ -1093,7 +1093,7 @@ export function run(argv, say = console.log) {
     // the local tree at all. The three tools that take this flag disagreed about it once, and
     // ./compile.mjs's `namedRootsOption` carries what that cost.
     // What is deliberately NOT built is discovery of a host's plugin cache — that path is host-shaped,
-    // and a flag is the honest surface until some row owns the discovery.
+    // and a flag is the honest surface until a row owned the discovery — **row 7 owns it as of the 2026-08-03 amendment** (#123), so the flag is the surface until that lands rather than until somebody undertakes it.
     const roots = [];
     for (let i = 0; i < argv.length; i += 1) {
         if (argv[i] === "--check") check = true;

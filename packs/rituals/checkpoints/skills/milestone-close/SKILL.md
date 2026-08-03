@@ -19,14 +19,7 @@ context that cannot supply this verdict.
 
 ## The pass
 
-1. **Read the criterion clause by clause** and treat each as a separate obligation. A criterion is a
-   set of promises, and the failure mode is a close that satisfies the memorable ones.
-2. **Re-derive, do not replay.** Independently reproduce each clause from the merged tree — run the
-   recipes, read the live state, recompute what a session reported. Where an earlier session recorded a
-   figure, recompute it rather than quoting it; where it recorded a demonstration, perform it again.
-3. **Force red before believing green.** A clause verified only in the passing direction has not been
-   verified. Break what it guards, watch it fail, restore.
-4. **Run the forward-reference sweep — FIRST, before grading anything else.** Search the doctrine and
+1. **Run the forward-reference sweep — before grading anything else.** Search the doctrine and
    the workspace's own memory for this milestone's number.
 
    _Moved to the front of the pass, and the reason is a measurement rather than a preference. On the
@@ -43,6 +36,14 @@ context that cannot supply this verdict.
    a promise the criterion omits is added; a criterion clause no doctrine backs is a question for the
    owner, never a strike. Without that direction this step becomes an argument for deleting inconvenient
    clauses.
+
+2. **Read the criterion clause by clause** and treat each as a separate obligation. A criterion is a
+   set of promises, and the failure mode is a close that satisfies the memorable ones.
+3. **Re-derive, do not replay.** Independently reproduce each clause from the merged tree — run the
+   recipes, read the live state, recompute what a session reported. Where an earlier session recorded a
+   figure, recompute it rather than quoting it; where it recorded a demonstration, perform it again.
+4. **Force red before believing green.** A clause verified only in the passing direction has not been
+   verified. Break what it guards, watch it fail, restore.
 5. **Name what the close leaves undemonstrated**, and put it in the verdict rather than in a footnote.
    Every close has some; a close claiming none has stopped looking.
 6. **Return CLOSE or REQUEST-CHANGES, with the fidelity note.**

@@ -1763,7 +1763,7 @@ export function run(argv, options = {}) {
         // resolving from an installed feed travels the same code path as a workspace whose packs ship
         // beside it — and nothing ever set it, so the parameter was reachable only from a test.
         // Discovery of a host's plugin cache is deliberately NOT built here; that path is host-shaped,
-        // and an explicit flag is the honest surface until a row owns the discovery.
+        // and an explicit flag is the honest surface until a row owned the discovery — **row 7 owns it as of the 2026-08-03 amendment** (#123), so the flag is the surface until that lands rather than until somebody undertakes it.
         const namedRoots = [];
         for (let i = 0; i < argv.length; i += 1) {
             if (argv[i] === "--check") check = true;

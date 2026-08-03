@@ -40,7 +40,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 
 // The project root is TOLD to this runner rather than derived from where this file sits — see the same
 // paragraph in ./gate.mjs for why. In short: this file used to live inside the workspace it was reading,
-// which is the one layout it could ever work in, and is why it shipped in no artifact an adopter receives.
+// which is the one layout it could ever work in, and is why it shipped in no artifact an adopter received.
 const PROJECT = process.env.CLAUDE_PROJECT_DIR || process.cwd();
 const WORKSPACE = path.resolve(PROJECT, process.env.PORTULAN_WORKSPACE || ".portulan");
 const REPO = PROJECT;
