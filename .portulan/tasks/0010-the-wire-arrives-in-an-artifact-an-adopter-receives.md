@@ -57,13 +57,20 @@ customer zero's session-end gate and gate policy pointing at files that are gone
 
 ## Done when
 
-- [ ] Both runners ship in an artifact an adopter receives, proved by `npm pack` → install → run.
-- [ ] `compile` emits a hook that resolves in contexts 1 and 2 and **names the failure** in context 3.
-- [ ] This repository's own five hooks are recompiled in the same change and still fire — demonstrated,
-      not asserted, by forcing the Stop-gate red.
-- [ ] All fourteen carriers swept.
-- [ ] The handoff-index freshness rail gets a spelling, or records why it still cannot have one
-      ([#148](https://github.com/sleepy-panda-works/portulan/issues/148) stays open by ruling).
+- [x] Both runners ship in an artifact an adopter receives — `npm pack` 83 files carrying both, and the
+      pre-commit checkpoint installed the real tarball into a scratch project and ran the installed
+      runner, which answered `ask` with the policy's own sentence.
+- [x] `compile` emits a hook that resolves in contexts 1 and 2 and **names the failure** in context 3 —
+      the last half was the checkpoint's required adjustment 1: the comment promised a recording the
+      code never made, and a note now prints the pinned absolute paths on every run.
+- [x] This repository's own five hooks are recompiled in the same change and still fire — forced red by
+      the checkpoint with a planted dead link and observed to block, then restored and observed to allow.
+- [x] Carriers swept, including the four this task named and did not touch on the first pass.
+- [ ] **Deferred by ruling:** the handoff-index freshness rail's spelling. Its obstacle is
+      [#148](https://github.com/sleepy-panda-works/portulan/issues/148), which stays open by the
+      maintainer's no-publish ruling of 2026-08-03, so this is not startable here.
+- [ ] **Undemonstrated, named:** context 3 exercised by a live session. The emission is demonstrated and
+      the note is demonstrated; an absolute-path hook has never actually been run by a host.
 
 
 ## What the first attempt PROVED, and it is the finding this task was missing
@@ -94,12 +101,12 @@ replaced; `compile`'s emitted spelling computed; **customer zero's five live hoo
 naming `${CLAUDE_PROJECT_DIR}/cli/gate.mjs` and `.../cli/stop-gate.mjs`. **Suite 904/904. Seven of eight
 recipes green.**
 
-**The carrier sweep is done: 26 links across 21 files re-based**, each computed from the file that
+**The carrier sweep: 26 link targets across 12 files re-based**, each computed from the file that
 carries it rather than substituted blindly — ten of them were **bare sibling links**, whose whole target
 was the filename `gate.mjs` or `stop.mjs` with no directory in front of it, sitting in
 `.portulan/compile/README.md` where the runners used to live next to their own documentation. A
 `compile/`-anchored pattern does not match those, which is why the first pass reported eleven files swept
-and left ten links dead: the pattern had been written against the shape the reported failures happened to
+and left ten links dead (the Stop-gate printed nine of them plus one already listed under a different rail): the pattern had been written against the shape the reported failures happened to
 show rather than against the shape of the problem.
 
 **And this paragraph committed the same defect while describing it.** The first draft quoted the bare

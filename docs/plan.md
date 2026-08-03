@@ -1892,3 +1892,14 @@ _The seam applies here too: no client-identifying references._
   yet*; [#155](https://github.com/sleepy-panda-works/portulan/issues/155) fixed. **Running found all
   three defects a reading missed, incl. a false red on this repo's own supervisor persona.** Suite 861→896,
   eight recipes, `npm pack` 81/81. · Fidelity: session-open A-W-A (13) · **pre-commit REQUEST-CHANGES (13, all folded)** — it defeated *never into `core/`* two ways, case-variance and a symlinked ancestor with a new leaf, both reproduced before fixing. Seam scan clean. Handoff: [`2026-08-03-the-authoring…`](../.portulan/handoffs/2026-08-03-the-authoring-surface-and-a-checker-that-opens-what-it-counted.md).
+
+- 2026-08-03 · M7 (CLI & onboarding), session 2 continued · **The wire reaches an artifact adopters
+  receive, and the constitution catches up.** [#158](https://github.com/sleepy-panda-works/portulan/pull/158):
+  both compiled-hook runners move to [`cli/`](../cli/) — `.portulan/` ships in no npm artifact, so every
+  adopter's policy named two files they lacked and **a missing hook fails open**; `npm pack` 83 files now
+  carries both. **The move was never the fix:** each runner derived the adopter's workspace from its own
+  file position, true in one layout only, so the project root is **told** now. `docs/vision.md` edited by
+  Marius — `vendor`'s gloss covers both switch directions, giving the switch its verb; `new`·`feedback`
+  join the tier list. **The Stop-gate blocked this session twice, from the moved runner.** Suite 907,
+  eight recipes. · Fidelity: pre-commit A-W-A (13, all folded) — it found the absolute fallback recording
+  nothing and a cross-compile re-opening this task's own fail-open. Seam scan clean. Handoff: [`2026-08-03-the-wire…`](../.portulan/handoffs/2026-08-03-the-wire-and-the-constitution-catches-up.md).

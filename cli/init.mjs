@@ -25,14 +25,19 @@
 //
 // ## Two capabilities this draft deliberately does not claim
 //
-// **The session-end gate is drafted as a binding, not as a wire.** `cli/compile.mjs` emits a `Stop`
-// hook naming `.portulan/compile/stop.mjs`, and that runner is customer zero's own file — the
-// published package ships `cli/`, `core/`, `spec/` and `packs/`, and no `.portulan/`. A drafted
-// workspace whose compiled hook pointed at a file the adopter does not have would be a gate that
-// exists only as a sentence, and a missing hook **fails open** (measured, CLI 2.1.220). So the draft
-// binds the ritual and the records conventions, and its README names where the wire arrives. Ruled by
-// the maintainer, 2026-07-31: decide the runner's residence when there is a concrete mechanism to
-// point at, rather than improvising one here.
+// **The session-end gate is drafted as a binding, not as a wire — and the reason has CHANGED, so the
+// paragraph is rewritten rather than left standing.** It used to be that `cli/compile.mjs` emitted a
+// `Stop` hook naming `.portulan/compile/stop.mjs`, which was customer zero's own file and shipped in no
+// published artifact, so a drafted workspace's compiled hook would have pointed at a file the adopter
+// does not have — a gate existing only as a sentence, since a missing hook **fails open** (measured,
+// CLI 2.1.220). That was the state the maintainer's 2026-07-31 ruling waited on: decide the runner's
+// residence when there is a concrete mechanism to point at.
+//
+// **The mechanism now exists.** Both runners live in `cli/`, ship in the published package, and
+// `compile` emits a path that resolves from a checkout and from a project-local install. What `init`
+// still does not do is *run* `compile` over what it drafts — so a drafted workspace has the binding and
+// no compiled hooks until its human runs `compile` themselves, which is the honest remaining gap and is
+// what `cli/init.test.mjs` asserts. The draft's README says so.
 //
 // **There is no interactive interview yet.** `docs/vision.md` glosses `init` as *interview + codebase
 // scan*; what ships here is the non-interactive substrate — flags and `--answers` — because a prompt

@@ -6,9 +6,9 @@ task rather than left in a cross-session message because that is the only form t
 fresh context — the decision arrived after the session-0 pull request had merged, and a ruling nobody
 can find is a ruling that gets re-litigated. It worked: this task is what the implementing session read,
 and a session-open supervisor checked the claim that the ruling was recorded-but-unbuilt against
-`../compile/stop.mjs` rather than taking it on trust.
+`../cli/stop-gate.mjs` rather than taking it on trust.
 
-**Goal.** [`../compile/stop.mjs`](../../cli/stop-gate.mjs) keeps **one** consecutive-refusal counter for the
+**Goal.** [`../cli/stop-gate.mjs`](../../cli/stop-gate.mjs) keeps **one** consecutive-refusal counter for the
 whole session, and the gate refuses for **two** independent reasons — a default recipe that was **not
 observed green** (red, or could-not-run: exit 2, 126, 127, or an unreadable manifest — all of which block
 exactly as red does), and a missing dated handoff. Give each reason its own counter. The recipe counter is

@@ -2,9 +2,10 @@
 
 > Generated from `handoffs/` by `node cli/index.mjs`. Do not edit by hand: it is regenerated
 > and byte-compared, so a hand-edit survives exactly until the next run.
-> 57 handoff(s), newest first. No budget: the series is append-only, so
+> 58 handoff(s), newest first. No budget: the series is append-only, so
 > the only remedy a budget could ask for is one this project rules out.
 
+- 2026-08-03 · [Handoff — the wire reaches an artifact adopters receive, and the constitution catches up](handoffs/2026-08-03-the-wire-and-the-constitution-catches-up.md)
 - 2026-08-03 · [Handoff — the authoring surface, and a checker that opens what it used to count](handoffs/2026-08-03-the-authoring-surface-and-a-checker-that-opens-what-it-counted.md)
 - 2026-07-31 · [Handoff — the rulings applied, and a matcher reading for a word Copilot had stopped using](handoffs/2026-07-31-the-rulings-and-a-matcher-reading-for-the-wrong-word.md)
 - 2026-07-31 · [Handoff — the loop doctrine merged, and the rail that watches reviews was found blind](handoffs/2026-07-31-the-loop-doctrine-merged-and-a-rail-was-found-blind.md)

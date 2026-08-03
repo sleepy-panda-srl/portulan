@@ -28,7 +28,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 // covers, and the only way that report can be true is for it to ask the backends themselves — a
 // second copy of the accounting would drift, and a *coverage claim* that drifts does not look wrong,
 // it looks like enforcement that quietly stopped covering something. Same reasoning that has
-// ../.portulan/compile/gate.mjs import the matcher instead of writing a second one. Zero
+// ./gate.mjs import the matcher instead of writing a second one. Zero
 // dependencies on both sides, so nothing is added to what this tool needs to run.
 import { parse, backends, resolvePack, packRoots } from "./compile.mjs";
 // The containment test the memory-index siting rule turns on, imported for the reason directly
@@ -1723,7 +1723,7 @@ export async function inspect(workspaceDir, options = {}) {
     // report." The compiler's accounting IS that report's data — every rule ends as compiled or
     // refused-with-a-reason, per backend — so this reads the backends rather than re-deriving what
     // they cover. Two implementations of one accounting is the drift this repository keeps finding,
-    // and it is the reason `../.portulan/compile/gate.mjs` imports the matcher instead of copying it.
+    // and it is the reason `./gate.mjs` imports the matcher instead of copying it.
     //
     // Reported, never failed, with one exception below: nothing legislates a coverage floor, and
     // `doctor` does not enforce what nobody legislated — the same reasoning that made `retirement`
