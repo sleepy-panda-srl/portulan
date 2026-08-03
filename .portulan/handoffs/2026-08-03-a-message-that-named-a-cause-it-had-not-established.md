@@ -37,7 +37,7 @@ three and asserts no cause it has not established. One question is open and it i
 
 ## The finding, and it is about the author of this handoff
 
-#160 drew **8 Copilot findings across 5 rounds. The eight-recipe suite caught 0 of them.** Seven were the
+Pull request #160 drew **8 Copilot findings across 5 rounds. The eight-recipe suite caught 0 of them.** Seven were the
 same class — *naming a cause the code had not established* — **in the change whose entire subject is that
 class**. Rounds 4 and 5 were each seeded by the fix for the round before: a label claiming more than its data
 was replaced by a label claiming more than its data, twice.
@@ -55,12 +55,14 @@ a live log on #157's own second failure, and #162 removed it.
 
 ## Open questions
 
-- **#161 — the maintainer's.** An App-authored pull request draws no Copilot round on `synchronize`
-  (reproduced twice on #157; refuted for diff-similarity by #160). `librarian.yml` files as the App **by
-  design** — a `GITHUB_TOKEN` pull request starts no `pull_request` runs at all — so **every scheduled pass
-  that needs a rebase before merging strands the same way, every Monday.** Today that cost two 20-minute
-  waits and an override. Three directions are listed there; a fourth appeared only after the refutation:
-  file the pass, or re-open it, under a user identity.
+- **#161 — the maintainer's, and the cause is OPEN.** Observed: an App-authored pull request drew no Copilot
+  round on `synchronize`, twice on #157; a user-authored one drew a full round on a byte-identical diff, which
+  refutes diff-similarity. Authorship is the surviving **lead, not a mechanism** — #157 did draw a round on its
+  `opened` event, which a blanket bot-author rule does not explain. **If the lead holds**, then since
+  `librarian.yml` files as the App by design (a `GITHUB_TOKEN` pull request starts no `pull_request` runs at
+  all), every scheduled pass needing a rebase would strand this way. Today's cost, which is not a prediction:
+  two 20-minute waits and an override. Three directions are listed there; a fourth appeared only after the
+  refutation — file the pass, or re-open it, under a user identity.
 - **The loop bound was exceeded by three pushes**, each authorised individually. Rounds 1–2 were defects this
   pull request introduced, which is #154's stated ground; round 3 was older than the branch and would
   ordinarily have been an issue. Whether *the change's subject is the defect class being found* is a general
