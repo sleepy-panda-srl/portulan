@@ -553,7 +553,7 @@ jobs:
           # (`.portulan/memory/a-checker-must-refuse-what-it-cannot-check.md`), pointed at a diagnostic
           # instead of a verdict. The check is right to fail here; only the sentence was wrong.
           # FILTERED TO THE REVIEWERS THIS CHECK IS ABOUT, and the filtering is done HERE rather than
-          # in the jq — raised by Copilot on #160. The endpoint answers with every requested reviewer,
+          # in the jq — raised by Copilot on #160. The read answers with every requested USER reviewer,
           # so on a pull request that also has a human waiting, `requested` was non-empty for a reason
           # having nothing to do with Copilot: the branches below read that as *Copilot holds the
           # request*, named a human as the Copilot fault, and — once the four-way split landed — could
@@ -676,7 +676,14 @@ jobs:
           # next.
           if [ "$requested_read" -eq 1 ]; then
             printf 'Copilot requests still unanswered (filtered to %s):%s\n' "$REVIEWERS" "${requested:+ $requested}"
-            printf 'All reviewers requested and still unanswered:%s\n' "${requested_all:+ $requested_all}"
+            # "user reviewers", not "all": the jq above reads `.users[].login` and never `.teams`, so
+            # a requested TEAM is absent from this line. Said plainly because the word `All` claimed
+            # an exhaustiveness the read does not have — raised by Copilot on #160, one round after
+            # the same fault was fixed in the line above it. Narrowed rather than widened: extending
+            # the jq to `.teams` would change a program the `workflow-filters` fixtures cover under
+            # the anchor `.users[]`, and a label is the cheaper carrier for a distinction than a
+            # filter nobody here requests a team through.
+            printf 'All USER reviewers requested and still unanswered (teams are not read):%s\n' "${requested_all:+ $requested_all}"
           else
             printf 'Copilot requests still unanswered: COULD NOT READ\n'
           fi
