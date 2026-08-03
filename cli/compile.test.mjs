@@ -1998,4 +1998,36 @@ describe("a workspace named directly, in either residence", () => {
         const only = (text) => text.split("\n").filter((l) => /^\s*(gate|refused)\s/.test(l)).join("\n");
         assert.equal(only(said(["--workspace", path.join(repo, ".portulan")])), only(said(["--workspace", feed])));
     });
+
+    test("only ENOENT means `this is a repository root` — an unreadable manifest refuses", () => {
+        // The rule this repository names more often than any other, and the first cut of
+        // `resolveWorkspace` broke it in the change whose own header states it three times: ANY failure
+        // reading `workspace.json` fell back to `.portulan`, so a present-but-unreadable manifest sent
+        // `compile` looking for a policy the workspace never named and failed with a confusing secondary
+        // error about a missing file. Copilot, round 1 on #164.
+        const dir = scratch();
+        fs.writeFileSync(path.join(dir, "workspace.json"), "{ not json");
+        assert.throws(() => resolveWorkspace(dir), (e) => e instanceof CompileError && /not valid JSON/.test(e.message));
+
+        // And the read-side sibling, forced with a stub rather than chmod — root ignores chmod, CI often
+        // runs as root, and a check that stops checking where it matters is worse than none.
+        const dir2 = scratch();
+        const original = fs.readFileSync;
+        fs.readFileSync = (p, ...rest) => {
+            if (String(p) === path.join(dir2, "workspace.json")) {
+                const error = new Error("permission denied");
+                error.code = "EACCES";
+                throw error;
+            }
+            return original(p, ...rest);
+        };
+        try {
+            assert.throws(() => resolveWorkspace(dir2), (e) => e instanceof CompileError && /EACCES/.test(e.message));
+        } finally {
+            fs.readFileSync = original;
+        }
+
+        // A genuinely absent manifest is still the ordinary repository-root case.
+        assert.deepEqual(resolveWorkspace(scratch()).workspaceDir, ".portulan");
+    });
 });

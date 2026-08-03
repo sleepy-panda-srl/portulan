@@ -1792,11 +1792,31 @@ function printMatrix(say, parsed, columns, { source }) {
  */
 export function resolveWorkspace(named) {
     const dir = path.resolve(named);
-    let manifest = null;
+    const manifestPath = path.join(dir, "workspace.json");
+    let raw;
     try {
-        manifest = JSON.parse(fs.readFileSync(path.join(dir, "workspace.json"), "utf8"));
-    } catch {
-        return { workspaceRoot: named, workspaceDir: ".portulan" };
+        raw = fs.readFileSync(manifestPath, "utf8");
+    } catch (cause) {
+        // **Only `ENOENT` means "this is not a workspace directory".** Anything else — `EACCES` above
+        // all — means the question could not be answered, and falling back to `.portulan` would answer
+        // it *no* and then fail somewhere else with a confusing secondary error about a policy file.
+        // The first cut of this function caught everything, which is the fail-open this repository names
+        // more often than any other, committed in a change whose own header states the rule three times.
+        // Copilot, round 1 on #164.
+        if (cause.code === "ENOENT") return { workspaceRoot: named, workspaceDir: ".portulan" };
+        throw new CompileError(
+            `${manifestPath} could not be read — ${cause.code ?? cause.message}. Only a MISSING manifest means ` +
+                `\`${named}\` is a repository root; refusing to assume \`.portulan\` on a question nothing could answer`,
+        );
+    }
+    let manifest;
+    try {
+        manifest = JSON.parse(raw);
+    } catch (cause) {
+        throw new CompileError(
+            `${manifestPath} is not valid JSON — ${cause.message}. A manifest is present and unreadable, which is ` +
+                `not the same as absent: treating it as absent would compile a policy from somewhere this workspace never named`,
+        );
     }
     if (typeof manifest?.tree === "string" && manifest.tree.trim()) {
         const root = path.resolve(dir, manifest.tree);
