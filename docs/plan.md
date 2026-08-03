@@ -1943,6 +1943,6 @@ _The seam applies here too: no client-identifying references._
   [`0017`](../.portulan/proposals/0017-one-repository-one-governing-workspace.md)'s ordering. **D4 done**
   on the real `portulan-internal` checkout, which found a **parity breach** — `compile` keyed on
   `.portulan` and exited 2 feed-side where the other three ops matched — fixed here. The window is **irreducible**; handled failures always leave one
-  governor, and task `0011`'s *"never two"* is amended to cite `0017`. 15 carriers swept (13 prose, 2 suites). Suite 907→973,
+  governor, and task `0011`'s *"never two"* is amended to cite `0017`. 15 carriers swept (13 prose, 2 suites). Suite 907→974,
   eight recipes, `npm pack` 85. · Fidelity: session-open A-W-A (9), which refuted three orderings first ·
   pre-commit REQUEST-CHANGES (4, all folded) then A-W-A (1), each a record out of agreement with the tree. Seam scan clean. Handoff: [`2026-08-03-a-workspace-can-move-house…`](../.portulan/handoffs/2026-08-03-a-workspace-can-move-house-and-one-window-cannot-close.md).

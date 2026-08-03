@@ -418,6 +418,35 @@ export function collisions(destDir, rels, { lstat = fs.lstatSync, allow = new Se
  */
 function carveOut(destDir, incomingName) {
     const manifestPath = path.join(destDir, "workspace.json");
+
+    // **`lstat` BEFORE any read, and this is the whole of it.** `readdirSync` and `readFileSync` follow
+    // symlinks, so without this the carve-out read a manifest *outside* the named tree and could then
+    // refuse — or permit — on the strength of a workspace that is not in this repository at all. The
+    // symlink-aware collision check below would still stop the write, which is why nothing escaped; but
+    // a containment guarantee that depends on which check happens to run first is not a guarantee, and
+    // a refusal drawn from a foreign manifest misdescribes what it found.
+    //
+    // `cli/init.mjs` shipped exactly this and its `residenceAt` records the fix in the same words. I
+    // copied the tool and not the lesson. Copilot, round 5 on #164 — issue #91's class again, and the
+    // fourth time this milestone.
+    for (const step of [destDir, manifestPath]) {
+        let stat;
+        try {
+            stat = fs.lstatSync(step);
+        } catch (cause) {
+            // Only ENOENT means absent, and an absent destination has nothing to carve out.
+            if (cause.code === "ENOENT") return { allow: new Set(), pointer: null };
+            throw new VendorError(`${step} could not be examined — ${cause.code ?? cause.message}. Only a missing path means "nothing there"`);
+        }
+        if (stat.isSymbolicLink()) {
+            throw new VendorError(
+                `${step} is a symlink, and this refuses to read a manifest through one as firmly as it refuses to write ` +
+                    `through one. A manifest reached that way describes some other directory, so any verdict about this ` +
+                    `destination drawn from it would be about somewhere else. Replace the link with a real directory`,
+            );
+        }
+    }
+
     let entries;
     try {
         entries = fs.readdirSync(destDir);
@@ -493,7 +522,12 @@ function pointerManifest(residenceDir, governor, feed) {
     return {
         portulan: { spec: SPEC },
         name: pointerName(residenceDir),
-        summary: `This repository is governed by the \`${governor}\` workspace, which resides elsewhere.`,
+        // Residence-AGNOSTIC, because this function leaves pointers at both ends. It said "This
+        // repository is governed by…", which is true of the pointer left in a repository and false of
+        // the one left in a retired feed slot — a directory that is not a repository residence at all.
+        // A manifest carrying a sentence about somewhere it is not is the same defect one layer down
+        // from the prose this session spent a sweep on. Copilot's suppressed notes, round 5 on #164.
+        summary: `Governed by the \`${governor}\` workspace, which resides elsewhere. This directory holds a pointer and no policy layer of its own.`,
         kind: "pointer",
         governed_by: feed ? { workspace: governor, feed } : { workspace: governor },
     };

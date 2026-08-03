@@ -366,6 +366,34 @@ describe("the three refusals `init` and `new` paid for", () => {
         assert.match(found[0].why, /EACCES/);
     });
 
+    test("a symlinked SWITCH destination is refused before its manifest is read", async () => {
+        // The read side of the destination, which the `--host` cases above do not reach: only a switch
+        // consults the carve-out, and the carve-out read `destDir` and its `workspace.json` with calls
+        // that FOLLOW links — so a verdict about "this destination" could be drawn from a manifest
+        // outside the tree entirely. The collision check would still have stopped the write, which is
+        // why nothing escaped; but a containment guarantee that depends on which check runs first is not
+        // a guarantee. `cli/init.mjs` shipped this exact defect and records the fix in the same words.
+        // Copilot, round 5 on #164.
+        const root = scratch();
+        const src = path.join(root, "feed", "acme");
+        fs.mkdirSync(src, { recursive: true });
+        seedWorkspace(src, { name: "acme", kind: "portfolio", tree: null, card: "acme-app" });
+        // A real pointer somewhere else entirely, and a link to it where the destination should be.
+        const elsewhere = pointerRepo(root, "somebody-elses-repo", "acme");
+        const dst = path.join(root, "acme-app", ".portulan");
+        fs.mkdirSync(path.dirname(dst), { recursive: true });
+        fs.symlinkSync(elsewhere, dst);
+
+        const h = harness();
+        assert.equal(await run([src, "--into", dst, "--residence", "in-repo", "--switch"], h.options), 2);
+        assert.match(text(h), /symlink/);
+        // The refusal must be about the LINK, never about the workspace it happens to point at.
+        assert.doesNotMatch(text(h), /somebody-elses-repo/);
+        // And nothing was written through it.
+        assert.equal(readManifest(elsewhere).kind, "pointer");
+        assert.deepEqual(fs.readdirSync(elsewhere).sort(), ["README.md", "workspace.json"]);
+    });
+
     test("a symlink inside the SOURCE is refused — the read path, not only the write path", async () => {
         // Issue #91's class, and session 1 hit it twice: a guard on the write path and not the read.
         // Copying through a link would materialise a file from outside the workspace and record it as
