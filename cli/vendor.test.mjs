@@ -518,6 +518,41 @@ describe("vendoring into a host", () => {
         assert.match(fs.readFileSync(path.join(host, "AGENTS.md"), "utf8"), /Resolution cascade/);
     });
 
+    test("a failure after AGENTS.md moves leaves no AGENTS.md behind", async () => {
+        // The undo was registered AFTER the last write rather than before the first, so every failure
+        // *between* the two renames was uncovered: `AGENTS.md` landed, the workspace rename then failed,
+        // and the rollback removed the staging directory while leaving the file — a run that reported
+        // could-not-run having vendored half of something into somebody's tree. Copilot, round 1 on #164.
+        //
+        // Forced by making the destination rename fail: `dest`'s parent is a FILE, so `mkdirSync` of it
+        // throws after `AGENTS.md` is already in place.
+        const root = scratch();
+        const src = path.join(root, "feed", "acme");
+        fs.mkdirSync(src, { recursive: true });
+        seedWorkspace(src, { kind: "portfolio", tree: null, card: null });
+        const host = path.join(root, "host");
+        fs.mkdirSync(host, { recursive: true });
+
+        const h = harness();
+        const original = fs.renameSync;
+        fs.renameSync = (from, to, ...rest) => {
+            if (String(to) === path.join(host, ".portulan")) {
+                const error = new Error("cross-device link not permitted");
+                error.code = "EXDEV";
+                throw error;
+            }
+            return original(from, to, ...rest);
+        };
+        try {
+            assert.equal(await run([src, "--into", path.join(host, ".portulan"), "--residence", "in-repo", "--host", "generic"], h.options), 2);
+        } finally {
+            fs.renameSync = original;
+        }
+        assert.equal(exists(path.join(host, "AGENTS.md")), false, "a failed vendoring must leave no artifact");
+        assert.equal(exists(path.join(host, ".portulan")), false);
+        assert.deepEqual(fs.readdirSync(host), [], "and no staging directory either");
+    });
+
     test("refuses a host tree that already carries a residence", async () => {
         const root = scratch();
         const src = path.join(root, "feed", "acme");
@@ -611,6 +646,47 @@ describe("the switch, in-repo → feed-side", () => {
         assert.match(text(h), /compiled artifact/);
         // And the one it must NOT reach for, because it is outside the directory it was given.
         assert.match(text(h), /nothing here writes outside/);
+    });
+
+    test("`--leave nothing` does NOT delete an old residence it could not scan", async () => {
+        // The destructive one, and the shape is this repository's own fail-open: a scan that FAILED was
+        // read as an EMPTY directory, `leftovers` came back empty, and the `--leave nothing` branch then
+        // removed the whole tree — deleting exactly the files the sentence beside it promises never to
+        // delete, in the one branch where being wrong cannot be undone. Copilot, round 1 on #164.
+        //
+        // Forced by making the old residence unreadable at exactly the moment the RETIRE scan runs —
+        // the second `readdirSync` of that directory, the first being the materialise walk. `chmod`
+        // would be the obvious lever and is the wrong one: root ignores it, CI often runs as root, and a
+        // test that silently stops testing where it matters most is worse than no test.
+        const root = scratch();
+        const src = inRepo(root, "acme-app");
+        const feed = path.join(root, "feed", "acme");
+        const keep = path.join(src, "hand-written.md");
+        fs.writeFileSync(keep, "# mine\n");
+
+        const h = harness();
+        const original = fs.readdirSync;
+        let seen = 0;
+        fs.readdirSync = (target, ...rest) => {
+            if (String(target) === src && ++seen > 1) {
+                const error = new Error("permission denied");
+                error.code = "EACCES";
+                throw error;
+            }
+            return original(target, ...rest);
+        };
+        try {
+            assert.equal(await run([src, "--into", feed, "--residence", "feed-side", "--switch", "--leave", "nothing"], h.options), 0);
+        } finally {
+            fs.readdirSync = original;
+        }
+
+        assert.ok(exists(keep), "a file the run could not account for must survive");
+        assert.match(text(h), /could NOT be scanned/);
+        assert.match(text(h), /nothing there was removed/);
+        // Governance still moved — the switch completed; only the cleanup did not.
+        assert.equal(exists(path.join(src, "workspace.json")), false);
+        assert.equal(governors(path.dirname(src), [feed]), 1);
     });
 
     test("`--leave nothing` removes the old residence entirely", async () => {

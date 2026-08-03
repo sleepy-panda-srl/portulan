@@ -965,20 +965,38 @@ export async function run(argv, options = {}) {
         const preserved = new Map();
         for (const rel of carve.allow) preserved.set(rel, fs.readFileSync(path.join(dest, rel)));
 
-        if (carve.allow.size === 0 && !fs.existsSync(dest)) {
+        // **The undo is registered BEFORE the first byte moves, never after the last one.** Registering
+        // it afterwards leaves every failure *between* the writes uncovered — and the gap was real: with
+        // `--host`, `AGENTS.md` was renamed into place first and a failure in the very next rename rolled
+        // back the staging directory while leaving the file behind, so a run that reported could-not-run
+        // had still vendored half of something. Copilot, round 1 on #164. The closures below read
+        // `written` by reference, so they cover exactly as much as has actually happened when they run.
+        const written = [];
+        const landed = carve.allow.size === 0 && !fs.existsSync(dest);
+        undo.push(() => {
+            // The manifest FIRST, always: it is what closes the window. Everything after it is cleanup,
+            // and cleanup that throws must not leave a governor standing.
+            fs.rmSync(path.join(dest, "workspace.json"), { force: true });
+            if (hostFile !== null) fs.rmSync(hostFile, { force: true });
+            if (landed) {
+                // The destination did not exist before this run, so removing it restores the world.
+                fs.rmSync(dest, { recursive: true, force: true });
+            } else {
+                for (const rel of written) if (!preserved.has(rel)) fs.rmSync(path.join(dest, rel), { force: true });
+                for (const [rel, bytes] of preserved) fs.writeFileSync(path.join(dest, rel), bytes);
+            }
+        });
+
+        if (landed) {
             // The destination does not exist: one atomic rename puts the whole workspace there, and
             // there is no half-populated state at all.
             fs.mkdirSync(path.dirname(dest), { recursive: true });
             if (hostFile !== null) fs.renameSync(path.join(staging, "..AGENTS.md.vendoring"), hostFile);
             fs.renameSync(staging, dest);
-            undo.length = 0;
-            undo.push(() => fs.rmSync(dest, { recursive: true, force: true }));
-            if (hostFile !== null) undo.push(() => fs.rmSync(hostFile, { force: true }));
         } else {
             // The destination exists — the switch's own feed-side → in-repo case, landing on the
             // pointer that is the old residence's in-repo half. Files first, manifest LAST: until the
             // manifest lands this is a directory of files, which 0017 says is not a residence.
-            const written = [];
             for (const file of walk(staging)) {
                 if (file.rel === "workspace.json" || file.rel === "..AGENTS.md.vendoring") continue;
                 const full = path.join(dest, file.rel);
@@ -989,15 +1007,6 @@ export async function run(argv, options = {}) {
             }
             if (hostFile !== null) fs.renameSync(path.join(staging, "..AGENTS.md.vendoring"), hostFile);
             fs.renameSync(path.join(staging, "workspace.json"), path.join(dest, "workspace.json"));
-            undo.length = 0;
-            undo.push(() => {
-                // The manifest FIRST, which is what closes the window; then everything else.
-                fs.rmSync(path.join(dest, "workspace.json"), { force: true });
-                for (const rel of written) if (!preserved.has(rel)) fs.rmSync(path.join(dest, rel), { force: true });
-                for (const [rel, bytes] of preserved) fs.writeFileSync(path.join(dest, rel), bytes);
-                fs.rmSync(staging, { recursive: true, force: true });
-                if (hostFile !== null) fs.rmSync(hostFile, { force: true });
-            });
         }
         fs.rmSync(staging, { recursive: true, force: true });
         fault("materialise:manifest");
@@ -1051,11 +1060,18 @@ export async function run(argv, options = {}) {
         // would be leaving compiled enforcement beside a pointer.
         const moved = new Set([...rels, ...generated]);
         const leftovers = [];
-        let remaining;
+        let remaining = [];
+        let unscannable = null;
         try {
             remaining = walk(oldResidence);
-        } catch {
-            remaining = [];
+        } catch (cause) {
+            // **A scan that failed is not an empty old residence.** Swallowing it made `leftovers` empty,
+            // which under `--leave nothing` reached `rmSync(oldResidence, {recursive: true})` and deleted
+            // files this run could not account for — the exact opposite of the sentence two lines up, in
+            // the branch where being wrong is unrecoverable. Copilot, round 1 on #164, and it is this
+            // repository's own fail-open shape: a question that could not be answered, answered *nothing
+            // there*. Governance has already moved, so stopping here is safe; deleting was never safe.
+            unscannable = cause;
         }
         for (const file of remaining) {
             if (file.rel === "workspace.json") continue;
@@ -1066,17 +1082,26 @@ export async function run(argv, options = {}) {
             }
             fs.rmSync(path.join(oldResidence, file.rel), { force: true });
         }
-        pruneEmpty(oldResidence);
+        if (unscannable === null) pruneEmpty(oldResidence);
         if (leave === "pointer") {
             fs.writeFileSync(path.join(oldResidence, "README.md"), pointerReadme(manifest.name, parsed.feed, display(dest)));
-        } else if (leftovers.length === 0) {
+        } else if (leftovers.length === 0 && unscannable === null) {
             fs.rmSync(oldResidence, { recursive: true, force: true });
         }
         fault("retire:material");
 
         say(`vendor: switched \`${manifest.name}\` — ${sourceResidence} → ${parsed.residence}.`);
         say(`vendor:   resides at ${display(dest)}, green.`);
-        say(`vendor:   ${leave === "pointer" ? `a pointer at ${display(oldResidence)}, green` : `nothing left at ${display(oldResidence)}`}.`);
+        if (unscannable !== null) {
+            // The switch itself is complete — governance moved when the manifest did — and only the
+            // cleanup is unfinished. Said as its own line rather than folded into the success sentence,
+            // because "switched" and "and the old residence is tidy" are two different claims.
+            say(`vendor:   the old residence at ${display(oldResidence)} could NOT be scanned — ${unscannable.message}`);
+            say("vendor:   so nothing there was removed. It no longer governs (its manifest is gone or is a pointer),");
+            say("vendor:   and nothing here deletes files it could not account for. Clear it by hand when you can read it.");
+        } else {
+            say(`vendor:   ${leave === "pointer" ? `a pointer at ${display(oldResidence)}, green` : `nothing left at ${display(oldResidence)}`}.`);
+        }
         if (leftovers.length) {
             say(`vendor: ${leftovers.length} file(s) at the old residence were not moved by this run and were left alone: ${leftovers.join(", ")}.`);
             say("vendor: nothing here deletes a file it cannot account for — they are yours to keep or remove.");
