@@ -588,14 +588,16 @@ jobs:
               printf 'cause: the faults below have different repairs and nothing here distinguishes\n'
               printf 'them. Read repos/%s/pulls/%s/requested_reviewers by hand.\n' "$GITHUB_REPOSITORY" "$PR_NUMBER"
             elif [ -z "$requested" ] && [ "$rerequest_state" = sent ]; then
-              printf 'REQUESTED, ACCEPTED, THEN ABANDONED — the one fault on this list that re-running\n'
-              printf 'does not repair. This job POSTed a review request at %ss and GitHub ACCEPTED it,\n' "$rerequest_at"
-              printf 'so a request WAS created for this actor; the list reads empty now because the\n'
-              printf 'reviewer left it without submitting anything. The login is not worth checking:\n'
-              printf 'GitHub accepted it, so it resolves. The RULESET is a separate question and this\n'
-              printf 'message cannot answer it — an explicit POST creates a request whatever the ruleset\n'
-              printf 'does, so nothing here shows it is healthy. What is shown is that the ruleset is\n'
-              printf 'not what emptied this list: a request existed, and was abandoned.\n'
+              printf 'REQUESTED, ACCEPTED, AND GONE — the one fault on this list that re-running does\n'
+              printf 'not repair. This job POSTed a review request at %ss and GitHub ACCEPTED it, so a\n' "$rerequest_at"
+              printf 'request WAS created for this actor. It is no longer on the list and no review\n'
+              printf 'arrived. WHAT removed it is not established here — the reviewer, a person, or\n'
+              printf 'some automation are all consistent with what this job can see, and it saw only\n'
+              printf 'the two endpoints. The login is not worth checking: GitHub accepted it, so it\n'
+              printf 'resolves. The RULESET is a separate question and this message cannot answer it —\n'
+              printf 'an explicit POST creates a request whatever the ruleset does, so nothing here\n'
+              printf 'shows it is healthy. What is shown is narrower: a request existed and stopped\n'
+              printf 'existing, which a ruleset that never requests one cannot explain.\n'
               printf 'Measured on #157 (2026-08-03): a rebase force-push whose diff moved seven derived\n'
               printf 'numbers drew no round at all — `review_on_push` did not fire for it, and the\n'
               printf 're-request above went the same way. The reading that fits is that Copilot\n'
@@ -629,10 +631,11 @@ jobs:
             fi
           fi
           printf '\nReview authors seen on this pull request:%s\n' "${seen:- none}"
-          # Printed for both verdicts. Copilot leaves this list once it submits — and, measured on
-          # #157 (2026-08-03), ALSO when it submits nothing at all. So absence proves nothing about
-          # whether it was ever asked, and nothing about whether it answered either, which is why the
-          # branch above splits on this job's own accepted POST rather than on this line.
+          # Printed for both verdicts. An entry disappears from this list when a review is submitted,
+          # and — measured on #157 (2026-08-03) — it can also disappear with no review arriving. What
+          # removes it is not observable from here in either case. So absence proves nothing about
+          # whether a round was ever asked for, and nothing about whether it was answered, which is
+          # why the branch above splits on this job's own accepted POST rather than on this line.
           if [ "$requested_read" -eq 1 ]; then
             printf 'Reviewers requested and still unanswered:%s\n' "${requested:+ $requested}"
           else
