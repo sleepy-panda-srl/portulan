@@ -403,3 +403,31 @@ describe("the destination is derived from the workspace's own slots", () => {
         assert.equal(destination("repo-card", "mine", ws), path.join(ws, "repos", "mine.md"));
     });
 });
+
+describe("a scaffolded pointer is a pointer, not a governing workspace with a label", () => {
+    test("`--kind pointer --governed-by` is green under the real doctor", async () => {
+        // Copilot's suppressed notes on #156, twice on one file: the scaffolder always wrote the governing
+        // shape — slots, verify — while the help screen advertised `pointer` as supported. A pointer needs
+        // `governed_by` and must carry NONE of the governing keys, so what it emitted was red on the run
+        // after it was written. Third instance this session of a scaffold failing the validation beside it.
+        const dir = scratch();
+        assert.equal(run(["workspace", "ptr", "--kind", "pointer", "--governed-by", "sleepy-panda", "--into", dir], harness().options), 0);
+        const manifest = JSON.parse(fs.readFileSync(path.join(dir, "ptr", "workspace.json"), "utf8"));
+        assert.equal(manifest.kind, "pointer");
+        assert.equal(manifest.governed_by.workspace, "sleepy-panda");
+        assert.equal(manifest.slots, undefined, "a pointer carrying slots is refused by doctor");
+        assert.equal(manifest.verify, undefined, "a pointer carrying verify is refused by doctor");
+        const { run: doctor } = await import("./doctor.mjs");
+        assert.equal(await doctor([path.join(dir, "ptr")], { quiet: true }), 0);
+    });
+
+    test("a pointer naming nobody is refused, and so is a governor that claims a governor", () => {
+        const dir = scratch();
+        const a = harness();
+        assert.equal(run(["workspace", "p", "--kind", "pointer", "--into", dir], a.options), 2);
+        assert.match(a.said.join("\n"), /--governed-by/);
+        const b = harness();
+        assert.equal(run(["workspace", "q", "--governed-by", "x", "--into", dir], b.options), 2);
+        assert.match(b.said.join("\n"), /only meaningful with/);
+    });
+});

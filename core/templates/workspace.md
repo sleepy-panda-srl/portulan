@@ -33,7 +33,7 @@
 
   "name": "{kebab-case-name}",
   "summary": "{One line: whose workspace this is and what it governs.}",
-  "kind": "{repository | pointer | portfolio}",
+  "kind": "{repository | demo | portfolio | pointer}",
   "tree": "../",
 
   "slots": {

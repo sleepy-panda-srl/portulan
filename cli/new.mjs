@@ -258,7 +258,7 @@ export function intoCore(resolved) {
  * empty one reached a manifest once already, failing `minLength: 1` on the run that reported success.
  */
 export function parseArgs(argv) {
-    const out = { kind: null, name: null, into: null, category: null, kindOf: null, help: false, given: new Set() };
+    const out = { kind: null, name: null, into: null, category: null, kindOf: null, governedBy: null, help: false, given: new Set() };
     const positional = [];
     for (let i = 0; i < argv.length; i += 1) {
         const arg = argv[i];
@@ -271,7 +271,7 @@ export function parseArgs(argv) {
             continue;
         }
         const flag = arg;
-        const key = { "--into": "into", "--category": "category", "--kind": "kindOf" }[flag];
+        const key = { "--into": "into", "--category": "category", "--kind": "kindOf", "--governed-by": "governedBy" }[flag];
         if (!key) {
             throw new NewError(
                 `unknown option \`${flag}\` — run \`portulan new --help\` for the ones this understands, ` +
@@ -307,6 +307,7 @@ function usage() {
         "  --into <dir>       where it lands. Never inside `core/`.",
         "  --category <c>     stacks | tools | rituals   (packs only)",
         "  --kind <k>         repository | demo | portfolio | pointer   (workspaces only)",
+        "  --governed-by <ws> the governing workspace's name   (required with --kind pointer)",
         "",
         "  Exit 0 wrote · 2 could not run. There is no exit 1: this tool renders no verdict",
         "  about a workspace, so it has no red to report. Run `doctor` for that.",
@@ -344,7 +345,18 @@ export function plan(parsed) {
         if (!["repository", "demo", "portfolio", "pointer"].includes(wkind)) {
             throw new NewError(`\`--kind ${wkind}\` is not one of repository, demo, portfolio or pointer`);
         }
-        return workspaceFiles(root, name, wkind, body);
+        if (wkind === "pointer" && !parsed.governedBy) {
+            throw new NewError(
+                "`--kind pointer` needs `--governed-by <workspace-name>`. A pointer's whole content is the name of the workspace that " +
+                    "governs this repository — one repository is governed by exactly one workspace — so a pointer that names nobody is a " +
+                    "manifest `doctor` refuses. If you are onboarding a repository rather than hand-authoring, use `portulan init`, which " +
+                    "asks the residence question instead of taking it as a flag",
+            );
+        }
+        if (wkind !== "pointer" && parsed.governedBy) {
+            throw new NewError(`\`--governed-by\` is only meaningful with \`--kind pointer\` — a ${wkind} workspace governs, it is not governed`);
+        }
+        return workspaceFiles(root, name, wkind, body, parsed.governedBy);
     }
 
     return [{ path: destination(kind, name, into), contents: fill(body, { name }) }];
@@ -392,7 +404,34 @@ function packReadme(name, category) {
  * a scaffold that guesses which tree it governs would be a claim about the filesystem that the scaffold
  * cannot check — the claims lint would then grade a repository nobody chose.
  */
-function workspaceFiles(root, name, wkind, body) {
+function workspaceFiles(root, name, wkind, body, governedBy = null) {
+    // A POINTER carries `governed_by` and NONE of the governing keys — no slots, no verify, no gates.
+    // The Workspace Definition requires the first and `doctor` refuses the second, so a pointer built
+    // from the governing shape is red on the run after it is written. Copilot's suppressed notes on #156
+    // caught it, twice on one file: the scaffolder always wrote the governing shape while the help screen
+    // advertised `pointer` as a supported kind. That is this session's own recurring defect for the third
+    // time — a scaffold failing the validation that lives beside it — so it is fixed rather than triaged.
+    if (wkind === "pointer") {
+        const manifest = { portulan: { spec: "2.7" }, name, kind: "pointer", governed_by: { workspace: governedBy } };
+        return [
+            { path: path.join(root, "workspace.json"), contents: `${JSON.stringify(manifest, null, 2)}\n` },
+            {
+                path: path.join(root, "README.md"),
+                contents: [
+                    `# Pointer — ${name}`,
+                    "",
+                    `This repository is governed by the \`${governedBy}\` workspace, which lives elsewhere. **One repository is`,
+                    "governed by exactly one workspace**, so this file is a pointer and not a second one: it carries no slots,",
+                    "no verify recipes and no gate policy, because those belong to the governing workspace.",
+                    "",
+                    "Nothing here resolves the pointer for you — reading it is not fetching it. `doctor` reports the governor",
+                    "it names; finding that workspace on this machine is a separate question.",
+                    "",
+                ].join("\n"),
+            },
+        ];
+    }
+
     const manifest = {
         portulan: { spec: "2.7" },
         name,
