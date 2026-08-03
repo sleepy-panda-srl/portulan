@@ -897,6 +897,30 @@ describe("the ordering, and what a failure at each step leaves behind", () => {
         assert.equal(governors(path.dirname(src), [feed]), 1);
     });
 
+    test("a rolled-back switch does not wedge its own retry", async () => {
+        // "Rolled back" has to mean entry for entry, not merely byte for byte. The in-place path removed
+        // the files it wrote and left the DIRECTORIES it created, so the destination came back with a
+        // `verify/` beside the pointer — and the next run's carve-out refuses exactly that, which means
+        // a rollback reporting success made the retry impossible. `init`'s partial write, one layer out.
+        // Copilot, round 6 on #164.
+        const root = scratch();
+        const feed = path.join(root, "feed", "acme");
+        fs.mkdirSync(feed, { recursive: true });
+        seedWorkspace(feed, { name: "acme", kind: "portfolio", tree: null, card: "acme-app" });
+        const dst = pointerRepo(root, "acme-app", "acme");
+        const before = fs.readdirSync(dst).sort();
+
+        const h = harness();
+        assert.equal(await run([feed, "--into", dst, "--residence", "in-repo", "--switch"], { ...h.options, faultAt: "materialise:manifest" }), 2);
+        assert.deepEqual(fs.readdirSync(dst).sort(), before, "the destination is restored entry for entry, not only file for file");
+
+        // And the proof that it matters: the same command runs again and is not refused for what the
+        // rollback left behind.
+        const again = harness();
+        assert.equal(await run([feed, "--into", dst, "--residence", "in-repo", "--switch"], again.options), 0);
+        assert.deepEqual(await green(dst), []);
+    });
+
     test("a red `doctor` at the new residence rolls back and never opens the window", async () => {
         // The new end is validated BEFORE the rename that transfers governance, so a destination that
         // would not have been green never becomes a second governor at all.
