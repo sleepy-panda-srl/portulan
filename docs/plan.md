@@ -1914,3 +1914,13 @@ _The seam applies here too: no client-identifying references._
   the front of the pass"* **never moved anything**, and that the demonstration count is **six**, not the
   four/six/seven this session claimed in turn. Suite 907, eight recipes. Seam scan clean. Handoff:
   [`2026-08-03-the-criterion…`](../.portulan/handoffs/2026-08-03-the-criterion-batch-and-a-move-that-never-happened.md).
+
+- 2026-08-03 · M5 (Memory lifecycle & librarian) · **Scheduled librarian pass**, filed by
+  `cli/librarian.mjs` rather than by a person: 2 workspaces passed,
+  0 stale record(s), 0 sealed stamp(s) due for re-validation, 0 proposal(s) nagged, no index drift.
+  · Mined: 22 incident(s) with nothing pointing back at them, 29 path(s) drawing
+  repeat review findings, 3 record group(s) citing one incident.
+  · No supervisor checkpoint: a scheduled pass makes no decision for one to grade.
+  · Seam scan clean by construction — this pass composes no new prose at run time, so its
+  diff carries nothing the scan had not already passed.
+  Handoff: [`2026-08-03`](../.portulan/handoffs/2026-08-03-librarian-pass.md).
