@@ -448,3 +448,24 @@ describe("a slot value cannot walk a scaffold out of its own workspace", () => {
         assert.ok(!fs.existsSync(path.join(dir, "..", "escaped")), "it wrote outside the workspace anyway");
     });
 });
+
+describe("a directory where a file must be written", () => {
+    test("is refused upfront rather than thrown at mid-write", () => {
+        // The sibling of the same hole in `cli/vendor.mjs`, which is where this shape was copied from and
+        // where Copilot found it (#164, round 4). `plan()` only ever yields files, so a directory sitting
+        // at one of their paths is something already there — and the header's promise is that every
+        // refusal stands ahead of the first byte, which an `EISDIR` from `writeFileSync` is not.
+        const dir = scratch();
+        fs.mkdirSync(path.join(dir, "personas", "reviewer.md"), { recursive: true });
+        const h = harness();
+        assert.equal(run(["persona", "reviewer", "--into", dir], h.options), 2);
+        assert.match(h.said.join("\n"), /is a directory where a file has to be written/);
+        // And an ordinary existing FILE still reports as an existing file, not as a directory.
+        const dir2 = scratch();
+        fs.mkdirSync(path.join(dir2, "personas"), { recursive: true });
+        fs.writeFileSync(path.join(dir2, "personas", "reviewer.md"), "mine\n");
+        const h2 = harness();
+        assert.equal(run(["persona", "reviewer", "--into", dir2], h2.options), 2);
+        assert.match(h2.said.join("\n"), /already exist/);
+    });
+});

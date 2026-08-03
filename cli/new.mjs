@@ -187,7 +187,16 @@ export function collisions(paths, root = null) {
                 found.push({ path: step, why: "symlink" });
                 break;
             }
-            if (step === target && !stat.isDirectory()) found.push({ path: step, why: "exists" });
+            // A DIRECTORY at the leaf is a collision too, and the paragraph above says the opposite —
+            // rightly, about the *intermediate* segments, and wrongly here: every path this plans is a
+            // file, so a directory sitting at one is something already there. Preflight passed and
+            // `writeFileSync` then threw `EISDIR` mid-loop, which is the ordering this whole function
+            // exists to prevent. Found by Copilot on #164 against the copy of this shape in
+            // `cli/vendor.mjs`; fixed in both, because a defect and its source are the same defect.
+            if (step === target) {
+                if (stat.isDirectory()) found.push({ path: step, why: "directory" });
+                else found.push({ path: step, why: "exists" });
+            }
         }
     }
     return found;
@@ -772,6 +781,8 @@ function groupByCause(clash) {
                 `${paths.length} file(s) already exist and nothing here overwrites a file you wrote: ${paths.join(", ")}. ` +
                     `Move or delete them and run again`,
             );
+        } else if (why === "directory") {
+            said.push(`${paths.join(", ")} ${paths.length === 1 ? "is a directory" : "are directories"} where a file has to be written. Move or remove ${paths.length === 1 ? "it" : "them"} and run again`);
         } else if (why === "symlink") {
             said.push(`${paths.join(", ")} ${paths.length === 1 ? "is a symlink" : "are symlinks"} — refused rather than followed, because a resolved link is how a write leaves its tree`);
         } else {

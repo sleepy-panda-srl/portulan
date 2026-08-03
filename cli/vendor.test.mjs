@@ -282,6 +282,27 @@ describe("the three refusals `init` and `new` paid for", () => {
         assert.equal(fs.readFileSync(path.join(dst, "identity.md"), "utf8"), "# Hand-written. Not yours to replace.\n");
     });
 
+    test("a DIRECTORY where a file must be written is refused upfront, not thrown at mid-copy", async () => {
+        // The exemption for existing directories is right for the intermediate segments and wrong at the
+        // leaf: `walk()` only yields files, so a directory sitting at one is something already there.
+        // Preflight passed and the write phase threw `EISDIR` mid-loop — which breaks the one promise
+        // this check exists to keep, that every refusal stands ahead of the first byte.
+        // Copilot's suppressed note, round 4 on #164.
+        const root = scratch();
+        const src = path.join(root, "src");
+        fs.mkdirSync(src, { recursive: true });
+        seedWorkspace(src, { kind: "portfolio", tree: null, card: null });
+        const dst = path.join(root, "repo", ".portulan");
+        fs.mkdirSync(path.join(dst, "identity.md"), { recursive: true });
+
+        const h = harness();
+        assert.equal(await run([src, "--into", dst, "--residence", "in-repo", "--host", "generic"], h.options), 2);
+        assert.match(text(h), /is a directory, and a file has to be written there/);
+        // Nothing was written: the refusal is a refusal, not a partial copy with an error on the end.
+        assert.equal(exists(path.join(dst, "workspace.json")), false);
+        assert.equal(exists(path.join(root, "repo", "AGENTS.md")), false);
+    });
+
     test("a symlink AT the named destination is refused rather than followed", async () => {
         const root = scratch();
         const src = path.join(root, "src");
