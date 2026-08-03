@@ -54,17 +54,54 @@ function harness({ code = 0, throws = null, noRun = false } = {}) {
     return { options, said, warned, loaded, argv: () => received };
 }
 
-test("the six subcommands are exactly the six docs/vision.md names, in its order", () => {
+test("docs/vision.md's six lead the list, in its order and unaltered", () => {
+    // Split from the single equality this was, when row 7's `new` and `feedback` landed. The **property**
+    // this test existed for is not "there are six" — it is that the human-owned list is authoritative and
+    // its order is not an implementer's to rearrange. That property is asserted here, on the prefix, and
+    // survives the row adding to the tail. A test rewritten to `deepEqual` the new eight would have kept
+    // passing while quietly giving up the thing it was guarding.
     assert.deepEqual(
-        SUBCOMMANDS.map((entry) => entry.name),
+        SUBCOMMANDS.slice(0, 6).map((entry) => entry.name),
         ["init", "doctor", "compile", "vendor", "index", "upgrade"],
     );
 });
 
-test("plugin-lint and librarian are NOT subcommands — the seventh is the maintainer's call", () => {
+test("the additions past the six are exactly the two row 7 names", () => {
+    // Row 7 of docs/plan.md is law and names `new` and `feedback` in its own ratified text, so these two
+    // are licensed by the row. Anything appearing here that the row does not name is an implementer
+    // minting a subcommand into a human-owned surface, which is what the next test refuses.
+    assert.deepEqual(
+        SUBCOMMANDS.slice(6).map((entry) => entry.name),
+        ["new", "feedback"],
+    );
+});
+
+test("an unbuilt subcommand's refusal names where it is ACTUALLY named", async () => {
+    // The shipped tool told users `feedback` is named in docs/vision.md. That file contains the word
+    // zero times — `feedback` comes from row 7 of docs/plan.md, which is this file's whole licence
+    // argument for carrying eight rather than six. cli/README.md said it correctly while the code
+    // contradicted it. Found at the pre-commit checkpoint, and it survived because **no test asserted
+    // the string**; this is that test.
+    const vision = fs.readFileSync(path.join(HERE, "..", "docs", "vision.md"), "utf8");
+    assert.doesNotMatch(vision, /feedback/i, "docs/vision.md now mentions feedback — this test's premise moved");
+
+    const h = harness({ noRun: true });
+    await run(["feedback"], h.options);
+    const said = h.warned.join("\n");
+    assert.match(said, /row 7 of docs\/plan\.md/);
+    assert.doesNotMatch(said, /`feedback` is named in docs\/vision\.md/);
+
+    // The control: a subcommand the constitution DOES name still says so, so the fix is a branch on
+    // provenance rather than a blanket rewording.
+    const h2 = harness({ noRun: true });
+    await run(["vendor"], h2.options);
+    assert.match(h2.warned.join("\n"), /docs\/vision\.md/);
+});
+
+test("plugin-lint and librarian are NOT subcommands — anything unnamed is the maintainer's call", () => {
     // This is a rule, not an omission, so it is asserted rather than left to be noticed. Both tools
-    // exist in this directory and are invoked directly by verify recipes; adding either here would
-    // mint a seventh subcommand into a human-owned list.
+    // exist in this directory and are invoked directly by verify recipes; adding either here would mint
+    // a subcommand neither vision.md nor row 7 names.
     assert.equal(find("plugin-lint"), null);
     assert.equal(find("librarian"), null);
 });
@@ -105,7 +142,7 @@ test("an unbuilt subcommand exits 2 and names where it arrives — never 0", asy
     // rather than derived from `SUBCOMMANDS` on purpose: deriving it would make the assertion
     // vacuously true the moment a subcommand's `module` was set, and the whole point is that a
     // subcommand crossing from unbuilt to built is a change somebody looked at.
-    for (const name of ["vendor", "upgrade"]) {
+    for (const name of ["vendor", "upgrade", "feedback"]) {
         const h = harness();
         const code = await run([name], h.options);
         assert.equal(code, 2, `${name} must exit 2, not 0 — a silent success here is a fail-open`);

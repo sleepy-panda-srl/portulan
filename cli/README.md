@@ -2,19 +2,26 @@
 
 The `npx` CLI that wraps the file-based mechanics for hosts beyond Claude Code:
 `init` (interview + codebase scan → drafted workspace) · `doctor` · `compile` (gates/verify → host
-enforcement) · `vendor` (self-contained `AGENTS.md` + `.portulan/`) · `index` · `upgrade`. That
+enforcement) · `vendor` (self-contained `AGENTS.md` + `.portulan/`) · `index` · `upgrade` — plus the two
+row 7 of [`../docs/plan.md`](../docs/plan.md) names in its own ratified text, `new` and `feedback`. That
 packaging is **milestone 7**, and as of session 0 the entry point exists:
 [`portulan.mjs`](portulan.mjs), reached as `portulan <subcommand>` through the `bin` in the
 repository's `package.json`.
 
-**Four of the six dispatch; two exit 2.** `doctor`, `compile` and `index` exist because milestones 2, 4
-and 5 needed them, and `init` was built at milestone 7 session 1; the entry point calls each one's
-exported `run` and returns the code unchanged. `vendor` and `upgrade` are named in `docs/vision.md`,
-are not built, and say so: they exit **2 — could not run**, naming the milestone they arrive at,
-because a stub exiting 0 would be a fail-open where a user is most likely to trust silence.
+**Five of the eight dispatch; three exit 2.** `doctor`, `compile` and `index` exist because milestones
+2, 4 and 5 needed them; `init` was built at milestone 7 session 1 and `new` at session 2. The entry
+point calls each one's exported `run` and returns the code unchanged. `vendor`, `upgrade` and
+`feedback` are named — the first two in `docs/vision.md`, the third in row 7 — are not built, and say
+so: they exit **2 — could not run**, naming where they arrive, because a stub exiting 0 would be a
+fail-open where a user is most likely to trust silence.
 
-Beside the six sit **two** tools that are not on that list at all, because milestone 3 and milestone
-5 needed them. Being off the list is a fact about `docs/vision.md`, which names six subcommands and
+**Why eight and not six.** `docs/vision.md` names six subcommands and is human-owned. `new` and
+`feedback` are here because **row 7 names them in its own binding text**, ratified by the maintainer —
+so the list grew by a ruling rather than by an implementer's judgement, which is the distinction the
+"anything else is the maintainer's call" rule below is actually about.
+
+Beside those eight sit **two** tools that are not on any of the lists, because milestone 3 and
+milestone 5 needed them. Being off the list is a fact about `docs/vision.md`, which names six subcommands and
 is human-owned: whether `plugin-lint` or `librarian` ever joins them is the maintainer's call and not
 an implementer's, so neither is described here as *coming to the CLI* — and neither is wired behind
 the entry point, which is the same rule expressed in code rather than in a sentence.

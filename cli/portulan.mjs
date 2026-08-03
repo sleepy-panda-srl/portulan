@@ -2,8 +2,11 @@
 // Portulan — the one entry point the `npx` package exposes.
 //
 // `docs/vision.md` names six subcommands and is human-owned: `init` · `doctor` · `compile` ·
-// `vendor` · `index` · `upgrade`. This file is the surface that makes them one command instead of
-// six file paths, and it is milestone 7's packaging clause.
+// `vendor` · `index` · `upgrade`. **Row 7 of `docs/plan.md` names two more** — `new` and `feedback` —
+// in its own binding text, ratified by the maintainer, so the list here is eight and the two additions
+// are licensed by the row rather than by an implementer's judgement. That distinction is the whole
+// content of the "a seventh is the maintainer's call" rule below: the call was made, in the row, and
+// this file follows it instead of re-deciding it. This is milestone 7's packaging clause.
 //
 // ## What it is NOT
 //
@@ -102,6 +105,18 @@ export const SUBCOMMANDS = [
         arrives: "milestone 7, a later session",
         summary: "migrate a workspace to a newer Workspace Definition",
     },
+    {
+        name: "new",
+        module: "new.mjs",
+        summary: "scaffold a skill, persona, pack, workspace, gate policy or repo card from a core template",
+    },
+    {
+        name: "feedback",
+        module: null,
+        namedIn: "row 7 of docs/plan.md",
+        arrives: "milestone 7, a later session",
+        summary: "file an issue from a report you previewed, seam-scanned before it leaves the machine",
+    },
 ];
 
 export function find(name) {
@@ -126,8 +141,9 @@ export function usage() {
         "",
         "Exit codes: 0 succeeded · 1 a red verdict · 2 could not run.",
         "",
-        "`plugin-lint` and `librarian` are deliberately not here: docs/vision.md names six",
-        "subcommands and is human-owned, so adding a seventh is the maintainer's call.",
+        "`plugin-lint` and `librarian` are deliberately not here. docs/vision.md names six subcommands",
+        "and is human-owned; `new` and `feedback` are here because row 7 of docs/plan.md names them in",
+        "its own ratified text. Anything beyond those eight is still the maintainer's call.",
     );
     return lines.join("\n");
 }
@@ -158,12 +174,19 @@ export async function run(argv, options = {}) {
     const entry = find(name);
     if (!entry) {
         warn(`portulan: unknown subcommand \`${name}\`.`);
-        warn(`portulan: the six are ${SUBCOMMANDS.map((s) => s.name).join(", ")}. Run \`portulan --help\`.`);
+        // Derived, never a literal. A hard-coded count is wrong the hour a subcommand lands — which is
+        // exactly what happened to a literal `3` in this file's own suite when `init` shipped.
+        warn(`portulan: the ${SUBCOMMANDS.length} subcommands are ${SUBCOMMANDS.map((s) => s.name).join(", ")}. Run \`portulan --help\`.`);
         return 2;
     }
 
     if (!entry.module) {
-        warn(`portulan: \`${name}\` is named in docs/vision.md and is not built yet — it arrives at ${entry.arrives}.`);
+        // WHERE the name comes from, not a blanket "docs/vision.md". `feedback` appears in that file
+        // zero times — it is named by row 7 of docs/plan.md, which is the whole licence argument this
+        // file's header makes. Measured at the pre-commit checkpoint: the shipped tool was telling users
+        // the constitution named something it does not, while `cli/README.md` beside it said so correctly.
+        // No test asserted this string, which is exactly why it survived — one asserts it now.
+        warn(`portulan: \`${name}\` is named in ${entry.namedIn ?? "docs/vision.md"} and is not built yet — it arrives at ${entry.arrives}.`);
         warn("portulan: refusing to exit 0 on a subcommand that did nothing.");
         return 2;
     }
