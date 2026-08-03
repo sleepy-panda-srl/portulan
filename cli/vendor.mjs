@@ -1038,6 +1038,12 @@ export async function run(argv, options = {}) {
         const oldManifest = path.join(oldResidence, "workspace.json");
         if (leave === "pointer") {
             const staged2 = `${oldManifest}.vendoring`;
+            // Registered BEFORE the write, for the same reason the destination's undo is — and this is
+            // the SIBLING of the leak round 1 fixed one function over, missed in the fix for it, which
+            // is issue #91's class exactly. A failure in the rename below leaves this temp file in a
+            // residence a later run will walk, where it reads as an unaccounted leftover and blocks the
+            // very cleanup it came from. Copilot's suppressed notes, round 2 on #164.
+            undo.push(() => fs.rmSync(staged2, { force: true }));
             fs.writeFileSync(staged2, `${JSON.stringify(pointerManifest(oldResidence, manifest.name, parsed.feed), null, 2)}\n`);
             fs.renameSync(staged2, oldManifest);
         } else {
