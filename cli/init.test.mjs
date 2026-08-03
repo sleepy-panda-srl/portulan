@@ -426,7 +426,13 @@ describe("the draft claims no capability it does not have", () => {
         // milestone 7 and so did the honest wording. It used to be that the runner shipped nowhere; now
         // it ships and `compile` wires it, and what is missing is that `init` has not run `compile`. So
         // this asserts the state, not the old cause.
-        assert.match(readme, /has not run it|until you run it|compile/i);
+        // Specific, not permissive. The first retarget of this assertion read
+        // `/has not run it|until you run it|compile/i` — and that third alternative matches the word
+        // `compile` ANYWHERE in the README, which by then appeared in several unrelated sentences. A
+        // check that passes on a word rather than on a claim has stopped checking. Caught by review,
+        // and it is the change this repository says to scrutinise hardest: I loosened a check while
+        // retargeting it, which is how a green quietly starts meaning less.
+        assert.match(readme, /session-end gate is wired by `compile`, and this draft has not run it/i);
     });
 
     test("the interactive interview is named as absent rather than implied", async () => {
