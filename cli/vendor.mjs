@@ -661,7 +661,7 @@ export function usage() {
         "                        pointer or nothing is left at the old, and `doctor` is green at both",
         "                        ends before the old residence is retired.",
         "",
-        "  --leave <p|nothing>   What a switch leaves at the old residence. Default `pointer`.",
+        "  --leave <pointer|nothing>  What a switch leaves at the old residence. Default `pointer`.",
         "  --feed <name>         The feed the governing workspace ships through, recorded in the",
         "                        pointer. Only with `--switch --residence feed-side`.",
         "  --kind <k>            The materialised workspace's kind: repository, demo or portfolio.",
@@ -957,8 +957,19 @@ export async function run(argv, options = {}) {
         // may not be here to print anything.
 
         if (parsed.switching) {
+            // WHICH end to point `doctor` at is not a matter of taste, and this line had it INVERTED.
+            // The cross-repository refusal runs from the **naming** workspace outward — 0017 says
+            // visibility is one-way — so the only end that can see two governors is the FEED-SIDE one,
+            // the workspace carrying the card that names the repository. Which end that is flips with
+            // the direction: materialising feed-side, it is `dest`; materialising in-repo, the feed-side
+            // workspace is the `source` this switch is moving out of. Pointing at the in-repo end sends
+            // a reader to a run that finds only itself and reports nothing.
+            //
+            // Copilot's suppressed note found this and prescribed "always `dest`", which is right for one
+            // direction and wrong for the other for the same reason the original was wrong.
+            const visibleFrom = parsed.residence === "feed-side" ? dest : source;
             say(`vendor: materialising \`${manifest.name}\` at ${display(dest)}. For the next moment two workspaces govern ${path.basename(repoDir)};`);
-            say(`vendor: if this run dies here, \`portulan doctor ${display(parsed.residence === "in-repo" ? dest : source)} --repo-root ${display(path.dirname(repoDir))}\` names it,`);
+            say(`vendor: if this run dies here, \`portulan doctor ${display(visibleFrom)} --repo-root ${display(path.dirname(repoDir))}\` names it,`);
             say(`vendor: and removing ${display(path.join(dest, "workspace.json"))} reverts it.`);
         }
 
@@ -1099,8 +1110,17 @@ export async function run(argv, options = {}) {
             say(`vendor:   the old residence at ${display(oldResidence)} could NOT be scanned — ${unscannable.message}`);
             say("vendor:   so nothing there was removed. It no longer governs (its manifest is gone or is a pointer),");
             say("vendor:   and nothing here deletes files it could not account for. Clear it by hand when you can read it.");
+        } else if (leave === "pointer") {
+            say(`vendor:   a pointer at ${display(oldResidence)}, green.`);
+        } else if (leftovers.length) {
+            // NOT "nothing left", which is what this said while the next line listed what was left.
+            // `--leave nothing` is an instruction about the *residence*, and it was honoured — the
+            // manifest is gone and nothing governs from there. It is not a promise about the directory,
+            // because this never deletes a file it cannot account for. Two claims, and only one of them
+            // is true here. Copilot's suppressed notes on #164.
+            say(`vendor:   no workspace at ${display(oldResidence)} — its manifest is retired and it governs nothing.`);
         } else {
-            say(`vendor:   ${leave === "pointer" ? `a pointer at ${display(oldResidence)}, green` : `nothing left at ${display(oldResidence)}`}.`);
+            say(`vendor:   nothing left at ${display(oldResidence)}.`);
         }
         if (leftovers.length) {
             say(`vendor: ${leftovers.length} file(s) at the old residence were not moved by this run and were left alone: ${leftovers.join(", ")}.`);

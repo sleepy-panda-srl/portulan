@@ -837,6 +837,46 @@ describe("the ordering, and what a failure at each step leaves behind", () => {
         assert.equal(governors(path.dirname(src), [feed]), 1);
     });
 
+    test("the recovery sentence points at the end that can actually SEE two governors", async () => {
+        // Visibility is one-way (0017): the cross-repository refusal runs from the **naming** workspace
+        // outward, so only the feed-side end — the one whose `repos/` card names the repository — can
+        // report the two-governor state. Which end that is flips with the direction, and this line had
+        // it inverted: switching in-repo → feed-side it named the in-repo `source`, where `doctor` finds
+        // only itself and says nothing. Copilot's suppressed notes on #164, whose own prescription
+        // ("always `dest`") is right for one direction and wrong for the other, for the same reason.
+        //
+        // Asserted by RUNNING the sentence's own command, not by matching a string: a recovery
+        // instruction nobody executed is a recovery instruction nobody has checked.
+        const root = scratch();
+        const src = inRepo(root, "acme-app");
+        const feed = path.join(root, "feed", "acme");
+
+        const a = harness();
+        await run([src, "--into", feed, "--residence", "feed-side", "--switch"], { ...a.options, faultAt: "materialise:manifest" });
+        assert.match(text(a), new RegExp(`doctor ${feed.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`), "feed-side destination: the naming workspace is `dest`");
+
+        const feed2 = path.join(root, "feed2", "acme");
+        fs.mkdirSync(feed2, { recursive: true });
+        seedWorkspace(feed2, { name: "acme", kind: "portfolio", tree: null, card: "other-app" });
+        const dst = pointerRepo(root, "other-app", "acme");
+        const b = harness();
+        await run([feed2, "--into", dst, "--residence", "in-repo", "--switch"], { ...b.options, faultAt: "materialise:manifest" });
+        assert.match(text(b), new RegExp(`doctor ${feed2.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`), "in-repo destination: the naming workspace is the `source` being moved out of");
+
+        // And the end it names really does REFUSE the state, rather than the sentence merely being
+        // printed. Built directly rather than reused from above, because the rollback correctly removed
+        // the destination — which is the behaviour the other tests assert.
+        const both = scratch();
+        const repo = inRepo(both, "acme-app");
+        const naming = path.join(both, "feed", "acme");
+        fs.mkdirSync(naming, { recursive: true });
+        seedWorkspace(naming, { name: "acme", kind: "portfolio", tree: null, card: "acme-app" });
+        const fromNaming = await green(naming, { repoRoots: [both] });
+        assert.ok(fromNaming.some((f) => /governed by exactly one workspace/.test(f.message)), `the feed-side end must REFUSE two governors; got ${JSON.stringify(fromNaming)}`);
+        // The other end cannot see it, which is the asymmetry the sentence has to respect.
+        assert.deepEqual(await green(repo, { repoRoots: [both] }), [], "the in-repo end sees only itself — visibility is one-way");
+    });
+
     test("the recovery sentence is printed BEFORE the window opens, and names the `--repo-root` form", async () => {
         // Without `--repo-root`, `doctor` REPORTS that the cross-repository check did not run rather
         // than failing — so a recovery instruction that omitted the flag would send a reader to a
