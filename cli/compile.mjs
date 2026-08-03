@@ -292,7 +292,7 @@ function parseFloor(floor) {
 // this repository keeps finding, and a *matcher* that drifts does not look wrong — it looks like a
 // gate that quietly stopped covering something.
 //
-// `../.portulan/compile/gate.mjs` imports these. It is the only thing outside this file that may.
+// `./gate.mjs` imports these. It is the only thing outside this file that may.
 
 /**
  * The spellings of a shell command a gate will match against: the command itself, and the same
@@ -665,7 +665,7 @@ function commandSegments(raw) {
     // throw, and a Bash payload carrying no `command` — a malformed host message, a renamed field, a
     // test — would otherwise reach `stripHeredocs` and die on `.split`.
     //
-    // What that costs is not an exception some caller reports. ../.portulan/compile/gate.mjs catches
+    // What that costs is not an exception some caller reports. ./gate.mjs catches
     // and steps aside, so the throw would SILENTLY remove the shell-write half of the constitution
     // gate — hole 3, the half with no permission rule beneath it. Introduced earlier on this branch
     // by the segment-composition fix, which began passing the raw payload here in place of a spelling
@@ -803,7 +803,7 @@ export function matchesRule(rule, tool, input = {}) {
         //
         // **Stated at its real size.** The one target of this shape in ../.portulan/gates.json is
         // `run-a-verify-recipe`, which is `auto` — refused from compilation, and skipped by
-        // ../.portulan/compile/gate.mjs, which reads only `gated` and `prohibited`. So nothing was
+        // ./gate.mjs, which reads only `gated` and `prohibited`. So nothing was
         // mis-enforced today; what existed was a divergence between two definitions this file
         // promises are one, waiting for the first gated rule written in the path form. Fixed on that
         // basis rather than on an incident. An ordinary command prefix keeps its whitespace boundary,
@@ -971,12 +971,17 @@ export function claudeCode(parsed, options = {}) {
     // location, so the caller may say; `cwd` is the honest default because `compile` is run from the
     // repository it compiles.
     const project = options.root ?? process.cwd();
+    const pinned = [];
     const spell = (file) => {
         const abs = path.join(runnerDir, file);
         const rel = path.relative(project, abs);
-        return rel && !rel.startsWith("..") && !path.isAbsolute(rel)
-            ? `"\${CLAUDE_PROJECT_DIR}/${rel.split(path.sep).join("/")}"`
-            : `"${abs}"`;
+        // `rel.split(sep)[0] !== ".."` rather than `!startsWith("..")` — the latter also rejects a
+        // directory literally named `..foo`. Benign in direction (it would fall back to absolute), but
+        // the exact spelling costs nothing and the loose one is copied from here.
+        const inside = rel && rel.split(path.sep)[0] !== ".." && !path.isAbsolute(rel);
+        if (inside) return `"\${CLAUDE_PROJECT_DIR}/${rel.split(path.sep).join("/")}"`;
+        pinned.push({ file, abs });
+        return `"${abs}"`;
     };
     const runner = options.runner ?? spell("gate.mjs");
     const stopRunner = options.stopRunner ?? spell("stop-gate.mjs");
@@ -1077,6 +1082,22 @@ export function claudeCode(parsed, options = {}) {
     // a gate is carried by the layer that fails open, so a note that only appeared when something
     // went wrong would be a note nobody ever reads.
     const notes = [];
+    // **The promise this comment used to make and the code did not keep.** The fallback above emits an
+    // absolute path when the runner is not under the project — a global or npx-only install — and the
+    // paragraph at the top of this function said `refused` would record that the hook is pinned to this
+    // machine. It recorded nothing: the pre-commit checkpoint compiled from a package outside a project
+    // and got two absolute hooks with **zero output about it**. A hook silently pinned to one machine is
+    // a policy that stops working when the package moves, and finding out by having no gate is the worst
+    // way to find out — so it is said, on the channel that prints every run.
+    if (pinned.length) {
+        notes.push(
+            `${pinned.length} hook(s) are pinned to an ABSOLUTE path on this machine — ` +
+                `${pinned.map((x) => x.abs).join(", ")}. The runner is not under this project (a global or \`npx\` install), ` +
+                `so no \`\${CLAUDE_PROJECT_DIR}\`-relative spelling exists. The compiled policy therefore stops working if the ` +
+                `package moves or is reinstalled elsewhere, and a missing hook FAILS OPEN. Install the package into the ` +
+                `project, or pass \`--runner\`/\`--stop-runner\` to name a path you control`,
+        );
+    }
     if (shellWriteGates.length) {
         notes.push(
             `${shellWriteGates.length} write gate(s) — ${shellWriteGates.join(", ")} — also match a Bash command that writes the ` +
@@ -1554,7 +1575,7 @@ export function packContributions(workspaceRoot, workspaceDir = ".portulan", opt
  * backend refusing a rule it cannot express is a coverage gap, while a pack moving `gated` to
  * `propose` is an attempt to disarm a gate, and a build that continues past it has published an
  * artifact weaker than the policy it claims to compile. Failing closed is right *here* and wrong in
- * ./compile/gate.mjs for a reason worth keeping straight: this runs at build time against a file you
+ * ./gate.mjs for a reason worth keeping straight: this runs at build time against a file you
  * can edit, while that runs on every tool call and a refusal there makes the session undriveable.
  *
  * `auto` is barred by the Pack Definition's tier enum, so a schema-valid pack cannot express a
@@ -1782,7 +1803,14 @@ export function run(argv, options = {}) {
         const composed = composeFragments(policy, contributions);
         const parsed = parse(composed.policy);
         const source = path.relative(workspaceRoot, policyFile).split(path.sep).join("/");
-        const columns = backends(parsed, { source });
+        // `root` is what makes the emitted runner path correct for the workspace being compiled rather
+        // than for the one this process happens to sit in. The plumbing existed and **the caller never
+        // used it**: `compile --workspace <other-project>` wrote that project's settings naming
+        // `${CLAUDE_PROJECT_DIR}/cli/stop-gate.mjs`, a file the target does not have — and a missing hook
+        // fails open, silently. That is the exact defect class this whole change exists to close,
+        // reintroduced through the cross-compile path. Found by the pre-commit checkpoint, which
+        // demonstrated it rather than reasoning about it.
+        const columns = backends(parsed, { source, root: path.resolve(workspaceRoot) });
 
         // Printed before the backends, because a rule's provenance changes how its compiled line reads
         // — and an unresolvable pack is a declaration the workspace believes it composed.

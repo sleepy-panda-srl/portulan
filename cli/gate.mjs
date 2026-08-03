@@ -2,7 +2,7 @@
 // The PreToolUse gate runner — the *explanation* half of the enforcement compiler.
 //
 // Wired by `../../cli/compile.mjs` into `.claude/settings.json`. It reads the host's hook payload on
-// stdin, finds which rule in `../gates.json` the attempted action matches, and returns that rule's
+// stdin, finds which rule in `.portulan/gates.json` the attempted action matches, and returns that rule's
 // own sentence as the decision reason.
 //
 // ## This file is not the gate. Read that twice.
@@ -18,7 +18,7 @@
 //
 // Refusing loudly on error *is* available — a hook exiting 2 blocks — and it is still wrong here, for a
 // reason worth stating precisely rather than with the hand-wave an earlier draft used. If this runner
-// failed closed, a malformed `../gates.json` would deny EVERY matched tool call until someone fixed it:
+// failed closed, a malformed `.portulan/gates.json` would deny EVERY matched tool call until someone fixed it:
 // an undriveable session, whose only repair is inside the repository it can no longer edit. What is lost
 // by stepping aside is bounded and known — the wrapper coverage and the sentences — because the
 // permission layer never reads that file at runtime.
@@ -45,7 +45,7 @@
 //
 //   1. The WRAPPER spelling. `Bash(git push:*)` is a prefix match against the literal command, so
 //      `bash -c "git push …"` is invisible to it — measured, and the reason
-//      `../../core/operating/autonomy.md` calls the platform floor the gate that holds when this
+//      `../core/operating/autonomy.md` calls the platform floor the gate that holds when this
 //      layer fails. This runner unwraps one level of `sh -c` / `bash -c` / `zsh -c` before matching.
 //   2. A SHELL WRITE to a path a `write:` rule protects. `Edit(./docs/vision.md)` denies three
 //      tools, and `echo x >> docs/vision.md` is a fourth way to the same bytes. `matchesRule` now
@@ -85,8 +85,16 @@ import { matchesRule, policyPath } from "./compile.mjs";
 // layout, in the tool with the most to lose from it.
 //
 // `CLAUDE_PROJECT_DIR` is what the host sets and what the emitted hook already interpolates; `cwd` is the
-// honest fallback, because a hook runs from the project. Neither is guessed at silently: if no workspace
-// is found the runner says so rather than stepping aside, since stepping aside IS the fail-open.
+// honest fallback, because a hook runs from the project. `||` rather than `??` on purpose: an env var set
+// to the empty string must fall through to `cwd`, not resolve every path against `""`.
+//
+// **What happens when no workspace is found differs between the two runners, and the first draft of this
+// paragraph claimed the stricter behaviour for both.** THIS file steps aside silently — `main()` catches
+// and returns without a decision — which is its own defended design: a PreToolUse hook that cannot read
+// the policy must not block every tool call, and the permission rules compiled beside it still hold, so
+// the layer degrades rather than disappearing. `./stop-gate.mjs` does the opposite and blocks loudly,
+// because a Stop-gate that cannot read the workspace has nothing beneath it. Stated per file rather than
+// as one sentence covering both, since they genuinely differ and the difference is the interesting part.
 const PROJECT = process.env.CLAUDE_PROJECT_DIR || process.cwd();
 const WORKSPACE_DIR = process.env.PORTULAN_WORKSPACE || ".portulan";
 const POLICY = policyPath(PROJECT, WORKSPACE_DIR);

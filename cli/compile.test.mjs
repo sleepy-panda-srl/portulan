@@ -925,7 +925,7 @@ describe("the shared matcher", () => {
     }
 
     // `matchesRule` documents that it never throws, and that promise is load-bearing rather than
-    // tidy: ../.portulan/compile/gate.mjs catches and steps aside, so an exception here does not
+    // tidy: ./gate.mjs catches and steps aside, so an exception here does not
     // surface as an error — it silently removes whatever gate was being evaluated. For the shell
     // half of `edit-the-constitution` that is the only layer there is (hole 3), so a throw is a
     // fail-open wearing a stack trace.
@@ -1867,5 +1867,41 @@ describe("--pack-root fails closed in compile too — the third carrier of one r
         const dir = workspace();
         const feed = scratch();
         assert.equal(run(["--workspace", dir, "--pack-root", feed], { quiet: true }), 0);
+    });
+});
+
+// ---------------------------------------------------------------- where the emitted hook points (M7)
+
+describe("the emitted runner path — nothing asserted this until the checkpoint said so", () => {
+    test("a runner under the project is spelled relative to CLAUDE_PROJECT_DIR", () => {
+        const here = path.resolve(fileURLToPath(new URL(".", import.meta.url)));
+        const out = claudeCode(parse(policy()), { root: path.resolve(here, "..") });
+        const text = JSON.stringify(out.artifact.value);
+        assert.match(text, /\$\{CLAUDE_PROJECT_DIR\}\/cli\/gate\.mjs/);
+        assert.match(text, /\$\{CLAUDE_PROJECT_DIR\}\/cli\/stop-gate\.mjs/);
+    });
+
+    test("a runner OUTSIDE the project falls back to absolute AND says so", () => {
+        // The checkpoint's required adjustment 1: the comment promised `refused` would record the
+        // pinning and nothing did. Compiling with a root the runner does not live under is exactly the
+        // global/npx install, and it must not be silent — a hook pinned to one machine stops working
+        // when the package moves, and a missing hook fails open.
+        const out = claudeCode(parse(policy()), { root: os.tmpdir() });
+        const emitted = JSON.stringify(out.artifact.value);
+        assert.doesNotMatch(emitted, /CLAUDE_PROJECT_DIR/, "a runner outside the project cannot have a project-relative spelling");
+        assert.match(emitted, /cli\/gate\.mjs/);
+        assert.ok(
+            (out.notes ?? []).some((n) => /pinned to an ABSOLUTE path/i.test(n)),
+            `the absolute fallback was silent — notes were: ${JSON.stringify(out.notes)}`,
+        );
+    });
+
+    test("`root` is honoured, so cross-compiling cannot name a file the target lacks", () => {
+        // Required adjustment 2: `compile --workspace <other>` wrote that project's settings naming this
+        // project's runner — a hook the target does not have, failing open silently. The plumbing
+        // existed; the caller never used it.
+        const a = JSON.stringify(claudeCode(parse(policy()), { root: os.tmpdir() }));
+        const b = JSON.stringify(claudeCode(parse(policy()), { root: path.resolve(fileURLToPath(new URL("..", import.meta.url))) }));
+        assert.notEqual(a, b, "the emitted path did not change with `root`, so `root` is being ignored");
     });
 });

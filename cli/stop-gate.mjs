@@ -3,10 +3,10 @@
 //
 // Wired by `../../cli/compile.mjs` into `.claude/settings.json` as a `Stop` hook. When an agent
 // tries to end its turn, this runs the workspace's default verify recipe and blocks the ending if
-// the recipe is not green. `../../core/operating/verification.md` has specified this contract since
+// the recipe is not green. `../core/operating/verification.md` has specified this contract since
 // milestone 1 and named milestone 4 as where the runner arrives; this is that runner.
 //
-// It also enforces the session-end handoff, which `../../core/operating/loop.md` and
+// It also enforces the session-end handoff, which `../core/operating/loop.md` and
 // `../memory/every-session-ends-with-a-handoff.md` both promised to this milestone.
 //
 // ## Two honest limits, stated before the code rather than after
@@ -53,7 +53,7 @@ const REPO = PROJECT;
 export const REASONS = ["recipe", "handoff"];
 
 // How many CONSECUTIVE refusals **for one reason** a session may accumulate before the gate lets it
-// end. Bounded iteration is already doctrine — ../../core/operating/loop.md carries the
+// end. Bounded iteration is already doctrine — ../core/operating/loop.md carries the
 // runbook/iteration-cap row — and a Stop-gate that cannot stop is not a gate, it is a hang.
 //
 // **Consecutive, and a reason's count clears only when THAT reason clears** (maintainer's ruling,

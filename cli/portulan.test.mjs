@@ -57,9 +57,9 @@ function harness({ code = 0, throws = null, noRun = false } = {}) {
 test("docs/vision.md's six lead the list, in its order and unaltered", () => {
     // Split from the single equality this was, when row 7's `new` and `feedback` landed. The **property**
     // this test existed for is not "there are six" — it is that the human-owned list is authoritative and
-    // its order is not an implementer's to rearrange. That property is asserted here, on the prefix, and
-    // survives the row adding to the tail. A test rewritten to `deepEqual` the new eight would have kept
-    // passing while quietly giving up the thing it was guarding.
+    // its order is not an implementer's to rearrange. Asserted on the prefix, so it survived first the row
+    // adding to the tail and then the constitution absorbing both additions. A test rewritten to
+    // `deepEqual` the new eight would have kept passing while quietly giving up the thing it guarded.
     assert.deepEqual(
         SUBCOMMANDS.slice(0, 6).map((entry) => entry.name),
         ["init", "doctor", "compile", "vendor", "index", "upgrade"],
@@ -67,9 +67,11 @@ test("docs/vision.md's six lead the list, in its order and unaltered", () => {
 });
 
 test("the additions past the six are exactly the two row 7 names", () => {
-    // Row 7 of docs/plan.md is law and names `new` and `feedback` in its own ratified text, so these two
-    // are licensed by the row. Anything appearing here that the row does not name is an implementer
-    // minting a subcommand into a human-owned surface, which is what the next test refuses.
+    // These two reached the CLI licensed by row 7 naming them in its own ratified text, and the
+    // maintainer folded both into `docs/vision.md` on 2026-08-03 — so the constitution now names all
+    // eight and this assertion pins the ORDER of the tail rather than a licence argument. Anything
+    // appearing here that neither document names is an implementer minting a subcommand into a
+    // human-owned surface, which is what the next test refuses.
     assert.deepEqual(
         SUBCOMMANDS.slice(6).map((entry) => entry.name),
         ["new", "feedback"],
@@ -206,7 +208,7 @@ test("a module without a run export is refused rather than crashed into", async 
     assert.match(h.warned.join("\n"), /does not export a `run` function/);
 });
 
-test("the usage screen lists all six and marks the unbuilt ones", () => {
+test("the usage screen lists all eight and marks the unbuilt ones", () => {
     const text = usage();
     for (const entry of SUBCOMMANDS) {
         assert.match(text, new RegExp(`\\b${entry.name}\\b`), `usage must list ${entry.name}`);

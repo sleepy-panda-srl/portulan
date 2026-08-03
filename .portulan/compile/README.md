@@ -10,6 +10,14 @@
 > and the Stop-gate contract ([`../../core/operating/verification.md`](../../core/operating/verification.md)).
 > Both named milestone 4 as where the machinery arrives. This is that machinery.
 
+> **MOVED AT MILESTONE 7.** `gate.mjs` and `stop-gate.mjs` no longer live in this directory — they are
+> [`../../cli/gate.mjs`](../../cli/gate.mjs) and [`../../cli/stop-gate.mjs`](../../cli/stop-gate.mjs). They had to:
+> `package.json`'s `files` never shipped `.portulan/`, so every adopter's compiled policy named two files
+> they did not have, and a missing hook **fails open**. This directory now holds this README and the
+> floor artifact. The file table below is kept because it still describes what each runner does; read
+> the paths as `cli/`.
+
+
 | File | What it is |
 |---|---|
 | [`gate.mjs`](../../cli/gate.mjs) | `PreToolUse` runner. Finds the rule an attempted action matches and returns its decision and its sentence. |
