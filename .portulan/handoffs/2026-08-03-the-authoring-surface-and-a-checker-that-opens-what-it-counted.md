@@ -148,3 +148,38 @@ string, which is why it survived; one does now. The Status column of row 7 still
 `doctor`'s validation half as unbuilt, falsified by the diff committing beside it, and its first repair
 **breached the 500-byte Status budget** at 1482 bytes — the scoreboard rail doing its job on the session
 that was repairing the scoreboard.
+
+
+## The loop record — two rounds, both defects this pull request introduced
+
+**Round 1: three threads, all real, and one whose *reason* was wrong.** Copilot said `found += null`
+produces `NaN` and corrupts the skill count. Measured before accepting it: `null` coerces to `0`, so the
+count was never corrupted — it was quietly **understated**, which is the worse of the two, because an
+understated count looks like a root with fewer skills rather than like a walk that failed. The conclusion
+was right and the mechanism was not, and separating them changed what the fix had to do: the top-level
+caller already treated *could-not-look* as UNREAD, and the **recursive** call swallowed that signal, so
+the guarantee held only when the unreadable directory happened to be the root itself. The other two: an
+`inside()` that answered *"is not there"* to an `EACCES` — the only-ENOENT-means-absent rule broken inside
+the function written to enforce it — and `director(y/ies)` reaching a user-facing line.
+
+**Round 2: four suppressed notes, two of them one defect, and it is this session's own shape a third
+time.** `new workspace --kind pointer` was advertised in the help screen and **could not emit a valid
+pointer**: the scaffolder wrote the governing shape unconditionally and never `governed_by`, so `doctor`
+refused what the tool had just created. Copilot offered build-it or drop-the-kind; built, and demonstrated
+green under the real `doctor` rather than asserted.
+
+**Why both were fixed rather than triaged at the two-round bound:** every finding was a defect this pull
+request introduced, which is the stated ground on which the bound bends. A finding that is not this
+change's fault would be the one to triage, and neither round produced one.
+
+## State at handoff
+
+[#156](https://github.com/sleepy-panda-works/portulan/pull/156) is **open, not merged** — merging is the
+maintainer's. `workspace-verify` and `pr-labeled` are green; one review thread is unresolved and
+`required_conversation_resolution` waits on him rather than on the bot, which cannot resolve threads.
+Suite **902**, eight recipes green, `npm pack` byte-identical.
+
+**CI caught one thing this machine could not.** The case-variance test asserted a refusal unconditionally,
+passed on macOS and went red on Linux — and the failure was the *test's*: on a case-sensitive filesystem
+`CORE` is a genuinely different directory, holds no `engine.md`, and escapes nothing. The filesystem is
+probed now rather than inferred from `process.platform`, because case-sensitivity belongs to the volume.
