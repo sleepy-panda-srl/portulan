@@ -619,8 +619,8 @@ jobs:
               printf 'cause: the faults below have different repairs and nothing here distinguishes\n'
               printf 'them. Read repos/%s/pulls/%s/requested_reviewers by hand.\n' "$GITHUB_REPOSITORY" "$PR_NUMBER"
             elif [ -z "$requested" ] && [ "$rerequest_state" = sent ]; then
-              printf 'REQUESTED, ACCEPTED, AND GONE — the one fault on this list that re-running does\n'
-              printf 'not repair. This job POSTed a review request at %ss and GitHub ACCEPTED it, so a\n' "$rerequest_at"
+              printf 'REQUESTED, ACCEPTED, AND GONE — and asking once more has been tried, in this run,\n'
+              printf 'without effect. This job POSTed a review request at %ss and GitHub ACCEPTED it, so a\n' "$rerequest_at"
               printf 'request WAS created for this actor. It is no longer on the list and no review\n'
               printf 'arrived. WHAT removed it is not established here — the reviewer, a person, or\n'
               printf 'some automation are all consistent with what this job can see, and it saw only\n'
@@ -629,12 +629,15 @@ jobs:
               printf 'an explicit POST creates a request whatever the ruleset does, so nothing here\n'
               printf 'shows it is healthy. What is shown is narrower: a request existed and stopped\n'
               printf 'existing, which a ruleset that never requests one cannot explain.\n'
-              printf 'Measured on #157 (2026-08-03): a rebase force-push whose diff moved seven derived\n'
-              printf 'numbers drew no round at all — `review_on_push` did not fire for it, and the\n'
-              printf 're-request above went the same way. The reading that fits is that Copilot\n'
-              printf 'declines a diff it has already reviewed, and no amount of asking changes that.\n'
-              printf 'If so, THIS HEAD CANNOT GO GREEN, and what to do about it is a decision for the\n'
-              printf 'maintainer rather than a repair for this job.\n'
+              printf 'Seen once, on #157 (2026-08-03): a rebase force-push drew no round at all —\n'
+              printf '`review_on_push` did not fire for it, and the re-request above went the same way.\n'
+              printf 'WHY is open, and this message deliberately offers no reading: the first one it\n'
+              printf 'carried was that Copilot declines a diff it has already reviewed, and #160\n'
+              printf 'refuted it the same day by drawing a full round in 3m17s on a BYTE-IDENTICAL\n'
+              printf 'diff after a rebase. The difference still uncontrolled between those two is who\n'
+              printf 'opened the pull request — an App on #157, a user on #160 — which is the #86\n'
+              printf 'condition this file already names two branches down. Lead, not finding.\n'
+              printf 'See issue #161; add what you observe to it rather than acting on a guess.\n'
             elif [ -z "$requested" ]; then
               printf 'NOTHING IS HOLDING A REQUEST, and that is a different fault from a reviewer going\n'
               printf 'silent. What is established is the empty list and nothing more: no request from\n'
