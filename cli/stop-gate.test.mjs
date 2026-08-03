@@ -23,7 +23,7 @@ import os from "node:os";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
 
-import { bumpCount, clearReason, today, verdict, REASONS, MAX_BLOCKS, MAX_TOTAL_BLOCKS } from "../.portulan/compile/stop.mjs";
+import { bumpCount, clearReason, today, verdict, REASONS, MAX_BLOCKS, MAX_TOTAL_BLOCKS } from "./stop-gate.mjs";
 
 const SCRATCH = [];
 process.on("exit", () => {
@@ -172,7 +172,7 @@ describe("the reason list and the counter file cannot drift apart", () => {
         // `REASONS` is RED in CI rather than a gate quietly becoming more patient about it. A source
         // check rather than a behavioural one, deliberately: `collectProblems` needs a real tree and
         // a real recipe run, and the thing worth binding is the declaration, not the run.
-        const source = fs.readFileSync(new URL("../.portulan/compile/stop.mjs", import.meta.url), "utf8");
+        const source = fs.readFileSync(new URL("./stop-gate.mjs", import.meta.url), "utf8");
         const emitted = [...source.matchAll(/reason:\s*"([a-z-]+)"/g)].map((m) => m[1]);
         assert.ok(emitted.length >= 2, "the parser must be finding the reasons at all");
         for (const reason of new Set(emitted)) {

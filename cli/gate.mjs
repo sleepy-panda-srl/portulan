@@ -71,13 +71,25 @@ import { fileURLToPath } from "node:url";
 // The action vocabulary is defined ONCE, in the compiler, and imported here. Two implementations of
 // one matcher is the drift this repository keeps finding — and a matcher that drifts does not look
 // wrong, it looks like a gate that quietly stopped covering something.
-import { matchesRule, policyPath } from "../../cli/compile.mjs";
+import { matchesRule, policyPath } from "./compile.mjs";
 
-const HERE = path.dirname(fileURLToPath(import.meta.url));
-// Resolved the same way the compiler resolves it — through the manifest's `gates` key — because the
-// emitter and the runtime reading different policy files is the drift that would be hardest to see: both
-// would work, on different rules.
-const POLICY = policyPath(path.resolve(HERE, "..", ".."), path.basename(path.resolve(HERE, "..")));
+// **The project root is TOLD to this runner, never derived from where this file sits.**
+//
+// It used to be derived: this file lived at `.portulan/compile/gate.mjs`, so `HERE/../..` was the
+// repository and `basename(HERE/..)` was the workspace directory. That worked for exactly one layout —
+// the author's — and it is why the file could not ship. Milestone 7 moves both runners into `cli/` so an
+// adopter actually receives them (`package.json`'s `files` never carried `.portulan/`, so every compiled
+// policy named a file the adopter did not have, and a missing hook fails open). From `cli/`, and even
+// more so from `node_modules/@sleepy-panda-works/portulan/cli/`, this file has no idea where the
+// adopter's workspace is — and inferring one would be #131's class, paths resolved against the author's
+// layout, in the tool with the most to lose from it.
+//
+// `CLAUDE_PROJECT_DIR` is what the host sets and what the emitted hook already interpolates; `cwd` is the
+// honest fallback, because a hook runs from the project. Neither is guessed at silently: if no workspace
+// is found the runner says so rather than stepping aside, since stepping aside IS the fail-open.
+const PROJECT = process.env.CLAUDE_PROJECT_DIR || process.cwd();
+const WORKSPACE_DIR = process.env.PORTULAN_WORKSPACE || ".portulan";
+const POLICY = policyPath(PROJECT, WORKSPACE_DIR);
 
 /** Exit without a decision. The permission rule still holds; only the sentence is lost. */
 function stepAside() {
