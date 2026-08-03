@@ -816,6 +816,38 @@ describe("the ordering, and what a failure at each step leaves behind", () => {
         assert.equal(governors(path.dirname(src), [feed]), 1);
     });
 
+    test("a failed manifest retirement leaves no `.vendoring` temp file behind", async () => {
+        // The SIBLING of the `AGENTS.md` leak, one function over, and it was missed inside the fix for
+        // that one — issue #91's class exactly. The pointer manifest is staged beside the old one and
+        // renamed into place; a failure in that rename left the temp file in a residence a later run
+        // walks, where it reads as an unaccounted leftover and blocks the cleanup it came from.
+        // Copilot's suppressed notes, round 2 on #164.
+        const root = scratch();
+        const src = inRepo(root, "acme-app");
+        const feed = path.join(root, "feed", "acme");
+
+        const h = harness();
+        const original = fs.renameSync;
+        fs.renameSync = (from, to, ...rest) => {
+            if (String(to) === path.join(src, "workspace.json")) {
+                const error = new Error("cross-device link not permitted");
+                error.code = "EXDEV";
+                throw error;
+            }
+            return original(from, to, ...rest);
+        };
+        try {
+            assert.equal(await run([src, "--into", feed, "--residence", "feed-side", "--switch"], h.options), 2);
+        } finally {
+            fs.renameSync = original;
+        }
+        assert.equal(exists(path.join(src, "workspace.json.vendoring")), false, "no temp file survives a failed retirement");
+        // And the invariant the whole ordering exists for: the flip did not happen, so the old residence
+        // still governs and there is exactly one governor.
+        assert.equal(readManifest(src).kind, "repository");
+        assert.equal(governors(path.dirname(src), [feed]), 1);
+    });
+
     test("a red `doctor` at the new residence rolls back and never opens the window", async () => {
         // The new end is validated BEFORE the rename that transfers governance, so a destination that
         // would not have been green never becomes a second governor at all.

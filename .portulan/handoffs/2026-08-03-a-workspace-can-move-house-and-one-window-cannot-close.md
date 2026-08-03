@@ -102,7 +102,7 @@ The feed checkout ends byte-identical: nothing committed, nothing pushed, nothin
 
 ## Where it stands
 
-Suite **970/970** (was 907; +56 in `cli/vendor.test.mjs`, +7 in `cli/compile.test.mjs`, and one
+Suite **971/971** (was 907; +57 in `cli/vendor.test.mjs`, +7 in `cli/compile.test.mjs`, and one
 deliberate red in `cli/portulan.test.mjs` whose hand-written list is *designed* to go red when a
 subcommand ships — the mechanism working). Eight recipes green. `npm pack` **85 files**.
 
