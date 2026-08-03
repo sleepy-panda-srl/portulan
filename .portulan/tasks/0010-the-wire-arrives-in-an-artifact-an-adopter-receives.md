@@ -95,9 +95,19 @@ naming `${CLAUDE_PROJECT_DIR}/cli/gate.mjs` and `.../cli/stop-gate.mjs`. **Suite
 recipes green.**
 
 **The carrier sweep is done: 26 links across 21 files re-based**, each computed from the file that
-carries it rather than substituted blindly — ten of them were bare siblings (`](gate.mjs)`) in
-`.portulan/compile/README.md`, which a `compile/`-anchored pattern does not match, and which is why the
-first pass reported green while ten were still dead.
+carries it rather than substituted blindly — ten of them were **bare sibling links**, whose whole target
+was the filename `gate.mjs` or `stop.mjs` with no directory in front of it, sitting in
+`.portulan/compile/README.md` where the runners used to live next to their own documentation. A
+`compile/`-anchored pattern does not match those, which is why the first pass reported eleven files swept
+and left ten links dead: the pattern had been written against the shape the reported failures happened to
+show rather than against the shape of the problem.
+
+**And this paragraph committed the same defect while describing it.** The first draft quoted the bare
+form as an inline example — a code span containing a Markdown link. `links` **scans raw text and
+backticks exempt nothing** (`.portulan/verify/README.md`), so the example was itself an unresolvable
+link, and the Stop-gate blocked the session on it. Written out in prose now instead of quoted. The
+general rule, since it has now cost two rounds: **a document that quotes a link shape is a document that
+contains that link.**
 
 ## The demonstration, and it was not staged
 
