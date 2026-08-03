@@ -919,6 +919,13 @@ describe("the ordering, and what a failure at each step leaves behind", () => {
         const h = harness();
         await run([src, "--into", feed, "--residence", "feed-side", "--switch"], { ...h.options, faultAt: "materialise:manifest" });
         assert.match(text(h), /--repo-root/);
+        // And the deletion it names is CONDITIONAL. It was not: "removing <dest>/workspace.json reverts
+        // it" is only true once the new manifest has landed, and before that the file at that path is
+        // absent — or, switching feed-side → in-repo, still the POINTER, whose deletion destroys the one
+        // record of who governs and leaves governance unreportable from the repository. That is the
+        // silent state 0017 names, reached by following this tool's own advice. Copilot, round 3 on #164.
+        assert.match(text(h), /ONLY if it reports two governors/);
+        assert.match(text(h), /delete nothing/);
     });
 });
 
