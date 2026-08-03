@@ -1928,10 +1928,10 @@ _The seam applies here too: no client-identifying references._
 - 2026-08-03 · Outside the milestone track · **A message that named a cause it had not established.** Merging
   the librarian's first pass ([#157](https://github.com/sleepy-panda-works/portulan/pull/157)) exposed
   `copilot-review.yml` misdiagnosing its own failure: [#160](https://github.com/sleepy-panda-works/portulan/pull/160)
-  + [#162](https://github.com/sleepy-panda-works/portulan/pull/162) add a **fourth** state, filter `requested`
+  and [#162](https://github.com/sleepy-panda-works/portulan/pull/162) add a **fourth** state, filter `requested`
   to Copilot's logins (a waiting human printed as the Copilot fault), and remove a **refuted** explanation #160
   itself shipped. **#157's conflicts were re-DERIVED 3×, never hand-merged.** It merged past a red
-  `copilot-reviewed` on his override; the silence is App authorship on `synchronize`
-  ([#161](https://github.com/sleepy-panda-works/portulan/issues/161), **recurs every Monday**). · Fidelity: **no
-  supervisor checkpoint — a gap, not a scale-down**; #160 drew **8 findings over 5 rounds, suite caught 0**, 7 of
-  one class, in the change about that class; 3 past the bound, each authorised. Suite 907, eight recipes. Seam scan clean. Handoff: [`2026-08-03`](../.portulan/handoffs/2026-08-03-a-message-that-named-a-cause-it-had-not-established.md).
+  `copilot-reviewed` on his override; the round never came, and the **lead — cause still open — is App
+  authorship on `synchronize`** ([#161](https://github.com/sleepy-panda-works/portulan/issues/161)). · Fidelity:
+  **no supervisor checkpoint — a gap, not a scale-down**; #160 drew **8 findings over 5 rounds, suite caught 0**,
+  7 of one class, in the change about that class. Suite 907, eight recipes. Seam scan clean. Handoff: [`2026-08-03`](../.portulan/handoffs/2026-08-03-a-message-that-named-a-cause-it-had-not-established.md).
