@@ -552,11 +552,35 @@ jobs:
           # checker that reports what it could not check
           # (`.portulan/memory/a-checker-must-refuse-what-it-cannot-check.md`), pointed at a diagnostic
           # instead of a verdict. The check is right to fail here; only the sentence was wrong.
+          # FILTERED TO THE REVIEWERS THIS CHECK IS ABOUT, and the filtering is done HERE rather than
+          # in the jq — raised by Copilot on #160. The endpoint answers with every requested reviewer,
+          # so on a pull request that also has a human waiting, `requested` was non-empty for a reason
+          # having nothing to do with Copilot: the branches below read that as *Copilot holds the
+          # request*, named a human as the Copilot fault, and — once the four-way split landed — could
+          # mask *requested, accepted, and gone* behind an unrelated reviewer. The bug predates the
+          # split; the split is what made it load-bearing.
+          #
+          # In the shell and not the jq because `REVIEWERS` is already the one carrier for these
+          # logins, and a jq program with them written in again would be the second carrier this
+          # repository keeps finding drifted from the first. It also leaves the jq program — and its
+          # fixtures in `../../.portulan/verify/workflow-filters.mjs` — exactly as they were, so the
+          # covered program stays the covered program.
           requested=''
           requested_read=0
-          if requested=$(gh api "repos/${GITHUB_REPOSITORY}/pulls/${PR_NUMBER}/requested_reviewers" \
+          if requested_all=$(gh api "repos/${GITHUB_REPOSITORY}/pulls/${PR_NUMBER}/requested_reviewers" \
                 --jq '[.users[].login] | join(" ")'); then
             requested_read=1
+            # `if`, not `[ … ] && …`: this job runs under `bash -e` (the `shell:` line), where a
+            # trailing `&&` list whose test fails is the loop body's exit status, and the idiom is a
+            # documented way to end a body non-zero. An `if` cannot do that whatever the test says.
+            for login in $requested_all; do
+              lower=$(printf '%s' "$login" | tr '[:upper:]' '[:lower:]')
+              for candidate in $REVIEWERS; do
+                if [ "$lower" = "$candidate" ]; then
+                  requested="${requested:+$requested }$login"
+                fi
+              done
+            done
           fi
 
           if [ -n "$unread" ]; then
