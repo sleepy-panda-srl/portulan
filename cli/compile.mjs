@@ -41,7 +41,7 @@
 
 import fs from "node:fs";
 import path from "node:path";
-import { pathToFileURL } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 /** Raised when `compile` cannot run, or cannot compile honestly. Always exit 2, never 1. */
 export class CompileError extends Error {
@@ -948,8 +948,38 @@ export function claudeCode(parsed, options = {}) {
     // workspace declaring a non-default policy got an artifact claiming it came from somewhere it did
     // not — in the one field whose entire job is telling a reader what generated this. Found by review.
     const source = options.source ?? ".portulan/gates.json";
-    const runner = options.runner ?? '"${CLAUDE_PROJECT_DIR}/.portulan/compile/gate.mjs"';
-    const stopRunner = options.stopRunner ?? '"${CLAUDE_PROJECT_DIR}/.portulan/compile/stop.mjs"';
+    // **Where the emitted hook finds its runner, and why this is computed rather than written down.**
+    //
+    // Both runners used to live at `.portulan/compile/`, which `package.json`'s `files` has never
+    // shipped — so every adopter's compiled policy named two files they did not receive, and a missing
+    // hook FAILS OPEN. Milestone 7 moves them into `cli/`, which does ship. That fixes what the adopter
+    // has; it does not by itself fix how the hook names it, because `cli/` sits in a different place in
+    // each of the three contexts this must survive:
+    //
+    //   1. this checkout            — `<project>/cli/`
+    //   2. a project-local install  — `<project>/node_modules/@sleepy-panda-works/portulan/cli/`
+    //   3. a global or npx-only install — NOT under the project at all
+    //
+    // So the path is derived from where THIS file actually is at compile time and expressed relative to
+    // the project when it lands inside it — covering 1 and 2 with one rule rather than two special
+    // cases. For 3 there is no project-relative spelling that exists, so an absolute path is emitted and
+    // `refused` records that the hook is pinned to this machine. Naming that is the point: a hook
+    // silently pinned to an absolute path is a policy that stops working when the package moves, and
+    // finding out by having no gate is the worst way to find out.
+    const runnerDir = path.dirname(fileURLToPath(import.meta.url));
+    // The project this policy is being compiled FOR. `claudeCode` is handed a parsed policy and not a
+    // location, so the caller may say; `cwd` is the honest default because `compile` is run from the
+    // repository it compiles.
+    const project = options.root ?? process.cwd();
+    const spell = (file) => {
+        const abs = path.join(runnerDir, file);
+        const rel = path.relative(project, abs);
+        return rel && !rel.startsWith("..") && !path.isAbsolute(rel)
+            ? `"\${CLAUDE_PROJECT_DIR}/${rel.split(path.sep).join("/")}"`
+            : `"${abs}"`;
+    };
+    const runner = options.runner ?? spell("gate.mjs");
+    const stopRunner = options.stopRunner ?? spell("stop-gate.mjs");
 
     const compiled = [];
     const refused = [];

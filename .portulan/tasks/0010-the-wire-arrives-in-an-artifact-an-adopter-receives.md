@@ -1,7 +1,7 @@
 # Task 0010 — clause (a)'s wire arrives in an artifact an adopter receives
 
 **Lane:** full · **Opened:** 2026-08-03, milestone 7 session 2, after [#156](https://github.com/sleepy-panda-works/portulan/pull/156) merged
-**Verify recipe:** `tests` · **Status:** scoped, not started
+**Verify recipe:** `tests` · **Status:** mechanism done, carrier sweep outstanding — `links` is RED
 
 > Scoped and left unstarted **deliberately**, with the measurements already taken, because the session
 > that scoped it no longer had the budget to move fourteen carriers and put the result through a
@@ -64,3 +64,37 @@ customer zero's session-end gate and gate policy pointing at files that are gone
 - [ ] All fourteen carriers swept.
 - [ ] The handoff-index freshness rail gets a spelling, or records why it still cannot have one
       ([#148](https://github.com/sleepy-panda-works/portulan/issues/148) stays open by ruling).
+
+
+## What the first attempt PROVED, and it is the finding this task was missing
+
+**Both runners derived the adopter's workspace from their own file position**, and that — not the
+`files` list — is why they could never ship:
+
+```
+gate.mjs:  policyPath(resolve(HERE, "..", ".."), basename(resolve(HERE, "..")))
+stop.mjs:  WORKSPACE = resolve(HERE, "..");  REPO = resolve(WORKSPACE, "..")
+```
+
+That works for exactly one layout — the author's, with the file at `.portulan/compile/`. From `cli/`,
+and far more so from `node_modules/@sleepy-panda-works/portulan/cli/`, a runner has **no idea** where the
+adopter's workspace is, and inferring one would be [#131](https://github.com/sleepy-panda-works/portulan/issues/131)'s
+class (paths resolved against the author's layout) in the two tools with the most to lose from it.
+
+**The fix shape, implemented and passing:** the project root is **told**, never derived —
+`CLAUDE_PROJECT_DIR || cwd`, with the workspace directory overridable — and `compile` computes the
+emitted spelling from where `compile.mjs` itself sits at compile time, expressing it relative to the
+project when it lands inside one (covering a checkout *and* a project-local install with one rule) and
+absolute when it cannot, saying so rather than silently pinning a hook to one machine.
+
+## State on `m7-residence-composition-and-the-wire`
+
+Done and verified: both runners moved to `cli/gate.mjs` and `cli/stop-gate.mjs`; the location derivation
+replaced; `compile`'s emitted spelling computed; **customer zero's five live hooks recompiled** and now
+naming `${CLAUDE_PROJECT_DIR}/cli/gate.mjs` and `.../cli/stop-gate.mjs`. **Suite 904/904. Seven of eight
+recipes green.**
+
+**Outstanding, and the reason this is not done:** `links` is **RED — 26 links across 21 files** still
+name `.portulan/compile/stop.mjs` / `gate.mjs`. Each needs its relative depth recomputed, which is a
+per-file edit and not a blind substitution. **Do not open a pull request from this branch until that
+sweep is finished and all eight recipes are green.**

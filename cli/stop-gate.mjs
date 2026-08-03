@@ -38,9 +38,12 @@ import path from "node:path";
 import { execFileSync } from "node:child_process";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
-const HERE = path.dirname(fileURLToPath(import.meta.url));
-const WORKSPACE = path.resolve(HERE, "..");
-const REPO = path.resolve(WORKSPACE, "..");
+// The project root is TOLD to this runner rather than derived from where this file sits — see the same
+// paragraph in ./gate.mjs for why. In short: this file used to live inside the workspace it was reading,
+// which is the one layout it could ever work in, and is why it shipped in no artifact an adopter receives.
+const PROJECT = process.env.CLAUDE_PROJECT_DIR || process.cwd();
+const WORKSPACE = path.resolve(PROJECT, process.env.PORTULAN_WORKSPACE || ".portulan");
+const REPO = PROJECT;
 
 // The independent reasons this gate refuses a stop for. Each keeps its own consecutive count.
 //
