@@ -591,9 +591,11 @@ jobs:
               printf 'REQUESTED, ACCEPTED, THEN ABANDONED — the one fault on this list that re-running\n'
               printf 'does not repair. This job POSTed a review request at %ss and GitHub ACCEPTED it,\n' "$rerequest_at"
               printf 'so a request WAS created for this actor; the list reads empty now because the\n'
-              printf 'reviewer left it without submitting anything. Do NOT go and check the ruleset or\n'
-              printf 'the login: an accepted POST has already proved both of them fine, and sending a\n'
-              printf 'reader there costs a detour that ends where it started.\n'
+              printf 'reviewer left it without submitting anything. The login is not worth checking:\n'
+              printf 'GitHub accepted it, so it resolves. The RULESET is a separate question and this\n'
+              printf 'message cannot answer it — an explicit POST creates a request whatever the ruleset\n'
+              printf 'does, so nothing here shows it is healthy. What is shown is that the ruleset is\n'
+              printf 'not what emptied this list: a request existed, and was abandoned.\n'
               printf 'Measured on #157 (2026-08-03): a rebase force-push whose diff moved seven derived\n'
               printf 'numbers drew no round at all — `review_on_push` did not fire for it, and the\n'
               printf 're-request above went the same way. The reading that fits is that Copilot\n'
@@ -602,13 +604,17 @@ jobs:
               printf 'maintainer rather than a repair for this job.\n'
             elif [ -z "$requested" ]; then
               printf 'NOTHING IS HOLDING A REQUEST, and that is a different fault from a reviewer going\n'
-              printf 'silent. What is established is the empty list and nothing more: this job did not\n'
-              printf 'ask, so it cannot say whether anything ever did. On #86 the cause was that **the\n'
-              printf 'author was a bot** and no auto-request was made for it. Treat that as the lead\n'
-              printf 'rather than the finding: check the Copilot ruleset applies to pull requests from\n'
-              printf 'this author, then re-run the job.\n'
+              printf 'silent. What is established is the empty list and nothing more: no request from\n'
+              printf 'this job was ever ACCEPTED, which is not the same as nobody having asked — see the\n'
+              printf 'line below for what this job did or did not manage. On #86 the cause was that\n'
+              printf '**the author was a bot** and no auto-request was made for it. Treat that as the\n'
+              printf 'lead rather than the finding: check the Copilot ruleset applies to pull requests\n'
+              printf 'from this author, then re-run the job.\n'
               # What the mid-wait re-request established, and only that. `sent` never reaches here —
               # it is the one state that makes this a different fault, handled in the branch above.
+              # `failed` DOES reach here, so the paragraph above must not say the job never asked: it
+              # asked and the call failed, which the sub-message below is the carrier for. Raised by
+              # Copilot on #160 — the same defect this whole change is about, committed inside it.
               case "$rerequest_state" in
                 failed)   printf 'The mid-wait re-request at %ss could NOT be sent, so whether asking again would have worked is untested.\n' "$rerequest_at" ;;
                 none)     printf 'The wait ended before the %ss re-request point, so no re-request was attempted.\n' "$REREQUEST_AFTER" ;;
