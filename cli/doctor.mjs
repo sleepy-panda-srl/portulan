@@ -798,6 +798,19 @@ function walkSkills(root, { fail, report, pack, rel }, depth = 0) {
         return null;
     }
     for (const entry of entries) {
+        // A symlinked directory has `isDirectory() === false` and `isSymbolicLink() === true`, so the
+        // obvious `if (!isDirectory()) continue` SKIPS it — silently, with no finding, hiding whatever
+        // skills sit behind it. That is a false green of the walk's own kind, and it is reported rather
+        // than followed for the same reason the `SKILL.md` link is: following it is how a pack ships
+        // content it does not contain. Copilot, round 3 on #156.
+        if (entry.isSymbolicLink()) {
+            fail(
+                "packs",
+                `\`${pack}\`'s skills root \`${rel}\` contains \`${entry.name}\`, a symlinked directory. It is refused rather than followed or ` +
+                    `skipped — following it lets a pack ship skills it does not contain, and skipping it silently would hide whatever is behind it`,
+            );
+            continue;
+        }
         if (!entry.isDirectory()) continue;
         const child = walkSkills(path.join(root, entry.name), { fail, report, pack, rel: path.join(rel, entry.name) }, depth + 1);
         // A child that could not be read returns `null`, and `found += null` would add ZERO — not NaN,

@@ -109,7 +109,22 @@ export function destination(kind, name, target) {
             return path.join(target, `${name}.json`);
         case "repo-card": {
             const slot = declaredSlot(target, "repos");
-            return path.join(target, slot, `${name}.md`);
+            // The slot value is the WORKSPACE's, not this tool's, and a `..` in it escapes:
+            // `path.join("/ws/sub", "../../evil")` is `/evil`, measured. (An *absolute* slot does not
+            // escape `join` — that is `resolve`'s behaviour, not `join`'s — so only the `..` half of the
+            // review that found this was right, and the fix is written against what was measured rather
+            // than against what was reported.) Checked after resolution, like every other containment
+            // question here. Copilot, round 3 on #156.
+            const landing = path.resolve(target, slot, `${name}.md`);
+            const root = path.resolve(target);
+            if (landing !== root && !landing.startsWith(`${root}${path.sep}`)) {
+                throw new NewError(
+                    `this workspace's \`repos\` slot is \`${slot}\`, which resolves to ${landing} — outside the workspace at ${display(root)}. ` +
+                        `Refusing: a scaffold that follows a slot out of its own workspace writes wherever the manifest points, and a manifest is ` +
+                        `exactly the thing a reader assumes has been checked`,
+                );
+            }
+            return landing;
         }
         default:
             throw new NewError(`\`${kind}\` writes more than one file — use \`plan\` rather than \`destination\``);
