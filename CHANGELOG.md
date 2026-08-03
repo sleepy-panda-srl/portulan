@@ -53,11 +53,13 @@ Each was true when written and stopped being true in the next session. Corrected
 for the release cut, on this file's own accumulate-and-correct rule — and the counts now live in the
 paragraph below rather than being restated in two places, which is what made them go stale twice.)_
 
-**The list is eight, and two of them came from the plan rather than the constitution.**
-[`docs/vision.md`](docs/vision.md) names six subcommands and is human-owned; row 7 of
-[`docs/plan.md`](docs/plan.md) names `new` and `feedback` in its own ratified text. So the entry point
-carries eight, of which **five dispatch** — `init`, `doctor`, `compile`, `index`, `new` — and three
-(`vendor`, `upgrade`, `feedback`) exit 2 naming where they arrive.
+**The list is eight.** [`docs/vision.md`](docs/vision.md) names all eight and is human-owned. It named
+six when this entry was first written: `new` and `feedback` reached the CLI licensed by row 7 of
+[`docs/plan.md`](docs/plan.md), and the maintainer folded both into the constitution on 2026-08-03 —
+along with widening `vendor`'s gloss to cover materialising a workspace **out of** a repository as well
+as into one, which is what lets the residence switch have a verb. Of the eight, **five dispatch** —
+`init`, `doctor`, `compile`, `index`, `new` — and three (`vendor`, `upgrade`, `feedback`) exit 2 naming
+where they arrive.
 
 **You can scaffold your own layer without editing one of ours.** `portulan new` writes a skill,
 persona, pack, workspace, gate policy or repo card from a core template into a layer **you** own, and

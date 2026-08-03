@@ -1,12 +1,15 @@
 #!/usr/bin/env node
 // Portulan — the one entry point the `npx` package exposes.
 //
-// `docs/vision.md` names six subcommands and is human-owned: `init` · `doctor` · `compile` ·
-// `vendor` · `index` · `upgrade`. **Row 7 of `docs/plan.md` names two more** — `new` and `feedback` —
-// in its own binding text, ratified by the maintainer, so the list here is eight and the two additions
-// are licensed by the row rather than by an implementer's judgement. That distinction is the whole
-// content of the "a seventh is the maintainer's call" rule below: the call was made, in the row, and
-// this file follows it instead of re-deciding it. This is milestone 7's packaging clause.
+// `docs/vision.md` names **eight** subcommands and is human-owned: `init` · `doctor` · `compile` ·
+// `vendor` · `index` · `upgrade` · `new` · `feedback`. This is milestone 7's packaging clause.
+//
+// It named six until 2026-08-03. `new` and `feedback` arrived in the CLI first, licensed by row 7 of
+// `docs/plan.md` naming them in its own ratified text, and the maintainer then folded both into the
+// constitution — so the two-carrier state that licence created lasted one pull request and is gone. The
+// history is worth one sentence rather than none: a subcommand may be licensed by the row before the
+// constitution catches up, and when that happens this file says which document names it. Everything
+// beyond these eight is still the maintainer's call.
 //
 // ## What it is NOT
 //
@@ -113,7 +116,6 @@ export const SUBCOMMANDS = [
     {
         name: "feedback",
         module: null,
-        namedIn: "row 7 of docs/plan.md",
         arrives: "milestone 7, a later session",
         summary: "file an issue from a report you previewed, seam-scanned before it leaves the machine",
     },
@@ -141,9 +143,8 @@ export function usage() {
         "",
         "Exit codes: 0 succeeded · 1 a red verdict · 2 could not run.",
         "",
-        "`plugin-lint` and `librarian` are deliberately not here. docs/vision.md names six subcommands",
-        "and is human-owned; `new` and `feedback` are here because row 7 of docs/plan.md names them in",
-        "its own ratified text. Anything beyond those eight is still the maintainer's call.",
+        "`plugin-lint` and `librarian` are deliberately not here: docs/vision.md names these eight",
+        "subcommands and is human-owned, so a ninth is the maintainer's call.",
     );
     return lines.join("\n");
 }
@@ -181,11 +182,12 @@ export async function run(argv, options = {}) {
     }
 
     if (!entry.module) {
-        // WHERE the name comes from, not a blanket "docs/vision.md". `feedback` appears in that file
-        // zero times — it is named by row 7 of docs/plan.md, which is the whole licence argument this
-        // file's header makes. Measured at the pre-commit checkpoint: the shipped tool was telling users
-        // the constitution named something it does not, while `cli/README.md` beside it said so correctly.
-        // No test asserted this string, which is exactly why it survived — one asserts it now.
+        // WHERE the name comes from, not a blanket "docs/vision.md". All eight are in the constitution
+        // as of 2026-08-03, so `namedIn` is unset on every entry today and the fallback is the whole
+        // behaviour — but the field stays, because the state it exists for is real and recurred once
+        // already: `feedback` was named by row 7 and by nothing else for one pull request, and the
+        // shipped tool told users the constitution named something it did not. A test asserts the
+        // sentence now, which is what that round was missing.
         warn(`portulan: \`${name}\` is named in ${entry.namedIn ?? "docs/vision.md"} and is not built yet — it arrives at ${entry.arrives}.`);
         warn("portulan: refusing to exit 0 on a subcommand that did nothing.");
         return 2;
