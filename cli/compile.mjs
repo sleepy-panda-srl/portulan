@@ -1317,7 +1317,7 @@ export function githubRuleset(parsed, options = {}) {
         compiled,
         refused,
         notes,
-        artifact: { path: ARTIFACT_PATHS["github-ruleset"], value, text: render(value) },
+        artifact: { path: artifactPaths(options.workspaceDir ?? ".portulan")["github-ruleset"], value, text: render(value) },
     };
 }
 
@@ -1366,6 +1366,32 @@ const ARTIFACT_PATHS = {
     "claude-code": ".claude/settings.json",
     "github-ruleset": ".portulan/compile/github-ruleset.json",
 };
+
+/**
+ * The same map, for a workspace that does not live at `.portulan`.
+ *
+ * **A feature that dispatches on residence is a parity breach**, and proposal
+ * `../.portulan/proposals/0017-one-repository-one-governing-workspace.md` says it is refusable on that
+ * sentence alone. This one did: the ruleset's path had `.portulan` written into it, so compiling a
+ * feed-side workspace looked for a gate policy at `<feed>/workspaces/.portulan/gates.json` — a
+ * directory that does not exist and never would — and exited 2, *could not run*, on a workspace that
+ * `doctor`, `index` and its own verify recipe all handled identically at both ends.
+ *
+ * **Found by running row 7's fourth demonstration, not by reading this file.** Every other line of the
+ * compiler already keyed to a slot; this one key was location. The default is unchanged, so a caller
+ * that names no workspace directory takes a byte-identical path to the one it took before.
+ */
+function artifactPaths(workspaceDir) {
+    if (workspaceDir === ".portulan") return ARTIFACT_PATHS;
+    // A workspace directory that IS the root — the feed-side shape, where the workspace ships as the
+    // plugin and the installed plugin's directory is the workspace root (milestone 6 measured that).
+    // Its compiled artifacts belong beside it, because they ship with it.
+    const prefix = workspaceDir === "." ? "" : `${workspaceDir}/`;
+    return {
+        "claude-code": ARTIFACT_PATHS["claude-code"],
+        "github-ruleset": `${prefix}compile/github-ruleset.json`,
+    };
+}
 
 /** Every backend, run against one parsed policy. The order is the order the matrix prints in. */
 export function backends(parsed, options = {}) {
@@ -1749,12 +1775,48 @@ function printMatrix(say, parsed, columns, { source }) {
     }
 }
 
+/**
+ * What `--workspace <dir>` names, and where the workspace inside it lives.
+ *
+ * Two shapes, told apart by **`tree`** — the one thing proposal 0017 says is keyed to location, and the
+ * same key `cli/vendor.mjs` reads to decide a residence:
+ *
+ * - `<dir>` is a **repository root** — no manifest here, so the workspace is at `.portulan` and this is
+ *   byte-identical to what this tool did before the distinction existed.
+ * - `<dir>` is a **workspace directory** — it holds `workspace.json`. A manifest declaring `tree`
+ *   resolves back to the repository it governs; one declaring none is feed-side, and *is* its own root,
+ *   because an installed plugin's directory is the workspace root.
+ *
+ * Nothing here validates the manifest. `doctor` judges manifests and these two tools have no ordering
+ * between them — this one only needs to know where the policy is.
+ */
+export function resolveWorkspace(named) {
+    const dir = path.resolve(named);
+    let manifest = null;
+    try {
+        manifest = JSON.parse(fs.readFileSync(path.join(dir, "workspace.json"), "utf8"));
+    } catch {
+        return { workspaceRoot: named, workspaceDir: ".portulan" };
+    }
+    if (typeof manifest?.tree === "string" && manifest.tree.trim()) {
+        const root = path.resolve(dir, manifest.tree);
+        const inside = path.relative(root, dir);
+        // A `tree` that does not contain its own workspace is a manifest `doctor` refuses; here it just
+        // means the derivation cannot be trusted, so the safe answer is the one that changes nothing.
+        if (inside && !inside.startsWith("..") && !path.isAbsolute(inside)) {
+            return { workspaceRoot: root, workspaceDir: inside.split(path.sep).join("/") };
+        }
+        return { workspaceRoot: named, workspaceDir: ".portulan" };
+    }
+    return { workspaceRoot: dir, workspaceDir: "." };
+}
+
 export function run(argv, options = {}) {
     const say = (line = "") => {
         if (!options.quiet) process.stdout.write(`${line}\n`);
     };
     try {
-        let workspaceRoot = process.cwd();
+        let named = process.cwd();
         let check = false;
         let showMatrix = false;
         // Named pack roots, which REPLACE the root derived from `tree` rather than being searched ahead
@@ -1769,9 +1831,9 @@ export function run(argv, options = {}) {
             if (argv[i] === "--check") check = true;
             else if (argv[i] === "--matrix") showMatrix = true;
             else if (argv[i] === "--workspace") {
-                workspaceRoot = argv[i + 1];
+                named = argv[i + 1];
                 i += 1;
-                if (workspaceRoot === undefined) throw new CompileError("--workspace needs a directory");
+                if (named === undefined) throw new CompileError("--workspace needs a directory");
             } else if (argv[i] === "--pack-root") {
                 const root = argv[i + 1];
                 i += 1;
@@ -1802,11 +1864,14 @@ export function run(argv, options = {}) {
             } else throw new CompileError(`unknown argument ${JSON.stringify(argv[i])}`);
         }
 
-        const policyFile = policyPath(workspaceRoot);
+        // The workspace may be named as a repository root or as the workspace directory itself, and the
+        // second is how a feed-side workspace is reachable at all — see `resolveWorkspace`.
+        const { workspaceRoot, workspaceDir } = resolveWorkspace(named);
+        const policyFile = policyPath(workspaceRoot, workspaceDir);
         const policy = readJson(policyFile, "the gate policy");
         // The cascade's middle layer, composed before the policy is parsed so that a pack's fragment
         // is validated by exactly the code that validates a hand-written rule.
-        const { contributions, unresolved } = packContributions(workspaceRoot, ".portulan", namedRootsOption(workspaceRoot, namedRoots));
+        const { contributions, unresolved } = packContributions(workspaceRoot, workspaceDir, namedRootsOption(workspaceRoot, namedRoots));
         const composed = composeFragments(policy, contributions);
         const parsed = parse(composed.policy);
         const source = path.relative(workspaceRoot, policyFile).split(path.sep).join("/");
@@ -1817,7 +1882,7 @@ export function run(argv, options = {}) {
         // fails open, silently. That is the exact defect class this whole change exists to close,
         // reintroduced through the cross-compile path. Found by the pre-commit checkpoint, which
         // demonstrated it rather than reasoning about it.
-        const columns = backends(parsed, { source, root: path.resolve(workspaceRoot) });
+        const columns = backends(parsed, { source, root: path.resolve(workspaceRoot), workspaceDir });
 
         // Printed before the backends, because a rule's provenance changes how its compiled line reads
         // — and an unresolvable pack is a declaration the workspace believes it composed.
@@ -1856,7 +1921,7 @@ export function run(argv, options = {}) {
                 // eighth fail-open of this repository's series, and again in scaffolding rather than
                 // in a check. Found at the pre-commit checkpoint.
                 if (!column.artifact) {
-                    const orphan = path.join(workspaceRoot, ...ARTIFACT_PATHS[column.backend].split("/"));
+                    const orphan = path.join(workspaceRoot, ...artifactPaths(workspaceDir)[column.backend].split("/"));
                     if (fs.existsSync(orphan)) {
                         say(`RED — ${orphan} exists and ${policyFile} no longer compiles to it. Recompile to remove it.`);
                         drifted += 1;
@@ -1888,7 +1953,7 @@ export function run(argv, options = {}) {
                 // forever: the RED above tells a reader to recompile, so recompiling has to be what
                 // fixes it. Deleting a generated file this compiler wrote is the one deletion it may
                 // do — it is reproducible by definition, and it is already in git if it mattered.
-                const orphan = path.join(workspaceRoot, ...ARTIFACT_PATHS[column.backend].split("/"));
+                const orphan = path.join(workspaceRoot, ...artifactPaths(workspaceDir)[column.backend].split("/"));
                 if (fs.existsSync(orphan)) {
                     fs.rmSync(orphan);
                     say(`removed ${orphan} — the policy no longer compiles to it`);

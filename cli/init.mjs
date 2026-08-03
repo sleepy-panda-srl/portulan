@@ -14,8 +14,10 @@
 // visible in it — never a filled-in workspace that reads as finished. The two hard refusals:
 //
 // **It never overwrites a residence.** A repository already carrying a workspace or a pointer is
-// governed, and replacing that is not onboarding — it is the switch, whose subcommand the maintainer
-// deliberately left unassigned on 2026-07-31. So `init` stops and says which residence it found.
+// governed, and replacing that is not onboarding — it is the switch, which `cli/vendor.mjs` carries as
+// of 2026-08-03, when the maintainer widened `vendor`'s gloss and settled the verb he had deliberately
+// left unassigned on 2026-07-31. So `init` stops, says which residence it found, and names the tool
+// whose job the switch is.
 //
 // **It refuses rather than emitting a manifest a validator would misread.** A governor or a name that
 // is not a slug is caught here, at the boundary, because `doctor`'s cross-repository check still
@@ -485,10 +487,18 @@ are different things, and only the first is built.
 
 If this repository should carry its own workspace instead, that is a **switch**, not a re-run of
 \`init\`: the workspace is materialised in the new residence, a pointer or nothing is left in the old
-one, and validation is green at both ends *before* the old residence is retired. The subcommand that
-performs it is not built yet. Until it is, do not delete this file and write a workspace by hand —
-the window between the two is a repository governed by nothing, which looks identical to a repository
-that never adopted Portulan.
+one, and validation is green at both ends *before* the old residence is retired.
+
+From this repository's root, with the \`${answers.governedBy}\` workspace checked out somewhere you can
+name — nothing here fetches it:
+
+\`\`\`
+portulan vendor <path to the ${answers.governedBy} workspace> --into .portulan --residence in-repo --switch
+\`\`\`
+
+Run that rather than deleting this file and writing a workspace by hand — the window between those two
+acts is a repository governed by nothing, which looks identical to a repository that never adopted
+Portulan.
 
 ## Curate this
 
@@ -1100,11 +1110,11 @@ export async function run(argv, options = {}) {
                 `this repository already carries ${what}${existing.name ? ` (\`${existing.name}\`)` : ""} — a repository is ` +
                     `governed by exactly one workspace, and \`init\` will not replace one. Moving between residences is a ` +
                     `switch, not a re-run: the workspace is materialised in the new residence, a pointer or nothing is left ` +
-                    `in the old, and validation is green at both ends before the old one is retired. That subcommand is not ` +
-                    `built yet — so today, run \`doctor\` on what is already here to see where it stands, and if you do mean ` +
-                    `to change residence, move the existing \`.portulan/\` aside first and keep it until the new one is green. ` +
-                    `Doing it the other way round leaves a window in which this repository is governed by nothing, which ` +
-                    `looks exactly like one that never adopted Portulan.`,
+                    `in the old, and validation is green at both ends before the old one is retired. \`vendor\` is the ` +
+                    `subcommand that does it — \`portulan vendor <the workspace> --into <where it should live> --residence ` +
+                    `<in-repo|feed-side> --switch\` — and it holds that ordering so you do not have to. Doing it by hand the ` +
+                    `other way round leaves a window in which this repository is governed by nothing, which looks exactly ` +
+                    `like one that never adopted Portulan.`,
             );
         }
 

@@ -246,8 +246,9 @@ describe("nothing init writes can produce the manifest doctor still mishandles",
 
 describe("an existing residence is never overwritten", () => {
     // Proposal 0017: a repository is governed by exactly one workspace. Replacing a policy layer is
-    // not onboarding — it is the switch, whose verb the maintainer deliberately left unassigned. So
-    // `init` refuses and says which, rather than writing over a team's gates, memory and DoD.
+    // not onboarding — it is the switch, which `cli/vendor.mjs` carries since the maintainer widened
+    // `vendor`'s gloss on 2026-08-03. So `init` refuses, says which residence it found, and names the
+    // tool whose job the switch is, rather than writing over a team's gates, memory and DoD.
     test("a full workspace already present is a refusal naming the ruling", async () => {
         const dir = scratch({ ".portulan/workspace.json": '{"portulan":{"spec":"2.7"},"name":"acme","kind":"repository"}' });
         const h = harness();
@@ -888,11 +889,16 @@ describe("every refusal names what the human can do next", () => {
         return h.warned.join("\n");
     };
 
-    test("an existing residence points at doctor and at the safe order for changing residence", async () => {
+    test("an existing residence names the tool that changes residence, and why the order matters", async () => {
+        // This asserted "run `doctor`" and "move the existing `.portulan/` aside", which was the best
+        // advice available while the switch had no subcommand: a human doing it by hand needed to be
+        // told the safe order. `cli/vendor.mjs` holds that order now, so the refusal points at the tool
+        // rather than teaching the manual procedure — a refusal that sends a reader to a worse route
+        // than the one that exists is a refusal that has gone stale.
         const seed = { ".portulan/workspace.json": '{"portulan":{"spec":"2.7"},"name":"acme","kind":"repository"}' };
         const text = await refusalFor(seed, ["--residence", "pointer", "--governed-by", "acme-platform"]);
-        assert.match(text, /run `doctor`/);
-        assert.match(text, /move the existing/i);
+        assert.match(text, /vendor/);
+        assert.match(text, /--switch/);
         assert.match(text, /governed by nothing/, "the reason the order matters must travel with the instruction");
     });
 

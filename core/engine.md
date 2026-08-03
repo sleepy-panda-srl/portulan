@@ -2,8 +2,11 @@
 
 > The always-loaded kernel: the invariants every agent carries, and the map to the doctrine behind
 > them. Kept small on purpose — everything here is load-bearing; everything else loads on demand. This
-> file is the core's source contribution to the always-loaded layer; the CLI composes it with the pack
-> and workspace layers into a vendored `AGENTS.md` for any host (the `vendor` path, milestone 7).
+> file is the core's source contribution to the always-loaded layer; `portulan vendor --host` inlines it
+> verbatim into a vendored `AGENTS.md` beside the workspace's own layer, for a host that cannot install
+> the plugin. The **pack** layer is named in that file rather than composed into it — a pack resolves
+> from a feed at a pinned version and vendoring resolves nothing — which is milestone 7's pack-cache
+> discovery, still owed.
 
 ## Resolution cascade
 

@@ -55,9 +55,44 @@ paragraph below rather than being restated in two places, which is what made the
 six when this entry was first written: `new` and `feedback` reached the CLI licensed by row 7 of
 [`docs/plan.md`](docs/plan.md), and the maintainer folded both into the constitution on 2026-08-03 —
 along with widening `vendor`'s gloss to cover materialising a workspace **out of** a repository as well
-as into one, which is what lets the residence switch have a verb. Of the eight, **five dispatch** —
-`init`, `doctor`, `compile`, `index`, `new` — and three (`vendor`, `upgrade`, `feedback`) exit 2 naming
+as into one, which is what lets the residence switch have a verb. Of the eight, **six dispatch** —
+`init`, `doctor`, `compile`, `vendor`, `index`, `new` — and two (`upgrade`, `feedback`) exit 2 naming
 where they arrive.
+
+**A workspace can move house, and `vendor` is what moves it.** One operation with a direction, which is
+what the constitution's widened gloss describes. `portulan vendor <workspace> --into <dir> --host <id>`
+writes a self-contained `AGENTS.md` beside a copied `.portulan/`, for a host that cannot install the
+plugin: core's kernel inlined verbatim, your workspace's slots and recipes named, and the pack layer
+named rather than composed — because a pack resolves from a feed at a pinned version and vendoring
+resolves nothing. `--switch` instead changes **residence**, feed-side ↔ in-repo, under the contract
+[`.portulan/proposals/0017-one-repository-one-governing-workspace.md`](.portulan/proposals/0017-one-repository-one-governing-workspace.md)
+sets: the workspace is materialised at the new residence, a pointer or nothing is left at the old, and
+`doctor` is green at **both** ends before the old residence's material is retired.
+
+The residence is **never inferred from a path** — `--residence` is required, which is `init`'s rule for
+`init`'s reason: a repository is governed by exactly one workspace, and the wrong guess is the dual
+management the proposal refuses. What travels is the workspace byte for byte, except `workspace.json`,
+whose `kind` and `tree` are the only two keys a residence actually changes — which is the proposal's
+parity claim made executable rather than asserted. What does **not** travel is compiled enforcement:
+`compile`'s output is keyed to the residence, so a copy of it would name paths for the residence it
+left, and `vendor` retires it with the old one and says so.
+
+**The limit, stated rather than discovered.** Governance is keyed on two manifests in two directories
+and no primitive changes both at once, so a switch cannot avoid *some* intermediate state — either two
+governing workspaces for a moment, or none. The ordering above chooses two, because `doctor --repo-root`
+refuses that state by name while none is silent and, in the proposal's words, "looks identical to a
+repository that never adopted Portulan". Every failure `vendor` handles leaves exactly one governor: it
+stages and validates the copy somewhere that is a residence nowhere, so a destination that would not
+have been green never becomes a second governor at all, and past the point where governance has moved it
+goes forward and reports rather than undoing a completed flip. A crash inside the one `rename` leaves
+two, and the recovery sentence is printed before that window opens.
+
+**`compile` works in either residence, which it did not before.** `--workspace` now takes a repository
+root **or a workspace directory**; it keyed on `.portulan` and so exited 2 — *could not run* — against a
+feed-side workspace. Found by running the parity demonstration rather than by reading the compiler:
+`doctor`, `index` and the workspace's own verify recipe were identical at both ends and this was not.
+A feed-side workspace's compiled artifacts land beside it, because an installed plugin's directory is
+the workspace root and they ship together.
 
 **You can scaffold your own layer without editing one of ours.** `portulan new` writes a skill,
 persona, pack, workspace, gate policy or repo card from a core template into a layer **you** own, and
@@ -80,7 +115,8 @@ the answer that decides which cannot be guessed at, and a run without one exits 
 A codebase scan reads what the repository says about itself and writes down what it could **not**
 determine rather than inventing a plausible build command. Three refusals stand ahead of the first byte
 written: a repository already carrying a workspace or a pointer is never overwritten — moving between
-residences is a switch, and that subcommand is not built; **no existing file is written over**, because
+residences is a switch, and `vendor` is the subcommand that performs it; **no existing file is written
+over**, because
 "is this repository governed?" and "is it safe to write here?" are different questions with different
 answers, and a `.portulan/` holding somebody's hand-written notes and no manifest answers no to the
 first; and any answer that is empty or malformed — a name, a governor, a pack id — is refused at the

@@ -26,14 +26,17 @@
 // does not own. They stay runnable exactly as they are today — `node cli/plugin-lint.mjs …` — and
 // every verify recipe still invokes them that way.
 //
-// ## Three of the eight are not built
+// ## Two of the eight are not built
 //
-// `vendor`, `upgrade` and `feedback` are milestone 7 work that has not landed. They are listed, and
-// they exit **2 — could not run**, naming what is missing. The alternative shapes were both worse:
-// hiding them makes the package look like a four-command tool and the row like it is further along
-// than it is, and stubbing them to exit 0 would be a fail-open in the one place a user is most
-// likely to trust silence. "Nothing looked" is never "nothing wrong" — the same three-code
-// discipline the verify recipes hold (`.portulan/memory/verify-preconditions-fail-closed.md`).
+// `upgrade` and `feedback` are milestone 7 work that has not landed. They are listed, and they exit
+// **2 — could not run**, naming what is missing. The alternative shapes were both worse: hiding them
+// makes the package look like a smaller tool and the row like it is further along than it is, and
+// stubbing them to exit 0 would be a fail-open in the one place a user is most likely to trust
+// silence. "Nothing looked" is never "nothing wrong" — the same three-code discipline the verify
+// recipes hold (`.portulan/memory/verify-preconditions-fail-closed.md`).
+//
+// _(`vendor` was the third until milestone 7 session 3. The count is written out here and derived in
+// the suite, which is the split that has held: the sentence explains, the assertion counts.)_
 //
 // ## Exit codes, which are the tools' own
 //
@@ -93,9 +96,13 @@ export const SUBCOMMANDS = [
     },
     {
         name: "vendor",
-        module: null,
-        arrives: "milestone 7, a later session",
-        summary: "write a self-contained AGENTS.md + .portulan/ for any host",
+        module: "vendor.mjs",
+        // BOTH directions, because the constitution now glosses both. It said "a self-contained
+        // AGENTS.md + .portulan/ for any host" until 2026-08-03, when the maintainer widened the gloss
+        // to cover materialising a workspace out of a repository as well as into one — which is what
+        // settled the verb row 7 had deliberately left unassigned. A summary carrying only the older
+        // half would be the narrower of two carriers of one fact, which is the shape a reader obeys.
+        summary: "materialise a workspace where it is needed: into a host, or between residences",
     },
     {
         name: "index",

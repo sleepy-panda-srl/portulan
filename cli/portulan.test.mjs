@@ -144,11 +144,13 @@ test("modules are loaded lazily — help imports nothing", async () => {
 });
 
 test("an unbuilt subcommand exits 2 and names where it arrives — never 0", async () => {
-    // `init` left this list at milestone 7, session 1, when it was built. The list is written out
-    // rather than derived from `SUBCOMMANDS` on purpose: deriving it would make the assertion
-    // vacuously true the moment a subcommand's `module` was set, and the whole point is that a
-    // subcommand crossing from unbuilt to built is a change somebody looked at.
-    for (const name of ["vendor", "upgrade", "feedback"]) {
+    // `init` left this list at milestone 7, session 1, when it was built; `vendor` left it at session
+    // 3, when it took the residence switch. The list is written out rather than derived from
+    // `SUBCOMMANDS` on purpose: deriving it would make the assertion vacuously true the moment a
+    // subcommand's `module` was set, and the whole point is that a subcommand crossing from unbuilt to
+    // built is a change somebody looked at. This red is the mechanism working — it is what made a
+    // reader edit this line rather than a green that noticed nothing.
+    for (const name of ["upgrade", "feedback"]) {
         const h = harness();
         const code = await run([name], h.options);
         assert.equal(code, 2, `${name} must exit 2, not 0 — a silent success here is a fail-open`);
