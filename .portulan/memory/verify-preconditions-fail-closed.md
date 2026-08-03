@@ -47,7 +47,7 @@ record of addressed feedback. The reviewer was right and the confidence score wa
 rather than stated in advance.
 
 **Partly discharged, and deliberately not retired.** The Stop-gate runner arrived in milestone 4 and it
-does distinguish the codes — [`../compile/stop.mjs`](../compile/stop.mjs) blocks on exit 2 exactly as it
+does distinguish the codes — [`../compile/stop.mjs`](../../cli/stop-gate.mjs) blocks on exit 2 exactly as it
 blocks on exit 1, so "nothing looked" cannot read as "nothing wrong". The contract moved into
 [`../../core/operating/verification.md`](../../core/operating/verification.md), which is where the retire
 condition said it should go. **The rule stays** because the runner covers one recipe in one workspace and

@@ -166,7 +166,7 @@ file: where a rule and its clarification live apart, only the rule gets read.)_
   for the maintainer too. [`gates.json`](gates.json)'s reason states the precondition as well, which is a
   courtesy and not a second layer: on a bare `gh pr merge` the permission rule matches and the host
   discards the hook's sentence, so that reason reaches an agent only on the wrapped spelling — the
-  measurement is in [`compile/gate.mjs`](compile/gate.mjs)'s own header.
+  measurement is in [`compile/gate.mjs`](../cli/gate.mjs)'s own header.
 - `force-push-without-a-lease` — bare `--force`. `--force-with-lease` is Auto above; the lease is the
   whole difference, and it is why these are two rules rather than one with a caveat.
 - `change-repository-settings` — **visibility above all**. `gh repo edit` and nothing beside it now:
@@ -219,7 +219,7 @@ session the cost was not small — branch-protection and ruleset reads are ordin
 of them stopped for a dialog the maintainer had not asked for.
 
 The narrower rule was never available while the gate stood. Both matchers open to it were **prefix**
-matchers — `matchesRule` in [`compile/gate.mjs`](compile/gate.mjs), and on the host a `Bash(<prefix>:*)`
+matchers — `matchesRule` in [`compile/gate.mjs`](../cli/gate.mjs), and on the host a `Bash(<prefix>:*)`
 rule, the shape this policy compiles every shell gate into — and neither language has negation, so
 *"`gh api` except when it writes"* cannot be said in either. (The entry that shape produced here,
 `Bash(gh api:*)`, is the one this change removes; it is named in the past tense on purpose, since a
@@ -334,7 +334,7 @@ prompt-level habit and the Gated tier's header, and nothing else, until somethin
 **Two layers are emitted for every gate, and only one of them is the gate.** The permission rule holds;
 the hook supplies the sentence. That split is forced by a measurement rather than chosen: on CLI 2.1.220 a
 hook that *crashes* fails **open** — the tool proceeds — on the identical wiring that blocks when the hook
-is healthy. A permission rule does not fail open. So [`compile/gate.mjs`](compile/gate.mjs) is written to
+is healthy. A permission rule does not fail open. So [`compile/gate.mjs`](../cli/gate.mjs) is written to
 step aside silently on any internal error, handing the decision back to the layer that cannot be removed by
 a syntax error.
 
@@ -413,7 +413,7 @@ Corrected here rather than left, because a gate map that overstates a hole is as
 3. **A gate whose only layer is the hook — and the hook is the one that fails open.** New with the shell
    half of `edit-the-constitution`, above. Everywhere else the permission rule is the gate and the hook
    adds reach; there, the hook *is* the reach, because no `Bash(prefix:*)` pattern can name a path sitting
-   anywhere in a command. A syntax error in [`compile/gate.mjs`](compile/gate.mjs) removes tool-level
+   anywhere in a command. A syntax error in [`compile/gate.mjs`](../cli/gate.mjs) removes tool-level
    coverage of shell writes to the constitution and leaves the `Edit`/`Write` denials standing, which is a
    partial gate that looks from the outside exactly like a whole one. `compile` names the affected rules in
    a note on every run for that reason.
@@ -427,7 +427,7 @@ Corrected here rather than left, because a gate map that overstates a hole is as
 6. **This repository ships a wrapper of its own, and holes 1 and 4 meet in it.** Added 2026-07-28.
    [`tools/gh-bot`](tools/gh-bot) runs `gh` under the agent identity, so `./.portulan/tools/gh-bot …`
    is a spelling no compiled rule sees: every shell gate here compiles to a `Bash(<prefix>:*)` match
-   against the literal command, and [`compile/gate.mjs`](compile/gate.mjs)'s one level of unwrapping
+   against the literal command, and [`compile/gate.mjs`](../cli/gate.mjs)'s one level of unwrapping
    knows `sh -c` and nothing about this path. On the maintainer's machine the wrapper is also
    allowlisted by hand, which is hole 4 with the unmeasured part removed — the entries are for
    different spellings, so no precedence question arises and the wrapper simply runs unattended.

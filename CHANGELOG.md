@@ -247,7 +247,7 @@ same policy rather than forcing adopters to rewrite theirs. Every rule ends as *
 with a stated reason**, both printed, both asserted by the suite: a rule that goes in and produces nothing
 would leave a policy that reads as enforced and a machine that enforces nothing.
 
-**A Stop-gate that actually blocks.** [`.portulan/compile/stop.mjs`](.portulan/compile/stop.mjs) runs the
+**A Stop-gate that actually blocks.** [`.portulan/compile/stop.mjs`](cli/stop-gate.mjs) runs the
 workspace's default verify recipe when an agent tries to end its turn, and blocks on red *or* on exit 2 —
 "nothing looked" must never read as "nothing wrong". It also enforces the session-end handoff, which
 `core/operating/loop.md` had promised to this milestone. Capped at three **consecutive** refusals **per

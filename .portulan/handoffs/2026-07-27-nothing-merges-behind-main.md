@@ -122,7 +122,7 @@ The five new labels were created on GitHub. That half is live; the enforcement h
 
 **Flagged, not touched, in the same neighbourhood.** [`../gate-map.md`](../gate-map.md)'s *What the
 compiler refuses* opens with "the permission rule holds; **the hook supplies the sentence**" — the
-framing [`../compile/gate.mjs`](../compile/gate.mjs)'s header records as the assumption its own
+framing [`../compile/gate.mjs`](../../cli/gate.mjs)'s header records as the assumption its own
 measurement refuted. The detail two paragraphs later is correct (the supervisor found the sentence
 reaching the agent *on the wrapper spelling*), so it is the summary line that is loose. Left for the
 maintainer rather than rewritten here: restating another session's measurement inside a rule-landing

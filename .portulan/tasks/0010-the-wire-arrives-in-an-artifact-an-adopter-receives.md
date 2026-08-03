@@ -1,7 +1,7 @@
 # Task 0010 — clause (a)'s wire arrives in an artifact an adopter receives
 
 **Lane:** full · **Opened:** 2026-08-03, milestone 7 session 2, after [#156](https://github.com/sleepy-panda-works/portulan/pull/156) merged
-**Verify recipe:** `tests` · **Status:** mechanism done, carrier sweep outstanding — `links` is RED
+**Verify recipe:** `tests` · **Status:** DONE — all eight recipes green, and the wire demonstrated live
 
 > Scoped and left unstarted **deliberately**, with the measurements already taken, because the session
 > that scoped it no longer had the budget to move fourteen carriers and put the result through a
@@ -94,7 +94,23 @@ replaced; `compile`'s emitted spelling computed; **customer zero's five live hoo
 naming `${CLAUDE_PROJECT_DIR}/cli/gate.mjs` and `.../cli/stop-gate.mjs`. **Suite 904/904. Seven of eight
 recipes green.**
 
-**Outstanding, and the reason this is not done:** `links` is **RED — 26 links across 21 files** still
-name `.portulan/compile/stop.mjs` / `gate.mjs`. Each needs its relative depth recomputed, which is a
-per-file edit and not a blind substitution. **Do not open a pull request from this branch until that
-sweep is finished and all eight recipes are green.**
+**The carrier sweep is done: 26 links across 21 files re-based**, each computed from the file that
+carries it rather than substituted blindly — ten of them were bare siblings (`](gate.mjs)`) in
+`.portulan/compile/README.md`, which a `compile/`-anchored pattern does not match, and which is why the
+first pass reported green while ten were still dead.
+
+## The demonstration, and it was not staged
+
+**The Stop-gate blocked this session's own \"done\" — running from the moved runner.** After the move and
+the recompile, `.claude/settings.json`'s Stop hook reads
+`node \"${CLAUDE_PROJECT_DIR}/cli/stop-gate.mjs\"`, and it fired on the red `links` recipe and refused,
+printing the nine dead links by file and line. That is clause (a)'s wire working end to end in customer
+zero — the runner shipped where an adopter receives it, the compiled hook naming it, and the gate
+actually holding — observed rather than asserted, and observed because it caught its own session.
+
+`npm pack` now carries **83 files including `cli/gate.mjs` and `cli/stop-gate.mjs`**, where before it
+carried neither. Suite 904/904, all eight recipes green.
+
+**What is still owed on this row** (not this task): the handoff-index freshness rail's spelling, and the
+context-3 case — a global or npx-only install, where no project-relative path exists and the emitted hook
+falls back to an absolute one. That fallback is implemented and is **not yet demonstrated**.
