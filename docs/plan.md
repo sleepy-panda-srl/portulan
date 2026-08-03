@@ -1937,7 +1937,7 @@ _The seam applies here too: no client-identifying references._
   7 of one class, in the change about that class. Suite 907, eight recipes. Seam scan clean. Handoff: [`2026-08-03`](../.portulan/handoffs/2026-08-03-a-message-that-named-a-cause-it-had-not-established.md).
 
 - 2026-08-03 · M7 (CLI & onboarding), session 3 · **A workspace can move house, and one window cannot be
-  closed.** [`cli/vendor.mjs`](../cli/vendor.mjs) — the sixth subcommand to dispatch: `--host` vendors a
+  closed.** [#164](https://github.com/sleepy-panda-works/portulan/pull/164): [`cli/vendor.mjs`](../cli/vendor.mjs) — the sixth subcommand to dispatch: `--host` vendors a
   self-contained `AGENTS.md` (kernel inlined, pack layer named not composed) beside a copied
   `.portulan/`; `--switch` moves residence **both** ways under
   [`0017`](../.portulan/proposals/0017-one-repository-one-governing-workspace.md)'s ordering. **D4 done**
