@@ -37,7 +37,14 @@
 // `compile` emits a path that resolves from a checkout and from a project-local install. What `init`
 // still does not do is *run* `compile` over what it drafts — so a drafted workspace has the binding and
 // no compiled hooks until its human runs `compile` themselves, which is the honest remaining gap and is
-// what `cli/init.test.mjs` asserts. The draft's README says so.
+// what `cli/init.test.mjs` asserts.
+//
+// **The drafted README said the opposite for one pull request.** It told every adopter the runner "is not
+// shipped in any artifact you have received" and that "nothing here compiles to a working Stop hook" —
+// true before the runners moved, false the moment they did, and it survived a fourteen-carrier sweep
+// because it describes the mechanism without naming the files the sweep was grepping for. The worst
+// shape available: a false claim emitted into somebody else's tree, telling them a rail they now have is
+// one they do not.
 //
 // **There is no interactive interview yet.** `docs/vision.md` glosses `init` as *interview + codebase
 // scan*; what ships here is the non-interactive substrate — flags and `--answers` — because a prompt
@@ -648,11 +655,14 @@ is worse than one with fewer of them.
   manifest declares where a generated index goes. **That index does not exist yet**: it is generated
   from the series by the \`index\` tool, and this draft does not run it, so the file appears the first
   time you do. The freshness rail is what a verify recipe of yours would compare it against.
-- **The session-end gate is NOT wired.** The runner that enforces "a handoff dated today exists"
-  before a session ends is not shipped in any artifact you have received, so nothing here compiles to
-  a working Stop hook. Where that runner comes from is an open product decision. Until it is answered,
-  treat the session-end handoff as a practice your team holds, not as a rail this workspace enforces —
-  and a rule nothing checks is worth exactly what you can remember about it.
+- **The session-end gate is wired by \`compile\`, and this draft has not run it.** The runner that
+  enforces "a handoff dated today exists" before a session ends **does** ship in the package you have —
+  it is \`cli/stop-gate.mjs\` — and \`portulan compile\` emits a \`Stop\` hook naming it. What this
+  draft does is bind the ritual and the records conventions; running \`compile\` is the step that turns
+  them into enforcement, and it is yours to run because compiling writes host settings and that is not
+  a thing a scaffold should do to your machine unasked. **Until you run it**, treat the session-end
+  handoff as a practice your team holds rather than a rail — a rule nothing checks is worth exactly
+  what you can remember about it.
 
 ## What the scan observed
 

@@ -645,7 +645,7 @@ export function run(argv, options = {}) {
         // opens next. This tool never edits a file it did not write — a manifest is a curated layer, and
         // a generator that rewrites one is the generator that eventually rewrites the wrong one — so the
         // wiring step is the author's, and leaving it unsaid would produce a file nothing reads.
-        for (const line of wiring(parsed.kind, parsed.name)) say(line);
+        for (const line of wiring(parsed.kind, parsed.name, parsed.category, into)) say(line);
         return 0;
     } catch (error) {
         say(`new: ${error instanceof NewError ? error.message : `unanticipated failure — ${error.stack ?? error}`}`);
@@ -663,16 +663,22 @@ const manifestish = (p) => /(?:workspace|pack)\.json$/.test(p);
  * the generator that eventually edits the wrong one. The cost of that rule is a file nothing references,
  * so the cost is paid out loud, here, at the moment the file lands.
  */
-function wiring(kind, name) {
+function wiring(kind, name, category, target) {
     switch (kind) {
         case "gate-policy":
             return ["", `Nothing reads it yet: add \`"gates": "${name}.json"\` to the workspace's \`workspace.json\`, then \`portulan compile\`.`];
         case "skill":
-            return ["", "It is inside the pack's `skills/` root, which `contributes.skills` already declares — no manifest edit needed."];
+            // Conditional, because the unconditional form was a claim about a file that may not exist:
+            // `new skill --into <a plain directory>` printed "`contributes.skills` already declares it"
+            // with no `pack.json` anywhere. A tool asserting something about a manifest it did not read
+            // is the same defect class as prose asserting something about a tree nobody checked.
+            return ["", fs.existsSync(path.join(target ?? ".", "pack.json"))
+                ? "It is inside the pack's `skills/` root, which `contributes.skills` already declares — no manifest edit needed."
+                : "There is no `pack.json` here, so nothing declares this skill yet. Run `portulan new pack <name> --category <c>` and put the skill inside it, or add a `contributes.skills` root to the pack that should ship it."];
         case "persona":
             return ["", `Nothing reads it yet: add \`"personas/${name}.md"\` to the pack manifest's \`contributes.personas\`.`];
         case "pack":
-            return ["", `Nothing composes it yet: add \`"<category>/${name}"\` to an adopting workspace's \`packs\` array.`];
+            return ["", `Nothing composes it yet: add \`"${category}/${name}"\` to an adopting workspace's \`packs\` array.`];
         case "repo-card":
             return ["", "It sits in the workspace's declared `repos` slot, so `doctor` will lint its claims against the tree on the next run."];
         default:
