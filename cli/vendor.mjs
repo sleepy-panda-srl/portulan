@@ -383,7 +383,17 @@ export function collisions(destDir, rels, { lstat = fs.lstatSync, allow = new Se
                 found.push({ rel, path: step, why: `${step} is a symlink, and writing through it would leave the tree` });
                 break;
             }
-            if (step === target && !stat.isDirectory()) {
+            if (step === target) {
+                // A DIRECTORY at the exact path a file must be written is a collision, and this said it
+                // was not. The exemption for existing directories is right for the *intermediate*
+                // segments — a user may legitimately have created them — and wrong at the leaf, where
+                // `walk()` only ever yields files: preflight passed, and the write phase then threw
+                // `EISDIR` mid-copy, so the promise that every refusal stands ahead of the first byte
+                // was broken by the check that exists to keep it. Copilot's suppressed note, round 4.
+                if (stat.isDirectory()) {
+                    found.push({ rel, path: step, why: `${step} is a directory, and a file has to be written there` });
+                    break;
+                }
                 if (allow.has(rel)) break;
                 found.push({ rel, path: step, why: "already exists" });
                 break;
