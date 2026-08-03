@@ -571,22 +571,45 @@ jobs:
             printf 'A pull request may not merge until Copilot has reviewed the commit it is actually\n'
             printf 'merging, and until that feedback is resolved. Conversation resolution covers the\n'
             printf 'resolved half; this covers the awaited half.\n\n'
-            # THREE outcomes, because the answer to "was a round even requested?" has three states and
-            # only two of them license naming a cause. Each names the repair that fits ITS fault.
+            # FOUR outcomes, because the answer to "was a round even requested?" has four states and
+            # only three of them license naming a cause. Each names the repair that fits ITS fault.
+            #
+            # The fourth was added 2026-08-03, after #157 printed the third one over it. An empty
+            # request list was read as *the request was never created for this actor* while
+            # `rerequest_state` held `sent` — a POST this job had made and GitHub had ACCEPTED, and
+            # which the message then printed as a flat contradiction four lines further down. An empty
+            # list has two causes and the list alone cannot separate them: nobody ever asked, or
+            # somebody asked and the reviewer LEFT the list without answering. The comment under
+            # `Reviewers requested and still unanswered` already stated that rule correctly and the
+            # code above it did not implement it — #89's defect returned to the message #89 fixed.
+            # So the split is on what this job ESTABLISHED with its own write, never on the list alone.
             if [ "$requested_read" -eq 0 ]; then
               printf 'Whether a round was ever requested could NOT be read, so this message names no\n'
-              printf 'cause: the two faults below have different repairs and nothing here distinguishes\n'
+              printf 'cause: the faults below have different repairs and nothing here distinguishes\n'
               printf 'them. Read repos/%s/pulls/%s/requested_reviewers by hand.\n' "$GITHUB_REPOSITORY" "$PR_NUMBER"
+            elif [ -z "$requested" ] && [ "$rerequest_state" = sent ]; then
+              printf 'REQUESTED, ACCEPTED, THEN ABANDONED — the one fault on this list that re-running\n'
+              printf 'does not repair. This job POSTed a review request at %ss and GitHub ACCEPTED it,\n' "$rerequest_at"
+              printf 'so a request WAS created for this actor; the list reads empty now because the\n'
+              printf 'reviewer left it without submitting anything. Do NOT go and check the ruleset or\n'
+              printf 'the login: an accepted POST has already proved both of them fine, and sending a\n'
+              printf 'reader there costs a detour that ends where it started.\n'
+              printf 'Measured on #157 (2026-08-03): a rebase force-push whose diff moved seven derived\n'
+              printf 'numbers drew no round at all — `review_on_push` did not fire for it, and the\n'
+              printf 're-request above went the same way. The reading that fits is that Copilot\n'
+              printf 'declines a diff it has already reviewed, and no amount of asking changes that.\n'
+              printf 'If so, THIS HEAD CANNOT GO GREEN, and what to do about it is a decision for the\n'
+              printf 'maintainer rather than a repair for this job.\n'
             elif [ -z "$requested" ]; then
-              printf 'NOTHING WAS REQUESTED, and that is a different fault from a reviewer going silent.\n'
-              printf 'The request was never created for this actor — the condition under which this first\n'
-              printf 'fired, on #86, was that **the author was a bot**, which no earlier version of this\n'
-              printf 'message considered. Check that the Copilot ruleset applies to pull requests from\n'
+              printf 'NOTHING IS HOLDING A REQUEST, and that is a different fault from a reviewer going\n'
+              printf 'silent. What is established is the empty list and nothing more: this job did not\n'
+              printf 'ask, so it cannot say whether anything ever did. On #86 the cause was that **the\n'
+              printf 'author was a bot** and no auto-request was made for it. Treat that as the lead\n'
+              printf 'rather than the finding: check the Copilot ruleset applies to pull requests from\n'
               printf 'this author, then re-run the job.\n'
-              # What the mid-wait re-request established, and only that. `sent` is the only state that
-              # licenses "asking again did not help"; `failed` means the second experiment never ran.
+              # What the mid-wait re-request established, and only that. `sent` never reaches here —
+              # it is the one state that makes this a different fault, handled in the branch above.
               case "$rerequest_state" in
-                sent)     printf 'A re-request WAS accepted at %ss and still produced no round, so asking again is not the repair here.\n' "$rerequest_at" ;;
                 failed)   printf 'The mid-wait re-request at %ss could NOT be sent, so whether asking again would have worked is untested.\n' "$rerequest_at" ;;
                 none)     printf 'The wait ended before the %ss re-request point, so no re-request was attempted.\n' "$REREQUEST_AFTER" ;;
               esac
@@ -600,9 +623,10 @@ jobs:
             fi
           fi
           printf '\nReview authors seen on this pull request:%s\n' "${seen:- none}"
-          # Printed for both verdicts. Copilot leaves this list once it submits, so absence alone
-          # proves nothing about whether it was ever asked — which is exactly why the branch above
-          # says what it establishes and stops there.
+          # Printed for both verdicts. Copilot leaves this list once it submits — and, measured on
+          # #157 (2026-08-03), ALSO when it submits nothing at all. So absence proves nothing about
+          # whether it was ever asked, and nothing about whether it answered either, which is why the
+          # branch above splits on this job's own accepted POST rather than on this line.
           if [ "$requested_read" -eq 1 ]; then
             printf 'Reviewers requested and still unanswered:%s\n' "${requested:+ $requested}"
           else
