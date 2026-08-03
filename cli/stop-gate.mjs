@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // The Stop-gate runner — "done" is not a thing an agent may simply declare.
 //
-// Wired by `../../cli/compile.mjs` into `.claude/settings.json` as a `Stop` hook. When an agent
+// Wired by `./compile.mjs` into `.claude/settings.json` as a `Stop` hook. When an agent
 // tries to end its turn, this runs the workspace's default verify recipe and blocks the ending if
 // the recipe is not green. `../core/operating/verification.md` has specified this contract since
 // milestone 1 and named milestone 4 as where the runner arrives; this is that runner.
