@@ -28,7 +28,7 @@ matcher that contradicts a declared tier is worse than one that admits a gap.
 
 **This coverage is the hook's alone, and therefore fails open with the hook.** `Bash(prefix:*)` matches a
 literal command prefix while the path sits at an arbitrary position, so that DSL cannot express it at all.
-It is the first gate here whose only layer is [`../compile/gate.mjs`](../compile/gate.mjs) — a broken hook
+It is the first gate here whose only layer is [`../compile/gate.mjs`](../../cli/gate.mjs) — a broken hook
 removes it silently while the `Edit`/`Write` denials stay standing, so the gate still reads as whole from
 outside. Recorded in the gate map's honest-holes list — by description rather than by ordinal, because
 #61 landed a hole of its own the same day and every number in that list moved — and printed by `compile` as a note

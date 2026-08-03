@@ -52,7 +52,7 @@ textual conflict behind it, where the same state read `CLEAN` a few hours earlie
 [`../gates.json`](../gates.json) also states the precondition in the reason on `merge-a-pull-request`, and
 that is a courtesy rather than a second layer: on a bare `gh pr merge` the permission rule matches, the
 host **discards the hook's reason**, and the agent sees the generic prompt — measured, and the reason
-[`../compile/gate.mjs`](../compile/gate.mjs) exists at all. The sentence reaches an agent only on the
+[`../compile/gate.mjs`](../../cli/gate.mjs) exists at all. The sentence reaches an agent only on the
 wrapped spelling the permission pattern cannot see. The platform is what holds
 ([`a-stated-enforcer-must-be-the-real-one.md`](a-stated-enforcer-must-be-the-real-one.md)).
 

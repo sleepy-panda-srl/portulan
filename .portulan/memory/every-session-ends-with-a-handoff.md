@@ -27,7 +27,7 @@ sessions' record stays in the pull-request descriptions and the Session log. Sta
 date rather than naming sessions is deliberate — an enumerated exemption is a checker's bug waiting to
 happen, and the first draft of this entry named two sessions when four lacked handoffs.
 
-**A gate enforces this since milestone 4.** [`../compile/stop.mjs`](../compile/stop.mjs) blocks the end of
+**A gate enforces this since milestone 4.** [`../compile/stop.mjs`](../../cli/stop-gate.mjs) blocks the end of
 a session that changed something and has no handoff dated today. It checks **existence and a date, never
 length or shape** — which is the whole reason the rule was written in that checkable form. Two limits
 kept honest: it releases after three consecutive refusals **of this reason** — the missing handoff keeps

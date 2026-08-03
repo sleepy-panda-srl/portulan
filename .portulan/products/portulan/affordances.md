@@ -90,7 +90,7 @@ Written at the same level of detail, because a legibility report that lists only
   without this bullet changing — over `doctor`, `plugin-lint`, the enforcement compiler
   [`../../../cli/compile.mjs`](../../../cli/compile.mjs), the memory index generator
   [`../../../cli/index.mjs`](../../../cli/index.mjs), and the Stop-gate runner's arithmetic in
-  [`../../compile/stop.mjs`](../../compile/stop.mjs). _(This sentence used to carry a count as well as
+  [`../../compile/stop.mjs`](../../../cli/stop-gate.mjs). _(This sentence used to carry a count as well as
   that claim, and the count had drifted twice by milestone 5 while the claim beside it said a suite
   could be added without the bullet changing. The number is gone rather than corrected: the recipe
   prints the live figure, which is the carrier that cannot be wrong.)_ Nothing tests the verify recipes themselves
