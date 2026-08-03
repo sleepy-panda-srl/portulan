@@ -82,20 +82,24 @@ test("an unbuilt subcommand's refusal names where it is ACTUALLY named", async (
     // argument for carrying eight rather than six. cli/README.md said it correctly while the code
     // contradicted it. Found at the pre-commit checkpoint, and it survived because **no test asserted
     // the string**; this is that test.
+    // **This test's premise moved on 2026-08-03 and the tripwire is what said so.** It asserted that
+    // `docs/vision.md` mentions `feedback` zero times — true when written, because the name was licensed
+    // by row 7 alone — and the maintainer then folded both row-named subcommands into the constitution.
+    // The assertion failed with the sentence written for exactly that case rather than cryptically,
+    // which is the argument for spending a line on a premise check inside a test that depends on one.
+    //
+    // What it asserts now is the invariant underneath: an unbuilt subcommand's refusal names the
+    // document that ACTUALLY names it, whichever that is.
     const vision = fs.readFileSync(path.join(HERE, "..", "docs", "vision.md"), "utf8");
-    assert.doesNotMatch(vision, /feedback/i, "docs/vision.md now mentions feedback — this test's premise moved");
-
-    const h = harness({ noRun: true });
-    await run(["feedback"], h.options);
-    const said = h.warned.join("\n");
-    assert.match(said, /row 7 of docs\/plan\.md/);
-    assert.doesNotMatch(said, /`feedback` is named in docs\/vision\.md/);
-
-    // The control: a subcommand the constitution DOES name still says so, so the fix is a branch on
-    // provenance rather than a blanket rewording.
-    const h2 = harness({ noRun: true });
-    await run(["vendor"], h2.options);
-    assert.match(h2.warned.join("\n"), /docs\/vision\.md/);
+    for (const entry of SUBCOMMANDS.filter((e) => !e.module)) {
+        const expected = entry.namedIn ?? "docs/vision.md";
+        if (!entry.namedIn) {
+            assert.match(vision, new RegExp(`\\b${entry.name}\\b`), `${entry.name} claims docs/vision.md names it, and that file does not`);
+        }
+        const h = harness({ noRun: true });
+        await run([entry.name], h.options);
+        assert.match(h.warned.join("\n"), new RegExp(expected.replace(/[/.]/g, "\\$&")), `${entry.name}'s refusal must name ${expected}`);
+    }
 });
 
 test("plugin-lint and librarian are NOT subcommands — anything unnamed is the maintainer's call", () => {
@@ -224,7 +228,7 @@ test("the usage screen lists all six and marks the unbuilt ones", () => {
         assert.ok(line, `usage lists no line for the built subcommand \`${entry.name}\``);
         assert.doesNotMatch(line, /not built/, `${entry.name} is built and must not be marked otherwise`);
     }
-    assert.match(text, /docs\/vision\.md names six/);
+    assert.match(text, /docs\/vision\.md names these eight/);
 });
 
 test("`init` really dispatches through the entry point, with the real loader", async () => {
@@ -245,7 +249,7 @@ test("`init` really dispatches through the entry point, with the real loader", a
     const { execFileSync } = await import("node:child_process");
     const text = execFileSync(process.execPath, [path.join(HERE, "portulan.mjs"), "init", "--help"], { encoding: "utf8" });
     assert.match(text, /--residence/, "the text must be init's own, not the entry point's usage screen");
-    assert.doesNotMatch(text, /docs\/vision\.md names six/, "that line belongs to the entry point's own help, which is not what was asked for");
+    assert.doesNotMatch(text, /docs\/vision\.md names these eight/, "that line belongs to the entry point's own help, which is not what was asked for");
 });
 
 test("the real modules the manifest points at all export a run function", async () => {

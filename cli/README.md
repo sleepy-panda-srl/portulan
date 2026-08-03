@@ -2,9 +2,9 @@
 
 The `npx` CLI that wraps the file-based mechanics for hosts beyond Claude Code:
 `init` (interview + codebase scan → drafted workspace) · `doctor` · `compile` (gates/verify → host
-enforcement) · `vendor` (self-contained `AGENTS.md` + `.portulan/`) · `index` · `upgrade` — plus the two
-row 7 of [`../docs/plan.md`](../docs/plan.md) names in its own ratified text, `new` and `feedback`. That
-packaging is **milestone 7**, and as of session 0 the entry point exists:
+enforcement) · `vendor` (materialise a workspace where it is needed — into a host, and the reverse) ·
+`index` · `upgrade` · `new` · `feedback`. That packaging is **milestone 7**, and as of session 0 the
+entry point exists:
 [`portulan.mjs`](portulan.mjs), reached as `portulan <subcommand>` through the `bin` in the
 repository's `package.json`.
 
@@ -15,10 +15,12 @@ point calls each one's exported `run` and returns the code unchanged. `vendor`, 
 so: they exit **2 — could not run**, naming where they arrive, because a stub exiting 0 would be a
 fail-open where a user is most likely to trust silence.
 
-**Why eight and not six.** `docs/vision.md` names six subcommands and is human-owned. `new` and
-`feedback` are here because **row 7 names them in its own binding text**, ratified by the maintainer —
-so the list grew by a ruling rather than by an implementer's judgement, which is the distinction the
-"anything else is the maintainer's call" rule below is actually about.
+**Why eight.** `docs/vision.md` names all eight and is human-owned. It named six until 2026-08-03:
+`new` and `feedback` reached the CLI first, licensed by row 7 naming them in its own ratified text, and
+the maintainer then folded both into the constitution — so the two-carrier state that licence created
+lasted one pull request. Worth one sentence rather than none, because the *shape* recurs: a subcommand
+may be licensed by the row before the constitution catches up, and while that holds, the tool has to say
+which document names it.
 
 Beside those eight sit **two** tools that are not on any of the lists, because milestone 3 and
 milestone 5 needed them. Being off the list is a fact about `docs/vision.md`, which names six subcommands and

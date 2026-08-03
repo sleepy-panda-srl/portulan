@@ -58,8 +58,12 @@ One sentence: **cockpit products sell the dashboard; Portulan sells the doctrine
 - **Delivery tiers:** (1) Claude Code plugin — primary; (2) `npx` CLI: `init` (interview + codebase
   scan → drafted workspace, human curates) · `doctor` (schema validation + per-host capability
   report + agent-legibility score) · `compile` (gates/verify → host enforcement) · `vendor`
-  (self-contained AGENTS.md + .portulan/ for any host) · `index` · `upgrade`; (3) vendored
-  standards mode for cloud/CI/non-Claude hosts.
+  (materialise a workspace where it is needed: a self-contained AGENTS.md + .portulan/ into any
+  host, and the reverse — out of a repository and into a feed-side workspace that names it) ·
+  `index` · `upgrade` · `new` (scaffold a skill · persona · pack · workspace · gate policy ·
+  repo card from a core template, into your own layer, never into `core/`) · `feedback` (file an
+  issue from a report you previewed, seam-scanned before it leaves the machine, under the Gated
+  tier); (3) vendored standards mode for cloud/CI/non-Claude hosts.
 - **LLM-agnostic by construction.** Standards first (AGENTS.md + SKILL.md), host adapters second,
   repo-side enforcement always. ~80% of value ships identically on every host; the enforcement
   backends are per-host with an honest degradation report. The **platform floor** (branch
