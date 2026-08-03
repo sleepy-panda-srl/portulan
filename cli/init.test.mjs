@@ -17,10 +17,13 @@
 // It cannot establish that the draft is any GOOD. Whether an adopter reads `identity.md` and recognises
 // their own team is a question for the milestone-7 demonstration ("a never-seen repo onboards to a
 // validated workspace in one afternoon"), and no assertion here should be read as answering it. Nor
-// does anything here exercise the session-end gate: the runner that gate needs ships in no artifact an
-// adopter receives, so this session drafts the binding and names where the wire arrives, on the
-// maintainer's ruling of 2026-07-31. A test asserting the wire works would be asserting a capability
-// that does not exist.
+// does anything here exercise the session-end gate — but the REASON changed at milestone 7 and the old
+// one is worth keeping visible. It used to be that the runner shipped in no artifact an adopter
+// receives, so a test asserting the wire would have asserted a capability that did not exist. Since the
+// runners moved into `cli/`, the capability exists and was demonstrated live. What is still true is
+// narrower: `init` does not RUN `compile` over what it drafts, so a drafted workspace has the binding
+// and no compiled hooks until its human compiles — which is what the drafted README now says, and what
+// the group below asserts.
 
 import { test, describe } from "node:test";
 import assert from "node:assert/strict";
@@ -419,7 +422,11 @@ describe("the draft claims no capability it does not have", () => {
         await run(["--residence", "in-repo", dir], harness().options);
         const readme = fs.readFileSync(path.join(dir, ".portulan", "README.md"), "utf8");
         assert.match(readme, /session-end/i);
-        assert.match(readme, /not (yet )?(wired|built|shipped)|arrives/i);
+        // The README must still tell the adopter the gate is not ENFORCING yet — but the reason moved at
+        // milestone 7 and so did the honest wording. It used to be that the runner shipped nowhere; now
+        // it ships and `compile` wires it, and what is missing is that `init` has not run `compile`. So
+        // this asserts the state, not the old cause.
+        assert.match(readme, /has not run it|until you run it|compile/i);
     });
 
     test("the interactive interview is named as absent rather than implied", async () => {
@@ -843,7 +850,12 @@ describe("init emits no hook, which is why its silence about the gate is honest"
         for (const file of written) {
             const text = fs.readFileSync(file, "utf8");
             assert.doesNotMatch(text, /"hooks"\s*:/, `${path.basename(file)} emits a hook`);
-            assert.doesNotMatch(text, /stop\.mjs|gate\.mjs/, `${path.basename(file)} names a runner that ships in no adopter artifact`);
+            // The runner MAY be named now — it ships in the package as of milestone 7, so naming it is
+            // a true statement rather than a dangling reference. What must still be absent is an emitted
+            // hook: `init` binds the ritual and does not compile, because compiling writes host settings
+            // and a scaffold must not do that to somebody's machine unasked. The old spelling of this
+            // assertion forbade the NAME, which was right only while the runner shipped nowhere.
+            assert.doesNotMatch(text, /compile\/stop\.mjs|compile\/gate\.mjs/, `${path.basename(file)} names a runner at its pre-milestone-7 path`);
         }
     });
 

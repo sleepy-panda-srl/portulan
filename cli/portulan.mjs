@@ -20,15 +20,15 @@
 // exported `run` and returns its exit code untouched.
 //
 // **Not a home for the two tools that are off the list.** `plugin-lint` and `librarian` exist in
-// `cli/` and are deliberately absent here. `docs/vision.md` names six, it is human-owned, and
+// `cli/` and are deliberately absent here. `docs/vision.md` names eight, it is human-owned, and
 // `cli/README.md` records that whether either of them ever joins the six is the maintainer's call
 // and not an implementer's. Wiring one in would mint a seventh subcommand into a list this file
 // does not own. They stay runnable exactly as they are today — `node cli/plugin-lint.mjs …` — and
 // every verify recipe still invokes them that way.
 //
-// ## Two of the six are not built
+// ## Three of the eight are not built
 //
-// `vendor` and `upgrade` are milestone 7 work that has not landed. They are listed, and
+// `vendor`, `upgrade` and `feedback` are milestone 7 work that has not landed. They are listed, and
 // they exit **2 — could not run**, naming what is missing. The alternative shapes were both worse:
 // hiding them makes the package look like a four-command tool and the row like it is further along
 // than it is, and stubbing them to exit 0 would be a fail-open in the one place a user is most
@@ -69,7 +69,7 @@ export const VERSION = (() => {
     }
 })();
 
-// The six, in the order `docs/vision.md` lists them. `module` is the file that carries the
+// The eight, in the order `docs/vision.md` lists them. `module` is the file that carries the
 // subcommand's `run`; `null` means the subcommand exists in the vision and not yet in the tree.
 //
 // `arrives` is not decoration. Condition 4 of `.portulan/dod.md` is that a document describing
