@@ -595,14 +595,21 @@ export function validateContributions(packDir, contributes, { fail, report, pack
         return { skills: 0, personas: 0 };
     }
 
+    // Three answers, not two. `null` meant "could not resolve" and was reported to the reader as "is not
+    // there" — which is only true for ENOENT. An EACCES is a question that could not be ANSWERED, and
+    // answering it "absent" is the fail-open this repository names more often than any other, arriving
+    // inside the function added to prevent one. Copilot, round 1 on #156; the same class as session 1's
+    // round 7, one tool over.
     const inside = (target) => {
         let real;
         try {
             real = fs.realpathSync(target);
-        } catch {
-            return null;
+        } catch (cause) {
+            return cause.code === "ENOENT" ? { state: "absent" } : { state: "unreadable", detail: cause.code ?? cause.message };
         }
-        return real === realPack || real.startsWith(`${realPack}${path.sep}`) ? real : false;
+        return real === realPack || real.startsWith(`${realPack}${path.sep}`)
+            ? { state: "inside", real }
+            : { state: "outside" };
     };
 
     let skills = 0;
@@ -610,7 +617,7 @@ export function validateContributions(packDir, contributes, { fail, report, pack
     for (const rel of contributes.skills ?? []) {
         const root = path.join(packDir, rel);
         const contained = inside(root);
-        if (contained === false) {
+        if (contained.state === "outside") {
             fail(
                 "packs",
                 `\`${pack}\` declares the skills root \`${rel}\`, which resolves outside the pack. A pack reaching into the adopter's tree ` +
@@ -618,11 +625,20 @@ export function validateContributions(packDir, contributes, { fail, report, pack
             );
             continue;
         }
-        if (contained === null) {
-            fail("packs", `\`${pack}\` declares the skills root \`${rel}\`, which could not be resolved`);
+        if (contained.state === "absent") {
+            fail("packs", `\`${pack}\` declares the skills root \`${rel}\`, which is not there`);
             continue;
         }
-        const found = walkSkills(contained, { fail, report, pack, rel });
+        if (contained.state === "unreadable") {
+            fail(
+                "packs",
+                `\`${pack}\`'s skills root \`${rel}\` could not be resolved — ${contained.detail}. Reported as unreadable rather than absent: ` +
+                    `only a missing path means "nothing there", and this question went unanswered`,
+            );
+            unreadableRoots += 1;
+            continue;
+        }
+        const found = walkSkills(contained.real, { fail, report, pack, rel });
         // `null` means the walk could not look, which is NOT zero. Summing it as zero would put "0
         // skill(s)" in the report line over a root nothing opened — the same "nothing looked recorded as
         // nothing wrong" the walker itself refuses, arriving one layer out in the sentence a reader
@@ -636,17 +652,21 @@ export function validateContributions(packDir, contributes, { fail, report, pack
     for (const rel of contributes.personas ?? []) {
         const file = path.join(packDir, rel);
         const contained = inside(file);
-        if (contained === false) {
+        if (contained.state === "outside") {
             fail("packs", `\`${pack}\` declares the persona \`${rel}\`, which resolves outside the pack`);
             continue;
         }
-        if (contained === null) {
+        if (contained.state === "absent") {
             fail("packs", `\`${pack}\` declares the persona \`${rel}\`, which is not there`);
+            continue;
+        }
+        if (contained.state === "unreadable") {
+            fail("packs", `\`${pack}\`'s persona \`${rel}\` could not be resolved — ${contained.detail}. Only a missing path means absent`);
             continue;
         }
         let text;
         try {
-            text = fs.readFileSync(contained, "utf8");
+            text = fs.readFileSync(contained.real, "utf8");
         } catch (cause) {
             fail("packs", `\`${pack}\`'s persona \`${rel}\` could not be read — ${cause.code ?? cause.message}. Only a missing file means absent`);
             continue;
@@ -753,7 +773,7 @@ function walkSkills(root, { fail, report, pack, rel }, depth = 0) {
         if (below.length) {
             report(
                 "packs",
-                `\`${pack}\`'s skills root \`${rel}\` has ${below.length} director(y/ies) below the ${SKILL_DEPTH}-level walk bound, and they were NOT looked at. ` +
+                `\`${pack}\`'s skills root \`${rel}\` has ${below.length} ${below.length === 1 ? "directory" : "directories"} below the ${SKILL_DEPTH}-level walk bound, ${below.length === 1 ? "which was" : "which were"} NOT looked at. ` +
                     `A skill down there is neither validated nor counted — said out loud because a walk that stops quietly is a green over what it never opened`,
             );
         }
@@ -779,7 +799,16 @@ function walkSkills(root, { fail, report, pack, rel }, depth = 0) {
     }
     for (const entry of entries) {
         if (!entry.isDirectory()) continue;
-        found += walkSkills(path.join(root, entry.name), { fail, report, pack, rel: path.join(rel, entry.name) }, depth + 1);
+        const child = walkSkills(path.join(root, entry.name), { fail, report, pack, rel: path.join(rel, entry.name) }, depth + 1);
+        // A child that could not be read returns `null`, and `found += null` would add ZERO — not NaN,
+        // which is what the review that found this proposed; `null` coerces to 0 in numeric addition,
+        // measured. The conclusion was right and the mechanism was not, and the real defect is the worse
+        // of the two: an unreadable subdirectory would be silently counted as *no skills here*, which is
+        // exactly the "nothing looked recorded as nothing wrong" this walk was changed to stop — surviving
+        // one level down from the fix. Propagated instead, so the root reports UNREAD however deep the
+        // unreadable directory sits.
+        if (child === null) return null;
+        found += child;
     }
     return found;
 }

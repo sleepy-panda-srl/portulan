@@ -2269,3 +2269,34 @@ describe("a pack's skills and personas are validated, not counted", () => {
         }
     });
 });
+
+describe("an unreadable directory NESTED under a skills root is not counted as zero", () => {
+    test("the root reports UNREAD however deep the unreadable directory sits", async () => {
+        // Copilot, round 1 on #156. Its stated mechanism was `found += null` producing NaN; measured,
+        // `null` coerces to 0, so the count was not corrupted — it was quietly *understated*, which is
+        // worse, because an understated count looks like a root with fewer skills rather than like a
+        // walk that failed. The top-level fix propagated `null`; the recursive call swallowed it.
+        const dir = scratch();
+        tree(dir, { ...minimalFiles, "workspace.json": JSON.stringify({ ...wellFormed(), packs: ["rituals/fixture"] }) });
+        const root = scratch();
+        tree(root, {
+            "rituals/fixture/pack.json": JSON.stringify({
+                portulan: { pack: "1.0" },
+                name: "fixture",
+                category: "rituals",
+                contributes: { skills: ["skills/"] },
+            }),
+            "rituals/fixture/skills/nested/deeper/SKILL.md": "---\nname: x\ndescription: y\n---\n",
+        });
+        const locked = path.join(root, "rituals/fixture/skills/nested");
+        fs.chmodSync(locked, 0o000);
+        try {
+            const { findings } = await inspect(dir, { schema: SCHEMA, packRoots: [root] });
+            const summary = checks(findings, "packs").map((f) => f.message).find((m) => /contributes/.test(m));
+            assert.ok(summary, "no summary line at all");
+            assert.match(summary, /UNREAD/, `a nested unreadable directory was counted as zero: ${summary}`);
+        } finally {
+            fs.chmodSync(locked, 0o755);
+        }
+    });
+});
