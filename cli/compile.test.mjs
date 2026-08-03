@@ -34,6 +34,7 @@ import {
     matchesRule,
     matchesPath,
     policyPath,
+    resolveWorkspace,
     FILE_WRITERS,
     IN_PLACE_EDITORS,
     resolvePack,
@@ -1903,5 +1904,98 @@ describe("the emitted runner path — nothing asserted this until the checkpoint
         const a = JSON.stringify(claudeCode(parse(policy()), { root: os.tmpdir() }));
         const b = JSON.stringify(claudeCode(parse(policy()), { root: path.resolve(fileURLToPath(new URL("..", import.meta.url))) }));
         assert.notEqual(a, b, "the emitted path did not change with `root`, so `root` is being ignored");
+    });
+});
+
+// ---------------------------------------------------------------- parity: a workspace is not a place
+//
+// Proposal 0017: *"every feature keys to a workspace SLOT, never to a residence… A feature that ever
+// dispatches on residence is a parity breach and is refusable on this sentence."* This one dispatched
+// on residence for two milestones, and reading the file never showed it — `--workspace <dir>` was
+// documented as taking a repository root, which is a true sentence about a tool that only works in one
+// of the two residences the ruling says are equal.
+//
+// **Found by running row 7's fourth demonstration**, where `doctor`, `index` and the workspace's own
+// verify recipe all behaved identically at both ends and this exited 2, *could not run*, looking for a
+// gate policy at `<feed>/workspaces/.portulan/gates.json`.
+describe("a workspace named directly, in either residence", () => {
+    test("a repository root still resolves to `.portulan` — the default is untouched", () => {
+        const dir = scratch();
+        assert.deepEqual(resolveWorkspace(dir), { workspaceRoot: dir, workspaceDir: ".portulan" });
+    });
+
+    test("an in-repo workspace named directly resolves back through its own `tree`", () => {
+        const dir = scratch();
+        fs.mkdirSync(path.join(dir, ".portulan"), { recursive: true });
+        fs.writeFileSync(path.join(dir, ".portulan", "workspace.json"), JSON.stringify({ name: "x", kind: "repository", tree: "../" }));
+        assert.deepEqual(resolveWorkspace(path.join(dir, ".portulan")), { workspaceRoot: path.resolve(dir), workspaceDir: ".portulan" });
+    });
+
+    test("a feed-side workspace IS its own root, because that is what ships", () => {
+        // Milestone 6 measured it: an installed plugin's `<marketplace>/<plugin>/<version>/` directory
+        // is the workspace root. So a feed-side workspace's compiled artifacts belong beside it.
+        const dir = scratch();
+        const ws = path.join(dir, "workspaces", "acme");
+        fs.mkdirSync(ws, { recursive: true });
+        fs.writeFileSync(path.join(ws, "workspace.json"), JSON.stringify({ name: "acme", kind: "portfolio" }));
+        assert.deepEqual(resolveWorkspace(ws), { workspaceRoot: path.resolve(ws), workspaceDir: "." });
+    });
+
+    test("a `tree` that does not contain its own workspace changes nothing", () => {
+        // A manifest `doctor` refuses. Here it only means the derivation cannot be trusted, and the
+        // safe answer to an untrustworthy input is the one that alters no behaviour.
+        const dir = scratch();
+        const ws = path.join(dir, "ws");
+        fs.mkdirSync(ws, { recursive: true });
+        fs.writeFileSync(path.join(ws, "workspace.json"), JSON.stringify({ name: "x", tree: "../../elsewhere" }));
+        assert.deepEqual(resolveWorkspace(ws), { workspaceRoot: ws, workspaceDir: ".portulan" });
+    });
+
+    test("compiles a feed-side workspace end to end, and its artifacts land beside it", () => {
+        const dir = scratch();
+        const ws = path.join(dir, "workspaces", "acme");
+        fs.mkdirSync(ws, { recursive: true });
+        fs.writeFileSync(path.join(ws, "workspace.json"), JSON.stringify({ name: "acme", kind: "portfolio", gates: "gates.json" }));
+        fs.writeFileSync(path.join(ws, "gates.json"), JSON.stringify(withFloor(policy())));
+
+        assert.equal(run(["--workspace", ws], { quiet: true }), 0);
+        assert.ok(fs.existsSync(path.join(ws, ".claude", "settings.json")), "the Claude settings ship with the workspace");
+        assert.ok(fs.existsSync(path.join(ws, "compile", "github-ruleset.json")), "and so does the ruleset — never under a `.portulan` that does not exist here");
+        assert.equal(fs.existsSync(path.join(ws, ".portulan")), false, "nothing invents a `.portulan` beside a workspace that is not in one");
+
+        // `--check` has to look in the same place it wrote, or a green means nothing was compared.
+        assert.equal(run(["--workspace", ws, "--check"], { quiet: true }), 0);
+        fs.rmSync(path.join(ws, "compile", "github-ruleset.json"));
+        assert.equal(run(["--workspace", ws, "--check"], { quiet: true }), 1, "a missing artifact is drift in either residence");
+    });
+
+    test("the same policy compiles to the same rules in both residences", () => {
+        // The parity claim itself, as an assertion rather than as a sentence: identical policy, two
+        // residences, and what compiles must not differ. Only the artifact PATHS may, because where a
+        // file ships is delivery, which 0017 says is exactly what the residences differ in.
+        const shared = withFloor(policy());
+
+        const repo = scratch();
+        fs.mkdirSync(path.join(repo, ".portulan"), { recursive: true });
+        fs.writeFileSync(path.join(repo, ".portulan", "workspace.json"), JSON.stringify({ name: "acme", kind: "repository", tree: "../" }));
+        fs.writeFileSync(path.join(repo, ".portulan", "gates.json"), JSON.stringify(shared));
+
+        const feed = scratch();
+        fs.writeFileSync(path.join(feed, "workspace.json"), JSON.stringify({ name: "acme", kind: "portfolio" }));
+        fs.writeFileSync(path.join(feed, "gates.json"), JSON.stringify(shared));
+
+        const said = (argv) => {
+            const lines = [];
+            const write = process.stdout.write.bind(process.stdout);
+            process.stdout.write = (chunk) => (lines.push(String(chunk)), true);
+            try {
+                run(argv);
+            } finally {
+                process.stdout.write = write;
+            }
+            return lines.join("");
+        };
+        const only = (text) => text.split("\n").filter((l) => /^\s*(gate|refused)\s/.test(l)).join("\n");
+        assert.equal(only(said(["--workspace", path.join(repo, ".portulan")])), only(said(["--workspace", feed])));
     });
 });

@@ -172,6 +172,16 @@ milestone 7's, and they are drafted as a row amendment for the maintainer rather
 does not fetch anything. And it does not decide where any particular customer's workspace should live:
 that is the customer's choice, which is the whole point of ruling that both work.
 
+_**Where they landed, appended 2026-08-03 rather than rewritten** — a proposal records what was argued
+when it was argued. `init`'s residence question shipped at milestone 7 session 1;
+[`../../cli/vendor.mjs`](../../cli/vendor.mjs) carries the switch as of session 3, holding the ordering
+this file's **switch contract** sets. `upgrade`'s migration is still owed. Two things that implementation
+found and this text did not anticipate, both stated where the mechanism is rather than only here: the
+switch's window is **irreducible** — governance lives in two manifests in two directories and no
+primitive changes both, so the ordering above chooses the loud failure over the silent one rather than
+avoiding both — and **`compile` was keyed to residence**, which the parity clause above says is
+refusable. It was refused, and fixed, in the change that built the switch._
+
 ## Provenance
 
 `form=link` `href=`[`https://github.com/sleepy-panda-works/portulan/pull/135`](https://github.com/sleepy-panda-works/portulan/pull/135)

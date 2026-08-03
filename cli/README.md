@@ -8,12 +8,12 @@ entry point exists:
 [`portulan.mjs`](portulan.mjs), reached as `portulan <subcommand>` through the `bin` in the
 repository's `package.json`.
 
-**Five of the eight dispatch; three exit 2.** `doctor`, `compile` and `index` exist because milestones
-2, 4 and 5 needed them; `init` was built at milestone 7 session 1 and `new` at session 2. The entry
-point calls each one's exported `run` and returns the code unchanged. `vendor`, `upgrade` and
-`feedback` are named in `docs/vision.md` — all three — are not built, and say
-so: they exit **2 — could not run**, naming where they arrive, because a stub exiting 0 would be a
-fail-open where a user is most likely to trust silence.
+**Six of the eight dispatch; two exit 2.** `doctor`, `compile` and `index` exist because milestones
+2, 4 and 5 needed them; `init` was built at milestone 7 session 1, `new` at session 2, and `vendor` at
+session 3. The entry point calls each one's exported `run` and returns the code unchanged. `upgrade`
+and `feedback` are named in `docs/vision.md`, are not built, and say so: they exit **2 — could not
+run**, naming where they arrive, because a stub exiting 0 would be a fail-open where a user is most
+likely to trust silence.
 
 **Why eight.** `docs/vision.md` names all eight and is human-owned. It named six until 2026-08-03:
 `new` and `feedback` reached the CLI first, licensed by row 7 naming them in its own ratified text, and
@@ -41,7 +41,11 @@ the entry point, which is the same rule expressed in code rather than in a sente
 | [`doctor.test.mjs`](doctor.test.mjs) | Its test suite, on node's own runner. Written before the validator. |
 | [`plugin-lint.mjs`](plugin-lint.mjs) | The packaging validator: the plugin and marketplace manifests, the skills they declare, and the agents at `./agents/` that nothing declares. |
 | [`plugin-lint.test.mjs`](plugin-lint.test.mjs) | Its test suite, likewise written first. |
-| [`compile.mjs`](compile.mjs) | The enforcement compiler: a workspace's [`../.portulan/gates.json`](../.portulan/gates.json) becomes host enforcement. One backend today — Claude Code `permissions` + `hooks` — and the vocabulary it reads stays the workspace's, so a second backend translates the same policy instead of forcing it to be rewritten. |
+| [`new.mjs`](new.mjs) | **The authoring subcommand**, added at milestone 7 session 2: it scaffolds a skill · persona · pack · workspace · gate-policy · repo-card from a core template **into a layer you own, never into `core/`**. The refusal is resolution-based rather than pattern-based, because every interesting escape — `packs/../core`, a symlinked destination — parses fine and only fails once resolved. Two codes, `0` wrote and `2` could not run: it renders no verdict, so it has no red. |
+| [`new.test.mjs`](new.test.mjs) | Its test suite, written first. It establishes *never into `core/`* against the filesystem rather than against an argument check, and runs the real `doctor` and `plugin-lint` over what was scaffolded — a scaffold nothing validates is one nobody can trust. |
+| [`vendor.mjs`](vendor.mjs) | **Materialises a workspace where it is needed**, added at milestone 7 session 3 when the maintainer widened the constitution's gloss to cover both directions. `--host` writes a self-contained `AGENTS.md` — core's kernel inlined, the workspace's slots named, packs named-not-composed — beside a copied `.portulan/`, for a host that cannot install the plugin. `--switch` changes residence, feed-side ↔ in-repo, under proposal [`0017`](../.portulan/proposals/0017-one-repository-one-governing-workspace.md): materialise at the new residence, leave a pointer or nothing at the old, `doctor` green at **both** ends before the old one is retired. Every handled failure leaves exactly one governing workspace; the residence is **never inferred** from a path, which is `init`'s rule for `init`'s reason. |
+| [`vendor.test.mjs`](vendor.test.mjs) | Its test suite, written first. The group that matters *forces* a failure after each named write step, because the property this tool exists to protect is what a failure partway leaves on disk — an ordering nothing can interrupt is an ordering nobody has checked. Every end state is graded by the real `doctor`, never by a second opinion about what valid means. |
+| [`compile.mjs`](compile.mjs) | The enforcement compiler: a workspace's gate policy becomes host enforcement. Two backends — Claude Code `permissions` + `hooks`, and a GitHub repository ruleset for the platform floor — and the vocabulary it reads stays the workspace's, so a third backend translates the same policy instead of forcing it to be rewritten. `--workspace` takes a repository root **or the workspace directory itself**, which is how a feed-side workspace is reachable at all: it keyed on `.portulan` until milestone 7 session 3, when running the parity demonstration found it exiting 2 on the feed-side end of a switch. |
 | [`compile.test.mjs`](compile.test.mjs) | Its test suite, likewise written first. Emission fidelity only — nothing in here can establish that a host *honours* what the compiler emits, which is a fact about a running host. |
 | [`index.mjs`](index.mjs) | The index generator, over **two** series since Workspace Definition 2.5: the memory store, which is size-budgeted so a breach is a red, and the handoff series, which is not — an append-only series has no consolidation to offer, so every remedy a budget could ask for is already barred. Every field on every line is derived from what it points at, so neither file has a hand-maintained half; the *carriers* differ per series and on evidence, a record's title being its filename and a handoff's its H1. It writes an over-budget index rather than refusing to — the remedy is consolidation, and consolidating needs the artifact to consolidate from. |
 | [`index.test.mjs`](index.test.mjs) | Its test suite, written first. Derivation, drift and cost only — nothing in here can establish that the index is any good at *recall*, which is an eval question. |
@@ -54,9 +58,11 @@ the entry point, which is the same rule expressed in code rather than in a sente
 portulan <subcommand> [options]          # or: node cli/portulan.mjs <subcommand> [options]
 
 node cli/init.mjs --residence <in-repo|pointer> [options] <repository-dir>
+node cli/new.mjs <kind> <name> [--into <dir>] [options]
+node cli/vendor.mjs <workspace-dir> --into <dir> --residence <in-repo|feed-side> (--host <id> | --switch)
 node cli/doctor.mjs <workspace-dir> [<workspace-dir> ...]
 node cli/plugin-lint.mjs <plugin-root> [<plugin-root> ...]
-node cli/compile.mjs [--workspace <dir>] [--check]
+node cli/compile.mjs [--workspace <repository-dir | workspace-dir>] [--check]
 node cli/index.mjs [--check] <workspace-dir> [<workspace-dir> ...]
 node cli/librarian.mjs [--as-of YYYY-MM-DD] [--write] [--log <path>] [--reviews <path>] <workspace-dir> [...]
 ```
@@ -64,9 +70,12 @@ node cli/librarian.mjs [--as-of YYYY-MM-DD] [--write] [--log <path>] [--reviews 
 The two validators: exit `0` when every workspace or plugin root validates · `1` when at least one does
 not · `2` could not run. `compile`: exit `0` when it wrote, or agreed under `--check` · `1` only under
 `--check`, when the artifact is missing or has drifted · `2` could not run — writing never returns `1`,
-because a run that rewrites the artifact has nothing to disagree with. `init` has only **two** codes —
-`0` it wrote · `2` it could not run — and the missing `1` is the point: it renders no verdict about
-anybody's workspace, so it has no red to report. `index` uses the same three
+because a run that rewrites the artifact has nothing to disagree with. `init` and `new` have only **two** codes —
+`0` it wrote · `2` it could not run — and the missing `1` is the point: they render no verdict about
+anybody's workspace, so they have no red to report. `vendor` **does** have a `1`, and the asymmetry is
+worth a sentence: it runs the real validator at both ends of a switch and reports its verdict, so
+collapsing *the workspace I materialised is invalid* into *I could not run* would leave a caller unable
+to tell a bad workspace from a missing flag. `index` uses the same three
 codes and differs from `compile` in one way worth knowing before reading it: **writing can still return
 `1`**, because a budget breach is a verdict about the store rather than about the artifact, and the
 artifact is written anyway so there is something to consolidate from. Both workspaces this repository

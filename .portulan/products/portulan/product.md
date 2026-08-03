@@ -26,7 +26,8 @@ its author can adopt in an afternoon.
 
 **Stage, honestly.** Pre-release, and public since 27 July 2026; the newest release entry is `0.2.0`. The
 engine, this workspace, the enforcement compiler and the memory lifecycle are authored; the CLI
-milestone 7 describes — `vendor`, `upgrade`, `feedback` — is not (`init` and `new` shipped at milestone 7 sessions 1 and 2). What that release
+milestone 7 describes is two subcommands short — `upgrade` and `feedback` (`init`, `new` and `vendor`
+shipped at milestone 7 sessions 1, 2 and 3). What that release
 contains, and what it does not,
 is [`../../../CHANGELOG.md`](../../../CHANGELOG.md), which is where that list
 belongs rather than here. The living map is
