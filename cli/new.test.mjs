@@ -149,7 +149,16 @@ describe("never into `core/` — the one property row 7 states in the imperative
         assert.match(said.join("\n"), /symlink|link/i);
     });
 
-    test("a case-variant spelling of core/ is refused, because the filesystem may not care", () => {
+    // Is THIS filesystem case-insensitive? Probed rather than assumed from `process.platform`, because
+    // the property belongs to the volume and not to the OS — macOS can be formatted case-sensitively and
+    // Linux can mount a case-insensitive volume. The probe is what the code's own existence check is
+    // implicitly asking, so the test asks it the same way.
+    const caseInsensitiveFS = (() => {
+        const dir = scratch({ "probe/x": "" });
+        return fs.existsSync(path.join(dir, "PROBE", "x"));
+    })();
+
+    test("a case-variant spelling of core/ is refused where the filesystem does not distinguish case", () => {
         // Found by the pre-commit checkpoint, MEASURED on this machine: `--into <repo>/CORE/templates/x`
         // exited 0 and put a directory inside the shipped `core/`. macOS is case-insensitive and
         // `realpathSync` does not canonicalise case, so a case-sensitive compare is not a compare at all
@@ -159,8 +168,18 @@ describe("never into `core/` — the one property row 7 states in the imperative
         const dir = scratch({ "core/engine.md": "# kernel\n", "core/templates/skill.md": "# t\n" });
         const { said, options } = harness();
         const code = run(["skill", "evil", "--into", path.join(dir, "CORE", "templates", "x")], options);
-        assert.equal(code, 2, said.join("\n"));
+
+        // **This assertion is conditional, and the first version was not — CI caught it.** It passed on
+        // macOS and failed on Linux, and the failure was the *test's*, not the code's: on a
+        // case-sensitive filesystem `CORE` is a genuinely different directory from `core`, holds no
+        // `engine.md`, and writing there escapes nothing. The code decides by probing for a core's
+        // contents, which gives the right answer on both platforms; the test had baked in one of them.
+        // What is asserted on every platform is the part that is actually invariant: **nothing lands
+        // inside the real `core/`.**
         assert.ok(!fs.existsSync(path.join(dir, "core", "templates", "x")), "it wrote into core/ anyway");
+        if (caseInsensitiveFS) {
+            assert.equal(code, 2, `a case-variant path reaches core/ on this filesystem and must be refused: ${said.join("\n")}`);
+        }
     });
 
     test("a symlinked ancestor is resolved even when the destination does not exist yet", () => {
