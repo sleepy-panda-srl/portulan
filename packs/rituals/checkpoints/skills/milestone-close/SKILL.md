@@ -26,8 +26,15 @@ context that cannot supply this verdict.
    figure, recompute it rather than quoting it; where it recorded a demonstration, perform it again.
 3. **Force red before believing green.** A clause verified only in the passing direction has not been
    verified. Break what it guards, watch it fail, restore.
-4. **Run the forward-reference sweep.** Search the doctrine and the workspace's own memory for this
-   milestone's number. A sentence elsewhere promising that a capability arrives here is a debt against
+4. **Run the forward-reference sweep — FIRST, before grading anything else.** Search the doctrine and
+   the workspace's own memory for this milestone's number.
+
+   _Moved to the front of the pass, and the reason is a measurement rather than a preference. On the
+   workspace that authored this pack the promised-but-unowned class has recurred **three times**, twice
+   naming the same milestone — and every one was found by a human reading sideways, never by this step,
+   because a close that grades the row first has already formed its verdict by the time it gets here.
+   This is the one check that finds obligations **the criterion itself does not list**, so a close
+   graded only against the row cannot see them. Run it before the row, not after._ A sentence elsewhere promising that a capability arrives here is a debt against
    this criterion, and it is invisible from both sides — the row reads complete and the doctrine reads
    satisfied. It is a text search, not a judgement, which is why it is worth running rather than
    trusting to memory of what was promised. **Reconciling expands the criterion and never narrows it:**
