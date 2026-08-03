@@ -969,8 +969,16 @@ export async function run(argv, options = {}) {
             // direction and wrong for the other for the same reason the original was wrong.
             const visibleFrom = parsed.residence === "feed-side" ? dest : source;
             say(`vendor: materialising \`${manifest.name}\` at ${display(dest)}. For the next moment two workspaces govern ${path.basename(repoDir)};`);
-            say(`vendor: if this run dies here, \`portulan doctor ${display(visibleFrom)} --repo-root ${display(path.dirname(repoDir))}\` names it,`);
-            say(`vendor: and removing ${display(path.join(dest, "workspace.json"))} reverts it.`);
+            say(`vendor: if this run dies here, \`portulan doctor ${display(visibleFrom)} --repo-root ${display(path.dirname(repoDir))}\` says whether it did.`);
+            // **Conditional, and the condition is load-bearing.** This said "removing <dest>/workspace.json
+            // reverts it", full stop — an instruction that is only correct once the new manifest has
+            // actually landed. Before that moment the file at that path is either absent or, switching
+            // feed-side → in-repo, still the POINTER: deleting it there destroys the one record saying who
+            // governs and leaves governance unreportable from the repository, which is the silent state
+            // 0017 calls out by name. A recovery instruction is read exactly once, by someone with no time
+            // to check it. Copilot's suppressed note, round 3 on #164.
+            say(`vendor: ONLY if it reports two governors, remove ${display(path.join(dest, "workspace.json"))} — the manifest this run`);
+            say("vendor: wrote — and the window closes. If it reports none, the window never opened: delete nothing.");
         }
 
         const preserved = new Map();
