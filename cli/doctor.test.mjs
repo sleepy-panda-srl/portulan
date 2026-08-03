@@ -2300,3 +2300,29 @@ describe("an unreadable directory NESTED under a skills root is not counted as z
         }
     });
 });
+
+describe("a symlinked directory under a skills root is reported, never silently skipped", () => {
+    test("`Dirent.isDirectory()` is false for a link, so the obvious walk skips it", async () => {
+        // Copilot, round 3 on #156. A symlinked directory has isDirectory() === false and
+        // isSymbolicLink() === true, so `if (!isDirectory()) continue` skips it with no finding at all —
+        // hiding whatever sits behind it. A silent skip is a false green of this walk's own kind.
+        const dir = scratch();
+        tree(dir, { ...minimalFiles, "workspace.json": JSON.stringify({ ...wellFormed(), packs: ["rituals/fixture"] }) });
+        const root = scratch();
+        tree(root, {
+            "rituals/fixture/pack.json": JSON.stringify({
+                portulan: { pack: "1.0" },
+                name: "fixture",
+                category: "rituals",
+                contributes: { skills: ["skills/"] },
+            }),
+            "rituals/fixture/skills/.keep": "",
+        });
+        const outside = scratch();
+        tree(outside, { "hidden/SKILL.md": "---\nname: hidden\ndescription: behind a link\n---\n" });
+        fs.symlinkSync(path.join(outside, "hidden"), path.join(root, "rituals/fixture/skills/linked"));
+        const { findings } = await inspect(dir, { schema: SCHEMA, packRoots: [root] });
+        assert.equal(severities(checks(findings, "packs"), "fail").length, 1, text(findings));
+        assert.match(text(checks(findings, "packs")), /symlinked directory/i);
+    });
+});

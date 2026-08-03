@@ -431,3 +431,20 @@ describe("a scaffolded pointer is a pointer, not a governing workspace with a la
         assert.match(b.said.join("\n"), /only meaningful with/);
     });
 });
+
+describe("a slot value cannot walk a scaffold out of its own workspace", () => {
+    test("a `repos` slot containing `..` is refused after resolution", () => {
+        // Copilot, round 3 on #156. The slot value belongs to the WORKSPACE, not to this tool, and
+        // `path.join("/ws/sub", "../../evil")` is `/evil` — measured. (An absolute slot does NOT escape
+        // `join`; that is `resolve`'s behaviour. Only the `..` half of the report was right, and the fix
+        // is written against what was measured.)
+        const dir = scratch();
+        const ws = workspace(dir, {
+            slots: { identity: "i.md", principles: "p.md", gates: "g.md", repos: "../../escaped/" },
+        });
+        const { said, options } = harness();
+        assert.equal(run(["repo-card", "mine", "--into", ws], options), 2);
+        assert.match(said.join("\n"), /outside the workspace/i);
+        assert.ok(!fs.existsSync(path.join(dir, "..", "escaped")), "it wrote outside the workspace anyway");
+    });
+});
