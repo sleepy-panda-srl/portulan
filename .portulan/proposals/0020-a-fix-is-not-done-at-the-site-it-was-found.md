@@ -75,11 +75,12 @@ overturned here rather than left to disagree quietly with the doctrine.
 repeatedly. What it has never had is a **carrier governance reads**: the 2026-07-27 ruling is quoted
 verbatim in exactly one place in the tree — a test comment, `cli/doctor.test.mjs:1851` — and referred to
 as *"a standing ruling"* in `cli/compile.mjs:852` and in #91's own comments. An eleven-day-old maintainer
-ruling living in a test comment did not prevent five-to-eight recurrences on one pull request. That is
+ruling living in a test comment did not prevent eight recurrences on one pull request, nor a ninth in
+the change that closed #91 nine days later. That is
 [`../memory/a-mandate-nothing-checks-is-already-broken.md`](../memory/a-mandate-nothing-checks-is-already-broken.md)
 exactly, and it is what this proposal repairs: not a missing rule, a missing carrier.
 
-## What is measurably true on `main` at `d2d8f2a`
+## What is measurably true on `main` at `6c3c613`
 
 Every figure below was re-measured for this proposal. Units are named because this file's neighbour
 [`../memory/a-review-loop-needs-a-bound.md`](../memory/a-review-loop-needs-a-bound.md) records what
@@ -88,21 +89,39 @@ happens when they are not.
 | Rule | Independent enforcement sites |
 |---|---|
 | *refuse a collision before the first byte* | **3** exported `collisions()` — `cli/init.mjs:952`, `cli/new.mjs:172`, `cli/vendor.mjs:390` — three signatures, three return shapes, three refusal vocabularies |
-| *only `ENOENT` means absent* | **35 lines** mentioning `ENOENT` across 7 of the 11 non-test CLI modules (a line count spanning code and comment, not a count of guards) |
+| *only `ENOENT` means absent* | **39 lines** mentioning `ENOENT` across 7 of the 11 non-test CLI modules (a line count spanning code and comment, not a count of guards) |
 | *refuse a symlink rather than resolve through it* | **5** non-test modules |
-| *never `existsSync` — it follows links and answers false on EACCES* | warned about in comments in **6** modules; **18 live `fs.existsSync(` calls** remain |
+| *never `existsSync` — it follows links and answers false on EACCES* | warned about in comments in **6** modules; **17 live `fs.existsSync(` calls** remain |
 
 _The `existsSync` figure was **27** in this session's first draft, which counted every line mentioning
 the identifier — including the ten comment lines warning against it. A census that counts the warnings as
-violations is the same defect one layer up, and it is corrected here rather than quietly._
+violations is the same defect one layer up, and it is corrected here rather than quietly. It then moved
+again, 18 → 17, when `main` advanced under this branch mid-session; see below._
 
-**A live instance, reproducible in two commands.** `cli/index.mjs:256` states the rule —
+**The instance this proposal was drafted against was closed while it was being written**, and what
+replaced it is better evidence than it was. Until 2026-08-07T15:07Z, `cli/index.mjs:256` stated the rule
+— *"Present and unreadable is not 'absent'. Skipping it would drop a record from the index silently"* —
+and `cli/index.mjs:781`, **525 lines below it in the same file**, was `} catch { /* absent … */ }`. That
+was #91, filed 2026-07-29 and live for **nine days in the file that argues against it**.
 
-> Present and unreadable is not "absent". Skipping it would drop a record from the index silently, which
-> is precisely the shape a generated file must never have.
+[#166](https://github.com/sleepy-panda-works/portulan/pull/166) closed it about an hour after #164
+merged, and **three things in that pull request are this proposal's argument arriving independently**,
+from a session that had not seen it:
 
-— and `cli/index.mjs:781`, **525 lines below it in the same file**, is `} catch { /* absent … */ }`.
-That is #91, open since it was filed, in the file that argues against it.
+- Its commit states the thesis in its own words: *"The rule is not new here — `vendor.mjs` states it
+  three times, and `doctor.mjs`, `new.mjs`, `init.mjs`, `plugin-lint.mjs` and `compile.mjs` each carry
+  it. **This was the one read in the repository that did not.**"* Six carriers of one rule, and the
+  defect at the seventh.
+- It then found **a sibling inside the paragraph that states the rule** — `judgeScopes` guarding a
+  per-location check with `if (!fs.existsSync(location)) continue`, so *"the guard doing the looking was
+  the thing that could not look"*, three lines from a comment promising the opposite.
+- And Copilot's round 1 found the class **inside the fix for the class**: widening a refusal made it
+  claim a property it could not establish — *"the defect this pull request is about, wearing the fix's
+  own sentence."* The session then swept the file.
+
+So the class recurred, on the day it was being generalised, in the change that was repairing it, and was
+caught by the outside reviewer rather than by the author or the suite. That is the strongest argument
+here for both the no-rail finding and the checkpoint step, and none of it is this session's own work.
 
 ## The class's own count drifted, inside the change whose subject is drift
 
@@ -232,7 +251,9 @@ This class **generates its own next round** — a sibling of round N's fix canno
 
 **The two precedents are named rather than smoothed**, because they contradict. #85 read the bound
 strictly, triaged the same finding through rounds three to seven, and the product of that triage is #91 —
-still open on 2026-08-07, with the defect still at `cli/index.mjs:781`. #164 ran eleven rounds past on
+which then stayed open **nine days**, and was closed by
+[#166](https://github.com/sleepy-panda-works/portulan/pull/166) an hour after #164 merged, in a change
+that promptly recurred the class inside its own fix. #164 ran eleven rounds past on
 the maintainer's grant, and every round found a real defect. Triage is not a free disposal; it is a
 deferral whose measured half-life here is indefinite. The grant stays his, the taper stays judgement, and
 the taper stays outside the countable bound.
@@ -240,10 +261,10 @@ the taper stays outside the countable bound.
 ### 5. Refused: a grep, with or without waivers
 
 The one sub-rule with a mechanical shape is *never `existsSync`*. A check requiring every call to carry a
-stated waiver is buildable and would have caught **round 10 — one of the eight**, at a cost of eighteen
+stated waiver is buildable and would have caught **round 10 — one of the eight**, at a cost of seventeen
 annotations. Refused on the ground that a grep finds a **primitive** while the rule is about a
-**predicate no grep reads**: of the eighteen live calls, some are guards where ENOENT-versus-EACCES
-decides the answer and some are not, and nothing in the token says which. A check that fires eighteen
+**predicate no grep reads**: of the seventeen live calls, some are guards where ENOENT-versus-EACCES
+decides the answer and some are not, and nothing in the token says which. A check that fires seventeen
 times to find one is a check that gets suppressed — and this repository has already paid for the
 false-red shape, in `docs/milestones/m07.md`, where a matcher could not tell a persona disclaiming
 *Prohibited* from one claiming it. The cheaper variant — ratchet the count and fail on an increase — is
@@ -289,7 +310,7 @@ refused too: a baseline that bumps on every legitimate addition is waiver noise 
   part 2 exists because of that, not beside it.
 - **Part 3 has never been observed catching anything.** The one demonstration available is this pull
   request's own pre-commit checkpoint running the new step against this diff.
-- **The eighteen `existsSync` calls stay checked by nothing**, permanently, under part 5's refusal. That
+- **The seventeen `existsSync` calls stay checked by nothing**, permanently, under part 5's refusal. That
   is a cost of the refusal, not an oversight.
 - **The three `collisions()` are pinned, not unified.** Unification is named as part 1's first
   application and is not in this change; the pin is what makes deferring it safe rather than merely
