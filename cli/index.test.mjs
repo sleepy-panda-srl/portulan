@@ -508,6 +508,48 @@ describe("--check compares and never repairs", () => {
         assert.equal(bad[0].check, "index");
         assert.match(text(bad), /memory-index\.md/);
     });
+
+    test("an index that cannot be READ is exit 2, never `declared and absent`", () => {
+        // Issue #91, raised verbatim by Copilot in five consecutive rounds on #85. Every
+        // `readFileSync` failure was read as *the file is not there*, so `EACCES`, `EISDIR` and the
+        // rest came back as actionable drift telling the operator to regenerate a file that may be
+        // sitting right where it belongs. *Could not look* reported as *I looked and found nothing* —
+        // `a-checker-must-refuse-what-it-cannot-check.md` in as many words — and the exit code is
+        // wrong with it: a fact about the filesystem is a 2, never a 1.
+        //
+        // A DIRECTORY where the index goes yields `EISDIR` and does not depend on the uid running
+        // the suite the way a chmod does.
+        const dir = workspace({ "memory/a-first.md": record("rule") });
+        fs.mkdirSync(path.join(dir, "memory-index.md"));
+        // The errno is named, and the sentence the old code printed — the one whose repair is `run the
+        // generator` — is asserted absent. Matching on the bare word `absent` would be wrong: the
+        // refusal says *refusing rather than reporting it absent*, which is the message being correct.
+        assert.throws(
+            () => inspect(dir),
+            (e) => e instanceof IndexError && /EISDIR/.test(e.message) && !/declared and absent/.test(e.message),
+        );
+    });
+
+    test("a permission failure is refused on the same rule", () => {
+        const dir = workspace({ "memory/a-first.md": record("rule") });
+        run([dir]); // written, correct, and about to be unopenable — the case the old red lied about
+        const written = path.join(dir, "memory-index.md");
+        fs.chmodSync(written, 0o000);
+        try {
+            assert.throws(() => inspect(dir), (e) => e instanceof IndexError && /EACCES/.test(e.message));
+        } finally {
+            fs.chmodSync(written, 0o644);
+        }
+    });
+
+    test("`run` keeps the two codes apart: 1 for absent, 2 for unreadable", () => {
+        // The distinction has to survive the command, because `index.sh` passes both codes through
+        // unchanged and CI branches on them: 1 is *the index has drifted*, 2 is *nothing was judged*.
+        const dir = workspace({ "memory/a-first.md": record("rule") });
+        assert.equal(run(["--check", dir]), 1);
+        fs.mkdirSync(path.join(dir, "memory-index.md"));
+        assert.equal(run(["--check", dir]), 2);
+    });
 });
 
 // ---------------------------------------------------------------- preconditions
@@ -1288,6 +1330,28 @@ describe("empty means readable-and-zero, never could-not-look", () => {
             );
         } finally {
             fs.chmodSync(landed, 0o755);
+        }
+    });
+
+    test("a location the LAYER hides is refused too, not skipped as absent", () => {
+        // #91's sibling, found inside the paragraph that states the rule. The guard was
+        // `if (!fs.existsSync(location)) continue`, and `existsSync` is a `stat` that answers `false`
+        // for every failure, permission included. A layer at mode `0400` is readable — so the
+        // enumeration above it passes — and not searchable, so every declared location under it
+        // stat-ed false, was skipped as absent, and the refusal below became unreachable. The guard
+        // whose own comment promises *never could-not-look* was the one thing looking, and it could
+        // not. The read decides now, and its `ENOENT` is the only absent.
+        const dir = withPack();
+        inspect(dir, { write: true });
+        const layer = path.join(dir, "personas");
+        fs.chmodSync(layer, 0o400);
+        try {
+            assert.throws(
+                () => inspect(dir),
+                (e) => e instanceof IndexError && /cannot be read/i.test(e.message) && /supervisor/.test(e.message),
+            );
+        } finally {
+            fs.chmodSync(layer, 0o755);
         }
     });
 

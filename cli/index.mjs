@@ -760,6 +760,17 @@ function siteOutside(dir, declaredPath, slot, word) {
  * write is an `IndexError`, not a red** — an uncaught ENOENT here exits node with 1, which `index.sh`
  * passes through as "the index has drifted", said about a series nothing had judged, for what is a
  * configuration problem (`a-checker-must-refuse-what-it-cannot-check`; found by Copilot on #72).
+ *
+ * **And a failed READ is the same fact, which this function did not say for five review rounds.**
+ * Only `ENOENT` means the index is absent; `EACCES`, `EISDIR`, `ELOOP` and the rest mean the process
+ * could not look. Reported as *declared and absent* they came back as actionable drift at exit 1,
+ * telling the operator to regenerate a file that may be correct and merely unopenable — *could not
+ * look* dressed as *I looked and found nothing*, which is the record above in as many words. Issue
+ * #91; Copilot raised it verbatim on #85 in rounds three through seven, each triaged under
+ * `a-review-loop-needs-a-bound.md` rule 4, which is that rule working rather than failing: a triaged
+ * note is not a withdrawn one. The rule it restores is stated three times in `./vendor.mjs` and again
+ * in `./doctor.mjs`, `./new.mjs`, `./init.mjs`, `./plugin-lint.mjs` and `./compile.mjs` — this was the
+ * one read in the repository that did not carry it.
  */
 function compareOrWrite({ dir, declaredPath, indexPath, expected, write, series, source, fail }) {
     if (write) {
@@ -778,7 +789,19 @@ function compareOrWrite({ dir, declaredPath, indexPath, expected, write, series,
     let actual = null;
     try {
         actual = fs.readFileSync(indexPath);
-    } catch { /* absent — reported below, and never repaired here */ }
+    } catch (cause) {
+        // Only ENOENT is the red below. Everything else is a fact about the filesystem, and the two
+        // repairs have nothing in common: one is `run the generator`, the other is `fix the permissions
+        // on this path`. The errno is named because it is the whole diagnosis — `declared and absent`
+        // sent an operator to regenerate a file that was sitting right there.
+        if (cause.code !== "ENOENT") {
+            throw new IndexError(
+                `cannot read the index at ${declaredPath} — ${cause.code ?? cause.message}. ` +
+                    `Refusing rather than reporting it absent: this is a fact about the filesystem, ` +
+                    `not about the ${source}`,
+            );
+        }
+    }
 
     if (actual === null) {
         fail(series, "index", `${declaredPath} is declared and absent — run \`node cli/index.mjs ${dir}\` to generate it`);
@@ -951,12 +974,20 @@ function judgeScopes(dir, workspace, { write, fail, packRoots: extraRoots }) {
         // empty directory — so the enumeration fail-open this repository has fixed four times would here
         // read as the design working rather than as a broken read. Absent is a third, different fact and
         // stays green: git carries no empty directory, so absent is the state of every fresh clone.
+        //
+        // **Absent is decided by the read itself, not by a prior `existsSync`** — the sibling of #91,
+        // in the paragraph that states the rule. `fs.existsSync` is a `stat` that answers `false` for
+        // every failure, `EACCES` included, so a layer mode `0400` — readable, not searchable, which
+        // the enumeration above passes — made every declared location under it stat-false, skipped as
+        // absent, and the refusal three lines down unreachable. The guard whose comment promises
+        // *never could-not-look* was the one thing looking, and it could not. Removing it also removes
+        // a TOCTOU: one syscall now decides, instead of two that can disagree.
         for (const s of series.scopes) {
             const location = path.resolve(dir, s.location);
-            if (!fs.existsSync(location)) continue;
             try {
                 fs.readdirSync(location);
             } catch (cause) {
+                if (cause.code === "ENOENT") continue;
                 throw new IndexError(
                     `the persona memory location ${s.location} exists and cannot be read — ${cause.code ?? cause.message}. ` +
                         "Refusing to report it empty: empty is this feature's success state, so an unreadable " +
