@@ -403,6 +403,8 @@ question produced four further instances of the class *inside the change general
 
 He decided the three things this asked him: the rule stands; the reflexive `core/templates/persona.md`
 re-point is **kept**; the `collisions()` unification is **filed** as
-[#169](https://github.com/sleepy-panda-works/portulan/issues/169). He also ruled the pack bump **PATCH**
-rather than the MINOR this session proposed, and granted the extension past the review-loop bound after
-round 2 — asked for and given, in the form the amended rule 4 requires.
+[#169](https://github.com/sleepy-panda-works/portulan/issues/169). He granted the extension past the
+review-loop bound after round 2 — asked for and given, in the form the amended rule 4 requires. And he
+ruled the checkpoints pack bump twice: **PATCH first, then MINOR on the argument**, so `0.2.0` is what
+ships. _(This sentence recorded only the first ruling for one round, while the manifest carried the
+second — the class this proposal is about, in the proposal's own record of the ruling. Copilot round 6.)_
