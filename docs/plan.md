@@ -1957,3 +1957,14 @@ _The seam applies here too: no client-identifying references._
   TAB and LF. Its binary sniff is **refused** — every sniff is keyed on NUL, so it would skip the file it exists to
   catch — leaving a named, both-ways-audited exemption. Forced red four ways locally; **none seen red in CI**. Suite
   983 → 1014, nine recipes, `npm pack` 87. · Fidelity: **no supervisor checkpoint — a gap, not a scale-down.** Seam scan clean. Handoff: [`2026-08-07`](../.portulan/handoffs/2026-08-07-the-checks-that-said-more-than-they-saw.md).
+
+- 2026-08-07 · Outside the milestone track · **The three merged, and a checkpoint that was owed.** [#165](https://github.com/sleepy-panda-works/portulan/pull/165),
+  [#166](https://github.com/sleepy-panda-works/portulan/pull/166), [#167](https://github.com/sleepy-panda-works/portulan/pull/167) all merged; `main` at `415167a`;
+  #92 · #91 · #68 closed. **#167 took EIGHT rounds, each overrun of rule 4's bound authorised individually** — 1–5 found code, 6 a doc row, 7 prose,
+  8 a test name, and the **taper** ended it, not the count; remainder filed as #170. The rail caught the #68 byte **for real** in round 7's own commit
+  message, the first time anything here has. · **A must-have was OMITTED: no fresh-context supervisor checkpoint ran at any point — not session-open, not
+  pre-commit, not at the merges.** The pre-commit pass attacks a diff's claims about the world, which is precisely the class that dominated #167 and that
+  Copilot and a self-audit caught instead, six rounds past a bound of two. Whether the merges stand un-reviewed or a retrospective pass runs over `415167a`
+  is the maintainer's ruling, and it is owed. · Board refined 42 → 35: closed removed, #161/#169/#170 added, `Now` = 6; eight open issues checked against
+  the tree (none quietly fixed, #141 reproduced), twenty-seven unchecked and said so. Seam scan clean.
+  Handoff: [`2026-08-07-the-three-merged…`](../.portulan/handoffs/2026-08-07-the-three-merged-and-a-checkpoint-that-was-owed.md).
