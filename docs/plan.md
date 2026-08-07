@@ -1989,3 +1989,13 @@ _The seam applies here too: no client-identifying references._
   surfaced, not resolved**: a record says the repository is public and it is **private** — measured, unauth 404
   — and picking a winner is the maintainer's, not housekeeping's. Compressed **5,934 bytes** of *how the lesson
   was learned*; all four rules and the sibling definition survive verbatim. Store → **118,109**. Seam scan clean.
+- 2026-08-07 · Outside the milestone track · **One release train carried two numbers.**
+  [#177](https://github.com/sleepy-panda-works/portulan/pull/177) **closes**
+  [#148](https://github.com/sleepy-panda-works/portulan/issues/148): `package.json` said `0.1.0` while all three
+  plugin-manifest fields said `0.2.0`. Set to **`0.2.0`** on the maintainer's ruling, recorded with the two
+  alternatives he declined — and **the ruling is railed rather than merely recorded**, against the newest
+  `CHANGELOG.md` heading, since a ruling nobody checks is a convention one release from wrong. The agreement
+  rail's first version was **reasoned from reading the checker and wrong**: perturbation found **four** fields,
+  not three — `marketplace.json`'s top-level `version` bound by nothing, not even for shape. Suite 1055→1057. ·
+  Fidelity: pre-commit R-C, four findings folded. 3 rounds, 2 pushes, taper clean. Seam scan
+  clean. Handoff: [`2026-08-07`](../.portulan/handoffs/2026-08-07-one-release-train-carried-two-numbers.md).
