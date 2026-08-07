@@ -5,6 +5,18 @@ last sentence below predicted would happen. `.claude-plugin/plugin.json` now dec
 and the three skills of [`rituals/checkpoints`](../../packs/rituals/checkpoints/README.md) resolve at
 `<root>/<pack>/skills/<skill>/SKILL.md` — the exact shape named as failing here.
 
+**And *resolve* means resolve for the LINTER, which is narrower than this line reads — amended
+2026-08-07.** The goal below is *"a pack can declare its skills under a single path and have them
+resolve"*, and what was met is the declaring half: `plugin-lint` walks the declared root, finds the
+three, and counts them. **A host registers none of them.** Measured 2026-08-07 on Claude Code 2.1.224,
+unchanged from 2026-07-30 on 2.1.220: a pack installed from a feed reports `Skills (0)`, and the public
+plugin's own count omits its pack's three. So a pack's skills are invoked by naming their path, and this
+status was true of the tool that checks the packaging while being read as true of the platform —
+[`../../cli/plugin-lint.mjs`](../../cli/plugin-lint.mjs)'s header now states the same boundary at the
+count itself. Host parity is milestone 7's, with
+[#134](https://github.com/sleepy-panda-works/portulan/issues/134); the task is not reopened, because
+what it asked for was the resolution this tool does.
+
 **Goal.** A pack can declare its skills under a single path and have them resolve. Today it cannot, and
 the failure is silent until someone writes the first pack.
 
