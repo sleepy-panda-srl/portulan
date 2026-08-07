@@ -1348,7 +1348,16 @@ describe("empty means readable-and-zero, never could-not-look", () => {
         try {
             assert.throws(
                 () => inspect(dir),
-                (e) => e instanceof IndexError && /cannot be read/i.test(e.message) && /supervisor/.test(e.message),
+                (e) =>
+                    e instanceof IndexError &&
+                    /cannot be read/i.test(e.message) &&
+                    /supervisor/.test(e.message) &&
+                    // And it does not claim the location EXISTS. That word was true while `existsSync`
+                    // gated the read and became false the moment the guard came out: an `EACCES` from
+                    // an unsearchable ancestor is exactly the case where existence cannot be known, so
+                    // the refusal would be asserting the one thing it could not establish — this
+                    // change's own defect, in this change's own sentence. Copilot, round 1 on #166.
+                    !/exists/.test(e.message),
             );
         } finally {
             fs.chmodSync(layer, 0o755);

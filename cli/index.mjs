@@ -969,8 +969,8 @@ function judgeScopes(dir, workspace, { write, fail, packRoots: extraRoots }) {
                 );
             }
         }
-        // **Empty means readable-and-zero, never could-not-look.** A declared location that exists and
-        // cannot be enumerated is refused with exit 2, because the feature's own success state IS an
+        // **Empty means readable-and-zero, never could-not-look.** A declared location that cannot be
+        // enumerated is refused with exit 2, because the feature's own success state IS an
         // empty directory — so the enumeration fail-open this repository has fixed four times would here
         // read as the design working rather than as a broken read. Absent is a third, different fact and
         // stays green: git carries no empty directory, so absent is the state of every fresh clone.
@@ -982,6 +982,13 @@ function judgeScopes(dir, workspace, { write, fail, packRoots: extraRoots }) {
         // absent, and the refusal three lines down unreachable. The guard whose comment promises
         // *never could-not-look* was the one thing looking, and it could not. Removing it also removes
         // a TOCTOU: one syscall now decides, instead of two that can disagree.
+        //
+        // **The message no longer says the location EXISTS**, and that word had to go with the guard
+        // rather than after it. It was true while `existsSync` gated the read — a `stat` had succeeded
+        // — and this change is what made it reachable for an `EACCES` raised by an unsearchable
+        // ancestor, where existence is precisely what cannot be known. A refusal asserting the one
+        // thing it could not establish is the defect this pull request is about, wearing the fix's own
+        // sentence. Copilot, round 1 on #166.
         for (const s of series.scopes) {
             const location = path.resolve(dir, s.location);
             try {
@@ -989,7 +996,7 @@ function judgeScopes(dir, workspace, { write, fail, packRoots: extraRoots }) {
             } catch (cause) {
                 if (cause.code === "ENOENT") continue;
                 throw new IndexError(
-                    `the persona memory location ${s.location} exists and cannot be read — ${cause.code ?? cause.message}. ` +
+                    `the persona memory location ${s.location} cannot be read — ${cause.code ?? cause.message}. ` +
                         "Refusing to report it empty: empty is this feature's success state, so an unreadable " +
                         "location reported as empty would read as the design working",
                 );
