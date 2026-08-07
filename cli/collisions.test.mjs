@@ -290,12 +290,19 @@ function modules(dir = HERE, prefix = "") {
     return out;
 }
 
-// The three spellings a narrower matcher missed, each measured against it rather than imagined:
-// `export const collisions = …`, a bare declaration re-exported by `export { collisions }`, and a module
-// in a SUBDIRECTORY of `cli/` — all three added a fourth carrier and left the roster green. Found by the
-// pre-commit checkpoint getting past the check, which is the step of its pass that exists for exactly
-// this and is the reason a hole list is never taken on the author's word.
-const EXPORTS_COLLISIONS = /export\s+(?:async\s+)?(?:function|const|let|var|class)\s+collisions\b|export\s*\{[^}]*\bcollisions\b[^}]*\}/;
+// **FIVE spellings have got past this matcher, each measured against it rather than imagined**, and the
+// list grew twice because two separate reviewers went looking:
+//   1-3. `export const collisions = …`, a bare declaration re-exported by `export { collisions }`, and a
+//        module in a SUBDIRECTORY of `cli/` — found by the pre-commit checkpoint.
+//   4-5. `export function* collisions()` — a GENERATOR, which `function\s+collisions` does not match —
+//        and `export * from "./init.mjs"`, an aggregate re-export that exposes a fourth module's
+//        binding without ever naming it. Found by the Fable 5 supervisor, getting past the widened
+//        matcher that had just been written to close the first three.
+// Both rounds are the same lesson and it is this suite's own: **a hole list is a claim like any other,
+// and the only thing that checks it is somebody trying to defeat it.** The list below is therefore
+// stated as what has been TRIED, never as what is covered.
+const EXPORTS_COLLISIONS =
+    /export\s+(?:async\s+)?(?:function\s*\*?|const|let|var|class)\s+collisions\b|export\s*\{[^}]*\bcollisions\b[^}]*\}|export\s*\*\s*from/;
 
 describe("the roster is pinned too", () => {
     test("exactly three modules under cli/ export a `collisions`, and this suite asserts all three", () => {
@@ -304,10 +311,13 @@ describe("the roster is pinned too", () => {
         // above. Whoever adds one reds here and has two honest ways out: add it to CARRIERS, or call an
         // existing carrier instead — which is the repair this repository reaches for first.
         //
-        // **What this cannot see, stated rather than left to be discovered:** a fourth implementation of
-        // the same rule under a DIFFERENT NAME. No matcher reaches that — a rule has no token — and the
-        // proposal this suite belongs to is largely about why. The roster is the cheap half, kept
-        // because a copied shape is nearly always copied under its own name too.
+        // **What this cannot see, stated rather than left to be discovered.** A fourth implementation of
+        // the same rule under a DIFFERENT NAME: no matcher reaches that — a rule has no token — and the
+        // proposal this suite belongs to is largely about why. And, more modestly, any same-name
+        // spelling nobody has thought to try yet: five have been found so far, three by one reviewer and
+        // two by another *after* the matcher was widened for the first three. So this is a list of
+        // attempts, not a proof of coverage. The roster is the cheap half, kept because a copied shape is
+        // nearly always copied under its own name too.
         const found = modules()
             .filter((rel) => EXPORTS_COLLISIONS.test(fs.readFileSync(path.join(HERE, rel), "utf8")))
             .sort();

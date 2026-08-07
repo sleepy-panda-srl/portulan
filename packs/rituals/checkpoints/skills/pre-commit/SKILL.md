@@ -37,8 +37,8 @@ whether a status column changed.
    is not done at the site it was found* — and this step is the procedure, not a second statement of it.
    Ask the diff for it: which rule does each fix restore, and where else is that rule enforced? The tool
    the shape was copied from, the other arm of the same function, the other command taking the same flag,
-   the other direction of the same operation. Each site either carries the fix or is named in the change
-   as knowingly left. **It is the checkpoint's step rather than the implementer's** because the site an
+   the other direction of the same operation. What each site then owes is `evolution.md`'s sentence and
+   not a second wording of it. **It is the checkpoint's step rather than the implementer's** because the site an
    implementer is looking at is the site they just understood, and the leftover is the one the next
    reader copies. Do not accept a comment beside the fix as coverage of a second site.
 5. **Attack the coverage claims.** Where the change says a check now catches something, try to get past
