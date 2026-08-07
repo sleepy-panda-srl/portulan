@@ -15,6 +15,18 @@ A rule earns its place only if it **enforces itself** (a hook, a compiled gate, 
 **measures itself** (an eval), or is worth the context-window tokens it costs as prose. A rule that does
 none of these is demoted to reference, not kept standing. _(Vision thesis 3 — rails, not prose.)_
 
+**And a fix is not done at the site it was found.** A rule holds where it is enforced, so a rule enforced
+in two places can be repaired in one — and the site left standing is the one the next reader copies. Name
+the rule a patch restores, find that rule's other sites, and either fix each or record which were
+knowingly left. This is one defect in two materials — a rule with two prose carriers is obeyed at the
+narrower one; a rule with two enforcement sites is repaired at fewer than all of them — and it has one
+repair: **one carrier, and the others reach it**, by citing it in prose and by calling it in code. That
+is how *impossible* above is reached rather than merely preferred, because a rule with a single site
+cannot be missed at a second. Where two sites genuinely cannot be merged, pin them together in one check,
+so a divergence reds instead of drifting. What does **not** work is explaining the rule beside its site:
+that has been measured failing, in both materials. _(Provenance: single-source-of-truth, carried from
+data to rules; compounding engineering — Every.)_
+
 ## Agent-drafted, human-owned
 
 Agents draft rule changes; humans own them. The curated layer is never edited by an agent on its own
