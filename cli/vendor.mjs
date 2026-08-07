@@ -916,7 +916,15 @@ export async function run(argv, options = {}) {
         const rels = files.map((f) => f.rel);
         const hostFile = parsed.host === null ? null : path.join(path.dirname(dest), "AGENTS.md");
 
-        const clash = collisions(dest, rels, { allow: carve.allow });
+        // **Every path this run will write, not merely every path it will copy.** When a switch lands on
+        // a pointer whose source carries no `README.md`, one is SYNTHESISED — and the preflight was
+        // built from the source's file list, so that leaf was never lstat'd at all. A symlink there was
+        // followed by the write, which is the containment rule refused by the one path the check could
+        // not see. The carve-out still permits replacing an ordinary pointer README; what it may not do
+        // is exempt a link, and `collisions` tests for a symlink before it consults `allow`.
+        // Copilot, round 9 on #164.
+        const synthesised = parsed.switching && carve.pointer && !rels.includes("README.md") ? ["README.md"] : [];
+        const clash = collisions(dest, [...rels, ...synthesised], { allow: carve.allow });
         if (hostFile !== null) clash.push(...collisions(path.dirname(dest), ["AGENTS.md"]));
         if (clash.length) {
             // Grouped by CAUSE, not listed per path: one symlinked directory blocks every file, and
