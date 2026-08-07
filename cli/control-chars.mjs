@@ -56,13 +56,22 @@
 // What is left is a declaration. `--exempt <path>` names ONE path, is repeatable, and the workspace's
 // recipe supplies it — so a binary asset arriving in this tree costs one reviewable line rather than a
 // permanently red gate, and it costs it in a pull request where somebody sees it. The declaration is
-// AUDITED in both directions, because an exemption nobody checks is the allow-list defect this project
-// has already paid for once (`cli/vendor.mjs`, round 13 of #164 — the carve-out permitted a thing that
-// was not a file):
+// AUDITED, because an exemption nobody checks is the allow-list defect this project has already paid
+// for once (`cli/vendor.mjs`, round 13 of #164 — the carve-out permitted a thing that was not a file).
+// Three outcomes, each exit 2 and none a quiet pass:
 //
-//   * an exempted path that was not scanned is **stale** — exit 2, never a quiet pass;
-//   * an exempted path carrying no control character is **dead** — exit 2, because an exemption that is
-//     not load-bearing is one nobody will notice has stopped being true.
+//   * an exempted path that is not in the list at all is **stale**;
+//   * an exempted path that is tracked and not on disk was **never read**, so this run cannot say
+//     whether the exemption is live — which is a different fact from either of the others and was
+//     reported as *dead* until Copilot separated them;
+//   * an exempted path carrying no control character is **dead**, because an exemption that is not
+//     load-bearing is one nobody will notice has stopped being true.
+//
+// **One limit, stated rather than left to be found:** an exemption is matched by the path as the file
+// list spells it, and `--exempt` values arrive through `argv` already decoded. So a pathname that is
+// not valid UTF-8 cannot be exempted — but it cannot be scanned either; `splitList` refuses the whole
+// run over it at exit 2, so there is no silent gap here, only a repository this tool would decline to
+// judge until the name is changed.
 //
 // Zero dependencies, no network, no install step — same constraints as ./doctor.mjs and ./index.mjs.
 // It is not one of the eight subcommands `../docs/vision.md` names, and is not wired behind the entry
@@ -139,9 +148,10 @@ export function scanBytes(buffer) {
 /**
  * The bytes git tracks for one path, or `null` when the path is not on disk.
  *
- * **A symlink is read as its target STRING, not through it.** That string is the blob git stores, and
- * it is the thing this check is asked about; following the link would scan a file that may not be in
- * the repository at all, and a dangling one would be an error about the wrong thing.
+ * **A symlink is read as its target's BYTES, not through it.** Those bytes are the blob git stores, and
+ * they are the thing this check is asked about; following the link would scan a file that may not be in
+ * the repository at all, and a dangling one would be an error about the wrong thing. Bytes rather than
+ * the string `readlinkSync` hands back by default — see the branch below for what that default cost.
  *
  * Only `ENOENT` is `null` — a file tracked in the index and deleted from the working tree, which is an
  * ordinary state and the one `../.portulan/verify/json.sh` already skips. Every other errno means the
@@ -166,7 +176,14 @@ export function bytesOf(file) {
 
     if (stat.isSymbolicLink()) {
         try {
-            return Buffer.from(fs.readlinkSync(file), "utf8");
+            // `"buffer"`, not the default string. `readlinkSync` decodes as UTF-8 by default, so a
+            // target git stores as raw bytes came back U+FFFD-substituted and was re-encoded into
+            // DIFFERENT bytes — which both breaks this function's own "never decodes" promise and can
+            // hide a control byte sitting in the target. That is the identical defect `splitList`
+            // was just repaired for, two functions below, in the same push that repaired it: a fix
+            // arriving without its sibling, which is the class this repository files as #91. Copilot
+            // found it in the suppressed channel on the very next round.
+            return fs.readlinkSync(file, "buffer");
         } catch (cause) {
             throw new ControlCharsError(`cannot read the symlink ${file} — ${cause.code ?? cause.message}`);
         }
@@ -191,10 +208,14 @@ export function bytesOf(file) {
 /**
  * Scan a list of paths.
  *
- * Returns `{ findings, stale, scanned, skipped, exempted }`. A finding is
+ * Returns `{ findings, unusable, scanned, skipped, exempted }`. A finding is
  * `{ file, count, first }` — one per offending file rather than one per byte, because a genuinely
  * binary asset holds thousands and a report that prints them all is a report nobody reads. The count
  * is stated beside the first, so nothing is dropped in silence.
+ *
+ * `unusable` holds the exemptions this run could not show to be doing their job, each with its own
+ * `why`. It was called `stale` while it carried two cases and gained a third — *not read* — which is
+ * not staleness at all, so the name went with the meaning rather than after it.
  *
  * **An empty list is refused.** Zero files scanned and a green report is the enumeration fail-open this
  * repository has fixed five times (`verify-preconditions-fail-closed.md`), and it is the failure this
@@ -211,6 +232,9 @@ export function inspect(files, { exempt = new Set() } = {}) {
     const findings = [];
     const seen = new Set();
     const carrying = new Set();
+    // Listed and NOT READ — tracked, absent from the working tree. Kept apart from `carrying` because
+    // the audit below must not read one as the other; see there.
+    const unread = new Set();
     let scanned = 0;
     let skipped = 0;
 
@@ -219,6 +243,7 @@ export function inspect(files, { exempt = new Set() } = {}) {
         const buffer = bytesOf(file);
         if (buffer === null) {
             skipped += 1;
+            unread.add(file);
             continue;
         }
         scanned += 1;
@@ -229,16 +254,30 @@ export function inspect(files, { exempt = new Set() } = {}) {
         findings.push({ file, count: bad.length, first: bad[0] });
     }
 
-    // The audit, in both directions. An exemption that names nothing scanned is stale; one that names a
-    // clean file is dead. Either way the declaration and the tree disagree, and a check that walks past
-    // that is a check whose exemptions accumulate — see this file's header.
-    const stale = [];
+    // The audit, in three directions rather than two. An exemption naming nothing in the list is stale
+    // and one over a clean file is dead — but between them sits a third case the first draft collapsed
+    // into the second: a file that is tracked, absent from the working tree, and therefore NEVER READ.
+    // `seen` had it, `carrying` did not, so it was reported *carries no control character, so the
+    // exemption is dead* — a specific claim about a file nothing opened, which would send the
+    // maintainer to delete an exemption that is still load-bearing. That is this check's own subject
+    // and #92's class exactly: a verdict about something never examined. Copilot, suppressed channel.
+    //
+    // It stays exit 2 rather than passing quietly: an exemption nothing could verify is not a verified
+    // exemption, which is `a-checker-must-refuse-what-it-cannot-check.md`.
+    const unusable = [];
     for (const file of exempt) {
-        if (!seen.has(file)) stale.push({ file, why: "is not in the scanned set" });
-        else if (!carrying.has(file)) stale.push({ file, why: "carries no control character, so the exemption is dead" });
+        if (!seen.has(file)) unusable.push({ file, why: "is not in the scanned set" });
+        else if (unread.has(file)) {
+            unusable.push({
+                file,
+                why: "is tracked and not on disk, so it was never read — this run cannot say whether the exemption is still live",
+            });
+        } else if (!carrying.has(file)) {
+            unusable.push({ file, why: "carries no control character, so the exemption is dead" });
+        }
     }
 
-    return { findings, stale, scanned, skipped, exempted: exempt.size };
+    return { findings, unusable, scanned, skipped, exempted: exempt.size };
 }
 
 // ===========================================================================================
@@ -253,7 +292,16 @@ export function inspect(files, { exempt = new Set() } = {}) {
  * silence whatever reads the report next.
  */
 const escapeBytes = (buffer) =>
-    [...buffer].map((b) => (b >= 0x20 && b < DEL ? String.fromCharCode(b) : `\\x${b.toString(16).padStart(2, "0")}`)).join("");
+    [...buffer]
+        .map((b) => {
+            // The backslash is escaped FIRST, and that is the whole reason this is not a one-liner: a
+            // filename literally containing the characters `\`, `x`, `f`, `f` would otherwise render
+            // exactly like the byte `0xff`, so the message meant to remove an ambiguity would carry
+            // one. `\\` is unambiguous and reads correctly beside the `\xNN` escapes.
+            if (b === 0x5c) return "\\\\";
+            return b >= 0x20 && b < DEL ? String.fromCharCode(b) : `\\x${b.toString(16).padStart(2, "0")}`;
+        })
+        .join("");
 
 /**
  * The NUL-separated list `git ls-files -z` writes, split at the BYTE level.
@@ -350,8 +398,8 @@ export function run(argv, stdin, say = (line) => process.stdout.write(`${line}\n
 
     // The stale-exemption audit is a defect in the declaration rather than a verdict about a file, so
     // it exits 2 — the same code, and the same reasoning, as a stale entry in `index.sh`'s WORKSPACES.
-    if (result.stale.length) {
-        for (const s of result.stale) say(`  ✗ --exempt ${s.file} ${s.why}`);
+    if (result.unusable.length) {
+        for (const s of result.unusable) say(`  ✗ --exempt ${s.file} ${s.why}`);
         return 2;
     }
 

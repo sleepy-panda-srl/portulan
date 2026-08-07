@@ -168,13 +168,33 @@ describe("what the reader refuses, and what it lets past", () => {
         assert.equal(bytesOf(path.join(scratch(), "gone.md")), null);
     });
 
-    test("a symlink is read as its target STRING, never followed", () => {
+    test("a symlink is read as its target's BYTES, never followed", () => {
         // The target path is the blob git stores, and it is what this check is asked about. Following
         // the link would scan a file that may not be in the repository at all.
         const dir = tree({ "real.md": `nul-free\n` });
         const link = path.join(dir, "link.md");
         fs.symlinkSync("real.md", link);
         assert.equal(bytesOf(link).toString("utf8"), "real.md");
+    });
+
+    test("a symlink target is not decoded on the way in", () => {
+        // `readlinkSync` returns a STRING by default, so a target git stores as raw bytes came back
+        // U+FFFD-substituted and was re-encoded into DIFFERENT bytes — breaking this module's own
+        // "never decodes" promise and able to hide a control byte in the target. The identical defect
+        // `splitList` had just been repaired for, two functions below, in the same push. Copilot,
+        // suppressed channel on #167.
+        const dir = scratch();
+        const link = path.join(dir, "odd.md");
+        // A target whose bytes are not valid UTF-8. Built as a Buffer so nothing in this file decodes it.
+        fs.symlinkSync(Buffer.from([0x74, 0xff, 0x2e, 0x6d, 0x64]), link);
+        assert.deepEqual([...bytesOf(link)], [0x74, 0xff, 0x2e, 0x6d, 0x64]);
+    });
+
+    test("a control byte inside a symlink target is a finding, not a decode casualty", () => {
+        const dir = scratch();
+        const link = path.join(dir, "sneaky.md");
+        fs.symlinkSync(Buffer.from([0x61, 0x0d, 0x62]), link);
+        assert.deepEqual(scanBytes(bytesOf(link)).map((f) => f.name), ["CR"]);
     });
 
     test("a dangling symlink is its target string too, rather than an error about the wrong thing", () => {
@@ -247,8 +267,24 @@ describe("the exemption is a named path, and it is audited both ways", () => {
         // is not there. An exemption nobody audits is one that outlives its reason.
         const dir = tree({ "a.md": "clean\n" });
         const result = inspect([path.join(dir, "a.md")], { exempt: new Set([path.join(dir, "moved.bin")]) });
-        assert.equal(result.stale.length, 1);
-        assert.match(result.stale[0].why, /not in the scanned set/);
+        assert.equal(result.unusable.length, 1);
+        assert.match(result.unusable[0].why, /not in the scanned set/);
+    });
+
+    test("an exemption over a file that was NEVER READ says so, and does not call it dead", () => {
+        // The third case, which the first draft collapsed into the second. A tracked file absent from
+        // the working tree lands in `seen` and never in `carrying`, so it was reported *carries no
+        // control character, so the exemption is dead* — a specific claim about a file nothing opened,
+        // which would send the maintainer to delete an exemption that is still load-bearing. This
+        // check's own subject, and #92's class: a verdict about something never examined. Copilot,
+        // suppressed channel on #167.
+        const dir = tree({ "a.md": "clean\n" });
+        const gone = path.join(dir, "gone.bin");
+        const result = inspect([path.join(dir, "a.md"), gone], { exempt: new Set([gone]) });
+        assert.equal(result.unusable.length, 1);
+        assert.match(result.unusable[0].why, /never read/);
+        assert.doesNotMatch(result.unusable[0].why, /dead/);
+        assert.equal(result.skipped, 1);
     });
 
     test("an exemption over a CLEAN file is DEAD — exit 2", () => {
@@ -257,8 +293,8 @@ describe("the exemption is a named path, and it is audited both ways", () => {
         const dir = tree({ "a.md": "clean\n" });
         const file = path.join(dir, "a.md");
         const result = inspect([file], { exempt: new Set([file]) });
-        assert.equal(result.stale.length, 1);
-        assert.match(result.stale[0].why, /dead/);
+        assert.equal(result.unusable.length, 1);
+        assert.match(result.unusable[0].why, /dead/);
     });
 
     test("a content sniff is NOT how a binary file gets past this check", () => {
@@ -392,6 +428,15 @@ describe("run", () => {
         const lines = [];
         assert.equal(run([], list, (s) => lines.push(s)), 2);
         assert.match(messages(lines), /\\xff\\xfe/);
+    });
+
+    test("a literal backslash in the name is escaped, so the escape is unambiguous", () => {
+        // Without this, a filename containing the characters `\`, `x`, `f`, `f` renders exactly like
+        // the byte 0xff — and the message written to remove an ambiguity would carry one instead.
+        const list = Buffer.concat([Buffer.from("a\\xff"), Buffer.from([0xfe]), Buffer.from([0x00])]);
+        const lines = [];
+        assert.equal(run([], list, (s) => lines.push(s)), 2);
+        assert.match(messages(lines), /a\\\\xff\\xfe/);
     });
 });
 
