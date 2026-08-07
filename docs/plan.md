@@ -1970,7 +1970,7 @@ _The seam applies here too: no client-identifying references._
   Handoff: [`2026-08-07-the-three-merged…`](../.portulan/handoffs/2026-08-07-the-three-merged-and-a-checkpoint-that-was-owed.md).
 
 - 2026-08-07 · M7 (CLI & onboarding), session 4 · **A fix is not done where it was found.**
-  [#168](https://github.com/sleepy-panda-works/portulan/pull/168): the #91 class becomes doctrine on his ruling
+  [#168](https://github.com/sleepy-panda-works/portulan/pull/168): the #91 class becomes doctrine on the maintainer's ruling
   of this date — a rule with two prose carriers and one with two enforcement sites are **one defect in two
   materials**, one repair: one carrier, the others cite or call it. `evolution.md` gains the mechanism its
   *impossible or caught* section lacked; `pre-commit` gains step 4 of 7; the review-loop bound is amended **in
@@ -1978,4 +1978,4 @@ _The seam applies here too: no client-identifying references._
   the proposal says so.** What ships is `cli/collisions.test.mjs`, pinning three `collisions()` agreed across
   seven states; the pre-commit pass found an **eighth where they diverge** ([#169](https://github.com/sleepy-panda-works/portulan/issues/169)).
   **Four instances of the class landed inside the change generalising it.** 8 of 13 rounds, not 5; `existsSync`
-  17, not 27. `main` 990→1012, eight recipes. · Fidelity: A-W-A (12) + A-W-A (11), all folded; one adjustment from each refuted by measurement. Four Copilot rounds, ended on the **taper**, his grant past the bound. Seam scan clean. Handoff: [`2026-08-07`](../.portulan/handoffs/2026-08-07-a-fix-is-not-done-where-it-was-found.md).
+  17, not 27. `main` 990→1012, eight recipes. · Fidelity: A-W-A (12) + A-W-A (11), all folded; one adjustment from each refuted by measurement. Four Copilot rounds, ended on the **taper**, the maintainer's grant past the bound. Seam scan clean. Handoff: [`2026-08-07`](../.portulan/handoffs/2026-08-07-a-fix-is-not-done-where-it-was-found.md).
