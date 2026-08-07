@@ -419,6 +419,16 @@ export function collisions(destDir, rels, { lstat = fs.lstatSync, allow = new Se
                     found.push({ rel, path: step, why: `${step} is a directory, and a file has to be written there` });
                     break;
                 }
+                // Not a regular file — a FIFO, a socket, a device node. `walk()` already refuses these
+                // in the SOURCE ("copies neither by guessing at it"); the destination's ALLOWED leaves
+                // were the half that did not, so the carve-out could permit a FIFO named `README.md`
+                // and the later read would block rather than fail. Checked before `allow` is consulted,
+                // for the same reason the symlink test is: an exemption is about replacing a file, and
+                // this is not one. Copilot's suppressed notes, round 13 on #164.
+                if (!stat.isFile()) {
+                    found.push({ rel, path: step, why: `${step} is neither a file nor a directory, and this reads and writes neither by guessing at it` });
+                    break;
+                }
                 if (allow.has(rel)) break;
                 found.push({ rel, path: step, why: "already exists" });
                 break;

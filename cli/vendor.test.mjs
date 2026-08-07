@@ -386,6 +386,22 @@ describe("the three refusals `init` and `new` paid for", () => {
         assert.equal(exists(dst), false, "an unanswerable question wrote nothing");
     });
 
+    test("a leaf that is neither a file nor a directory is refused, even where the carve-out allows the path", () => {
+        // `walk()` refuses these in the SOURCE; the destination's ALLOWED leaves were the half that did
+        // not, so the carve-out could permit a FIFO named `README.md` and the later read would BLOCK
+        // rather than fail. Checked before `allow` is consulted, for the same reason the symlink test
+        // is: an exemption is about replacing a file, and a FIFO is not one.
+        // Copilot's suppressed notes, round 13 on #164. Stubbed rather than made with `mkfifo`, which
+        // needs a shell-out and is not portable to every runner this suite has to pass on.
+        const fifo = { isSymbolicLink: () => false, isDirectory: () => false, isFile: () => false };
+        const found = collisions("/dest", ["README.md"], {
+            allow: new Set(["README.md"]),
+            lstat: (p) => (String(p) === path.join("/dest", "README.md") ? fifo : { isSymbolicLink: () => false, isDirectory: () => true, isFile: () => false }),
+        });
+        assert.equal(found.length, 1, "the allow-list must not exempt a thing that is not a file");
+        assert.match(found[0].why, /neither a file nor a directory/);
+    });
+
     test("an lstat failure that is not ENOENT is a collision, never an absence", () => {
         // Only `ENOENT` means absent. `EACCES` means the question could not be answered, and answering
         // *nothing there* to an unanswerable question is the fail-open this repository names more often
