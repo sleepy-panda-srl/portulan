@@ -68,9 +68,9 @@
 import { test, describe } from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
+import net from "node:net";
 import os from "node:os";
 import path from "node:path";
-import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
 import { collisions as initCollisions } from "./init.mjs";
@@ -82,7 +82,17 @@ const HERE = path.dirname(fileURLToPath(import.meta.url));
 // ONE exit handler for every scratch directory, not one each — ./new.test.mjs records why, and
 // ./init.test.mjs records what ignoring it cost.
 const SCRATCH = [];
+// Sockets outlive their assertion on purpose — closing one unlinks the leaf it IS — so they are closed
+// here, after every test has run and before the trees they sit in are removed.
+const SERVERS = [];
 process.on("exit", () => {
+    for (const server of SERVERS) {
+        try {
+            server.close();
+        } catch {
+            /* already closed, or never listened */
+        }
+    }
     for (const dir of SCRATCH) {
         // `lstatSync` and a real-directory test BEFORE the chmod, and the reason is this suite's own
         // subject. `chmodSync` FOLLOWS symlinks, and in the symlink-on-the-chain case this very path IS
@@ -173,17 +183,43 @@ const CONTRACT = [
         skipParent: true,
     },
     {
-        what: "a FIFO at the leaf — a thing that is not a file",
+        what: "a SOCKET at the leaf — a thing that is not a file",
         refused: true,
         // #164 round 13. `walk()` refuses a FIFO, a socket or a device node in the source and the
         // destination's allowed leaves were the half that did not, so a later read would BLOCK rather
         // than fail. A path this planner only ever writes files to is a collision whatever else is there.
-        arrange: (root) => {
+        //
+        // **A socket rather than a FIFO, and the reason is a decision this repository had already made.**
+        // `cli/vendor.test.mjs` covers this rule with a stubbed `lstat` and says why in as many words:
+        // not with `mkfifo`, "which needs a shell-out and is not portable to every runner this suite has
+        // to pass on". The first draft here shelled out anyway — a recorded decision carried at one site
+        // and not at the next, which is this suite's own subject, found by Copilot round 2 on #168.
+        //
+        // The stub route that file uses is not available to a contract shared by three: only `vendor`'s
+        // signature takes an injectable `lstat`. A **unix domain socket** answers both problems at once —
+        // `net` creates one with no shell and no external tool, and it is a *thing that is not a file* by
+        // the same test a FIFO is. Measured: all three carriers refuse it, and `lstatSync` reports
+        // `isFile: false, isDirectory: false, isSymbolicLink: false`, which is the shape the rule turns on.
+        //
+        // The one real constraint is the socket path's ~104-byte limit. Measured at **96 bytes** on macOS,
+        // whose per-user tmpdir is a fixed-length shape, and ~60 bytes of headroom on a Linux runner where
+        // `TMPDIR` is `/tmp`. If it ever binds too long the precondition says so with the byte count
+        // rather than failing as a mystery.
+        arrange: async (root, servers) => {
+            const at = path.join(root, REL);
+            const server = net.createServer();
             try {
-                execFileSync("mkfifo", [path.join(root, REL)], { stdio: "ignore" });
+                await new Promise((resolve, reject) => {
+                    server.once("error", reject);
+                    server.listen(at, resolve);
+                });
             } catch (cause) {
-                return `mkfifo is unavailable (${cause.code ?? cause.message}) — this case establishes nothing without it`;
+                return `could not bind a socket at ${at} (${cause.code ?? cause.message}); the path is ${Buffer.byteLength(at)} bytes and the limit is about 104`;
             }
+            // `unref` so an open handle cannot keep the runner alive; closed at exit, because closing it
+            // here would UNLINK the socket and remove the very leaf being asserted on.
+            server.unref();
+            servers.push(server);
         },
     },
     {
@@ -214,10 +250,10 @@ const CONTRACT = [
 describe("the collision contract — every carrier answers the same", () => {
     for (const { what, refused, arrange, skipParent } of CONTRACT) {
         for (const { tool, ask } of CARRIERS) {
-            test(`${tool}: ${what}`, () => {
+            test(`${tool}: ${what}`, async () => {
                 const root = scratch();
                 if (!skipParent) fs.mkdirSync(path.join(root, SEGMENT), { recursive: true });
-                const precondition = arrange(root);
+                const precondition = await arrange(root, SERVERS);
                 assert.equal(precondition, undefined, `precondition: ${precondition}`);
                 assert.equal(
                     ask(root, REL),
