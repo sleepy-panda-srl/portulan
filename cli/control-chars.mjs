@@ -254,7 +254,16 @@ export function run(argv, stdin, say = (line) => process.stdout.write(`${line}\n
         if (argv[i] === "--exempt") {
             const file = argv[i + 1];
             i += 1;
-            if (file === undefined || file.startsWith("--")) {
+            // Only a MISSING value is refused. The first draft also rejected anything starting with
+            // `--`, copied from `./index.mjs`'s `--pack-root` — and here that guard blocks a path git
+            // can perfectly well track, in the one mechanism this whole check rests on: a file named
+            // `--asset.bin` could never be exempted, with no workaround. It buys nothing either, and
+            // that is the deciding half rather than the rarity: the mistake it was aimed at — a
+            // forgotten value, `--exempt --other` — is already caught by the exemption AUDIT, which
+            // says `--exempt --other is not in the scanned set` and exits 2. A guard whose only job is
+            // already done elsewhere, at the cost of a capability, is one to delete. Copilot, #167,
+            // suppressed channel.
+            if (file === undefined) {
                 say("  ✗ --exempt needs a path");
                 return 2;
             }

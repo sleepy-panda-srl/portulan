@@ -312,8 +312,26 @@ describe("run", () => {
 
     test("exit 2 for `--exempt` with no path, and for an argument it does not know", () => {
         assert.equal(run(["--exempt"], "x", () => {}), 2);
-        assert.equal(run(["--exempt", "--other"], "x", () => {}), 2);
         assert.equal(run(["somefile.md"], "x", () => {}), 2);
+    });
+
+    test("a path beginning with `-` can be exempted — git tracks those", () => {
+        // The first draft rejected any value starting with `--`, which made a file git can perfectly
+        // well track impossible to exempt, in the one mechanism this check rests on. The mistake that
+        // guard was aimed at — a forgotten value — is already caught by the audit, and better: it
+        // names the path and says it is not in the scanned set. Copilot, #167, suppressed channel.
+        const dir = tree({ "--asset.bin": Buffer.from([0x00, 0x01]) });
+        const asset = path.join(dir, "--asset.bin");
+        const lines = [];
+        assert.equal(run(["--exempt", asset], asset, (s) => lines.push(s)), 0);
+        assert.match(messages(lines), /1 exempted by declaration/);
+    });
+
+    test("a forgotten `--exempt` value is still caught, by the audit rather than by the parser", () => {
+        const dir = tree({ "a.md": "clean\n" });
+        const lines = [];
+        assert.equal(run(["--exempt", "--other"], path.join(dir, "a.md"), (s) => lines.push(s)), 2);
+        assert.match(messages(lines), /--other is not in the scanned set/);
     });
 
     test("an exempted binary asset is green, and the summary says one was exempted", () => {
@@ -348,7 +366,17 @@ describe("the live tree", () => {
             { encoding: "utf8", maxBuffer: 32 * 1024 * 1024 },
         );
         const files = splitList(listing).map((rel) => path.join(REPO, rel));
-        assert.ok(files.length > 100, `expected the tree to enumerate, got ${files.length} files`);
+        // A KNOWN PATH rather than a count. `files.length > 100` was a magic number that would fail on
+        // an unrelated change to the repository's size, and a hard-coded figure is a claim that rots —
+        // #77's lesson, which this very change applies to a stale line count in `verify/README.md`.
+        // What the assertion actually needs is that the enumeration REACHED the tree, which is the
+        // fail-open this repository has fixed five times; a known tracked file proves that, where a
+        // number only correlates with it. `inspect` refuses an empty list on its own account.
+        // Copilot, #167, suppressed channel.
+        assert.ok(
+            files.includes(path.join(REPO, "cli", "control-chars.mjs")),
+            "the enumeration did not reach the tree — this module's own file is missing from it",
+        );
         const result = inspect(files);
         assert.deepEqual(
             result.findings.map((f) => `${f.file}: ${f.first.name} at byte ${f.first.offset}`),
