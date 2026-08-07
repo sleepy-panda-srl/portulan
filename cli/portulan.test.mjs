@@ -320,3 +320,52 @@ test("VERSION has ONE carrier — it is read from package.json, never written do
         "VERSION is assigned a literal again — read it from package.json instead",
     );
 });
+
+// ONE carrier inside the CLI was not enough, because the release train has FOUR version fields and
+// only one pair was ever compared. `package.json` said 0.1.0 while `.claude-plugin/plugin.json`, the
+// marketplace's own top-level `version`, and its `plugins[0].version` all said 0.2.0 — and 0.1.0 had
+// already been released with different contents, so `portulan --version` from a checkout printed the
+// odd one out. Nothing went red for a whole milestone. Filed as #148.
+//
+// WHICH EDGES WERE UNGUARDED WAS MEASURED, NOT REASONED (../.portulan/memory/a-checkers-coverage-is-
+// measured-not-named.md). Each field was perturbed to 9.9.9 in turn, against the tree as it stood
+// BEFORE this test existed, and the recipe set rerun:
+//
+//   package.json ................... every recipe green ............................. UNGUARDED
+//   marketplace top-level version .. every recipe green ............................. UNGUARDED
+//   marketplace plugins[0].version . `plugin` exit 1, `tests` exit 1 ................ guarded
+//
+// The guarded row is ONE checker seen twice, not two: ./plugin-lint.mjs's `agree` check, reached by
+// the `plugin` recipe and again by plugin-lint's own `this repository lints green`. Worth stating,
+// because a coverage table that counted it twice would imply a redundancy that is not there.
+//
+// An earlier version of this comment claimed package.json was "the ONE edge nothing checked" and that
+// "the chain closes". The third row refutes both: `plugin-lint`'s `agree` check is gated on the
+// resolved entry and compares `entry.version` only, so the marketplace's own `version` is bound by
+// nothing — not for agreement, not even for shape. The claim was reasoned from reading the checker
+// and was wrong; the table above is what perturbation returned.
+//
+// So this binds the two unguarded edges and DELIBERATELY NOT the third: `plugin-lint` owns
+// entry -> plugin.json, and a second carrier of one check is the defect this repository names most
+// often. If the marketplace catalogue is ever meant to version independently of the plugin it ships,
+// this test is where that decision has to be written down — it has moved with the release every time
+// so far, which is an observation about practice rather than a rule anyone stated.
+test("every version field on the release train names the same version", () => {
+    const read = (...p) => JSON.parse(fs.readFileSync(path.join(HERE, "..", ...p), "utf8"));
+    const pkg = read("package.json");
+    const plugin = read(".claude-plugin", "plugin.json");
+    const marketplace = read(".claude-plugin", "marketplace.json");
+
+    assert.equal(
+        pkg.version,
+        plugin.version,
+        `package.json says ${pkg.version} and .claude-plugin/plugin.json says ${plugin.version} — ` +
+            "one repository ships under both, so one release cannot carry two numbers",
+    );
+    assert.equal(
+        marketplace.version,
+        plugin.version,
+        `.claude-plugin/marketplace.json says ${marketplace.version} at its top level and ` +
+            `plugin.json says ${plugin.version} — this field is checked by nothing else`,
+    );
+});
