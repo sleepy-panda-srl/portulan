@@ -113,8 +113,20 @@ process.on("exit", () => {
     }
 });
 
+// **A short prefix, deliberately, and `realpath` deliberately too.** The socket case binds at
+// `<scratch>/slot/leaf.md`, and a unix socket path is capped near 104 bytes — so every byte spent on a
+// descriptive prefix is a byte of headroom given away on a platform whose tmpdir is already long. With
+// `portulan-collisions-` this measured **96 of 104** on macOS; `pcol-` measures **81**, which is the same
+// suite with 23 bytes of slack instead of 8. The cost is that a stray scratch directory is less
+// self-identifying, which is worth less than the suite running everywhere.
+//
+// `os.tmpdir()` is kept rather than hard-coding `/tmp`, on two grounds. It is the platform's and the
+// operator's declared choice — CI images move it for disk and cleanup reasons — and, more to the point
+// here, **`/tmp` is itself a symlink on macOS**: rooting a suite whose whole subject is symlink handling
+// on a symlinked base is how a test starts passing for the wrong reason. `realpathSync` for the same
+// reason, so the chain a carrier walks contains only the links this suite put there on purpose.
 function scratch() {
-    const dir = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), "portulan-collisions-"));
+    const dir = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), "pcol-"));
     SCRATCH.push(dir);
     return dir;
 }

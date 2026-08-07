@@ -224,7 +224,9 @@ each time rather than pushed — correct under rule 4 as written, and the produc
 (filed 2026-07-29, closed 2026-08-07 by [#166](https://github.com/sleepy-panda-works/portulan/pull/166))
 — and the change that finally closed it recurred the same class inside its own fix, caught by Copilot's
 first round. _(This sentence read "still open" until the hour #166 merged, which is the live-fact class
-the pre-commit checkpoint exists for; corrected in the open rather than quietly.)_ #164 read it the other way and ran **eleven rounds past**, on the
+the pre-commit checkpoint exists for; corrected in the open rather than quietly.)_
+
+#164 read it the other way and ran **eleven rounds past**, on the
 maintainer's grant each time, and every one of those rounds found a real defect. So triage is not a free
 disposal: it is a deferral whose measured half-life here is *indefinite*, and the sibling exemption is
 the judgement that deferring a sibling of the rule **currently under repair** is the worse of the two
