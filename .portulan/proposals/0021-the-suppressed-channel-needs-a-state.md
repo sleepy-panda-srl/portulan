@@ -114,23 +114,32 @@ state it.
 
 1. **As #66 describes it** — every note becomes a thread at its `file:line`. The signal becomes
    complete: `CLEAN` means both channels are answered. Maximal cost, and it inverts rule 3 outright.
-2. **Repair the surfacing mechanism and change no rule.** This is now **three defects, not one**: the
-   concurrency cancel (ten notes), the column-0 truncation (two, plus a false count on a merged pull
-   request), and the by-design silence on an inline-comment submission (one). Notes stay non-blocking,
-   so rule 3 is untouched and this is an implementer's change rather than a proposal. It does **not**
-   give the channel state: an expanded note is still not a thread.
+2. **Repair the surfacing mechanism and change no rule.** Three defects, not one: the concurrency
+   cancel (ten notes), the column-0 truncation (two, plus a false count on a merged pull request), and
+   the by-design silence on an inline-comment submission (one). Notes stay non-blocking, so rule 3 is
+   untouched. **The first two ship with this pull request** — see the closing section. The third does
+   not: it is the verdict step deliberately staying silent when threads already carry the round, and
+   changing it is a design question rather than a defect. Shape 2 does **not** give the channel state:
+   an expanded note is still not a thread.
 3. **One aggregate thread per submission.** Rule 3 already prescribes one batched pull-request comment
    as the answer to a submission's notes; this gives that batch a *place that carries state*. The
    channel becomes gated — `CLEAN` stops being true with unread notes — at **one resolution per
    submission rather than one per note**, and low-confidence notes stay non-blocking individually,
    which is the calibration rule 3 was defending.
 
-**The drafter's recommendation, flagged as the drafter's.** Shape 2 is owed whatever the ruling: three
-of its four faults are plain defects in machinery this repository already decided it wanted, and the
-concurrency one silently disarms the merge gate's own surfacing on any pull request that pushes while a
-run is waiting — which is every busy pull request. Shape 3 is the one worth ruling on, because it is the
-only one that answers #66's actual complaint — *the channel carries no state at all* — without paying
-#66's price. Shape 1 is the faithful reading of #66 and is the most expensive.
+**The drafter's recommendation, flagged as the drafter's.** Shape 2 was owed whatever the ruling —
+its faults are plain defects in machinery this repository already decided it wanted, and the
+concurrency one silently disarmed the merge gate's own surfacing on any pull request that pushed while
+a run was waiting, which is every busy pull request. **The maintainer's instruction of 2026-08-07 was
+to fix them here rather than file them, so two of the three ship with this pull request** and the
+recommendation is spent. What is left to rule on is unchanged: **shape 3** is the one worth ruling on,
+because it is the only one that answers #66's actual complaint — *the channel carries no state at all*
+— without paying #66's price, and **shape 1** is the faithful reading of #66 and the most expensive.
+
+**Shape 2 shipping changes nothing about that choice, and it is worth saying why.** Every note the
+repairs recover still arrives with no thread, no Resolve control and no state. A pull request can be
+`CLEAN` with all of them unread, exactly as before. The repairs move notes from *lost* to *unread*;
+whether *unread* is acceptable is the whole question.
 
 **What shape 2 is not:** a substitute for the ruling. Every note in the table above was *surfaced
 correctly* on the submissions that were not cancelled, and the channel still carried no state on those —
@@ -149,12 +158,20 @@ Whichever is chosen, the observation procedure ships with it, per
 
 ## What this proposal deliberately does not do
 
-- **It does not implement any of the three shapes**, and does not assume the answer is shape 3.
+- **It does not implement shape 1 or shape 3**, and does not assume the answer is shape 3. Those are the
+  rule change; this document is the request for a ruling on them.
 - **It does not amend [`../memory/a-review-loop-needs-a-bound.md`](../memory/a-review-loop-needs-a-bound.md).**
   Rule 3 stands until the maintainer rules otherwise; this records what is now known against it.
-- **It does not fix the concurrency race or the extractor.** Both are shape 2, both are defects rather
-  than rule changes, and folding a repair into the proposal that discovered it would put an
-  implementation inside the artifact whose whole purpose is to be ruled on first.
+
+**Shape 2 ships with this proposal, on the maintainer's instruction of 2026-08-07** — *"address all of
+them as part of these PRs"*, given when the alternative offered was to file the two defects as issues.
+An earlier draft of this section declined to fix them here, on the argument that a repair inside the
+artifact meant to be ruled on first is an implementation smuggled past a gate. That argument was
+overruled, and the record of it is left standing rather than rewritten: the ruling is his to make and
+the reasoning is worth more than the tidy version. What ships is the pull request's own diff — the
+concurrency key, the fenced-block fix, and a regression test that lifts the real `awk` out of the
+workflow — and **none of it touches rule 3**, which is the line that separates shape 2 from the two
+shapes still awaiting a ruling.
 
 ## Provenance
 

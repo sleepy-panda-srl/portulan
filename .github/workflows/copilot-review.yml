@@ -129,11 +129,34 @@ permissions:
   contents: read
   pull-requests: write
 
-# A push supersedes the run waiting on the commit it replaced. Without this, the old run keeps polling a
-# head that is no longer the head, for up to the full budget, on a runner it does not need.
+# ONE RUN PER HEAD, AND NO RUN CANCELS ANOTHER. The group carries the head SHA, so a push starts a run
+# beside the one already waiting rather than killing it.
+#
+# It read `copilot-review-<pr-number>` with `cancel-in-progress: true` until 2026-08-07, for a reason
+# that was sound about runners and wrong about findings: *"a push supersedes the run waiting on the
+# commit it replaced"*. The run it superseded is **the only thing that quotes that round's suppressed
+# notes onto the pull request**, and Copilot's review of the superseded head arrives anyway, after the
+# cancel. So a push during the wait did not skip a redundant round — it discarded one, silently, into a
+# job summary nobody is required to open.
+#
+# Measured on #167, which is what put a number on it: of ten submissions, four never had their notes
+# quoted, and **three of those four were runs this line cancelled** — `d02111f` (5 notes), `35f0a64`
+# (3) and `cd902d3` (2), the last by a margin of five seconds. Every submission whose run was cancelled
+# lost its notes and every submission whose run completed kept them, with no exception in either
+# direction. `35f0a64` is the round a session reported to the maintainer as clean.
+#
+# What the old line was right about is priced rather than dismissed: a superseded run does keep a runner.
+# It does not keep it long — the wait exits as soon as ITS OWN head's round lands, which measured
+# 1m53s–3m47s on this repository, not the 20-minute budget. The budget is only spent when a round never
+# comes, which is already the failure case this workflow is loud about. A runner-minute is the price of
+# a finding, and the finding is worth more.
+#
+# The gate is unaffected: each run reports its check against its own commit, so a superseded run's
+# result attaches to a commit that is no longer the head and gates nothing. The verdict step's stale-
+# approval sweep already handles an approval naming a non-head commit — that is what it was built for.
 concurrency:
-  group: copilot-review-${{ github.event.pull_request.number }}
-  cancel-in-progress: true
+  group: copilot-review-${{ github.event.pull_request.number }}-${{ github.event.pull_request.head.sha }}
+  cancel-in-progress: false
 
 jobs:
   copilot-reviewed:
@@ -362,11 +385,37 @@ jobs:
                     # Copilot's markup moved: a change of case alone made the detector say "absent"
                     # while the extractor would happily have read it. Same case-insensitive test,
                     # four answers, no drift.
+                    # A FENCED CODE BLOCK IS NOT MARKUP, and until 2026-08-07 all three matchers read it
+                    # as though it were. Copilot quotes the source line each note is about, and this
+                    # repository's reviews quote SHELL — where a comment starts with `#` at column 0 and
+                    # is therefore indistinguishable, line-wise, from a markdown heading. So a quoted
+                    # shell comment inside the notes block terminated the extraction at the first note.
+                    #
+                    # Measured on #167: the verdict review for `d21a341` announced *"3 suppressed
+                    # low-confidence note(s) are quoted below"* and quoted ONE, because note 1's snippet
+                    # opened with `# A raw NUL shipped inside ...`. Two notes were lost and a FALSE COUNT
+                    # was posted onto a pull request that then merged — the count and the extraction
+                    # disagreeing about the same body, which is the drift the one-matcher design exists
+                    # to prevent, arriving through the one input nobody had modelled.
+                    #
+                    # `fence` toggles on every ``` line and every matcher below is gated on it. The
+                    # toggle rule deliberately does NOT `next`: a fence line inside the block is content
+                    # and must still print. Note this also closes, in the fail-closed direction, the case
+                    # the column-0 anchor was chosen for — an indented `#` in quoted code was already
+                    # safe, and a column-0 one now is too, so the anchor is no longer load-bearing alone.
+                    # THE FENCE RULE IS WRITTEN OUT IN ALL THREE PROGRAMS RATHER THAN SPLICED FROM A
+                    # SHELL VARIABLE, and that is a constraint rather than a preference: the recipe
+                    # that runs these — `.portulan/verify/workflow-filters.mjs` — lifts an awk program
+                    # only when it is a single-quoted argument, and reports `2` when it can see more
+                    # invocations than it can read. A spliced `"$FENCE"` made all four unreadable and
+                    # turned the recipe into could-not-run, which is the fail-closed behaviour working:
+                    # the harness refused to report on programs it could no longer parse. Repetition
+                    # that a harness executes beats a shared literal it cannot see.
                     SUPPRESS='suppress'
                     present=$(printf '%s\n' "$body" | awk -v m="$SUPPRESS" \
-                      '(/<summary/ || /^#+[[:blank:]]/) && index(tolower($0), m) { print "yes"; exit }')
+                      '/^```/ { fence = !fence } !fence && (/<summary/ || /^#+[[:blank:]]/) && index(tolower($0), m) { print "yes"; exit }')
                     count=$(printf '%s\n' "$body" | awk -v m="$SUPPRESS" \
-                      '(/<summary/ || /^#+[[:blank:]]/) && index(tolower($0), m) { if (match($0, /\([0-9]+\)/)) print substr($0, RSTART+1, RLENGTH-2); exit }')
+                      '/^```/ { fence = !fence } !fence && (/<summary/ || /^#+[[:blank:]]/) && index(tolower($0), m) { if (match($0, /\([0-9]+\)/)) print substr($0, RSTART+1, RLENGTH-2); exit }')
                     # Terminated by the closing tag, by the NEXT heading, or by the stats list
                     # spelling 4 puts after the notes — without the last two, a spelling-4 block
                     # quotes `Files reviewed: 3/3` onto the pull request as though Copilot had
@@ -386,8 +435,9 @@ jobs:
                     # load-bearing. If an indented marker is ever observed, the fixture goes in
                     # first and the anchor changes second.
                     notes=$(printf '%s\n' "$body" | awk -v m="$SUPPRESS" '
-                      (/<summary/ || /^#+[[:blank:]]/) && index(tolower($0), m) { f = 1; next }
-                      f && (/<\/details>/ || /^#+[[:blank:]]/ || /^- \*\*Files reviewed:/) { exit }
+                      /^```/ { fence = !fence }
+                      !fence && (/<summary/ || /^#+[[:blank:]]/) && index(tolower($0), m) { f = 1; next }
+                      f && !fence && (/<\/details>/ || /^#+[[:blank:]]/ || /^- \*\*Files reviewed:/) { exit }
                       f { print }')
                     # ABSENCE NEEDS POSITIVE EVIDENCE, which is the half #142 is really about. A
                     # structural matcher is still a matcher: move the section again and the silent
