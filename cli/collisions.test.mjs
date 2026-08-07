@@ -1,0 +1,228 @@
+// The collision contract — one rule, three carriers, pinned together.
+//
+//   node --test "cli/**/*.test.mjs"
+//
+// Three tools in this CLI write files into a tree somebody else owns, and all three answer the same
+// question first: **is something already at the path I am about to write?** `init.mjs`, `new.mjs` and
+// `vendor.mjs` each export a `collisions()` that answers it, with three different signatures, three
+// different return shapes and three different refusal vocabularies — because each was copied from the
+// one before it and then grew.
+//
+// ## Why this suite exists rather than a fourth implementation
+//
+// A rule holds where it is enforced. Three enforcement sites are three chances to repair one and leave
+// the others, which is the class [#91](https://github.com/sleepy-panda-works/portulan/issues/91) names
+// and the standing ruling of 2026-07-27 forbids — *"never ship a change that corrects one wrong claim
+// while knowingly leaving its neighbours"*. It is not hypothetical here: on
+// [#164](https://github.com/sleepy-panda-works/portulan/pull/164) round 4 found a directory sitting at a
+// leaf that `vendor`'s preflight passed and `writeFileSync` then threw `EISDIR` on, the shape had been
+// copied from `new.mjs`, and the fix had to land in two files; round 12 then found the same collision
+// reached from the source side, eight rounds later, in a rule the same change had written two rounds
+// earlier.
+//
+// The repair this repository reaches for first is to leave **one** site — `cli/doctor.mjs` imports one
+// frontmatter parser rather than minting a second, `cli/vendor.mjs` asks the real `doctor` for a verdict
+// rather than forming a second opinion, and `#164`'s own `scan()` yields files and directories from one
+// descent so the guards cannot come to differ. That repair is not available here without a shared module
+// none of the three wants: the signatures differ because the callers differ — `init` writes a drafted
+// map, `new` writes one artifact, `vendor` copies a workspace and carries an allow-list for the carve-out
+// none of the others has.
+//
+// So this suite does the second-best thing, which `cli/doctor.test.mjs` already models where
+// `--repo-root` and `--pack-root` are asserted together *"so a future divergence reds here rather than
+// drifting"*: it names the behaviour all three owe and asserts it of each. **It was green on the day it
+// landed and that is the point** — it establishes nothing new about the tree. What it converts is an
+// agreement currently held by three independent accidents into one that goes red when it stops being
+// held.
+//
+// ## What it establishes, and what it cannot
+//
+// It establishes that each carrier refuses every state below and permits the one that is genuinely
+// absent, measured against a real filesystem rather than argued from the source. **The three diverge in
+// their sentences and in their internal shape and this suite deliberately does not pin either**: the
+// vocabularies are written for three different readers, and a test that froze them would stop the
+// refusals being improved. What is pinned is the answer.
+//
+// It also pins the **roster**: a fourth `collisions()` appearing in `cli/` reds the last test in this
+// file. That is the half a behavioural contract cannot supply on its own — a new copy that nothing
+// asserts is exactly how the third one came to differ from the first.
+//
+// It cannot establish that the three *sentences* are right, that any caller uses its carrier correctly,
+// or that the allow-list `vendor` alone carries is sound — that one is `cli/vendor.test.mjs`'s, since a
+// contract shared by three may only name what all three have.
+
+import { test, describe } from "node:test";
+import assert from "node:assert/strict";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
+import { execFileSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
+
+import { collisions as initCollisions } from "./init.mjs";
+import { collisions as newCollisions } from "./new.mjs";
+import { collisions as vendorCollisions } from "./vendor.mjs";
+
+const HERE = path.dirname(fileURLToPath(import.meta.url));
+
+// ONE exit handler for every scratch directory, not one each — ./new.test.mjs records why, and
+// ./init.test.mjs records what ignoring it cost.
+const SCRATCH = [];
+process.on("exit", () => {
+    for (const dir of SCRATCH) {
+        try {
+            fs.chmodSync(path.join(dir, "slot"), 0o755);
+        } catch {
+            /* only the EACCES case locks a directory, and only that case needs unlocking to remove */
+        }
+        fs.rmSync(dir, { recursive: true, force: true });
+    }
+});
+
+function scratch() {
+    const dir = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), "portulan-collisions-"));
+    SCRATCH.push(dir);
+    return dir;
+}
+
+// The leaf every case is about, one directory down, so the chain has a segment above the leaf to put a
+// symlink on. Every carrier is asked about a path it would WRITE, which is the only shape any of them
+// plans: all three walk a list of files.
+const REL = "slot/leaf.md";
+const SEGMENT = REL.split("/")[0];
+
+/**
+ * The three carriers, each reduced to the one question they share.
+ *
+ * The adapters exist because the signatures differ, and the differences are real rather than accidental
+ * — `init` is handed the drafted file map it is about to write, `new` a list of absolute destinations
+ * plus the root that bounds the walk, `vendor` a destination directory and the relative paths under it.
+ * Each returns a different record shape, so the adapter reduces all three to a boolean: **did this
+ * carrier report a collision at all**. Everything below the boolean is each tool's own and is not pinned
+ * here.
+ */
+const CARRIERS = [
+    { tool: "init.mjs", ask: (root, rel) => initCollisions(root, new Map([[rel, "contents"]])).length > 0 },
+    { tool: "new.mjs", ask: (root, rel) => newCollisions([path.join(root, rel)], root).length > 0 },
+    { tool: "vendor.mjs", ask: (root, rel) => vendorCollisions(root, [rel]).length > 0 },
+];
+
+/**
+ * The states a destination can be in, and what every carrier owes for each.
+ *
+ * `arrange` may return a precondition failure as a string; a case that could not be set up **fails**
+ * rather than passing, per ../.portulan/memory/verify-preconditions-fail-closed.md — a check that
+ * silently stops checking where it matters is worse than none, and the EACCES case is precisely where a
+ * root-run suite would otherwise report green having established nothing.
+ */
+const CONTRACT = [
+    {
+        what: "absent — the one state that is not a collision",
+        refused: false,
+        arrange: () => {},
+    },
+    {
+        what: "an ordinary file already at the leaf",
+        refused: true,
+        arrange: (root) => fs.writeFileSync(path.join(root, REL), "someone else's file"),
+    },
+    {
+        what: "a DIRECTORY at the leaf, where only a file was ever planned",
+        refused: true,
+        // #164 round 4: the exemption for an existing directory is right for the intermediate segments
+        // and wrong at the leaf, and the write threw EISDIR mid-copy — the preflight's whole promise,
+        // broken by the check that keeps it.
+        arrange: (root) => fs.mkdirSync(path.join(root, REL)),
+    },
+    {
+        what: "a SYMLINK at the leaf",
+        refused: true,
+        // Refused rather than resolved: deciding whether a link's target is "really" inside the intended
+        // tree is a containment judgement with a bad failure mode, where refusing has none. `init` wrote
+        // nine files outside a repository and reported success before this rule existed.
+        arrange: (root) => fs.symlinkSync("/etc/hosts", path.join(root, REL)),
+    },
+    {
+        what: "a SYMLINK on the chain above the leaf",
+        refused: true,
+        arrange: (root) => fs.symlinkSync(fs.realpathSync(os.tmpdir()), path.join(root, SEGMENT)),
+        skipParent: true,
+    },
+    {
+        what: "a FIFO at the leaf — a thing that is not a file",
+        refused: true,
+        // #164 round 13. `walk()` refuses a FIFO, a socket or a device node in the source and the
+        // destination's allowed leaves were the half that did not, so a later read would BLOCK rather
+        // than fail. A path this planner only ever writes files to is a collision whatever else is there.
+        arrange: (root) => {
+            try {
+                execFileSync("mkfifo", [path.join(root, REL)], { stdio: "ignore" });
+            } catch (cause) {
+                return `mkfifo is unavailable (${cause.code ?? cause.message}) — this case establishes nothing without it`;
+            }
+        },
+    },
+    {
+        what: "an UNREADABLE directory on the chain — a question that could not be answered",
+        refused: true,
+        // The only-ENOENT rule: an EACCES is not an absence, and answering it "nothing there" is
+        // "nothing looked" reported as "nothing wrong". Three of #164's thirteen rounds were this rule
+        // missing from one site while the same change stated it three times in its own header.
+        //
+        // `chmod` is the wrong lever where a stub is available — root ignores it — and only `vendor`'s
+        // signature takes an injectable `lstat`, so a contract shared by three has to use the real
+        // filesystem. It therefore CHECKS that the arrangement took, and fails loudly when it did not.
+        arrange: (root) => {
+            fs.mkdirSync(path.join(root, SEGMENT));
+            fs.chmodSync(path.join(root, SEGMENT), 0o000);
+            try {
+                fs.lstatSync(path.join(root, REL));
+            } catch (cause) {
+                if (cause.code === "EACCES" || cause.code === "EPERM") return undefined;
+                return `the locked directory raised ${cause.code} rather than EACCES`;
+            }
+            return "the locked directory is still readable — this suite is running as a user chmod does not bind (root?), so this case would report green having established nothing";
+        },
+        skipParent: true,
+    },
+];
+
+describe("the collision contract — every carrier answers the same", () => {
+    for (const { what, refused, arrange, skipParent } of CONTRACT) {
+        for (const { tool, ask } of CARRIERS) {
+            test(`${tool}: ${what}`, () => {
+                const root = scratch();
+                if (!skipParent) fs.mkdirSync(path.join(root, SEGMENT), { recursive: true });
+                const precondition = arrange(root);
+                assert.equal(precondition, undefined, `precondition: ${precondition}`);
+                assert.equal(
+                    ask(root, REL),
+                    refused,
+                    refused
+                        ? `${tool} permitted a write into ${what} — the refusal has to stand ahead of the first byte`
+                        : `${tool} refused a path that is genuinely absent`,
+                );
+            });
+        }
+    }
+});
+
+describe("the roster is pinned too", () => {
+    test("exactly three files in cli/ export a `collisions`, and this suite asserts all three", () => {
+        // The half a behavioural contract cannot supply on its own. A fourth copy of this shape is how
+        // the third came to differ from the first, and a copy nothing asserts is invisible to every test
+        // above. Whoever adds one reds here and has two honest ways out: add it to CARRIERS, or call an
+        // existing carrier instead — which is the repair this repository reaches for first.
+        const found = fs
+            .readdirSync(HERE)
+            .filter((f) => f.endsWith(".mjs") && !f.endsWith(".test.mjs"))
+            .filter((f) => /^export function collisions\b/m.test(fs.readFileSync(path.join(HERE, f), "utf8")))
+            .sort();
+        assert.deepEqual(found, ["init.mjs", "new.mjs", "vendor.mjs"]);
+        assert.deepEqual(
+            CARRIERS.map((c) => c.tool).sort(),
+            found,
+            "a `collisions` exists in cli/ that this contract does not assert",
+        );
+    });
+});
