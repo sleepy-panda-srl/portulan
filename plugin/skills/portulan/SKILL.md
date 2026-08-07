@@ -90,16 +90,18 @@ slots above points at it**: read them in order and you will never meet a pack. R
 what a declared pack does and does not deliver here, because the gap is invisible from inside a booted
 session.
 
-**A pack resolves against a root somebody names** — a feed install or a directory beside the workspace,
-those being the two shapes a named root takes — and where it resolves, its gate-policy fragments reach
-the compiled policy, add-restriction-only. Nothing here is pinned: a `packs` entry is a name, and the
-version is whatever the named root holds. Four things do not follow, and **each is milestone 7's, owed
-rather than broken**:
+**A pack resolves against a root, and where that root came from decides what "resolved" proves.** The
+manifest's `tree` derives one — `<tree>/packs`. The CLI's `--pack-root` names any directory instead, as
+many as it is given, and named roots **replace** the derived one rather than being searched ahead of it:
+that is what lets *"this pack resolved from the feed"* mean something a copy lying in the local tree
+cannot satisfy. Where a pack resolves, its gate-policy fragments reach the compiled policy,
+add-restriction-only. Nothing here is pinned — a `packs` entry is a name, and the version is whatever
+the root holds. Four things do not follow, and **each is milestone 7's, owed rather than broken**:
 
 - **Nothing discovers the root.** No host's plugin cache is read to find one, which is the same absence
-  step 2a reports for a pointer. Until it lands, a workspace whose manifest declares no `tree` gets no
-  root at all and its packs are reported unresolvable — so *"declared"* and *"resolved"* are two states
-  here, and which one you are in depends on a path somebody typed.
+  step 2a reports for a pointer. Until it lands, a workspace declaring no `tree` derives no root, and
+  unless one is named its packs are reported unresolvable — so *"declared"* and *"resolved"* are two
+  states here, and which one you are in depends on a path somebody typed.
 - **A pack's skills do not register as host capabilities — whatever the channel.** Not a property of
   feeds: it holds for a pack bundled inside a plugin that declares the pack directory as a skills path,
   which is the arrangement this engine itself ships. So a pack's rituals are invoked by **naming their
