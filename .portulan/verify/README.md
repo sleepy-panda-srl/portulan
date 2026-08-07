@@ -7,7 +7,7 @@
 
 ## The recipes
 
-Eight, as of milestone 5. All are declared in [`../workspace.json`](../workspace.json), which is also
+Nine, as of milestone 7. All are declared in [`../workspace.json`](../workspace.json), which is also
 where the **default** is named — [`docs.sh`](docs.sh), the one the Stop-gate now actually runs when
 nothing more specific applies. Run any of them from anywhere in the tree:
 
@@ -20,6 +20,7 @@ nothing more specific applies. Run any of them from anywhere in the tree:
 ./.portulan/verify/compile.sh
 ./.portulan/verify/workflow-filters.sh
 ./.portulan/verify/index.sh
+./.portulan/verify/control-chars.sh
 ```
 
 | Recipe | Covers | Needs |
@@ -32,6 +33,7 @@ nothing more specific applies. Run any of them from anywhere in the tree:
 | [`compile.sh`](compile.sh) | both compiled artifacts — [`../../.claude/settings.json`](../../.claude/settings.json) and [`../compile/github-ruleset.json`](../compile/github-ruleset.json) — are exactly what [`../gates.json`](../gates.json) compiles to | `bash`, `node` |
 | [`workflow-filters.sh`](workflow-filters.sh) | every jq program the workflows run, lifted out of the parsed `run:` scalars and executed against null-bearing fixtures — exact stdout, exact exit status | `bash`, `node`, `jq` |
 | [`index.sh`](index.sh) | every generated index a workspace declares — the memory store's, and since 2.5 the handoff series' — is exactly what its source renders, and neither the store index nor the store is over the budget its manifest declares | `bash`, `git`, `node` |
+| [`control-chars.sh`](control-chars.sh) | no tracked file carries a byte in the C0 range other than TAB and LF, nor DEL — scanned as bytes, because the one tool that would have shown the last one is the tool the byte silences | `bash`, `git`, `node` |
 
 Exit `0` green · `1` red · `2` could not run — and that third code is why each recipe declares its needs
 in the manifest rather than discovering them: a recipe that *could not run* must never be mistaken for
@@ -68,6 +70,35 @@ for is already barred. A rail whose only legal answer is *do nothing* is one tha
 which is the failure this whole file is written against. [`../../spec/slots.md`](../../spec/slots.md)
 carries the argument; whether the series wants a rail on some other axis is the maintainer's question
 and is deferred, not answered.
+
+**The ninth is [`control-chars.sh`](control-chars.sh)**, and it exists because of a byte that got past
+every other one. A raw NUL shipped inside [`workflow-filters.mjs`](workflow-filters.mjs) as the
+separator in a template literal, where the escape `\^@` was meant; a reviewer caught it, and nothing
+here did. The reason is the part worth writing down: `file` classified the source as *binary data*, and
+`grep -n "identity = "` against the line that plainly contains that text **exited 1** — a silent false
+negative. **Every recipe in this directory but this one is built out of `grep`**, so the one tool that
+would have shown it is the tool the byte silences. `git` rendered the diff as text only because the byte
+sat past its first 8000 bytes; a few hundred lines earlier and a 660-line instrument would have arrived
+in review as `Binary files differ`, a file nobody could read in a pull request that looked complete. It
+then reproduced twice more while being fixed. The defect was repaired in
+[#64](https://github.com/sleepy-panda-works/portulan/pull/64) and the *rail* was filed as
+[#68](https://github.com/sleepy-panda-works/portulan/issues/68) under
+[`a-review-loop-needs-a-bound`](../memory/a-review-loop-needs-a-bound.md) rule 4; this is that rail.
+
+**It scans BYTES, and its exemption is a NAME rather than a sniff.** Both follow from the incident.
+Reading bytes rather than decoded text is what makes it exact — decoding invalid UTF-8 yields U+FFFD,
+which hides bytes and invents a character that was not there. And a *binary test* is refused outright,
+which is the half a reader will assume went the other way: every binary sniff in general use is keyed on
+NUL, so a check that skipped what `file` and `git` call binary would have skipped the single file it
+exists to catch. A repository that later carries a real binary asset says so by name, in the `EXEMPT`
+array in the recipe — one reviewable line — and the scanner **audits that array in both directions**, at
+exit `2`: an entry naming nothing scanned is stale, and an entry over a file carrying no control
+character is dead. An exemption nobody audits is the allow-list defect this project has already paid for
+once, in [`../../cli/vendor.mjs`](../../cli/vendor.mjs).
+
+**CR is refused, and that is a decision rather than an oversight.** No tracked file carries one, so the
+rail costs nothing today and stops CRLF arriving unnoticed in a tree that is uniformly LF. `DEL` is
+refused too, though it is outside C0: it is the same defect, invisible, and `cat -v` prints it as `^?`.
 
 **[`compile.sh`](compile.sh) never writes.** It recompiles in memory and byte-compares. A verify recipe
 that repairs what it is checking always passes, which is a fail-open dressed as a convenience — and this
@@ -170,16 +201,21 @@ number that makes it not. It was stale when filed and stale again twice since. T
 rather than corrected, because `tests.sh` prints the live one on every run and that carrier cannot be
 wrong. `spec/README.md` carried a sibling of this defect and lost its count in the same change.)_
 **Nothing tests the recipes themselves** — `docs.sh`, `json.sh`, `doctor.sh`, `tests.sh`, `plugin.sh`,
-`compile.sh`, `workflow-filters.sh` and `index.sh` are verified by being run, which is a weaker claim
-than it sounds, and it is weakest on `workflow-filters.sh`: its reader of the workflow files is code
-that can be subtly wrong, and what stands behind that reader is a second, independent reading of the
-same file that has to agree with it — not a suite. `index.sh` is the newest and is not in that
-position: everything in it that could be subtly wrong lives in [`../../cli/index.mjs`](../../cli/index.mjs),
-which the suite does cover, and the wrapper itself does dependency guarding, the workspace audit, and
-exit-code passthrough — the three things every recipe here has had a defect in, and the three the
-paragraphs above exist to explain. It is not the *smallest* of the eight, which its shape might
-suggest: at 100 lines it is second-largest with `doctor.sh`, because the audit and the guard are what
-take the room.
+`compile.sh`, `workflow-filters.sh`, `index.sh` and `control-chars.sh` are verified by being run, which
+is a weaker claim than it sounds, and it is weakest on `workflow-filters.sh`: its reader of the workflow
+files is code that can be subtly wrong, and what stands behind that reader is a second, independent
+reading of the same file that has to agree with it — not a suite. **`index.sh` and `control-chars.sh`
+are not in that position**: everything in either that could be subtly wrong lives in
+[`../../cli/index.mjs`](../../cli/index.mjs) and
+[`../../cli/control-chars.mjs`](../../cli/control-chars.mjs), which the suite does cover, and each
+wrapper itself does dependency guarding, a named-list audit, and exit-code passthrough — the three
+things every recipe here has had a defect in, and the three the paragraphs above exist to explain.
+Neither is the *smallest*, which their shape might suggest; both sit near the top of this directory by
+size, because the audit and the guard are what take the room.
+_(That sentence used to carry `index.sh`'s line count, and the count was stale by eleven lines when this
+paragraph was next edited. The figure is gone rather than corrected, on the repair
+[#77](https://github.com/sleepy-panda-works/portulan/issues/77) already established for a sibling of it
+two paragraphs above: a number nothing regenerates is a claim that rots, and `wc -l` is one command.)_
 That gap now has a task of its own rather than a mention in a handoff:
 [`../tasks/0004-a-harness-for-the-verify-recipes.md`](../tasks/0004-a-harness-for-the-verify-recipes.md). Every defect ever found in them was found by a human or a reviewer, and
 the two most recent were found by a reviewer on the pull request that introduced them, in the two recipes
@@ -218,6 +254,7 @@ less.
 | `proposal` | Every Markdown file in [`../proposals/`](../proposals/) is a numbered `NNNN-slug.md`; every proposal records an outcome under `**Decision.**` or `**Status.**`; and every proposal names, by full URL, the pull request that filed it. | `core/operating/evolution.md` has said since milestone 1 that a rule change is a *proposal as a pull request* — "reviewable, diff-able, and revertable". All fourteen had in fact arrived that way and **not one recorded which pull request**, so the sentence bound a convention: nothing could get from a rule to the review that accepted it, and a proposal committed straight to `main` would have looked identical to one that went through the gate. Red-first against the real tree — all fourteen failed before the pointers were resolved, mechanically, through GitHub's own commit→pull-request mapping. What it deliberately does **not** check is whether a proposal is accepted, pending or rejected: that reading is `cli/librarian.mjs`'s, where a wrong answer costs a line in a report, while here it would be a grep classifying prose and a red on a proposal whose only fault is the maintainer's phrasing — which is how a whole recipe gets switched off. |
 | `plan` | No milestone row in [`../../docs/plan.md`](../../docs/plan.md) carries an amendment argument (`**Criterion amended`) or a session note (`[Ss]ession N of`); every row parses into its five cells; and every row's Status cell stays within 500 **bytes**. The two text patterns are matched **inside a milestone-table row only**. | The table is what a session reads to learn what it must build, and it had become the archive of how each row got that way: 63,420 characters of row, **11% of it criterion**, one Status cell holding 16,505 characters on a single line. None of that history was junk — it is the amendment arguments, the expansion/narrowing verdicts and the close evidence that make a criterion auditable — but in the row it buried the binding words, and the file every session boots from paid for it on every boot. The history now lives in [`../../docs/milestones/`](../../docs/milestones/), moved verbatim, and this is what stops it flowing back. The Status budget is a **byte** count: the cell is one line by construction, so a line budget would be the number 1 and bound nothing — and bytes are what `awk`'s `length()` actually measures on the `mawk` Ubuntu runners ship, in cells full of three-byte em dashes. Labelling it *characters* would have printed a number the reader could not reproduce, inside the check whose subject is claims that outrun their measurement. Unlike `record`'s two floors this rail is deliberately **retroactive**: there, a cutoff was mandatory because a rule written after a record cannot bind it without rewriting the record to suit the rule; here the remedy is *relocation*, which preserves a merged record byte-for-byte, so every historical row can comply without one word being lost. Retroactivity is honest exactly when compliance destroys nothing. |
 | `plugin` | Both packaging manifests parse and agree; every component path resolves inside the tree — after canonicalisation, so a symlink out of it is an escape rather than containment; every declared skill and agent is a real artifact with a kebab-case `name` and a non-empty `description`. | From milestone 3 the repository *is* a distribution channel, and a marketplace declaring no plugins — or a skill path resolving to nothing — installs cleanly and delivers nothing. The platform's own validator reports the empty-marketplace case as a *warning*, which is the severity a milestone walks past. |
+| `chars` | No tracked file — nor anything new and not ignored — carries a byte in the C0 range other than TAB and LF, nor DEL. Read as bytes and never decoded; a symlink is read as its target *string* rather than followed. A path this repository declares binary is exempt by NAME, and that declaration is audited both ways: an entry naming nothing scanned is stale, an entry over a clean file is dead, and either is exit `2`. | A NUL shipped in a 660-line instrument here and **nothing in this repository could see it**: `file` called the source binary data, and `grep` against a line that plainly contains the text it was given exited `1` — a silent false negative, in the tool every other recipe on this page is built out of. That is what makes this a rail rather than a matter of taste: the failure mode is not *somebody wrote something wrong*, it is *the checks went quiet*. It is red rather than one of `doctor`'s notes because an invisible byte is not a question of judgement, and the exemption is a name rather than a content test because every binary sniff in use is keyed on NUL — the one byte a sniff would therefore have hidden. |
 
 ## Provenance
 
@@ -712,16 +749,21 @@ available, not a refusal provoked at the API. Attempting one is barred anyway �
 ([`../gate-map.md`](../gate-map.md)) — and what stands behind that last inch is `enforce_admins: true`
 on the live protection, which no pull request can demonstrate about itself.
 
-**The register, after drill 1.** Six rails have still never been observed red in CI:
+**The register, after drill 1.** Seven rails have still never been observed red in CI:
 
 | Seen to fire in CI | Not yet |
 |---|---|
-| `docs` (2026-07-28, incidental) · `tests` (2026-07-30, drill) | `json` · `doctor` · `plugin` · `compile` · `workflow-filters` · `index` |
+| `docs` (2026-07-28, incidental) · `tests` (2026-07-30, drill) | `json` · `doctor` · `plugin` · `compile` · `workflow-filters` · `index` · `control-chars` |
+
+`control-chars` joins the right-hand column on the day it lands, and it is worth saying that it has been
+forced red **locally**, four ways — a NUL reproducing the original incident, a CRLF, a dead exemption and
+a stale one — with `grep` and `file` observed missing the first of them on the same file in the same
+run. Local is not CI, which is the distinction this whole register exists to keep.
 
 That gap is narrower than it looks in one respect and not in another, and both halves matter to
-whoever sets the calendar. All eight run through the **same** loop in the **same** job, so the shared
+whoever sets the calendar. All nine run through the **same** loop in the **same** job, so the shared
 half of the seam — a non-zero exit becoming `status=1`, becoming a failed check, becoming `BLOCKED` —
-is now covered twice by two different recipes and does not need covering eight times. What is *not*
+is now covered twice by two different recipes and does not need covering nine times. What is *not*
 covered is anything recipe-specific about running under CI, and this page already documents three
 places that bites: the runner's checkout is shallow, so anything reading `git log` refuses or lies;
 `doctor` resolves claims against the filesystem, so a gitignored path is a permanent false red there
