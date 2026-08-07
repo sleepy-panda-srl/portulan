@@ -350,7 +350,7 @@ test("VERSION has ONE carrier — it is read from package.json, never written do
 // often. If the marketplace catalogue is ever meant to version independently of the plugin it ships,
 // this test is where that decision has to be written down — it has moved with the release every time
 // so far, which is an observation about practice rather than a rule anyone stated.
-test("every version field on the release train names the same version", () => {
+test("the two version fields nothing else checks agree with plugin.json", () => {
     const read = (...p) => JSON.parse(fs.readFileSync(path.join(HERE, "..", ...p), "utf8"));
     const pkg = read("package.json");
     const plugin = read(".claude-plugin", "plugin.json");
