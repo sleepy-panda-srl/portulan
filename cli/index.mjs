@@ -760,6 +760,17 @@ function siteOutside(dir, declaredPath, slot, word) {
  * write is an `IndexError`, not a red** — an uncaught ENOENT here exits node with 1, which `index.sh`
  * passes through as "the index has drifted", said about a series nothing had judged, for what is a
  * configuration problem (`a-checker-must-refuse-what-it-cannot-check`; found by Copilot on #72).
+ *
+ * **And a failed READ is the same fact, which this function did not say for five review rounds.**
+ * Only `ENOENT` means the index is absent; `EACCES`, `EISDIR`, `ELOOP` and the rest mean the process
+ * could not look. Reported as *declared and absent* they came back as actionable drift at exit 1,
+ * telling the operator to regenerate a file that may be correct and merely unopenable — *could not
+ * look* dressed as *I looked and found nothing*, which is the record above in as many words. Issue
+ * #91; Copilot raised it verbatim on #85 in rounds three through seven, each triaged under
+ * `a-review-loop-needs-a-bound.md` rule 4, which is that rule working rather than failing: a triaged
+ * note is not a withdrawn one. The rule it restores is stated three times in `./vendor.mjs` and again
+ * in `./doctor.mjs`, `./new.mjs`, `./init.mjs`, `./plugin-lint.mjs` and `./compile.mjs` — this was the
+ * one read in the repository that did not carry it.
  */
 function compareOrWrite({ dir, declaredPath, indexPath, expected, write, series, source, fail }) {
     if (write) {
@@ -778,7 +789,19 @@ function compareOrWrite({ dir, declaredPath, indexPath, expected, write, series,
     let actual = null;
     try {
         actual = fs.readFileSync(indexPath);
-    } catch { /* absent — reported below, and never repaired here */ }
+    } catch (cause) {
+        // Only ENOENT is the red below. Everything else is a fact about the filesystem, and the two
+        // repairs have nothing in common: one is `run the generator`, the other is `fix the permissions
+        // on this path`. The errno is named because it is the whole diagnosis — `declared and absent`
+        // sent an operator to regenerate a file that was sitting right there.
+        if (cause.code !== "ENOENT") {
+            throw new IndexError(
+                `cannot read the index at ${declaredPath} — ${cause.code ?? cause.message}. ` +
+                    `Refusing rather than reporting it absent: this is a fact about the filesystem, ` +
+                    `not about the ${source}`,
+            );
+        }
+    }
 
     if (actual === null) {
         fail(series, "index", `${declaredPath} is declared and absent — run \`node cli/index.mjs ${dir}\` to generate it`);
@@ -790,15 +813,14 @@ function compareOrWrite({ dir, declaredPath, indexPath, expected, write, series,
 /** The memory store's index and its budgets. */
 function judgeMemory(dir, workspace, { write, fail }) {
     const memory = workspace.memory;
-    if (!memory) return { declared: false, path: null, expected: null };
+    if (!memory) return { declared: false, path: null, expected: null, budgets: 0 };
 
     const declaredPath = memory.index?.path;
     if (!declaredPath) {
         // A budget with no index is coherent — a workspace may rail its store's size and generate
         // nothing — so this is not an error. There is simply no file to render.
         const store = readStore(dir, workspace);
-        budgetFindings(memory, store, null, fail);
-        return { declared: true, path: null, expected: null };
+        return { declared: true, path: null, expected: null, budgets: budgetFindings(memory, store, null, fail) };
     }
 
     const indexPath = siteOutside(dir, declaredPath, workspace.slots?.memory, "store");
@@ -823,13 +845,13 @@ function judgeMemory(dir, workspace, { write, fail }) {
     // the handoff index is current, and returning early on the shared list would have made one
     // series' defect silence the other's verdict — a green by omission, which is the shape this file
     // exists to refuse.
-    if (broken) return { declared: true, path: indexPath, expected: null };
+    if (broken) return { declared: true, path: indexPath, expected: null, budgets: 0 };
 
     const expected = render(workspace, store);
     compareOrWrite({ dir, declaredPath, indexPath, expected, write, series: "memory", source: "store", fail });
-    budgetFindings(memory, store, expected, fail);
+    const budgets = budgetFindings(memory, store, expected, fail);
 
-    return { declared: true, path: indexPath, expected };
+    return { declared: true, path: indexPath, expected, budgets };
 }
 
 /**
@@ -947,19 +969,34 @@ function judgeScopes(dir, workspace, { write, fail, packRoots: extraRoots }) {
                 );
             }
         }
-        // **Empty means readable-and-zero, never could-not-look.** A declared location that exists and
-        // cannot be enumerated is refused with exit 2, because the feature's own success state IS an
+        // **Empty means readable-and-zero, never could-not-look.** A declared location that cannot be
+        // enumerated is refused with exit 2, because the feature's own success state IS an
         // empty directory — so the enumeration fail-open this repository has fixed four times would here
         // read as the design working rather than as a broken read. Absent is a third, different fact and
         // stays green: git carries no empty directory, so absent is the state of every fresh clone.
+        //
+        // **Absent is decided by the read itself, not by a prior `existsSync`** — the sibling of #91,
+        // in the paragraph that states the rule. `fs.existsSync` is a `stat` that answers `false` for
+        // every failure, `EACCES` included, so a layer mode `0400` — readable, not searchable, which
+        // the enumeration above passes — made every declared location under it stat-false, skipped as
+        // absent, and the refusal three lines down unreachable. The guard whose comment promises
+        // *never could-not-look* was the one thing looking, and it could not. Removing it also removes
+        // a TOCTOU: one syscall now decides, instead of two that can disagree.
+        //
+        // **The message no longer says the location EXISTS**, and that word had to go with the guard
+        // rather than after it. It was true while `existsSync` gated the read — a `stat` had succeeded
+        // — and this change is what made it reachable for an `EACCES` raised by an unsearchable
+        // ancestor, where existence is precisely what cannot be known. A refusal asserting the one
+        // thing it could not establish is the defect this pull request is about, wearing the fix's own
+        // sentence. Copilot, round 1 on #166.
         for (const s of series.scopes) {
             const location = path.resolve(dir, s.location);
-            if (!fs.existsSync(location)) continue;
             try {
                 fs.readdirSync(location);
             } catch (cause) {
+                if (cause.code === "ENOENT") continue;
                 throw new IndexError(
-                    `the persona memory location ${s.location} exists and cannot be read — ${cause.code ?? cause.message}. ` +
+                    `the persona memory location ${s.location} cannot be read — ${cause.code ?? cause.message}. ` +
                         "Refusing to report it empty: empty is this feature's success state, so an unreadable " +
                         "location reported as empty would read as the design working",
                 );
@@ -1025,13 +1062,32 @@ function budgetNumber(value, where) {
     return value;
 }
 
-/** The three budget checks, each skipped when the workspace declares no number for it. */
+/**
+ * The three budget checks, each skipped when the workspace declares no number for it.
+ *
+ * **Returns how many were actually JUDGED**, which is the only thing that licenses the run summary's
+ * `within budget` clause. Budgets are optional in the schema and none is defaulted (see the header),
+ * so a workspace may declare none at all — and the summary said `within budget` over it anyway, which
+ * reads as a verified constraint where the truth is that there was nothing to check. Issue #92, raised
+ * by Copilot on #85 round six and triaged there under `a-review-loop-needs-a-bound.md` rule 4.
+ *
+ * The count is what this function DID, never what the manifest declares, and the two can differ:
+ * `lines` and `columns` are measured against the rendered index, so a manifest declaring them under
+ * no `index.path` has neither judged. The schema makes `path` required inside `index`, so that shape
+ * is one `doctor` rejects — but this tool does not validate against the schema and the two have no
+ * ordering (see `readScopes`, where the same reasoning already refuses to resolve an unvalidated
+ * path). Counting the declaration instead would have put the false green back in the one shape a
+ * caller reaches without `doctor`, which is defect class #91: a fix arriving without its sibling.
+ */
 function budgetFindings(memory, store, expected, fail) {
     const lines = budgetNumber(memory.index?.budget?.lines, "memory.index.budget.lines");
     const columns = budgetNumber(memory.index?.budget?.columns, "memory.index.budget.columns");
     const kilobytes = budgetNumber(memory.store?.budget?.kilobytes, "memory.store.budget.kilobytes");
 
+    let judged = 0;
+
     if (expected !== null && lines) {
+        judged += 1;
         const count = lineCount(expected);
         if (count > lines) {
             fail(
@@ -1045,6 +1101,7 @@ function budgetFindings(memory, store, expected, fail) {
     }
 
     if (expected !== null && columns) {
+        judged += 1;
         for (const line of expected.split("\n")) {
             if (line.length > columns) {
                 fail(
@@ -1059,6 +1116,7 @@ function budgetFindings(memory, store, expected, fail) {
     }
 
     if (kilobytes) {
+        judged += 1;
         const kb = store.bytes / KB;
         if (kb > kilobytes) {
             // The exact byte count rides along with the rounded figure, because rounding alone can
@@ -1076,6 +1134,8 @@ function budgetFindings(memory, store, expected, fail) {
             );
         }
     }
+
+    return judged;
 }
 
 // ===========================================================================================
@@ -1169,7 +1229,18 @@ export function run(argv, say = console.log) {
             const state = check ? "current" : "written";
             const parts = [];
             if (result.series.memory.declared) {
-                parts.push(result.series.memory.path === null ? "no store index declared; store within budget" : `store index ${state}, within budget`);
+                // **`within budget` only where a budget was judged.** All three are optional and none
+                // is defaulted, so a workspace may declare an index and no budget at all — and this
+                // sentence claimed a constraint had held when nothing had been measured, which is the
+                // same over-claim as the `index written` the clause beside it was already repaired for,
+                // one clause over. Issue #92; Copilot, #85 round six, in the suppressed channel.
+                // `budgets` counts what ran rather than what was declared — see `budgetFindings`.
+                const memory = result.series.memory;
+                if (memory.path === null) {
+                    parts.push(memory.budgets ? "no store index declared; store within budget" : "no store index declared");
+                } else {
+                    parts.push(memory.budgets ? `store index ${state}, within budget` : `store index ${state}`);
+                }
             }
             if (result.series.handoffs.declared) parts.push(`handoff index ${state}`);
             if (result.series.scopes.declared) parts.push(`scope index ${state}`);
