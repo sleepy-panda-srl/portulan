@@ -48,7 +48,7 @@ body:
     attributes:
       label: Version or commit
       description: The tag, commit SHA, or plugin version you are on.
-      placeholder: "v0.1.0, or the SHA from `git rev-parse --short HEAD`"
+      placeholder: "v0.2.0, or the SHA from `git rev-parse --short HEAD`"
     validations:
       required: false
 

@@ -2,12 +2,13 @@
 
 > Generated from `handoffs/` by `node cli/index.mjs`. Do not edit by hand: it is regenerated
 > and byte-compared, so a hand-edit survives exactly until the next run.
-> 66 handoff(s), newest first. No budget: the series is append-only, so
+> 67 handoff(s), newest first. No budget: the series is append-only, so
 > the only remedy a budget could ask for is one this project rules out.
 
 - 2026-08-08 · [Handoff — the store had thirty-five bytes left, and one record was a fifth of it](handoffs/2026-08-08-the-store-that-outgrew-its-index.md)
 - 2026-08-07 · [Handoff — the three merged, the board refined, and a checkpoint that was owed and not run](handoffs/2026-08-07-the-three-merged-and-a-checkpoint-that-was-owed.md)
 - 2026-08-07 · [Handoff — the checks that said more than they saw](handoffs/2026-08-07-the-checks-that-said-more-than-they-saw.md)
+- 2026-08-07 · [Handoff — one release train carried two numbers, and two of four fields had no check at all](handoffs/2026-08-07-one-release-train-carried-two-numbers.md)
 - 2026-08-07 · [Handoff — a fix is not done where it was found](handoffs/2026-08-07-a-fix-is-not-done-where-it-was-found.md)
 - 2026-08-03 · [Handoff — the wire reaches an artifact adopters receive, and the constitution catches up](handoffs/2026-08-03-the-wire-and-the-constitution-catches-up.md)
 - 2026-08-03 · [Handoff — the criterion batch, and a move that never happened](handoffs/2026-08-03-the-criterion-batch-and-a-move-that-never-happened.md)

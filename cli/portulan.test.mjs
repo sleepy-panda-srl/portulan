@@ -327,9 +327,17 @@ test("VERSION has ONE carrier — it is read from package.json, never written do
 // already been released with different contents, so `portulan --version` from a checkout printed the
 // odd one out. Nothing went red for a whole milestone. Filed as #148.
 //
-// WHICH EDGES WERE UNGUARDED WAS MEASURED, NOT REASONED (../.portulan/memory/a-checkers-coverage-is-
-// measured-not-named.md). Each field was perturbed to 9.9.9 in turn, against the tree as it stood
-// BEFORE this test existed, and the recipe set rerun:
+// WHICH EDGES WERE UNGUARDED WAS MEASURED, NOT REASONED — the rule is
+// `../.portulan/memory/a-checkers-coverage-is-measured-not-named.md`, whose name is kept whole on one
+// line here because it was first written wrapped, and the wrap fell on a hyphen that is part of the
+// filename: `…a-checkers-coverage-is-` / `measured-not-named.md`. Both halves read like plausible paths
+// and a grep for the real name found nothing. Caught by a suppressed low-confidence note on #177 —
+// which is the channel #176 argues carries most of this repository's findings, making the point again
+// in the same session. Nothing rails this: `docs.sh`'s `links` check reads Markdown links, and a path
+// inside a code comment is invisible to it.
+//
+// Each field was perturbed to 9.9.9 in turn, against the tree as it stood BEFORE this test existed,
+// and the recipe set rerun:
 //
 //   package.json ................... every recipe green ............................. UNGUARDED
 //   marketplace top-level version .. every recipe green ............................. UNGUARDED
