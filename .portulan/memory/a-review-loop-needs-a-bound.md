@@ -220,8 +220,11 @@ The bound and the exemption pull opposite ways and the record already contains b
 choice is stated rather than smoothed. [#85](https://github.com/sleepy-panda-works/portulan/pull/85) read
 the bound strictly: the same finding arrived verbatim in **rounds three through seven** and was triaged
 each time rather than pushed — correct under rule 4 as written, and the product of that triage is
-[#91](https://github.com/sleepy-panda-works/portulan/issues/91), **still open on 2026-08-07 with the
-defect still at `cli/index.mjs:781`**. #164 read it the other way and ran **eleven rounds past**, on the
+[#91](https://github.com/sleepy-panda-works/portulan/issues/91), which then **stayed open nine days**
+(filed 2026-07-29, closed 2026-08-07 by [#166](https://github.com/sleepy-panda-works/portulan/pull/166))
+— and the change that finally closed it recurred the same class inside its own fix, caught by Copilot's
+first round. _(This sentence read "still open" until the hour #166 merged, which is the live-fact class
+the pre-commit checkpoint exists for; corrected in the open rather than quietly.)_ #164 read it the other way and ran **eleven rounds past**, on the
 maintainer's grant each time, and every one of those rounds found a real defect. So triage is not a free
 disposal: it is a deferral whose measured half-life here is *indefinite*, and the sibling exemption is
 the judgement that deferring a sibling of the rule **currently under repair** is the worse of the two

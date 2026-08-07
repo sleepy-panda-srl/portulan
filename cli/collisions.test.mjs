@@ -37,15 +37,29 @@
 //
 // ## What it establishes, and what it cannot
 //
-// It establishes that each carrier refuses every state below and permits the one that is genuinely
-// absent, measured against a real filesystem rather than argued from the source. **The three diverge in
-// their sentences and in their internal shape and this suite deliberately does not pin either**: the
-// vocabularies are written for three different readers, and a test that froze them would stop the
-// refusals being improved. What is pinned is the answer.
+// It establishes that each carrier answers **the seven states below** identically — refusing six and
+// permitting the one that is genuinely absent — measured against a real filesystem rather than argued
+// from the source. **Across those seven the three diverge only in their sentences and in their internal
+// shape, and this suite deliberately pins neither**: the vocabularies are written for three different
+// readers, and a test that froze them would stop the refusals being improved. What is pinned is the
+// answer.
 //
-// It also pins the **roster**: a fourth `collisions()` appearing in `cli/` reds the last test in this
-// file. That is the half a behavioural contract cannot supply on its own — a new copy that nothing
-// asserts is exactly how the third one came to differ from the first.
+// **The scoping in that sentence is load-bearing, and was bought the hard way.** An earlier draft of
+// this header claimed the three agree full stop. They do not. **An eighth state divides them:** where
+// the destination root is *itself* a symlink and the leaf below it is absent, `init` **permits** — its
+// walk starts below the target and never lstats the root — while `new` and `vendor` **refuse**, their
+// chains being inclusive of the root. Measured, not reasoned about. It is deliberately NOT a row in the
+// contract below: adding it would land this suite red, and which reading of *at or below the named
+// path* is right is a behaviour question for the maintainer, filed as the first measured exhibit on the
+// `collisions()` unification issue. **An agreement is a property of the states somebody checked**, which
+// is this suite's own subject turned on itself — it was found by the pre-commit checkpoint running the
+// sibling-sweep step this same change ships.
+//
+// It also pins the **roster**, and the roster pins a NAME rather than a rule. A fourth module in `cli/`
+// exporting something called `collisions` reds the last test in this file. What no matcher can see is a
+// fourth implementation of the same rule under a different name — which is precisely the finding the
+// proposal this suite belongs to arrives at: a rule has no token. The roster is the cheap half, and it
+// is worth having because a copy is nearly always a copy in name too.
 //
 // It cannot establish that the three *sentences* are right, that any caller uses its carrier correctly,
 // or that the allow-list `vendor` alone carries is sound — that one is `cli/vendor.test.mjs`'s, since a
@@ -207,22 +221,43 @@ describe("the collision contract — every carrier answers the same", () => {
     }
 });
 
+/** Every non-test `.mjs` under `cli/`, at any depth. */
+function modules(dir = HERE, prefix = "") {
+    const out = [];
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+        const rel = prefix ? `${prefix}/${entry.name}` : entry.name;
+        if (entry.isDirectory()) out.push(...modules(path.join(dir, entry.name), rel));
+        else if (entry.name.endsWith(".mjs") && !entry.name.endsWith(".test.mjs")) out.push(rel);
+    }
+    return out;
+}
+
+// The three spellings a narrower matcher missed, each measured against it rather than imagined:
+// `export const collisions = …`, a bare declaration re-exported by `export { collisions }`, and a module
+// in a SUBDIRECTORY of `cli/` — all three added a fourth carrier and left the roster green. Found by the
+// pre-commit checkpoint getting past the check, which is the step of its pass that exists for exactly
+// this and is the reason a hole list is never taken on the author's word.
+const EXPORTS_COLLISIONS = /export\s+(?:async\s+)?(?:function|const|let|var|class)\s+collisions\b|export\s*\{[^}]*\bcollisions\b[^}]*\}/;
+
 describe("the roster is pinned too", () => {
-    test("exactly three files in cli/ export a `collisions`, and this suite asserts all three", () => {
+    test("exactly three modules under cli/ export a `collisions`, and this suite asserts all three", () => {
         // The half a behavioural contract cannot supply on its own. A fourth copy of this shape is how
         // the third came to differ from the first, and a copy nothing asserts is invisible to every test
         // above. Whoever adds one reds here and has two honest ways out: add it to CARRIERS, or call an
         // existing carrier instead — which is the repair this repository reaches for first.
-        const found = fs
-            .readdirSync(HERE)
-            .filter((f) => f.endsWith(".mjs") && !f.endsWith(".test.mjs"))
-            .filter((f) => /^export function collisions\b/m.test(fs.readFileSync(path.join(HERE, f), "utf8")))
+        //
+        // **What this cannot see, stated rather than left to be discovered:** a fourth implementation of
+        // the same rule under a DIFFERENT NAME. No matcher reaches that — a rule has no token — and the
+        // proposal this suite belongs to is largely about why. The roster is the cheap half, kept
+        // because a copied shape is nearly always copied under its own name too.
+        const found = modules()
+            .filter((rel) => EXPORTS_COLLISIONS.test(fs.readFileSync(path.join(HERE, rel), "utf8")))
             .sort();
         assert.deepEqual(found, ["init.mjs", "new.mjs", "vendor.mjs"]);
         assert.deepEqual(
             CARRIERS.map((c) => c.tool).sort(),
             found,
-            "a `collisions` exists in cli/ that this contract does not assert",
+            "a `collisions` exists under cli/ that this contract does not assert",
         );
     });
 });

@@ -53,6 +53,14 @@ with two carriers is obeyed at the narrower one, which is the defect this reposi
 than any other"*, with `docs/plan.md` carrying it of a *mandate* and `.portulan/dod.md` twice more as
 *"a second, narrower carrier"*. Two superlatives that cannot both be true unless they are the same defect.
 
+_That pair is **suggestive and it proves too much**, which this proposal says here rather than letting a
+reader find it: `cli/doctor.mjs:600` attaches the identical superlative to the fail-open, a third
+referent, and the Limits section below records that no count was ever run behind any of them. So the
+superlatives are evidence that the tree reaches for one word, not proof that the referents are one thing.
+**The claim rests on the mechanism and on #43's ruling**, which already spanned both materials — it was
+given about wrong *claims* and has been carried ever since in code comments — not on the coincidence of
+two superlatives._
+
 _Those are **occurrence** counts over whitespace-normalised text with blockquote and comment leaders
 stripped, which is not the same as a count of **carriers** — most are the rule being used to justify a
 decision, and this proposal's own argument is that a use is not a carrier. A figure without its unit is
@@ -72,8 +80,9 @@ identical: one carrier, and the others reach it. In prose that is citing, which
 overturned here rather than left to disagree quietly with the doctrine.
 
 **And "never stated" would be false, which is the more useful fact.** The rule has been stated
-repeatedly. What it has never had is a **carrier governance reads**: the 2026-07-27 ruling is quoted
-verbatim in exactly one place in the tree — a test comment, `cli/doctor.test.mjs:1851` — and referred to
+repeatedly. What it has never had is a **carrier governance reads**: on `main` at `d2d8f2a` the
+2026-07-27 ruling was quoted verbatim in exactly one place in the tree — a test comment,
+`cli/doctor.test.mjs:1851` (this change adds two more, so the count is scoped to the tree it describes) — and referred to
 as *"a standing ruling"* in `cli/compile.mjs:852` and in #91's own comments. An eleven-day-old maintainer
 ruling living in a test comment did not prevent eight recurrences on one pull request, nor a ninth in
 the change that closed #91 nine days later. That is
@@ -133,8 +142,21 @@ interchangeably. **Membership was never defined**, so no figure was re-derivable
 gap `a-review-loop-needs-a-bound.md` closed for round counts on 2026-07-30 and nobody closed for this.
 
 **The test this proposal uses**, chosen so the count survives its author: *a finding whose governing rule
-already existed elsewhere — in the same change or in the tree — when the defect was written.* It is
-re-derivable from the diffs, which is the whole requirement.
+was already **enforced at another site of the same operation** — in the same change or in the tree — when
+the defect was written.* It is re-derivable from the diffs, which is the whole requirement.
+
+_The narrowing to *another site of the same operation* is stated because without it the test is too
+generous and admits round 8: the Workspace Definition permits an empty directory slot and `doctor`
+requires it to exist, so a rule about empty directories did exist somewhere in the tree — but nothing in
+the copying path enforced it, and a defect is only a **sibling** if some sibling was carrying the rule.
+A rule that merely exists as a requirement elsewhere makes every defect a member and the count useless._
+
+**The unit, since this section is about counts.** A *round* here is `a-review-loop-needs-a-bound.md`'s —
+**a Copilot review the working session answers with a push** — and not a submission: #164 drew **sixteen**
+Copilot submissions and thirteen answering pushes. The round labels on those pushes run 1, 1's suppressed
+notes, 2–6 and 8–13: **there is no round 7 commit**, because that round was answered inside another push.
+Of the thirteen, eight are below, rounds 3, 8 and 11 are other classes, round 6 is the borderline argued
+below, and the thirteenth is round 1's suppressed-notes push, which is not a sibling.
 
 Under it, **eight of #164's thirteen rounds** are this class:
 
@@ -215,11 +237,22 @@ reds here rather than drifting"*.
 **Measured before written, and the measurement changed the plan.** The session-open checkpoint predicted
 the contract would land red on a `continue`/`break` divergence in the ENOENT branch. Probed against a
 real filesystem across seven states — absent, a file, a directory, a symlink at the leaf, a symlink on
-the chain, a FIFO, an unreadable directory — **all three carriers return the same answer to every one**.
-The divergences are in their sentences and their internal shape, and the suite pins neither: those
-vocabularies are written for three different readers, and freezing them would stop the refusals being
-improved. The checkpoint read the source; the contract is the behaviour, which is this repository's own
-hierarchy applied to its supervisor.
+the chain, a FIFO, an unreadable directory — **all three carriers return the same answer to every one of
+those seven**. Across them the divergences are in their sentences and their internal shape, and the suite
+pins neither: those vocabularies are written for three different readers, and freezing them would stop
+the refusals being improved. The checkpoint read the source; the contract is the behaviour, which is this
+repository's own hierarchy applied to its supervisor.
+
+**And the scoping in that sentence is load-bearing, because an eighth state divides them.** Where the
+destination root is *itself* a symlink and the leaf below it is absent, `init` **permits** — its walk
+starts below the target and never lstats the root — while `new` and `vendor` **refuse**, their chains
+being inclusive of the root. An earlier draft of this proposal and of the suite's own header claimed the
+three agree, full stop; that was false, and it was **found by the pre-commit checkpoint running the
+sibling-sweep step this very change ships**, which is the only evidence here that the step catches
+anything. It is deliberately not a contract row: adding it would land the suite red, and which reading of
+*at or below the named path* is right is a behaviour question for the maintainer. It is the first
+measured exhibit on [#169](https://github.com/sleepy-panda-works/portulan/issues/169). **An agreement is a
+property of the states somebody checked** — this proposal's own subject, turned on its own rail.
 
 So it lands **green and establishes nothing new about the tree**. What it converts is an agreement held
 today by three independent accidents into one that reds when it stops being held. That is the difference
@@ -270,6 +303,24 @@ false-red shape, in `docs/milestones/m07.md`, where a matcher could not tell a p
 *Prohibited* from one claiming it. The cheaper variant — ratchet the count and fail on an increase — is
 refused too: a baseline that bumps on every legitimate addition is waiver noise wearing a number.
 
+### 6. Named and refused: a form check on the checkpoint's verdict
+
+The strongest thing that was *not* built, named because "no rail is possible" must not be allowed to
+cover a mechanism that was simply not attempted. This workspace already accepts **form checks** as rails
+twice — `docs.sh`'s record check requires the newest Session-log entry to carry a seam attestation, and
+`doctor` fails a `type: rule` memory entry whose provenance is not well-formed. Neither verifies the
+*truth* of what it reads; both make the omission impossible. The analogue here is a check that a recorded
+checkpoint verdict carries a **sibling-disposition sentence**, which would force part 3's step to be
+answered rather than skipped.
+
+**Refused for two reasons, both about this repository rather than about the idea.** It needs a fixed
+verdict format, and this workspace has never fixed one — verdicts are prose in a pull-request body and a
+handoff line. And the rail would have to live workspace-side, because the checkpoints pack ships no
+verify recipe by argued policy, so it would enforce customer zero's ritual on nobody else. **Worth
+building the day the verdict format is fixed**, and named here so that day has a pointer. It would check
+that the question was answered, never that the answer was right — which is the honest ceiling on every
+form check and the reason it is not offered as a solution to the class.
+
 ## Where this lands, and what it deliberately does not do
 
 - **The doctrine sentence: `core/operating/evolution.md` only**, extending *Every mistake compiles into a
@@ -288,6 +339,16 @@ refused too: a baseline that bumps on every legitimate addition is waiver noise 
   treatment of records written before a rule existed.
 - **No pack is named in core**, and no threshold: which work earns a checkpoint stays the workspace's,
   unchanged from [`0018`](0018-a-verdict-from-the-context-that-did-the-work-is-not-a-verdict.md).
+- **One two-carrier disagreement is named and NOT fixed here, because it is about the moment this
+  proposal is standing in.** The pack's pre-commit skill says the checkpoint runs *"before committing
+  full-lane work, and before any push that carries it outward"*; [`../gate-map.md`](../gate-map.md) makes
+  a working-branch push Auto and puts the gate at the pull request. This change was committed and pushed
+  and its pull request opened while its own pre-commit checkpoint was still running — **compliant with
+  the gate map, out of order under the pack's sentence**. Two carriers of one boundary, disagreeing, in
+  the ritual this change amends, discovered by obeying one of them. Reconciling it means either the pack
+  sentence deferring to the adopting workspace's gate map, or this workspace recording that its
+  pre-commit boundary is the merge rather than the push — and that is a ruling, not an implementer's
+  edit. Named rather than repaired quietly, which is the whole content of the rule being proposed.
 - **The checkpoints pack's own version rides its content change**, `0.1.0` → `0.2.0`. This one is worth
   recording because it is the rule catching the change that states it, at the last moment it could have:
   `portulan.version` is what a consumer **pins** on and what an install is cached by —
@@ -316,7 +377,9 @@ refused too: a baseline that bumps on every legitimate addition is waiver noise 
   application and is not in this change; the pin is what makes deferring it safe rather than merely
   recorded, which is what
   [`../memory/a-recorded-limit-is-not-a-managed-limit.md`](../memory/a-recorded-limit-is-not-a-managed-limit.md)
-  asks. **Filing that issue is the maintainer's to authorise** and is put to him with this proposal.
+  asks. He authorised it on 2026-08-07 and it is filed as
+  [#169](https://github.com/sleepy-panda-works/portulan/issues/169), carrying the eighth-state divergence
+  above as its first measured exhibit.
 - **A finding this proposal reports and does not fix.** The superlative *"the defect this repository names
   most often"* appears **at least 37 times across 31 files** and attaches to at least **three different
   defects** — the two-carrier rule, the fail-open, and prose claiming an enforcement that does not exist —
