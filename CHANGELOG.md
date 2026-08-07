@@ -41,6 +41,24 @@ records how things were found. This is per *release* and records what a reader g
 
 ## Unreleased
 
+**The npm manifest states the version this repository is.** It said `0.1.0` while all three plugin
+manifest fields said `0.2.0` — and `0.1.0` had already been released with different contents — so one
+release train carried two numbers and `portulan --version` from a checkout printed the odd one out. It
+now reads `0.2.0`.
+
+**What that does and does not mean, because the difference is the whole decision.** `0.2.0` is the
+newest *release*, not this tree: `## Unreleased` above has accumulated since 2026-07-29, so the manifest
+names a shipped version **by design** until the next cut, and a checkout prints it. That is the
+maintainer's ruling of 2026-08-07, taken over the two alternatives he declined — `0.3.0`, which would
+make the first publish its own release, and `0.0.0` until first publish, declined because `--version`
+would then be actively unhelpful from a checkout. Nothing was ever published under any of them: the
+package is not on the registry.
+
+**Why it drifted is the part worth keeping.** `plugin-lint` bound the marketplace's plugin entry to
+`plugin.json` and **nothing bound either to `package.json`** — nor anything at all to the marketplace's
+own top-level `version`, which perturbation found equally unguarded. A test binds both of those edges
+now, and the third keeps its existing owner.
+
 **A fix is not done at the site it was found.** Core now states the rule the engine had only ever
 practised: a rule holds where it is enforced, so a rule enforced in two places can be repaired in one,
 and the site left standing is the one the next reader copies. One carrier and the others reach it — by
