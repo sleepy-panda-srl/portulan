@@ -36,15 +36,17 @@
 //   * field semantics beyond shape — whether a description is *good*, whether a skill is worth its
 //     tokens. That is review, and ../core/skills/README.md holds the bar.
 //   * anything needing the network. Nothing here fetches (../.portulan/verify/README.md).
-//   * **whether a declared skill becomes a capability the HOST registers.** The count this tool prints
-//     is of skills the manifests DECLARE and whose artifacts resolve on disk. It is not, and must not
-//     be read as, a count of what a host will load. The gap is real and measured rather than feared:
-//     this repository declares `./packs/rituals/` and lints its pack's skills as resolving, while a
-//     pack installed from a feed reports `Skills (0)` to the host — re-measured 2026-08-07 on Claude
-//     Code 2.1.224, unchanged from the 2026-07-30 measurement on 2.1.220 in
-//     ../docs/milestones/m07.md. So `N skill(s)` here answers *is the packaging coherent*, never *is
-//     the skill invocable*, and MAX_DECLARED_SKILL_DEPTH below is this repository's bound rather than
-//     the host's. Discovery and host parity are milestone 7's, with #123 and #134.
+//   * **whether a declared skill becomes a capability the host registers — beyond its DEPTH.** Since
+//     2026-08-07 one half of that question is checked: a skill resolved more than HOST_SKILL_DEPTH
+//     below its declared root fails, because the host expands a declared root exactly one level and a
+//     skill deeper than that is packaged, counted and inert. That was measured in both directions on
+//     Claude Code 2.1.224 against a local marketplace built from this repository — `./packs/rituals/`
+//     registered 0 of the pack's 3, `./packs/rituals/checkpoints/skills/` registered all 3 — and it is
+//     why `N skill(s)` and the host's inventory had disagreed by three for a milestone (#134).
+//     What is still NOT checked is everything else about registration: whether the host accepts the
+//     frontmatter, whether a name collides, whether the plugin loads at all. `N skill(s)` answers *is
+//     the packaging coherent and reachable*, never *does this install work* — that stays the
+//     fresh-machine demonstration below and `claude plugin validate --strict`.
 //   * whether the plugin, once installed, behaves. That is the fresh-machine install demonstration
 //     the milestone-3 criterion asks for, and no lint can stand in for it.
 
@@ -520,6 +522,20 @@ export function inspect(rawRoot) {
                     `this check must never do is go green over what it could not reach`,
             );
         }
+        // The host expands a declared root ONE level. A skill this validator resolves deeper than that
+        // is packaged, counted, and inert on every install — which is a green over a skill nobody can
+        // invoke, the failure ../.portulan/memory/a-manifest-field-can-validate-and-load-nothing.md
+        // records against the sibling `agents` key. The repair is in the message because it is one
+        // edit: name the directory that actually holds the skills.
+        for (const dir of expanded.beyondHostReach ?? []) {
+            fail(
+                "skills",
+                `${path.relative(root, dir)}/ sits more than ${HOST_SKILL_DEPTH} level below the ` +
+                    `declared root ${path.relative(root, skillRoot)} — this validator resolves it and ` +
+                    `the HOST does not, so it would be counted here and inert on every install. ` +
+                    `Declare ${path.relative(root, path.dirname(dir))}/ instead`,
+            );
+        }
     }
 
     for (const dir of [...skillDirs].sort()) {
@@ -748,6 +764,15 @@ function walkForSkills(root, dir = root, depth = 0, found = []) {
 // something the manifest pointed at; the other is a sweep of everything it did not.
 const MAX_DECLARED_SKILL_DEPTH = 3;
 
+// How far below a DECLARED skills root the host itself looks. One — `<root>/<skill>/SKILL.md` — and
+// no further. Measured 2026-08-07 on Claude Code 2.1.224 against a local marketplace built from this
+// repository, in both directions: `./packs/rituals/` registered 0 of the pack's 3 skills, and
+// `./packs/rituals/checkpoints/skills/` registered all 3. It is its own constant rather than a literal
+// because it is a PLATFORM fact this repository does not control, unlike the bound above, which is a
+// choice about how far to search. Re-measure it at a host upgrade; a change here is a change in what
+// installs, not in what this tool prefers.
+const HOST_SKILL_DEPTH = 1;
+
 /**
  * Expand one DECLARED skills root into the skill directories beneath it.
  *
@@ -774,10 +799,25 @@ function expandDeclaredSkillRoot(skillRoot) {
     const found = [];
     const truncated = [];
     const barren = [];
+    // Skills this validator resolves and the HOST will never see. Measured 2026-08-07 on Claude Code
+    // 2.1.224 by installing this repository as a local marketplace and reading the inventory back: the
+    // host expands a declared skills root exactly one level — `<root>/<skill>/SKILL.md` — and descends
+    // no further. `./core/skills/` gave 3, `./plugin/skills/` gave 1, `./packs/rituals/` gave **0**
+    // because the pack's skills sit at `<root>/checkpoints/skills/<skill>/`, and the inventory read
+    // `Skills (4)` while this tool counted 7. Declaring `./packs/rituals/checkpoints/skills/` instead
+    // read `Skills (7)`, naming `pre-commit`, `session-open` and `milestone-close`.
+    //
+    // So the depth bound above buys a resolution the platform does not honour, and a count that is
+    // higher than the host's is the exact shape of a false green: the packaging looks coherent and
+    // three skills are inert on every install. That is
+    // ../.portulan/memory/a-manifest-field-can-validate-and-load-nothing.md a second time, in the
+    // sibling field, and it is why this is a FAILURE rather than a note.
+    const beyondHostReach = [];
 
     const walk = (dir, depth) => {
         if (fs.existsSync(path.join(dir, "SKILL.md"))) {
             found.push(dir);
+            if (depth > HOST_SKILL_DEPTH) beyondHostReach.push(dir);
             return true;
         }
         let entries;
@@ -804,7 +844,7 @@ function expandDeclaredSkillRoot(skillRoot) {
     // The `"./"` form: the root is itself one skill. Checked before the expansion so a root holding
     // both a SKILL.md and subdirectories stays one skill rather than becoming several.
     if (fs.existsSync(path.join(skillRoot, "SKILL.md"))) {
-        return { found: [skillRoot], barren, truncated, empty: false };
+        return { found: [skillRoot], barren, truncated, beyondHostReach, empty: false };
     }
 
     let entries;
@@ -814,7 +854,7 @@ function expandDeclaredSkillRoot(skillRoot) {
         return { unreadable: error.code ?? error.message };
     }
     const children = entries.filter((e) => e.isDirectory() && !SKIP_DIRS.has(e.name));
-    if (children.length === 0) return { found, barren, truncated, empty: true };
+    if (children.length === 0) return { found, barren, truncated, beyondHostReach, empty: true };
 
     // Attribution is per immediate child rather than per branch: a barren branch reported at every
     // level of itself is one defect wearing three failures.
@@ -822,7 +862,7 @@ function expandDeclaredSkillRoot(skillRoot) {
         const dir = path.join(skillRoot, child.name);
         if (!walk(dir, 1)) barren.push(dir);
     }
-    return { found, barren, truncated, empty: false };
+    return { found, barren, truncated, beyondHostReach, empty: false };
 }
 
 // ===========================================================================================

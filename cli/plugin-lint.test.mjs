@@ -364,11 +364,24 @@ describe("the skills the plugin declares", () => {
     // resolved exactly two ways — itself, or its immediate children — so the shape a pack actually
     // ships was reported as a skill directory with no SKILL.md. Its three acceptance criteria are the
     // three tests below, in order: resolve at depth, keep the real failure loud, and report the bound.
-    test("a pack-shaped tree resolves skills nested below the declared root", () => {
+    test("a pack-shaped tree resolves skills nested below the declared root — and says the host will not", () => {
         const root = fixture({ skip: ["skills"] });
         write(root, "skills/rituals-demo/skills/greet/SKILL.md", SKILL("greet", "Greets. Use when greeting."));
-        assert.equal(fails(inspect(root).findings).length, 0, messages(inspect(root).findings));
+        // The half this test was written for at milestone 6 is unchanged: the walk RESOLVES the skill
+        // rather than failing `rituals-demo/` with `has no SKILL.md`, and it is counted.
         assert.equal(inspect(root).stats.skills, 1);
+        assert.doesNotMatch(messages(inspect(root).findings), /has no SKILL\.md/);
+
+        // **And it asserted zero failures until 2026-08-07, which was the false green.** Resolving is
+        // this validator's; registering is the host's, and the host expands a declared root exactly one
+        // level. Measured on Claude Code 2.1.224 against a local marketplace built from this
+        // repository: `./packs/rituals/` registered 0 of the pack's 3 skills and
+        // `./packs/rituals/checkpoints/skills/` registered all 3. So a skill at this depth is packaged,
+        // counted, and inert on every install — and the test that said the shape was fine is the reason
+        // it stayed that way for a milestone (#134).
+        const text = messages(inspect(root).findings);
+        assert.match(text, /sits more than 1 level below the declared root/);
+        assert.match(text, /Declare skills\/rituals-demo\/skills\/ instead/);
     });
 
     test("a directory under the declared root holding no skill at any depth still fails", () => {
@@ -389,10 +402,32 @@ describe("the skills the plugin declares", () => {
         assert.match(text, /a\/b\/c\//);
     });
 
-    test("a skill at exactly the bound is found", () => {
+    test("a skill at exactly the bound is found, and reported as out of the host's reach", () => {
         const root = fixture({ skip: ["skills"] });
         write(root, "skills/a/b/c/SKILL.md", SKILL("c", "At the limit. Use at the limit."));
+        // Found, not truncated — the bound is what this test guards.
+        assert.equal(inspect(root).stats.skills, 1);
+        assert.doesNotMatch(messages(inspect(root).findings), /did not search/);
+        // But three levels down is two past what the host loads, so it fails rather than passing.
+        assert.match(messages(inspect(root).findings), /sits more than 1 level below the declared root/);
+    });
+
+    test("a skill exactly one level below the declared root is what the host loads, and passes clean", () => {
+        // The positive control, and the reason the rail is a depth comparison rather than a ban on
+        // nesting: this is the shape `./core/skills/` and `./plugin/skills/` already ship, and the two
+        // of them account for exactly the 4 the host registered before the pack path was corrected.
+        const root = fixture({ skip: ["skills"] });
+        write(root, "skills/greet/SKILL.md", SKILL("greet", "Greets. Use when greeting."));
         assert.equal(fails(inspect(root).findings).length, 0, messages(inspect(root).findings));
+        assert.equal(inspect(root).stats.skills, 1);
+    });
+
+    test("the `./` form — a declared root that IS one skill — is not reported as out of reach", () => {
+        // Depth 0, not depth 2. The rail must not fire on the form packs use to point at a single
+        // skill, which was measured working and is asserted elsewhere in this file.
+        const root = fixture({ skip: ["skills"], plugin: { skills: ["./solo-reach/"] } });
+        write(root, "solo-reach/SKILL.md", SKILL("solo-reach", "One skill at the declared path."));
+        assert.doesNotMatch(messages(inspect(root).findings), /sits more than 1 level/);
     });
 
     test("the one-skill `./` form keeps working, and a root that is itself a skill stays one skill", () => {
