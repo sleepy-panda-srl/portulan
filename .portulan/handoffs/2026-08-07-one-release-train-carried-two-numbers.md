@@ -59,9 +59,19 @@ Two rounds, inside the bound, clean taper.
 
 `bug.yml`'s version placeholder, two tags stale, rides the same ruling.
 
-## Undemonstrated
+## The gap that was named as undemonstrated, then closed
 
-The rail binds three of the four fields' agreement and **says nothing about the fourth being right**.
-Nothing anywhere checks that the number matches the newest `CHANGELOG.md` heading or the newest tag — a
-cut that bumps all four consistently to a wrong number stays green. That is a judgement about a release,
-which is where this repository has deliberately left it.
+The first version of this handoff ended by naming what the rail did not do: it bound the fields'
+*agreement* and said nothing about the number being **right**, so a cut bumping all four consistently to
+a wrong number stayed green. That is now closed. `package.json` is asserted against the newest
+`## <version>` heading in `CHANGELOG.md`, which is the one artifact that defines the maintainer's chosen
+reading — *the manifest states the repository's current version*. Forced red in both directions: the
+manifest moved ahead of the changelog, and the changelog moved without the manifest.
+
+**A ruling nobody checks is a convention one release from being wrong**, and that is exactly how this
+defect came to exist — `0.1.0` sat in the manifest through a whole milestone with nothing to notice.
+
+**What it deliberately does not check, because it would be the wrong rail:** a tag. This repository's
+documented cut order renames `## Unreleased` to the version in a change merged **before** the tag is
+created, so a `git describe` comparison would red every release cut at exactly the moment it is being
+done correctly. The heading is the authority here; the tag follows it.

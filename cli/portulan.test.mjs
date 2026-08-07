@@ -377,3 +377,44 @@ test("the two version fields nothing else checks agree with plugin.json", () => 
             `plugin.json says ${plugin.version} — this field is checked by nothing else`,
     );
 });
+
+// THE SEMANTICS, RAILED — the half that agreement alone cannot give. The three manifests agreeing says
+// nothing about the number being RIGHT: a cut that bumped all three to 9.9.9 would stay green above.
+//
+// What decides right is a ruling rather than a convention. #148 offered three readings — the manifest
+// names the current version, the next cut, or 0.0.0 until first publish — and the maintainer chose the
+// first on 2026-08-07, over `0.3.0` and over `0.0.0`, which he declined because `--version` would then
+// be actively unhelpful from a checkout. `CHANGELOG.md` carries the ruling with both declined options.
+//
+// A ruling nobody checks is a convention one release from being wrong, which is exactly how the defect
+// #148 reports came to exist: `package.json` sat at `0.1.0` through a whole milestone and nothing
+// noticed. So the chosen reading is asserted here against the one artifact that defines it — the newest
+// release heading in `CHANGELOG.md`.
+//
+// **Note what this deliberately does NOT enforce**, because it would be the wrong rail: it does not
+// require a tag, and it does not compare against `git describe`. The cut ORDER this repository
+// documents renames `## Unreleased` to the version in a change merged BEFORE the tag exists
+// (`CHANGELOG.md`'s own header), so a tag check would red every release cut at exactly the moment it is
+// being done correctly.
+test("package.json names the newest release in CHANGELOG.md — the maintainer's 2026-08-07 reading", () => {
+    const pkg = JSON.parse(fs.readFileSync(path.join(HERE, "..", "package.json"), "utf8"));
+    const changelog = fs.readFileSync(path.join(HERE, "..", "CHANGELOG.md"), "utf8");
+
+    // `## <semver>` at column 0, newest first. `## Unreleased` is deliberately not matched: it is what
+    // accumulates BETWEEN releases and naming it would make this assertion untestable.
+    const headings = [...changelog.matchAll(/^## (\d+\.\d+\.\d+)\b/gm)].map((m) => m[1]);
+    assert.ok(
+        headings.length > 0,
+        "CHANGELOG.md carries no `## <version>` release heading — this assertion has nothing to read, " +
+            "which is a could-not-run wearing a green and the reason the count is checked first",
+    );
+
+    assert.equal(
+        pkg.version,
+        headings[0],
+        `package.json says ${pkg.version} and the newest CHANGELOG.md release is ${headings[0]}. ` +
+            "The manifest states the repository's CURRENT version — the maintainer's ruling of " +
+            "2026-08-07 — so the two move together at a cut: rename `## Unreleased` to the new number " +
+            "in the same change that bumps this manifest",
+    );
+});
