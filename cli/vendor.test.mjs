@@ -44,7 +44,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { inspect } from "./doctor.mjs";
-import { VendorError, RESIDENCES, parseArgs, residenceOf, retarget, walk, escapingSlots, collisions, agentsMd, run } from "./vendor.mjs";
+import { VendorError, RESIDENCES, parseArgs, residenceOf, retarget, walk, directories, escapingSlots, collisions, agentsMd, run } from "./vendor.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 
@@ -618,6 +618,71 @@ describe("vendoring into a host", () => {
 
 // ------------------------------------------------------------------ job two: the switch, both directions
 
+describe("an empty declared slot directory", () => {
+    // A copy driven only by the file list creates a directory as a side effect of a file landing in it,
+    // so an EMPTY one never arrives — and `doctor` requires a declared directory slot to exist. The
+    // effect, measured before the fix: a workspace GREEN at its source produced a copy `doctor` refused,
+    // and because the copy is staged and validated first, the switch was **declined** and nothing moved.
+    // Fail-closed, so never corruption — but a valid workspace could not be moved at all, and the only
+    // way to act on the refusal was to put a file into every empty directory you own.
+    // `memory/` and `proposals/` are empty in every workspace that has not earned a record yet, which is
+    // most of them on the day they are switched. Copilot's suppressed notes, round 8 on #164.
+    const withEmptySlot = (dir, name = "acme", kind = "portfolio") => {
+        const manifest = {
+            portulan: { spec: "2.7" },
+            name,
+            summary: "A workspace with a slot nobody has filled yet.",
+            kind,
+            slots: { identity: "identity.md", principles: "principles.md", gates: "gate-map.md", memory: "memory/" },
+            verify: { default: "workspace", recipes: [{ id: "workspace", run: "./verify/workspace.sh", requires: ["bash"], doc: "identity.md" }] },
+            memory: { index: { path: "memory-index.md" } },
+        };
+        write(dir, "workspace.json", json(manifest));
+        for (const f of ["identity.md", "principles.md", "gate-map.md", "memory-index.md"]) write(dir, f, `# ${f}\n`);
+        write(dir, "verify/workspace.sh", "#!/usr/bin/env bash\nexit 0\n", 0o755);
+        fs.mkdirSync(path.join(dir, "memory"), { recursive: true });
+        return dir;
+    };
+
+    test("`directories` reports it, where `walk` cannot", () => {
+        const root = scratch();
+        withEmptySlot(root);
+        assert.equal(walk(root).some((f) => f.rel.startsWith("memory/")), false, "there is no file to find — that is the whole problem");
+        assert.ok(directories(root).some((d) => d.rel === "memory"), "the directory itself has to be carried");
+    });
+
+    test("survives the switch in both directions, and both ends stay green", async () => {
+        const root = scratch();
+        const feed = path.join(root, "feed", "acme");
+        fs.mkdirSync(feed, { recursive: true });
+        withEmptySlot(feed);
+        assert.deepEqual(await green(feed), [], "the fixture must be green at its source, or this test proves nothing");
+
+        const dst = pointerRepo(root, "acme-app", "acme");
+        assert.equal(await run([feed, "--into", dst, "--residence", "in-repo", "--switch"], harness().options), 0);
+        assert.ok(fs.statSync(path.join(dst, "memory")).isDirectory(), "the empty slot arrived");
+        assert.deepEqual(await green(dst), []);
+
+        // And home again — the return leg lands on an existing destination, which is the other copy path.
+        const back = path.join(root, "feed2", "acme");
+        assert.equal(await run([dst, "--into", back, "--residence", "feed-side", "--switch", "--leave", "nothing"], harness().options), 0);
+        assert.ok(fs.statSync(path.join(back, "memory")).isDirectory(), "and survived the way home");
+        assert.deepEqual(await green(back), []);
+    });
+
+    test("vendoring into a host carries it too", async () => {
+        const root = scratch();
+        const src = path.join(root, "feed", "acme");
+        fs.mkdirSync(src, { recursive: true });
+        withEmptySlot(src);
+        const host = path.join(root, "host");
+        fs.mkdirSync(host, { recursive: true });
+        assert.equal(await run([src, "--into", path.join(host, ".portulan"), "--residence", "in-repo", "--host", "generic"], harness().options), 0);
+        assert.ok(fs.statSync(path.join(host, ".portulan", "memory")).isDirectory());
+        assert.deepEqual(await green(path.join(host, ".portulan")), []);
+    });
+});
+
 describe("the switch, in-repo → feed-side", () => {
     test("materialises feed-side, leaves a pointer, and both ends are green", async () => {
         const root = scratch();
@@ -703,10 +768,15 @@ describe("the switch, in-repo → feed-side", () => {
         // removed the whole tree — deleting exactly the files the sentence beside it promises never to
         // delete, in the one branch where being wrong cannot be undone. Copilot, round 1 on #164.
         //
-        // Forced by making the old residence unreadable at exactly the moment the RETIRE scan runs —
-        // the second `readdirSync` of that directory, the first being the materialise walk. `chmod`
-        // would be the obvious lever and is the wrong one: root ignores it, CI often runs as root, and a
-        // test that silently stops testing where it matters most is worse than no test.
+        // Forced by making the old residence unreadable at exactly the moment the RETIRE scan runs.
+        // The trigger is STATE, not a call count: once the destination manifest exists, governance has
+        // moved and every later read of the source is the retire pass. A counter was the first cut and
+        // it was brittle for a reason worth keeping — adding the directory scan changed how many reads
+        // the materialise phase makes, and the test silently started forcing the failure in the wrong
+        // phase. A fixture keyed to the number of syscalls is a fixture that tests the implementation.
+        //
+        // `chmod` would be the obvious lever and is the wrong one: root ignores it, CI often runs as
+        // root, and a test that silently stops testing where it matters is worse than no test.
         const root = scratch();
         const src = inRepo(root, "acme-app");
         const feed = path.join(root, "feed", "acme");
@@ -715,9 +785,8 @@ describe("the switch, in-repo → feed-side", () => {
 
         const h = harness();
         const original = fs.readdirSync;
-        let seen = 0;
         fs.readdirSync = (target, ...rest) => {
-            if (String(target) === src && ++seen > 1) {
+            if (String(target) === src && fs.existsSync(path.join(feed, "workspace.json"))) {
                 const error = new Error("permission denied");
                 error.code = "EACCES";
                 throw error;

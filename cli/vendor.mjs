@@ -281,8 +281,32 @@ export function escapingSlots(manifest, dir) {
  * arriving by the read path — the sibling nobody guarded (#91).
  */
 export function walk(dir) {
+    return scan(dir).files;
+}
+
+/**
+ * Every DIRECTORY under a workspace directory, including the empty ones.
+ *
+ * A copy driven only by `walk()` silently drops an empty directory, because a directory reaches the
+ * destination as a side effect of a file landing inside it. That is not a cosmetic loss: the Workspace
+ * Definition lets a declared slot be a directory, `doctor` requires the directory to exist, and an empty
+ * `memory/` or `proposals/` is the ordinary state of a workspace that has not earned a record yet. So a
+ * workspace GREEN at its source became a copy `doctor` refuses — measured, not reasoned about.
+ *
+ * The staging validation is what turned that into a refusal rather than a corruption: the switch was
+ * declined and nothing moved. It is still a defect — a valid workspace could not be moved at all, and
+ * the only way an adopter could act on the refusal was to put a file into every empty directory they
+ * own. Copilot's suppressed notes, round 8 on #164.
+ */
+export function directories(dir) {
+    return scan(dir).dirs;
+}
+
+/** One descent, two answers, so the guards below cannot come to differ between them. */
+function scan(dir) {
     const root = path.resolve(dir);
     const out = [];
+    const dirs = [];
     const seen = (rel) => (rel === "" ? root : path.join(root, rel));
 
     const descend = (rel, depth) => {
@@ -311,6 +335,7 @@ export function walk(dir) {
                 );
             }
             if (stat.isDirectory()) {
+                dirs.push({ rel: childRel, mode: stat.mode & 0o777 });
                 descend(childRel, depth + 1);
                 continue;
             }
@@ -322,7 +347,7 @@ export function walk(dir) {
     };
 
     descend("", 0);
-    return out;
+    return { files: out, dirs };
 }
 
 // ------------------------------------------------------------------------- writing into somebody's tree
@@ -885,6 +910,7 @@ export async function run(argv, options = {}) {
 
         const carve = parsed.switching ? carveOut(dest, manifest.name) : { allow: new Set(), pointer: null };
         const walked = walk(source);
+        const sourceDirs = directories(source);
         const files = walked.filter((f) => !isGenerated(f.rel));
         const generated = walked.filter((f) => isGenerated(f.rel)).map((f) => f.rel);
         const rels = files.map((f) => f.rel);
@@ -948,6 +974,17 @@ export async function run(argv, options = {}) {
         fs.mkdirSync(staging, { recursive: true });
         undo.push(() => fs.rmSync(staging, { recursive: true, force: true }));
 
+        // DIRECTORIES first, and all of them — including the ones with nothing in them. A copy driven
+        // only by the file list creates a directory as a side effect of a file landing in it, so an
+        // empty declared slot never arrives, and `doctor` refuses the copy for a path that does not
+        // exist. `memory/` and `proposals/` are empty in every workspace that has not earned a record
+        // yet, which is most of them on the day they are switched.
+        for (const entry of sourceDirs) {
+            if (isGenerated(entry.rel)) continue;
+            const full = path.join(staging, entry.rel);
+            fs.mkdirSync(full, { recursive: true });
+            fs.chmodSync(full, entry.mode);
+        }
         for (const file of files) {
             if (file.rel === "workspace.json") continue;
             const full = path.join(staging, file.rel);
@@ -1067,6 +1104,12 @@ export async function run(argv, options = {}) {
             // The destination exists — the switch's own feed-side → in-repo case, landing on the
             // pointer that is the old residence's in-repo half. Files first, manifest LAST: until the
             // manifest lands this is a directory of files, which 0017 says is not a residence.
+            // Directories first here too, for the reason above and one more: the second leg of a
+            // round trip lands on an existing destination, so this is the path a workspace takes home.
+            for (const entry of directories(staging)) {
+                fs.mkdirSync(path.join(dest, entry.rel), { recursive: true });
+                fs.chmodSync(path.join(dest, entry.rel), entry.mode);
+            }
             for (const file of walk(staging)) {
                 if (file.rel === "workspace.json" || file.rel === "..AGENTS.md.vendoring") continue;
                 const full = path.join(dest, file.rel);
