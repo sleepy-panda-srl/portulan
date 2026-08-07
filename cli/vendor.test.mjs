@@ -636,6 +636,21 @@ describe("vendoring into a host", () => {
         assert.deepEqual(fs.readdirSync(host), [], "and no staging directory either");
     });
 
+    test("refuses `--host` feed-side, because the standards file it writes would name paths that do not exist", async () => {
+        // `agentsMd()` writes `.portulan/<slot>` paths and says to run `portulan doctor .portulan`. That
+        // is true by construction in-repo — the destination basename is already refused if it is not
+        // `.portulan` — and false anywhere else, which would put a document describing a tree it is not
+        // in into somebody else's repository. Copilot's suppressed notes, round 11 on #164.
+        const root = scratch();
+        const src = path.join(root, "repo", ".portulan");
+        fs.mkdirSync(src, { recursive: true });
+        seedWorkspace(src, { card: null });
+        const h = harness();
+        assert.equal(await run([src, "--into", path.join(root, "feed", "acme"), "--residence", "feed-side", "--host", "generic"], h.options), 2);
+        assert.match(text(h), /--residence in-repo/);
+        assert.equal(exists(path.join(root, "feed")), false, "a refusal writes nothing");
+    });
+
     test("refuses a host tree that already carries a residence", async () => {
         const root = scratch();
         const src = path.join(root, "feed", "acme");
