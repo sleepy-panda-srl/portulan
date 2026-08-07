@@ -973,11 +973,26 @@ export async function run(argv, options = {}) {
         // governor for even one rename. Only a rename puts it in place.
 
         const staging = path.join(path.dirname(dest), `.${path.basename(dest).replace(/^\.+/, "")}.vendoring`);
-        if (fs.existsSync(staging)) {
+        // `lstatSync`, not `existsSync` — which answers **false** on `EACCES` and so reported "clear" for
+        // a path whose state nobody could read, letting the run proceed into `mkdirSync` and fail later
+        // with an error about the wrong thing. This file states the only-`ENOENT` rule three times in its
+        // own header and broke it here, in the one call that was written as a convenience rather than as
+        // a check. Copilot's suppressed notes, round 10 on #164 — the fifth appearance of a guard that
+        // was carried everywhere except one place.
+        try {
+            fs.lstatSync(staging);
             throw new VendorError(
                 `${display(staging)} is already there — a previous run of this tool died before it could clear its staging directory. ` +
                     `Nothing was written. Check what is in it, then remove it and run this again`,
             );
+        } catch (cause) {
+            if (cause instanceof VendorError) throw cause;
+            if (cause.code !== "ENOENT") {
+                throw new VendorError(
+                    `${display(staging)} could not be examined — ${cause.code ?? cause.message}. Only a missing path means "nothing there", ` +
+                        `and this needs somewhere it knows is empty to stage a copy in`,
+                );
+            }
         }
         fs.mkdirSync(staging, { recursive: true });
         undo.push(() => fs.rmSync(staging, { recursive: true, force: true }));

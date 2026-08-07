@@ -352,6 +352,40 @@ describe("the three refusals `init` and `new` paid for", () => {
         assert.deepEqual(collisions(path.join(link, "repo", ".portulan"), ["workspace.json"]), []);
     });
 
+    test("an unreadable staging path is refused, not treated as clear", async () => {
+        // `existsSync` answers **false** on `EACCES`, so the staging check reported "clear" for a path
+        // whose state nobody could read and the run proceeded into `mkdirSync`, failing later with an
+        // error about the wrong thing. The only-`ENOENT` rule, stated three times in this tool's header
+        // and broken in the one call written as a convenience rather than as a check.
+        // Copilot's suppressed notes, round 10 on #164.
+        const root = scratch();
+        const src = path.join(root, "feed", "acme");
+        fs.mkdirSync(src, { recursive: true });
+        seedWorkspace(src, { kind: "portfolio", tree: null, card: null });
+        const dst = path.join(root, "repo", ".portulan");
+        fs.mkdirSync(path.dirname(dst), { recursive: true });
+        const staging = path.join(path.dirname(dst), ".portulan.vendoring");
+
+        const h = harness();
+        const original = fs.lstatSync;
+        fs.lstatSync = (target, ...rest) => {
+            if (String(target) === staging) {
+                const error = new Error("permission denied");
+                error.code = "EACCES";
+                throw error;
+            }
+            return original(target, ...rest);
+        };
+        try {
+            assert.equal(await run([src, "--into", dst, "--residence", "in-repo", "--host", "generic"], h.options), 2);
+        } finally {
+            fs.lstatSync = original;
+        }
+        assert.match(text(h), /could not be examined/);
+        assert.match(text(h), /EACCES/);
+        assert.equal(exists(dst), false, "an unanswerable question wrote nothing");
+    });
+
     test("an lstat failure that is not ENOENT is a collision, never an absence", () => {
         // Only `ENOENT` means absent. `EACCES` means the question could not be answered, and answering
         // *nothing there* to an unanswerable question is the fail-open this repository names more often
