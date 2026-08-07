@@ -8,19 +8,20 @@
 // ## Why this exists
 //
 // A raw NUL shipped inside `../.portulan/verify/workflow-filters.mjs` as the separator in a template
-// literal, where the escape `\^@` was meant. A reviewer caught it; nothing in this repository did, and
+// literal, where the escape `\u0000` was meant. A reviewer caught it; nothing in this repository did, and
 // the reason is the part that matters (issue #68):
 //
 //   * `file` classified the source as *binary data*.
 //   * `grep -n "identity = "` against the line that plainly contains that text exited **1** — a silent
-//     false negative. `docs.sh` — the DEFAULT recipe, and the one every Stop-gate runs — is built out
-//     of `grep`, seventeen invocations of it, so the tool most likely to have shown the byte is the
-//     tool the byte silences. (Counted, because the first draft of this comment said *every* recipe in
-//     that directory was, and three of them invoke `grep` zero times. A false universal inside the
-//     paragraph doing the persuading is this repository's dominant defect class, in a file whose whole
-//     subject is claims that outrun their measurement. Copilot, #167, suppressed channel.)
+//     false negative. `docs.sh` — the DEFAULT recipe, the one a Stop-gate runs when nothing more
+//     specific applies — is built out of `grep` throughout, so the tool most likely to have shown the
+//     byte is the tool the byte silences. (Named rather than counted, and that took two goes: the
+//     first draft said *every* recipe in that directory was built out of `grep`, and three invoke it
+//     zero times; the correction then asserted `seventeen invocations`, a figure taken from a word
+//     count that included comments. A number nothing regenerates is a claim that rots — #77. Copilot
+//     found the first, in three carriers; I found the second auditing my own fix.)
 //   * `git` rendered the diff as text only because the byte sat past its first 8000 bytes. A few
-//     hundred lines earlier and a 660-line instrument would have arrived in review as `Binary files
+//     hundred lines earlier and the whole instrument would have arrived in review as `Binary files
 //     differ` — a file nobody could read, in a pull request that looked complete.
 //
 // It then reproduced twice more while being fixed. Three tools noticed across the whole incident and

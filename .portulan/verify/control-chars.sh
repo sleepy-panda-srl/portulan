@@ -7,20 +7,21 @@
 # ## Why this is a recipe and not a paragraph
 #
 # A raw NUL shipped inside ./workflow-filters.mjs as the separator in a template literal, where the
-# escape `\^@` was meant. A reviewer caught it; nothing here did — and the reason is the whole point
+# escape `\u0000` was meant. A reviewer caught it; nothing here did — and the reason is the whole point
 # (issue #68):
 #
 #   * `file` classified the source as *binary data*.
 #   * `grep -n "identity = "` against the line that plainly contains that text exited 1 — a silent
-#     false negative. **./docs.sh — the DEFAULT recipe — is built out of `grep`, seventeen invocations
-#     of it**, so the tool most likely to have shown the byte is the tool the byte silences. Counted
-#     rather than generalised: this line claimed *every* recipe here was, and three invoke `grep` zero
-#     times. A false universal in the paragraph doing the persuading is the defect class this
-#     repository files most often, and it does not belong in the file arguing against exactly that. The
-#     one tool that would have shown it is the tool the byte silences. That is why the scan is in
-#     ../../cli/control-chars.mjs and reads bytes rather than being another `grep` here.
+#     false negative. **./docs.sh — the DEFAULT recipe — is built out of `grep` throughout**, so the
+#     tool most likely to have shown the byte is the tool the byte silences. That is why the scan lives
+#     in ../../cli/control-chars.mjs and reads bytes, rather than being another `grep` here.
+#     (Named rather than counted, after two corrections: this line first claimed *every* recipe here
+#     was built out of `grep` — three invoke it zero times — and the correction then asserted a count
+#     taken from a word grep that included comments. A false claim in the paragraph doing the
+#     persuading is the defect class this repository files most often, and it has no business in the
+#     file arguing against exactly that.)
 #   * `git` rendered the diff as text only because the byte sat past its first 8000 bytes. A few
-#     hundred lines earlier and a 660-line instrument would have arrived in review as `Binary files
+#     hundred lines earlier and the whole instrument would have arrived in review as `Binary files
 #     differ` — a file nobody could read, in a pull request that looked complete.
 #
 # It reproduced twice more while being fixed, in the README paragraph describing it and in the shell
