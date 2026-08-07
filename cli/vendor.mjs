@@ -726,6 +726,8 @@ export function usage() {
         "  One of these two says what you are doing. There is no default:",
         "  --host <id>           Vendor for a host that is not Claude Code: a self-contained",
         "                        AGENTS.md beside the workspace. The source keeps governing.",
+        "                        Goes with `--residence in-repo` — the pair a host reads sits at",
+        "                        the root of a tree, and a feed-side workspace ships as a plugin.",
         "  --switch              Change residence. The workspace is materialised at the new one, a",
         "                        pointer or nothing is left at the old, and `doctor` is green at both",
         "                        ends before the old residence is retired.",
@@ -801,6 +803,26 @@ export async function run(argv, options = {}) {
                 "neither `--switch` nor `--host` was given, and this will not guess which you meant. `--host <id>` vendors a " +
                     "self-contained copy for a host and leaves the source governing; `--switch` changes which residence governs and " +
                     "retires the other. A plain copy of a governing workspace is how one repository ends up with two governors",
+            );
+        }
+        if (parsed.host !== null && parsed.residence !== "in-repo") {
+            // `agentsMd()` writes `.portulan/<slot>` paths and tells the reader to run
+            // `portulan doctor .portulan`, which is true by construction for an in-repo destination —
+            // that branch already refuses any basename but `.portulan`, on the boot-path rule. Vendored
+            // feed-side, the workspace directory is whatever the caller named, and the standards file
+            // would point at paths that do not exist: a document describing a tree it is not in,
+            // emitted into somebody else's repository, which is `dod.md` condition 4 and the shape this
+            // change has already swept fourteen carriers of.
+            //
+            // Refused rather than parameterised, and the reason is not effort. Vendoring for a host is
+            // the AAIF pair — `AGENTS.md` beside `.portulan/`, at the root an agent reads from — and a
+            // feed-side workspace ships as a plugin instead. Naming a residence that has no host to
+            // stand in is a question, not a configuration. Copilot's suppressed notes, round 11 on #164.
+            throw new VendorError(
+                "`--host` vendors the pair a host reads — `AGENTS.md` beside a `.portulan/` at the root of a tree — so it goes " +
+                    "with `--residence in-repo`. A feed-side workspace is delivered as a plugin rather than read out of a directory, " +
+                    "and the standards file this writes names `.portulan/` paths that would not exist there. Vendor it in-repo, or " +
+                    "`--switch` it feed-side and install it",
             );
         }
         if (parsed.switching && parsed.host !== null) {
