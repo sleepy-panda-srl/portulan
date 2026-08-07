@@ -347,9 +347,51 @@ describe("run", () => {
         // `git ls-files -z`. The `\n`-separated form the other recipes use would mis-split a filename
         // containing a newline — and this is the one check in the repository that must not be the tool
         // that trusts invisible bytes in the input it was given to police.
-        assert.deepEqual(splitList("a.md\0b.md\0"), ["a.md", "b.md"]);
-        assert.deepEqual(splitList("one\ntwo.md\0"), ["one\ntwo.md"]);
-        assert.deepEqual(splitList(""), []);
+        assert.deepEqual(splitList("a.md\0b.md\0").paths, ["a.md", "b.md"]);
+        assert.deepEqual(splitList("one\ntwo.md\0").paths, ["one\ntwo.md"]);
+        assert.deepEqual(splitList("").paths, []);
+        assert.deepEqual(splitList("a.md\0").undecodable, []);
+    });
+
+    test("a pathname that is not valid UTF-8 is returned undecodable, never quietly repaired", () => {
+        // The split and the decode were two different fail-opens and only the first was closed. Git
+        // allows a pathname to be any bytes except NUL and `/`; decoding the list whole turned such a
+        // name into a DIFFERENT string, which `bytesOf` then failed to find. Copilot, #167.
+        const list = Buffer.concat([Buffer.from("ok.md"), Buffer.from([0x00, 0xff, 0xfe]), Buffer.from([0x00])]);
+        const { paths, undecodable } = splitList(list);
+        assert.deepEqual(paths, ["ok.md"]);
+        assert.equal(undecodable.length, 1);
+        assert.deepEqual([...undecodable[0]], [0xff, 0xfe]);
+    });
+
+    test("a name that legitimately CONTAINS U+FFFD is not mistaken for a broken decode", () => {
+        // The test is a round trip, not a search for U+FFFD: git stores that name exactly as given, and
+        // rejecting it would be a false red on a file that is fine — which is what gets a check
+        // switched off.
+        assert.deepEqual(splitList("we�ird.md\0").paths, ["we�ird.md"]);
+        assert.deepEqual(splitList("we�ird.md\0").undecodable, []);
+    });
+
+    test("an undecodable path is exit 2 — refused, never counted as skipped", () => {
+        // The fail-open in full: the name decoded to something else, the read came back ENOENT, and the
+        // run reported green with `1 tracked and not on disk` in the summary. A plausible sentence over
+        // a file nothing read is worse than no sentence.
+        const dir = tree({ "a.md": "clean\n" });
+        const list = Buffer.concat([Buffer.from(path.join(dir, "a.md")), Buffer.from([0x00, 0xff]), Buffer.from([0x00])]);
+        const lines = [];
+        assert.equal(run([], list, (s) => lines.push(s)), 2);
+        assert.match(messages(lines), /not valid UTF-8/);
+        assert.doesNotMatch(messages(lines), /tracked and not on disk/);
+        assert.doesNotMatch(messages(lines), /carry no control character/);
+    });
+
+    test("the refusal escapes the bytes it names rather than echoing them", () => {
+        // `nameOf`'s rule applied to a filename: a report that echoes raw bytes can carry the thing
+        // this check exists to catch, and would silence whatever reads the report next.
+        const list = Buffer.concat([Buffer.from([0xff, 0xfe]), Buffer.from([0x00])]);
+        const lines = [];
+        assert.equal(run([], list, (s) => lines.push(s)), 2);
+        assert.match(messages(lines), /\\xff\\xfe/);
     });
 });
 
@@ -360,12 +402,20 @@ describe("the live tree", () => {
         // Customer zero held to its own rail, the way ./index.test.mjs binds the live indexes. The
         // recipe checks this too; the suite checks it as well so a byte smuggled in by an edit is red
         // in both places rather than only in CI.
+        // **Raw bytes, no encoding** — the sibling of the production fail-open, in the test that binds
+        // the live tree. Decoding the listing as UTF-8 would turn a pathname git allows into a
+        // different string, which `bytesOf` would then miss as ENOENT and count as skipped: this test
+        // would pass while quietly not scanning the one file it was most important to scan. Copilot
+        // raised it here in the suppressed channel and on the production read in a thread, the same
+        // defect from both sides. `undecodable` is asserted empty rather than assumed.
         const listing = execFileSync(
             "git",
             ["-C", REPO, "ls-files", "--cached", "--others", "--exclude-standard", "-z"],
-            { encoding: "utf8", maxBuffer: 32 * 1024 * 1024 },
+            { maxBuffer: 32 * 1024 * 1024 },
         );
-        const files = splitList(listing).map((rel) => path.join(REPO, rel));
+        const { paths, undecodable } = splitList(listing);
+        assert.deepEqual(undecodable, [], "a tracked pathname did not survive decoding — the scan would have skipped it");
+        const files = paths.map((rel) => path.join(REPO, rel));
         // A KNOWN PATH rather than a count. `files.length > 100` was a magic number that would fail on
         // an unrelated change to the repository's size, and a hard-coded figure is a claim that rots —
         // #77's lesson, which this very change applies to a stale line count in `verify/README.md`.

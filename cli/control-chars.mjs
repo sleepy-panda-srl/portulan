@@ -245,8 +245,57 @@ export function inspect(files, { exempt = new Set() } = {}) {
 // The command
 // ===========================================================================================
 
-/** The NUL-separated list `git ls-files -z` writes, as paths. A trailing separator yields no empty entry. */
-export const splitList = (text) => text.split("\0").filter((s) => s !== "");
+/**
+ * A pathname's bytes, with everything outside printable ASCII as `\xNN` — **never the bytes themselves**.
+ *
+ * The same rule `nameOf` follows one section up, applied to a filename instead of to a file's contents:
+ * a report that echoes raw bytes can carry the very thing this check exists to catch, and would then
+ * silence whatever reads the report next.
+ */
+const escapeBytes = (buffer) =>
+    [...buffer].map((b) => (b >= 0x20 && b < DEL ? String.fromCharCode(b) : `\\x${b.toString(16).padStart(2, "0")}`)).join("");
+
+/**
+ * The NUL-separated list `git ls-files -z` writes, split at the BYTE level.
+ *
+ * Returns `{ paths, undecodable }`. A trailing separator yields no empty entry.
+ *
+ * **The split and the decode are two different fail-opens, and only the first was closed.** `-z` was
+ * chosen so a filename containing a newline could not be mis-split — but the list was then decoded
+ * whole with `readFileSync(0, "utf8")`, and git allows a pathname to be **any bytes except NUL and
+ * `/`**. Node replaces an invalid sequence with U+FFFD, so such a name arrived here as a *different
+ * string*, `bytesOf` looked for that string, got `ENOENT`, and the file was counted as *tracked and
+ * not on disk* — **skipped, and the run reported green over a file nothing had read**, with a
+ * plausible sentence in the summary saying so. A silent skip is the exact failure this whole check
+ * exists to catch, one layer up: `grep` went quiet on the NUL, and this went quiet on the name.
+ * Copilot found it on #167 in both channels at once — the thread on the production read, the
+ * suppressed note on the same decode in the live-tree test.
+ *
+ * So the bytes are split as bytes, and each chunk is kept only if it **round-trips** through UTF-8.
+ * Anything else is returned as `undecodable` for the caller to refuse over — never repaired, never
+ * dropped. `a-checker-must-refuse-what-it-cannot-check.md`: a path this tool cannot represent is one
+ * it would look for under a different name.
+ */
+export function splitList(input) {
+    const buffer = Buffer.isBuffer(input) ? input : Buffer.from(input, "utf8");
+    const paths = [];
+    const undecodable = [];
+    let start = 0;
+    for (let i = 0; i <= buffer.length; i += 1) {
+        if (i !== buffer.length && buffer[i] !== 0x00) continue;
+        if (i > start) {
+            const chunk = buffer.subarray(start, i);
+            const text = chunk.toString("utf8");
+            // The round trip is the test, not a regex for U+FFFD: a filename may legitimately CONTAIN
+            // U+FFFD, and rejecting that would be a false red on a name git stores exactly as given.
+            // Re-encoding answers the only question that matters — did anything change on the way in.
+            if (Buffer.from(text, "utf8").equals(chunk)) paths.push(text);
+            else undecodable.push(chunk);
+        }
+        start = i + 1;
+    }
+    return { paths, undecodable };
+}
 
 export function run(argv, stdin, say = (line) => process.stdout.write(`${line}\n`)) {
     const exempt = new Set();
@@ -274,9 +323,25 @@ export function run(argv, stdin, say = (line) => process.stdout.write(`${line}\n
         }
     }
 
+    // Refused before anything is scanned, and refused rather than skipped. Exit 2 is the honest code:
+    // the tree may be perfectly clean, and this run cannot say so — which is the difference between a
+    // verdict and a failure to reach one.
+    const { paths, undecodable } = splitList(stdin);
+    if (undecodable.length) {
+        for (const chunk of undecodable) {
+            say(`  ✗ the file list carries a pathname that is not valid UTF-8: ${escapeBytes(chunk)}`);
+        }
+        say(
+            `  ✗ refusing to scan ${paths.length} file(s) beside ${undecodable.length} this tool cannot name. ` +
+                "A path that does not survive decoding is one it would look for under a different name, find " +
+                "absent, and count as skipped — a green over a file nothing read",
+        );
+        return 2;
+    }
+
     let result;
     try {
-        result = inspect(splitList(stdin), { exempt });
+        result = inspect(paths, { exempt });
     } catch (error) {
         if (!(error instanceof ControlCharsError)) throw error;
         say(`  ✗ ${error.message}`);
@@ -315,7 +380,10 @@ export function run(argv, stdin, say = (line) => process.stdout.write(`${line}\n
 if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) {
     let stdin;
     try {
-        stdin = fs.readFileSync(0, "utf8");
+        // **No encoding.** `readFileSync(0, "utf8")` decoded the whole list before anything could
+        // check it, which is where the U+FFFD substitution happened — see `splitList`. The bytes
+        // arrive as bytes and the decode is per path, with a round trip deciding.
+        stdin = fs.readFileSync(0);
     } catch (cause) {
         // A terminal with nothing piped into it, most often. Refused with the usage line rather than
         // an empty list, which `inspect` would refuse anyway — but as "the enumeration failed", which
