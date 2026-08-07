@@ -64,10 +64,13 @@ expanded them onto it. Three separate faults, and only one of them is the one an
 | `d21a341` | 2 | the verdict review said *"3 … quoted below"* and **quoted one** |
 
 **Ten of the thirteen were lost to the merge gate cancelling itself.**
-[`../../.github/workflows/copilot-review.yml`](../../.github/workflows/copilot-review.yml) carries a
-`concurrency` block keyed on the pull-request number, whose `cancel-in-progress` is `true`, with the
-reason stated in its own comment: *"A push supersedes the run waiting on the commit it replaced."* The
-intent is sound and the side effect was not foreseen — **that run is the only thing that would have
+Until 2026-08-07 [`../../.github/workflows/copilot-review.yml`](../../.github/workflows/copilot-review.yml)
+carried a `concurrency` block keyed on the pull-request number alone, whose `cancel-in-progress` was `true`, with
+the reason stated in its own comment: *"A push supersedes the run waiting on the commit it replaced."*
+**Past tense, and deliberately: this pull request changes that configuration** — see the closing section
+— so the present tense here would make this paragraph false at its own merge, which is the defect this
+document is largely about. Everything measured below was measured against the old key. The
+intent was sound and the side effect was not foreseen — **that run is the only thing that would have
 quoted the superseded submission's notes, and Copilot's review of the superseded head arrives anyway,
 after the cancel.** Measured: the run for `d02111f` started 14:47:55 and was killed at 14:55:19;
 Copilot's review of `d02111f` landed 14:58:40. For `cd902d3` the margin was five seconds. **Every
@@ -75,12 +78,13 @@ submission in the table above ran to a `cancelled` conclusion, and every submiss
 `success`** — across all ten, with no exception in either direction, and `064331d` the single
 in-table exception that succeeded and lost its note by design.
 
-**Two more were lost inside the extractor.** On `d21a341` the verdict review states a count of three and
-quotes one. The `awk` that lifts the block ends on `/^#+[[:blank:]]/`, and the first note's quoted
-snippet is a **shell comment at column 0**, so extraction stopped at the opening fence of note one. The
-column-0 anchor is deliberate and its reasoning is sound — it exists so an *indented* `#` inside quoted
-code is not mistaken for a heading — but a column-0 `#` inside quoted code was not considered, in a
-repository whose reviews routinely quote shell files back at it. **A verdict review therefore posted a
+**Two more were lost inside the extractor**, and the same past tense applies for the same reason — this
+pull request changes this too. On `d21a341` the verdict review states a count of three and quotes one.
+The `awk` that lifts the block **ended** on `/^#+[[:blank:]]/` with no notion of a fenced block, and the
+first note's quoted snippet is a **shell comment at column 0**, so extraction stopped at the opening
+fence of note one. The column-0 anchor is deliberate and its reasoning is sound — it exists so an
+*indented* `#` inside quoted code is not mistaken for a heading — but a column-0 `#` inside quoted code
+was not considered, in a repository whose reviews routinely quote shell files back at it. **A verdict review therefore posted a
 false count onto a pull request that merged**, which is [#133](https://github.com/sleepy-panda-works/portulan/issues/133)'s
 class arriving inside the machinery built to prevent it.
 
