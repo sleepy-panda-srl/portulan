@@ -5,8 +5,12 @@ Second handoff of 2026-08-07. The first
 while all three pull requests were open; it is left as written, because a handoff is true as of its own
 date and is never re-derived. This one carries what happened after it.
 
-**State.** All three merged, `main` at `415167a`. Both feature branches deleted at both ends after
-`git cherry origin/main <branch>` showed zero `+` lines. Suite **1033**, nine recipes green, `npm pack`
+**State.** All three merged, `main` at `415167a`. **All three** feature branches deleted at both ends
+after `git cherry origin/main <branch>` showed zero `+` lines — `index-says-within-budget-only-where-there-is-one`,
+`an-unreadable-index-is-not-an-absent-one`, `a-control-character-nobody-can-see`. _(This line said
+**Both**, in the handoff whose subject is counts written from memory rather than measured. Found by
+Copilot on [#171](https://github.com/sleepy-panda-works/portulan/pull/171); the branches are named
+here now, because a list cannot disagree with its own count.)_ Suite **1033**, nine recipes green, `npm pack`
 **87**. Issues #92, #91, #68 closed.
 
 ## The protocol breach, first because it is the one thing here that is not routine
@@ -26,7 +30,7 @@ and the prose defects — a false universal in four carriers, an invented `seven
 caught by Copilot and by a self-audit instead, at six rounds past a bound of two. A session grading its
 own work is what the checkpoints exist to prevent, and this handoff is a session grading its own work.
 
-**The maintainer's ruling is owed on whether the three merges stand un-reviewed by a fresh context, or
+**The maintainer's ruling is owed on whether the three merges stand unreviewed by a fresh context, or
 whether a retrospective pass is run over `415167a`.** Recorded rather than decided.
 
 ## Decisions + why
