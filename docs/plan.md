@@ -1979,6 +1979,7 @@ _The seam applies here too: no client-identifying references._
   seven states; the pre-commit pass found an **eighth where they diverge** ([#169](https://github.com/sleepy-panda-works/portulan/issues/169)).
   **Eight instances of the class landed inside the change generalising it**, none caught by the suite. 8 of 13 rounds, not 5; `existsSync`
   17, not 27. `main` 1033→1055, nine recipes. · Fidelity: A-W-A (12) + A-W-A (11), all folded; one adjustment from each refuted by measurement, plus a Fable 5 review (9). 11 submissions, 5 answering pushes, the maintainer's grant past the bound. Seam scan clean. Handoff: [`2026-08-07`](../.portulan/handoffs/2026-08-07-a-fix-is-not-done-where-it-was-found.md).
+<<<<<<< HEAD
 - 2026-08-08 · Outside the milestone track · **The store had thirty-five bytes left.** A consolidation pass over
   the `.portulan` memory store, on the maintainer's instruction after the previous session's rule amendment
   breached the budget and was compressed back under **inside a change about something else** — the worst
@@ -2009,3 +2010,15 @@ _The seam applies here too: no client-identifying references._
   asserting zero failures on that shape**. But the same 7 appears from a directory with **no workspace at all**,
   so it closes a depth defect and **not** clause (b), whose subject is a composed pack — and **#123 does not hold
   the remainder** (`governed_by`, `pointer`, `boot`: zero hits). Suite 1057. Seam scan clean.
+=======
+- 2026-08-07 · Outside the milestone track · **The channel that carried the findings, and the gate that threw
+  them away.** [#176](https://github.com/sleepy-panda-works/portulan/pull/176) for
+  [#66](https://github.com/sleepy-panda-works/portulan/issues/66): proposal `0021` asks for a ruling, since #66 as
+  written **inverts rule 3** of the review-loop bound. **13 of #167's 26 notes never surfaced outside a collapsed
+  `<details>`** — and the first draft blamed the one known cause. **A fresh-context pre-commit checkpoint refused
+  it**: ten died with runs `cancel-in-progress` killed (`cd902d3` by five seconds), two to the extractor ending on a
+  column-0 `#` in quoted shell — **`"3 … quoted below"` quoting one, on a pull request that merged**. Shape 2 ships
+  on his instruction to fix rather than file; shapes 1 and 3 await his ruling. Suite 1055; three fixtures added to `workflow-filters`. · Fidelity:
+  session-open R-C + pre-commit R-C, all folded. 2 rounds, 1 answering push, taper clean; one note refuted against
+  GitHub's own `/markdown`; a second harness for the extractor was written and deleted when the recipe that already owned that job exited 2. Seam scan clean. Handoff: [`2026-08-07`](../.portulan/handoffs/2026-08-07-the-channel-that-carried-the-findings-and-lost-them.md).
+>>>>>>> 5e652a8 (Shape 2 ships: the gate stops cancelling the run that surfaces the notes)

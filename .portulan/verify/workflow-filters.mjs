@@ -467,6 +467,22 @@ const BODY_BENIGN = "## Pull request overview\n\n<details>\n<summary>Show a summ
 const BODY_CHROME = "### 🟢 Ready to approve\n\n<details>\n<summary>Review details</summary>\n"
     + "\n- **Files reviewed:** 3/3 changed files\n- **Comments generated:** 0 new\n</details>\n";
 const BODY_NONE = "## Pull request overview\n\nCopilot reviewed 15 files and generated no new comments.\n";
+// THE ONE THAT SHIPPED A FALSE COUNT. Copilot quotes the source line each note is about, in a fenced
+// block, and this repository's reviews quote SHELL — where a comment opens with `#` at column 0 and is
+// indistinguishable, line-wise, from a markdown heading. Read back from `/pulls/167/reviews` on
+// 2026-08-07: the verdict review for `d21a341` announced *"3 suppressed low-confidence note(s) are
+// quoted below"* and quoted ONE, because note 1's snippet opened with `# A raw NUL shipped inside …`.
+// Two notes lost, and the count matcher and the extractor disagreeing about one body — the exact drift
+// the one-marker design exists to prevent, arriving through the input nobody had modelled.
+//
+// It is the column-0 anchor's blind spot rather than its failure: the anchor was chosen so an INDENTED
+// `#` in quoted code cannot read as a heading, and this is that hazard one step out. The repair is a
+// fence toggle in all three programs, so quoted code is not markup in any of them.
+const BODY_FENCED_HASH = "## Pull request overview\n\n<details>\n<summary>Suppressed comments (3)</summary>\n"
+    + "\n**.portulan/verify/control-chars.sh:10**\n* the precondition is unchecked\n"
+    + "```\n# A raw NUL shipped inside ./workflow-filters.mjs would not be caught here\nset -eu\n```\n"
+    + "\n**.portulan/verify/README.md:77**\n* the count is stated rather than derived\n"
+    + "\n**cli/control-chars.mjs:11**\n* this header claims coverage the matcher lacks\n</details>\n";
 const BODY_MOVED = "## Pull request overview\n\n<details>\n<summary>Review details</summary>\n"
     + "\nWe suppressed 1 remark.\n</details>\n";
 // A heading whose `#` is followed by a TAB rather than a space, and one whose text simply begins
@@ -584,8 +600,41 @@ const AWK_CASES = [
     },
     // ---- copilot-review.yml: what the notes say --------------------------------------------------
     {
+        id: "notes-fenced-hash-keeps-all-three",
+        anchor: "f { print }",
+        why: "**the false count that merged.** A quoted shell comment at column 0 inside the block read "
+            + "as a heading and ended the extraction at note 1, so `d21a341`'s verdict review said "
+            + "three and quoted one. All three anchors must survive, and the fenced line itself is "
+            + "content that must still print",
+        input: BODY_FENCED_HASH,
+        stdout: "\n**.portulan/verify/control-chars.sh:10**\n* the precondition is unchecked\n"
+            + "```\n# A raw NUL shipped inside ./workflow-filters.mjs would not be caught here\nset -eu\n```\n"
+            + "\n**.portulan/verify/README.md:77**\n* the count is stated rather than derived\n"
+            + "\n**cli/control-chars.mjs:11**\n* this header claims coverage the matcher lacks\n",
+        status: 0,
+    },
+    {
+        id: "count-fenced-hash-agrees-with-the-extractor",
+        anchor: "RSTART+1",
+        why: "the other half of the same body: the announced count and the quoted notes must come from "
+            + "one reading. Three quoted and `3` announced, or the verdict review lies about its own "
+            + "contents the way it did on a merged pull request",
+        input: BODY_FENCED_HASH,
+        stdout: "3\n",
+        status: 0,
+    },
+    {
+        id: "present-ignores-a-marker-inside-a-fence",
+        anchor: 'print "yes"',
+        why: "the other direction, so the fence rule is not a matcher that merely stopped terminating: "
+            + "a body whose ONLY mention of the word sits in quoted code opens no block",
+        input: "## Pull request overview\n\nNothing to report.\n\n```\n### Comments suppressed due to low confidence (9)\n```\n",
+        stdout: "",
+        status: 0,
+    },
+    {
         id: "notes-v2-summary",
-        anchor: "f && (/<\\/details>/",
+        anchor: "f { print }",
         why: "the block's lines, from just after the marker to the closing tag — this is the text the "
             + "job summary prints and the verdict review quotes onto the pull request",
         input: BODY_V2,
@@ -594,7 +643,7 @@ const AWK_CASES = [
     },
     {
         id: "notes-v3-stops-at-stats",
-        anchor: "f && (/<\\/details>/",
+        anchor: "f { print }",
         why: "**the heading form's boundary.** Spelling 4 puts `- **Files reviewed:** 3/3` after the "
             + "notes and inside the same `<details>`, so terminating only at `</details>` would "
             + "quote Copilot's own statistics onto the pull request as suppressed findings",
@@ -604,7 +653,7 @@ const AWK_CASES = [
     },
     {
         id: "notes-stops-at-next-heading",
-        anchor: "f && (/<\\/details>/",
+        anchor: "f { print }",
         why: "and a heading after the block ends it too — a second section is not part of the notes, "
             + "however the markup nests it",
         input: BODY_V1 + "\n## Something after the block\n",
@@ -613,7 +662,7 @@ const AWK_CASES = [
     },
     {
         id: "notes-survive-quoted-indented-hash",
-        anchor: "f && (/<\\/details>/",
+        anchor: "f { print }",
         why: "**the refusal, pinned.** A note quoting this workflow back at itself — indented `#` "
             + "comment lines and all. The extractor must run past them to the stats list, because "
             + "an indented `#` is content, not a section. If the heading tests ever tolerate "
@@ -626,7 +675,7 @@ const AWK_CASES = [
     },
     {
         id: "notes-absent",
-        anchor: "f && (/<\\/details>/",
+        anchor: "f { print }",
         why: "no block, no notes. Empty here is the other half of the `unparsable` predicate",
         input: BODY_BENIGN,
         stdout: "",
