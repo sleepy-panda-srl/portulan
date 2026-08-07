@@ -84,10 +84,20 @@ const HERE = path.dirname(fileURLToPath(import.meta.url));
 const SCRATCH = [];
 process.on("exit", () => {
     for (const dir of SCRATCH) {
+        // `lstatSync` and a real-directory test BEFORE the chmod, and the reason is this suite's own
+        // subject. `chmodSync` FOLLOWS symlinks, and in the symlink-on-the-chain case this very path IS
+        // a symlink to `os.tmpdir()` — so the unguarded form reached outside the scratch tree and
+        // chmod'd the system temp directory, which on a user-owned tmpdir would have succeeded. The one
+        // rule these three carriers exist to enforce — never a call that resolves a link — broken in the
+        // cleanup of the suite that pins it. Copilot, round 1 on #168.
+        //
+        // Only the EACCES case locks a directory and only that case needs unlocking before removal.
+        // (`rmSync` recursive is safe here: it unlinks a symlink rather than descending through it.)
+        const locked = path.join(dir, SEGMENT);
         try {
-            fs.chmodSync(path.join(dir, "slot"), 0o755);
+            if (fs.lstatSync(locked).isDirectory()) fs.chmodSync(locked, 0o755);
         } catch {
-            /* only the EACCES case locks a directory, and only that case needs unlocking to remove */
+            /* absent, or already gone — nothing to unlock */
         }
         fs.rmSync(dir, { recursive: true, force: true });
     }
