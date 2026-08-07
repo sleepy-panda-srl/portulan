@@ -32,13 +32,15 @@ whether a status column changed.
    a change's own description of what it did is the least-reviewed prose in any diff, and it goes stale
    between the first draft and the last push. Sentences elsewhere in the tree that the change falsifies
    belong here too.
-4. **Sweep the siblings of every defect the diff repairs.** For each fix, name the rule it restores and
-   go looking for that rule's *other* sites — the tool the shape was copied from, the other arm of the
-   same function, the other command taking the same flag, the other direction of the same operation.
-   Each one either carries the fix or is named in the change as knowingly left. This step is here
-   because the implementer cannot do it: the site they are looking at is the site they just understood,
-   and the leftover is the one the next reader copies. Do not accept a comment beside the fix as
-   coverage of a second site — that has been measured failing.
+4. **Sweep the siblings of every defect the diff repairs.** The rule is
+   [`../../../../../core/operating/evolution.md`](../../../../../core/operating/evolution.md)'s — *a fix
+   is not done at the site it was found* — and this step is the procedure, not a second statement of it.
+   Ask the diff for it: which rule does each fix restore, and where else is that rule enforced? The tool
+   the shape was copied from, the other arm of the same function, the other command taking the same flag,
+   the other direction of the same operation. Each site either carries the fix or is named in the change
+   as knowingly left. **It is the checkpoint's step rather than the implementer's** because the site an
+   implementer is looking at is the site they just understood, and the leftover is the one the next
+   reader copies. Do not accept a comment beside the fix as coverage of a second site.
 5. **Attack the coverage claims.** Where the change says a check now catches something, try to get past
    it. A hole list is a claim like any other, and the only thing that checks a claim about coverage is
    somebody trying to defeat it.
