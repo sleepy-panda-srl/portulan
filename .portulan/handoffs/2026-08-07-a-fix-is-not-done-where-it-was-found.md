@@ -7,7 +7,7 @@ this session touches none of its outstanding deliverables.
 
 ## State
 
-Two commits on `m7-a-fix-is-not-done-where-it-was-found`: the rail (`cli/collisions.test.mjs`) and the
+Twelve commits on `m7-a-fix-is-not-done-where-it-was-found`, opening with: the rail (`cli/collisions.test.mjs`) and the
 doctrine (`core/operating/evolution.md`, `packs/rituals/checkpoints/skills/pre-commit/SKILL.md`,
 `.portulan/memory/a-review-loop-needs-a-bound.md`, `core/templates/persona.md`, and the checkpoints pack
 bumped `0.1.0` → `0.2.0` because an install is cached by that version). Suite: `main` **1033** → branch
@@ -64,7 +64,7 @@ request number are named as in-flight below rather than stated, and are filled i
   sweeping all fifteen, which would make the proposal unreviewable and contradicts this repository's
   forward-only treatment of records written before a rule existed.
 - **The `existsSync` grep is refused, priced rather than hand-waved** — a waiver check would catch **1 of
-  the 8** at a cost of 18 annotations, and a grep finds a *primitive* where the rule is about a predicate
+  the 8** at a cost of 17 annotations, and a grep finds a *primitive* where the rule is about a predicate
   no grep reads: of the 17 live calls some are guards where ENOENT-versus-EACCES decides the answer and
   some are not. The count-ratchet variant is refused too — a baseline bumping on every legitimate
   addition is waiver noise wearing a number. Precedent for the false-red cost is in
@@ -182,16 +182,39 @@ a rule that already had a carrier in the tree, missing from the new site:
 | 3 | 15 bytes of socket-path headroom, and a run-on aside. Neither a defect in anything the change asserts |
 | 4 | **Nothing — no inline comment, no suppressed note** |
 | 5 | Five notes on the RECORDS push: three stale `#91` claims in this handoff, and two implied antecedents in the Session-log entry |
+| 6 | A ruling not carried into the record of itself — five carriers of the pack version swept, the sixth missed |
+| 7 | Nothing, on the rebased head. The loop ended here |
 
-Plus two the pre-commit checkpoint found with the sibling-sweep step this change ships: an eighth
-filesystem state where the carriers genuinely disagree, and three spellings past the roster matcher.
-**Four instances of the class inside the change that generalises it**, each landing where the rule had a
-carrier the session had already read. That is the argument, demonstrated on itself, and it is the reason
-the proposal's answer is a reviewer plus a pin rather than a rule anybody is expected to remember.
+**The loop's shape, stated in the units this repository counts in**, because the first version of this
+paragraph said *"four rounds, ended on the taper"* and none of that was true: **11 Copilot submissions,
+5 answering pushes** (rounds 1, 2, 3, 5 and 6 — rounds 4 and 7 found nothing, so nothing answered them),
+ending on an empty round after the rebase onto nine commits of `main`.
+
+Plus what the pre-commit checkpoint and the Fable 5 supervisor found with the sibling-sweep step this
+change ships. **Eight instances of the class landed inside the change that generalises it** — counted on
+a stated basis, since this record has already been wrong about it twice: *a rule, decision or fact this
+change was itself carrying, present at one site and missing at another.*
+
+| # | The instance | Found by |
+|---|---|---|
+| 1 | The teardown resolved a link, in the suite that pins not resolving links | Copilot r1 |
+| 2 | `mkfifo` ruled against one file over, and shelled out anyway | Copilot r2 |
+| 3 | `#91` corrected in the proposal and the memory, not in the handoff | Copilot r5 |
+| 4 | The pack ruling swept to five carriers, not the sixth | Copilot r6 |
+| 5 | *Sibling* shipped in two disagreeing wordings, the broad one at the site with governing force | Fable 5 |
+| 6 | The roster's hole list narrower than the hole — three spellings, then two more after it was widened | checkpoint, then Fable 5 |
+| 7 | The suite header claimed the three carriers agree; an eighth state divides them | checkpoint |
+| 8 | Three records giving three different pictures of this loop | Fable 5 |
+
+**Zero of the eight were caught by the suite, and none by the author.** That is the argument, demonstrated
+on itself, and it is why the proposal's answer is a reviewer plus a pin rather than a rule anybody is
+expected to remember.
 
 **The taper is legible in that table for rounds 1–4** — outside-the-tree defect, then a contradicted
 decision, then a line break, then silence — and then **round 5 broke it, which is the most useful thing
-in this record.**
+in this record.** It broke again at round 6, and only rounds 7-and-after were genuinely empty. Read the
+table, not any one sentence about it: a taper is a shape, and every time this session summarised the
+shape in a sentence, the next round falsified the sentence.
 
 **Read what happened there, because it is rule 2's actual argument and this session walked into it.**
 Round 4 was empty, so the records were written saying *the loop ended on the taper* — and that record
@@ -210,7 +233,7 @@ Two lessons, both cheap to state and neither derivable from the diff:
   from the proposal outward and this file was written last. The sibling set for a fact includes the
   record you are writing while you sweep.
 
-**Rounds 3, 4 and 5 each gave the merge gate what it requires** — a Copilot submission on the head being
+**The empty rounds gave the merge gate what it requires** — a Copilot submission on the head being
 merged ([`a-review-is-awaited-not-just-resolved.md`](../memory/a-review-is-awaited-not-just-resolved.md)).
 
 **One thing the exemption should not be credited with.** Under this change's own sibling exemption

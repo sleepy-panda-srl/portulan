@@ -1977,5 +1977,5 @@ _The seam applies here too: no client-identifying references._
   place**; checkpoints pack `0.1.0`→`0.2.0`. **No rail catches the class as a class — a rule has no token — and
   the proposal says so.** What ships is `cli/collisions.test.mjs`, pinning three `collisions()` agreed across
   seven states; the pre-commit pass found an **eighth where they diverge** ([#169](https://github.com/sleepy-panda-works/portulan/issues/169)).
-  **Four instances of the class landed inside the change generalising it.** 8 of 13 rounds, not 5; `existsSync`
-  17, not 27. `main` 1033→1055, nine recipes. · Fidelity: A-W-A (12) + A-W-A (11), all folded; one adjustment from each refuted by measurement. Four Copilot rounds, ended on the **taper**, the maintainer's grant past the bound. Seam scan clean. Handoff: [`2026-08-07`](../.portulan/handoffs/2026-08-07-a-fix-is-not-done-where-it-was-found.md).
+  **Eight instances of the class landed inside the change generalising it**, none caught by the suite. 8 of 13 rounds, not 5; `existsSync`
+  17, not 27. `main` 1033→1055, nine recipes. · Fidelity: A-W-A (12) + A-W-A (11), all folded; one adjustment from each refuted by measurement, plus a Fable 5 review (9). 11 submissions, 5 answering pushes, the maintainer's grant past the bound. Seam scan clean. Handoff: [`2026-08-07`](../.portulan/handoffs/2026-08-07-a-fix-is-not-done-where-it-was-found.md).

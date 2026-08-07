@@ -142,9 +142,14 @@ instances each recorded as the fifth. Two different scopes — the milestone, th
 interchangeably. **Membership was never defined**, so no figure was re-derivable, which is precisely the
 gap `a-review-loop-needs-a-bound.md` closed for round counts on 2026-07-30 and nobody closed for this.
 
-**The test this proposal uses**, chosen so the count survives its author: *a finding whose governing rule
-was already **enforced at another site of the same operation** — in the same change or in the tree — when
-the defect was written.* It is re-derivable from the diffs, which is the whole requirement.
+**The test**, chosen so the count survives its author, is quoted from the rule that carries it —
+[`../memory/a-review-loop-needs-a-bound.md`](../memory/a-review-loop-needs-a-bound.md)'s rule 4, which is
+where it has governing force and is therefore its one carrier:
+
+> a finding whose governing rule was already **enforced at another site of the same operation** — in this
+> change or in the tree — when the defect was written.
+
+It is re-derivable from the diffs, which is the whole requirement.
 
 _The narrowing to *another site of the same operation* is stated because without it the test is too
 generous and admits round 8: the Workspace Definition permits an empty directory slot and `doctor`
@@ -224,7 +229,9 @@ deleting a second definition rather than correcting it *"so the two cannot drift
 `scan()`; and eight cross-tool imports in `cli/` altogether.
 
 **Its honest limit:** it applies where a rule can be a function. Where a rule is a cross-cutting
-convention — only-`ENOENT` holds at 35 sites and cannot be one — the site count is irreducible, and only
+convention — only-`ENOENT` is written out at **39 lines across 7 of the 11 non-test CLI modules**, a
+line count spanning code and comment because no count of *guards* is derivable by grep — the site count
+is irreducible, and only
 the procedure step below reaches it.
 
 ### 2. The rail, built here: pin the sites that cannot be merged (`cli/collisions.test.mjs`)
@@ -280,8 +287,9 @@ one.
 
 This class **generates its own next round** — a sibling of round N's fix cannot surface before round N+1
 — so a bound that counts pushes retires the loop exactly where the class is still producing. Six of
-#164's eight arrived after the bound. Rule 4 is amended in place, never carried a second time, with
-*sibling* defined operationally so the count stays re-derivable.
+#164's eight arrived after the bound. Rule 4 is amended in place, with *sibling* defined operationally
+there — **one carrier, quoted here rather than restated**, which this change got wrong once before the
+Fable 5 supervisor caught two wordings of it in the tree at the same time.
 
 **The two precedents are named rather than smoothed**, because they contradict. #85 read the bound
 strictly, triaged the same finding through rounds three to seven, and the product of that triage is #91 —
@@ -296,13 +304,26 @@ the taper stays outside the countable bound.
 
 The one sub-rule with a mechanical shape is *never `existsSync`*. A check requiring every call to carry a
 stated waiver is buildable and would have caught **round 10 — one of the eight**, at a cost of seventeen
-annotations. Refused on the ground that a grep finds a **primitive** while the rule is about a
+annotations. **And the price sheet owes a second figure the refusal would otherwise flatter itself by
+omitting:** annotating those seventeen calls at adoption *is* the sibling sweep for this sub-rule, and
+its yield is demonstrably nonzero — [#166](https://github.com/sleepy-panda-works/portulan/pull/166) found
+a live #91 sibling in exactly one of them, `judgeScopes`' `if (!fs.existsSync(location)) continue`. So
+the honest price is **one catch per eight rounds and one per seventeen annotated calls**, and the
+refusal below rests on maintenance cost rather than on the audit being worthless. Refused on the ground that a grep finds a **primitive** while the rule is about a
 **predicate no grep reads**: of the seventeen live calls, some are guards where ENOENT-versus-EACCES
 decides the answer and some are not, and nothing in the token says which. A check that fires seventeen
 times to find one is a check that gets suppressed — and this repository has already paid for the
 false-red shape, in `docs/milestones/m07.md`, where a matcher could not tell a persona disclaiming
 *Prohibited* from one claiming it. The cheaper variant — ratchet the count and fail on an increase — is
 refused too: a baseline that bumps on every legitimate addition is waiver noise wearing a number.
+
+**And a third family, named because a survey that stops at two is the shape this section objects to:
+textual clone detection.** It is the standard tool for the copy-shaped subset, and it would have found
+round 4's `collisions()` — a shape copied whole from `cli/new.mjs`. It is refused because the sibling
+sets that actually cost this repository **share no text**: `judgeScopes` and `compareOrWrite` are
+different functions expressing one rule, and the three `collisions()` have grown apart to three
+signatures. A clone detector enumerates *textual* siblings, which is the token problem again wearing a
+better tool.
 
 ### 6. Named and refused: a form check on the checkpoint's verdict
 

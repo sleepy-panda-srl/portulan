@@ -177,15 +177,23 @@ needs a ruling first, exactly as #105 did.
    linking the comment. It does not become another push, and it does not hold the merge.
    **A round whose finding is a SIBLING of an earlier round's fix does not spend the bound — added
    2026-08-07.** *Sibling* is operational so the count stays re-derivable from the diffs after the fact,
-   which is the property the 2026-07-30 definition bought and this file calls the half that closed: a
-   finding whose governing rule **already existed elsewhere** — in this change or in the tree — when the
-   defect was written. The exemption exists because this class *generates its own next round*: a sibling
-   of round N's fix cannot surface before round N+1, so a bound that counts pushes retires the loop
-   exactly where the class is still producing. Measured on
-   [#164](https://github.com/sleepy-panda-works/portulan/pull/164): **eight of its thirteen rounds** were
-   siblings by this test, six of them after the bound. The exemption **buys rounds and does not remove
-   the gate** — every extension past two is still the maintainer's to grant and never the session's to
-   assume, as it was granted on #160, #163 and #164 one at a time.
+   which is the property the 2026-07-30 definition bought and this file calls the half that closed:
+
+   > a finding whose governing rule was already **enforced at another site of the same operation** — in
+   > this change or in the tree — when the defect was written.
+
+   **This file is that definition's one carrier**; proposal
+   [`0020`](../proposals/0020-a-fix-is-not-done-at-the-site-it-was-found.md) quotes it rather than
+   restating it. _(Both shipped for one round, this one broader — and broad is unusable, not merely
+   loose: a rule that merely EXISTS somewhere makes nearly every finding a sibling, repealing the bound
+   while claiming to buy rounds. Fable 5 on #168, in the change about one rule with two carriers.)_
+   The exemption exists because this class *generates its own next round*: a sibling of round
+   N's fix cannot surface before round N+1, so a bound that counts pushes retires the loop exactly where
+   the class is still producing. Measured on
+   [#164](https://github.com/sleepy-panda-works/portulan/pull/164) under the narrow test: **eight of its
+   thirteen rounds** were siblings, six of them after the bound. The exemption **buys rounds and does not
+   remove the gate** — every extension past two is still the maintainer's to grant and never the
+   session's to assume, as it was granted on #160, #163 and #164 one at a time.
 
 ## Why it holds
 
