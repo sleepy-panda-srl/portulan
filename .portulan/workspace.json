@@ -74,6 +74,12 @@
         "run": "./.portulan/verify/index.sh",
         "requires": ["bash", "git", "node"],
         "doc": "verify/README.md"
+      },
+      {
+        "id": "control-chars",
+        "run": "./.portulan/verify/control-chars.sh",
+        "requires": ["bash", "git", "node"],
+        "doc": "verify/README.md"
       }
     ]
   },
