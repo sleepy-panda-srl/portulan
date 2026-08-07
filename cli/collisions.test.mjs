@@ -301,8 +301,40 @@ function modules(dir = HERE, prefix = "") {
 // Both rounds are the same lesson and it is this suite's own: **a hole list is a claim like any other,
 // and the only thing that checks it is somebody trying to defeat it.** The list below is therefore
 // stated as what has been TRIED, never as what is covered.
-const EXPORTS_COLLISIONS =
-    /export\s+(?:async\s+)?(?:function\s*\*?|const|let|var|class)\s+collisions\b|export\s*\{[^}]*\bcollisions\b[^}]*\}|export\s*\*\s*from/;
+const EXPORTS_COLLISIONS_DIRECTLY =
+    /export\s+(?:async\s+)?(?:function\s*\*?|const|let|var|class)\s+collisions\b|export\s*\{[^}]*\bcollisions\b[^}]*\}/;
+const STAR_EXPORT = /export\s*\*\s*from\s*["']([^"']+)["']/g;
+
+/**
+ * Whether a module exports a `collisions` binding, directly or through a star re-export.
+ *
+ * **The star case is RESOLVED rather than assumed, and the first cut assumed.** Treating every
+ * `export * from …` as a carrier reds this suite for any barrel re-export that has nothing to do with
+ * `collisions` — a false red, introduced in the very change that closed the false negative, which is the
+ * over-correction this repository has already paid for once (a matcher that could not tell a persona
+ * disclaiming *Prohibited* from one claiming it). Copilot found it on the merging head.
+ *
+ * A star export therefore counts only when the module it names transitively exports `collisions`.
+ * `seen` bounds the walk, since a cycle of re-exports is a program that does not run but is a file set
+ * that could still be written.
+ */
+function exportsCollisions(rel, seen = new Set()) {
+    if (seen.has(rel)) return false;
+    seen.add(rel);
+    let src;
+    try {
+        src = fs.readFileSync(path.join(HERE, rel), "utf8");
+    } catch {
+        return false; // a star export naming something absent re-exports nothing
+    }
+    if (EXPORTS_COLLISIONS_DIRECTLY.test(src)) return true;
+    for (const [, target] of src.matchAll(STAR_EXPORT)) {
+        if (!target.startsWith(".")) continue; // a bare specifier is not a module under cli/
+        const next = path.relative(HERE, path.resolve(path.dirname(path.join(HERE, rel)), target));
+        if (!next.startsWith("..") && exportsCollisions(next, seen)) return true;
+    }
+    return false;
+}
 
 describe("the roster is pinned too", () => {
     test("exactly three modules under cli/ export a `collisions`, and this suite asserts all three", () => {
@@ -319,7 +351,7 @@ describe("the roster is pinned too", () => {
         // attempts, not a proof of coverage. The roster is the cheap half, kept because a copied shape is
         // nearly always copied under its own name too.
         const found = modules()
-            .filter((rel) => EXPORTS_COLLISIONS.test(fs.readFileSync(path.join(HERE, rel), "utf8")))
+            .filter((rel) => exportsCollisions(rel))
             .sort();
         assert.deepEqual(found, ["init.mjs", "new.mjs", "vendor.mjs"]);
         assert.deepEqual(
