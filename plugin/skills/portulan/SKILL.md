@@ -100,7 +100,7 @@ the root holds. Four things do not follow, and **each is milestone 7's, owed rat
 
 - **Nothing discovers the root.** No host's plugin cache is read to find one, which is the same absence
   step 2a reports for a pointer. Until it lands, a workspace declaring no `tree` derives no root, and
-  unless one is named its packs are reported unresolvable — so *"declared"* and *"resolved"* are two
+  unless one is named, its packs are reported unresolvable — so *"declared"* and *"resolved"* are two
   states here, and which one you are in depends on a path somebody typed.
 - **A pack's skills do not register as host capabilities — whatever the channel.** Not a property of
   feeds: it holds for a pack bundled inside a plugin that declares the pack directory as a skills path,

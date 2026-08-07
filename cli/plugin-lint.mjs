@@ -36,6 +36,15 @@
 //   * field semantics beyond shape — whether a description is *good*, whether a skill is worth its
 //     tokens. That is review, and ../core/skills/README.md holds the bar.
 //   * anything needing the network. Nothing here fetches (../.portulan/verify/README.md).
+//   * **whether a declared skill becomes a capability the HOST registers.** The count this tool prints
+//     is of skills the manifests DECLARE and whose artifacts resolve on disk. It is not, and must not
+//     be read as, a count of what a host will load. The gap is real and measured rather than feared:
+//     this repository declares `./packs/rituals/` and lints its pack's skills as resolving, while a
+//     pack installed from a feed reports `Skills (0)` to the host — re-measured 2026-08-07 on Claude
+//     Code 2.1.224, unchanged from the 2026-07-30 measurement on 2.1.220 in
+//     ../docs/milestones/m07.md. So `N skill(s)` here answers *is the packaging coherent*, never *is
+//     the skill invocable*, and MAX_DECLARED_SKILL_DEPTH below is this repository's bound rather than
+//     the host's. Discovery and host parity are milestone 7's, with #123 and #134.
 //   * whether the plugin, once installed, behaves. That is the fresh-machine install demonstration
 //     the milestone-3 criterion asks for, and no lint can stand in for it.
 
