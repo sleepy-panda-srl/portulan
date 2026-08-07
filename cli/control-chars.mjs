@@ -398,7 +398,7 @@ export function run(argv, stdin, say = (line) => process.stdout.write(`${line}\n
             say(`  ✗ the file list carries a pathname that is not valid UTF-8: ${escapeBytes(chunk)}`);
         }
         say(
-            `  ✗ refusing to scan ${paths.length} file(s) beside ${undecodable.length} this tool cannot name. ` +
+            `  ✗ refusing to scan ${paths.length} file(s), beside ${undecodable.length} pathname(s) this tool cannot name. ` +
                 "A path that does not survive decoding is one it would look for under a different name, find " +
                 "absent, and count as skipped — a green over a file nothing read",
         );
