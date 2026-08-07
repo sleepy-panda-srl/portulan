@@ -1946,3 +1946,14 @@ _The seam applies here too: no client-identifying references._
   governor, and task `0011`'s *"never two"* is amended to cite `0017`. 15 carriers swept (13 prose, 2 suites). Suite 907→983,
   eight recipes, `npm pack` 85. · Fidelity: session-open A-W-A (9), which refuted three orderings first ·
   pre-commit REQUEST-CHANGES (4, all folded) then A-W-A (1), each a record out of agreement with the tree. Seam scan clean. Handoff: [`2026-08-03-a-workspace-can-move-house…`](../.portulan/handoffs/2026-08-03-a-workspace-can-move-house-and-one-window-cannot-close.md).
+
+- 2026-08-07 · Outside the milestone track · **The checks that said more than they saw.** Three items off the
+  board's **Now** column, one pull request each, none merged. [#165](https://github.com/sleepy-panda-works/portulan/pull/165):
+  `index` drops `within budget` where **none was judged**, counting what RAN rather than what the manifest declares.
+  [#166](https://github.com/sleepy-panda-works/portulan/pull/166): an index that **could not be read** stops being
+  reported absent — only `ENOENT` is the red — and its sibling in the paragraph stating that rule, where `existsSync`
+  answers false for `EACCES` so a layer at `0400` skipped every location it declares.
+  [#167](https://github.com/sleepy-panda-works/portulan/pull/167): the **ninth recipe**, no control character outside
+  TAB and LF. Its binary sniff is **refused** — every sniff is keyed on NUL, so it would skip the file it exists to
+  catch — leaving a named, both-ways-audited exemption. Forced red four ways locally; **none seen red in CI**. Suite
+  983 → 1014, nine recipes, `npm pack` 87. · Fidelity: **no supervisor checkpoint — a gap, not a scale-down.** Seam scan clean. Handoff: [`2026-08-07`](../.portulan/handoffs/2026-08-07-the-checks-that-said-more-than-they-saw.md).
