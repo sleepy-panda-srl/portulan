@@ -107,11 +107,16 @@ export const isForbidden = (byte) => byte !== TAB && byte !== LF && (byte < 0x20
 /**
  * Every forbidden byte in a buffer, as `{ offset, byte, name, line, column }`.
  *
- * `line` and `column` are 1-based, and **`column` counts BYTES**, which is stated rather than left to
- * be discovered: a line holding a three-byte em dash has a byte column larger than its character
- * column, and this check's own subject is claims that outrun their measurement (the `plan` rail makes
- * the same distinction about `awk`'s `length()`). The byte offset is the figure that is unambiguous,
- * and it is what an editor's go-to-byte takes.
+ * **`offset` is 0-based; `line` and `column` are 1-based.** The three are not on one scale and saying
+ * so is not pedantry — `offset` is an index into the buffer, so it is 0-based by construction, while
+ * a line number that started at 0 would disagree with every editor and every other message in this
+ * repository. Copilot found the mismatch stated the other way on #167 round 1, in a test NAME, which
+ * is where a reader looks for the contract.
+ *
+ * **`column` counts BYTES**, likewise stated rather than left to be discovered: a line holding a
+ * three-byte em dash has a byte column larger than its character column, and this check's own subject
+ * is claims that outrun their measurement — the distinction the `plan` rail already makes about
+ * `awk`'s `length()`.
  */
 export function scanBytes(buffer) {
     const found = [];
@@ -276,10 +281,15 @@ export function run(argv, stdin, say = (line) => process.stdout.write(`${line}\n
         return 2;
     }
 
+    // The locator leads with line and byte column — 1-based, the numbers an editor shows — and gives
+    // the buffer offset after them, saying it is 0-based. The first draft printed `byte 19 (line 1,
+    // byte column 20)` and named neither base, so the two numbers looked like a contradiction about
+    // the same position. A message that has to be decoded is the failure this whole check is about,
+    // one layer up. Copilot, round 1 on #167, which found the same mismatch in a test name.
     for (const f of result.findings) {
         say(
-            `  ✗ ${f.file}: ${f.count} control character(s) — first at byte ${f.first.offset} ` +
-                `(line ${f.first.line}, byte column ${f.first.column}): ${f.first.name}`,
+            `  ✗ ${f.file}: ${f.count} control character(s) — first at line ${f.first.line}, ` +
+                `byte column ${f.first.column} (byte offset ${f.first.offset}, 0-based): ${f.first.name}`,
         );
     }
 

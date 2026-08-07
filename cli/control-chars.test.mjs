@@ -116,15 +116,21 @@ describe("what a tracked file may not carry", () => {
 // ---------------------------------------------------------------- locating one
 
 describe("where the byte is", () => {
-    test("reports the byte offset, the line and the byte column, 1-based", () => {
+    test("reports a 0-based byte offset with a 1-based line and byte column", () => {
+        // The three are not on one scale, and the name says which is which. It read "1-based" of all
+        // three while asserting an offset of 12 — a 0-based index — which Copilot caught on round 1:
+        // a test name is where a reader looks for the contract, so a wrong one is the contract being
+        // wrong. `offset` is an index into the buffer and cannot be anything but 0-based; a line
+        // number starting at 0 would disagree with every editor.
         const buffer = Buffer.from(`first\nsecond${NUL}\nthird\n`, "utf8");
         const found = scanBytes(buffer);
         assert.equal(found.length, 1);
         assert.equal(found[0].name, "NUL");
-        assert.equal(found[0].offset, 12);
+        assert.equal(found[0].offset, 12); // 0-based: `first\n` is 6 bytes, `second` is 6 more
         assert.equal(found[0].line, 2);
         assert.equal(found[0].column, 7);
     });
+
 
     test("the column counts BYTES, which is why it says so", () => {
         // An em dash is three bytes. A column named `characters` would print a number the reader
@@ -277,12 +283,15 @@ describe("run", () => {
         assert.match(messages(lines), /2 file\(s\) carry no control character/);
     });
 
-    test("exit 1 naming the file, the offset and the byte", () => {
+    test("exit 1 naming the file, the locator and the byte — with the base of each number", () => {
+        // The first draft printed `byte 19 (line 1, byte column 20)` and named neither base, so two
+        // numbers about one position read as a contradiction. A message that has to be decoded is this
+        // check's own subject one layer up, so the format is asserted rather than left to a reader.
         const dir = tree({ "bad.mjs": `const identity = "a${NUL}b";\n` });
         const lines = [];
         assert.equal(run([], path.join(dir, "bad.mjs"), (s) => lines.push(s)), 1);
         assert.match(messages(lines), /bad\.mjs/);
-        assert.match(messages(lines), /byte 19/);
+        assert.match(messages(lines), /line 1, byte column 20 \(byte offset 19, 0-based\)/);
         assert.match(messages(lines), /NUL/);
     });
 
