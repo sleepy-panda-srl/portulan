@@ -69,7 +69,8 @@ request number are named as in-flight below rather than stated, and are filled i
   disclaiming *Prohibited* from one claiming it.
 - **The bound is amended in place, and both precedents are named rather than smoothed** — #85 read rule 4
   strictly, triaged the same finding through rounds three to seven, and the product of that triage is #91,
-  **still open, with the defect still at `cli/index.mjs:781`**; #164 ran eleven rounds past on the
+  which then stayed open **nine days** and was closed by #166 an hour after #164 merged — in a change
+  that recurred the same class inside its own fix; #164 ran eleven rounds past on the
   maintainer's grant and every round found a real defect. Triage is a deferral whose measured half-life
   here is indefinite. The grant stays his; the **taper** stays judgement and stays outside the countable
   bound; *sibling* is defined operationally so the count remains re-derivable from the diffs.
@@ -92,9 +93,11 @@ request number are named as in-flight below rather than stated, and are filled i
   applied to its supervisor. **That makes the rail's claim sharper rather than weaker:** it establishes
   nothing new about the tree, and converts an agreement held by three independent accidents into one that
   reds when it stops being held.
-- **A live instance, still open.** `cli/index.mjs:256` states the rule — *"Present and unreadable is not
-  'absent'"* — and `cli/index.mjs:781`, **525 lines below in the same file**, is `} catch { /* absent */ }`.
-  That is #91, in the file that argues against it.
+- **The instance this was drafted against was closed while it was being written.** Until
+  2026-08-07T15:07Z, `cli/index.mjs:256` stated the rule — *"Present and unreadable is not 'absent'"* —
+  and `cli/index.mjs:781`, **525 lines below in the same file**, was `} catch { /* absent */ }`. That was
+  #91, live **nine days** in the file that argues against it. #166 closed it mid-session; what replaced
+  it as evidence is stronger, and is in the proposal.
 
 ## Found and deliberately not fixed
 
@@ -106,9 +109,9 @@ request number are named as in-flight below rather than stated, and are filled i
 - **The superlative has drifted.** *"The defect this repository names most often"* appears **at least 37
   times across 31 files** and attaches to **at least three different defects**. Named in `0020`'s limits;
   repairing it is a 37-site prose sweep and belongs in its own change.
-- **`cli/index.mjs:781`** — #91's original defect, still live, in the file that argues against it at
-  line 256. Untouched here on purpose: this session's subject is the class, and fixing one instance
-  inside the change that generalises it would make the diff argue two things at once.
+- ~~**`cli/index.mjs:781`** — #91's original defect, left live on purpose.~~ **Overtaken:** #166 fixed
+  it mid-session, so there is nothing here to leave. The reasoning stands for the next case — fixing one
+  instance inside the change that generalises its class would make the diff argue two things at once.
 
 ## Open questions
 
@@ -117,11 +120,17 @@ request number are named as in-flight below rather than stated, and are filled i
   request ([#168](https://github.com/sleepy-panda-works/portulan/pull/168)), keeping the `persona.md`
   edit, and filing the issue (now [#169](https://github.com/sleepy-panda-works/portulan/issues/169)).
   **What remains open for him is the rule itself**, plus the four things listed under *Found and
-  deliberately not fixed* and the `0.2.0`-versus-`0.1.1` call below.
+  deliberately not fixed*.
 - **Whether the *use*-versus-*carrier* distinction survives review.** Named above as the first thing to
   attack.
-- **`0.2.0` or `0.1.1` for the checkpoints pack.** MINOR was chosen because the change adds a step a
-  consumer receives, where the one precedent on record bumped PATCH for a rail fix. His to overrule.
+- ~~**`0.2.0` or `0.1.1` for the checkpoints pack.**~~ **Settled 2026-08-07: `0.2.0`.** Put to the
+  maintainer, who ruled PATCH and then returned it on the argument. The argument is that the precedent
+  does not govern — it bumped PATCH for a *rail fix*, a bug, where this adds a step a consumer receives,
+  which is a feature under SemVer. **Swept to `0.1.1` and back**, which cost almost nothing precisely
+  because the carriers had been enumerated first: five carriers of that version claim moved together — and the enumeration is why the sweep was safe: **`0.2.0` is also the PRODUCT's release
+  version**, in `.claude-plugin/marketplace.json`, `plugin.json`, `README.md`, `product.md` and the
+  CHANGELOG's own `## 0.2.0` heading, on a different train entirely. A blind replace would have moved
+  five carriers of an unrelated fact.
 
 ## Next action
 
@@ -169,6 +178,7 @@ a rule that already had a carrier in the tree, missing from the new site:
 | 2 | *not `mkfifo`, it needs a shell-out* — ruled at `cli/vendor.test.mjs:393`, contradicted by the only shell-out in `cli/` |
 | 3 | 15 bytes of socket-path headroom, and a run-on aside. Neither a defect in anything the change asserts |
 | 4 | **Nothing — no inline comment, no suppressed note** |
+| 5 | Five notes on the RECORDS push: three stale `#91` claims in this handoff, and two implied antecedents in the Session-log entry |
 
 Plus two the pre-commit checkpoint found with the sibling-sweep step this change ships: an eighth
 filesystem state where the carriers genuinely disagree, and three spellings past the roster matcher.
@@ -176,12 +186,29 @@ filesystem state where the carriers genuinely disagree, and three spellings past
 carrier the session had already read. That is the argument, demonstrated on itself, and it is the reason
 the proposal's answer is a reviewer plus a pin rather than a rule anybody is expected to remember.
 
-**The loop ended on the taper, and the taper is legible in that table** — outside-the-tree defect, then
-a contradicted decision, then a line break, then silence. Recorded this way because the amendment this
-change makes says the taper is the signal and the round count is not; a later reader should be able to
-check that claim against the shape rather than take it. **Rounds 3 and 4 also gave the merge gate what it
-requires** — a Copilot submission on the head being merged
-([`a-review-is-awaited-not-just-resolved.md`](../memory/a-review-is-awaited-not-just-resolved.md)).
+**The taper is legible in that table for rounds 1–4** — outside-the-tree defect, then a contradicted
+decision, then a line break, then silence — and then **round 5 broke it, which is the most useful thing
+in this record.**
+
+**Read what happened there, because it is rule 2's actual argument and this session walked into it.**
+Round 4 was empty, so the records were written saying *the loop ended on the taper* — and that record
+went out in a push, `review_on_push` spawned a round on it, and the round found **five notes, three of
+them real**: this handoff still asserted #91 was live at `cli/index.mjs:781` in three places, having been
+corrected in the proposal and the memory entry and **not here**. A fix that missed its siblings, in the
+change about fixes that miss their siblings, inside the record claiming the loop was over.
+
+Two lessons, both cheap to state and neither derivable from the diff:
+
+- **A record that claims the loop is finished cannot ride the push that draws the next round.** Rule 2
+  says records land in the final push; what this shows is that *"final"* is not knowable at the time,
+  because the records push is itself input. The honest form is what the table above now does — state the
+  rounds and their shape, and let the maintainer read the taper — never *"the loop ended"*.
+- **The records were swept for #91 and the handoff was not**, because the sweep was done file by file
+  from the proposal outward and this file was written last. The sibling set for a fact includes the
+  record you are writing while you sweep.
+
+**Rounds 3, 4 and 5 each gave the merge gate what it requires** — a Copilot submission on the head being
+merged ([`a-review-is-awaited-not-just-resolved.md`](../memory/a-review-is-awaited-not-just-resolved.md)).
 
 **One thing the exemption should not be credited with.** Under this change's own sibling exemption
 neither round 1 nor round 2 would have spent the bound — but that is the amendment arguing for its own

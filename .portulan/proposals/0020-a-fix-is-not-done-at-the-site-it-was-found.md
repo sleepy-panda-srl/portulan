@@ -1,7 +1,8 @@
 # 0020 — A fix is not done at the site it was found
 
-**Status.** Proposed — the maintainer ruled on 2026-08-07 that this lesson becomes a proposal rather
-than staying in thirteen commit messages. He has not ruled on its content; that is what this asks for.
+**Status.** Accepted on merge — the maintainer ruled on 2026-08-07 that this lesson becomes a proposal
+rather than staying in thirteen commit messages, and ruled on its content the same day; his merge of the
+pull request below ratifies the drafting.
 
 **Pull request:** https://github.com/sleepy-panda-works/portulan/pull/168
 
@@ -359,8 +360,12 @@ form check and the reason it is not offered as a solution to the class.
   of prior edits, not a ruling. The real precedent is in
   [`../handoffs/2026-07-30-a-link-resolves-in-the-repository.md`](../handoffs/2026-07-30-a-link-resolves-in-the-repository.md)
   and goes the other way: a bump rode a pack content change *"because an install is resolved and cached
-  by the manifest's version field."* MINOR rather than PATCH because that change was a rail fix and this
-  one adds a step a consumer receives. `pack.json` is the only carrier of that version — checked.
+  by the manifest's version field."* **MINOR rather than PATCH**, and the precedent does not govern: it
+  bumped PATCH for a *rail fix* — a bug — where this adds step 4 of 7 to a procedure a consumer
+  receives, which is a feature. `pack.json` is the only carrier of the pack's version, and the
+  enumeration that established that is what made the ruling cheap to apply in either direction:
+  **`0.2.0` is also the PRODUCT's release version**, in five files on an unrelated train, so a blind
+  replace would have moved five carriers of a different fact.
 
 ## Limits
 
@@ -392,6 +397,12 @@ form check and the reason it is not offered as a solution to the class.
 
 ## Decision
 
-Marius Cetanas — **pending**. He ruled on 2026-08-07 that the lesson becomes a proposal; the rule itself,
-the reflexive `persona.md` edit, and the `collisions()` unification issue are the three things this asks
-him to decide.
+Marius Cetanas — **accepted**, 2026-08-07, on the merge of the pull request above — because the rule had
+a standing ruling since 2026-07-27 and no carrier governance reads, and the incident that forced the
+question produced four further instances of the class *inside the change generalising it*.
+
+He decided the three things this asked him: the rule stands; the reflexive `core/templates/persona.md`
+re-point is **kept**; the `collisions()` unification is **filed** as
+[#169](https://github.com/sleepy-panda-works/portulan/issues/169). He also ruled the pack bump **PATCH**
+rather than the MINOR this session proposed, and granted the extension past the review-loop bound after
+round 2 — asked for and given, in the form the amended rule 4 requires.
