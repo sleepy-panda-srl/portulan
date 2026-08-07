@@ -64,15 +64,16 @@ expanded them onto it. Three separate faults, and only one of them is the one an
 | `d21a341` | 2 | the verdict review said *"3 … quoted below"* and **quoted one** |
 
 **Ten of the thirteen were lost to the merge gate cancelling itself.**
-[`../../.github/workflows/copilot-review.yml`](../../.github/workflows/copilot-review.yml) carries
-`concurrency: cancel-in-progress: true`, keyed on the pull-request number, with the reason stated in its
-own comment: *"A push supersedes the run waiting on the commit it replaced."* The intent is sound and the
-side effect was not foreseen — **that run is the only thing that would have quoted the superseded
-submission's notes, and Copilot's review of the superseded head arrives anyway, after the cancel.**
-Measured: the run for `d02111f` started 14:47:55 and was killed at 14:55:19; Copilot's review of
-`d02111f` landed 14:58:40. For `cd902d3` the margin was five seconds. Every *none* row above is a
-`cancelled` conclusion and every surfacing row is a `success`, across all ten submissions, with no
-exception in either direction.
+[`../../.github/workflows/copilot-review.yml`](../../.github/workflows/copilot-review.yml) carries a
+`concurrency` block keyed on the pull-request number, whose `cancel-in-progress` is `true`, with the
+reason stated in its own comment: *"A push supersedes the run waiting on the commit it replaced."* The
+intent is sound and the side effect was not foreseen — **that run is the only thing that would have
+quoted the superseded submission's notes, and Copilot's review of the superseded head arrives anyway,
+after the cancel.** Measured: the run for `d02111f` started 14:47:55 and was killed at 14:55:19;
+Copilot's review of `d02111f` landed 14:58:40. For `cd902d3` the margin was five seconds. **Every
+submission in the table above ran to a `cancelled` conclusion, and every submission not in it ran to
+`success`** — across all ten, with no exception in either direction, and `064331d` the single
+in-table exception that succeeded and lost its note by design.
 
 **Two more were lost inside the extractor.** On `d21a341` the verdict review states a count of three and
 quotes one. The `awk` that lifts the block ends on `/^#+[[:blank:]]/`, and the first note's quoted
@@ -166,4 +167,4 @@ checkpoint refused the first draft of this file**, which had attributed all elev
 counted to the by-design branch alone — the right defect list reached by the wrong mechanism, which is
 the error this repository names most often and the reason the checkpoint is not optional.
 
-**Decision.** {the maintainer} — pending.
+**Decision.** Marius Cetanas — pending.
