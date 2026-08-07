@@ -1789,6 +1789,15 @@ function printMatrix(say, parsed, columns, { source }) {
  *
  * Nothing here validates the manifest. `doctor` judges manifests and these two tools have no ordering
  * between them — this one only needs to know where the policy is.
+ *
+ * **`workspaceRoot` is returned as given on the repository-root branch and resolved on the other two,
+ * and that asymmetry is deliberate rather than an oversight.** The repository-root branch is the path
+ * every existing caller takes, including `.portulan/verify/compile.sh`'s `--workspace .`; returning the
+ * argument verbatim is what keeps this change byte-identical for them, output included — `compile` joins
+ * this value into the paths it PRINTS, so resolving it here would turn `.claude/settings.json` into an
+ * absolute path in every run, for no defect. The other two branches derive a path rather than echoing
+ * one, and a derived path has to be absolute to mean anything. Raised as an inconsistency by Copilot
+ * (round 10 on #164) and declined on that ground; the contract is stated here rather than changed.
  */
 export function resolveWorkspace(named) {
     const dir = path.resolve(named);
