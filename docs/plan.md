@@ -1964,7 +1964,7 @@ _The seam applies here too: no client-identifying references._
   8 a test name, and the **taper** ended it, not the count; remainder filed as #170. The rail caught the #68 byte **for real** in round 7's own commit
   message, the first time anything here has. · **A must-have was OMITTED: no fresh-context supervisor checkpoint ran at any point — not session-open, not
   pre-commit, not at the merges.** The pre-commit pass attacks a diff's claims about the world, which is precisely the class that dominated #167 and that
-  Copilot and a self-audit caught instead, six rounds past a bound of two. Whether the merges stand un-reviewed or a retrospective pass runs over `415167a`
+  Copilot and a self-audit caught instead, six rounds past a bound of two. Whether the merges stand unreviewed or a retrospective pass runs over `415167a`
   is the maintainer's ruling, and it is owed. · Board refined 42 → 35: closed removed, #161/#169/#170 added, `Now` = 6; eight open issues checked against
   the tree (none quietly fixed, #141 reproduced), twenty-seven unchecked and said so. Seam scan clean.
   Handoff: [`2026-08-07-the-three-merged…`](../.portulan/handoffs/2026-08-07-the-three-merged-and-a-checkpoint-that-was-owed.md).
