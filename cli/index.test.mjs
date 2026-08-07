@@ -622,6 +622,51 @@ describe("run", () => {
         // smaller font.
         assert.match(lines.join("\n"), /no store index declared/);
         assert.doesNotMatch(lines.join("\n"), /index (current|written)/);
+        // The store budget IS declared here, so the clause is earned and stays — which is what makes
+        // the three cases below a real distinction rather than the clause being dropped everywhere.
+        assert.match(lines.join("\n"), /store within budget/);
+    });
+
+    test("does not report a budget held when the workspace declares none", () => {
+        // Issue #92, the sibling of the case above: budgets are optional in the schema and none is
+        // defaulted, so an index with no budget is an ordinary shape — and `run` said `within budget`
+        // over it, which reads as a verified constraint where the truth is that nothing was measured.
+        // A green about something never examined is the one sentence a tool whose subject is generated
+        // artifacts must not print, and it is the same sentence the clause beside it was repaired for.
+        const manifest = wellFormed({ memory: { index: { path: "memory-index.md" } } });
+        const dir = workspace({ "memory/a-first.md": record("rule") }, manifest);
+        const lines = [];
+        assert.equal(run([dir], (s) => lines.push(s)), 0);
+        assert.match(lines.join("\n"), /store index written/);
+        assert.doesNotMatch(lines.join("\n"), /budget/);
+    });
+
+    test("declaring neither an index nor a budget says exactly that and nothing more", () => {
+        // `memory: {}` is schema-legal — every key under it is optional — and it declared the object
+        // and asked for nothing. The old sentence answered `no store index declared; store within
+        // budget`, half of which was a verdict about a budget that does not exist.
+        const manifest = wellFormed({ memory: {} });
+        const dir = workspace({ "memory/a-first.md": record("rule") }, manifest);
+        const lines = [];
+        assert.equal(run([dir], (s) => lines.push(s)), 0);
+        assert.match(lines.join("\n"), /no store index declared/);
+        assert.doesNotMatch(lines.join("\n"), /budget/);
+    });
+
+    test("a budget declared where nothing can measure it is not one it reports holding", () => {
+        // `lines` and `columns` are measured against the RENDERED index, so a manifest declaring them
+        // under no `index.path` has neither judged — and the clause must not appear on the strength of
+        // the declaration alone. The schema makes `path` required inside `index`, so this is a manifest
+        // `doctor` rejects; `index` does not validate against the schema and the two tools have no
+        // ordering, so it is a shape this code reaches. Counting declarations rather than measurements
+        // would have left the false green standing here — #91's class, a fix arriving without its
+        // sibling, in the change that fixes the sibling.
+        const manifest = wellFormed({ memory: { index: { budget: { lines: 60, columns: 140 } } } });
+        const dir = workspace({ "memory/a-first.md": record("rule") }, manifest);
+        const lines = [];
+        assert.equal(run([dir], (s) => lines.push(s)), 0);
+        assert.match(lines.join("\n"), /no store index declared/);
+        assert.doesNotMatch(lines.join("\n"), /budget/);
     });
 
     test("exits 1 when a workspace is stale", () => {
