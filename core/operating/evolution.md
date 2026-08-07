@@ -25,7 +25,9 @@ is how *impossible* above is reached rather than merely preferred, because a rul
 cannot be missed at a second. Where two sites genuinely cannot be merged, pin them together in one check,
 so a divergence reds instead of drifting. What does **not** work is explaining the rule beside its site:
 that has been measured failing, in both materials. _(Provenance: single-source-of-truth, carried from
-data to rules; compounding engineering — Every.)_
+data to rules; compounding engineering — Every. The measured argument, and its limits — including why no
+rail can catch this class as a class — are recorded as
+[`../../.portulan/proposals/0020-a-fix-is-not-done-at-the-site-it-was-found.md`](../../.portulan/proposals/0020-a-fix-is-not-done-at-the-site-it-was-found.md).)_
 
 ## Agent-drafted, human-owned
 

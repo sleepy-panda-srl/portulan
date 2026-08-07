@@ -41,6 +41,18 @@ records how things were found. This is per *release* and records what a reader g
 
 ## Unreleased
 
+**A fix is not done at the site it was found.** Core now states the rule the engine had only ever
+practised: a rule holds where it is enforced, so a rule enforced in two places can be repaired in one,
+and the site left standing is the one the next reader copies. One carrier and the others reach it — by
+citing in prose, by calling in code — which is how
+[`core/operating/evolution.md`](core/operating/evolution.md)'s *"impossible or caught"* reaches
+*impossible* rather than merely preferring it. The checkpoints pack's pre-commit pass gains the step that
+asks for it (pack `0.1.0` → `0.2.0`, since an install is cached by that version), and
+`cli/collisions.test.mjs` pins the three `collisions()` that cannot be merged into one, so a future
+divergence reds rather than drifting. The argument, the measurements and the honest limits — including
+that **no rail can catch this class as a class**, because a rule has no token to grep for — are in
+[`.portulan/proposals/0020-a-fix-is-not-done-at-the-site-it-was-found.md`](.portulan/proposals/0020-a-fix-is-not-done-at-the-site-it-was-found.md).
+
 **There is a command line.** One entry point over the subcommands
 [`docs/vision.md`](docs/vision.md) names. They dispatch, with each module imported **on demand** and each tool's exit code returned
 **unchanged**; verified byte-identical to invoking those tools directly. The unbuilt ones are listed and **exit 2, naming the milestone they arrive at**, because a stub exiting 0
