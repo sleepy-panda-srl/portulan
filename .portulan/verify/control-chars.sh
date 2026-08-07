@@ -84,6 +84,15 @@ EXEMPT=()
 # expanding an EMPTY array under `set -u` aborts mid-script, which would surface as exit 1, a red that
 # judged nothing. ./index.sh guards the same trap from the other side, where an empty list is itself
 # the error; here empty is the ordinary state, so it has to expand rather than fail.
+#
+# **The outer expansion is unquoted and that is SAFE, which is worth writing down because it reads as a
+# bug.** A reviewer read it as one (#167, suppressed channel) — reasonably, since an unquoted `${...}`
+# normally invites word splitting and globbing. It does not here: the alternate word is itself
+# `"${arr[@]}"`, quoted, so each element is substituted as one word. MEASURED on bash 3.2 and bash 5,
+# with an array holding `a b.md`, a name containing a newline, and `star*.md` while a matching file sat
+# in the working directory — six argv entries out, the space intact, the newline intact, no glob
+# expanded. **Do not "fix" this into `"${flags[@]}"`**: that is the form that aborts on bash 3.2 when
+# the array is empty, which is this repository's live state.
 flags=()
 for p in ${EXEMPT[@]+"${EXEMPT[@]}"}; do
     flags+=(--exempt "$p")
