@@ -813,15 +813,14 @@ function compareOrWrite({ dir, declaredPath, indexPath, expected, write, series,
 /** The memory store's index and its budgets. */
 function judgeMemory(dir, workspace, { write, fail }) {
     const memory = workspace.memory;
-    if (!memory) return { declared: false, path: null, expected: null };
+    if (!memory) return { declared: false, path: null, expected: null, budgets: 0 };
 
     const declaredPath = memory.index?.path;
     if (!declaredPath) {
         // A budget with no index is coherent — a workspace may rail its store's size and generate
         // nothing — so this is not an error. There is simply no file to render.
         const store = readStore(dir, workspace);
-        budgetFindings(memory, store, null, fail);
-        return { declared: true, path: null, expected: null };
+        return { declared: true, path: null, expected: null, budgets: budgetFindings(memory, store, null, fail) };
     }
 
     const indexPath = siteOutside(dir, declaredPath, workspace.slots?.memory, "store");
@@ -846,13 +845,13 @@ function judgeMemory(dir, workspace, { write, fail }) {
     // the handoff index is current, and returning early on the shared list would have made one
     // series' defect silence the other's verdict — a green by omission, which is the shape this file
     // exists to refuse.
-    if (broken) return { declared: true, path: indexPath, expected: null };
+    if (broken) return { declared: true, path: indexPath, expected: null, budgets: 0 };
 
     const expected = render(workspace, store);
     compareOrWrite({ dir, declaredPath, indexPath, expected, write, series: "memory", source: "store", fail });
-    budgetFindings(memory, store, expected, fail);
+    const budgets = budgetFindings(memory, store, expected, fail);
 
-    return { declared: true, path: indexPath, expected };
+    return { declared: true, path: indexPath, expected, budgets };
 }
 
 /**
@@ -1063,13 +1062,32 @@ function budgetNumber(value, where) {
     return value;
 }
 
-/** The three budget checks, each skipped when the workspace declares no number for it. */
+/**
+ * The three budget checks, each skipped when the workspace declares no number for it.
+ *
+ * **Returns how many were actually JUDGED**, which is the only thing that licenses the run summary's
+ * `within budget` clause. Budgets are optional in the schema and none is defaulted (see the header),
+ * so a workspace may declare none at all — and the summary said `within budget` over it anyway, which
+ * reads as a verified constraint where the truth is that there was nothing to check. Issue #92, raised
+ * by Copilot on #85 round six and triaged there under `a-review-loop-needs-a-bound.md` rule 4.
+ *
+ * The count is what this function DID, never what the manifest declares, and the two can differ:
+ * `lines` and `columns` are measured against the rendered index, so a manifest declaring them under
+ * no `index.path` has neither judged. The schema makes `path` required inside `index`, so that shape
+ * is one `doctor` rejects — but this tool does not validate against the schema and the two have no
+ * ordering (see `readScopes`, where the same reasoning already refuses to resolve an unvalidated
+ * path). Counting the declaration instead would have put the false green back in the one shape a
+ * caller reaches without `doctor`, which is defect class #91: a fix arriving without its sibling.
+ */
 function budgetFindings(memory, store, expected, fail) {
     const lines = budgetNumber(memory.index?.budget?.lines, "memory.index.budget.lines");
     const columns = budgetNumber(memory.index?.budget?.columns, "memory.index.budget.columns");
     const kilobytes = budgetNumber(memory.store?.budget?.kilobytes, "memory.store.budget.kilobytes");
 
+    let judged = 0;
+
     if (expected !== null && lines) {
+        judged += 1;
         const count = lineCount(expected);
         if (count > lines) {
             fail(
@@ -1083,6 +1101,7 @@ function budgetFindings(memory, store, expected, fail) {
     }
 
     if (expected !== null && columns) {
+        judged += 1;
         for (const line of expected.split("\n")) {
             if (line.length > columns) {
                 fail(
@@ -1097,6 +1116,7 @@ function budgetFindings(memory, store, expected, fail) {
     }
 
     if (kilobytes) {
+        judged += 1;
         const kb = store.bytes / KB;
         if (kb > kilobytes) {
             // The exact byte count rides along with the rounded figure, because rounding alone can
@@ -1114,6 +1134,8 @@ function budgetFindings(memory, store, expected, fail) {
             );
         }
     }
+
+    return judged;
 }
 
 // ===========================================================================================
@@ -1207,7 +1229,18 @@ export function run(argv, say = console.log) {
             const state = check ? "current" : "written";
             const parts = [];
             if (result.series.memory.declared) {
-                parts.push(result.series.memory.path === null ? "no store index declared; store within budget" : `store index ${state}, within budget`);
+                // **`within budget` only where a budget was judged.** All three are optional and none
+                // is defaulted, so a workspace may declare an index and no budget at all — and this
+                // sentence claimed a constraint had held when nothing had been measured, which is the
+                // same over-claim as the `index written` the clause beside it was already repaired for,
+                // one clause over. Issue #92; Copilot, #85 round six, in the suppressed channel.
+                // `budgets` counts what ran rather than what was declared — see `budgetFindings`.
+                const memory = result.series.memory;
+                if (memory.path === null) {
+                    parts.push(memory.budgets ? "no store index declared; store within budget" : "no store index declared");
+                } else {
+                    parts.push(memory.budgets ? `store index ${state}, within budget` : `store index ${state}`);
+                }
             }
             if (result.series.handoffs.declared) parts.push(`handoff index ${state}`);
             if (result.series.scopes.declared) parts.push(`scope index ${state}`);
