@@ -851,6 +851,30 @@ describe("the switch, feed-side → in-repo", () => {
         assert.doesNotMatch(fs.readFileSync(path.join(dst, "README.md"), "utf8"), /lives elsewhere/);
     });
 
+    test("a symlinked pointer README is refused — the file the switch SYNTHESISES, not one it copies", async () => {
+        // The preflight was built from the SOURCE's file list. When the source carries no `README.md`
+        // the switch synthesises one at the destination, so that leaf was never lstat'd — and the write
+        // followed a symlink straight out of the tree. The containment rule refused by the one path the
+        // check could not see. Copilot, round 9 on #164.
+        const root = scratch();
+        const feed = path.join(root, "feed", "acme");
+        fs.mkdirSync(feed, { recursive: true });
+        seedWorkspace(feed, { name: "acme", kind: "portfolio", tree: null, card: "acme-app" });
+        assert.equal(walk(feed).some((f) => f.rel === "README.md"), false, "the source must carry none, or nothing is synthesised");
+
+        const dst = pointerRepo(root, "acme-app", "acme");
+        const outside = path.join(root, "outside.md");
+        fs.writeFileSync(outside, "# not yours to write\n");
+        fs.rmSync(path.join(dst, "README.md"));
+        fs.symlinkSync(outside, path.join(dst, "README.md"));
+
+        const h = harness();
+        assert.equal(await run([feed, "--into", dst, "--residence", "in-repo", "--switch"], h.options), 2);
+        assert.match(text(h), /symlink/);
+        assert.equal(fs.readFileSync(outside, "utf8"), "# not yours to write\n", "nothing was written through the link");
+        assert.equal(readManifest(dst).kind, "pointer", "and the switch did not begin");
+    });
+
     test("a destination pointer naming a DIFFERENT governor is a foreign residence and is refused", async () => {
         const root = scratch();
         const feed = path.join(root, "feed", "acme");
