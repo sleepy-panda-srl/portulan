@@ -5,17 +5,26 @@ last sentence below predicted would happen. `.claude-plugin/plugin.json` now dec
 and the three skills of [`rituals/checkpoints`](../../packs/rituals/checkpoints/README.md) resolve at
 `<root>/<pack>/skills/<skill>/SKILL.md` — the exact shape named as failing here.
 
-**And *resolve* means resolve for the LINTER, which is narrower than this line reads — amended
-2026-08-07.** The goal below is *"a pack can declare its skills under a single path and have them
-resolve"*, and what was met is the declaring half: `plugin-lint` walks the declared root, finds the
-three, and counts them. **A host registers none of them.** Measured 2026-08-07 on Claude Code 2.1.224,
-unchanged from 2026-07-30 on 2.1.220: a pack installed from a feed reports `Skills (0)`, and the public
-plugin's own count omits its pack's three. So a pack's skills are invoked by naming their path, and this
-status was true of the tool that checks the packaging while being read as true of the platform —
-[`../../cli/plugin-lint.mjs`](../../cli/plugin-lint.mjs)'s header now states the same boundary at the
-count itself. Host parity is milestone 7's, with
-[#134](https://github.com/sleepy-panda-works/portulan/issues/134); the task is not reopened, because
-what it asked for was the resolution this tool does.
+**The declared path was still wrong, and the host said so — amended 2026-08-07.** This status recorded
+the three skills as resolving at `<root>/<pack>/skills/<skill>/SKILL.md`, which was true of
+`plugin-lint` and false of the platform. Measured on Claude Code 2.1.224 by adding this repository as a
+local marketplace and reading the inventory back: with `./packs/rituals/` declared the host reported
+**`Skills (4)`** — `clarify`, `codify`, `consolidate`, `portulan` — and none of the pack's three, while
+this validator counted seven. **A host expands a declared skills root exactly one level.**
+
+`.claude-plugin/plugin.json` now declares **`./packs/rituals/checkpoints/skills/`**, and the same
+read-back reports **`Skills (7)`**, naming `pre-commit`, `session-open` and `milestone-close`. That is
+[#134](https://github.com/sleepy-panda-works/portulan/issues/134)'s clause (b) — a composed pack's skill
+invoked the way a core skill is — demonstrated rather than asserted.
+
+The task stays **MET** and its acceptance criteria are untouched: what it asked for is the walk that
+resolves a nested skill instead of failing the intermediate directory, and that walk is right. What was
+missing was a check that the *declared path* is one the host will follow, which
+[`../../cli/plugin-lint.mjs`](../../cli/plugin-lint.mjs) now fails on, with the repair in the message.
+
+**Still owed, and outside this repository:** the same one-line correction in the private feed's own pack
+plugin, which ships `rituals/checkpoints/skills/` under a `packs` root and will keep reporting
+`Skills (0)` until its manifest names that directory. The mechanism is proven here; the edit is there.
 
 **Goal.** A pack can declare its skills under a single path and have them resolve. Today it cannot, and
 the failure is silent until someone writes the first pack.

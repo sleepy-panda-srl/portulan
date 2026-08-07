@@ -102,11 +102,13 @@ the root holds. Four things do not follow, and **each is milestone 7's, owed rat
   step 2a reports for a pointer. Until it lands, a workspace declaring no `tree` derives no root, and
   unless one is named, its packs are reported unresolvable — so *"declared"* and *"resolved"* are two
   states here, and which one you are in depends on a path somebody typed.
-- **A pack's skills do not register as host capabilities — whatever the channel.** Not a property of
-  feeds: it holds for a pack bundled inside a plugin that declares the pack directory as a skills path,
-  which is the arrangement this engine itself ships. So a pack's rituals are invoked by **naming their
-  path**, never the way a core skill is. Do not tell the user a composed ritual is available as a
-  command.
+- **A pack's skills register only where the plugin declares the directory that actually holds them.**
+  A host expands a declared skills path **one level** and no further, so a root pointing at a family of
+  packs — `packs/rituals/`, with skills at `<pack>/skills/<skill>/` — registers **nothing**, silently,
+  while a validator walking deeper counts them. Declaring `packs/rituals/<pack>/skills/` registers them.
+  Measured both ways on Claude Code 2.1.224. So a composed ritual **is** invocable the way a core skill
+  is, and only when the manifest names the right depth: check that before telling anyone a pack's
+  ritual is available as a command, because the failure is silent in both directions.
 - **A pack's personas reach the workspace's own layer, and not the host.** A composing workspace lands
   the scope a pack's persona declares, and an index over it can be generated — so this one is not
   simply absent, and reporting it as absent would be as wrong as reporting it as loaded.

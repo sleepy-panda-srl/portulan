@@ -20,6 +20,6 @@
   "skills": [
     "./core/skills/",
     "./plugin/skills/",
-    "./packs/rituals/"
+    "./packs/rituals/checkpoints/skills/"
   ]
 }

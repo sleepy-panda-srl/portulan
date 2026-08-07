@@ -50,9 +50,16 @@ capabilities through **no** channel (not a property of feeds — it holds for a 
 too), its personas reach the workspace's own layer but not the host, and its verify recipes are declared
 rather than composed. Two claims in the same file pointed the other way and are retracted: that there is
 no scaffolder, written one screen after naming `init` and `new` as built, and that memory has no
-generated index, which milestone 5 built on 2026-07-28. **This does not close
-[#134](https://github.com/sleepy-panda-works/portulan/issues/134)** — reporting the gap is the boot's
-half; the parity that closes it is the CLI's.
+generated index, which milestone 5 built on 2026-07-28.
+
+**And a pack's skills now register with the host, which is what [#134](https://github.com/sleepy-panda-works/portulan/issues/134)
+was actually about.** A host expands a declared skills root **one level**, so `./packs/rituals/` — with
+skills at `<pack>/skills/<skill>/` — registered none of them while `plugin-lint` counted them all.
+Measured on Claude Code 2.1.224 in both directions: `Skills (4)` before, **`Skills (7)`** after the
+manifest names `./packs/rituals/checkpoints/skills/`, adding `pre-commit`, `session-open` and
+`milestone-close`. `plugin-lint` now **fails** a skill resolved deeper than the host will look, with the
+repair in the message — a validator counting more skills than the host loads is a green over skills
+nobody can invoke.
 
 **The npm manifest states the version this repository is.** It said `0.1.0` while all three plugin
 manifest fields said `0.2.0` — and `0.1.0` had already been released with different contents — so one

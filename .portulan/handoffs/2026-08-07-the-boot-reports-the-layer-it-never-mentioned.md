@@ -62,15 +62,49 @@ workspace both report `Skills (0), Agents (0)`. The issue measured 2.1.220. The 
 **not** restated in the shipped skill, which states the shape only —
 [`../../docs/milestones/m07.md`](../../docs/milestones/m07.md) is its carrier.
 
-## #134 stays open, and the pull request says so
+## #134 closes, and the closing half was one line
 
-Row 7 makes clause **(b)** what closes it — a composed pack's skill invoked the way a core skill is —
-and still lists *(b) parity* and *#123* as owed. This reports the gap; it does not close it.
+The first version of this handoff said #134 stays open, because row 7 makes clause **(b)** what closes
+it — *"a composed pack's skill is invoked in the adopting workspace the same way a core skill is"* — and
+that read as needing discovery. It did not. **It needed the manifest to name the right directory.**
 
-## Undemonstrated
+`portulan@portulan` was not installed here, so the session first reported the public plugin's half as
+unmeasurable. `claude plugin marketplace add ./` takes a directory, which makes it measurable in
+minutes. Read back on **Claude Code 2.1.224**, both directions:
 
-`portulan@portulan` is **not installed on this host**, so #134's other half — the public plugin
-registering `Skills (4), Agents (3)` — could not be re-derived on 2.1.224 and is not asserted anywhere
-in this change. The inference that pack skills fail *whatever the channel* rests on that 2026-07-30
-figure plus the declared-path count, and is the first thing to re-measure on a machine with the public
-plugin installed.
+| `.claude-plugin/plugin.json` declares | Host inventory |
+|---|---|
+| `./packs/rituals/` | **`Skills (4)`** — `clarify`, `codify`, `consolidate`, `portulan` |
+| `./packs/rituals/checkpoints/skills/` | **`Skills (7)`** — plus `pre-commit`, `session-open`, `milestone-close` |
+
+**A host expands a declared skills root exactly one level.** `./core/skills/` yields 3 and
+`./plugin/skills/` yields 1 — which is the whole of the old `Skills (4)`, so the rule is not inferred
+from one case. `./packs/rituals/` yielded nothing because the pack's skills sit two levels down. The
+declaration is corrected, and clause (b) is **demonstrated rather than asserted**, which is the only
+form this repository accepts for a milestone clause.
+
+## The rail, because the count had been wrong for a milestone and nothing said so
+
+`plugin-lint` counted **7** while the host loaded **4**, and a validator whose count exceeds the host's
+is a false green over skills nobody can invoke —
+[`../memory/a-manifest-field-can-validate-and-load-nothing.md`](../memory/a-manifest-field-can-validate-and-load-nothing.md)
+a second time, in the sibling field. It now fails a skill resolved deeper than `HOST_SKILL_DEPTH` below
+its declared root, and the message names the repair: *"Declare `<dir>` instead"*. Forced red against the
+old declaration and green against the new.
+
+**Two existing tests had to change, and that is the finding.** *"a pack-shaped tree resolves skills
+nested below the declared root"* and *"a skill at exactly the bound is found"* both asserted **zero
+failures** on shapes the host silently drops. They were written at milestone 6 and they are the reason
+the gap survived one: the suite agreed with the tool rather than with the platform. Both now assert the
+resolution *and* the out-of-reach failure, with the measurement in the comment. A positive control and a
+`./`-form control were added beside them so the rail is a depth comparison rather than a ban on nesting.
+
+## Still owed, and outside this repository
+
+The private feed's own pack plugin ships `rituals/checkpoints/skills/` under a `packs` root and will
+keep reporting `Skills (0)` until its manifest names that directory. **The mechanism is proven here; the
+edit is there**, and it is one line. Nothing in this repository can verify it, which is why it is named
+rather than claimed.
+
+`#123` — discovery of a host's plugin cache — is untouched and stays row 7's. It was adjacent to #134
+rather than a precondition for it, which is the thing this session had backwards.
