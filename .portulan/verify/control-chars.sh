@@ -12,7 +12,11 @@
 #
 #   * `file` classified the source as *binary data*.
 #   * `grep -n "identity = "` against the line that plainly contains that text exited 1 — a silent
-#     false negative. **Every recipe in this directory but this one is built out of `grep`**, so the
+#     false negative. **./docs.sh — the DEFAULT recipe — is built out of `grep`, seventeen invocations
+#     of it**, so the tool most likely to have shown the byte is the tool the byte silences. Counted
+#     rather than generalised: this line claimed *every* recipe here was, and three invoke `grep` zero
+#     times. A false universal in the paragraph doing the persuading is the defect class this
+#     repository files most often, and it does not belong in the file arguing against exactly that. The
 #     one tool that would have shown it is the tool the byte silences. That is why the scan is in
 #     ../../cli/control-chars.mjs and reads bytes rather than being another `grep` here.
 #   * `git` rendered the diff as text only because the byte sat past its first 8000 bytes. A few

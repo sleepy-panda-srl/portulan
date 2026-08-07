@@ -76,8 +76,14 @@ every other one. A raw NUL shipped inside [`workflow-filters.mjs`](workflow-filt
 separator in a template literal, where the escape `\^@` was meant; a reviewer caught it, and nothing
 here did. The reason is the part worth writing down: `file` classified the source as *binary data*, and
 `grep -n "identity = "` against the line that plainly contains that text **exited 1** — a silent false
-negative. **Every recipe in this directory but this one is built out of `grep`**, so the one tool that
-would have shown it is the tool the byte silences. `git` rendered the diff as text only because the byte
+negative. **[`docs.sh`](docs.sh) — the default recipe, the one every Stop-gate runs — is built out of
+`grep`, seventeen invocations of it**, so the tool most likely to have shown the byte is the tool the
+byte silences. _(Counted, because this sentence claimed **every** recipe here was built out of `grep`
+and three of the nine invoke it zero times — `plugin.sh`, `tests.sh`, `workflow-filters.sh`. A false
+universal inside the paragraph doing the persuading is this page's own dominant defect class, and it sat
+in the passage introducing the rail against claims nobody measured. Found by Copilot on
+[#167](https://github.com/sleepy-panda-works/portulan/pull/167) in the suppressed channel, in two
+carriers; a third was swept with them.)_ `git` rendered the diff as text only because the byte
 sat past its first 8000 bytes; a few hundred lines earlier and a 660-line instrument would have arrived
 in review as `Binary files differ`, a file nobody could read in a pull request that looked complete. It
 then reproduced twice more while being fixed. The defect was repaired in

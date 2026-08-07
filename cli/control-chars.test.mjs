@@ -430,6 +430,36 @@ describe("run", () => {
         assert.match(messages(lines), /\\xff\\xfe/);
     });
 
+    test("a FILENAME's own control bytes are escaped, so the report cannot carry them", () => {
+        // Measured, not assumed: git tracks `we<LF>ird.md`, and `git ls-files -z` emits that newline
+        // raw. Interpolating the name directly would print the very bytes this check exists to catch
+        // into a CI log, and would break the one-line-per-file contract every consumer reads by. It is
+        // `nameOf`'s argument applied to the other half of the line — a check whose output can carry
+        // the thing it checks for is one that can silence its own next run. Copilot, #167.
+        const dir = scratch();
+        const odd = path.join(dir, `we${ch(0x0a)}ird.md`);
+        fs.writeFileSync(odd, `x${NUL}\n`);
+        const lines = [];
+        assert.equal(run([], odd, (s) => lines.push(s)), 1);
+        const out = messages(lines);
+        assert.match(out, /we\\x0aird\.md/);
+        // One line out, whatever the name contained.
+        assert.equal(lines.length, 1);
+        assert.doesNotMatch(out, /we\nird/);
+    });
+
+    test("a path in a REFUSAL is escaped too, not only one in a finding", () => {
+        // Six places named a path and only one escaped it. The refusals are the messages a reader
+        // meets when something is already wrong, which is the worst moment to hand them a broken line.
+        const dir = scratch();
+        const odd = path.join(dir, `sub${ch(0x0a)}dir`);
+        fs.mkdirSync(odd);
+        assert.throws(
+            () => inspect([odd]),
+            (e) => e instanceof ControlCharsError && /sub\\x0adir/.test(e.message) && !/sub\ndir/.test(e.message),
+        );
+    });
+
     test("a literal backslash in the name is escaped, so the escape is unambiguous", () => {
         // Without this, a filename containing the characters `\`, `x`, `f`, `f` renders exactly like
         // the byte 0xff — and the message written to remove an ambiguity would carry one instead.

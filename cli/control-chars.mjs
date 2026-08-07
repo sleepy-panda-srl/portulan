@@ -13,8 +13,12 @@
 //
 //   * `file` classified the source as *binary data*.
 //   * `grep -n "identity = "` against the line that plainly contains that text exited **1** — a silent
-//     false negative. Every recipe in `../.portulan/verify/` is built out of `grep`, so the one tool
-//     that would have shown it is the tool the byte silences.
+//     false negative. `docs.sh` — the DEFAULT recipe, and the one every Stop-gate runs — is built out
+//     of `grep`, seventeen invocations of it, so the tool most likely to have shown the byte is the
+//     tool the byte silences. (Counted, because the first draft of this comment said *every* recipe in
+//     that directory was, and three of them invoke `grep` zero times. A false universal inside the
+//     paragraph doing the persuading is this repository's dominant defect class, in a file whose whole
+//     subject is claims that outrun their measurement. Copilot, #167, suppressed channel.)
 //   * `git` rendered the diff as text only because the byte sat past its first 8000 bytes. A few
 //     hundred lines earlier and a 660-line instrument would have arrived in review as `Binary files
 //     differ` — a file nobody could read, in a pull request that looked complete.
@@ -114,6 +118,39 @@ export const nameOf = (byte) => (byte === DEL ? "DEL" : (NAMES[byte] ?? `0x${byt
 export const isForbidden = (byte) => byte !== TAB && byte !== LF && (byte < 0x20 || byte === DEL);
 
 /**
+ * Bytes rendered for a message, with everything outside printable ASCII as `\xNN` — **never raw**.
+ *
+ * `nameOf`'s rule, applied to a run of bytes instead of to one. It lives beside it because it is the
+ * same rule and was learned the same way.
+ */
+const escapeBytes = (buffer) =>
+    [...buffer]
+        .map((b) => {
+            // The backslash is escaped FIRST, and that is the whole reason this is not a one-liner: a
+            // filename literally containing the characters `\`, `x`, `f`, `f` would otherwise render
+            // exactly like the byte `0xff`, so the message meant to remove an ambiguity would carry
+            // one. `\\` is unambiguous and reads correctly beside the `\xNN` escapes.
+            if (b === 0x5c) return "\\\\";
+            return b >= 0x20 && b < DEL ? String.fromCharCode(b) : `\\x${b.toString(16).padStart(2, "0")}`;
+        })
+        .join("");
+
+/**
+ * A pathname as it may be PRINTED. **Every message in this file that names a path goes through here.**
+ *
+ * Git tracks a filename of any bytes but NUL and `/` — measured, not assumed: a file named
+ * `we<LF>ird.md` is trackable, and `git ls-files -z` emits that newline raw. So a report interpolating
+ * a filename directly could **print the very bytes this check exists to catch** into a CI log, and a
+ * newline in a name would break the one-line-per-file contract every consumer of this output reads by.
+ *
+ * That is `nameOf`'s own argument turned on the other half of the line: *a check whose output can carry
+ * the thing it checks for is a check that can silence its own next run.* The escaping shipped for the
+ * undecodable-path case in round 3 and was not applied to the six places that name an ordinary path —
+ * a fix missing its siblings, the third time in this pull request. Copilot, #167, suppressed channel.
+ */
+const displayPath = (file) => escapeBytes(Buffer.from(file, "utf8"));
+
+/**
  * Every forbidden byte in a buffer, as `{ offset, byte, name, line, column }`.
  *
  * **`offset` is 0-based; `line` and `column` are 1-based.** The three are not on one scale and saying
@@ -169,7 +206,7 @@ export function bytesOf(file) {
     } catch (cause) {
         if (cause.code === "ENOENT") return null;
         throw new ControlCharsError(
-            `cannot stat ${file} — ${cause.code ?? cause.message}. ` +
+            `cannot stat ${displayPath(file)} — ${cause.code ?? cause.message}. ` +
                 "Refusing to report it clean: this is a fact about the filesystem, not about the file",
         );
     }
@@ -185,13 +222,13 @@ export function bytesOf(file) {
             // found it in the suppressed channel on the very next round.
             return fs.readlinkSync(file, "buffer");
         } catch (cause) {
-            throw new ControlCharsError(`cannot read the symlink ${file} — ${cause.code ?? cause.message}`);
+            throw new ControlCharsError(`cannot read the symlink ${displayPath(file)} — ${cause.code ?? cause.message}`);
         }
     }
 
     if (!stat.isFile()) {
         throw new ControlCharsError(
-            `${file} is neither a regular file nor a symlink, and this reads neither by guessing at it`,
+            `${displayPath(file)} is neither a regular file nor a symlink, and this reads neither by guessing at it`,
         );
     }
 
@@ -199,7 +236,7 @@ export function bytesOf(file) {
         return fs.readFileSync(file);
     } catch (cause) {
         throw new ControlCharsError(
-            `cannot read ${file} — ${cause.code ?? cause.message}. ` +
+            `cannot read ${displayPath(file)} — ${cause.code ?? cause.message}. ` +
                 "Refusing to report it clean: this is a fact about the filesystem, not about the file",
         );
     }
@@ -283,25 +320,6 @@ export function inspect(files, { exempt = new Set() } = {}) {
 // ===========================================================================================
 // The command
 // ===========================================================================================
-
-/**
- * A pathname's bytes, with everything outside printable ASCII as `\xNN` — **never the bytes themselves**.
- *
- * The same rule `nameOf` follows one section up, applied to a filename instead of to a file's contents:
- * a report that echoes raw bytes can carry the very thing this check exists to catch, and would then
- * silence whatever reads the report next.
- */
-const escapeBytes = (buffer) =>
-    [...buffer]
-        .map((b) => {
-            // The backslash is escaped FIRST, and that is the whole reason this is not a one-liner: a
-            // filename literally containing the characters `\`, `x`, `f`, `f` would otherwise render
-            // exactly like the byte `0xff`, so the message meant to remove an ambiguity would carry
-            // one. `\\` is unambiguous and reads correctly beside the `\xNN` escapes.
-            if (b === 0x5c) return "\\\\";
-            return b >= 0x20 && b < DEL ? String.fromCharCode(b) : `\\x${b.toString(16).padStart(2, "0")}`;
-        })
-        .join("");
 
 /**
  * The NUL-separated list `git ls-files -z` writes, split at the BYTE level.
@@ -399,7 +417,7 @@ export function run(argv, stdin, say = (line) => process.stdout.write(`${line}\n
     // The stale-exemption audit is a defect in the declaration rather than a verdict about a file, so
     // it exits 2 — the same code, and the same reasoning, as a stale entry in `index.sh`'s WORKSPACES.
     if (result.unusable.length) {
-        for (const s of result.unusable) say(`  ✗ --exempt ${s.file} ${s.why}`);
+        for (const s of result.unusable) say(`  ✗ --exempt ${displayPath(s.file)} ${s.why}`);
         return 2;
     }
 
@@ -410,7 +428,7 @@ export function run(argv, stdin, say = (line) => process.stdout.write(`${line}\n
     // one layer up. Copilot, round 1 on #167, which found the same mismatch in a test name.
     for (const f of result.findings) {
         say(
-            `  ✗ ${f.file}: ${f.count} control character(s) — first at line ${f.first.line}, ` +
+            `  ✗ ${displayPath(f.file)}: ${f.count} control character(s) — first at line ${f.first.line}, ` +
                 `byte column ${f.first.column} (byte offset ${f.first.offset}, 0-based): ${f.first.name}`,
         );
     }
