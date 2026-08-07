@@ -946,6 +946,19 @@ export async function run(argv, options = {}) {
         // is exempt a link, and `collisions` tests for a symlink before it consults `allow`.
         // Copilot, round 9 on #164.
         const synthesised = parsed.switching && carve.pointer && !rels.includes("README.md") ? ["README.md"] : [];
+        // Round 4 established that a directory where a file must be written is refused up front. That
+        // was the DESTINATION; this is the source, and it reaches the same collision from the other end:
+        // a source directory named `README.md` yields no `README.md` in the file list, so the switch
+        // decides to synthesise one, `directories()` faithfully creates the directory in staging, and the
+        // write throws `EISDIR` — recovered, since the undo is registered first, but reported as an
+        // unanticipated failure rather than as the plain fact it is. Copilot's suppressed notes, round 12.
+        if (synthesised.length && sourceDirs.some((d) => d.rel === "README.md")) {
+            throw new VendorError(
+                `${display(source)} holds a DIRECTORY named \`README.md\`, and this switch needs to write a file there — the ` +
+                    `destination's pointer README is being replaced and the source carries no README to replace it with. ` +
+                    `Rename that directory, or put a \`README.md\` file in the workspace so there is one to carry`,
+            );
+        }
         const clash = collisions(dest, [...rels, ...synthesised], { allow: carve.allow });
         if (hostFile !== null) clash.push(...collisions(path.dirname(dest), ["AGENTS.md"]));
         if (clash.length) {

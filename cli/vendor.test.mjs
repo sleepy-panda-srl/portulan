@@ -924,6 +924,28 @@ describe("the switch, feed-side → in-repo", () => {
         assert.equal(readManifest(dst).kind, "pointer", "and the switch did not begin");
     });
 
+    test("a SOURCE directory named README.md is refused before the write that would throw on it", async () => {
+        // Round 4's finding from the other end. A source directory named `README.md` yields no
+        // `README.md` in the file list, so the switch decides to synthesise one, `directories()`
+        // faithfully creates the directory in staging, and the write throws EISDIR — recovered, because
+        // the undo is registered first, but reported as an unanticipated failure rather than as the
+        // plain fact it is. Every refusal ahead of the first byte, on both sides of the copy.
+        // Copilot's suppressed notes, round 12 on #164.
+        const root = scratch();
+        const feed = path.join(root, "feed", "acme");
+        fs.mkdirSync(feed, { recursive: true });
+        seedWorkspace(feed, { name: "acme", kind: "portfolio", tree: null, card: "acme-app" });
+        fs.mkdirSync(path.join(feed, "README.md"), { recursive: true });
+        write(feed, "README.md/notes.md", "# inside a directory called README.md\n");
+        const dst = pointerRepo(root, "acme-app", "acme");
+
+        const h = harness();
+        assert.equal(await run([feed, "--into", dst, "--residence", "in-repo", "--switch"], h.options), 2);
+        assert.match(text(h), /DIRECTORY named/);
+        assert.doesNotMatch(text(h), /unanticipated/, "a known shape must not surface as an unanticipated failure");
+        assert.equal(readManifest(dst).kind, "pointer", "and nothing began");
+    });
+
     test("a destination pointer naming a DIFFERENT governor is a foreign residence and is refused", async () => {
         const root = scratch();
         const feed = path.join(root, "feed", "acme");
