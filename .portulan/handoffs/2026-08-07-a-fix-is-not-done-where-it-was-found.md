@@ -10,9 +10,12 @@ this session touches none of its outstanding deliverables.
 Two commits on `m7-a-fix-is-not-done-where-it-was-found`: the rail (`cli/collisions.test.mjs`) and the
 doctrine (`core/operating/evolution.md`, `packs/rituals/checkpoints/skills/pre-commit/SKILL.md`,
 `.portulan/memory/a-review-loop-needs-a-bound.md`, `core/templates/persona.md`, and the checkpoints pack
-bumped `0.1.0` → `0.2.0` because an install is cached by that version). Suite: `main` **990** → branch
-**1012**, both measured in throwaway worktrees, a delta of exactly the 22 the new suite adds;
-all eight recipes green, seam clean on diff, message, branch and paths.
+bumped `0.1.0` → `0.2.0` because an install is cached by that version). Suite: `main` **1033** → branch
+**1055**, both measured in throwaway worktrees, a delta of exactly the 22 the new suite adds;
+**all NINE recipes green** — `main` moved twice under this branch and the second move shipped a ninth
+recipe (`control-chars`), so *"eight recipes"* was true when written and false an hour later. Re-measured
+rather than adjusted, which is the third time in this session a figure moved under a record; seam scan
+clean on diff, message, branch and paths at every commit.
 
 **Proposal `0020` is written (293 lines) and deliberately held OUT of the tree**, in this session's
 scratchpad, until the pull request exists. `docs.sh` check 5c fails a proposal naming no pull-request

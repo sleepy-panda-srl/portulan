@@ -1978,4 +1978,4 @@ _The seam applies here too: no client-identifying references._
   the proposal says so.** What ships is `cli/collisions.test.mjs`, pinning three `collisions()` agreed across
   seven states; the pre-commit pass found an **eighth where they diverge** ([#169](https://github.com/sleepy-panda-works/portulan/issues/169)).
   **Four instances of the class landed inside the change generalising it.** 8 of 13 rounds, not 5; `existsSync`
-  17, not 27. `main` 990→1012, eight recipes. · Fidelity: A-W-A (12) + A-W-A (11), all folded; one adjustment from each refuted by measurement. Four Copilot rounds, ended on the **taper**, the maintainer's grant past the bound. Seam scan clean. Handoff: [`2026-08-07`](../.portulan/handoffs/2026-08-07-a-fix-is-not-done-where-it-was-found.md).
+  17, not 27. `main` 1033→1055, nine recipes. · Fidelity: A-W-A (12) + A-W-A (11), all folded; one adjustment from each refuted by measurement. Four Copilot rounds, ended on the **taper**, the maintainer's grant past the bound. Seam scan clean. Handoff: [`2026-08-07`](../.portulan/handoffs/2026-08-07-a-fix-is-not-done-where-it-was-found.md).
