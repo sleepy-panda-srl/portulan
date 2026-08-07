@@ -59,6 +59,14 @@ package is not on the registry.
 own top-level `version`, which perturbation found equally unguarded. A test binds both of those edges
 now, and the third keeps its existing owner.
 
+**And the ruling itself is railed, not merely recorded.** Three manifests agreeing says nothing about
+the number being right — a cut cannot bump all three to a wrong version and stay green, because
+`package.json` is now asserted against the newest `## <version>` heading in this file. That is the
+chosen reading made checkable: *the manifest states the repository's current version*, so the two move
+together at a cut. It deliberately does **not** check for a tag: the documented cut order renames
+`## Unreleased` in a change merged *before* the tag exists, so a tag check would red every release at
+the moment it is being done correctly.
+
 **A fix is not done at the site it was found.** Core now states the rule the engine had only ever
 practised: a rule holds where it is enforced, so a rule enforced in two places can be repaired in one,
 and the site left standing is the one the next reader copies. One carrier and the others reach it — by
