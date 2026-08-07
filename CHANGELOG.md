@@ -41,6 +41,19 @@ records how things were found. This is per *release* and records what a reader g
 
 ## Unreleased
 
+**The boot reports the pack layer, and stops denying two things this project has.** `/portulan` read a
+workspace's slots and never its `packs`, so the middle of the cascade — the layer between the engine and
+a team's own policy — went unmentioned in every boot, and a reader could not tell a composed ritual from
+an invocable one. It is now read and reported with its four limits, each of them milestone 7's and owed
+rather than broken: nothing discovers the root a pack resolves against, a pack's skills register as host
+capabilities through **no** channel (not a property of feeds — it holds for a pack bundled in a plugin
+too), its personas reach the workspace's own layer but not the host, and its verify recipes are declared
+rather than composed. Two claims in the same file pointed the other way and are retracted: that there is
+no scaffolder, written one screen after naming `init` and `new` as built, and that memory has no
+generated index, which milestone 5 built on 2026-07-28. **This does not close
+[#134](https://github.com/sleepy-panda-works/portulan/issues/134)** — reporting the gap is the boot's
+half; the parity that closes it is the CLI's.
+
 **The npm manifest states the version this repository is.** It said `0.1.0` while all three plugin
 manifest fields said `0.2.0` — and `0.1.0` had already been released with different contents — so one
 release train carried two numbers and `portulan --version` from a checkout printed the odd one out. It

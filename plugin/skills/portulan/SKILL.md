@@ -82,6 +82,39 @@ other end of them. Read the slots in this order, because each frames the next:
 Then read `verify.recipes` from the manifest. Those are the executable checks that decide "done"
 here, and the manifest names which one is the default.
 
+### 3a. Read `packs` too — no slot points at it, and what it delivers is partial
+
+The cascade is **core < pack < workspace < repo card < task**, so a workspace naming packs has a layer
+between the engine and its own policy. That layer is the manifest's `packs` array, and **none of the
+slots above points at it**: read them in order and you will never meet a pack. Read the key, and report
+what a declared pack does and does not deliver here, because the gap is invisible from inside a booted
+session.
+
+**A pack resolves against a root somebody names** — a feed install or a directory beside the workspace,
+those being the two shapes a named root takes — and where it resolves, its gate-policy fragments reach
+the compiled policy, add-restriction-only. Nothing here is pinned: a `packs` entry is a name, and the
+version is whatever the named root holds. Four things do not follow, and **each is milestone 7's, owed
+rather than broken**:
+
+- **Nothing discovers the root.** No host's plugin cache is read to find one, which is the same absence
+  step 2a reports for a pointer. Until it lands, a workspace whose manifest declares no `tree` gets no
+  root at all and its packs are reported unresolvable — so *"declared"* and *"resolved"* are two states
+  here, and which one you are in depends on a path somebody typed.
+- **A pack's skills do not register as host capabilities — whatever the channel.** Not a property of
+  feeds: it holds for a pack bundled inside a plugin that declares the pack directory as a skills path,
+  which is the arrangement this engine itself ships. So a pack's rituals are invoked by **naming their
+  path**, never the way a core skill is. Do not tell the user a composed ritual is available as a
+  command.
+- **A pack's personas reach the workspace's own layer, and not the host.** A composing workspace lands
+  the scope a pack's persona declares, and an index over it can be generated — so this one is not
+  simply absent, and reporting it as absent would be as wrong as reporting it as loaded.
+- **A pack's verify recipes are declared, not composed.** The Pack Definition says so in the key
+  itself. The recipes that decide "done" are the ones the workspace's own manifest declares, and a
+  pack's are not in that set.
+
+**Name the packs, and say all of that in the same breath.** A boot that lists a workspace's packs
+without it reads as though the middle of the cascade had loaded.
+
 ## 4. If the project has no workspace
 
 Say so plainly rather than improvising a policy layer. Without a workspace you have the engine's
@@ -97,8 +130,10 @@ What is available to read, in this bundle:
 - `node ${CLAUDE_PLUGIN_ROOT}/cli/doctor.mjs <workspace-dir>` — validates a workspace against that
   definition. Zero dependencies; it needs Node and nothing else.
 
-Authoring a workspace is a human's job at this milestone: read the demo, copy its shape, and curate it.
-There is no scaffolder yet — see step 5.
+Authoring a workspace ends with a human: `node ${CLAUDE_PLUGIN_ROOT}/cli/init.mjs` drafts one — see
+step 5 — and what it emits is a **draft**, so read the demo, compare, and curate before trusting a line
+of it. _(This paragraph read "there is no scaffolder yet" until milestone 7 shipped `init` and `new` —
+which step 5 of this same file already said, so the file contradicted itself one screen later.)_
 
 ## 5. Report what is enforced, and what is not
 
@@ -114,7 +149,18 @@ what it *enforces* is the thing an agent must not paper over:
   honoured by people and by review and nothing enforces them. Do not assume the first. What is real
   either way is the platform floor beneath — branch protection, required checks — where the team has
   configured one, and it is the only layer indifferent to how a command was spelled.
-- **Memory has no generated index.** Recall means reading the directory.
+- **A declared pack is not an invocable pack.** Where the workspace names packs, say which, and give
+  step 3a's four limits — not a summary of them, which is how one of them ends up quietly dropped. The
+  cascade's middle is the layer a boot can least demonstrate, and saying so is the honest position
+  rather than a caveat.
+- **Memory has a generated index only where the workspace declared one.** `memory.index` is optional:
+  a workspace carrying it gets an index written by `index`, and a workspace that also declares a recipe
+  comparing that file byte for byte gets it held current by a rail rather than by anyone's diligence —
+  two separate opt-ins, and the budget is a third. Where none is declared, recall means reading the
+  directory. Say which of them you are looking at rather than assuming any. _(This line read "Memory has
+  no generated index" from 2026-07-26 until now, and milestone 5 built one on 2026-07-28 — a sentence
+  denying a capability that exists, which is condition 4 of a definition of done pointing the other
+  way.)_
 - **The CLI is not published, so nothing is one `npx` away.** Six of the eight subcommands are built
   and run from a checkout — `init`, which drafts a workspace for a team that has none; `new`, which
   scaffolds a skill, persona, pack, workspace, gate policy or repo card into a layer you own; `vendor`,
