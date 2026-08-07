@@ -32,12 +32,19 @@ whether a status column changed.
    a change's own description of what it did is the least-reviewed prose in any diff, and it goes stale
    between the first draft and the last push. Sentences elsewhere in the tree that the change falsifies
    belong here too.
-4. **Attack the coverage claims.** Where the change says a check now catches something, try to get past
+4. **Sweep the siblings of every defect the diff repairs.** For each fix, name the rule it restores and
+   go looking for that rule's *other* sites — the tool the shape was copied from, the other arm of the
+   same function, the other command taking the same flag, the other direction of the same operation.
+   Each one either carries the fix or is named in the change as knowingly left. This step is here
+   because the implementer cannot do it: the site they are looking at is the site they just understood,
+   and the leftover is the one the next reader copies. Do not accept a comment beside the fix as
+   coverage of a second site — that has been measured failing.
+5. **Attack the coverage claims.** Where the change says a check now catches something, try to get past
    it. A hole list is a claim like any other, and the only thing that checks a claim about coverage is
    somebody trying to defeat it.
-5. **Force the new rails red.** A check nobody has seen fail is a check nobody has seen work. If the
+6. **Force the new rails red.** A check nobody has seen fail is a check nobody has seen work. If the
    change ships a rail, break the thing it guards and confirm it fires, then restore.
-6. **Return one verdict** with numbered adjustments, and state what the change leaves
+7. **Return one verdict** with numbered adjustments, and state what the change leaves
    **undemonstrated** — that sentence is what the record carries forward, and it is the half a
    satisfied implementer is least likely to write.
 

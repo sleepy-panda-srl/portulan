@@ -7,9 +7,10 @@
 > firewalls; Cognition — read-parallel / write-isolated; Letta — per-agent memory.)_
 >
 > **The five-part contract is fixed by [`../personas/README.md`](../personas/README.md)**, which is the
-> authority — this template is a starting point and deliberately does not restate the rule, because a
-> rule with two carriers is obeyed at the narrower one. All five parts are required: a persona missing
-> one is not a lighter persona, it is an unenforceable one.
+> authority — this template is a starting point and deliberately does not restate the rule, for the
+> reason [`../operating/evolution.md`](../operating/evolution.md) gives: one carrier, and the others
+> reach it. All five parts are required: a persona missing one is not a lighter persona, it is an
+> unenforceable one.
 >
 > **Prohibited is never a reach.** It is the one tier no role may act in, so a persona declaring it
 > claims a permission that does not exist for anyone. Stated here, above the skeleton, rather than inside

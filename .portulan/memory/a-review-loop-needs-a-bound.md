@@ -175,6 +175,17 @@ needs a ruling first, exactly as #105 did.
    push again**.
 4. **Two fix-rounds, then triage.** After the second round of fixes, whatever remains becomes an issue
    linking the comment. It does not become another push, and it does not hold the merge.
+   **A round whose finding is a SIBLING of an earlier round's fix does not spend the bound — added
+   2026-08-07.** *Sibling* is operational so the count stays re-derivable from the diffs after the fact,
+   which is the property the 2026-07-30 definition bought and this file calls the half that closed: a
+   finding whose governing rule **already existed elsewhere** — in this change or in the tree — when the
+   defect was written. The exemption exists because this class *generates its own next round*: a sibling
+   of round N's fix cannot surface before round N+1, so a bound that counts pushes retires the loop
+   exactly where the class is still producing. Measured on
+   [#164](https://github.com/sleepy-panda-works/portulan/pull/164): **eight of its thirteen rounds** were
+   siblings by this test, six of them after the bound. The exemption **buys rounds and does not remove
+   the gate** — every extension past two is still the maintainer's to grant and never the session's to
+   assume, as it was granted on #160, #163 and #164 one at a time.
 
 ## Why it holds
 
@@ -203,6 +214,22 @@ permanent. Read this as the reason rule 2 is not the soft one of the four.
 new input to the next submission, so it terminated by luck rather than by convergence. **Nine submissions
 on #49** — the figure the table above carries in the same unit — is what that looks like. Rules 1 and 4
 give it a bound that does not depend on the reviewer running out of things to say.
+
+**What the sibling exemption costs, and the two precedents it is choosing between — added 2026-08-07.**
+The bound and the exemption pull opposite ways and the record already contains both readings, so the
+choice is stated rather than smoothed. [#85](https://github.com/sleepy-panda-works/portulan/pull/85) read
+the bound strictly: the same finding arrived verbatim in **rounds three through seven** and was triaged
+each time rather than pushed — correct under rule 4 as written, and the product of that triage is
+[#91](https://github.com/sleepy-panda-works/portulan/issues/91), **still open on 2026-08-07 with the
+defect still at `cli/index.mjs:781`**. #164 read it the other way and ran **eleven rounds past**, on the
+maintainer's grant each time, and every one of those rounds found a real defect. So triage is not a free
+disposal: it is a deferral whose measured half-life here is *indefinite*, and the sibling exemption is
+the judgement that deferring a sibling of the rule **currently under repair** is the worse of the two
+false economies. What the exemption must not become is a licence to run forever, and the stop signal is
+**the taper** — findings growing progressively more marginal, as #164's last three did (a directory named
+`README.md`, a FIFO in a workspace). That reading is a judgement no check can make, so it stays
+**deliberately outside the countable bound and belongs to the maintainer**, exactly as rule 4's *invalid*
+judgement does. The round count says how long the loop has run; only the taper says whether it is done.
 
 **Rule 3 is a calibration fix, not a downgrade.** GitHub itself files those comments as *low
 confidence*, and the repository had been treating them exactly like threads. On #63 the four
