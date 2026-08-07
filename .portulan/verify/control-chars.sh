@@ -40,8 +40,11 @@
 # reason this repository always refuses one: it is a door every future file type walks through in
 # silence.
 #
-# The list is AUDITED in both directions by the scanner, and either failure is exit 2: an entry naming
-# nothing scanned is stale, and an entry over a file carrying no control character is dead. That is the
+# The list is AUDITED by the scanner three ways, each exit 2: an entry naming nothing in the list is
+# stale; an entry over a file that is tracked and NOT ON DISK was never read, so the run cannot say
+# whether the exemption is live; and an entry over a file carrying no control character is dead. The
+# middle one was reported as *dead* until a reviewer separated them — a specific claim about a file
+# nothing opened, which would send a maintainer to delete an exemption still doing its job. That is the
 # allow-list defect this project has already paid for once — ../../cli/vendor.mjs, round 13 of #164,
 # where a carve-out could permit a thing that was not a file.
 #
