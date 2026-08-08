@@ -17,14 +17,9 @@ obligation to answer Copilot is not withdrawn, the unbounded iteration is.
 | Pull requests needing 4+ submissions | **12 of 30** |
 | Worst | #49 at nine submissions; #44 and #57 at eight |
 
-_Units — the rows above were headed "rounds" until 2026-07-30 and are re-headed here, because the
-definition below put them in different units than the rule they justify: every figure counts
-**submissions** — a Copilot review arriving on a push — and not the fix-rounds rule 4 bounds. The
-numbers are untouched; only the unit they were always in is now named. The file says so itself one
-section down, in the same breath as the 29%: those were "pushes Copilot had nothing to say about", which a fix-round
-cannot be, since a fix-round is a push answering something. **Re-labelled, not re-counted** — the figures
-are as measured on 2026-07-28 and nobody has re-derived the corpus in fix-rounds. The retire threshold at
-the foot of this file is in these same submission units._
+_Units: every figure counts **submissions** — a Copilot review arriving on a push — never the fix-rounds
+rule 4 bounds. Headed "rounds" until 2026-07-30 and **re-labelled, not re-counted**; nobody has re-derived
+the corpus in fix-rounds. The retire threshold at the foot of this file is in these same units._
 
 ## What one round is — added 2026-07-30
 
@@ -36,27 +31,18 @@ many it received, none of them matching any countable thing on the pull request.
 session" rather than "this session": a rule outlives the session that wrote it, and an indexical in a
 permanent definition means something different to every later reader.)_
 
-**The PUSH is the unit, and that sentence is load-bearing rather than a restatement.** *Reviews answered* and
-*pushes that answer* come apart whenever one push discharges more than one review — which #105 does:
-**`c6b6a25` answered suppressed notes from two separate reviews at once**, the provenance path raised at
-15:29:27Z and the `tierRank` fail-open raised at 15:58:20Z. Counting reviews-answered gives **six** there;
-counting answering pushes gives **five**. **The push governs** — because rule 1's currency is the push
-(*"a push costs a whole round"*), because rule 4 bounds pushes, and because rule 1 already requires fixes to
-be batched, so a push that clears several reviews at once is the rule working rather than a discount being
-taken. **Note the direction, since it is not what you would guess:** here the push unit yields the *smaller*
-count, so it is not simply the stricter reading — it is the one the rest of the file already prices.
-Correspondingly, a review answered across several pushes costs one round **per push**.
+**The PUSH is the unit.** *Reviews answered* and *pushes that answer* come apart whenever one push
+discharges more than one review — on #105 that is six against five. **The push governs**, because rule 1's
+currency is the push and rule 1 already requires fixes to be batched, so a push clearing several reviews at
+once is the rule working rather than a discount taken. Note the direction: the push unit yields the
+*smaller* count there, so it is not simply the stricter reading. A review answered across several pushes
+costs one round **per push**.
 
-**This clause was derived rather than dictated, and then ratified.** It was added 2026-07-30 after the first
-fresh-context re-derivation of #105 returned a different number from the errata's and the gap turned out to
-be the unit rather than the arithmetic. It was written as a derivation, flagged as one on
-[#119](https://github.com/sleepy-panda-works/portulan/pull/119) with the alternative quantified (on the
-review reading #105 is **six**, on the push reading **five**), and put to the maintainer rather than merged
-under his name. **He ratified it verbatim on 2026-07-30 — *"yes, push is the unit — that's what I meant"*** —
-so the sentence now carries the same authority as the rest of the definition. Recorded this way because the
-distinction it turns on is the one this whole rule exists to protect: a clause an implementer inferred and a
-clause the maintainer ruled are different things, and a record that blurs them is the defect, not the tidy
-version.
+Derived by an implementer, quantified both ways on
+[#119](https://github.com/sleepy-panda-works/portulan/pull/119), and put to the maintainer rather than
+merged under his name. **He ratified it verbatim, 2026-07-30 — *"yes, push is the unit — that's what I
+meant"***. Recorded as a ratification because a clause an implementer inferred and a clause the maintainer
+ruled are different things, and blurring them is the defect this rule exists to protect against.
 
 **A records-only correction counts.** A push that fixes nothing but a record — a figure the reviewer caught
 disagreeing with itself across carriers — still spends a round, because it is still a push answering a
@@ -72,12 +58,9 @@ the answer.
   findings — **17 suppressed notes against 6 inline comments on #85, and 11 against 3 on #81**, plus on #105
   the `tierRank` fail-open that let an invalid gate policy compile. A definition counting only threads would
   make the channel that finds the most cost the least, and would leave a session free to push indefinitely
-  so long as the findings arrived suppressed. _(Those two figures were carried in this repository's memory
-  as "14 of 19" and "9 of 11" and are **replaced by a re-measurement of 2026-07-30**, counting suppressed
-  notes from the `Comments suppressed due to low confidence (N)` headers and inline comments from
-  `/comments`. The old pair reproduces under no method anyone stated, and it was propagated into this rule
-  unre-derived — in a rule whose whole subject is that a count needs a named unit. Both readings support
-  "most"; only one of them can be checked.)_
+  so long as the findings arrived suppressed. _(Re-measured 2026-07-30 from the
+  `Comments suppressed due to low confidence (N)` headers and `/comments`; the pair this replaces
+  reproduced under no method anyone stated, in a rule whose subject is that a count needs a named unit.)_
 - **A finding, and a reply.** Rule 1 settles both already: fixes are batched, so a round is answered once
   and not per finding, and a reply costs nothing.
 
@@ -90,65 +73,26 @@ count was first mis-measured as zero. **Measured 2026-07-30 across ten pull requ
 project's whole history** — #44, #49, #57, #63, #81, #85, #95, #105, #115, #119 — and every one returns
 exactly those two spellings, one per endpoint, with no overlap in either direction.
 
-**Two carriers here read as contradicting that, and do not.**
-[`copilot-review.yml`](../../.github/workflows/copilot-review.yml)'s header records
-`copilot-pull-request-reviewer[bot]` as "raising threads on #44", and [`../gate-map.md`](../gate-map.md)
-says the same of that pull request. Both name the **actor** that raised the thread, identified by the login
-its *review* carries — neither is a claim about what `/comments` returns for it, and on #44 `/comments`
-returns `Copilot` like everywhere else. The workflow matches on `/reviews` and never queries `/comments`,
-so its own behaviour is unaffected either way; both spellings are in its list, which is why a rename shows
-up as a red rather than as silence. **Recorded because the near-contradiction is what a hand-counter meets
-first** — it was raised against this very rule in review and cost a measurement to settle.
+_(Two carriers read as contradicting that and do not: `copilot-review.yml`'s header and
+[`../gate-map.md`](../gate-map.md) both name `copilot-pull-request-reviewer[bot]` as raising threads on
+#44. Both name the **actor**, identified by the login its *review* carries — not a claim about
+`/comments`, which returns `Copilot` there as everywhere.)_
 
-**Measured on #105, the pull request that forced the definition.** Eight submissions, all `COMMENTED`,
-each on a distinct commit, and **not one of them empty** — every submission carried at least one finding
-once the suppressed channel is read. Two carried inline threads (three findings, then one). **Five pushes
-answered them** — `d814e0a`, `9c19064`, `e09a49a`, `a328ebf` (carrying `08d7d10`), and `c6b6a25` — so #105 ran
-**three rounds past this bound**.
+**Count pushes and then look inside each one; never count the commits the API happened to name.** On #105
+one answering push rode inside another and was never a reviewed head, so the branch had ten commits and
+eight reviewed heads — and enumerating the reviewed heads counted four where the true figure was five.
+**#105 ran three rounds past this bound.** Found by a fresh-context checkpoint, not by the session that
+wrote the errata.
 
-**The fifth push is the one a careless count loses, and losing it is instructive.** `08d7d10` answered
-review 4's inline finding — a `filePath` description claiming a containment its pattern did not deliver —
-and it was **never a reviewed head**: it rode inside the push whose head Copilot reviewed next. So the
-branch has **ten commits on `main` and only eight reviewed heads**, and any count that enumerates the
-reviewed heads and reads their subjects — which is how this was first counted as four — cannot see it.
-**Count pushes and then look inside each one; do not count the commits the API happened to name.** Found by
-the fresh-context pre-commit checkpoint, not by the session that wrote the errata.
-It was not knowably over at the time, because the definition did not exist until today; that is what makes
-the correction to its three records errata rather than a fault, and it is recorded that way in
-[the handoff](../handoffs/2026-07-29-the-cascade-gets-its-middle-layer.md) and the Session log.
-
-**This definition is forward-only, from 2026-07-30, and every earlier record is deliberately left alone.**
-A grep for a numeric round count matches **seventeen** records across **33 lines**; of those, **at least ten
-claims in nine records** name a specific pull request. **A floor rather than a figure, deliberately:** these
-are prose claims that wrap across lines, so any line-based grep undercounts them — `docs/plan.md`'s
-2026-07-26 entry states one and is invisible to the filter because *"on the pull request"* straddles a line
-break. **All three attempts at this census were wrong in the same way**, and the third is why the number is
-given as a bound: the pattern kept being narrower than the claim it was testing — first missing whole
-records, then missing every claim whose pull-request number sat **inside a markdown link** rather than bare,
-so that `on #73` matched and the linked form did not. **That is the standing
-hazard in auditing prose rather than code**, and it is the same shape as the miscount this whole change
-exists to correct: a method that can only see the well-formed instances reports the rest as absent.
-**Not correcting them is this
-repository's own rule about rules:** both record floors in `docs.sh` are forward-only cutoffs, *"because a
-rule written after a record cannot bind it without rewriting the record to suit the rule."* A definition
-reaches further than a rule, though — it changes how a reader parses old text rather than what an old author
-owed — so the cutoff is stated here rather than left to be inferred from the uncorrected claims themselves.
-
-**An earlier draft of this paragraph said "four records" and gave a ground that would not hold.** It claimed
-#105 was corrected because *its carriers contradicted each other*, and that a lone earlier record
-"contradicts nothing". Both halves failed the fresh-context check. The census was four because the sweep
-used a narrower pattern than the claim it was testing. And the contradiction ground **proves too much**:
-[`../verify/README.md`](../verify/README.md) says *"Two Copilot rounds on #64"* while
-[the jq handoff](../handoffs/2026-07-28-every-jq-filter-a-workflow-runs-is-exercised.md) says *"One Copilot
-round on #64"* — two merged carriers, one pull request, different numbers, and **#64 in fact drew four
-submissions**, so neither is even the submission count. That is #105's exact shape. If contradiction alone
-licensed the correction, #64 would be owed one too.
-
-**So the honest ground is narrower and is stated as such: #105 was corrected because the maintainer directed
-it.** The three-way disagreement is why the directive was warranted, not an independent licence — and #64's
-pair is left standing under the forward-only cutoff, **named here rather than quietly spared**, because a
-cutoff that only ever gets applied where nobody is looking is not a cutoff. Anyone minded to correct #64
-needs a ruling first, exactly as #105 did.
+**This definition is forward-only from 2026-07-30**, and earlier records are deliberately left alone: at
+least ten claims in nine records name a specific pull request, and *"a rule written after a record cannot
+bind it without rewriting the record to suit the rule"* — `docs.sh`'s own two record floors are forward-only
+cutoffs for that reason. **#105 was corrected because the maintainer directed it**, and that is the whole
+licence: contradiction alone would prove too much, since
+[`../verify/README.md`](../verify/README.md) and
+[the jq handoff](../handoffs/2026-07-28-every-jq-filter-a-workflow-runs-is-exercised.md) disagree about #64
+and neither matches its four submissions. #64's pair stands, **named rather than quietly spared** — a cutoff
+applied only where nobody is looking is not a cutoff.
 
 ## The rule
 
@@ -207,16 +151,12 @@ observation alone. _(This paragraph said "round" in all three places until 2026-
 meant a submission — a fix-round cannot be a push Copilot had nothing to say about — so they are re-worded,
 not re-measured, exactly as the table above was.)_
 
-**Rule 2 turned out to protect something bigger than a wasted submission, measured 2026-07-30 on #105.** Its
-records landed **second** — before a single fix round had been pushed — were patched **three times** as the
-loop ran, and still stopped one push short of the end. The result was three merged carriers disagreeing about how
-many rounds the pull request had received — two, three and two, and the true figure was five, so **no
-carrier was right, and the two that agreed were both wrong**. **That is not three misreadings of
-one fact; it is the mechanical consequence of writing a record while the number it states can still
-move.** Had the records landed after the final push they would have been written once and all three would
-have agreed. So rule 2's cost is not only the submission a documentation push spawns — it is that a record
-written mid-loop is *a claim about a total that has not happened yet*, and the errata to fix it is
-permanent. Read this as the reason rule 2 is not the soft one of the four.
+**Rule 2 protects something bigger than a wasted submission, measured on #105.** Its records landed
+**second**, were patched three times as the loop ran, and still stopped a push short: three merged carriers
+disagreeing — two, three and two — against a true figure of five, so **no carrier was right and the two
+that agreed were both wrong**. That is not three misreadings of one fact; it is the mechanical consequence
+of **writing a record while the number it states can still move**, and the errata is permanent. Rule 2 is
+not the soft one of the four.
 
 **And the loop had no fixed point.** Its stopping condition was *"Copilot is silent"*, but every fix is
 new input to the next submission, so it terminated by luck rather than by convergence. **Nine submissions
