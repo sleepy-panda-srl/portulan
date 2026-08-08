@@ -831,8 +831,13 @@ jobs:
         run: |
           set -uo pipefail
 
+          # `::warning::` rather than bare stderr, matching the verdict step below. The first cut of
+          # this helper printed to stderr only, so a promotion failure produced no annotation while the
+          # verdict step's identically-named helper produced one — two `warn`s in one file behaving
+          # differently, which is exactly the drift a shared name is read as ruling out. Found by
+          # Copilot on #176.
           say () { printf '%s\n' "$1"; [ -n "${GITHUB_STEP_SUMMARY:-}" ] && printf '%s\n\n' "$1" >>"$GITHUB_STEP_SUMMARY"; return 0; }
-          warn () { printf '%s\n' "$1" >&2; [ -n "${GITHUB_STEP_SUMMARY:-}" ] && printf '**%s**\n\n' "$1" >>"$GITHUB_STEP_SUMMARY"; return 0; }
+          warn () { printf '::warning::%s\n' "$1"; [ -n "${GITHUB_STEP_SUMMARY:-}" ] && printf '**%s**\n\n' "$1" >>"$GITHUB_STEP_SUMMARY"; return 0; }
 
           head="$AWAITED_HEAD"
           if [ ! -s "${NOTES_FILE:-}" ]; then
@@ -849,9 +854,19 @@ jobs:
           # after it, up to the next header, is that note's body — including the fenced snippet Copilot
           # quotes. The LINE is the last colon-separated field, never the second, because a path may
           # contain a colon and a line number may not.
+          # THE SPLIT'S OWN EXIT CODE IS CHECKED, and the reason is a misdiagnosis rather than a crash.
+          # This step runs under `set -u` and NOT `set -e`, so an awk that failed — a syntax error, an
+          # unreadable input — would leave an empty records file and fall through to the "no
+          # `**path:line**` header" branch below, which says Copilot's markup moved. That sends the
+          # next reader to the review body to hunt for a spelling change that never happened, while
+          # the real fault is one line up. A wrong diagnosis is worse than a bare failure because it
+          # is actionable in the wrong direction. Found by Copilot on #176.
           records="$RUNNER_TEMP/portulan-notes-records.txt"
-          awk '/^\*\*.+:[0-9]+\*\*$/ { h = substr($0, 3, length($0) - 4); n = split(h, a, ":"); ln = a[n]; printf "@@PORTULAN-NOTE@@ %s %s\n", substr(h, 1, length(h) - length(ln) - 1), ln; next } { print }' \
-            "$NOTES_FILE" >"$records"
+          if ! awk '/^\*\*.+:[0-9]+\*\*$/ { h = substr($0, 3, length($0) - 4); n = split(h, a, ":"); ln = a[n]; printf "@@PORTULAN-NOTE@@ %s %s\n", substr(h, 1, length(h) - length(ln) - 1), ln; next } { print }' \
+            "$NOTES_FILE" >"$records"; then
+            warn "the notes splitter itself failed — nothing promoted, and this is NOT a report that Copilot's markup moved. Read the step log; the notes are still in the review body."
+            exit 0
+          fi
 
           if ! grep -q '^@@PORTULAN-NOTE@@ ' "$records"; then
             warn "the notes block carried no \`**path:line**\` header this step could parse — nothing promoted. Copilot's markup has probably moved; read the body by hand. **This is not a report of zero notes.**"
