@@ -1979,8 +1979,6 @@ _The seam applies here too: no client-identifying references._
   seven states; the pre-commit pass found an **eighth where they diverge** ([#169](https://github.com/sleepy-panda-works/portulan/issues/169)).
   **Eight instances of the class landed inside the change generalising it**, none caught by the suite. 8 of 13 rounds, not 5; `existsSync`
   17, not 27. `main` 1033→1055, nine recipes. · Fidelity: A-W-A (12) + A-W-A (11), all folded; one adjustment from each refuted by measurement, plus a Fable 5 review (9). 11 submissions, 5 answering pushes, the maintainer's grant past the bound. Seam scan clean. Handoff: [`2026-08-07`](../.portulan/handoffs/2026-08-07-a-fix-is-not-done-where-it-was-found.md).
-<<<<<<< HEAD
-<<<<<<< HEAD
 - 2026-08-08 · Outside the milestone track · **The store had thirty-five bytes left.** A consolidation pass over
   the `.portulan` memory store, on the maintainer's instruction after the previous session's rule amendment
   breached the budget and was compressed back under **inside a change about something else** — the worst
@@ -2001,27 +1999,13 @@ _The seam applies here too: no client-identifying references._
   not three — `marketplace.json`'s top-level `version` bound by nothing, not even for shape. Suite 1055→1057. ·
   Fidelity: pre-commit R-C, four findings folded. 3 rounds, 2 pushes, taper clean. Seam scan
   clean. Handoff: [`2026-08-07`](../.portulan/handoffs/2026-08-07-one-release-train-carried-two-numbers.md).
-=======
-- 2026-08-07 · Outside the milestone track · **The boot reports the layer it never mentioned.**
-  [#178](https://github.com/sleepy-panda-works/portulan/pull/178) for
-  [#134](https://github.com/sleepy-panda-works/portulan/issues/134): `/portulan` read a workspace's slots and never
-  its `packs` — `grep -c` returned **0** — so the cascade's middle went unmentioned and a composed ritual read as
-  invocable. Section 3a took **three drafts**: *declared but not composed* refuted by M6's close, *a pack resolves*
-  by `packRoots()` returning `[]` without a `tree`, *at a pinned version* **invented — nothing pins**; Copilot
-  caught a fourth, that named roots **REPLACE** the derived one. Same-class siblings: *no scaffolder yet*, *memory
-  has no generated index*, `plugin-lint`'s `7 skill(s)` and task `0008` — the last two true of the linter, false of
-  the host. `Skills (0)` re-measured on **2.1.224**. **#134 stays open**: row 7's clause (b) closes it. · Fidelity:
-  pre-commit R-C, four findings folded. 2 rounds, 1 push, taper clean. Seam scan clean. Handoff: [`2026-08-07`](../.portulan/handoffs/2026-08-07-the-boot-reports-the-layer-it-never-mentioned.md).
->>>>>>> 39124b0 (The claim reaches two carriers outside the skill, and the records)
-=======
 - 2026-08-07 · Outside the milestone track · **The boot reports the layer it never mentioned, and a pack's skills
-  reach the host.** [#178](https://github.com/sleepy-panda-works/portulan/pull/178) **closes**
-  [#134](https://github.com/sleepy-panda-works/portulan/issues/134). `/portulan` read a workspace's slots and never
-  its `packs` — `grep -c` returned **0**. Section 3a took **three drafts**: *declared but not composed*, *a pack
-  resolves* unconditional, and *at a pinned version* **invented — nothing pins**; Copilot caught a fourth, that
-  named roots **REPLACE** the derived one. **Clause (b) then landed in one line:** a host expands a declared skills
-  root ONE level, so `./packs/rituals/` registered 0 of the pack's 3 — `Skills (4)` → **`Skills (7)`** on 2.1.224
-  once the manifest names the directory holding them. `plugin-lint` now fails what the host cannot reach; **two
-  milestone-6 tests asserting zero failures on that shape are why it survived a milestone**. Suite 1055→1057. ·
-  Fidelity: pre-commit R-C, four findings folded. 3 rounds, 2 pushes. Seam scan clean. Handoff: [`2026-08-07`](../.portulan/handoffs/2026-08-07-the-boot-reports-the-layer-it-never-mentioned.md).
->>>>>>> e9f6030 (Clause (b): a pack's skills reach the host, and the rail that says when they cannot)
+  reach the host.** [#178](https://github.com/sleepy-panda-works/portulan/pull/178) — **#134 stays open**, on a
+  fresh-context supervisor's verdict this session asked for and verified. `/portulan` read a workspace's slots
+  and never its `packs` — `grep -c` returned **0**. Section 3a took **three drafts**, each refuted; Copilot caught
+  a fourth, that named roots **REPLACE** the derived one. A host expands a declared skills root ONE level, so
+  `./packs/rituals/` registered 0 of the pack's 3 — `Skills (4)` → **`Skills (7)`** once the manifest names the
+  directory holding them, with `plugin-lint` now failing what the host cannot reach and **two milestone-6 tests
+  asserting zero failures on that shape**. But the same 7 appears from a directory with **no workspace at all**,
+  so it closes a depth defect and **not** clause (b), whose subject is a composed pack — and **#123 does not hold
+  the remainder** (`governed_by`, `pointer`, `boot`: zero hits). Suite 1057. Seam scan clean.
