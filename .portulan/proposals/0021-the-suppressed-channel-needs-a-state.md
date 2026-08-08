@@ -1,17 +1,17 @@
-# 0021 — The suppressed channel has no state, and #66 is a ruling rather than an implementation
+# 0021 — The suppressed channel had no state, and shape 1 gives it one
 
-**Status.** Proposed — the maintainer's ruling is what this asks for.
+**Status.** **Accepted — shape 1, on the maintainer's ruling of 2026-08-07**, and implemented in the pull request below.
 
 **Pull request:** https://github.com/sleepy-panda-works/portulan/pull/176
 
-## Why this is a proposal and not the change [#66](https://github.com/sleepy-panda-works/portulan/issues/66) describes
+## Why this began as a proposal rather than as the change [#66](https://github.com/sleepy-panda-works/portulan/issues/66) describes
 
 [#66](https://github.com/sleepy-panda-works/portulan/issues/66) asks that Copilot's suppressed
 low-confidence notes be posted as real review comments at their `file:line`, so each becomes a thread
 and `required_conversation_resolution` — already required on `main` — gates it. Building that would
 **invert rule 3 of [`../memory/a-review-loop-needs-a-bound.md`](../memory/a-review-loop-needs-a-bound.md)**,
-which reads *"Threads block; suppressed notes do not"* and carries the maintainer's ruling of
-2026-07-28. It is a rule change, and [`../gate-map.md`](../gate-map.md)'s Propose tier says where a rule
+which read *"Threads block; suppressed notes do not"* and carried the maintainer's ruling of
+2026-07-28 — amended in place by this change, on his ruling of 2026-08-07. It is a rule change, and [`../gate-map.md`](../gate-map.md)'s Propose tier says where a rule
 change starts:
 
 > An idea that adds an axis, a mode, or a surface starts as a proposal. It is written into `proposals/`
@@ -98,7 +98,7 @@ faithfully in the record and is narrowed here rather than repeated.
 
 ## What #66 would cost, stated rather than waved past
 
-Rule 3 is a calibration and the rule prices it: on
+Rule 3 was a calibration and the rule priced it: on
 [#63](https://github.com/sleepy-panda-works/portulan/pull/63) the suppressed notes ran one correct fix
 with a wrong diagnosis, two flatly wrong, and one genuinely right. **That taxonomy is cited and its total
 is not re-derivable** — the memory says four, #66's body says *"two of six"*, and summing #63's
@@ -162,12 +162,14 @@ Whichever is chosen, the observation procedure ships with it, per
 
 ## What this proposal deliberately does not do
 
-- **It does not implement shape 1 or shape 3**, and does not assume the answer is shape 3. Those are the
-  rule change; this document is the request for a ruling on them.
+- **It did not implement shape 1 or shape 3 when it was written**, and did not assume the answer. The
+  ruling arrived on the same day; shape 1 now ships in this pull request and this section is left
+  standing rather than rewritten, because a proposal records what was argued *before* the ruling and
+  editing that away destroys what makes the ruling legible.
 - **It does not amend [`../memory/a-review-loop-needs-a-bound.md`](../memory/a-review-loop-needs-a-bound.md).**
   Rule 3 stands until the maintainer rules otherwise; this records what is now known against it.
 
-**Shape 2 ships with this proposal, on the maintainer's instruction of 2026-08-07** — *"address all of
+**Shapes 2 and 1 both ship with this proposal, on the maintainer's instructions of 2026-08-07** — *"address all of
 them as part of these PRs"*, given when the alternative offered was to file the two defects as issues.
 An earlier draft of this section declined to fix them here, on the argument that a repair inside the
 artifact meant to be ruled on first is an implementation smuggled past a gate. That argument was
@@ -188,4 +190,9 @@ checkpoint refused the first draft of this file**, which had attributed all elev
 counted to the by-design branch alone — the right defect list reached by the wrong mechanism, which is
 the error this repository names most often and the reason the checkpoint is not optional.
 
-**Decision.** Marius Cetanas — pending.
+**Decision.** Marius Cetanas — **accepted as shape 1, 2026-08-07**: every suppressed note becomes a
+review thread at its `file:line`, the faithful reading of #66, taken over shape 3 (one aggregate thread
+per submission) and over closing #66 on the argument alone. The price was stated before the choice and
+is not a discovery — **26 threads on one pull request at #167's ratio, each needing his resolution** —
+and rule 3 of [`../memory/a-review-loop-needs-a-bound.md`](../memory/a-review-loop-needs-a-bound.md) is
+amended in place in the same change rather than left to contradict the machinery.

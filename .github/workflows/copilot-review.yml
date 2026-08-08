@@ -492,16 +492,14 @@ jobs:
                       # and the shell tests still passed, because they were fed a hand-sliced copy of
                       # the block instead of one YAML had parsed.
                       report="**${count} comment(s) suppressed as low confidence** on the round for \`${head}\`."
-                      report="${report}"$'\n'"They carry no thread and no Resolve control, so nothing"
-                      report="${report} gates on them: unanswered, they simply stand. If this"
-                      report="${report} round raised no inline comment, the verdict review quotes"
-                      report="${report} them onto the pull request; if it did, there is no verdict"
-                      report="${report} review, and outside Copilot's own review body — where they"
-                      report="${report} sit collapsed — THIS REPORT is the only place they surface."
-                      report="${report} Address or refuse each one, per the standing feedback-loop"
-                      report="${report} rule, in ONE batched pull-request comment — a note has no"
-                      report="${report} thread to sit on, which is why it is answered there and an"
-                      report="${report} inline comment never is."$'\n\n'"${notes}"
+                      report="${report}"$'\n'"Each is promoted to a review thread by the"
+                      report="${report} promotion step below, so they carry state and gate the"
+                      report="${report} merge through required_conversation_resolution — shape 1"
+                      report="${report} of proposal 0021, the maintainer's ruling of 2026-08-07."
+                      report="${report} Answer each ON ITS OWN THREAD; the quote below is a"
+                      report="${report} convenience and not the channel. If the promotion step"
+                      report="${report} reports fewer posted than counted here, the remainder is"
+                      report="${report} ungated and this report is where it surfaces."$'\n\n'"${notes}"
                       notes_state='present'
                       # The raw notes, filed for the verdict step: a review body travels badly
                       # through GITHUB_OUTPUT (a delimiter collision away from truncation), and
@@ -803,6 +801,146 @@ jobs:
       # reached when this shipped — and every refusal prints as a warning AND a summary line, never
       # a log line alone: a warning in a green run's log as the entire notification mechanism is
       # the incident behind proposal 0006.
+      # ---------------------------------------------------------------------------------------------
+      # SHAPE 1 OF PROPOSAL 0021: every suppressed note becomes a real review thread.
+      #
+      # The maintainer's ruling, 2026-08-07, taken over shape 3 (one aggregate thread per submission)
+      # and over leaving the channel as it was. What it buys is the thing #66 was opened for: a
+      # suppressed low-confidence note has no thread, no Resolve control and therefore NO STATE, so
+      # nothing anywhere distinguishes *answered* from *ignored* and `mergeStateStatus: CLEAN` can be
+      # true with several unread. Promoted to a thread, each one is gated by
+      # `required_conversation_resolution`, which is already required on `main`.
+      #
+      # What it costs, priced rather than discovered: on #167 that would have been 26 threads on one
+      # pull request, each needing a resolution, and resolving is the maintainer's judgement travelling
+      # with his merge approval. Rule 3 of `.portulan/memory/a-review-loop-needs-a-bound.md` is amended
+      # in the same change rather than left to contradict this step.
+      #
+      # It runs on EVERY round carrying notes, including one that also raised inline comments — which
+      # is the third of the three surfacing faults #167 measured, and the only one the verdict step
+      # could never have covered, since it deliberately submits nothing when threads already exist.
+      - name: Suppressed notes are promoted to review threads
+        if: steps.await.outputs.notes_state == 'present'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          AWAITED_HEAD: ${{ steps.await.outputs.head }}
+          NOTES_FILE: ${{ steps.await.outputs.notes_file }}
+          PORTULAN_BOT_APP_ID: ${{ secrets.PORTULAN_BOT_APP_ID }}
+          APP_KEY: ${{ secrets.PORTULAN_BOT_PRIVATE_KEY }}
+        run: |
+          set -uo pipefail
+
+          say () { printf '%s\n' "$1"; [ -n "${GITHUB_STEP_SUMMARY:-}" ] && printf '%s\n\n' "$1" >>"$GITHUB_STEP_SUMMARY"; return 0; }
+          warn () { printf '%s\n' "$1" >&2; [ -n "${GITHUB_STEP_SUMMARY:-}" ] && printf '**%s**\n\n' "$1" >>"$GITHUB_STEP_SUMMARY"; return 0; }
+
+          head="$AWAITED_HEAD"
+          if [ ! -s "${NOTES_FILE:-}" ]; then
+            warn "notes were reported present and the file is empty — nothing promoted, and this is a defect rather than a clean round."
+            exit 0
+          fi
+          if [ -z "${PORTULAN_BOT_APP_ID:-}" ] || [ -z "${APP_KEY:-}" ]; then
+            warn "no App credentials — the notes stay in the review body, ungated. Nothing else is affected."
+            exit 0
+          fi
+
+          # ONE RECORD PER NOTE, and the split is awk's so `.portulan/verify/workflow-filters.mjs` can
+          # lift and exercise it. A note's header is `**<path>:<line>**` on its own line; everything
+          # after it, up to the next header, is that note's body — including the fenced snippet Copilot
+          # quotes. The LINE is the last colon-separated field, never the second, because a path may
+          # contain a colon and a line number may not.
+          records="$RUNNER_TEMP/portulan-notes-records.txt"
+          awk '/^\*\*.+:[0-9]+\*\*$/ { h = substr($0, 3, length($0) - 4); n = split(h, a, ":"); ln = a[n]; printf "@@PORTULAN-NOTE@@ %s %s\n", substr(h, 1, length(h) - length(ln) - 1), ln; next } { print }' \
+            "$NOTES_FILE" >"$records"
+
+          if ! grep -q '^@@PORTULAN-NOTE@@ ' "$records"; then
+            warn "the notes block carried no \`**path:line**\` header this step could parse — nothing promoted. Copilot's markup has probably moved; read the body by hand. **This is not a report of zero notes.**"
+            exit 0
+          fi
+
+          key="$RUNNER_TEMP/app.pem"
+          umask 077
+          printf '%s\n' "$APP_KEY" >"$key"
+          export PORTULAN_BOT_PRIVATE_KEY="$key"
+          if ! token=$(node .portulan/tools/gh-bot-token.mjs); then
+            warn "could not mint an App installation token — nothing promoted, and the notes stay ungated."
+            exit 0
+          fi
+
+          # DEDUP READS WHAT IS ALREADY THERE, once. `review_on_push` spawns a round per push and
+          # Copilot re-raises an unaddressed note, so without this every round would repost every note
+          # and the threads this step exists to create would become the noise it was meant to replace.
+          # The marker carries the path, the line and a CRC of the note text — `cksum` is POSIX and
+          # needs nothing installed — so a REWORDED note on the same line is a new thread rather than a
+          # silent drop, which is the direction to fail in.
+          existing="$RUNNER_TEMP/portulan-existing-comments.txt"
+          if ! GH_TOKEN="$token" gh api --paginate "repos/${GITHUB_REPOSITORY}/pulls/${PR_NUMBER}/comments" --jq '.[].body' >"$existing" 2>/dev/null; then
+            warn "could not read the existing review comments — refusing to promote, because posting without the dedup read would repost every note on every round."
+            exit 0
+          fi
+
+          posted=0; skipped=0; failed=0; orphaned=0
+          orphans="$RUNNER_TEMP/portulan-orphans.md"
+          : >"$orphans"
+
+          promote () {
+            [ -n "${p_path:-}" ] || return 0
+            body=$(printf '%s' "$p_body" | sed -e 's/[[:space:]]*$//' | awk 'NF {blank=0} !NF {blank++} blank<2')
+            [ -n "$body" ] || return 0
+            crc=$(printf '%s' "$body" | cksum | cut -d' ' -f1)
+            marker="<!-- portulan-note path=${p_path} line=${p_line} crc=${crc} -->"
+            if grep -qF "$marker" "$existing"; then
+              skipped=$((skipped + 1))
+              return 0
+            fi
+            full="**Copilot suppressed this as low confidence.** It is promoted to a thread so it carries state: address it or refuse it with a reason, and this thread gates the merge until it is resolved."
+            full="${full}"$'\n\n'"${body}"$'\n\n'"${marker}"
+            if GH_TOKEN="$token" gh api --silent -X POST \
+                 "repos/${GITHUB_REPOSITORY}/pulls/${PR_NUMBER}/comments" \
+                 -f commit_id="$head" -f path="$p_path" -F line="$p_line" -f side=RIGHT -f body="$full" 2>/dev/null; then
+              posted=$((posted + 1))
+              return 0
+            fi
+            # A line outside the diff cannot carry a thread — Copilot reports against the file, not
+            # against the patch. Retried at file level, and only if THAT fails does the note fall
+            # through to the batched comment below. Losing it silently is the one outcome refused.
+            if GH_TOKEN="$token" gh api --silent -X POST \
+                 "repos/${GITHUB_REPOSITORY}/pulls/${PR_NUMBER}/comments" \
+                 -f commit_id="$head" -f path="$p_path" -f subject_type=file -f body="$full" 2>/dev/null; then
+              posted=$((posted + 1))
+              return 0
+            fi
+            orphaned=$((orphaned + 1))
+            printf -- '- **%s:%s** — could not be attached as a thread.\n\n%s\n\n' "$p_path" "$p_line" "$body" >>"$orphans"
+            return 0
+          }
+
+          p_path=''; p_line=''; p_body=''
+          while IFS= read -r ln || [ -n "$ln" ]; do
+            case "$ln" in
+              '@@PORTULAN-NOTE@@ '*)
+                promote
+                rest=${ln#'@@PORTULAN-NOTE@@ '}
+                p_line=${rest##* }
+                p_path=${rest% *}
+                p_body=''
+                ;;
+              *) p_body="${p_body}${ln}"$'\n' ;;
+            esac
+          done <"$records"
+          promote
+
+          if [ "$orphaned" -gt 0 ]; then
+            note_body="**${orphaned} suppressed note(s) could not be attached to a line.**"$'\n\n'
+            note_body="${note_body}Neither a line comment nor a file comment was accepted — the path is probably absent from this pull request's diff. They are quoted here so they are not lost, and they carry no thread, which is the state this step exists to remove."$'\n\n'
+            note_body="${note_body}$(cat "$orphans")"
+            GH_TOKEN="$token" gh api --silent -X POST \
+              "repos/${GITHUB_REPOSITORY}/issues/${PR_NUMBER}/comments" -f body="$note_body" 2>/dev/null || true
+          fi
+
+          say "suppressed notes promoted to threads on \`${head}\`: ${posted} posted, ${skipped} already present, ${orphaned} unattachable."
+          printf 'promoted=%s\n' "$posted" >>"$GITHUB_OUTPUT"
+
       - name: The round's verdict is carried as a review
         if: steps.await.outputs.round == 'green'
         env:
@@ -972,7 +1110,7 @@ jobs:
           run_url="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
           if [ "$NOTES_STATE" = 'present' ]; then
             body="**Derived verdict: approve, with Copilot's suggestions attached.**"$'\n\n'
-            body="${body}Copilot's round on \`${head}\` raised no inline comment. Its ${NOTES_COUNT} suppressed low-confidence note(s) are quoted below: they carry no thread and no gate, and this approval is not their disposal — each still owes an address-or-refuse reply under the standing feedback-loop rule, in ONE batched pull-request comment. That is the exception a note earns by having no thread to sit on; an inline comment is answered on its own thread, never folded into a summary."$'\n\n'
+            body="${body}Copilot's round on \`${head}\` raised no inline comment. Its ${NOTES_COUNT} suppressed low-confidence note(s) are quoted below **and have each been promoted to a review thread** by the step above, so they now carry state and gate the merge through \`required_conversation_resolution\` — the maintainer's ruling of 2026-08-07, shape 1 of proposal 0021. This approval is not their disposal: answer each on its own thread. The quote below is a convenience, not the channel."$'\n\n'
             body="${body}$(cat "$NOTES_FILE")"$'\n\n'
           else
             body="**Derived verdict: approve.**"$'\n\n'

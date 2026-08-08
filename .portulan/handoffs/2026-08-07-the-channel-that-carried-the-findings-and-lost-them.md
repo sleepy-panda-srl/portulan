@@ -97,7 +97,35 @@ it is clean here: substance, then a rendering claim that was wrong.
 **Worth recording for the proposal's own subject:** both of round 1's real findings arrived through the
 suppressed channel, and neither would have blocked anything.
 
-## Next
+## The ruling arrived, and shape 1 ships
 
-The ruling on shapes 1 and 3 is what this pull request exists for. Nothing else here is blocked on it —
-shape 2 stands on its own as defect repair.
+**The maintainer ruled shape 1 on 2026-08-07** — every suppressed note becomes a review thread at its
+`file:line`, the faithful reading of #66 — taken over shape 3 and over closing #66 on the argument
+alone. The price was on the table first and is not a discovery: **26 threads on one pull request** at
+#167's ratio, each needing his resolution.
+
+What ships: a promotion step in `copilot-review.yml` that posts each note as the agent identity,
+deduplicated on path, line and a checksum of the text so a re-raised note is not a second thread; a
+line comment, then a file comment, then a batched pull-request comment, because **losing a note
+silently is the one outcome refused**. Rule 3 is amended in place. The verdict review and the job
+summary both stop calling the notes ungated, since they no longer are.
+
+**Undemonstrated, and it is the honest gap:** no note has been promoted on a live round yet. The
+programs are exercised against fixtures — seven new ones in `workflow-filters` — but the POST path,
+the 422 fallback and the dedup read have not run against GitHub. The first round on this pull request
+after merge is the observation, and the step reports `posted / already present / unattachable` on every
+run so that it is readable rather than inferred.
+
+## The budget breach the amendment caused, and why it was not raised
+
+Amending rule 3 pushed the memory store to **122.0 KB against a 120 KB budget**, and `index` went red.
+The rule for that is not negotiable — milestone 5's criterion is *consolidation, never a budget raise
+in the same change* — so the store was brought back under by **compressing what this change added**,
+plus two verbose passages in the same file whose argument was already carried elsewhere. The largest
+saving came from collapsing a duplicate: the amendment and the *Why it holds* paragraph had both argued
+the reversal, which is the two-carriers defect proposal `0020` shipped a rule about **four days ago**,
+committed here inside the change that cites it.
+
+`a-review-loop-needs-a-bound.md` is **28 KB against a next-largest record of 8 KB**. It is the
+consolidation candidate in this store and it was not consolidated here, deliberately — that is a
+judgement over a merged record and belongs in its own pass, not smuggled into a rule change.
