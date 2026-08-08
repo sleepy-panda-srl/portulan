@@ -62,7 +62,24 @@ workspace both report `Skills (0), Agents (0)`. The issue measured 2.1.220. The 
 **not** restated in the shipped skill, which states the shape only —
 [`../../docs/milestones/m07.md`](../../docs/milestones/m07.md) is its carrier.
 
-## #134 closes, and the closing half was one line
+## What #134 asked for, what closes, and the half that does not
+
+**Read the issue's title, because it names two things:** *"A feed-installed workspace is invisible to
+`/portulan`, and a workspace cannot inherit another."*
+
+| Half | State |
+|---|---|
+| A workspace cannot inherit another | **Answered** by proposal `0017` — a repository points rather than inherits, shipped at spec 2.7 |
+| A composed pack's skills are invocable through a host — row 7's clause **(b)** | **Closed here**, demonstrated below |
+| The boot reports discovery's answer honestly | **Closed here** — section 3a |
+| `/portulan` **resolving** a feed-installed workspace | **NOT closed.** That is plugin-cache discovery, which row 7 assigns to [#123](https://github.com/sleepy-panda-works/portulan/issues/123) |
+
+The pull request carries `Closes #134` because row 7 says clause (b) is what closes it, and clause (b)
+is demonstrated. **That is a judgement rather than a fact**, and the residue above is the reason to
+disagree with it: an adopter whose workspace lives in a feed still cannot have `/portulan` load it, and
+nothing in this change moves that. Reopening is one click, and #123 is where the remainder lives.
+
+## The closing half was one line
 
 The first version of this handoff said #134 stays open, because row 7 makes clause **(b)** what closes
 it — *"a composed pack's skill is invoked in the adopting workspace the same way a core skill is"* — and
