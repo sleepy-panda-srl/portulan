@@ -153,7 +153,7 @@ const CASES = [
         stdout: "first\n<!-- portulan-note path=a.mjs line=1 crc=42 -->\nsecond\n",
         status: 0,
     },
-      {
+    {
         id: "existing-comment-bodies-empty",
         anchor: ".[].body",
         why: "**a pull request with no review comments yet is the FIRST round's normal state**, and it "
