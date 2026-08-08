@@ -145,17 +145,18 @@ const CASES = [
     // so a round does not repost what an earlier round posted.
     {
         id: "existing-comment-bodies",
-        anchor: ".[].body",
-        why: "the dedup read. `review_on_push` spawns a round per push and Copilot re-raises an "
+        anchor: 'select(.user.login == "portulan-agent[bot]")',
+        why: "the dedup read, FILTERED to the promoting identity. `review_on_push` spawns a round per push and Copilot re-raises an "
             + "unaddressed note, so without this every round would repost every note and the threads "
             + "shape 1 creates would become the noise it was built to replace",
-        input: '[{"body":"first\\n<!-- portulan-note path=a.mjs line=1 crc=42 -->"},{"body":"second"}]',
-        stdout: "first\n<!-- portulan-note path=a.mjs line=1 crc=42 -->\nsecond\n",
+        input: '[{"user":{"login":"portulan-agent[bot]"},"body":"mine\\n<!-- portulan-note path=a.mjs line=1 crc=42 -->"},'
+            + '{"user":{"login":"someone-else"},"body":"spoofed\\n<!-- portulan-note path=a.mjs line=2 crc=99 -->"}]',
+        stdout: "mine\n<!-- portulan-note path=a.mjs line=1 crc=42 -->\n",
         status: 0,
     },
     {
         id: "existing-comment-bodies-empty",
-        anchor: ".[].body",
+        anchor: 'select(.user.login == "portulan-agent[bot]")',
         why: "**a pull request with no review comments yet is the FIRST round's normal state**, and it "
             + "must read as an empty file rather than as an error — an error here would refuse to "
             + "promote anything on the one round where every note is new",
