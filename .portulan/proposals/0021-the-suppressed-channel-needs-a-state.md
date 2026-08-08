@@ -175,9 +175,14 @@ An earlier draft of this section declined to fix them here, on the argument that
 artifact meant to be ruled on first is an implementation smuggled past a gate. That argument was
 overruled, and the record of it is left standing rather than rewritten: the ruling is his to make and
 the reasoning is worth more than the tidy version. What ships is the pull request's own diff — the
-concurrency key, the fenced-block fix, and a regression test that lifts the real `awk` out of the
-workflow — and **none of it touches rule 3**, which is the line that separates shape 2 from the two
-shapes still awaiting a ruling.
+concurrency key, the fenced-block fix, and fixtures that lift the real programs out of the workflow.
+
+**The concurrency key alone did not do what an earlier draft of this section said it did.** The await
+loop exited the moment it saw the branch move, so a superseded run stopped before its own round arrived
+and the notes were lost as before — *not cancelling a run only matters if the run then does something*.
+Found by Copilot against this document's own claim. Both halves ship now: the group stops the cancel,
+and the loop waits for the head it was **triggered** for. Recorded rather than quietly repaired, because
+the claim had been measured against the wrong layer, which is the failure this file keeps naming.
 
 ## Provenance
 

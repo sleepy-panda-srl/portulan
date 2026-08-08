@@ -154,6 +154,14 @@ permissions:
 # The gate is unaffected: each run reports its check against its own commit, so a superseded run's
 # result attaches to a commit that is no longer the head and gates nothing. The verdict step's stale-
 # approval sweep already handles an approval naming a non-head commit — that is what it was built for.
+#
+# **THIS KEY IS NECESSARY AND WAS NOT SUFFICIENT, and the difference was found by Copilot on #176.**
+# The await loop below used to `exit 0` the moment it noticed the branch had moved, so a superseded run
+# stopped one layer in — before its own head's round arrived — and the notes were lost exactly as they
+# were under `cancel-in-progress`. Not cancelling a run only matters if the run then does something.
+# Both halves are in this change now: the group stops the cancel, and the loop waits for the head it was
+# TRIGGERED for rather than the head of the moment. The comment above claimed the goal on the strength of
+# the first half alone, which was a claim measured against the wrong layer.
 concurrency:
   group: copilot-review-${{ github.event.pull_request.number }}-${{ github.event.pull_request.head.sha }}
   cancel-in-progress: false
@@ -210,6 +218,7 @@ jobs:
           seen=''
           unread=''
           first_head=''
+          superseded_note=''
 
           while : ; do
             # Reset per poll: these describe one look at the pull request, not the accumulation of
@@ -268,12 +277,33 @@ jobs:
                 first_head="$head"
                 printf 'head commit: %s\n' "$head"
               elif [ "$head" != "$first_head" ]; then
-                printf 'SUPERSEDED — the branch moved from %s to %s while this run waited.\n' "$first_head" "$head"
-                printf 'The run for the new head owns that commit; this one has nothing left to answer.\n'
-                # Exit 0 is safe here and only here: this run reports against %s, which is no longer
-                # the head, and a merge is gated on the check runs of the head commit. Reaching this
-                # branch at all means `cancel-in-progress` did not get there first.
-                exit 0
+                # SUPERSEDED — and this run KEEPS WAITING, which is the opposite of what it did until
+                # 2026-08-08.
+                #
+                # It used to `exit 0` here, and that made the per-head concurrency group added in this
+                # same pull request buy **nothing**: stopping `cancel-in-progress` from killing a
+                # superseded run only matters if the run then does something, and this branch stopped
+                # it one layer in, before its own head's round arrived. The notes it was meant to
+                # surface were lost exactly as before. **Found by Copilot on #176, against the comment
+                # at the top of this file claiming the change achieved that goal — the claim was
+                # measured against the wrong layer.**
+                #
+                # A run now waits for the round on the head it was TRIGGERED for, matched below
+                # against `first_head` rather than the head of the moment, and its notes are promoted
+                # for that commit. What it must not do is submit a verdict, and it does not: the
+                # verdict step re-reads the head at the last moment and returns on exactly this
+                # comparison, which is where the guard belongs — that step is the one whose output
+                # would otherwise describe a tree that is no longer merging.
+                #
+                # The check run this produces attaches to a commit that is no longer the head, and a
+                # merge gates on the head commit's checks, so it opens nothing. The cost is a runner
+                # held until this head's round lands — 1m53s–3m47s measured here, bounded by the same
+                # budget as any other wait.
+                if [ -z "$superseded_note" ]; then
+                  superseded_note='yes'
+                  printf 'SUPERSEDED — the branch moved from %s to %s.\n' "$first_head" "$head"
+                  printf 'Still waiting for the round on %s so its suppressed notes are surfaced; the verdict belongs to the run for the new head.\n' "$first_head"
+                fi
               fi
 
               # NOTHING TO REVIEW — ruleset `copilot auto-review on pull requests` carries
@@ -315,7 +345,7 @@ jobs:
                   seen="$seen $lower"
                   for candidate in $REVIEWERS; do
                     # A DISMISSED review is an invalidated one — it must not satisfy the await.
-                    if [ "$lower" = "$candidate" ] && [ "$commit" = "$head" ] && [ "$state" != "DISMISSED" ]; then
+                    if [ "$lower" = "$candidate" ] && [ "$commit" = "$first_head" ] && [ "$state" != "DISMISSED" ]; then
                       printf 'found: %s reviewed %s (%s)\n' "$login" "$commit" "$state"
                       matched=1
                       # The API returns reviews oldest-first, so the last match is the newest round on
@@ -523,7 +553,7 @@ jobs:
                   # verdict may act on.
                   {
                     printf 'round=green\n'
-                    printf 'head=%s\n' "$head"
+                    printf 'head=%s\n' "$first_head"
                     printf 'review_id=%s\n' "$matched_id"
                     printf 'author=%s\n' "${author:-}"
                     printf 'notes_state=%s\n' "$notes_state"
@@ -580,7 +610,7 @@ jobs:
             if [ -n "$unread" ]; then
               printf 'waiting (%ss of %ss): %s — retrying\n' "$SECONDS" "$WAIT_SECONDS" "$unread"
             else
-              printf 'waiting (%ss of %ss): no Copilot review for %s yet\n' "$SECONDS" "$WAIT_SECONDS" "$head"
+              printf 'waiting (%ss of %ss): no Copilot review for %s yet\n' "$SECONDS" "$WAIT_SECONDS" "$first_head"
             fi
             sleep "$POLL_SECONDS"
           done
@@ -646,7 +676,7 @@ jobs:
             printf 'The last head SHA read successfully was %s, which may be stale — do not act on it.\n' "${head:-none}"
           else
             printf '::error::no Copilot review for the current head commit (%s) after %ss of waiting.\n' \
-              "$head" "$SECONDS"
+              "$first_head" "$SECONDS"
             printf 'A pull request may not merge until Copilot has reviewed the commit it is actually\n'
             printf 'merging, and until that feedback is resolved. Conversation resolution covers the\n'
             printf 'resolved half; this covers the awaited half.\n\n'
