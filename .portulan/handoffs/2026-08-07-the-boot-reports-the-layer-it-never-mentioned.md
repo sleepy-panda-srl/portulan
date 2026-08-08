@@ -70,14 +70,42 @@ workspace both report `Skills (0), Agents (0)`. The issue measured 2.1.220. The 
 | Half | State |
 |---|---|
 | A workspace cannot inherit another | **Answered** by proposal `0017` — a repository points rather than inherits, shipped at spec 2.7 |
-| A composed pack's skills are invocable through a host — row 7's clause **(b)** | **Closed here**, demonstrated below |
+| The **depth defect** behind #134's pack measurements | **Closed here**, demonstrated below |
+| Row 7's clause **(b)** — a *composed* pack's skills invocable in an *adopting* workspace | **NOT closed.** See the correction below |
 | The boot reports discovery's answer honestly | **Closed here** — section 3a |
 | `/portulan` **resolving** a feed-installed workspace | **NOT closed.** That is plugin-cache discovery, which row 7 assigns to [#123](https://github.com/sleepy-panda-works/portulan/issues/123) |
 
-The pull request carries `Closes #134` because row 7 says clause (b) is what closes it, and clause (b)
-is demonstrated. **That is a judgement rather than a fact**, and the residue above is the reason to
-disagree with it: an adopter whose workspace lives in a feed still cannot have `/portulan` load it, and
-nothing in this change moves that. Reopening is one click, and #123 is where the remainder lives.
+**The pull request carried `Closes #134` and no longer does.** A fresh-context supervisor was asked for
+the judgement and returned **KEEP OPEN**, on three grounds this session verified rather than accepted:
+
+1. **The measurement does not demonstrate clause (b).** Reproduced from a directory containing **no
+   `.portulan/` at all**, `Skills (7)` still appears. Registration is a property of
+   `.claude-plugin/plugin.json`, not of any workspace's `packs` array — **composition plays no part in
+   the result**, so the result cannot demonstrate a clause whose subject is *a composed pack in an
+   adopting workspace*. What closed is the depth defect behind it.
+2. **Row 7 contradicts itself.** Its criterion says clause (b) closes #134; its Status cell in the same
+   cell still lists **`(b) parity`** and **five of six demos** as *Left*. Verified.
+3. **#123 does not hold the remainder**, which this handoff previously claimed. Checked rather than
+   assumed: #123's body contains `governed_by`, `pointer` and `boot` **zero times each** — it is about
+   `--pack-root` for `compile`, `doctor` and `index`, and it **predates proposal 0017**, which invented
+   the pointer kind. **So closing #134 today would leave the invisibility complaint carried by no open
+   issue.**
+
+**Owed to the maintainer, and neither is an agent's to take:** row 7's clause (b) parenthetical needs
+narrowing to *"closing #134's pack-registration half"* with a named carrier for the workspace-resolution
+half — a criterion edit — and if he wants #134 closed anyway, **#123 must be widened first** so the
+residue lands somewhere.
+
+**The remaining acceptance criterion, in one testable sentence**, from the supervisor: *when `/portulan`
+boots in a repository whose manifest is `kind: pointer` and the workspace its `governed_by` names is
+present in the host's plugin cache, the boot shall load and report that workspace's identity,
+principles, gate map and definition of done — the same report an in-repo workspace produces — rather
+than the "not installed here" sentence.* Red today, reproducibly.
+
+**And a side finding, independent of the close decision:** the always-on token cost of the public plugin
+moves **~590 → ~881** (+49%) for every installer, composed or not, in a plugin whose description sells
+*"a small always-loaded kernel"*. The intent predates this change — the pack directory was already
+declared — but the effect arrives with it, and no carrier in the diff named it.
 
 ## The closing half was one line
 
