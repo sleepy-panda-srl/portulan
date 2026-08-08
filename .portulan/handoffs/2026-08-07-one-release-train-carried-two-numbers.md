@@ -6,7 +6,11 @@ and Session log entry. This one is [#177](https://github.com/sleepy-panda-works/
 [#148](https://github.com/sleepy-panda-works/portulan/issues/148).
 
 **State.** `package.json` reads `0.2.0`. Two version edges that nothing checked now have a test. Nine
-recipes green, suite 1056.
+recipes green, suite **1057** — 1055 on `main` plus the two this branch adds. _(This line said 1056,
+which was true of the agreement test alone and stopped being true when the semantics rail was added in
+the same branch. Caught by a suppressed low-confidence note that read the figure against
+`docs/plan.md`'s — a count disagreeing with itself across two carriers, in the pull request whose whole
+subject is a number disagreeing with itself across carriers.)_
 
 ## The value was his to choose, and the choice is recorded with what it declined
 
