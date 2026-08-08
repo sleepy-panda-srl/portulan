@@ -19,6 +19,20 @@ the Gated tier ([`../gate-map.md`](../gate-map.md)) and the default is the recov
 a public organisation, publishing a package that embeds its contents, or pasting its files anywhere
 public.
 
+**SURFACED, NOT RESOLVED — 2026-08-08.** This record says the repository *"went public"* and reasons in
+the present tense from that. **It is private.** Measured rather than recalled: `private=true`,
+`visibility=private`, `forks=0`, and an unauthenticated `GET /repos/{owner}/{repo}` returns **404**. The
+flip back happened 2026-08-03, and the window 2026-07-27 → 2026-08-03 was world-readable.
+
+**The consolidation pass does not pick a winner here**, per its own rule: a pass that silently resolved
+a contradiction would have made a policy decision wearing the clothes of housekeeping. So the
+measurement is written down and the ruling is the maintainer's. What is worth saying is that the
+substance below **strengthens** rather than weakens: a public window that has closed is still a window,
+clones cannot be recalled, and *"once a history is public it cannot be made private again in any sense
+that matters"* is exactly the sentence the flip-back does not undo. What needs his ruling is the tense —
+whether this record now describes a state, a past window, or a standing posture — and whether the
+**Retire when** below still reads correctly against a repository that has flipped twice.
+
 **Retire when:** it had read *"the public flip completes"* — that condition fired 2026-07-27 and
 produced this successor per its own clause. The successor states a permanence no condition can
 un-fire; retire only by written supersession.

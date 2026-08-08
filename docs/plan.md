@@ -1979,3 +1979,13 @@ _The seam applies here too: no client-identifying references._
   seven states; the pre-commit pass found an **eighth where they diverge** ([#169](https://github.com/sleepy-panda-works/portulan/issues/169)).
   **Eight instances of the class landed inside the change generalising it**, none caught by the suite. 8 of 13 rounds, not 5; `existsSync`
   17, not 27. `main` 1033→1055, nine recipes. · Fidelity: A-W-A (12) + A-W-A (11), all folded; one adjustment from each refuted by measurement, plus a Fable 5 review (9). 11 submissions, 5 answering pushes, the maintainer's grant past the bound. Seam scan clean. Handoff: [`2026-08-07`](../.portulan/handoffs/2026-08-07-a-fix-is-not-done-where-it-was-found.md).
+- 2026-08-08 · Outside the milestone track · **The store had thirty-five bytes left.** A consolidation pass over
+  the `.portulan` memory store, on the maintainer's instruction after the previous session's rule amendment
+  breached the budget and was compressed back under **inside a change about something else** — the worst
+  condition for judging what a record can lose. `main` carried **122,845 of 122,880 bytes**, and one record was
+  **23,596 — 19% of the store, 3× its neighbour**. **Nothing retired** (every `Retire when` read against the
+  tree; the nearest candidate had already evaluated its own and recorded that it does not fire) and **nothing
+  merged** (the obvious pairs are distinct rules; merging buys bytes and loses precision). **One contradiction
+  surfaced, not resolved**: a record says the repository is public and it is **private** — measured, unauth 404
+  — and picking a winner is the maintainer's, not housekeeping's. Compressed **5,934 bytes** of *how the lesson
+  was learned*; all four rules and the sibling definition survive verbatim. Store → **118,109**. Seam scan clean.
