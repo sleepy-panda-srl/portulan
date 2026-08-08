@@ -110,11 +110,22 @@ line comment, then a file comment, then a batched pull-request comment, because 
 silently is the one outcome refused**. Rule 3 is amended in place. The verdict review and the job
 summary both stop calling the notes ungated, since they no longer are.
 
-**Undemonstrated, and it is the honest gap:** no note has been promoted on a live round yet. The
-programs are exercised against fixtures — seven new ones in `workflow-filters` — but the POST path,
-the 422 fallback and the dedup read have not run against GitHub. The first round on this pull request
-after merge is the observation, and the step reports `posted / already present / unattachable` on every
-run so that it is readable rather than inferred.
+**It demonstrated itself, on the pull request that ships it.** The workflow runs from the head on a
+`pull_request` event, so the promotion step was live for this branch's own rounds. Read back
+2026-08-08: **six suppressed notes promoted to real threads** by `portulan-agent[bot]`, at their
+`file:line`, across two rounds — and `mergeStateStatus` went from `CLEAN` to **`BLOCKED`** on them,
+which is the whole of #66 in one observation. **Zero duplicate markers**, so the dedup held across
+rounds rather than being trusted.
+
+One property fell out of it that nobody designed: GitHub **repositions** a review comment as the file
+changes, so a thread's displayed line drifts from the line it was posted against — the marker for
+`copilot-review.yml:915` now sits on a comment displayed at `:928`. The dedup keys on the ORIGINAL line
+in the marker, not on the displayed one, so it is stable across that drift. Had it keyed on the
+displayed line, every note would have reposted the moment the file moved underneath it.
+
+**Still undemonstrated:** the 422 fallback and the orphan path. No note has yet failed to attach, so
+neither the file-level retry nor the batched comment has run — which is also why round 4's swallowed
+failure in that branch was invisible to everything except a reader.
 
 ## The budget breach the amendment caused, and why it was not raised
 
