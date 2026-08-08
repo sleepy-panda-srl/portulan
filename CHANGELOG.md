@@ -45,10 +45,11 @@ records how things were found. This is per *release* and records what a reader g
 workspace's slots and never its `packs`, so the middle of the cascade — the layer between the engine and
 a team's own policy — went unmentioned in every boot, and a reader could not tell a composed ritual from
 an invocable one. It is now read and reported with its four limits, each of them milestone 7's and owed
-rather than broken: nothing discovers the root a pack resolves against, a pack's skills register as host
-capabilities through **no** channel (not a property of feeds — it holds for a pack bundled in a plugin
-too), its personas reach the workspace's own layer but not the host, and its verify recipes are declared
-rather than composed. Two claims in the same file pointed the other way and are retracted: that there is
+rather than broken: nothing discovers the root a pack resolves against, a pack's skills register **only
+where the plugin declares the directory that actually holds them** — a host expands a declared skills
+root one level and no further, so a root naming a family of packs registers nothing, silently — its
+personas reach the workspace's own layer but not the host, and its verify recipes are declared rather
+than composed. Two claims in the same file pointed the other way and are retracted: that there is
 no scaffolder, written one screen after naming `init` and `new` as built, and that memory has no
 generated index, which milestone 5 built on 2026-07-28.
 
