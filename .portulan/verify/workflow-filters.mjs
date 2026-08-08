@@ -138,6 +138,31 @@ const SHELL_ASSIGN = /^([A-Za-z_]\w*)='([^']*)'\s*$/;
 // The ordinary ones are not filler: they are what makes a red here readable, since a program that
 // broke only on null and a program that broke on everything would otherwise look identical.
 const CASES = [
+    // ---- copilot-review.yml: shape 1, promoting a note to a thread --------------------------
+    //
+    // The maintainer's ruling of 2026-08-07. Two programs carry it: an awk that splits the notes
+    // block into one record per note, and the jq that reads back what is already on the pull request
+    // so a round does not repost what an earlier round posted.
+    {
+        id: "existing-comment-bodies",
+        anchor: ".[].body",
+        why: "the dedup read. `review_on_push` spawns a round per push and Copilot re-raises an "
+            + "unaddressed note, so without this every round would repost every note and the threads "
+            + "shape 1 creates would become the noise it was built to replace",
+        input: '[{"body":"first\\n<!-- portulan-note path=a.mjs line=1 crc=42 -->"},{"body":"second"}]',
+        stdout: "first\n<!-- portulan-note path=a.mjs line=1 crc=42 -->\nsecond\n",
+        status: 0,
+    },
+      {
+        id: "existing-comment-bodies-empty",
+        anchor: ".[].body",
+        why: "**a pull request with no review comments yet is the FIRST round's normal state**, and it "
+            + "must read as an empty file rather than as an error — an error here would refuse to "
+            + "promote anything on the one round where every note is new",
+        input: "[]",
+        stdout: "",
+        status: 0,
+    },
     // ---- copilot-review.yml: the pull request read ------------------------------------------
     {
         id: "pr-normal",
@@ -508,7 +533,58 @@ const BODY_INDENTED_HASH = "## Pull request overview\n\n<details>\n<summary>Revi
     + "                    SUPPRESS='suppress'\n```\n\n- **Files reviewed:** 1/1 changed files\n</details>\n";
 
 const AWK_CASES = [
-    // ---- copilot-review.yml: is the suppressed block there --------------------------------------
+    {
+        id: "note-records-two-notes",
+        anchor: "@@PORTULAN-NOTE@@",
+        why: "the ordinary split: a header line becomes a record marker carrying path and line, and "
+            + "every line after it — including the fenced snippet Copilot quotes — belongs to that note",
+        input: "\n**cli/doctor.mjs:412**\n* the guard is unreachable\n```\nif (x) return;\n```\n"
+            + "\n**docs/plan.md:7**\n* the count is stated rather than derived\n",
+        stdout: "\n@@PORTULAN-NOTE@@ cli/doctor.mjs 412\n* the guard is unreachable\n```\nif (x) return;\n```\n"
+            + "\n@@PORTULAN-NOTE@@ docs/plan.md 7\n* the count is stated rather than derived\n",
+        status: 0,
+    },
+      {
+        id: "note-body-collapses-blank-runs",
+        anchor: "blank<2",
+        why: "the body a promoted note carries. A note's text arrives with the blank line that "
+            + "separated it from the next header still attached, and a run of them renders as a gap "
+            + "in the thread. One blank survives, because it is what keeps a fenced snippet apart "
+            + "from the sentence above it",
+        input: "* the guard is unreachable\n\n\n\n```\nif (x) return;\n```\n\n\n",
+        stdout: "* the guard is unreachable\n\n```\nif (x) return;\n```\n\n",
+        status: 0,
+    },
+    {
+        id: "note-body-keeps-a-single-blank",
+        anchor: "blank<2",
+        why: "the other direction — this must not become a blank-line stripper. A note whose text is "
+            + "one paragraph, a blank, then a snippet keeps that blank exactly",
+        input: "* a note\n\n```\ncode\n```\n",
+        stdout: "* a note\n\n```\ncode\n```\n",
+        status: 0,
+    },
+    {
+        id: "note-records-path-with-a-colon",
+        anchor: "@@PORTULAN-NOTE@@",
+        why: "**the line is the LAST colon-separated field, never the second.** A path may contain a "
+            + "colon and a line number may not, so splitting on the first colon would post the note "
+            + "against a path that does not exist and lose it to a 422",
+        input: "**weird:dir/a.mjs:19**\n* a note\n",
+        stdout: "@@PORTULAN-NOTE@@ weird:dir/a.mjs 19\n* a note\n",
+        status: 0,
+    },
+      {
+        id: "note-records-no-header",
+        anchor: "@@PORTULAN-NOTE@@",
+        why: "a block carrying no `**path:line**` header yields no record, which is what routes the "
+            + "step to its loud refusal rather than to a silent zero — the same fail-closed shape the "
+            + "extraction above uses for a moved marker",
+        input: "Copilot reviewed 3 files and had nothing to say.\n",
+        stdout: "Copilot reviewed 3 files and had nothing to say.\n",
+        status: 0,
+    },
+      // ---- copilot-review.yml: is the suppressed block there --------------------------------------
     {
         id: "present-v1-summary",
         anchor: 'print "yes"',
