@@ -879,7 +879,7 @@ jobs:
             exit 0
           fi
 
-          posted=0; skipped=0; failed=0; orphaned=0
+          posted=0; skipped=0; orphaned=0
           orphans="$RUNNER_TEMP/portulan-orphans.md"
           : >"$orphans"
 
@@ -934,8 +934,21 @@ jobs:
             note_body="**${orphaned} suppressed note(s) could not be attached to a line.**"$'\n\n'
             note_body="${note_body}Neither a line comment nor a file comment was accepted — the path is probably absent from this pull request's diff. They are quoted here so they are not lost, and they carry no thread, which is the state this step exists to remove."$'\n\n'
             note_body="${note_body}$(cat "$orphans")"
-            GH_TOKEN="$token" gh api --silent -X POST \
-              "repos/${GITHUB_REPOSITORY}/issues/${PR_NUMBER}/comments" -f body="$note_body" 2>/dev/null || true
+            # THE `|| true` THAT USED TO SIT HERE CONTRADICTED THIS STEP'S ONE INVARIANT. If this POST
+            # failed, the unattachable notes existed nowhere but the job log — silently lost, which is
+            # the single outcome the fallback chain exists to refuse, in the branch that IS the last
+            # fallback. Found by Copilot on #176. The failure is now loud and the notes are written to
+            # the job summary, which survives the runner and is the one surface left when the API will
+            # not take them.
+            if ! GH_TOKEN="$token" gh api --silent -X POST \
+                 "repos/${GITHUB_REPOSITORY}/issues/${PR_NUMBER}/comments" -f body="$note_body" 2>/dev/null; then
+              warn "could not post the batched comment for ${orphaned} unattachable note(s) — they are reproduced below and exist nowhere else on this pull request."
+              if [ -n "${GITHUB_STEP_SUMMARY:-}" ]; then
+                printf '%s\n\n' "$note_body" >>"$GITHUB_STEP_SUMMARY"
+              else
+                printf '%s\n' "$note_body"
+              fi
+            fi
           fi
 
           say "suppressed notes promoted to threads on \`${head}\`: ${posted} posted, ${skipped} already present, ${orphaned} unattachable."
