@@ -625,11 +625,12 @@ maintainer re-runs the job. The same click as before, now only in the case that 
 Copilot was made mandatory and unbounded on the same day, and the unbounded half did not survive
 contact: **110 Copilot submissions across the 30 most recently merged pull requests, 3.7 each, 29% of
 them finding nothing at all, twelve needing four or more.** The length was driven by *pushes* rather than
-findings — `review_on_push: true` means every push draws one, including documentation-only ones. _Those
-four figures are the record's own table, cited rather than re-derived, and they count **submissions** —
-the unit that file names. This paragraph headed them "rounds" until 2026-08-09, ten days after the record
-re-labelled them and defined a round as a review the working session answers with a push. The word keeps
-its ordinary sense elsewhere in this document; what carries the obligation is a **counted** figure._
+findings — `review_on_push: true` means every push draws a submission, including documentation-only
+ones. _Those four figures are the record's own table, cited rather than re-derived, and they count
+**submissions** — the unit that file names. This paragraph headed them "rounds" until 2026-08-09, ten
+days after the record re-labelled them and defined a round as a review the working session answers with
+a push. The word keeps its ordinary sense elsewhere in this document; what carries the obligation is a
+**counted** figure._
 
 **The bound is [`memory/a-review-loop-needs-a-bound.md`](memory/a-review-loop-needs-a-bound.md), and this
 map cites it rather than restating it.** The four rules, what one round is, and the amendments of
