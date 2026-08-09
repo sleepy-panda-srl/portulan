@@ -75,7 +75,8 @@ that wrote the errata.
 ten claims in nine records name a specific pull request, and *"a rule written after a record cannot bind
 it without rewriting the record to suit the rule"* — `docs.sh`'s own two record floors are forward-only
 cutoffs for that reason. **#105 was corrected because the maintainer directed it**, and that is the whole
-licence: contradiction alone would prove too much, since two carriers disagree about #64 and neither
+licence: contradiction alone would prove too much, since two carriers disagree about #64 —
+[`../verify/README.md`](../verify/README.md) and [the jq handoff](../handoffs/2026-07-28-every-jq-filter-a-workflow-runs-is-exercised.md) — and neither
 matches its four submissions. #64's pair stands, **named rather than quietly spared** — a cutoff applied
 only where nobody is looking is not a cutoff.
 
