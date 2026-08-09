@@ -24,7 +24,7 @@ different things**:
 | Prose describing an enforcement that does not exist (`.portulan/dod.md` condition 4) | **3** |
 | The only-ENOENT rule | **1** |
 
-Four superlatives cannot all be true, and **nothing in the tree had ever counted any of them**. Each
+Those four rankings cannot all be true, and **nothing in the tree had ever counted any of them**. Each
 site reached for the phrase to say *this one matters*, which is a real thing to want and is not what the
 words mean. Every one of the twenty makes its point without the ranking, and most make it better: *a fix
 that repairs one carrier and leaves its sibling* is checkable and links to `0020`; *the defect this
