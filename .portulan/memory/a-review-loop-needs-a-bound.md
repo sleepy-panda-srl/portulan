@@ -104,10 +104,12 @@ maintainer's judgement outside the countable bound, like rule 4's *invalid*.
 **thirteen of twenty-six notes never surfaced**.
 
 **Not withdrawn: the guarantee.** A merge still waits for a Copilot **submission** on the commit it
-merges — never a fix-round (`a-review-is-awaited-not-just-resolved.md`); this bounds only the process
-on top. **Nothing checks it** — discipline, not a rail
-(`a-mandate-nothing-checks-is-already-broken.md`); since 2026-07-30 the count is **re-derivable after
-the fact** — how #105's overrun was found; the half that closed.
+merges — never a fix-round
+([`a-review-is-awaited-not-just-resolved.md`](a-review-is-awaited-not-just-resolved.md)); this bounds
+only the process on top. **Nothing checks it** — discipline, not a rail
+([`a-mandate-nothing-checks-is-already-broken.md`](a-mandate-nothing-checks-is-already-broken.md));
+since 2026-07-30 the count is **re-derivable after the fact** — how #105's overrun was found; the half
+that closed.
 
 **Retire when:** Copilot review leaves the review path, or **submissions-per-pull-request** — **the
 submission units of the table above, not fix-rounds** — measures below 2.0 for a full milestone: the
