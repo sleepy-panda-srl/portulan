@@ -1329,6 +1329,21 @@ describe("compose cannot go quiet on what the walk could not see", () => {
         assert.match(bad.find((f) => /SYMLINK/.test(f.message)).message, /Composition is unchecked below that point/);
     });
 
+    test("a composed pack dir that is a symlink INSIDE ./packs/ does not read as undeclared", () => {
+        // The declared side is canonicalised by `resolve()`; the composed side was not, so one
+        // directory reached by two path forms compared unequal and produced a false "composed but
+        // undeclared" failure on a correct bundle. Copilot, #195, twice in one round.
+        const root = composed();
+        const realDir = path.join(root, "packs", "rituals", "checkpoints");
+        const alias = path.join(root, "packs", "rituals", "alias");
+        fs.symlinkSync(realDir, alias);
+        const manifest = path.join(root, ".portulan", "workspace.json");
+        fs.writeFileSync(manifest, JSON.stringify({ name: "demo", packs: ["rituals/alias"] }, null, 2));
+        const { findings } = inspect(root);
+        const bad = fails(findings).filter((f) => f.check === "compose");
+        assert.equal(bad.length, 0, messages(findings));
+    });
+
     test("an UNREADABLE subtree under a composed pack is named, not swallowed", () => {
         const root = composed({ declare: false });
         const dark = path.join(root, "packs", "rituals", "checkpoints", "skills");
