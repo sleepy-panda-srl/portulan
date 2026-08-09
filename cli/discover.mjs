@@ -75,10 +75,18 @@
 // `node cli/<tool>.mjs`, and is deliberately absent from `./portulan.mjs`'s list. Whether this ever
 // joins that list is the maintainer's call, exactly as theirs is.
 //
-// Exit codes are the three this repository uses everywhere: **0** resolved · **1** a verdict that the
+// Exit codes are the three this repository uses everywhere: **0** resolved — **and also
+// `resides-here`**, the answer for a manifest that is not a pointer at all · **1** a verdict that the
 // workspace is not resolvable here (`not-installed`, `ambiguous`) · **2** could not run or could not
 // look. The split matters at the one place it is read: *could not look* must never be spendable as
 // *not installed*.
+//
+// **`state` is the field to key on, not the code.** Two states share exit 0 and no exit code can tell
+// them apart — that is the cost of answering the question for both kinds of manifest rather than
+// pushing the case analysis back onto the caller, and it is a cost rather than a defect. _(This
+// paragraph said "**0** resolved" alone until #182 item 3: a sentence narrower than the code it
+// described, committed in the same change that corrected that exact shape in eleven other carriers.
+// Copilot, round 4 on #181.)_
 //
 // Zero dependencies, Node built-ins only, and every environment input injectable — the host config
 // directory is read from `env`, so a test never depends on the machine it runs on.
@@ -239,9 +247,34 @@ function readCandidate(root) {
  * prints the same words rather than paraphrasing them into four slightly different claims.
  */
 export function resolveGovernor(governedBy, options = {}) {
+    // **Blank is unset on both, which is `configDir()`'s rule applied at a second site of the same
+    // operation** — and blank-testing is the whole of it: the value that survives is the RAW one, never
+    // a trimmed copy.
+    //
+    // The two halves are different classes and the difference is worth stating, because a fix that
+    // flattened them would be claiming to close more than it does. `governed_by.feed` is
+    // `type: string, minLength: 1` in the Workspace Definition and nothing more, so `"   "` **validates**
+    // — it constrained every candidate to a marketplace of that name, matched nothing, and answered
+    // `not-installed` about a workspace that is installed, which is the real defect and the class the
+    // four verdicts exist to prevent. `governed_by.workspace` is a `slug`, so `"   "` is
+    // **schema-invalid** and `doctor` refuses it before anything reaches here: that half is
+    // defence-in-depth on this file's own runnable seam rather than a hole in the schema.
+    //
+    // **Not trimmed, deliberately, and the reason is a measurement.** Trimming only the wanted side makes
+    // `" sleepy-panda "` in a pointer match `sleepy-panda` on disk while the same padding ON DISK still
+    // misses — a new asymmetry, and discovery quietly repairing a manifest the slug pattern refuses,
+    // which `readCandidate` above promises it is not doing. `configDir()` blank-tests and hands
+    // `path.resolve` the raw string for the same reason; normalising identifiers is conformance's job and
+    // conformance is `doctor`'s. Found at the pre-commit checkpoint, which built the padded case rather
+    // than reading the diff — the first draft here trimmed, and turned a `resolved` into a
+    // `not-installed`.
+    //
+    // Copilot, #181 rounds 3 and 4; filed as #182 item 1 at the bound and taken here on the maintainer's
+    // grant of an extension, recorded in this pull request's own conversation.
+    const named = (value) => (typeof value === "string" && value.trim() !== "" ? value : null);
     const wanted = {
-        workspace: typeof governedBy?.workspace === "string" ? governedBy.workspace : null,
-        feed: typeof governedBy?.feed === "string" ? governedBy.feed : null,
+        workspace: named(governedBy?.workspace),
+        feed: named(governedBy?.feed),
     };
     const verdict = (state, extra) => ({
         state,
@@ -360,7 +393,15 @@ export function resolveGovernor(governedBy, options = {}) {
 // The command — the seam the boot skill reads
 // ===========================================================================================
 
-/** Which exit code each verdict carries. Exported so the suite asserts the mapping rather than a literal. */
+/**
+ * Which exit code each verdict carries. Exported so the suite asserts the mapping rather than a literal.
+ *
+ * **This maps the RESOLVER's four states, and `run()` carries a fifth answer of its own.** A directory
+ * whose manifest is not a pointer is answered `resides-here` and exits **0** without consulting this
+ * table — so exit 0 does not identify a state, and `state` is the field a caller keys on. Said here
+ * rather than left implicit, because a table named `EXIT` with four entries reads as the whole contract
+ * (#182 item 3).
+ */
 export const EXIT = { resolved: 0, "not-installed": 1, ambiguous: 1, "could-not-look": 2 };
 
 /**
@@ -394,7 +435,9 @@ export function run(argv, options = {}) {
         say("");
         say("Resolves a `kind: pointer` manifest's `governed_by` against the host's installed-plugin");
         say("record. Reads what is on disk; never the network.");
-        say("Exit: 0 resolved · 1 not resolvable here · 2 could not run or could not look.");
+        say("Exit: 0 resolved — and also `resides-here`, a manifest that is not a pointer · 1 not");
+        say("resolvable here (`not-installed`, `ambiguous`) · 2 could not run or could not look.");
+        say("Key on `state`: two states share exit 0 and the code cannot tell them apart.");
         return 0;
     }
     if (dirs.length !== 1) {

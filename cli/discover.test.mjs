@@ -213,6 +213,53 @@ test("a pointer naming no workspace is could-not-look rather than a search", () 
     assert.equal(resolveGovernor({ workspace: 7 }, { env }).state, "could-not-look");
 });
 
+test("a BLANK feed is unconstrained — the confident wrong answer, closed", () => {
+    // The Definition puts `minLength: 1` on `feed` and nothing else, so `"   "` validates. Until #182
+    // item 1 it constrained every candidate to a marketplace of that name, matched nothing, and
+    // answered `not-installed` about a workspace that IS installed. Reproduced on the packaged path
+    // against a real `claude plugin install` before the fix, not only here.
+    const { env } = host({ "sleepy-panda@portulan-internal": { manifest: governing("sleepy-panda") } });
+    for (const feed of ["", "   ", "\t\n "]) {
+        const verdict = resolveGovernor({ workspace: "sleepy-panda", feed }, { env });
+        assert.equal(verdict.state, "resolved", `a blank feed ${JSON.stringify(feed)} must not constrain`);
+        assert.equal(verdict.wanted.feed, null, "and it is reported as unset rather than as padding");
+    }
+    // The negative control, so this is blank-is-unset rather than a feed that stopped constraining:
+    // a feed naming something real still bites.
+    assert.equal(resolveGovernor({ workspace: "sleepy-panda", feed: "another-feed" }, { env }).state, "not-installed");
+});
+
+test("a BLANK workspace is could-not-look, never a search for the empty string", () => {
+    // `""` is a string, so the old guard passed it through and the resolver went looking for a
+    // workspace named nothing — reaching `not-installed`, which is a verdict about a host rather than
+    // about a pointer that never named anything.
+    const { env } = host({ "sleepy-panda@portulan-internal": { manifest: governing("sleepy-panda") } });
+    for (const workspace of ["", "   "]) {
+        const verdict = resolveGovernor({ workspace }, { env });
+        assert.equal(verdict.state, "could-not-look", `a blank workspace ${JSON.stringify(workspace)} is not a search`);
+        assert.match(verdict.sentence, /names no governing workspace/);
+    }
+});
+
+test("blank is unset, and that is NOT normalisation — a padded name still misses, both sides", () => {
+    // The negative control for the two above, and it exists because the first draft of that fix
+    // trimmed the value instead of only testing it. Trimming the wanted side turns `"  x  "` in a
+    // pointer into a match for `x` on disk while the same padding ON DISK still misses — a new
+    // asymmetry, and discovery quietly repairing a manifest the slug pattern refuses. Found at the
+    // pre-commit checkpoint by building the case rather than reading the diff.
+    const { env } = host({ "sleepy-panda@portulan-internal": { manifest: governing("sleepy-panda") } });
+    const padded = resolveGovernor({ workspace: "  sleepy-panda  ", feed: "portulan-internal" }, { env });
+    assert.equal(padded.state, "not-installed", "a padded request is a different name, not a tidied one");
+    assert.equal(padded.wanted.workspace, "  sleepy-panda  ", "and the raw value is what is reported back");
+
+    // The symmetric half: padding ON DISK misses too, so neither side is quietly repaired.
+    const onDisk = host({ "sleepy-panda@portulan-internal": { manifest: governing("  sleepy-panda  ") } });
+    assert.equal(resolveGovernor({ workspace: "sleepy-panda", feed: "portulan-internal" }, { env: onDisk.env }).state, "not-installed");
+
+    // And a padded FEED still constrains rather than being tidied into a match.
+    assert.equal(resolveGovernor({ workspace: "sleepy-panda", feed: " portulan-internal " }, { env }).state, "not-installed");
+});
+
 // --------------------------------------------------------------------------- 4. the limits
 
 test("the candidate locations are exactly two, both named", () => {
@@ -429,8 +476,14 @@ test("an unknown option is refused, not dropped — a typo must not return prose
     assert.match(h.warned.join("\n"), /unknown option `--jsonn`/);
 });
 
-test("--help is a request that succeeded", () => {
+test("--help is a request that succeeded, and states the exit contract the code actually has", () => {
     const h = harness();
     assert.equal(run(["--help"], h.options), 0);
-    assert.match(h.said.join("\n"), /never the network/);
+    const help = h.said.join("\n");
+    assert.match(help, /never the network/);
+    // "0 resolved" alone was narrower than `run()` from the commit that introduced it — a governing
+    // manifest answers `resides-here` and also exits 0. #182 item 3, and the shape this very pull
+    // request corrected in eleven other carriers before committing it in a file of its own.
+    assert.match(help, /resides-here/);
+    assert.match(help, /Key on `state`/);
 });

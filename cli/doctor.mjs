@@ -1078,10 +1078,31 @@ export async function inspect(workspaceDir, options = {}) {
         const resolve = options.discover ?? ((governedBy) => resolveGovernor(governedBy, options));
         const governor = await resolve(workspace.governed_by);
         // The resolver owns the sentence — one carrier, so every surface reporting this prints the same
-        // words rather than four paraphrases. The fallback names the state rather than inventing prose:
-        // a resolver returning no sentence is a defect in the resolver, and a line reading `undefined`
-        // would hide it behind something that still looks like a report.
-        report("residence", governor.sentence ?? `the pointer resolver answered \`${governor.state}\` and supplied no sentence`);
+        // words rather than four paraphrases. The fallback names what the resolver answered rather than
+        // inventing prose: a resolver returning no sentence is a defect in the resolver, and a report
+        // that hid it behind something still looking like a report would be the worse failure.
+        //
+        // **The fallback had that defect itself, in the line that claimed to prevent it** (#182 item 2).
+        // It interpolated `governor.state` directly, so a verdict object carrying no `state` printed the
+        // literal word `undefined` inside the one sentence whose whole job is to say a resolver
+        // misbehaved. It now distinguishes three shapes — a state, a state that is not a string, and no
+        // state at all — because "no `state` at all" said of `{state: 123}` is the same class of wrong
+        // one revision later, which is what the pre-commit checkpoint found by feeding it that value.
+        //
+        // Deliberately NOT changed: a resolver that throws, or returns `null` or `undefined`, still
+        // propagates to this tool's top-level catch and exits **2** — *could not run*, which is what that
+        // catch's own header says of anything reaching it, a defect in `doctor` included. Measured four
+        // ways through `run()` before any of this was written, and three of the four were already right.
+        // And the reachability is worth recording so nobody prices this above what it is: `options.discover`
+        // is a test seam, every `resolveGovernor` return path sets `sentence`, so no shipped path reaches
+        // the fallback at all. It is the most marginal of #182's three items.
+        const answered = () => {
+            if (typeof governor.state === "string") return `\`${governor.state}\``;
+            if ("state" in governor) return `a \`state\` that is not a string (\`${typeof governor.state}\`)`;
+            const keys = Object.keys(governor);
+            return `no \`state\` at all (keys: ${keys.length ? keys.map((k) => `\`${k}\``).join(", ") : "none"})`;
+        };
+        report("residence", governor.sentence ?? `the pointer resolver answered ${answered()} and supplied no sentence`);
         if (governor.state === "resolved") {
             report(
                 "residence",

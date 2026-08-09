@@ -57,8 +57,11 @@ the working directory stands in for it, applies to this command too. An unset va
 nothing and the command then asks about `/.portulan`, which is not this repository.
 
 It prints one object and exits **0** resolved · **1** not resolvable here · **2** could not run or
-could not look. Read the `state` field — never the prose, which is written for a human and is the
-half most likely to be reworded. The resolution reads the host's installed-plugin record **from
+could not look. _(That is this step's mapping, where the manifest is already known to be a pointer.
+The command itself also exits **0** for `resides-here`, its answer about a manifest that is not one —
+so the exit code alone does not distinguish them, which is the reason the next sentence is a rule
+rather than a preference.)_ Read the `state` field — never the prose, which is written for a human and
+is the half most likely to be reworded. The resolution reads the host's installed-plugin record **from
 disk**; nothing is fetched over the network, here or there.
 
 | `state` | What you do |

@@ -2107,6 +2107,34 @@ describe("a repository is governed by exactly one workspace", () => {
         assert.doesNotMatch(text(checks(findings, "residence")), /supplied no sentence/);
     });
 
+    test("a verdict with no `state` is named by its shape, never printed as the word `undefined`", async () => {
+        // #182 item 2. The fallback exists because a resolver returning no sentence is a defect in the
+        // resolver — and the fallback had that same defect itself, interpolating `undefined` into the
+        // one sentence whose job is to say a resolver misbehaved.
+        const dir = tree(scratch(), { "workspace.json": JSON.stringify(pointer()) });
+        const { findings } = await inspect(dir, { schema: SCHEMA, discover: () => ({ nonsense: 1, other: 2 }) });
+        const residence = text(checks(findings, "residence"));
+        assert.match(residence, /supplied no sentence/);
+        assert.match(residence, /no `state` at all/);
+        assert.match(residence, /`nonsense`, `other`/, "and it names what it actually received");
+        assert.doesNotMatch(residence, /undefined/, "the word the fix exists to remove");
+        // Still green: no discovery outcome moves this tool's verdict, and a malformed resolver is a
+        // defect in the resolver rather than in the workspace being graded.
+        assert.equal(severities(findings, "fail").length, 0, text(findings));
+
+        // An empty object has no keys to name, and says so rather than printing an empty list.
+        const empty = await inspect(dir, { schema: SCHEMA, discover: () => ({}) });
+        assert.match(text(checks(empty.findings, "residence")), /keys: none/);
+
+        // And a `state` that is PRESENT but not a string is its own shape: calling that "no `state` at
+        // all" while listing `state` among the keys is the same class of wrong one revision later.
+        // Found at the pre-commit checkpoint by feeding it `{state: 123}` rather than by reading it.
+        const wrongType = await inspect(dir, { schema: SCHEMA, discover: () => ({ state: 123 }) });
+        const said = text(checks(wrongType.findings, "residence"));
+        assert.match(said, /a `state` that is not a string \(`number`\)/);
+        assert.doesNotMatch(said, /no `state` at all/);
+    });
+
     test("NO discovery outcome moves this tool's verdict — all four leave a compliant pointer green", async () => {
         // The invariant, asserted rather than trusted to the three cases above happening to agree.
         // `doctor`'s exit code is a statement about a WORKSPACE; letting a host's install state move
