@@ -1896,6 +1896,12 @@ describe("a repository is governed by exactly one workspace", () => {
      *
      * `emptyHost()` is a fresh directory per call: no record file, so the resolver's `absent` branch
      * answers, which is the state every machine without an install is in.
+     *
+     * It is spread LAST at every call site (`{ schema: SCHEMA, ...emptyHost() }`), which is what makes
+     * the injection hold. `cli/vendor.test.mjs`'s `green()` is hardened against the ordering instead —
+     * it takes caller options and merges them, so there the ordering is a promise the helper makes and
+     * a caller could otherwise defeat. Here the ordering is visible in each line, so the sibling sweep
+     * for that finding (Copilot, round 1) leaves this shape alone deliberately rather than by omission.
      */
     const emptyHost = () => ({ env: { CLAUDE_CONFIG_DIR: scratch() } });
 
