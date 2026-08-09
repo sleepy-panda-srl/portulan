@@ -14,7 +14,7 @@
       {
         "id": "actions-pinned",
         "run": "bash ${PACK_ROOT}/verify/actions-pinned.sh",
-        "requires": ["bash", "git"],
+        "requires": ["bash", "find", "grep", "sed", "sort", "cut", "wc"],
         "doc": "verify/README.md"
       }
     ]
