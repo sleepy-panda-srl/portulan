@@ -100,6 +100,27 @@ import { pathToFileURL } from "node:url";
 export const RECORD = path.join("plugins", "installed_plugins.json");
 
 /**
+ * The record schema versions this reader claims to understand. Measured: `2` on Claude Code 2.1.226.
+ *
+ * Exported because it is a limit, and because refusing an unrecognised version is a **decision** rather
+ * than an oversight. The file belongs to the host, not to us: a later version may move `installPath`,
+ * rename it, or nest it, and a reader that parsed on regardless would report roots that are not roots —
+ * a confident wrong answer, which is the class this module's four states exist to prevent. So an
+ * unknown version is `unreadable`, which reaches a caller as **could-not-look** and never as
+ * *not installed*.
+ *
+ * The cost is stated rather than hidden: on the day the host bumps to `3`, discovery stops here until
+ * this set is widened by someone who has looked. That is the direction
+ * `../.portulan/memory/a-checker-must-refuse-what-it-cannot-check.md` requires, and the opposite
+ * failure — silently resolving against a shape nobody verified — is the one that cannot be noticed.
+ *
+ * _(Raised by the session building `--pack-root auto` on #183, which had the guard on its own reader and
+ * flagged its absence here before the two modules were reconciled. Verified against the live record
+ * rather than accepted: it carries `"version": 2`.)_
+ */
+export const RECORD_VERSIONS = new Set([2]);
+
+/**
  * Where a candidate plugin payload may carry a workspace manifest, in the order tried.
  *
  * Exported because it is a limit, and a limit nobody can enumerate is a limit nobody can check —
@@ -171,6 +192,19 @@ export function readInstalls(options = {}) {
     // kept apart at the source.
     if (record === null || typeof record !== "object" || Array.isArray(record) || typeof record.plugins !== "object" || record.plugins === null || Array.isArray(record.plugins)) {
         return { state: "unreadable", path: file, entries: [], detail: "no `plugins` object — this is not an installed-plugin record" };
+    }
+    // The version is checked BEFORE the entries are read, because it is the claim that makes reading them
+    // meaningful: `installPath` means what it means in version 2, and this reader has only ever seen
+    // version 2. Refused rather than parsed hopefully — see RECORD_VERSIONS for the argument and its cost.
+    if (!RECORD_VERSIONS.has(record.version)) {
+        return {
+            state: "unreadable",
+            path: file,
+            entries: [],
+            detail:
+                `record version ${JSON.stringify(record.version)} is not one this reader understands ` +
+                `(${[...RECORD_VERSIONS].join(", ")}) — refusing rather than reading a shape nobody has verified`,
+        };
     }
     const entries = [];
     for (const [key, installs] of Object.entries(record.plugins)) {
