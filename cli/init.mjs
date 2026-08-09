@@ -920,7 +920,7 @@ export function residenceAt(target) {
         } catch (error) {
             // ONLY `ENOENT` means "nothing here". Every other error — EACCES above all — means the
             // question could not be answered, and answering "no residence" to a question that could
-            // not be answered is the fail-open `a-checker-must-refuse-what-it-cannot-check.md` governs:
+            // not be answered is the fail-open that `a-checker-must-refuse-what-it-cannot-check.md` governs:
             // "nothing looked" reported as "nothing wrong". A permission error here would have let
             // `init` proceed to write into a directory it could not even stat.
             if (error.code === "ENOENT") return { state: "none" };

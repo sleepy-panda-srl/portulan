@@ -237,7 +237,7 @@ describe("it refuses ahead of the first byte, the way `init` does", () => {
 
     test("only ENOENT means absent — EACCES refuses rather than reporting nothing there", () => {
         // Session 1, round 7: reading any lstat failure as "absent" is "nothing looked" recorded as
-        // "nothing wrong", which is the fail-open ../.portulan/memory/a-checker-must-refuse-what-it-cannot-check.md governs.
+        // "nothing wrong", which is the fail-open that ../.portulan/memory/a-checker-must-refuse-what-it-cannot-check.md governs.
         const dir = scratch();
         const locked = path.join(dir, "locked");
         fs.mkdirSync(locked, { recursive: true });
