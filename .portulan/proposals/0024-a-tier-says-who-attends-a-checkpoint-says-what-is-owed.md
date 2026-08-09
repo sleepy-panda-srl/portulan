@@ -16,11 +16,19 @@ saying *before committing*, [`../gate-map.md`](../gate-map.md) putting the gate 
 offered two resolutions, each making one carrier cite the other. A third, doing both, was put to the
 maintainer; he delegated the ruling instead.
 
-**The two carriers never disagreed.** The gate map's own checkpoint table has always read:
+**The two carriers never disagreed.** The gate map's own checkpoint table read, from the day it was
+written until this change:
 
 | Checkpoint | When |
 |---|---|
 | Pre-commit | before any commit |
+
+_(This change edits that cell to **"when the work is finished, before it is committed"** — a sharpening
+rather than a move, because the literal *any commit* would demand a verdict before a work-in-progress
+commit and before the fold-in of an APPROVE-WITH-ADJUSTMENTS verdict's own adjustments. The tense is
+anchored here because the sentence above would otherwise be falsified by the diff carrying it — the class
+[#133](https://github.com/sleepy-panda-works/portulan/issues/133) names, arriving inside a proposal about
+carriers disagreeing.)_
 
 **No carrier in this tree puts this checkpoint at the pull request** — not core, not the pack, not this
 workspace. That boundary was an *inference* from the Auto tier, and #174's premise inherited it.
