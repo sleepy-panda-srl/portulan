@@ -64,5 +64,15 @@ raises a ship-step prompt; this is a status check, and floor rows hold at every 
 required, deliberately, per the gate map. Under `auto`, where no prompt is raised, this check still
 refuses. That composition is the reason the rule is worth more under a loose mode than under a strict one.
 
+**One state cannot clear, and its exit is doctrine rather than machinery — added 2026-08-09.** A head
+can wait out the whole budget with the re-request accepted and no round arriving — measured twice on
+[#157](https://github.com/sleepy-panda-works/portulan/pull/157)'s rebased heads, cause unexplained,
+authorship the surviving lead ([#161](https://github.com/sleepy-panda-works/portulan/issues/161)). The
+ruling on [`../proposals/0023-a-head-that-never-draws-a-round-needs-an-answer.md`](../proposals/0023-a-head-that-never-draws-a-round-needs-an-answer.md),
+exit (2): the check stays red, and merging past it is the maintainer's explicit per-occurrence act,
+recorded on the pull request before the merge. **Not a weakening** — `copilot-reviewed` is not a required
+context, so the platform never held this door; what the record buys is that routing around the gate stops
+being invisible.
+
 **Retire when:** Copilot review is no longer part of this repository's review path, or the platform gains
 a native *"require a review from this app on the current head"* setting that makes the workflow redundant.

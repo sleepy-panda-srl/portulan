@@ -723,6 +723,9 @@ jobs:
               printf 'opened the pull request — an App on #157, a user on #160 — which is the #86\n'
               printf 'condition this file already names two branches down. Lead, not finding.\n'
               printf 'See issue #161; add what you observe to it rather than acting on a guess.\n'
+              printf 'RULED 2026-08-09 (proposal 0023, exit 2): this check stays red. Merging past\n'
+              printf 'it is an explicit maintainer act, per occurrence and never standing, recorded\n'
+              printf 'on the pull request before the merge. See .portulan/gate-map.md, Merge discipline.\n'
             elif [ -z "$requested" ]; then
               printf 'NOTHING IS HOLDING A REQUEST, and that is a different fault from a reviewer going\n'
               printf 'silent. What is established is the empty list and nothing more: no request from\n'

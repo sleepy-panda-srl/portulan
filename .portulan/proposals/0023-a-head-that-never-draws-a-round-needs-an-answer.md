@@ -1,7 +1,9 @@
 # Proposal — the Copilot gate needs an answer for a head that never draws a round
 
-**Status.** Open — awaiting the maintainer's ruling. This proposal deliberately recommends **no exit**.
-It supplies the record the decision was missing, names a fourth exit the issue does not list, and stops.
+**Status. RULED, 2026-08-09** — exit (2) taken; exits (1) and (3) declined; exit (4) staged behind the
+controlled experiment, whose opportunistic design is bound in the **Decision** at the foot. The body
+below is the evidence as it stood at the ruling and still recommends no exit: the recommendation half of
+this record is the Decision.
 
 **Pull request:** https://github.com/sleepy-panda-works/portulan/pull/186
 
@@ -138,3 +140,71 @@ finding-rate comments on it, [#157](https://github.com/sleepy-panda-works/portul
 
 **Retire when:** the ruling lands and its mechanism is configured — or when a controlled experiment
 establishes the cause and the exit follows from it rather than from a lead.
+
+## Decision
+
+**Decision.** The supervising agent (Claude Fable 5) — **2026-08-09**, on the ruling authority the
+maintainer delegated this session, with the reserved halves below left to him by name. **Exit (2) is
+taken now; exits (1) and (3) are declined; exit (4) is staged behind a measurement rather than taken.**
+
+**Because:** (1)'s stated premise — that no round can ever arrive for such a head — is the one the
+refutation damaged, and weakening the gate on *every* pull request to fix one class would give up a
+measured channel (8 findings on #160 alone, none of them catchable by the recipe suite) on a premise now
+in doubt. (3) would convert a strand that is structural and weekly *while the authorship lead holds* into
+an **unmergeable** pull request, forcing the filing-identity question at 06:00 on a Monday with nobody at
+a keyboard; it stays available as the end state once the strand class is closed, as its own Gated
+proposal. (2) is what already happened on #157, promoted from doctrine exception to stated procedure: the
+check stays red, because **a gate that opens itself on an unexplained absence is not a gate**, and
+merging past it is the maintainer's explicit per-occurrence act, recorded on the pull request before the
+merge — priced at one recorded override per stranded pass.
+
+**The authorship lead is strengthened, not settled**, by 2026-08-09's evidence: **sixteen** user-authored
+Copilot rounds across #183, #185 and #186 in one day, **thirteen on `synchronize` heads** including
+rebase force-pushes minutes before merge, against **0-for-2** on App-authored `synchronize`. Every
+author-neutral alternative — flaky `synchronize`, rebase suppression, platform load — now has **19**
+counterexamples across two days (today's 13, plus #160's **six** post-open rounds), while the treatment
+arm is still **one** pull request. _An earlier draft said "~17", derived from #161's five-round table
+for #160 — which went stale eight seconds after it was posted, since #160 drew seven rounds in the end.
+A figure derived from a record instead of from the source, in the record that exists to be measured._ Under the narrow
+shape #86 stops being an anomaly: its answered re-request was on an *opened* head, so *App + `opened`*
+reads slow-but-answerable and *App + `synchronize`* unanswered so far. Consistent with the lead; not
+established by it.
+
+**The controlled experiment is to be run**, in the opportunistic form that honours the maintainer's
+2026-08-09 evidence-only ruling — **no throwaway pull requests**. Instrument the next scheduled librarian
+pass when `strict: true` forces its rebase; take a user-authored `synchronize` the same hour as control,
+push actor held constant. One clean discordant pair brings exit (4) to the maintainer as an **amendment
+to ACCEPTED proposal [`0015`](0015-the-librarian-files-as-the-agent.md)** — which this ruling does not
+touch — and a concordant pair kills the lead and returns the design to #161.
+
+**Retire the exit-(2) procedure when:** a scheduled pass that needed a rebase draws its round and merges
+with no override; or `copilot-reviewed` joins the required contexts; or Copilot review leaves the review
+path.
+
+**Reserved to the maintainer, by name:** every per-occurrence override merge (the procedure itself); any
+change to the branch-protection required-context list (exit 3); any change to `librarian.yml`'s filing
+identity, authentication or secrets (exit 4). **A confirming experiment result is evidence for his
+amendment decision, never authorization to implement it.**
+
+### The experiment, specified so it needs no re-derivation
+
+1. **Treatment arm** — the librarian pass of **2026-08-10, cron 06:00 UTC** (may be platform-delayed).
+   Confirm its round on `opened`, which replicates #157's. If that round is absent, the narrow shape is
+   already wrong: record on #161 and stop.
+2. **Condition** — only if `main` moves before the pass merges (**ordinary work, never manufactured**),
+   the pass reads `BEHIND` and must rebase. Rebase and `git push --force-with-lease` — both Auto. Push
+   nothing to that branch beyond the one rebase `strict: true` demands.
+3. **Control arm** — within the same hour, a `synchronize` (prefer a rebase) on any user-authored open
+   pull request, pushed by the same credentials, arising from ordinary session work. Same-day is
+   acceptable if the same hour is impossible; record which.
+4. **Observation** — three facts come from `copilot-review.yml`'s own runs, which already print them per
+   head: was the re-request POSTed and accepted; did a round arrive inside the budget; the filtered
+   `requested_reviewers` state at expiry. **The fourth — did `review_on_push` fire — is read from the pull
+   request's timeline**, not from the runs: that branch of the workflow disclaims it in its own words
+   (*"the RULESET is a separate question and this message cannot answer it"*), and the timeline is how
+   #161 established it for #157.
+5. **Prediction, registered now** — authorship predicts **no** round on the App pull request's rebased
+   head and a round on the user one within ~4 minutes. A clean discordant pair confirms; a round on the
+   App pull request **refutes** the narrow lead and closes it.
+6. **Stop rule** — if three consecutive scheduled passes never meet the rebase condition, the design
+   returns to #161 as still-unrun. No throwaway pull requests, ever, under the evidence-only ruling.
