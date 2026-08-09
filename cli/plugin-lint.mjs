@@ -704,20 +704,27 @@ export function inspect(rawRoot, { payload = false } = {}) {
         composition = null;
     }
 
+    // `packs` PRESENT but not an array is the check's core invariant going quiet: a manifest saying
+    // `"packs": "rituals/checkpoints"` iterates zero times and the run then reports nothing at all
+    // about parity. Absent is a real state — a workspace may compose nothing — and *the wrong type* is
+    // not that state. It joins the unreadable-manifest case above rather than being caught inside the
+    // block: the first cut failed here and then RAN ON with an empty composition, so the converse
+    // direction reported every declared pack skill as belonging to no composed pack — an unreadable
+    // composition read as *composes nothing*, the same fail-open pointing the other way, contradicting
+    // the sentence it had just emitted. Both halves raised by Copilot on #195, one round apart: the
+    // guard was right and its control flow was not.
+    if (composition !== null && composition.packs !== undefined && !Array.isArray(composition.packs)) {
+        fail(
+            "compose",
+            `${GOVERNING} declares \`packs\` as ${typeof composition.packs === "object" ? "an object" : typeof composition.packs} rather than an array — ` +
+                "no composition could be read from it, so parity with the declared skills is unchecked",
+        );
+        composition = null;
+    }
+
     if (composition !== null) {
         const packsRoot = path.join(root, "packs");
         const composed = [];
-        // `packs` PRESENT but not an array is the check's core invariant going quiet: a manifest
-        // saying `"packs": "rituals/checkpoints"` iterates zero times and this run then reports
-        // nothing at all about parity. Absent is a real state — a workspace may compose nothing —
-        // and *the wrong type* is not that state. Raised by Copilot on #195.
-        if (composition.packs !== undefined && !Array.isArray(composition.packs)) {
-            fail(
-                "compose",
-                `${GOVERNING} declares \`packs\` as ${typeof composition.packs === "object" ? "an object" : typeof composition.packs} rather than an array — ` +
-                    "no composition could be read from it, so parity with the declared skills is unchecked",
-            );
-        }
         for (const entry of Array.isArray(composition.packs) ? composition.packs : []) {
             // A `packs` entry that is not a usable name is `doctor`'s verdict on the workspace, but
             // going quiet about it here would be this check reporting on a composition it did not

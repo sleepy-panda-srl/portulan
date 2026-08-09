@@ -1216,8 +1216,9 @@ test("compose refuses a composed pack that is a symlink out of the bundle", () =
 describe("compose fails closed on what it could not evaluate", () => {
     test("a `packs` entry naming a path outside ./packs/ is named, never skipped", () => {
         const root = composed({ packs: ["rituals/checkpoints", "../../etc"] });
-        const bad = fails(inspect(root).findings).filter((f) => f.check === "compose");
-        assert.equal(bad.length, 1, messages(inspect(root).findings));
+        const { findings } = inspect(root);
+        const bad = fails(findings).filter((f) => f.check === "compose");
+        assert.equal(bad.length, 1, messages(findings));
         assert.match(bad[0].message, /nothing was walked for it, so composition is unchecked/);
     });
 
@@ -1227,25 +1228,28 @@ describe("compose fails closed on what it could not evaluate", () => {
         // pack. Copilot, #195 round 2 — the hole the previous round's fix left one directory up.
         const root = composed({ packs: ["rituals/checkpoints", "../../plugin"] });
         write(root, "plugin/skills/smuggled/SKILL.md", SKILL("smuggled", "Not a pack, and not composed."));
-        const bad = fails(inspect(root).findings).filter((f) => f.check === "compose");
-        assert.equal(bad.length, 1, messages(inspect(root).findings));
+        const { findings } = inspect(root);
+        const bad = fails(findings).filter((f) => f.check === "compose");
+        assert.equal(bad.length, 1, messages(findings));
         assert.match(bad[0].message, /names a path outside \.\/packs\//);
         // And it must not be mistaken for a pack that is merely missing — that is a note, not a failure.
-        assert.equal(inspect(root).findings.some((f) => f.severity === "note" && /does not resolve under/.test(f.message)), false);
+        assert.equal(findings.some((f) => f.severity === "note" && /does not resolve under/.test(f.message)), false);
     });
 
     test("a `packs` entry that is not a non-empty string is named", () => {
         const root = composed({ packs: ["rituals/checkpoints", 42] });
-        const bad = fails(inspect(root).findings).filter((f) => f.check === "compose");
-        assert.equal(bad.length, 1, messages(inspect(root).findings));
+        const { findings } = inspect(root);
+        const bad = fails(findings).filter((f) => f.check === "compose");
+        assert.equal(bad.length, 1, messages(findings));
         assert.match(bad[0].message, /not a non-empty string/);
     });
 
     test("a governing manifest that parses to an ARRAY fails closed — parsing is not reading", () => {
         const root = composed();
         fs.writeFileSync(path.join(root, ".portulan", "workspace.json"), JSON.stringify(["packs"]));
-        const bad = fails(inspect(root).findings).filter((f) => f.check === "compose");
-        assert.equal(bad.length, 1, messages(inspect(root).findings));
+        const { findings } = inspect(root);
+        const bad = fails(findings).filter((f) => f.check === "compose");
+        assert.equal(bad.length, 1, messages(findings));
         assert.match(bad[0].message, /is not a JSON object \(an array\)/);
         assert.match(bad[0].message, /parity with the declared skills is unchecked/);
     });
@@ -1253,8 +1257,9 @@ describe("compose fails closed on what it could not evaluate", () => {
     test("...and one that parses to a string fails the same way", () => {
         const root = composed();
         fs.writeFileSync(path.join(root, ".portulan", "workspace.json"), JSON.stringify("nope"));
-        const bad = fails(inspect(root).findings).filter((f) => f.check === "compose");
-        assert.equal(bad.length, 1, messages(inspect(root).findings));
+        const { findings } = inspect(root);
+        const bad = fails(findings).filter((f) => f.check === "compose");
+        assert.equal(bad.length, 1, messages(findings));
         assert.match(bad[0].message, /is not a JSON object \(string\)/);
     });
 });
@@ -1265,8 +1270,9 @@ test("a `packs` value that is not an array fails closed — present is not absen
     const root = composed();
     const manifest = path.join(root, ".portulan", "workspace.json");
     fs.writeFileSync(manifest, JSON.stringify({ name: "demo", packs: "rituals/checkpoints" }, null, 2));
-    const bad = fails(inspect(root).findings).filter((f) => f.check === "compose");
-    assert.equal(bad.some((f) => /declares `packs` as string rather than an array/.test(f.message)), true, messages(inspect(root).findings));
+    const { findings } = inspect(root);
+    const bad = fails(findings).filter((f) => f.check === "compose");
+    assert.equal(bad.some((f) => /declares `packs` as string rather than an array/.test(f.message)), true, messages(findings));
 });
 
 test("a composed pack that exists but is a FILE is a NOTE — seen, and doctor's verdict", () => {
@@ -1295,8 +1301,9 @@ describe("compose cannot go quiet on what the walk could not see", () => {
         const link = path.join(root, "packs", "rituals", "checkpoints", "skills", "linked");
         fs.mkdirSync(link, { recursive: true });
         fs.symlinkSync(real, path.join(link, "SKILL.md"));
-        const bad = fails(inspect(root).findings).filter((f) => f.check === "compose");
-        assert.equal(bad.some((f) => /SKILL\.md that is a SYMLINK/.test(f.message)), true, messages(inspect(root).findings));
+        const { findings } = inspect(root);
+        const bad = fails(findings).filter((f) => f.check === "compose");
+        assert.equal(bad.some((f) => /SKILL\.md that is a SYMLINK/.test(f.message)), true, messages(findings));
         assert.match(bad.find((f) => /SYMLINK/.test(f.message)).message, /Composition is unchecked below that point/);
     });
 
