@@ -88,12 +88,15 @@ provenance.
 
 ## What is left, and what belongs to the maintainer
 
-- **Two decisions, neither an agent's.** Row 7's clause (b) parenthetical says clause (b) closes #134,
-  while the same Status cell lists `(b) parity` as *Left* — the criterion needs narrowing to the
-  pack-registration half, and `docs/plan.md` is Propose-tier with its criteria amended *with Marius*.
-  And whether this work closes #134, or #123 is widened first so the pack-root residue lands somewhere,
-  is his call: **a closing comment alone is not a carrier for a residue.** Both are in the pull request
-  body rather than taken here.
+- **Two decisions, neither an agent's — and both were ruled on 2026-08-09, hours after this was written.**
+  Row 7's clause (b) parenthetical named clause (b) as closing #134 while the same Status cell lists
+  `(b) parity` as *Left*; the maintainer licensed an agent to **draft** the narrowing for his review, and
+  it is drafted in this change — the parenthetical now closes the **pack-registration half** and points at
+  [#184](https://github.com/sleepy-panda-works/portulan/issues/184). And **#134 is closed on his explicit
+  ruling**, with the residue landing on #184 rather than on a widened #123 — because #123 is being closed
+  for good in its own session, so widening it would have parked the remainder on an issue about to close.
+  The sentence this replaces was right that *a closing comment alone is not a carrier for a residue*; what
+  it could not know is which carrier the maintainer would choose.
 - **The Status cell was trimmed to fit its 500-byte rail** — 496 → 478 with `s4` added. What came out:
   *"which found a `compile` parity breach, fixed"* (recorded in session 3's handoff) and *"six is pinned
   in `milestones/m07.md`; this cell said seven"* (recorded in `m07.md`'s own count section, which says in
@@ -150,8 +153,9 @@ config, which is exactly the reasoning `cli/doctor.test.mjs` had already written
 
 ## The loop, and where it stopped
 
-[#181](https://github.com/sleepy-panda-works/portulan/pull/181). **Five rounds, three answering pushes** —
-the bound held for the first four, and the fifth ran on the maintainer's grant rather than past him. _(This
+[#181](https://github.com/sleepy-panda-works/portulan/pull/181). **Seven rounds, five answering pushes** —
+the bound held for the first four, the fifth ran on the maintainer's grant rather than past him, and rounds
+6 and 7 were siblings of that fix — three sites it had not reached, each found by the round that reviewed it. _(This
 read "three rounds, two answering pushes, and the bound held rather than being argued past", which was true
 of the session that wrote it and stopped being true when a second session was told to finish the pull
 request. Amended rather than left, in the file whose closing line is that a record must not assert a total

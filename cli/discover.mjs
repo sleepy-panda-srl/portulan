@@ -113,7 +113,14 @@ export const MANIFEST_AT = ["workspace.json", path.join(".portulan", "workspace.
  * `CLAUDE_CONFIG_DIR` overrides it — that is the host's documented escape hatch and it is the reason
  * this takes an `env` at all rather than reading `process.env` at the point of use. An empty string
  * is treated as unset: an exported-but-blank variable is a shell accident, and honouring it would
- * point discovery at the filesystem root.
+ * point discovery at **the process's working directory**, since `path.resolve("")` is `cwd` and not
+ * `/` — a plausible-looking answer to a question nobody asked, and worse than an obvious one because
+ * it changes with where the tool was invoked from.
+ *
+ * _(This said "the filesystem root" until #182's round, which is wrong about `path.resolve` and was
+ * contradicted by this function's own test one file away — the same two-carriers-one-fact shape this
+ * change corrected in eleven other places, here in the docblock of the guard the fix cites as its
+ * precedent. Copilot, on the round reviewing the records.)_
  */
 export function configDir({ env = process.env, home = os.homedir() } = {}) {
     const named = env.CLAUDE_CONFIG_DIR;
