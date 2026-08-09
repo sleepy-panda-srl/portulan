@@ -673,6 +673,7 @@ export function inspect(rawRoot, { payload = false } = {}) {
 
     const GOVERNING = path.join(".portulan", "workspace.json");
     let composition;
+    let composable = true;
     try {
         composition = JSON.parse(fs.readFileSync(path.join(root, GOVERNING), "utf8"));
     } catch (error) {
@@ -680,28 +681,35 @@ export function inspect(rawRoot, { payload = false } = {}) {
         // fault. *Could not read* is a different answer and is never *not there*
         // (../.portulan/memory/verify-preconditions-fail-closed.md), so the two are reported apart and
         // only the second is a finding.
-        if (error.code === "ENOENT") composition = null;
+        if (error.code === "ENOENT") composable = false;
         else {
             fail(
                 "compose",
                 `${GOVERNING} could not be read — ${error.code ?? error.message}; composition was ` +
                     "not checked against the declared skills, so this run establishes nothing about it",
             );
-            composition = null;
+            composable = false;
         }
     }
 
-    // A manifest that PARSES but is not a plain object — an array, a string, a number — silently
-    // skipped this whole check in the first cut, which is a green over something nobody evaluated:
-    // the exact shape the `could not read` branch above exists to refuse, one type away. It fails
-    // closed and says what was not established. Raised by Copilot on #195.
-    if (composition !== null && (typeof composition !== "object" || Array.isArray(composition))) {
+    // A manifest that PARSES but is not a plain object — an array, a string, a number, **or the JSON
+    // literal `null`** — silently skipped this whole check in the first cut, which is a green over
+    // something nobody evaluated: the exact shape the `could not read` branch above exists to refuse,
+    // one type away.
+    //
+    // `null` is the one that hid, and it hid because it was doing two jobs. The first cut used `null`
+    // as the *sentinel* for "there is no governing workspace here", and `null` is also what
+    // `JSON.parse("null")` returns — so a present, invalid manifest was indistinguishable from an
+    // absent one and skipped the check without a word. A sentinel that collides with a legal value of
+    // the thing it describes cannot report on that thing; the state is a separate boolean now, and
+    // absence is the only thing that reads as absence. Raised by Copilot on #195, both halves.
+    if (composable && (composition === null || typeof composition !== "object" || Array.isArray(composition))) {
         fail(
             "compose",
-            `${GOVERNING} parses but is not a JSON object (${Array.isArray(composition) ? "an array" : typeof composition}) — ` +
+            `${GOVERNING} parses but is not a JSON object (${jsonKind(composition)}) — ` +
                 "composition could not be read from it, so parity with the declared skills is unchecked",
         );
-        composition = null;
+        composable = false;
     }
 
     // `packs` PRESENT but not an array is the check's core invariant going quiet: a manifest saying
@@ -713,16 +721,16 @@ export function inspect(rawRoot, { payload = false } = {}) {
     // composition read as *composes nothing*, the same fail-open pointing the other way, contradicting
     // the sentence it had just emitted. Both halves raised by Copilot on #195, one round apart: the
     // guard was right and its control flow was not.
-    if (composition !== null && composition.packs !== undefined && !Array.isArray(composition.packs)) {
+    if (composable && composition.packs !== undefined && !Array.isArray(composition.packs)) {
         fail(
             "compose",
-            `${GOVERNING} declares \`packs\` as ${typeof composition.packs === "object" ? "an object" : typeof composition.packs} rather than an array — ` +
+            `${GOVERNING} declares \`packs\` as ${jsonKind(composition.packs)} rather than an array — ` +
                 "no composition could be read from it, so parity with the declared skills is unchecked",
         );
-        composition = null;
+        composable = false;
     }
 
-    if (composition !== null) {
+    if (composable) {
         const packsRoot = path.join(root, "packs");
         const composed = [];
         for (const entry of Array.isArray(composition.packs) ? composition.packs : []) {
@@ -1050,6 +1058,17 @@ function walkForStrandedAgents(root, dir = root, depth = 0, found = []) {
 //                              `existsSync`, which follows links. `../cli/doctor.mjs`'s `walkSkills`
 //                              already refuses this shape by `lstat` and says why. One shape, three
 //                              behaviours in one repository; this closes the third.
+/**
+ * What a JSON value IS, for a diagnostic — `typeof null` is `"object"`, which turned a message about a
+ * null `packs` into one about an object and sent a reader looking for a key that was not there.
+ * Raised by Copilot on #195.
+ */
+function jsonKind(value) {
+    if (value === null) return "null";
+    if (Array.isArray(value)) return "an array";
+    return typeof value === "object" ? "an object" : typeof value;
+}
+
 function walkForSkills(root, dir = root, depth = 0, found = [], problems = null) {
     if (depth > MAX_WALK_DEPTH) {
         if (problems) problems.push({ dir, why: `not searched — deeper than ${MAX_WALK_DEPTH} levels` });

@@ -1254,6 +1254,28 @@ describe("compose fails closed on what it could not evaluate", () => {
         assert.match(bad[0].message, /parity with the declared skills is unchecked/);
     });
 
+    test("a governing manifest that parses to JSON `null` fails closed — the sentinel collision", () => {
+        // `null` was the sentinel for "no governing workspace here" AND what `JSON.parse("null")`
+        // returns, so a present, invalid manifest was indistinguishable from an absent one and skipped
+        // the whole check without a word. A sentinel that collides with a legal value of the thing it
+        // describes cannot report on that thing. Copilot, #195.
+        const root = composed();
+        fs.writeFileSync(path.join(root, ".portulan", "workspace.json"), "null");
+        const { findings } = inspect(root);
+        const bad = fails(findings).filter((f) => f.check === "compose");
+        assert.equal(bad.length, 1, messages(findings));
+        assert.match(bad[0].message, /is not a JSON object \(null\)/);
+    });
+
+    test("a `packs` of null is reported as null, not as an object", () => {
+        // `typeof null === "object"` sent a reader looking for a key that was not there.
+        const root = composed();
+        fs.writeFileSync(path.join(root, ".portulan", "workspace.json"), JSON.stringify({ name: "demo", packs: null }, null, 2));
+        const { findings } = inspect(root);
+        const bad = fails(findings).filter((f) => f.check === "compose");
+        assert.equal(bad.some((f) => /declares `packs` as null rather than an array/.test(f.message)), true, messages(findings));
+    });
+
     test("...and one that parses to a string fails the same way", () => {
         const root = composed();
         fs.writeFileSync(path.join(root, ".portulan", "workspace.json"), JSON.stringify("nope"));
