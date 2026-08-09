@@ -2039,3 +2039,14 @@ _The seam applies here too: no client-identifying references._
   **a closing keyword in any landed commit wins**. #176 ran **15 rounds**; rounds 4, 11 and 15 each found a
   different silent-loss path in the one chain written to refuse it. `main` 46e7b81, suite 1059, nine recipes
   green. Seam scan clean. Handoff: [`2026-08-09`](../.portulan/handoffs/2026-08-09-the-four-merged-and-an-issue-closed-by-accident.md).
+
+- 2026-08-09 · Outside the milestone track · **A lead is not a cause, and the gate is not a required check.**
+  [#161](https://github.com/sleepy-panda-works/portulan/issues/161) as proposal `0023`, **evidence-only** by
+  the maintainer's ruling — no controlled experiment. It recommends **nothing**: both halves are his. Two
+  facts measured rather than carried: `main`'s required contexts are **`workspace-verify` and `pr-labeled`
+  only**, so **`copilot-reviewed` is not required** and the gate is doctrine here, not platform; and #157
+  merged 2026-08-03T16:05:55Z as the App past a red `copilot-reviewed`, so the strand is already paid for
+  once in a doctrine exception. Adds a **fourth exit** the issue does not list — change who files — which
+  cuts against accepted proposal `0015` and so is an amendment, not a detail. Nine recipes green. Seam scan
+  clean. · Fidelity: pre-commit A-W-A, five adjustments, all folded. Handoff:
+  [`2026-08-09`](../.portulan/handoffs/2026-08-09-a-lead-is-not-a-cause-and-the-gate-is-not-required.md).
