@@ -545,7 +545,7 @@ const AWK_CASES = [
             + "\n@@PORTULAN-NOTE@@ docs/plan.md 7\n* the count is stated rather than derived\n",
         status: 0,
     },
-      {
+    {
         id: "note-body-collapses-blank-runs",
         anchor: "blank<2",
         why: "the body a promoted note carries. A note's text arrives with the blank line that "
@@ -575,7 +575,7 @@ const AWK_CASES = [
         stdout: "@@PORTULAN-NOTE@@ weird:dir/a.mjs 19\n* a note\n",
         status: 0,
     },
-      {
+    {
         id: "note-records-no-header",
         anchor: "@@PORTULAN-NOTE@@",
         why: "a block carrying no `**path:line**` header yields no record, which is what routes the "
@@ -585,7 +585,7 @@ const AWK_CASES = [
         stdout: "Copilot reviewed 3 files and had nothing to say.\n",
         status: 0,
     },
-      // ---- copilot-review.yml: is the suppressed block there --------------------------------------
+    // ---- copilot-review.yml: is the suppressed block there --------------------------------------
     {
         id: "present-v1-summary",
         anchor: 'print "yes"',
