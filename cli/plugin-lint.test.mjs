@@ -1018,6 +1018,10 @@ describe("the packs/ payload the private feed ships", () => {
 describe("payload roots — the opt-in relaxation", () => {
     const payloadTree = () => {
         const root = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), "portulan-payload-"));
+        // Registered with the suite's own scratch list, or every run leaves a directory behind — a
+        // real leak, and the one thing in this file that grows without bound. The helper above does
+        // this; this one was written beside it and did not. (Copilot, on the round reviewing it.)
+        SCRATCH.push(root);
         fs.mkdirSync(path.join(root, ".claude-plugin"), { recursive: true });
         fs.writeFileSync(
             path.join(root, ".claude-plugin", "plugin.json"),
