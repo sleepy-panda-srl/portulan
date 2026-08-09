@@ -187,7 +187,7 @@ function escapes(root, target) {
     return inside.startsWith("..") || path.isAbsolute(inside);
 }
 
-export function inspect(rawRoot) {
+export function inspect(rawRoot, { payload = false } = {}) {
     // Absolute from here on. Two sets of paths are compared later — the skills the manifest declares
     // and the skills found by walking the tree — and they are only comparable if both are built the
     // same way. With a relative root (`node cli/plugin-lint.mjs .`, which is how the verify recipe
@@ -332,7 +332,44 @@ export function inspect(rawRoot) {
     // --- the two manifests --------------------------------------------------------------------
 
     const plugin = manifest(path.join(".claude-plugin", "plugin.json"));
-    const market = manifest(path.join(".claude-plugin", "marketplace.json"));
+    // A **payload** root is a plugin a feed ships without being a marketplace itself. `packs/` is one:
+    // the private feed's `portulan-checkpoints` entry is a `git-subdir` source rooted there, so the
+    // marketplace entry describing it lives in that feed and cannot exist here. Requiring one would
+    // demand a fake marketplace beside a real payload.
+    //
+    // It is an OPT-IN and not an inference — a root that merely *lacks* a marketplace still fails, and
+    // the caller has to say which roots are payloads. Inferring it would turn a deleted
+    // `marketplace.json` into a silently narrower lint, which is the relaxation
+    // `../.portulan/gate-map.md` says to scrutinise hardest.
+    //
+    // What it costs is stated rather than hidden: **nothing here checks that the feed's entry agrees
+    // with this manifest** — the name, the version and the source path are verified in the feed's own
+    // repository or not at all. That is one unverifiable, counted as such.
+    // `lstatSync` rather than `existsSync`, and the difference is a verdict: `existsSync` FOLLOWS a
+    // symlink, so a payload root whose `marketplace.json` is a dangling link read as "none is owed" and
+    // went green, where the strict path calls the same tree a `manifest` failure. That is this file's
+    // recurring defect in its own words one screen down — *"absent and unusable are different verdicts
+    // and only one is benign"* — and it is why only ENOENT takes the payload arm. Found at the
+    // pre-commit checkpoint by planting the dangling link.
+    const marketPath = path.join(root, ".claude-plugin", "marketplace.json");
+    let marketAbsent = false;
+    try {
+        fs.lstatSync(marketPath);
+    } catch (error) {
+        marketAbsent = error.code === "ENOENT";
+    }
+    let market = null;
+    if (payload && marketAbsent) {
+        stats.unverifiable += 1;
+        note(
+            "market",
+            "payload root — no marketplace.json, and none is owed: the feed that ships this directory " +
+                "carries the entry, so the name, version and source path it is published under are not " +
+                "checkable from here",
+        );
+    } else {
+        market = manifest(path.join(".claude-plugin", "marketplace.json"));
+    }
 
     if (plugin) {
         if (typeof plugin.name !== "string") {
@@ -874,6 +911,17 @@ const ICON = { fail: "FAIL", note: "note" };
 export async function run(argv, options = {}) {
     const say = options.quiet ? () => {} : (line = "") => process.stdout.write(`${line}\n`);
     try {
+        // `--payload` marks EVERY root on the line as a payload root. Kept deliberately coarse: the
+        // recipe invokes this once per kind, which is clearer at the call site than a per-root syntax
+        // nobody would read twice.
+        const payload = argv.includes("--payload");
+        const unknown = argv.filter((a) => a.startsWith("-") && a !== "--payload");
+        if (unknown.length) {
+            if (!options.quiet) {
+                process.stderr.write(`plugin-lint: unknown option ${unknown.join(", ")}\n`);
+            }
+            return 2;
+        }
         const roots = argv.filter((a) => !a.startsWith("-"));
         if (roots.length === 0) {
             if (!options.quiet) {
@@ -884,7 +932,7 @@ export async function run(argv, options = {}) {
 
         let failed = 0;
         for (const root of roots) {
-            const { findings, stats } = inspect(root);
+            const { findings, stats } = inspect(root, { payload });
             const bad = findings.filter((f) => f.severity === "fail");
             say(root);
             for (const f of findings) say(`  ${ICON[f.severity]} ${f.check.padEnd(8)} ${f.message}`);
