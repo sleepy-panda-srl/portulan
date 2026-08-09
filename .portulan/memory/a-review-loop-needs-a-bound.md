@@ -21,10 +21,12 @@ re-counted**, never re-derived in fix-rounds._
 
 ## What one round is — 2026-07-30
 
-**A round is a Copilot review the working session answers with a push; rule 4's bound counts those
-pushes and nothing else** — the maintainer's ruling; the unit clause, an implementer's derivation, he
-ratified verbatim on
-[#119](https://github.com/sleepy-panda-works/portulan/pull/119). A records-only push still counts.
+**A round is a Copilot review the working session answers with a push, and rule 4's bound counts those
+pushes and nothing else** — the maintainer's ruling. Its *unit* clause was an implementer's derivation,
+quantified both ways on [#119](https://github.com/sleepy-panda-works/portulan/pull/119) and put to him
+rather than merged under his name, and **he ratified it verbatim**. The two are recorded apart because
+blurring a clause an implementer inferred with one he ruled is the defect this rule guards against. A
+records-only push still counts.
 
 **The reviewer has two logins** — `copilot-pull-request-reviewer[bot]` on `/pulls/N/reviews`,
 `Copilot` on `/pulls/N/comments` — and a filter on either returns **zero** from the other. Fix-rounds
