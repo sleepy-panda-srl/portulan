@@ -15,6 +15,32 @@ set -uo pipefail
 WORKFLOWS=".github/workflows"
 
 # ---------------------------------------------------------------------------------------------
+# The tools this recipe invokes, checked before it invokes them.
+#
+# Without this the failure is SILENT and GREEN: the two loops below read from process substitutions,
+# so a missing `find` or `grep` yields no lines at all, every counter stays zero, `status` stays 0 —
+# and the recipe reports a pass having examined nothing. That is the false green this project names
+# most consistently, and it is precisely what `.portulan/memory/verify-preconditions-fail-closed.md`
+# exists to refuse. The header below already cited that rule for the workflows DIRECTORY and did not
+# apply it to the recipe's own dependencies: a rule obeyed at one of its two sites, in a file that
+# quotes the rule. Copilot round 5.
+#
+# `requires` in `pack.json` declares the same list. Two carriers, deliberately — the manifest's is
+# what a host reads to decide whether to run at all, this one is what fires when it ran anyway — and
+# they are checked against each other by nothing, which is stated here rather than implied.
+# ---------------------------------------------------------------------------------------------
+missing=""
+for tool in find grep sed sort cut wc; do
+    command -v "$tool" >/dev/null 2>&1 || missing="$missing $tool"
+done
+if [ -n "$missing" ]; then
+    printf 'actions-pinned: COULD NOT RUN — missing required tool(s):%s\n' "$missing" >&2
+    printf '  Reported rather than run around: without these the scan reads nothing and would report\n' >&2
+    printf '  a pass over a tree it never examined.\n' >&2
+    exit 2
+fi
+
+# ---------------------------------------------------------------------------------------------
 # Preconditions fail closed. Enumeration is the precondition here exactly as it is in this project's
 # own recipes (`.portulan/memory/verify-preconditions-fail-closed.md`): a green computed over a
 # directory that was not there is a green about nothing.
