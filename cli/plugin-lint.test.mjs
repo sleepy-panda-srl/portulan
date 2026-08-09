@@ -1205,7 +1205,7 @@ test("compose refuses a composed pack that is a symlink out of the bundle", () =
     fs.writeFileSync(manifest, JSON.stringify({ name: "demo", packs: ["rituals/elsewhere"] }, null, 2));
 
     const bad = fails(inspect(root).findings).filter((f) => f.check === "compose");
-    assert.equal(bad.some((f) => /resolves outside the plugin root/.test(f.message)), true, messages(inspect(root).findings));
+    assert.equal(bad.some((f) => /resolves outside \.\/packs\//.test(f.message)), true, messages(inspect(root).findings));
     // And it must say nothing was walked rather than going quiet — refusing is not the same as passing.
     assert.match(bad.find((f) => /resolves outside/.test(f.message)).message, /composition is unchecked for it/);
 });
@@ -1216,6 +1216,19 @@ describe("compose fails closed on what it could not evaluate", () => {
         const bad = fails(inspect(root).findings).filter((f) => f.check === "compose");
         assert.equal(bad.length, 1, messages(inspect(root).findings));
         assert.match(bad[0].message, /nothing was walked for it, so composition is unchecked/);
+    });
+
+    test("a `packs` entry inside the bundle but OUTSIDE ./packs/ is refused, not walked", () => {
+        // `../plugin` stays inside the plugin root and escapes `./packs/`. The first cut compared
+        // against the root, so this passed the guard and was walked as though it were a composed
+        // pack. Copilot, #195 round 2 — the hole the previous round's fix left one directory up.
+        const root = composed({ packs: ["rituals/checkpoints", "../../plugin"] });
+        write(root, "plugin/skills/smuggled/SKILL.md", SKILL("smuggled", "Not a pack, and not composed."));
+        const bad = fails(inspect(root).findings).filter((f) => f.check === "compose");
+        assert.equal(bad.length, 1, messages(inspect(root).findings));
+        assert.match(bad[0].message, /names a path outside \.\/packs\//);
+        // And it must not be mistaken for a pack that is merely missing — that is a note, not a failure.
+        assert.equal(inspect(root).findings.some((f) => f.severity === "note" && /does not resolve under/.test(f.message)), false);
     });
 
     test("a `packs` entry that is not a non-empty string is named", () => {
