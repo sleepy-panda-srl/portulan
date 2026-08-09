@@ -67,7 +67,7 @@ node cli/init.mjs --residence <in-repo|pointer> [options] <repository-dir>
 node cli/new.mjs <kind> <name> [--into <dir>] [options]
 node cli/vendor.mjs <workspace-dir> --into <dir> --residence <in-repo|feed-side> (--host <id> | --switch)
 node cli/doctor.mjs <workspace-dir> [<workspace-dir> ...]
-node cli/plugin-lint.mjs <plugin-root> [<plugin-root> ...]
+node cli/plugin-lint.mjs [--payload] <plugin-root>... [<plugin-root> ...]
 node cli/compile.mjs [--workspace <repository-dir | workspace-dir>] [--check]
 node cli/index.mjs [--check] <workspace-dir> [<workspace-dir> ...]
 node cli/librarian.mjs [--as-of YYYY-MM-DD] [--write] [--log <path>] [--reviews <path>] <workspace-dir> [...]
