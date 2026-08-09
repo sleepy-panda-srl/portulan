@@ -16,8 +16,8 @@ guessing one.
 | `2` | **could not run** — there is no `.github/workflows/` directory, or it holds no `.yml`/`.yaml` file |
 
 **Exit 2 on an absent or empty workflows directory is a decision, not an accident.** The alternative —
-reporting green over a directory nobody looked in — is the false green this project names most
-consistently, and enumeration is a precondition here exactly as it is inside every recipe this
+reporting green over a directory nobody looked in — is the false green: "nothing looked" reported as
+"nothing wrong", and enumeration is a precondition here exactly as it is inside every recipe this
 repository writes. A workspace with no GitHub workflows has composed a pack that cannot do its job, and
 the honest answer is to say so rather than to hand back a green it might be mistaken for coverage. What
 to change in that case is the `packs` array, not this exit code.

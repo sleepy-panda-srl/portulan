@@ -19,8 +19,8 @@ WORKFLOWS=".github/workflows"
 #
 # Without this the failure is SILENT and GREEN: the two loops below read from process substitutions,
 # so a missing `find` or `grep` yields no lines at all, every counter stays zero, `status` stays 0 —
-# and the recipe reports a pass having examined nothing. That is the false green this project names
-# most consistently, and it is precisely what `.portulan/memory/verify-preconditions-fail-closed.md`
+# and the recipe reports a pass having examined nothing. That is the false green — "nothing looked"
+# reported as "nothing wrong" — and it is precisely what `.portulan/memory/verify-preconditions-fail-closed.md`
 # exists to refuse. The header below already cited that rule for the workflows DIRECTORY and did not
 # apply it to the recipe's own dependencies: a rule obeyed at one of its two sites, in a file that
 # quotes the rule. Copilot round 5.
