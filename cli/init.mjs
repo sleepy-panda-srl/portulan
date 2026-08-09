@@ -65,6 +65,10 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
+// Host plugin-cache discovery (#123). `init` composes a checkpoints pack by default — row 7 clause (a)
+// — so it is the tool that most needed a root it did not have to be told.
+import { AUTO, discoverPackRoots } from "./discover.mjs";
+
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 
 /** Every refusal in this file. Carrying a class rather than a string lets `run` map all of them to 2. */
@@ -659,11 +663,12 @@ ${bound}
 **What is bound and what is not, stated plainly** — because a workspace that overstates its own rails
 is worse than one with fewer of them.
 
-- **The pack is named, and nothing resolves it.** Naming a pack and finding it on this machine are
-  different things, and only the first is built. **Until you supply a location, validation is RED**,
-  not merely unverified: \`doctor\` fails a declared pack it cannot resolve rather than passing over
-  it. Run it with the root named — \`doctor --pack-root <dir> .portulan\` — or run \`init\` with
-  \`--no-cycle\` and compose the pack later, once you know where it lives.
+- **The pack is named; resolving it is a separate step.** Naming a pack and finding it on this machine
+  are different things. **Until the root resolves, validation is RED**, not merely unverified:
+  \`doctor\` fails a declared pack it cannot resolve rather than passing over it. Three ways out —
+  \`doctor --pack-root auto .portulan\`, which finds it in this host's installed plugins;
+  \`doctor --pack-root <dir> .portulan\` if you would rather name the location; or \`init --no-cycle\`
+  to compose the pack later, once you know where it lives.
 - **The records conventions are drafted** — a \`handoffs/\` directory in the \`handoffs\` slot, and the
   manifest declares where a generated index goes. **That index does not exist yet**: it is generated
   from the series by the \`index\` tool, and this draft does not run it, so the file appears the first
@@ -941,6 +946,28 @@ function packResolves(roots, packId) {
 }
 
 /**
+ * The roots `init` checks a composed pack against, resolving `auto` the way the other four tools do.
+ *
+ * `auto` is kept VERBATIM in the answers file rather than expanded into the path it resolved to today:
+ * a persisted answer naming a machine-specific cache path is exactly what an answers file exists to
+ * avoid, and `auto` replays correctly on another machine while a path does not.
+ *
+ * **Named roots win outright and are never UNIONED with a discovered one** — the first version of this
+ * appended discovered roots beside named ones, which made `init` the only tool of five with union
+ * semantics: the divergence `../cli/compile.mjs`'s `namedRootsOption` records, re-committed inside the
+ * change that cites it. Returns `{ roots, why }`; `why` is non-null only when discovery **could not
+ * run**, which a caller must be able to tell from *ran and found nothing*.
+ */
+function expandRoots(roots) {
+    const named = roots.filter((root) => root !== AUTO);
+    if (named.length) return { roots: named, why: null };
+    if (!roots.includes(AUTO)) return { roots: [], why: null };
+    const found = discoverPackRoots();
+    if (!found.ok) return { roots: [], why: found.why };
+    return { roots: found.roots, why: null };
+}
+
+/**
  * Every path in the draft that cannot be written without destroying or being blocked by something.
  *
  * The residence check above keys on the MANIFEST, which is right for "is this repository governed?"
@@ -1025,7 +1052,8 @@ export function usage() {
         "  --checkpoints <category/name>  The checkpoint pack to compose. Default: " + DEFAULT_CHECKPOINTS + ".",
         "  --no-cycle                     Compose no packs. The binding is opt-out, not opt-in.",
         "  --pack-root <dir>              Where packs are looked up, so the composed one can be",
-        "                                 confirmed to exist. Named, never discovered. Repeatable.",
+        "                                 confirmed to exist. Repeatable. `auto` discovers it from",
+        "                                 the host's plugin cache; `./auto` names a directory.",
         "  --answers <file>               A JSON object of answers. Flags override its keys.",
         "",
         "Exit codes: 0 it wrote · 2 it could not run. There is no 1: init renders no verdict.",
@@ -1122,7 +1150,15 @@ export async function run(argv, options = {}) {
         }
 
         if (answers.residence === "in-repo" && answers.cycle && answers.packRoots.length) {
-            if (!packResolves(answers.packRoots, answers.checkpoints)) {
+            const expanded = expandRoots(answers.packRoots);
+            if (expanded.why) {
+                throw new InitError(
+                    `\`--pack-root auto\` could not read this host's plugin record, so whether \`${answers.checkpoints}\` ` +
+                        `is installed is unknown rather than no — ${expanded.why}. Name a root explicitly, or run with ` +
+                        `\`--no-cycle\` and compose the pack later.`,
+                );
+            }
+            if (!packResolves(expanded.roots, answers.checkpoints)) {
                 throw new InitError(
                     `the pack \`${answers.checkpoints}\` does not resolve under ${answers.packRoots.map((r) => `\`${r}\``).join(", ")} ` +
                         `— refusing to compose a pack that is not there. Pass a root that carries it, name a different pack ` +

@@ -27,7 +27,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 
-import { configDir, recordPath, readInstalls, resolveGovernor, run, EXIT, MANIFEST_AT, RECORD, RECORD_VERSIONS } from "./discover.mjs";
+import { configDir, recordPath, readInstalls, resolveGovernor, run, EXIT, MANIFEST_AT, RECORD, RECORD_VERSIONS, AUTO, isPackRoot, discoverPackRoots, resolutionRoots } from "./discover.mjs";
 
 const SCRATCH = [];
 
@@ -63,6 +63,20 @@ function host(plugins, { record = true } = {}) {
         const installPath = path.join(dir, "plugins", "cache", marketplace, plugin, version);
         fs.mkdirSync(installPath, { recursive: true });
         if (spec.manifest !== undefined) write(path.join(installPath, spec.at ?? "workspace.json"), spec.manifest);
+        // `packs` and `shape` are the pack-root half's additions to this builder rather than a second
+        // one. **The shapes are measured, not invented:** a plugin that IS a repository checkout keeps
+        // its packs under `packs/`, and one that ships a pack family directly keeps the CATEGORIES at
+        // the install root — which is what `portulan-checkpoints@portulan-internal` actually is. A
+        // fixture that knew only the first is how discovery came to find neither plugin the private
+        // feed ships, with a green suite throughout.
+        for (const name of spec.packs ?? []) {
+            const base = spec.shape === "flat" ? installPath : path.join(installPath, "packs");
+            const packDir = path.join(base, ...name.split("/"));
+            fs.mkdirSync(packDir, { recursive: true });
+            // WITH a pack.json, because `isPackRoot` tests for that file rather than for a directory
+            // named `packs` — a fixture making the directory alone would pass a probe the real thing fails.
+            write(path.join(packDir, "pack.json"), { name: name.split("/")[1], category: name.split("/")[0] });
+        }
         entries[key] = [{ scope: "user", installPath, version, installedAt: "2026-08-09T00:00:00.000Z", gitCommitSha: "0".repeat(40) }];
         if (spec.second) {
             // A second install of the SAME plugin, at another scope and another root — the shape
@@ -531,4 +545,94 @@ test("--help is a request that succeeded, and states the exit contract the code 
     // request corrected in eleven other carriers before committing it in a file of its own.
     assert.match(help, /resides-here/);
     assert.match(help, /Key on `state`/);
+});
+
+// ===========================================================================================
+// Pack-resolution roots — the second half of row 7's discovery clause (#123)
+// ===========================================================================================
+
+test("a repository-shaped plugin contributes `<installPath>/packs`", () => {
+    const h = host({ "engine@feed": { packs: ["rituals/checkpoints"] } });
+    const got = discoverPackRoots({ env: h.env });
+    assert.equal(got.ok, true);
+    assert.equal(got.roots.length, 1);
+    assert.ok(got.roots[0].endsWith(path.join("engine", "0.1.0", "packs")), got.roots[0]);
+});
+
+test("a FLAT plugin contributes its install root — the shape this project's own feed ships", () => {
+    // The regression that would return the shipped defect: probing only for a directory named `packs`
+    // found nothing on the one machine and the one feed this was built for.
+    const h = host({ "portulan-checkpoints@portulan-internal": { packs: ["rituals/checkpoints"], shape: "flat" } });
+    const got = discoverPackRoots({ env: h.env });
+    assert.equal(got.roots.length, 1);
+    assert.ok(got.roots[0].endsWith(path.join("portulan-checkpoints", "0.1.0")), got.roots[0]);
+});
+
+test("`isPackRoot` tests for a pack.json, not for a directory named `packs`", () => {
+    const h = host({ "hollow@feed": {} });
+    const installPath = path.join(h.dir, "plugins", "cache", "feed", "hollow", "0.1.0");
+    fs.mkdirSync(path.join(installPath, "packs", "rituals", "checkpoints"), { recursive: true });
+    assert.equal(isPackRoot(path.join(installPath, "packs")), false);
+    assert.deepEqual(discoverPackRoots({ env: h.env }).roots, []);
+});
+
+test("a record that could not be looked at is `ok: false`, never an empty discovery", () => {
+    // ../.portulan/memory/verify-preconditions-fail-closed.md, carried across the reconciliation:
+    // `readInstalls` keeps `absent` and `unreadable` apart from `read`, and this must not flatten them.
+    const h = host({}, { record: false });
+    const got = discoverPackRoots({ env: h.env });
+    assert.equal(got.ok, false);
+    assert.deepEqual(got.roots, []);
+    assert.match(got.why, /not the same as finding nothing installed/);
+});
+
+test("precedence: named wins, and the named branch never consults discovery", () => {
+    let called = 0;
+    const got = resolutionRoots({ named: ["/named"], derived: ["/derived"], discovery: () => (called += 1, { ok: true, roots: ["/discovered"] }), forced: true });
+    assert.deepEqual(got.roots, ["/named"]);
+    assert.equal(got.source, "named");
+    assert.equal(called, 0, "a named root is never silently overridden, so there is nothing to override it with");
+});
+
+test("precedence: a derived root wins unasked, and the host is never read", () => {
+    // Load-bearing beyond tidiness. `.portulan/verify/compile.sh` runs `compile --check` with no root
+    // named and byte-compares its output; if this path read the plugin cache, a required check would
+    // depend on what happens to be installed on the machine.
+    let called = 0;
+    const got = resolutionRoots({ named: [], derived: ["/derived"], discovery: () => (called += 1, { ok: true, roots: ["/x"] }), forced: false });
+    assert.equal(called, 0);
+    assert.equal(got.source, "derived");
+});
+
+test("discovery is NEVER consulted unless asked — not even where nothing is derived", () => {
+    // The narrowing this change makes deliberately. An earlier draft gave a workspace deriving no root
+    // a discovered one unasked; `examples/workspace.json` declares packs and no `tree` and
+    // `.portulan/verify/doctor.sh` grades it, so that branch made a REQUIRED recipe read `~/.claude`.
+    let called = 0;
+    const got = resolutionRoots({ named: [], derived: [], discovery: () => (called += 1, { ok: true, roots: ["/d"] }) });
+    assert.equal(called, 0, "the host's plugin record must not be read on an unasked path");
+    assert.equal(got.source, "none");
+    assert.match(got.why, /discovery was not asked for/);
+});
+
+test("`--pack-root auto` finding NOTHING yields the empty set, never the derived root", () => {
+    // #117's substitution, in one assertion. A named root REPLACES the derived one so that "the pack
+    // resolved from the feed" cannot be met by a copy in the local tree; if `auto` on a host without
+    // the plugin fell back to derived, the compile would go green from exactly that copy.
+    const got = resolutionRoots({ named: [], derived: ["/derived"], discovery: { ok: true, roots: [] }, forced: true });
+    assert.deepEqual(got.roots, []);
+    assert.equal(got.source, "discovered");
+    assert.match(got.why, /empty rather than falling back/);
+});
+
+test("forced discovery that could not RUN is `none`, and carries the reason", () => {
+    const got = resolutionRoots({ named: [], derived: ["/derived"], discovery: { ok: false, roots: [], why: "could not read the record" }, forced: true });
+    assert.deepEqual(got.roots, []);
+    assert.equal(got.source, "none");
+    assert.equal(got.why, "could not read the record");
+});
+
+test("the keyword is the literal `auto`, so `./auto` stays a directory", () => {
+    assert.equal(AUTO, "auto");
+    assert.notEqual(AUTO, path.resolve("./auto"));
 });

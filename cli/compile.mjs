@@ -42,6 +42,9 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
+// Host plugin-cache discovery (#123). The record reader, the config directory and the version refusal
+// all live there, once — see that file's pack-root section for why this half arrived separately.
+import { AUTO, discoverPackRoots, resolutionRoots } from "./discover.mjs";
 
 /** Raised when `compile` cannot run, or cannot compile honestly. Always exit 2, never 1. */
 export class CompileError extends Error {
@@ -1549,9 +1552,27 @@ export function packRoots(workspaceDir, workspace) {
  * before the flag existed — a caller that passes no roots must not take a different branch, which is the
  * property that keeps the flag a *surface* on the existing behaviour rather than a second one.
  */
+// **No caller since `--pack-root auto` landed** — the command line now passes `named` into `rootPlan`
+// and the precedence rule decides. Kept, exported and documented because four files cite it in prose
+// for the DEFECT it records rather than for the function it is: three tools, two semantics, found by a
+// checkpoint. A reader arriving from one of those citations should find this note rather than infer
+// that the code path is live.
 export function namedRootsOption(workspaceRoot, namedRoots) {
     if (!namedRoots?.length) return {};
     return { packRoots: [...namedRoots] };
+}
+
+/**
+ * The one place the three tools agree on where a resolution root comes from.
+ *
+ * `compile`, `doctor` and `index` each spelled the derived-versus-named choice for themselves, and two
+ * of the three spelled it differently — the divergence `namedRootsOption` records, found by a
+ * checkpoint rather than by the suite. Discovery adds a third source and a precedence between all
+ * three, which is three more chances to diverge, so the ordering is written once in `discover.mjs`'s
+ * `resolutionRoots` and **called** by each tool rather than described in three places.
+ */
+export function rootPlan(workspaceDir, manifest, { named = [], discovery = null, forced = false } = {}) {
+    return resolutionRoots({ named, derived: packRoots(workspaceDir, manifest), discovery, forced });
 }
 
 /**
@@ -1574,7 +1595,15 @@ export function packContributions(workspaceRoot, workspaceDir = ".portulan", opt
     const declared = manifest?.packs;
     if (!Array.isArray(declared) || declared.length === 0) return { contributions: [], unresolved: [] };
 
-    const roots = options.packRoots ?? packRoots(base, manifest);
+    // `options.packRoots` keeps its pre-discovery meaning — the FINAL root set, replacing the derived
+    // one; a caller passing `[]` means the empty set and still gets it. `options.named` is the
+    // command-line shape, which takes its place in the shared precedence rule beside discovery and the
+    // derived root.
+    const plan =
+        options.packRoots !== undefined && options.packRoots !== null
+            ? { roots: [...options.packRoots], source: "named", why: "named on the command line" }
+            : rootPlan(base, manifest, { named: options.named ?? [], discovery: options.discovery ?? null, forced: options.forced ?? false });
+    const roots = plan.roots;
     const contributions = [];
     const unresolved = [];
     for (const name of declared) {
@@ -1598,7 +1627,9 @@ export function packContributions(workspaceRoot, workspaceDir = ".portulan", opt
         }
         contributions.push({ pack: found.name, dir: found.dir, fragments: fragments ?? [] });
     }
-    return { contributions, unresolved };
+    // `plan` travels with the result because every consumer prints it: which source won, and the path
+    // it won with, is what tells a feed resolution from a local one.
+    return { contributions, unresolved, plan };
 }
 
 /**
@@ -1853,12 +1884,13 @@ export function run(argv, options = {}) {
         // `packContributions` has taken `options.packRoots` since session 0 — shaped so that an adopter
         // resolving from an installed feed travels the same code path as a workspace whose packs ship
         // beside it — and nothing ever set it, so the parameter was reachable only from a test.
-        // Discovery of a host's plugin cache is deliberately NOT built here **for a PACK root**. The cache
-        // is read at milestone 7 by ./discover.mjs, which dereferences a POINTER's `governed_by` and nothing
-        // else; this flag stays named, because defaulting it from the same record would change what every
-        // existing run resolves against and would put a discovered root where #117 established that a named
-        // one REPLACES the derived one (#123).
+        // Discovery of a host's plugin cache landed at milestone 7 for BOTH halves (#123): ./discover.mjs
+        // dereferences a POINTER's `governed_by`, and `--pack-root auto` resolves a pack root from the same
+        // record. What is deliberately NOT taken is a DEFAULT — discovery runs only when asked, because
+        // defaulting it would change what every existing run resolves against and would put a discovered
+        // root where #117 established that a named one REPLACES the derived one.
         const namedRoots = [];
+        let forced = false;
         for (let i = 0; i < argv.length; i += 1) {
             if (argv[i] === "--check") check = true;
             else if (argv[i] === "--matrix") showMatrix = true;
@@ -1869,7 +1901,17 @@ export function run(argv, options = {}) {
             } else if (argv[i] === "--pack-root") {
                 const root = argv[i + 1];
                 i += 1;
-                if (root === undefined || root.startsWith("--")) throw new CompileError("--pack-root needs a directory");
+                if (root === undefined || root.startsWith("--"))
+                    throw new CompileError(
+                        "--pack-root needs a directory, or `auto` to discover one from the host plugin cache. " +
+                            "A directory actually named `auto` is `./auto`",
+                    );
+                // The keyword, matched on the RAW argument before `path.resolve`, so a directory
+                // genuinely named `auto` is still reachable as `./auto`. See ./discover.mjs.
+                if (root === AUTO) {
+                    forced = true;
+                    continue;
+                }
                 // A root that is not there is a fact about the filesystem, not a pack that failed to
                 // resolve — and reporting it as the latter sends an author to the one file that is not
                 // at fault. Same distinction as ../.portulan/memory/verify-preconditions-fail-closed.md.
@@ -1903,7 +1945,15 @@ export function run(argv, options = {}) {
         const policy = readJson(policyFile, "the gate policy");
         // The cascade's middle layer, composed before the policy is parsed so that a pack's fragment
         // is validated by exactly the code that validates a hand-written rule.
-        const { contributions, unresolved } = packContributions(workspaceRoot, workspaceDir, namedRootsOption(workspaceRoot, namedRoots));
+        // The thunk means the host's plugin record is read only on a path where it can win — which is
+        // what keeps `compile --check`, a required check that names no root, independent of host state.
+        const { contributions, unresolved, plan } = packContributions(workspaceRoot, workspaceDir, {
+            named: namedRoots,
+            discovery: () => discoverPackRoots(),
+            forced,
+        });
+        // Under `--matrix` only: this line moves with what is installed, and `--check` byte-compares.
+        if (plan && showMatrix) say(`packs: resolution root ${plan.source} — ${plan.why}`);
         const composed = composeFragments(policy, contributions);
         const parsed = parse(composed.policy);
         const source = path.relative(workspaceRoot, policyFile).split(path.sep).join("/");

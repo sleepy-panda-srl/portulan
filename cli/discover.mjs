@@ -521,6 +521,180 @@ export function run(argv, options = {}) {
     return EXIT[verdict.state] ?? 2;
 }
 
+// ===========================================================================================
+// Pack-resolution roots
+// ===========================================================================================
+//
+// The second half of row 7's discovery clause (#123). Everything above resolves a WORKSPACE by name,
+// which is what a pointer needs; this resolves the roots a declared PACK is looked up under, which is
+// what `--pack-root` needed a value for.
+//
+// It is built on `readInstalls` above rather than on a second reader — the two halves landed as
+// separate pull requests (#181 and #183) and each shipped its own record reader, which is the
+// three-tools-two-semantics defect `../cli/compile.mjs`'s `namedRootsOption` records. Reconciled on
+// merge: the reader, the config directory and the record-version refusal are this file's, once.
+
+/**
+ * The value of `--pack-root` that means *discover it*, rather than naming a directory.
+ *
+ * Matched against the **raw argument, before any path resolution**, so a directory genuinely called
+ * `auto` stays reachable as `./auto` or by an absolute path. A keyword in a value space that until now
+ * held only paths is a spelling whose meaning this change flips, so the escape is stated in the help
+ * text everywhere, and in the missing-value error of the three tools that resolve roots themselves
+ * (`compile`, `doctor`, `index`). `init` and `vendor` forward roots rather than resolving them and
+ * carry it in their usage text only — narrower than "every parse error", which is what this sentence
+ * said until a checkpoint checked it.
+ */
+export const AUTO = "auto";
+
+/**
+ * Is this directory a pack-resolution root — does it hold `<category>/<name>/pack.json`?
+ *
+ * Asking the RESOLVER's own question rather than looking for a directory named `packs` is what makes
+ * this work on both shapes a plugin lands in, and the first version of this function did not:
+ *
+ * - **Repository-shaped** — the plugin IS a repository checkout (`source: "./"`), so its packs sit
+ *   under `<installPath>/packs`. The engine plugin is this shape.
+ * - **Flat** — the plugin ships a pack family directly, so the CATEGORIES are at the install root:
+ *   `<installPath>/rituals/checkpoints/pack.json`. `portulan-checkpoints@portulan-internal` is this
+ *   shape, and it is the pack this project's own workspace composes.
+ *
+ * Probing only the first meant discovery could not see either plugin the private feed actually ships,
+ * with a green suite throughout, because the fixtures encoded the same assumption as the code. Found
+ * by a pre-commit checkpoint that looked at a real install — `.portulan/memory/`'s standing lesson:
+ * a harness you write to check your own change inherits your blind spot.
+ */
+export function isPackRoot(dir) {
+    let categories;
+    try {
+        categories = fs.readdirSync(dir, { withFileTypes: true });
+    } catch {
+        return false;
+    }
+    for (const category of categories) {
+        if (!category.isDirectory() || category.name.startsWith(".")) continue;
+        let packs;
+        try {
+            packs = fs.readdirSync(path.join(dir, category.name), { withFileTypes: true });
+        } catch {
+            continue;
+        }
+        for (const pack of packs) {
+            if (!pack.isDirectory()) continue;
+            if (fs.existsSync(path.join(dir, category.name, pack.name, "pack.json"))) return true;
+        }
+    }
+    return false;
+}
+
+/**
+ * Pack-resolution roots discovered from the host's plugin cache.
+ *
+ * Returns `{ ok, roots, installs, why }`. `ok: false` is **could not look** — the record was absent or
+ * unreadable — and is never the same answer as `ok: true` with no roots, which is *looked, found
+ * nothing installed that carries packs*. `readInstalls` keeps those three states apart at the source
+ * and this preserves the distinction rather than flattening it.
+ *
+ * Both shapes are offered per install, repository-shaped first; `resolvePack` is first-match-wins, and
+ * no plugin carries both.
+ */
+export function discoverPackRoots(options = {}) {
+    const read = readInstalls(options);
+    if (read.state !== "read") {
+        return {
+            ok: false,
+            roots: [],
+            installs: [],
+            why: `${read.path} could not be read (${read.state}${read.detail ? ` — ${read.detail}` : ""}). Discovery could not look; this is not the same as finding nothing installed`,
+        };
+    }
+    const roots = [];
+    const contributing = [];
+    for (const install of read.entries) {
+        for (const candidate of [path.join(install.installPath, "packs"), install.installPath]) {
+            if (!isPackRoot(candidate)) continue;
+            roots.push(candidate);
+            contributing.push({ ...install, root: candidate });
+        }
+    }
+    return { ok: true, roots, installs: contributing, why: null };
+}
+
+/**
+ * Apply the precedence rule to the sources of a pack-resolution root.
+ *
+ * ## Precedence, never union
+ *
+ * Two ratified texts describe this and use the verb "add" for different objects, which reads as a
+ * contradiction until the objects are named:
+ *
+ * - **The row** (`docs/plan.md` row 7): *"an explicitly named root is never silently overridden —
+ *   discovery adds a root only where none was named"*. The object is a **named** root; discovery
+ *   loses to `--pack-root`.
+ * - **#123's closing constraint:** *"Discovery that silently adds roots would reintroduce exactly the
+ *   substitution the pre-commit checkpoint caught."* The object is the **`tree`-derived** root, which
+ *   whatever is in force must REPLACE rather than be searched beside — a union lets a copy lying in
+ *   the local tree satisfy *"this pack resolved from the feed"*.
+ *
+ * Both hold under one rule, strict precedence with no union at any step: **named > discovered >
+ * derived**.
+ *
+ * ## Discovery runs only when ASKED, and that is narrower than the row reads
+ *
+ * `--pack-root auto` is the whole trigger. An earlier draft also gave a discovered root, unasked, to a
+ * workspace deriving none — the most natural reading of *"optional where discovery finds a root"*. A
+ * pre-commit checkpoint priced it: `examples/workspace.json` declares packs and no `tree`, and
+ * `.portulan/verify/doctor.sh` grades `examples`, so that branch made a **required recipe** read
+ * `~/.claude` on every run — and `doctor` FAILS an unresolved pack where a root exists while merely
+ * NOTING it where none does. The recipe's verdict would have moved with whatever happened to be
+ * installed: red locally, green in CI.
+ *
+ * So what the clause buys survives where it matters — nobody has to know the cache path — but
+ * `--pack-root` is not thereby literally *optional*, and calling it that would be an overclaim.
+ * Recorded as a narrowing and flagged for the maintainer; the broader default is one branch here.
+ *
+ * `discovery` may be a THUNK, and every branch that cannot use it must not call it: that is what keeps
+ * `compile --check` — a required check that names no root — independent of host state.
+ */
+export function resolutionRoots({ named = [], derived = [], discovery = null, forced = false } = {}) {
+    let cached;
+    const resolveDiscovery = () => {
+        if (cached === undefined) cached = typeof discovery === "function" ? discovery() : discovery;
+        return cached;
+    };
+
+    if (named.length) {
+        // Deliberately does not consult discovery: the row's guarantee is that a named root is never
+        // silently overridden, and the cheapest way to keep that true is to have nothing to override
+        // it with on this branch.
+        return { roots: [...named], source: "named", why: "named on the command line" };
+    }
+    if (forced) {
+        const found = resolveDiscovery();
+        if (!found) return { roots: [], source: "none", why: "discovery was requested and did not run" };
+        if (!found.ok) return { roots: [], source: "none", why: found.why };
+        return {
+            roots: [...found.roots],
+            source: "discovered",
+            why: found.roots.length
+                ? `discovered in the host plugin cache (${found.roots.length} root(s))`
+                : "discovery ran and found no installed plugin carrying packs — the resolution set is empty rather than falling back to the tree-derived root, so a pack cannot resolve from a local copy here",
+        };
+    }
+    if (derived.length) {
+        return {
+            roots: [...derived],
+            source: "derived",
+            why: "derived from the workspace manifest's `tree` — pass `--pack-root auto` to resolve from the host plugin cache instead",
+        };
+    }
+    return {
+        roots: [],
+        source: "none",
+        why: "no root was named and none is derivable from the manifest; discovery was not asked for (`--pack-root auto`)",
+    };
+}
+
 if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) {
     process.exitCode = run(process.argv.slice(2));
 }

@@ -1736,7 +1736,12 @@ describe("the packs a workspace declares", () => {
         const dir = tree(scratch(), { ...minimalFiles, "workspace.json": JSON.stringify(manifest) });
         const { findings } = await inspect(dir, { schema: SCHEMA });
         assert.equal(severities(checks(findings, "packs"), "fail").length, 0, text(findings));
-        assert.match(text(checks(findings, "packs")), /no \`tree\`/);
+        // The WORDING moved when discovery landed: "no roots to search" now has more than one cause —
+        // no `tree`, or `--pack-root auto` finding nothing on a workspace that HAS one — so the sentence
+        // names the cause it actually had instead of asserting the first. The severity is the rule here,
+        // and it is unchanged: reported, never failed.
+        assert.match(text(checks(findings, "packs")), /no packs root to search/);
+        assert.match(text(checks(findings, "packs")), /none is derivable from the manifest/);
     });
 
     // Normative in spec/pack.schema.json, and for one pre-commit checkpoint implemented nowhere while

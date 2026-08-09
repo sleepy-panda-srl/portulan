@@ -41,6 +41,25 @@ records how things were found. This is per *release* and records what a reader g
 
 ## Unreleased
 
+**A pack root can be discovered instead of typed.** `--pack-root auto` reads the same installed-plugin
+record the pointer half reads — `<config>/plugins/installed_plugins.json`, `CLAUDE_CONFIG_DIR` honoured,
+no network — and resolves a pack against the plugin it was installed from, so an adopter no longer has
+to know that the install landed at `<cache>/<marketplace>/<plugin>/<version>/` and repeat that path on
+every invocation. It reads **both** shapes a plugin ships in: packs under `packs/` for a plugin that is
+a repository checkout, and categories at the install root for a flat one, which is what this project's
+own private feed actually ships. On `compile`, `doctor`, `index`, `init` and `vendor`.
+
+Four limits, each a place this could read as more than it is. **Precedence, never union — named >
+discovered > derived:** a root you name is never overridden, and a discovered one *replaces* the
+`tree`-derived root rather than being searched beside it, so *"this pack resolved from the feed"* still
+cannot be satisfied by a copy lying in the local tree. **`auto` finding nothing yields the empty set**,
+not the derived root. **Discovery runs only when asked**, so `--pack-root` is not literally optional —
+what stops being necessary is knowing the path; that is narrower than the milestone row's wording and
+deliberate, because an unasked-for discovered root would make `.portulan/verify/doctor.sh` read
+`~/.claude` on every run and answer differently per machine. And **`--repo-root` stays named-only**: a
+repository checkout is not something a plugin record lists. Closes
+[#123](https://github.com/sleepy-panda-works/portulan/issues/123).
+
 **A repository governed from a feed now boots to its workspace instead of to a note saying where it
 is.** A `.portulan/workspace.json` of `kind: pointer` names the workspace that governs the repository;
 until now nothing dereferenced that name, so `/portulan` reported *not installed here* about a
@@ -86,8 +105,9 @@ deleted rather than adapted._
 **The boot reports the pack layer, and stops denying two things this project has.** `/portulan` read a
 workspace's slots and never its `packs`, so the middle of the cascade — the layer between the engine and
 a team's own policy — went unmentioned in every boot, and a reader could not tell a composed ritual from
-an invocable one. It is now read and reported with its four limits, each of them milestone 7's and owed
-rather than broken: nothing discovers the root a pack resolves against, a pack's skills register **only
+an invocable one. It is now read and reported with its four limits — **the first has since landed and
+the other three are still milestone 7's, owed rather than broken**: the root a pack resolves against was
+discovered by nothing (closed by the pack-root entry above), a pack's skills register **only
 where the plugin declares the directory that actually holds them** — a host expands a declared skills
 root one level and no further, so a root naming a family of packs registers nothing, silently — its
 personas reach the workspace's own layer but not the host, and its verify recipes are declared rather

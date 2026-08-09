@@ -167,17 +167,17 @@ many as it is given, and named roots **replace** the derived one rather than bei
 that is what lets *"this pack resolved from the feed"* mean something a copy lying in the local tree
 cannot satisfy. Where a pack resolves, its gate-policy fragments reach the compiled policy,
 add-restriction-only. Nothing here is pinned — a `packs` entry is a name, and the version is whatever
-the root holds. Four things do not follow, and **each is milestone 7's, owed rather than broken**:
+the root holds. Four things do not follow. **The first has since landed and three are still milestone
+7's, owed rather than broken** — the split is stated because a bare count beside a mechanism is the class
+[#133](https://github.com/sleepy-panda-works/portulan/issues/133) names, and "four" alone goes stale the
+moment one of them ships:
 
-- **Nothing discovers the root.** No host's plugin cache is read to find one. **This is now the
-  narrower half of milestone 7's discovery rather than the whole of it** — step 2a resolves a
-  *pointer's governor* out of that same cache, and a *pack root* is deliberately not defaulted from it
-  ([#123](https://github.com/sleepy-panda-works/portulan/issues/123)), because a named root **replaces**
-  the derived one and a discovered root that silently joined the search would end that property. Until
-  it lands, a workspace declaring no `tree` derives no root, and unless one is named, its packs are
-  reported unresolvable — so *"declared"* and *"resolved"* are two states here, and which one you are in
-  depends on a path somebody typed. **A workspace resolved from a pointer is in exactly the same state
-  about its own packs as an in-repo one.**
+- **Discovering the root — LANDED at milestone 7** (#123), and in the CLI only. `--pack-root auto` reads
+  the host's installed-plugin record, in both shapes a plugin lands in, and **only when asked**: a named
+  root **replaces** the derived one, and a discovered root that silently joined the search would end that
+  property. So *"declared"* and *"resolved"* are still two states here, and a boot cannot assume a
+  declared pack resolved from a feed unless somebody said `auto`. **A workspace resolved from a pointer
+  is in exactly the same state about its own packs as an in-repo one.**
 - **A pack's skills register only where the plugin declares the directory that actually holds them.**
   A host expands a declared skills path **one level** and no further, so a root pointing at a family of
   packs — `packs/rituals/`, with skills at `<pack>/skills/<skill>/` — registers **nothing**, silently,
