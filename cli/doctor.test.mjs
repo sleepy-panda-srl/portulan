@@ -1885,6 +1885,20 @@ describe("a repository is governed by exactly one workspace", () => {
         ...extra,
     });
 
+    /**
+     * A host with nothing installed, injected into every inspect of a pointer below.
+     *
+     * Since milestone 7 `doctor` dereferences `governed_by` against the host's installed-plugin
+     * record (./discover.mjs), so an un-injected run reads the machine the suite is on — and this
+     * project's own maintainer has the governing workspace of these very fixtures installed. Without
+     * this the suite would print one sentence on his laptop and another in CI, which is the class of
+     * test that stops meaning anything without ever going red.
+     *
+     * `emptyHost()` is a fresh directory per call: no record file, so the resolver's `absent` branch
+     * answers, which is the state every machine without an install is in.
+     */
+    const emptyHost = () => ({ env: { CLAUDE_CONFIG_DIR: scratch() } });
+
     /** A portfolio workspace with cards for the repositories it covers. */
     const portfolio = (cards) => {
         const m = wellFormed();
@@ -1912,7 +1926,7 @@ describe("a repository is governed by exactly one workspace", () => {
             verify: { default: "docs", recipes: [{ id: "docs", run: "./verify.sh" }] },
         });
         const dir = tree(scratch(), { ...minimalFiles, "workspace.json": JSON.stringify(m) });
-        const { findings } = await inspect(dir, { schema: SCHEMA });
+        const { findings } = await inspect(dir, { schema: SCHEMA, ...emptyHost() });
         const failures = severities(checks(findings, "residence"), "fail");
         assert.equal(failures.length, 1, text(findings));
         assert.match(text(failures), /governed by exactly one workspace/);
@@ -1935,7 +1949,7 @@ describe("a repository is governed by exactly one workspace", () => {
         // list, so a pointer taking the ordinary path fails a check about a slot it CORRECTLY does not
         // carry: green because the manifest is right, red because the validator did not know that.
         const dir = tree(scratch(), { "workspace.json": JSON.stringify(pointer()) });
-        const { findings } = await inspect(dir, { schema: SCHEMA });
+        const { findings } = await inspect(dir, { schema: SCHEMA, ...emptyHost() });
         assert.equal(severities(findings, "fail").length, 0, text(findings));
         const notes = text(checks(findings, "residence"));
         assert.match(notes, /governed by `sleepy-panda`/);
@@ -1952,7 +1966,7 @@ describe("a repository is governed by exactly one workspace", () => {
         const dir = tree(scratch(), {
             "workspace.json": JSON.stringify(pointer({ summary: "Governed by the Sleepy Panda portfolio workspace." })),
         });
-        const { findings } = await inspect(dir, { schema: SCHEMA });
+        const { findings } = await inspect(dir, { schema: SCHEMA, ...emptyHost() });
         assert.equal(severities(findings, "fail").length, 0, text(findings));
 
         // And the negative half: a key that is NOT on the list is still refused, so the exemption is the
@@ -1960,7 +1974,7 @@ describe("a repository is governed by exactly one workspace", () => {
         const bad = tree(scratch(), {
             "workspace.json": JSON.stringify(pointer({ packs: ["rituals/checkpoints"] })),
         });
-        const { findings: refused } = await inspect(bad, { schema: SCHEMA });
+        const { findings: refused } = await inspect(bad, { schema: SCHEMA, ...emptyHost() });
         assert.equal(severities(checks(refused, "residence"), "fail").length, 1, text(refused));
         assert.match(text(checks(refused, "residence")), /`packs`/);
     });
@@ -1969,9 +1983,124 @@ describe("a repository is governed by exactly one workspace", () => {
         const m = pointer();
         m.governed_by = { workspace: "sleepy-panda" };
         const dir = tree(scratch(), { "workspace.json": JSON.stringify(m) });
-        const { findings } = await inspect(dir, { schema: SCHEMA });
+        const { findings } = await inspect(dir, { schema: SCHEMA, ...emptyHost() });
         assert.equal(severities(findings, "fail").length, 0, text(findings));
         assert.doesNotMatch(text(checks(findings, "residence")), /delivered through/);
+    });
+
+    // ---- the pointer's name, dereferenced — milestone 7's discovery
+    //
+    // Until this landed, `doctor` on a pointer printed *"Nothing was fetched … the roots are named
+    // rather than found (milestone 7)"* and the boot skill instructed *"Do not fetch it … nothing
+    // here discovers one."* Both were true, and both were the whole of issue #134's open half: the
+    // repository said which workspace governs it and nothing anywhere turned that name into a
+    // directory. These four tests are the four answers a resolver is allowed to give.
+    //
+    // Every one injects its host. The negative control is the one to keep: an absent record must read
+    // as *not installed*, and an unreadable one must not.
+
+    /** A host carrying one installed plugin whose payload IS a workspace of the given name. */
+    const hostWith = (name, { plugin = "sleepy-panda", marketplace = "portulan-internal", version = "0.5.0" } = {}) => {
+        const config = scratch();
+        const installPath = path.join(config, "plugins", "cache", marketplace, plugin, version);
+        fs.mkdirSync(installPath, { recursive: true });
+        fs.writeFileSync(
+            path.join(installPath, "workspace.json"),
+            JSON.stringify({ portulan: { spec: "2.7" }, name, kind: "portfolio" }),
+        );
+        const record = path.join(config, "plugins", "installed_plugins.json");
+        fs.mkdirSync(path.dirname(record), { recursive: true });
+        fs.writeFileSync(
+            record,
+            JSON.stringify({ version: 2, plugins: { [`${plugin}@${marketplace}`]: [{ scope: "user", installPath, version }] } }),
+        );
+        return { config, installPath, env: { CLAUDE_CONFIG_DIR: config } };
+    };
+
+    test("a pointer whose governor IS installed resolves to the directory, and names it", async () => {
+        // #134's acceptance criterion at the `doctor` layer: the boot reports what this says.
+        const host = hostWith("sleepy-panda");
+        const dir = tree(scratch(), { "workspace.json": JSON.stringify(pointer()) });
+        const { findings, governor } = await inspect(dir, { schema: SCHEMA, env: host.env });
+        assert.equal(severities(findings, "fail").length, 0, text(findings));
+        assert.equal(governor.state, "resolved");
+        assert.equal(governor.root, host.installPath);
+        const notes = text(checks(findings, "residence"));
+        assert.match(notes, /is installed here/);
+        assert.match(notes, /sleepy-panda@portulan-internal/);
+        assert.match(notes, /version 0\.5\.0/);
+        // The root is actionable, and what to run against it is said rather than left to be guessed.
+        assert.match(notes, /to grade it/);
+        // The sentence this replaced must be gone: a document denying a capability that exists is the
+        // same defect as one claiming a capability that does not.
+        assert.doesNotMatch(notes, /the roots are named rather than found/);
+    });
+
+    test("a pointer whose governor is NOT installed gets the honest sentence, and stays green", async () => {
+        // A pointer is correct while its governor is uninstalled — a fresh clone is in exactly that
+        // state, and so is every CI run. Failing here would red an honest manifest.
+        const dir = tree(scratch(), { "workspace.json": JSON.stringify(pointer()) });
+        const { findings, governor } = await inspect(dir, { schema: SCHEMA, ...emptyHost() });
+        assert.equal(severities(findings, "fail").length, 0, text(findings));
+        assert.equal(governor.state, "not-installed");
+        const notes = text(checks(findings, "residence"));
+        assert.match(notes, /is not installed here/);
+        assert.match(notes, /never the network/);
+        assert.doesNotMatch(notes, /to grade it/);
+    });
+
+    test("the wrong feed is not a hit, and the near miss is reported rather than swallowed", async () => {
+        const host = hostWith("sleepy-panda", { marketplace: "some-public-feed" });
+        const dir = tree(scratch(), { "workspace.json": JSON.stringify(pointer()) });
+        const { findings, governor } = await inspect(dir, { schema: SCHEMA, env: host.env });
+        assert.equal(governor.state, "not-installed");
+        assert.match(text(checks(findings, "residence")), /which is not the feed `portulan-internal` this pointer names/);
+    });
+
+    test("an unreadable installed-plugin record is could-not-look, never absence", async () => {
+        const config = scratch();
+        const record = path.join(config, "plugins", "installed_plugins.json");
+        fs.mkdirSync(path.dirname(record), { recursive: true });
+        fs.writeFileSync(record, "{ not json");
+        const dir = tree(scratch(), { "workspace.json": JSON.stringify(pointer()) });
+        const { findings, governor } = await inspect(dir, { schema: SCHEMA, env: { CLAUDE_CONFIG_DIR: config } });
+        assert.equal(governor.state, "could-not-look");
+        assert.equal(severities(findings, "fail").length, 0, text(findings));
+        assert.match(text(checks(findings, "residence")), /never \*not installed\*/);
+    });
+
+    test("the resolver is injectable, so a surface can be tested without a host at all", async () => {
+        // The seam the boot skill's own demonstration uses. It also pins that `doctor` prints the
+        // resolver's OWN sentence rather than paraphrasing it into a second carrier.
+        const dir = tree(scratch(), { "workspace.json": JSON.stringify(pointer()) });
+        let asked = null;
+        const { findings } = await inspect(dir, {
+            schema: SCHEMA,
+            discover: (governedBy) => {
+                asked = governedBy;
+                return { state: "ambiguous", sentence: "a sentence only the resolver could have written" };
+            },
+        });
+        assert.deepEqual(asked, { workspace: "sleepy-panda", feed: "portulan-internal" });
+        assert.match(text(checks(findings, "residence")), /a sentence only the resolver could have written/);
+    });
+
+    test("NO discovery outcome moves this tool's verdict — all four leave a compliant pointer green", async () => {
+        // The invariant, asserted rather than trusted to the three cases above happening to agree.
+        // `doctor`'s exit code is a statement about a WORKSPACE; letting a host's install state move
+        // it would make the verdict a fact about somebody's laptop — and CI, where nothing is ever
+        // installed, would then disagree with every developer machine. Named at the session-open
+        // checkpoint, where the plan's word for the two-candidate case was "refuse", which reads as a
+        // failure and is not one.
+        const dir = tree(scratch(), { "workspace.json": JSON.stringify(pointer()) });
+        for (const state of ["resolved", "not-installed", "ambiguous", "could-not-look"]) {
+            const { findings } = await inspect(dir, {
+                schema: SCHEMA,
+                discover: () => ({ state, root: state === "resolved" ? dir : null, sentence: `state: ${state}` }),
+            });
+            assert.equal(severities(findings, "fail").length, 0, `${state} must not fail: ${text(findings)}`);
+            assert.match(text(checks(findings, "residence")), new RegExp(`state: ${state}`));
+        }
     });
 
     test("the schema requires `governed_by` of a pointer and `slots`/`verify` of a workspace", async () => {
