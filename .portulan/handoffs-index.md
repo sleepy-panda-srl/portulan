@@ -2,10 +2,11 @@
 
 > Generated from `handoffs/` by `node cli/index.mjs`. Do not edit by hand: it is regenerated
 > and byte-compared, so a hand-edit survives exactly until the next run.
-> 70 handoff(s), newest first. No budget: the series is append-only, so
+> 71 handoff(s), newest first. No budget: the series is append-only, so
 > the only remedy a budget could ask for is one this project rules out.
 
 - 2026-08-09 · [Handoff — the pointer had a name and nothing dereferenced it](handoffs/2026-08-09-the-pointer-had-a-name-and-nothing-dereferenced-it.md)
+- 2026-08-09 · [Handoff — the four merged, and one issue closed by a keyword nobody meant](handoffs/2026-08-09-the-four-merged-and-an-issue-closed-by-accident.md)
 - 2026-08-08 · [Handoff — the store had thirty-five bytes left, and one record was a fifth of it](handoffs/2026-08-08-the-store-that-outgrew-its-index.md)
 - 2026-08-07 · [Handoff — the three merged, the board refined, and a checkpoint that was owed and not run](handoffs/2026-08-07-the-three-merged-and-a-checkpoint-that-was-owed.md)
 - 2026-08-07 · [Handoff — the checks that said more than they saw](handoffs/2026-08-07-the-checks-that-said-more-than-they-saw.md)
