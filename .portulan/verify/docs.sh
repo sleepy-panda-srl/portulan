@@ -174,9 +174,12 @@ done <"$manifest"
 # A tab inside a link **target** is the reachable way a record splits into the wrong number of fields,
 # and the parse arm below refuses rather than guesses — "could not run", never a verdict about links it
 # mis-read. One such link therefore refuses the whole recipe, which is the same trade every other
-# precondition here makes. (A tracked *path* containing a tab cannot get this far: git quotes control
-# characters regardless of `core.quotePath`. #68 is the rail that would make such a path impossible in
-# the first place.)
+# precondition here makes. (A tracked *path* containing a tab cannot get this far, and the reason is
+# narrower than this line used to give: **git C-quotes a control character in `ls-files` output even
+# under `core.quotePath=false`** — measured — so the raw byte never enters the lists built above.
+# Nothing makes such a path *impossible*; git will track it. This cited #68 as the rail that would,
+# which was wrong twice over: #68 is closed, and the rail it shipped — `./control-chars.sh` — scans
+# file CONTENTS and never path names.)
 : >"$tmp/links"
 awk -F'\t' -v tracked_file="$tracked" '
     # Returns the repository-relative path, "" for the repository ROOT itself, or the sentinel for a
@@ -186,7 +189,34 @@ awk -F'\t' -v tracked_file="$tracked" '
     # directory itself, resolved below by the directory-prefix rule, not by the root case — and only `../`
     # reaches the root. Landing on the root is green, because this repository always carries it; walking
     # off the top is red. Folding the two together produced a false red carrying a confidently wrong
-    # reason, which is worse than either alone. The sentinel is a byte no path can hold.
+    # reason, which is worse than either alone.
+    #
+    # **The sentinel is `\001`, and what makes it safe is not that no path can hold that byte.** A path
+    # can: git tracks a filename of any bytes but NUL and `/`, measured rather than assumed. What holds
+    # is narrower, and it belongs to this recipe rather than to the filesystem — the lists compared here
+    # are built by `git ls-files` WITHOUT `-z`, and git C-quotes a control character in that output
+    # **regardless of `core.quotePath`**, so `a<0x01>b` arrives as the printable spelling `"a\001b"`
+    # and never as the byte. `-z` is what emits it raw, which is why a recipe reading `-z` — such as
+    # `./control-chars.sh` — could not reuse this sentinel unchanged.
+    #
+    # **That covers the PATH channel only, and the boundary is stated rather than left to be found.** A
+    # raw `\001` reaches this function through a link TARGET, where grep passes the byte on unchanged.
+    # The collision test below is `norm == "\001"`, an EXACT equality — so what collides is a target
+    # whose WHOLE normalised path is that single byte, not one that merely contains it: `\001` collides,
+    # `a\001b` does not. Narrow, and stated narrowly on the second pass because the first version of
+    # this very paragraph said "such a target normalises to the sentinel" and so overclaimed the fix
+    # for an overclaim. Where it does collide the recipe prints the confidently wrong "escapes the
+    # repository root" diagnosis this block calls worse than either fault alone; nothing here closes
+    # that, and `./control-chars.sh` reds such a tree only when it runs, which the Stop-gate does not do
+    # for it.
+    #
+    # The sentence this replaces read *"a byte no path can hold"*: an overclaim guarding a real
+    # invariant, which is the commonest shape in the table on issue #133 and the one instance that the
+    # issue deliberately left unfixed.
+    #
+    # NOTE for anyone editing this block: it is inside a single-quoted awk program, so an apostrophe
+    # here terminates the shell string and the recipe dies with a syntax error two hundred lines down.
+    # That happened once, while writing this very comment.
     function normalize(dir, path,    joined, n, c, i, out, m, st) {
         joined = (dir == "." ? path : dir "/" path)
         n = split(joined, c, "/")

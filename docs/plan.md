@@ -2050,3 +2050,14 @@ _The seam applies here too: no client-identifying references._
   cuts against accepted proposal `0015` and so is an amendment, not a detail. Nine recipes green. Seam scan
   clean. · Fidelity: pre-commit A-W-A, five adjustments, all folded. Handoff:
   [`2026-08-09`](../.portulan/handoffs/2026-08-09-a-lead-is-not-a-cause-and-the-gate-is-not-required.md).
+
+- 2026-08-09 · Outside the milestone track · **The correction was not the one the issue predicted.**
+  [#133](https://github.com/sleepy-panda-works/portulan/issues/133)'s deliberately-unfixed instance, plus `0022`
+  on the class. The sentinel claim was *"a byte no path can hold"*; **the narrowing #133 itself proposed is also
+  wrong** — git tracks any bytes but NUL and `/`. What holds is the recipe's own: `ls-files` without `-z`
+  C-quotes control characters **regardless of `core.quotePath`**, measured three ways. Also fixed: a citation to
+  closed #68 for a rail scanning contents not paths, and the new sentence's own residual overclaim. `0022`
+  **ACCEPTED as (b), amended**, by a Fable 5 supervisor under the maintainer's delegation — the draft's opener
+  would have minted a second slogan beside the skill's own epigraph, so the final text cites it. (a) filed as
+  #187; the two errata stand. **Closes #133.** Nine green. Seam scan clean. · Fidelity: pre-commit A-W-A folded.
+  Handoff: [`2026-08-09`](../.portulan/handoffs/2026-08-09-the-correction-was-not-the-one-the-issue-predicted.md).
