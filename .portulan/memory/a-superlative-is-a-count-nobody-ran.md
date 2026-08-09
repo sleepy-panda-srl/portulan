@@ -42,7 +42,7 @@ rule is *do not assert the ranking*, not *go and measure it*.
   finding the phrase is not read as an incomplete sweep.
 - **It does not ban ranking.** A ranking with a measurement behind it is a fact. What is banned is the
   bare superlative with nothing behind it.
-- **Nothing checks it.** A grep would find the phrase and would also find the 23 records it must not
+- **Nothing checks it.** A grep would find the phrase and would also find the 28 records it must not
   touch, so the check is red on arrival and permanently — which
   [`a-mandate-nothing-checks-is-already-broken.md`](a-mandate-nothing-checks-is-already-broken.md) is the
   rule about. The sweep is a one-time repair; the rule's job afterwards is to stop the phrase coming back.
