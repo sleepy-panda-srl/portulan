@@ -2304,8 +2304,50 @@ describe("a repository is governed by exactly one workspace", () => {
         const root = checkouts({ "tipar-api": { portulan: { spec: "2.7" }, name: "tipar-api", kind: "pointer" } });
         const { findings } = await inspect(dir, { schema: SCHEMA, repoRoots: [root] });
         assert.equal(severities(checks(findings, "residence"), "fail").length, 0, text(findings));
-        assert.match(text(checks(findings, "residence")), /names no governing workspace/);
+        // The phrasing widened to "no USABLE governing workspace" when #141 extended this branch from
+        // absent to invalid; the assertion's intent — the report branch fires and nothing is refused —
+        // is unchanged.
+        assert.match(text(checks(findings, "residence")), /names no usable governing workspace/);
         assert.doesNotMatch(text(findings), /undefined/);
+    });
+
+    test("a pointer whose governor is PRESENT but unusable is reported too — the third gap of one class", async () => {
+        // #141. The guard asked `=== undefined`, which catches ABSENT and not INVALID, so `""`, `null`
+        // and a non-string fell through to the conflicting-governor branch and were refused for naming
+        // a governor they do not name — a false red about somebody else's manifest, in the block whose
+        // own rule is *read, never validated*. Third gap of this class in this one block; the first two
+        // were a missing `governed_by.workspace` and an unrecognised `kind`.
+        for (const governor of ["", "   ", null, 7, {}, []]) {
+            const dir = portfolio(["tipar-api"]);
+            const root = checkouts({
+                "tipar-api": { portulan: { spec: "2.7" }, name: "tipar-api", kind: "pointer", governed_by: { workspace: governor } },
+            });
+            const { findings } = await inspect(dir, { schema: SCHEMA, repoRoots: [root] });
+            const residence = text(checks(findings, "residence"));
+            assert.equal(
+                severities(checks(findings, "residence"), "fail").length,
+                0,
+                `governor ${JSON.stringify(governor)} must not be refused: ${text(findings)}`,
+            );
+            assert.match(residence, /names no usable governing workspace/, JSON.stringify(governor));
+            // It names WHAT it received rather than leaving a reader to guess, and never prints the
+            // conflicting-governor sentence, which is the false red this closes.
+            assert.match(residence, /`governed_by.workspace` is /);
+            assert.doesNotMatch(residence, /as its governor/);
+        }
+
+        // The BOUNDARY, pinned rather than left in a comment: a padded slug is still a name the
+        // manifest DECLARES, so it stays a conflict. Judging its legality would be validating somebody
+        // else's workspace, which this block forbids — and a "helpful" two-sided trim would silently
+        // flip this red to green. A first draft at `cli/discover.mjs` went exactly that way once.
+        const dir = portfolio(["tipar-api"]);
+        const root = checkouts({
+            "tipar-api": { portulan: { spec: "2.7" }, name: "tipar-api", kind: "pointer", governed_by: { workspace: "  sleepy-panda  " } },
+        });
+        const { findings } = await inspect(dir, { schema: SCHEMA, repoRoots: [root] });
+        assert.equal(severities(checks(findings, "residence"), "fail").length, 1, text(findings));
+        // And the padding is visible in the refusal rather than hidden inside backticks.
+        assert.match(text(checks(findings, "residence")), /"  sleepy-panda  "/);
     });
 });
 

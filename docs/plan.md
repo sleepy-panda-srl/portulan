@@ -2093,3 +2093,11 @@ _The seam applies here too: no client-identifying references._
   pre-commit PWC **REQUEST-CHANGES**, all folded — it caught a **could-not-run flattened into a red** by `|| status=1` (third instance; `compile.sh` and
   `index.sh` carry the fix), `existsSync` following a dangling symlink into "none is owed", the relaxation shipping with **no test**, and a wrong version.
   Left: the feed's pin has not moved, so the real install still reports 0. Handoff: [`2026-08-09`](../.portulan/handoffs/2026-08-09-the-pack-the-feed-ships-declared-nothing.md).
+- 2026-08-09 · Off the milestone row · **A blank governor is no governor.** [#141](https://github.com/sleepy-panda-works/portulan/issues/141): `doctor`'s cross-repository
+  check guarded on `governed_by?.workspace === undefined`, catching **absent** and not **invalid**, so `""`, `null`, `7` and `{}` fell through and were
+  refused as a **conflicting governor** — a false red about somebody else's manifest, in the block whose own rule is *read, never validated*. The guard now
+  asks whether the name is **usable**; blank is no name, matching `cli/discover.mjs` at the other site. **Non-blank string and not *usable slug*** — a padded
+  name is still a name the manifest declares, so it stays a conflict, and a test pins that boundary rather than a comment. Suite 1128→1129, nine recipes.
+  Seam scan clean. · Fidelity: pre-commit PWC, all folded — it found the fix right and **incomplete**: the sibling branch three lines below raw-interpolated
+  the governor, `cli/vendor.mjs` carries the same class with `?? "(nobody)"` as `=== undefined` spelled another way, and `cli/init.test.mjs` named a suite in
+  a present tense this change falsifies. Handoff: [`2026-08-09`](../.portulan/handoffs/2026-08-09-a-blank-governor-is-no-governor.md).

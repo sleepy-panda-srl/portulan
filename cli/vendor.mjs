@@ -514,8 +514,15 @@ function carveOut(destDir, incomingName) {
         return { allow: new Set(), pointer: null };
     }
     if (manifest.governed_by?.workspace !== incomingName) {
+        // `?? "(nobody)"` was `=== undefined` spelled another way: it caught an ABSENT governor and
+        // read `""`, `null`, `7` and `{}` as names, printing `` `` and `` `[object Object]` `` into a
+        // refusal claiming a foreign residence. Same class as #141 one file over, found at that fix's
+        // pre-commit checkpoint. The refusal itself stands — vendor is about to overwrite, and
+        // fail-closed on a manifest it cannot read is the right direction — but it now says which of
+        // the two it met, because "a foreign residence" is false of a pointer naming nothing.
+        const declared = typeof manifest.governed_by?.workspace === "string" && manifest.governed_by.workspace.trim() !== "";
         throw new VendorError(
-            `${destDir} carries a pointer naming \`${manifest.governed_by?.workspace ?? "(nobody)"}\` as its governor, and the ` +
+            `${destDir} carries a pointer ${declared ? `naming \`${manifest.governed_by.workspace}\`` : `whose governor is unusable (${JSON.stringify(manifest.governed_by?.workspace)})`} as its governor, and the ` +
                 `workspace being moved in is \`${incomingName}\`. That is a foreign residence, not this switch's other half — ` +
                 `a repository is governed by exactly one workspace, and materialising over a pointer aimed somewhere else would ` +
                 `take governance from a workspace that never agreed to give it up`,
