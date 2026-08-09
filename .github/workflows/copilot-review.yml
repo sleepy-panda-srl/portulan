@@ -288,6 +288,12 @@ jobs:
                 # at the top of this file claiming the change achieved that goal — the claim was
                 # measured against the wrong layer.**
                 #
+                # **Every message about "the round" names `first_head` for the same reason** — `head`
+                # is the head of the last poll and diverges from the awaited round the instant the
+                # branch moves, so a superseded run would otherwise label its notes report with a SHA
+                # those notes are not about. Copilot caught one of the four; the other three are its
+                # siblings and moved with it.
+                #
                 # A run now waits for the round on the head it was TRIGGERED for, matched below
                 # against `first_head` rather than the head of the moment, and its notes are promoted
                 # for that commit. What it must not do is submit a verdict, and it does not: the
@@ -504,15 +510,15 @@ jobs:
                     # by a literal, which is #142 and the reason the branch order below now tests
                     # what it FOUND before it tests what it did not.
                     if [ -z "${present:-}" ] && [ -n "${anywhere:-}" ]; then
-                      report="**Could not parse the review body** on the round for \`${head}\`: it uses the word \`suppress\` and no section marker — a \`<summary>\` or a heading — matched. Copilot's markup has probably moved again, which it has done twice already (#142). Sweep \`/pulls/${PR_NUMBER}/reviews\` by hand and teach this step the new spelling. **This is not a report of zero notes.**"
+                      report="**Could not parse the review body** on the round for \`${first_head}\`: it uses the word \`suppress\` and no section marker — a \`<summary>\` or a heading — matched. Copilot's markup has probably moved again, which it has done twice already (#142). Sweep \`/pulls/${PR_NUMBER}/reviews\` by hand and teach this step the new spelling. **This is not a report of zero notes.**"
                       notes_state='unparsable'
                       printf 'suppressed low-confidence notes: PARSE FAILED — the word is in the body and no marker matched\n'
                     elif [ -z "${present:-}" ]; then
-                      report="No suppressed low-confidence comments on the round for \`${head}\`. Read, not assumed — the word \`suppress\` does not occur anywhere in the review body, which is evidence of absence rather than a matcher failing to find what it was looking for."
+                      report="No suppressed low-confidence comments on the round for \`${first_head}\`. Read, not assumed — the word \`suppress\` does not occur anywhere in the review body, which is evidence of absence rather than a matcher failing to find what it was looking for."
                       notes_state='none'
                       printf 'suppressed low-confidence notes: none on this round\n'
                     elif [ -z "${count:-}" ] || [ -z "${notes:-}" ]; then
-                      report="**Could not parse the suppressed-comments block** on the round for \`${head}\`, though the body contains one. Copilot's markup has probably changed — read the review body by hand and fix the extraction. **This is not a report of zero notes.**"
+                      report="**Could not parse the suppressed-comments block** on the round for \`${first_head}\`, though the body contains one. Copilot's markup has probably changed — read the review body by hand and fix the extraction. **This is not a report of zero notes.**"
                       notes_state='unparsable'
                       printf 'suppressed low-confidence notes: PARSE FAILED — block present, extraction empty\n'
                     else
@@ -521,15 +527,16 @@ jobs:
                       # column-0 line ENDS this YAML block scalar. That broke the file once already
                       # and the shell tests still passed, because they were fed a hand-sliced copy of
                       # the block instead of one YAML had parsed.
-                      report="**${count} comment(s) suppressed as low confidence** on the round for \`${head}\`."
-                      report="${report}"$'\n'"Each is promoted to a review thread by the"
-                      report="${report} promotion step below, so they carry state and gate the"
-                      report="${report} merge through required_conversation_resolution — shape 1"
-                      report="${report} of proposal 0021, the maintainer's ruling of 2026-08-07."
-                      report="${report} Answer each ON ITS OWN THREAD; the quote below is a"
-                      report="${report} convenience and not the channel. If the promotion step"
-                      report="${report} reports fewer posted than counted here, the remainder is"
-                      report="${report} ungated and this report is where it surfaces."$'\n\n'"${notes}"
+                      report="**${count} comment(s) suppressed as low confidence** on the round for \`${first_head}\`."
+                      report="${report}"$'\n'"The promotion step below ATTEMPTS a review thread"
+                      report="${report} for each — shape 1 of proposal 0021, the maintainer's"
+                      report="${report} ruling of 2026-08-07 — and it is best-effort: it can"
+                      report="${report} refuse to run, and a note the diff cannot carry falls"
+                      report="${report} back to an ungated comment. **That step's own"
+                      report="${report} posted/already-present/unattachable line is the only"
+                      report="${report} statement of what is actually gated; this report is not"
+                      report="${report} one.** Answer each on its thread where it has one, and"
+                      report="${report} the quote below is a convenience, not the channel."$'\n\n'"${notes}"
                       notes_state='present'
                       # The raw notes, filed for the verdict step: a review body travels badly
                       # through GITHUB_OUTPUT (a delimiter collision away from truncation), and
@@ -675,7 +682,7 @@ jobs:
             printf 'budget, which stays red because a gate that opens when it is unwell is not a gate.\n'
             printf 'The last head SHA read successfully was %s, which may be stale — do not act on it.\n' "${head:-none}"
           else
-            printf '::error::no Copilot review for the current head commit (%s) after %ss of waiting.\n' \
+            printf '::error::no Copilot review for the commit this run awaited (%s) after %ss of waiting.\n' \
               "$first_head" "$SECONDS"
             printf 'A pull request may not merge until Copilot has reviewed the commit it is actually\n'
             printf 'merging, and until that feedback is resolved. Conversation resolution covers the\n'
@@ -905,6 +912,12 @@ jobs:
 
           key="$RUNNER_TEMP/app.pem"
           umask 077
+          # Removed when this step's shell exits, however it exits. `$RUNNER_TEMP` dies with the
+          # runner, so the exposure is bounded either way — but "bounded" is not "absent", and a
+          # private key sitting readable for the rest of a job is available to every later step and to
+          # anything debugging one. Raised by Copilot on #176 against one of the three sites this
+          # repository writes it; all three move together.
+          trap 'rm -f "$key"' EXIT
           printf '%s\n' "$APP_KEY" >"$key"
           export PORTULAN_BOT_PRIVATE_KEY="$key"
           if ! token=$(node .portulan/tools/gh-bot-token.mjs); then
@@ -918,11 +931,33 @@ jobs:
           # The marker carries the path, the line and a CRC of the note text — `cksum` is POSIX and
           # needs nothing installed — so a REWORDED note on the same line is a new thread rather than a
           # silent drop, which is the direction to fail in.
+          # BOTH ENDPOINTS, because a promoted note can land in either. A note whose line is not in the
+          # diff falls through to the batched pull-request comment below, which is an ISSUE comment —
+          # invisible to `/pulls/{n}/comments`. Reading only the review comments would therefore
+          # repost every unattachable note on every round, which is the noise this dedup exists to
+          # prevent, aimed at exactly the notes that already had the worst time. Found by Copilot on
+          # #176, in the step that promotes Copilot's own notes.
           existing="$RUNNER_TEMP/portulan-existing-comments.txt"
-          if ! GH_TOKEN="$token" gh api --paginate "repos/${GITHUB_REPOSITORY}/pulls/${PR_NUMBER}/comments" --jq '.[].body' >"$existing" 2>/dev/null; then
-            warn "could not read the existing review comments — refusing to promote, because posting without the dedup read would repost every note on every round."
-            exit 0
-          fi
+          : >"$existing"
+          # FILTERED TO THIS IDENTITY, because an unfiltered read trusts a marker anyone can type.
+          # The marker is a plain HTML comment in a public body; anybody who can comment on a pull
+          # request could paste `<!-- portulan-note path=… line=… crc=… -->` and this step would read
+          # the note as already promoted and skip it — a finding suppressed by a stranger, silently,
+          # which is the one failure mode a promotion step must not have. Only comments written by the
+          # promoting identity count as evidence that a note was promoted. Raised by Copilot on #176 as
+          # a conditional ("if the workflow is updated to filter…"); the condition is met here.
+          # STDERR IS KEPT, not discarded. `2>/dev/null` here bought nothing and cost the only thing
+          # that makes this refusal actionable: whether the read failed on a 403, a 404, a rate limit
+          # or a network fault decides what the reader does next, and the warning without it says only
+          # that something went wrong. Same class as the `|| true` removed two rounds earlier — a
+          # diagnostic suppressed inside the branch that exists to report a fault. Copilot, #176.
+          for endpoint in "pulls/${PR_NUMBER}/comments" "issues/${PR_NUMBER}/comments"; do
+            err="$RUNNER_TEMP/portulan-dedup-err.txt"
+            if ! GH_TOKEN="$token" gh api --paginate "repos/${GITHUB_REPOSITORY}/${endpoint}" --jq '.[] | select(.user.login == "portulan-agent[bot]") | .body' >>"$existing" 2>"$err"; then
+              warn "could not read ${endpoint} — refusing to promote, because posting without a complete dedup read would repost notes on every round. The API said: $(tr '\n' ' ' <"$err" | cut -c1-300)"
+              exit 0
+            fi
+          done
 
           posted=0; skipped=0; orphaned=0
           orphans="$RUNNER_TEMP/portulan-orphans.md"
@@ -938,25 +973,38 @@ jobs:
               skipped=$((skipped + 1))
               return 0
             fi
-            full="**Copilot suppressed this as low confidence.** It is promoted to a thread so it carries state: address it or refuse it with a reason, and this thread gates the merge until it is resolved."
+            full="**Copilot suppressed this as low confidence.** It had no thread, no Resolve control and no state, so nothing distinguished answered from ignored. This one exists, so it gates: address it or refuse it with a reason. _(Not every note gets one — promotion is best-effort, and a note whose line the diff does not carry falls back to an ungated comment.)_"
             full="${full}"$'\n\n'"${body}"$'\n\n'"${marker}"
+            # EVERY POST KEEPS ITS STDERR, and on this one it is load-bearing: a 422 here is the
+            # ORDINARY outcome — the note's line is not in the diff — and it is what the file-level
+            # retry below exists for. A permission failure, a rate limit or an outage produce the same
+            # bare non-zero without it, so the chain would fall through all three tiers reporting
+            # "unattachable" when nothing was wrong with the line at all. Copilot, #176, after the same
+            # class was fixed on the dedup read one round earlier and left standing on all three POSTs.
+            perr="$RUNNER_TEMP/portulan-post-err.txt"
             if GH_TOKEN="$token" gh api --silent -X POST \
                  "repos/${GITHUB_REPOSITORY}/pulls/${PR_NUMBER}/comments" \
-                 -f commit_id="$head" -f path="$p_path" -F line="$p_line" -f side=RIGHT -f body="$full" 2>/dev/null; then
+                 -f commit_id="$head" -f path="$p_path" -F line="$p_line" -f side=RIGHT -f body="$full" 2>"$perr"; then
               posted=$((posted + 1))
               return 0
             fi
+            line_err=$(tr '\n' ' ' <"$perr" | cut -c1-200)
             # A line outside the diff cannot carry a thread — Copilot reports against the file, not
             # against the patch. Retried at file level, and only if THAT fails does the note fall
             # through to the batched comment below. Losing it silently is the one outcome refused.
             if GH_TOKEN="$token" gh api --silent -X POST \
                  "repos/${GITHUB_REPOSITORY}/pulls/${PR_NUMBER}/comments" \
-                 -f commit_id="$head" -f path="$p_path" -f subject_type=file -f body="$full" 2>/dev/null; then
+                 -f commit_id="$head" -f path="$p_path" -f subject_type=file -f body="$full" 2>"$perr"; then
               posted=$((posted + 1))
               return 0
             fi
+            warn "could not attach ${p_path}:${p_line} — line POST: ${line_err:-no error text}; file POST: $(tr '\n' ' ' <"$perr" | cut -c1-200)"
+            # The marker rides the orphan too. Without it the dedup read above can see the batched
+            # comment and still not recognise the note inside it, so an unattachable note would repost
+            # every round — the same defect one layer in, and the reason both halves of this were
+            # fixed together rather than the endpoint alone.
             orphaned=$((orphaned + 1))
-            printf -- '- **%s:%s** — could not be attached as a thread.\n\n%s\n\n' "$p_path" "$p_line" "$body" >>"$orphans"
+            printf -- '- **%s:%s** — could not be attached as a thread.\n\n%s\n\n%s\n\n' "$p_path" "$p_line" "$body" "$marker" >>"$orphans"
             return 0
           }
 
@@ -986,8 +1034,8 @@ jobs:
             # the job summary, which survives the runner and is the one surface left when the API will
             # not take them.
             if ! GH_TOKEN="$token" gh api --silent -X POST \
-                 "repos/${GITHUB_REPOSITORY}/issues/${PR_NUMBER}/comments" -f body="$note_body" 2>/dev/null; then
-              warn "could not post the batched comment for ${orphaned} unattachable note(s) — they are reproduced below and exist nowhere else on this pull request."
+                 "repos/${GITHUB_REPOSITORY}/issues/${PR_NUMBER}/comments" -f body="$note_body" 2>"$RUNNER_TEMP/portulan-batch-err.txt"; then
+              warn "could not post the batched comment for ${orphaned} unattachable note(s) — they are reproduced below and exist nowhere else on this pull request. The API said: $(tr '\n' ' ' <"$RUNNER_TEMP/portulan-batch-err.txt" | cut -c1-300)"
               if [ -n "${GITHUB_STEP_SUMMARY:-}" ]; then
                 printf '%s\n\n' "$note_body" >>"$GITHUB_STEP_SUMMARY"
               else
@@ -1089,6 +1137,12 @@ jobs:
           # RUNNER_TEMP for the same reason: wiped with the runner, unreachable by any commit.
           key="$RUNNER_TEMP/app.pem"
           umask 077
+          # Removed when this step's shell exits, however it exits. `$RUNNER_TEMP` dies with the
+          # runner, so the exposure is bounded either way — but "bounded" is not "absent", and a
+          # private key sitting readable for the rest of a job is available to every later step and to
+          # anything debugging one. Raised by Copilot on #176 against one of the three sites this
+          # repository writes it; all three move together.
+          trap 'rm -f "$key"' EXIT
           printf '%s\n' "$APP_KEY" >"$key"
           export PORTULAN_BOT_PRIVATE_KEY="$key"
           if ! token=$(node .portulan/tools/gh-bot-token.mjs); then
@@ -1168,7 +1222,7 @@ jobs:
           run_url="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
           if [ "$NOTES_STATE" = 'present' ]; then
             body="**Derived verdict: approve, with Copilot's suggestions attached.**"$'\n\n'
-            body="${body}Copilot's round on \`${head}\` raised no inline comment. Its ${NOTES_COUNT} suppressed low-confidence note(s) are quoted below **and have each been promoted to a review thread** by the step above, so they now carry state and gate the merge through \`required_conversation_resolution\` — the maintainer's ruling of 2026-08-07, shape 1 of proposal 0021. This approval is not their disposal: answer each on its own thread. The quote below is a convenience, not the channel."$'\n\n'
+            body="${body}Copilot's round on \`${head}\` raised no inline comment. Its ${NOTES_COUNT} suppressed low-confidence note(s) are quoted below, and the promotion step above **attempts** a review thread for each — shape 1 of proposal 0021, the maintainer's ruling of 2026-08-07. **Promotion is best-effort**: it can refuse to run, and a note the diff cannot carry falls back to an ungated comment, so this approval does not assert that every note below is gated. That step's own \`posted / already present / unattachable\` line is what says which. This approval is not their disposal either way: answer each on its thread where it has one."$'\n\n'
             body="${body}$(cat "$NOTES_FILE")"$'\n\n'
           else
             body="**Derived verdict: approve.**"$'\n\n'

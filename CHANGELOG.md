@@ -41,6 +41,28 @@ records how things were found. This is per *release* and records what a reader g
 
 ## Unreleased
 
+**Copilot's findings become threads, and a thread blocks.** A suppressed low-confidence note
+used to carry no thread, no Resolve control and therefore **no state** — nothing distinguished
+*answered* from *ignored*, and `CLEAN` could be true with several unread. Each one is now promoted to a
+review comment at its `file:line` by the agent identity, deduplicated on path, line and a checksum of
+the text so a re-raised note does not become a second thread, and gated by
+`required_conversation_resolution`. That is the maintainer's ruling of 2026-08-07, shape 1 of
+[`.portulan/proposals/0021-the-suppressed-channel-needs-a-state.md`](.portulan/proposals/0021-the-suppressed-channel-needs-a-state.md),
+taken over an aggregate thread per round with the price stated first: on
+[#167](https://github.com/sleepy-panda-works/portulan/pull/167) it would have been 26 threads on one
+pull request. Rule 3 of `a-review-loop-needs-a-bound.md` is amended in the same change, and the
+reasoning it replaces is kept rather than tidied away. A note the diff cannot carry falls back to a
+file-level comment and then to a batched pull-request comment, which is **surfaced but not gated** — so
+promotion is best-effort and the fallbacks are named rather than implied. Where the App credentials are
+absent the notes stay in the review body exactly as before. **Losing one silently is the single outcome
+refused**; gating every one of them is not claimed.
+
+_Why a relay rather than asking Copilot to post them itself: measured 2026-08-08, the
+`copilot_code_review` ruleset rule takes `review_draft_pull_requests` and `review_on_push` and nothing
+else, and no Copilot settings endpoint exists at repository or organisation level. Suppression happens
+on Copilot's side before anything here sees the review. If that knob ever appears, this machinery is
+deleted rather than adapted._
+
 **The boot reports the pack layer, and stops denying two things this project has.** `/portulan` read a
 workspace's slots and never its `packs`, so the middle of the cascade — the layer between the engine and
 a team's own policy — went unmentioned in every boot, and a reader could not tell a composed ritual from

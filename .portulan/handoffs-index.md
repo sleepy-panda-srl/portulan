@@ -2,22 +2,15 @@
 
 > Generated from `handoffs/` by `node cli/index.mjs`. Do not edit by hand: it is regenerated
 > and byte-compared, so a hand-edit survives exactly until the next run.
-<<<<<<< HEAD
-> 68 handoff(s), newest first. No budget: the series is append-only, so
-=======
-> 66 handoff(s), newest first. No budget: the series is append-only, so
->>>>>>> 5e652a8 (Shape 2 ships: the gate stops cancelling the run that surfaces the notes)
+> 69 handoff(s), newest first. No budget: the series is append-only, so
 > the only remedy a budget could ask for is one this project rules out.
 
 - 2026-08-08 · [Handoff — the store had thirty-five bytes left, and one record was a fifth of it](handoffs/2026-08-08-the-store-that-outgrew-its-index.md)
 - 2026-08-07 · [Handoff — the three merged, the board refined, and a checkpoint that was owed and not run](handoffs/2026-08-07-the-three-merged-and-a-checkpoint-that-was-owed.md)
 - 2026-08-07 · [Handoff — the checks that said more than they saw](handoffs/2026-08-07-the-checks-that-said-more-than-they-saw.md)
-<<<<<<< HEAD
+- 2026-08-07 · [Handoff — the channel that carried the findings, and the gate that threw them away](handoffs/2026-08-07-the-channel-that-carried-the-findings-and-lost-them.md)
 - 2026-08-07 · [Handoff — the boot reports the layer it never mentioned, and three claims stop pointing the wrong way](handoffs/2026-08-07-the-boot-reports-the-layer-it-never-mentioned.md)
 - 2026-08-07 · [Handoff — one release train carried two numbers, and two of four fields had no check at all](handoffs/2026-08-07-one-release-train-carried-two-numbers.md)
-=======
-- 2026-08-07 · [Handoff — the channel that carried the findings, and the gate that threw them away](handoffs/2026-08-07-the-channel-that-carried-the-findings-and-lost-them.md)
->>>>>>> 5e652a8 (Shape 2 ships: the gate stops cancelling the run that surfaces the notes)
 - 2026-08-07 · [Handoff — a fix is not done where it was found](handoffs/2026-08-07-a-fix-is-not-done-where-it-was-found.md)
 - 2026-08-03 · [Handoff — the wire reaches an artifact adopters receive, and the constitution catches up](handoffs/2026-08-03-the-wire-and-the-constitution-catches-up.md)
 - 2026-08-03 · [Handoff — the criterion batch, and a move that never happened](handoffs/2026-08-03-the-criterion-batch-and-a-move-that-never-happened.md)
