@@ -105,18 +105,27 @@ applied only where nobody is looking is not a cutoff.
    opens the gate, and they are not the same act or the same person's.
 2. **Records land last.** The handoff and the `docs/plan.md` Session log go in the final push or after
    the merge — never between rounds.
-3. **Threads block; suppressed notes do not — and they are answered in different places.** An
+3. **A thread blocks, and Copilot's findings become threads wherever one can be made — amended in place 2026-08-07.** An
    unresolved thread is the gate (`required_conversation_resolution`), and each one is answered **as a
    reply on that thread** — `POST /repos/{o}/{r}/pulls/{n}/comments/{comment_id}/replies` — never as a
    general pull-request comment. **The gate stays closed until the thread is resolved** — reply
    *placement* never opens it, per rule 1 — so what a misplaced answer costs is not the gate but the two
    things that lead to it: the reader hunting for a summary somewhere else on the page, and whoever
-   resolves finding nothing on the thread to judge. The low-confidence notes in a review *body* carry
-   **no thread and no comment id**, so there is nowhere for a reply to sit: they are answered once, in
-   a single batch, as a pull-request comment. **That is the exception, not the pattern** — a note is
-   answered in a general comment *because the platform gives it nowhere better*, and one batched reply
-   for a round's threads would be a choice to answer in the wrong place. They are **never a reason to
-   push again**.
+   resolves finding nothing on the thread to judge.
+
+   **The suppressed notes are threads too — where promotion succeeds.** That qualifier is the rule, not
+   a caveat on it. [`copilot-review.yml`](../../.github/workflows/copilot-review.yml) promotes each note
+   to a comment at its `file:line`, deduplicated on path, line and a checksum, and **a promoted note is
+   a reason to push exactly as a thread is** — the sentence this rule previously denied. **Promotion is
+   best-effort** — absent App credentials, a failed dedup read, or a line the diff does not carry each
+   leave a note surfaced-but-ungated — so **`required_conversation_resolution` does not always cover
+   this channel**, and the step's `posted / already present / unattachable` line is what says which
+   ([`a-stated-enforcer-must-be-the-real-one.md`](a-stated-enforcer-must-be-the-real-one.md)).
+
+   _Until 2026-08-07 it read "Threads block; suppressed notes do not" — sound about the notes, wrong
+   about the **channel**, which carried no state at all. **The maintainer ruled shape 1** of proposal
+   [`0021`](../proposals/0021-the-suppressed-channel-needs-a-state.md) with the price measured first:
+   **26 threads on one pull request** at #167's ratio, each needing his resolution._
 4. **Two fix-rounds, then triage.** After the second round of fixes, whatever remains becomes an issue
    linking the comment. It does not become another push, and it does not hold the merge.
    **A round whose finding is a SIBLING of an earlier round's fix does not spend the bound — added
@@ -184,12 +193,11 @@ false economies. What the exemption must not become is a licence to run forever,
 **deliberately outside the countable bound and belongs to the maintainer**, exactly as rule 4's *invalid*
 judgement does. The round count says how long the loop has run; only the taper says whether it is done.
 
-**Rule 3 is a calibration fix, not a downgrade.** GitHub itself files those comments as *low
-confidence*, and the repository had been treating them exactly like threads. On #63 the four
-suppressed notes ran: one correct fix with a wrong diagnosis, two flatly wrong (they claimed jq's
-`join` errors on null; it treats null as the empty string), and one genuinely right — a regression the
-rewrite had introduced. **They are worth reading. They are not worth blocking on**, and the surfacing
-step added by that pull request is what makes reading them cheap enough to keep doing.
+**Rule 3 was a calibration fix, reversed 2026-08-07 — argued at the rule, not restated here.** The shape
+of the mistake is what belongs at this altitude: right about the *notes* (two of #63's four were flatly
+wrong) and wrong about the *channel*. *Read them, do not block* holds only where reading is guaranteed,
+and on [#167](https://github.com/sleepy-panda-works/portulan/pull/167) thirteen of twenty-six never
+surfaced at all.
 
 ## What is deliberately NOT withdrawn
 
