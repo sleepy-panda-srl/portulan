@@ -2,7 +2,7 @@
 
 > Generated from `handoffs/` by `node cli/index.mjs`. Do not edit by hand: it is regenerated
 > and byte-compared, so a hand-edit survives exactly until the next run.
-> 80 handoff(s), newest first. No budget: the series is append-only, so
+> 81 handoff(s), newest first. No budget: the series is append-only, so
 > the only remedy a budget could ask for is one this project rules out.
 
 - 2026-08-09 · [Handoff — two sessions built one module, and the order decided itself](handoffs/2026-08-09-two-sessions-built-one-module-and-the-order-decided-itself.md)
@@ -13,6 +13,7 @@
 - 2026-08-09 · [Handoff — the four Now items, and a citation that was precise and wrong](handoffs/2026-08-09-the-four-now-items-and-a-citation-that-was-precise-and-wrong.md)
 - 2026-08-09 · [Handoff — the four merged, and one issue closed by a keyword nobody meant](handoffs/2026-08-09-the-four-merged-and-an-issue-closed-by-accident.md)
 - 2026-08-09 · [Handoff — the correction was not the one the issue predicted](handoffs/2026-08-09-the-correction-was-not-the-one-the-issue-predicted.md)
+- 2026-08-09 · [Handoff — the consolidation nobody finished](handoffs/2026-08-09-the-consolidation-nobody-finished.md)
 - 2026-08-09 · [Handoff — four readers of one set, and the fixture that agreed with the bug](handoffs/2026-08-09-four-readers-of-one-set-and-the-fixture-that-agreed-with-the-bug.md)
 - 2026-08-09 · [Handoff — a lead is not a cause, and the gate is not a required check](handoffs/2026-08-09-a-lead-is-not-a-cause-and-the-gate-is-not-required.md)
 - 2026-08-09 · [Handoff — a blank governor is no governor](handoffs/2026-08-09-a-blank-governor-is-no-governor.md)
