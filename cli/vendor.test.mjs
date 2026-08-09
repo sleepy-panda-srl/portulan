@@ -420,7 +420,7 @@ describe("the three refusals `init` and `new` paid for", () => {
     test("an lstat failure that is not ENOENT is a collision, never an absence", () => {
         // Only `ENOENT` means absent. `EACCES` means the question could not be answered, and answering
         // *nothing there* to an unanswerable question is the fail-open — "nothing looked" reported as
-        // "nothing wrong". Forced with a stub rather than with chmod, which root ignores and CI often runs as.
+        // "nothing wrong". Forced with a stub rather than with chmod, which root ignores and CI often runs as root.
         const failing = () => {
             const error = new Error("permission denied");
             error.code = "EACCES";

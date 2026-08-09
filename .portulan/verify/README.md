@@ -436,7 +436,8 @@ concerned, but did end this one's scan — so an attestation sitting after such 
 
 The fix is not a tighter regex. **The scan now reads the entry's start and length from the parser**, so
 the second definition is gone rather than corrected, and the two cannot drift apart again. That is the
-repair evolution.md prescribes (`core/operating/evolution.md`) — a fact with two carriers drifts at the weaker one — applied to
+repair `core/operating/evolution.md` prescribes — a fact with two carriers drifts at the weaker one —
+applied to
 the check that exists to catch it, which is why it is worth more than the narrow bug it closes.
 
 Raised as a suppressed low-confidence note on round 6 of
