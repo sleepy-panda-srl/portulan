@@ -104,12 +104,15 @@ test("an unbuilt subcommand's refusal names where it is ACTUALLY named", async (
     }
 });
 
-test("plugin-lint and librarian are NOT subcommands — anything unnamed is the maintainer's call", () => {
+test("plugin-lint, librarian and discover are NOT subcommands — anything unnamed is the maintainer's call", () => {
     // This is a rule, not an omission, so it is asserted rather than left to be noticed. Both tools
     // exist in this directory and are invoked directly by verify recipes; adding either here would mint
     // a subcommand neither vision.md nor row 7 names.
     assert.equal(find("plugin-lint"), null);
     assert.equal(find("librarian"), null);
+    // `discover` joined them at milestone 7 with plugin-cache discovery. It is a tool in `cli/`, run as
+    // `node cli/discover.mjs`, and the boot skill reads it — none of which makes it one of the eight.
+    assert.equal(find("discover"), null);
 });
 
 test("a built subcommand reaches its module and its arguments arrive unchanged", async () => {

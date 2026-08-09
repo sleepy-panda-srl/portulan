@@ -1853,8 +1853,11 @@ export function run(argv, options = {}) {
         // `packContributions` has taken `options.packRoots` since session 0 — shaped so that an adopter
         // resolving from an installed feed travels the same code path as a workspace whose packs ship
         // beside it — and nothing ever set it, so the parameter was reachable only from a test.
-        // Discovery of a host's plugin cache is deliberately NOT built here; that path is host-shaped,
-        // and an explicit flag is the honest surface until a row owned the discovery — **row 7 owns it as of the 2026-08-03 amendment** (#123), so the flag is the surface until that lands rather than until somebody undertakes it.
+        // Discovery of a host's plugin cache is deliberately NOT built here **for a PACK root**. The cache
+        // is read at milestone 7 by ./discover.mjs, which dereferences a POINTER's `governed_by` and nothing
+        // else; this flag stays named, because defaulting it from the same record would change what every
+        // existing run resolves against and would put a discovered root where #117 established that a named
+        // one REPLACES the derived one (#123).
         const namedRoots = [];
         for (let i = 0; i < argv.length; i += 1) {
             if (argv[i] === "--check") check = true;

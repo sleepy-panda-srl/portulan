@@ -138,7 +138,14 @@ const exists = (p) => fs.existsSync(p);
 
 /** GREEN by the real validator, never by a second opinion about what valid means. */
 async function green(dir, options = {}) {
-    const { findings } = await inspect(dir, { ...options });
+    // `env` points `doctor`'s pointer resolution at an EMPTY host, and it is not optional hygiene.
+    // Since milestone 7 a `kind: pointer` manifest has its `governed_by` dereferenced against the
+    // host's installed-plugin record (`cli/discover.mjs`), and half the directories this helper grades
+    // are pointers. Un-injected, these cases read the machine the suite runs on — and this project's
+    // own maintainer has the workspace these fixtures name installed — so the suite would behave one
+    // way on his laptop and another in CI. `cli/doctor.test.mjs` carries the same injection with the
+    // same reasoning. A fresh directory per call, so no record exists and the `absent` branch answers.
+    const { findings } = await inspect(dir, { env: { CLAUDE_CONFIG_DIR: scratch() }, ...options });
     return findings.filter((f) => f.severity === "fail");
 }
 

@@ -973,9 +973,16 @@ describe("doctor is green on what init emits — the bar this session must clear
     // The in-repo run needs `--pack-root`: with `tree` declared, doctor derives `<tree>/packs` and a
     // fresh repository has no such directory, so a bound pack cannot resolve. Named rather than
     // discovered, exactly as milestone 6 established and issue #123 still records.
+    // `CLAUDE_CONFIG_DIR` points at an EMPTY directory, and it is load-bearing for the pointer case
+    // below rather than tidiness. Since milestone 7 `doctor` dereferences a `kind: pointer` manifest's
+    // `governed_by` against the host's installed-plugin record (cli/discover.mjs), so an un-injected
+    // run reads whatever the developer happens to have installed — and the drafted pointer names a
+    // workspace by an arbitrary string. A fresh directory has no record, which is the state every
+    // machine without an install is in, and is the one this suite should be grading against.
     const doctor = (args) => {
+        const env = { ...process.env, CLAUDE_CONFIG_DIR: scratch() };
         try {
-            return { code: 0, out: execFileSync(process.execPath, [path.join(REPO, "cli", "doctor.mjs"), ...args], { encoding: "utf8", stdio: "pipe" }) };
+            return { code: 0, out: execFileSync(process.execPath, [path.join(REPO, "cli", "doctor.mjs"), ...args], { encoding: "utf8", stdio: "pipe", env }) };
         } catch (error) {
             return { code: error.status, out: `${error.stdout ?? ""}${error.stderr ?? ""}` };
         }

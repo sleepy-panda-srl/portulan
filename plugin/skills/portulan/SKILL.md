@@ -38,7 +38,7 @@ of them would load another team's identity, another team's gate map, and another
 done, and would look exactly like success. If the project has no workspace, that is the answer; go to
 step 4.
 
-### 2a. If the manifest is a pointer, the workspace is somewhere else
+### 2a. If the manifest is a pointer, resolve it — the workspace is somewhere else, and the CLI finds it
 
 A manifest whose `kind` is `pointer` is **not** a workspace. It is one thin file saying that this
 repository's workspace resides elsewhere, and naming it: `governed_by.workspace` is the governing
@@ -46,26 +46,89 @@ workspace's name, and `governed_by.feed`, where present, is the private feed it 
 repository is governed by exactly one workspace — its own, or a pointer to the workspace that names it,
 never both — so a pointer is the whole answer about residence, not a hint to be supplemented.
 
-**Report it and stop; do not improvise.** Say which workspace governs this repository, say that it is not
-installed here, and then go to step 4 and give that section's honest position — because that is the true
-one: you have the engine's universal mechanism and none of this team's policy. In particular:
+**Ask the CLI where that workspace is. Do not go looking yourself.**
 
-- **Do not fetch it.** Resolving `governed_by` to an installed plugin needs a host's plugin cache, and
-  nothing here discovers one. **Discovery is milestone 7's**, owned by its row as of the 2026-08-03 amendment — and what arrives *here* is narrower than what arrives in the CLI: this skill **is scoped to** reporting discovery's answer honestly, including *not installed here*; resolving a pointer is the CLI's.
+```
+node ${CLAUDE_PLUGIN_ROOT}/cli/discover.mjs --json ${CLAUDE_PROJECT_DIR}/.portulan
+```
+
+**Substitute the project root yourself if `${CLAUDE_PROJECT_DIR}` is not set** — step 2's rule, that
+the working directory stands in for it, applies to this command too. An unset variable expands to
+nothing and the command then asks about `/.portulan`, which is not this repository.
+
+It prints one object and exits **0** resolved · **1** not resolvable here · **2** could not run or
+could not look. Read the `state` field — never the prose, which is written for a human and is the
+half most likely to be reworded. The resolution reads the host's installed-plugin record **from
+disk**; nothing is fetched over the network, here or there.
+
+| `state` | What you do |
+|---|---|
+| `resolved` | `root` **is** the workspace directory. Go to step 3 and read its slots exactly as you would an in-repo workspace's, resolving every slot path against **that** directory. |
+| `not-installed` | Go to step 4 and give that section's honest position — you have the engine and none of this team's policy. |
+| `ambiguous` | Two or more installs answer to one name and the resolver refused to pick. **Do not pick either.** Report every entry in `matches` and ask the user which is meant. |
+| `could-not-look` | The record exists and would not parse. This is *could not look*, which is not *not installed* — say which one you are reporting. |
+| **no object at all** | Exit 2 with **nothing on stdout** and a diagnostic on stderr: the command could not run — a bad argument, an unreadable manifest, no Node. Read the diagnostic, say the resolution did not happen and why, and take step 4's position **without** claiming the workspace is not installed. Silence is not an answer, and it is never *no*. |
+
+_(`node ${CLAUDE_PLUGIN_ROOT}/cli/doctor.mjs ${CLAUDE_PROJECT_DIR}/.portulan` prints the same answer as a
+`residence` note, and is the spelling to use when a human is reading. It grades the **pointer** and never
+the workspace it names: run `doctor` against `root` if you want a verdict on the workspace itself.)_
+
+**This is the one licensed exception to step 2's "search the project only", and it is licensed by the
+project itself.** The repository's own manifest named this workspace; the resolver matched on the
+governing manifest's `name`, the pointer's `feed` where it declares one, and refused an ambiguity
+rather than ranking it. That chain is what makes the read safe. It licenses no search of your own —
+if the CLI cannot run, you have no resolution, and *no resolution* is reported as itself rather than
+replaced by a guess. _(It does not reach the demo or the drifted fixture either: the resolver looks in
+two named locations inside an **installed** payload and nowhere else, and neither of those two sits at
+one. This bundle's **own** workspace is a different matter — a pointer naming `portulan` would resolve
+to it wherever the plugin is installed, which is the correct answer to that pointer rather than a
+hole.)_
+
+**A resolved root is outside the project directory, so the same denial that can stop step 1 can stop
+step 3 — and it must not be mistaken for absence.** `root` sits in the host's plugin cache; a session
+whose file access is scoped to the project will refuse to read it, exactly as measured for
+`${CLAUDE_PLUGIN_ROOT}` above. That state is **resolved but unreadable**, and it is a third thing: the
+workspace *is* installed, you know precisely where, and you do not have it. Say that, ask for read
+access to the cache, and give step 4's position **for the policy you are missing** — never the *not
+installed here* sentence, which would send the user to install something they already have.
+
+Four things stay true whatever the answer is:
+
 - **Do not read the pointer's neighbours as policy.** A pointer carries no slots, and a `.portulan/`
   directory beside it holding files anyway is a defect worth reporting, not a workspace to load.
 - **Do not treat this as "no workspace".** The difference matters to the person you are reporting to: a
   repository with no workspace has not adopted Portulan, while this one has and its policy layer is one
-  install away. Say which of the two you are looking at.
+  install away — or already installed, which is now a thing you can find out rather than assume.
+- **Say where the workspace came from, in the report at step 5.** *"Resolved from the host's plugin
+  cache: `<plugin>@<marketplace>` version `<v>`"* is not decoration on two counts. A resolved workspace
+  is a **pinned install**, so which version is loaded is the difference between two policy layers that
+  may legitimately differ; and *the same report an in-repo workspace produces* must not mean
+  *indistinguishable from one*. Name the residence.
+- **Resolving the workspace does not resolve its packs.** A governing workspace found this way may
+  declare `packs`, and nothing here looks those up in the cache — that is the separate half of
+  milestone 7's discovery, and step 3a's four limits apply to a resolved workspace exactly as they
+  apply to an in-repo one. Where the resolved manifest declares a spec MINOR older than this bundle's,
+  say so as well: slots added since are simply absent, which is the contract working rather than a
+  fault.
 
-If the user can install the named workspace — from the feed, or from a checkout beside this repository —
-that is the thing to ask for. Booting on a pointer and proceeding as though you had the policy layer is
-the same failure shape as booting on another team's workspace: it looks like a boot and it is not.
+Where it is not installed and the user can install it — from the feed, or from a checkout beside this
+repository — that is the thing to ask for. Booting on a pointer and proceeding as though you had the
+policy layer is the same failure shape as booting on another team's workspace: it looks like a boot and
+it is not.
+
+_(This section read **"Do not fetch it. Resolving `governed_by` to an installed plugin needs a host's
+plugin cache, and nothing here discovers one"** until milestone 7 built the discovery. Both halves of
+that sentence were true when written and one of them stopped being: nothing is still fetched, and a
+cache is now read. The instruction it produced — *report it and stop* — was the whole open half of
+[#134](https://github.com/sleepy-panda-works/portulan/issues/134), where a workspace installed on the
+machine was invisible to the thing booting beside it.)_
 
 ## 3. Read the slots the manifest names
 
 The manifest is an index, never a container: it names paths, and the prose lives in Markdown at the
-other end of them. Read the slots in this order, because each frames the next:
+other end of them. **Paths resolve against the directory the manifest sits in** — the project's
+`.portulan/`, or, where step 2a resolved a pointer, the installed workspace's own root. Read the slots
+in this order, because each frames the next:
 
 1. `identity` — who this team is, what they work with, and their glossary. Terms defined there mean
    exactly that here.
@@ -76,6 +139,11 @@ other end of them. Read the slots in this order, because each frames the next:
    human's explicit approval. **Read this before acting, not after.**
 5. `dod` — the definition of done, which extends the engine's floor and may never lower it.
 6. `repos/` — the card for the repository you are actually in: build, test, run, layout, quirks.
+   **Select it, do not read the directory.** A workspace resolved from a pointer is typically a
+   portfolio governing several repositories, so `repos/` holds cards for repositories you are not in;
+   the one that matters is the card naming *this* repository. Where none does, say so — a governed
+   repository with no card is a real gap and reading a sibling's card instead is the wrong repository's
+   build, test and quirks presented as this one's.
 7. `memory/` — the rules this team has minted from its own incidents. Each carries provenance and a
    retirement condition, so a rule can be weighed rather than merely obeyed.
 
@@ -98,10 +166,15 @@ cannot satisfy. Where a pack resolves, its gate-policy fragments reach the compi
 add-restriction-only. Nothing here is pinned — a `packs` entry is a name, and the version is whatever
 the root holds. Four things do not follow, and **each is milestone 7's, owed rather than broken**:
 
-- **Nothing discovers the root.** No host's plugin cache is read to find one, which is the same absence
-  step 2a reports for a pointer. Until it lands, a workspace declaring no `tree` derives no root, and
-  unless one is named, its packs are reported unresolvable — so *"declared"* and *"resolved"* are two
-  states here, and which one you are in depends on a path somebody typed.
+- **Nothing discovers the root.** No host's plugin cache is read to find one. **This is now the
+  narrower half of milestone 7's discovery rather than the whole of it** — step 2a resolves a
+  *pointer's governor* out of that same cache, and a *pack root* is deliberately not defaulted from it
+  ([#123](https://github.com/sleepy-panda-works/portulan/issues/123)), because a named root **replaces**
+  the derived one and a discovered root that silently joined the search would end that property. Until
+  it lands, a workspace declaring no `tree` derives no root, and unless one is named, its packs are
+  reported unresolvable — so *"declared"* and *"resolved"* are two states here, and which one you are in
+  depends on a path somebody typed. **A workspace resolved from a pointer is in exactly the same state
+  about its own packs as an in-repo one.**
 - **A pack's skills register only where the plugin declares the directory that actually holds them.**
   A host expands a declared skills path **one level** and no further, so a root pointing at a family of
   packs — `packs/rituals/`, with skills at `<pack>/skills/<skill>/` — registers **nothing**, silently,
@@ -176,6 +249,11 @@ what it *enforces* is the thing an agent must not paper over:
   Corrected at milestone 7 session 1, then session 2, then session 3 — the count has now gone stale
   three times, which is the argument for deriving such a figure rather than writing it down, in a file
   where nothing can.)_
+
+- **Where the workspace came from is part of the report.** In the repository, or resolved from a
+  pointer — and where it was resolved, name the plugin and the **version**, because that install is
+  pinned and a different pin is a different policy layer. A boot that does not say which of the two it
+  loaded leaves the reader unable to tell a stale install from a current one.
 
 State which of these apply to the workspace you just loaded, using its own documents. If a document
 claims an enforcement that does not exist, that is a defect worth reporting, not a detail to smooth

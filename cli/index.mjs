@@ -1152,8 +1152,12 @@ export function run(argv, say = console.log) {
     // demonstration that "the pack resolved from the feed" must not be satisfiable by a copy sitting in
     // the local tree at all. The three tools that take this flag disagreed about it once, and
     // ./compile.mjs's `namedRootsOption` carries what that cost.
-    // What is deliberately NOT built is discovery of a host's plugin cache — that path is host-shaped,
-    // and a flag is the honest surface until a row owned the discovery — **row 7 owns it as of the 2026-08-03 amendment** (#123), so the flag is the surface until that lands rather than until somebody undertakes it.
+    // What is deliberately NOT built is discovery of a host's plugin cache **for a PACK root**. The
+    // cache itself is read now — ./discover.mjs landed at milestone 7 and dereferences a POINTER's
+    // `governed_by` — so the unscoped version of this sentence went false the day that shipped, and it is
+    // scoped rather than deleted because the half it names is still owed (#123). Defaulting this flag
+    // from the same record would change what every existing run resolves against, and the row fixes the
+    // only safe direction: add a root where none was named, never replace one that was.
     const roots = [];
     for (let i = 0; i < argv.length; i += 1) {
         if (argv[i] === "--check") check = true;

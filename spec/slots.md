@@ -111,9 +111,17 @@ also skips every governing-workspace check for a pointer **and says so**: a poin
 so `verify.default` alone would fail every compliant one, and a check that vanishes without a word is
 worse than one that admits what it could not reach.
 
-**What nothing checks:** that the workspace a pointer names exists, or governs, or is green. Resolving
-`governed_by` needs a host's plugin cache, and this tool does not do discovery — see
-[`README.md`](README.md)'s coverage table, where the gap has its own row.
+**What `doctor` resolves and does not grade, since milestone 7:** `governed_by` is dereferenced against
+the host's installed-plugin record by [`../cli/discover.mjs`](../cli/discover.mjs) — on disk, never over
+the network — and the answer is **reported**. Where the governing workspace is installed, the report
+names the directory and what to run against it; where it is not, the honest *not installed here*
+sentence; where two installs answer to one name, both are named and neither is chosen. **No outcome
+moves the verdict**: a pointer whose governor is uninstalled is a correct pointer, and a tool whose exit
+code turned on somebody's install state would be judging a host rather than a workspace.
+
+**What nothing checks:** that the workspace a pointer names *governs*, or is green. Being resolvable
+says where it is, and running `doctor` against that directory is the separate act that grades it — see
+[`README.md`](README.md)'s coverage table.
 
 ## `slots.identity` and `slots.principles` — and why they are two
 

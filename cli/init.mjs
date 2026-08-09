@@ -479,9 +479,12 @@ is an agent booting on the wrong gates and looking exactly like success.
 
 Every Portulan feature keys to a workspace **slot**, never to a residence, so nothing is lost by
 governing this repository from elsewhere. One step is real and is named rather than claimed away:
-**a host does not discover the governing workspace on its own.** The workspace has to be installed
-before anything boots against it, and no tool here fetches it — reading this pointer and resolving it
-are different things, and only the first is built.
+**the governing workspace has to be installed before anything boots against it**, and no tool here
+fetches it. What *is* built is the step after that — a host's installed-plugin record is read from
+disk and this pointer's \`governed_by\` is resolved against it, so once the workspace is installed
+the boot loads it and reports it exactly as it would an in-repo one. Run
+\`node <portulan>/cli/discover.mjs --json .portulan\` to see which of the four answers this machine
+gives: resolved, not installed here, ambiguous, or could not look.
 
 ## Moving back
 
