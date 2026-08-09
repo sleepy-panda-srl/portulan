@@ -380,7 +380,14 @@ export function resolveGovernor(governedBy, options = {}) {
                 ? `. ${nearMisses
                       .map((m) =>
                           m.why === "feed"
-                              ? `\`${m.key}\` carries that name and ships through \`${m.marketplace}\`, which is not the feed \`${wanted.feed}\` this pointer names`
+                              ? `\`${m.key}\` carries that name and ships through ${
+                                    // `marketplace` is null wherever the record key carries no `@` — a shape
+                                    // `readInstalls` tolerates on purpose, so the sentence has to survive it.
+                                    // It printed "ships through `null`", which reads as a marketplace called
+                                    // null rather than as one nobody recorded. Copilot, on the round that
+                                    // reviewed the fix; the same class as the note beside it.
+                                    m.marketplace === null ? "no marketplace the record names" : `\`${m.marketplace}\``
+                                }, which is not the feed \`${wanted.feed}\` this pointer names`
                               : `\`${m.key}\` carries that name and is itself a pointer, and a repository is governed by exactly one workspace`,
                       )
                       .join("; ")}`

@@ -1044,7 +1044,14 @@ export async function inspect(workspaceDir, options = {}) {
         // `verify.default` alone would fail every compliant pointer, naming a recipe list that is empty
         // because the manifest is right. Skipped, and SAID, on the standing rule that a check which
         // disappears without a word is worse than one that admits what it could not reach.
-        const feed = workspace.governed_by?.feed;
+        // Blank reads as absent HERE too, because the resolver one file away now treats it that way and
+        // two carriers of one fact are this repository's signature defect. Reporting *"delivered through
+        // `   `"* while `resolveGovernor` ignores that value is a report describing a constraint the tool
+        // does not apply — worse than either behaviour alone, since a reader would go looking for the
+        // marketplace it names. Found by Copilot on the round that reviewed the fix, and by the
+        // pre-commit checkpoint independently, both of them at the site the fix did not reach.
+        const rawFeed = workspace.governed_by?.feed;
+        const feed = typeof rawFeed === "string" && rawFeed.trim() !== "" ? rawFeed : undefined;
         report(
             "residence",
             `governed by \`${workspace.governed_by?.workspace}\`` +

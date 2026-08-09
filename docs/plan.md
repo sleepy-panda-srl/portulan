@@ -2020,12 +2020,12 @@ _The seam applies here too: no client-identifying references._
   Suite 1055; `workflow-filters` 60→67 fixtures. · Fidelity: session-open R-C + pre-commit R-C, all folded. 3
   rounds, 3 pushes. Seam scan clean. Handoff: [`2026-08-07`](../.portulan/handoffs/2026-08-07-the-channel-that-carried-the-findings-and-lost-them.md).
 - 2026-08-09 · M7 (CLI & onboarding), session 5 · **The pointer had a name and nothing dereferenced it.** [#181](https://github.com/sleepy-panda-works/portulan/pull/181),
-  refs [#134](https://github.com/sleepy-panda-works/portulan/issues/134)'s open half — a workspace **installed on the machine** was invisible to
-  `/portulan`, because the boot said *"nothing here discovers one"*. `cli/discover.mjs` reads the host's installed-plugin record from disk and
-  resolves `governed_by`; the boot loads what it names. **Four verdicts**, matched on the governing **manifest's** `name` **and** `portulan.spec`,
-  in a **named pair** of locations, **reported never graded**; `--pack-root` deliberately not defaulted (#123). **Red captured first** at `46e7b81`;
-  a real headless boot then loaded the resolved workspace's identity, principles, gate map and dod, its pinned version and spec skew. **Eleven
-  carriers denied it** — ten corrected, one of them *shipping* in `init`'s drafted README; `0017` noted. Suite 1059→1103, nine recipes. Seam scan
-  clean. · Fidelity: session-open PWC + pre-commit PWC, all folded — the pre-commit pass **built** a fail-open (any JSON with a `name` counted as a
-  manifest) rather than reading for one. 3 rounds, 2 pushes; round 3 triaged to [#182](https://github.com/sleepy-panda-works/portulan/issues/182)
-  at the bound, one of its two refuted by measurement. Handoff: [`2026-08-09`](../.portulan/handoffs/2026-08-09-the-pointer-had-a-name-and-nothing-dereferenced-it.md).
+  refs [#134](https://github.com/sleepy-panda-works/portulan/issues/134) — a workspace **installed on the machine** was invisible to `/portulan`, because the boot
+  said *"nothing here discovers one"*. `cli/discover.mjs` reads the host's installed-plugin record from disk and resolves `governed_by`; the boot loads what it
+  names. **Four verdicts**, matched on the governing **manifest's** `name` **and** `portulan.spec`, **reported never graded**; `--pack-root` not defaulted (#123).
+  **Red first**, then **run on the packaged path** — marketplace add → install → the **installed** copy resolving a pointer, exit 0, against an empty-host control
+  at exit 1. `Skills (7)` reproduces with **no workspace present**, so it shows packaging and not clause (b), narrowed here and carried with #134's no-inheritance
+  half on [#184](https://github.com/sleepy-panda-works/portulan/issues/184). Suite 1059→1108, nine recipes. Seam scan clean. · Fidelity: session-open PWC ×2 +
+  pre-commit PWC, all folded — the last caught the [#182](https://github.com/sleepy-panda-works/portulan/issues/182) fix **trimming** where `configDir()` only
+  blank-tests, turning a `resolved` into a `not-installed`. 6 rounds, 4 pushes; rounds 3–4 triaged, 5 fixed all three of #182 on the maintainer's **granted**
+  extension, 6 fixed its two siblings at the sites the fix missed. Handoff: [`2026-08-09`](../.portulan/handoffs/2026-08-09-the-pointer-had-a-name-and-nothing-dereferenced-it.md).
