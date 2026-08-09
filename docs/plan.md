@@ -2102,7 +2102,7 @@ _The seam applies here too: no client-identifying references._
   the governor, `cli/vendor.mjs` carries the same class with `?? "(nobody)"` as `=== undefined` spelled another way, and `cli/init.test.mjs` named a suite in
   a present tense this change falsifies. Handoff: [`2026-08-09`](../.portulan/handoffs/2026-08-09-a-blank-governor-is-no-governor.md).
 
-- 2026-08-09 · M7 (CLI & onboarding), session 6 · **Four readers of one set, and the fixture that agreed with the bug.**
+- 2026-08-09 · M7 (CLI & onboarding), session 5 continued · **Four readers of one set, and the fixture that agreed with the bug.**
   Row 7's composition amendment: `cli/recipe-set.mjs` is the **one carrier** of the runnable set, and the four readers that
   each enumerated `verify.recipes` — `verify.yml`, `doctor`, `vendor`, `stop-gate` — call it. CI is inside the contract by the
   row's own words, so the workflow's inline emitter and its four validations moved into the carrier. A composed id is

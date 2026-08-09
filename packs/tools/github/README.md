@@ -58,7 +58,7 @@ a decision this pack gets to make.
 
 ## Provenance
 
-Built for milestone 7, session 6, as D6's subject, on the maintainer's ruling of 2026-08-09 that the
+Built for milestone 7, session 5, as D6's subject, on the maintainer's ruling of 2026-08-09 that the
 demonstration take a real pack rather than a fixture or a reversal of another pack's refusal. The
 composition contract it exercises — additive only, namespaced by pack, never the workspace's
 `verify.default`, could-not-run rather than silently absent — is row 7's, ratified 2026-07-31, and is
