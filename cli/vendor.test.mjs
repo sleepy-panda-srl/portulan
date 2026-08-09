@@ -18,7 +18,7 @@
 // It establishes that green means green **through the real `doctor`**: every end-state assertion below
 // runs `inspect` from ./doctor.mjs against the directory that was actually written, rather than
 // re-deriving what a valid workspace looks like. A second opinion about validity is a second carrier of
-// the Workspace Definition, which is the defect this repository names more often than any other.
+// the Workspace Definition, which is #91's class: one rule, two enforcement sites.
 //
 // It establishes the three rules `cli/init.mjs` and `cli/new.mjs` paid for — refuse an existing file,
 // refuse a symlink at or below the named destination, and treat only `ENOENT` as absent — against a

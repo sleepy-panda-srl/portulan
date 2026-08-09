@@ -18,7 +18,7 @@
 #     (Named rather than counted, after two corrections: this line first claimed *every* recipe here
 #     was built out of `grep` — three invoke it zero times — and the correction then asserted a count
 #     taken from a word grep that included comments. A false claim in the paragraph doing the
-#     persuading is the defect class this repository files most often, and it has no business in the
+#     persuading is what ../dod.md condition 4 refuses, and it has no business in the
 #     file arguing against exactly that.)
 #   * `git` rendered the diff as text only because the byte sat past its first 8000 bytes. A few
 #     hundred lines earlier and the whole instrument would have arrived in review as `Binary files

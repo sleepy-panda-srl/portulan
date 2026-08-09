@@ -357,8 +357,7 @@ test("VERSION has ONE carrier — it is read from package.json, never written do
 // and was wrong; the table above is what perturbation returned.
 //
 // So this binds the two unguarded edges and DELIBERATELY NOT the third: `plugin-lint` owns
-// entry -> plugin.json, and a second carrier of one check is the defect this repository names most
-// often. If the marketplace catalogue is ever meant to version independently of the plugin it ships,
+// entry -> plugin.json, and a second carrier of one check is #91's class. If the marketplace catalogue is ever meant to version independently of the plugin it ships,
 // this test is where that decision has to be written down — it has moved with the release every time
 // so far, which is an observation about practice rather than a rule anyone stated.
 test("the two version fields nothing else checks agree with plugin.json", () => {

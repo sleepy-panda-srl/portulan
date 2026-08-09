@@ -42,8 +42,9 @@ import { parse, backends, resolvePack, rootPlan } from "./compile.mjs";
 import { isInside, recordType } from "./index.mjs";
 // One frontmatter parser for this repository, not two. `plugin-lint` minted it and has the tests that
 // pin its edges — an unterminated block, a block that is not first, a value with a colon in it — and a
-// second implementation here would be a second carrier of one contract, which is the defect this
-// repository names more often than any other.
+// second implementation here would be a second carrier of one contract — the class
+// https://github.com/sleepy-panda-works/portulan/issues/91 names, and what ../core/operating/evolution.md
+// prescribes leaving one site for.
 import { parseFrontmatter } from "./plugin-lint.mjs";
 // Host plugin-cache discovery, which is where a pointer's `governed_by` stops being a name and
 // becomes a directory. Imported rather than reimplemented for the reason above, and kept in its own
@@ -608,7 +609,7 @@ export function validateContributions(packDir, contributes, { fail, report, pack
 
     // Three answers, not two. `null` meant "could not resolve" and was reported to the reader as "is not
     // there" — which is only true for ENOENT. An EACCES is a question that could not be ANSWERED, and
-    // answering it "absent" is the fail-open this repository names more often than any other, arriving
+    // answering it "absent" is the fail-open — "nothing looked" reported as "nothing wrong" — arriving
     // inside the function added to prevent one. Copilot, round 1 on #156; the same class as session 1's
     // round 7, one tool over.
     const inside = (target) => {

@@ -751,7 +751,7 @@ describe("nothing init writes over, and nothing it half-writes", () => {
     test("an unreadable directory is could-not-run, never `no residence here`", async (t) => {
         // Only ENOENT means "nothing here". Every other error — EACCES above all — means the
         // question could not be answered, and answering "no residence" to an unanswerable question
-        // is the fail-open this repository names most: "nothing looked" reported as "nothing wrong".
+        // is the fail-open: "nothing looked" reported as "nothing wrong".
         // Found by review on the pull request, in both walkers at once.
         const dir = scratch();
         fs.mkdirSync(path.join(dir, ".portulan"));

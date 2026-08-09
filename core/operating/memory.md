@@ -134,8 +134,8 @@ different answers. The record of both, and of the third option that reconciles t
 [#98](https://github.com/sleepy-panda-works/portulan/issues/98) and
 [`docs/milestones/m06.md`](../../docs/milestones/m06.md). Neither row needed a criterion edit to carry
 this: both already demanded their half. Said plainly because the
-alternative is a page describing an enforcement that does not exist — the failure this repository names
-more often than any other, and the one `.portulan/dod.md` condition 4 exists to catch: a document may
+alternative is a page describing an enforcement that does not exist — the failure a workspace's
+definition of done exists to catch (`.portulan/dod.md` condition 4, in this repository): a document may
 describe machinery only if the machinery exists *or* the sentence names the milestone where it does.
 Every store shipped so far is a **workspace's**, shared by whatever agent reads it, and the one agent
 here that runs unattended and repeatedly — the scheduled librarian of milestone 5 — deliberately keeps
