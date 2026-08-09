@@ -94,7 +94,8 @@ full: [`2026-07-30-a-round-gets-its-definition.md`](../handoffs/2026-07-30-a-rou
 **handoff correction**, a documentation-only push that could not have needed review. Rule 2 exists for
 that observation.
 
-**The exemption's precedents and stop signal — 2026-08-07** (`0020`). #85 read the bound strictly —
+**The exemption's precedents and stop signal — 2026-08-07**
+([`0020`](../proposals/0020-a-fix-is-not-done-at-the-site-it-was-found.md)). #85 read the bound strictly —
 one finding recurred verbatim, rounds three to seven, triaged each time; its issue #91 stayed open
 nine days. #164 ran **eleven rounds past** on the maintainer's grant, every round a real defect. The
 stop signal is **the taper** — findings growing more marginal, as #164's last three did — the
