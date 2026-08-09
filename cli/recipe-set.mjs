@@ -165,9 +165,19 @@ export function recipeSet(manifest, options = {}) {
     for (const recipe of declared) {
         const bad = invalidRunnable(recipe?.id, recipe?.run, "the workspace manifest");
         if (bad) return refuse(bad);
-        if (seen.has(recipe.id)) return refuse(`the workspace manifest declares the recipe \`${recipe.id}\` more than once`);
-        seen.add(recipe.id);
-        recipes.push({ ...recipe, source: { kind: "workspace" } });
+        // Normalised to strings on the way out, the way the pack path below already does.
+        //
+        // The validation above coerces with `String(...)`, so a non-string `id` that stringifies to a
+        // slug PASSED and was then pushed through unchanged — and every downstream comparison is an
+        // identity check on that value: `r.id === set.default` in the Stop gate, `seen.has(id)` here,
+        // the emitter's tab-separated line. One arm of this function stringified and the other did not,
+        // which is the two-sites-one-rule shape this whole change is about, inside the carrier that
+        // carries it. Copilot round 2's suppressed note.
+        const id = String(recipe.id);
+        const run = String(recipe.run);
+        if (seen.has(id)) return refuse(`the workspace manifest declares the recipe \`${id}\` more than once`);
+        seen.add(id);
+        recipes.push({ ...recipe, id, run, source: { kind: "workspace" } });
     }
 
     for (const ref of packs) {
