@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
+  "name": "portulan-checkpoints",
+  "displayName": "Portulan checkpoints",
+  "version": "0.2.0",
+  "description": "The supervised-build checkpoint ritual as a pack: session-open, pre-commit and milestone-close, each graded by a context that has not seen the implementation, in a fixed verdict vocabulary.",
+  "author": {
+    "name": "Sleepy Panda Works",
+    "url": "https://sleepypanda.ro"
+  },
+  "repository": "https://github.com/sleepy-panda-works/portulan",
+  "license": "Apache-2.0",
+  "keywords": [
+    "portulan",
+    "pack",
+    "rituals",
+    "supervision"
+  ],
+  "skills": [
+    "./rituals/checkpoints/skills/"
+  ]
+}

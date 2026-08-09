@@ -48,8 +48,30 @@ cd -- "$root" || exit 2
 # nothing fails loudly instead of running nothing and reporting green.
 PLUGIN_ROOTS=(.)
 
+# A PAYLOAD root is a plugin a **feed** ships without being a marketplace itself: no `marketplace.json`
+# here, and none owed, because the feed carries the entry. Declared as its own list so the exemption is
+# named rather than inferred from an absent file — a lint that quietly relaxed on a missing manifest
+# would be narrower every time someone deleted one.
+#
+# `packs` became one on 2026-08-09, and this recipe found it before anyone declared it: the audit below
+# reported `in tree: . packs` against `validated: .` and exited 2 rather than going green over a root
+# nobody had named. It is a payload because the private feed's `portulan-checkpoints` entry is a
+# `git-subdir` source rooted there — so a host installs the contents of `packs/` and reads
+# `packs/.claude-plugin/plugin.json`, which did not exist until that day, which is why that install
+# reported `Skills (0)` for a milestone ([#134](https://github.com/sleepy-panda-works/portulan/issues/134)).
+PAYLOAD_ROOTS=(packs)
+
 if [ "${#PLUGIN_ROOTS[@]}" -eq 0 ]; then
     printf 'verify: PLUGIN_ROOTS is empty — this recipe would validate nothing\n' >&2
+    exit 2
+fi
+
+# The same guard for the second list, and it is not decoration: under `set -u` on bash 3.2 an empty
+# array expands to an unbound-variable error, `named` comes out blank, and the audit below reports a
+# blank `validated:` line — fail-closed with a false diagnosis, which is the shape this recipe exists
+# to refuse. Found at the pre-commit checkpoint by emptying it.
+if [ "${#PAYLOAD_ROOTS[@]}" -eq 0 ]; then
+    printf 'verify: PAYLOAD_ROOTS is empty — remove the second invocation rather than passing nothing\n' >&2
     exit 2
 fi
 
@@ -70,14 +92,35 @@ fi
 
 # `.claude-plugin/plugin.json` at the repository root has no directory prefix, so it maps to `.`.
 present=$(printf '%s\n' "$manifests" | sed -e 's|/\{0,1\}\.claude-plugin/plugin\.json$||' -e 's|^$|.|' | sort -u)
-named=$(printf '%s\n' "${PLUGIN_ROOTS[@]}" | sort -u)
+named=$(printf '%s\n' "${PLUGIN_ROOTS[@]}" "${PAYLOAD_ROOTS[@]}" | sort -u)
 
 if [ "$present" != "$named" ]; then
     printf 'verify: the plugin roots this recipe validates are not the plugin roots in the tree.\n' >&2
     printf '  validated : %s\n' "$(printf '%s' "$named" | tr '\n' ' ')" >&2
     printf '  in tree   : %s\n' "$(printf '%s' "$present" | tr '\n' ' ')" >&2
-    printf 'Add the missing plugin root to PLUGIN_ROOTS in this file, or remove the stale entry.\n' >&2
+    printf 'Add the missing plugin root to the list it belongs in — PLUGIN_ROOTS for a root that\n' >&2
+    printf 'carries its own marketplace.json, PAYLOAD_ROOTS for one a feed publishes — or remove the\n' >&2
+    printf 'stale entry.\n' >&2
     exit 2
 fi
 
+# Two invocations now, and the tail has to keep THREE codes apart rather than two. `|| status=1`
+# flattened a could-not-run into a red — 2 read as a verdict about the tree, which `cli/stop-gate.mjs`
+# names as the way a runner manufactures false reds. Third instance in this repository: `./compile.sh`
+# and `./index.sh` both carry the same `case` after the same finding at a pre-commit checkpoint, and
+# both were caught the same way. 2 outranks 1, because *nobody looked* outranks *we looked and it was
+# bad*.
+status=0
 node cli/plugin-lint.mjs "${PLUGIN_ROOTS[@]}"
+case $? in
+    0) ;;
+    2) exit 2 ;;
+    *) status=1 ;;
+esac
+node cli/plugin-lint.mjs --payload "${PAYLOAD_ROOTS[@]}"
+case $? in
+    0) ;;
+    2) exit 2 ;;
+    *) status=1 ;;
+esac
+exit "$status"

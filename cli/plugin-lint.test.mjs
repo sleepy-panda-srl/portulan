@@ -941,3 +941,129 @@ describe("the private-feed rail names an owner as well as a repo", () => {
         }
     });
 });
+
+// ---------------------------------------------------------------------------------------------
+// `packs/` is itself a plugin payload, and the feed ships it as one.
+//
+// The private feed's `portulan-checkpoints` entry is a `git-subdir` source rooted at `packs/`, so a
+// host installs the contents of that directory and reads a manifest from `packs/.claude-plugin/`.
+// Until 2026-08-09 there was no manifest there at all: the payload declared nothing, registered
+// nothing, and reported `Skills (0)` on every install — #134's own measurement, whose stated cause
+// (a declared path one level too high) was a different trap from the real one (no declaration).
+//
+// These pin the payload rather than the fixture, because the defect was in the tree and no fixture
+// would have caught it. They are deliberately narrow: this file's own suite covers the general rules.
+
+describe("the packs/ payload the private feed ships", () => {
+    const PAYLOAD = path.join(REPO, "packs");
+    const manifestPath = path.join(PAYLOAD, ".claude-plugin", "plugin.json");
+
+    test("declares a plugin manifest at all — the absence that registered nothing", () => {
+        assert.equal(fs.existsSync(manifestPath), true, `${manifestPath} must exist: the feed installs this directory as a plugin`);
+        const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
+        assert.equal(typeof manifest.name, "string");
+        assert.ok(Array.isArray(manifest.skills) && manifest.skills.length > 0, "and it must declare where its skills are");
+    });
+
+    test("every SKILL.md in the payload is within ONE level of a declared root — the host's reach", () => {
+        // The host expands a declared skills path exactly one level. A skill deeper than that is
+        // packaged, counted by a validator, and inert on every install — which is how three skills
+        // shipped for a milestone while the inventory said zero.
+        const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
+        const roots = manifest.skills.map((s) => path.resolve(PAYLOAD, s));
+
+        const found = [];
+        const walk = (dir) => {
+            for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+                if (entry.name === ".claude-plugin") continue;
+                const full = path.join(dir, entry.name);
+                if (entry.isDirectory()) walk(full);
+                else if (entry.name === "SKILL.md") found.push(path.dirname(full));
+            }
+        };
+        walk(PAYLOAD);
+        assert.ok(found.length > 0, "the payload must ship at least one skill, or this rail is vacuous");
+
+        for (const skillDir of found) {
+            const covering = roots.find((root) => {
+                const rel = path.relative(root, skillDir);
+                return rel !== "" && !rel.startsWith("..") && !path.isAbsolute(rel);
+            });
+            assert.ok(covering, `${path.relative(PAYLOAD, skillDir)} is under no declared skills path`);
+            const depth = path.relative(covering, skillDir).split(path.sep).length;
+            assert.equal(depth, 1, `${path.relative(PAYLOAD, skillDir)} sits ${depth} levels below its declared root — the host reaches one`);
+        }
+    });
+
+    test("the repository's own manifest declares the same skills from ITS root, not this one", () => {
+        // Two manifests, two roots, and the paths differ by exactly the prefix the roots differ by.
+        // Asserted so a later edit cannot quietly make one a copy of the other.
+        const repoManifest = JSON.parse(fs.readFileSync(path.join(REPO, ".claude-plugin", "plugin.json"), "utf8"));
+        const payloadManifest = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
+        for (const declared of payloadManifest.skills) {
+            const fromRepoRoot = `./${path.join("packs", declared)}/`.replace(/\/+$/, "/");
+            assert.ok(
+                repoManifest.skills.some((s) => path.resolve(REPO, s) === path.resolve(REPO, fromRepoRoot)),
+                `the repository manifest should declare ${fromRepoRoot} for the payload's ${declared}`,
+            );
+        }
+    });
+});
+
+// The RELAXATION's own forced reds. `--payload` makes a missing marketplace.json a counted note rather
+// than a failure, and `../.portulan/gate-map.md` holds that relaxing a check is the case to scrutinise
+// hardest — so the opt-in, its boundary, and its failure modes are asserted rather than described.
+// Added at the pre-commit checkpoint, which observed that the mode had shipped with no test at all.
+
+describe("payload roots — the opt-in relaxation", () => {
+    const payloadTree = () => {
+        const root = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), "portulan-payload-"));
+        fs.mkdirSync(path.join(root, ".claude-plugin"), { recursive: true });
+        fs.writeFileSync(
+            path.join(root, ".claude-plugin", "plugin.json"),
+            JSON.stringify({ name: "a-payload", version: "0.1.0", skills: ["./skills/"] }),
+        );
+        fs.mkdirSync(path.join(root, "skills", "one"), { recursive: true });
+        fs.writeFileSync(path.join(root, "skills", "one", "SKILL.md"), "---\nname: one\ndescription: A skill that exists so this tree is not empty.\n---\n\n# one\n");
+        return root;
+    };
+
+    test("a missing marketplace.json is a counted note under --payload, and a FAILURE without it", async () => {
+        const root = payloadTree();
+        const relaxed = inspect(root, { payload: true });
+        assert.equal(relaxed.findings.filter((f) => f.severity === "fail").length, 0, messages(relaxed.findings));
+        // Read the findings directly: `messages()` surfaces failures only, so asserting the NOTE
+        // through it passed vacuously in both directions — caught by the note test failing on an
+        // empty string, which is the useful accident.
+        const owed = (f) => f.some((x) => /none is owed/.test(x.message));
+        assert.equal(owed(relaxed.findings), true, "the exemption must SAY it is one");
+        assert.equal(relaxed.stats.unverifiable >= 1, true, "the gap is COUNTED, not merely worded");
+
+        // The opt-in invariant: the same tree, unmarked, still fails. If this ever passes, the mode
+        // stopped being an opt-in and became an inference from an absent file.
+        const strict = inspect(root);
+        assert.match(messages(strict.findings), /marketplace\.json is missing/);
+        assert.equal(strict.findings.filter((f) => f.severity === "fail").length > 0, true);
+    });
+
+    test("a payload root that HAS a marketplace.json is still fully checked", async () => {
+        const root = payloadTree();
+        fs.writeFileSync(path.join(root, ".claude-plugin", "marketplace.json"), JSON.stringify({ name: "m" }));
+        const { findings } = inspect(root, { payload: true });
+        // Present-but-invalid must not ride the exemption: the note is for ABSENCE only.
+        assert.equal(findings.some((f) => /none is owed/.test(f.message)), false);
+        assert.equal(findings.filter((f) => f.severity === "fail").length > 0, true, messages(findings));
+    });
+
+    test("a DANGLING marketplace.json symlink is not an absence — unusable and absent differ", async () => {
+        const root = payloadTree();
+        fs.symlinkSync(path.join(root, "nowhere.json"), path.join(root, ".claude-plugin", "marketplace.json"));
+        const { findings } = inspect(root, { payload: true });
+        assert.equal(findings.some((f) => /none is owed/.test(f.message)), false, "a broken link is not `no marketplace`");
+        assert.equal(findings.filter((f) => f.severity === "fail").length > 0, true, messages(findings));
+    });
+
+    test("an unknown option is could-not-run, never a verdict", async () => {
+        assert.equal(await run(["--nonsense", REPO], { quiet: true }), 2);
+    });
+});

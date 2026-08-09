@@ -2083,3 +2083,13 @@ _The seam applies here too: no client-identifying references._
   re-request was on an `opened` head, fitting the narrow shape. Lead strengthened, **not** settled. Experiment
   **opportunistic**, prediction registered first. **Closes #161.** Nine green. Seam scan clean. · Fidelity:
   ruling delegated; pre-commit recorded. Handoff: [`2026-08-09`](../.portulan/handoffs/2026-08-09-the-override-becomes-the-procedure.md).
+- 2026-08-09 · M7 (CLI & onboarding), session 5 continued · **The pack the feed ships declared nothing.** The maintainer asked for the checkpoints plugin
+  manifest to be fixed "in portulan-internal"; it is fixed **here**, which is the finding. `portulan-checkpoints` is a **`git-subdir`** source rooted at
+  `packs/`, so a host installs that directory and reads `packs/.claude-plugin/plugin.json` — which did not exist, so it declared nothing and reported
+  **`Skills (0)`** for a milestone. [#134](https://github.com/sleepy-panda-works/portulan/issues/134)'s own diagnosis of that bullet was wrong: it named
+  the declared-path-too-high trap, which is real and different. Both reproduced on 2.1.226 — no manifest **0**, `./rituals/` **0**, the right depth **3**.
+  The recipe found the new plugin root before anyone declared it and exited 2. `plugin-lint` gained **`--payload`** for a root a feed publishes: a missing
+  `marketplace.json` becomes a counted `unverifiable`, **opt-in and never inferred**. Nine recipes, suite 1110→1117. Seam scan clean. · Fidelity:
+  pre-commit PWC **REQUEST-CHANGES**, all folded — it caught a **could-not-run flattened into a red** by `|| status=1` (third instance; `compile.sh` and
+  `index.sh` carry the fix), `existsSync` following a dangling symlink into "none is owed", the relaxation shipping with **no test**, and a wrong version.
+  Left: the feed's pin has not moved, so the real install still reports 0. Handoff: [`2026-08-09`](../.portulan/handoffs/2026-08-09-the-pack-the-feed-ships-declared-nothing.md).

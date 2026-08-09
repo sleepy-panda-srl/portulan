@@ -40,6 +40,22 @@ The Session log in [`docs/plan.md`](docs/plan.md) is the fuller record — it is
 records how things were found. This is per *release* and records what a reader gets.
 
 ## Unreleased
+### Fixed
+
+- **The pack this project's private feed ships registered no skills, because its payload declared none.**
+  `packs/` is installed as a plugin in its own right — the feed's entry is a `git-subdir` source rooted
+  there — and it carried no `.claude-plugin/plugin.json`, so a host read nothing and reported `Skills (0)`.
+  It now declares `./rituals/checkpoints/skills/`, the directory that actually holds them, because a host
+  expands a declared skills path exactly one level. Measured both ways on Claude Code 2.1.226:
+  `Skills (0)` → `Skills (3)`.
+
+### Added
+
+- **`plugin-lint --payload`**, for a plugin root a feed publishes rather than one that is its own
+  marketplace: a missing `marketplace.json` becomes a counted `unverifiable` note instead of a failure.
+  Opt-in and never inferred from an absent file. `.portulan/verify/plugin.sh` declares such roots in a
+  separate `PAYLOAD_ROOTS` list and audits both against the tree.
+
 
 **A pack root can be discovered instead of typed.** `--pack-root auto` reads the same installed-plugin
 record the pointer half reads — `<config>/plugins/installed_plugins.json`, `CLAUDE_CONFIG_DIR` honoured,
