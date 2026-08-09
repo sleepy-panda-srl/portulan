@@ -145,7 +145,15 @@ async function green(dir, options = {}) {
     // own maintainer has the workspace these fixtures name installed — so the suite would behave one
     // way on his laptop and another in CI. `cli/doctor.test.mjs` carries the same injection with the
     // same reasoning. A fresh directory per call, so no record exists and the `absent` branch answers.
-    const { findings } = await inspect(dir, { env: { CLAUDE_CONFIG_DIR: scratch() }, ...options });
+    //
+    // **`CLAUDE_CONFIG_DIR` wins over anything a caller passes**, and the ordering is the whole point:
+    // written as `{ env: …, ...options }` the injection was the first word rather than the last, so any
+    // caller supplying `env` silently replaced it and got the machine's real host back — a helper whose
+    // comment called the injection load-bearing while the code made it a default. Other env keys still
+    // pass through, because a caller may legitimately need one; the config directory is the one this
+    // helper exists to pin. (Copilot, round 1.)
+    const { env: callerEnv, ...rest } = options;
+    const { findings } = await inspect(dir, { ...rest, env: { ...callerEnv, CLAUDE_CONFIG_DIR: scratch() } });
     return findings.filter((f) => f.severity === "fail");
 }
 
