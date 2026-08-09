@@ -71,7 +71,7 @@
           "$ref": "#/$defs/slug"
         },
         "feed": {
-          "description": "Optional. Where that workspace is delivered from — a private marketplace, by the name a host installs it under. Absent means the pointer names a workspace without saying where to get it, which is a legitimate state for a workspace checked out beside this repository and is why this is not required.",
+          "description": "Optional. Where that workspace is delivered from — a private marketplace, by the name a host installs it under. Absent means the pointer names a workspace without saying where to get it, which is a legitimate state for a workspace checked out beside this repository and is why this is not required. A blank or all-whitespace value means the same as absent to discovery: `minLength: 1` accepts `\"   \"`, which constrained every candidate to a marketplace of that name and answered `not-installed` about a workspace that was installed, so a resolver reads blank as unconstrained rather than as a constraint nothing can satisfy.",
           "type": "string",
           "minLength": 1
         }
