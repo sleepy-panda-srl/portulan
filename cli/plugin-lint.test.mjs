@@ -1071,3 +1071,27 @@ describe("payload roots — the opt-in relaxation", () => {
         assert.equal(await run(["--nonsense", REPO], { quiet: true }), 2);
     });
 });
+
+test("a marketplace.json that cannot be EXAMINED fails, payload or not — the third verdict", () => {
+    // ENOENT is the only absence. An unreadable directory makes `lstatSync` answer EACCES, and the
+    // first cut fell through to `manifest()`, whose `existsSync` also cannot stat it and calls the
+    // file MISSING — the conflation this block exists to prevent, one branch further out.
+    // (Copilot, final round on #188.) Skipped as root, where permissions do not bite.
+    const root = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), "portulan-unexaminable-"));
+    SCRATCH.push(root);
+    const meta = path.join(root, ".claude-plugin");
+    fs.mkdirSync(meta, { recursive: true });
+    fs.writeFileSync(path.join(meta, "plugin.json"), JSON.stringify({ name: "a-payload", version: "0.1.0" }));
+    fs.writeFileSync(path.join(meta, "marketplace.json"), "{}");
+    fs.chmodSync(meta, 0o000);
+    try {
+        if (fs.existsSync(path.join(meta, "marketplace.json"))) return; // running as root: the probe cannot bite
+        for (const opts of [{ payload: true }, {}]) {
+            const { findings } = inspect(root, opts);
+            assert.equal(findings.some((f) => /could not be examined/.test(f.message)), true, JSON.stringify(opts));
+            assert.equal(findings.some((f) => /none is owed/.test(f.message)), false, "an unusable file is not an absence");
+        }
+    } finally {
+        fs.chmodSync(meta, 0o755);
+    }
+});
