@@ -1172,7 +1172,8 @@ export function run(argv, say = console.log) {
         else if (argv[i] === "--pack-root") {
             const dir = argv[i + 1];
             i += 1;
-            if (dir === undefined || dir.startsWith("--")) {
+            // Single leading `-` refused as well, matching `doctor` — see `compile.mjs` for why.
+            if (dir === undefined || dir.startsWith("-")) {
                 say("  ✗ --pack-root needs a directory, or `auto` to discover one from the host plugin cache. A directory actually named `auto` is `./auto`");
                 return 2;
             }

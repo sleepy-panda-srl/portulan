@@ -1901,7 +1901,11 @@ export function run(argv, options = {}) {
             } else if (argv[i] === "--pack-root") {
                 const root = argv[i + 1];
                 i += 1;
-                if (root === undefined || root.startsWith("--"))
+                // A SINGLE leading `-` is refused too, not just `--`: `--pack-root -h` would otherwise
+                // consume the flag as a path and fail later as an unreadable one. `doctor` already read
+                // it this way, so this aligns the three rather than inventing a rule. A directory whose
+                // name really begins with `-` is `./-name`, the same escape `auto` takes.
+                if (root === undefined || root.startsWith("-"))
                     throw new CompileError(
                         "--pack-root needs a directory, or `auto` to discover one from the host plugin cache. " +
                             "A directory actually named `auto` is `./auto`",
