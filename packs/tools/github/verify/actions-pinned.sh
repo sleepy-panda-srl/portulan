@@ -52,8 +52,11 @@ while IFS= read -r file; do
     while IFS= read -r line; do
         value=$(printf '%s\n' "$line" | sed -E 's/^[[:space:]]*-?[[:space:]]*uses:[[:space:]]*//; s/[[:space:]]*(#.*)?$//; s/^["'"'"']//; s/["'"'"']$//')
         [ -n "$value" ] || continue
-        examined=$((examined + 1))
 
+        # `examined` counts only references this recipe can actually judge, and the exempt ones are
+        # counted separately below. Counting them here made the summary print a ratio like `2 of 3
+        # pinned` on a run where every non-exempt reference WAS pinned — a green whose own number
+        # looked like a partial pass. Copilot round 2.
         case "$value" in
             ./*)
                 # A local action lives in this repository and moves with it — there is no third-party
@@ -68,6 +71,7 @@ while IFS= read -r file; do
                 ;;
         esac
 
+        examined=$((examined + 1))
         ref=${value##*@}
         if [ "$ref" = "$value" ]; then
             printf '  UNPINNED %s: `uses: %s` carries no `@ref` at all\n' "$file" "$value" >&2

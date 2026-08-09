@@ -226,6 +226,18 @@ describe("the validations the CI emitter used to carry alone", () => {
         }
     });
 
+    test("a workspace recipe's id and run come out as STRINGS, whatever the manifest put in", () => {
+        // The validation coerces with `String(...)`, so a non-string id that stringifies to a slug
+        // passes — and every downstream use is an identity comparison (`r.id === set.default` in the
+        // Stop gate). One arm of the carrier stringified and the other did not.
+        const odd = { id: { toString: () => "docs" }, run: { toString: () => "./x.sh" } };
+        const out = recipeSet({ name: "w", verify: { default: "docs", recipes: [odd] } }, {});
+        assert.equal(out.ok, true);
+        assert.strictEqual(out.recipes[0].id, "docs");
+        assert.strictEqual(out.recipes[0].run, "./x.sh");
+        assert.ok(out.recipes.find((r) => r.id === out.default), "the default must resolve by identity, not by coercion");
+    });
+
     test("the run refusal names every character it rejects, including the carriage return", () => {
         // It said "newline or tab" while rejecting `\r` too, so a manifest carrying one was sent
         // looking for two characters it did not contain.
