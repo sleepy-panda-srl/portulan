@@ -41,6 +41,26 @@ records how things were found. This is per *release* and records what a reader g
 
 ## Unreleased
 
+**A repository governed from a feed now boots to its workspace instead of to a note saying where it
+is.** A `.portulan/workspace.json` of `kind: pointer` names the workspace that governs the repository;
+until now nothing dereferenced that name, so `/portulan` reported *not installed here* about a
+workspace that was installed. `cli/discover.mjs` reads the host's installed-plugin record — from disk,
+never over the network — and resolves `governed_by` to the directory the workspace was installed to;
+`doctor` reports the answer on a pointer, and the boot skill loads the workspace it names and produces
+the report an in-repo workspace produces, saying which residence it came from and at what pinned
+version. Four answers rather than two, because three of them are not *no*: **resolved**, **not
+installed here**, **ambiguous** — two installs answering to one name are refused and both named, never
+ranked — and **could not look**, which must never spend as absence. The match is on the governing
+manifest's own `name` **and** its `portulan` version block — `workspace.json` is a common filename and a
+file that merely shares it is not a workspace — constrained by the pointer's `feed` where it declares one,
+and the candidate locations inside a payload are a named pair rather than a walk. It is **reported and never graded**: a
+pointer whose governor is not installed is a correct pointer, so no host's install state moves
+`doctor`'s verdict. What this does **not** do is default `--pack-root` from the same record — that is
+[#123](https://github.com/sleepy-panda-works/portulan/issues/123), and a discovered pack root that
+silently joined the search would end the property that a named root **replaces** the derived one.
+Answers the open half of [#134](https://github.com/sleepy-panda-works/portulan/issues/134) — which the
+maintainer closes, not a keyword, after that issue was already closed once by a retracted one.
+
 **Copilot's findings become threads, and a thread blocks.** A suppressed low-confidence note
 used to carry no thread, no Resolve control and therefore **no state** — nothing distinguished
 *answered* from *ignored*, and `CLEAN` could be true with several unread. Each one is now promoted to a
