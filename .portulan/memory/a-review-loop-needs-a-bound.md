@@ -41,9 +41,9 @@ ratification is recorded as such because a clause an implementer inferred and a 
 ruled are different things, and blurring them is the defect this rule protects against.
 
 **A records-only correction counts.** A push fixing nothing but a record still spends a round, because it
-is still a push answering a finding — ruled the same day against an exemption a session could route fixes
-through. Rule 2 keeps records out of the *middle* of the loop; it does not make them free when they are
-the answer.
+is still a push answering a finding. **That clause was ruled the same day**, against the alternative — an
+exemption a session could route fixes through. Rule 2 keeps records out of the *middle* of the loop; it
+does not make them free when they are the answer.
 
 **What is therefore NOT a round.** Each was counted as one somewhere before that ruling:
 
@@ -62,8 +62,8 @@ the answer.
 threads); the fix-rounds are in neither — they are the pushes that answered, read from `git log`. **The
 reviewer is `copilot-pull-request-reviewer[bot]` on `/reviews` and plain `Copilot` on `/comments`**, and a
 filter on either login returns **zero** from the other endpoint — which is how #105's count was first
-mis-measured as zero. Measured 2026-07-30 across ten pull requests spanning this project's whole history:
-exactly those two spellings, one per endpoint, no overlap in either direction.
+mis-measured as zero. Measured 2026-07-30 across ten pull requests spanning this project's whole history,
+every one returned exactly those two spellings, one per endpoint, with no overlap in either direction.
 
 **Count pushes and then look inside each one; never count the commits the API happened to name.** On #105
 one answering push rode inside another and was never a reviewed head, so the branch had ten commits and
