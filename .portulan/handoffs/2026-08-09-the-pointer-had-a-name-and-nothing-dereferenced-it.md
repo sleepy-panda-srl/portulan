@@ -110,7 +110,7 @@ handoff. Changed: `cli/doctor.mjs`, `cli/doctor.test.mjs`, `plugin/skills/portul
 `.portulan/identity.md`, `.portulan/proposals/0017…`; the carriers and hermeticity the checkpoint found —
 `cli/init.mjs`, `cli/index.mjs`, `cli/compile.mjs`, `cli/portulan.mjs` and its suite,
 `cli/vendor.test.mjs`, `cli/init.test.mjs`; and the records — `docs/plan.md`, `CHANGELOG.md`,
-`.portulan/handoffs-index.md` (regenerated, never hand-edited). Suite `main` **1059** → branch **1101**;
+`.portulan/handoffs-index.md` (regenerated, never hand-edited). Suite `main` **1059** → branch **1103**;
 **all nine recipes green**, run individually and read without a pipe. Seam scan clean on diff, message,
 branch and paths.
 
@@ -148,7 +148,32 @@ does. And two suites had quietly lost hermeticity — `cli/vendor.test.mjs`'s `g
 `cli/init.test.mjs`'s `doctor()` grade pointer directories and were reading the developer's real host
 config, which is exactly the reasoning `cli/doctor.test.mjs` had already written down one file away.
 
-_This handoff is written before the review loop rather than after it — rule 2 of
-[`../memory/a-review-loop-needs-a-bound.md`](../memory/a-review-loop-needs-a-bound.md) governs the
-**push**, and what it forbids is a record asserting a total that can still move. The round count and the
-pull-request number are therefore in the Session log entry, which lands last._
+## The loop, and where it stopped
+
+[#181](https://github.com/sleepy-panda-works/portulan/pull/181). **Three rounds, two answering pushes**,
+and the bound held rather than being argued past.
+
+- **Round 1**, one thread: `green()` in vendor's suite spread the injected `env` **first**, so any caller
+  passing `env` replaced it and got the real host back — a helper whose comment called the injection
+  load-bearing while the code made it a default. Fixed; the sibling sweep found the other three injection
+  sites already safe, and `emptyHost()` is left unhardened **on purpose**, said in its docblock so the
+  omission reads as a decision.
+- **Round 2**, three suppressed notes, all real. `{"plugins": []}` read as a healthy record with nothing
+  installed — `typeof [] === "object"` — so a malformed file collapsed into *not-installed*, which is
+  *could not look* spent as absence, in the function whose docblock argues those states are kept apart;
+  the guard **one clause away** already had `Array.isArray`. `readCandidate` still admitted a bare
+  `portulan: {}`, the same fail-open one tightening later, now gated on `portulan.spec` — what the
+  Definition requires of that block — with the pattern left to `doctor`. And `options.discover` was called
+  synchronously inside an `async` function, so a promise-returning hook would have produced a report about
+  a Promise rather than about a host, green and silently wrong.
+- **Round 3, triaged rather than pushed** — [#182](https://github.com/sleepy-panda-works/portulan/issues/182).
+  A blank `governed_by.feed` constrains discovery to a marketplace named `"   "` and answers *not installed*
+  about something installed: real, and a **sibling** of `configDir`'s blank handling one screen up, which
+  rule 4 exempts from the bound — but the same clause holds that an extension past two is **the
+  maintainer's to grant and never the session's to assume**, so it is filed with its fix identified. The
+  second note claimed a malformed injected resolver *crashes* `doctor`; measured four ways, three of them
+  exit **2 — could not run**, which is this tool's designed answer to a defect inside itself. The residue
+  is one cosmetic `undefined` in a fallback sentence.
+
+_The prose above was written before the loop; the counts were added in the final push, which is rule 2
+read the way it means: a record must not assert a total that can still move._
