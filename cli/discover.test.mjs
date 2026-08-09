@@ -27,7 +27,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 
-import { configDir, recordPath, readInstalls, resolveGovernor, run, EXIT, MANIFEST_AT, RECORD } from "./discover.mjs";
+import { configDir, recordPath, readInstalls, resolveGovernor, run, EXIT, MANIFEST_AT, RECORD, RECORD_VERSIONS } from "./discover.mjs";
 
 const SCRATCH = [];
 
@@ -129,6 +129,35 @@ test("readInstalls calls unparseable and non-record files unreadable", () => {
     const noPlugins = readInstalls({ env });
     assert.equal(noPlugins.state, "unreadable");
     assert.match(noPlugins.detail, /not an installed-plugin record/);
+});
+
+test("an unrecognised record version is could-not-look, never a hopeful parse", () => {
+    // The record belongs to the HOST. A later version may move or rename `installPath`, and a reader
+    // that parsed on regardless would report roots that are not roots — a confident wrong answer, which
+    // is what the four states exist to prevent. Raised by the #183 session, which had this guard on its
+    // own reader; verified against the live record, which carries version 2.
+    const { dir, env } = host({ "sleepy-panda@feed": { manifest: governing("sleepy-panda") } });
+    const record = JSON.parse(fs.readFileSync(path.join(dir, RECORD), "utf8"));
+
+    for (const version of [3, "2", null, undefined]) {
+        const bumped = { ...record, version };
+        if (version === undefined) delete bumped.version;
+        write(path.join(dir, RECORD), bumped);
+        const installs = readInstalls({ env });
+        assert.equal(installs.state, "unreadable", `version ${JSON.stringify(version)} must not be read`);
+        assert.match(installs.detail, /not one this reader understands/);
+        // And it reaches the caller as could-not-look rather than as an absence.
+        assert.equal(resolveGovernor({ workspace: "sleepy-panda" }, { env }).state, "could-not-look");
+    }
+
+    // The negative control: the version it does understand still reads, so this is a guard rather than
+    // a reader that stopped working.
+    write(path.join(dir, RECORD), record);
+    assert.equal(readInstalls({ env }).state, "read");
+});
+
+test("the record versions this reader claims are enumerated, not implied", () => {
+    assert.deepEqual([...RECORD_VERSIONS], [2]);
 });
 
 test("a `plugins` ARRAY is unreadable, not an empty host — the collapse that spent a look as an absence", () => {
