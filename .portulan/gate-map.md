@@ -623,13 +623,29 @@ maintainer re-runs the job. The same click as before, now only in the case that 
 
 **The guarantee is bounded; the process on top of it is now bounded too — 2026-07-28.** Answering
 Copilot was made mandatory and unbounded on the same day, and the unbounded half did not survive
-contact: **110 rounds across the 30 most recently merged pull requests, 3.7 each, 29% of them finding
-nothing at all, twelve needing four or more.** The length was driven by *pushes* rather than findings —
-`review_on_push: true` means every push spawns a round, including documentation-only ones. The bound is
-[`memory/a-review-loop-needs-a-bound.md`](memory/a-review-loop-needs-a-bound.md): one push per round,
-records land last, threads block but low-confidence notes do not, and after two fix-rounds the remainder
-becomes an issue rather than another push. **None of that touches the row in the table above** — the
-merge still waits for the round on the merging head, and threads still resolve.
+contact: **110 Copilot submissions across the 30 most recently merged pull requests, 3.7 each, 29% of
+them finding nothing at all, twelve needing four or more.** The length was driven by *pushes* rather than
+findings — `review_on_push: true` means every push draws one, including documentation-only ones. _Those
+four figures are the record's own table, cited rather than re-derived, and they count **submissions** —
+the unit that file names. This paragraph headed them "rounds" until 2026-08-09, ten days after the record
+re-labelled them and defined a round as a review the working session answers with a push. The word keeps
+its ordinary sense elsewhere in this document; what carries the obligation is a **counted** figure._
+
+**The bound is [`memory/a-review-loop-needs-a-bound.md`](memory/a-review-loop-needs-a-bound.md), and this
+map cites it rather than restating it.** The four rules, what one round is, and the amendments of
+2026-08-07 are stated there; read them at the rule, because this map no longer carries a second copy to
+read instead. Until 2026-08-09 it did, and two of that copy's four clauses had drifted from the file
+they were summarising. It said *"threads block but low-confidence notes do not"* — a sentence **rule 3
+reversed in place on 2026-08-07**, on the maintainer's ruling of shape 1 of
+[`0021`](proposals/0021-the-suppressed-channel-needs-a-state.md), so this map went on denying the
+promotion the workflow had already started making. And it stated rule 4's two-fix-round bound flat,
+without the sibling exemption ruled the same day. A rule with a second, narrower carrier is obeyed at
+the narrower one, which is the class
+[`0020`](proposals/0020-a-fix-is-not-done-at-the-site-it-was-found.md) names; citing is the repair it
+prescribes for prose, and it is what [`dod.md`](dod.md) conditions 6 and 7 were repaired **into**. A
+pointer cannot drift from what it points at, which a summary in another file demonstrably can, for two
+days, while the workflow it describes did the opposite. **None of that touches the row in the table
+above** — the merge still waits for the round on the merging head, and threads still resolve.
 
 **The round's outcome is now displayed as a review — a derived verdict, 2026-07-29, on the
 maintainer's directive.** Copilot cannot say it: the platform submits every Copilot round as a
