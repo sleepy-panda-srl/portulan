@@ -1,6 +1,6 @@
 # Handoff — four readers of one set, and the fixture that agreed with the bug
 
-**Milestone 7, session 6 (session A of the three-session close).** Row 7's composition amendment of
+**Milestone 7, session 5 continued (session A of the three-session close).** Row 7's composition amendment of
 2026-07-31, and **D6**.
 
 ## State
@@ -71,7 +71,7 @@ index rail, **four of six** demonstrations. Clause (c) stays ungradeable until (
 
 - **The feed pin has not moved.** A delegated supervisor ruled 2026-08-09 that **D5 requires the real
   install** and cannot be graded demonstrated while it stands still. The act is his.
-- **Row 7's Status cell numbers this session `s5` while the Session log calls it session 6.** The cell's
-  `s0`–`s3` track the log exactly and then skip session 4, which delivered doctrine and no row item. The
-  drift is named rather than silently renumbered; which convention wins is his.
+- **This is session 5, not session 6.** The records first said 6; the maintainer corrected it on
+  2026-08-09 and the correction is applied throughout. Row 7's Status cell carries this work as `s5`,
+  which is now consistent with the log rather than one ahead of it.
 - **#167's retrospective pass** was ruled owed and gates the close, not the sessions.

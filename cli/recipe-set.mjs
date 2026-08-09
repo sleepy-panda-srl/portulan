@@ -112,7 +112,12 @@ function invalidRunnable(id, run, where) {
     if (!SLUG.test(String(id ?? ""))) return `${where} declares a recipe id that is not a slug: ${JSON.stringify(id)}`;
     const command = String(run ?? "");
     if (!command.trim()) return `${where} declares an empty run command for recipe \`${id}\``;
-    if (/[\n\r\t]/.test(command)) return `${where} declares a run containing a newline or tab for recipe \`${id}\``;
+    // Names all three characters it rejects. It said "newline or tab" while the pattern also refused a
+    // carriage return, so a manifest carrying one got a message pointing at two characters it did not
+    // contain — a diagnosis that sends the reader looking for the wrong thing. Copilot round 1.
+    if (/[\n\r\t]/.test(command)) {
+        return `${where} declares a run containing a newline, carriage return or tab for recipe \`${id}\``;
+    }
     return null;
 }
 
@@ -136,7 +141,24 @@ function invalidRunnable(id, run, where) {
 export function recipeSet(manifest, options = {}) {
     const { packs = manifest?.packs ?? [], resolve = null, trustPackSpelling = false } = options;
 
-    const declared = manifest?.verify?.recipes ?? [];
+    // A manifest with no `verify.recipes` ARRAY is could-not-run, not a workspace that declares none.
+    //
+    // This was `?? []`, and that was a fail-open the move introduced: the CI emitter this carrier
+    // replaced iterated `m.verify.recipes` directly, so an absent block threw and became exit 2. Under
+    // `?? []` an invalid manifest could still yield a runnable set as soon as a pack contributed one —
+    // CI would then run a green over a workspace whose own declaration nobody could read. One of the
+    // four validations that was supposed to survive the move, and the one that did not; the pre-commit
+    // checkpoint asked the question and neither pass caught it. Copilot round 1's suppressed note did.
+    //
+    // Absent is distinguishable from empty here only in the message: both refuse, because `spec/workspace.schema.json`
+    // requires the block and a workspace that declares no recipes cannot report green either way.
+    if (!Array.isArray(manifest?.verify?.recipes)) {
+        return refuse(
+            "the workspace manifest declares no `verify.recipes` array — could-not-run rather than a set " +
+                "computed as if it had declared none",
+        );
+    }
+    const declared = manifest.verify.recipes;
     const recipes = [];
     const seen = new Set();
 

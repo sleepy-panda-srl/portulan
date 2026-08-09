@@ -697,8 +697,21 @@ export function agentsMd(manifest, host, kernel = null) {
     // asking it for the workspace subset, never by re-enumerating `verify.recipes` in this file.
     const composed = (manifest.packs ?? []).length > 0;
     const set = recipeSet(manifest, { packs: [] });
+    // A manifest the carrier REFUSES is not a manifest that declares nothing, and collapsing the two
+    // would put "_No recipes are declared._" into a vendored artifact whose workspace actually declares
+    // an unreadable one — a false statement shipped to whoever receives the vendored copy, which is
+    // dod condition 4's class. The refusal's own reason is carried through instead. Copilot round 1.
     const recipes = set.ok ? set.recipes : [];
-    if (recipes.length === 0) {
+    if (!set.ok) {
+        lines.push(
+            "> **COULD NOT READ THIS WORKSPACE'S VERIFY RECIPES.** " + set.reason,
+            ">",
+            "> This is not the same as declaring none, and it is printed rather than swallowed: a vendored",
+            "> workspace whose verify table is silently empty would say *done is checked against nothing*",
+            "> when what is true is *nobody could read what done is checked against*.",
+            "",
+        );
+    } else if (recipes.length === 0) {
         lines.push("_No recipes are declared._", "");
     } else {
         lines.push("| Recipe | Command |", "|---|---|");

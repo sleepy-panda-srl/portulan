@@ -212,6 +212,27 @@ describe("the validations the CI emitter used to carry alone", () => {
         assert.match(out.reason, /no verify recipes/i);
     });
 
+    test("a manifest with NO `verify.recipes` array is could-not-run, even when a pack would supply one", () => {
+        // The regression the move introduced and Copilot round 1's suppressed note caught: under
+        // `?? []` an unreadable workspace declaration still produced a runnable set as soon as a pack
+        // contributed a recipe, so CI would have reported green over a manifest nobody could read.
+        // The emitter this carrier replaced iterated the key directly and threw, i.e. exit 2.
+        const gh = pack("tools/github", [{ id: "a", run: "x" }]);
+        for (const manifest of [{ name: "w" }, { name: "w", verify: {} }, { name: "w", verify: { recipes: "nine" } }]) {
+            const out = recipeSet(manifest, { packs: ["tools/github"], resolve: resolverOver([gh]) });
+            assert.equal(out.ok, false, `${JSON.stringify(manifest)} must be refused`);
+            assert.equal(out.exitCode, 2);
+            assert.match(out.reason, /verify\.recipes/);
+        }
+    });
+
+    test("the run refusal names every character it rejects, including the carriage return", () => {
+        // It said "newline or tab" while rejecting `\r` too, so a manifest carrying one was sent
+        // looking for two characters it did not contain.
+        const out = recipeSet(workspace([{ id: "a", run: "a\rb" }]), {});
+        assert.match(out.reason, /carriage return/i);
+    });
+
     test("the same validations apply to a COMPOSED recipe, not only to the workspace's own", () => {
         const bad = pack("tools/github", [{ id: "a", run: "one\ntwo" }]);
         const out = recipeSet(workspace([DOCS]), { packs: ["tools/github"], resolve: resolverOver([bad]) });
