@@ -30,7 +30,7 @@ WORKFLOWS=".github/workflows"
 # they are checked against each other by nothing, which is stated here rather than implied.
 # ---------------------------------------------------------------------------------------------
 missing=""
-for tool in find grep sed sort cut wc; do
+for tool in find grep sed sort cut wc tr; do
     command -v "$tool" >/dev/null 2>&1 || missing="$missing $tool"
 done
 if [ -n "$missing" ]; then
