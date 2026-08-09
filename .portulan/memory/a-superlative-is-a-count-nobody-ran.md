@@ -42,9 +42,9 @@ rule is *do not assert the ranking*, not *go and measure it*.
 - **It does not ban ranking.** A ranking with a measurement behind it is a fact. What is banned is the
   bare superlative with nothing behind it.
 - **Nothing checks it.** A grep would find the phrase and would also find the 23 records it must not
-  touch, so the check is red on arrival and permanently
-  ([`a-mandate-nothing-checks-is-already-broken.md`](a-mandate-nothing-checks-is-already-broken.md)).
-  The sweep is a one-time repair; the rule's job afterwards is to stop the phrase coming back.
+  touch, so the check is red on arrival and permanently — which
+  [`a-mandate-nothing-checks-is-already-broken.md`](a-mandate-nothing-checks-is-already-broken.md) is the
+  rule about. The sweep is a one-time repair; the rule's job afterwards is to stop the phrase coming back.
 
 **The recursion is worth naming:** this is the two-carrier defect committed on the *name* of the
 two-carrier defect — one phrase, twenty carriers, four meanings, drifting because nothing owned it. It
