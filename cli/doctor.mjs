@@ -1373,22 +1373,22 @@ export async function inspect(workspaceDir, options = {}) {
                             "residences carry full functionality, so nothing is lost either way",
                     );
                 } else if (typeof other.governed_by?.workspace !== "string" || other.governed_by.workspace.trim() === "") {
-                        // The question is **is this a usable governor name**, not *is the key present* — the
-                        // third gap of this same class in this one block, and the one the first two fixes
-                        // left. `=== undefined` catches ABSENT and not INVALID, so `""`, `null` and a
-                        // non-string fell through to the conflicting-governor branch below and were refused
-                        // for naming a governor they do not name: a **false red** about somebody else's
-                        // manifest, in the block whose own rule is *read, never validated*.
-                        //
-                        // Blank counts as no name, which is the rule `cli/discover.mjs` now enforces at the
-                        // other site of this same operation. **Non-blank string**, deliberately, not *usable
-                        // slug*: a padded or otherwise illegal name is still a name the manifest DECLARES, and
-                        // judging its legality would be validating somebody else's workspace — the one thing
-                        // this block forbids. So `"  sleepy-panda  "` stays a conflict rather than becoming
-                        // "no name", and a test pins that boundary. The schema would refuse `""` through `$defs/slug`, but the schema
-                        // never runs here, and that is the whole point of read-not-validated.
-                        // ([#141](https://github.com/sleepy-panda-works/portulan/issues/141), found by Copilot
-                        // on #135 and filed rather than fixed there.)
+                    // The question is **is this a usable governor name**, not *is the key present* — the
+                    // third gap of this same class in this one block, and the one the first two fixes
+                    // left. `=== undefined` catches ABSENT and not INVALID, so `""`, `null` and a
+                    // non-string fell through to the conflicting-governor branch below and were refused
+                    // for naming a governor they do not name: a **false red** about somebody else's
+                    // manifest, in the block whose own rule is *read, never validated*.
+                    //
+                    // Blank counts as no name, which is the rule `cli/discover.mjs` now enforces at the
+                    // other site of this same operation. **Non-blank string**, deliberately, not *usable
+                    // slug*: a padded or otherwise illegal name is still a name the manifest DECLARES, and
+                    // judging its legality would be validating somebody else's workspace — the one thing
+                    // this block forbids. So `"  sleepy-panda  "` stays a conflict rather than becoming
+                    // "no name", and a test pins that boundary. The schema would refuse `""` through `$defs/slug`, but the schema
+                    // never runs here, and that is the whole point of read-not-validated.
+                    // ([#141](https://github.com/sleepy-panda-works/portulan/issues/141), found by Copilot
+                    // on #135 and filed rather than fixed there.)
                     const named = other.governed_by?.workspace;
                     report(
                         "residence",
