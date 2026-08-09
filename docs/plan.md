@@ -2027,5 +2027,5 @@ _The seam applies here too: no client-identifying references._
   at exit 1. `Skills (7)` reproduces with **no workspace present**, so it shows packaging and not clause (b), narrowed here and carried with #134's no-inheritance
   half on [#184](https://github.com/sleepy-panda-works/portulan/issues/184). Suite 1059→1108, nine recipes. Seam scan clean. · Fidelity: session-open PWC ×2 +
   pre-commit PWC, all folded — the last caught the [#182](https://github.com/sleepy-panda-works/portulan/issues/182) fix **trimming** where `configDir()` only
-  blank-tests, turning a `resolved` into a `not-installed`. 6 rounds, 4 pushes; rounds 3–4 triaged, 5 fixed all three of #182 on the maintainer's **granted**
-  extension, 6 fixed its two siblings at the sites the fix missed. Handoff: [`2026-08-09`](../.portulan/handoffs/2026-08-09-the-pointer-had-a-name-and-nothing-dereferenced-it.md).
+  blank-tests, turning a `resolved` into a `not-installed`. 7 rounds, 5 pushes; rounds 3–4 triaged, 5 fixed all three of #182 on the maintainer's **granted**
+  extension, 6–7 its siblings at three sites the fix missed. Handoff: [`2026-08-09`](../.portulan/handoffs/2026-08-09-the-pointer-had-a-name-and-nothing-dereferenced-it.md).
