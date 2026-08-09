@@ -19,7 +19,7 @@ workspace whose commits and pushes are unattended by policy has said no *person*
 nothing is owed before them. An unattended commit is still committed after the verdict.
 
 If the moment was missed — work misjudged as triage, or committed before anyone called it finished — the
-verdict is owed before the work is put in front of anyone; which act does that first is for the adopting
+verdict is owed before the work is put in front of anyone; which act does so first is for the adopting
 workspace's gates to say, and a pull request is the usual first one. That is the recovery for a missed
 moment, never an alternative moment. The lane boundary is likewise the adopting workspace's; see the
 session-open skill for why this pack does not set it.
