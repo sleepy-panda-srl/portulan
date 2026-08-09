@@ -226,6 +226,36 @@ describe("the validations the CI emitter used to carry alone", () => {
         }
     });
 
+    test("`trustPackSpelling` reaches the shadow refusal with a GENUINELY namespaced id", () => {
+        // The option's whole purpose is to bypass the namespacer, and a bypassed spelling carries `/`
+        // and `:` — which the slug check refused before the shadow refusal could be reached, so the
+        // option named a purpose it could not serve. Copilot round 6.
+        const sneaky = pack("tools/github", [{ id: "tools/github:docs", run: "echo pack" }]);
+        const first = recipeSet(workspace([DOCS]), { packs: ["tools/github"], resolve: resolverOver([sneaky]), trustPackSpelling: true });
+        assert.equal(first.ok, true, "a namespaced spelling that collides with nothing is composed, not refused as a non-slug");
+        assert.ok(first.recipes.find((r) => r.id === "tools/github:docs"));
+
+        const clash = pack("tools/github", [{ id: "docs", run: "echo pack" }]);
+        const second = recipeSet(workspace([DOCS]), { packs: ["tools/github"], resolve: resolverOver([clash]), trustPackSpelling: true });
+        assert.equal(second.ok, false);
+        assert.match(second.reason, /shadow/i);
+    });
+
+    test("`verify.default` comes out normalised the same way the ids do", () => {
+        // Round 2 stringified the ids and left the default raw; identity comparisons then stopped
+        // matching. One repair, two values, and it reached one of them.
+        const odd = { toString: () => "docs" };
+        const out = recipeSet({ name: "w", verify: { default: odd, recipes: [DOCS] } }, {});
+        assert.strictEqual(out.default, "docs");
+        assert.ok(out.recipes.find((r) => r.id === out.default), "the default must resolve by identity");
+    });
+
+    test("an absent `verify.default` stays absent rather than becoming the string \"undefined\"", () => {
+        const out = recipeSet({ name: "w", verify: { recipes: [DOCS] } }, {});
+        assert.equal(out.ok, true);
+        assert.equal(out.default, undefined);
+    });
+
     test("a non-array `packs` is could-not-run, never iterated as characters", () => {
         // Round 1 fixed this rule for `verify.recipes`; these are the two sites it did not reach.
         // A string here iterates CHARACTERS and produces "the pack `t` could not be resolved" — a
