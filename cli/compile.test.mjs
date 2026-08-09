@@ -2000,7 +2000,7 @@ describe("a workspace named directly, in either residence", () => {
     });
 
     test("only ENOENT means `this is a repository root` — an unreadable manifest refuses", () => {
-        // The rule this repository names more often than any other, and the first cut of
+        // The only-ENOENT rule, and the first cut of
         // `resolveWorkspace` broke it in the change whose own header states it three times: ANY failure
         // reading `workspace.json` fell back to `.portulan`, so a present-but-unreadable manifest sent
         // `compile` looking for a policy the workspace never named and failed with a confusing secondary

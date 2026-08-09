@@ -1466,7 +1466,7 @@ describe("a symlink cannot get a pack past either containment guard", () => {
     // Copilot, round 8 on #117. Round 6 closed the LEXICAL traversal and left two symlink doors open in
     // the same two guards. `path.resolve` is textual; `readFileSync` follows links. So the guard proved a
     // string was inside the pack and then read whatever the filesystem pointed at — which is the
-    // fail-open shape this repository names most, arriving one round after its own repair.
+    // fail-open shape — "nothing looked" read as "nothing wrong" — arriving one round after its own repair.
     test("a persona symlinked out of the pack is refused, not read", () => {
         const outside = path.join(scratch(), "secret.md");
         fs.writeFileSync(outside, "---\nname: x\n---\n\n## Memory scope\n\nSomething private.\n");

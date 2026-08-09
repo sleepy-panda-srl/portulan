@@ -56,7 +56,7 @@
 //    Guarded on the READ side too — copying through a link materialises a file from outside the
 //    workspace and records it as part of one.
 // 3. **Only `ENOENT` means absent.** An `EACCES` is a question that could not be answered, and answering
-//    it *nothing there* is the fail-open this repository names more often than any other.
+//    it *nothing there* is the fail-open: "nothing looked" reported as "nothing wrong".
 //
 // ## Exit codes
 //

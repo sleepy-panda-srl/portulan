@@ -16,7 +16,7 @@
 // **Not a reimplementation.** `doctor`, `compile`, `index` and `init` each live in their own file and
 // are exercised by their own suites; this dispatches to them and adds nothing to what they do. A
 // wrapper that re-derived any part of their behaviour would be a second carrier of one fact, which is
-// the defect this repository names more often than any other — so the dispatch imports each tool's
+// #91's class, a rule enforced at two sites and repaired at one — so the dispatch imports each tool's
 // exported `run` and returns its exit code untouched.
 //
 // **Not a home for the THREE tools that are off the list.** `plugin-lint`, `librarian` and — since
