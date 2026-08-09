@@ -75,7 +75,11 @@ A bare *done* plus a link is not a fidelity note.
   verdict* — would have to know the adopter's record format, and a recipe that cannot actually read
   what it claims to check is worse than none. The Pack Definition can carry recipes
   ([`../../../spec/pack.schema.json`](../../../spec/pack.schema.json)); this pack has nothing honest to
-  put in that field.
+  put in that field. _Since milestone 7 a pack's recipes are **composed** into the adopting workspace's
+  runnable set rather than merely declared, so this is a refusal with a cost now and not a limitation of
+  the format — and it is still the right refusal. It is a statement about **this** pack, never about
+  packs generally: [`tools/github`](../../tools/github/README.md) ships one, and was built because this
+  pack's refusal meant milestone 7's composition demonstration had no subject._
 - **It grades against the adopter's standard, never against this pack's.** The skills read the
   workspace's own constitution, plan, definition-of-done and gate map. Nothing here supplies a standard
   of its own, and a supervisor substituting its taste for the team's is a second author rather than a

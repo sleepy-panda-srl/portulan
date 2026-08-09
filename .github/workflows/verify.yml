@@ -5,9 +5,16 @@
 # check that CI actually reports. Without it, "required status checks" has nothing to require
 # and the floor rests on review alone.
 #
-# The recipes are NOT listed here. They are read from `.portulan/workspace.json`, so adding a
-# recipe to the manifest makes it enforced — no workflow edit, and no branch-protection change
-# that somebody has to remember. See .portulan/proposals/0004-ci-runs-every-declared-recipe.md.
+# The recipes are NOT listed here. They are the set `cli/recipe-set.mjs` yields for
+# `.portulan/workspace.json`, so adding a recipe to the manifest makes it enforced — no workflow
+# edit, and no branch-protection change that somebody has to remember. See
+# .portulan/proposals/0004-ci-runs-every-declared-recipe.md.
+#
+# **Yields, not declares, and the difference arrived with milestone 7's composition amendment.** The
+# set is now the workspace's own recipes PLUS those contributed by the packs it composes, namespaced
+# by pack. This step calls the carrier rather than reading the manifest itself, because the row puts
+# CI inside the contract: a composed recipe missing from what CI runs would be a green computed over
+# something nobody ran.
 #
 # One job, one context, and the name says what it asserts. It arrived that way by a sequence
 # rather than an edit: a required context cannot be renamed in a pull request, because the old
@@ -98,23 +105,21 @@ jobs:
           # an empty or whitespace-only command, a newline smuggled into one, an id that is not a
           # slug — must never be silently skipped, because "declared" is what this gate treats as
           # "enforced". Throwing here exits non-zero and becomes exit 2 below.
+          # The enumeration used to live here, as an inline `node -e`. It does not any more.
+          #
+          # Milestone 7's composition amendment made a composed pack's verify recipes part of this
+          # workspace's runnable set, and the row states the consequence for THIS step in its own
+          # words: *CI runs the recipe set the manifest yields*, so a composed recipe missing from it
+          # "would be a green computed over something nobody ran". A workflow computing its own set
+          # would be that green — the required check reporting on a set nobody else agrees with.
+          #
+          # So the set has one carrier, `cli/recipe-set.mjs`, and this step calls it. The four
+          # validations that used to be spelled above — a non-slug id, an empty run, a newline or tab
+          # in a run, and an empty set — moved into that module with their exit-2 semantics intact,
+          # and are asserted there rather than trusted to have survived the move. The roster of
+          # readers, this workflow included, is pinned in `cli/recipe-set.live.test.mjs`.
           err=$(mktemp)
-          recipes=$(node -e '
-            const fs = require("fs");
-            const m = JSON.parse(fs.readFileSync(".portulan/workspace.json", "utf8"));
-            // Exits cleanly rather than throwing: a stack trace is not a diagnosis, and this
-            // message becomes the check-summary annotation that somebody reads first.
-            const bail = (m) => { process.stderr.write(m + "\n"); process.exit(1); };
-            const slug = /^[a-z0-9]+(-[a-z0-9]+)*$/;
-            for (const r of m.verify.recipes) {
-              const id = String(r.id ?? "");
-              const run = String(r.run ?? "");
-              if (!slug.test(id)) bail("recipe id is not a slug: " + JSON.stringify(r.id));
-              if (!run.trim()) bail("recipe \"" + id + "\" declares an empty run command");
-              if (/[\n\r\t]/.test(run)) bail("recipe \"" + id + "\" run contains a newline or tab");
-              process.stdout.write(id + "\t" + run + "\n");
-            }
-          ' 2>"$err")
+          recipes=$(node cli/recipe-set.mjs --workspace .portulan --repo-root . 2>"$err")
           rc=$?
           if [ "$rc" -ne 0 ]; then
             # The annotation carries the emitter's own message rather than a generic one. A manifest that

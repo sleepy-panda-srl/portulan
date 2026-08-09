@@ -294,7 +294,11 @@ As of milestone 2 the schema is a rail rather than only a specification — but 
 rather than the middle one. `doctor` checks that a workspace's claims are **well-formed and resolvable**;
 almost nothing it checks is a claim about whether the workspace's content is *true*. It is run by CI on
 every pull request here, because [`../.portulan/workspace.json`](../.portulan/workspace.json) declares it
-as a verify recipe and the workflow runs every recipe the manifest declares.
+as a verify recipe and the workflow runs every recipe the manifest **yields** — which since milestone
+7's composition amendment is the recipes the workspace declares plus those the packs it composes
+contribute, namespaced by pack. *Declares* was the right word until that landed; the set is computed by
+[`../cli/recipe-set.mjs`](../cli/recipe-set.mjs) now, and CI calls it rather than enumerating the
+manifest itself.
 
 ## The JSON Schema subset
 

@@ -7,9 +7,23 @@
 
 ## The recipes
 
-Nine, as of milestone 7. All are declared in [`../workspace.json`](../workspace.json), which is also
-where the **default** is named — [`docs.sh`](docs.sh), the one the Stop-gate now actually runs when
-nothing more specific applies. Run any of them from anywhere in the tree:
+Nine declared here, plus **one composed** — ten in the runnable set, as of milestone 7's composition
+amendment. The nine are declared in [`../workspace.json`](../workspace.json), which is also where the
+**default** is named — [`docs.sh`](docs.sh), the one the Stop-gate now actually runs when nothing more
+specific applies.
+
+The tenth is `tools/github:actions-pinned`, contributed by the
+[`tools/github`](../../packs/tools/github/README.md) pack this workspace composes. It is **not** in this
+directory and is not declared in `workspace.json`: a composed recipe lives in its pack, is namespaced by
+it, and reaches the runnable set through [`../../cli/recipe-set.mjs`](../../cli/recipe-set.mjs). The
+default can never be one of them — `verify.default` is a bare slug and a composed id is not — which is
+row 7's contract holding by construction rather than by a check. To see the set as CI sees it:
+
+```
+node cli/recipe-set.mjs --workspace .portulan --repo-root .
+```
+
+Run any of the nine declared here from anywhere in the tree:
 
 ```
 ./.portulan/verify/docs.sh

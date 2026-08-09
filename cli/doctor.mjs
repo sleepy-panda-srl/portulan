@@ -51,6 +51,7 @@ import { parseFrontmatter } from "./plugin-lint.mjs";
 // file for a second one: the boot skill's whole instruction is to report what THIS resolver said, so
 // there must be exactly one thing that says it.
 import { resolveGovernor, AUTO, discoverPackRoots } from "./discover.mjs";
+import { composedId } from "./recipe-set.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const DEFAULT_SCHEMA = path.resolve(HERE, "..", "spec", "workspace.schema.json");
@@ -1209,11 +1210,25 @@ export async function inspect(workspaceDir, options = {}) {
         resolvePath(product.product, "file", `products[${i}].product`);
         if (product.affordances) resolvePath(product.affordances, "file", `products[${i}].affordances`);
     });
+    // Reads `verify.recipes` directly, and that is deliberate now that `cli/recipe-set.mjs` is the one
+    // carrier of the RUNNABLE set. This is not a reader of that set: it validates the workspace's own
+    // DECLARATION — that each declared recipe's `doc` resolves — which is a claim about this manifest,
+    // not about what CI will run. A composed recipe's `doc` resolves from its own pack root and is that
+    // pack's to validate. The same distinction governs the `verify.default` cross-check below. Both are
+    // exempt from the undeclared-reader sweep in `cli/recipe-set.live.test.mjs` for this reason, and
+    // the exemption is named there too so the two cannot drift apart.
     (workspace.verify?.recipes ?? []).forEach((recipe, i) => {
         if (recipe.doc) resolvePath(recipe.doc, "file", `verify.recipes[${i}].doc`);
     });
 
     // ---- cross-field
+    //
+    // Scoped to the workspace's OWN recipes on purpose, and it stays that way now that a pack's
+    // recipes compose into the runnable set. `verify.default` is a bare slug (`$defs/slug`) and a
+    // composed id is `<category>/<name>:<id>`, so a composed recipe can never be named here — widening
+    // this check to the composed union would accept nothing new and would quietly suggest that naming
+    // a pack's recipe as the default is a thing a manifest may do. Row 7 forbids exactly that: a
+    // composed recipe may never become the workspace's `verify.default`.
     const ids = (workspace.verify?.recipes ?? []).map((r) => r.id);
     if (!ids.includes(workspace.verify?.default)) {
         fail("cross", `verify.default names \`${workspace.verify?.default}\`, which is not among the declared recipes (${ids.join(", ") || "none"})`);
@@ -1506,7 +1521,14 @@ export async function inspect(workspaceDir, options = {}) {
                       (opened.unreadableRoots ? `, ${opened.unreadableRoots} root(s) UNREAD — that count is over what was opened, not over what was declared` : "")
                     : null,
                 c.personas?.length ? `${opened.personas} of ${c.personas.length} persona(s) opened` : null,
-                c.verify?.length ? `${c.verify.length} recipe(s), declared and not merged` : null,
+                // Merged as of milestone 7's composition amendment. This said "declared and not
+                // merged" while that was true, and became false the hour `cli/recipe-set.mjs` landed
+                // — a code carrier of the same fact the schema note carries, which is why both moved
+                // in one change. The ids are printed rather than counted: the namespace is what makes
+                // a collision impossible, so a reader should be able to see it.
+                c.verify?.length
+                    ? `${c.verify.length} recipe(s) composed as ${c.verify.map((r) => `\`${composedId(name, r.id)}\``).join(", ")}`
+                    : null,
                 c.gates?.length ? `${c.gates.length} gate fragment(s)` : null,
             ].filter(Boolean);
             report(

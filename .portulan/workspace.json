@@ -129,5 +129,5 @@
     }
   ],
 
-  "packs": ["rituals/checkpoints"]
+  "packs": ["rituals/checkpoints", "tools/github"]
 }
