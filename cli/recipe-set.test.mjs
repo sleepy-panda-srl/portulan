@@ -226,6 +226,30 @@ describe("the validations the CI emitter used to carry alone", () => {
         }
     });
 
+    test("a non-array `packs` is could-not-run, never iterated as characters", () => {
+        // Round 1 fixed this rule for `verify.recipes`; these are the two sites it did not reach.
+        // A string here iterates CHARACTERS and produces "the pack `t` could not be resolved" — a
+        // refusal naming something the manifest never said; an object throws a TypeError.
+        for (const packs of ["tools/github", { a: 1 }, 7]) {
+            const out = recipeSet(workspace([DOCS]), { packs, resolve: resolverOver([]) });
+            assert.equal(out.ok, false, `packs=${JSON.stringify(packs)} must be refused`);
+            assert.equal(out.exitCode, 2);
+            assert.match(out.reason, /`packs` is not an array/);
+        }
+    });
+
+    test("a pack whose `contributes.verify` is present but not an array is could-not-run, not a crash", () => {
+        for (const value of [{ id: "a" }, "actions-pinned", 3]) {
+            const bad = pack("tools/github", []);
+            bad.manifest.contributes.verify = value;
+            const out = recipeSet(workspace([DOCS]), { packs: ["tools/github"], resolve: resolverOver([bad]) });
+            assert.equal(out.ok, false, `verify=${JSON.stringify(value)} must be refused`);
+            assert.equal(out.exitCode, 2);
+            assert.match(out.reason, /tools\/github/);
+            assert.match(out.reason, /not an array/);
+        }
+    });
+
     test("a workspace recipe's id and run come out as STRINGS, whatever the manifest put in", () => {
         // The validation coerces with `String(...)`, so a non-string id that stringifies to a slug
         // passes — and every downstream use is an identity comparison (`r.id === set.default` in the

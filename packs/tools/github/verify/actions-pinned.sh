@@ -76,7 +76,11 @@ while IFS= read -r file; do
         if [ "$ref" = "$value" ]; then
             printf '  UNPINNED %s: `uses: %s` carries no `@ref` at all\n' "$file" "$value" >&2
             status=1
-        elif printf '%s' "$ref" | grep -Eq '^[0-9a-f]{40}$'; then
+        # Case-insensitive: a git object name is hex and hex is case-insensitive, so an uppercase or
+        # mixed-case SHA is a pinned SHA. Matching lowercase only would have reported a correctly
+        # pinned action as unpinned — a FALSE RED, which is the failure mode this project treats as
+        # worse than a missed catch, because it is the one that gets a check switched off.
+        elif printf '%s' "$ref" | grep -Eqi '^[0-9a-f]{40}$'; then
             pinned=$((pinned + 1))
         else
             printf '  UNPINNED %s: `uses: %s` is pinned to `%s`, which is a tag or branch, not a commit\n' "$file" "$value" "$ref" >&2
