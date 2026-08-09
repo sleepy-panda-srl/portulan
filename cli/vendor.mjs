@@ -74,6 +74,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import { inspect } from "./doctor.mjs";
 // The discovery keyword, imported so the five parse sites cannot spell it differently (#123).
 import { AUTO } from "./discover.mjs";
+import { recipeSet } from "./recipe-set.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 
@@ -680,7 +681,23 @@ export function agentsMd(manifest, host, kernel = null) {
     }
 
     lines.push("## Verify — what *done* is checked against", "");
-    const recipes = manifest.verify?.recipes ?? [];
+    // Workspace-owned recipes only, and the exclusion is a ruling rather than an oversight.
+    //
+    // This artifact's own header promises **no plugin, no marketplace, no second repository in the
+    // trust path**, so a vendored host cannot resolve a pack — which means a composed recipe listed
+    // here would be a command the reader cannot run, in a table whose whole job is to say what *done*
+    // is checked against. Of the three available answers — list it as could-not-run, materialise the
+    // pack's files into the vendored tree, or exclude it and say so — the third is the only one that
+    // keeps the header's promise: the first ships a table row nobody can execute, and the second puts
+    // a pack's code into the artifact that advertises having none.
+    //
+    // So the table is the workspace's own set, the note below says that in the artifact rather than
+    // only here, and the *Packs this workspace composes* section that follows is where a reader is
+    // told what is missing and why. `recipeSet` is still the carrier — the exclusion is expressed by
+    // asking it for the workspace subset, never by re-enumerating `verify.recipes` in this file.
+    const composed = (manifest.packs ?? []).length > 0;
+    const set = recipeSet(manifest, { packs: [] });
+    const recipes = set.ok ? set.recipes : [];
     if (recipes.length === 0) {
         lines.push("_No recipes are declared._", "");
     } else {
@@ -694,6 +711,17 @@ export function agentsMd(manifest, host, kernel = null) {
             "execute must never look like one that ran and passed.",
             "",
         );
+        if (composed) {
+            lines.push(
+                "**This table is the workspace's own recipes and deliberately excludes composed ones.** A pack may",
+                "contribute verify recipes to the workspace it is composed into, and those recipes run from the pack's",
+                "own files — which are not in this tree, because a vendored workspace has no pack in its trust path.",
+                "Listing them here would print commands you cannot run. **The packs that contribute them are named in",
+                "the section below**; the recipes themselves are not, because naming them would mean resolving the packs,",
+                "which is the thing this artifact does not do.",
+                "",
+            );
+        }
     }
 
     if (manifest.packs?.length) {

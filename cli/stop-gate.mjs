@@ -38,6 +38,8 @@ import path from "node:path";
 import { execFileSync } from "node:child_process";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
+import { recipeSet } from "./recipe-set.mjs";
+
 // The project root is TOLD to this runner rather than derived from where this file sits — see the same
 // paragraph in ./gate.mjs for why. In short: this file used to live inside the workspace it was reading,
 // which is the one layout it could ever work in, and is why it shipped in no artifact an adopter received.
@@ -198,12 +200,27 @@ function block(reason) {
     process.exit(0);
 }
 
-/** The workspace's default verify recipe: `{ id, run }`, or null if the manifest cannot say. */
+/**
+ * The workspace's default verify recipe: `{ id, run }`, or null if the manifest cannot say.
+ *
+ * Reaches `recipeSet()` rather than enumerating `verify.recipes` here, because that enumeration is one
+ * rule and this file was one of four places carrying it — see `recipe-set.mjs`'s header for why they
+ * were merged and `recipe-set.test.mjs` for the roster pin that keeps them merged.
+ *
+ * **It asks for the workspace subset deliberately, by passing no packs**, and that is not composition
+ * quietly skipped. `verify.default` is a bare slug in `spec/workspace.schema.json` and a composed id is
+ * `<category>/<name>:<id>`, so **no composed recipe can ever be the default** — resolving packs here
+ * would cost a pack resolution on every Stop event and could not change the answer. What this call
+ * still buys is the one definition of a *valid* recipe: a manifest whose default recipe carries an
+ * empty or newline-bearing `run` is refused here exactly as CI refuses it, rather than being handed to
+ * a shell by a gate that did its own looser check.
+ */
 function defaultRecipe() {
     try {
         const manifest = JSON.parse(fs.readFileSync(path.join(WORKSPACE, "workspace.json"), "utf8"));
-        const id = manifest.verify?.default;
-        const recipe = (manifest.verify?.recipes ?? []).find((r) => r.id === id);
+        const set = recipeSet(manifest, { packs: [] });
+        if (!set.ok) return null;
+        const recipe = set.recipes.find((r) => r.id === set.default);
         return recipe ? { id: recipe.id, run: recipe.run } : null;
     } catch {
         return null;

@@ -1,0 +1,22 @@
+{
+  "portulan": {
+    "pack": "1.0",
+    "version": "0.1.0"
+  },
+
+  "name": "github",
+  "category": "tools",
+  "summary": "GitHub Actions hygiene as a verify recipe: every `uses:` in a workflow is pinned to a full commit SHA, checked in the tree at pull-request time rather than trusted to a platform setting the adopter may not have.",
+  "doc": "README.md",
+
+  "contributes": {
+    "verify": [
+      {
+        "id": "actions-pinned",
+        "run": "bash ${PACK_ROOT}/verify/actions-pinned.sh",
+        "requires": ["bash", "git"],
+        "doc": "verify/README.md"
+      }
+    ]
+  }
+}
