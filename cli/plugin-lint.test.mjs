@@ -1209,3 +1209,36 @@ test("compose refuses a composed pack that is a symlink out of the bundle", () =
     // And it must say nothing was walked rather than going quiet — refusing is not the same as passing.
     assert.match(bad.find((f) => /resolves outside/.test(f.message)).message, /composition is unchecked for it/);
 });
+
+describe("compose fails closed on what it could not evaluate", () => {
+    test("a `packs` entry naming a path outside ./packs/ is named, never skipped", () => {
+        const root = composed({ packs: ["rituals/checkpoints", "../../etc"] });
+        const bad = fails(inspect(root).findings).filter((f) => f.check === "compose");
+        assert.equal(bad.length, 1, messages(inspect(root).findings));
+        assert.match(bad[0].message, /nothing was walked for it, so composition is unchecked/);
+    });
+
+    test("a `packs` entry that is not a non-empty string is named", () => {
+        const root = composed({ packs: ["rituals/checkpoints", 42] });
+        const bad = fails(inspect(root).findings).filter((f) => f.check === "compose");
+        assert.equal(bad.length, 1, messages(inspect(root).findings));
+        assert.match(bad[0].message, /not a non-empty string/);
+    });
+
+    test("a governing manifest that parses to an ARRAY fails closed — parsing is not reading", () => {
+        const root = composed();
+        fs.writeFileSync(path.join(root, ".portulan", "workspace.json"), JSON.stringify(["packs"]));
+        const bad = fails(inspect(root).findings).filter((f) => f.check === "compose");
+        assert.equal(bad.length, 1, messages(inspect(root).findings));
+        assert.match(bad[0].message, /is not a JSON object \(an array\)/);
+        assert.match(bad[0].message, /parity with the declared skills is unchecked/);
+    });
+
+    test("...and one that parses to a string fails the same way", () => {
+        const root = composed();
+        fs.writeFileSync(path.join(root, ".portulan", "workspace.json"), JSON.stringify("nope"));
+        const bad = fails(inspect(root).findings).filter((f) => f.check === "compose");
+        assert.equal(bad.length, 1, messages(inspect(root).findings));
+        assert.match(bad[0].message, /is not a JSON object \(string\)/);
+    });
+});

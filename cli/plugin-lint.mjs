@@ -681,14 +681,40 @@ export function inspect(rawRoot, { payload = false } = {}) {
         }
     }
 
-    if (composition !== null && typeof composition === "object" && !Array.isArray(composition)) {
+    // A manifest that PARSES but is not a plain object — an array, a string, a number — silently
+    // skipped this whole check in the first cut, which is a green over something nobody evaluated:
+    // the exact shape the `could not read` branch above exists to refuse, one type away. It fails
+    // closed and says what was not established. Raised by Copilot on #195.
+    if (composition !== null && (typeof composition !== "object" || Array.isArray(composition))) {
+        fail(
+            "compose",
+            `${GOVERNING} parses but is not a JSON object (${Array.isArray(composition) ? "an array" : typeof composition}) — ` +
+                "composition could not be read from it, so parity with the declared skills is unchecked",
+        );
+        composition = null;
+    }
+
+    if (composition !== null) {
         const packsRoot = path.join(root, "packs");
         const composed = [];
-        for (const name of Array.isArray(composition.packs) ? composition.packs : []) {
-            if (typeof name !== "string" || name === "") continue;
+        for (const entry of Array.isArray(composition.packs) ? composition.packs : []) {
+            // A `packs` entry that is not a usable name is `doctor`'s verdict on the workspace, but
+            // going quiet about it here would be this check reporting on a composition it did not
+            // read in full. Named, then passed on.
+            if (typeof entry !== "string" || entry === "") {
+                fail(
+                    "compose",
+                    `${GOVERNING} has a \`packs\` entry that is not a non-empty string ` +
+                        `(${JSON.stringify(entry)}) — it was not checked against the declared skills`,
+                );
+                continue;
+            }
+            const name = entry;
             const dir = path.join(packsRoot, name);
-            // A `packs` entry escaping the tree is the workspace validator's finding, not this one's;
-            // what matters here is that this validator never walks outside the plugin root.
+            // A `packs` entry escaping the tree is the workspace validator's verdict, not this one's —
+            // but *skipping* it is not this one's either. It is named as unchecked below rather than
+            // `continue`d in silence, because a check that goes quiet on what it could not evaluate is
+            // the fail-open this file refuses everywhere else.
             //
             // `escapes` is LEXICAL, and lexical containment is not containment: `packs/` or a composed
             // pack directory can be a symlink whose target is anywhere, and `statSync`/`readdirSync`
@@ -697,7 +723,14 @@ export function inspect(rawRoot, { payload = false } = {}) {
             // it reads a tree on the strength of a name in a manifest. So the path is canonicalised and
             // re-checked, which refuses the link without needing to know what it points at. Raised by
             // Copilot on #195; the first cut had the lexical check alone and claimed containment from it.
-            if (escapes(root, dir)) continue;
+            if (escapes(root, dir)) {
+                fail(
+                    "compose",
+                    `${GOVERNING} composes \`${name}\`, which names a path outside ./packs/ — nothing ` +
+                        "was walked for it, so composition is unchecked for that entry",
+                );
+                continue;
+            }
             let real;
             try {
                 real = fs.realpathSync(dir);
