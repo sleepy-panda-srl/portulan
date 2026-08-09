@@ -2029,3 +2029,13 @@ _The seam applies here too: no client-identifying references._
   nine recipes. Seam scan clean. · Fidelity: session-open PWC ×2 + pre-commit PWC, all folded — the last caught the [#182](https://github.com/sleepy-panda-works/portulan/issues/182)
   fix **trimming** where `configDir()` only blank-tests, turning a `resolved` into a `not-installed`. 7 rounds, 5 pushes; 3–4 triaged, 5 fixed all three of #182
   on the maintainer's **granted** extension, 6–7 its siblings. Handoff: [`2026-08-09`](../.portulan/handoffs/2026-08-09-the-pointer-had-a-name-and-nothing-dereferenced-it.md).
+- 2026-08-09 · Outside the milestone track · **The four merged, and one issue closed by a keyword nobody
+  meant.** [#179](https://github.com/sleepy-panda-works/portulan/pull/179) →
+  [#177](https://github.com/sleepy-panda-works/portulan/pull/177) →
+  [#178](https://github.com/sleepy-panda-works/portulan/pull/178) →
+  [#176](https://github.com/sleepy-panda-works/portulan/pull/176), rebase-merged in dependency order,
+  branches deleted both ends. #66 and #148 closed. **#134 closed by accident and reopened**: an early #178
+  commit carried `Closes #134` after a supervisor ruled KEEP OPEN and the body was rewritten to `Refs` —
+  **a closing keyword in any landed commit wins**. #176 ran **15 rounds**; rounds 4, 11 and 15 each found a
+  different silent-loss path in the one chain written to refuse it. `main` 46e7b81, suite 1059, nine recipes
+  green. Seam scan clean. Handoff: [`2026-08-09`](../.portulan/handoffs/2026-08-09-the-four-merged-and-an-issue-closed-by-accident.md).
