@@ -201,3 +201,13 @@ _Accepted — Marius Cetanas, 2026-07-30_, by the ruling quoted above, recorded 
 this. Written by an implementer agent (Claude Opus 5) under two fresh-context Fable 5 checkpoints.
 
 **Pull request:** [#135](https://github.com/sleepy-panda-works/portulan/pull/135) — the change that filed this.
+
+**Follow-through, 2026-08-09 — the one asymmetry this proposal named is closed.** *Parity, and where it is
+keyed* recorded a residence asymmetry that was "discovery rather than function", and *The honest limits*
+recorded *"Nothing resolves a pointer"*. Both are now false in the direction this proposal wanted:
+[`../../cli/discover.mjs`](../../cli/discover.mjs) reads the host's installed-plugin record and resolves
+`governed_by`, and the boot loads the workspace it names. **The body above is left as written** — it is the
+record of a ruling taken on the state of that day, and rewriting it to suit a later change would destroy the
+record to flatter the rule. What is *not* closed is the pack-root half, which is
+[#123](https://github.com/sleepy-panda-works/portulan/issues/123) and is a workspace's limit in **either**
+residence, so it is not the asymmetry this section was about.

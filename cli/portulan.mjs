@@ -19,12 +19,15 @@
 // the defect this repository names more often than any other — so the dispatch imports each tool's
 // exported `run` and returns its exit code untouched.
 //
-// **Not a home for the two tools that are off the list.** `plugin-lint` and `librarian` exist in
-// `cli/` and are deliberately absent here. `docs/vision.md` names eight, it is human-owned, and
-// `cli/README.md` records that whether either of them ever joins the six is the maintainer's call
-// and not an implementer's. Wiring one in would mint a seventh subcommand into a list this file
-// does not own. They stay runnable exactly as they are today — `node cli/plugin-lint.mjs …` — and
-// every verify recipe still invokes them that way.
+// **Not a home for the THREE tools that are off the list.** `plugin-lint`, `librarian` and — since
+// milestone 7's plugin-cache discovery — `discover` exist in `cli/` and are deliberately absent here.
+// `docs/vision.md` names eight, it is human-owned, and `cli/README.md` records that whether any of them
+// ever joins that list is the maintainer's call and not an implementer's. Wiring one in would mint a
+// ninth subcommand into a list this file does not own. They stay runnable exactly as they are today —
+// `node cli/plugin-lint.mjs …` — and every verify recipe still invokes them that way. _(This paragraph
+// said **two**, and named the wrong ordinal besides — *a seventh subcommand*, written when the list held
+// six. A count in prose beside a list nothing derives it from is the drift this file's own suite catches
+// for `SUBCOMMANDS.length` and cannot catch here.)_
 //
 // ## Two of the eight are not built
 //
@@ -150,7 +153,7 @@ export function usage() {
         "",
         "Exit codes: 0 succeeded · 1 a red verdict · 2 could not run.",
         "",
-        "`plugin-lint` and `librarian` are deliberately not here: docs/vision.md names these eight",
+        "`plugin-lint`, `librarian` and `discover` are deliberately not here: docs/vision.md names these eight",
         "subcommands and is human-owned, so a ninth is the maintainer's call.",
     );
     return lines.join("\n");
