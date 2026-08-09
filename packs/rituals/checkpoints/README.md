@@ -25,8 +25,11 @@ sentence reads as a citation now and did not before.
 | Checkpoint | When | What it grades |
 |---|---|---|
 | Session-open | before implementation starts | the session's plan, against the criterion and the workspace's own slots |
-| Pre-commit | before any commit, and before anything goes outward | the diff, re-measured against the criterion it claims to meet |
+| Pre-commit | when the work is finished, before it is committed | the diff, re-measured against the criterion it claims to meet |
 | Milestone-close | before a milestone is marked done | that the criterion was *demonstrated*, not asserted |
+
+The **When** column is a summary; each skill's own *When to use it* is the operative statement,
+including what an adopting workspace's autonomy tiers can and cannot move.
 
 ## The verdict vocabulary
 
