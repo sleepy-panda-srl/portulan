@@ -42,7 +42,12 @@ that visibility costs is stated below rather than defined away.
 - `read-anything-in-the-repository` — including git history.
 - `edit-on-a-working-branch` — create and edit files on a working branch, in a worktree.
 - `run-a-verify-recipe` — [`verify/docs.sh`](verify/docs.sh) or any read-only shell command.
-- `commit-to-a-working-branch` — never to `main`.
+- `commit-to-a-working-branch` — never to `main`. **Unattended is not unchecked:** the commit-time
+  obligations stand — the seam scan ([`dod.md`](dod.md) condition 5) and, when the work is full-lane, the
+  pre-commit checkpoint ([Supervised-build checkpoints](#supervised-build-checkpoints)) — because a tier
+  says who must attend an action, not what the session owes before it. Ruled on
+  [#174](https://github.com/sleepy-panda-works/portulan/issues/174), recorded as
+  [`proposals/0024`](proposals/0024-a-tier-says-who-attends-a-checkpoint-says-what-is-owed.md).
 - `push-a-working-branch` — **to `origin`, including its first push.** Never `main`, which the platform
   refuses anyway. See below for why this stopped being Gated. Force-pushing a working branch is included,
   with `--force-with-lease` rather than `--force`: the lease refuses the push if the remote moved since it
@@ -720,17 +725,33 @@ deliberately does **not** supply is everything below: which work crosses the thr
 in what vocabulary. **Those are this workspace's to set**, and the table restates nothing core says — it
 names the moments in this repository's own words.
 
-Three gates from [`../docs/plan.md`](../docs/plan.md), each requiring a supervisor in a **fresh context**
+Three moments from [`../docs/plan.md`](../docs/plan.md), each requiring a supervisor in a **fresh context**
 that has not seen the implementer's window:
 
 | Checkpoint | When | What it grades |
 |---|---|---|
 | Session-open | before implementation starts | the session plan, against the constitution and the plan |
-| Pre-commit | before any commit | the diff, against the milestone's exit criterion |
+| Pre-commit | when the work is finished, before it is committed | the diff, against the milestone's exit criterion |
 | Milestone-close | before a milestone is marked done | that the criterion was *demonstrated*, not asserted |
 
 If supervision is unavailable in a session, that is stated plainly and the maintainer reviews the diff.
 A milestone is never self-certified.
+
+**The tiers above do not move these moments — ruled 2026-08-09 on
+[#174](https://github.com/sleepy-panda-works/portulan/issues/174), recorded as
+[`proposals/0024`](proposals/0024-a-tier-says-who-attends-a-checkpoint-says-what-is-owed.md).**
+`commit-to-a-working-branch` and `push-a-working-branch` are Auto, and the pre-commit verdict is still
+owed before finished full-lane work is committed: a tier says who must attend an action — no person, for
+those two — while this table says what the session owes before it acts, the same coexistence the seam
+scan has always had with commits being Auto. The reading this retires held that a change committed,
+pushed and opened while its own checkpoint ran was *"compliant with the gate map"*
+([`0020`](proposals/0020-a-fix-is-not-done-at-the-site-it-was-found.md) *Where this lands*,
+[#168](https://github.com/sleepy-panda-works/portulan/pull/168)) — it was compliant with the tier half of
+this file and out of order under this table, the pack's sentence, and core's *"the diff before it goes
+outward"*: the breach class the Session log already names on
+[#137](https://github.com/sleepy-panda-works/portulan/pull/137). No carrier puts this checkpoint at the
+pull request; that boundary was an inference from the Auto tier, drawn three times in one arc, which is
+why the commit bullet above now carries the citing clause.
 
 **Doctrine, tier and floor work takes a checkpoint even when no row moves.** Work that touches
 **doctrine, the autonomy tiers, or the platform floor** takes a **fresh-context pre-commit

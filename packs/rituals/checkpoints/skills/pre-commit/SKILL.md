@@ -13,8 +13,16 @@ description: Grade a finished diff before it is committed. Use when full-lane wo
 
 ## When to use it
 
-Before committing **full-lane** work, and before any push that carries it outward. The lane boundary is
-the adopting workspace's; see the session-open skill for why this pack does not set it.
+Before committing **full-lane** work: the finished diff is graded, then committed. The adopting
+workspace's autonomy tiers do not move that moment — a tier says who must **attend** an action, and a
+workspace whose commits and pushes are unattended by policy has said no *person* waits on them, not that
+nothing is owed before them. An unattended commit is still committed after the verdict.
+
+If the moment was missed — work misjudged as triage, or committed before anyone called it finished — the
+verdict is owed before the work is put in front of anyone; which act does that first is the adopting
+workspace's gates' to say, and a pull request is the usual first one. That is the recovery for a missed
+moment, never an alternative moment. The lane boundary is likewise the adopting workspace's; see the
+session-open skill for why this pack does not set it.
 
 Also whenever a change touches doctrine, the autonomy tiers, or the platform floor — work whose blast
 radius is large even when no milestone or roadmap state moves. Blast radius is the measure, not
