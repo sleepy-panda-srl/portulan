@@ -178,8 +178,9 @@ moment one of them ships:
   property. So *"declared"* and *"resolved"* are still two states here, and a boot cannot assume a
   declared pack resolved from a feed unless somebody said `auto`. **A workspace resolved from a pointer
   is in exactly the same state about its own packs as an in-repo one.**
-- **A pack's skills register only where the plugin declares the directory that actually holds them —
-  and, since 2026-08-09, only where the workspace composed the pack.** A host expands a declared skills
+- **A pack's skills register only where the plugin declares the directory that actually holds them.**
+  Since 2026-08-09 a *validator* also refuses a bundle where that declaration and the workspace's `packs`
+  array disagree — a rail on the packaging, never a change to how the host decides. A host expands a declared skills
   path **one level** and no further, so a root pointing at a family of packs — `packs/rituals/`, with
   skills at `<pack>/skills/<skill>/` — registers **nothing**, silently, while a validator walking
   deeper counts them. Declaring `packs/rituals/<pack>/skills/` registers them. Measured both ways on
