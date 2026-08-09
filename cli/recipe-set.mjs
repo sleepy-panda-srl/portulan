@@ -108,8 +108,12 @@ function refuse(reason) {
  * committed inside the change that cites the doctrine — so they are asserted here in the suite rather
  * than trusted to have survived.
  */
-function invalidRunnable(id, run, where) {
-    if (!SLUG.test(String(id ?? ""))) return `${where} declares a recipe id that is not a slug: ${JSON.stringify(id)}`;
+function invalidRunnable(id, run, where, { requireSlug = true } = {}) {
+    // `requireSlug` is off only on the deliberately-bypassed path. Without it `trustPackSpelling` could
+    // not do the one thing its JSDoc says it exists for: a genuinely pre-namespaced id carries `/` and
+    // `:`, so the slug check refused it *before* the shadow refusal it was meant to reach — an option
+    // that named a purpose it could not serve. Copilot round 6.
+    if (requireSlug && !SLUG.test(String(id ?? ""))) return `${where} declares a recipe id that is not a slug: ${JSON.stringify(id)}`;
     const command = String(run ?? "");
     if (!command.trim()) return `${where} declares an empty run command for recipe \`${id}\``;
     // Names all three characters it rejects. It said "newline or tab" while the pattern also refused a
@@ -224,7 +228,7 @@ export function recipeSet(manifest, options = {}) {
             // Expansion first, so a pack root carrying a newline cannot pass a check that ran too early.
             const run = String(recipe?.run ?? "").split(PACK_ROOT_TOKEN).join(found.root);
 
-            const bad = invalidRunnable(declaredId, run, `the pack \`${ref}\``);
+            const bad = invalidRunnable(declaredId, run, `the pack \`${ref}\``, { requireSlug: !trustPackSpelling });
             if (bad) return refuse(bad);
 
             if (seen.has(id)) {
@@ -243,7 +247,15 @@ export function recipeSet(manifest, options = {}) {
     // `../.portulan/memory/verify-preconditions-fail-closed.md`.
     if (recipes.length === 0) return refuse("the manifest yields no verify recipes — refusing to report green");
 
-    return { ok: true, recipes, default: manifest?.verify?.default };
+    // `default` is normalised the same way the ids are, and this is round 2's own fix's sibling.
+    //
+    // Round 2 stringified every recipe's `id` on the way out and left `default` as whatever the
+    // manifest held. Every downstream lookup is an identity comparison — `r.id === set.default` in
+    // `cli/stop-gate.mjs` — so a non-string default that used to match a non-string id stopped matching
+    // the moment one side was normalised and the other was not. A repair that reached one of the two
+    // values it had to reach, in the change whose subject is exactly that. Copilot round 6.
+    const declaredDefault = manifest?.verify?.default;
+    return { ok: true, recipes, default: declaredDefault == null ? declaredDefault : String(declaredDefault) };
 }
 
 /**
