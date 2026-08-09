@@ -92,11 +92,26 @@ provenance.
   Row 7's clause (b) parenthetical named clause (b) as closing #134 while the same Status cell lists
   `(b) parity` as *Left*; the maintainer licensed an agent to **draft** the narrowing for his review, and
   it is drafted in this change — the parenthetical now closes the **pack-registration half** and points at
-  [#184](https://github.com/sleepy-panda-works/portulan/issues/184). And **#134 is closed on his explicit
-  ruling**, with the residue landing on #184 rather than on a widened #123 — because #123 is being closed
-  for good in its own session, so widening it would have parked the remainder on an issue about to close.
-  The sentence this replaces was right that *a closing comment alone is not a carrier for a residue*; what
-  it could not know is which carrier the maintainer would choose.
+  [#184](https://github.com/sleepy-panda-works/portulan/issues/184).
+
+  **#134 was then closed twice, and the first close was wrong.** The first carried the residue honestly to
+  #184 and closed on the ruling — and the maintainer refused it: *"I don't want #134 simply closed. I want
+  it closed by addressing the issue truthfully."* He was right, and the previous comment was its own
+  evidence: it closed an issue while listing two of that issue's bullets as still true. Reopened, then
+  answered claim by claim with measurements, then closed on those.
+
+  **What the second pass found is that most of the residue was already addressable, and one part already
+  addressed.** `plugin-lint` has failed a skill resolved more than one level below its declared root since
+  2026-08-07, naming #134 in its own header as the reason — so the depth trap was a rail and nobody had
+  said so on the issue. Reproduced from scratch both ways rather than cited: `./packs/rituals/` gives
+  **lint exit 1** and a host inventory of **Skills (0)**; `./packs/rituals/checkpoints/skills/` gives
+  **exit 0** and **Skills (3)**. And #134's *false choice* — a working `/portulan` **or** a single policy
+  layer — is what the pointer plus discovery removes, by two of the three shapes #134 itself proposed.
+  What is left is clause (b) **parity**, which is all #184 now carries.
+
+  _The lesson worth keeping: a residue carried to a new issue reads as diligence and can still be a way of
+  not doing the work. The check is whether the closing comment answers the issue's own claims in the
+  issue's own order — the first one listed them instead._
 - **The Status cell was trimmed to fit its 500-byte rail** — 496 → 478 with `s4` added. What came out:
   *"which found a `compile` parity breach, fixed"* (recorded in session 3's handoff) and *"six is pinned
   in `milestones/m07.md`; this cell said seven"* (recorded in `m07.md`'s own count section, which says in
