@@ -131,6 +131,24 @@ test("readInstalls calls unparseable and non-record files unreadable", () => {
     assert.match(noPlugins.detail, /not an installed-plugin record/);
 });
 
+test("a `plugins` ARRAY is unreadable, not an empty host — the collapse that spent a look as an absence", () => {
+    // `typeof [] === "object"`, so the first cut read `{"plugins": []}` as a healthy record with
+    // nothing installed and answered `not-installed`. That is *could not look* spent as absence, in
+    // the function whose docblock argues the three read states are kept apart at the source. The
+    // top-level guard one clause away already had `Array.isArray`; this is its sibling.
+    // (Copilot, round 2.)
+    const { dir, env } = host({}, { record: false });
+    write(path.join(dir, RECORD), { version: 2, plugins: [] });
+    assert.equal(readInstalls({ env }).state, "unreadable");
+    assert.equal(resolveGovernor({ workspace: "sleepy-panda" }, { env }).state, "could-not-look");
+
+    // The negative control: an EMPTY object is a genuine host with nothing installed, and must stay
+    // readable — otherwise the fix would turn every fresh host into a could-not-look.
+    write(path.join(dir, RECORD), { version: 2, plugins: {} });
+    assert.equal(readInstalls({ env }).state, "read");
+    assert.equal(resolveGovernor({ workspace: "sleepy-panda" }, { env }).state, "not-installed");
+});
+
 test("readInstalls drops a malformed entry and keeps every other plugin", () => {
     // One plugin's bad record must not blind discovery to the rest of the host: the alternative is a
     // resolver that answers "could not look" for a workspace sitting right there.
@@ -285,6 +303,13 @@ test("a file that merely SHARES the name is not a workspace manifest — the fai
     // file's schema, not a Workspace Definition version block.
     const scalar = host({ "scalar@feed": { manifest: { portulan: "2.7", name: "sleepy-panda", kind: "portfolio" } } });
     assert.equal(resolveGovernor({ workspace: "sleepy-panda", feed: "feed" }, { env: scalar.env }).state, "not-installed");
+
+    // And an EMPTY `portulan` object does not qualify — the same fail-open one tightening later, since a
+    // non-Portulan file can carry a bare key as easily as a name. The gate is `portulan.spec`, which is
+    // what the Definition REQUIRES of the block, so it keys on the contract rather than on a key's
+    // presence. Its *pattern* stays `doctor`'s: this is not a second schema validator. (Copilot, round 2.)
+    const bare = host({ "bare@feed": { manifest: { portulan: {}, name: "sleepy-panda", kind: "portfolio" } } });
+    assert.equal(resolveGovernor({ workspace: "sleepy-panda", feed: "feed" }, { env: bare.env }).state, "not-installed");
 });
 
 test("an unparseable manifest in a payload costs that candidate and nothing else", () => {

@@ -1070,8 +1070,13 @@ export async function inspect(workspaceDir, options = {}) {
         // would red every honest pointer on every machine that had not run an install yet, including
         // CI, where nothing is ever installed. What the reader gets instead is the root, and what to
         // run against it.
+        // `await`ed, though today's resolver is synchronous and `await` on a plain value is a no-op.
+        // `options.discover` is an injection point, `inspect` is already `async`, and a hook that ever
+        // returns a promise would otherwise yield `governor.state === undefined` — a report about a
+        // Promise rather than about a host. One keyword now against a class of silent wrong answer
+        // later (Copilot, round 2).
         const resolve = options.discover ?? ((governedBy) => resolveGovernor(governedBy, options));
-        const governor = resolve(workspace.governed_by);
+        const governor = await resolve(workspace.governed_by);
         // The resolver owns the sentence — one carrier, so every surface reporting this prints the same
         // words rather than four paraphrases. The fallback names the state rather than inventing prose:
         // a resolver returning no sentence is a defect in the resolver, and a line reading `undefined`
