@@ -18,15 +18,15 @@ often"* — stood in **20 living carriers**, and named **four different things**
 
 | Referent | Living occurrences |
 |---|---|
-| A rule with two carriers, or a fix that leaves its sibling ([#91](https://github.com/sleepy-panda-works/portulan/issues/91)) | **10** |
+| A rule with two carriers, or a fix that leaves its sibling ([`0020`](../proposals/0020-a-fix-is-not-done-at-the-site-it-was-found.md)) | **10** |
 | The fail-open — *"nothing looked"* reported as *"nothing wrong"* | **6** |
-| Prose describing an enforcement that does not exist (`dod.md` condition 4) | **3** |
+| Prose describing an enforcement that does not exist (`.portulan/dod.md` condition 4) | **3** |
 | The only-ENOENT rule | **1** |
 
 Four superlatives cannot all be true, and **nothing in the tree had ever counted any of them**. Each
 site reached for the phrase to say *this one matters*, which is a real thing to want and is not what the
 words mean. Every one of the twenty makes its point without the ranking, and most make it better: *a fix
-that repairs one carrier and leaves its sibling* is checkable and links to #91; *the defect this
+that repairs one carrier and leaves its sibling* is checkable and links to `0020`; *the defect this
 repository names most often* is checkable by nobody. That asymmetry is the whole rule.
 
 **The count is not merely missing — it is expensive.** Establishing it means classifying every recorded

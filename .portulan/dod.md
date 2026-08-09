@@ -45,7 +45,7 @@ A change is done when **all** of the following hold.
    anything milestone-affecting", which is narrower than the gate map's own full-lane boundary and
    narrower than the trigger now recorded beside it — a second, narrower carrier of one rule, which is
    the shape condition 6 was repaired **out of** one change earlier, and the class
-   [#91](https://github.com/sleepy-panda-works/portulan/issues/91) names. The Dependabot arc ran checkpointless under the old wording with
+   [`0020`](proposals/0020-a-fix-is-not-done-at-the-site-it-was-found.md) names. The Dependabot arc ran checkpointless under the old wording with
    nothing in this file to say it should not have._
 8. **The session ended with a dated handoff** in [`handoffs/`](handoffs/). Five lines is enough; absent
    is not. _Why: the Session log in [`../docs/plan.md`](../docs/plan.md) records what landed, and the
