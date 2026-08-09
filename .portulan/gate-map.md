@@ -43,7 +43,8 @@ that visibility costs is stated below rather than defined away.
 - `edit-on-a-working-branch` — create and edit files on a working branch, in a worktree.
 - `run-a-verify-recipe` — [`verify/docs.sh`](verify/docs.sh) or any read-only shell command.
 - `commit-to-a-working-branch` — never to `main`. **Unattended is not unchecked:** the commit-time
-  obligations stand — the seam scan ([`dod.md`](dod.md) condition 5) and, when the work is full-lane, the
+  obligations stand — the **pre-commit scan** ([`dod.md`](dod.md) condition 5, which this file elsewhere
+  calls the *seam scan*; one obligation, two names, and the condition number is the carrier) and, when the work is full-lane, the
   pre-commit checkpoint ([Supervised-build checkpoints](#supervised-build-checkpoints)) — because a tier
   says who must attend an action, not what the session owes before it. Ruled on
   [#174](https://github.com/sleepy-panda-works/portulan/issues/174), recorded as
