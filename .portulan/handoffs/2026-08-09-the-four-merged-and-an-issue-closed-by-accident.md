@@ -23,8 +23,9 @@ keywords from every commit a merge lands**, so the retracted one fired anyway an
 Reopened the same hour with the reasoning in a comment.
 
 **The lesson is narrow and worth having:** editing the pull-request body does not retract a closing keyword,
-and neither does saying so in a later commit. The commit that carries it has to be rewritten. Recorded in
-[[portulan-gotchas]] as a measured platform fact, because nothing in this tree would have caught it.
+and neither does saying so in a later commit. The commit that carries it has to be rewritten. **This handoff
+is its carrier**, because nothing in this tree would have caught it and nothing in this tree can: a closing
+keyword is read by the platform, from every commit a merge lands, and no check here sees that far.
 
 ## Why the supervisor was right, since the record should carry the argument and not just the outcome
 
