@@ -657,9 +657,19 @@ export function inspect(rawRoot, { payload = false } = {}) {
     // a red by construction. That scoping is the whole reason this reads one named path rather than
     // discovering manifests.
     //
-    // What this does NOT establish: that the host then invokes the skill. It establishes that the
-    // path the host registers from is the one composition asked for, which is the half a validator
-    // can own — `claude plugin details` is the other half and is run at the checkpoints.
+    // What this does NOT establish, each found by the pre-commit checkpoint on #195 rather than
+    // assumed:
+    //   * **that the host then INVOKES the skill.** This establishes that the path the host registers
+    //     from is the one composition asked for. `claude plugin details` counts registration and is
+    //     run at the checkpoints; nobody has yet shown a composed pack's skill *invoked* through
+    //     composition, which is the parity row 7 clause (b) ultimately asks for.
+    //   * **that a `packs` entry names a pack at all.** `"."` or a family name like `"rituals"`
+    //     satisfies the correspondence without pointing at anything carrying a `pack.json`. Requiring
+    //     one here would put a second answer to *what is a pack* beside `doctor`'s, so the gap is
+    //     named instead of closed.
+    //   * **that the host resolves symlinks the way either walk does.** The walks are aligned with
+    //     each other and with `doctor`; what the host does with a symlinked `SKILL.md` at install is
+    //     unmeasured, and nothing here claims it.
 
     const GOVERNING = path.join(".portulan", "workspace.json");
     let composition;
@@ -697,6 +707,17 @@ export function inspect(rawRoot, { payload = false } = {}) {
     if (composition !== null) {
         const packsRoot = path.join(root, "packs");
         const composed = [];
+        // `packs` PRESENT but not an array is the check's core invariant going quiet: a manifest
+        // saying `"packs": "rituals/checkpoints"` iterates zero times and this run then reports
+        // nothing at all about parity. Absent is a real state — a workspace may compose nothing —
+        // and *the wrong type* is not that state. Raised by Copilot on #195.
+        if (composition.packs !== undefined && !Array.isArray(composition.packs)) {
+            fail(
+                "compose",
+                `${GOVERNING} declares \`packs\` as ${typeof composition.packs === "object" ? "an object" : typeof composition.packs} rather than an array — ` +
+                    "no composition could be read from it, so parity with the declared skills is unchecked",
+            );
+        }
         for (const entry of Array.isArray(composition.packs) ? composition.packs : []) {
             // A `packs` entry that is not a usable name is `doctor`'s verdict on the workspace, but
             // going quiet about it here would be this check reporting on a composition it did not
@@ -718,11 +739,18 @@ export function inspect(rawRoot, { payload = false } = {}) {
             //
             // `escapes` is LEXICAL, and lexical containment is not containment: `packs/` or a composed
             // pack directory can be a symlink whose target is anywhere, and `statSync`/`readdirSync`
-            // follow it. The three-rule set `../cli/vendor.mjs` pays for says refuse a symlink at or
-            // below the named path rather than resolve through it, and this walker owes the same rule —
-            // it reads a tree on the strength of a name in a manifest. So the path is canonicalised and
-            // re-checked, which refuses the link without needing to know what it points at. Raised by
-            // Copilot on #195; the first cut had the lexical check alone and claimed containment from it.
+            // follow it. So the path is canonicalised and re-checked before anything is walked.
+            //
+            // **What that buys, stated as narrowly as it is true: a link whose target ESCAPES
+            // `./packs/` is refused.** A symlink resolving to somewhere still inside `./packs/` passes,
+            // and is meant to — it reaches nothing the walk could not reach by its own path, so
+            // refusing it would be policy about tree layout rather than containment. This is
+            // deliberately weaker than `../cli/vendor.mjs`'s rule 2, which refuses a symlink at or
+            // below the named destination outright: that tool WRITES into somebody's tree, where a
+            // link is a way to make it write outside; this one only reads, and the harm is reading
+            // outside. The two are different rules for different verbs, and the earlier draft of this
+            // comment claimed vendor's. Both halves raised by Copilot on #195 — the lexical hole
+            // first, then the comment that overclaimed the fix.
             // Both containment checks are against `packsRoot`, not `root`. The first cut compared
             // against the plugin root while the message and the rule said `./packs/`, so an entry like
             // `../plugin` stayed inside the bundle, passed, and was WALKED — its skills then measured
@@ -766,11 +794,30 @@ export function inspect(rawRoot, { payload = false } = {}) {
                 );
                 continue;
             }
-            if (stat.isDirectory()) composed.push({ name, dir });
+            // A path that exists and is NOT a directory was dropped from evaluation silently in the
+            // first cut — composition claimed and never checked. It is a NOTE rather than a failure,
+            // and the distinction was earned rather than chosen: the pre-commit checkpoint on #195
+            // tried to construct a false green through a regular file and could not, because a file
+            // holds no `SKILL.md` for either walk to disagree about. So this matches the ENOENT branch
+            // above — `doctor` owns the verdict on a malformed `packs` entry, and what this check owes
+            // is to say it saw it. A failure here would claim a hazard nobody could demonstrate.
+            if (!stat.isDirectory()) {
+                note(
+                    "compose",
+                    `${GOVERNING} composes \`${name}\`, and ./packs/${name} is not a directory — ` +
+                        "nothing was walked for it. `doctor` owns that verdict",
+                );
+                continue;
+            }
+            composed.push({ name, dir });
         }
 
         for (const { name, dir } of composed) {
-            for (const skillDir of walkForSkills(root, dir)) {
+            // `problems` is what makes the walk's silences visible to a consumer whose output is a
+            // failure. Each one is a place this check could not look, and *could not look* reported as
+            // *nothing wrong* is the whole defect class the `compose` check was written inside.
+            const problems = [];
+            for (const skillDir of walkForSkills(root, dir, 0, [], problems)) {
                 if (skillDirs.has(skillDir)) continue;
                 fail(
                     "compose",
@@ -778,6 +825,13 @@ export function inspect(rawRoot, { payload = false } = {}) {
                         "its skills, but no plugin.json `skills` path reaches it — the host registers " +
                         "nothing here, so the skill ships, counts, and cannot be invoked. Declare " +
                         `./${path.relative(root, path.dirname(skillDir))}/`,
+                );
+            }
+            for (const { dir: where, why } of problems) {
+                fail(
+                    "compose",
+                    `${GOVERNING} composes \`${name}\` and ${path.relative(root, where)}/ ${why} — so a ` +
+                        "skill there would be invisible to this check. Composition is unchecked below that point",
                 );
             }
         }
@@ -973,21 +1027,52 @@ function walkForStrandedAgents(root, dir = root, depth = 0, found = []) {
     return found;
 }
 
-function walkForSkills(root, dir = root, depth = 0, found = []) {
-    if (depth > MAX_WALK_DEPTH) return found;
+// `problems` is opt-in and changes nothing for the caller that does not pass it. It exists because
+// this walk acquired a SECOND consumer — the `compose` check — whose output is a **failure** rather
+// than a note, and the silences below were sized for the first consumer only. A sweep that misses an
+// undeclared skill under-reports a note; the same miss under `compose` is a **silent green over a
+// composed pack whose skills nothing registers**, which is the thing that check exists to refuse.
+// Raised by the pre-commit checkpoint on #195, which built both cases.
+//
+// Two silences, and both are the fail-open this repository keeps naming:
+//
+//   an unreadable subtree      `readdirSync` throws and the walk returns what it has. *Could not
+//                              look* becoming *nothing there* — `../cli/vendor.mjs` rule 3.
+//   a SYMLINKED SKILL.md       `Dirent.isFile()` is FALSE for a symlink, so the walk cannot see it,
+//                              while the DECLARED-side walk reaches the same file through
+//                              `existsSync`, which follows links. `../cli/doctor.mjs`'s `walkSkills`
+//                              already refuses this shape by `lstat` and says why. One shape, three
+//                              behaviours in one repository; this closes the third.
+function walkForSkills(root, dir = root, depth = 0, found = [], problems = null) {
+    if (depth > MAX_WALK_DEPTH) {
+        if (problems) problems.push({ dir, why: `not searched — deeper than ${MAX_WALK_DEPTH} levels` });
+        return found;
+    }
     let entries;
     try {
         entries = fs.readdirSync(dir, { withFileTypes: true });
-    } catch {
-        // Unreadable subtrees are not a verdict about packaging; the declared paths above are what
-        // this validator judges, and a failure to read one of those is already reported there.
+    } catch (error) {
+        // For the note-only consumer this stays a silence, deliberately: the declared paths are what
+        // that consumer judges, and a failure to read one of those is already reported there.
+        if (problems) problems.push({ dir, why: `could not be read — ${error.code ?? error.message}` });
         return found;
     }
     if (entries.some((e) => e.isFile() && e.name === "SKILL.md")) found.push(dir);
+    if (problems) {
+        for (const entry of entries) {
+            if (entry.name === "SKILL.md" && entry.isSymbolicLink()) {
+                problems.push({
+                    dir,
+                    why: "holds a SKILL.md that is a SYMLINK — this walk does not follow it and the " +
+                        "declared-path walk does, so the two disagree about whether the skill is here",
+                });
+            }
+        }
+    }
     for (const entry of entries) {
         if (!entry.isDirectory()) continue;
         if (SKIP_DIRS.has(entry.name)) continue;
-        walkForSkills(root, path.join(dir, entry.name), depth + 1, found);
+        walkForSkills(root, path.join(dir, entry.name), depth + 1, found, problems);
     }
     return found;
 }
