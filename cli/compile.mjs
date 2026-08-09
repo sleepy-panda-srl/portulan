@@ -1840,8 +1840,8 @@ export function resolveWorkspace(named) {
         // **Only `ENOENT` means "this is not a workspace directory".** Anything else — `EACCES` above
         // all — means the question could not be answered, and falling back to `.portulan` would answer
         // it *no* and then fail somewhere else with a confusing secondary error about a policy file.
-        // The first cut of this function caught everything, which is the fail-open this repository names
-        // more often than any other, committed in a change whose own header states the rule three times.
+        // The first cut of this function caught everything, which is the fail-open — "nothing looked"
+        // reported as "nothing wrong" — committed in a change whose own header states the rule three times.
         // Copilot, round 1 on #164.
         if (cause.code === "ENOENT") return { workspaceRoot: named, workspaceDir: ".portulan" };
         throw new CompileError(

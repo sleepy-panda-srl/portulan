@@ -12,14 +12,15 @@ cite the incident or the record that carries it.
 
 ## Why it holds
 
-**Re-derived on the day of the sweep, not carried from the census that opened the issue.** The
-superlative — *"names most often"*, *"names more often than any other"*, *"names most"*, *"files most
-often"* — stood in **20 living carriers**, and named **four different things**:
+**Re-derived on the day of the sweep — and then re-derived again, because the first instrument was
+blind.** The superlative — *"names most often"*, *"names more often than any other"*, *"names most"*,
+*"files most often"*, *"names most consistently"* — stood in **22 living carriers**, and named **four
+different things**:
 
 | Referent | Living occurrences |
 |---|---|
 | A rule with two carriers, or a fix that leaves its sibling ([`0020`](../proposals/0020-a-fix-is-not-done-at-the-site-it-was-found.md)) | **10** |
-| The fail-open — *"nothing looked"* reported as *"nothing wrong"* | **6** |
+| The fail-open — *"nothing looked"* reported as *"nothing wrong"* | **8** |
 | Prose describing an enforcement that does not exist (`.portulan/dod.md` condition 4) | **3** |
 | The only-ENOENT rule | **1** |
 
@@ -35,7 +36,7 @@ rule is *do not assert the ranking*, not *go and measure it*.
 
 ## What this deliberately does not do
 
-- **It does not touch the records.** The same superlative stands **23 more times across 16 records** —
+- **It does not touch the records.** The same superlative stands **28 more times across 20 records** —
   handoffs, milestone files, merged proposals — under the forward-only cutoff: *a rule written after a
   record cannot bind it without rewriting the record to suit the rule.* Stated here so a later grep
   finding the phrase is not read as an incomplete sweep.
@@ -45,6 +46,11 @@ rule is *do not assert the ranking*, not *go and measure it*.
   touch, so the check is red on arrival and permanently — which
   [`a-mandate-nothing-checks-is-already-broken.md`](a-mandate-nothing-checks-is-already-broken.md) is the
   rule about. The sweep is a one-time repair; the rule's job afterwards is to stop the phrase coming back.
+- **A grep for the phrase must join wrapped lines and strip comment prefixes, or it under-finds exactly as
+  this rule's own census did.** The first sweep reported 20 across 18 and left **two** standing, both where
+  the variant split across a `//` boundary — and the confirming re-run used the same instrument, so it
+  inherited the same blindness. Found by a fresh-context checkpoint, not by the sweep. **A count is only as
+  re-derivable as the tool that took it**, which is the rule one layer beneath the one this record states.
 
 **The recursion is worth naming:** this is the two-carrier defect committed on the *name* of the
 two-carrier defect — one phrase, twenty carriers, four meanings, drifting because nothing owned it. It
