@@ -673,6 +673,29 @@ required context that has never reported blocks every open pull request that doe
 and `enforce_admins` leaves nobody able to force past it. The workflow merges first; it joins the floor
 after, by one command that is a repository-settings change and therefore **Gated**.
 
+**A head that never draws a round: merging past this check is an explicit, recorded maintainer act —
+ruled 2026-08-09, exit (2) of
+[`proposals/0023-a-head-that-never-draws-a-round-needs-an-answer.md`](proposals/0023-a-head-that-never-draws-a-round-needs-an-answer.md).**
+The check can be left holding a state that never clears: on
+[#157](https://github.com/sleepy-panda-works/portulan/pull/157) a rebase force-push drew no round at all
+— the re-request was accepted and abandoned — and the pull request merged past the red check on the
+maintainer's explicit override. That exception is now the procedure, unchanged in substance: **the check
+stays red**, because a gate that opens itself on an unexplained absence is not a gate, and the maintainer
+may merge past it **per occurrence, never as standing permission**, with the act recorded on the pull
+request *before* the merge — his own comment, or an agent's via [`tools/gh-bot`](tools/gh-bot) quoting
+his instruction verbatim. **The recording is the difference between an override and a habit.**
+
+The cause is unestablished — authorship is the surviving lead
+([#161](https://github.com/sleepy-panda-works/portulan/issues/161)) — and while it stands the weekly
+librarian pass meets this whenever it needs a rebase, so the expected price is **one recorded override
+per stranded pass**. Measured 2026-08-09: the scheduled pass has run **once**, and it stranded. This is
+doctrine standing where a rail should eventually stand, and [`../docs/vision.md`](../docs/vision.md)'s
+*rails, not prose* is conceded rather than contradicted — the rail is the required-context flip above,
+declined for now **precisely because** it would make a known strand class unmergeable at 06:00 on a
+Monday with nobody at a keyboard. Retire this paragraph when a scheduled pass that needed a rebase draws
+its round and merges with no override, when `copilot-reviewed` joins the required contexts, or when
+Copilot review leaves the review path.
+
 ## The triage threshold
 
 Core defines two lanes and leaves the boundary to the workspace

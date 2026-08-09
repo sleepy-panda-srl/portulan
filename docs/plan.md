@@ -2072,3 +2072,14 @@ _The seam applies here too: no client-identifying references._
   Unasked-for discovery **removed**: it made `doctor.sh` read `~/.claude` per run — a **narrowing**, recorded
   for the ruling. Suite 1120. Seam scan clean. · Fidelity: session-open A-W-A; three pre-commit passes, R-C then A-W-A twice, all folded. Handoff:
   [`2026-08-09`](../.portulan/handoffs/2026-08-09-two-sessions-built-one-module-and-the-order-decided-itself.md).
+
+- 2026-08-09 · Outside the milestone track · **The override becomes the procedure.**
+  [#161](https://github.com/sleepy-panda-works/portulan/issues/161) ruled, delegated to a Fable 5 supervisor:
+  `0023` **exit (2)** taken, **(1) and (3) declined**, **(4) staged behind a measurement**. The check stays red;
+  merging past it is the maintainer's **per-occurrence, recorded** act — *a gate that opens itself on an
+  unexplained absence is not a gate*. Measured, and nobody had it: the scheduled librarian has run **twice
+  ever**, and its one scheduled pass is #157, which stranded. Today's three merges are an unplanned control arm
+  — **16 rounds, 13 on `synchronize`**, user-authored, against **0-for-2** App-authored; #86's answered
+  re-request was on an `opened` head, fitting the narrow shape. Lead strengthened, **not** settled. Experiment
+  **opportunistic**, prediction registered first. **Closes #161.** Nine green. Seam scan clean. · Fidelity:
+  ruling delegated; pre-commit recorded. Handoff: [`2026-08-09`](../.portulan/handoffs/2026-08-09-the-override-becomes-the-procedure.md).
