@@ -72,6 +72,8 @@ import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 import { inspect } from "./doctor.mjs";
+// The discovery keyword, imported so the five parse sites cannot spell it differently (#123).
+import { AUTO } from "./discover.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 
@@ -147,6 +149,7 @@ export function parseArgs(argv) {
         feed: null,
         dryRun: false,
         packRoots: [],
+        discoverPacks: false,
         repoRoots: [],
         given: new Set(),
     };
@@ -187,7 +190,12 @@ export function parseArgs(argv) {
         if (value.trim() === "") {
             throw new VendorError(`\`${arg}\` was given an empty value, and no option here has a meaningful empty value`);
         }
-        if (arg === "--pack-root") out.packRoots.push(value);
+        // `auto` matched raw so `./auto` still names a directory. This tool only forwards roots to
+        // `doctor`, so it forwards the request too.
+        if (arg === "--pack-root") {
+            if (value === AUTO) out.discoverPacks = true;
+            else out.packRoots.push(value);
+        }
         else if (arg === "--repo-root") out.repoRoots.push(value);
         else out[{ "--into": "into", "--residence": "residence", "--leave": "leave", "--host": "host", "--kind": "kindOf", "--feed": "feed" }[arg]] = value;
         out.given.add(arg);
@@ -748,7 +756,8 @@ export function usage() {
         "  --kind <k>            The materialised workspace's kind: repository, demo or portfolio.",
         "                        Defaults from the residence.",
         "  --pack-root <dir>     Where packs are looked up, so `doctor` can resolve composed ones.",
-        "                        Named, never discovered. Repeatable.",
+        "                        Repeatable. `auto` discovers it from the host's plugin cache;",
+        "                        `./auto` still names a directory called `auto`.",
         "  --repo-root <dir>     Where the repositories this workspace names are checked out, so the",
         "                        cross-repository refusal has somewhere to look. Repeatable.",
         "  --dry-run             Print the plan and write nothing.",
@@ -1090,6 +1099,7 @@ export async function run(argv, options = {}) {
 
         const roots = {
             ...(parsed.packRoots.length ? { packRoots: parsed.packRoots.map((r) => path.resolve(r)) } : {}),
+            ...(parsed.discoverPacks ? { discoverPacks: true } : {}),
         };
         const staged = await verdict(staging, roots);
         if (staged.length) {

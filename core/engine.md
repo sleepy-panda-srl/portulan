@@ -5,8 +5,8 @@
 > file is the core's source contribution to the always-loaded layer; `portulan vendor --host` inlines it
 > verbatim into a vendored `AGENTS.md` beside the workspace's own layer, for a host that cannot install
 > the plugin. The **pack** layer is named in that file rather than composed into it — a pack resolves
-> from a feed at a pinned version and vendoring resolves nothing — which is milestone 7's pack-cache
-> discovery, still owed.
+> from a feed at a pinned version and **vendoring resolves nothing**, which is unchanged. Pack-cache
+> discovery landed at milestone 7: the CLI reads the host's record, a vendored file cannot.
 
 ## Resolution cascade
 

@@ -61,7 +61,9 @@ import { pathToFileURL } from "node:url";
 // compiler and `doctor` already resolve it. A second resolver here would be a second answer to
 // "which pack is that" — and issue #74 already records what a memory store cost this project when
 // three copies decided what counted as a record.
-import { resolvePack, packRoots } from "./compile.mjs";
+import { resolvePack, rootPlan } from "./compile.mjs";
+// Host plugin-cache discovery (#123) — imported, never re-implemented, for the reason above.
+import { AUTO, discoverPackRoots } from "./discover.mjs";
 
 /** Raised when `index` cannot run, or cannot judge honestly. Always exit 2, never 1. */
 export class IndexError extends Error {
@@ -425,7 +427,13 @@ export function readScopes(dir, workspace, options = {}) {
     }
 
     const declared = Array.isArray(workspace?.packs) ? workspace.packs : [];
-    const roots = options.packRoots ?? packRoots(dir, workspace);
+    // `options.packRoots` is the FINAL root set when given, matching `compile`'s `packContributions` —
+    // an explicitly empty array means search nowhere rather than falling through to the derived root.
+    const roots = (
+        options.packRoots !== undefined && options.packRoots !== null
+            ? { roots: [...options.packRoots] }
+            : rootPlan(dir, workspace, { discovery: () => discoverPackRoots(), forced: options.discoverPacks === true })
+    ).roots;
     const posixSlot = slot.split(path.sep).join(path.posix.sep).replace(/\/$/, "");
 
     const scopes = [];
@@ -697,7 +705,7 @@ const lineCount = (text) => text.split("\n").length - (text.endsWith("\n") ? 1 :
  * disagrees with its filename* is repaired by editing the record. A single "index check failed"
  * would send an author to regenerate a file that is already correct and still too big.
  */
-export function inspect(dir, { write = false, packRoots: extraRoots } = {}) {
+export function inspect(dir, { write = false, packRoots: extraRoots, discoverPacks = false } = {}) {
     const manifestPath = path.join(dir, "workspace.json");
     let workspace;
     try {
@@ -719,7 +727,7 @@ export function inspect(dir, { write = false, packRoots: extraRoots } = {}) {
 
     const memory = judgeMemory(dir, workspace, { write, fail });
     const handoffs = judgeHandoffs(dir, workspace, { write, fail });
-    const scopes = judgeScopes(dir, workspace, { write, fail, packRoots: extraRoots });
+    const scopes = judgeScopes(dir, workspace, { write, fail, packRoots: extraRoots, discoverPacks });
 
     return {
         dir,
@@ -912,13 +920,13 @@ function judgeHandoffs(dir, workspace, { write, fail }) {
  * that sweep the layer would accept anything at all and the positive control would only ever examine the
  * ones it already expected.
  */
-function judgeScopes(dir, workspace, { write, fail, packRoots: extraRoots }) {
+function judgeScopes(dir, workspace, { write, fail, packRoots: extraRoots, discoverPacks }) {
     const declaredPath = workspace.personas?.index?.path;
     if (!declaredPath) return { declared: false, path: null, expected: null };
 
     const slot = workspace.slots?.personas;
     const indexPath = siteOutside(dir, declaredPath, slot, "layer");
-    const series = readScopes(dir, workspace, { packRoots: extraRoots });
+    const series = readScopes(dir, workspace, { packRoots: extraRoots, discoverPacks });
 
     // Four ways this goes wrong, four repairs, so four checks rather than one "scopes malformed".
     for (const p of series.unresolved) {
@@ -1152,28 +1160,30 @@ export function run(argv, say = console.log) {
     // demonstration that "the pack resolved from the feed" must not be satisfiable by a copy sitting in
     // the local tree at all. The three tools that take this flag disagreed about it once, and
     // ./compile.mjs's `namedRootsOption` carries what that cost.
-    // What is deliberately NOT built is discovery of a host's plugin cache **for a PACK root**. The
-    // cache itself is read now — ./discover.mjs landed at milestone 7 and dereferences a POINTER's
-    // `governed_by` — so the unscoped version of this sentence went false the day that shipped, and it is
-    // scoped rather than deleted because the half it names is still owed (#123). Defaulting this flag
-    // from the same record would change what every existing run resolves against, and the row fixes the
-    // only safe direction: add a root where none was named, never replace one that was.
+    // Discovery of a host's plugin cache is built for both halves as of milestone 7 (#123): a POINTER's
+    // `governed_by` through ./discover.mjs, and a PACK root through `--pack-root auto`. What is
+    // deliberately not taken is a DEFAULT — asking is the whole trigger, because defaulting would change
+    // what every existing run resolves against, and the row fixes the only safe direction: add a root
+    // where none was named, never replace one that was.
     const roots = [];
+    let discoverPacks = false;
     for (let i = 0; i < argv.length; i += 1) {
         if (argv[i] === "--check") check = true;
         else if (argv[i] === "--pack-root") {
             const dir = argv[i + 1];
             i += 1;
             if (dir === undefined || dir.startsWith("--")) {
-                say("  ✗ --pack-root needs a directory");
+                say("  ✗ --pack-root needs a directory, or `auto` to discover one from the host plugin cache. A directory actually named `auto` is `./auto`");
                 return 2;
             }
-            roots.push(path.resolve(dir));
+            // Raw-argument match, before `path.resolve` — `./auto` still names a directory.
+            if (dir === AUTO) discoverPacks = true;
+            else roots.push(path.resolve(dir));
         } else dirs.push(argv[i]);
     }
 
     if (dirs.length === 0) {
-        say("usage: node cli/index.mjs [--check] [--pack-root <dir>]... <workspace-dir> [<workspace-dir> ...]");
+        say("usage: node cli/index.mjs [--check] [--pack-root <dir>|auto]... <workspace-dir> [<workspace-dir> ...]");
         return 2;
     }
 
@@ -1202,7 +1212,7 @@ export function run(argv, say = console.log) {
     for (const dir of dirs) {
         let result;
         try {
-            result = inspect(dir, { write: !check, packRoots: roots.length ? roots : undefined });
+            result = inspect(dir, { write: !check, packRoots: roots.length ? roots : undefined, discoverPacks });
         } catch (error) {
             if (!(error instanceof IndexError)) throw error;
             say(`  ✗ ${dir}: ${error.message}`);

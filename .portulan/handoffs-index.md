@@ -2,9 +2,10 @@
 
 > Generated from `handoffs/` by `node cli/index.mjs`. Do not edit by hand: it is regenerated
 > and byte-compared, so a hand-edit survives exactly until the next run.
-> 73 handoff(s), newest first. No budget: the series is append-only, so
+> 74 handoff(s), newest first. No budget: the series is append-only, so
 > the only remedy a budget could ask for is one this project rules out.
 
+- 2026-08-09 · [Handoff — two sessions built one module, and the order decided itself](handoffs/2026-08-09-two-sessions-built-one-module-and-the-order-decided-itself.md)
 - 2026-08-09 · [Handoff — the pointer had a name and nothing dereferenced it](handoffs/2026-08-09-the-pointer-had-a-name-and-nothing-dereferenced-it.md)
 - 2026-08-09 · [Handoff — the four merged, and one issue closed by a keyword nobody meant](handoffs/2026-08-09-the-four-merged-and-an-issue-closed-by-accident.md)
 - 2026-08-09 · [Handoff — the correction was not the one the issue predicted](handoffs/2026-08-09-the-correction-was-not-the-one-the-issue-predicted.md)

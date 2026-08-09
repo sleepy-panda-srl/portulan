@@ -36,7 +36,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 // it looks like enforcement that quietly stopped covering something. Same reasoning that has
 // ./gate.mjs import the matcher instead of writing a second one. Zero
 // dependencies on both sides, so nothing is added to what this tool needs to run.
-import { parse, backends, resolvePack, packRoots } from "./compile.mjs";
+import { parse, backends, resolvePack, rootPlan } from "./compile.mjs";
 // The containment test the memory-index siting rule turns on, imported for the reason directly
 // above: the copy that used to live here drifted into the identical fail-open as the original.
 import { isInside, recordType } from "./index.mjs";
@@ -49,7 +49,7 @@ import { parseFrontmatter } from "./plugin-lint.mjs";
 // becomes a directory. Imported rather than reimplemented for the reason above, and kept in its own
 // file for a second one: the boot skill's whole instruction is to report what THIS resolver said, so
 // there must be exactly one thing that says it.
-import { resolveGovernor } from "./discover.mjs";
+import { resolveGovernor, AUTO, discoverPackRoots } from "./discover.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const DEFAULT_SCHEMA = path.resolve(HERE, "..", "spec", "workspace.schema.json");
@@ -1405,7 +1405,17 @@ export async function inspect(workspaceDir, options = {}) {
         // installing a pack from a private marketplace resolves inside the installed plugin instead.
         // The resolver takes its roots as an argument for exactly that reason — the second case is the
         // same code path, not a parallel one — but this repository has not yet run it.
-        const roots = options.packRoots ?? packRoots(dir, workspace);
+        // Through the SHARED precedence rule rather than a third spelling of it — see `rootPlan`.
+        // `options.packRoots` keeps the meaning `compile`'s `packContributions` gives it — the FINAL
+        // root set, replacing the derived one, so an explicitly empty array means search nowhere. The
+        // three tools disagreed about this once and `../cli/compile.mjs`'s `namedRootsOption` records
+        // what that cost; aligned here before a caller finds it the same way.
+        const plan =
+            options.packRoots !== undefined && options.packRoots !== null
+                ? { roots: [...options.packRoots], source: "named", why: "named on the command line" }
+                : rootPlan(dir, workspace, { discovery: () => discoverPackRoots(), forced: options.discoverPacks === true });
+        const roots = plan.roots;
+        report("packs", `resolution root ${plan.source} — ${plan.why}`);
         for (const name of workspace.packs) {
             const found = resolvePack(name, roots);
             if (!found.dir) {
@@ -1415,7 +1425,11 @@ export async function inspect(workspaceDir, options = {}) {
                 // miss is a failure.
                 if (roots.length === 0) {
                     stats.unverifiable += 1;
-                    report("packs", `\`${name}\` cannot be resolved — this workspace declares no \`tree\`, so there is no packs root to search`);
+                    // The empty set has more than one cause since discovery landed: no `tree`, or
+                    // `--pack-root auto` finding nothing, or the record not being readable at all — and
+                    // the last two happen on workspaces that DO declare a tree. `plan.why` is the one
+                    // carrier of which it was, so it is what gets printed.
+                    report("packs", `\`${name}\` cannot be resolved — there is no packs root to search: ${plan.why}`);
                 } else {
                     fail("packs", `\`${name}\` does not resolve — ${found.why}`);
                 }
@@ -2039,12 +2053,12 @@ export async function run(argv, options = {}) {
         // feed" cannot be satisfied by a copy in the local tree at all — the three tools disagreed about
         // this once, and `../cli/compile.mjs`'s `namedRootsOption` carries what that cost.
         //
-        // **A PACK root is still named and never discovered, and that is now a boundary rather than an
-        // absence.** `./discover.mjs` reads the host's installed-plugin record and this tool uses it for
-        // one thing: dereferencing a POINTER's `governed_by`. Defaulting `--pack-root` from the same
-        // record is #123's half of row 7's amendment, and it is deliberately not taken here — it would
-        // change what a `packs` array resolves against on every existing run, and the row fixes the only
-        // safe direction for it (add a root where none was named; never replace one that was).
+        // **A PACK root is discovered only when asked, and that is a boundary rather than an absence.**
+        // `./discover.mjs` reads the host's installed-plugin record, and this tool uses it for two things:
+        // dereferencing a POINTER's `governed_by`, and resolving a pack root under `--pack-root auto`
+        // (#123). What is deliberately not taken is a DEFAULT — it would change what a `packs` array
+        // resolves against on every existing run, and the row fixes the only safe direction for it (add a
+        // root where none was named; never replace one that was).
         //
         // `--repo-root <dir>`, repeatable, is its sibling and is deliberately shaped the same way: the
         // directories under which the repositories a workspace's cards NAME are checked out, so the
@@ -2055,6 +2069,7 @@ export async function run(argv, options = {}) {
         // root and a checkout root interchangeable, which they are not: one holds `category/name` pack
         // directories, the other holds repositories.
         const namedRoots = [];
+        let discoverPacks = false;
         const repoRoots = [];
         const dirs = [];
         // ONE validator for both flags, and it is one because a reviewer caught the comment claiming so
@@ -2068,7 +2083,7 @@ export async function run(argv, options = {}) {
         // 7, one round after the same defect was fixed in `index` alone. `what` keeps each flag's message
         // specific: sharing the check must not cost the reader the sentence that says what a root is FOR.
         const directoryRoot = (flag, value, what) => {
-            if (value === undefined || value.startsWith("-")) throw new DoctorError(`${flag} needs a directory`);
+            if (value === undefined || value.startsWith("-")) throw new DoctorError(`${flag} needs a directory${what.keyword ?? ""}`);
             let stat = null;
             try {
                 stat = fs.statSync(value);
@@ -2082,20 +2097,28 @@ export async function run(argv, options = {}) {
             }
             return path.resolve(value);
         };
-        const PACK_ROOT = { unresolvable: "a pack unresolvable", holds: "packs" };
+        // `keyword` is PACK_ROOT's alone: `auto` discovers a plugin cache, and there is no such thing
+        // for a repository checkout, so offering it on `--repo-root` would advertise a refused value.
+        const PACK_ROOT = {
+            unresolvable: "a pack unresolvable",
+            holds: "packs",
+            keyword: ", or `auto` to discover one from the host plugin cache. A directory actually named `auto` is `./auto`",
+        };
         const REPO_ROOT = { unresolvable: "a repository ungoverned", holds: "repositories" };
         for (let i = 0; i < argv.length; i += 1) {
             if (argv[i] === "--repo-root") {
                 repoRoots.push(directoryRoot("--repo-root", argv[i + 1], REPO_ROOT));
                 i += 1;
             } else if (argv[i] === "--pack-root") {
-                namedRoots.push(directoryRoot("--pack-root", argv[i + 1], PACK_ROOT));
+                // The keyword, on the raw argument and before `directoryRoot` resolves anything.
+                if (argv[i + 1] === AUTO) discoverPacks = true;
+                else namedRoots.push(directoryRoot("--pack-root", argv[i + 1], PACK_ROOT));
                 i += 1;
             } else if (!argv[i].startsWith("-")) dirs.push(argv[i]);
         }
         if (dirs.length === 0) {
             if (!options.quiet) {
-                process.stderr.write("usage: node cli/doctor.mjs [--pack-root <dir>]... [--repo-root <dir>]... <workspace-dir> [<workspace-dir> ...]\n");
+                process.stderr.write("usage: node cli/doctor.mjs [--pack-root <dir>|auto]... [--repo-root <dir>]... <workspace-dir> [<workspace-dir> ...]\n");
             }
             return 2;
         }
@@ -2104,6 +2127,7 @@ export async function run(argv, options = {}) {
         for (const dir of dirs) {
             const roots = {
                 ...(namedRoots.length ? { packRoots: namedRoots } : {}),
+                ...(discoverPacks ? { discoverPacks } : {}),
                 ...(repoRoots.length ? { repoRoots } : {}),
             };
             const { findings, stats } = await inspect(dir, { ...options, ...roots });

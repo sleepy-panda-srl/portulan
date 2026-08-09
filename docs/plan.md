@@ -2061,3 +2061,14 @@ _The seam applies here too: no client-identifying references._
   would have minted a second slogan beside the skill's own epigraph, so the final text cites it. (a) filed as
   #187; the two errata stand. **Closes #133.** Nine green. Seam scan clean. · Fidelity: pre-commit A-W-A folded.
   Handoff: [`2026-08-09`](../.portulan/handoffs/2026-08-09-the-correction-was-not-the-one-the-issue-predicted.md).
+
+- 2026-08-09 · M7 s5 · **Two sessions built one module, and the order decided itself.** Row 7's pack-root
+  discovery ([#123](https://github.com/sleepy-panda-works/portulan/issues/123)), rebuilt on
+  [#181](https://github.com/sleepy-panda-works/portulan/pull/181) after a trial merge conflicted in **15
+  files** — both sessions created `cli/discover.mjs`. #181 merged first, as proposed; this half was rebuilt,
+  cutting its own reader, config dir and version set so **one** of each survives. `--pack-root auto` on five
+  tools, **both** plugin layouts, precedence never union. **The first draft saw neither plugin the private
+  feed ships** — flat, not `packs/` — with a green suite, because the fixtures shared the code's assumption.
+  Unasked-for discovery **removed**: it made `doctor.sh` read `~/.claude` per run — a **narrowing**, recorded
+  for the ruling. Suite 1120. Seam scan clean. · Fidelity: session-open A-W-A; three pre-commit passes, R-C then A-W-A twice, all folded. Handoff:
+  [`2026-08-09`](../.portulan/handoffs/2026-08-09-two-sessions-built-one-module-and-the-order-decided-itself.md).
