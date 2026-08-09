@@ -9,6 +9,7 @@
 - 2026-08-09 · [Handoff — the pointer had a name and nothing dereferenced it](handoffs/2026-08-09-the-pointer-had-a-name-and-nothing-dereferenced-it.md)
 - 2026-08-09 · [Handoff — the pack the feed ships declared nothing](handoffs/2026-08-09-the-pack-the-feed-ships-declared-nothing.md)
 - 2026-08-09 · [Handoff — the override becomes the procedure, and the experiment arrives for free](handoffs/2026-08-09-the-override-becomes-the-procedure.md)
+- 2026-08-09 · [Handoff — the four Now items, and a citation that was precise and wrong](handoffs/2026-08-09-the-four-now-items-and-a-citation-that-was-precise-and-wrong.md)
 - 2026-08-09 · [Handoff — the four merged, and one issue closed by a keyword nobody meant](handoffs/2026-08-09-the-four-merged-and-an-issue-closed-by-accident.md)
 - 2026-08-09 · [Handoff — the correction was not the one the issue predicted](handoffs/2026-08-09-the-correction-was-not-the-one-the-issue-predicted.md)
 - 2026-08-09 · [Handoff — four readers of one set, and the fixture that agreed with the bug](handoffs/2026-08-09-four-readers-of-one-set-and-the-fixture-that-agreed-with-the-bug.md)
