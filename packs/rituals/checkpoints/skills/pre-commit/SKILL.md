@@ -31,7 +31,11 @@ whether a status column changed.
 3. **Check every claim the change makes about itself.** This is where a fresh context earns its cost:
    a change's own description of what it did is the least-reviewed prose in any diff, and it goes stale
    between the first draft and the last push. Sentences elsewhere in the tree that the change falsifies
-   belong here too.
+   belong here too. *Re-measure rather than re-read* holds for prose as it does for recipes: a claim
+   about a mechanism is checked **from the mechanism**, and a claim about the world — a filesystem
+   layout, a platform behaviour, an install — **from the world**. A sentence asserting behaviour is a
+   figure that happens to be spelled in words. **The author's reading is not evidence**: the wrong
+   sentence and the code it described were written in the same hour by the same context.
 4. **Sweep the siblings of every defect the diff repairs.** The rule is
    [`../../../../../core/operating/evolution.md`](../../../../../core/operating/evolution.md)'s — *a fix
    is not done at the site it was found* — and this step is the procedure, not a second statement of it.
