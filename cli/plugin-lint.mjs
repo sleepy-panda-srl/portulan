@@ -723,7 +723,13 @@ export function inspect(rawRoot, { payload = false } = {}) {
             // it reads a tree on the strength of a name in a manifest. So the path is canonicalised and
             // re-checked, which refuses the link without needing to know what it points at. Raised by
             // Copilot on #195; the first cut had the lexical check alone and claimed containment from it.
-            if (escapes(root, dir)) {
+            // Both containment checks are against `packsRoot`, not `root`. The first cut compared
+            // against the plugin root while the message and the rule said `./packs/`, so an entry like
+            // `../plugin` stayed inside the bundle, passed, and was WALKED — its skills then measured
+            // against the declared roots as though it were a composed pack. A guard whose test is wider
+            // than the sentence beside it is the two-carriers defect in one statement. Raised by Copilot
+            // on #195, in the round after the one that closed the lexical hole.
+            if (escapes(packsRoot, dir)) {
                 fail(
                     "compose",
                     `${GOVERNING} composes \`${name}\`, which names a path outside ./packs/ — nothing ` +
@@ -737,11 +743,11 @@ export function inspect(rawRoot, { payload = false } = {}) {
             } catch {
                 real = dir; // absent, or unreadable — the stat below reports it as itself.
             }
-            if (escapes(root, real)) {
+            if (escapes(packsRoot, real)) {
                 fail(
                     "compose",
-                    `${GOVERNING} composes \`${name}\`, which resolves outside the plugin root — ` +
-                        "a link out of the bundle. Nothing was walked; composition is unchecked for it",
+                    `${GOVERNING} composes \`${name}\`, which resolves outside ./packs/ — ` +
+                        "a link out of the packs tree. Nothing was walked; composition is unchecked for it",
                 );
                 continue;
             }
