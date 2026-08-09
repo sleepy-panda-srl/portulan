@@ -141,6 +141,15 @@ function invalidRunnable(id, run, where) {
 export function recipeSet(manifest, options = {}) {
     const { packs = manifest?.packs ?? [], resolve = null, trustPackSpelling = false } = options;
 
+    // `packs` must be an array, for the same reason `verify.recipes` must be — and this is that fix's
+    // sibling, at the site round 1 did not reach. A string here would iterate CHARACTERS and report
+    // "the pack `t` could not be resolved", a refusal whose message names something the manifest never
+    // said; an object would throw a TypeError, which is a stack trace rather than a diagnosis. Both are
+    // could-not-run wearing a worse face. Copilot round 3.
+    if (!Array.isArray(packs)) {
+        return refuse(`this workspace's \`packs\` is not an array (${typeof packs}) — could-not-run rather than a set composed from a value nothing can enumerate`);
+    }
+
     // A manifest with no `verify.recipes` ARRAY is could-not-run, not a workspace that declares none.
     //
     // This was `?? []`, and that was a fail-open the move introduced: the CI emitter this carrier
@@ -195,7 +204,16 @@ export function recipeSet(manifest, options = {}) {
         // A pack declaring no `verify` key contributes no recipes and is not an error. That is
         // `packs/rituals/checkpoints`'s deliberate shape, by its own argued policy, and conflating
         // "declared none" with "failed to resolve" would make the honest pack red.
-        for (const recipe of found.manifest?.contributes?.verify ?? []) {
+        //
+        // But a key that is PRESENT and not an array is neither of those: it is a manifest nobody can
+        // read, and `for..of` over it throws a TypeError — the carrier crashing where its whole
+        // contract is to exit 2 with a sentence naming the pack. Third site of round 1's rule, and the
+        // second one it did not reach. Copilot round 3.
+        const contributed = found.manifest?.contributes?.verify;
+        if (contributed !== undefined && !Array.isArray(contributed)) {
+            return refuse(`the pack \`${ref}\` declares \`contributes.verify\` as ${typeof contributed}, not an array — could-not-run`);
+        }
+        for (const recipe of contributed ?? []) {
             const declaredId = String(recipe?.id ?? "");
             if (!trustPackSpelling && !SLUG.test(declaredId)) {
                 return refuse(`the pack \`${ref}\` declares a recipe id that is not a slug: ${JSON.stringify(recipe?.id)}`);
