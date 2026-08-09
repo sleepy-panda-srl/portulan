@@ -1372,18 +1372,36 @@ export async function inspect(workspaceDir, options = {}) {
                             "two has to become a pointer, and which one is the customer's choice — both " +
                             "residences carry full functionality, so nothing is lost either way",
                     );
-                } else if (other.governed_by?.workspace === undefined) {
+                    // The question is **is this a usable governor name**, not *is the key present* — the
+                    // third gap of this same class in this one block, and the one the first two fixes
+                    // left. `=== undefined` catches ABSENT and not INVALID, so `""`, `null` and a
+                    // non-string fell through to the conflicting-governor branch below and were refused
+                    // for naming a governor they do not name: a **false red** about somebody else's
+                    // manifest, in the block whose own rule is *read, never validated*.
+                    //
+                    // Blank counts as no name, which is the rule `cli/discover.mjs` now enforces at the
+                    // other site of this same operation. **Non-blank string**, deliberately, not *usable
+                    // slug*: a padded or otherwise illegal name is still a name the manifest DECLARES, and
+                    // judging its legality would be validating somebody else's workspace — the one thing
+                    // this block forbids. So `"  sleepy-panda  "` stays a conflict rather than becoming
+                    // "no name", and a test pins that boundary. The schema would refuse `""` through `$defs/slug`, but the schema
+                    // never runs here, and that is the whole point of read-not-validated.
+                    // ([#141](https://github.com/sleepy-panda-works/portulan/issues/141), found by Copilot
+                    // on #135 and filed rather than fixed there.)
+                } else if (typeof other.governed_by?.workspace !== "string" || other.governed_by.workspace.trim() === "") {
+                    const named = other.governed_by?.workspace;
                     report(
                         "residence",
-                        `\`${name}\` carries a pointer at ${display(found)} that names no governing ` +
-                            "workspace. That is a defect in that manifest and `doctor` says so where it " +
+                        `\`${name}\` carries a pointer at ${display(found)} that names no usable governing ` +
+                            `workspace${named === undefined ? "" : ` (\`governed_by.workspace\` is ${JSON.stringify(named)})`}. ` +
+                            "That is a defect in that manifest and `doctor` says so where it " +
                             "runs; it is not evidence about governance, so nothing is refused here",
                     );
                 } else if (other.governed_by.workspace !== workspace.name) {
                     fail(
                         "residence",
                         `\`${name}\` is named by this workspace (\`${workspace.name}\`) but its pointer ` +
-                            `names \`${other.governed_by.workspace}\` as its governor, and ${GOVERNS} — ` +
+                            `names ${JSON.stringify(other.governed_by.workspace)} as its governor, and ${GOVERNS} — ` +
                             "two workspaces both believing they govern one repository is that failure with " +
                             "the second copy moved one directory away",
                     );

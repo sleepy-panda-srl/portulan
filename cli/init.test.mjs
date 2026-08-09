@@ -180,11 +180,12 @@ describe("a pointer carries exactly what doctor permits and nothing else", () =>
 
 // ---------------------------------------------------------------- #141's shape, made unemittable
 
-describe("nothing init writes can produce the manifest doctor still mishandles", () => {
+describe("nothing init writes can produce the manifest doctor once mishandled", () => {
     // Issue #141: a pointer whose `governed_by.workspace` is present but empty or non-string is
-    // refused by the cross-repository check as a CONFLICTING governor — a false red, and a confusing
-    // one. `doctor`'s bug is `doctor`'s to fix; `init`'s obligation is that it can never be the tool
-    // that produced the input. Refused at the boundary, with the schema's own slug definition.
+    // WAS refused by the cross-repository check as a CONFLICTING governor — a false red, and a
+    // confusing one. **Fixed in `doctor` on 2026-08-09**, which is why this block's name is past tense
+    // now; these assertions are unchanged and still worth their place, because `init`'s obligation was
+    // never that `doctor` be correct — it is that `init` can never be the tool that produced the input. Refused at the boundary, with the schema's own slug definition.
     // Two refusals, and which one fires is itself the assertion. An EMPTY governor is caught at the
     // command line, where "you gave me nothing to work with" is the clearer sentence; a non-empty
     // governor that is not a slug reaches the schema's own definition. Sending an adopter to the
