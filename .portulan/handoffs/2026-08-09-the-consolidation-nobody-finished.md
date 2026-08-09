@@ -15,6 +15,12 @@ of a consolidation whose second pass (`789a2b0`) is already merged.
 The branch takes that record from **15,879 → 8,654** and the store to **114,191**, so headroom goes
 **1,464 → 8,689**. The alternative to finishing it was doing it again.
 
+_Units and method, because this file's own subject record exists partly because a figure went unstated:
+bytes are `Buffer.byteLength` summed over `.portulan/memory/*.md`, which is what `cli/index.mjs` budgets,
+and the budget is `memory.store.budget.kilobytes: 120` at `KB = 1024`. Re-derivable per commit:
+`15,879 · 121,416` on `main`, `8,361 · 113,898` at the link repair, `8,428 · 113,965` after round 1,
+`8,654 · 114,191` after round 2._
+
 ## What the takeover actually had to check
 
 The commit subject claims *"the four rules do not move"*. **That was verified rather than believed** —
@@ -48,8 +54,19 @@ diff shows only as absence — so the whole review is *where did this go*, not *
    record where provenance is load-bearing. The file's own reason for recording the ratification
    separately is that **blurring a clause an implementer inferred with one the maintainer ruled is the
    defect this rule protects against**. The compression put that sentence at risk of committing it.
-   Rewritten at a cost of **+502 bytes, spent deliberately** — a condensation that buys bytes by making a
+   Rewritten at a cost of **+226 bytes, spent deliberately** — a condensation that buys bytes by making a
    provenance ambiguous has sold the wrong thing.
+4. **Round 4 found this change's own figures disagreeing, in the sharpest possible way.** The pull
+   request body said `15,879 → 8,152`, store `113,898`, headroom `8,982`; the first draft of these
+   records said `8,654`, `114,191`, `8,689`. Two carriers, two sets, and the reviewer asked which.
+   Neither was merely stale: **the body paired a record size from `1637d7b` — the abandoned commit,
+   before the link repair — with a store size measured two commits later**, so it was never a coherent
+   pair at any moment. The same mixing produced **`+502`** for round 2's cost, carried into its commit
+   message, its thread reply and this file's first draft; the true figure is **`+226`**
+   (`8,428 → 8,654`), and `+502` is `8,152 → 8,654` across three commits. Corrected in every carrier
+   still editable, and named where it is not. This is the record's own #105 lesson — *writing a record
+   while the number it states can still move* — committed inside the change that condenses the record
+   teaching it, and caught by the suppressed channel rather than by its author.
 
 ## The part worth keeping
 
