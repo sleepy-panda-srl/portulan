@@ -138,8 +138,14 @@ finding-rate comments on it, [#157](https://github.com/sleepy-panda-works/portul
 [#162](https://github.com/sleepy-panda-works/portulan/pull/162) and
 [#86](https://github.com/sleepy-panda-works/portulan/pull/86).
 
-**Retire when:** the ruling lands and its mechanism is configured — or when a controlled experiment
-establishes the cause and the exit follows from it rather than from a lead.
+**Retire when:** ~~the ruling lands and its mechanism is configured — or when a controlled experiment
+establishes the cause and the exit follows from it rather than from a lead.~~ **SATISFIED on the first
+clause, 2026-08-09**: the ruling landed with this change and exit (2)'s mechanism is the doctrine
+paragraph in [`../gate-map.md`](../gate-map.md). The clause is struck rather than deleted because it was
+the condition this proposal was accepted under, and what replaces it is not a rewrite of it — **the live
+retirement conditions are the Decision's**, below: one for the exit-(2) procedure, one for the
+experiment, and one each for the exits still staged. A proposal that pointed at its own superseded
+clause would be the two-carrier defect this repository names more often than any other.
 
 ## Decision
 
