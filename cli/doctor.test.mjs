@@ -2091,6 +2091,22 @@ describe("a repository is governed by exactly one workspace", () => {
         assert.match(text(checks(findings, "residence")), /a sentence only the resolver could have written/);
     });
 
+    test("an ASYNC resolver is awaited — the injection point may not silently yield a Promise", async () => {
+        // `inspect` is `async` and `options.discover` is an injection point, so a hook that returns a
+        // promise must work. Before it was awaited, `governor.state` came back `undefined` and the
+        // report described a Promise rather than a host — a silent wrong answer rather than a crash.
+        // Today's resolver is synchronous and `await` on a plain value is a no-op, which is why the
+        // sync cases above still pass unchanged. (Copilot, round 2.)
+        const dir = tree(scratch(), { "workspace.json": JSON.stringify(pointer()) });
+        const { findings } = await inspect(dir, {
+            schema: SCHEMA,
+            discover: async () => ({ state: "not-installed", sentence: "answered from a promise" }),
+        });
+        assert.equal(severities(findings, "fail").length, 0, text(findings));
+        assert.match(text(checks(findings, "residence")), /answered from a promise/);
+        assert.doesNotMatch(text(checks(findings, "residence")), /supplied no sentence/);
+    });
+
     test("NO discovery outcome moves this tool's verdict — all four leave a compliant pointer green", async () => {
         // The invariant, asserted rather than trusted to the three cases above happening to agree.
         // `doctor`'s exit code is a statement about a WORKSPACE; letting a host's install state move

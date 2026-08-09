@@ -148,7 +148,13 @@ export function readInstalls(options = {}) {
     } catch (cause) {
         return { state: "unreadable", path: file, entries: [], detail: `not JSON — ${cause.message}` };
     }
-    if (record === null || typeof record !== "object" || Array.isArray(record) || typeof record.plugins !== "object" || record.plugins === null) {
+    // `Array.isArray` is checked on BOTH the record and its `plugins`, and the second was missing — the
+    // sibling of a guard sitting one clause away. `typeof [] === "object"`, so `{"plugins": []}` read as
+    // a healthy record with nothing installed, and a malformed file collapsed into `not-installed`:
+    // *could not look* spent as absence, which is the one thing this file's four states exist to prevent.
+    // Found by Copilot, round 2, in a function whose own docblock argues that the three read states are
+    // kept apart at the source.
+    if (record === null || typeof record !== "object" || Array.isArray(record) || typeof record.plugins !== "object" || record.plugins === null || Array.isArray(record.plugins)) {
         return { state: "unreadable", path: file, entries: [], detail: "no `plugins` object — this is not an installed-plugin record" };
     }
     const entries = [];
@@ -208,7 +214,13 @@ function readCandidate(root) {
         }
         if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) continue;
         if (typeof parsed.name !== "string") continue;
+        // `portulan.spec`, not merely a `portulan` key. An empty object satisfied the first cut of this
+        // gate, so a non-Portulan file could still qualify by carrying one — the same fail-open one
+        // tightening later (Copilot, round 2). `spec` is what the Workspace Definition REQUIRES of the
+        // block, so this keys on the contract rather than on a key's presence; the pattern is left to
+        // `doctor`, which owns conformance.
         if (parsed.portulan === null || typeof parsed.portulan !== "object" || Array.isArray(parsed.portulan)) continue;
+        if (typeof parsed.portulan.spec !== "string") continue;
         return { manifest: file, dir: path.dirname(file), name: parsed.name, kind: typeof parsed.kind === "string" ? parsed.kind : null };
     }
     return null;
