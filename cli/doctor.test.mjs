@@ -671,7 +671,7 @@ describe("provenance is parsed into the two forms the constitution names", () =>
     // Workspace Definition 2.6. The scopes layer gets the same two conditional dependencies as the
     // other two series, for the third time and on the same terms: the argument is shared, the code is
     // not, and `index` refusing them is not `doctor` refusing them — a manifest checked at one carrier
-    // is checked at the narrower one, which is #91's class.
+    // is checked at the narrower one, which is the class `0020` names.
     test("`personas` without a `slots.personas` layer is refused", async () => {
         const m = wellFormed();
         m.personas = { index: { path: "personas-index.md" } };

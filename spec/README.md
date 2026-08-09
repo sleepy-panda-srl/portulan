@@ -121,7 +121,7 @@ about it was wrong, which is the class [#133](https://github.com/sleepy-panda-wo
 is filed about and the reason the count below is now read off `cli/doctor.mjs` rather than incremented by
 hand. [`slots.md`](slots.md) carried the same fact and said **five**, stale by two bumps; both are
 corrected in the change that added the pointer kind, because a fix that repairs one carrier and knowingly
-leaves its sibling is the class [#91](https://github.com/sleepy-panda-works/portulan/issues/91) names._
+leaves its sibling is the class [`0020`](../.portulan/proposals/0020-a-fix-is-not-done-at-the-site-it-was-found.md) names._
 
 **The residence refusals are deliberately NOT in that list, and the distinction is the reason it can
 still be trusted.** `doctor` refuses a pointer carrying governing slots, a governing workspace carrying a

@@ -43,8 +43,8 @@ import { isInside, recordType } from "./index.mjs";
 // One frontmatter parser for this repository, not two. `plugin-lint` minted it and has the tests that
 // pin its edges — an unterminated block, a block that is not first, a value with a colon in it — and a
 // second implementation here would be a second carrier of one contract — the class
-// https://github.com/sleepy-panda-works/portulan/issues/91 names, and what ../core/operating/evolution.md
-// prescribes leaving one site for.
+// ../.portulan/proposals/0020-a-fix-is-not-done-at-the-site-it-was-found.md names, and what
+// ../core/operating/evolution.md prescribes leaving one site for.
 import { parseFrontmatter } from "./plugin-lint.mjs";
 // Host plugin-cache discovery, which is where a pointer's `governed_by` stops being a name and
 // becomes a directory. Imported rather than reimplemented for the reason above, and kept in its own
