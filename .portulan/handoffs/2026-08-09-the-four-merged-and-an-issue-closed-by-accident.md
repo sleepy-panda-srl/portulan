@@ -41,9 +41,20 @@ Status cell in the same table cell still lists `(b) parity` as Left**; and **#12
 [`0017`](../proposals/0017-one-repository-one-governing-workspace.md), which invented the pointer kind. So
 closing #134 would have left the invisibility complaint carried by no open issue at all.
 
-**Owed to the maintainer, and neither is an agent's to take:** row 7's clause (b) parenthetical needs
+**Owed to the maintainer, and neither was an agent's to take:** row 7's clause (b) parenthetical needs
 narrowing to the pack-registration half with a named carrier for workspace resolution, and if #134 is ever to
-close, **#123 must be widened first** so the residue lands somewhere.
+close, the residue must land somewhere first.
+
+_Both were ruled the same day, hours after this was written, and the wording above is left standing with the
+rulings recorded beneath it rather than rewritten — a record says what was owed when it was written._
+**The maintainer licensed an agent to draft the narrowing for his review**, and it is drafted on
+[#181](https://github.com/sleepy-panda-works/portulan/pull/181). **And the residue did not land on #123**,
+which this handoff proposed: #123 is being closed for good in its own session, so widening it would have
+parked the remainder on an issue about to close. It went to a new issue,
+[#184](https://github.com/sleepy-panda-works/portulan/issues/184) — the pack-registration half and the
+no-inheritance half, the two this file correctly identified as uncarried — and **#134 closed on the
+maintainer's explicit ruling** with that comment recording what did and did not close. The sentence this
+paragraph amends was right about the hazard and wrong about the destination.
 
 ## What the merges cost, and what the loop bought
 
