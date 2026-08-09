@@ -150,8 +150,12 @@ config, which is exactly the reasoning `cli/doctor.test.mjs` had already written
 
 ## The loop, and where it stopped
 
-[#181](https://github.com/sleepy-panda-works/portulan/pull/181). **Three rounds, two answering pushes**,
-and the bound held rather than being argued past.
+[#181](https://github.com/sleepy-panda-works/portulan/pull/181). **Five rounds, three answering pushes** —
+the bound held for the first four, and the fifth ran on the maintainer's grant rather than past him. _(This
+read "three rounds, two answering pushes, and the bound held rather than being argued past", which was true
+of the session that wrote it and stopped being true when a second session was told to finish the pull
+request. Amended rather than left, in the file whose closing line is that a record must not assert a total
+that can still move.)_
 
 - **Round 1**, one thread: `green()` in vendor's suite spread the injected `env` **first**, so any caller
   passing `env` replaced it and got the real host back — a helper whose comment called the injection
@@ -174,6 +178,39 @@ and the bound held rather than being argued past.
   second note claimed a malformed injected resolver *crashes* `doctor`; measured four ways, three of them
   exit **2 — could not run**, which is this tool's designed answer to a defect inside itself. The residue
   is one cosmetic `undefined` in a fallback sentence.
+
+- **Round 4**, two suppressed notes: item 1 again in stronger terms, and the exit-code contract saying
+  *"0 resolved"* while `run()` also exits 0 for `resides-here`. Both triaged, the second as #182 item 3.
+  Round 4 is where the **taper** showed — one repeat and a help-text wording — which is the signal rule 4
+  leaves to a human, and the reason the extension was worth asking for rather than assuming.
+- **Round 5, on the maintainer's explicit grant**, and it **spends** the bound: items 1 and 3 are siblings
+  under the narrow test, item 2 is not, and one non-sibling makes it a spending round. Recorded that way
+  because the grant and the exemption are different licences and `a-review-loop-needs-a-bound.md` is
+  explicit that blurring them is the thing not to do. All three of #182's items fixed —
+  and the fix's **first draft was wrong in the finding's own class**: it trimmed `feed` and `workspace`
+  rather than only blank-testing them, so a padded pointer matched an unpadded name on disk while the
+  reverse still missed, turning a `resolved` into a `not-installed`. The pre-commit checkpoint built the
+  padded case instead of reading the diff. `configDir()`, the sibling this fix cites, blank-tests and
+  hands `path.resolve` the raw string — so *"mirrors `configDir()`"* was a licence to trim that
+  `configDir()` never gave. Item 3 turned out to have **three** carriers rather than the two the thread
+  named, the third being the boot skill itself.
+
+## The packaged path, run rather than reasoned about
+
+Milestone 7 had demonstrated the boot with `--plugin-dir` against a working copy. The untested path was
+*install through a marketplace, then boot*, and it now has evidence — Claude Code **2.1.226**, with
+`CLAUDE_CONFIG_DIR` pointed at a scratch directory throughout, and everything installed removed afterwards:
+`claude plugin marketplace add ./` (bare `.` is refused), `claude plugin install portulan@portulan`, then
+**the installed copy's own `cli/discover.mjs`** — the command step 2a actually ships — resolving a pointer
+to `<installPath>/.portulan`, `matches: 1`, exit **0**. The **negative control** is what makes that
+evidence: the same command against an empty config directory answers `not-installed`, exit **1**, so
+`resolved` shows the record was consulted rather than guessed.
+
+Two things this deliberately does **not** claim. `gitCommitSha` in the record is the repository's HEAD while
+the install copies the **working tree**, so that field is not evidence of the payload — the payload was
+checked by grepping it. And `Skills (7)` is a packaging sanity check and nothing more: **the same count
+reproduces from a directory carrying no workspace at all**, re-measured here, so it cannot demonstrate row
+7's clause (b), whose subject is a composed pack in an adopting workspace.
 
 _The prose above was written before the loop; the counts were added in the final push, which is rule 2
 read the way it means: a record must not assert a total that can still move._

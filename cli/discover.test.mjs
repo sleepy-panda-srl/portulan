@@ -295,6 +295,22 @@ test("the feed constrains — the right name from the wrong feed is a near miss,
     assert.match(verdict.sentence, /which is not the feed `portulan-internal` this pointer names/);
 });
 
+test("a near miss whose record key carries no marketplace does not print `null`", () => {
+    // `readInstalls` tolerates a key with no `@` on purpose, so `marketplace` is null there — and the
+    // feed near-miss sentence has to survive it. It read "ships through `null`", which names a
+    // marketplace called null rather than one nobody recorded. Copilot, on the round reviewing the fix.
+    const { dir, env } = host({ "sleepy-panda@feed": { manifest: governing("sleepy-panda") } });
+    const record = JSON.parse(fs.readFileSync(path.join(dir, RECORD), "utf8"));
+    record.plugins["no-at-sign"] = record.plugins["sleepy-panda@feed"];
+    delete record.plugins["sleepy-panda@feed"];
+    write(path.join(dir, RECORD), record);
+    const verdict = resolveGovernor({ workspace: "sleepy-panda", feed: "portulan-internal" }, { env });
+    assert.equal(verdict.state, "not-installed");
+    assert.equal(verdict.nearMisses[0].why, "feed");
+    assert.match(verdict.sentence, /no marketplace the record names/);
+    assert.doesNotMatch(verdict.sentence, /`null`/);
+});
+
 test("a pointer that names a pointer is refused, and the refusal names the reason", () => {
     const { env } = host({ "panda@feed": { manifest: { portulan: { spec: "2.7" }, name: "sleepy-panda", kind: "pointer", governed_by: { workspace: "elsewhere" } } } });
     const verdict = resolveGovernor({ workspace: "sleepy-panda", feed: "feed" }, { env });
