@@ -519,7 +519,10 @@ function carveOut(destDir, incomingName) {
         // refusal claiming a foreign residence. Same class as #141 one file over, found at that fix's
         // pre-commit checkpoint. The refusal itself stands — vendor is about to overwrite, and
         // fail-closed on a manifest it cannot read is the right direction — but it now says which of
-        // the two it met, because "a foreign residence" is false of a pointer naming nothing.
+        // the two it met — the WHOLE sentence, not only its opening clause. The first cut branched
+        // the prefix and left "That is a foreign residence … aimed somewhere else" standing for both,
+        // so the message still asserted a foreign residence about a pointer aimed nowhere: the same
+        // half-done repair this change is about, in the fix for it. (Copilot, the round after.)
         //
         // BOTH arms stringify. The first cut escaped only the unusable one and left the declared arm
         // raw inside backticks — the same sibling shape, in the fix for that shape: this value comes
@@ -527,10 +530,15 @@ function carveOut(destDir, incomingName) {
         // padding hides inside the backticks. (Copilot, on the round reviewing it.)
         const declared = typeof manifest.governed_by?.workspace === "string" && manifest.governed_by.workspace.trim() !== "";
         throw new VendorError(
-            `${destDir} carries a pointer ${declared ? `naming ${JSON.stringify(manifest.governed_by.workspace)}` : `whose governor is unusable (${JSON.stringify(manifest.governed_by?.workspace)})`} as its governor, and the ` +
-                `workspace being moved in is \`${incomingName}\`. That is a foreign residence, not this switch's other half — ` +
-                `a repository is governed by exactly one workspace, and materialising over a pointer aimed somewhere else would ` +
-                `take governance from a workspace that never agreed to give it up`,
+            declared
+                ? `${destDir} carries a pointer naming ${JSON.stringify(manifest.governed_by.workspace)} as its governor, and the ` +
+                      `workspace being moved in is \`${incomingName}\`. That is a foreign residence, not this switch's other half — ` +
+                      `a repository is governed by exactly one workspace, and materialising over a pointer aimed somewhere else would ` +
+                      `take governance from a workspace that never agreed to give it up`
+                : `${destDir} carries a pointer whose governor is unusable (${JSON.stringify(manifest.governed_by?.workspace)}), and the ` +
+                      `workspace being moved in is \`${incomingName}\`. That is a malformed pointer rather than a foreign residence, ` +
+                      `and materialising over it would overwrite a manifest nobody can read as consent — fix or remove the pointer, ` +
+                      `and run this again`,
         );
     }
     const extra = entries.filter((e) => e !== "workspace.json" && e !== "README.md").sort();
