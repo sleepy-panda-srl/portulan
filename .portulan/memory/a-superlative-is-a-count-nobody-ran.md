@@ -26,7 +26,7 @@ different things**:
 
 Those four rankings cannot all be true, and **nothing in the tree had ever counted any of them**. Each
 site reached for the phrase to say *this one matters*, which is a real thing to want and is not what the
-words mean. Every one of the twenty makes its point without the ranking, and most make it better: *a fix
+words mean. Every one of the twenty-two makes its point without the ranking, and most make it better: *a fix
 that repairs one carrier and leaves its sibling* is checkable and links to `0020`; *the defect this
 repository names most often* is checkable by nobody. That asymmetry is the whole rule.
 
@@ -53,7 +53,7 @@ rule is *do not assert the ranking*, not *go and measure it*.
   re-derivable as the tool that took it**, which is the rule one layer beneath the one this record states.
 
 **The recursion is worth naming:** this is the two-carrier defect committed on the *name* of the
-two-carrier defect — one phrase, twenty carriers, four meanings, drifting because nothing owned it. It
+two-carrier defect — one phrase, twenty-two carriers, four meanings, drifting because nothing owned it. It
 was found by running the sibling sweep [`0020`](../proposals/0020-a-fix-is-not-done-at-the-site-it-was-found.md)
 proposes, on that proposal's own vocabulary, while writing it.
 
