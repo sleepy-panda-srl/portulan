@@ -689,7 +689,29 @@ export function inspect(rawRoot, { payload = false } = {}) {
             const dir = path.join(packsRoot, name);
             // A `packs` entry escaping the tree is the workspace validator's finding, not this one's;
             // what matters here is that this validator never walks outside the plugin root.
+            //
+            // `escapes` is LEXICAL, and lexical containment is not containment: `packs/` or a composed
+            // pack directory can be a symlink whose target is anywhere, and `statSync`/`readdirSync`
+            // follow it. The three-rule set `../cli/vendor.mjs` pays for says refuse a symlink at or
+            // below the named path rather than resolve through it, and this walker owes the same rule —
+            // it reads a tree on the strength of a name in a manifest. So the path is canonicalised and
+            // re-checked, which refuses the link without needing to know what it points at. Raised by
+            // Copilot on #195; the first cut had the lexical check alone and claimed containment from it.
             if (escapes(root, dir)) continue;
+            let real;
+            try {
+                real = fs.realpathSync(dir);
+            } catch {
+                real = dir; // absent, or unreadable — the stat below reports it as itself.
+            }
+            if (escapes(root, real)) {
+                fail(
+                    "compose",
+                    `${GOVERNING} composes \`${name}\`, which resolves outside the plugin root — ` +
+                        "a link out of the bundle. Nothing was walked; composition is unchecked for it",
+                );
+                continue;
+            }
             let stat;
             try {
                 stat = fs.statSync(dir);

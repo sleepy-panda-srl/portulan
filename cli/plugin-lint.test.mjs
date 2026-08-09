@@ -1191,3 +1191,21 @@ describe("compose — composition and registration are pinned to each other", ()
         );
     });
 });
+
+test("compose refuses a composed pack that is a symlink out of the bundle", () => {
+    // Lexical containment is not containment: `escapes()` alone passed a `packs/<name>` whose target
+    // was anywhere on disk, and `statSync`/`readdirSync` follow it. Copilot, #195.
+    const root = composed();
+    const outside = scratch();
+    write(outside, "skills/smuggled/SKILL.md", SKILL("smuggled", "Not part of this bundle at all."));
+    const link = path.join(root, "packs", "rituals", "elsewhere");
+    fs.rmSync(path.join(root, "packs", "rituals", "checkpoints"), { recursive: true, force: true });
+    fs.symlinkSync(outside, link);
+    const manifest = path.join(root, ".portulan", "workspace.json");
+    fs.writeFileSync(manifest, JSON.stringify({ name: "demo", packs: ["rituals/elsewhere"] }, null, 2));
+
+    const bad = fails(inspect(root).findings).filter((f) => f.check === "compose");
+    assert.equal(bad.some((f) => /resolves outside the plugin root/.test(f.message)), true, messages(inspect(root).findings));
+    // And it must say nothing was walked rather than going quiet — refusing is not the same as passing.
+    assert.match(bad.find((f) => /resolves outside/.test(f.message)).message, /composition is unchecked for it/);
+});
