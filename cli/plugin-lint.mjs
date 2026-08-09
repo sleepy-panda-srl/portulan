@@ -177,6 +177,17 @@ export function parseFrontmatter(text) {
 /**
  * Lint the packaging rooted at `root`.
  *
+ * @param {string} rawRoot - the plugin root, absolute or relative.
+ * @param {object} [options]
+ * @param {boolean} [options.payload=false] - treat this root as a **payload**: a plugin a feed
+ *   publishes without being a marketplace itself. It changes exactly one thing — a
+ *   `marketplace.json` that is **absent** becomes a counted `unverifiable` note instead of a
+ *   `manifest` failure, and every marketplace-specific check is skipped because there is nothing to
+ *   check. Everything else is unchanged, and three boundaries are deliberate: a marketplace manifest
+ *   that is **present** is validated in full, an **unusable** one (a dangling symlink, an unreadable
+ *   file) still fails, and the mode is never inferred from an absent file — the caller opts in. What
+ *   the exemption costs is what the note says: nothing here can check that the feed's entry agrees
+ *   with this manifest, so the name, version and source path it publishes under are unverified.
  * @throws {PluginLintError} when the root itself cannot be read — that is not a verdict.
  * @returns {{findings: Array<{severity: "fail"|"note", check: string, message: string}>,
  *            stats: {skills: number, agents: number, paths: number, unverifiable: number}}}
