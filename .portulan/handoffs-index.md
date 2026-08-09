@@ -2,7 +2,7 @@
 
 > Generated from `handoffs/` by `node cli/index.mjs`. Do not edit by hand: it is regenerated
 > and byte-compared, so a hand-edit survives exactly until the next run.
-> 78 handoff(s), newest first. No budget: the series is append-only, so
+> 79 handoff(s), newest first. No budget: the series is append-only, so
 > the only remedy a budget could ask for is one this project rules out.
 
 - 2026-08-09 · [Handoff — two sessions built one module, and the order decided itself](handoffs/2026-08-09-two-sessions-built-one-module-and-the-order-decided-itself.md)

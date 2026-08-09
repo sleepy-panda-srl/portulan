@@ -8,7 +8,8 @@ open. New: proposal `0024`, issue #196. Nine recipes green throughout.
 
 ## What each item turned out to be
 
-**#173 — the store was not full of the thing the issue described.** The 2026-08-08 pass had already run
+**#173 — the store was not full of the thing the issue described.** *(Figures below describe the moment
+before #193 landed; the store is 28 records and 120,677 bytes now.)* The 2026-08-08 pass had already run
 the lifecycle's other half; what remained was arithmetic. A second compression of
 `a-review-loop-needs-a-bound.md` (18,283 → 15,733, all four rules byte-identical, verified by extracting
 the block from both revisions and diffing) freed 2,550 bytes. **The number it leaves behind is the
@@ -18,12 +19,20 @@ that a rule now displaces a rule — and it is the maintainer's, not this sessio
 2026-08-08 pass surfaced (`repo-is-private-until-flip-clearance`'s tense) is **still unresolved and still
 his**, now waiting since 2026-08-08.
 
-**#172 — the branch it pointed at would have reverted #173.** `m7-a-superlative-nobody-counted` was 55
-commits behind and its single commit put three memory records back to pre-consolidation state, including
-`a-review-loop-needs-a-bound.md` at 23,596 bytes. Merging it would have quietly undone the remedy the
-companion issue exists for. So the sweep was **rebuilt on `main`** and the census re-run: **20 living
-occurrences across 18 files, not 19 across 16**, and **four** referents rather than three. Three sites
-the first pass never reached; two more acquired the phrase on 2026-08-09.
+**#172 — the branch it pointed at carried a stale tree.** `m7-a-superlative-nobody-counted` was tens of
+commits behind — 57 against the `main` of the moment I first measured it, and further with every merge
+since — and its tree held three memory records at pre-consolidation state, `a-review-loop-needs-a-bound.md`
+among them at 23,596 bytes. **The hazard was narrower than I first wrote it**: the branch's own commit
+touches one record, and a plain merge conflicts nine ways and auto-resolves all three to `main`'s side. What
+would have reverted #173 is a *hand reconciliation* preferring the branch tree — the failure this project
+has hit twice — not the merge itself. Corrected by the checkpoint on this record.
+
+So the sweep was **rebuilt on `main`** and the census re-run. **That census was also wrong, and the way it
+was wrong is the record's own subject**: it found 20 living occurrences across 18 files where there were
+**22 across 19**, because the phrase wraps across comment-line boundaries and the scan could not see a
+variant split that way. **Two carriers survive on `main`** — `cli/compile.mjs` and `cli/vendor.test.mjs` —
+and the sentence claiming zero, "confirmed by re-running the census script", inherited the instrument's
+blind spot. A rule against unmeasured superlatives shipped carrying a count run wrong.
 
 **#174 — the two carriers never disagreed.** Ruled by a fresh-context Fable 5 supervisor under the
 maintainer's named delegation, the third such ruling after `0022` and `0023`, and like both of those it
@@ -70,9 +79,13 @@ pull request and it is on the pull request rather than only here.
 
 ## What this session did not do
 
-**No fresh-context pre-commit checkpoint ran on any of the four diffs.** Subagent supervision was
-authorised only for the #174 ruling and scoped to it. Each pull request says so on its own face rather
-than leaving it to be discovered — and under `0024`, which this session merged, three of them owed one.
-**Breach recorded**, the #137 practice.
+**No fresh-context pre-commit checkpoint ran on any of the four diffs before their commits — the breach
+stands**, and each pull request says so on its own face rather than leaving it to be discovered. Under
+`0024`, merged in this session, three of them owed one.
+
+**Fresh-context review arrived afterwards, which is recovery for a missed moment and not the moment.** Five
+passes ran late on the maintainer's instruction: A-W-A on #192, #194, #195 and this record, and
+**REQUEST-CHANGES on #193**. Every figure this handoff corrects above is theirs rather than mine, which is
+the argument for the checkpoint made better than any sentence could make it.
 
 Seam scan clean: no diff, commit message or branch name in this session carries client context.
