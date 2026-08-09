@@ -2089,7 +2089,7 @@ _The seam applies here too: no client-identifying references._
   **`Skills (0)`** for a milestone. [#134](https://github.com/sleepy-panda-works/portulan/issues/134)'s own diagnosis of that bullet was wrong: it named
   the declared-path-too-high trap, which is real and different. Both reproduced on 2.1.226 — no manifest **0**, `./rituals/` **0**, the right depth **3**.
   The recipe found the new plugin root before anyone declared it and exited 2. `plugin-lint` gained **`--payload`** for a root a feed publishes: a missing
-  `marketplace.json` becomes a counted `unverifiable`, **opt-in and never inferred**. Nine recipes, suite 1110→1117. Seam scan clean. · Fidelity:
+  `marketplace.json` becomes a counted `unverifiable`, **opt-in and never inferred**. Nine recipes, suite 1120→1128. Seam scan clean. · Fidelity:
   pre-commit PWC **REQUEST-CHANGES**, all folded — it caught a **could-not-run flattened into a red** by `|| status=1` (third instance; `compile.sh` and
   `index.sh` carry the fix), `existsSync` following a dangling symlink into "none is owed", the relaxation shipping with **no test**, and a wrong version.
   Left: the feed's pin has not moved, so the real install still reports 0. Handoff: [`2026-08-09`](../.portulan/handoffs/2026-08-09-the-pack-the-feed-ships-declared-nothing.md).

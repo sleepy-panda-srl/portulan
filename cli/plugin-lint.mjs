@@ -364,13 +364,27 @@ export function inspect(rawRoot, { payload = false } = {}) {
     // pre-commit checkpoint by planting the dangling link.
     const marketPath = path.join(root, ".claude-plugin", "marketplace.json");
     let marketAbsent = false;
+    let marketUnexaminable = null;
     try {
         fs.lstatSync(marketPath);
     } catch (error) {
-        marketAbsent = error.code === "ENOENT";
+        // ENOENT is the only absence. Every other errno — EACCES, EIO, ELOOP — is a file that is
+        // THERE and would not answer, and falling through with `marketAbsent` false sent it to
+        // `manifest()`, whose `existsSync` cannot stat it either and reports it **missing**. That is
+        // the same conflation this block exists to prevent, one branch further out, and it reached
+        // both the payload and the strict path. Reported as itself instead. (Copilot, final round.)
+        if (error.code === "ENOENT") marketAbsent = true;
+        else marketUnexaminable = error.code ?? error.message;
     }
     let market = null;
-    if (payload && marketAbsent) {
+    if (marketUnexaminable !== null) {
+        fail(
+            "manifest",
+            `.claude-plugin/marketplace.json could not be examined — ${marketUnexaminable}. That is not ` +
+                "absence: absent and unusable are different verdicts and this is the second, so it fails " +
+                "here whether or not this root is a payload",
+        );
+    } else if (payload && marketAbsent) {
         stats.unverifiable += 1;
         note(
             "market",
