@@ -966,7 +966,18 @@ jobs:
           promote () {
             [ -n "${p_path:-}" ] || return 0
             body=$(printf '%s' "$p_body" | sed -e 's/[[:space:]]*$//' | awk 'NF {blank=0} !NF {blank++} blank<2')
-            [ -n "$body" ] || return 0
+            # AN EMPTY BODY IS STILL A NOTE. This used to `return 0` here, which dropped a parsed
+            # `**path:line**` header whose text normalised away — and dropping it silently is the one
+            # outcome this whole chain refuses, contradicted three lines under the comment saying so.
+            # It cannot post an empty comment, so it takes the orphan path instead: the header is
+            # carried into the batched comment with a warning, which is surfacing without gating
+            # rather than nothing at all. Copilot, #176, on the rebased head.
+            if [ -z "$body" ]; then
+              warn "the note at ${p_path}:${p_line} normalised to an empty body — carried to the batched comment rather than dropped. Copilot's markup for this note is probably new; read the review body by hand."
+              orphaned=$((orphaned + 1))
+              printf -- '- **%s:%s** — parsed, but its text normalised to nothing. Read this one in the review body.\n\n' "$p_path" "$p_line" >>"$orphans"
+              return 0
+            fi
             crc=$(printf '%s' "$body" | cksum | cut -d' ' -f1)
             marker="<!-- portulan-note path=${p_path} line=${p_line} crc=${crc} -->"
             if grep -qF "$marker" "$existing"; then
