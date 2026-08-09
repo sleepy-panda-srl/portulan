@@ -19,6 +19,12 @@
 // What it does NOT do is written next to what it does, in ../spec/slots.md and in ../cli/README.md.
 // The short list: it never runs a verify recipe, never dereferences a link, never judges whether a
 // sealed stamp is true, and never scores agent-legibility.
+//
+// **One name IS dereferenced, as of milestone 7: a pointer's `governed_by`.** It is resolved against
+// the host's installed-plugin record by ./discover.mjs — on disk, never over the network, and the
+// line above stays literally true because that is not a link. The result is REPORTED and never
+// graded: a pointer whose governor is not installed is a correct pointer, and this tool says where
+// the workspace is rather than passing judgement on it.
 
 import fs from "node:fs";
 import path from "node:path";
@@ -39,6 +45,11 @@ import { isInside, recordType } from "./index.mjs";
 // second implementation here would be a second carrier of one contract, which is the defect this
 // repository names more often than any other.
 import { parseFrontmatter } from "./plugin-lint.mjs";
+// Host plugin-cache discovery, which is where a pointer's `governed_by` stops being a name and
+// becomes a directory. Imported rather than reimplemented for the reason above, and kept in its own
+// file for a second one: the boot skill's whole instruction is to report what THIS resolver said, so
+// there must be exactly one thing that says it.
+import { resolveGovernor } from "./discover.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const DEFAULT_SCHEMA = path.resolve(HERE, "..", "spec", "workspace.schema.json");
@@ -1038,10 +1049,41 @@ export async function inspect(workspaceDir, options = {}) {
             "residence",
             `governed by \`${workspace.governed_by?.workspace}\`` +
                 (feed ? `, delivered through \`${feed}\`` : "") +
-                " — no workspace resides here, and this manifest says so rather than improvising one. " +
-                "Nothing was fetched: resolving a pointer to the workspace it names is discovery, and " +
-                "the roots are named rather than found (milestone 7)",
+                " — no workspace resides here, and this manifest says so rather than improvising one",
         );
+        // ---- and now the name is dereferenced, which it was not until milestone 7's discovery
+        //
+        // This report said *"Nothing was fetched: resolving a pointer to the workspace it names is
+        // discovery, and the roots are named rather than found (milestone 7)"*. Discovery has landed
+        // (./discover.mjs), so the sentence became a document denying a capability that exists —
+        // condition 4 of ../.portulan/dod.md pointing the other way, which this repository has now
+        // corrected often enough to expect.
+        //
+        // **Nothing is fetched is still true and is still said**, by the resolver's own sentence: the
+        // host's installed-plugin record is read from disk and no network call is made anywhere in
+        // this path. What changed is that a name on disk is now looked up, not that anything is
+        // downloaded.
+        //
+        // The verdict is REPORTED and never graded, and that boundary is load-bearing rather than
+        // cautious. `not-installed` is not a defect in this manifest — a pointer is correct while its
+        // governor is uninstalled, which is the ordinary state of a fresh clone — so failing here
+        // would red every honest pointer on every machine that had not run an install yet, including
+        // CI, where nothing is ever installed. What the reader gets instead is the root, and what to
+        // run against it.
+        const resolve = options.discover ?? ((governedBy) => resolveGovernor(governedBy, options));
+        const governor = resolve(workspace.governed_by);
+        // The resolver owns the sentence — one carrier, so every surface reporting this prints the same
+        // words rather than four paraphrases. The fallback names the state rather than inventing prose:
+        // a resolver returning no sentence is a defect in the resolver, and a line reading `undefined`
+        // would hide it behind something that still looks like a report.
+        report("residence", governor.sentence ?? `the pointer resolver answered \`${governor.state}\` and supplied no sentence`);
+        if (governor.state === "resolved") {
+            report(
+                "residence",
+                `run \`doctor ${display(governor.root)}\` to grade it — this run judged the pointer and not ` +
+                    "the workspace it names, and a green pointer is not a statement that its governor is green",
+            );
+        }
         report(
             "residence",
             "the governing-workspace checks did not run here — path slots, cross-field, packs, claims, " +
@@ -1049,7 +1091,7 @@ export async function inspect(workspaceDir, options = {}) {
                 "correctly does not carry. They run where the workspace resides, and a green pointer is " +
                 "not a statement that the workspace it names is green",
         );
-        return { dir, workspace, findings, stats };
+        return { dir, workspace, findings, stats, governor };
     }
 
     if (workspace.governed_by) {
@@ -1962,16 +2004,23 @@ export async function run(argv, options = {}) {
         // and no caller set it, so the path shaped for an adopter resolving from an installed feed had no
         // way in from a command line. Replacement rather than precedence so that "it resolved from the
         // feed" cannot be satisfied by a copy in the local tree at all — the three tools disagreed about
-        // this once, and `../cli/compile.mjs`'s `namedRootsOption` carries what that cost. Host
-        // plugin-cache discovery is deliberately not built here.
+        // this once, and `../cli/compile.mjs`'s `namedRootsOption` carries what that cost.
+        //
+        // **A PACK root is still named and never discovered, and that is now a boundary rather than an
+        // absence.** `./discover.mjs` reads the host's installed-plugin record and this tool uses it for
+        // one thing: dereferencing a POINTER's `governed_by`. Defaulting `--pack-root` from the same
+        // record is #123's half of row 7's amendment, and it is deliberately not taken here — it would
+        // change what a `packs` array resolves against on every existing run, and the row fixes the only
+        // safe direction for it (add a root where none was named; never replace one that was).
         //
         // `--repo-root <dir>`, repeatable, is its sibling and is deliberately shaped the same way: the
         // directories under which the repositories a workspace's cards NAME are checked out, so the
         // residence ruling's third refusal has somewhere to look. Named rather than discovered for the
-        // same reason the pack roots are — finding a host's checkouts is discovery, and this tool does
-        // not do discovery. The two lists are separate because they answer different questions and a
-        // single `--root` would make a packs root and a checkout root interchangeable, which they are
-        // not: one holds `category/name` pack directories, the other holds repositories.
+        // same reason the pack roots are — a host's plugin cache holds installed plugins, and a
+        // developer's checkouts are not in it, so there is nothing there to find. The two lists are
+        // separate because they answer different questions and a single `--root` would make a packs
+        // root and a checkout root interchangeable, which they are not: one holds `category/name` pack
+        // directories, the other holds repositories.
         const namedRoots = [];
         const repoRoots = [];
         const dirs = [];
