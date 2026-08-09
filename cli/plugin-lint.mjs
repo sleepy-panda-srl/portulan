@@ -794,9 +794,16 @@ export function inspect(rawRoot, { payload = false } = {}) {
                 );
                 continue;
             }
+            // Everything past this point uses `real`, the CANONICALISED path, and that is not tidiness.
+            // `skillDirs` is built from declared roots that `resolve()` already canonicalised, so a
+            // composed pack directory that is itself a symlink to somewhere else inside `./packs/`
+            // would make the two sides describe one directory by two path forms — and the set
+            // comparison below is by string. The result is a FALSE "composed but undeclared" failure
+            // on a bundle that is correct. Raised by Copilot on #195, twice in one round, which is what
+            // a defect with two symptoms looks like.
             let stat;
             try {
-                stat = fs.statSync(dir);
+                stat = fs.statSync(real);
             } catch (error) {
                 // A composed pack absent from the bundle cannot be registered from it, but *why* it is
                 // absent is `doctor`'s verdict on the workspace and would be a second carrier here.
@@ -824,7 +831,7 @@ export function inspect(rawRoot, { payload = false } = {}) {
                 );
                 continue;
             }
-            composed.push({ name, dir });
+            composed.push({ name, dir: real });
         }
 
         for (const { name, dir } of composed) {
