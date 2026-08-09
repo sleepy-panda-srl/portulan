@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // `plugin-lint` — the packaging validator.
 //
-//   node cli/plugin-lint.mjs <plugin-root>
+//   node cli/plugin-lint.mjs [--payload] <plugin-root>...
 //
 // Exit 0 the packaging holds together · 1 it does not · 2 could not run. Same three codes as
 // ./doctor.mjs and for the same reason: a verdict ABOUT the tree is 1, and 2 means nothing was
@@ -925,7 +925,14 @@ export async function run(argv, options = {}) {
         const roots = argv.filter((a) => !a.startsWith("-"));
         if (roots.length === 0) {
             if (!options.quiet) {
-                process.stderr.write("usage: node cli/plugin-lint.mjs <plugin-root>\n");
+                // The usage line takes BOTH the plural and the flag, because it was narrower than the
+                // tool on both counts: several roots have been accepted since this file shipped, and
+                // `--payload` arrived with this change. A usage message printed at the moment a caller
+                // already got it wrong is the worst place to be out of date. (Copilot, on the round
+                // reviewing the payload mode — the same sentence-narrower-than-its-code shape this
+                // pull request exists to correct one layer down.)
+                process.stderr.write("usage: node cli/plugin-lint.mjs [--payload] <plugin-root>...\n");
+                process.stderr.write("  --payload  the roots are payloads a feed publishes: no marketplace.json here, and none owed\n");
             }
             return 2;
         }
