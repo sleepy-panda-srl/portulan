@@ -1204,8 +1204,11 @@ test("compose refuses a composed pack that is a symlink out of the bundle", () =
     const manifest = path.join(root, ".portulan", "workspace.json");
     fs.writeFileSync(manifest, JSON.stringify({ name: "demo", packs: ["rituals/elsewhere"] }, null, 2));
 
-    const bad = fails(inspect(root).findings).filter((f) => f.check === "compose");
-    assert.equal(bad.some((f) => /resolves outside \.\/packs\//.test(f.message)), true, messages(inspect(root).findings));
+    // One `inspect` run, reused: a second call re-walks the tree and a failure message describing a
+    // different run than the assertion is a debugging trap. Copilot, #195.
+    const { findings } = inspect(root);
+    const bad = fails(findings).filter((f) => f.check === "compose");
+    assert.equal(bad.some((f) => /resolves outside \.\/packs\//.test(f.message)), true, messages(findings));
     // And it must say nothing was walked rather than going quiet — refusing is not the same as passing.
     assert.match(bad.find((f) => /resolves outside/.test(f.message)).message, /composition is unchecked for it/);
 });
@@ -1253,5 +1256,62 @@ describe("compose fails closed on what it could not evaluate", () => {
         const bad = fails(inspect(root).findings).filter((f) => f.check === "compose");
         assert.equal(bad.length, 1, messages(inspect(root).findings));
         assert.match(bad[0].message, /is not a JSON object \(string\)/);
+    });
+});
+
+test("a `packs` value that is not an array fails closed — present is not absent", () => {
+    // `"packs": "rituals/checkpoints"` iterated zero times and reported nothing, so the check's own
+    // invariant went unestablished while the run looked clean. Copilot, #195.
+    const root = composed();
+    const manifest = path.join(root, ".portulan", "workspace.json");
+    fs.writeFileSync(manifest, JSON.stringify({ name: "demo", packs: "rituals/checkpoints" }, null, 2));
+    const bad = fails(inspect(root).findings).filter((f) => f.check === "compose");
+    assert.equal(bad.some((f) => /declares `packs` as string rather than an array/.test(f.message)), true, messages(inspect(root).findings));
+});
+
+test("a composed pack that exists but is a FILE is a NOTE — seen, and doctor's verdict", () => {
+    // A failure here would claim a hazard nobody could demonstrate: the checkpoint on #195 tried to
+    // build a false green through a regular file and could not, since a file holds no SKILL.md for
+    // the two walks to disagree about. So it matches the ENOENT branch: say it was seen, pass it on.
+    const root = composed({ packs: ["rituals/checkpoints", "rituals/afile"] });
+    write(root, "packs/rituals/afile", "not a pack\n");
+    const { findings } = inspect(root);
+    const compose = findings.filter((f) => f.check === "compose");
+    assert.equal(fails(compose).length, 0, messages(findings));
+    assert.equal(compose.length, 1);
+    assert.equal(compose[0].severity, "note");
+    assert.match(compose[0].message, /is not a directory/);
+    assert.match(compose[0].message, /`doctor` owns that verdict/);
+});
+
+describe("compose cannot go quiet on what the walk could not see", () => {
+    test("a SYMLINKED SKILL.md in a composed, undeclared pack is named — the walks disagreed", () => {
+        // `Dirent.isFile()` is false for a symlink, so the sweep could not see it, while the
+        // declared-side walk reaches the same file through `existsSync`, which follows links. One
+        // shape, three behaviours across this repository — `doctor`'s `walkSkills` lstat-refuses it.
+        // Found by the pre-commit checkpoint on #195, which built the silent green.
+        const root = composed({ declare: false });
+        const real = path.join(root, "skills", "greet", "SKILL.md");
+        const link = path.join(root, "packs", "rituals", "checkpoints", "skills", "linked");
+        fs.mkdirSync(link, { recursive: true });
+        fs.symlinkSync(real, path.join(link, "SKILL.md"));
+        const bad = fails(inspect(root).findings).filter((f) => f.check === "compose");
+        assert.equal(bad.some((f) => /SKILL\.md that is a SYMLINK/.test(f.message)), true, messages(inspect(root).findings));
+        assert.match(bad.find((f) => /SYMLINK/.test(f.message)).message, /Composition is unchecked below that point/);
+    });
+
+    test("an UNREADABLE subtree under a composed pack is named, not swallowed", () => {
+        const root = composed({ declare: false });
+        const dark = path.join(root, "packs", "rituals", "checkpoints", "skills");
+        fs.chmodSync(dark, 0o000);
+        try {
+            if (fs.readdirSync(dark).length >= 0) return; // running as root: the probe cannot bite
+        } catch {
+            const bad = fails(inspect(root).findings).filter((f) => f.check === "compose");
+            assert.equal(bad.some((f) => /could not be read/.test(f.message)), true);
+            assert.match(bad.find((f) => /could not be read/.test(f.message)).message, /Composition is unchecked below that point/);
+        } finally {
+            fs.chmodSync(dark, 0o755);
+        }
     });
 });
