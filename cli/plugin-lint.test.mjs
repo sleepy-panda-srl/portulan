@@ -1095,3 +1095,99 @@ test("a marketplace.json that cannot be EXAMINED fails, payload or not — the t
         fs.chmodSync(meta, 0o755);
     }
 });
+
+// ===============================================================================================
+// compose — the workspace's `packs` array and plugin.json's `skills` are one fact
+// ===============================================================================================
+//
+// Row 7 clause (b) asks for PARITY: a composed pack's skill invoked the way a core skill is, because
+// the workspace composed it. Registration is a property of plugin.json alone — measured 2026-08-09
+// on Claude Code 2.1.226 by deleting the `packs` key outright and reinstalling, which left the host's
+// inventory identical — so until this check nothing made composition load-bearing.
+//
+// Written red first, both directions, and the tree's real manifests were forced red both ways before
+// these existed: a check nobody has seen fail is a check nobody has seen work.
+
+/** A plugin bundle that both composes a pack and registers it — the aligned state. */
+function composed({ packs = ["rituals/checkpoints"], declare = true, governing = true } = {}) {
+    const root = fixture({
+        plugin: declare
+            ? { skills: ["./skills/", "./packs/rituals/checkpoints/skills/"] }
+            : { skills: ["./skills/"] },
+    });
+    write(
+        root,
+        "packs/rituals/checkpoints/skills/pre-commit/SKILL.md",
+        SKILL("pre-commit", "Grades a finished diff. Use before committing full-lane work."),
+    );
+    write(root, "packs/rituals/checkpoints/pack.json", JSON.stringify({ name: "checkpoints", category: "rituals" }));
+    if (governing) {
+        write(root, ".portulan/workspace.json", JSON.stringify({ name: "demo", packs }, null, 2));
+    }
+    return root;
+}
+
+describe("compose — composition and registration are pinned to each other", () => {
+    test("aligned is green: the workspace composes it and the manifest registers it", () => {
+        const { findings } = inspect(composed());
+        assert.equal(fails(findings).filter((f) => f.check === "compose").length, 0, messages(findings));
+    });
+
+    test("composed but undeclared fails — the skill ships, counts, and cannot be invoked", () => {
+        const { findings } = inspect(composed({ declare: false }));
+        const bad = fails(findings).filter((f) => f.check === "compose");
+        assert.equal(bad.length, 1, messages(findings));
+        assert.match(bad[0].message, /no plugin\.json `skills` path reaches it/);
+        // The repair is in the message, at the depth the HOST expands — not the skill's own directory.
+        assert.match(bad[0].message, /Declare \.\/packs\/rituals\/checkpoints\/skills\/$/);
+    });
+
+    test("declared but uncomposed fails — the host would load a layer nobody asked for", () => {
+        const { findings } = inspect(composed({ packs: [] }));
+        const bad = fails(findings).filter((f) => f.check === "compose");
+        assert.equal(bad.length, 1, messages(findings));
+        assert.match(bad[0].message, /belongs to no pack .* composes/);
+    });
+
+    test("an absent `packs` key is the same defect as an empty one — not an exemption", () => {
+        const root = composed();
+        const manifest = path.join(root, ".portulan", "workspace.json");
+        const parsed = JSON.parse(fs.readFileSync(manifest, "utf8"));
+        delete parsed.packs;
+        fs.writeFileSync(manifest, JSON.stringify(parsed, null, 2));
+        const bad = fails(inspect(root).findings).filter((f) => f.check === "compose");
+        assert.equal(bad.length, 1, "a manifest composing nothing registers nothing from ./packs/");
+    });
+
+    test("a bundle with no governing workspace composes nothing, and that is not a finding", () => {
+        const { findings } = inspect(composed({ governing: false, declare: false }));
+        assert.equal(findings.filter((f) => f.check === "compose").length, 0);
+    });
+
+    test("a governing workspace that cannot be READ is not one that composes nothing", () => {
+        const root = composed();
+        fs.writeFileSync(path.join(root, ".portulan", "workspace.json"), "{ not json");
+        const bad = fails(inspect(root).findings).filter((f) => f.check === "compose");
+        assert.equal(bad.length, 1);
+        assert.match(bad[0].message, /this run establishes nothing about it/);
+    });
+
+    test("a composed pack missing from the bundle is a NOTE — `doctor` owns that verdict", () => {
+        const { findings } = inspect(composed({ packs: ["rituals/checkpoints", "stacks/python"] }));
+        const composeFindings = findings.filter((f) => f.check === "compose");
+        assert.equal(fails(composeFindings).length, 0, messages(findings));
+        assert.equal(composeFindings.length, 1);
+        assert.equal(composeFindings[0].severity, "note");
+        assert.match(composeFindings[0].message, /does not resolve under \.\/packs\//);
+    });
+
+    test("skills OUTSIDE ./packs/ are none of this check's business", () => {
+        // `./skills/greet/` is core-shaped: registered, composed by nothing, and correct.
+        const { findings } = inspect(composed());
+        assert.equal(
+            findings.some((f) => f.check === "compose" && /greet/.test(f.message)),
+            false,
+            "only the packs tree is subject to the composition rule",
+        );
+    });
+});

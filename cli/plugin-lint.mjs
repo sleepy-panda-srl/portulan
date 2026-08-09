@@ -43,6 +43,11 @@
 //     Claude Code 2.1.224 against a local marketplace built from this repository — `./packs/rituals/`
 //     registered 0 of the pack's 3, `./packs/rituals/checkpoints/skills/` registered all 3 — and it is
 //     why `N skill(s)` and the host's inventory had disagreed by three for a milestone (#134).
+//     Since 2026-08-09 a second half is checked, and it is a different question: not *can the host
+//     reach this path* but *did the workspace ask for it*. The `compose` check below pins the
+//     governing workspace's `packs` array to the `skills` paths that land inside `./packs/`, both
+//     ways, because registration is otherwise a property of plugin.json alone — measured by deleting
+//     the `packs` key outright and reinstalling, which changed the host's inventory not at all.
 //     What is still NOT checked is everything else about registration: whether the host accepts the
 //     frontmatter, whether a name collides, whether the plugin loads at all. `N skill(s)` answers *is
 //     the packaging coherent and reachable*, never *does this install work* — that stays the
@@ -620,6 +625,112 @@ export function inspect(rawRoot, { payload = false } = {}) {
         // skill rather than of where it happens to sit, and every skill this repository ships has
         // one already, so the rule costs nothing and closes the case before packs arrive.
         checkFrontmatter(text, `${rel}/SKILL.md`, "skills", { requireName: true });
+    }
+
+    // --- composition drives registration -------------------------------------------------------
+    //
+    // Two manifests carry one fact and nothing pinned them together. A workspace's `packs` array
+    // says which packs this repository **composes**; `plugin.json`'s `skills` says which directories
+    // the **host registers**. Registration is a property of `plugin.json` and of nothing else —
+    // measured 2026-08-09 on Claude Code 2.1.226 by deleting the `packs` key from
+    // `.portulan/workspace.json` outright and reinstalling, which changed the host's inventory not at
+    // all: the same `Skills (7)`, the checkpoints pack's three among them. So a composed pack's skill
+    // is invocable here by coincidence of a hand-written path, which is exactly what row 7 clause (b)
+    // refuses ([#184](https://github.com/sleepy-panda-works/portulan/issues/184)): the demonstration
+    // it asks for is **parity** — invoked because the workspace composed it — not files present at a
+    // path a human knows.
+    //
+    // The correspondence runs both ways, and each direction is a defect that is silent today:
+    //
+    //   composed, undeclared  →  packaged, counted by this validator, inert on every install. The
+    //                            failure ../.portulan/memory/a-manifest-field-can-validate-and-load-nothing.md
+    //                            records against the sibling `agents` key, arriving through the other
+    //                            manifest.
+    //   declared, uncomposed  →  a capability the host registers that no workspace asked for. The
+    //                            cascade is core < pack < workspace, and a pack reaching the host
+    //                            without the workspace naming it has skipped the layer that owns the
+    //                            decision.
+    //
+    // **Scoped to the workspace that GOVERNS this bundle, never to every manifest it ships.** The demo
+    // under `examples/` composes `stacks/python` and `tools/github`, which deliberately do not exist,
+    // and the fixture under `cli/fixtures/` exists to be invalid; holding either to this rule would be
+    // a red by construction. That scoping is the whole reason this reads one named path rather than
+    // discovering manifests.
+    //
+    // What this does NOT establish: that the host then invokes the skill. It establishes that the
+    // path the host registers from is the one composition asked for, which is the half a validator
+    // can own — `claude plugin details` is the other half and is run at the checkpoints.
+
+    const GOVERNING = path.join(".portulan", "workspace.json");
+    let composition;
+    try {
+        composition = JSON.parse(fs.readFileSync(path.join(root, GOVERNING), "utf8"));
+    } catch (error) {
+        // A bundle shipping no governing workspace composes nothing, which is coherent rather than a
+        // fault. *Could not read* is a different answer and is never *not there*
+        // (../.portulan/memory/verify-preconditions-fail-closed.md), so the two are reported apart and
+        // only the second is a finding.
+        if (error.code === "ENOENT") composition = null;
+        else {
+            fail(
+                "compose",
+                `${GOVERNING} could not be read — ${error.code ?? error.message}; composition was ` +
+                    "not checked against the declared skills, so this run establishes nothing about it",
+            );
+            composition = null;
+        }
+    }
+
+    if (composition !== null && typeof composition === "object" && !Array.isArray(composition)) {
+        const packsRoot = path.join(root, "packs");
+        const composed = [];
+        for (const name of Array.isArray(composition.packs) ? composition.packs : []) {
+            if (typeof name !== "string" || name === "") continue;
+            const dir = path.join(packsRoot, name);
+            // A `packs` entry escaping the tree is the workspace validator's finding, not this one's;
+            // what matters here is that this validator never walks outside the plugin root.
+            if (escapes(root, dir)) continue;
+            let stat;
+            try {
+                stat = fs.statSync(dir);
+            } catch (error) {
+                // A composed pack absent from the bundle cannot be registered from it, but *why* it is
+                // absent is `doctor`'s verdict on the workspace and would be a second carrier here.
+                // Noted so the reader knows this check saw it and passed it on.
+                note(
+                    "compose",
+                    `${GOVERNING} composes \`${name}\`, which does not resolve under ./packs/ — ` +
+                        `${error.code ?? error.message}. \`doctor\` owns that verdict; nothing here ` +
+                        "could check its skills",
+                );
+                continue;
+            }
+            if (stat.isDirectory()) composed.push({ name, dir });
+        }
+
+        for (const { name, dir } of composed) {
+            for (const skillDir of walkForSkills(root, dir)) {
+                if (skillDirs.has(skillDir)) continue;
+                fail(
+                    "compose",
+                    `${GOVERNING} composes \`${name}\` and ${path.relative(root, skillDir)}/ is one of ` +
+                        "its skills, but no plugin.json `skills` path reaches it — the host registers " +
+                        "nothing here, so the skill ships, counts, and cannot be invoked. Declare " +
+                        `./${path.relative(root, path.dirname(skillDir))}/`,
+                );
+            }
+        }
+
+        for (const skillDir of skillDirs) {
+            if (escapes(packsRoot, skillDir)) continue;
+            if (composed.some(({ dir }) => skillDir === dir || !escapes(dir, skillDir))) continue;
+            fail(
+                "compose",
+                `plugin.json registers ${path.relative(root, skillDir)}/, which is inside ./packs/ and ` +
+                    `belongs to no pack ${GOVERNING} composes — the host would load it without the ` +
+                    "workspace layer having asked for it. Compose the pack, or stop declaring it",
+            );
+        }
     }
 
     // A skill authored and never declared is a skill nobody ships, and its author will believe

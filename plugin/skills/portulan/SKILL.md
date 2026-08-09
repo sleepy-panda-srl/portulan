@@ -178,13 +178,23 @@ moment one of them ships:
   property. So *"declared"* and *"resolved"* are still two states here, and a boot cannot assume a
   declared pack resolved from a feed unless somebody said `auto`. **A workspace resolved from a pointer
   is in exactly the same state about its own packs as an in-repo one.**
-- **A pack's skills register only where the plugin declares the directory that actually holds them.**
-  A host expands a declared skills path **one level** and no further, so a root pointing at a family of
-  packs — `packs/rituals/`, with skills at `<pack>/skills/<skill>/` — registers **nothing**, silently,
-  while a validator walking deeper counts them. Declaring `packs/rituals/<pack>/skills/` registers them.
-  Measured both ways on Claude Code 2.1.224. So a composed ritual **is** invocable the way a core skill
-  is, and only when the manifest names the right depth: check that before telling anyone a pack's
-  ritual is available as a command, because the failure is silent in both directions.
+- **A pack's skills register only where the plugin declares the directory that actually holds them —
+  and, since 2026-08-09, only where the workspace composed the pack.** A host expands a declared skills
+  path **one level** and no further, so a root pointing at a family of packs — `packs/rituals/`, with
+  skills at `<pack>/skills/<skill>/` — registers **nothing**, silently, while a validator walking
+  deeper counts them. Declaring `packs/rituals/<pack>/skills/` registers them. Measured both ways on
+  Claude Code 2.1.224.
+
+  Depth alone was never parity, and saying so is the point: **registration is a property of
+  `.claude-plugin/plugin.json` and of nothing else** — measured on 2026-08-09, Claude Code 2.1.226, by
+  deleting the `packs` key from the governing workspace outright and reinstalling, which changed the
+  host's inventory not at all. So a composed pack's ritual was invocable by coincidence of a
+  hand-written path. `plugin-lint`'s `compose` check now pins the two together in both directions — a
+  composed pack whose skills no declared path reaches is red, and a skills path inside `packs/`
+  belonging to no composed pack is red — so *composed* and *registered* can no longer drift apart in
+  a bundle this validator runs over. What that buys is the **bundle's** parity, not the adopter's:
+  nothing here writes an adopter's plugin manifest, so a pack a customer composes still reaches their
+  host only where their own manifest names it.
 - **A pack's personas reach the workspace's own layer, and not the host.** A composing workspace lands
   the scope a pack's persona declares, and an index over it can be generated — so this one is not
   simply absent, and reporting it as absent would be as wrong as reporting it as loaded.
