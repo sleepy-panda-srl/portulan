@@ -1,0 +1,154 @@
+# Handoff — the pointer had a name and nothing dereferenced it
+
+**Milestone 7, session 5.** Issue [#134](https://github.com/sleepy-panda-works/portulan/issues/134)'s
+still-open half: *a feed-installed workspace is invisible to `/portulan`*. The other half — *a workspace
+cannot inherit another* — was answered by proposal
+[`0017`](../proposals/0017-one-repository-one-governing-workspace.md) and the `pointer` kind at Workspace
+Definition 2.7. **M7 stays open**; this session lands one of its outstanding deliverables (row 7's
+2026-08-03 amendment, the pointer half) and touches none of the other five.
+
+## What was wrong, and why it was invisible
+
+The repository said which workspace governs it — `kind: pointer`, `governed_by.workspace`,
+`governed_by.feed` — and **nothing anywhere turned that name into a directory.** The boot skill said so
+in as many words: *"Do not fetch it… nothing here discovers one."* `doctor` said the same:
+*"the roots are named rather than found (milestone 7)."* Both sentences were true when written. The
+consequence was that a workspace **installed on the machine** was invisible to the thing booting beside
+it, and the boot's honest report was *not installed here* about something that was.
+
+## The shape, which row 7 fixed and this session did not choose
+
+Row 7's 2026-08-03 amendment: *"the boot is a skill, and real resolution stays the CLI's."* So resolution
+is `cli/discover.mjs` and the boot reports its answer. **No ninth `portulan` subcommand** —
+`docs/vision.md` names eight and is human-owned — so the resolver sits beside `plugin-lint` and
+`librarian` as a tool that runs from `cli/` and is deliberately absent from the entry point's list.
+
+**Four verdicts, because three of them are not *no*.** `resolved` · `not-installed` · `ambiguous` (two
+or more installs answering to one name: **refused and both named**, never ranked) · `could-not-look` (a
+record that would not parse). A resolver with two answers spends *could not look* as *not installed*,
+which is the fail-open this repository keeps minting rules about.
+
+**Three limits, asserted rather than written down.** The match is on the **governing manifest's `name`**,
+never a plugin's — the two agreeing on this machine is a coincidence of naming, not a contract. The
+candidate locations inside a payload are a **named pair** (`workspace.json`, `.portulan/workspace.json`)
+rather than a walk — which is what keeps the demo and the deliberately-drifted fixture out of reach *by
+construction*, since neither sits at one, so step 2's guard is not weakened by the exception. _(Stated
+precisely, because the checkpoint caught the loose version: this bundle's **own** `.portulan/` **is** in
+reach wherever the plugin is installed. That is the correct answer to a pointer naming `portulan` rather
+than a hole — but *"all three manifests stay out of reach"* would have been a stronger claim than the
+mechanism makes.)_ And **nothing is fetched**: the record is read from disk and no path here touches the
+network.
+
+**Reported, never graded.** No discovery outcome moves `doctor`'s exit code, and a test asserts all four.
+A pointer whose governor is uninstalled is a *correct* pointer — a fresh clone is in exactly that state,
+and so is every CI run — so failing there would red an honest manifest and make a verdict about a
+workspace into a fact about somebody's laptop.
+
+**`--pack-root` is deliberately NOT defaulted from the same record.** That is
+[#123](https://github.com/sleepy-panda-works/portulan/issues/123)'s half: it changes what a `packs` array
+resolves against on every existing run, and #117 established that a **named root replaces** the derived
+one, so *"this pack resolved from the feed"* cannot be satisfied by a copy in the local tree. The row
+fixes the only safe direction — add a root where none was named, never replace one that was — and this
+change adds no root at all.
+
+## Demonstrated, not asserted — the red first
+
+1. **The red.** A throwaway worktree at `46e7b81`, the same scratch pointer, this machine — where the
+   governing workspace **is** installed. `doctor` printed *"the roots are named rather than found"*, and
+   `cli/discover.mjs` did not exist at that commit.
+2. **The seam.** On the branch, `node cli/discover.mjs --json <pointer dir>` returned `state: resolved`
+   against the **real** `~/.claude/plugins/installed_plugins.json`, naming the install root, the plugin,
+   the marketplace and the pinned version. `doctor` on the same pointer printed the same answer and
+   stayed GREEN; `doctor` against the resolved root graded the workspace itself GREEN.
+3. **A real `/portulan` boot.** Headless, from the scratch pointer repository, with the plugin loaded
+   from this working copy (`--plugin-dir`) so the payload under test was the change rather than a
+   published one. It resolved the pointer, loaded the governing workspace's **identity, principles, gate
+   map and definition of done**, named the plugin and its **pinned version**, named the resolved
+   manifest's **spec MINOR skew** against this bundle's, **selected the repo card for the repository it
+   booted in** rather than reading the directory, and reported the workspace's declared pack as **still
+   unresolvable** — which is the correct answer and the boundary above, holding. That is the acceptance
+   criterion, exercised.
+
+**Every state was run by hand, not only asserted in a suite** — five commands, five exit codes read
+without a pipe: `resolved` **0** (the real host), `not-installed` **1** (an empty config dir),
+`could-not-look` **2** (a record that will not parse), `ambiguous` **1** (two installs answering to one
+name, both printed, neither chosen), and a governing manifest answered rather than refused, **0**. On the
+ambiguous host `doctor` on the same pointer still printed **GREEN**, which is the *reported, never
+graded* boundary demonstrated rather than argued.
+
+**Nothing was installed into the maintainer's plugin config, and it was read back unchanged afterwards.**
+The first attempt used an isolated `CLAUDE_CONFIG_DIR` with a local marketplace added; that config has no
+credentials, so the run stopped at *not logged in*. `--plugin-dir` against the real config replaced it,
+which needs no install and leaves nothing to remove. The isolated config was deleted regardless.
+
+**One measured aside worth keeping.** A local-directory install records the repository's `gitCommitSha`
+while copying the **working tree** — so on that path the recorded SHA is not evidence of the payload. It
+is what made the isolated attempt usable at all, and it would be a trap for anyone reading that field as
+provenance.
+
+## What is left, and what belongs to the maintainer
+
+- **Two decisions, neither an agent's.** Row 7's clause (b) parenthetical says clause (b) closes #134,
+  while the same Status cell lists `(b) parity` as *Left* — the criterion needs narrowing to the
+  pack-registration half, and `docs/plan.md` is Propose-tier with its criteria amended *with Marius*.
+  And whether this work closes #134, or #123 is widened first so the pack-root residue lands somewhere,
+  is his call: **a closing comment alone is not a carrier for a residue.** Both are in the pull request
+  body rather than taken here.
+- **The Status cell was trimmed to fit its 500-byte rail** — 496 → 478 with `s4` added. What came out:
+  *"which found a `compile` parity breach, fixed"* (recorded in session 3's handoff) and *"six is pinned
+  in `milestones/m07.md`; this cell said seven"* (recorded in `m07.md`'s own count section, which says in
+  as many words that it is the carrier). Nothing lost a home; a cell at 96% of its budget cannot take an
+  addition without one.
+- **`#123` is untouched and still owed** — a pack root is still named by hand, in either residence, so it
+  is not a residence asymmetry.
+
+## State
+
+`discovery-resolves-a-pointer-at-the-boot`. New: `cli/discover.mjs`, `cli/discover.test.mjs`, this
+handoff. Changed: `cli/doctor.mjs`, `cli/doctor.test.mjs`, `plugin/skills/portulan/SKILL.md`,
+`spec/README.md`, `spec/slots.md`, `spec/workspace.schema.json`, `cli/README.md`,
+`.portulan/identity.md`, `.portulan/proposals/0017…`; the carriers and hermeticity the checkpoint found —
+`cli/init.mjs`, `cli/index.mjs`, `cli/compile.mjs`, `cli/portulan.mjs` and its suite,
+`cli/vendor.test.mjs`, `cli/init.test.mjs`; and the records — `docs/plan.md`, `CHANGELOG.md`,
+`.portulan/handoffs-index.md` (regenerated, never hand-edited). Suite `main` **1059** → branch **1101**;
+**all nine recipes green**, run individually and read without a pipe. Seam scan clean on diff, message,
+branch and paths.
+
+**Eleven carriers denied the capability**, because condition 4 of [`../dod.md`](../dod.md) cuts both
+ways: a document *denying* a capability that exists is the same defect as one claiming a capability that
+does not. **Ten corrected in place** — the doctor comment, the `cli/README.md` row, the `spec/README.md`
+coverage row **and** its residence-parity paragraph, `spec/slots.md`'s *what nothing checks*, the schema's
+`governed_by` description, the identity glossary's *checks form, never truth*, and three the pre-commit
+checkpoint found by grepping where I had stopped: `cli/index.mjs` and `cli/compile.mjs`'s *"discovery is
+deliberately NOT built"* (true of pack roots, unscoped as written), and — the one that **ships**, into
+every adopting repository — the drafted pointer README `cli/init.mjs` writes, which told an adopter *"a
+host does not discover the governing workspace on its own"*. That site has failed this way before; the
+plan's own log records *"three false sentences `init` shipped into every adopter's drafted README"*. The
+eleventh is proposal
+[`0017`](../proposals/0017-one-repository-one-governing-workspace.md), which named this very asymmetry and
+promised its closure; it gets a **dated follow-through note at its Decision** and its body is left exactly
+as written, because a proposal is the record of a ruling taken on the state of that day and rewriting it to
+suit a later change destroys the record to flatter the rule. `cli/portulan.mjs`'s *"the **two** tools that
+are off the list"* was a twelfth of a different kind — not a denial but a count, and wrong twice over,
+since it also said *"a seventh subcommand"* against a list that has held eight since 2026-08-03.
+
+## The pre-commit checkpoint found a fail-open, and it found it by building one
+
+`readCandidate` accepted **any** JSON object with a string `name` as a workspace manifest, while its own
+docblock promised the opposite. The supervisor built a plugin payload carrying an Nx-style
+`workspace.json` — `{"version": 2, "name": …, "projects": {…}}`, no `portulan`, no `kind` — and the
+resolver answered `state: resolved`, exit 0, pointing a boot at it. `workspace.json` is a common filename
+in the wider ecosystem, so that is an ordinary file and not a contrived one. The gate is now `portulan`
+**and** `name` — the Definition's identity minus `kind`, which is read for the pointer refusal and left
+to `doctor` otherwise, because this is deliberately not a second schema validator. Two more from the same
+pass, both found by typing rather than reading: `--jsonn` printed prose and exited **0**, so a typo
+degraded the machine-readable contract into the half the skill is told never to read (unknown options are
+now refused); and exit 2 can arrive with **empty stdout**, which the skill's table had no row for and now
+does. And two suites had quietly lost hermeticity — `cli/vendor.test.mjs`'s `green()` and
+`cli/init.test.mjs`'s `doctor()` grade pointer directories and were reading the developer's real host
+config, which is exactly the reasoning `cli/doctor.test.mjs` had already written down one file away.
+
+_This handoff is written before the review loop rather than after it — rule 2 of
+[`../memory/a-review-loop-needs-a-bound.md`](../memory/a-review-loop-needs-a-bound.md) governs the
+**push**, and what it forbids is a record asserting a total that can still move. The round count and the
+pull-request number are therefore in the Session log entry, which lands last._
