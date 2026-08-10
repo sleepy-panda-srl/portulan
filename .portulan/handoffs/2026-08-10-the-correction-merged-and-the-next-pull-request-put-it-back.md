@@ -9,7 +9,7 @@ and had not moved since the finding was measured; the cell was **not** already t
 rather than a no-op record.
 
 **Amended 2026-08-10, after [#206](https://github.com/sleepy-panda-works/portulan/pull/206) merged and
-this branch rebased onto `43f1e54`.** The findings below stand exactly as measured — they are what the
+this branch rebased (twice — see the reconciliation).** The findings below stand exactly as measured — they are what the
 cell said at `159df14`. What changed is **which of them this pull request still lands**: #206 restructured
 the same cell and trued findings 1 and 2 independently, and landing D3 moved the count past this branch's
 figure. **Only finding 3 survives as work.** The original text is left as written rather than edited to
@@ -123,11 +123,15 @@ caught this one, and one did read it.
 
 ## The reconciliation — the same lesson, with this branch as the one at risk
 
-**Added 2026-08-10 on rebase onto `43f1e54`, after #206 merged.**
+**Added 2026-08-10 on rebase, after #206 merged. This branch was rebased TWICE the same afternoon** —
+onto `43f1e54` (#206), then onto `d8f6821` after #211 and #214 landed — and the second rebase is why the
+figures here name their base: `main` moved **11 commits** in total while this one-line change was open
+(`159df14` → `43f1e54`, 6; → `d8f6821`, 5). The final base is **`d8f6821`**.
 
 This pull request is about a branch that replayed a stale cell over a merged correction. On rebase it
-became that branch: **six commits behind** (`git rev-list --count 159df14..43f1e54`) while carrying two of
-its own, holding a cell whose count read **four of six**, against a `main` that now reads **three** because
+became that branch: **six commits behind at the first rebase** (`git rev-list --count 159df14..43f1e54`),
+then five more at the second, while carrying two of its own — holding a cell whose count read **four of
+six**, against a `main` that reads **three** because
 D3 landed with #206. Replaying it would have re-introduced exactly the staleness this change exists to
 remove — the defect reproducing inside its own repair, which is this project's dominant class and the one
 `m07.md` warns recurs there.
@@ -152,5 +156,5 @@ extra delta may not ship one unnamed, however cosmetic.
 They are still correctly *recorded* here as what was measured at `159df14`, because they were; they are
 simply no longer this pull request's repair. Finding 3 is.
 
-**Next action.** Branch rebased onto `43f1e54`; both review threads answered in round 1 and resolved on
+**Next action.** Branch rebased onto `d8f6821`; both review threads answered in round 1 and resolved on
 the maintainer's explicit instruction of this date. Hand to Marius. **Do not merge** — that stays his.
