@@ -110,7 +110,9 @@ specific applies — is built out of `grep` throughout**, so the tool most likel
 is the tool the byte silences. _(Named rather than counted, after two corrections. This sentence first
 claimed **every** recipe here was built out of `grep`, and six of the ten invoke it zero times —
 `plugin.sh`, `tests.sh`, `workflow-filters.sh`, `compile.sh`, `control-chars.sh` and `rule-carriers.sh`,
-the middle two carrying the word only in comments — **which is why this said three until 2026-08-10**: an instrument
+of which **`compile.sh` and `control-chars.sh` carry the word in comments only and the other four never
+mention it at all** — named rather than placed, because "the middle two" was a position in a list, and a
+position is a count wearing a word — **which is why this said three until 2026-08-10**: an instrument
 that counts occurrences answers a different question from the sentence's verb, and the retrospective
 pass over this very pull request found it, then itself said four by leaving out the recipe the
 paragraph is about. Third time on one page. The correction then asserted `seventeen invocations`, a
