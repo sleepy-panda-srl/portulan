@@ -136,9 +136,14 @@ export function parseRegistry(source, { where = "registry" } = {}) {
     });
 
     // The top-level `exclude` is validated exactly as a rule's is. It was not, and the gap was not
-    // cosmetic: a non-string entry reaches `inDomain`, where `p.startsWith` throws a bare TypeError —
-    // so a REGISTRY DEFECT would have surfaced as a stack trace instead of the exit-2 verdict this
-    // repository's three-code discipline requires. `could not run` has to be a verdict, not a crash.
+    // cosmetic — but the reason is NOT a crash, and this comment said it was until it was corrected.
+    // `inDomain` calls `file.startsWith(p)`, and `String.prototype.startsWith` COERCES its argument:
+    // 1, null, true, {} and ["x"] all return false quietly, so nothing throws for anything JSON can
+    // carry. The real risk is worse than a stack trace because it is silent — `[]` and `""` coerce to
+    // the empty string, EVERY path starts with the empty string, so one such entry would exclude the
+    // whole tree and this rail would report green having examined nothing. A fail-open in an
+    // allow-list. The suite pins that coercion; this comment stated the opposite for one round, which
+    // is the class this file exists to catch, in the explanation of the fix for it.
     if (raw.exclude !== undefined) {
         if (!Array.isArray(raw.exclude)) {
             throw new RegistryError(`${where} has an \`exclude\` that is not an array`);
