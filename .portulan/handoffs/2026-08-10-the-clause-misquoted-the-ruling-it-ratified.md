@@ -76,8 +76,8 @@ figures:
 - **22 living incident-form citations, 0 wrong**: the **13** the maintainer ruled defensible
   (`cli/vendor.mjs` ×4, `cli/vendor.test.mjs` ×3, `cli/index.test.mjs` ×3, `cli/index.mjs` ×2,
   `.portulan/memory/a-review-loop-needs-a-bound.md` ×1) plus **9 in `0020`** the ruling never listed.
-Both figures are **as of `e4d3f44`**, and they moved once already: this branch was rebased mid-review
-onto a `main` that had advanced five times in a day, and the record count went **32 → 35** while the
+Both figures are **as of `070b038`**, and they moved once already: this branch was rebased twice mid-review
+onto a `main` carrying 31 commits dated today, and the record count went **32 -> 35** while the
 living count held at 22. The rebase lesson, arriving on the change that cites it — a count is true of a
 tree, so it is restated here with the tree named rather than left to imply the branch it was measured on.
 
