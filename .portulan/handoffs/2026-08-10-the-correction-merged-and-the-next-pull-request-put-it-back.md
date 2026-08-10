@@ -9,7 +9,7 @@ and had not moved since the finding was measured; the cell was **not** already t
 rather than a no-op record.
 
 **Amended 2026-08-10, after [#206](https://github.com/sleepy-panda-works/portulan/pull/206) merged and
-this branch rebased (twice — see the reconciliation).** The findings below stand exactly as measured — they are what the
+this branch rebased — see "The reconciliation" for how many times and onto what.** The findings below stand exactly as measured — they are what the
 cell said at `159df14`. What changed is **which of them this pull request still lands**: #206 restructured
 the same cell and trued findings 1 and 2 independently, and landing D3 moved the count past this branch's
 figure. **Only finding 3 survives as work.** The original text is left as written rather than edited to
@@ -132,19 +132,24 @@ caught this one, and one did read it.
 
 ## The reconciliation — the same lesson, with this branch as the one at risk
 
-**Added 2026-08-10 on rebase, after #206 merged. This branch was rebased THREE times the same
-afternoon** — onto `43f1e54` (#206, six commits), then `d8f6821` (#211·#214, five more), then
-`dd7e372` (the librarian's pass, one). `main` moved **12 commits under a one-line change**
-(`git rev-list --count 159df14..dd7e372`). The final base is **`dd7e372`**.
+**Added 2026-08-10 on rebase, after #206 merged. This branch was rebased FOUR times the same
+afternoon** — onto `43f1e54` (#206, six commits), `d8f6821` (#211·#214, five), `dd7e372` (the
+librarian's pass, one) and `90abeb4` (#210 and the residency truth-up, four). `main` moved
+**16 commits under a one-line change**; the count is `git rev-list --count 159df14..<base>` and the
+base is whatever `origin/main` was at the last push, named in the commit message of that push rather
+than only here.
 
 _Each rebase falsified the base named in this very paragraph, and each correction is a round of the
 same defect: **a figure that cites a moving reference goes stale without anyone editing it**. #211
-recorded the identical thing an hour earlier when its rebase moved a repaired site 222→223. Left
-visible rather than smoothed into a single final number, because the recurrence is the finding._
+recorded the identical thing when its rebase moved a repaired site 222→223, and `main` itself landed
+**"a citation by line number is a claim about a tree"** (`90abeb4`) while this branch was in review.
+Left visible rather than smoothed into a single final number, because the recurrence **is** the
+finding — and the fourth correction is why the sentence above now carries a command instead of a
+fifth literal that would go stale on the next merge._
 
 This pull request is about a branch that replayed a stale cell over a merged correction. On rebase it
 became that branch: **six commits behind at the first rebase** (`git rev-list --count 159df14..43f1e54`),
-five more at the second and one at the third, while carrying two of its own — holding a cell whose count read **four of
+then five, one and four more at the next three, while carrying two of its own — holding a cell whose count read **four of
 six**, against a `main` that reads **three** because
 D3 landed with #206. Replaying it would have re-introduced exactly the staleness this change exists to
 remove — the defect reproducing inside its own repair, which is this project's dominant class and the one
@@ -170,5 +175,5 @@ extra delta may not ship one unnamed, however cosmetic.
 They are still correctly *recorded* here as what was measured at `159df14`, because they were; they are
 simply no longer this pull request's repair. Finding 3 is.
 
-**Next action.** Branch rebased onto `dd7e372`; both review threads answered in round 1 and resolved on
-the maintainer's explicit instruction of this date. Hand to Marius. **Do not merge** — that stays his.
+**Next action.** Branch rebased onto `90abeb4`; every review thread answered and resolved on the
+maintainer's explicit instruction of this date. Hand to Marius. **Do not merge** — that stays his.
