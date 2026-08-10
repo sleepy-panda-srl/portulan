@@ -84,9 +84,9 @@ caught this one, and one did read it.
   against 6 of headroom. Left deliberately, because `docs/plan.md:1943` carries the evidence in full —
   *"**D4 done** on the real `portulan-internal` checkout"* — so nothing is unrecoverable. Recorded so
   the "bytes cut were the mechanism" sentence above is not read as a complete inventory.
-- **`s4: none — `0020` doctrine (#168)`** rather than `s4: `0020` doctrine` — because a row 7 Status cell
-  naming a deliverable reads as row 7 progress, and `0020` is not one of row 7's clauses. Nine bytes for
-  a sentence that cannot be misread.
+- **``s4: none — `0020` doctrine (#168)``** rather than ``s4: `0020` doctrine`` — because a row 7 Status
+  cell naming a deliverable reads as row 7 progress, and `0020` is not one of row 7's clauses. Nine bytes
+  for a sentence that cannot be misread.
 
 ## Deliberately not touched
 
