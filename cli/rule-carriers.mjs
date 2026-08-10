@@ -317,8 +317,12 @@ export function run(argv = [], { stdout = process.stdout, stderr = process.stder
     // The audit reported green over a tell that matches nothing else in the tree — found by forcing
     // it red, not by reading it, and it passed the first demonstration only because the registry was
     // untracked in that scratch worktree.
-    const registryRel = path.relative(cwd, path.resolve(cwd, registryPath));
-    const files = all.filter((f) => f !== registryRel && f !== registryPath);
+    // Compared as RESOLVED ABSOLUTE paths, not as strings. `git ls-files -z` always emits `/`, while
+    // `path.relative` emits the platform separator — so on Windows the two spellings never matched, the
+    // registry was scanned after all, and the self-satisfied dead-tell audit came straight back. A
+    // string comparison between a git path and a platform path is a defect wherever it appears.
+    const registryAbs = path.resolve(cwd, registryPath);
+    const files = all.filter((f) => path.resolve(cwd, f) !== registryAbs);
 
     const { findings, deadTells, unreadable } = scan({
         registry,

@@ -246,6 +246,26 @@ describe("the three audits — each exit 2, never a quiet green", () => {
     });
 });
 
+describe("the registry is excluded from the scan by identity, not by spelling", () => {
+    // `git ls-files -z` emits `/` on every platform; `path.relative` emits the platform separator. A
+    // string comparison between the two matched on POSIX and would not on Windows — where the registry
+    // would be scanned, every tell would find itself, and the dead-tell audit would go back to being
+    // self-satisfied. Pinned as resolved paths so the two spellings cannot drift apart again.
+    test("every spelling of the registry path resolves to the same absolute path", async () => {
+        const path = await import("node:path");
+        const cwd = "/repo";
+        const abs = path.resolve(cwd, ".portulan/rule-carriers.json");
+        for (const spelling of [".portulan/rule-carriers.json", "./.portulan/rule-carriers.json", ".portulan/../.portulan/rule-carriers.json"]) {
+            assert.equal(path.resolve(cwd, spelling), abs, `\`${spelling}\` must resolve to the registry`);
+        }
+    });
+
+    test("a file that merely looks like the registry is still scanned", async () => {
+        const path = await import("node:path");
+        assert.notEqual(path.resolve("/repo", "docs/rule-carriers.json"), path.resolve("/repo", ".portulan/rule-carriers.json"));
+    });
+});
+
 describe("this repository's own registry", () => {
     test("parses, and every carrier it names resolves", async () => {
         const fs = await import("node:fs");
