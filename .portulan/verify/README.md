@@ -10,8 +10,11 @@
 The recipes in this directory are declared in [`../workspace.json`](../workspace.json), and since
 milestone 7's composition amendment the **runnable** set is larger than that: it is what
 [`../../cli/recipe-set.mjs`](../../cli/recipe-set.mjs) yields — these, plus the ones this workspace's
-composed packs contribute, namespaced by pack. `node cli/recipe-set.mjs --workspace .portulan
---repo-root .` prints the live set.
+composed packs contribute, namespaced by pack. This prints the live set:
+
+```
+node cli/recipe-set.mjs --workspace .portulan --repo-root .
+```
 
 _(This paragraph carried the counts — "nine declared, ten in the runnable set" — and they went stale the
 moment a tenth was declared, in the very change that added a rail against stale carriers. The figures are
@@ -22,7 +25,7 @@ below stays, because it is there to copy from rather than to count.)_
 The manifest is also where the **default** is named — [`docs.sh`](docs.sh), the one the Stop-gate now
 actually runs when nothing more specific applies.
 
-The tenth is `tools/github:actions-pinned`, contributed by the
+The composed one is `tools/github:actions-pinned`, contributed by the
 [`tools/github`](../../packs/tools/github/README.md) pack this workspace composes. It is **not** in this
 directory and is not declared in `workspace.json`: a composed recipe lives in its pack, is namespaced by
 it, and reaches the runnable set through [`../../cli/recipe-set.mjs`](../../cli/recipe-set.mjs). The
