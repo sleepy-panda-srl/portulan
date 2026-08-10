@@ -2155,6 +2155,7 @@ _The seam applies here too: no client-identifying references._
   commit with a store size measured two commits later, never a coherent pair, and the same mixing put `+502` where `+226` belongs; corrected everywhere editable, named where not. Both notes arrived through the shape-1 promotion the gate map denied until
   [#201](https://github.com/sleepy-panda-works/portulan/pull/201) merged an hour earlier. Ten recipes, suite 1187. Seam scan clean. · Fidelity: **no pre-commit checkpoint ran — the breach stands**, on the diff that most wants one, since absence is what a
   condensation gets wrong. Handoff: [`2026-08-09`](../.portulan/handoffs/2026-08-09-the-consolidation-nobody-finished.md).
+
 - 2026-08-10 · M7 (CLI & onboarding), session 6 · **The preview is the payload, and the cycle the suite could not see.** [#206](https://github.com/sleepy-panda-works/portulan/pull/206) — row 7's `feedback` clause and **D3**.
   `cli/feedback.mjs` — `draft` · `preview` · `send --approve` — takes the entry point to **seven of the eight**. The previewed bytes are the sent bytes **by construction**, one
   `payload()` call; and the approval is **bound to those bytes** — `preview` stamps a digest, `send` refuses unless it matches, so *the payload the user saw first* is the
@@ -2186,6 +2187,7 @@ _The seam applies here too: no client-identifying references._
   · Seam scan clean by construction — this pass composes no new prose at run time, so its
   diff carries nothing the scan had not already passed.
   Handoff: [`2026-08-10`](../.portulan/handoffs/2026-08-10-librarian-pass.md).
+
 - 2026-08-10 · Off the milestone row · **The flip back left its carriers standing.**
   The repository went **private again 2026-08-03** and the tree still said public in **29 present-tense carriers across 19 files** — condition-4 defects the flip minted rather than drift anyone introduced. Measured, not recalled: `private: true`, `forks: 0`,
   `allow_forking: false`, unauthenticated `GET` **404** from both hosts, and a stranger's `ls-remote` refused for want of a username. Census over all 328 tracked files, comment prefixes stripped, **wrapped lines joined**, 18 variants rather than one
@@ -2196,3 +2198,14 @@ _The seam applies here too: no client-identifying references._
   is proposed. Named rather than folded in: `portulan-workspace-template` **does not exist**. The rebase onto `43f1e54` then produced a **thirtieth carrier the census could not have seen** — #206 landed `cli/feedback.mjs`'s copy of the acknowledgement sentence this change rewrote, and #206's own rail caught it. Ten recipes green, suite 1240. Seam scan clean. · Fidelity: **both checkpoints ran** (Fable 5,
   fresh contexts) — session-open APPROVE-WITH-ADJUSTMENTS on ten; **pre-commit APPROVE-WITH-ADJUSTMENTS on six, and it caught the 29th carrier left standing at `README.md:57` — `0020`'s rule broken inside the change enforcing it** — folded before commit.
   **`docs/vision.md` untouched**; `:54-55`·`:72` named for his re-read. Round 1 empty; **round 2, on the rebased head, promoted a suppressed note that was right** — `README.md` scoped *"none of those paths"* to read/clone/fork and then offered the issue forms, which a private repository closes just as firmly; taken. Handoff: [`2026-08-10`](../.portulan/handoffs/2026-08-10-the-flip-back-left-its-carriers-standing.md).
+
+- 2026-08-10 · Off the milestone row · **A correction reached three carriers of four, and the fourth was a copy of the first.**
+  [`tools/gh-bot`](../.portulan/tools/gh-bot)'s docblock declared its scope as *"comments, review replies, resolving threads"* and **the third was never true** — GitHub refuses `resolveReviewThread` to a GitHub App. **Measured this day, not taken on
+  report:** the live installation reads `{contents: read, metadata: read, pull_requests: write}`; the mutation returns `FORBIDDEN — Resource not accessible by integration` through the wrapper, probed against an **already-resolved** thread so the passing
+  branch would have been a no-op; replies do work — both threads on [#212](https://github.com/sleepy-panda-works/portulan/pull/212) carry `portulan-agent`; and on [#195](https://github.com/sleepy-panda-works/portulan/pull/195) **21 of 21 threads were
+  resolved by `marius-cetanas`**. **Recording a permissions gap for a ruling — the other available ending — has no object:** the App already holds `pull_requests: write`, the permission covering review conversation, so no setting grants this and nothing
+  is left to decide. **The docblock was a verbatim copy of the gate map's own row**, which `69d61f1` rewrote on 2026-07-25 to *"comments and review replies"* — the exact wording restored here — under the title *"three documents said it could"*, when
+  there were four: this file had been written 4h54m earlier that morning by `ce13a45`. `e680674` then wrote the refusal **correctly** into it on 2026-07-28, over a hundred lines below a paragraph still claiming the capability — **sixteen days false,
+  thirteen self-contradicting**. `0020`'s class feeding `#133`'s, the missed sibling a *copy* rather than a restatement. No living carrier is still wrong; the fix is one file. Ten recipes, suite **1240, re-measured after the rebase onto `d8f6821` carried
+  it 1187 → 1240** — the falsified-citation trap that commit's own subject names. Seam scan clean. · Fidelity: **pre-commit A-W-A**; it measured this entry's first draft, *"the gate map never carried the claim"*, **false** — this change's own defect
+  class committed inside it, caught by the fresh context. Handoff: [`2026-08-10`](../.portulan/handoffs/2026-08-10-a-correction-reached-three-carriers-of-four.md).
