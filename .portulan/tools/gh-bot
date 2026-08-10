@@ -16,9 +16,11 @@
 # above it for what the list is worth and what it is not.
 #
 # **Resolving a review thread is NOT in that scope, and this sentence listed it until 2026-08-10.**
-# GitHub refuses `resolveReviewThread` to a GitHub App — `FORBIDDEN — Resource not accessible by
-# integration`, re-measured that day through this wrapper. The refusal is not a permission the
-# installation is missing: it already holds `pull_requests: write`, the permission that covers review
+# GitHub refuses `resolveReviewThread` to *this* App — `FORBIDDEN — Resource not accessible by
+# integration`, re-measured that day through this wrapper. The general form of that claim — any App,
+# whatever its permission set — is ../gate-map.md's row to make and is stated there; what is measured
+# here is the particular, which is all a tool's own docblock should be asserting. The refusal is not a
+# permission the installation is missing: it already holds `pull_requests: write`, the one that covers review
 # conversation, and is refused anyway. Resolving is the maintainer's on the merits too, not only by
 # refusal — a reply is *what the agent says*, resolving is *the judgement that a review point is
 # settled*, and this repository gates merging on conversation resolution, which makes that judgement
