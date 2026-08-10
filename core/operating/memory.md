@@ -19,11 +19,25 @@ _(Provenance: Letta — per-agent memory and sleep-time consolidation; Anthropic
 an attention budget per layer, hence the generated, size-budgeted index.)_
 
 A budget here is a rail, not an aim. When a layer breaches its budget, the remedy is consolidation —
-merge, compress, retire — never squeezing past the breach, and never raising the budget in the same
-change that broke it. **The breach is machinery as of milestone 5**: a workspace declares its budgets
-in the manifest, the index is generated rather than written, and a verify recipe goes red when either
-the index or the store is over. The procedure that answers a red is
+merge, compress, **split**, retire — never squeezing past the breach, and never raising the budget in
+the same change that broke it. **The breach is machinery as of milestone 5**: a workspace declares its
+budgets in the manifest, the index is generated rather than written, and a verify recipe goes red when
+either the index or the store is over. The procedure that answers a red is
 [`../skills/consolidate/SKILL.md`](../skills/consolidate/SKILL.md).
+
+**Which remedy is legal depends on the axis that broke**, and the four are not interchangeable.
+Splitting a record buys byte room by spending a line of the count budget; merging two does the
+reverse. So a rail on record count and a rail on record size are not two views of one number — they
+are the two sides of the trade, and a store needs both declared before either repair is safe to reach
+for. **A rail whose every remedy is barred is not a strict rail but a dead one**, and the store's
+aggregate byte budget reached that state: retire found no fired condition in 28 records, merge found
+no two records that were one fact, and compress had already run twice on the record in question.
+Workspace Definition 2.8 answers that with a **per-record** cap — `memory.store.budget.record_kilobytes`,
+which an aggregate cannot see behind — and the per-record repair menu is live: split, compress, or
+demote the narrative to the provenance layer. It also puts the rail on the right party. An aggregate
+over individually-authored records is a **commons**: the record that grew never feels the total at
+write time, and some unrelated writer hits it later. A per-record cap fires on the author growing the
+record, at the moment of growth, and never blocks anyone else. _(Proposal `0025`.)_
 
 **The other half of that sentence is not machinery, and saying so is the point.** Nothing checks that
 a budget was not simply raised in the change the breach appeared in — refusing that needs a checker

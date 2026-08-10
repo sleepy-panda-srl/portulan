@@ -644,9 +644,14 @@ a push. The word keeps its ordinary sense elsewhere in this document; what carri
 **counted** figure._
 
 **The bound is [`memory/a-review-loop-needs-a-bound.md`](memory/a-review-loop-needs-a-bound.md), and this
-map cites it rather than restating it.** The four rules, what one round is, and the amendments of
-2026-08-07 are stated there; read them at the rule, because this map no longer carries a second copy to
-read instead. Until 2026-08-09 it did, and two of that copy's four clauses had drifted from the file
+map cites it rather than restating it.** Rules 1, 2 and 4, what one round is, and the sibling exemption
+of 2026-08-07 are stated there. **Where an answer lands — rule 3, and the 2026-08-07 reversal that
+made the suppressed channel blocking — moved on 2026-08-10 to
+[`memory/an-answer-lands-on-the-thread-that-raised-it.md`](memory/an-answer-lands-on-the-thread-that-raised-it.md)**,
+under proposal `0025`: the two were one file bounding the loop's *length* and one governing the
+*channel*, which is two facts in one envelope. The bound's slot 3 keeps its number and points at the
+record that now holds it, so *"rule 3"* still names the same rule wherever it is cited. Read them at
+the rules, because this map no longer carries a second copy to read instead. Until 2026-08-09 it did, and two of that copy's four clauses had drifted from the file
 they were summarising. It said *"threads block but low-confidence notes do not"* — a sentence **rule 3
 reversed in place on 2026-08-07**, on the maintainer's ruling of shape 1 of
 [`0021`](proposals/0021-the-suppressed-channel-needs-a-state.md), so this map went on denying the

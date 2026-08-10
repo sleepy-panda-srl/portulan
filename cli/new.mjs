@@ -436,6 +436,11 @@ function workspaceFiles(root, name, wkind, body, governedBy = null) {
     // advertised `pointer` as a supported kind. That is this session's own recurring defect for the third
     // time — a scaffold failing the validation that lives beside it — so it is fixed rather than triaged.
     if (wkind === "pointer") {
+        // 2.7, not the newest definition: a writer declares the version its OUTPUT needs, and a pointer
+        // needs 2.7 — the version that added the kind. Nothing scaffolded here declares a key from a
+        // later MINOR, so claiming one would narrow the manifest against adopter tooling pinned at 2.7
+        // for a contract it does not use. Same rule as `cli/init.mjs`'s and `cli/vendor.mjs`'s `SPEC`,
+        // and as the `GATE_POLICY_SPEC = "2.2"` beside them.
         const manifest = { portulan: { spec: "2.7" }, name, kind: "pointer", governed_by: { workspace: governedBy } };
         return [
             { path: path.join(root, "workspace.json"), contents: `${JSON.stringify(manifest, null, 2)}\n` },
@@ -457,6 +462,7 @@ function workspaceFiles(root, name, wkind, body, governedBy = null) {
     }
 
     const manifest = {
+        // The version this output NEEDS, not the newest one — see the pointer branch above.
         portulan: { spec: "2.7" },
         name,
         summary: `{One line: whose workspace this is and what it governs.}`,

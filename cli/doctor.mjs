@@ -1578,6 +1578,7 @@ export async function inspect(workspaceDir, options = {}) {
         ["memory.index.budget.lines", workspace.memory?.index?.budget?.lines],
         ["memory.index.budget.columns", workspace.memory?.index?.budget?.columns],
         ["memory.store.budget.kilobytes", workspace.memory?.store?.budget?.kilobytes],
+        ["memory.store.budget.record_kilobytes", workspace.memory?.store?.budget?.record_kilobytes],
         ["librarian.staleness.record_days", workspace.librarian?.staleness?.record_days],
         ["librarian.staleness.sealed_days", workspace.librarian?.staleness?.sealed_days],
         ["librarian.staleness.proposal_days", workspace.librarian?.staleness?.proposal_days],

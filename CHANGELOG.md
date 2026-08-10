@@ -40,6 +40,32 @@ The Session log in [`docs/plan.md`](docs/plan.md) is the fuller record — it is
 records how things were found. This is per *release* and records what a reader gets.
 
 ## Unreleased
+### Changed
+
+- **Workspace Definition 2.8 — the memory byte rail moves from the store to the record.**
+  `memory.store.budget` gains an optional `record_kilobytes`: the most bytes any **one** record may
+  hold. Additive — `kilobytes` stays legal and unchanged, nothing is defaulted, and every 2.7 manifest
+  is a valid 2.8 manifest untouched. This repository's own workspace now declares `record_kilobytes: 8`
+  in place of `kilobytes: 120`; `examples/` keeps `kilobytes` and stays on spec 2.4, so both rails have
+  a live carrier in the tree.
+
+  Why the axis moved. An aggregate over individually-authored records cannot see inside its units —
+  the same hole `columns` closes for `lines`, one level down — and it lands on the wrong party: the
+  record that grew to 15.7 KB never felt the total at write time, while three unrelated changes hit it
+  afterwards, one with 551 bytes of headroom. It had also run out of legal repairs, which
+  `spec/slots.md` had already named as the state that gets a whole recipe switched off. A per-record
+  cap makes a breach **local** — record X over its cap never blocks writer Y — fires on the author
+  growing the record at the moment of growth, and keeps a live repair menu: **split, compress, demote**,
+  never a raise in the change that breached it.
+
+  What a reader of this release gets, beyond the key: `index` reds name the record, its size, the
+  overage and that menu, and report **every** over-budget record rather than the first; the scheduled
+  librarian's weekly report gained a *largest record* distance naming the file it measured, which
+  otherwise would have printed `Store: no budget declared` over a store that is fully railed;
+  `core/skills/consolidate/SKILL.md` learned **split** as a move — the inverse of merge, asked as one
+  question about granularity, and **before** compressing, because a record holding two facts reads as
+  an incompressible one. Proposal `0025`, ruled on [#199](https://github.com/sleepy-panda-works/portulan/issues/199).
+
 ### Fixed
 
 - **The pack this project's private feed ships registered no skills, because its payload declared none.**

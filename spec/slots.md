@@ -500,12 +500,27 @@ the store is the single source, committed so a change to what is always loaded i
 | `index.budget.lines` | The most lines the index may hold. One line per record, so this is a rail on record count. |
 | `index.budget.columns` | The most columns one line may hold — refused, never truncated. |
 | `store.budget.kilobytes` | The most the store's records may total, in 1024-byte KB. |
+| `store.budget.record_kilobytes` | Added at 2.8. The most any **one** record may hold. |
 
-**Two budgets rather than one, because they are different axes.** The index is what gets loaded to
-decide what else to load, so its line count is what memory costs on every recall. It cannot see the
-other axis at all: a store whose record count never moves can grow without limit in bytes, and nothing
-in the index would change. The `columns` cap closes the hole a line budget has — one enormous line
-absorbing what the budget counts.
+**Four numbers rather than one, because they are different axes — and each pairs with a per-unit cap
+that closes the hole the aggregate has.** The index is what gets loaded to decide what else to load,
+so its line count is what memory costs on every recall. It cannot see the other axis at all: a store
+whose record count never moves can grow without limit in bytes, and nothing in the index would change.
+Then each aggregate has the same blind spot inside its own units. The `columns` cap closes it for
+`lines` — one enormous line absorbing what the budget counts. **`record_kilobytes` closes it for
+`kilobytes`**, and it is the same sentence one level down: one enormous record absorbs what the store
+budget counts. Added at 2.8 with proposal `0025`, after the aggregate ran to 98% while the record that
+drove it there had never once felt the rail.
+
+**The per-record cap also fixes where a breach lands, which is the half a bigger number could not
+buy.** An aggregate over individually-authored records is a **commons**. The record that grew to 15.7
+KB never breached anything at write time; three unrelated changes hit the total afterwards, one with
+551 bytes of headroom. Under a per-record cap the breach is **local** — record X over its cap never
+blocks writer Y — and it fires on the author growing the record, at the moment of growth. The two
+forms stay independent and a workspace may declare either, both, or neither: this repository's own
+workspace declares `record_kilobytes` alone, and [`../examples/workspace.json`](../examples/workspace.json)
+declares `kilobytes`, so both rails have a live carrier in the tree rather than one of them being a
+key the schema accepts and nothing exercises.
 
 **Nothing is defaulted**, on the `floor` object's rule from 2.2: a default here would be this
 specification setting a policy for every workspace that ever adopts it, in a key nobody typed. An
@@ -572,12 +587,20 @@ a member of. The second enforcer is not a second opinion: the generator physical
 while the recipe is what catches a hand-placed file the generator never saw.
 
 **There is no budget here, and the absence is the argued half.** A budget's only permitted remedy is
-consolidation — merge, compress, retire ([`memory.md`](../core/operating/memory.md)) — and a handoff
-series is append-only by construction: one per session, dated, held to the Session log by a count-based
-correspondence. Retiring a handoff to buy headroom would either red that check or destroy the record it
-exists to keep, and raising the budget in the change that breached it is the one repair that doctrine
-rules out. Every remedy such a budget could ask for is barred, which makes it a rail designed to be
-broken — and a rail that fires with no legal repair is how a whole recipe gets switched off. Whether
+consolidation — merge, compress, split, retire ([`memory.md`](../core/operating/memory.md)) — and a
+handoff series is append-only by construction: one per session, dated, held to the Session log by a
+count-based correspondence. Retiring a handoff to buy headroom would either red that check or destroy
+the record it exists to keep; **splitting one** — the move 2.8 added for the per-record rail — would
+put two dated handoffs against a single session and red the same correspondence from the other side;
+and raising the budget in the change that breached it is the one repair that doctrine rules out. Every
+remedy such a budget could ask for is barred, which makes it a rail designed to be broken — and a rail
+that fires with no legal repair is how a whole recipe gets switched off.
+
+_That test is the one the store's own aggregate byte budget later failed — which is why **this
+repository's workspace** swapped `kilobytes` for the per-record cap at 2.8 rather than widening it. The
+definition replaced nothing: both keys stay legal and a workspace may declare either. The argument this
+paragraph makes about handoffs is the argument `0025` makes about `kilobytes`, and it was written down
+before the case arrived._ Whether
 the series should be railed on some other axis is a **maintainer's question**, deferred to the
 reconciliation that follows milestone 5 rather than pre-answered here in the shape of an unused key.
 

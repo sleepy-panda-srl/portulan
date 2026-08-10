@@ -1,6 +1,6 @@
 ---
 name: consolidate
-description: Bring a memory store back under its budget by merging, compressing, and retiring records — the repair a breached index budget calls for. Use when the index verify recipe reports a breach, or on the librarian's scheduled pass. The output is drafts through the human gate; raising the budget is not one of the moves.
+description: Bring a memory store back under its budget by merging, compressing, splitting, and retiring records — the repair a breached memory budget calls for. Use when the index verify recipe reports a breach, or on the librarian's scheduled pass. The output is drafts through the human gate; raising the budget is not one of the moves.
 ---
 
 # Skill — Consolidate
@@ -14,7 +14,12 @@ description: Bring a memory store back under its budget by merging, compressing,
 
 ## When to use it
 
-- The index budget is breached — a verify recipe went red on `over budget`.
+- A memory budget is breached — a verify recipe went red on `over budget`. **Which budget it was
+  decides which move applies**, and the finding names it: the index's `lines` (too many records —
+  merge or retire; compressing removes no line and splitting adds one), the store's `kilobytes` (too
+  much in total), or a record's `record_kilobytes` (one record too large — split, compress, or demote;
+  step 2 and step 4). A fourth red, the index's `columns`, is **not** this pass's work: one over-long
+  line is repaired by renaming the record, and nothing is consolidated.
 - Two records say the same thing, or say opposite things.
 - A record's `Retire when:` condition has fired.
 - The librarian's scheduled pass runs.
@@ -47,11 +52,31 @@ merging records that were about to be deleted.
    no longer exists, has had its incident designed out and is costing budget to say so. A **sealed**
    record cannot be judged this way — the incident is not visible from here — so it is not retired on
    a guess; it goes to its owner as a re-validation question.
-2. **Merge records that are one fact.** Two records covering one mechanism become one, and the merged
-   record carries **both parents' provenance**, not the newer one's. Dropping a link because the merge
-   only needed one is how a rule loses the incident that justifies it, and a rule whose incident cannot
-   be traced can never be retired — thesis 4 undone by a tidy-up. Keep both `Retire when:` conditions
-   too, unless one has already fired.
+2. **Get the granularity right: merge records that are one fact, and split records that are two.**
+   One question — *does this envelope hold exactly one fact?* — asked in both directions, because
+   [`../../operating/memory.md`](../../operating/memory.md) says a memory holds one, and a store can
+   be wrong about that either way.
+
+   **Merging.** Two records covering one mechanism become one, and the merged record carries **both
+   parents' provenance**, not the newer one's. Dropping a link because the merge only needed one is how
+   a rule loses the incident that justifies it, and a rule whose incident cannot be traced can never be
+   retired — thesis 4 undone by a tidy-up. Keep both `Retire when:` conditions too, unless one has
+   already fired.
+
+   **Splitting.** One record carrying two facts becomes two, each with the provenance of **its own**
+   incident and its own `Retire when:` — the merge rule run backwards, and for the same reason: a half
+   that inherits the other's provenance can never be retired on its own evidence. The tell is that the
+   two halves are bound by different things and cited separately, not that the file is long. Where a
+   numbered clause is cited from elsewhere (*"rule 3 of …"*), **leave the number standing as a pointer
+   to where the fact moved** rather than renumbering what survives, and move the moved half's text
+   **byte-for-byte** — verified by comparison, not by reading, since a rule quoted elsewhere breaks its
+   quoter the moment a word changes.
+
+   **Splitting before compressing is the order, and it is the expensive lesson.** A record that holds
+   two facts reads as an incompressible one: every remaining sentence is load-bearing for *one* of the
+   two, so compression looks exhausted while the real repair has not been tried. Squeezing there is how
+   a failure shape gets destroyed — the thing step 4 forbids — in service of a cut that was never the
+   right one. Ask whether the envelope is right before asking whether the prose is tight.
 3. **Surface contradictions; never overwrite them.** Where two records disagree, the pass does not pick
    a winner. It writes up the disagreement and takes it to the gate. A consolidation that silently
    resolves a contradiction has made a policy decision wearing the clothes of housekeeping.

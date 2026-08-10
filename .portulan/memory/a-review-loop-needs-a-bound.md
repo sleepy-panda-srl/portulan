@@ -47,27 +47,11 @@ full: [`2026-07-30-a-round-gets-its-definition.md`](../handoffs/2026-07-30-a-rou
    opens the gate, and they are not the same act or the same person's.
 2. **Records land last.** The handoff and the `docs/plan.md` Session log go in the final push or after
    the merge — never between rounds.
-3. **A thread blocks, and Copilot's findings become threads wherever one can be made — amended in place 2026-08-07.** An
-   unresolved thread is the gate (`required_conversation_resolution`), and each one is answered **as a
-   reply on that thread** — `POST /repos/{o}/{r}/pulls/{n}/comments/{comment_id}/replies` — never as a
-   general pull-request comment. **The gate stays closed until the thread is resolved** — reply
-   *placement* never opens it, per rule 1 — so what a misplaced answer costs is not the gate but the two
-   things that lead to it: the reader hunting for a summary somewhere else on the page, and whoever
-   resolves finding nothing on the thread to judge.
-
-   **The suppressed notes are threads too — where promotion succeeds.** That qualifier is the rule, not
-   a caveat on it. [`copilot-review.yml`](../../.github/workflows/copilot-review.yml) promotes each note
-   to a comment at its `file:line`, deduplicated on path, line and a checksum, and **a promoted note is
-   a reason to push exactly as a thread is** — the sentence this rule previously denied. **Promotion is
-   best-effort** — absent App credentials, a failed dedup read, or a line the diff does not carry each
-   leave a note surfaced-but-ungated — so **`required_conversation_resolution` does not always cover
-   this channel**, and the step's `posted / already present / unattachable` line is what says which
-   ([`a-stated-enforcer-must-be-the-real-one.md`](a-stated-enforcer-must-be-the-real-one.md)).
-
-   _Until 2026-08-07 it read "Threads block; suppressed notes do not" — sound about the notes, wrong
-   about the **channel**, which carried no state at all. **The maintainer ruled shape 1** of proposal
-   [`0021`](../proposals/0021-the-suppressed-channel-needs-a-state.md) with the price measured first:
-   **26 threads on one pull request** at #167's ratio, each needing his resolution._
+3. **Moved — 2026-08-10, proposal `0025`.** Where an answer lands is the **channel's** fact, not the
+   loop's, so it is its own record:
+   [`an-answer-lands-on-the-thread-that-raised-it.md`](an-answer-lands-on-the-thread-that-raised-it.md).
+   Cited rather than restated, per [`../gate-map.md`](../gate-map.md). The slot keeps its number so
+   *"rule 3"* — cited from `0021` and from `copilot-review.yml` — still names the rule it always named.
 4. **Two fix-rounds, then triage.** After the second round of fixes, whatever remains becomes an issue
    linking the comment. It does not become another push, and it does not hold the merge.
    **A round whose finding is a SIBLING of an earlier round's fix does not spend the bound — added
@@ -102,9 +86,6 @@ one finding recurred verbatim, rounds three to seven, triaged each time; its iss
 nine days. #164 ran **eleven rounds past** on the maintainer's grant, every round a real defect. The
 stop signal is **the taper** — findings growing more marginal, as #164's last three did — the
 maintainer's judgement outside the countable bound, like rule 4's *invalid*.
-
-**Rule 3's reversal, 2026-08-07, is argued at the rule** — the measurement that forced it: on #167
-**thirteen of twenty-six notes never surfaced**.
 
 **Not withdrawn: the guarantee.** A merge still waits for a Copilot **submission** on the commit it
 merges — never a fix-round
