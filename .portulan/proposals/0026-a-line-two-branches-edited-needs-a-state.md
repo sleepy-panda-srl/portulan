@@ -1,8 +1,10 @@
 # Proposal 0026 — a line two branches edited needs a state
 
 **Status. PROPOSED, 2026-08-10** — drafted at milestone 7 session 6 on the maintainer's instruction,
-after the class it names came within one review of merging a second time. Two questions are the
-maintainer's and are marked; the rest is mechanism.
+after the class it names came within one review of merging a second time. **Three** questions are the
+maintainer's and are marked Q1–Q3; the rest is mechanism. _(This said two until review: Q3 was added
+when the clearing shape moved, and the count beside the list was not re-read — a number in prose next to
+a list nothing derives it from, in the proposal about exactly that.)_
 
 The title is [`0021`](0021-the-suppressed-channel-needs-a-state.md)'s on purpose, and so is the
 argument. That proposal's finding was that a low-confidence review note *"had no thread, no Resolve
@@ -15,12 +17,13 @@ It appears once, as context in a diff, and nothing distinguishes *carried forwar
 
 Row 7's Status cell in `docs/plan.md`. Two commits, thirty-nine minutes apart:
 
-- **`3cf47e9`, 19:00:43+03:00** — merged from [#197](https://github.com/sleepy-panda-works/portulan/pull/197):
-  `s5: **verify composition** — one carrier, four readers, tools/github composed; **D6 done**. Left:
-  … (b) parity, interview, index rail, **four of six** demos)`
-- **`47bc92b`, 19:40:22+03:00** — merged from [#195](https://github.com/sleepy-panda-works/portulan/pull/195):
-  `s5: compose pins packs to plugin.json skills (#184's bundle half). Left: … legibility, **verify
-  composition**, (b) parity's **adopter** half, interview, index rail, **five of six** demos)`
+- **`3cf47e9`, 19:00:43+03:00** — merged from [#197](https://github.com/sleepy-panda-works/portulan/pull/197).
+  Its `s5:` clause reads **verify composition — one carrier, four readers, `tools/github` composed;
+  D6 done**, and its `Left:` list ends **(b) parity, interview, index rail, four of six demos**.
+- **`47bc92b`, 19:40:22+03:00** — merged from [#195](https://github.com/sleepy-panda-works/portulan/pull/195).
+  Its `s5:` clause reads **compose pins `packs` to plugin.json `skills`**, D6 is gone, and its `Left:`
+  list reads **legibility, verify composition, (b) parity's adopter half, interview, index rail, five of
+  six demos**.
 
 #195 forked before #197 merged, rebased after it, and resolved the same-line conflict in favour of its
 own side. **Three facts were restored to their pre-merge state** — `verify composition` back into
@@ -112,10 +115,14 @@ type the sha as readily as it typed the line. `0021`'s **accepted** shape is the
 is already wired here — a thread, gated by conversation resolution, resolved by the maintainer as part
 of the merge decision. Nothing new has to be believed, and no new vocabulary has to be taught.
 
-**Scope: every file, not `docs/plan.md`.** The Status cell is where the class has bitten, not what the
-class is. A rail scoped to one line would be this repository's own dominant defect — a rule narrower
-than the thing it names — written into the fix for it. What that costs is measured below, and it is the
-open question the maintainer should price.
+**The class is file-agnostic; how much of it the rail takes is Q2 and is not settled here.** The Status
+cell is where this has bitten, not what it is — any line two branches edit is exposed, and a rail
+*defined* as being about one line would be a rule narrower than the thing it names. But reach is a cost
+question as well as a principle one, the measurement below is uncomfortable, and this proposal does not
+decide it in a sentence here and then re-open it three sections later. _(An earlier draft did exactly
+that — it asserted "every file" here while Q2 recommended a scoped set, which is this document's own
+subject committed inside it: an edit landing correctly in one place and leaving its neighbour stale.
+Found by review.)_
 
 ## What was considered and refused
 
