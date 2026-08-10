@@ -179,6 +179,43 @@ describe("draft — the report is a file before it is a request", () => {
         assert.match(empty.err + empty.out, /slug|letters|digits/i);
     });
 
+    test(
+        "an unreadable workspace and an unreadable report are could-not-read, not absent",
+        { skip: process.getuid?.() === 0 },
+        () => {
+            // The same rule the term list holds, at the two path probes `draft` makes. Both were
+            // `existsSync`, which answers false for `EACCES` — so an unreadable workspace was reported
+            // as *no workspace.json*, sending the reader to fix the wrong thing.
+            // A place this tool cannot see into is not a place with no workspace in it.
+            const outer = workspace();
+            const nested = path.join(outer, "inner");
+            fs.mkdirSync(nested);
+            fs.copyFileSync(path.join(outer, "workspace.json"), path.join(nested, "workspace.json"));
+            fs.chmodSync(outer, 0o000);
+            try {
+                const blind = invoke(["draft", "feedback", "--title", "Unreadable", "--into", nested]);
+                assert.equal(blind.code, 2);
+                assert.match(blind.err, /could not be read/);
+                assert.doesNotMatch(blind.err, /does not look like a workspace/);
+            } finally {
+                fs.chmodSync(outer, 0o700);
+            }
+
+            // And a file at mode 0000 is still a file that is there — the collision probe asks whether
+            // something is already at this path, never whether it can be read.
+            const dir = workspace();
+            const at = drafted(dir, "feedback", FILLED.feedback);
+            fs.chmodSync(at, 0o000);
+            try {
+                const over = invoke(["draft", "feedback", "--title", "The boot said nothing", "--into", dir]);
+                assert.equal(over.code, 2);
+                assert.match(over.err, /already exists/);
+            } finally {
+                fs.chmodSync(at, 0o600);
+            }
+        },
+    );
+
     test("--failed-recipe and --failed-exit are the only failure facts a draft carries", () => {
         const dir = workspace();
         const ok = invoke([
@@ -420,13 +457,18 @@ describe("send — Gated, per action", () => {
         assert.equal(later, 0, out.join("\n"));
     });
 
-    test("gh absent, and gh present but unauthenticated, both exit 2 and print the command to run by hand", () => {
+    test("gh absent, and gh present but unauthenticated, both exit 2 and route the user somewhere true", () => {
         const dir = workspace();
-        const missing = invoke(["send", previewed(dir, "feedback", FILLED.feedback), "--approve"], {
+        const file = previewed(dir, "feedback", FILLED.feedback);
+        const missing = invoke(["send", file, "--approve"], {
             exec: () => ({ status: null, stdout: "", stderr: "", error: new Error("spawn gh ENOENT") }),
         });
         assert.equal(missing.code, 2);
-        assert.match(missing.err + missing.out, /gh issue create/);
+        assert.match(missing.err, /issues\/new\/choose/);
+        // NOT a `--body-file <the report>` suggestion: the report is not the payload, so following it
+        // would publish frontmatter, guidance comments and raw sections nobody previewed — out of the
+        // one verb whose subject is that they cannot be. Asserted, because it was shipped once.
+        assert.doesNotMatch(missing.err, new RegExp(`--body-file\\s+${file.replace(/[/\\^$*+?.()|[\]{}]/g, "\\$&")}`));
 
         const dir2 = workspace();
         const unauth = invoke(["send", previewed(dir2, "feedback", FILLED.feedback), "--approve"], {
