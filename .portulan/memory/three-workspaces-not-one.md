@@ -18,9 +18,17 @@ Which of *this repository's* directories is which workspace kind:
 
 | Directory | `kind` | Ships |
 |---|---|---|
-| `.portulan/` | `repository` | publicly with the repo — since 2026-07-27 |
-| [`../../examples/`](../../examples/) | `demo` | publicly — the worked example a stranger reads |
+| `.portulan/` | `repository` | with the open-core repo |
+| [`../../examples/`](../../examples/) | `demo` | with the open-core repo — the worked example a stranger reads |
 | the Sleepy Panda portfolio workspace | `portfolio` | privately, through the feed at milestone 6 |
+
+_Corrected 2026-08-10: the first two cells read "publicly with the repo — since 2026-07-27" and
+"publicly". That described **reach** in a column that asks about **residence**, and the reach half went
+false when the repository flipped back to **private on 2026-08-03** (public window: 2026-07-27 →
+2026-08-03). Where each workspace ships is unchanged; what a stranger can reach today is nothing. Both
+cells were fixed together — one is the other's sibling, and fixing the row that was cited while leaving
+the row beside it is the class [`../proposals/0020-a-fix-is-not-done-at-the-site-it-was-found.md`](../proposals/0020-a-fix-is-not-done-at-the-site-it-was-found.md)
+names. See [`repo-is-private-until-flip-clearance.md`](repo-is-private-until-flip-clearance.md)._
 
 **When to apply:** whenever adding workspace content, before choosing where it goes. The test is who the
 reader is — ourselves building this repository, a stranger evaluating the product, or Sleepy Panda across

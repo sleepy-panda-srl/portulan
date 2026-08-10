@@ -48,7 +48,12 @@
 // pointed out is false on its face — the handoff below is full of sentences. The distinction between
 // *written by a reviewed change* and *written by an unattended run* is the one that matters, and it is
 // the difference between this and having the pass write a summary in its own words, which would put an
-// unreviewed sentence into a public repository on a cron.
+// unreviewed sentence into a permanent history on a cron.
+//
+// That premise used to read "into a public repository". Corrected 2026-08-10: the repository was public
+// 2026-07-27 to 2026-08-03 and is private again. The hazard is unchanged and does not depend on the
+// adjective — an unreviewed sentence committed unattended is unrecallable either way, the visibility
+// setting has already moved twice, and clones taken in the public window cannot be recalled.
 //
 // Zero dependencies, no network, no install step — same constraints as ./doctor.mjs, ./compile.mjs and
 // ./index.mjs. It is **not** one of the six subcommands ../docs/vision.md names for the milestone-7

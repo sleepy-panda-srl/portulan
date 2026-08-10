@@ -68,6 +68,17 @@ of repo names, paths, product identifiers, gate maps and memory entries. `docs/p
 seam exists because this product's own build treats exactly that leakage as unacceptable, and the seam
 scan runs before every commit here.
 
+_**Note appended 2026-08-10, under this record's own rule that everything below the ruling stays
+exactly as drafted.** *"The repository is public"* was true when this was
+written on 2026-07-27 and stopped being true on **2026-08-03**, when it was flipped back to private
+(re-measured 2026-08-10: `private: true`, unauthenticated `GET` **404**). **The finding survives the
+correction intact, and this is the case worth being precise about**: the hazard is a pipe out of a
+private workspace into a **permanent** record, and permanence — not reachability — is what does the
+work. An issue filed today lands somewhere fewer people can currently read; it is no less unrecallable,
+and the repository's visibility has already moved twice. If anything the sender needs its preview and
+its seam check more, because *"nobody can see it right now"* is exactly the reasoning that would talk a
+future reader out of them._
+
 The sender points the other way through the same wall. Everything below follows from that one sentence.
 
 ## The design

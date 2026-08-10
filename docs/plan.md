@@ -18,9 +18,14 @@
    expression** — concepts may be re-expressed; prose is never copied. The repo started **private**;
    it went public on 2026-07-27 by the maintainer's directive, ahead of the predecessor-IP
    clearance completing — a decision on record in the Session log; the clearance track continues
-   in the private context, not here. *(Amended 2026-07-27; original: "The repo starts **private**
-   and flips public at milestone 3 only after the predecessor-IP clearance completes".)* The seam
-   scan (term list in the private context) runs before every commit.
+   in the private context, not here. **It was flipped back to private on 2026-08-03 and is private
+   today** — re-measured 2026-08-10: `private: true`, unauthenticated `GET` **404**, 0 forks.
+   *(Amended 2026-07-27; original: "The repo starts **private** and flips public at milestone 3
+   only after the predecessor-IP clearance completes". Amended again 2026-08-10 to record the second
+   flip, on the maintainer's commissioning of that date. The seam clause below is unchanged, and per
+   [`../.portulan/dod.md`](../.portulan/dod.md) condition 5 **being private again does not relax
+   it** — the 2026-07-27 → 2026-08-03 window was world-readable and its clones cannot be recalled.)*
+   The seam scan (term list in the private context) runs before every commit.
 3. **Proof workspaces:** fictional demo (public, `examples/`) + Sleepy Panda portfolio workspace
    (ALL Sleepy Panda products, Tipar API first) via the private feed. Workspaces ship as plugins.
 4. **Two-tier supervised build** (see Protocol).
@@ -32,8 +37,9 @@
 
 ```
 sleepy-panda-works/
-├── portulan                      monorepo + public marketplace
-│                                 PUBLIC since 2026-07-27
+├── portulan                      monorepo + open-core-tier marketplace
+│                                 PRIVATE since 2026-08-03 (public 2026-07-27 → 2026-08-03);
+│                                 install path currently requires authentication
 │   ├── core/                     engine: operating docs, personas, universal skills, templates
 │   ├── packs/                    stacks/ · tools/ · rituals/
 │   ├── spec/                     Workspace Definition schema, docs, migrations
@@ -1433,7 +1439,12 @@ _The seam applies here too: no client-identifying references._
   promoting suppressed notes into real threads so `CLEAN` becomes a complete signal,
   [#67](https://github.com/sleepy-panda-works/portulan/issues/67) measuring whether Copilot reviews
   **fork** pull requests — which now blocks the floor join, because the repository is public and a
-  required check that never reports on forks would red out every outside contribution. · **A declaration
+  required check that never reports on forks would red out every outside contribution *(noted
+  2026-08-10: that premise was true on this entry's date and is not today — the repository has been
+  **private** since 2026-08-03 and `allow_forking` is `false`, so there are no fork pull requests for a
+  check to report on. #67 is **still open**, and the blocker rationale recorded here is now the
+  maintainer's to re-derive against a private repository that also declines external pull requests. The
+  entry's own words are left standing, per this log's forward-only rule)*. · **A declaration
   that had been false since #54 was repaired:** `labels.json` declared an intake vocabulary of which
   `improvement` and `feedback` did not exist on GitHub, so two of the three issue forms were wired to
   labels nothing could apply; `bug`'s live description was GitHub's stock *"Something isn't working"*
@@ -2175,3 +2186,13 @@ _The seam applies here too: no client-identifying references._
   · Seam scan clean by construction — this pass composes no new prose at run time, so its
   diff carries nothing the scan had not already passed.
   Handoff: [`2026-08-10`](../.portulan/handoffs/2026-08-10-librarian-pass.md).
+- 2026-08-10 · Off the milestone row · **The flip back left its carriers standing.**
+  The repository went **private again 2026-08-03** and the tree still said public in **29 present-tense carriers across 19 files** — condition-4 defects the flip minted rather than drift anyone introduced. Measured, not recalled: `private: true`, `forks: 0`,
+  `allow_forking: false`, unauthenticated `GET` **404** from both hosts, and a stranger's `ls-remote` refused for want of a username. Census over all 328 tracked files, comment prefixes stripped, **wrapped lines joined**, 18 variants rather than one
+  phrase: **711 hits · 121 files · 509 sites**. It found the two carriers the commissioning grep did not, and they were the two that mattered — [`dod.md`](../.portulan/dod.md) condition 5, the seam scan's own rationale, and this file's locked decision 2
+  plus the topology. **The rule: identity stays, state moves** — the open-core *layer*, the demo workspace's *kind* and the marketplace *tier* are untouched; a column headed `Public?` and a section headed `Status` are not. Dated records stay forward-only,
+  and the one present-tense clause inside one ([#67](https://github.com/sleepy-panda-works/portulan/issues/67), 2026-07-28) took a dated bracket with its original words standing. **The read-scope argument in `gate-map.md` and `tools/README.md` was
+  reworked rather than patched**: [`0015`](../.portulan/proposals/0015-the-librarian-files-as-the-agent.md) priced this exact counterfactual *before it happened*, so the cost is recorded as live, the trade stays the maintainer's, and no permission change
+  is proposed. Named rather than folded in: `portulan-workspace-template` **does not exist**. The rebase onto `43f1e54` then produced a **thirtieth carrier the census could not have seen** — #206 landed `cli/feedback.mjs`'s copy of the acknowledgement sentence this change rewrote, and #206's own rail caught it. Ten recipes green, suite 1240. Seam scan clean. · Fidelity: **both checkpoints ran** (Fable 5,
+  fresh contexts) — session-open APPROVE-WITH-ADJUSTMENTS on ten; **pre-commit APPROVE-WITH-ADJUSTMENTS on six, and it caught the 29th carrier left standing at `README.md:57` — `0020`'s rule broken inside the change enforcing it** — folded before commit.
+  **`docs/vision.md` untouched**; `:54-55` and `:72` named for his re-read. Handoff: [`2026-08-10`](../.portulan/handoffs/2026-08-10-the-flip-back-left-its-carriers-standing.md).

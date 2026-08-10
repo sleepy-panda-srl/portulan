@@ -216,18 +216,27 @@ silently re-attributes everything typed afterwards, which is the failure this me
   readable` (HTTP 422). Measured 2026-07-26. What was written beside it was that granting contents
   "would give the token the ability to **write code**". It would not: `contents: read` is read, write is
   a separate permission, and the two were conflated in the sentence. It was also written while this
-  repository was **private**; since 2026-07-27 it is public, so that scope grants the ability to read
-  what any stranger can already read, and nothing re-read the sentence when the visibility changed.
-  The widening is **ruled and not yet applied** — Marius accepted it on 2026-07-28, and changing an
-  App's permissions and accepting them on the installation are his acts, not an agent's. Read the live
-  set back at the supervised checkpoints rather than from this paragraph. Once applied, the App opens
-  the scheduled librarian's pull request — see
+  repository was **private** — and the visibility premise that replaced it has since expired too, along
+  with one other clause here; both are in the dated note below. The widening is **ruled and applied**:
+  `contents: read` was added **2026-07-29** on Marius's ruling and accepted on the installation, so the
+  App opens the scheduled librarian's pull request today. Changing an App's permissions and accepting
+  them on the installation are his acts, not an agent's; read the live set back at the supervised
+  checkpoints rather than from this paragraph — see
   [`../proposals/0015-the-librarian-files-as-the-agent.md`](../proposals/0015-the-librarian-files-as-the-agent.md),
-  which also prices what the widening does still cost: visibility is a live setting, and a repository
-  made private again would turn this back into a real grant with nobody re-deriving it. **Write is still
+  which priced what the widening would cost if the repository ever went private again. **Write is still
   refused**, so the bullet above — the permission set cannot write code — is unchanged, and a pull
   request opened by a person or a session still goes under the maintainer's credentials with the
   attribution in the body. Recorded in [`../gate-map.md`](../gate-map.md).
+
+  _**Corrected 2026-08-10 — two dead clauses in one paragraph.** (1) It read *"since 2026-07-27 it is
+  public, so that scope grants the ability to read what any stranger can already read"*. **The
+  repository is private again** — flipped back 2026-08-03, re-measured 2026-08-10: `private: true`,
+  unauthenticated `GET` **404**, 0 forks. There is no stranger with that view, so the grant is a real
+  one; `0015` priced this exact counterfactual before it happened, and [`../gate-map.md`](../gate-map.md)
+  now carries the realized cost. (2) It read *"ruled and not yet applied"* — false since **2026-07-29**,
+  when the grant was applied and accepted, which the gate map recorded and this paragraph never got
+  re-read against. Two carriers of one fact drifting at the weaker one, three lines below the sentence
+  telling you not to read the permission set from this paragraph._
 - **The token is short-lived but real.** An installation token lasts an hour and can comment as the bot
   for that hour. It is minted per command and never stored, which is the mitigation; there is no way to
   make a credential harmless.

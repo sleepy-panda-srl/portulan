@@ -8,9 +8,13 @@ commit and push*, and separately that **external pull requests are not accepted*
 participation is proposals and feedback through the issue forms, and no coding work on the repository
 without being a team member.
 
-**Anyone may read, clone and fork. Only the `maintainers` team may push. External pull requests are
-declined**, and [`../../CONTRIBUTING.md`](../../CONTRIBUTING.md) says so in as many words rather than
-leaving a contributor to discover it in a closed pull request.
+**The ruling's policy is unchanged: only the `maintainers` team may push, and external pull requests are
+declined** — [`../../CONTRIBUTING.md`](../../CONTRIBUTING.md) says so in as many words rather than
+leaving a contributor to discover it in a closed pull request. **What changed is the reach the policy
+sits on.** *"Anyone may read, clone and fork"* was true while the repository was public
+(2026-07-27 → 2026-08-03); since **2026-08-03 it is private again**, and re-measured 2026-08-10
+`allow_forking` is **`false`**, so today nobody outside the organisation may read, clone **or** fork.
+The read-back below carries the numbers.
 
 **Why it holds:** *"that's just GitHub's default for a public repository"* is the reasoning this record
 exists to refuse. It is approximately true and it is not a measurement, and the gap between the two is
@@ -19,7 +23,10 @@ where a stray collaborator grant lives — an invitation accepted months ago, an
 themselves, and all of them are invisible from inside the working copy. The same class as
 [`a-stated-enforcer-must-be-the-real-one.md`](a-stated-enforcer-must-be-the-real-one.md): a permission
 posture described from memory is a claim, and claims about access are the expensive kind to get wrong on
-a public repository whose history is permanent.
+a repository whose history is permanent and part of which was published. **The visibility flip-back of
+2026-08-03 is this record's own thesis arriving on it**: the Visibility row below was measured, correct,
+and went false without announcing itself — which is exactly the gap the entry exists to refuse, and the
+reason the read-back is dated rather than stated.
 
 **The verification, 2026-07-27** — read back rather than assumed, and the numbers are the point:
 
@@ -53,6 +60,39 @@ them:
 
 Both are repository-settings changes: **Gated**, the maintainer's, and not this record's to make.
 
+**The re-verification, 2026-08-10** — run because the repository flipped back to private on 2026-08-03
+and this record's own Retire-when says the table must not be believed after it stops being true. Read
+back, not inferred:
+
+| What | 2026-07-27 | 2026-08-10 |
+|---|---|---|
+| Visibility | `public`, forking enabled | **`private`**, **`allow_forking: false`**, unauth `GET` **404**, 0 forks |
+| Direct collaborators | **one** — `marius-cetanas`, `admin` | **one** on the plain read, `marius-cetanas`, `admin` — and **zero** with `?affiliation=direct`: the access is via org ownership, not a repository grant |
+| Outside collaborators (org-wide) | **none** | unchanged — **none** |
+| Organisation members | **one** — `marius-cetanas` | unchanged — **one** |
+| `default_repository_permission` | **`read`** | unchanged — **`read`** |
+| Teams with access | `maintainers`, `push` | unchanged — `maintainers`, `push` |
+| Secret scanning · push protection | off · off | unchanged — **off · off** |
+| Private vulnerability reporting | off | still off — the endpoint answers **404** here |
+
+**Scope of this read-back, stated so a green states its own coverage:** it re-reads the access and
+security rows above. It does **not** re-read `main`'s branch protection — the 2026-07-27 row for that
+stands as history and is owed its own re-measurement.
+
+**One row moved, and it is the one nobody was watching.** Every access grant is exactly where it was;
+the visibility that made the ruling's *"anyone may read, clone and fork"* half true is what reverted.
+That is the finding worth carrying: this entry was built to catch a stray grant, and what actually went
+stale was the setting the grants were being reasoned *against*.
+
+Two consequences, stated because the 2026-07-27 findings above are now priced differently: the platform
+backstop this record called absent is no longer merely switched off — secret scanning and push
+protection are free on **public** repositories, and private vulnerability reporting is a public-repository
+feature, so on a private repository the gap is harder to close rather than one setting away. The
+per-commit human scan ([`../dod.md`](../dod.md), condition 5) is carrying more than it was, which is why
+condition 5 now says in as many words that being private again does not relax it.
+
 **Retire when:** a second person gains push access, or the external-contribution posture changes. Both
 falsify the table above rather than merely dating it, and the table is the part that must not be
-believed after it stops being true.
+believed after it stops being true. _(2026-08-10: visibility moving is **not** on that list and moved
+anyway — which is why the table is now two dated columns rather than one, and why the next reader should
+re-run the read-back instead of trusting either.)_

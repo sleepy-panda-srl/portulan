@@ -190,9 +190,19 @@ file: where a rule and its clarification live apart, only the rule gets read.)_
   `200`. **`contents: read` was added 2026-07-29** — proposal [`0015`](proposals/0015-the-librarian-files-as-the-agent.md),
   the maintainer's ruling, applied and accepted on the installation so the scheduled librarian can open
   a pull request at all. It changes nothing in the paragraph around it: the refusals above turn on
-  `administration`, which is still absent, and **read is read** — the scope grants seeing what any
-  stranger can already see in a public repository. Write is still refused, so *the permission set is the
-  enforcement, not the wrapper* is unchanged.
+  `administration`, which is still absent, and **read is read**. Write is still refused, so *the
+  permission set is the enforcement, not the wrapper* is unchanged.
+
+  **What that scope costs changed on 2026-08-03, and this entry no longer argues it is free.** It read
+  *"the scope grants seeing what any stranger can already see in a public repository"*. **The repository
+  is private again** — flipped back 2026-08-03, re-measured 2026-08-10: `private: true`, unauthenticated
+  `GET` **404**, 0 forks, `allow_forking: false`. There is no stranger with that view, so the grant is a
+  real one and the sentence that made it cheap has expired.
+  [`proposals/0015`](proposals/0015-the-librarian-files-as-the-agent.md) priced this exact case as its
+  own argument-against, **before it happened**: *"Visibility is a live setting, not a pinned one: if
+  this repository were ever made private again, `contents: read` would become a real grant that nobody
+  would revisit, because permissions are not re-derived from visibility."* That is what occurred. The
+  re-measure mandate directly below is the operative rail; the trade is the maintainer's.
 
   _This line and the two below it are re-measured at each supervised checkpoint and never written from
   memory: **the permission set is a live setting no file here can pin**, and it went stale in all three

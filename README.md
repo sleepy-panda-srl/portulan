@@ -14,7 +14,11 @@ delivered as private-marketplace plugins.
 
 ## Status
 
-Pre-release, and **public as of 27 July 2026** — by the maintainer's decision. The newest release entry
+Pre-release, and **private as of 3 August 2026** — by the maintainer's decision, after a public window of
+27 July – 3 August 2026. Two consequences worth stating plainly: the marketplace install path
+**currently requires authentication**, and "public" in the paragraph above names the open-core **layer**
+this repository holds rather than who can reach it today. Reopening it is Gated and the maintainer's.
+The newest release entry
 is **`0.2.0`**; what it contains — and, just as usefully, what it does not — is
 [`CHANGELOG.md`](CHANGELOG.md). The engine in `core/`, the Workspace Definition in `spec/`, two
 workspaces, the validators that check them, the enforcement compiler and the memory lifecycle, and the
@@ -50,8 +54,10 @@ run `node cli/doctor.mjs examples` to watch it validate.
 
 ## Contributing
 
-Portulan is developed in the open and is **not** open to outside code contributions. Read, clone and fork
-freely; send bugs, proposals and feedback through the [issue forms](https://github.com/sleepy-panda-works/portulan/issues/new/choose). Code lands
+Portulan is built as an open-core product and is **not** open to outside code contributions. Reading,
+cloning and forking are what the licence allows — but see **Status** above: the repository is private as
+of 3 August 2026 and forking is disabled, so none of those paths is open to an outsider today. Bugs,
+proposals and feedback go through the [issue forms](https://github.com/sleepy-panda-works/portulan/issues/new/choose); code lands
 only through team members. [`CONTRIBUTING.md`](CONTRIBUTING.md) has the whole of it, including why.
 
 ## License
