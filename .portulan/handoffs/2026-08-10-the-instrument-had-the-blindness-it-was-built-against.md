@@ -35,7 +35,7 @@ going in; the third was **this instrument's own**, on its first run:
    and its dots defeat any pattern written for prose. Collapse a markdown link to its label text
    before classifying — a URL is not prose.
 
-Blindness 3 **under-found `collisions.test.mjs:14`** — the very site the issue's own correction had
+Blindness 3 **under-found `cli/collisions.test.mjs:14`** — the very site the issue's own correction had
 flagged as the one that says *names* verbatim. The first classifier run reported two wrong sites, not
 three. It was caught only because the number disagreed with the maintainer's, which is the wrong reason
 to catch something: had the two agreed, the instrument's hole would have shipped inside the change whose
@@ -52,7 +52,7 @@ reflowed finds **three**. That is the pair the 2026-08-09 sweep missed, made rep
 
 ## Two figures in the issue that do not survive re-measurement
 
-- `a-review-loop-needs-a-bound.md` is cited at **`:160`** by both the issue body and its correcting
+- `.portulan/memory/a-review-loop-needs-a-bound.md` is cited at **`:160`** by both the issue body and its correcting
   comment. The file is **119 lines**; the citation is at **`:101`**. It moved when #202 demoted and
   split the record, and both figures predate that.
 - The corrected comment's `3 + 13 = 16` silently omits `.portulan/tasks/0010:27` and `0011:71`. Both are
@@ -65,11 +65,11 @@ full-lane and the pre-commit checkpoint was owed *before* the commit. It ran fre
 census independently, agreed on all three sites — and returned **APPROVE-WITH-ADJUSTMENTS** on something
 worth having:
 
-> An earlier draft wrote `collisions.test.mjs`'s citation as a **relative markdown link** while the
+> An earlier draft wrote `cli/collisions.test.mjs`'s citation as a **relative markdown link** while the
 > other two used the tree's bare-backtick idiom. One rule, three carriers, **two wordings**, inside the
 > change repairing exactly that.
 
-It then measured *why* rather than arguing it: `verify/docs.sh:150` is `case "$file" in *.md) ;; *)
+It then measured *why* rather than arguing it: `.portulan/verify/docs.sh:150` is `case "$file" in *.md) ;; *)
 continue ;; esac`, so the `links` check never opens a `.mjs`. The link would have been checked by **no
 rail at all**, and would have traded a URL immune to file moves for a path nothing verifies. Withdrawn.
 All three now read ``the class `0020` names`` — the form already standing at four `cli/` sites, so the
@@ -77,7 +77,7 @@ class has **seven carriers in one wording**.
 
 ## One twin left disagreeing, deliberately
 
-`cli/index.test.mjs:704` argues `index.mjs:1088`'s point in nearly the same words and **keeps #91**. The
+`cli/index.test.mjs:704` argues `cli/index.mjs:1088`'s point in nearly the same words and **keeps #91**. The
 possessive form cites the incident, ruled defensible on 2026-08-09, and the thirteen sites using it were
 ruled untouchable. So the implementation comment and its test comment cite two carriers **by ruling, not
 by oversight** — recorded in the commit message, the PR body and here, so the next sweep reads it as
@@ -88,10 +88,27 @@ reason is that `0020` does not outrank a maintainer's ruling on what the citatio
 
 #196 says what remains is *"whether the incident form is worth ratifying in writing."* **That is a
 doctrine call and this session did not take it.** One finding bears on it:
-`a-superlative-is-a-count-nobody-ran.md:10` already says *"Name the class, and cite the incident **or**
+`.portulan/memory/a-superlative-is-a-count-nobody-ran.md:10` already says *"Name the class, and cite the incident **or**
 the record that carries it"* — the `or` reads as permitting the incident form outright. What it does not
 do is separate *citing the incident* from *asserting the incident names the class*, which is the whole
 distinction here. So the gap is one clause, not a missing rule.
+
+## Round 2 put the class inside this change's own records
+
+Round 1 was empty. **Round 2 raised three suppressed notes, all right, and all the same defect this
+change exists to fix** — a citation that reads as a checkable coordinate and fails the check. Mine, in
+the records: `docs.sh:150` and `verify/docs.sh:150` for `.portulan/verify/docs.sh:150`, and
+`index.mjs:1088` for `cli/index.mjs:1088` — that last in a sentence whose *other* citation was fully
+qualified, which is the tell. Promoted to threads under `0021` shape 1, so they gated.
+
+**Swept rather than patched at the three found sites.** The same instrument idea turned on my own prose:
+extract every backticked `path(:line)` from the handoff and the log entry, test whether it resolves.
+**Eight, not three.** All fixed. Declining `0020`'s sweep here would have been the joke writing itself.
+
+One survivor on purpose: `` `AGENTS.md` `` in the PR body's table sits inside a **quotation of
+`cli/vendor.test.mjs`'s own comment**. Quoting is not citing; re-pathing another file's words would
+falsify the quote. **That distinction is the same one this whole change turns on** — what a sentence
+*does* with a reference decides whether the reference is wrong, not the reference's shape.
 
 ## Verification, and what is undemonstrated
 
