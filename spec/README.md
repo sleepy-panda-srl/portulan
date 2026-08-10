@@ -172,9 +172,12 @@ more entry to the *other* running gap, the positive-integer refusals: `record_ki
 budget** the subset can only type as `number`, checked in `cli/doctor.mjs` and `cli/index.mjs` for the
 same reason as `lines`, `columns` and `kilobytes`. Counting the whole shape rather than just the budgets,
 `doctor`'s hand-check now covers **seven** keys — those four plus `librarian.staleness`'s three — which is
-the running number the paragraph above says to watch. **One keyword would not retire them**: `minimum`
-alone leaves `1.5` and `"8"` passing, and the subset cannot say `integer` either, so the gap is two
-keywords wide and all seven refusals stay hand-written until both are declared.
+the running number the paragraph above says to watch. **One keyword would not retire them.** `minimum`
+closes `0` and the negatives and stops there: the subset cannot say `integer`, so `1.5` still passes and
+the gap is **two** keywords wide. _(Not `"8"` — a string is already refused by `type: number`, which the
+subset can say, and `doctor` returns at *the manifest must conform first* before its hand-check ever
+runs. It is a live hole for `cli/index.mjs` alone, which validates against no schema by design and
+therefore refuses the string itself.)_
 
 _These figures are history rather than state: what 2.3 and 2.4 added cannot change, so they do not go
 stale the way the removed count did. The one forward-looking sentence is the growth rate, and it is
