@@ -72,13 +72,21 @@ caught this one, and one did read it.
 ## Decisions + why
 
 - **Re-derived every `Left` item against the tree, not the log** — because the log is one of the two
-  carriers in dispute. `upgrade` and `feedback`: `cli/portulan.mjs:34` says both "has not landed", and
-  neither `cli/upgrade.mjs` nor `cli/feedback.mjs` exists ([#206](https://github.com/sleepy-panda-works/portulan/pull/206)
-  is open, unmerged). `legibility`: `cli/doctor.mjs:21` — "never scores agent-legibility". `persona↔agent`:
-  no binding check in `doctor`. `interview`: `cli/init.mjs:51` — "There is no interactive interview yet."
-  `index rail`: `cli/init.mjs:675` leaves the freshness rail to the adopter's own recipe. `(b) parity's
-  adopter half`: [#184](https://github.com/sleepy-panda-works/portulan/issues/184) is **open**. All seven
-  stand; only `verify composition` came out.
+  carriers in dispute. **As measured at `159df14`:** `upgrade` and `feedback` — `cli/portulan.mjs:34`
+  said both "has not landed", and neither `cli/upgrade.mjs` nor `cli/feedback.mjs` existed, with
+  [#206](https://github.com/sleepy-panda-works/portulan/pull/206) then open. `legibility`:
+  `cli/doctor.mjs:21` — "never scores agent-legibility". `persona↔agent`: no binding check in `doctor`.
+  `interview`: `cli/init.mjs:51` — "There is no interactive interview yet." `index rail`:
+  `cli/init.mjs:675` leaves the freshness rail to the adopter's own recipe. `(b) parity's adopter half`:
+  [#184](https://github.com/sleepy-panda-works/portulan/issues/184) **open**. All seven stood; only
+  `verify composition` came out.
+  **Re-measured on `d8f6821` at round 2, because a promoted note caught this bullet reading present
+  tense:** #206 merged, so **`cli/feedback.mjs` exists** and `feedback` is off `Left` — and the
+  `upgrade` carrier moved with it, from `cli/portulan.mjs:34` ("both") to **`:37`** (`upgrade` alone,
+  under a heading now reading *One of the eight is not built*). The other five are unchanged at the
+  same lines, re-run rather than assumed, and #184 is still open. **A citation is a figure**: this one
+  went stale because the file it points into was edited by the pull request that made half its claim
+  false, which is the class this whole change is about, landing inside its own record.
 - **Kept #195's `adopter half` precision** — because it is more exact than #197's bare `(b) parity`, and
   the repair is a merge of the two carriers, not a revert to either.
 - **The 500-byte Status rail decided what the cell could keep.** The first amendment came to **637
