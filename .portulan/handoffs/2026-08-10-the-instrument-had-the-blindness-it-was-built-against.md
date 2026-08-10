@@ -24,7 +24,7 @@ going to bite eventually, and it did.
 
 ## The instrument, and its own third blindness
 
-**Neither the issue title's ten nor its corrected comment's three was carried into the change.** The
+**Neither the issue title's ten nor its corrected comment's three were carried into the change.** The
 census was re-derived, because this is the arc the census lesson comes from. Two blindnesses were known
 going in; the third was **this instrument's own**, on its first run:
 
