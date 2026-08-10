@@ -90,9 +90,16 @@ The test used throughout, stated once so the omissions are auditable:
 **Dated records are forward-only.** Handoffs, dated Session-log entries, `docs/milestones/mN.md`,
 dated CHANGELOG releases, dated memory read-backs: past-tense statements true at their date are not
 defects and none was rewritten. Where a **present-tense** clause sat inside a dated record, it took this
-repository's own idiom — **append a dated bracket, leave the original words** ([`../../CHANGELOG.md`](../../CHANGELOG.md)
-line 588 and `docs/plan.md`'s milestone-0 cell are the governing form). One site:
-`docs/plan.md`'s 2026-07-28 entry on [#67](https://github.com/sleepy-panda-works/portulan/issues/67).
+repository's own idiom — **append a dated bracket, leave the original words**. The governing form is
+[`../../CHANGELOG.md`](../../CHANGELOG.md)'s `v0.1.0` entry (*"The repository was private at this tag …
+_(2026-07-27: it went public …)_"*) and [`../../docs/plan.md`](../../docs/plan.md)'s milestone-0 Status
+cell. One site here: `docs/plan.md`'s **2026-07-28** entry on
+[#67](https://github.com/sleepy-panda-works/portulan/issues/67).
+
+_(Cited by content rather than by line, deliberately. This paragraph first read "CHANGELOG.md line 588",
+which two rebases moved to 589 — and `main`'s own newest commit at the time of writing is another
+session's **"the rebase falsified this change's own citations"**. A line number is a claim about a tree,
+and a branch outlives the tree it was written against.)_
 
 ## The two arguments that could not be fixed by fixing an adjective
 
