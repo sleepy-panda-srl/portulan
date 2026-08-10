@@ -8,7 +8,9 @@ maintainer's instruction for this session.
 
 [`../tools/gh-bot`](../tools/gh-bot)'s opening docblock declared its scope as *"PULL REQUEST
 CONVERSATION ONLY — comments, review replies, resolving threads."* **The third item was never true.**
-GitHub refuses `resolveReviewThread` to a GitHub App, and the wrapper's own token is a GitHub App's.
+GitHub refuses `resolveReviewThread` to *this* App, and the wrapper's own token is this App's. The
+general form — any App, whatever its permission set — is [`../gate-map.md`](../gate-map.md)'s row to
+make; this record measures the particular and cites the row for the rest.
 
 ## Measured before it was fixed, not after
 
@@ -21,9 +23,10 @@ Four measurements, 2026-08-10, none of them taken on trust from the report that 
 | Review-thread **replies** through this wrapper | Real — both threads on [#212](https://github.com/sleepy-panda-works/portulan/pull/212) carry `portulan-agent` comments |
 | Who actually resolves, on [#195](https://github.com/sleepy-panda-works/portulan/pull/195) | 21 threads, 21 resolved, **all 21 by `marius-cetanas`** |
 
-The refusal probe was aimed at a thread that was **already resolved**, so the mutation was a no-op in
-the branch where it succeeded. A capability test that changes the world when it passes is not a test
-anyone should run on a live pull request, and the already-resolved thread is what makes it safe.
+The refusal probe was aimed at a thread that was **already resolved**, so had it succeeded the mutation
+would have been a no-op. It did not succeed — the row above is what came back — but a capability test
+that changes the world when it passes is not a test anyone should run on a live pull request, and
+choosing an already-resolved target is what made the attempt safe to make at all.
 
 ## Why the repair is (a) and not (b), and why that is not a decision taken here
 
