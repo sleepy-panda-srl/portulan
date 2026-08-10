@@ -10,8 +10,15 @@
 ## Decisions (locked)
 
 1. **Open-core** — public monorepo `github.com/sleepy-panda-works/portulan` (permissive license;
-   doubles as public plugin marketplace) + public `portulan-workspace-template` + private
-   `portulan-internal` (Sleepy Panda feed). Commercial value in private feeds.
+   doubles as public plugin marketplace) + private `portulan-internal` (Sleepy Panda feed).
+   Commercial value in private feeds. The template repository this decision also named was **never
+   created**: `gh repo view sleepy-panda-works/portulan-workspace-template` returned 404 on
+   2026-08-10, and an org listing that returns private repositories did not carry it either, so its
+   absence is absence rather than a visibility artefact. The maintainer ruled it **abandoned** that
+   day — the scaffolding it would have carried is milestone 7's `init` and `new workspace`, which
+   reach a workspace without a template repository to fork, and no milestone row ever owned creating
+   it. The ruling is on record in the Session log. *(Amended 2026-08-10; original: "+ public
+   `portulan-workspace-template` + private `portulan-internal` (Sleepy Panda feed)".)*
 2. **The private pilot workspace stays outside this repo — entirely.** The predecessor framework
    that proved these concepts, and the pilot workspace derived from it, remain local to their
    owner's context: no hosted copy, no references here. Portulan's engine is authored as **fresh
@@ -55,7 +62,6 @@ sleepy-panda-works/
 │   ├── evals/                    golden tasks, A/B harness, CI eval gate
 │   ├── docs/                     vision.md (constitution) · plan.md (this file)
 │   └── .claude-plugin/           plugin + marketplace manifests
-├── portulan-workspace-template   PUBLIC  "Use this template" scaffold
 └── portulan-internal             PRIVATE Sleepy Panda feed (portfolio workspace + packs)
 ```
 
@@ -2236,3 +2242,14 @@ _The seam applies here too: no client-identifying references._
   **The split was verified by reconstruction, not by reading**: the two halves rebuilt into the original and `cmp`'d against `HEAD` — byte-identical modulo **two declared** repairs of references the move itself broke, asserted one-by-one so the check proves they are the only differences. Checking the moved block alone would have said nothing about the 97 lines that stayed. Slot 3 keeps its number as a pointer that **cites rather than restates**, so `rule 3` still dereferences from `0021`, `copilot-review.yml` and rule 1.
   **Two of the ruling's own figures no longer held and are corrected rather than repeated**: A lands at 7,047 B (86%), not the projected 6,245 (76%) — that was computed at #202's 8,152-byte mid-review branch state — the store's largest record afterwards is `every-pull-request-carries-a-label.md` at **97.0%**, and A fires on the **first** amendment, not the second. **Siblings, two outside #199's list**: `librarian` printed *"Store: no budget declared"* over a fully-railed store; `budgetFindings`' `lines` arm still carried the three-move menu that this change's own new prose claimed it did not.
   `consolidate/SKILL.md` learns **split** — the inverse of merge, one question about granularity, **before** compressing, because a record holding two facts reads as an incompressible one. `KNOWN_SPECS` gains 2.8 **by addition**; the four constants that *write* a spec stay at 2.7. Nine recipes, suite **1200**. Seam scan clean. · Fidelity: **both checkpoints ran before the commit** — session-open A-W-A (7), pre-commit A-W-A (6), all thirteen folded; they caught the `KNOWN_SPECS` trap that would have made the drill exit 2, the librarian regression, and a positive-integer claim wrong twice. Handoff: [`2026-08-10`](../.portulan/handoffs/2026-08-10-the-rail-moves-to-the-record.md).
+
+- 2026-08-10 · Off the milestone row · **A repository that does not exist, and a sweep `main` half-did underneath this branch.**
+  Both found in passing on [#214](https://github.com/sleepy-panda-works/portulan/pull/214), named in its body as untouched. **`portulan-workspace-template` does not exist** — 404, and absent from an org listing that returns private repos — yet decision 1 and the topology
+  named it. **The maintainer ruled it abandoned**: `init` and `new workspace` are the scaffolding, no row ever owned the repository. Decision 1 takes the file's own amendment bracket, original verbatim; the topology line is deleted; #214's two dated mentions stand.
+  **The second defect was fixed on `main` underneath this branch** — [#206](https://github.com/sleepy-panda-works/portulan/pull/206), merged 08:50:17Z, repairing `repos/portulan.md` (`387bef5`) and `verify/README.md`'s `grep` figure (`9ffd2f4`) — so this branch's own
+  repairs there were **dropped, not merged**: reverting a just-merged fix on a preference is not a session's call. The fork survives only in the handoff: `main` **re-armed** the count and roster where this session removed them and pointed at `cli/recipe-set.mjs`, and
+  **nothing rails either way** — `doctor` lints a card's path-shaped claims only, so every path in the false sentence resolved and the recipe stayed green throughout. What this branch carries is **ten carriers left standing by two landings**: nine of the *declares →
+  yields* rule `3cf47e9` repaired in only two places, plus `identity.md`'s `node` roster, stale since `control-chars` landed 2026-08-07. `CONTRIBUTING`, `cli/README`, **the root `README`** (missed by three sweeps, every instrument having keyed on *manifest declares*
+  where it says *workspace declares*), **`verify.yml`'s step name**, `spec/slots.md`, that roster, `0004` (appended dated supersession, title and Decision untouched), **`dod.md` condition 1** — *run each recipe `workspace.json` declares*, while a session must run ten —
+  and **the boot skill twice**, its step 3 caught contradicting its own packs note eight screens below, in the same file. Rebased **twice**; the records were wrong **three times** while every recipe stayed green — a moved base, #211 credited for #206's work, eleven
+  commits where `159df14..dd7e372` holds twelve, and three rebases where the reflog holds two, that last written into the sentence tallying the other two. Ten recipes green, suite untouched — prose, uncovered by any test. Seam scan clean. · Fidelity: session-open A-W-A (10) · pre-commit **REQUEST-CHANGES ×3**, all folded. Handoff: [`2026-08-10`](../.portulan/handoffs/2026-08-10-a-repository-that-does-not-exist-and-a-sweep-main-half-did.md).

@@ -35,7 +35,7 @@ Deliberately thin, and it stays thin:
 | Layer | Today | Arrives |
 |---|---|---|
 | Engine, packs, and spec prose | Markdown (`SKILL.md` / `AGENTS.md` conventions) | now |
-| Verify recipes | Bash + POSIX text utilities; every recipe but `docs` also needs `node`, and `workflow-filters` needs `jq` | now |
+| Verify recipes | Bash + POSIX text utilities; every recipe **this workspace declares** but `docs` also needs `node`, and `workflow-filters` needs `jq`. A composed pack's recipe declares its own needs and may sit below this line | now |
 | Workspace Definition | JSON Schema — a named subset — with JSON manifests | now |
 | `doctor` · `plugin-lint` · `compile` · `index` · `librarian` | Zero-dependency JavaScript on Node, run from the repository | now — [`../cli/`](../cli/) |
 | Tests | `node --test`, node's own runner — no framework, no install | now — every `*.test.mjs` under [`../cli/`](../cli/), ten as of milestone 7 session 2 |
@@ -58,12 +58,16 @@ file, so *no build* stops being a taste and becomes a property an adopter can ve
 so far — the rail is routed, not built (see the handoff).
 
 **Where the line sits now, precisely.** [`verify/docs.sh`](verify/docs.sh) needs `git`, `bash`, and the
-POSIX text utilities and nothing else, and it is the only one that stops there: every other recipe —
-[`verify/json.sh`](verify/json.sh), [`verify/doctor.sh`](verify/doctor.sh),
-[`verify/tests.sh`](verify/tests.sh), [`verify/plugin.sh`](verify/plugin.sh),
-[`verify/compile.sh`](verify/compile.sh), [`verify/index.sh`](verify/index.sh) and
-[`verify/workflow-filters.sh`](verify/workflow-filters.sh) — also needs `node`. Each recipe declares
-its own needs in [`workspace.json`](workspace.json), which is the authority on this line rather than
+POSIX text utilities and nothing else, and among the recipes this workspace **declares** it is the only
+one that stops there: every other — [`verify/json.sh`](verify/json.sh),
+[`verify/doctor.sh`](verify/doctor.sh), [`verify/tests.sh`](verify/tests.sh),
+[`verify/plugin.sh`](verify/plugin.sh), [`verify/compile.sh`](verify/compile.sh),
+[`verify/index.sh`](verify/index.sh), [`verify/workflow-filters.sh`](verify/workflow-filters.sh) and
+[`verify/control-chars.sh`](verify/control-chars.sh) — also needs `node`. **Declared is no longer the
+whole runnable set**, and this paragraph is not the floor: since milestone 7's composition amendment the
+set CI runs also carries `tools/github:actions-pinned`, which needs neither `node` nor `git` and so stops
+*short* of `docs.sh`. Each recipe declares its own needs — in [`workspace.json`](workspace.json) for
+these, in its own pack's manifest for a composed one — which is the authority on this line rather than
 the paragraph you are reading, and is what keeps *could not run* distinguishable from *ran and failed*.
 
 **One recipe needs a third thing, and it is the first since milestone 2 to move this line.**
@@ -73,7 +77,7 @@ other tool can answer for that. Same test as milestone 2 applied to a different 
 that matters is not the letter *bash*, it is that nothing is installed before it runs, and `jq` is
 present on the maintainer's machine and on `ubuntu-latest` alike — **measured on the first CI run of
 that recipe, `jq-1.7` on the runner against `jq-1.7.1` locally**, rather than assumed. The cost is
-stated rather than hidden: on a machine without it that recipe exits `2`, and the seven others still run.
+stated rather than hidden: on a machine without it that recipe exits `2`, and every other one still runs.
 
 **One tool is deliberately outside that line.** `claude plugin validate --strict` — the authority on the
 Claude Code plugin contract — is run by hand at the supervised checkpoints and before a release, and is

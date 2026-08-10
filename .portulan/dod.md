@@ -7,8 +7,13 @@
 
 A change is done when **all** of the following hold.
 
-1. **Every verify recipe ran green in this working copy.** Not "should pass" — run each recipe
-   [`workspace.json`](workspace.json) declares, and read the output. _Why: since milestone 4 the
+1. **Every verify recipe ran green in this working copy.** Not "should pass" — run each recipe the
+   manifest **yields**, which since milestone 7's composition amendment is what
+   [`workspace.json`](workspace.json) declares **plus** what this workspace's composed packs
+   contribute; [`../cli/recipe-set.mjs`](../cli/recipe-set.mjs) is the one carrier of that set, and
+   `node cli/recipe-set.mjs --workspace .portulan --repo-root .` prints it. Read the output.
+   _Why this says yields rather than declares: a composed recipe runs in CI, so a condition scoped to
+   the declared list would let one go red with this condition satisfied._ _Why: since milestone 4 the
    Stop-gate runs the **default** recipe automatically and blocks "done" on a red or an exit 2 — but it
    runs one recipe, not all of them, and it releases the session after three consecutive refusals **for any one
    reason** (each reason's count clearing only when that reason clears) or nine in total. So it makes a red

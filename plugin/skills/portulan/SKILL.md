@@ -150,8 +150,12 @@ in this order, because each frames the next:
 7. `memory/` — the rules this team has minted from its own incidents. Each carries provenance and a
    retirement condition, so a rule can be weighed rather than merely obeyed.
 
-Then read `verify.recipes` from the manifest. Those are the executable checks that decide "done"
-here, and the manifest names which one is the default.
+Then read the recipe set. `verify.recipes` in the manifest is the workspace's **own** half of it; the
+executable checks that decide "done" are the set
+[`../../../cli/recipe-set.mjs`](../../../cli/recipe-set.mjs) **yields** — those recipes plus the ones
+the workspace's composed packs contribute, namespaced by pack — and the manifest names which one is
+the default. *Declared* and *runnable* stopped being the same list at milestone 7 session 5; the
+`packs` note below carries the rest.
 
 ### 3a. Read `packs` too — no slot points at it, and what it delivers is partial
 
@@ -167,8 +171,8 @@ many as it is given, and named roots **replace** the derived one rather than bei
 that is what lets *"this pack resolved from the feed"* mean something a copy lying in the local tree
 cannot satisfy. Where a pack resolves, its gate-policy fragments reach the compiled policy,
 add-restriction-only. Nothing here is pinned — a `packs` entry is a name, and the version is whatever
-the root holds. Four things do not follow. **The first has since landed and three are still milestone
-7's, owed rather than broken** — the split is stated because a bare count beside a mechanism is the class
+the root holds. Four things do not follow. **The first and the last have since landed and two are still
+milestone 7's, owed rather than broken** — the split is stated because a bare count beside a mechanism is the class
 [#133](https://github.com/sleepy-panda-works/portulan/issues/133) names, and "four" alone goes stale the
 moment one of them ships:
 
@@ -199,9 +203,17 @@ moment one of them ships:
 - **A pack's personas reach the workspace's own layer, and not the host.** A composing workspace lands
   the scope a pack's persona declares, and an index over it can be generated — so this one is not
   simply absent, and reporting it as absent would be as wrong as reporting it as loaded.
-- **A pack's verify recipes are declared, not composed.** The Pack Definition says so in the key
-  itself. The recipes that decide "done" are the ones the workspace's own manifest declares, and a
-  pack's are not in that set.
+- **A pack's verify recipes reach the runnable set — LANDED at milestone 7, session 5.** This bullet
+  said the opposite and cited the Pack Definition for it; that key now carries the correction rather
+  than the old state, and keeps both, because it has been wrong in each direction in turn.
+  [`../../../cli/recipe-set.mjs`](../../../cli/recipe-set.mjs) is the composing consumer and the
+  **one carrier** of the runnable set — CI calls it instead of enumerating a manifest, so *what the
+  workspace declares* and *what decides "done"* are no longer the same list. Composition is
+  **additive only**, and a composed id is `<category>/<name>:<id>`, whose `/` and `:` are outside the
+  slug grammar a workspace id and `verify.default` must both satisfy: a composed recipe therefore
+  cannot shadow one the workspace owns or become the default, by construction rather than by a check.
+  **What this does not settle is the adopter's side** — nothing here writes an adopter's pipeline, so
+  a composed recipe runs for them exactly where their own CI calls that carrier.
 
 **Name the packs, and say all of that in the same breath.** A boot that lists a workspace's packs
 without it reads as though the middle of the cascade had loaded.

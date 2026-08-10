@@ -111,7 +111,7 @@ artifact is written anyway so there is something to consolidate from. Both works
 owns are validated on every pull request, because
 [`../.portulan/workspace.json`](../.portulan/workspace.json) declares
 [`../.portulan/verify/doctor.sh`](../.portulan/verify/doctor.sh) as a verify recipe and CI runs every
-recipe the manifest declares.
+recipe the manifest **yields** — the workspace's own, plus those the packs it composes contribute.
 
 ## What `doctor` checks
 

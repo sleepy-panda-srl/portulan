@@ -65,7 +65,8 @@ The working discipline lives in the repository, not here:
   approval, and what nothing approves. Also the autonomy **mode** this workspace runs.
 - [`.portulan/dod.md`](.portulan/dod.md) — the definition of done.
 - [`.portulan/verify/README.md`](.portulan/verify/README.md) — the verify recipes. All of them are green
-  before every commit; CI runs every recipe the manifest declares.
+  before every commit; CI runs every recipe the manifest **yields** — the workspace's own, plus those
+  the packs it composes contribute.
 - [`docs/plan.md`](docs/plan.md) — milestones, and the Session log every session appends to.
 - [`docs/vision.md`](docs/vision.md) — the constitution. **Human-owned; no agent edits it, ever.**
 

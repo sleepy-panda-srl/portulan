@@ -56,7 +56,7 @@ one that ran and passed.
 **Every recipe but [`docs.sh`](docs.sh) is a wrapper, and the wrapper is the point.** Each one whose
 **Needs** column above names `node` delegates to it, and each checks for it first — since 2026-07-27
 as one entry in that recipe's `for need in …` guard rather than as a standalone `command -v node`, the
-same mechanism spelled once for every dependency — so a seventh recipe joins this paragraph by
+same mechanism spelled once for every dependency — so a new recipe joins this paragraph by
 declaring that dependency rather than by being counted into it. `bash -c "node …"` on a machine without `node` exits `127`, which is
 neither a verdict about the repository nor "could not run" — the wrapper is where that gets turned into a
 `2` deliberately.
