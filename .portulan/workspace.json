@@ -80,6 +80,12 @@
         "run": "./.portulan/verify/control-chars.sh",
         "requires": ["bash", "git", "node"],
         "doc": "verify/README.md"
+      },
+      {
+        "id": "rule-carriers",
+        "run": "./.portulan/verify/rule-carriers.sh",
+        "requires": ["bash", "git", "node"],
+        "doc": "verify/README.md"
       }
     ]
   },
