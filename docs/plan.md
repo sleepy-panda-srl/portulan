@@ -2144,7 +2144,7 @@ _The seam applies here too: no client-identifying references._
   commit with a store size measured two commits later, never a coherent pair, and the same mixing put `+502` where `+226` belongs; corrected everywhere editable, named where not. Both notes arrived through the shape-1 promotion the gate map denied until
   [#201](https://github.com/sleepy-panda-works/portulan/pull/201) merged an hour earlier. Ten recipes, suite 1187. Seam scan clean. · Fidelity: **no pre-commit checkpoint ran — the breach stands**, on the diff that most wants one, since absence is what a
   condensation gets wrong. Handoff: [`2026-08-09`](../.portulan/handoffs/2026-08-09-the-consolidation-nobody-finished.md).
-- 2026-08-10 · M7 (CLI & onboarding), session 6 · **The preview is the payload, and the cycle the suite could not see.** Row 7's `feedback` clause and **D3**.
+- 2026-08-10 · M7 (CLI & onboarding), session 6 · **The preview is the payload, and the cycle the suite could not see.** [#206](https://github.com/sleepy-panda-works/portulan/pull/206) — row 7's `feedback` clause and **D3**.
   `cli/feedback.mjs` — `draft` · `preview` · `send --approve` — takes the entry point to **seven of the eight**. The previewed bytes are the sent bytes **by construction**, one
   `payload()` call; and the approval is **bound to those bytes** — `preview` stamps a digest, `send` refuses unless it matches, so *the payload the user saw first* is the
   mechanism rather than the habit it was until the pre-commit checkpoint said so. The payload is a **closed list, not a filter** — only `portulan.spec` is read out of a
