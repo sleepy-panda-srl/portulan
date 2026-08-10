@@ -93,8 +93,12 @@ here did. The reason is the part worth writing down: `file` classified the sourc
 negative. **[`docs.sh`](docs.sh) — the default recipe, the one a Stop-gate runs when nothing more
 specific applies — is built out of `grep` throughout**, so the tool most likely to have shown the byte
 is the tool the byte silences. _(Named rather than counted, after two corrections. This sentence first
-claimed **every** recipe here was built out of `grep`, and three of the nine invoke it zero times —
-`plugin.sh`, `tests.sh`, `workflow-filters.sh`; the correction then asserted `seventeen invocations`, a
+claimed **every** recipe here was built out of `grep`, and five of the nine invoke it zero times —
+`plugin.sh`, `tests.sh`, `workflow-filters.sh`, `compile.sh` and `control-chars.sh`, the last two
+carrying the word only in comments — **which is why this said three until 2026-08-10**: an instrument
+that counts occurrences answers a different question from the sentence's verb, and the retrospective
+pass over this very pull request found it, then itself said four by leaving out the recipe the
+paragraph is about. Third time on one page. The correction then asserted `seventeen invocations`, a
 figure taken from a word count that included comments, which is [#77](https://github.com/sleepy-panda-works/portulan/issues/77)'s lesson walked into twice on one page. A false
 universal inside the paragraph doing the persuading is this page's own dominant defect class, and it sat
 in the passage introducing the rail against claims nobody measured. Found by Copilot on

@@ -6,7 +6,7 @@ that was neither blocked on the maintainer nor waiting on another clause.
 ## State
 
 `main` was `159df14` at session-open and did not move. Branch
-`m7-a-feedback-pipe-points-out-of-the-seam`. Suite **1187 → 1234**, both measured — the baseline on a
+`m7-a-feedback-pipe-points-out-of-the-seam`. Suite **1187 → 1237**, both measured — the baseline on a
 detached worktree at `159df14` rather than copied from the previous entry. **Ten recipes green** — nine
 declared, one composed. Seam scan clean across the diff, the branch name and the paths.
 
@@ -39,8 +39,9 @@ Four properties are worth carrying forward, because each was a choice between de
 `existsSync` answers false for `EACCES` and that is how #166's layer at `0400` skipped every location it
 declared. **No list at all is said out loud** in the sentence the user approves, in the preview *and* in
 the send: blocking every listless adopter would close the only non-browser inbound path an outside
-reader has, and silence would be a green implying coverage it does not have. That last is a ruling the
-maintainer should ratify rather than inherit, and `docs/milestones/m07.md` argues both readings.
+reader has, and silence would be a green implying coverage it does not have. **That reading was ratified
+as a clarification on 2026-08-10** — the argument is in `docs/milestones/m07.md` and row 7 now carries
+the marker.
 
 ## D3, run against the real API
 
@@ -130,6 +131,10 @@ implementer's own sweep had missed.
 `upgrade`, persona↔agent binding, legibility, clause (b) parity's adopter half, `init`'s interview, the
 index rail, and **three of six** demonstrations — D1, D2, D5.
 
+Four items were raised here for the maintainer. **He instructed the session to close them out with a
+supervisor, and this section is what stood before that instruction** — kept, because it is what the
+session believed when it wrote it, with the outcome appended below rather than written over.
+
 - **Proposal `0014` is still `PROPOSED` and its Q5 is still formally open.** What shipped is Q5(a), the
   user's own `gh` login, which the proposal recommends and which needs no constitutional change; Q5(b),
   a relay, is a hosted service and stays unbuilt. The Status was **not** edited here — that is his
@@ -144,3 +149,68 @@ index rail, and **three of six** demonstrations — D1, D2, D5.
   gated, while `.portulan/gates.json` — merged, and the living policy — makes `push-a-working-branch`
   **Auto** and `open-a-pull-request` **Propose**. The file is untracked and his; noted rather than
   edited.
+
+## The close-out, 2026-08-10 — and one of the four was already false when written
+
+On his instruction, a fresh-context Fable 5 supervisor graded each item; a second ran the owed
+retrospective pass. **Both returned APPROVE-WITH-ADJUSTMENTS and every adjustment is folded.**
+
+1. **`0014` Q5 → accepted on (a)**, recorded in the proposal beside the question, ratified by his merge
+   of this pull request. Two things the first draft decided and he had not: it called (b) *refused on
+   the constitution*, where his words were *stays unbuilt* — and the constitutional ground silently
+   presupposed the answer to the very question the same draft declares open, whether the relay exception
+   is a name or a class. Now: (b) is **not taken up**, under the constitution **as written**, with the
+   riding question still open.
+2. **The listless-send reading → ratified as a clarification**, argued on three grounds in this
+   project's own documents rather than on convenience, and **marked in row 7 itself** — every prior
+   ruling on a criterion's reading landed in the row's own text, and a reader of `docs/plan.md` alone
+   was still meeting the ambiguity. An earlier draft argued a listless refusal would demand *"the one
+   artifact this product must never hold"*, which is false — refusing holds no terms — and was struck.
+3. **`BOOTSTRAP.md` rewritten**, on his instruction and only on it: the default the bullet above states
+   — *noted rather than edited* — is the right one absent that instruction, because an untracked file
+   sits outside every rail this workspace has. **The rewrite is recorded here because nothing else can
+   record it.** Its first draft carried two defects the supervisor measured out: opening a pull request
+   never moved on 2026-07-27 (it was already Propose the day before — fabricated contemporaneity in the
+   file every session reads first), and *"a push does not need approval"* is looser than `gates.json`,
+   which keeps bare `--force` and `--delete` Gated. Both corrected.
+4. **The feed pin is not a blocker and has not been since 2026-08-09** — the day *before* this handoff
+   said it was. It moved in the feed's own commit; the install carries that sha; the payload declares
+   its skills; `plugin details` reports three, and the *provenance* rather than the count is the
+   evidence. **Every carrier of the blocked claim was false at birth, this session's own included**,
+   which is the memory's rule operating on the session that wrote it down: a figure not re-measured was
+   wrong. D5 now waits on a session running the parity demonstration, not on anyone's act. Corrected in
+   `docs/milestones/m07.md`; session 5's merged entry stays as written, forward-only.
+
+**#167's retrospective pass is discharged**, recorded by a fresh-context Fable 5 supervisor on
+2026-08-10 over `415167a`: nine recipes green re-derived, `control-chars` forced red five ways and
+restored, the bash-3.2 refutation replicated, suite **1033** at the merge. Verdict
+APPROVE-WITH-ADJUSTMENTS — the mechanism is sound and stands. **Two findings blocked the close and are
+repaired in this pull request:** the *"three of the nine invoke `grep` zero times"* census, and #167's
+Session-log figures. Five more are issues, not gates.
+
+## The review loop
+
+**Round 1 — two findings, both real, one push.** `draft`'s two path probes were `existsSync`, which
+answers false for `EACCES`, so an unreadable workspace reported as *does not look like a workspace* —
+the class this file's own comments name two hundred lines up, for the seam term list, in the change that
+quotes `0020`. And the `gh`-is-missing fallback named the **report** as `--body-file`, which is not the
+payload: following it would have published frontmatter, guidance comments and raw sections nobody
+previewed, out of the one verb whose subject is that they cannot be.
+
+**Round 2 — four promoted suppressed notes, all real, one push.** Three are one class: bare
+`writeFileSync` reaching the top-level catch and printing a stack trace where a sentence belongs. The
+exit code was already 2, so none was a fail-open; what was missing is the other half of the discipline,
+that *could not run* has to say what could not run. Now one `writeOrRefuse` carries the errno and the
+path. **The fourth is the sharpest thing either round found**: the post-send write cannot be a refusal,
+because by then the issue exists — reporting could-not-run would deny a send that happened and send the
+reader back to repeat it, while the guard that makes a second send a no-op is exactly what failed to
+land. It exits **1**, names the missing guard, and prints the `issue:` line to restore it by hand. The
+fourth note was in `between()`, the test helper carrying D3's own claim, which could return unrelated
+output when the marker was missing — the harness agreeing with the bug, for the third time in one
+change.
+
+**The census is worth its own line, because it went wrong a third time in the fixing.** The sentence had
+said *three*; the retrospective pass said *four*; re-measuring said **five** — `compile.sh` and
+`control-chars.sh` both carry the word only in comments, and the pass left out the recipe the paragraph
+is about. Three carriers, not the two it named. *A count is only as good as its instrument*, now
+demonstrated on the paragraph that says so.

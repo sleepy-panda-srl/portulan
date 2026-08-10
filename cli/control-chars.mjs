@@ -16,8 +16,9 @@
 //     false negative. `docs.sh` — the DEFAULT recipe, the one a Stop-gate runs when nothing more
 //     specific applies — is built out of `grep` throughout, so the tool most likely to have shown the
 //     byte is the tool the byte silences. (Named rather than counted, and that took two goes: the
-//     first draft said *every* recipe in that directory was built out of `grep`, and three invoke it
-//     zero times; the correction then asserted `seventeen invocations`, a figure taken from a word
+//     first draft said *every* recipe in that directory was built out of `grep`, and FIVE invoke it
+//     zero times — two of them carrying the word only in comments, which is why the number was three
+//     for three days; the correction then asserted `seventeen invocations`, a figure taken from a word
 //     count that included comments. A number nothing regenerates is a claim that rots — #77. Copilot
 //     found the first, in three carriers; I found the second auditing my own fix.)
 //   * `git` rendered the diff as text only because the byte sat past its first 8000 bytes. A few
