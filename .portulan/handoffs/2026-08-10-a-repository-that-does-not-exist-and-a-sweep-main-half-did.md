@@ -6,11 +6,13 @@ different classes; both are named in that pull request's body under *What this P
 **No criterion moves. No milestone row changes status.**
 
 Every figure below is stated against the tree it was measured on. This branch was cut at `159df14`
-and **rebased twice** — onto `dd7e372`, then onto `e4d3f44` — because `main` moved under it all
-morning, and each rebase falsified citations the previous pass had verified. That is not incidental
-to the session; it is most of what the session cost. _(An earlier draft of this line said three. The
-reflog says two, and a miscount of this branch's own history inside the paragraph explaining why
-citations go stale is the defect naming itself.)_
+and **rebased three times** — onto `dd7e372`, `e4d3f44`, then `27705ae` — because `main` moved under
+it all day, and each rebase falsified citations the previous pass had verified. That is not incidental
+to the session; it is most of what the session cost. _(This line has now been wrong in both
+directions: it said three when the reflog held two, was corrected to two, and the third rebase then
+made three true. A count of this branch's own history, inside the paragraph explaining why citations
+go stale, is the defect naming itself — and it is why the maintainer commissioned a rail for this
+class rather than another sentence about it.)_
 
 ## The repository that does not exist — this branch's, start to finish
 
@@ -124,14 +126,21 @@ of it, which is the honest measure of how much of this change no rail covers.
 
 ## State
 
-Rebased onto `e4d3f44`. Ten recipes green, run individually. Seam scan clean over diff, message and
+Rebased onto `27705ae`. Ten recipes green, run individually. Seam scan clean over diff, message and
 branch, against the explicit list including both artifact URLs. Suite untouched: this is prose, and
 no test covers any of these sentences.
 
-**Two open pull requests touch files this branch edits**, and both will want a rebase whichever lands
-second. [#215](https://github.com/sleepy-panda-works/portulan/pull/215) moves the spec version and the
-memory budget keys and adds or removes no recipe, so the recipe counts above survive its merge.
-[#221](https://github.com/sleepy-panda-works/portulan/pull/221) edits `docs/plan.md` and the handoff
-index, so it collides with this Session-log append rather than with any claim. _(An earlier draft of
-this section named only #215; #221 was opened a minute after this branch's last rebase, which is the
-same class of staleness this whole handoff is about.)_
+**Both pull requests this handoff once listed as open have merged** — [#221](https://github.com/sleepy-panda-works/portulan/pull/221)
+at 11:57:39Z and [#215](https://github.com/sleepy-panda-works/portulan/pull/215) at 12:22:02Z, the
+latter bringing `0025` and eight commits. #215's only real collision was the Session-log tail, resolved
+by **keeping both entries**, its own first: a log is append-only and both sessions happened.
+
+**The prediction this section used to make is now a measurement.** It said #215 adds and removes no
+recipe *so the counts survive its merge*; re-run on the merged tree,
+`node cli/recipe-set.mjs --workspace .portulan --repo-root .` still yields **ten** — the nine declared
+plus `tools/github:actions-pinned`. Predicted, then checked, rather than asserted twice.
+
+_(Three drafts of this section have now been falsified by the world between writing and commit: one
+naming only #215, one naming two open pull requests that are now both merged, and one rebase count
+wrong in each direction. Nothing in the tree saw any of it. That is the evidence behind the rail the
+maintainer commissioned, and it is recorded here rather than smoothed away.)_
