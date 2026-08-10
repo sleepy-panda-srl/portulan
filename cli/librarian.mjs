@@ -296,9 +296,12 @@ function lastTouched(root, relative) {
 /**
  * A declared threshold must be a positive integer — ./index.mjs's rule, for ./index.mjs's reason.
  *
- * **Also the memory budgets, as of 2.8.** They were fed to `budgetHeadroom` raw, so a schema-legal `0`
- * or `"8"` printed `Infinity%` or a plausible-looking percentage in the weekly report rather than
- * refusing — while `./index.mjs` and `./doctor.mjs` both refused the same value outright. A third
+ * **Also the memory budgets, as of 2.8.** They were fed to `budgetHeadroom` raw, so a **schema-legal**
+ * `0` or `1.5` printed `Infinity%` or a plausible-looking percentage in the weekly report rather than
+ * refusing — the subset has no `minimum` and cannot say `integer`, so both pass validation. A `"8"`
+ * reaches the same place by a different route: the schema WOULD refuse it on `type: number`, and this
+ * tool never validates against the schema, so an unvalidated manifest carries it straight through.
+ * Meanwhile `./index.mjs` and `./doctor.mjs` both refused every one of them outright. A third
  * consumer reading the same key with a different answer is how two checkers start disagreeing about
  * one manifest, and the report is the one place nobody is watching when it runs. Raised by Copilot on
  * #215, suppressed half; the hole predates the per-record rail and is repaired for all three budgets
@@ -591,8 +594,9 @@ export function passWorkspace(dir, { asOf, reviews } = {}) {
         // pull-request time; what it cannot say is *how close*, and a scheduled pass that reports
         // pressure is the difference between consolidating on a calendar and consolidating on a red.
         // Every budget goes through `threshold` first. Reading them raw let a schema-legal `0` print
-        // `Infinity%` and a `"8"` print a plausible percentage, in a weekly artifact nobody is watching
-        // when it runs — while the two tools that judge the same keys refused them outright.
+        // `Infinity%` and a `1.5` print a plausible percentage — and a `"8"`, which the schema refuses
+        // but this tool never asks the schema about, do the same — in a weekly artifact nobody is
+        // watching when it runs, while the two tools that judge the same keys refused them outright.
         headroom: {
             store: budgetHeadroom(counts.bytes / 1024, budget(workspace, "store", "kilobytes")),
             index: budgetHeadroom(renderedLines(index.expected), budget(workspace, "index", "lines")),

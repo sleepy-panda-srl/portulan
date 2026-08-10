@@ -532,9 +532,10 @@ describe("passWorkspace — refusals", () => {
 
     test("a memory BUDGET that is not a positive integer is refused too, not printed as a percentage", () => {
         // The sibling of the threshold check above, and it was missing: the three budgets went to
-        // `budgetHeadroom` raw, so a schema-legal `0` rendered `Infinity%` and `"8"` a plausible-looking
-        // number — in a weekly artifact nobody is watching when it runs — while `index` and `doctor`
-        // refused the same value outright. Three consumers of one key must not give three answers.
+        // `budgetHeadroom` raw, so a schema-legal `0` rendered `Infinity%` and a `1.5` a plausible-
+        // looking number — and a `"8"`, which the schema refuses but this tool never asks it about, did
+        // the same — in a weekly artifact nobody is watching when it runs, while `index` and `doctor`
+        // refused every one outright. Three consumers of one key must not give three answers.
         // Raised by Copilot on #215, suppressed half, against the per-record line; repaired for all
         // three budgets rather than the one that surfaced it.
         const budgets = [
