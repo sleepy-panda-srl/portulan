@@ -4,7 +4,8 @@
 #
 # One check, run against both workspaces this repository owns:
 #   index   every generated index a workspace declares is exactly what its source renders, and
-#           neither the store's index nor the store itself is over the budget its manifest declares
+#           neither the store's index, nor the store itself, nor any single record in it is over the
+#           budget its manifest declares
 #
 # **Two series since Workspace Definition 2.5**, and only one of them is budgeted. The memory store
 # has an index and a rail on its size; the handoff series has an index and no rail, because
@@ -27,7 +28,12 @@
 # **The reds are different defects with different repairs**, and the tool keeps them apart:
 #   out of date  →  run `node cli/index.mjs .portulan examples`
 #   over budget  →  consolidate the store (../../core/skills/consolidate/SKILL.md) — merge,
-#                   compress, retire — and never by raising the budget in the change that broke it
+#                   compress, split, retire — and never by raising the budget in the change that
+#                   broke it. WHICH of the four applies is decided by which budget went over, and
+#                   the finding names it: too many lines wants merge or retire, one record over
+#                   `record_kilobytes` wants split, compress or demote. Splitting to repair a
+#                   per-record breach SPENDS a line of the count budget — the two rails trade
+#                   against each other on purpose, so the trade is visible in the diff
 #   heading      →  a record's H1 disagrees with its filename: edit the record
 #   date         →  a handoff's filename does not lead with YYYY-MM-DD: rename the file
 # A single "index check failed" would send an author to regenerate a file that is already correct

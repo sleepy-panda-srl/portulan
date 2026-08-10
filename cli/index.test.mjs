@@ -392,6 +392,111 @@ describe("the budget is a rail", () => {
         assert.match(text(bad), /KB/);
     });
 
+    // ---- the per-record cap, Workspace Definition 2.8
+    //
+    // The hole the STORE total has, one level down: an aggregate over individually-authored records
+    // cannot see inside them, exactly as `lines` cannot see inside a line. Every test below pairs the
+    // new key with a store total large enough not to fire, so a green or a red here is unambiguously
+    // the per-record rail's and never the aggregate's leaking through.
+    const perRecord = (kb) =>
+        wellFormed({
+            memory: {
+                index: { path: "memory-index.md", budget: { lines: 60, columns: 140 } },
+                store: { budget: { kilobytes: 500, record_kilobytes: kb } },
+            },
+        });
+
+    test("red when ONE record is over the per-record cap, though the store total is fine", () => {
+        const dir = workspace(
+            { "memory/a-fat-one.md": record("rule", "x".repeat(3000)), "memory/a-thin-one.md": record("rule") },
+            perRecord(1),
+        );
+        const bad = failures(inspect(dir, { write: true }));
+        assert.equal(bad.length, 1);
+        assert.equal(bad[0].check, "budget");
+        // The record is NAMED. A per-record breach is local, and a percentage with no filename sends
+        // the author to sort the store by hand to find out what to repair.
+        assert.match(text(bad), /a-fat-one\.md/);
+        assert.doesNotMatch(text(bad), /a-thin-one\.md/);
+    });
+
+    test("the red carries the exact byte count, the cap and the overage", () => {
+        const dir = workspace({ "memory/a-fat-one.md": record("rule", "x".repeat(3000)) }, perRecord(1));
+        const bad = failures(inspect(dir, { write: true }));
+        // Rounded KB alone can print a sentence that argues against its own verdict — the defect
+        // Copilot found on #72 for the store total. The same guard is owed here rather than
+        // rediscovered: exact bytes ride along with the rounded figure, and so does the overage.
+        assert.match(text(bad), /1024 bytes/);
+        assert.match(text(bad), /over by \d+/);
+    });
+
+    test("the red names the repair menu, and a raise is not on it", () => {
+        const dir = workspace({ "memory/a-fat-one.md": record("rule", "x".repeat(3000)) }, perRecord(1));
+        const bad = failures(inspect(dir, { write: true }));
+        // The rail exists because the aggregate it replaced had run out of legal repairs, and
+        // ../spec/slots.md holds that a rail with an empty repair menu is how a recipe gets switched
+        // off. So the menu is part of the finding, not part of the documentation.
+        for (const move of [/SPLIT/, /COMPRESS/, /DEMOTE/]) assert.match(text(bad), move);
+        assert.match(text(bad), /rules out/);
+    });
+
+    test("EVERY over-budget record is reported, not just the first", () => {
+        // `columns` stops after one because the repair is the same trivial rename every time. Here
+        // each breach is its own editorial decision — split this, compress that — so stopping at the
+        // first would send the author round the loop once per record, each time believing they were
+        // done.
+        const dir = workspace(
+            {
+                "memory/a-fat-one.md": record("rule", "x".repeat(3000)),
+                "memory/a-fatter-one.md": record("rule", "y".repeat(4000)),
+                "memory/a-thin-one.md": record("rule"),
+            },
+            perRecord(1),
+        );
+        const bad = failures(inspect(dir, { write: true }));
+        assert.equal(bad.length, 2);
+        assert.match(text(bad), /a-fat-one\.md/);
+        assert.match(text(bad), /a-fatter-one\.md/);
+    });
+
+    test("green when every record fits, at any store total", () => {
+        const dir = workspace(store(40), perRecord(1));
+        assert.equal(failures(inspect(dir, { write: true })).length, 0);
+    });
+
+    test("the two store rails are independent — either may be declared without the other", () => {
+        // `kilobytes` is not deprecated by `record_kilobytes` and neither is defaulted, so all four
+        // combinations are legal. The pair that matters is a store whose TOTAL is fine and whose
+        // largest record is not, which is the case the aggregate alone could never see.
+        const only = (budget) =>
+            workspace(
+                { "memory/a-fat-one.md": record("rule", "x".repeat(3000)) },
+                wellFormed({ memory: { index: { path: "memory-index.md" }, store: { budget } } }),
+            );
+        assert.equal(failures(inspect(only({ kilobytes: 500 }), { write: true })).length, 0);
+        assert.equal(failures(inspect(only({ record_kilobytes: 1 }), { write: true })).length, 1);
+    });
+
+    test("a per-record budget of zero is refused rather than read as undeclared", () => {
+        // The sibling of the `lines: 0` hole below. Fixed in the same stroke rather than left for the
+        // next round to find — defect class #91, and ../.portulan/proposals/0020's doctrine.
+        for (const bad of [0, -1, 1.5, "8", null]) {
+            const manifest = wellFormed({
+                memory: { index: { path: "memory-index.md" }, store: { budget: { record_kilobytes: bad } } },
+            });
+            const dir = workspace({ "memory/a-first.md": record("rule") }, manifest);
+            assert.throws(() => inspect(dir, { write: true }), IndexError, `budget ${JSON.stringify(bad)}`);
+        }
+    });
+
+    test("an undeclared per-record cap is not checked, and does not become a default", () => {
+        const dir = workspace(
+            { "memory/a-huge-one.md": record("rule", "x".repeat(40000)) },
+            wellFormed({ memory: { index: { path: "memory-index.md" } } }),
+        );
+        assert.equal(failures(inspect(dir, { write: true })).length, 0);
+    });
+
     test("a budget of zero is refused rather than read as undeclared", () => {
         // The hole an optional number has: `lines: 0` is falsy, so a rail switched OFF looks exactly
         // like a rail nobody asked for. The schema cannot catch it — the declared keyword subset has

@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://portulan.dev/spec/2.7/workspace.schema.json",
-  "title": "Portulan Workspace Definition v2.7",
+  "$id": "https://portulan.dev/spec/2.8/workspace.schema.json",
+  "title": "Portulan Workspace Definition v2.8",
   "description": "The manifest at the root of a workspace. It is an index, not a container: it names the slots the engine resolves against and points at the Markdown that holds each slot's content and rationale. Written in a deliberately small subset of JSON Schema 2020-12 — see spec/README.md for the subset and for what validates it.",
   "type": "object",
   "additionalProperties": false,
@@ -196,7 +196,7 @@
               "$ref": "#/$defs/filePath"
             },
             "budget": {
-              "description": "Optional. A rail, not an aim: on breach the remedy is consolidation — merge, compress, retire — and never a raise in the same change (core/operating/memory.md). Nothing here is defaulted; an undeclared number is not checked, because a default would be this specification setting a policy for every workspace that adopts it, in a key nobody typed.",
+              "description": "Optional. A rail, not an aim: on breach the remedy is consolidation — merge, compress, split, retire — and never a raise in the same change (core/operating/memory.md). Of those four, `split` is the one that SPENDS this budget rather than repairing it: splitting a record adds a line here to buy room under `store.budget.record_kilobytes`, which is the trade the two axes exist to make visible. Nothing here is defaulted; an undeclared number is not checked, because a default would be this specification setting a policy for every workspace that adopts it, in a key nobody typed.",
               "type": "object",
               "additionalProperties": false,
               "properties": {
@@ -213,7 +213,7 @@
           }
         },
         "store": {
-          "description": "Optional. Budgets on the store itself rather than on its index. The axis an index cannot see: record count can hold still while the records grow.",
+          "description": "Optional. Budgets on the store itself rather than on its index. The axis an index cannot see: record count can hold still while the records grow. Two forms since 2.8 — `kilobytes` over the whole store, and `record_kilobytes` over any one record — because an aggregate cannot see inside its units any more than a line count can see inside a line.",
           "type": "object",
           "additionalProperties": false,
           "properties": {
@@ -223,7 +223,11 @@
               "additionalProperties": false,
               "properties": {
                 "kilobytes": {
-                  "description": "The most kilobytes (1024 bytes) the store's records may total — the same measure `doctor`'s retirement report already prints, so the report and the rail cannot disagree about what was measured. A positive integer, on the same terms as `lines`.",
+                  "description": "The most kilobytes (1024 bytes) the store's records may total — the same measure `doctor`'s retirement report already prints, so the report and the rail cannot disagree about what was measured. A positive integer, on the same terms as `lines`. An AGGREGATE over individually-authored records, which is a commons: the record that grew large never feels this rail at write time, and the next unrelated writer hits it instead. `record_kilobytes` is the per-unit form and is what this repository's own workspace declares as of 2.8; both stay legal, and a workspace may declare either, both, or neither.",
+                  "type": "number"
+                },
+                "record_kilobytes": {
+                  "description": "Optional, added in 2.8. The most kilobytes (1024 bytes) any ONE record may hold. This is to `kilobytes` what `index.budget.columns` is to `index.budget.lines`: an aggregate cannot see inside its units, so one enormous record absorbs what a store budget counts, exactly as one enormous line absorbs what a line budget counts. Breaches are LOCAL — record X over its cap never blocks writer Y — and the repair menu is live rather than barred: SPLIT the record where it holds more than one fact (which spends the count axis, `index.budget.lines`), COMPRESS it, or DEMOTE its narrative to the provenance layer. Never a raise in the change that breached it (core/operating/memory.md). A positive integer, on the same terms as `lines`.",
                   "type": "number"
                 }
               }
@@ -234,7 +238,7 @@
     },
 
     "handoffs": {
-      "description": "Optional, added in 2.5. What the handoff series' generated index is called — the same split as `memory` above, and for the same reason: `slots.handoffs` is the series, this is the machine configuration over it. One key and no more. There is deliberately NO budget here, and the absence is the considered half: a budget's only permitted remedy is consolidation — merge, compress, retire (core/operating/memory.md) — and a handoff series is append-only by construction, one per session, held to the Session log by a verify recipe's count-based correspondence. Retiring a handoff to buy headroom would either red that check or destroy the record it exists to keep, and raising the budget in the change that breached it is the one repair that doctrine rules out. Every remedy such a budget could ask for is barred, which makes it a rail designed to be broken. Whether the series should be budgeted on some other axis is a maintainer's question, deferred rather than answered here — and a key that exists but must never be set would be this specification pre-empting that answer in the shape of an invitation.",
+      "description": "Optional, added in 2.5. What the handoff series' generated index is called — the same split as `memory` above, and for the same reason: `slots.handoffs` is the series, this is the machine configuration over it. One key and no more. There is deliberately NO budget here, and the absence is the considered half: a budget's only permitted remedy is consolidation — merge, compress, split, retire (core/operating/memory.md) — and a handoff series is append-only by construction, one per session, held to the Session log by a verify recipe's count-based correspondence. Retiring a handoff to buy headroom would either red that check or destroy the record it exists to keep; SPLITTING one — the move 2.8 added for the per-record rail — would put two dated handoffs against a single session and red the same correspondence from the other direction; and raising the budget in the change that breached it is the one repair that doctrine rules out. Every remedy such a budget could ask for is barred, which makes it a rail designed to be broken. Whether the series should be budgeted on some other axis is a maintainer's question, deferred rather than answered here — and a key that exists but must never be set would be this specification pre-empting that answer in the shape of an invitation.",
       "type": "object",
       "additionalProperties": false,
       "required": ["index"],

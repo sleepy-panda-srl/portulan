@@ -166,6 +166,16 @@ requirement went into the schema's `oneOf` instead. The generalisation the parag
 is still owed for the three index pairs; what 2.7 establishes is only that a new conditional requirement
 is a last resort rather than the default shape.
 
+**2.8 adds nothing to it either, and needed no argument to avoid doing so** — its one key sits inside
+`memory`, whose `slots.memory` requirement is already on the list and already covers it. It does add one
+more entry to the *other* running gap, the positive-integer refusals: `record_kilobytes` is the **fourth
+budget** the subset can only type as `number`, checked in `cli/doctor.mjs` and `cli/index.mjs` for the
+same reason as `lines`, `columns` and `kilobytes`. Counting the whole shape rather than just the budgets,
+`doctor`'s hand-check now covers **seven** keys — those four plus `librarian.staleness`'s three — which is
+the running number the paragraph above says to watch. **One keyword would not retire them**: `minimum`
+alone leaves `1.5` and `"8"` passing, and the subset cannot say `integer` either, so the gap is two
+keywords wide and all seven refusals stay hand-written until both are declared.
+
 _These figures are history rather than state: what 2.3 and 2.4 added cannot change, so they do not go
 stale the way the removed count did. The one forward-looking sentence is the growth rate, and it is
 dated by the version it names._
@@ -181,14 +191,39 @@ number governing both would make a bump in either mean a change in the other:
 
 | Schema | Manifest key | Current | What it governs |
 |---|---|---|---|
-| [`workspace.schema.json`](workspace.schema.json) | `portulan.spec` | **2.7** | the Workspace Definition — the manifest at a workspace root |
+| [`workspace.schema.json`](workspace.schema.json) | `portulan.spec` | **2.8** | the Workspace Definition — the manifest at a workspace root |
 | [`pack.schema.json`](pack.schema.json) | `portulan.pack` | **1.0** | the Pack Definition — the manifest at a pack root, added at milestone 6 |
 
 The rules below apply to each train independently. `portulan.spec` is `MAJOR.MINOR`, and the current
-Workspace Definition version is **2.7**. It did **not** move when the Pack Definition arrived, because
+Workspace Definition version is **2.8**. It did **not** move when the Pack Definition arrived, because
 `workspace.schema.json` was byte-identical across that change: `packs` already existed as an array of
 strings and was deliberately left that way, since tightening its items to the canonical `category/name`
 form would be a constraint an existing manifest could newly fail, which is a MAJOR.
+
+**2.8 is a MINOR on the plainest terms in this train's history: one optional key and nothing else.**
+`memory.store.budget.record_kilobytes` — the most bytes any single record may hold — joins the sibling
+`kilobytes` it does not replace. Nothing is removed, renamed, tightened or defaulted, so every 2.7
+manifest is a valid 2.8 manifest unchanged, and a workspace declaring neither key is checked on neither.
+The argument for the key is [`slots.md`](slots.md)'s and proposal `0025`'s: an aggregate over
+individually-authored records cannot see inside its units, which is the hole `columns` already closes
+for `lines`, one level down.
+
+**Measured across the bump rather than reasoned about:** `node cli/doctor.mjs .portulan examples` is
+GREEN, with `examples/` still on **2.4 and untouched** — the same compatibility demonstration 2.7 leaned
+on, and the reason `examples/` did *not* acquire the new key in the change that added it. A demo
+workspace four MINORs behind, still validating and still exercising the older sibling rail, is worth
+more as evidence than a second declaration of the newest key would be.
+
+**What this bump costs.** `KNOWN_SPECS` in [`../cli/index.mjs`](../cli/index.mjs) and
+[`../cli/librarian.mjs`](../cli/librarian.mjs) gains `"2.8"` **by addition** — both tools refuse a spec
+outside that set with exit 2, so a replacement would have dropped support for every 2.7 manifest those
+tools already write and read. The four constants that WRITE a spec version — `cli/init.mjs`,
+`cli/new.mjs` (twice) and `cli/vendor.mjs` — deliberately stay at `2.7`, on the rule stated beside them
+and demonstrated by the `GATE_POLICY_SPEC = "2.2"` sitting in the same file: a writer declares **the
+version its output needs**, not the newest one, and nothing those tools scaffold declares a memory
+budget at all. Bumping them would have made every scaffolded manifest claim a contract it does not use
+and narrowed it against adopter tooling pinned at 2.7, which is the opposite of what an additive MINOR
+is for.
 
 **2.7 is a MINOR, and it is one on the definition rather than by assertion.** It adds a fourth `kind`
 value and one optional key, `governed_by`, and it moves `slots` and `verify` out of the top-level

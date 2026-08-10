@@ -286,6 +286,11 @@ describe("a budget or a threshold that is not a positive integer", () => {
         // fixture that is red for two reasons is one a later reader cannot trust at a glance.
         ["memory.index.budget.lines", (m, v) => ((m.memory = { index: { path: "memory-index.md", budget: { lines: v } } }), m)],
         ["memory.store.budget.kilobytes", (m, v) => ((m.memory = { store: { budget: { kilobytes: v } } }), m)],
+        // The per-record cap of Workspace Definition 2.8 is the fourth budget the subset can only type
+        // as `number`, so it arrives with the same refusal as its three siblings rather than inheriting
+        // the hole they were repaired for — the sibling rule of `.portulan/proposals/0020`, applied to
+        // the check that exists because of it.
+        ["memory.store.budget.record_kilobytes", (m, v) => ((m.memory = { store: { budget: { record_kilobytes: v } } }), m)],
     ];
 
     for (const [name, set] of KEYS) {
@@ -325,7 +330,7 @@ describe("a budget or a threshold that is not a positive integer", () => {
 
 describe("the schema declares which Workspace Definition version it implements", () => {
     test("the shipped schema carries it in `$id`", () => {
-        assert.deepEqual(schemaVersion(SCHEMA), { major: 2, minor: 7 });
+        assert.deepEqual(schemaVersion(SCHEMA), { major: 2, minor: 8 });
     });
 
     test("a schema whose `$id` does not carry one is refused", () => {
@@ -1794,7 +1799,7 @@ describe("the packs a workspace declares", () => {
 
     test("the two version trains are read by different functions and do not collide", () => {
         assert.deepEqual(packSchemaVersion(PACK_SCHEMA), { major: 1, minor: 0 });
-        assert.deepEqual(schemaVersion(SCHEMA), { major: 2, minor: 7 });
+        assert.deepEqual(schemaVersion(SCHEMA), { major: 2, minor: 8 });
         // The workspace reader must not accept the pack `$id` as a workspace version.
         assert.throws(() => schemaVersion({ $id: "https://portulan.dev/spec/pack/1.0/pack.schema.json" }));
     });

@@ -82,7 +82,7 @@ export class LibrarianError extends Error {
 // no pass, which is the shape every workspace had yesterday. Same reasoning and same refusal as
 // ./index.mjs's KNOWN_SPECS: a tool that reads a manifest it does not understand reports about a
 // workspace it may have misread.
-const KNOWN_SPECS = new Set(["2.0", "2.1", "2.2", "2.3", "2.4", "2.5", "2.6", "2.7"]);
+const KNOWN_SPECS = new Set(["2.0", "2.1", "2.2", "2.3", "2.4", "2.5", "2.6", "2.7", "2.8"]);
 
 // The store's own signpost, not a record — the one name ./index.mjs and ./doctor.mjs both exclude.
 // Three tools now share this judgement and none of them shares the code, which is issue #74; this
@@ -424,7 +424,10 @@ export function passWorkspace(dir, { asOf, reviews } = {}) {
 
     // ---- the store, dated
     const storeDir = path.resolve(dir, memorySlot);
-    const counts = { records: 0, rules: 0, sealed: 0, bytes: 0, uncommitted: 0 };
+    // `largest` is the widest record seen, for the per-record rail's distance report. Seeded at zero
+    // bytes and no name so an EMPTY store reports honestly instead of throwing: a workspace with no
+    // records yet is valid, and `budgetHeadroom` renders 0 of N as 0%.
+    const counts = { records: 0, rules: 0, sealed: 0, bytes: 0, uncommitted: 0, largest: { file: null, bytes: 0 } };
     const records = [];
     const seals = [];
     const drafts = [];
@@ -455,7 +458,9 @@ export function passWorkspace(dir, { asOf, reviews } = {}) {
         const condition = retireWhen(source);
 
         counts.records += 1;
-        counts.bytes += Buffer.byteLength(source);
+        const recordBytes = Buffer.byteLength(source);
+        counts.bytes += recordBytes;
+        if (recordBytes > counts.largest.bytes) counts.largest = { file, bytes: recordBytes };
         if (touched === null) counts.uncommitted += 1;
         if (type === "rule") counts.rules += 1;
 
@@ -565,7 +570,16 @@ export function passWorkspace(dir, { asOf, reviews } = {}) {
         headroom: {
             store: budgetHeadroom(counts.bytes / 1024, workspace.memory?.store?.budget?.kilobytes),
             index: budgetHeadroom(renderedLines(index.expected), workspace.memory?.index?.budget?.lines),
+            // The per-record rail of Workspace Definition 2.8, measured at the record CLOSEST to it —
+            // the only record whose distance means anything, and the one a split would target. Without
+            // this the pass reported `Store: no budget declared` over a store that is fully railed, just
+            // railed per record: a weekly report going quietly silent about a live rail, which is the
+            // failure ../.portulan/memory/a-mandate-nothing-checks-is-already-broken.md names.
+            record: budgetHeadroom(counts.largest.bytes / 1024, workspace.memory?.store?.budget?.record_kilobytes),
         },
+        // Carried beside the figure so the report can say WHICH record is closest. A percentage with
+        // no name sends a reader to sort the store by hand to find out what to repair.
+        largest: counts.largest,
     };
 
     return {
@@ -1038,8 +1052,20 @@ export function renderRecord(results, { asOf }) {
         const c = r.consolidation;
         const head = (label, h, unit) =>
             h === null ? `${label}: no budget declared` : `${label}: ${h.actual} of ${h.budget} ${unit} (${h.percent}%)`;
+        // The per-record line names the record it measured. `head` alone would print a bare percentage,
+        // and the whole point of this rail is that a breach is LOCAL — a distance with no name would
+        // make the reader sort the store by hand to find out which file the number is about.
+        // An empty store declares the rail and has no record to name. Printing the seeded `null` as
+        // though it were a filename would be the report inventing a record — worse than the silence
+        // this line exists to end, and it is the fresh-adopter path: a scope is "empty until earned".
+        const widest =
+            c.headroom.record === null
+                ? head("Largest record", null)
+                : `${head("Largest record", c.headroom.record, "KB")}` +
+                  (c.largest.file === null ? " — no records yet" : ` — \`${c.largest.file}\``);
         out.push(
             `**Consolidation.** ${head("Store", c.headroom.store, "KB")}. ${head("Index", c.headroom.index, "lines")}. ` +
+                `${widest}. ` +
                 "Reported as a distance rather than a verdict: the `index` recipe already answers over or " +
                 "under at pull-request time, and what it cannot say is how close.",
             "",

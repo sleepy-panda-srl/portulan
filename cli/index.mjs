@@ -11,7 +11,7 @@
 // half was a sentence binding review — which ../.portulan/memory/a-mandate-nothing-checks-is-already-broken.md
 // says is another way of spelling broken.
 //
-// ## What is budgeted, and why two numbers rather than one
+// ## What is budgeted, and why four numbers rather than one
 //
 // The index is the layer that gets loaded to decide what else to load, so its size is what memory
 // costs on every recall — that is the `lines` budget, and with one line per record it is a rail on
@@ -25,7 +25,17 @@
 // shortened title is a generated file disagreeing with the store it was generated from, which is the
 // class of defect this whole file exists to make impossible.
 //
-// **None of the three is defaulted.** An undeclared budget is not checked. Defaulting would be this
+// A fourth, `record_kilobytes`, closes the SAME hole one level down, and arrived at Workspace
+// Definition 2.8 with proposal `0025` — the store's `columns`. An aggregate over individually-authored
+// records cannot see inside them: one enormous record absorbs what the store budget counts, exactly as
+// one enormous line absorbs what the line budget counts. It also fixes where the rail lands. An
+// aggregate is a COMMONS — the record that grew to 15.7 KB never felt the total at write time, and
+// three unrelated changes in two weeks hit it instead, one of them with 551 bytes of headroom. A
+// per-record cap makes the breach LOCAL: record X over its cap never blocks writer Y, and it fires on
+// the author growing the record, at the moment of growth. This workspace declares it in place of
+// `kilobytes`; both stay legal, and `../examples/workspace.json` is the tree's live `kilobytes` case.
+//
+// **None of the four is defaulted.** An undeclared budget is not checked. Defaulting would be this
 // project setting policy for every workspace that ever adopts the spec, in a key nobody typed —
 // the rule spec 2.2 already applies to the gate policy's `floor` object.
 //
@@ -79,7 +89,7 @@ export class IndexError extends Error {
 // KNOWN_GATE_POLICY_SPECS — which tracks the GATE-POLICY train, not this one — and the same refusal
 // for anything outside the set: a tool that reads a manifest it
 // does not understand reports about a workspace it may have misread.
-const KNOWN_SPECS = new Set(["2.0", "2.1", "2.2", "2.3", "2.4", "2.5", "2.6", "2.7"]);
+const KNOWN_SPECS = new Set(["2.0", "2.1", "2.2", "2.3", "2.4", "2.5", "2.6", "2.7", "2.8"]);
 
 // The store's own signpost, not a record. `doctor` excludes exactly this name from its walk, so the
 // two tools agree on what the store contains; disagreeing would put a record in the index that the
@@ -209,7 +219,7 @@ const normalize = (s) => s.toLowerCase().replace(/[^a-z0-9]+/g, "");
 /**
  * Read a workspace's memory store.
  *
- * Returns `{ records: [{ file, title, type, heading }], bytes }`. Throws `IndexError` rather than
+ * Returns `{ records: [{ file, title, type, heading, bytes }], bytes }`. Throws `IndexError` rather than
  * returning an empty store for anything it cannot read: an empty list renders an empty index, and an
  * empty index compares equal to an empty committed one and passes — the enumeration fail-open this
  * repository has now fixed four times (../.portulan/memory/verify-preconditions-fail-closed.md).
@@ -259,10 +269,15 @@ export function readStore(dir, workspace) {
             // silently, which is precisely the shape a generated file must never have.
             throw new IndexError(`cannot read the record ${path.join(slot, file)} — ${cause.code ?? cause.message}`);
         }
-        bytes += Buffer.byteLength(source);
+        const recordBytes = Buffer.byteLength(source);
+        bytes += recordBytes;
         records.push({
             file,
             title: titleOf(file),
+            // The per-record measure the `record_kilobytes` rail is denominated in, taken here rather
+            // than re-read later so the aggregate and the per-unit rail cannot disagree about what
+            // they measured — the same reason the store total uses the figure `doctor` already prints.
+            bytes: recordBytes,
             // `untyped` rather than a failure: `doctor` already reports a record with no `**type:**`
             // line, and legislating one field in two tools with two severities is how two checkers
             // start disagreeing about one store.
@@ -1071,7 +1086,7 @@ function budgetNumber(value, where) {
 }
 
 /**
- * The three budget checks, each skipped when the workspace declares no number for it.
+ * The four budget checks, each skipped when the workspace declares no number for it.
  *
  * **Returns how many were actually JUDGED**, which is the only thing that licenses the run summary's
  * `within budget` clause. Budgets are optional in the schema and none is defaulted (see the header),
@@ -1091,6 +1106,7 @@ function budgetFindings(memory, store, expected, fail) {
     const lines = budgetNumber(memory.index?.budget?.lines, "memory.index.budget.lines");
     const columns = budgetNumber(memory.index?.budget?.columns, "memory.index.budget.columns");
     const kilobytes = budgetNumber(memory.store?.budget?.kilobytes, "memory.store.budget.kilobytes");
+    const recordKilobytes = budgetNumber(memory.store?.budget?.record_kilobytes, "memory.store.budget.record_kilobytes");
 
     let judged = 0;
 
@@ -1102,8 +1118,10 @@ function budgetFindings(memory, store, expected, fail) {
                 "memory",
                 "budget",
                 `the index is ${count} lines against a budget of ${lines} — over by ${count - lines}. ` +
-                    "Consolidate the store (merge, compress, retire); raising the budget in the change that broke it " +
-                    "is the one repair core/operating/memory.md rules out",
+                    "Consolidate the store: on THIS axis the moves are MERGE two records that are one fact, or RETIRE " +
+                    "one whose condition has fired. Compressing a record does not remove its line, and SPLITTING one " +
+                    "adds a line — it spends this budget to buy room under `record_kilobytes`. Raising the budget in " +
+                    "the change that broke it is the one repair core/operating/memory.md rules out",
             );
         }
     }
@@ -1140,6 +1158,34 @@ function budgetFindings(memory, store, expected, fail) {
                 `the store is ${kb.toFixed(1)} KB (${store.bytes} bytes) against a budget of ${kilobytes} KB (${kilobytes * KB} bytes). ` +
                     "This is the axis the index cannot see: record count can hold still while the store grows",
             );
+        }
+    }
+
+    // The per-record cap, added at Workspace Definition 2.8. This is to `kilobytes` what `columns` is
+    // to `lines`: an aggregate cannot see inside its units, so one enormous record absorbs what a store
+    // budget counts exactly as one enormous line absorbs what a line budget counts.
+    //
+    // **Every over-budget record is reported, not just the first.** `columns` breaks after one because
+    // the repair there is the same trivial rename every time and the second instance teaches nothing.
+    // Here each breach is a separate editorial decision — split this record, compress that one, demote
+    // the other's narrative — so stopping at the first would send the author round the loop once per
+    // record, each time believing they were done. The count of budgets JUDGED is still one: `judged`
+    // counts checks this function ran, never findings it raised (see the doc comment).
+    if (recordKilobytes) {
+        judged += 1;
+        const cap = recordKilobytes * KB;
+        for (const record of store.records) {
+            if (record.bytes > cap) {
+                fail(
+                    "memory",
+                    "budget",
+                    `the record ${record.file} is ${(record.bytes / KB).toFixed(1)} KB (${record.bytes} bytes) against a per-record cap of ` +
+                        `${recordKilobytes} KB (${cap} bytes) — over by ${record.bytes - cap}. ` +
+                        "Repair it where it is: SPLIT it if it holds more than one fact (which spends `memory.index.budget.lines`, " +
+                        "the axis with the headroom), COMPRESS it, or DEMOTE its narrative to the provenance layer. " +
+                        "Raising the cap in the change that broke it is the one repair core/operating/memory.md rules out",
+                );
+            }
         }
     }
 
