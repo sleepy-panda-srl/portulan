@@ -20,7 +20,12 @@
 
 set -uo pipefail
 
-for need in git node; do
+# EVERY external command this recipe runs is guarded, not just the interesting ones. `dirname`, `mktemp`
+# and `rm` are as load-bearing as `node` here: without them the script dies with a shell error — 127 —
+# which the CI loop reports as a plain failure, so a "could not run" would arrive dressed as "ran and
+# failed". That is the inversion ../memory/verify-preconditions-fail-closed.md exists about, and every
+# other recipe in this directory guards its whole list for the same reason.
+for need in git node dirname mktemp rm; do
     command -v "$need" >/dev/null 2>&1 || {
         printf 'verify: %s not found — this recipe needs it; see .portulan/verify/README.md\n' "$need" >&2
         exit 2
@@ -57,7 +62,7 @@ if ! git ls-files --cached --others --exclude-standard -z >"$manifest"; then
 fi
 
 if [ ! -s "$manifest" ]; then
-    printf 'verify: the tracked set is empty — refusing to report green over nothing\n' >&2
+    printf 'verify: the file list is empty — refusing to report green over nothing\n' >&2
     exit 2
 fi
 
