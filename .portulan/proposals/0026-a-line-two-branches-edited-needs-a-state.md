@@ -21,7 +21,7 @@ Row 7's Status cell in `docs/plan.md`. Two commits, thirty-nine minutes apart:
   Its `s5:` clause reads **verify composition — one carrier, four readers, `tools/github` composed;
   D6 done**, and its `Left:` list ends **(b) parity, interview, index rail, four of six demos**.
 - **`47bc92b`, 19:40:22+03:00** — merged from [#195](https://github.com/sleepy-panda-works/portulan/pull/195).
-  Its `s5:` clause reads **compose pins `packs` to plugin.json `skills`**, D6 is gone, and its `Left:`
+  Its `s5:` clause reads **compose pins `packs` to `plugin.json`'s `skills`**, D6 is gone, and its `Left:`
   list reads **legibility, verify composition, (b) parity's adopter half, interview, index rail, five of
   six demos**.
 
@@ -156,7 +156,11 @@ and that is the honest cost:
 - One acknowledgement per contended line per pull request, and on the busiest file that is **not** a
   once-a-month event.
 - CI must fetch `main` rather than the branch alone, and must have a merge-base to reason from.
-- A new heading in the pull-request body, which is a vocabulary this repository has to teach itself.
+- **No new vocabulary** — and this line said the opposite until review. The acknowledgement is a review
+  thread cleared by conversation resolution, which is the control `main` already requires and every
+  session already uses; the cost is the reading and replying, not a convention to teach. _(It read "a new
+  heading in the pull-request body", left over from the draft Q3 overturned — **the third time this
+  document has left a neighbour stale while correcting something**, which is what it is about.)_
 - **A false sense of coverage is the real risk**, and it is why the *does not claim* paragraph above is
   in the proposal rather than in the implementation: a green here means *you were told*, never *you
   carried it forward*.
