@@ -2186,6 +2186,16 @@ _The seam applies here too: no client-identifying references._
   · No supervisor checkpoint: a scheduled pass makes no decision for one to grade.
   · Seam scan clean by construction — this pass composes no new prose at run time, so its
   diff carries nothing the scan had not already passed.
+
+- 2026-08-10 · Off the milestone row · **The clause misquoted the ruling it ratified.**
+  [#217](https://github.com/sleepy-panda-works/portulan/issues/217) answers #196's residual question in **one clause, in one carrier**: [`a-superlative-is-a-count-nobody-ran.md`](../.portulan/memory/a-superlative-is-a-count-nobody-ran.md) now says to cite an incident as
+  *the case whose repair taught the class, never as the carrier that names it*, plus one sentence extending its own *Nothing checks it* bullet. [`0020`](../.portulan/proposals/0020-a-fix-is-not-done-at-the-site-it-was-found.md) is **deliberately untouched, recorded as decided** — a grep finds no other living
+  carrier, and a second would be `0020`'s defect on `0020`'s subject. **The first draft attributed to the maintainer a sentence he never wrote:** *"worse than the vague superlative it replaced"* is **this session's aphorism** — his 2026-08-09 comment does not contain
+  it and no comment of his ever has. The change was about to seal a citation asserting the wrong carrier into living doctrine, **inside the clause forbidding that**: the fourth recurrence of this arc's class inside its own repair. His actual words are now quoted
+  verbatim and checked against the API; #211's handoff, which bore the misattribution, takes **an appended dated bracket, original words verbatim**. *"Ratified by his merge of #217"* also went — issues are not merged. **The instrument had a fourth blindness** —
+  `#{1,6}` ate a line-leading `#91`, so **#211's published "46 citations" undercounted its own tree; it is 47**. Corrected, this tree reads **56 citations: 22 living incident (13 ruled + 9 in `0020`), 0 wrong, 32 records** under the cutoff, including the
+  `0010`/`0011` pair never ruled on. **The demonstration was the supervisor's, not mine** — it classified every living site under both sentences before reading the ruling; the delta is exactly the three pre-repair sites. Ten recipes, suite 1240. Seam scan clean,
+  explicit list. · Fidelity: session-open **A-W-A (8)** + pre-commit **A-W-A (4)**, both fresh-context Fable 5, all folded. **Ships no rail, now measured** — the candidate rail flags this record twice, for quoting the wrong forms. Handoff: [`2026-08-10`](../.portulan/handoffs/2026-08-10-the-clause-misquoted-the-ruling-it-ratified.md).
   Handoff: [`2026-08-10`](../.portulan/handoffs/2026-08-10-librarian-pass.md).
 
 - 2026-08-10 · Off the milestone row · **The flip back left its carriers standing.**
