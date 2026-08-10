@@ -16,7 +16,7 @@ Three sites, all in `cli/`, all repaired in one commit:
 | Site | Said |
 |---|---|
 | `cli/collisions.test.mjs:14` | "the class [#91] **names**" |
-| `cli/control-chars.mjs:222` | "the class this repository **files as** #91" |
+| `cli/control-chars.mjs:223` | "the class this repository **files as** #91" |
 | `cli/index.mjs:1088` | "**defect class #91**: a fix arriving without its sibling" |
 
 One stroke, because this is `0020`'s own rule applied to citations **of `0020`** — a place it was always
@@ -45,7 +45,7 @@ Also removed: a raw-text pre-filter, which would have reintroduced blindness 1 f
 `issue\n// 91` defeats `/issue\s+91/` on the raw string for precisely the reason the instrument exists.
 
 **The blindness, reproduced on demand.** Of three occurrences of *"a fix arriving without its sibling"*,
-**two wrap** (`control-chars.mjs:221→222`, `index.test.mjs:704→705`); a line grep finds **one**,
+**two wrap** (`cli/control-chars.mjs:222→223`, `cli/index.test.mjs:704→705`); a line grep finds **one**,
 reflowed finds **three**. That is the pair the 2026-08-09 sweep missed, made repeatable.
 
 **Census: 46 citations in 18 files — 3 wrong, 22 citing the incident, 21 records.** After: 43 and 0.
@@ -60,7 +60,7 @@ reflowed finds **three**. That is the pair the 2026-08-09 sweep missed, made rep
 
 ## The lane, and the checkpoint that changed the diff
 
-The brief guessed triage. **The gate map puts triage at one file; this touches three**, so it is
+The brief guessed triage. **The gate map puts triage at one file; the code change touches three**, so it is
 full-lane and the pre-commit checkpoint was owed *before* the commit. It ran fresh, re-derived the
 census independently, agreed on all three sites — and returned **APPROVE-WITH-ADJUSTMENTS** on something
 worth having:
@@ -110,11 +110,38 @@ One survivor on purpose: `` `AGENTS.md` `` in the PR body's table sits inside a 
 falsify the quote. **That distinction is the same one this whole change turns on** — what a sentence
 *does* with a reference decides whether the reference is wrong, not the reference's shape.
 
+## Rounds 3 and 4, and the rebase that invalidated the fix's own citations
+
+**Round 3:** two grammar notes taken (`neither … nor` agrees with the nearer subject, so *were*), swept
+to all three carriers including the reply already posted on #196. One note **refused with the render** —
+it claimed an inline code span split across a newline shows as plain text; CommonMark turns that line
+ending into a space, and `gh api markdown` on the exact two lines returns one joined `<code>` element.
+Measured through the renderer that serves the file, not reasoned from the source.
+
+**Round 4** raised the class a third time and was right: two carriers said *"this touches three"* where
+the pull request touches six. Triaged to #213 rather than taken — rule 4's sibling exemption *buys
+rounds and does not remove the gate*, and an extension past two is the maintainer's to grant. **He
+granted it**, so both carriers now read *the **code change** touches three*, and #213 closes with it.
+
+**Then the rebase onto `43f1e54` proved the point again, at this change's own expense.** #206 added one
+line to `cli/control-chars.mjs`'s header, which moved the repaired site from **222 to 223** — so the
+handoff's own table and its wrap measurement both became **checkable citations that fail the check**,
+silently, without anyone editing them. Re-measured on the rebased tree and corrected to `:223` and
+`222→223`.
+
+**And the round-2 sweep had not covered them.** Its instrument extracted `` `path(:line)` ``, which the
+arrow form `` `control-chars.mjs:221→222` `` does not match — so the two wrap citations were invisible
+to the very sweep written to catch this class, one round earlier. **Three instruments in one change,
+each blind to something the previous one was built to see.** The durable half: *a line number is a claim
+about a tree, and a rebase can falsify it without touching the sentence.* Re-measure line citations
+after every rebase, and never trust a sweep's shape to cover a notation it was not shown.
+
 ## Verification, and what is undemonstrated
 
 **Ten recipes green** — the nine declared, each run and read, plus composed `tools/github:actions-pinned`
-(4/4 pinned). Suite **1187 pass / 0 fail**. Seam scan clean across diff, branch, commit message and PR
-body, over 32 genuinely private terms after excluding capitalised tokens the public tree already carries.
+(4/4 pinned). Suite **1240 pass / 0 fail** on the rebased tree (#206 brought it from 1187). Seam scan
+clean across diff, branch and commit message, run against **the explicit term list in the private
+context's *The seam scan* section** — not a harvest of capitalised nouns, which yields false positives.
 
 **Undemonstrated, and it is the important half.** This ships **no rail**. Nothing in the repository can
 fail on a citation asserting #91 names the class, so the next sweep can reintroduce this exact defect
