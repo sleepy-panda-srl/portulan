@@ -406,6 +406,26 @@ export function locateTerms({ flag, env = {}, workspaceDir } = {}) {
     }
 }
 
+/**
+ * `null` when the path is there, `"ENOENT"` when it is genuinely absent, and the errno otherwise. The
+ * one carrier of *only ENOENT means absent* for path probes in this file — `existsSync` collapses all
+ * three into `false`, which is how a tool tells a reader the wrong thing about their disk with complete
+ * confidence.
+ *
+ * `statSync` rather than `accessSync(R_OK)`, and the difference is the question being asked: both of
+ * this file's probes ask *is something already here*, not *may I read it*. A report at mode `0000` is a
+ * file that exists and must not be written over; an unsearchable parent directory is a place this tool
+ * cannot see into, and that is the case worth a different sentence.
+ */
+function whyAbsent(at) {
+    try {
+        fs.statSync(at);
+        return null;
+    } catch (error) {
+        return error.code ?? "unreadable";
+    }
+}
+
 function parseTerms(text) {
     return text
         .split(/\r?\n/)
@@ -580,15 +600,32 @@ function draft(rest, flags, { say, warn, now }) {
     }
 
     const workspaceDir = path.resolve(flags.into ?? ".portulan");
-    if (!fs.existsSync(path.join(workspaceDir, "workspace.json"))) {
+    // ONLY `ENOENT` MEANS ABSENT, here as at the term list. Both of these were `existsSync`, which
+    // answers false for `EACCES` — so an unreadable workspace was reported as *no workspace.json* and
+    // an unreadable report as *no report*, each sending the reader to the wrong fix. Found by review on
+    // this pull request, in the change whose own comments name the class for the seam scan two hundred
+    // lines up: a rule enforced at one site of an operation and not its neighbour is `0020`'s shape,
+    // committed inside the change that quotes `0020`.
+    const manifest = path.join(workspaceDir, "workspace.json");
+    const absent = whyAbsent(manifest);
+    if (absent === "ENOENT") {
         warn(`feedback: ${workspaceDir} does not look like a workspace — no workspace.json. Point --into at one.`);
+        return 2;
+    }
+    if (absent) {
+        warn(`feedback: ${manifest} could not be read — ${absent}. That is not the same as absent, so this refuses rather than drafting elsewhere.`);
         return 2;
     }
 
     const created = now().toISOString().slice(0, 10);
     const at = path.join(workspaceDir, "feedback", `${created}-${name}.md`);
-    if (fs.existsSync(at)) {
+    const free = whyAbsent(at);
+    if (!free) {
         warn(`feedback: ${at} already exists. A report is a file you edit — open that one, or pick another title.`);
+        return 2;
+    }
+    if (free !== "ENOENT") {
+        warn(`feedback: ${at} could not be read — ${free}. Refusing to write over a file this cannot see.`);
         return 2;
     }
 
@@ -715,7 +752,14 @@ function report(verb, rest, flags, { say, warn, now, env, exec, facts }) {
     const auth = exec("gh", ["auth", "status"]);
     if (auth.error || auth.status === null) {
         warn("feedback: `gh` was not found. This sender files under your own GitHub identity and operates no service of its own.");
-        warn(`feedback: install it, or file this by hand: gh issue create --repo ${built.repo} --title '${built.title}' --body-file ${at}`);
+        // NOT `--body-file <the report>`. That was the first draft's suggestion and it was wrong in the
+        // one way that matters here: the report carries frontmatter, this tool's guidance comments and
+        // the raw sections, none of which is the payload — so following it would have published bytes
+        // nobody previewed, out of the verb whose whole subject is that they cannot be. Caught by
+        // review on this pull request. The two honest routes are the tool and the form.
+        warn("feedback: install it and run this again, or paste the body printed above into the form:");
+        warn(`feedback:   https://github.com/${built.repo}/issues/new/choose  —  title: ${built.title}`);
+        warn(`feedback: the report stays at ${at}. Its payload is the bytes between the markers above, and nothing else in it is sent.`);
         return 2;
     }
     if (auth.status !== 0) {
