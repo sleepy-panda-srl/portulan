@@ -171,8 +171,8 @@ many as it is given, and named roots **replace** the derived one rather than bei
 that is what lets *"this pack resolved from the feed"* mean something a copy lying in the local tree
 cannot satisfy. Where a pack resolves, its gate-policy fragments reach the compiled policy,
 add-restriction-only. Nothing here is pinned — a `packs` entry is a name, and the version is whatever
-the root holds. Four things do not follow. **The first and the last have since landed and two are still
-milestone 7's, owed rather than broken** — the split is stated because a bare count beside a mechanism is the class
+the root holds. Four things do not follow. **The first and the last have since been LIFTED, and two still
+stand — owed rather than broken** — the split is stated because a bare count beside a mechanism is the class
 [#133](https://github.com/sleepy-panda-works/portulan/issues/133) names, and "four" alone goes stale the
 moment one of them ships:
 
