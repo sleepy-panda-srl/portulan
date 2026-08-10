@@ -196,7 +196,7 @@
               "$ref": "#/$defs/filePath"
             },
             "budget": {
-              "description": "Optional. A rail, not an aim: on breach the remedy is consolidation — merge, compress, split, retire — and never a raise in the same change (core/operating/memory.md). Of those four, `split` is the one that SPENDS this budget rather than repairing it: splitting a record adds a line here to buy room under `store.budget.record_kilobytes`, which is the trade the two axes exist to make visible. Nothing here is defaulted; an undeclared number is not checked, because a default would be this specification setting a policy for every workspace that adopts it, in a key nobody typed.",
+              "description": "Optional. A rail, not an aim: on breach the remedy is consolidation — merge, compress, split, retire — and never a raise in the same change (core/operating/memory.md). Of those four, `split` is the one that SPENDS this budget rather than repairing it: splitting a record adds a line here to buy room under `memory.store.budget.record_kilobytes`, which is the trade the two axes exist to make visible. Nothing here is defaulted; an undeclared number is not checked, because a default would be this specification setting a policy for every workspace that adopts it, in a key nobody typed.",
               "type": "object",
               "additionalProperties": false,
               "properties": {
@@ -227,7 +227,7 @@
                   "type": "number"
                 },
                 "record_kilobytes": {
-                  "description": "Optional, added in 2.8. The most kilobytes (1024 bytes) any ONE record may hold. This is to `kilobytes` what `index.budget.columns` is to `index.budget.lines`: an aggregate cannot see inside its units, so one enormous record absorbs what a store budget counts, exactly as one enormous line absorbs what a line budget counts. Breaches are LOCAL — record X over its cap never blocks writer Y — and the repair menu is live rather than barred: SPLIT the record where it holds more than one fact (which spends the count axis, `index.budget.lines`), COMPRESS it, or DEMOTE its narrative to the provenance layer. Never a raise in the change that breached it (core/operating/memory.md). A positive integer, on the same terms as `lines`.",
+                  "description": "Optional, added in 2.8. The most kilobytes (1024 bytes) any ONE record may hold. This is to `kilobytes` what `memory.index.budget.columns` is to `memory.index.budget.lines`: an aggregate cannot see inside its units, so one enormous record absorbs what a store budget counts, exactly as one enormous line absorbs what a line budget counts. Breaches are LOCAL — record X over its cap never blocks writer Y — and the repair menu is live rather than barred: SPLIT the record where it holds more than one fact (which spends the count axis, `memory.index.budget.lines`), COMPRESS it, or DEMOTE its narrative to the provenance layer. Never a raise in the change that breached it (core/operating/memory.md). A positive integer, on the same terms as `lines`.",
                   "type": "number"
                 }
               }
