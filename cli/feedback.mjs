@@ -412,14 +412,22 @@ export function locateTerms({ flag, env = {}, workspaceDir } = {}) {
  * three into `false`, which is how a tool tells a reader the wrong thing about their disk with complete
  * confidence.
  *
- * `statSync` rather than `accessSync(R_OK)`, and the difference is the question being asked: both of
- * this file's probes ask *is something already here*, not *may I read it*. A report at mode `0000` is a
- * file that exists and must not be written over; an unsearchable parent directory is a place this tool
- * cannot see into, and that is the case worth a different sentence.
+ * `lstatSync` rather than `accessSync(R_OK)` or `statSync`, and each difference is a question being
+ * asked. Both of this file's probes ask *is something already here*, not *may I read it* — a report at
+ * mode `0000` is a file that exists and must not be written over, while an unsearchable parent is a
+ * place this tool cannot see into, and that deserves a different sentence.
+ *
+ * **And `lstat`, because `stat` follows symlinks.** A dangling symlink at the report path makes `stat`
+ * throw `ENOENT`, so the probe would answer *absent*, and the write that followed would resolve the link
+ * and **land outside the workspace** — which is how a scaffold leaves the tree it was meant to stay
+ * inside, the rule `cli/new.mjs` already refuses on. `lstat` describes the link itself, so a symlink of
+ * any kind is *something is already here*. Found by review on this pull request, as a sibling of the
+ * `existsSync` repair one round earlier: the same probe, corrected twice, because the first correction
+ * answered only the errno half of the question.
  */
 function whyAbsent(at) {
     try {
-        fs.statSync(at);
+        fs.lstatSync(at);
         return null;
     } catch (error) {
         return error.code ?? "unreadable";
@@ -681,7 +689,32 @@ function report(verb, rest, flags, { say, warn, now, env, exec, facts }) {
         return 2;
     }
 
+    // THE WORKSPACE IS DERIVED FROM THE REPORT'S PATH, AND A WRONG DERIVATION IS A SEAM FAIL-OPEN.
+    //
+    // `<workspace>/feedback/<report>` is where `draft` writes, so two levels up is the workspace. Move
+    // the report anywhere else and the derivation still produces *a* directory — one with no
+    // `seam-terms.txt` in it — and the scan then says **nothing was scanned** while a term list sits in
+    // the workspace this report actually belongs to. A green that reports its own coverage is only
+    // honest if the coverage sentence is about the right place, and this is the one path where being
+    // wrong about it sends unscanned bytes into a public tracker.
+    //
+    // So the layout is checked rather than assumed, and a report outside it is could-not-run. Found by
+    // review on this pull request; it is the seam's own fail-closed rule applied to the step that
+    // decides *where the seam lives*, which the first cut assumed instead of establishing.
     const workspaceDir = path.dirname(path.dirname(at));
+    if (path.basename(path.dirname(at)) !== "feedback") {
+        warn(`feedback: ${at} is not inside a workspace's \`feedback/\` directory.`);
+        warn("feedback: this tool locates the workspace — and therefore the seam term list — from the report's path,");
+        warn("feedback: so a report kept elsewhere would be scanned against the wrong directory, or against nothing.");
+        return 2;
+    }
+    const governing = whyAbsent(path.join(workspaceDir, "workspace.json"));
+    if (governing) {
+        warn(`feedback: ${path.join(workspaceDir, "workspace.json")} — ${governing}.`);
+        warn("feedback: the report's parent workspace has to be there before this can say which seam applies.");
+        return 2;
+    }
+
     const context = {
         spec: readSpec(workspaceDir),
         host: flags.host,
