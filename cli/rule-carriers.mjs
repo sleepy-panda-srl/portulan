@@ -93,10 +93,35 @@ export function parseRegistry(source, { where = "registry" } = {}) {
                 if (typeof entry !== "string" || entry.trim() === "") {
                     throw new RegistryError(`${at} (\`${id}\`) has an empty entry in \`${key}\``);
                 }
+                // Untrimmed is refused rather than silently trimmed, matching `cli/compile.mjs`, which
+                // does the same for a rule's action and a required context. It matters most for `scope`
+                // and `exclude`, which are compared with `startsWith`: a trailing space makes a prefix
+                // that can never match any path, so the entry silently covers nothing and the registry
+                // still reports green. Refusing is predictable; repairing quietly is not.
+                if (entry !== entry.trim()) {
+                    throw new RegistryError(
+                        `${at} (\`${id}\`) has an untrimmed entry in \`${key}\`: ${JSON.stringify(entry)} — ` +
+                            "leading or trailing whitespace silently changes what it matches",
+                    );
+                }
             }
         }
-        if (exclude !== undefined && (!Array.isArray(exclude) || exclude.some((e) => typeof e !== "string" || e.trim() === ""))) {
-            throw new RegistryError(`${at} (\`${id}\`) has an unusable \`exclude\``);
+        if (exclude !== undefined) {
+            if (!Array.isArray(exclude) || exclude.some((e) => typeof e !== "string" || e.trim() === "")) {
+                throw new RegistryError(`${at} (\`${id}\`) has an unusable \`exclude\``);
+            }
+            // The rule-level `exclude` needs the untrimmed check too. It did not have one: the check was
+            // added to `tells`, `cites`, `scope` and the top-level `exclude` and missed this fourth site
+            // — one rule, four enforcement points, repaired at three. The suite caught it, which is the
+            // only reason it is not shipping as the defect this whole change is about.
+            for (const entry of exclude) {
+                if (entry !== entry.trim()) {
+                    throw new RegistryError(
+                        `${at} (\`${id}\`) has an untrimmed entry in \`exclude\`: ${JSON.stringify(entry)} — ` +
+                            "leading or trailing whitespace silently changes what it matches",
+                    );
+                }
+            }
         }
         return {
             id,
@@ -121,6 +146,12 @@ export function parseRegistry(source, { where = "registry" } = {}) {
         for (const entry of raw.exclude) {
             if (typeof entry !== "string" || entry.trim() === "") {
                 throw new RegistryError(`${where} has an unusable entry in \`exclude\`: ${JSON.stringify(entry)}`);
+            }
+            if (entry !== entry.trim()) {
+                throw new RegistryError(
+                    `${where} has an untrimmed entry in \`exclude\`: ${JSON.stringify(entry)} — ` +
+                        "leading or trailing whitespace silently changes what it matches",
+                );
             }
         }
     }
