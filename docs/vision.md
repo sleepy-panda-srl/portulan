@@ -17,8 +17,9 @@ from the accumulated observations of real voyages: hard-won local knowledge, clo
 more valuable with every trip. That is the product thesis in one object, in Sleepy Panda's own
 language: **the engine is the chartmaking method; your workspace is your portulan.** (Decided
 final 24 Jul 2026; **portulan.dev registered by Sleepy Panda SRL the same day.** A knockout
-trademark sweep in classes 9/42 cleared before the repository went public on 27 Jul 2026;
-counsel's formal clearance opinion is still owed and precedes any brand spend.)
+trademark sweep in classes 9/42 cleared before the repository's public window (27 Jul–3 Aug 2026;
+private again since, by the maintainer's ruling); counsel's formal clearance opinion is still owed
+and precedes any brand spend.)
 
 One sentence: **cockpit products sell the dashboard; Portulan sells the doctrine.**
 
@@ -51,8 +52,11 @@ One sentence: **cockpit products sell the dashboard; Portulan sells the doctrine
 
 ## Product identity
 
-- **Open-core.** Public engine + spec + CLI + demo workspace at `github.com/sleepy-panda-works/portulan`
-  (the repo doubles as the public Claude Code plugin marketplace). Commercial value in **private
+- **Open-core.** Engine + spec + CLI + demo workspace at `github.com/sleepy-panda-works/portulan` —
+  open-core **by design; the repository is currently private** (public 27 Jul–3 Aug 2026, flipped
+  back while the build hardens; it doubles as the Claude Code plugin marketplace, so installing
+  currently requires access). **Re-opening is a deliberate release decision, and milestone 10's
+  "a stranger can discover, evaluate, install" presupposes it.** Commercial value in **private
   feeds**: customer workspaces and premium packs delivered as private-marketplace plugins, plus
   support/onboarding.
 - **Delivery tiers:** (1) Claude Code plugin — primary; (2) `npx` CLI: `init` (interview + codebase
@@ -69,8 +73,8 @@ One sentence: **cockpit products sell the dashboard; Portulan sells the doctrine
   backends are per-host with an honest degradation report. The **platform floor** (branch
   protection, required checks, CODEOWNERS, PR-as-gate) is the universal gate no model can bypass.
 - **Reference workspaces:** a private pilot workspace at a design-partner company (local-only,
-  never part of this repository), a fictional demo workspace (public, in `examples/`), and the
-  Sleepy Panda portfolio workspace (all Sleepy Panda products, via the private
+  never part of this repository), a fictional demo workspace (in `examples/`, public whenever the
+  repository is), and the Sleepy Panda portfolio workspace (all Sleepy Panda products, via the private
   `portulan-internal` feed).
 
 ## Non-goals (as binding as the goals)
