@@ -33,7 +33,10 @@
 #                   the finding names it: too many lines wants merge or retire, one record over
 #                   `record_kilobytes` wants split, compress or demote. Splitting to repair a
 #                   per-record breach SPENDS a line of the count budget — the two rails trade
-#                   against each other on purpose, so the trade is visible in the diff
+#                   against each other on purpose, so the trade is visible in the diff.
+#                   `columns` is the exception and consolidation is the WRONG tool for it: one
+#                   over-long index line is repaired by renaming the record, and nothing is
+#                   merged, split or retired
 #   heading      →  a record's H1 disagrees with its filename: edit the record
 #   date         →  a handoff's filename does not lead with YYYY-MM-DD: rename the file
 # A single "index check failed" would send an author to regenerate a file that is already correct
