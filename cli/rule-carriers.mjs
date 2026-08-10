@@ -39,7 +39,7 @@
 
 import fs from "node:fs";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
+import { pathToFileURL } from "node:url";
 
 /** Thrown for every exit-2 condition. Carries the sentence the wrapper prints. */
 export class RegistryError extends Error {}
@@ -222,10 +222,17 @@ const lower = normalise;
 export function scan({ registry, files, read }) {
     const findings = [];
     const unreadable = [];
-    const tellSeen = new Map(); // `${ruleId}\u0000${tell}` -> boolean, for the dead-tell audit
+    // Nested maps, NOT a joined string key. The first version joined the rule id and the tell with a
+    // separator and split on it to report — which a tell CONTAINING that separator corrupts, and a JSON
+    // registry can carry one as a legal escape that `control-chars` never sees, because it is an escape
+    // in the file rather than a raw byte. The repair is not to validate the separator out; it is to stop
+    // having one. `evolution.md` ranks removing what would otherwise need enforcing above enforcing it.
+    const tellSeen = new Map(); // rule id -> Map(tell -> seen)
 
     for (const rule of registry.rules) {
-        for (const tell of rule.tells) tellSeen.set(`${rule.id}\u0000${tell}`, false);
+        const seen = new Map();
+        for (const tell of rule.tells) seen.set(tell, false);
+        tellSeen.set(rule.id, seen);
     }
 
     for (const file of files) {
@@ -243,7 +250,7 @@ export function scan({ registry, files, read }) {
             const isCarrier = file === rule.carrier;
 
             const hits = rule.tells.filter((t) => hay.includes(lower(t)));
-            for (const t of hits) tellSeen.set(`${rule.id}\u0000${t}`, true);
+            for (const t of hits) tellSeen.get(rule.id).set(t, true);
 
             if (isCarrier || hits.length === 0) continue;
             if (!inDomain(file, rule, registry.exclude)) continue;
@@ -256,10 +263,10 @@ export function scan({ registry, files, read }) {
     }
 
     const deadTells = [];
-    for (const [key, found] of tellSeen) {
-        if (found) continue;
-        const [ruleId, tell] = key.split("\u0000");
-        deadTells.push({ rule: ruleId, tell });
+    for (const [ruleId, tells] of tellSeen) {
+        for (const [tell, found] of tells) {
+            if (!found) deadTells.push({ rule: ruleId, tell });
+        }
     }
 
     return { findings, deadTells, unreadable };
@@ -368,11 +375,33 @@ export function run(argv = [], { stdout = process.stdout, stderr = process.stder
     return 0;
 }
 
-// `fileURLToPath`, never `new URL(...).pathname`: this repository's own working copy lives under
-// "Sleepy Panda Projects", and a URL pathname percent-encodes the spaces, so the comparison silently
-// failed and the tool exited 0 having run nothing. Found by RUNNING it — reading it looked right.
-const invokedDirectly = process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url);
-if (invokedDirectly) {
+/**
+ * The main-module guard, and it is `cli/portulan.mjs`'s `isMain()` rather than a third spelling of the
+ * same question — one carrier, and the others reach it, which is the rule this file exists to enforce.
+ *
+ * Two ways to get this wrong, and this file has now had both:
+ *
+ *   1. Comparing `process.argv[1]` against `new URL(import.meta.url).pathname`. This working copy lives
+ *      under "Sleepy Panda Projects", a URL pathname percent-encodes the spaces, the comparison failed,
+ *      and the tool **exited 0 having run nothing**. Comparing URLs on both sides removes that entirely.
+ *   2. Comparing resolved paths when the script is reached through a **symlink** — an npm `bin`, most
+ *      obviously. `path.resolve` does not follow links, so the same silent skip returns. Hence the
+ *      `realpathSync` fallback, in a `try` because a missing path must answer *no* rather than throw.
+ *
+ * Both failures look identical from outside: a green that is the tool never starting.
+ */
+function isMain() {
+    const invoked = process.argv[1];
+    if (!invoked) return false;
+    if (import.meta.url === pathToFileURL(invoked).href) return true;
+    try {
+        return import.meta.url === pathToFileURL(fs.realpathSync(invoked)).href;
+    } catch {
+        return false;
+    }
+}
+
+if (isMain()) {
     const chunks = [];
     process.stdin.on("data", (c) => chunks.push(c));
     process.stdin.on("end", () => {

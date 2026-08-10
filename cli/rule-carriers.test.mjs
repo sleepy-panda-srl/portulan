@@ -246,6 +246,34 @@ describe("the three audits — each exit 2, never a quiet green", () => {
     });
 });
 
+describe("the dead-tell audit does not depend on a separator", () => {
+    // The audit once keyed on `${rule.id}<sep>${tell}` and split on the same separator to report, which
+    // a tell CONTAINING that separator corrupts — and a JSON registry can carry one as a legal escape
+    // that `control-chars` never sees, because it is an escape in the file rather than a raw byte.
+    // Nested maps remove the failure mode instead of validating against it.
+    const withNasty = (tell) => ({
+        rules: [{ ...RULE, tells: [tell] }],
+        exclude: [],
+    });
+
+    for (const [name, tell] of [
+        ["a NUL", `a${String.fromCharCode(0)}tell`],
+        ["a newline", "a\ntell"],
+        ["a space", "a tell"],
+    ]) {
+        test(`reports a dead tell containing ${name} whole, not truncated`, () => {
+            const { deadTells } = scan({
+                registry: withNasty(tell),
+                files: ["docs/a.md"],
+                read: reader({ "docs/a.md": "nothing relevant" }),
+            });
+            assert.equal(deadTells.length, 1);
+            assert.equal(deadTells[0].rule, "example-rule");
+            assert.equal(deadTells[0].tell, tell, "the reported tell must be the registered one, intact");
+        });
+    }
+});
+
 describe("the registry is excluded from the scan by identity, not by spelling", () => {
     // `git ls-files -z` emits `/` on every platform; `path.relative` emits the platform separator. A
     // string comparison between the two matched on POSIX and would not on Windows — where the registry
