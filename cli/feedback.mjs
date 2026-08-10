@@ -601,6 +601,17 @@ function draft(rest, flags, { say, warn, now }) {
         warn("feedback: draft needs a --title. It becomes the issue's title and the report's filename.");
         return 2;
     }
+    // A single line, refused at the door beside the failure pair below and for the same reason. The
+    // title is written verbatim into `title: …`, and frontmatter is one key per line — so a newline or
+    // a carriage return would split it, and everything after the break would be read as another key or
+    // as body. This door already validates the two facts it is handed; the title was the neighbour it
+    // did not. Found by review on this pull request. The refusal is also the `control-chars` rule this
+    // repository already rails the tree with, applied to an argument.
+    if (/[\r\n]/.test(title)) {
+        warn("feedback: a title is one line. This one carries a line break, and frontmatter is one key per line —");
+        warn("feedback: everything after the break would be read as another key, or as the body.");
+        return 2;
+    }
     const name = slug(title);
     if (!name) {
         warn(`feedback: \`${title}\` yields no slug — a title needs letters or digits, since it names the file too.`);

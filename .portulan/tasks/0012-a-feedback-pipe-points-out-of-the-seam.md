@@ -121,5 +121,12 @@ code it was meant to grade has stopped being a spec.
 
 `upgrade` · persona↔agent binding · the legibility score · clause (b) parity's adopter half
 ([#184](https://github.com/sleepy-panda-works/portulan/issues/184)) · `init`'s interview · the index
-rail · and **three of six** demonstrations — D1, D2 and D5. D5 stays blocked on the feed pin, which is
-the maintainer's act.
+rail · and **three of six** demonstrations — D1, D2 and D5.
+
+_(This line said **D5 stays blocked on the feed pin, which is the maintainer's act** when it was written
+at this session's opening. It was already false: the pin moved on 2026-08-09, and
+[`../../docs/milestones/m07.md`](../../docs/milestones/m07.md) establishes it with the measurement in the
+same change that carries this file. Corrected here rather than left, because a stale claim a change
+introduces while correcting that same claim elsewhere is the two-carrier defect committed inside its own
+repair — found by review on the pull request, which is the only reader that saw both files at once. D5
+now waits on a session running the parity demonstration, and on nobody's act.)_

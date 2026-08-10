@@ -789,6 +789,18 @@ describe("the pieces", () => {
         }
     });
 
+    test("a title carrying a line break is refused at the door", () => {
+        // The title is written verbatim into `title: …`, and frontmatter is one key per line. A break
+        // would split it and everything after would read as another key, or as body. Refused beside the
+        // failure pair, on the same door, for the same reason.
+        const dir = workspace();
+        for (const bad of ["Two\nlines", "Carriage\rreturn", "Both\r\nof them"]) {
+            const { code, err } = invoke(["draft", "feedback", "--title", bad, "--into", dir]);
+            assert.equal(code, 2, `expected a refusal for ${JSON.stringify(bad)}`);
+            assert.match(err, /one line/);
+        }
+    });
+
     test("a symlink at the report path is something that is there, dangling or not", () => {
         // `statSync` follows links, so a DANGLING symlink threw ENOENT and read as *absent* — and the
         // write that followed would have resolved the link and landed outside the workspace, which is
