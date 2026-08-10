@@ -6,7 +6,7 @@ that was neither blocked on the maintainer nor waiting on another clause.
 ## State
 
 `main` was `159df14` at session-open and did not move. Branch
-`m7-a-feedback-pipe-points-out-of-the-seam`. Suite **1187 → 1237**, both measured — the baseline on a
+`m7-a-feedback-pipe-points-out-of-the-seam`. Suite **1187 → 1239**, both measured — the baseline on a
 detached worktree at `159df14` rather than copied from the previous entry. **Ten recipes green** — nine
 declared, one composed. Seam scan clean across the diff, the branch name and the paths.
 
@@ -208,6 +208,18 @@ land. It exits **1**, names the missing guard, and prints the `issue:` line to r
 fourth note was in `between()`, the test helper carrying D3's own claim, which could return unrelated
 output when the marker was missing — the harness agreeing with the bug, for the third time in one
 change.
+
+**Round 3 — two findings, and neither spent the bound**, because both are **siblings** under the review
+loop's own exemption: a rule being enforced at another site of the same operation, in this change, at
+the moment the defect was written. `whyAbsent` used `statSync`, which follows symlinks — so a **dangling
+symlink** at the report path threw `ENOENT`, read as *absent*, and the write that followed would have
+resolved the link and landed **outside the workspace**, which is the rule `cli/new.mjs` already refuses
+on. The same probe, corrected twice: round 1 answered the errno half of the question and not the link
+half. And the workspace was **derived** from the report's path without checking the layout, so a moved
+report would be scanned against a directory holding no term list while the tool said *nothing was
+scanned* — truthfully, about the wrong place. **A seam fail-open, which is the one class here that
+cannot be triaged**; the layout is now established rather than assumed, and either half failing is exit
+2 before a payload is built.
 
 **The census is worth its own line, because it went wrong a third time in the fixing.** The sentence had
 said *three*; the retrospective pass said *four*; re-measuring said **five** — `compile.sh` and

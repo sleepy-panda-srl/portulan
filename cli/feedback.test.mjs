@@ -789,6 +789,52 @@ describe("the pieces", () => {
         }
     });
 
+    test("a symlink at the report path is something that is there, dangling or not", () => {
+        // `statSync` follows links, so a DANGLING symlink threw ENOENT and read as *absent* — and the
+        // write that followed would have resolved the link and landed outside the workspace, which is
+        // how a scaffold leaves the tree it was meant to stay inside. `lstat` describes the link.
+        const dir = workspace();
+        fs.mkdirSync(path.join(dir, "feedback"));
+        const outside = path.join(dir, "..", "escaped.md");
+        fs.symlinkSync(outside, path.join(dir, "feedback", "2026-08-10-a-link.md"));
+        try {
+            const { code, err } = invoke(["draft", "feedback", "--title", "A link", "--into", dir]);
+            assert.equal(code, 2);
+            assert.match(err, /already exists/);
+            assert.ok(!fs.existsSync(outside), "nothing may be written through the link");
+        } finally {
+            fs.rmSync(outside, { force: true });
+        }
+    });
+
+    test("a report outside a workspace's feedback/ directory is could-not-run, never an unscanned send", () => {
+        // The workspace — and therefore where the seam term list is looked for — is derived from the
+        // report's path. Move the report and the derivation still yields *a* directory, one with no
+        // term list in it, and the scan would say `nothing was scanned` about the wrong place while a
+        // list sat in the workspace the report belongs to. That is a seam fail-open, so it is refused.
+        const dir = workspace();
+        const file = previewed(dir, "feedback", FILLED.feedback);
+        fs.writeFileSync(path.join(dir, "seam-terms.txt"), "zzzz\n");
+
+        const moved = path.join(dir, "elsewhere", path.basename(file));
+        fs.mkdirSync(path.dirname(moved), { recursive: true });
+        fs.copyFileSync(file, moved);
+
+        const { code, err, calls } = invoke(["send", moved, "--approve"]);
+        assert.equal(code, 2);
+        assert.equal(calls.length, 0);
+        assert.match(err, /feedback\/` directory|not inside a workspace/);
+
+        // And a `feedback/` directory whose parent carries no manifest is refused for the same reason.
+        const orphan = fs.mkdtempSync(path.join(os.tmpdir(), "portulan-orphan-"));
+        fs.mkdirSync(path.join(orphan, "feedback"));
+        const stray = path.join(orphan, "feedback", path.basename(file));
+        fs.copyFileSync(file, stray);
+        const second = invoke(["preview", stray]);
+        assert.equal(second.code, 2);
+        assert.match(second.err, /workspace\.json/);
+    });
+
     test("--help exits 0 and a bare `feedback` exits 2", () => {
         assert.equal(invoke(["--help"]).code, 0);
         assert.equal(invoke([]).code, 2);
