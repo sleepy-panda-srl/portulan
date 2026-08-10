@@ -486,7 +486,13 @@ export function passWorkspace(dir, { asOf, reviews } = {}) {
         counts.records += 1;
         const recordBytes = Buffer.byteLength(source);
         counts.bytes += recordBytes;
-        if (recordBytes > counts.largest.bytes) counts.largest = { file, bytes: recordBytes };
+        // `file === null` is the seed, never a size comparison: a store whose records are all ZERO
+        // bytes never satisfies `recordBytes > 0`, so a strict comparison alone left the seed standing
+        // and the report said "no records yet" over a store that held one. An empty `.md` is reachable —
+        // `doctor` reports it as a record with no provenance, and this pass counts it either way.
+        if (counts.largest.file === null || recordBytes > counts.largest.bytes) {
+            counts.largest = { file, bytes: recordBytes };
+        }
         if (touched === null) counts.uncommitted += 1;
         if (type === "rule") counts.rules += 1;
 
