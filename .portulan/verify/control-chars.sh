@@ -16,7 +16,7 @@
 #     tool most likely to have shown the byte is the tool the byte silences. That is why the scan lives
 #     in ../../cli/control-chars.mjs and reads bytes, rather than being another `grep` here.
 #     (Named rather than counted, after two corrections: this line first claimed *every* recipe here
-#     was built out of `grep` — three invoke it zero times — and the correction then asserted a count
+#     was built out of `grep` — FIVE invoke it zero times — and the correction then asserted a count
 #     taken from a word grep that included comments. A false claim in the paragraph doing the
 #     persuading is what ../dod.md condition 4 refuses, and it has no business in the
 #     file arguing against exactly that.)

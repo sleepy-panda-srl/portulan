@@ -426,6 +426,24 @@ function whyAbsent(at) {
     }
 }
 
+/**
+ * Every write this tool makes, through one place, and every failure of one turned into a sentence.
+ *
+ * A bare `writeFileSync` on a read-only directory reached the top-level catch, which prints
+ * `unanticipated failure` and a stack trace. The exit code was already 2, so this is not a fail-open —
+ * it is the other half of the same discipline: **could-not-run has to say what could not run**, and a
+ * stack trace is what a tool prints when it has nothing to say. Found by review on this pull request,
+ * at three sites.
+ */
+function writeOrRefuse(at, contents, what) {
+    try {
+        fs.mkdirSync(path.dirname(at), { recursive: true });
+        fs.writeFileSync(at, contents);
+    } catch (error) {
+        throw new FeedbackError(`${what} could not be written to ${at} — ${error.code ?? error.message}`);
+    }
+}
+
 function parseTerms(text) {
     return text
         .split(/\r?\n/)
@@ -629,8 +647,7 @@ function draft(rest, flags, { say, warn, now }) {
         return 2;
     }
 
-    fs.mkdirSync(path.dirname(at), { recursive: true });
-    fs.writeFileSync(at, scaffold(kind, { title, created, failedRecipe, failedExit }));
+    writeOrRefuse(at, scaffold(kind, { title, created, failedRecipe, failedExit }), "the report");
 
     say(`feedback: wrote ${at}`);
     say("");
@@ -713,7 +730,7 @@ function report(verb, rest, flags, { say, warn, now, env, exec, facts }) {
 
     const seen = digest(built);
     if (verb === "preview") {
-        fs.writeFileSync(at, stamp(text, { previewed: seen }, ["previewed"]));
+        writeOrRefuse(at, stamp(text, { previewed: seen }, ["previewed"]), "the preview stamp");
         say(`previewed: ${seen}`);
         return 0;
     }
@@ -782,7 +799,25 @@ function report(verb, rest, flags, { say, warn, now, env, exec, facts }) {
         return 2;
     }
 
-    fs.writeFileSync(at, stamp(text, { issue: url, sent: now().toISOString() }));
+    // THE ONE WRITE THAT CANNOT BE A REFUSAL, because by now the issue exists in the world.
+    //
+    // `writeOrRefuse` would throw here and the top-level handler would print `feedback: …` and exit 2 —
+    // *could not run*, about an operation that ran and filed. Worse, the sentence would send a reader
+    // back to try again, and the guard that makes a second send a no-op is exactly what just failed to
+    // land. So the send is reported as what it was, the missing guard is named, and the exit code says
+    // something is wrong without pretending nothing happened: **1**, a verdict — not 0, which would
+    // hide it, and not 2, which would deny the send. Found by review on this pull request.
+    try {
+        fs.writeFileSync(at, stamp(text, { issue: url, sent: now().toISOString() }));
+    } catch (error) {
+        say("");
+        say(`feedback: FILED ${url} — the issue exists.`);
+        warn(`feedback: but ${at} could not be updated — ${error.code ?? error.message}.`);
+        warn("feedback: nothing now stops a second send of this report from filing a duplicate.");
+        warn(`feedback: add this line to its frontmatter by hand, and the guard is back:  issue: ${url}`);
+        return 1;
+    }
+
     say("");
     say(`feedback: filed ${url}`);
     say(`feedback: recorded in ${at} — a second send of this report is refused.`);

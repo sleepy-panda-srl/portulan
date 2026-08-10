@@ -1,10 +1,52 @@
 # Proposal 0014 — a feedback pipe points out of the seam
 
-**Status. PROPOSED, 2026-07-27 — drafted on the maintainer's directive of the same day.** This is the
-**product-side sender**. The repository-side half — the issue forms under `.github/ISSUE_TEMPLATE/` and
-`CONTRIBUTING.md` — is being built by a parallel session and is **not touched here**; this proposal
-names it as a dependency and nothing more. One question (Q5) is constitutional and is left to the
-maintainer.
+**Status. ACCEPTED 2026-08-10, with Q5 ruled (a).** The channel, named rather than left to be inferred:
+the maintainer's **close-out instruction on milestone 7 session 6's maintainer items**, given once the
+CLI half was built and D3 demonstrated, and **ratified by his merge of
+[#206](https://github.com/sleepy-panda-works/portulan/pull/206)** — the pull request that carries this
+record. That is the `0020` pattern: the drafting is the implementer's, the ratification is the merge,
+and the merge is also where he corrects a record that read more into the instruction than it held.
+
+_Proposed 2026-07-27, on the maintainer's directive of the same day. Everything below the ruling is left
+**exactly as drafted** — except the Decision line, which existed to be filled and has been. A proposal
+records what was argued when it was argued, and editing the argument to match its own outcome destroys
+the record that makes the outcome legible._
+
+This is the **product-side sender**. The repository-side half — the issue forms under
+`.github/ISSUE_TEMPLATE/` and `CONTRIBUTING.md` — is being built by a parallel session and is **not
+touched here**; this proposal names it as a dependency and nothing more. One question (Q5) is
+constitutional and is left to the maintainer.
+
+## The ruling on Q5, 2026-08-10
+
+**(a): the user's own GitHub identity, through an existing `gh` login.** Accountable, rate-limited by
+GitHub, no Sleepy Panda service in the path — which is what makes it compliant with the constitution as
+it stands rather than requiring a change to it. That is what `cli/feedback.mjs` ships: it shells out to
+whatever `gh` is logged in, mints no identity of its own, and refuses with exit **2** when `gh` is
+absent or unauthenticated rather than finding another way out.
+
+**(b) is not taken up.** Said that way rather than *refused*, because the maintainer's words were
+"stays unbuilt" and a refusal reaches a question he did not reach. What is recorded is narrower and
+checkable: a Sleepy Panda-operated relay is a hosted service, `docs/vision.md` **as written** permits
+exactly one by name, so building one would need a change to the constitution, **no such change is being
+made, and it stays unbuilt.** _Deliberately not grounded on "the constitution forbids it": that ground
+would presuppose the answer to the second question below — whether the relay exception is a name or a
+class — which this same ruling leaves open. A rule defended on a ground that can move is a rule that
+gets defended on the wrong one._
+
+**What (a)-only costs, as a consequence rather than as part of the ruling:** someone without a GitHub
+account cannot use this sender. That follows from shipping (a) and nothing else; it is not something the
+maintainer weighed and accepted here, and recording it as such would put words in the ruling.
+
+**The second question, left open on purpose.** The draft asked whether the relay exception is *a single
+named thing* or *a class — self-hostable-first relays*. It is not answered here, because nothing turns
+on it until a second relay is actually wanted, and settling a constitutional category in the abstract is
+how a category gets settled wrongly. It stays a live question in `docs/vision.md`'s terms.
+
+**What the ruling does not cover.** No OAuth device flow — the draft names it beside an existing `gh`
+login and only the second shipped; a device flow is a second identity path and would be its own
+decision. And the desktop half of this proposal is milestone 11's, unbuilt, and unaffected by this
+ruling except that it inherits the same answer to Q5.
 
 ## The ask, in the maintainer's words
 
@@ -105,6 +147,9 @@ looks like it is.
 **Provenance.** `form=link href=docs/plan.md` — Protocol → The seam, and `core/operating/autonomy.md` → the Gated tier,
 read against the maintainer's directive and the no-external-pull-requests ruling of 2026-07-27.
 
-**Decision.** Marius Cetanas — pending.
+**Decision.** Marius Cetanas — **accepted 2026-08-10, on option (a)**; (b) not taken up and unbuilt.
+Given as the close-out instruction on milestone 7 session 6's maintainer items and ratified by his merge
+of [#206](https://github.com/sleepy-panda-works/portulan/pull/206); the argument is in *The ruling on Q5*
+above, including the one question this deliberately leaves open.
 
 **Pull request:** [#52](https://github.com/sleepy-panda-works/portulan/pull/52) — the change that filed this.

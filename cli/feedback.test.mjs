@@ -745,6 +745,50 @@ describe("the pieces", () => {
         assert.equal(invoke(["preview", file]).code, 2);
     });
 
+    test("every write refuses in one line rather than in a stack trace", { skip: process.getuid?.() === 0 }, () => {
+        // A bare `writeFileSync` on a read-only directory reached the top-level catch, which prints
+        // `unanticipated failure` and a stack. The code was already 2, so this was never a fail-open —
+        // it is the other half of that discipline: could-not-run has to say what could not run.
+        const dir = workspace();
+        fs.mkdirSync(path.join(dir, "feedback"));
+        fs.chmodSync(path.join(dir, "feedback"), 0o500);
+        try {
+            const blocked = invoke(["draft", "feedback", "--title", "No room", "--into", dir]);
+            assert.equal(blocked.code, 2);
+            assert.match(blocked.err, /the report could not be written to .*No room|could not be written/);
+            assert.doesNotMatch(blocked.err, /unanticipated failure/);
+        } finally {
+            fs.chmodSync(path.join(dir, "feedback"), 0o700);
+        }
+    });
+
+    test("a send that files but cannot record the URL says so, and exits 1 rather than 0 or 2", () => {
+        // The one write that cannot be a refusal: the issue exists by then. Reporting could-not-run
+        // would deny a send that happened and send the reader back to repeat it — and the guard that
+        // makes a second send a no-op is precisely what failed to land.
+        const dir = workspace();
+        const file = previewed(dir, "feedback", FILLED.feedback);
+        const real = fs.writeFileSync;
+        fs.writeFileSync = (target, ...rest) => {
+            if (target === file) {
+                const error = new Error("EROFS: read-only file system");
+                error.code = "EROFS";
+                throw error;
+            }
+            return real(target, ...rest);
+        };
+        try {
+            const { code, out, err } = invoke(["send", file, "--approve"]);
+            assert.equal(code, 1, "the send happened; only the local record did not");
+            assert.match(out, /FILED https:\/\/github\.com\/.*issues\/999/);
+            assert.match(err, /could not be updated/);
+            assert.match(err, /duplicate/);
+            assert.match(err, /issue: https:\/\/github\.com\/.*issues\/999/, "it names the line to add by hand");
+        } finally {
+            fs.writeFileSync = real;
+        }
+    });
+
     test("--help exits 0 and a bare `feedback` exits 2", () => {
         assert.equal(invoke(["--help"]).code, 0);
         assert.equal(invoke([]).code, 2);
@@ -752,10 +796,20 @@ describe("the pieces", () => {
     });
 });
 
-/** The body between the preview's markers — the bytes the user is shown. */
+/**
+ * The body between the preview's markers — the bytes the user is shown.
+ *
+ * **The opening marker is checked first, and that is the whole point.** Written as
+ * `out.indexOf("\n", out.indexOf("--- body"))`, a missing marker gives `indexOf(-1)`, which JavaScript
+ * treats as a search from 0 — so `start` is not `-1`, and the helper quietly returns unrelated output.
+ * Every assertion that leans on this would keep passing while the preview's markers regressed: the
+ * harness agreeing with the bug, in the helper that carries D3's own claim. Found by review.
+ */
 function between(out) {
-    const start = out.indexOf("\n", out.indexOf("--- body"));
+    const opens = out.indexOf("--- body");
     const end = out.indexOf("--- end of body ---");
-    if (start === -1 || end === -1) return "";
+    if (opens === -1 || end === -1) return "";
+    const start = out.indexOf("\n", opens);
+    if (start === -1 || start > end) return "";
     return out.slice(start + 1, end - 1);
 }
