@@ -28,7 +28,7 @@ maintainer, and he commissioned this session.** So the memory record's edit is w
 arriving, with that provenance, and it answers the two questions the record explicitly left open — the
 tense, and whether **Retire when** still reads correctly against a repository that has flipped twice.
 
-## The instrument, because a count is only as good as it
+## The instrument, because a count is only as good as the thing that produced it
 
 The 2026-08-09 lesson was that **a grep over prose under-finds in code**: a phrase wrapped across a
 newline is invisible to a line-oriented grep, and comment prefixes sit between the margin and the words.
