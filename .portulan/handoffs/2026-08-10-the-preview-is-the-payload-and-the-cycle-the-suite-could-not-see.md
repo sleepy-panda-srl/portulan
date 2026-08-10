@@ -6,7 +6,7 @@ that was neither blocked on the maintainer nor waiting on another clause.
 ## State
 
 `main` was `159df14` at session-open and did not move. Branch
-`m7-a-feedback-pipe-points-out-of-the-seam`. Suite **1187 → 1239**, both measured — the baseline on a
+`m7-a-feedback-pipe-points-out-of-the-seam`. Suite **1187 → 1240**, both measured — the baseline on a
 detached worktree at `159df14` rather than copied from the previous entry. **Ten recipes green** — nine
 declared, one composed. Seam scan clean across the diff, the branch name and the paths.
 
@@ -220,6 +220,18 @@ report would be scanned against a directory holding no term list while the tool 
 scanned* — truthfully, about the wrong place. **A seam fail-open, which is the one class here that
 cannot be triaged**; the layout is now established rather than assumed, and either half failing is exit
 2 before a payload is built.
+
+**Round 4 — two notes, both siblings again.** `--title` was written verbatim into `title: …` with no
+single-line check, though the same door already validates the failure pair it is handed with the comment
+*validated at the door rather than on the way out* — the neighbour nothing checked. And task `0012`
+still said **D5 stays blocked on the feed pin**: a stale claim introduced by the very change that
+corrects that claim in `docs/milestones/m07.md`. **The two-carrier defect committed inside its own
+repair**, in a change whose records name that class three times, and caught only because the review is
+the one reader that saw both files at once.
+
+**Four rounds, eight findings, every one real and every one taken.** Rounds 1–2 spent the bound; rounds
+3 and 4 were siblings under the recorded exemption and did not. Nothing was triaged, because nothing
+arrived that was not a defect of this change.
 
 **The census is worth its own line, because it went wrong a third time in the fixing.** The sentence had
 said *three*; the retrospective pass said *four*; re-measuring said **five** — `compile.sh` and
