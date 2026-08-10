@@ -2165,3 +2165,13 @@ _The seam applies here too: no client-identifying references._
   did not use, measuring that `.portulan/verify/docs.sh:150` skips non-`.md` so no rail would ever check it. `cli/index.test.mjs:704` keeps #91 **by ruling, not oversight**. Round 4 found the same class a THIRD time — *"this touches three"* where the PR
   touches six — triaged to #213, then folded on his grant; and **the rebase onto `43f1e54` then moved the repaired site 222→223, falsifying this change's own citations without editing them**. Ten recipes, suite 1240. Seam scan clean, explicit list. ·
   Fidelity: pre-commit A-W-A, all folded. **Ships no rail** — the next sweep can reintroduce this with every recipe green. Handoff: [`2026-08-10`](../.portulan/handoffs/2026-08-10-the-instrument-had-the-blindness-it-was-built-against.md).
+
+- 2026-08-10 · M5 (Memory lifecycle & librarian) · **Scheduled librarian pass**, filed by
+  `cli/librarian.mjs` rather than by a person: 2 workspaces passed,
+  0 stale record(s), 0 sealed stamp(s) due for re-validation, 0 proposal(s) nagged, no index drift.
+  · Mined: 26 incident(s) with nothing pointing back at them, 41 path(s) drawing
+  repeat review findings, 3 record group(s) citing one incident.
+  · No supervisor checkpoint: a scheduled pass makes no decision for one to grade.
+  · Seam scan clean by construction — this pass composes no new prose at run time, so its
+  diff carries nothing the scan had not already passed.
+  Handoff: [`2026-08-10`](../.portulan/handoffs/2026-08-10-librarian-pass.md).
