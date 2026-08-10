@@ -7,10 +7,20 @@
 
 ## The recipes
 
-Nine declared here, plus **one composed** — ten in the runnable set, as of milestone 7's composition
-amendment. The nine are declared in [`../workspace.json`](../workspace.json), which is also where the
-**default** is named — [`docs.sh`](docs.sh), the one the Stop-gate now actually runs when nothing more
-specific applies.
+The recipes in this directory are declared in [`../workspace.json`](../workspace.json), and since
+milestone 7's composition amendment the **runnable** set is larger than that: it is what
+[`../../cli/recipe-set.mjs`](../../cli/recipe-set.mjs) yields — these, plus the ones this workspace's
+composed packs contribute, namespaced by pack. `node cli/recipe-set.mjs --workspace .portulan
+--repo-root .` prints the live set.
+
+_(This paragraph carried the counts — "nine declared, ten in the runnable set" — and they went stale the
+moment a tenth was declared, in the very change that added a rail against stale carriers. The figures are
+**gone rather than corrected**, which is this directory's own repair: `#77`'s count was removed for the
+same reason, because the command cannot be wrong and a hand-maintained number always can. The roster
+below stays, because it is there to copy from rather than to count.)_
+
+The manifest is also where the **default** is named — [`docs.sh`](docs.sh), the one the Stop-gate now
+actually runs when nothing more specific applies.
 
 The tenth is `tools/github:actions-pinned`, contributed by the
 [`tools/github`](../../packs/tools/github/README.md) pack this workspace composes. It is **not** in this
@@ -23,7 +33,7 @@ row 7's contract holding by construction rather than by a check. To see the set 
 node cli/recipe-set.mjs --workspace .portulan --repo-root .
 ```
 
-Run any of the nine declared here from anywhere in the tree:
+Run any of the recipes declared here from anywhere in the tree:
 
 ```
 ./.portulan/verify/docs.sh
@@ -35,6 +45,7 @@ Run any of the nine declared here from anywhere in the tree:
 ./.portulan/verify/workflow-filters.sh
 ./.portulan/verify/index.sh
 ./.portulan/verify/control-chars.sh
+./.portulan/verify/rule-carriers.sh
 ```
 
 | Recipe | Covers | Needs |
@@ -94,9 +105,9 @@ here did. The reason is the part worth writing down: `file` classified the sourc
 negative. **[`docs.sh`](docs.sh) — the default recipe, the one a Stop-gate runs when nothing more
 specific applies — is built out of `grep` throughout**, so the tool most likely to have shown the byte
 is the tool the byte silences. _(Named rather than counted, after two corrections. This sentence first
-claimed **every** recipe here was built out of `grep`, and five of the nine invoke it zero times —
-`plugin.sh`, `tests.sh`, `workflow-filters.sh`, `compile.sh` and `control-chars.sh`, the last two
-carrying the word only in comments — **which is why this said three until 2026-08-10**: an instrument
+claimed **every** recipe here was built out of `grep`, and six of the ten invoke it zero times —
+`plugin.sh`, `tests.sh`, `workflow-filters.sh`, `compile.sh`, `control-chars.sh` and `rule-carriers.sh`,
+the middle two carrying the word only in comments — **which is why this said three until 2026-08-10**: an instrument
 that counts occurrences answers a different question from the sentence's verb, and the retrospective
 pass over this very pull request found it, then itself said four by leaving out the recipe the
 paragraph is about. Third time on one page. The correction then asserted `seventeen invocations`, a
@@ -781,11 +792,17 @@ available, not a refusal provoked at the API. Attempting one is barred anyway �
 ([`../gate-map.md`](../gate-map.md)) — and what stands behind that last inch is `enforce_admins: true`
 on the live protection, which no pull request can demonstrate about itself.
 
-**The register, after drill 1.** Seven rails have still never been observed red in CI:
+**The register, after drill 1.** **Eight** rails have still never been observed red in CI — the count
+moved because this repository declared a tenth recipe, and a register that did not move with it would be
+the stale-carrier defect inside the page that keeps the register:
 
 | Seen to fire in CI | Not yet |
 |---|---|
-| `docs` (2026-07-28, incidental) · `tests` (2026-07-30, drill) | `json` · `doctor` · `plugin` · `compile` · `workflow-filters` · `index` · `control-chars` |
+| `docs` (2026-07-28, incidental) · `tests` (2026-07-30, drill) | `json` · `doctor` · `plugin` · `compile` · `workflow-filters` · `index` · `control-chars` · `rule-carriers` |
+
+**`rule-carriers` joins the right-hand column on the day it lands too**, and like `control-chars` it has
+been forced red locally rather than in CI — exit 1 on a planted restatement, and exit 2 three ways on a
+dead tell, an absent carrier and an unparseable registry.
 
 `control-chars` joins the right-hand column on the day it lands, and it is worth saying that it has been
 forced red **locally**, four ways — a NUL reproducing the original incident, a CRLF, a dead exemption and
@@ -793,9 +810,10 @@ a stale one — with `grep` and `file` observed missing the first of them on the
 run. Local is not CI, which is the distinction this whole register exists to keep.
 
 That gap is narrower than it looks in one respect and not in another, and both halves matter to
-whoever sets the calendar. All nine run through the **same** loop in the **same** job, so the shared
-half of the seam — a non-zero exit becoming `status=1`, becoming a failed check, becoming `BLOCKED` —
-is now covered twice by two different recipes and does not need covering nine times. What is *not*
+whoever sets the calendar. Every recipe this workspace declares runs through the **same** loop in the
+**same** job, so the shared half of the seam — a non-zero exit becoming `status=1`, becoming a failed
+check, becoming `BLOCKED` — is now covered twice by two different recipes and does not need covering
+once per recipe. What is *not*
 covered is anything recipe-specific about running under CI, and this page already documents three
 places that bites: the runner's checkout is shallow, so anything reading `git log` refuses or lies;
 `doctor` resolves claims against the filesystem, so a gitignored path is a permanent false red there

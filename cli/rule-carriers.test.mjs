@@ -89,6 +89,28 @@ describe("parseRegistry — every unusable registry is could-not-run, never a gr
         });
     }
 
+    // Untrimmed entries: refused rather than trimmed, matching `cli/compile.mjs`. The failure they
+    // cause is silent — a `scope` of "docs/ " is a prefix no path can start with, so the rule covers
+    // nothing and the registry still reports green.
+    for (const key of ["tells", "cites", "scope"]) {
+        test(`refuses an untrimmed entry in \`${key}\``, () => {
+            const rule = { id: "r", carrier: "c", summary: "s", incident: "i", tells: ["t"], cites: ["x"], scope: ["/"] };
+            rule[key] = ["docs/ "];
+            assert.throws(() => parseRegistry(JSON.stringify({ rules: [rule] })), RegistryError);
+        });
+    }
+    test("refuses an untrimmed entry in the rule-level `exclude`", () => {
+        const rule = { id: "r", carrier: "c", summary: "s", incident: "i", tells: ["t"], cites: ["x"], scope: ["/"], exclude: [" docs/"] };
+        assert.throws(() => parseRegistry(JSON.stringify({ rules: [rule] })), RegistryError);
+    });
+    test("refuses an untrimmed entry in the top-level `exclude`", () => {
+        const rule = { id: "r", carrier: "c", summary: "s", incident: "i", tells: ["t"], cites: ["x"], scope: ["/"] };
+        assert.throws(() => parseRegistry(JSON.stringify({ exclude: ["docs/ "], rules: [rule] })), RegistryError);
+    });
+    test("the mechanism, pinned: an untrimmed prefix matches no path at all", () => {
+        assert.equal("docs/a.md".startsWith("docs/ "), false);
+    });
+
     test("an empty-string exclude is refused — it would exclude the whole tree and green over nothing", () => {
         assert.throws(
             () => parseRegistry('{"exclude":[""],"rules":[{"id":"r","carrier":"c","summary":"s","incident":"i","tells":["t"],"cites":["x"],"scope":["/"]}]}'),
