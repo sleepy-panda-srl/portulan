@@ -1120,7 +1120,7 @@ function budgetFindings(memory, store, expected, fail) {
                 `the index is ${count} lines against a budget of ${lines} — over by ${count - lines}. ` +
                     "Consolidate the store: on THIS axis the moves are MERGE two records that are one fact, or RETIRE " +
                     "one whose condition has fired. Compressing a record does not remove its line, and SPLITTING one " +
-                    "adds a line — it spends this budget to buy room under `record_kilobytes`. Raising the budget in " +
+                    "adds a line — it spends this budget to buy room under `memory.store.budget.record_kilobytes`. Raising the budget in " +
                     "the change that broke it is the one repair core/operating/memory.md rules out",
             );
         }

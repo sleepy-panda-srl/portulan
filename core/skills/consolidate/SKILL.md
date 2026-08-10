@@ -80,11 +80,21 @@ merging records that were about to be deleted.
 3. **Surface contradictions; never overwrite them.** Where two records disagree, the pass does not pick
    a winner. It writes up the disagreement and takes it to the gate. A consolidation that silently
    resolves a contradiction has made a policy decision wearing the clothes of housekeeping.
-4. **Compress what survives.** Same facts, fewer tokens: cut restatement, cut the narrative of how the
-   lesson was learned down to what a reader needs to judge whether it still applies. What may not be
-   cut is the failure shape — inputs, wrong outcome, why the obvious guard misses. A record compressed
-   past its shape is no longer enforceable, and *generic decaying into vague* is the failure
+4. **Compress what survives — and demote rather than destroy, where the narrative already has a home.**
+   Same facts, fewer tokens: cut restatement, cut the narrative of how the lesson was learned down to
+   what a reader needs to judge whether it still applies. What may not be cut is the failure shape —
+   inputs, wrong outcome, why the obvious guard misses. A record compressed past its shape is no longer
+   enforceable, and *generic decaying into vague* is the failure
    [`../codify/SKILL.md`](../codify/SKILL.md) step 1 already names.
+
+   **The two moves are different, and reaching for the wrong one loses evidence.** Compressing
+   *destroys* text; **demoting** *relocates* it — archaeology moves down to the provenance layer, and
+   the record keeps a pointer at the carrier that already holds it. Demote first and compress only what
+   is left, because a paragraph the incident record already carries verbatim costs the store's budget
+   twice and is not a judgement call to cut. **Verify the target carries it before cutting, never
+   after**: a demotion to a carrier that turns out not to hold the passage is a deletion wearing a
+   pointer. This is the third move a per-record breach may reach for, beside split (step 2) and
+   compress above.
 5. **Regenerate the index and re-run the recipe.** The index is built, never hand-edited, so this step
    is a command rather than an edit. If it is still red, the pass is not finished — and the remaining
    distance is a number, which is the point of having the rail.
