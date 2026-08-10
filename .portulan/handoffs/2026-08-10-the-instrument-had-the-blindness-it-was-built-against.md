@@ -11,6 +11,16 @@ it as **the incident whose repair taught the class** is correct. Asserting it **
 checkably false, and the maintainer's ruling of 2026-08-09 is the reason this is worth a change at all:
 *a checkable citation that fails the check is worse than the vague superlative it replaced*.
 
+_[Corrected 2026-08-10, original words above left verbatim: **that aphorism is this session's, not the
+maintainer's** — his 2026-08-09 comment on #196 does not contain it, and the sentence's only other
+carriers are `docs/plan.md`'s Session log, which correctly frames it as *"the lesson is review's"*, and
+this handoff. Attributing it to his ruling is a citation asserting the wrong carrier, which is the very
+class this handoff is about, committed in its own opening paragraph. His actual words: **"Citing it as
+the incident whose repair taught a class is correct. Citing it as the carrier that names the class is
+false; `0020` names it."** Found by the fresh-context pre-commit supervisor on
+[#217](https://github.com/sleepy-panda-works/portulan/issues/217), which was about to seal the
+misattribution into living doctrine.]_
+
 Three sites, all in `cli/`, all repaired in one commit:
 
 | Site | Said |

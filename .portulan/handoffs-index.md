@@ -2,13 +2,14 @@
 
 > Generated from `handoffs/` by `node cli/index.mjs`. Do not edit by hand: it is regenerated
 > and byte-compared, so a hand-edit survives exactly until the next run.
-> 87 handoff(s), newest first. No budget: the series is append-only, so
+> 88 handoff(s), newest first. No budget: the series is append-only, so
 > the only remedy a budget could ask for is one this project rules out.
 
 - 2026-08-10 · [Handoff — the preview is the payload, and the cycle the suite could not see](handoffs/2026-08-10-the-preview-is-the-payload-and-the-cycle-the-suite-could-not-see.md)
 - 2026-08-10 · [Handoff — the instrument had the blindness it was built against](handoffs/2026-08-10-the-instrument-had-the-blindness-it-was-built-against.md)
 - 2026-08-10 · [Handoff — the flip back left its carriers standing](handoffs/2026-08-10-the-flip-back-left-its-carriers-standing.md)
 - 2026-08-10 · [Handoff — the correction merged, and the next pull request put it back](handoffs/2026-08-10-the-correction-merged-and-the-next-pull-request-put-it-back.md)
+- 2026-08-10 · [Handoff — the clause misquoted the ruling it ratified](handoffs/2026-08-10-the-clause-misquoted-the-ruling-it-ratified.md)
 - 2026-08-10 · [Handoff — the librarian's scheduled pass](handoffs/2026-08-10-librarian-pass.md)
 - 2026-08-10 · [Handoff — a correction reached three carriers of four](handoffs/2026-08-10-a-correction-reached-three-carriers-of-four.md)
 - 2026-08-09 · [Handoff — two sessions built one module, and the order decided itself](handoffs/2026-08-09-two-sessions-built-one-module-and-the-order-decided-itself.md)
