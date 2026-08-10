@@ -181,6 +181,22 @@ the setting the grants were being reasoned against.
 Seam scan clean across changed files, commit message and branch name — run against the explicit term
 list, after a first over-broad pass raised twenty matches that were all generic capitalised words.
 
+## The review found the one thing the rule had not reached
+
+Round 1 was empty. **Round 2, on the rebased head, promoted a suppressed note, and it was right.**
+`README.md` said the repository is private and *"none of those paths is open to an outsider today"* — and
+then, in the next sentence, sent bugs and proposals to the issue forms. **A private repository closes the
+issue forms just as firmly as it closes the tree**, so the paragraph offered with one hand what it had
+withdrawn with the other.
+
+Worth recording precisely, because it is a *third* shape of this change's own class. The first was a
+carrier the census's filter lost. The second was a carrier a rebase introduced. **This one is a carrier
+the rule reached and the rewrite did not**: the identity/state test correctly classified *read, clone and
+fork* as state, and the sentence beside it — the contribution channel — was left standing on the same
+false premise because it did not contain the word *public*. **A sweep keyed on a word finds the word, not
+the claim.** [`../../CONTRIBUTING.md`](../../CONTRIBUTING.md) was already right: its dated notice scopes
+the whole section rather than one bullet, which is why the same defect is not there.
+
 ## What this leaves undemonstrated
 
 - **That the triage of the 506 bare hits is complete.** The instrument is a committed, re-runnable
