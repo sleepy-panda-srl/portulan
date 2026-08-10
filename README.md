@@ -54,11 +54,14 @@ run `node cli/doctor.mjs examples` to watch it validate.
 
 ## Contributing
 
-Portulan is built as an open-core product and is **not** open to outside code contributions. Reading,
-cloning and forking are what the licence allows — but see **Status** above: the repository is private as
-of 3 August 2026 and forking is disabled, so none of those paths is open to an outsider today. Bugs,
-proposals and feedback go through the [issue forms](https://github.com/sleepy-panda-works/portulan/issues/new/choose); code lands
-only through team members. [`CONTRIBUTING.md`](CONTRIBUTING.md) has the whole of it, including why.
+Portulan is built as an open-core product and is **not** open to outside code contributions. When the
+repository is reachable: reading, cloning and forking are what the licence allows; bugs, proposals and
+feedback go through the [issue forms](https://github.com/sleepy-panda-works/portulan/issues/new/choose);
+and code lands only through team members.
+
+**None of those paths is open to an outsider today** — see **Status** above. The repository is private as
+of 3 August 2026 and forking is disabled, and an issue form is no more reachable than the tree: filing one
+needs access to the repository too. [`CONTRIBUTING.md`](CONTRIBUTING.md) has the whole of it, including why.
 
 ## License
 
