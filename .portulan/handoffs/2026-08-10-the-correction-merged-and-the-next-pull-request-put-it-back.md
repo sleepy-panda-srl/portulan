@@ -80,7 +80,8 @@ caught this one, and one did read it.
   `cli/init.mjs:675` leaves the freshness rail to the adopter's own recipe. `(b) parity's adopter half`:
   [#184](https://github.com/sleepy-panda-works/portulan/issues/184) **open**. All seven stood; only
   `verify composition` came out.
-  **Re-measured on `d8f6821` at round 2, because a promoted note caught this bullet reading present
+  **Re-measured on `d8f6821` at round 2 — and re-confirmed unchanged on the final base `dd7e372`,
+  whose only commit is the librarian's pass, records-only — because a promoted note caught this bullet reading present
   tense:** #206 merged, so **`cli/feedback.mjs` exists** and `feedback` is off `Left` — and the
   `upgrade` carrier moved with it, from `cli/portulan.mjs:34` ("both") to **`:37`** (`upgrade` alone,
   under a heading now reading *One of the eight is not built*). The other five are unchanged at the
@@ -131,14 +132,19 @@ caught this one, and one did read it.
 
 ## The reconciliation — the same lesson, with this branch as the one at risk
 
-**Added 2026-08-10 on rebase, after #206 merged. This branch was rebased TWICE the same afternoon** —
-onto `43f1e54` (#206), then onto `d8f6821` after #211 and #214 landed — and the second rebase is why the
-figures here name their base: `main` moved **11 commits** in total while this one-line change was open
-(`159df14` → `43f1e54`, 6; → `d8f6821`, 5). The final base is **`d8f6821`**.
+**Added 2026-08-10 on rebase, after #206 merged. This branch was rebased THREE times the same
+afternoon** — onto `43f1e54` (#206, six commits), then `d8f6821` (#211·#214, five more), then
+`dd7e372` (the librarian's pass, one). `main` moved **12 commits under a one-line change**
+(`git rev-list --count 159df14..dd7e372`). The final base is **`dd7e372`**.
+
+_Each rebase falsified the base named in this very paragraph, and each correction is a round of the
+same defect: **a figure that cites a moving reference goes stale without anyone editing it**. #211
+recorded the identical thing an hour earlier when its rebase moved a repaired site 222→223. Left
+visible rather than smoothed into a single final number, because the recurrence is the finding._
 
 This pull request is about a branch that replayed a stale cell over a merged correction. On rebase it
 became that branch: **six commits behind at the first rebase** (`git rev-list --count 159df14..43f1e54`),
-then five more at the second, while carrying two of its own — holding a cell whose count read **four of
+five more at the second and one at the third, while carrying two of its own — holding a cell whose count read **four of
 six**, against a `main` that reads **three** because
 D3 landed with #206. Replaying it would have re-introduced exactly the staleness this change exists to
 remove — the defect reproducing inside its own repair, which is this project's dominant class and the one
@@ -164,5 +170,5 @@ extra delta may not ship one unnamed, however cosmetic.
 They are still correctly *recorded* here as what was measured at `159df14`, because they were; they are
 simply no longer this pull request's repair. Finding 3 is.
 
-**Next action.** Branch rebased onto `d8f6821`; both review threads answered in round 1 and resolved on
+**Next action.** Branch rebased onto `dd7e372`; both review threads answered in round 1 and resolved on
 the maintainer's explicit instruction of this date. Hand to Marius. **Do not merge** — that stays his.
