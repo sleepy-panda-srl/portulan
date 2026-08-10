@@ -104,15 +104,24 @@ test("an unbuilt subcommand's refusal names where it is ACTUALLY named", async (
     }
 });
 
-test("plugin-lint, librarian and discover are NOT subcommands — anything unnamed is the maintainer's call", () => {
-    // This is a rule, not an omission, so it is asserted rather than left to be noticed. Both tools
-    // exist in this directory and are invoked directly by verify recipes; adding either here would mint
-    // a subcommand neither vision.md nor row 7 names.
-    assert.equal(find("plugin-lint"), null);
-    assert.equal(find("librarian"), null);
-    // `discover` joined them at milestone 7 with plugin-cache discovery. It is a tool in `cli/`, run as
-    // `node cli/discover.mjs`, and the boot skill reads it — none of which makes it one of the eight.
-    assert.equal(find("discover"), null);
+test("the tools that are not subcommands stay out — anything unnamed is the maintainer's call", () => {
+    // This is a rule, not an omission, so it is asserted rather than left to be noticed. Each of these
+    // exists in this directory and is invoked directly by a verify recipe or a hook; adding any of them
+    // here would mint a subcommand neither vision.md nor row 7 names.
+    //
+    // **The roster lives in `cli/README.md` and this list is derived from nothing** — which is the one
+    // place the session-6 repair could not centralise, because an assertion has to name what it
+    // asserts. It named three of four in its own title while four were on disk, in the change whose
+    // subject was exactly that drift. Kept as a list, corrected to the roster, and cited so the next
+    // reader knows where the authority is rather than assuming this is it.
+    for (const name of ["plugin-lint", "librarian", "discover", "control-chars"]) {
+        assert.equal(find(name), null, `${name} is a tool in cli/, not one of the eight`);
+    }
+    // The compiled-hook runners are a further step removed: generated host configuration invokes them,
+    // not a person, so they are not candidates for this list at all.
+    for (const name of ["gate", "stop-gate"]) {
+        assert.equal(find(name), null, `${name} is a compiled-hook runner, not a subcommand`);
+    }
 });
 
 test("a built subcommand reaches its module and its arguments arrive unchanged", async () => {
@@ -148,12 +157,13 @@ test("modules are loaded lazily — help imports nothing", async () => {
 
 test("an unbuilt subcommand exits 2 and names where it arrives — never 0", async () => {
     // `init` left this list at milestone 7, session 1, when it was built; `vendor` left it at session
-    // 3, when it took the residence switch. The list is written out rather than derived from
-    // `SUBCOMMANDS` on purpose: deriving it would make the assertion vacuously true the moment a
-    // subcommand's `module` was set, and the whole point is that a subcommand crossing from unbuilt to
-    // built is a change somebody looked at. This red is the mechanism working — it is what made a
-    // reader edit this line rather than a green that noticed nothing.
-    for (const name of ["upgrade", "feedback"]) {
+    // 3, when it took the residence switch; `feedback` left it at session 6, when it took D3. The list
+    // is written out rather than derived from `SUBCOMMANDS` on purpose: deriving it would make the
+    // assertion vacuously true the moment a subcommand's `module` was set, and the whole point is that
+    // a subcommand crossing from unbuilt to built is a change somebody looked at. This red is the
+    // mechanism working — it is what made a reader edit this line rather than a green that noticed
+    // nothing, three times now.
+    for (const name of ["upgrade"]) {
         const h = harness();
         const code = await run([name], h.options);
         assert.equal(code, 2, `${name} must exit 2, not 0 — a silent success here is a fail-open`);
@@ -257,6 +267,17 @@ test("`init` really dispatches through the entry point, with the real loader", a
     const text = execFileSync(process.execPath, [path.join(HERE, "portulan.mjs"), "init", "--help"], { encoding: "utf8" });
     assert.match(text, /--residence/, "the text must be init's own, not the entry point's usage screen");
     assert.doesNotMatch(text, /docs\/vision\.md names these eight/, "that line belongs to the entry point's own help, which is not what was asked for");
+});
+
+test("`feedback` really dispatches through the entry point, with the real loader", async () => {
+    // The same argument as `init` above, and it is worth a second instance rather than a note on the
+    // first: `feedback` is the one subcommand whose whole job is an outward act, so *reachable* and
+    // *refuses correctly when reached* are the two things a reader most wants asserted about it.
+    // `--help` proves dispatch and touches nothing; the text is `feedback`'s own.
+    const { execFileSync } = await import("node:child_process");
+    const text = execFileSync(process.execPath, [path.join(HERE, "portulan.mjs"), "feedback", "--help"], { encoding: "utf8" });
+    assert.match(text, /--seam-terms/, "the text must be feedback's own, not the entry point's usage screen");
+    assert.doesNotMatch(text, /docs\/vision\.md names these eight/);
 });
 
 test("the real modules the manifest points at all export a run function", async () => {

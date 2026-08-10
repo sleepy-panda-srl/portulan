@@ -70,6 +70,18 @@ body:
     validations:
       required: true
 
+  # Optional, and normally filled by `portulan feedback` rather than by hand — see the same field's
+  # note in `feedback.yml`. Added 2026-08-10 with the sender.
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: >
+        Portulan version, Workspace Definition version, host, runtime, OS. Leave it empty if you are
+        filling this in a browser — a proposal rarely turns on it.
+    validations:
+      required: false
+
   - type: checkboxes
     id: acknowledgements
     attributes:

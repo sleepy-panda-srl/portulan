@@ -19,27 +19,31 @@
 // the class `0020` names — a rule enforced at two sites and repaired at one — so the dispatch imports each tool's
 // exported `run` and returns its exit code untouched.
 //
-// **Not a home for the THREE tools that are off the list.** `plugin-lint`, `librarian` and — since
-// milestone 7's plugin-cache discovery — `discover` exist in `cli/` and are deliberately absent here.
-// `docs/vision.md` names eight, it is human-owned, and `cli/README.md` records that whether any of them
-// ever joins that list is the maintainer's call and not an implementer's. Wiring one in would mint a
-// ninth subcommand into a list this file does not own. They stay runnable exactly as they are today —
-// `node cli/plugin-lint.mjs …` — and every verify recipe still invokes them that way. _(This paragraph
-// said **two**, and named the wrong ordinal besides — *a seventh subcommand*, written when the list held
-// six. A count in prose beside a list nothing derives it from is the drift this file's own suite catches
-// for `SUBCOMMANDS.length` and cannot catch here.)_
+// **Not a home for the tools that are off the list.** Several tools live in `cli/` and are deliberately
+// absent here. `docs/vision.md` names eight, it is human-owned, and whether any of the others ever joins
+// that list is the maintainer's call and not an implementer's. Wiring one in would mint a ninth
+// subcommand into a list this file does not own. They stay runnable exactly as they are today —
+// `node cli/plugin-lint.mjs …` — and every verify recipe still invokes them that way.
 //
-// ## Two of the eight are not built
+// **The roster itself is `cli/README.md`'s and is cited rather than repeated here.** This paragraph
+// said **two**, then **three**, and named a different three from the root `README.md`'s three while
+// **four** were on disk — one rule with three carriers, obeyed at the narrowest, in the file whose own
+// comments name that class. _(It also named the wrong ordinal once — *a seventh subcommand*, written
+// when the list held six. A count in prose beside a list nothing derives it from is the drift this
+// file's own suite catches for `SUBCOMMANDS.length` and cannot catch here.)_
 //
-// `upgrade` and `feedback` are milestone 7 work that has not landed. They are listed, and they exit
-// **2 — could not run**, naming what is missing. The alternative shapes were both worse: hiding them
-// makes the package look like a smaller tool and the row like it is further along than it is, and
-// stubbing them to exit 0 would be a fail-open in the one place a user is most likely to trust
-// silence. "Nothing looked" is never "nothing wrong" — the same three-code discipline the verify
-// recipes hold (`.portulan/memory/verify-preconditions-fail-closed.md`).
+// ## One of the eight is not built
 //
-// _(`vendor` was the third until milestone 7 session 3. The count is written out here and derived in
-// the suite, which is the split that has held: the sentence explains, the assertion counts.)_
+// `upgrade` is milestone 7 work that has not landed. It is listed, and it exits **2 — could not
+// run**, naming what is missing. The alternative shapes were both worse: hiding it makes the package
+// look like a smaller tool and the row like it is further along than it is, and stubbing it to exit 0
+// would be a fail-open in the one place a user is most likely to trust silence. "Nothing looked" is
+// never "nothing wrong" — the same three-code discipline the verify recipes hold
+// (`.portulan/memory/verify-preconditions-fail-closed.md`).
+//
+// _(`vendor` was one of three until milestone 7 session 3, and `feedback` one of two until session 6.
+// The count is written out here and derived in the suite, which is the split that has held: the
+// sentence explains, the assertion counts.)_
 //
 // ## Exit codes, which are the tools' own
 //
@@ -58,22 +62,16 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 
-// ONE carrier for the version, read from the manifest that publishes it.
+// ONE carrier for the version, read from the manifest that publishes it — and read in `manifest.mjs`
+// rather than here, since milestone 7 session 6.
 //
-// It was written down twice — here and in `package.json` — which is this repository's dominant
-// defect class committed in the file whose own comments name it. Read rather than duplicated, and
-// the read works in both layouts: from a checkout `package.json` is one level up from `cli/`, and
-// the published package keeps that shape because `files` ships `cli/` under the package root.
-//
-// Falls back rather than throwing: a version string is not worth taking the command line down for.
-export const VERSION = (() => {
-    try {
-        const manifest = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "package.json");
-        return JSON.parse(fs.readFileSync(manifest, "utf8")).version ?? "unknown";
-    } catch {
-        return "unknown";
-    }
-})();
+// It was written down twice — here and in `package.json` — which is this repository's dominant defect
+// class committed in the file whose own comments name it. The read moved down a level when `feedback`
+// needed the same value: importing it *from this file* made the subcommand circular with the entry
+// point and hung the command line on an unsettled top-level await, which `manifest.mjs`'s header
+// records in full. Re-exported here so this file's published surface is unchanged.
+export { VERSION } from "./manifest.mjs";
+import { VERSION } from "./manifest.mjs";
 
 // The eight, in the order `docs/vision.md` lists them. `module` is the file that carries the
 // subcommand's `run`; `null` means the subcommand exists in the vision and not yet in the tree.
@@ -125,8 +123,7 @@ export const SUBCOMMANDS = [
     },
     {
         name: "feedback",
-        module: null,
-        arrives: "milestone 7, a later session",
+        module: "feedback.mjs",
         summary: "file an issue from a report you previewed, seam-scanned before it leaves the machine",
     },
 ];
@@ -153,8 +150,8 @@ export function usage() {
         "",
         "Exit codes: 0 succeeded · 1 a red verdict · 2 could not run.",
         "",
-        "`plugin-lint`, `librarian` and `discover` are deliberately not here: docs/vision.md names these eight",
-        "subcommands and is human-owned, so a ninth is the maintainer's call.",
+        "Other tools live in cli/ and are deliberately not here — docs/vision.md names these eight",
+        "subcommands and is human-owned, so a ninth is the maintainer's call. cli/README.md lists them.",
     );
     return lines.join("\n");
 }

@@ -203,9 +203,10 @@ paragraph below rather than being restated in two places, which is what made the
 six when this entry was first written: `new` and `feedback` reached the CLI licensed by row 7 of
 [`docs/plan.md`](docs/plan.md), and the maintainer folded both into the constitution on 2026-08-03 —
 along with widening `vendor`'s gloss to cover materialising a workspace **out of** a repository as well
-as into one, which is what lets the residence switch have a verb. Of the eight, **six dispatch** —
-`init`, `doctor`, `compile`, `vendor`, `index`, `new` — and two (`upgrade`, `feedback`) exit 2 naming
-where they arrive.
+as into one, which is what lets the residence switch have a verb. Of the eight, **seven dispatch** —
+`init`, `doctor`, `compile`, `vendor`, `index`, `new`, `feedback` — and one (`upgrade`) exits 2 naming
+where it arrives. _(Six and two until milestone 7 session 6, when `feedback` shipped with D3; corrected
+here under this file's own accumulate-and-correct rule rather than left for a reader to trip over.)_
 
 **A workspace can move house, and `vendor` is what moves it.** One operation with a direction, which is
 what the constitution's widened gloss describes. `portulan vendor <workspace> --into <dir> --host <id>`

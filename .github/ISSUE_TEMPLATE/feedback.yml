@@ -46,6 +46,19 @@ body:
     validations:
       required: false
 
+  # Optional, and normally filled by `portulan feedback` rather than by hand — the CLI sender assembles
+  # a fixed environment block (proposal 0014) and every form it can file into needs a declared home for
+  # it. Added 2026-08-10 with the sender; `bug.yml` has had this field since the forms landed.
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: >
+        Portulan version, Workspace Definition version, host, runtime, OS. Leave it empty if you are
+        filling this in a browser — nothing here needs it to be a useful report.
+    validations:
+      required: false
+
   - type: checkboxes
     id: acknowledgements
     attributes:

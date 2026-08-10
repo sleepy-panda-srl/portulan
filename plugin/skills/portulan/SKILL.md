@@ -252,11 +252,12 @@ what it *enforces* is the thing an agent must not paper over:
   no generated index" from 2026-07-26 until now, and milestone 5 built one on 2026-07-28 — a sentence
   denying a capability that exists, which is condition 4 of a definition of done pointing the other
   way.)_
-- **The CLI is not published, so nothing is one `npx` away.** Six of the eight subcommands are built
+- **The CLI is not published, so nothing is one `npx` away.** Seven of the eight subcommands are built
   and run from a checkout — `init`, which drafts a workspace for a team that has none; `new`, which
   scaffolds a skill, persona, pack, workspace, gate policy or repo card into a layer you own; `vendor`,
-  which materialises a workspace into a host or moves it between residences; plus `doctor`, `compile`
-  and `index`. `upgrade` and `feedback` are not built and exit 2 naming where they arrive. What `init`
+  which materialises a workspace into a host or moves it between residences; `feedback`, which files an
+  issue from a report you previewed, seam-scanned before it leaves the machine; plus `doctor`, `compile`
+  and `index`. `upgrade` is not built and exits 2 naming where it arrives. What `init`
   and `new` emit is a **draft**: a human curates it, and `init`'s verify recipe exits 2 until they say
   what green means for their repository. _(This bullet said "there is no CLI" and listed `compile` and
   `index` as arriving later; both had shipped at milestones 4 and 5, and the entry point at milestone 7.

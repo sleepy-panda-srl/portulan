@@ -19,6 +19,16 @@ rather than leaving you to infer it from a closed pull request.
 
 Those three forms are the contribution channel. They are not a lesser path to it.
 
+**From a terminal, `portulan feedback` files into the same three forms** — `draft` writes the report as
+a file in your workspace, `preview` shows you the exact bytes, and `send --approve` files them under
+your own GitHub login. It is the same channel, not a second one: no relay and no account of ours in the
+path. **Nothing leaves the machine that you did not read first, and that is enforced rather than
+promised**: `preview` stamps a digest of the payload into the report, and `send` refuses any payload
+that does not match it — so a report edited after you read it, or read on a machine that has since
+changed, is refused rather than sent. If you keep a list of terms that must never reach an issue
+tracker, point `--seam-terms` at it and a hit refuses the send; if you keep none, the preview says so
+in the same breath as the bytes, rather than letting silence read as a clean scan.
+
 ## What only team members may do
 
 **Commit and push.** Code lands only through members of the `sleepy-panda-works` organisation with write
