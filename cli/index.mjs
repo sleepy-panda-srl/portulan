@@ -1085,7 +1085,7 @@ function budgetNumber(value, where) {
  * is one `doctor` rejects — but this tool does not validate against the schema and the two have no
  * ordering (see `readScopes`, where the same reasoning already refuses to resolve an unvalidated
  * path). Counting the declaration instead would have put the false green back in the one shape a
- * caller reaches without `doctor`, which is defect class #91: a fix arriving without its sibling.
+ * caller reaches without `doctor`, which is the class `0020` names: a fix arriving without its sibling.
  */
 function budgetFindings(memory, store, expected, fail) {
     const lines = budgetNumber(memory.index?.budget?.lines, "memory.index.budget.lines");

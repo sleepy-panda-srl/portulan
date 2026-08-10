@@ -220,8 +220,8 @@ export function bytesOf(file) {
             // DIFFERENT bytes — which both breaks this function's own "never decodes" promise and can
             // hide a control byte sitting in the target. That is the identical defect `splitList`
             // was just repaired for, two functions below, in the same push that repaired it: a fix
-            // arriving without its sibling, which is the class this repository files as #91. Copilot
-            // found it in the suppressed channel on the very next round.
+            // arriving without its sibling, which is the class `0020` names. Copilot found it in the
+            // suppressed channel on the very next round.
             return fs.readlinkSync(file, "buffer");
         } catch (cause) {
             throw new ControlCharsError(`cannot read the symlink ${displayPath(file)} — ${cause.code ?? cause.message}`);

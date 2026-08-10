@@ -11,9 +11,9 @@
 // ## Why this suite exists rather than a fourth implementation
 //
 // A rule holds where it is enforced. Three enforcement sites are three chances to repair one and leave
-// the others, which is the class [#91](https://github.com/sleepy-panda-works/portulan/issues/91) names
-// and the standing ruling of 2026-07-27 forbids — *"never ship a change that corrects one wrong claim
-// while knowingly leaving its neighbours"*. It is not hypothetical here: on
+// the others, which is the class `0020` names and the standing ruling of 2026-07-27 forbids — *"never
+// ship a change that corrects one wrong claim while knowingly leaving its neighbours"*. It is not
+// hypothetical here: on
 // [#164](https://github.com/sleepy-panda-works/portulan/pull/164) round 4 found a directory sitting at a
 // leaf that `vendor`'s preflight passed and `writeFileSync` then threw `EISDIR` on, the shape had been
 // copied from `new.mjs`, and the fix had to land in two files; round 12 then found the same collision
