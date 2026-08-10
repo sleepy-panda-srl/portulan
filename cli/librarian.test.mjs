@@ -611,6 +611,48 @@ describe("renderRecord", () => {
         assert.match(text, /\*\*Date:\*\* 2026-06-15/);
     });
 
+    test("the per-record distance NAMES the record it measured", () => {
+        // The line existed and nothing asserted it, which is how the seeding bug below survived a
+        // full review round. A distance with no filename sends a reader to sort the store by hand,
+        // and the whole point of the 2.8 rail is that a breach is LOCAL — it has a name.
+        const memory = { index: { path: "memory-index.md" }, store: { budget: { record_kilobytes: 8 } } };
+        const { result } = passOf(
+            {
+                ".portulan/memory/small.md": [linked("A short one."), "2026-06-01"],
+                ".portulan/memory/big.md": [linked("x".repeat(3000)), "2026-06-01"],
+            },
+            { memory },
+        );
+        const text = renderRecord([result], { asOf: "2026-06-15" });
+        assert.match(text, /Largest record: [\d.]+ of 8 KB \(\d+%\) — `big\.md`/);
+        assert.doesNotMatch(text, /no records yet/);
+    });
+
+    test("a store whose records are ALL zero bytes still reports that it has records", () => {
+        // `counts.largest` seeds at `{file: null, bytes: 0}` and was updated only on
+        // `recordBytes > largest.bytes`. A zero-byte record never beats the seed, so the report said
+        // "no records yet" over a store that held one — a false statement about the store, in the
+        // artifact that runs unattended. An empty `.md` is reachable: `doctor` reports it as a record
+        // with no provenance, and this pass counts it either way. Raised by Copilot on #215.
+        const memory = { index: { path: "memory-index.md" }, store: { budget: { record_kilobytes: 8 } } };
+        const { result } = passOf({ ".portulan/memory/empty.md": ["", "2026-06-01"] }, { memory });
+        const text = renderRecord([result], { asOf: "2026-06-15" });
+        assert.equal(result.counts.records, 1);
+        assert.match(text, /Largest record: 0 of 8 KB \(0%\) — `empty\.md`/);
+        assert.doesNotMatch(text, /no records yet/);
+    });
+
+    test("an EMPTY store says so, which is the only case that line may claim", () => {
+        const memory = { index: { path: "memory-index.md" }, store: { budget: { record_kilobytes: 8 } } };
+        // A non-markdown file, so the store DIRECTORY exists and holds no record. An absent directory
+        // is a different case the pass refuses outright — `listSeries` will not render an index of
+        // nothing, because an empty index compares equal to an empty committed one and would pass.
+        const { result } = passOf({ ".portulan/memory/.keep": ["", "2026-06-01"] }, { memory });
+        const text = renderRecord([result], { asOf: "2026-06-15" });
+        assert.equal(result.counts.records, 0);
+        assert.match(text, /Largest record: .*no records yet/);
+    });
+
     test("states the pass date on every claim, so a stale record reads as of when it ran", () => {
         const { result } = passOf({ ".portulan/memory/r.md": [linked(), "2026-06-01"] });
         const text = renderRecord([result], { asOf: "2026-06-15" });
