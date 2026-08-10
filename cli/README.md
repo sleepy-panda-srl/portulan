@@ -8,11 +8,11 @@ entry point exists:
 [`portulan.mjs`](portulan.mjs), reached as `portulan <subcommand>` through the `bin` in the
 repository's `package.json`.
 
-**Six of the eight dispatch; two exit 2.** `doctor`, `compile` and `index` exist because milestones
-2, 4 and 5 needed them; `init` was built at milestone 7 session 1, `new` at session 2, and `vendor` at
-session 3. The entry point calls each one's exported `run` and returns the code unchanged. `upgrade`
-and `feedback` are named in `docs/vision.md`, are not built, and say so: they exit **2 — could not
-run**, naming where they arrive, because a stub exiting 0 would be a fail-open where a user is most
+**Seven of the eight dispatch; one exits 2.** `doctor`, `compile` and `index` exist because milestones
+2, 4 and 5 needed them; `init` was built at milestone 7 session 1, `new` at session 2, `vendor` at
+session 3, and `feedback` at session 6. The entry point calls each one's exported `run` and returns the
+code unchanged. `upgrade` is named in `docs/vision.md`, is not built, and says so: it exits **2 — could
+not run**, naming where it arrives, because a stub exiting 0 would be a fail-open where a user is most
 likely to trust silence.
 
 **Why eight.** `docs/vision.md` names all eight and is human-owned. It named six until 2026-08-03:
@@ -22,21 +22,41 @@ lasted one pull request. Worth one sentence rather than none, because the *shape
 may be licensed by the row before the constitution catches up, and while that holds, the tool has to say
 which document names it.
 
-Beside those eight sit **three** tools that are not on any of the lists, because milestone 3, milestone
-5 and issue [#68](https://github.com/sleepy-panda-works/portulan/issues/68) needed them. Being off the
-list is a fact about `docs/vision.md`, which names these eight
-subcommands and
-is human-owned: whether `plugin-lint`, `librarian` or `control-chars` ever joins them is the
-maintainer's call and not
-an implementer's, so none is described here as *coming to the CLI* — and none is wired behind
-the entry point, which is the same rule expressed in code rather than in a sentence.
+Beside those eight sit **four** runnable tools that are on none of the lists — `plugin-lint`,
+`librarian`, `control-chars` and `discover` — because milestone 3, milestone 5, issue
+[#68](https://github.com/sleepy-panda-works/portulan/issues/68) and milestone 7's plugin-cache
+discovery needed them. Two more files in this directory are neither subcommands nor tools: `gate` and
+`stop-gate` are the **compiled-hook runners**, invoked by generated host configuration rather than by a
+person, and `recipe-set` and `manifest` are modules other tools import.
+
+Being off the list is a fact about `docs/vision.md`, which names these eight subcommands and is
+human-owned: whether any of the four ever joins them is the maintainer's call and not an implementer's,
+so none is described here as *coming to the CLI* — and none is wired behind the entry point, which is
+the same rule expressed in code rather than in a sentence.
+
+**This paragraph is the one carrier of that roster.** It said *three* and named a different three from
+the two other places that also named one — `portulan.mjs` listed `plugin-lint`, `librarian` and
+`discover`; the root `README.md` listed `plugin-lint`, `librarian` and `control-chars`; four were on
+disk. One rule with three carriers is obeyed at the narrowest, and the repair is
+[`0020`](../.portulan/proposals/0020-a-fix-is-not-done-at-the-site-it-was-found.md)'s where the rule
+cannot be a function: state it once, and let the others cite. Both now cite this file.
+
+The table below would be the check on it, and today it is not quite: **seven files in this directory
+have no row** — `gate`, `stop-gate`, `recipe-set` and its two suites, `collisions.test`, and
+`gh-bot.test`. It was **eleven** when milestone 7 session 6 measured it; that session added rows for the
+four it introduced and left these seven to
+[#203](https://github.com/sleepy-panda-works/portulan/issues/203) rather than growing an unscheduled
+sweep inside a feature change. A table headed *What is here today* that is seven files short is still a
+claim its own directory falsifies, which is why the issue exists and why the number is stated here
+rather than left for a reader to count.
 
 ## What is here today
 
 | File | What it is |
 |---|---|
 | [`portulan.mjs`](portulan.mjs) | **The entry point** the published package exposes as `portulan`, added at milestone 7. It dispatches and adds nothing: each subcommand's module is imported **on demand** — so `portulan --help` does not pay for `doctor`, and a tool that fails to parse takes down only its own subcommand — and the tool's exit code is returned **unchanged**, because re-mapping it here would put a second opinion about a workspace between the tool and its user. Verified byte-identical to direct invocation for the three built subcommands it wrapped when it landed; `init` joined them at session 1 and is exercised through the entry point as well as directly. |
-| [`portulan.test.mjs`](portulan.test.mjs) | Its test suite, written first. **Dispatch only**: which module is reached, that arguments arrive unchanged, that exit codes come back unchanged, and that every refusal exits `2`. It injects the loader rather than shelling out, because re-asserting what `doctor` or `index` already prove would make this file a second carrier of it — with one deliberate exception, a case that imports the real modules to check they still export `run`, since that is the single assumption the entry point rests on. |
+| [`portulan.test.mjs`](portulan.test.mjs) | Its test suite, written first. **Dispatch only**: which module is reached, that arguments arrive unchanged, that exit codes come back unchanged, and that every refusal exits `2`. It injects the loader rather than shelling out, because re-asserting what `doctor` or `index` already prove would make this file a second carrier of it — with one deliberate exception, a case that imports the real modules to check they still export `run`, since that is the single assumption the entry point rests on. **Two cases spawn the real binary** — `init --help` and `feedback --help` — because injection can show that the dispatcher *would* reach a module and never that the module is reachable. The second of the two earned its place the hour it was written: it caught an import cycle that made `portulan feedback` exit 13 printing nothing, invisible to every injected case. |
+| [`manifest.mjs`](manifest.mjs) | The two facts read out of `package.json` — the published `version`, and the repository derived from `bugs.url` that `feedback` files into. It exists as its own file rather than living in the entry point because a subcommand importing the entry point back is a **cycle**, and that cycle hung the command line on an unsettled top-level await. It imports nothing of ours, which is the property that makes it safe for anything here to import. |
 | [`init.mjs`](init.mjs) | **The onboarding subcommand**, added at milestone 7 session 1: it drafts a workspace for a repository that has none. It **asks** where that workspace resides — in the repository, or in a workspace that names it — and has **no default**, because a repository is governed by exactly one workspace and that answer is the one that cannot be guessed. It refuses ahead of the first byte written: never over an existing residence, and never a name, governor or pack id a validator would misread. What it emits is a **draft** — including a verify recipe that exits 2 until the adopting team declares what green means for them. |
 | [`init.test.mjs`](init.test.mjs) | Its test suite, written first. Its last group is the one that matters: it runs the real `doctor` against real drafted directories, in both residences, because a workspace nothing validated is a workspace nobody can trust. That group is what caught a drafted gate policy that parsed cleanly and compiled to a floor no rule reached. |
 | [`doctor.mjs`](doctor.mjs) | The Workspace Definition validator. Zero dependencies, no install step, run from the repository root. Two repeatable roots, **named by default and never discovered unasked**: `--pack-root` is where declared packs are looked up, and `--repo-root` (2.7) is where the repositories a workspace's cards NAME are checked out, so the residence ruling's cross-repository refusal has somewhere to look. Without a `--repo-root` that check reports that it did not run rather than passing quietly. **One thing IS discovered, as of milestone 7 — a pointer's `governed_by`**, through [`discover.mjs`](discover.mjs); the row said *this tool does no discovery* until then. It is **reported and never graded**, so no host's install state moves this tool's verdict, and a pack root gained `auto` in the same milestone — `--pack-root auto` reads that record too, only when asked, and `./auto` still names a directory. `--repo-root` stays named-only: a repository checkout is not something a plugin record lists. |
@@ -49,6 +69,9 @@ the entry point, which is the same rule expressed in code rather than in a sente
 | [`new.test.mjs`](new.test.mjs) | Its test suite, written first. It establishes *never into `core/`* against the filesystem rather than against an argument check, and runs the real `doctor` and `plugin-lint` over what was scaffolded — a scaffold nothing validates is one nobody can trust. |
 | [`vendor.mjs`](vendor.mjs) | **Materialises a workspace where it is needed**, added at milestone 7 session 3 when the maintainer widened the constitution's gloss to cover both directions. `--host` writes a self-contained `AGENTS.md` — core's kernel inlined, the workspace's slots named, packs named-not-composed — beside a copied `.portulan/`, for a host that cannot install the plugin. `--switch` changes residence, feed-side ↔ in-repo, under proposal [`0017`](../.portulan/proposals/0017-one-repository-one-governing-workspace.md): materialise at the new residence, leave a pointer or nothing at the old, `doctor` green at **both** ends before the old one is retired. Every handled failure leaves exactly one governing workspace; the residence is **never inferred** from a path, which is `init`'s rule for `init`'s reason. |
 | [`vendor.test.mjs`](vendor.test.mjs) | Its test suite, written first. The group that matters *forces* a failure after each named write step, because the property this tool exists to protect is what a failure partway leaves on disk — an ordering nothing can interrupt is an ordering nobody has checked. Every end state is graded by the real `doctor`, never by a second opinion about what valid means. |
+| [`feedback.mjs`](feedback.mjs) | **The inbound half**, added at milestone 7 session 6: it files an issue from a report the user previewed, seam-scanned before it leaves the machine, under the Gated tier. Three verbs — `draft` writes a report into the workspace's `feedback/` directory, `preview` prints the exact bytes, `send --approve` files them through the user's own `gh` login. The payload is assembled from a **closed list** rather than filtered, so nothing here reads a workspace name, a repo card, a gate map, memory, a remote or a path. It ships **no seam terms** — the list is the adopter's and is looked for at `--seam-terms`, `$PORTULAN_SEAM_TERMS`, then `<workspace>/seam-terms.txt`; a hit refuses the send with **1**, a named list that cannot be read refuses it with **2**, and no list at all is *stated in the sentence the user approves* rather than passed over. Approval is per send and is never inherited from a draft or a preview. |
+| [`feedback.test.mjs`](feedback.test.mjs) | Its test suite, written first, against `.portulan/tasks/0012-a-feedback-pipe-points-out-of-the-seam.md`'s *Done when* list. Nothing here reaches the network: `gh` arrives injected. The one property injection cannot prove — that the approved bytes are the sent bytes — is not proven by comparison but held by construction, and the suite asserts the construction: the previewed body **is** `payload()`'s return value, not a second rendering that agrees with it today. |
+| [`feedback.live.test.mjs`](feedback.live.test.mjs) | The rail on the pair that cannot be collapsed. `package.json`'s `files` does not ship `.github/ISSUE_TEMPLATE/`, so the sender must carry the forms' field ids, labels, required flags, dropdown options and acknowledgement texts — one fact, two carriers, and the repair is `0020`'s: one carrier plus a rail. This reads the real forms and fails when the two disagree. Its own instrument is guarded first: if the reader stops understanding a form and returns nothing, the test goes **red** rather than vacuously green. |
 | [`compile.mjs`](compile.mjs) | The enforcement compiler: a workspace's gate policy becomes host enforcement. Two backends — Claude Code `permissions` + `hooks`, and a GitHub repository ruleset for the platform floor — and the vocabulary it reads stays the workspace's, so a third backend translates the same policy instead of forcing it to be rewritten. `--workspace` takes a repository root **or the workspace directory itself**, which is how a feed-side workspace is reachable at all: it keyed on `.portulan` until milestone 7 session 3, when running the parity demonstration found it exiting 2 on the feed-side end of a switch. |
 | [`compile.test.mjs`](compile.test.mjs) | Its test suite, likewise written first. Emission fidelity only — nothing in here can establish that a host *honours* what the compiler emits, which is a fact about a running host. |
 | [`index.mjs`](index.mjs) | The index generator, over **two** series since Workspace Definition 2.5: the memory store, which is size-budgeted so a breach is a red, and the handoff series, which is not — an append-only series has no consolidation to offer, so every remedy a budget could ask for is already barred. Every field on every line is derived from what it points at, so neither file has a hand-maintained half; the *carriers* differ per series and on evidence, a record's title being its filename and a handoff's its H1. It writes an over-budget index rather than refusing to — the remedy is consolidation, and consolidating needs the artifact to consolidate from. |

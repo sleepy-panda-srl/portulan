@@ -97,7 +97,7 @@
       "id": "send-something-outside-this-repository",
       "tier": "gated",
       "action": {
-        "none": "No tool-level surface. 'Send a message or artifact outside this repository on the team's behalf' has no single command to match — it is email, chat, an issue on someone else's tracker. A matcher pretending to cover it would be worse than the honest gap."
+        "none": "No tool-level surface. 'Send a message or artifact outside this repository on the team's behalf' has no single command to match — it is email, chat, an issue on someone else's tracker. A matcher pretending to cover it would be worse than the honest gap. ONE SPELLING BECAME MATCHABLE at milestone 7 session 6 and this rule still compiles to nothing, which is a choice rather than an oversight. `portulan feedback send` refuses without an explicit --approve IN THE TOOL, so the refusal holds on every host including the ones with no hook system, while a Bash matcher here would cover one of at least three spellings — bare, through npx, and through node on the module — and would read as coverage this rule does not have. Enforcement in the artifact beats enforcement in a host's permission table, which is the platform floor's own direction. The gate map's Which identity acts records the same act from the identity side."
       },
       "reason": "Sending anything outward on the team's behalf is Gated."
     },
