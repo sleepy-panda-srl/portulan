@@ -31,6 +31,11 @@ recipes, a memory store, a gate map, a position in the cascade. Neither carries 
 _(That comparison is not reproducible from this public tree: the portfolio workspace lives in
 `portulan-internal`, and its living there is the feature rather than an accident of where it was put.)_
 
+_(Note appended 2026-08-10, the argued text left as ruled on: "this public tree" was the open-core
+layer's name, and it is also now false as a reachability claim — the repository has been **private since
+2026-08-03**. The comparison is doubly unreproducible for a stranger, and the point it supports is
+untouched.)_
+
 What differs is **reach** and **delivery**:
 
 - **Feed-side.** One workspace reaches many repositories, and it keeps team context out of product trees

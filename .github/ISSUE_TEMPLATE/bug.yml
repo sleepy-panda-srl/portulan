@@ -8,7 +8,8 @@ body:
   - type: markdown
     attributes:
       value: |
-        Thanks for taking the time. **Do not report a security issue here** — this is public. See the
+        Thanks for taking the time. **Do not report a security issue here** — an issue is a permanent
+        record that everyone who can read this repository sees. See the
         Security section of [`CONTRIBUTING.md`](https://github.com/sleepy-panda-works/portulan/blob/main/CONTRIBUTING.md).
 
   - type: textarea

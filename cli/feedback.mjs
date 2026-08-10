@@ -168,8 +168,9 @@ export const FORMS = [
         acknowledgements: [
             {
                 text:
-                    "I understand this is a public issue and I have not included anything confidential — my own, " +
-                    "my employer's, or anyone else's.",
+                    "I understand this issue is a permanent record that everyone who can read this repository " +
+                    "sees, and I have not included anything confidential — my own, my employer's, or anyone " +
+                    "else's.",
                 required: true,
             },
         ],

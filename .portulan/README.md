@@ -55,9 +55,16 @@ Three workspaces appear in the plan and they are easy to confuse:
 
 | Workspace | Where | Public? | Covers |
 |---|---|---|---|
-| **This one** — `.portulan/` | here | yes — public since 2026-07-27 | building Portulan itself: dogfooding |
-| Demo workspace | [`../examples/`](../examples/) | yes | a fictional team with two products, so a stranger can read a complete workspace end to end |
-| Sleepy Panda portfolio | private feed (milestone 6) | no | every Sleepy Panda product |
+| **This one** — `.portulan/` | here | by design yes — **not reachable today**, see below | building Portulan itself: dogfooding |
+| Demo workspace | [`../examples/`](../examples/) | by design yes — same reach as above | a fictional team with two products, so a stranger can read a complete workspace end to end |
+| Sleepy Panda portfolio | private feed (milestone 6) | no, by design | every Sleepy Panda product |
+
+_**Reach, as of 2026-08-10.** `Public?` above is design intent; this line is state, and the two stopped
+agreeing on 2026-08-03. The first two ship in the open-core repository, which was public 2026-07-27 →
+2026-08-03 and is **private again since 2026-08-03** — so no stranger can reach either one today, and
+the marketplace install path requires authentication. The third is in the private feed and was never
+meant to be reachable. What the public window published cannot be unpublished: clones taken in it are
+not recallable._
 
 ## Deliberately not here yet
 

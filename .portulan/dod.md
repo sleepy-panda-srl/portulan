@@ -25,9 +25,14 @@ A change is done when **all** of the following hold.
    enforcement exists or the sentence names the milestone where it arrives. _Why: "write the limit, not
    the aspiration" — [`identity.md`](identity.md)._
 5. **The pre-commit scan is clean** across the changed files, the commit message, and the branch name.
-   The term list lives outside this repository. _Why: this history **is** public, since 2026-07-27, and
-   cannot be cleaned afterwards — only rewritten, which is worse and leaves its own trace. The condition
-   this clause was written under has arrived, so it binds harder now than when it was drafted, not less._
+   The term list lives outside this repository. _Why: this history **was** world-readable — the
+   repository was public 2026-07-27 → 2026-08-03 and is **private again since 2026-08-03**
+   (re-measured 2026-08-10: `private: true`, unauthenticated `GET` **404**, 0 forks) — and a commit
+   cannot be cleaned afterwards, only rewritten, which is worse and leaves its own trace. **The
+   flip-back does not relax this clause, and must not be read as relaxing it.** Clones taken in that
+   window cannot be recalled; visibility is a Gated setting that has already moved twice; and a scan
+   that runs only while the repository happens to be public is a scan that stops exactly when it is
+   cheapest to keep. It binds harder now than when it was drafted, not less._
 6. **The plan reflects reality.** Every session appends its Session log entry to
    [`../docs/plan.md`](../docs/plan.md) — unconditionally, in the shape and within the budget that
    file's **Session log header** sets out. This condition **cites** that mandate and deliberately does

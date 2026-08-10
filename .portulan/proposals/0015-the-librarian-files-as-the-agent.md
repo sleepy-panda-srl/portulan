@@ -71,6 +71,14 @@ contradicting setting:
   already read. The cost the sentence was pricing has since gone to approximately zero, and nothing
   re-read it.
 
+  _**Note appended 2026-08-10; the argued text above is left as it was ruled on.** This bullet's premise
+  expired on **2026-08-03**, when the repository was flipped back to private (re-measured 2026-08-10:
+  `private: true`, unauthenticated `GET` **404**, 0 forks). The cost is no longer approximately zero —
+  it is the one the next paragraph, this proposal's own argument-against, describes. **That
+  counterfactual arrived**, which is the whole of the correction: the proposal's accepted conclusion is
+  untouched, and what moved is which of its two paragraphs is live. The grant itself is the maintainer's
+  and is not reopened here._
+
 **What the widening does still cost, stated because the paragraph above is an argument for the change
 and this one is the argument against it.** Visibility is a live setting, not a pinned one: if this
 repository were ever made private again, `contents: read` would become a real grant that nobody would
