@@ -530,6 +530,46 @@ describe("passWorkspace — refusals", () => {
         }
     });
 
+    test("a memory BUDGET that is not a positive integer is refused too, not printed as a percentage", () => {
+        // The sibling of the threshold check above, and it was missing: the three budgets went to
+        // `budgetHeadroom` raw, so a schema-legal `0` rendered `Infinity%` and `"8"` a plausible-looking
+        // number — in a weekly artifact nobody is watching when it runs — while `index` and `doctor`
+        // refused the same value outright. Three consumers of one key must not give three answers.
+        // Raised by Copilot on #215, suppressed half, against the per-record line; repaired for all
+        // three budgets rather than the one that surfaced it.
+        const budgets = [
+            ["memory.index.budget.lines", (v) => ({ index: { path: "memory-index.md", budget: { lines: v } } })],
+            ["memory.store.budget.kilobytes", (v) => ({ index: { path: "memory-index.md" }, store: { budget: { kilobytes: v } } })],
+            ["memory.store.budget.record_kilobytes", (v) => ({ index: { path: "memory-index.md" }, store: { budget: { record_kilobytes: v } } })],
+        ];
+        for (const [where, memory] of budgets) {
+            for (const bad of [0, -1, 1.5, "8", null]) {
+                const dir = repo(
+                    { ".portulan/memory/r.md": [linked(), "2026-01-01"] },
+                    { workspace: MANIFEST({ librarian: { staleness: STALENESS }, memory: memory(bad) }) },
+                );
+                assert.throws(
+                    () => passWorkspace(path.join(dir, ".portulan"), { asOf: "2026-06-15" }),
+                    LibrarianError,
+                    `${where}: ${JSON.stringify(bad)} must be refused`,
+                );
+            }
+        }
+    });
+
+    test("a budget refusal names the manifest path a reader can grep for", () => {
+        // Not `store`/`record_kilobytes`, the two arguments the helper took — a refusal naming a key
+        // that does not appear in the file is one the author cannot act on.
+        const dir = repo(
+            { ".portulan/memory/r.md": [linked(), "2026-01-01"] },
+            { workspace: MANIFEST({ librarian: { staleness: STALENESS }, memory: { index: { path: "memory-index.md" }, store: { budget: { record_kilobytes: 0 } } } }) },
+        );
+        assert.throws(
+            () => passWorkspace(path.join(dir, ".portulan"), { asOf: "2026-06-15" }),
+            /memory\.store\.budget\.record_kilobytes is 0.*switch the rail off/s,
+        );
+    });
+
     test("a manifest declaring a spec this tool does not implement is refused", () => {
         const dir = repo(
             { ".portulan/memory/r.md": [linked(), "2026-01-01"] },

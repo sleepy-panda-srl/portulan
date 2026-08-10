@@ -293,17 +293,40 @@ function lastTouched(root, relative) {
 // The pass
 // ===========================================================================================
 
-/** A declared threshold must be a positive integer — ./index.mjs's rule, for ./index.mjs's reason. */
-function threshold(value, where) {
+/**
+ * A declared threshold must be a positive integer — ./index.mjs's rule, for ./index.mjs's reason.
+ *
+ * **Also the memory budgets, as of 2.8.** They were fed to `budgetHeadroom` raw, so a schema-legal `0`
+ * or `"8"` printed `Infinity%` or a plausible-looking percentage in the weekly report rather than
+ * refusing — while `./index.mjs` and `./doctor.mjs` both refused the same value outright. A third
+ * consumer reading the same key with a different answer is how two checkers start disagreeing about
+ * one manifest, and the report is the one place nobody is watching when it runs. Raised by Copilot on
+ * #215, suppressed half; the hole predates the per-record rail and is repaired for all three budgets
+ * rather than only the key that surfaced it — `0020`'s rule, at the site the finding pointed to.
+ *
+ * `noun`/`off` keep each caller's sentence true: a staleness value switches a **nag** off, a budget
+ * switches a **rail** off. Defaulted so the three existing messages stay byte-identical.
+ */
+function threshold(value, where, noun = "threshold", off = "nag") {
     if (value === undefined) return undefined;
     if (typeof value !== "number" || !Number.isInteger(value) || value <= 0) {
         throw new LibrarianError(
-            `${where} is ${JSON.stringify(value)}, which is not a positive integer. A threshold that is zero, ` +
-                "negative or non-numeric would read as undeclared and switch the nag off in the key that exists to switch it on",
+            `${where} is ${JSON.stringify(value)}, which is not a positive integer. A ${noun} that is zero, ` +
+                `negative or non-numeric would read as undeclared and switch the ${off} off in the key that exists to switch it on`,
         );
     }
     return value;
 }
+
+/**
+ * One declared memory budget, refused unless it is a positive integer.
+ *
+ * The `where` it reports is the manifest path a reader would grep for — `memory.store.budget.kilobytes`,
+ * not the two arguments this function took to build it. A refusal naming a key that does not appear in
+ * the file is a refusal the author cannot act on.
+ */
+const budget = (workspace, group, key) =>
+    threshold(workspace.memory?.[group]?.budget?.[key], `memory.${group}.budget.${key}`, "budget", "rail");
 
 const listMarkdown = (dir) => {
     let names;
@@ -567,15 +590,18 @@ export function passWorkspace(dir, { asOf, reviews } = {}) {
         // Step 5's rail, read as a distance rather than a verdict. `index.sh` answers over/under at
         // pull-request time; what it cannot say is *how close*, and a scheduled pass that reports
         // pressure is the difference between consolidating on a calendar and consolidating on a red.
+        // Every budget goes through `threshold` first. Reading them raw let a schema-legal `0` print
+        // `Infinity%` and a `"8"` print a plausible percentage, in a weekly artifact nobody is watching
+        // when it runs — while the two tools that judge the same keys refused them outright.
         headroom: {
-            store: budgetHeadroom(counts.bytes / 1024, workspace.memory?.store?.budget?.kilobytes),
-            index: budgetHeadroom(renderedLines(index.expected), workspace.memory?.index?.budget?.lines),
+            store: budgetHeadroom(counts.bytes / 1024, budget(workspace, "store", "kilobytes")),
+            index: budgetHeadroom(renderedLines(index.expected), budget(workspace, "index", "lines")),
             // The per-record rail of Workspace Definition 2.8, measured at the record CLOSEST to it —
             // the only record whose distance means anything, and the one a split would target. Without
             // this the pass reported `Store: no budget declared` over a store that is fully railed, just
             // railed per record: a weekly report going quietly silent about a live rail, which is the
             // failure ../.portulan/memory/a-mandate-nothing-checks-is-already-broken.md names.
-            record: budgetHeadroom(counts.largest.bytes / 1024, workspace.memory?.store?.budget?.record_kilobytes),
+            record: budgetHeadroom(counts.largest.bytes / 1024, budget(workspace, "store", "record_kilobytes")),
         },
         // Carried beside the figure so the report can say WHICH record is closest. A percentage with
         // no name sends a reader to sort the store by hand to find out what to repair.
