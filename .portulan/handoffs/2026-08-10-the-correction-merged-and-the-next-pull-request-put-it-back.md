@@ -8,6 +8,14 @@ instruction, so the live "Portulan Milestone 7, Session 6" carries none of it.
 and had not moved since the finding was measured; the cell was **not** already trued, so this is an edit
 rather than a no-op record.
 
+**Amended 2026-08-10, after [#206](https://github.com/sleepy-panda-works/portulan/pull/206) merged and
+this branch rebased onto `43f1e54`.** The findings below stand exactly as measured — they are what the
+cell said at `159df14`. What changed is **which of them this pull request still lands**: #206 restructured
+the same cell and trued findings 1 and 2 independently, and landing D3 moved the count past this branch's
+figure. **Only finding 3 survives as work.** The original text is left as written rather than edited to
+match today, on the same forward-only principle this handoff applies to `m07.md` below; this note carries
+the difference. See "The reconciliation" at the end.
+
 ## What was wrong, re-measured rather than inherited
 
 The brief named two disagreements. Both reproduce, and a **third** was found while measuring.
@@ -33,9 +41,13 @@ cell.** #197 merged at **16:00:44Z**; #195 at **16:40:23Z**. `git show 3cf47e9 -
 adding `s5: verify composition … **D6 done**`, striking `verify composition` from `Left` and setting
 `**four of six**`. `git show 47bc92b -- docs/plan.md` shows #195 putting all three back.
 
-**It was not merge order alone — a rebase resolved a same-line conflict the wrong way.** All four of
-#195's commits carry `committedDate` **16:34:32Z** against authored times from 16:10Z on, which is the
-signature of a rebase, and it happened *after* #197 merged. `47bc92b^` therefore carries #197's corrected
+**It was not merge order alone — a rebase resolved a same-line conflict the wrong way.** All **eight** of
+#195's commits carry `committedDate` **16:34:32Z** against authored times spanning **14:11:01Z–16:34:31Z**,
+which is the signature of a rebase, and it happened *after* #197 merged.
+_(Corrected 2026-08-10 at the post-rebase checkpoint: this read "all four … from 16:10Z on". The count came
+off a `tail -4` of the commit list — a truncated listing read as a total, which is the same instrument error
+that first put Copilot's last round at 16:14Z. The first commit message on this branch carries the
+superseded figure and cannot be edited; the tree is the carrier that counts.)_ `47bc92b^` therefore carries #197's corrected
 cell verbatim — checked, not assumed. So the merge-base had moved, both branches had edited line 67, and
 the resolution kept the branch's side. #195 carried one *correct* refinement — `(b) parity` → `(b)
 parity's **adopter** half`, because it landed the bundle half — and the rest of the line was an
@@ -109,4 +121,36 @@ caught this one, and one did read it.
   untrued by the next same-line conflict resolution, and the record now shows that the one round which
   had the revert in its diff read all four files and raised nothing.
 
-**Next action.** Open the PR, run the Copilot rounds to empty, hand to Marius. Do not merge.
+## The reconciliation — the same lesson, with this branch as the one at risk
+
+**Added 2026-08-10 on rebase onto `43f1e54`, after #206 merged.**
+
+This pull request is about a branch that replayed a stale cell over a merged correction. On rebase it
+became that branch: **six commits behind** (`git rev-list --count 159df14..43f1e54`) while carrying two of
+its own, holding a cell whose count read **four of six**, against a `main` that now reads **three** because
+D3 landed with #206. Replaying it would have re-introduced exactly the staleness this change exists to
+remove — the defect reproducing inside its own repair, which is this project's dominant class and the one
+`m07.md` warns recurs there.
+
+**How the conflict was resolved, and the rule used.** `main`'s row 7 is the base, taken whole — its
+restructure into `s0-s4 / s5 / s6`, its `three of six`, its `Evidence:` pointer, and its longer criterion
+text all survive untouched. Onto that, **one** re-applied change: `discovery at the boot (#134)` moved out
+of the `s0-s4` clause and into `s5`, where the Session log dates it. Nothing else from this branch's cell
+was carried across. The anchor was asserted before the substitution rather than assumed, so a silent
+no-match could not pass as a clean resolution, and the result was measured against the rail — **493 of
+500 bytes**.
+
+**One more delta than "one", named rather than glossed.** A character-level diff of main's cell against
+the resolved one returns **three** opcodes, not two: the two that jointly move `discovery`, and a third
+replacing main's `and` with a comma between `verify composition (**D6**)` and `` `compose` `` — because
+`s5` now lists three items and every other list in this cell is comma-only. It reverts nothing and comes
+from no earlier version of this branch's cell. Recorded because a change whose subject is an unnoticed
+extra delta may not ship one unnamed, however cosmetic.
+
+**What #206 landed independently, and this branch therefore does not claim.** Findings 1 and 2 above —
+`verify composition` in `Left`, and the demo count — were trued by #206's own restructure of the cell.
+They are still correctly *recorded* here as what was measured at `159df14`, because they were; they are
+simply no longer this pull request's repair. Finding 3 is.
+
+**Next action.** Branch rebased onto `43f1e54`; both review threads answered in round 1 and resolved on
+the maintainer's explicit instruction of this date. Hand to Marius. **Do not merge** — that stays his.
