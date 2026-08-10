@@ -60,8 +60,8 @@ Corrected to `#{1,6}(?=\s|$)`:
 
 | Tree | Before the fix | After |
 |---|---|---|
-| this branch | 53 citations, 29 records | **56 citations, 32 records** |
-| `43f1e54` (pre-#211) | 46 citations | **47 citations** |
+| this branch | 56 citations, 32 records | **59 citations, 35 records** |
+| `43f1e54` (pre-#211) | 46 citations, 21 records | **47 citations, 22 records** |
 
 The living verdicts do not move — all three recovered sites are records — but **#211's published "46
 citations in 18 files" was an undercount of its own tree**, by an instrument whose title is *the
@@ -76,7 +76,12 @@ figures:
 - **22 living incident-form citations, 0 wrong**: the **13** the maintainer ruled defensible
   (`cli/vendor.mjs` ×4, `cli/vendor.test.mjs` ×3, `cli/index.test.mjs` ×3, `cli/index.mjs` ×2,
   `.portulan/memory/a-review-loop-needs-a-bound.md` ×1) plus **9 in `0020`** the ruling never listed.
-- **32 record sites**, governed by the forward-only cutoff rather than by this sentence — so they are
+Both figures are **as of `e4d3f44`**, and they moved once already: this branch was rebased mid-review
+onto a `main` that had advanced five times in a day, and the record count went **32 → 35** while the
+living count held at 22. The rebase lesson, arriving on the change that cites it — a count is true of a
+tree, so it is restated here with the tree named rather than left to imply the branch it was measured on.
+
+- **35 record sites**, governed by the forward-only cutoff rather than by this sentence — so they are
   *not* scored as the clause working. Among them, `.portulan/tasks/0010:27` and `0011:71`, the pair the
   #211 census recorded as **never ruled on**: both are `Status: DONE` task records, so the cutoff covers
   them, and the maintainer's merge absorbs that disposition rather than leaving it dangling.
