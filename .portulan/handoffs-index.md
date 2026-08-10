@@ -2,7 +2,7 @@
 
 > Generated from `handoffs/` by `node cli/index.mjs`. Do not edit by hand: it is regenerated
 > and byte-compared, so a hand-edit survives exactly until the next run.
-> 90 handoff(s), newest first. No budget: the series is append-only, so
+> 91 handoff(s), newest first. No budget: the series is append-only, so
 > the only remedy a budget could ask for is one this project rules out.
 
 - 2026-08-10 · [Handoff — the rail moves to the record, and the record was two facts](handoffs/2026-08-10-the-rail-moves-to-the-record.md)
@@ -13,6 +13,7 @@
 - 2026-08-10 · [Handoff — the clause misquoted the ruling it ratified](handoffs/2026-08-10-the-clause-misquoted-the-ruling-it-ratified.md)
 - 2026-08-10 · [Handoff — the librarian's scheduled pass](handoffs/2026-08-10-librarian-pass.md)
 - 2026-08-10 · [Handoff — a repository that does not exist, and a sweep `main` half-did underneath this branch](handoffs/2026-08-10-a-repository-that-does-not-exist-and-a-sweep-main-half-did.md)
+- 2026-08-10 · [Handoff — a rail against instrument blindness went blind four ways while being built](handoffs/2026-08-10-a-rail-against-instrument-blindness-went-blind-four-ways.md)
 - 2026-08-10 · [Handoff — a correction reached three carriers of four](handoffs/2026-08-10-a-correction-reached-three-carriers-of-four.md)
 - 2026-08-09 · [Handoff — two sessions built one module, and the order decided itself](handoffs/2026-08-09-two-sessions-built-one-module-and-the-order-decided-itself.md)
 - 2026-08-09 · [Handoff — the pointer had a name and nothing dereferenced it](handoffs/2026-08-09-the-pointer-had-a-name-and-nothing-dereferenced-it.md)

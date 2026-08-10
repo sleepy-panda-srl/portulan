@@ -48,6 +48,7 @@ Run any of the nine declared here from anywhere in the tree:
 | [`workflow-filters.sh`](workflow-filters.sh) | every jq program the workflows run, lifted out of the parsed `run:` scalars and executed against null-bearing fixtures — exact stdout, exact exit status | `bash`, `node`, `jq` |
 | [`index.sh`](index.sh) | every generated index a workspace declares — the memory store's, and since 2.5 the handoff series' — is exactly what its source renders, and neither the store index, nor the store, nor any single record in it is over the budget its manifest declares | `bash`, `git`, `node` |
 | [`control-chars.sh`](control-chars.sh) | no tracked file carries a byte in the C0 range other than TAB and LF, nor DEL — scanned as bytes, because the one tool that would have shown the last one is the tool the byte silences | `bash`, `git`, `node` |
+| [`rule-carriers.sh`](rule-carriers.sh) | a rule an incident reduced to **one** carrier stays reduced — a registered spelling appears only in its carrier or beside a citation of it. Covers **only registered rules**, which is a ratchet over what incidents have taught it and never coverage of doctrine | `bash`, `git`, `node` |
 
 Exit `0` green · `1` red · `2` could not run — and that third code is why each recipe declares its needs
 in the manifest rather than discovering them: a recipe that *could not run* must never be mistaken for
