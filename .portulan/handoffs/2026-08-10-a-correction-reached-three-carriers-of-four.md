@@ -48,7 +48,7 @@ decides* — and needed no change here.
 
 The session was told the gate map *may carry the same claim*. **Today it does not — and it did, which is
 the more useful answer.** No living carrier in the tree still says an App can resolve a thread: the gate
-map's row, [`./README.md`](../tools/README.md),
+map's row, [`../tools/README.md`](../tools/README.md),
 [`../memory/agent-activity-is-attributable.md`](../memory/agent-activity-is-attributable.md),
 [`../memory/a-stated-enforcer-must-be-the-real-one.md`](../memory/a-stated-enforcer-must-be-the-real-one.md)
 and four further sites that cite the row rather than restate it are all on the right side. The docblock
