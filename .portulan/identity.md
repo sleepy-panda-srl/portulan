@@ -35,7 +35,7 @@ Deliberately thin, and it stays thin:
 | Layer | Today | Arrives |
 |---|---|---|
 | Engine, packs, and spec prose | Markdown (`SKILL.md` / `AGENTS.md` conventions) | now |
-| Verify recipes | Bash + POSIX text utilities; every recipe **this workspace declares** but `docs` also needs `node`, and `workflow-filters` needs `jq`. A composed pack's recipe declares its own needs and may sit below this line | now |
+| Verify recipes | Bash + POSIX text utilities; of the recipes **this workspace declares**, every one **except** `docs` also needs `node`, and `workflow-filters` needs `jq`. A composed pack's recipe declares its own needs and may sit below this line | now |
 | Workspace Definition | JSON Schema — a named subset — with JSON manifests | now |
 | `doctor` · `plugin-lint` · `compile` · `index` · `librarian` | Zero-dependency JavaScript on Node, run from the repository | now — [`../cli/`](../cli/) |
 | Tests | `node --test`, node's own runner — no framework, no install | now — every `*.test.mjs` under [`../cli/`](../cli/), ten as of milestone 7 session 2 |
