@@ -96,7 +96,7 @@ jobs:
       # `pull_request_target` or `workflow_run`, which is the change to think twice about.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - name: Run every verify recipe the workspace manifest declares
+      - name: Run every verify recipe the workspace manifest yields
         run: |
           set -uo pipefail
           set +e   # GitHub's default shell is `bash -e`; a red recipe must not abort the loop

@@ -115,4 +115,18 @@ because the sequenced rename above needed to exist in writing before the next re
 then did, in the order it prescribed. When this was first written the rename was explicitly *not* done and
 *not* authorized by this decision; step 2 was the maintainer's Gated action and step 3 followed it.
 
+**Superseded in part, 2026-08-10 — appended rather than rewritten, because a decided proposal keeps the
+words it was decided in.** The rule above says *declares*, and that was exact until milestone 7's
+composition amendment landed at session 5: a composed pack's verify recipes now reach the adopting
+workspace's runnable set, so **the set CI runs is the one the manifest *yields* — the workspace's own
+recipes plus those its composed packs contribute, namespaced by pack** — and the set has one carrier,
+[`../../cli/recipe-set.mjs`](../../cli/recipe-set.mjs), which CI calls instead of enumerating a manifest.
+Nothing in the decision is reversed: *every declared recipe runs* still holds, adding a recipe to
+`verify.recipes` still needs no workflow edit and no branch-protection change, and the fail-closed guard
+above still fires. What changed is that *declared* is no longer the whole of what runs, so this file is
+no longer the place to read the set off. See [`../../spec/README.md`](../../spec/README.md) and
+[`../../spec/pack.schema.json`](../../spec/pack.schema.json), whose `contributes.verify` key records the
+same correction and keeps its own superseded text for the same reason. This note exists because this file
+is the **minting carrier** of the retired wording and a grep for it lands here first.
+
 **Pull request:** [#13](https://github.com/sleepy-panda-works/portulan/pull/13) — the change that filed this.

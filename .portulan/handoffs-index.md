@@ -12,6 +12,7 @@
 - 2026-08-10 · [Handoff — the correction merged, and the next pull request put it back](handoffs/2026-08-10-the-correction-merged-and-the-next-pull-request-put-it-back.md)
 - 2026-08-10 · [Handoff — the clause misquoted the ruling it ratified](handoffs/2026-08-10-the-clause-misquoted-the-ruling-it-ratified.md)
 - 2026-08-10 · [Handoff — the librarian's scheduled pass](handoffs/2026-08-10-librarian-pass.md)
+- 2026-08-10 · [Handoff — a repository that does not exist, and a sweep `main` half-did underneath this branch](handoffs/2026-08-10-a-repository-that-does-not-exist-and-a-sweep-main-half-did.md)
 - 2026-08-10 · [Handoff — a correction reached three carriers of four](handoffs/2026-08-10-a-correction-reached-three-carriers-of-four.md)
 - 2026-08-09 · [Handoff — two sessions built one module, and the order decided itself](handoffs/2026-08-09-two-sessions-built-one-module-and-the-order-decided-itself.md)
 - 2026-08-09 · [Handoff — the pointer had a name and nothing dereferenced it](handoffs/2026-08-09-the-pointer-had-a-name-and-nothing-dereferenced-it.md)
