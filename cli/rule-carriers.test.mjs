@@ -70,6 +70,40 @@ describe("parseRegistry — every unusable registry is could-not-run, never a gr
         assert.throws(() => parseRegistry(`{"rules":[${one},${one}]}`), RegistryError);
     });
 
+    // Found by Copilot on #224, which was RIGHT that the top-level `exclude` needed validating and
+    // WRONG about why. Measured: `String.prototype.startsWith` coerces and never throws for any value
+    // JSON can carry — 1, null, true, {} and ["x"] all return false quietly.
+    //
+    // The real mechanism is worse than the crash it described. `[]` coerces to `""`, and every path
+    // starts with `""`, so a single empty-array or empty-string entry in `exclude` would exclude the
+    // WHOLE TREE and the rail would report green having examined nothing — a silent fail-open in the
+    // allow-list, which is the defect this repository has already paid for once.
+    const badExclude = [
+        ["a non-array exclude", '{"exclude":"docs/","rules":[{"id":"r","carrier":"c","summary":"s","incident":"i","tells":["t"],"cites":["x"],"scope":["/"]}]}'],
+        ["a non-string entry in exclude", '{"exclude":[1],"rules":[{"id":"r","carrier":"c","summary":"s","incident":"i","tells":["t"],"cites":["x"],"scope":["/"]}]}'],
+        ["a whitespace-only entry in exclude", '{"exclude":["  "],"rules":[{"id":"r","carrier":"c","summary":"s","incident":"i","tells":["t"],"cites":["x"],"scope":["/"]}]}'],
+    ];
+    for (const [name, source] of badExclude) {
+        test(`refuses ${name} as a RegistryError, not a crash`, () => {
+            assert.throws(() => parseRegistry(source), RegistryError);
+        });
+    }
+
+    test("an empty-string exclude is refused — it would exclude the whole tree and green over nothing", () => {
+        assert.throws(
+            () => parseRegistry('{"exclude":[""],"rules":[{"id":"r","carrier":"c","summary":"s","incident":"i","tells":["t"],"cites":["x"],"scope":["/"]}]}'),
+            RegistryError,
+        );
+        // The mechanism, pinned so the reason cannot be lost: "" is a prefix of everything.
+        assert.equal("docs/a.md".startsWith(""), true);
+        assert.equal("docs/a.md".startsWith([]), true, "and [] coerces to the same empty string");
+    });
+
+    test("a top-level exclude that survived validation cannot make inDomain throw", () => {
+        const r = parseRegistry('{"exclude":["docs/"],"rules":[{"id":"r","carrier":"c","summary":"s","incident":"i","tells":["t"],"cites":["x"],"scope":["docs/"]}]}');
+        assert.doesNotThrow(() => inDomain("docs/a.md", r.rules[0], r.exclude));
+    });
+
     test("accepts a well-formed registry and keeps the global exclude", () => {
         const r = parseRegistry('{"exclude":["docs/plan.md"],"rules":[{"id":"r","carrier":"c","summary":"s","incident":"i","tells":["t"],"cites":["x"],"scope":["/"]}]}');
         assert.equal(r.rules.length, 1);

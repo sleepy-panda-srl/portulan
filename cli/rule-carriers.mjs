@@ -110,6 +110,21 @@ export function parseRegistry(source, { where = "registry" } = {}) {
         };
     });
 
+    // The top-level `exclude` is validated exactly as a rule's is. It was not, and the gap was not
+    // cosmetic: a non-string entry reaches `inDomain`, where `p.startsWith` throws a bare TypeError —
+    // so a REGISTRY DEFECT would have surfaced as a stack trace instead of the exit-2 verdict this
+    // repository's three-code discipline requires. `could not run` has to be a verdict, not a crash.
+    if (raw.exclude !== undefined) {
+        if (!Array.isArray(raw.exclude)) {
+            throw new RegistryError(`${where} has an \`exclude\` that is not an array`);
+        }
+        for (const entry of raw.exclude) {
+            if (typeof entry !== "string" || entry.trim() === "") {
+                throw new RegistryError(`${where} has an unusable entry in \`exclude\`: ${JSON.stringify(entry)}`);
+            }
+        }
+    }
+
     return { rules, exclude: Array.isArray(raw.exclude) ? [...raw.exclude] : [] };
 }
 

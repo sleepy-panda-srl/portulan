@@ -78,7 +78,9 @@ enumeration happens, so it is where the token is minted.
 
 - **`.portulan/rule-carriers.json`** — the registry. One entry per registered rule: `id`, the `carrier`
   path, a `summary`, the `incident` that registered it, the `tells` (spellings), the `cites` (what counts
-  as pointing at the carrier), and the `scope` globs it binds over.
+  as pointing at the carrier), and the `scope` **path prefixes** it binds over — prefixes rather than
+  globs, deliberately: a glob language would be a second thing to get wrong, and doctrine lives in
+  directories.
 - **`cli/rule-carriers.mjs`** — the instrument, zero-dependency, with its suite written first.
 - **`.portulan/verify/rule-carriers.sh`** — the thin wrapper, in the shape `index.sh` and
   `control-chars.sh` already established: dependency guard, named-list audit, exit-code passthrough.
