@@ -2,13 +2,14 @@
 
 > Generated from `handoffs/` by `node cli/index.mjs`. Do not edit by hand: it is regenerated
 > and byte-compared, so a hand-edit survives exactly until the next run.
-> 85 handoff(s), newest first. No budget: the series is append-only, so
+> 86 handoff(s), newest first. No budget: the series is append-only, so
 > the only remedy a budget could ask for is one this project rules out.
 
 - 2026-08-10 · [Handoff — the preview is the payload, and the cycle the suite could not see](handoffs/2026-08-10-the-preview-is-the-payload-and-the-cycle-the-suite-could-not-see.md)
 - 2026-08-10 · [Handoff — the instrument had the blindness it was built against](handoffs/2026-08-10-the-instrument-had-the-blindness-it-was-built-against.md)
 - 2026-08-10 · [Handoff — the flip back left its carriers standing](handoffs/2026-08-10-the-flip-back-left-its-carriers-standing.md)
 - 2026-08-10 · [Handoff — the librarian's scheduled pass](handoffs/2026-08-10-librarian-pass.md)
+- 2026-08-10 · [Handoff — a correction reached three carriers of four](handoffs/2026-08-10-a-correction-reached-three-carriers-of-four.md)
 - 2026-08-09 · [Handoff — two sessions built one module, and the order decided itself](handoffs/2026-08-09-two-sessions-built-one-module-and-the-order-decided-itself.md)
 - 2026-08-09 · [Handoff — the pointer had a name and nothing dereferenced it](handoffs/2026-08-09-the-pointer-had-a-name-and-nothing-dereferenced-it.md)
 - 2026-08-09 · [Handoff — the pack the feed ships declared nothing](handoffs/2026-08-09-the-pack-the-feed-ships-declared-nothing.md)
