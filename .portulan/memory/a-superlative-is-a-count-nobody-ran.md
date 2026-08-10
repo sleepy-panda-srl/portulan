@@ -18,8 +18,8 @@ than paraphrased because this clause is about quoting accurately: **"Citing it a
 repair taught a class is correct. Citing it as the carrier that names the class is false; `0020` names
 it."** That issue found three carriers making the false claim and thirteen making the true one;
 [#211](https://github.com/sleepy-panda-works/portulan/pull/211) repaired the three and left the thirteen.
-His merge of the pull request closing
-[#217](https://github.com/sleepy-panda-works/portulan/issues/217) ratifies this drafting.)_
+**Accepted on merge** of the pull request closing
+[#217](https://github.com/sleepy-panda-works/portulan/issues/217).)_
 
 ## Why it holds
 
