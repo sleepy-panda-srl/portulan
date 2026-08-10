@@ -132,24 +132,27 @@ caught this one, and one did read it.
 
 ## The reconciliation — the same lesson, with this branch as the one at risk
 
-**Added 2026-08-10 on rebase, after #206 merged. This branch was rebased FOUR times the same
-afternoon** — onto `43f1e54` (#206, six commits), `d8f6821` (#211·#214, five), `dd7e372` (the
-librarian's pass, one) and `90abeb4` (#210 and the residency truth-up, four). `main` moved
-**16 commits under a one-line change**; the count is `git rev-list --count 159df14..<base>` and the
-base is whatever `origin/main` was at the last push, named in the commit message of that push rather
-than only here.
+**Added 2026-08-10 on rebase, after #206 merged. This branch was rebased FIVE times the same
+afternoon** — onto `43f1e54` (#206), `d8f6821` (#211·#214), `dd7e372` (the librarian's pass),
+`90abeb4` (#210 and the residency truth-up) and `cfe3c53` (#216). **Twenty commits landed on `main`
+under a one-line change.**
+
+_The per-rebase breakdown that used to sit here has been removed rather than corrected a fifth time._
+The number is `git rev-list --count 159df14..<base>`, and the base is whatever `origin/main` was at
+the last push — named in that push's commit message, which is dated and cannot go stale. **A record
+that must be edited every time the world moves is a record that will eventually be wrong**, and the
+repair for that is a command, not a more careful literal.
 
 _Each rebase falsified the base named in this very paragraph, and each correction is a round of the
 same defect: **a figure that cites a moving reference goes stale without anyone editing it**. #211
 recorded the identical thing when its rebase moved a repaired site 222→223, and `main` itself landed
 **"a citation by line number is a claim about a tree"** (`90abeb4`) while this branch was in review.
-Left visible rather than smoothed into a single final number, because the recurrence **is** the
-finding — and the fourth correction is why the sentence above now carries a command instead of a
-fifth literal that would go stale on the next merge._
+Left visible rather than smoothed away, because the recurrence **is** the finding — five corrections
+of one figure in one afternoon, each of them honest when written._
 
 This pull request is about a branch that replayed a stale cell over a merged correction. On rebase it
-became that branch: **six commits behind at the first rebase** (`git rev-list --count 159df14..43f1e54`),
-then five, one and four more at the next three, while carrying two of its own — holding a cell whose count read **four of
+became that branch: **six commits behind at the first rebase** (`git rev-list --count 159df14..43f1e54`)
+and further behind at each of the next four, while carrying two of its own — holding a cell whose count read **four of
 six**, against a `main` that reads **three** because
 D3 landed with #206. Replaying it would have re-introduced exactly the staleness this change exists to
 remove — the defect reproducing inside its own repair, which is this project's dominant class and the one
@@ -175,5 +178,5 @@ extra delta may not ship one unnamed, however cosmetic.
 They are still correctly *recorded* here as what was measured at `159df14`, because they were; they are
 simply no longer this pull request's repair. Finding 3 is.
 
-**Next action.** Branch rebased onto `90abeb4`; every review thread answered and resolved on the
+**Next action.** Branch rebased onto `cfe3c53`; every review thread answered and resolved on the
 maintainer's explicit instruction of this date. Hand to Marius. **Do not merge** — that stays his.
