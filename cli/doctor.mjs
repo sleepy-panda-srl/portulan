@@ -616,7 +616,10 @@ export function validateContributions(packDir, contributes, { fail, report, pack
         realPack = fs.realpathSync(packDir);
     } catch (cause) {
         fail("packs", `\`${pack}\` resolved to a directory that cannot be realpathed — ${cause.code ?? cause.message}`);
-        return { skills: 0, personas: 0, bindable: [] };
+        // The SAME shape as the success path, `unreadableRoots` included. A caller reading a property
+        // this branch omits gets `undefined`, which is falsy — so the report line silently prints the
+        // clean wording over a pack nothing could open. Raised by Copilot, round 1 on #227.
+        return { skills: 0, personas: 0, unreadableRoots: 0, bindable: [] };
     }
 
     // Three answers, not two. `null` meant "could not resolve" and was reported to the reader as "is not

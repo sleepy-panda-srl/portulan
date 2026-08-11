@@ -1264,3 +1264,30 @@ describe("the drafted workspace carries the rail that holds its index current", 
         assert.notEqual(missing.code, 0, "an explicit location that answers wrongly must not fall through to another");
     });
 });
+
+// Added on Copilot's round 1 of #227, one branch over from where `need_node` already guarded. The
+// round named 127; a bad interpreter is **126** here, so the fix as suggested would have missed the
+// very case that prompted it — measured while writing this test rather than reasoned about.
+describe("the drafted rail maps an exec failure from the tool itself to could-not-run", () => {
+    test("an entry point whose interpreter is missing is 2, not a verdict about the index", async () => {
+        // `command -v portulan` finds an executable; a Node-based entry point whose interpreter is
+        // gone dies 127 on exec. Unmapped, that reads downstream as this recipe having RUN.
+        const dir = scratch();
+        assert.equal(await run(["--residence", "in-repo", "--no-cycle", dir], harness().options), 0);
+        const fake = path.join(scratch(), "bin");
+        fs.mkdirSync(fake, { recursive: true });
+        fs.writeFileSync(path.join(fake, "portulan"), "#!/nonexistent/interpreter\n", { mode: 0o755 });
+        try {
+            execFileSync("bash", [path.join(dir, ".portulan", "verify", "index.sh")], {
+                cwd: dir,
+                encoding: "utf8",
+                stdio: "pipe",
+                env: { ...process.env, PORTULAN_CLI: "", PATH: `${fake}:/usr/bin:/bin` },
+            });
+            assert.fail("a rail that cannot execute its tool must not exit 0");
+        } catch (error) {
+            assert.equal(error.status, 2, `expected could-not-run, got ${error.status}`);
+            assert.match(`${error.stdout ?? ""}${error.stderr ?? ""}`, /NOT checked/);
+        }
+    });
+});
