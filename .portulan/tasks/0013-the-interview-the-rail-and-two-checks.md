@@ -1,7 +1,7 @@
 # Task 0013 — the interview, the records rail, and the two checks `doctor` never made
 
 **Lane:** full · **Opened:** 2026-08-11, milestone 7 session 7, at the session-open checkpoint
-**Verify recipe:** `tests` · **Status:** IN PROGRESS, 2026-08-11, milestone 7 session 7
+**Verify recipe:** `tests` · **Status:** DELIVERED, 2026-08-11, milestone 7 session 7 — [#227](https://github.com/sleepy-panda-works/portulan/pull/227), awaiting review
 
 > Four of row 7's remaining items — **the four the maintainer chose at session open, over closing the
 > row on a narrowed criterion** — taken together because none of them touches another's files.
@@ -126,9 +126,12 @@ Each line is a test that fails before the change and passes after.
 ## Folded in at the session-open checkpoint — APPROVE-WITH-ADJUSTMENTS (8)
 
 Recorded here rather than edited into the list above, because a *Done when* list rewritten to match
-what a checkpoint said has lost the record of what it graded. Two of the eight are already applied in
-place — the superlative in the opening paragraph, and test 3's derived-default claim, which was false
-for the one question with nothing to derive.
+what a checkpoint said has lost the record of what it graded. **The arithmetic, since it does not close
+on its own:** two of the eight are applied **in place** — the superlative in the opening paragraph, and
+test 3's derived-default claim, which was false for the one question with nothing to derive — leaving
+**six numbered, 23 to 28**. Item **29 is a ninth thing** and not one of the eight: the checkpoint raised
+it in its closing note as *part of the work rather than a plan defect*, and it is numbered here because
+it is an obligation this session owes either way.
 
 **The carriers this change makes untrue, named at the opening where they are cheap.** Every one is a
 sentence that goes false the moment this merges, and DoD condition 4 cuts both ways — a document may
