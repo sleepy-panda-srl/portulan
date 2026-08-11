@@ -1033,6 +1033,22 @@ else
 fi
 
 "\$@" --check .portulan
+code=\$?
+
+# 126 and 127 are the shell's two ways of saying it never ran the program — "found but not
+# executable" and "not found" — and both can arrive here even though \`command -v portulan\` answered:
+# a Node-based entry point whose interpreter is gone dies on exec, before any of this tool's own
+# codes exist. Left unmapped, either reads downstream as this recipe having RUN and rendered a
+# verdict about the index, which is the laundering \`need_node\` prevents on the branches it guards.
+# The index tool itself only ever exits 0, 1 or 2, so neither code is ambiguous here.
+#
+# Raised by Copilot, round 1 on #227, naming 127 alone; measured while pinning it, a bad interpreter
+# is **126** on this platform and the fix would have missed the case that prompted it.
+if [ "\$code" -eq 126 ] || [ "\$code" -eq 127 ]; then
+    printf 'verify: the index tool could not be executed (%s) — the index was NOT checked.\\n' "\$code" >&2
+    exit 2
+fi
+exit "\$code"
 `;
 }
 
