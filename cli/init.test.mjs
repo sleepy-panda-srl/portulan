@@ -1291,3 +1291,36 @@ describe("the drafted rail maps an exec failure from the tool itself to could-no
         }
     });
 });
+
+// The marker is the whole of what makes the baked path findable by a rewriter, so it is asserted
+// rather than trusted — and asserted at BOTH ends: the drafted file carries it, and the two sites
+// that will one day have to re-derive it cite it by the same token. Dropping the marker while
+// keeping the path is the silent half of this defect: `vendor` copies these files byte for byte,
+// and a stale absolute path exits 2, which is fail-closed and therefore easy to never notice.
+describe("the drafted rail's machine-local path stays findable", () => {
+    test("both lines carrying the bundle path are marked", async () => {
+        const dir = scratch();
+        assert.equal(await run(["--residence", "in-repo", "--no-cycle", dir], harness().options), 0);
+        const rail = fs.readFileSync(path.join(dir, ".portulan", "verify", "index.sh"), "utf8");
+        const marked = rail.split("\n").filter((line) => line.includes("portulan:bundle-fallback"));
+        assert.equal(marked.length, 2, `expected both bundle-path lines marked, got:\n${marked.join("\n")}`);
+        for (const line of marked) {
+            assert.ok(line.includes(REPO), `a marked line must be one that actually carries the absolute path: ${line}`);
+        }
+        // And nothing else in the drafted workspace may carry the path unmarked — the marker is only
+        // a rail if it covers every site.
+        for (const rel of ["verify/README.md", "README.md", "workspace.json"]) {
+            const text = fs.readFileSync(path.join(dir, ".portulan", rel), "utf8");
+            assert.equal(text.includes(REPO), false, `${rel} carries the drafting machine's absolute path with no marker`);
+        }
+    });
+
+    test("the two tools that will rewrite a drafted workspace cite the marker", () => {
+        // A note in the writer is read by whoever edits the writer. These two are read by whoever
+        // moves or migrates a workspace, which is when the path stops being true.
+        for (const file of ["vendor.mjs", "portulan.mjs"]) {
+            const source = fs.readFileSync(path.join(REPO, "cli", file), "utf8");
+            assert.match(source, /portulan:bundle-fallback/, `cli/${file} must name the marker it will have to re-derive`);
+        }
+    });
+});

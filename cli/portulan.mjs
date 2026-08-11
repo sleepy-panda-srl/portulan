@@ -115,6 +115,13 @@ export const SUBCOMMANDS = [
         module: null,
         arrives: "milestone 7, a later session",
         summary: "migrate a workspace to a newer Workspace Definition",
+        // One thing waiting for whoever builds this, recorded where they will be rather than in a
+        // handoff they may not read: a workspace drafted since milestone 7 session 7 carries an
+        // ABSOLUTE path in `verify/index.sh` — the bundle `init` ran from, the last of three CLI
+        // locations — on two lines marked `# portulan:bundle-fallback`. A migration that rewrites a
+        // workspace should re-derive them; one that does not leaves a rail exiting 2 on a machine
+        // that is not the drafting one. `cli/init.mjs`'s `draftIndexRecipe` owns the marker and
+        // `cli/vendor.mjs` carries the same note at its copy loop.
     },
     {
         name: "new",

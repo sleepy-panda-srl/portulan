@@ -1123,6 +1123,15 @@ export async function run(argv, options = {}) {
             fs.mkdirSync(full, { recursive: true });
             fs.chmodSync(full, entry.mode);
         }
+        // **A byte-for-byte copy carries a path that was only ever true on one machine.** Since
+        // milestone 7 session 7 `init` drafts `verify/index.sh` with a third CLI location baked in —
+        // the bundle it ran from, an absolute path git cannot carry — and the two lines holding it are
+        // marked `# portulan:bundle-fallback` so a rewriter can find them rather than having to notice
+        // a comment. This loop does **not** rewrite them, and that is the current state rather than a
+        // decision anybody defended: a switched workspace whose bundle path no longer resolves exits
+        // **2 — could not run**, which is the fail-closed direction and is why this is a gap rather
+        // than a defect. Re-deriving the marked lines belongs here the day a switch is expected to
+        // leave a runnable rail behind. Tracked so it is not rediscovered from a stale path.
         for (const file of files) {
             if (file.rel === "workspace.json") continue;
             const full = path.join(staging, file.rel);
