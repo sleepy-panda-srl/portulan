@@ -47,10 +47,16 @@ Written at the same level of detail, because a legibility report that lists only
   resolves, that the cross-references hold, that repo-card and gate-map claims match the tree, and that
   every rule's provenance is well-formed. It cannot tell whether a document at the end of a resolving
   path still says something accurate, and it never runs a verify recipe.
-- **There is no agent-legibility score.** This slot is the input such an audit would read; the scoring
-  itself is not built, and calling this file a score would be exactly the overclaim
-  [`../../principles.md`](../../principles.md) forbids. `doctor` resolves this file's path and reads
-  nothing in it.
+- **The agent-legibility score is a measurement, and it does not grade this document.** Since milestone
+  7 session 7 `doctor` scores seven dimensions and **opens this file** — where it read only the path
+  before — but the two dimensions that reach here are *is a document declared for every product* and
+  *does it name what an agent must not assume*, the second being a **form** check over a named table of
+  headings. So a section with an empty body scores. Nothing here reads the sentences you are reading, and
+  the score **moves no exit code**: it is printed beside the verdict, never inside it, because a
+  workspace failing on prose volume would be exactly the overclaim
+  [`../../principles.md`](../../principles.md) forbids. _(This bullet read "there is no agent-legibility
+  score" and "`doctor` resolves this file's path and reads nothing in it" — both true until that
+  session, and the second is the one a reader would least expect to have changed.)_
 - **The memory index is generated and budgeted — and it is still only an index.**
   [`../../memory-index.md`](../../memory-index.md) is emitted from [`../../memory/`](../../memory/) by
   [`../../../cli/index.mjs`](../../../cli/index.mjs) and byte-compared by the `index` recipe, so it

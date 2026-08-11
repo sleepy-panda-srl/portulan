@@ -100,8 +100,12 @@ The two validators: exit `0` when every workspace or plugin root validates · `1
 not · `2` could not run. `compile`: exit `0` when it wrote, or agreed under `--check` · `1` only under
 `--check`, when the artifact is missing or has drifted · `2` could not run — writing never returns `1`,
 because a run that rewrites the artifact has nothing to disagree with. `init` and `new` have only **two** codes —
-`0` it wrote · `2` it could not run — and the missing `1` is the point: they render no verdict about
-anybody's workspace, so they have no red to report. `vendor` **does** have a `1`, and the asymmetry is
+`0` it wrote · `2` it wrote nothing — and the missing `1` is the point: they render no verdict about
+anybody's workspace, so they have no red to report. _(The second code read "it could not run" until
+milestone 7 session 7, when `init`'s interview introduced a way to write nothing that is not a failure
+at all: a human declining at the confirmation, or ending the input. The code is unchanged and the gloss
+now covers every way of reaching it — widening the sentence rather than minting a third code, since `0`
+must keep meaning **it wrote** for anything chaining on it. `new`'s two are unaffected.)_ `vendor` **does** have a `1`, and the asymmetry is
 worth a sentence: it runs the real validator at both ends of a switch and reports its verdict, so
 collapsing *the workspace I materialised is invalid* into *I could not run* would leave a caller unable
 to tell a bad workspace from a missing flag. `index` uses the same three
@@ -144,8 +148,15 @@ recipe the manifest **yields** — the workspace's own, plus those the packs it 
   for reasons unrelated to the change under test.
 - **It never judges truth.** A fabricated sealed stamp passes exactly as a real one does; a path that
   resolves says nothing about whether the document at the end of it is still accurate.
-- **It does not score agent-legibility.** The `affordances` slot is the input such an audit would read.
-  The audit is not built, and calling this a score would be an overclaim.
+- **It scores agent legibility, and the score moves no exit code.** **Seven** dimensions, every one of them
+  optional in the Workspace Definition so it can genuinely be absent, printed as one line naming what
+  was missed. *Whether the workspace declares verification at all* was an eighth until a checkpoint
+  measured it: the schema requires `verify` of every workspace the score can reach, so it was a
+  constant dressed as a measurement. The `affordances` slot is the named input and not the only one — six manifest keys are
+  read beside it, because a score confined to the slot could not tell two workspaces apart. What it
+  cannot do is judge the prose: the limits dimension is a **form** check over a named heading table, so
+  a section with an empty body passes it. _(This bullet said the audit was not built, which was true
+  from milestone 2 until milestone 7 session 7.)_
 - **It cannot see live settings.** The gate-map lint compares a claimed status-check name against job ids
   in the tree. Whether branch protection actually requires that check, and which app it is pinned to, are
   API facts `doctor` does not fetch.

@@ -37,6 +37,7 @@ import {
     parseProvenance,
     schemaVersion,
     packSchemaVersion,
+    legibility,
 } from "./doctor.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -2555,5 +2556,322 @@ describe("a symlinked directory under a skills root is reported, never silently 
         const { findings } = await inspect(dir, { schema: SCHEMA, packRoots: [root] });
         assert.equal(severities(checks(findings, "packs"), "fail").length, 1, text(findings));
         assert.match(text(checks(findings, "packs")), /symlinked directory/i);
+    });
+});
+
+// ---------------------------------------------------------------- the persona ↔ agent binding
+
+// Row 7's fourth validation — "a skill's frontmatter, a persona against its five-part contract, a pack
+// against its schema, and the persona↔agent binding nothing checks today". The first three landed at
+// session 2; this is the one that was still owed.
+describe("a composed persona is matched to the host binding that would carry it", () => {
+    const persona = (name) =>
+        [
+            "---", `name: ${name}`, "description: A role.", "tools: Read, Grep", "---", "",
+            `# Persona — ${name}`, "", "## Charter", "It reviews.", "", "## Autonomy reach", "Propose.", "",
+            "## Memory scope", "`personas/x/`.", "", "## Read / write posture", "Reads in parallel.", "",
+        ].join("\n");
+
+    /** A workspace composing one pack that contributes one persona, plus whatever sits in `agents/`. */
+    function withPersona(agents = {}, { tree: treeDecl = "./", personaName = "my-role" } = {}) {
+        const dir = scratch();
+        const manifest = { ...wellFormed(), packs: ["rituals/fixture"] };
+        if (treeDecl === null) {
+            delete manifest.tree;
+            manifest.kind = "demo";
+        } else {
+            manifest.tree = treeDecl;
+        }
+        tree(dir, { ...minimalFiles, "workspace.json": JSON.stringify(manifest), ...agents });
+        const root = scratch();
+        tree(root, {
+            "rituals/fixture/pack.json": JSON.stringify({
+                portulan: { pack: "1.0" },
+                name: "fixture",
+                category: "rituals",
+                contributes: { personas: ["personas/one.md"] },
+            }),
+            "rituals/fixture/personas/one.md": persona(personaName),
+        });
+        return { dir, root };
+    }
+
+    const bindingsOf = (findings) => checks(findings, "bindings");
+
+    test("a binding that agrees is reported as the pair it is", async () => {
+        const { dir, root } = withPersona({ "agents/my-role.md": "---\nname: my-role\ndescription: A role here.\ntools: Read\n---\n" });
+        const { findings } = await inspect(dir, { schema: SCHEMA, packRoots: [root] });
+        assert.equal(severities(bindingsOf(findings), "fail").length, 0, text(findings));
+        assert.match(text(bindingsOf(findings)), /agents\/my-role\.md/);
+    });
+
+    test("no binding is a REPORT, not a failure — and it names the path that would carry one", async () => {
+        // A persona without a host binding is unbound rather than wrong: an adopter may be on a host
+        // with no agent layer at all, and this repository's own supervisor is deliberately unbound
+        // because its ritual's mechanism is a fresh context rather than a subagent.
+        const { dir, root } = withPersona();
+        const { findings } = await inspect(dir, { schema: SCHEMA, packRoots: [root] });
+        assert.equal(severities(bindingsOf(findings), "fail").length, 0, text(findings));
+        assert.match(text(bindingsOf(findings)), /no host binding at `agents\/my-role\.md`/);
+        assert.match(text(bindingsOf(findings)), /reported, not failed/);
+    });
+
+    test("a binding whose frontmatter names another persona FAILS — the host keys on that field", async () => {
+        const { dir, root } = withPersona({ "agents/my-role.md": "---\nname: someone-else\ndescription: x\ntools: Read\n---\n" });
+        const { findings } = await inspect(dir, { schema: SCHEMA, packRoots: [root] });
+        assert.equal(severities(bindingsOf(findings), "fail").length, 1, text(findings));
+        assert.match(text(bindingsOf(findings)), /binds a persona nobody named/);
+    });
+
+    test("a binding with no `tools:` allow-list FAILS — the firewall's first part, gone", async () => {
+        const { dir, root } = withPersona({ "agents/my-role.md": "---\nname: my-role\ndescription: x\n---\n" });
+        const { findings } = await inspect(dir, { schema: SCHEMA, packRoots: [root] });
+        assert.equal(severities(bindingsOf(findings), "fail").length, 1, text(findings));
+        assert.match(text(bindingsOf(findings)), /every tool the host has/);
+    });
+
+    test("a binding with no frontmatter at all FAILS — it registers as nothing", async () => {
+        const { dir, root } = withPersona({ "agents/my-role.md": "# just a heading\n" });
+        const { findings } = await inspect(dir, { schema: SCHEMA, packRoots: [root] });
+        assert.equal(severities(bindingsOf(findings), "fail").length, 1, text(findings));
+        assert.match(text(bindingsOf(findings)), /frontmatter/);
+    });
+
+    test("a workspace with no `tree` is unverifiable, not unbound", async () => {
+        // The same answer every other claim gets without a tree, and for the same reason: there is
+        // nowhere for `agents/` to be, which is not the same as having looked and found nothing.
+        const { dir, root } = withPersona({}, { tree: null });
+        const { findings, stats } = await inspect(dir, { schema: SCHEMA, packRoots: [root] });
+        assert.equal(severities(bindingsOf(findings), "fail").length, 0, text(findings));
+        assert.match(text(bindingsOf(findings)), /Unverifiable, not unbound/);
+        assert.ok(stats.unverifiable > 0, "an unverifiable binding must be counted with the other unverifiable claims");
+    });
+
+    test("a binding that cannot be READ is reported as unread, never as absent", async () => {
+        const { dir, root } = withPersona({ "agents/my-role.md": "---\nname: my-role\ntools: Read\n---\n" });
+        const file = path.join(dir, "agents", "my-role.md");
+        fs.chmodSync(file, 0o000);
+        try {
+            const { findings } = await inspect(dir, { schema: SCHEMA, packRoots: [root] });
+            // Root ignores the mode bits, so the assertion is conditional on the read actually failing
+            // — the alternative is a test that passes for the wrong reason in a container.
+            const said = text(bindingsOf(findings));
+            if (/could not be read/.test(said)) assert.match(said, /Unread, not absent/);
+        } finally {
+            fs.chmodSync(file, 0o644);
+        }
+    });
+
+    test("a persona declaring no `name` is keyed by its filename, and the report says so", async () => {
+        const nameless = [
+            "---", "description: A role.", "tools: Read", "---", "", "# Persona", "", "## Charter", "x", "",
+            "## Autonomy reach", "Propose.", "", "## Memory scope", "x", "", "## Read / write posture", "x", "",
+        ].join("\n");
+        const dir = scratch();
+        tree(dir, { ...minimalFiles, "workspace.json": JSON.stringify({ ...wellFormed(), packs: ["rituals/fixture"] }) });
+        const root = scratch();
+        tree(root, {
+            "rituals/fixture/pack.json": JSON.stringify({
+                portulan: { pack: "1.0" }, name: "fixture", category: "rituals",
+                contributes: { personas: ["personas/one.md"] },
+            }),
+            "rituals/fixture/personas/one.md": nameless,
+        });
+        const { findings } = await inspect(dir, { schema: SCHEMA, packRoots: [root] });
+        assert.match(text(bindingsOf(findings)), /agents\/one\.md/);
+        assert.match(text(bindingsOf(findings)), /keyed by filename/);
+    });
+});
+
+// ---------------------------------------------------------------- agent legibility
+
+// Row 7's 2026-07-28 amendment: "`doctor` scores agent legibility — the audit vision.md's influence
+// map calls the unclaimed niche, reading the `affordances` slot that is its input."
+describe("agent legibility is scored, reported, and never graded", () => {
+    const full = () => ({
+        ...wellFormed(),
+        gates: "gates.json",
+        slots: { ...wellFormed().slots, dod: "dod.md", memory: "memory/", handoffs: "handoffs/" },
+        verify: { default: "docs", recipes: [{ id: "docs", run: "./verify.sh", requires: ["bash"] }] },
+        memory: { index: { path: "memory-index.md" } },
+        handoffs: { index: { path: "handoffs-index.md" } },
+        products: [{ id: "one", name: "One", product: "product.md", affordances: "affordances.md" }],
+    });
+    const withLimits = "# Affordances\n\n## What an agent can rely on here\n\nA thing.\n\n## What an agent must not assume\n\nAnother thing.\n";
+
+    /** Score a manifest against a directory holding whatever affordances documents it names. */
+    const scoreOf = (manifest, files = { "affordances.md": withLimits }) => {
+        const dir = scratch();
+        tree(dir, files);
+        return legibility(manifest, dir);
+    };
+
+    test("a workspace declaring everything scores every applicable dimension", () => {
+        const score = scoreOf(full());
+        assert.equal(score.met, score.applicable, JSON.stringify(score.dimensions.filter((d) => !d.met), null, 2));
+        assert.equal(score.applicable, 7);
+    });
+
+    test("each dimension is independently lost, and no other moves with it", () => {
+        // Eight assertions rather than one summed figure: a score that only ever moves as a total is a
+        // score nobody can act on, and a dimension quietly coupled to another is a measurement of one
+        // thing reported as two.
+        const drop = [
+            ["requires", (m) => delete m.verify.recipes[0].requires],
+            ["gates", (m) => delete m.gates],
+            ["dod", (m) => delete m.slots.dod],
+            ["memory", (m) => delete m.memory],
+            ["handoffs", (m) => delete m.slots.handoffs],
+            ["affordances", (m) => delete m.products[0].affordances],
+        ];
+        for (const [id, mutate] of drop) {
+            const manifest = full();
+            mutate(manifest);
+            const score = scoreOf(manifest);
+            const dimension = score.dimensions.find((d) => d.id === id);
+            assert.equal(dimension.met, false, `${id} should have been lost`);
+            const others = score.dimensions.filter((d) => d.id !== id && d.applicable && !d.met).map((d) => d.id);
+            assert.deepEqual(others, [], `dropping ${id} also moved ${others.join(", ")}`);
+        }
+    });
+
+    test("an affordances document listing only strengths loses the limits dimension", () => {
+        const score = scoreOf(full(), { "affordances.md": "# Affordances\n\n## What an agent can rely on here\n\nEverything is wonderful.\n" });
+        assert.equal(score.dimensions.find((d) => d.id === "limits").met, false);
+        assert.equal(score.dimensions.find((d) => d.id === "affordances").met, true, "declaring one and stating limits in it are two facts");
+    });
+
+    test("a workspace-level default counts for a product that declares none", () => {
+        // `examples/` ships exactly this shape, and a score contradicting `doctor`'s own note about it
+        // in the same run would be the defect this dimension exists to avoid.
+        const manifest = full();
+        delete manifest.products[0].affordances;
+        manifest.affordances = "affordances.md";
+        assert.equal(scoreOf(manifest).dimensions.find((d) => d.id === "affordances").met, true);
+    });
+
+    test("an unreadable affordances document loses the limits dimension rather than passing it", () => {
+        const manifest = full();
+        const score = scoreOf(manifest, {});
+        assert.equal(score.dimensions.find((d) => d.id === "limits").met, false, "a document nobody could open has not been found to state its limits");
+    });
+
+    test("dimensions that do not apply leave the denominator instead of counting as failures", () => {
+        const manifest = full();
+        delete manifest.products;
+        const score = scoreOf(manifest);
+        assert.equal(score.applicable, 5, "no products means nothing to declare affordances for");
+        assert.equal(score.met, 5);
+        assert.deepEqual(score.dimensions.filter((d) => !d.applicable).map((d) => d.id), ["affordances", "limits"]);
+    });
+
+    test("the score is printed on every run, and names what it missed", async () => {
+        const dir = scratch();
+        tree(dir, { ...minimalFiles, "workspace.json": JSON.stringify(wellFormed()), "verify.sh": "#!/bin/sh\n" });
+        const { findings } = await inspect(dir, { schema: SCHEMA });
+        const line = text(checks(findings, "legibility"));
+        assert.match(line, /agent legibility \d+ of \d+/);
+        assert.match(line, /missing:/);
+        assert.match(line, /moves no exit code/);
+    });
+
+    test("a low score moves NO exit code — a measurement is not a verdict", async () => {
+        // The whole design: a score that could fail a workspace would make `doctor`'s verdict a
+        // function of how much affordance prose somebody wrote.
+        const dir = scratch();
+        tree(dir, { ...minimalFiles, "workspace.json": JSON.stringify(wellFormed()), "verify.sh": "#!/bin/sh\n" });
+        const { findings } = await inspect(dir, { schema: SCHEMA });
+        assert.equal(findings.filter((f) => f.severity === "fail").length, 0, text(findings));
+        assert.ok(legibility(wellFormed(), dir).met < legibility(full(), dir).applicable);
+    });
+
+    test("the two workspaces this repository ships score differently, and both are green", () => {
+        // The in-tree demonstration: a score that cannot tell two real workspaces apart is a score
+        // measuring nothing. Read from the manifests on disk rather than from fixtures.
+        const own = legibility(JSON.parse(fs.readFileSync(path.join(REPO, ".portulan", "workspace.json"), "utf8")), path.join(REPO, ".portulan"));
+        const demo = legibility(JSON.parse(fs.readFileSync(path.join(REPO, "examples", "workspace.json"), "utf8")), path.join(REPO, "examples"));
+        assert.equal(own.met, own.applicable, "customer zero should meet every dimension it asks of others");
+        assert.ok(demo.met < demo.applicable, "the demo declares no gate policy and no handoff series");
+        assert.deepEqual(demo.dimensions.filter((d) => d.applicable && !d.met).map((d) => d.id), ["gates", "handoffs"]);
+    });
+});
+
+// Added at the pre-commit checkpoint, which executed the hole rather than reading past it.
+describe("a persona's name is a pack's free text, so the binding read is contained", () => {
+    /** A pack whose persona declares whatever name it likes — which is what the contract permits. */
+    function poison(name) {
+        const dir = scratch();
+        tree(dir, { ...minimalFiles, "workspace.json": JSON.stringify({ ...wellFormed(), packs: ["rituals/fixture"] }) });
+        const root = scratch();
+        tree(root, {
+            "rituals/fixture/pack.json": JSON.stringify({
+                portulan: { pack: "1.0" }, name: "fixture", category: "rituals",
+                contributes: { personas: ["personas/one.md"] },
+            }),
+            "rituals/fixture/personas/one.md": [
+                "---", `name: ${name}`, "description: A role.", "tools: Read", "---", "", "# Persona", "",
+                "## Charter", "x", "", "## Autonomy reach", "Propose.", "", "## Memory scope", "x", "",
+                "## Read / write posture", "x", "",
+            ].join("\n"),
+        });
+        return { dir, root };
+    }
+
+    test("a name that traverses upward is refused, not opened and greened", async () => {
+        // Measured before the guard: a persona named `../../poison` had `doctor` read
+        // `<tree>/../poison.md`, validate it, and print "names and tool grant agree" — a green over a
+        // file no host would ever load, with that file's own `name:` echoed into the report.
+        // `path.join("agents", "../../poison.md")` is `../poison.md`, so the read this aims at is one
+        // level above the tree. Asserted BOTH ways — with the target present and absent — because the
+        // first cut only refused it when the file existed, which makes the refusal depend on whether
+        // the attacker got there first.
+        const { dir, root } = poison("../../poison");
+        const outside = path.resolve(dir, "..", "poison.md");
+        for (const present of [false, true]) {
+            if (present) fs.writeFileSync(outside, "---\nname: ../../poison\ndescription: x\ntools: Read\n---\n");
+            try {
+                const { findings } = await inspect(dir, { schema: SCHEMA, packRoots: [root] });
+                const said = text(checks(findings, "bindings"));
+                assert.match(said, /leaves this workspace's tree/, present ? "with the target present" : "with the target absent");
+                assert.doesNotMatch(said, /names and tool grant agree/);
+                assert.doesNotMatch(said, /no host binding/, "an escaping key must never be reported as merely unbound");
+            } finally {
+                fs.rmSync(outside, { force: true });
+            }
+        }
+    });
+
+    test("a binding that is a symlink out of the tree is refused — the test is on the REAL path", async () => {
+        const { dir, root } = poison("my-role");
+        const outside = scratch();
+        fs.writeFileSync(path.join(outside, "elsewhere.md"), "---\nname: my-role\ndescription: x\ntools: Read\n---\n");
+        fs.mkdirSync(path.join(dir, "agents"), { recursive: true });
+        fs.symlinkSync(path.join(outside, "elsewhere.md"), path.join(dir, "agents", "my-role.md"));
+        const { findings } = await inspect(dir, { schema: SCHEMA, packRoots: [root] });
+        assert.match(text(checks(findings, "bindings")), /OUTSIDE this workspace's tree/, "a link inside the tree pointing out of it passes any check on the spelling");
+    });
+
+    test("an ordinary name still resolves to an ordinary binding", async () => {
+        // The guard must not swallow the case it exists to protect.
+        const { dir, root } = poison("my-role");
+        fs.mkdirSync(path.join(dir, "agents"), { recursive: true });
+        fs.writeFileSync(path.join(dir, "agents", "my-role.md"), "---\nname: my-role\ndescription: x\ntools: Read\n---\n");
+        const { findings } = await inspect(dir, { schema: SCHEMA, packRoots: [root] });
+        assert.match(text(checks(findings, "bindings")), /agree/);
+    });
+});
+
+// Added at the pre-commit checkpoint: the dimension it measured and found constant.
+describe("every legibility dimension can actually vary", () => {
+    test("no dimension is a guaranteed point on a manifest the schema already requires", () => {
+        // `verify` was scored for exactly one checkpoint. The schema's first `oneOf` form requires it
+        // of every non-pointer workspace, a pointer never reaches the score, and a manifest that fails
+        // the schema returns earlier still — so it was a constant +1 dressed as a measurement.
+        const schemaRequired = new Set(SCHEMA.oneOf?.[0]?.required ?? []);
+        const ids = legibility({ verify: { recipes: [] }, slots: {} }, scratch()).dimensions.map((d) => d.id);
+        for (const id of ids) {
+            assert.equal(schemaRequired.has(id), false, `\`${id}\` is required by the schema, so it can never be absent and measures nothing`);
+        }
+        assert.equal(ids.length, 7, "seven is what the can-it-vary rule leaves; the count is derived here rather than trusted in prose");
     });
 });

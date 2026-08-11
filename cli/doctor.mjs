@@ -17,8 +17,15 @@
 // unrelated to the change under test is worse than no check (../.portulan/verify/README.md).
 //
 // What it does NOT do is written next to what it does, in ../spec/slots.md and in ../cli/README.md.
-// The short list: it never runs a verify recipe, never dereferences a link, never judges whether a
-// sealed stamp is true, and never scores agent-legibility.
+// The short list: it never runs a verify recipe, never dereferences a link, and never judges whether a
+// sealed stamp is true.
+//
+// **It DOES score agent legibility, since milestone 7 session 7** — this line read "and never scores
+// agent-legibility" until then, which was the honest state from milestone 2 until row 7's 2026-07-28
+// amendment was built. The score reads the `affordances` slot and six manifest keys beside it, prints
+// one line, and **moves no exit code**: a measurement is not a verdict, and one that could fail a
+// workspace would make this tool's judgement a function of how much prose somebody wrote. See section
+// 3b for the dimensions and for why each of them can vary.
 //
 // **One name IS dereferenced, as of milestone 7: a pointer's `governed_by`.** It is resolved against
 // the host's installed-plugin record by ./discover.mjs — on disk, never over the network, and the
@@ -45,7 +52,10 @@ import { isInside, recordType } from "./index.mjs";
 // second implementation here would be a second carrier of one contract — the class that proposal
 // `0020` names (../.portulan/proposals/0020-a-fix-is-not-done-at-the-site-it-was-found.md), and what
 // ../core/operating/evolution.md prescribes leaving one site for.
-import { parseFrontmatter } from "./plugin-lint.mjs";
+// `AGENT_DIR` for the same reason, and it is the stronger case of the two: it is not a convention this
+// tool is free to choose but a MEASUREMENT of where one host looks — with a positive control, recorded
+// at its declaration. A copy here would be this tool's opinion about somebody else's loader.
+import { parseFrontmatter, AGENT_DIR } from "./plugin-lint.mjs";
 // Host plugin-cache discovery, which is where a pointer's `governed_by` stops being a name and
 // becomes a directory. Imported rather than reimplemented for the reason above, and kept in its own
 // file for a second one: the boot skill's whole instruction is to report what THIS resolver said, so
@@ -591,7 +601,8 @@ const SKILL_DEPTH = 3;
 /**
  * Open and validate what a pack contributes: its skills' frontmatter and its personas' five-part
  * contract. Returns what was actually opened, so the caller's report line can say *opened* rather than
- * *declared* — the distinction the whole check exists to make.
+ * *declared* — the distinction the whole check exists to make. `bindable` carries the key each opened
+ * persona would be bound by on a host; the caller owns that check, because it needs the tree.
  *
  * **Containment is checked after resolution, never by pattern.** `spec/pack.schema.json` bars only the
  * leading `../` form and says so in its own text; `a/../../x` matches it and still escapes, and a symlink
@@ -605,7 +616,7 @@ export function validateContributions(packDir, contributes, { fail, report, pack
         realPack = fs.realpathSync(packDir);
     } catch (cause) {
         fail("packs", `\`${pack}\` resolved to a directory that cannot be realpathed — ${cause.code ?? cause.message}`);
-        return { skills: 0, personas: 0 };
+        return { skills: 0, personas: 0, bindable: [] };
     }
 
     // Three answers, not two. `null` meant "could not resolve" and was reported to the reader as "is not
@@ -662,6 +673,10 @@ export function validateContributions(packDir, contributes, { fail, report, pack
     }
 
     let personas = 0;
+    // What each opened persona would be BOUND by on a host, collected here because this is the one
+    // place the file is read. The caller matches them against `agents/` once the tree is known — the
+    // check needs a repository, and this function is given a pack.
+    const bindable = [];
     for (const rel of contributes.personas ?? []) {
         const file = path.join(packDir, rel);
         const contained = inside(file);
@@ -684,11 +699,22 @@ export function validateContributions(packDir, contributes, { fail, report, pack
             fail("packs", `\`${pack}\`'s persona \`${rel}\` could not be read — ${cause.code ?? cause.message}. Only a missing file means absent`);
             continue;
         }
-        validatePersona(text, { fail, pack, rel });
+        const declared = validatePersona(text, { fail, pack, rel });
         personas += 1;
+        // The key is the declared `name`, and the file's basename where it declares none. Two sources
+        // rather than one because the contract's five parts do not include a name — a persona missing
+        // it is not thereby unbindable, and `new persona` writes `personas/<name>.md`, so the basename
+        // is the author's own answer to the same question. Which one answered is printed, since a
+        // binding resolved by filename is a weaker fact than one resolved by declaration.
+        const basename = path.basename(rel, ".md");
+        bindable.push({
+            rel,
+            key: declared?.name ?? basename,
+            keyedBy: declared?.name ? "declaration" : "filename",
+        });
     }
 
-    return { skills, personas, unreadableRoots };
+    return { skills, personas, unreadableRoots, bindable };
 }
 
 /**
@@ -701,12 +727,17 @@ export function validateContributions(packDir, contributes, { fail, report, pack
  * frames this milestone as where a declared memory scope stops being prose a checker can read but not
  * honour — a heading check reads it and does not honour it, and the sentence saying so belongs beside the
  * check rather than only in the milestone's record.
+ *
+ * **Returns the name the persona declares, or `null` where it declares none** — the key the binding
+ * check below resolves a host agent file by. It is returned rather than re-parsed at the call site
+ * because the frontmatter has already been read here, and two parses of one block are two chances to
+ * disagree about what it said.
  */
 export function validatePersona(text, { fail, pack, rel }) {
     const { fields, error } = parseFrontmatter(text);
     if (!fields) {
         fail("packs", `\`${pack}\`'s persona \`${rel}\` has no usable frontmatter${error ? ` — ${error}` : ""}, so it declares no \`tools:\` allow-list`);
-        return;
+        return null;
     }
     for (const { part, find } of PERSONA_PARTS) {
         if (!find(fields, text)) {
@@ -745,6 +776,7 @@ export function validatePersona(text, { fail, pack, rel }) {
                 `role may act in — a persona claiming it claims a permission nobody has (core/personas/README.md)`,
         );
     }
+    return { name: typeof fields.name === "string" && fields.name.trim() ? fields.name.trim() : null };
 }
 
 /** Walk one declared skills root to the fixed depth, validating each `SKILL.md` frontmatter. */
@@ -929,6 +961,140 @@ function loadSchema({ schema, schemaPath }) {
     } catch (cause) {
         throw new DoctorError(`the schema at ${file} is not valid JSON: ${cause.message}`);
     }
+}
+
+// ===========================================================================================
+// 3b. Agent legibility
+// ===========================================================================================
+//
+// Row 7's 2026-07-28 amendment: `doctor` scores agent legibility — the audit `docs/vision.md`'s
+// influence map calls the **unclaimed niche**, "repo affordances scored by doctor".
+//
+// **It moves no exit code, and that is the design rather than a shortfall.** A score is a
+// measurement; `doctor`'s exit codes are verdicts about conformance. A score that could fail a
+// workspace would make the verdict a function of how much affordance prose somebody wrote, and
+// every incentive it created would point at writing more of it.
+//
+// **Every carrier of the amendment says the `affordances` slot "is its input", and this reads six
+// keys besides.** That is a reading, stated rather than taken in silence: the constitution's own
+// gloss is *"repo affordances scored by doctor"* — the repository's affordances, of which the slot
+// is the written half — and a score confined to the slot could not tell two workspaces apart at
+// all. **The slot is the named input, not the only one.**
+//
+// What each dimension has in common is the property that makes a score honest: every one is
+// **optional in the Workspace Definition**, so it can genuinely be absent, and none of them
+// duplicates a check that already fails. A dimension that cannot vary measures nothing, and a
+// dimension that restates a hard failure is a second carrier of one fact.
+//
+// **Three candidates were dropped by that rule, and they are named because two of them were in this
+// session's own plan.** *A declared `tree`* and *a repo card for every repository the products name*
+// were both listed in task 0013's acceptance list; each is already a hard failure — `tree` for any
+// `kind: repository`, the cards through the `cross` check — so scoring them would have been a
+// guaranteed point for every workspace that got far enough to be scored, and a second carrier of a
+// verdict the tool already renders. *Executable verification* was the third, and it survived one
+// checkpoint before being measured: see `legibility` itself. **Seven dimensions is what the rule
+// leaves**, and the number is derived by the suite rather than trusted here.
+
+/**
+ * The headings that state limits, and it is a FORM check.
+ *
+ * A named table rather than a matcher clever enough to be wrong quietly — the same shape and the
+ * same reason as `PERSONA_PARTS` above and as the writer table in `cli/compile.mjs`. What it
+ * establishes is that a limits section is **present**, never that what it says is true or complete:
+ * a heading with an empty body passes. `.portulan/products/portulan/affordances.md` states the rule
+ * this scores in its own words — *"a legibility report that lists only strengths is marketing"* — and
+ * a form check is the most a reader of the tree can hold anybody to.
+ */
+const LIMIT_HEADINGS = [
+    /^#{2,3}\s+What an agent must not assume\b/im,
+    /^#{2,3}\s+.*\bmust not\b/im,
+    /^#{2,3}\s+.*\bdo(es)? not\b/im,
+    /^#{2,3}\s+(Honest )?[Ll]imits\b/im,
+    /^#{2,3}\s+.*\bnot (guaranteed|checked|enforced)\b/im,
+];
+
+/**
+ * Score one workspace's agent legibility.
+ *
+ * Returns `{ met, applicable, dimensions }`, where a dimension is
+ * `{ id, title, met, applicable, why }`. **Inapplicable dimensions leave the denominator** rather
+ * than counting as failures: a workspace with no products has nothing to declare affordances for,
+ * and scoring it down for that would be grading it against a standard it is not under.
+ *
+ * Reads the tree only through paths the manifest declares, so it fetches nothing and infers nothing.
+ */
+export function legibility(workspace, dir) {
+    const dimensions = [];
+    const add = (id, title, met, why, applicable = true) => dimensions.push({ id, title, met, applicable, why });
+
+    // **`verify` itself is deliberately NOT a dimension**, and the reason is the rule this list is
+    // built on. The schema's first `oneOf` form requires `slots` and `verify` of every workspace that
+    // is not a pointer, a pointer returns long before this line, and a manifest that fails the schema
+    // returns earlier still — so *does this workspace declare executable verification* is a question
+    // whose answer is always yes by the time anything here could ask it. It was scored for exactly one
+    // pre-commit checkpoint, which measured it and found a dimension that could not vary: a constant
+    // +1 dressed as a measurement, in a list whose whole claim is that every entry can genuinely be
+    // absent. What a recipe DECLARES about itself still varies, which is the dimension below.
+    const recipes = workspace.verify?.recipes ?? [];
+    add(
+        "requires",
+        "recipes that declare what they need",
+        recipes.every((r) => Array.isArray(r.requires) && r.requires.length > 0),
+        "`could not run` stays distinguishable from `ran and failed`, which is what stops a missing tool reading as a pass",
+        recipes.length > 0,
+    );
+    add(
+        "gates",
+        "a gate policy a machine reads",
+        typeof workspace.gates === "string" && workspace.gates.length > 0,
+        "the prose gate map argues the tiers; the policy beside it is the half something can compile into enforcement",
+    );
+    add("dod", "a stated bar for done", Boolean(workspace.slots?.dod), "an agent can tell finished from working, without inferring it from the tests that happen to exist");
+    add(
+        "memory",
+        "a memory store with a generated index",
+        Boolean(workspace.slots?.memory) && Boolean(workspace.memory?.index),
+        "recall is a file an agent reads, not a directory it walks and summarises differently each time",
+    );
+    add(
+        "handoffs",
+        "a handoff series with a generated index",
+        Boolean(workspace.slots?.handoffs) && Boolean(workspace.handoffs?.index),
+        "why a decision was taken survives the session that took it, and is reachable without reading the series",
+    );
+
+    // The slot the amendment names, read for both of its dimensions in one pass.
+    const products = workspace.products ?? [];
+    const docs = [];
+    let unreadable = 0;
+    for (const product of products) {
+        const rel = product.affordances ?? workspace.affordances;
+        if (!rel) continue;
+        try {
+            docs.push({ rel, text: fs.readFileSync(path.resolve(dir, rel), "utf8") });
+        } catch {
+            // Counted, never skipped: a document that could not be read has not been found to state
+            // its limits, and treating it as absent and as present are both claims nothing established.
+            unreadable += 1;
+        }
+    }
+    add(
+        "affordances",
+        "affordances declared for every product",
+        products.length > 0 && products.every((p) => p.affordances || workspace.affordances),
+        "what an agent may rely on is written down per product — its own slot, or the workspace-level default it inherits",
+        products.length > 0,
+    );
+    add(
+        "limits",
+        "affordances that state limits, not only strengths",
+        docs.length > 0 && unreadable === 0 && docs.every((d) => LIMIT_HEADINGS.some((h) => h.test(d.text))),
+        "a legibility document listing only what works is marketing; the half an agent needs is what it must not assume",
+        docs.length > 0 || unreadable > 0,
+    );
+
+    const applicable = dimensions.filter((d) => d.applicable);
+    return { met: applicable.filter((d) => d.met).length, applicable: applicable.length, dimensions };
 }
 
 /**
@@ -1431,6 +1597,11 @@ export async function inspect(workspaceDir, options = {}) {
         }
     }
 
+    // Every persona a composed pack contributes, with the key a host would bind it by. Declared out
+    // here rather than inside the branch below so the binding check has one shape to read: a workspace
+    // composing no packs contributes no personas, which is an empty list and not a missing one.
+    const composedPersonas = [];
+
     if (workspace.packs?.length) {
         // Resolution, not a count. Until milestone 6 this reported how many packs were declared and
         // said so — "a declaration only" — because there was no format to validate one against and
@@ -1514,6 +1685,7 @@ export async function inspect(workspaceDir, options = {}) {
             // `contributes.skills` value was "still inert". It is not inert once something opens it, so
             // the containment check arrives in the same change as the opening.
             const opened = validateContributions(found.dir, c, { fail, report, pack: name });
+            for (const one of opened.bindable) composedPersonas.push({ pack: name, ...one });
 
             const parts = [
                 c.skills?.length
@@ -1694,6 +1866,148 @@ export async function inspect(workspaceDir, options = {}) {
     // ---- claims against the tree
     const treeRoot = workspace.tree ? path.resolve(dir, workspace.tree) : null;
     const claimTargets = [];
+
+    // ---- persona ↔ agent bindings
+    //
+    // Row 7's fourth validation, and the one that was still owed after milestone 7 session 2 built the
+    // other three. A persona is host-agnostic — its `tools:` are capability classes — and a **binding**
+    // is the file that translates one into a host's own vocabulary. `core/personas/README.md` records
+    // that the translation is **lossy**: of three charters exactly one survives it. So this check grades
+    // agreement and never equivalence, and there are exactly two things it can honestly hold.
+    //
+    // **Absence is reported, never failed**, for the same reason a pointer's `governed_by` is reported
+    // and never graded: whether a binding file exists is deployment state, and a persona with no binding
+    // is a legitimate choice — an adopter may be on a host with no agent layer at all. This repository is
+    // the exhibit rather than the embarrassment: the `checkpoints` supervisor is deliberately unbound,
+    // because that pack's own `self-certify-a-checkpoint` gate makes a **fresh context** the mechanism,
+    // and a subagent binding inside the implementer's session is precisely what it refuses.
+    //
+    // **A binding that contradicts its persona is failed**, because that one is wrong on every host: the
+    // loader keys on frontmatter `name`, so a mismatch binds a persona nobody named, and a binding with
+    // no `tools:` hands the role the host's whole toolbox — the context firewall's first part, gone.
+    if (composedPersonas.length) {
+        if (!treeRoot) {
+            // The same answer every other claim gets without a tree, and it is counted with them: a
+            // workspace that declares no repository has nowhere for `agents/` to be, which is not the
+            // same as having looked and found nothing.
+            stats.unverifiable += composedPersonas.length;
+            report(
+                "bindings",
+                `${composedPersonas.length} composed persona(s) could not be matched to a host binding — this workspace declares no \`tree\`, ` +
+                    `so there is no repository to look in. Unverifiable, not unbound`,
+            );
+        }
+        // BOTH sides are resolved before they are compared, which is the half a first cut got wrong.
+        // Comparing a realpathed file against an unresolved root fails wherever the root itself sits
+        // under a link — every macOS temporary directory does, `/var` being a link to `/private/var` —
+        // so the guard below refused perfectly ordinary bindings until this line existed. That is the
+        // rule `validateContributions` already applies to a pack directory, applied to a tree.
+        let realTree = treeRoot;
+        try {
+            if (treeRoot) realTree = fs.realpathSync(treeRoot);
+        } catch {
+            // An unresolvable tree is already reported by the claims checks; keeping the declared path
+            // here means the containment test still runs, on the stricter of the two spellings.
+        }
+        for (const persona of treeRoot ? composedPersonas : []) {
+            const rel = path.join(AGENT_DIR, `${persona.key}.md`);
+            const where = `\`${persona.pack}\`'s \`${persona.rel}\``;
+            const keyed = persona.keyedBy === "declaration" ? "" : " (keyed by filename — the persona declares no `name`)";
+            const file = path.join(treeRoot, rel);
+
+            // **The key is a pack's free text, so it is contained before it is opened.** A persona's
+            // `name` is unconstrained — the five-part contract does not include it and the Pack
+            // Definition does not reach persona markdown — so a pack declaring `name: ../../poison`
+            // aims this read anywhere on the machine. Before this guard it read the file, validated
+            // it, and printed *names and tool grant agree*: a green over something no host would ever
+            // load as an agent, with the outside file's own `name:` echoed into the report.
+            //
+            // Resolved and then compared, never matched as a pattern — the rule `validateContributions`
+            // already applies to a pack's own paths, and the same one `plugin-lint` applies to a
+            // symlinked `agents/` entry. A symlink is why the test is on the REAL path: a link inside
+            // the tree pointing out of it passes any check on the spelling.
+            // The LEXICAL test comes first, and it is not redundant with the resolved one below.
+            // `path.join("agents", "../../poison.md")` is `../poison.md`, so a traversing name aims
+            // outside the tree whether or not anything is there — and where nothing is, the resolved
+            // test never runs and this check fell through to its *unbound* sentence, which named the
+            // escaping path as "the one location a host loads agents from". A refusal that depends on
+            // whether the attacker's file happens to exist is not a refusal.
+            if (!isInside(treeRoot, path.resolve(treeRoot, rel))) {
+                fail(
+                    "bindings",
+                    `${where} keys its host binding to \`${persona.key}\`, which leaves this workspace's tree — \`${rel}\`. A persona's name is the ` +
+                        "pack's own free text and this path is built from it, so a name that traverses is a pack choosing which file this validator opens",
+                );
+                continue;
+            }
+
+            let real = null;
+            try {
+                real = fs.realpathSync(file);
+            } catch (cause) {
+                if (cause.code !== "ENOENT") {
+                    report("bindings", `${where}'s binding at \`${rel}\` could not be resolved — ${cause.code ?? cause.message}. Unread, not absent`);
+                    continue;
+                }
+                // ENOENT is the ordinary unbound case and falls through to the read below, which
+                // renders the one sentence this check has for it.
+            }
+            if (real !== null && !isInside(realTree, real)) {
+                fail(
+                    "bindings",
+                    `${where} resolves to a host binding OUTSIDE this workspace's tree — \`${rel}\` reaches \`${real}\`. A persona's name is the pack's ` +
+                        "own text and this key is built from it, so a name that traverses upward would have this validator open and grade a file the " +
+                        "host could never load",
+                );
+                continue;
+            }
+            let text;
+            try {
+                text = fs.readFileSync(file, "utf8");
+            } catch (cause) {
+                if (cause.code === "ENOENT") {
+                    report(
+                        "bindings",
+                        `${where} has no host binding at \`${rel}\`${keyed} — reported, not failed: a persona without one is unbound rather than wrong, ` +
+                            "and this is the one location a Claude Code host loads agents from",
+                    );
+                } else {
+                    // `existsSync` would answer *false* here and this would print as an absence. The
+                    // distinction is the same one `validateContributions` carries: only a missing file
+                    // means absent, and a question that could not be answered is not an answer.
+                    report("bindings", `${where}'s binding at \`${rel}\` could not be read — ${cause.code ?? cause.message}. Unread, not absent`);
+                }
+                continue;
+            }
+            const { fields, error } = parseFrontmatter(text);
+            if (!fields) {
+                fail(
+                    "bindings",
+                    `${where} is bound by \`${rel}\`, which has no usable frontmatter${error ? ` — ${error}` : ""}. A host reads the binding's ` +
+                        "`name`, `description` and `tools` from that block; without it the file registers as nothing",
+                );
+                continue;
+            }
+            const bound = typeof fields.name === "string" ? fields.name.trim() : "";
+            if (bound !== persona.key) {
+                fail(
+                    "bindings",
+                    `${where} is bound by \`${rel}\`, whose frontmatter declares \`name: ${bound || "(none)"}\` — the host keys on that field and not on ` +
+                        `the filename, so this file binds a persona nobody named. Expected \`${persona.key}\``,
+                );
+                continue;
+            }
+            if (!(typeof fields.tools === "string" && fields.tools.trim())) {
+                fail(
+                    "bindings",
+                    `${where} is bound by \`${rel}\`, which declares no \`tools:\` allow-list. The first of the five parts is a default-deny surface, ` +
+                        "and a binding that omits it grants the role every tool the host has",
+                );
+                continue;
+            }
+            report("bindings", `${where} is bound by \`${rel}\`${keyed} — names and tool grant agree`);
+        }
+    }
 
     if (workspace.slots?.repos) {
         const reposDir = path.resolve(dir, workspace.slots.repos);
@@ -2067,6 +2381,20 @@ export async function inspect(workspaceDir, options = {}) {
                   : "") +
               ". Size and count only: ages live in git, which doctor does not read, so staleness belongs to `cli/librarian.mjs` — the scheduled pass, which may ask git and does"
             : "no memory records — nothing measured, nothing awaiting retirement",
+    );
+
+    // Always emitted, for the third time on this page and for the same reason: a workspace nobody
+    // scored and a workspace that scored well print identically unless one of them says which.
+    const score = legibility(workspace, dir);
+    const missed = score.dimensions.filter((d) => d.applicable && !d.met);
+    const skipped = score.dimensions.filter((d) => !d.applicable);
+    report(
+        "legibility",
+        `agent legibility ${score.met} of ${score.applicable}` +
+            (missed.length ? ` — missing: ${missed.map((d) => `${d.title} (${d.why})`).join("; ")}` : " — every dimension met") +
+            (skipped.length ? `. Not applicable here: ${skipped.map((d) => d.title).join(", ")}` : "") +
+            ". Scored from what the manifest declares and the affordances documents it reaches; it moves no exit code, " +
+            "because a score that could fail a workspace would make the verdict a function of how much prose somebody wrote",
     );
 
     return { dir, workspace, findings, stats };

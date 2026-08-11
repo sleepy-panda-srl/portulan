@@ -547,10 +547,11 @@ describe("the agents nothing declares", () => {
     });
 
     test("a plugin that ships no agents at all is not a failure", () => {
-        // Generic validator, not a mirror of this repository: shipping no agents is legitimate.
-        // The residual hole is named rather than hidden — deleting `agents/` outright degrades to
-        // a note here, and the check that would bind it is the persona↔agent agreement lint in
-        // ../.portulan/tasks/0005-lint-the-persona-agent-binding.md.
+        // Generic validator, not a mirror of this repository: shipping no agents is legitimate — for a
+        // plugin that ships no personas either, which this fixture is. Where a plugin DOES ship
+        // `core/personas/`, the correspondence added at milestone 7 session 7 fails every unbound one,
+        // so the residual hole this comment used to name — deleting `agents/` degrading to a note — is
+        // closed exactly where it mattered and left open exactly where it is legitimate.
         const root = fixture({ skip: ["agents"] });
         assert.equal(fails(inspect(root).findings).length, 0, messages(inspect(root).findings));
         assert.equal(inspect(root).stats.agents, 0);
@@ -1357,5 +1358,65 @@ describe("compose cannot go quiet on what the walk could not see", () => {
         } finally {
             fs.chmodSync(dark, 0o755);
         }
+    });
+});
+
+// ---------------------------------------------------------------- the persona ↔ binding correspondence
+
+// `.portulan/tasks/0005-lint-the-persona-agent-binding.md`, opened 2026-07-26 on the maintainer's ruling
+// that settled the persona/agent separation — "separation is load-bearing, and separation must never
+// become duplication" — and unbuilt until milestone 7 session 7. The two mechanical halves are these;
+// the task's third criterion, that a binding restating its persona's charter should be reported, stays
+// open on its own terms, because its measurable form is an open question that nothing has settled.
+describe("a shipped persona and its host binding must correspond", () => {
+    const PERSONA = (name) =>
+        ["---", `name: ${name}`, "description: A role.", "tools: [read]", "---", "", `# Persona — ${name}`, "", "## Charter", "It does one thing.", ""].join("\n");
+
+    /** A fixture that also ships core personas, which is the layout this correspondence is about. */
+    function withPersonas(personas, agents) {
+        const root = fixture({ skip: ["agents"] });
+        for (const name of personas) write(root, `core/personas/${name}.md`, PERSONA(name));
+        write(root, "core/personas/README.md", "# core/personas/\n\nThe contract.\n");
+        for (const [file, name] of Object.entries(agents)) write(root, `agents/${file}.md`, AGENT(name, "Does work. Delegate work to it."));
+        return root;
+    }
+
+    const fails = (findings) => findings.filter((f) => f.severity === "fail");
+    const said = (findings) => findings.map((f) => f.message).join("\n");
+
+    test("a persona bound by a matching agent file is clean", () => {
+        const { findings } = inspect(withPersonas(["worker"], { worker: "worker" }));
+        assert.equal(fails(findings).length, 0, said(findings));
+    });
+
+    test("a persona with no binding FAILS — doctrine the host never registers", () => {
+        const { findings } = inspect(withPersonas(["worker", "unbound"], { worker: "worker" }));
+        assert.equal(fails(findings).length, 1, said(findings));
+        assert.match(said(findings), /core\/personas\/unbound\.md has no binding/);
+    });
+
+    test("a binding naming no persona FAILS — a host file that outlived its charter", () => {
+        const { findings } = inspect(withPersonas(["worker"], { worker: "worker", ghost: "ghost" }));
+        assert.equal(fails(findings).length, 1, said(findings));
+        assert.match(said(findings), /agents\/ghost\.md binds no persona/);
+    });
+
+    test("a binding whose declared name is not its filename FAILS — the host keys on the field", () => {
+        const { findings } = inspect(withPersonas(["worker"], { worker: "someone-else" }));
+        assert.match(said(findings), /disagree about which role this file registers/);
+    });
+
+    test("a plugin shipping no core personas is untouched by this check", () => {
+        // A legitimate shape — most plugins ship no doctrine layer at all — and a check that failed it
+        // would be this tool inventing a requirement nobody declared.
+        const { findings } = inspect(fixture());
+        assert.equal(fails(findings).length, 0, said(findings));
+    });
+
+    test("this repository's own three personas are each bound", () => {
+        // The live half: the correspondence is asserted against the tree that ships, not only against a
+        // fixture built to satisfy it.
+        const { findings } = inspect(REPO);
+        assert.equal(fails(findings).filter((f) => /persona|binds no/.test(f.message)).length, 0, said(findings));
     });
 });
