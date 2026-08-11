@@ -978,6 +978,15 @@ exit 2
  * MACHINE-LOCAL convenience for the person who ran `init` — an absolute path on one machine, which
  * git cannot carry anywhere (`.portulan/memory/a-generated-file-must-not-point-at-what-git-cannot-carry.md`).
  * The script says so where a reader meets it, so nobody reads it as a portable location.
+ *
+ * **Both lines carrying it are marked `# portulan:bundle-fallback`, and the marker is the point.** A
+ * workspace is not fixed where it was drafted: `vendor --switch` copies these files byte for byte into
+ * another residence, and `upgrade` will rewrite them — so this path travels to machines it was never
+ * true on, and it does so silently, because a stale absolute path exits 2 rather than failing loudly.
+ * A comment asking the next implementer to notice is the reminder this project trades away wherever it
+ * can; a fixed token is something a rewriter can **find**. `cli/vendor.mjs` and the `upgrade` entry in
+ * `cli/portulan.mjs` both cite it, and `init.test.mjs` asserts it survives, so the marker cannot be
+ * dropped by an edit to the recipe that forgets why it was there.
  */
 function draftIndexRecipe() {
     const bundle = path.resolve(HERE, "..");
@@ -1022,9 +1031,9 @@ if [ -n "\${PORTULAN_CLI:-}" ]; then
     set -- node "\${PORTULAN_CLI}/index.mjs"
 elif command -v portulan >/dev/null 2>&1; then
     set -- portulan index
-elif [ -f ${JSON.stringify(`${bundle}/cli/index.mjs`)} ]; then
+elif [ -f ${JSON.stringify(`${bundle}/cli/index.mjs`)} ]; then # portulan:bundle-fallback
     need_node
-    set -- node ${JSON.stringify(`${bundle}/cli/index.mjs`)}
+    set -- node ${JSON.stringify(`${bundle}/cli/index.mjs`)} # portulan:bundle-fallback
 else
     printf 'verify: the Portulan CLI is not reachable, so the index was NOT checked.\\n' >&2
     printf 'verify: looked at \$PORTULAN_CLI/index.mjs, portulan on PATH, and the bundle this\\n' >&2

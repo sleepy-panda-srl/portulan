@@ -82,8 +82,17 @@ that restates a hard failure is a second carrier of one verdict.*
   session inherits **106 bytes** of headroom and the same rule: the cell carries state, the records
   carry history.
 - **The drafted rail writes an absolute path into somebody else's repository** — the bundle `init` ran
-  from, as the third of three locations. It is named as machine-local in the script and in the drafted
-  README. If `vendor` or `upgrade` ever rewrites a drafted workspace, that line is the one to re-derive.
+  from, as the third of three locations, named as machine-local in the script and in the drafted README.
+  **The maintainer asked whether that was visible enough for `vendor` or `upgrade`, and it was not:**
+  `cli/vendor.mjs` copies a workspace's files **byte for byte** at its staging loop, so a `--switch`
+  carries the path to a residence it was never true on, and neither that loop nor the `upgrade` entry
+  said a word about it. Both lines now carry the token **`# portulan:bundle-fallback`** — a rewriter can
+  *find* them, where a comment only asks the next implementer to notice — and both tools cite the token
+  at the site that will have to re-derive it. `init.test.mjs` asserts the marker at both ends: that the
+  drafted file carries it on exactly the two lines holding the path, that no other drafted file carries
+  the path unmarked, and that `vendor.mjs` and `portulan.mjs` still name it. **Why this is a gap and not
+  a defect:** a stale bundle path exits **2 — could not run**, never 0, so it fails closed — which is
+  also why it would be easy to never notice.
 - **The dimension count had a fourth carrier nobody swept**, found by the records checkpoint after the
   drop: `spec/slots.md` still said *eight* and *the other six read the manifest* while four other
   carriers said seven. Fixed in the records push. **The count is derived by a test and written down in
