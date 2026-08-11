@@ -303,9 +303,15 @@ carries a gate policy that compiles on both backends, a handoff series, and a ve
 **exits 2 until the adopting team says what green means for their repository** — a stub exiting 0 would
 put a false green under every gate on the day the workspace was created. What it deliberately does not
 carry is a working **session-end gate**: the runner that enforces it ships in no artifact an adopter
-receives, so the draft names where that arrives instead of implying a wire that is not there. There is
-no interactive interview yet either — the answers arrive as flags or as `--answers`, which is the
-substrate an interview would drive.
+receives, so the draft names where that arrives instead of implying a wire that is not there. **At a
+terminal it interviews**: anything the flags did not answer is asked, with the derived default offered
+where one exists, and nothing is written until a confirmation that echoes every answer. Where stdin or
+stdout is not a TTY nothing is asked and the refusals are exactly what they were — a prompt loop cannot
+be run by CI, by a test or by a headless host, which is why the substrate was built first and why
+`--no-interview` exists for a terminal that wants the flags path. _(This paragraph said there was no
+interview and that the substrate was all that shipped. True from milestone 7 session 1 until session 7,
+and corrected here rather than left standing in the section this file's own header says accumulates as
+changes land.)_
 
 **It ships as zero-dependency ESM, and that is now a ruling rather than a "for now".** Settled
 2026-07-31 against [`.portulan/identity.md`](.portulan/identity.md)'s older *TypeScript on Node*

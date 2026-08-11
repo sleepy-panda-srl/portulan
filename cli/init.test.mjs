@@ -437,11 +437,19 @@ describe("the draft claims no capability it does not have", () => {
         assert.match(readme, /session-end gate is wired by `compile`, and this draft has not run it/i);
     });
 
-    test("the interactive interview is named as absent rather than implied", async () => {
+    test("the help says WHEN the interview runs, and when nothing is asked", async () => {
+        // This test read "the interactive interview is named as absent rather than implied" and
+        // asserted `/interview/i` against the help. When the interview shipped at milestone 7 session
+        // 7 the help began saying the opposite and **the assertion still passed**, on the word
+        // `--no-interview`. A check that passes on a word rather than on a claim has stopped checking
+        // — the sibling of the defect the test directly above this one records, in the same file, and
+        // it survived the change that made it wrong. Re-pointed at the two claims that matter.
         const h = harness();
         await run(["--help"], h.options);
-        assert.match(h.said.join("\n"), /--answers/);
-        assert.match(h.said.join("\n"), /interview/i);
+        const help = h.said.join("\n");
+        assert.match(help, /--answers/);
+        assert.match(help, /At a terminal, anything you have not answered is asked/);
+        assert.match(help, /not a TTY nothing is asked/);
     });
 
     test("nothing in the draft tells the adopter to run an unpublished command", async () => {
@@ -947,12 +955,21 @@ describe("the draft does not overstate its own rails to the adopter", () => {
         assert.match(await emitted("README.md"), /RED/);
     });
 
-    test("the generated index is described in the future tense, because it does not exist yet", async () => {
+    // This test read "the generated index is described in the future tense, because it does not exist
+    // yet" until milestone 7 session 7, and it was the rail on a drafted README that told every adopter
+    // the index "does not exist yet … this draft does not run it". The sentence went false the moment
+    // the draft started writing it — in somebody else's tree, which `init`'s own header calls the worst
+    // shape available. The test is turned around rather than deleted: the same pair, pinned the other
+    // way, so the README cannot drift back into describing a state the draft no longer has.
+    test("the generated index exists, and the README describes what was written rather than what is owed", async () => {
         const dir = scratch();
         await run(["--residence", "in-repo", dir], harness().options);
         const manifest = ok(dir);
-        assert.equal(fs.existsSync(path.join(dir, ".portulan", manifest.handoffs.index.path)), false);
-        assert.match(fs.readFileSync(path.join(dir, ".portulan", "README.md"), "utf8"), /does not exist yet/i);
+        assert.equal(fs.existsSync(path.join(dir, ".portulan", manifest.handoffs.index.path)), true);
+        const readme = fs.readFileSync(path.join(dir, ".portulan", "README.md"), "utf8");
+        assert.doesNotMatch(readme, /index[\s\S]{0,80}does not exist yet/i, "a draft must not tell its adopter a file it just wrote is missing");
+        assert.match(readme, /freshness rail/i);
+        assert.match(readme, /exits\s+\*\*2/i, "the rail's honest first state on an adopter's CI belongs in the artifact that ships it");
     });
 
     test("the run itself says the pack is unresolved, not only the file it wrote", async () => {
@@ -1008,5 +1025,242 @@ describe("doctor is green on what init emits — the bar this session must clear
         assert.equal(await run(["--residence", "pointer", "--governed-by", "acme-platform", dir], harness().options), 0);
         const result = doctor([path.join(dir, ".portulan")]);
         assert.equal(result.code, 0, `doctor was not green on a pointer:\n${result.out}`);
+    });
+});
+
+// ---------------------------------------------------------------- the interview
+
+// `docs/vision.md` glosses `init` as *interview + codebase scan → drafted workspace, human curates*.
+// The scan shipped at session 1 and the substrate with it; this is the prompt loop, and every test
+// here runs it with **no TTY in sight** — which is the property that made the substrate worth building
+// first. The reader is injected, so the loop is as testable as the flags path it shares its validators
+// with.
+describe("the interview asks, and only where somebody is there to answer", () => {
+    /** A reader with a queue of answers. Records the prompts, so an assertion can be about what was ASKED. */
+    function scripted(answers, { interactive = true } = {}) {
+        const asked = [];
+        const said = [];
+        return {
+            asked,
+            said,
+            io: {
+                interactive,
+                say: (line) => said.push(line),
+                async ask(question) {
+                    asked.push(question);
+                    return answers.length ? answers.shift() : null;
+                },
+            },
+        };
+    }
+
+    test("a missing answer is asked for at a terminal, and the draft is written", async () => {
+        const dir = scratch();
+        const s = scripted(["in-repo", "", "", "none", "y"]);
+        const code = await run([dir], { ...harness().options, io: s.io });
+        assert.equal(code, 0, "an interviewed run that confirms must write");
+        assert.match(s.asked.join("\n"), /residence/, "the one question init may not answer must be asked");
+        assert.equal(ok(dir).kind, "repository");
+    });
+
+    test("nothing is asked where stdin or stdout is not a TTY — the refusal is the old one, unchanged", async () => {
+        const dir = scratch();
+        const s = scripted(["in-repo", "", "", "none", "y"], { interactive: false });
+        const h = harness();
+        const code = await run([dir], { ...h.options, io: s.io });
+        assert.equal(code, 2, "a non-interactive run must refuse exactly as it did before the interview existed");
+        assert.equal(s.asked.length, 0, "a headless host must never be prompted: the run would hang");
+        assert.match(h.warned.join("\n"), /--residence/);
+        assert.equal(fs.existsSync(path.join(dir, ".portulan")), false);
+    });
+
+    test("`--no-interview` forces the non-interactive path at a terminal", async () => {
+        const dir = scratch();
+        const s = scripted(["in-repo", "", "", "none", "y"]);
+        const h = harness();
+        assert.equal(await run(["--no-interview", dir], { ...h.options, io: s.io }), 2);
+        assert.equal(s.asked.length, 0);
+        assert.match(h.warned.join("\n"), /--residence/);
+    });
+
+    test("what the flags already answered is never asked again", async () => {
+        const dir = scratch();
+        const s = scripted(["none", "y"]);
+        assert.equal(await run(["--residence", "in-repo", "--name", "acme", "--summary", "one line", dir], { ...harness().options, io: s.io }), 0);
+        const questions = s.asked.join("\n");
+        assert.doesNotMatch(questions, /residence/, "being asked to confirm a flag you just typed reads as not having listened");
+        assert.doesNotMatch(questions, /workspace name/);
+        assert.doesNotMatch(questions, /summary/);
+        assert.equal(ok(dir).name, "acme");
+    });
+
+    test("a question offers the derived default where one exists, and an empty line accepts it", async () => {
+        const dir = scratch();
+        const s = scripted(["in-repo", "", "", "none", "y"]);
+        assert.equal(await run([dir], { ...harness().options, io: s.io }), 0);
+        const name = s.asked.find((q) => q.startsWith("workspace name"));
+        assert.match(name, /\[.+\]/, "the name question must offer the directory-derived slug");
+        assert.equal(ok(dir).name, slugify(path.basename(dir)), "an empty line must take the offered default");
+    });
+
+    test("residence and the governor offer no default — the two answers nothing can derive", async () => {
+        const dir = scratch();
+        const s = scripted(["pointer", "", "", "acme-platform", "none", "y"]);
+        assert.equal(await run([dir], { ...harness().options, io: s.io }), 0);
+        assert.equal(
+            s.asked.find((q) => q.startsWith("residence")).includes("["),
+            false,
+            "a residence with a default would be the tool answering the question row 7 says it asks",
+        );
+        assert.equal(s.asked.find((q) => q.includes("governing")).includes("["), false);
+        assert.equal(ok(dir).governed_by.workspace, "acme-platform");
+    });
+
+    test("the governor and the feed are asked only for a pointer", async () => {
+        const dir = scratch();
+        const s = scripted(["in-repo", "", "", "none", "y"]);
+        assert.equal(await run([dir], { ...harness().options, io: s.io }), 0);
+        assert.doesNotMatch(s.asked.join("\n"), /governing|feed/, "a workspace that lives here has no governor and no feed");
+    });
+
+    test("an answer the schema refuses is re-asked with the reason, and does not abort the run", async () => {
+        const dir = scratch();
+        const s = scripted(["feed-side", "in-repo", "Not A Slug", "acme", "", "none", "y"]);
+        assert.equal(await run([dir], { ...harness().options, io: s.io }), 0, "a typo at a prompt must be re-asked, never fatal");
+        assert.equal(s.asked.filter((q) => q.startsWith("residence")).length, 2);
+        assert.equal(s.asked.filter((q) => q.startsWith("workspace name")).length, 2);
+        const complaints = s.said.join("\n");
+        assert.match(complaints, /is not a residence/);
+        assert.match(complaints, /is not a slug/);
+        assert.equal(ok(dir).name, "acme");
+    });
+
+    test("declining at the confirmation writes nothing, and exits 2", async () => {
+        const dir = scratch();
+        const s = scripted(["in-repo", "", "", "none", "n"]);
+        const h = harness();
+        assert.equal(await run([dir], { ...h.options, io: s.io }), 2, "0 must keep meaning `it wrote`");
+        assert.equal(fs.existsSync(path.join(dir, ".portulan")), false, "a decline must leave the repository untouched");
+        assert.match(h.warned.join("\n"), /declined/);
+    });
+
+    test("EOF at any prompt is not an empty answer — it stops the run with nothing written", async () => {
+        const dir = scratch();
+        const s = scripted([]);
+        const h = harness();
+        assert.equal(await run([dir], { ...h.options, io: s.io }), 2);
+        assert.equal(fs.existsSync(path.join(dir, ".portulan")), false);
+        assert.match(h.warned.join("\n"), /interview ended/);
+    });
+
+    test("the confirmation echoes every answer before a byte is written", async () => {
+        const dir = scratch();
+        const s = scripted(["in-repo", "acme", "one line", "none", "y"]);
+        assert.equal(await run([dir], { ...harness().options, io: s.io }), 0);
+        const echoed = s.said.join("\n");
+        assert.match(echoed, /about to draft/);
+        assert.match(echoed, /acme/);
+        assert.match(echoed, /one line/);
+    });
+
+    test("an already-governed repository is refused before the questions, not after them", async () => {
+        // Answering five questions and then being told the repository already has a workspace is the
+        // shape of a tool that asks before it looks.
+        const dir = scratch({ ".portulan/workspace.json": JSON.stringify({ portulan: { spec: "2.7" }, name: "already", kind: "repository" }) });
+        const s = scripted(["in-repo", "", "", "none", "y"]);
+        const h = harness();
+        assert.equal(await run([dir], { ...h.options, io: s.io }), 2);
+        assert.equal(s.asked.length, 0, "the machine's question comes first");
+        assert.match(h.warned.join("\n"), /already carries/);
+    });
+
+    test("`none` at the checkpoints prompt composes no packs", async () => {
+        const dir = scratch();
+        const s = scripted(["in-repo", "", "", "none", "y"]);
+        assert.equal(await run([dir], { ...harness().options, io: s.io }), 0);
+        assert.equal(ok(dir).packs, undefined, "opting out at the prompt must be the same answer as --no-cycle");
+    });
+});
+
+// ---------------------------------------------------------------- the records rail
+
+// Row 7 clause (a)'s third records convention: "the handoff-index freshness rail where the workspace
+// declares an index". The directory and the manifest's declaration landed at session 4; a generated
+// index nothing compares is current until the first person forgets, which is the reminder this project
+// trades for a rail wherever it can.
+describe("the drafted workspace carries the rail that holds its index current", () => {
+    const railOf = (dir) => path.join(dir, ".portulan", "verify", "index.sh");
+    const runRail = (dir, env = {}) => {
+        try {
+            return { code: 0, out: execFileSync("bash", [railOf(dir)], { cwd: dir, encoding: "utf8", stdio: "pipe", env: { ...process.env, ...env } }) };
+        } catch (error) {
+            return { code: error.status, out: `${error.stdout ?? ""}${error.stderr ?? ""}` };
+        }
+    };
+
+    test("the index is written by the draft, so day one is green rather than red about a missing file", async () => {
+        const dir = scratch();
+        assert.equal(await run(["--residence", "in-repo", "--no-cycle", dir], harness().options), 0);
+        assert.equal(fs.existsSync(path.join(dir, ".portulan", "handoffs-index.md")), true);
+        const result = runRail(dir);
+        assert.equal(result.code, 0, `a freshly drafted workspace must be green on its own rail:\n${result.out}`);
+    });
+
+    test("the recipe is declared beside `workspace`, and the default does not move", async () => {
+        const dir = scratch();
+        assert.equal(await run(["--residence", "in-repo", "--no-cycle", dir], harness().options), 0);
+        const manifest = ok(dir);
+        assert.deepEqual(manifest.verify.recipes.map((r) => r.id), ["workspace", "index"]);
+        assert.equal(manifest.verify.default, "workspace", "the default is what runs at a session end, and that is not this");
+        assert.deepEqual(manifest.verify.recipes[1].requires, ["bash", "node"]);
+    });
+
+    test("an index edited by hand is RED, and regenerating returns it to green", async () => {
+        const dir = scratch();
+        assert.equal(await run(["--residence", "in-repo", "--no-cycle", dir], harness().options), 0);
+        const index = path.join(dir, ".portulan", "handoffs-index.md");
+        fs.appendFileSync(index, "\n- 2026-08-11 · [a handoff nobody wrote](handoffs/x.md)\n");
+        assert.equal(runRail(dir).code, 1, "a hand-edited generated file must be a verdict, not a note");
+        execFileSync(process.execPath, [path.join(REPO, "cli", "index.mjs"), path.join(dir, ".portulan")], { stdio: "pipe" });
+        assert.equal(runRail(dir).code, 0, "regenerating must repair it");
+    });
+
+    test("a handoff added without regenerating is RED — the rail is about the pair, not the file", async () => {
+        const dir = scratch();
+        assert.equal(await run(["--residence", "in-repo", "--no-cycle", dir], harness().options), 0);
+        fs.writeFileSync(path.join(dir, ".portulan", "handoffs", "2026-08-11-a-session.md"), "# Handoff — a session\n");
+        assert.equal(runRail(dir).code, 1);
+    });
+
+    test("no reachable CLI is could-not-run, naming all three locations — never a pass", async () => {
+        const dir = scratch();
+        assert.equal(await run(["--residence", "in-repo", "--no-cycle", dir], harness().options), 0);
+        // The drafted fallback is the bundle this ran from, which exists here — so the third location
+        // is removed rather than mocked, which is the only way to reach the branch honestly.
+        const rail = railOf(dir);
+        fs.writeFileSync(rail, fs.readFileSync(rail, "utf8").replace(/elif \[ -f "[^"]*" \]/, 'elif [ -f "/nonexistent/cli/index.mjs" ]'));
+        const result = runRail(dir, { PORTULAN_CLI: "", PATH: "/usr/bin:/bin" });
+        assert.equal(result.code, 2, "a rail that cannot find its tool must never exit 0");
+        assert.match(result.out, /NOT checked/);
+        assert.match(result.out, /PORTULAN_CLI/);
+    });
+
+    test("an absent `node` is 2 as well, and not the shell's 127", async () => {
+        // A recipe's contract is the three codes, and it owes them even when what is missing is the
+        // interpreter that would have run it: unchecked, `node …` dies 127, which reads downstream as
+        // a recipe that ran and rendered a verdict.
+        const dir = scratch();
+        assert.equal(await run(["--residence", "in-repo", "--no-cycle", dir], harness().options), 0);
+        const result = runRail(dir, { PATH: "/usr/bin:/bin" });
+        assert.equal(result.code, 2);
+        assert.match(result.out, /node is needed/);
+    });
+
+    test("`PORTULAN_CLI` is the first location consulted", async () => {
+        const dir = scratch();
+        assert.equal(await run(["--residence", "in-repo", "--no-cycle", dir], harness().options), 0);
+        assert.equal(runRail(dir, { PORTULAN_CLI: path.join(REPO, "cli") }).code, 0);
+        const missing = runRail(dir, { PORTULAN_CLI: path.join(REPO, "nowhere") });
+        assert.notEqual(missing.code, 0, "an explicit location that answers wrongly must not fall through to another");
     });
 });

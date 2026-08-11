@@ -119,7 +119,12 @@ const SKIP_DIRS = new Set([".git", "node_modules", ".claude-plugin"]);
 // manifest cannot express a working agent path, and `claude plugin validate --strict` accepts the
 // explicit-file form that loads nothing — this repository shipped exactly that and its personas were
 // inert on every install (../.portulan/memory/a-manifest-field-can-validate-and-load-nothing.md).
-const AGENT_DIR = "agents";
+// **Exported since milestone 7 session 7**, because `cli/doctor.mjs` now resolves a composed pack's
+// persona to the host binding that would carry it and needs this exact directory. A second spelling
+// there would be one measurement with two carriers — the class
+// ../.portulan/proposals/0020-a-fix-is-not-done-at-the-site-it-was-found.md names — and the one that
+// drifts is always the copy, never the file that did the measuring.
+export const AGENT_DIR = "agents";
 const MAX_WALK_DEPTH = 6;
 
 // ===========================================================================================
@@ -231,6 +236,10 @@ export function inspect(rawRoot, { payload = false } = {}) {
 
     const findings = [];
     const stats = { skills: 0, agents: 0, paths: 0, unverifiable: 0 };
+    // Every agent file this pass opened, keyed by the basename the persona correspondence below looks
+    // it up by. Collected during the walk rather than re-read afterwards: the files are already open,
+    // and a second read is a second chance to disagree about what they said.
+    const bound = new Map();
     const fail = (check, message) => findings.push({ severity: "fail", check, message });
     const note = (check, message) => findings.push({ severity: "note", check, message });
 
@@ -930,10 +939,12 @@ export function inspect(rawRoot, { payload = false } = {}) {
     if (state === "unknown") {
         // Already failed; there is nothing further to say about a directory nobody could look at.
     } else if (state === "absent") {
-        // A plugin that ships no agents is legitimate, so this is a note. The residual hole is real
-        // and named rather than hidden: deleting `agents/` outright degrades this whole check class
-        // to a note, the same shape proposal 0005 closed for `tree`. The check that would bind it is
-        // the persona↔agent agreement lint — ../.portulan/tasks/0005-lint-the-persona-agent-binding.md.
+        // A plugin that ships no agents is legitimate, so this is a note. The residual hole this note
+        // named — deleting `agents/` outright degrades the whole check class to a note and exit 0 — is
+        // **closed since milestone 7 session 7 for a plugin that ships personas**: the correspondence
+        // below fails every unbound persona, so deleting the directory in THIS repository is now a red
+        // rather than a shrug. It stays a note for a plugin with no `core/personas/`, which is the
+        // legitimate shape and the reason this cannot simply become a failure.
         note("agents", `no ./${AGENT_DIR}/ directory — this plugin ships no agents`);
     } else {
         // Routed through the same resolver as every declared path, so an `agents/` that is a symlink
@@ -983,18 +994,91 @@ export function inspect(rawRoot, { payload = false } = {}) {
                         }
                         const text = read(file, "agents", rel);
                         if (text === null) continue;
-                        checkFrontmatter(text, rel, "agents", { requireName: true });
+                        // The name comes back from the check that already parsed this block, rather
+                        // than from a second parse of the same text. They could not disagree — one
+                        // function, one string — but the doctor side returns it for exactly this
+                        // reason and a reader meeting two parses has to work out that they cannot.
+                        const fields = checkFrontmatter(text, rel, "agents", { requireName: true });
+                        bound.set(path.basename(file, ".md"), { rel, name: fields?.name });
                     }
                 }
             }
         }
     }
 
+    // ---- the persona ↔ binding correspondence
+    //
+    // `../.portulan/tasks/0005-lint-the-persona-agent-binding.md`, opened 2026-07-26 on the maintainer's
+    // ruling that settled the separation, and unbuilt until milestone 7 session 7. A persona in
+    // `core/personas/` is doctrine; a file in `agents/` is that persona registered on one host. The
+    // relationship is source → binding, the same shape as gate map → compiled hooks, and the only thing
+    // keeping the binding from drifting was whoever last edited it.
+    //
+    // **Both directions FAIL here, and the same absence is only a REPORT in `cli/doctor.mjs`.** That is
+    // not drift between two checkers, and it is worth saying which is which. This tool grades **this
+    // bundle's packaging**, where a shipped persona nothing binds is inert on the host the bundle
+    // targets — the class `../.portulan/memory/a-manifest-field-can-validate-and-load-nothing.md`
+    // records, and the residual hole the note above names. `doctor` grades **anybody's workspace**,
+    // where a composed pack's persona may legitimately have no binding: the adopter may not be on this
+    // host at all, and this repository's own `checkpoints` supervisor is deliberately unbound because
+    // its ritual's mechanism is a fresh context rather than a subagent.
+    //
+    // **Task 0005's third criterion is deliberately NOT built** — that a binding restating its persona's
+    // charter should be reported. Its own text says the measurable form of *thin* is an open question
+    // and that "a check that cannot state what it measures should not ship". Nothing has settled it, so
+    // shipping a line count or a similarity threshold here would be exactly the magic number that task
+    // refused to accept at review. The two mechanical halves are what this closes; the judgement half is
+    // still open and still that task's.
+    const personaDir = path.join(root, "core", "personas");
+    let personaFiles = null;
+    try {
+        personaFiles = fs
+            .readdirSync(personaDir)
+            .filter((entry) => entry.endsWith(".md") && entry !== "README.md")
+            .map((entry) => path.basename(entry, ".md"))
+            .sort();
+    } catch (error) {
+        // ENOENT is a plugin that ships no core personas, which is a legitimate shape and not this
+        // check's business. Anything else is a question that could not be answered, and saying nothing
+        // would report an absence nobody established.
+        if (error.code !== "ENOENT") fail("agents", `core/personas/ could not be read — ${error.code ?? error.message}, so the binding correspondence went unchecked`);
+    }
+    if (personaFiles) {
+        for (const persona of personaFiles) {
+            const binding = bound.get(persona);
+            if (!binding) {
+                fail(
+                    "agents",
+                    `core/personas/${persona}.md has no binding at ./${AGENT_DIR}/${persona}.md — a persona this plugin ships and does not bind ` +
+                        `is doctrine the host never registers, which looks from the outside exactly like a role that is available`,
+                );
+                continue;
+            }
+            if (binding.name !== undefined && binding.name !== persona) {
+                fail(
+                    "agents",
+                    `${binding.rel} binds \`core/personas/${persona}.md\` by its filename while declaring \`name: ${binding.name}\` — the host keys ` +
+                        `on the field, so the two disagree about which role this file registers`,
+                );
+            }
+        }
+        for (const [name, binding] of bound) {
+            if (!personaFiles.includes(name)) {
+                fail(
+                    "agents",
+                    `${binding.rel} binds no persona — there is no \`core/personas/${name}.md\`. A host file that outlived the doctrine it was ` +
+                        `bound to registers a role with no charter behind it`,
+                );
+            }
+        }
+    }
+
+    /** Validates a component's frontmatter and RETURNS the parsed fields, or `null` if there were none. */
     function checkFrontmatter(text, label, check, { requireName }) {
         const { fields, error } = parseFrontmatter(text);
         if (!fields) {
             fail(check, `${label} has no usable frontmatter${error ? ` — ${error}` : ""}`);
-            return;
+            return null;
         }
         if (!fields.description) {
             fail(check, `${label} has no non-empty \`description\` — it is what decides when it loads`);
@@ -1004,6 +1088,7 @@ export function inspect(rawRoot, { payload = false } = {}) {
         } else if (requireName && fields.name === undefined) {
             fail(check, `${label} has no \`name\``);
         }
+        return fields;
     }
 
     return { findings, stats };

@@ -48,18 +48,30 @@
 // shape available: a false claim emitted into somebody else's tree, telling them a rail they now have is
 // one they do not.
 //
-// **There is no interactive interview yet.** `docs/vision.md` glosses `init` as *interview + codebase
-// scan*; what ships here is the non-interactive substrate — flags and `--answers` — because a prompt
-// loop cannot be run by CI, by a test, or by a headless host, and the substrate is what an interview
-// would drive. Whether the gloss is satisfied by asking through flags is the maintainer's call at
-// milestone 7's close. Named here rather than left for a reader to discover.
+// **The interview asks where somebody is there to answer — milestone 7 session 7.** `docs/vision.md`
+// glosses `init` as *interview + codebase scan*, and until this session the second half shipped and the
+// first did not: the substrate — every question modelled as an answer, with a validator each — was
+// built first precisely because a prompt loop cannot be run by CI, by a test, or by a headless host.
+// It now drives a loop, under two conditions that keep both halves honest: the interview runs only
+// where **stdin and stdout are both TTYs**, so every non-interactive invocation is byte-for-byte what
+// it was before; and it decides nothing the flags path could not decide, so the two are one tool with
+// two front doors rather than two tools. `--no-interview` is the escape for a terminal that wants the
+// refusals. _(This paragraph read "there is no interactive interview yet" and left whether flags
+// satisfy the gloss to the maintainer at milestone 7's close. The question is retired rather than
+// answered: the loop exists, so nobody has to rule on whether its absence was acceptable.)_
 //
 // ## Exit codes
 //
-// `0` it wrote · `2` it could not run. There is deliberately **no 1**: this tool renders no verdict
+// `0` it wrote · `2` it wrote nothing. There is deliberately **no 1**: this tool renders no verdict
 // about anybody's workspace, so it has no red to report. `compile` documents the same asymmetry from
 // the other side — writing never returns 1, because a run that rewrites an artifact has nothing to
 // disagree with.
+//
+// _The second code read "it could not run" until the interview arrived, and the interview introduced a
+// way to write nothing that is not a failure at all: a human declining at the confirmation, or ending
+// the input. Widening the sentence is the honest repair — `0` must keep meaning *it wrote*, since
+// callers chain on it, and a decline is nobody's verdict. So the code is the same and the gloss now
+// covers every way of reaching it._
 
 import fs from "node:fs";
 import path from "node:path";
@@ -68,6 +80,13 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 // Host plugin-cache discovery (#123). `init` composes a checkpoints pack by default — row 7 clause (a)
 // — so it is the tool that most needed a root it did not have to be told.
 import { AUTO, discoverPackRoots } from "./discover.mjs";
+
+// The handoff index is GENERATED, and this is the generator — the same one `index --check` compares
+// against. Imported rather than approximated: a draft that wrote its own version of this file would be
+// a second renderer of one artifact, and the drafted rail would go red on the adopter's first run
+// against a difference this tool invented. `cli/index.mjs` imports nothing from here, so the direction
+// is one-way.
+import { renderHandoffIndex } from "./index.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 
@@ -147,6 +166,11 @@ export function parseArgs(argv) {
             help = true;
         } else if (arg === "--no-cycle") {
             flags.cycle = false;
+        } else if (arg === "--no-interview") {
+            // Not an answer, so it is deliberately outside ANSWER_KEYS and cannot arrive in an answers
+            // file: it governs how the answers are collected, and a file of answers has already
+            // collected them.
+            flags.noInterview = true;
         } else if (VALUED.has(arg)) {
             const value = argv[i + 1];
             // ANY leading `-` is a missing value, not `--` only. `cli/doctor.mjs` already guards this
@@ -262,7 +286,10 @@ export function resolveAnswers(flags) {
 
     const merged = { ...fromFile };
     for (const [key, value] of Object.entries(flags)) {
-        if (key === "answers") continue;
+        // Neither is an answer. `--answers` names where answers come from and `--no-interview` says
+        // how they are collected, and letting either into `given` would put a flag nobody answered
+        // into the set the misplaced-option refusal reads.
+        if (key === "answers" || key === "noInterview") continue;
         merged[key] = value;
     }
 
@@ -548,6 +575,18 @@ function draftWorkspace(answers, observed) {
                     requires: ["bash"],
                     doc: "verify/README.md",
                 },
+                // The records rail — row 7 clause (a)'s third record convention, beside the handoffs
+                // directory and the session-end binding. A generated index nothing compares is a file
+                // that is current until the first person forgets, which is the reminder this project
+                // trades for a rail wherever it can. It is NOT the default: the default is what the
+                // Stop-gate runs at every session end, and that slot belongs to the recipe saying
+                // whether the repository works.
+                {
+                    id: "index",
+                    run: "./.portulan/verify/index.sh",
+                    requires: ["bash", "node"],
+                    doc: "verify/README.md",
+                },
             ],
         },
         // Sited OUTSIDE the series it indexes: an index living in `handoffs/` would be counted as a
@@ -565,6 +604,14 @@ function draftWorkspace(answers, observed) {
     files.set(".portulan/dod.md", { contents: draftDod() });
     files.set(".portulan/verify/README.md", { contents: draftVerifyReadme() });
     files.set(".portulan/verify/workspace.sh", { contents: draftRecipe(), mode: 0o755 });
+    files.set(".portulan/verify/index.sh", { contents: draftIndexRecipe(), mode: 0o755 });
+    // Written by the generator, not by this file, and written NOW rather than left for the adopter's
+    // first `index` run — a rail whose subject does not exist yet is a red on day one for a file
+    // nobody was asked to write. An empty series renders an index with a zero count, which is the
+    // honest state of a workspace drafted five seconds ago.
+    files.set(`.portulan/${manifest.handoffs.index.path}`, {
+        contents: renderHandoffIndex(manifest, { records: [], bytes: 0 }),
+    });
     // A Map of files cannot express an empty directory and git does not track one, so the slot's
     // directory is created by a file that says why it is there.
     files.set(".portulan/handoffs/.gitkeep", {
@@ -669,10 +716,19 @@ is worse than one with fewer of them.
   \`doctor --pack-root auto .portulan\`, which finds it in this host's installed plugins;
   \`doctor --pack-root <dir> .portulan\` if you would rather name the location; or \`init --no-cycle\`
   to compose the pack later, once you know where it lives.
-- **The records conventions are drafted** — a \`handoffs/\` directory in the \`handoffs\` slot, and the
-  manifest declares where a generated index goes. **That index does not exist yet**: it is generated
-  from the series by the \`index\` tool, and this draft does not run it, so the file appears the first
-  time you do. The freshness rail is what a verify recipe of yours would compare it against.
+- **The records conventions are drafted, and the freshness rail is one of them** — a \`handoffs/\`
+  directory in the \`handoffs\` slot, a generated \`handoffs-index.md\` **written by the same generator
+  that will check it**, and \`verify/index.sh\` declared beside \`workspace\` to hold the two in
+  agreement. The index starts at zero handoffs, which is what this repository has, so the rail is green
+  today rather than red about a file nobody wrote. Edit that index by hand and the rail goes red; add a
+  handoff without regenerating and it goes red the same way. It is **not** the default recipe: the
+  default is what runs at every session end, and that slot belongs to the one that says whether this
+  repository works.
+- **The rail needs the CLI, and may not find it here.** It looks at \`$PORTULAN_CLI\`, then
+  \`portulan\` on your \`PATH\`, then the bundle this workspace was drafted from — an absolute path on
+  the machine that ran \`init\`, which git cannot carry to anybody else. Where none answers it exits
+  **2 — could not run**, never 0. On CI that is the state to expect until the CLI is installed there,
+  and it is said here rather than left to be met as an amber pipeline.
 - **The session-end gate is wired by \`compile\`, and this draft has not run it.** The runner that
   enforces "a handoff dated today exists" before a session ends **does** ship in the package you have —
   it is \`cli/stop-gate.mjs\` — and \`portulan compile\` emits a \`Stop\` hook naming it. What this
@@ -851,7 +907,8 @@ is a command in a file.
 
 | Recipe | What it checks |
 |---|---|
-| \`workspace\` | **Nothing yet — it exits 2.** Replace it with the command that tells you this repository is healthy. |
+| \`workspace\` | **Nothing yet — it exits 2.** Replace it with the command that tells you this repository is healthy. This one is the **default**: it is what runs at a session end. |
+| \`index\` | The generated \`handoffs-index.md\` against the series it indexes, byte for byte. Finished as drafted — it checks a real thing today. |
 
 ## The three exit codes, and why the middle one is not enough
 
@@ -861,8 +918,26 @@ is a command in a file.
   check. **This is not a pass.** A recipe that returns 0 because it found nothing to look at reports
   "nothing wrong" when the truth is "nothing looked", and every gate downstream believes it.
 
-The drafted recipe exits 2 for exactly that reason. It is not broken; it is honest about not yet
-knowing what green means here.
+\`workspace\` exits 2 for exactly that reason. It is not broken; it is honest about not yet knowing
+what green means here.
+
+**\`index\` has an expected 2 of its own, and it is worth knowing before you meet it.** The recipe needs
+the Portulan CLI, and looks for it in three places: \`$PORTULAN_CLI\`, then \`portulan\` on \`PATH\`,
+then the bundle this workspace was drafted from — the last being an absolute path on the machine that
+ran \`init\`, which git cannot carry to a clone or to a CI runner. Where none of the three answers, and
+where \`node\` itself is absent, the recipe exits **2** and names what it looked for. That is the state
+to expect on CI until the CLI is installed there; it is not a red, and it is not a pass either.
+
+**Regenerating is yours, and the rail deliberately does not do it.** A check that repaired what it
+found would report green on a repository nobody had corrected, and the index is only worth having
+because it is derived — run the index tool yourself and commit the result.
+
+**One thing the three locations cannot establish, said rather than left implicit.** The second of them
+is *whatever \`portulan\` is on your \`PATH\`* — and nothing here can tell that it is this tool rather
+than another program of the same name. Where that matters to you, set \`$PORTULAN_CLI\` to a checkout
+you chose: an explicit path is the one location that answers a question about identity rather than about
+availability, and a location that holds no \`index.mjs\` exits **2** rather than being read as a drifted
+index.
 `;
 }
 
@@ -887,6 +962,77 @@ set -uo pipefail
 printf 'verify: this workspace has not declared what green means yet.\\n' >&2
 printf 'verify: edit .portulan/verify/workspace.sh — see .portulan/verify/README.md\\n' >&2
 exit 2
+`;
+}
+
+/**
+ * The records rail, drafted with its own honest first state.
+ *
+ * Unlike `workspace.sh` this one is **finished** — it checks a real thing on the day it is written,
+ * because the index it holds current is written beside it. What it cannot promise is that the tool is
+ * reachable: this package is not published, so on an adopter's CI none of the three locations may
+ * answer and the recipe's expected first state there is **exit 2**. That is the honest code and it is
+ * said in `verify/README.md` as well, rather than discovered when a pipeline goes amber.
+ *
+ * The third location is the bundle this workspace was drafted from, and it is written in as a
+ * MACHINE-LOCAL convenience for the person who ran `init` — an absolute path on one machine, which
+ * git cannot carry anywhere (`.portulan/memory/a-generated-file-must-not-point-at-what-git-cannot-carry.md`).
+ * The script says so where a reader meets it, so nobody reads it as a portable location.
+ */
+function draftIndexRecipe() {
+    const bundle = path.resolve(HERE, "..");
+    return `#!/usr/bin/env bash
+# Records rail — the generated index is compared against the series it indexes.
+#
+# \`handoffs-index.md\` is GENERATED. This recipe regenerates it in memory and compares byte for byte,
+# so an index edited by hand, or one left behind when a handoff was added, is a RED rather than a file
+# that quietly stopped being true. Nothing here writes: run the index tool yourself to repair it.
+#
+#   exit 0   green: the index matches the series
+#   exit 1   red: it does not — regenerate it
+#   exit 2   could not run: the Portulan CLI is not reachable from here. NEVER a pass.
+
+set -uo pipefail
+cd "\$(dirname "\$0")/../.." || exit 2
+
+# Three locations, in order. An explicit path wins, then an installed CLI, then the bundle this
+# workspace was drafted from — which is an absolute path on the machine that ran \`init\` and is NOT
+# portable: a clone of this repository elsewhere will not find it, and should set PORTULAN_CLI or
+# install the CLI instead.
+# Two of the three locations are node scripts, so node is their precondition and not their business.
+# An absent interpreter must exit 2 like any other missing tool: unchecked, \`node …\` dies **127**,
+# which is the shell's code for "not found" and reads to every reader downstream as a recipe that ran
+# and rendered a verdict. A recipe's own contract is the three codes, and it owes them even when what
+# is missing is the thing that would have run it.
+need_node() {
+    command -v node >/dev/null 2>&1 && return 0
+    printf 'verify: node is needed to run the index tool and is not on PATH, so the index was NOT checked.\\n' >&2
+    exit 2
+}
+
+if [ -n "\${PORTULAN_CLI:-}" ]; then
+    # An explicit location that does not hold the tool is COULD NOT RUN, not red. Without this test
+    # \`node .../index.mjs\` dies 1, and 1 is this recipe's code for "the index drifted — regenerate
+    # it": a pointer typed wrongly would send somebody to repair a file that was never wrong.
+    if [ ! -f "\${PORTULAN_CLI}/index.mjs" ]; then
+        printf 'verify: PORTULAN_CLI is set to %s, which holds no index.mjs — the index was NOT checked.\\n' "\${PORTULAN_CLI}" >&2
+        exit 2
+    fi
+    need_node
+    set -- node "\${PORTULAN_CLI}/index.mjs"
+elif command -v portulan >/dev/null 2>&1; then
+    set -- portulan index
+elif [ -f ${JSON.stringify(`${bundle}/cli/index.mjs`)} ]; then
+    need_node
+    set -- node ${JSON.stringify(`${bundle}/cli/index.mjs`)}
+else
+    printf 'verify: the Portulan CLI is not reachable, so the index was NOT checked.\\n' >&2
+    printf 'verify: looked at \$PORTULAN_CLI/index.mjs, portulan on PATH, and the bundle this\\n' >&2
+    printf 'verify: workspace was drafted from. Set PORTULAN_CLI to a checkout, or install the CLI.\\n' >&2
+    exit 2
+fi
+
+"\$@" --check .portulan
 `;
 }
 
@@ -1031,6 +1177,201 @@ export function collisions(target, files) {
     return found;
 }
 
+// ------------------------------------------------------------------------- the interview
+
+/**
+ * Every refusal owed to a repository that is already governed, in one place.
+ *
+ * Extracted from `run` when the interview arrived, because it is now asked at two moments — before a
+ * human is made to answer five questions, and at the point in the sequence it has always occupied —
+ * and a second spelling of three refusals is three chances for them to drift apart.
+ */
+export function refuseIfGoverned(existing, spelling) {
+    if (existing.state === "symlink") {
+        // Handled here rather than left to the collision check, so the containment refusal does not
+        // depend on which check happens to run first — and so nothing outside the repository was read
+        // in order to produce it.
+        throw new InitError(
+            `\`${existing.where}\` is a symlink, and \`init\` will not follow one out of the repository — not to write ` +
+                `through it, and not to read a workspace manifest through it either. A manifest reached that way ` +
+                `describes some other directory, so any verdict about "this repository" drawn from it would be about ` +
+                `somewhere else. Replace the link with a real directory, or draft into a repository that has none.`,
+        );
+    }
+    if (existing.state === "unreadable") {
+        const at = path.join(spelling, ".portulan");
+        throw new InitError(
+            existing.kind === "io"
+                ? `could not examine \`${at}\` — ${existing.why}. Refusing rather than treating it as empty: ` +
+                  `a directory this tool cannot look into is a question it could not answer, and "nothing looked" ` +
+                  `must never be recorded as "nothing there". Fix the permissions and run this again.`
+                : `could not read the workspace manifest already at \`${path.join(at, "workspace.json")}\` — ` +
+                  `${existing.why}. Refusing to write over a manifest it cannot understand: a corrupt policy layer ` +
+                  `is the case where overwriting costs the most and this tool knows the least. Repair the JSON and ` +
+                  `run \`doctor\` on it, or — if it was never a workspace you meant to keep — move it aside and run ` +
+                  `this again.`,
+        );
+    }
+    if (existing.state === "present") {
+        const what = existing.kind === "pointer" ? "a pointer to another workspace" : `a \`${existing.kind}\` workspace`;
+        throw new InitError(
+            `this repository already carries ${what}${existing.name ? ` (\`${existing.name}\`)` : ""} — a repository is ` +
+                `governed by exactly one workspace, and \`init\` will not replace one. Moving between residences is a ` +
+                `switch, not a re-run: the workspace is materialised in the new residence, a pointer or nothing is left ` +
+                `in the old, and validation is green at both ends before the old one is retired. \`vendor\` is the ` +
+                `subcommand that does it — \`portulan vendor <the workspace> --into <where it should live> --residence ` +
+                `<in-repo|feed-side> --switch\` — and it holds that ordering so you do not have to. Doing it by hand the ` +
+                `other way round leaves a window in which this repository is governed by nothing, which looks exactly ` +
+                `like one that never adopted Portulan.`,
+        );
+    }
+}
+
+/**
+ * The default reader: a real terminal, and only where there is one at BOTH ends.
+ *
+ * `interactive` is the whole gate on the interview, and it is two questions rather than one. A pipe
+ * on stdin is a script; a redirected stdout is a log — and prompting into either produces a run that
+ * hangs waiting for an answer nobody is there to give, which on CI is a job that burns its timeout
+ * instead of printing the refusal that names the flag to pass.
+ */
+function terminal() {
+    return {
+        interactive: Boolean(process.stdin.isTTY && process.stdout.isTTY),
+        async ask(question) {
+            const readline = await import("node:readline/promises");
+            const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+            try {
+                return await rl.question(question);
+            } catch {
+                // A closed stdin rejects rather than returning. Both are "no answer is coming", and
+                // the caller's EOF handling is where that becomes a refusal.
+                return null;
+            } finally {
+                rl.close();
+            }
+        },
+        say(line) {
+            process.stdout.write(`${line}\n`);
+        },
+    };
+}
+
+/**
+ * Ask for what the flags did not supply, and fill `answers` in place.
+ *
+ * **What the gloss asked for and what this closes.** `docs/vision.md` glosses `init` as *interview +
+ * codebase scan → drafted workspace, human curates*. The scan has shipped since session 1 and the
+ * substrate — every question modelled as an answer, with one validator each — since then; the prompt
+ * loop was the open half, and this is it. Nothing here decides anything the flags path could not
+ * decide, which is the property that keeps the two paths one tool.
+ *
+ * **A question is re-asked, never fatal.** The flags path refuses a bad value because there is nobody
+ * to ask again; here there is, and aborting an interview on a typo would make the interactive path the
+ * unforgiving one. The validators are the same functions, so the two paths cannot drift into
+ * disagreeing about what a valid answer is.
+ *
+ * Every answer supplied by a flag or an answers file is skipped: being asked to confirm something you
+ * just typed on the command line reads as the tool not having listened.
+ */
+export async function interview(answers, { io, target, derivedName }) {
+    const ask = async (prompt, { fallback = null, validate = () => null } = {}) => {
+        for (;;) {
+            const raw = await io.ask(fallback === null ? `${prompt}: ` : `${prompt} [${fallback}]: `);
+            // EOF — Ctrl-D, or a stream that closed — is not an empty answer. An empty LINE accepts
+            // the offered default; end-of-input means no answer is coming, and the run stops with
+            // nothing written rather than proceeding on defaults nobody confirmed.
+            if (raw === null) throw new InitError("no answer — the interview ended before it finished, and nothing was written");
+            const value = raw.trim() === "" ? fallback : raw.trim();
+            if (value === null || value === "") {
+                io.say("  that one has no default, so it needs an answer.");
+                continue;
+            }
+            const why = validate(value);
+            if (why === null) return value;
+            io.say(`  ${why}`);
+        }
+    };
+
+    io.say("");
+    io.say(`init: drafting a workspace for ${target}`);
+    io.say("init: every answer becomes a DRAFT you curate afterwards. Nothing is written until you say so.");
+    io.say("");
+
+    if (!answers.residence) {
+        io.say("Where does this repository's workspace live?");
+        io.say("  in-repo   a full workspace in this repository");
+        io.say("  pointer   this repository is governed by a workspace that names it");
+        answers.residence = await ask("residence", {
+            validate: (v) => (RESIDENCES.has(v) ? null : `\`${v}\` is not a residence — the two are \`in-repo\` and \`pointer\`.`),
+        });
+        answers.given.add("residence");
+    }
+
+    if (answers.name === null) {
+        answers.name = await ask("workspace name", {
+            fallback: derivedName,
+            validate: (v) => (SLUG.test(v) ? null : `\`${v}\` is not a slug — lowercase letters, digits and single hyphens (${SLUG.source}).`),
+        });
+        answers.given.add("name");
+    }
+
+    if (answers.summary === null) {
+        answers.summary = await ask("one-line summary", { fallback: `The ${answers.name} workspace — drafted by \`init\`, and not yet curated.` });
+        answers.given.add("summary");
+    }
+
+    if (answers.residence === "pointer") {
+        if (answers.governedBy === null) {
+            answers.governedBy = await ask("the governing workspace's name", {
+                validate: (v) => (SLUG.test(v) ? null : `\`${v}\` is not a slug — it must be spelled exactly as that workspace's own \`name\`.`),
+            });
+            answers.given.add("governed-by");
+        }
+        if (answers.feed === null) {
+            // `none` rather than an empty line, because an empty line means *take the default* at
+            // every other prompt and a second meaning for it here is how an answer gets misread.
+            const feed = await ask("the feed it ships through", { fallback: "none" });
+            if (feed !== "none") {
+                answers.feed = feed;
+                answers.given.add("feed");
+            }
+        }
+    } else if (!answers.given.has("checkpoints") && !answers.given.has("cycle")) {
+        io.say("");
+        io.say("The supervised cycle composes a checkpoints pack, so full-lane work gets a fresh-context");
+        io.say("verdict at session-open, pre-commit and milestone-close. It is opt-out.");
+        const pack = await ask("checkpoints pack (`none` to compose nothing)", { fallback: DEFAULT_CHECKPOINTS });
+        if (pack === "none") {
+            answers.cycle = false;
+        } else {
+            answers.checkpoints = pack;
+            answers.given.add("checkpoints");
+        }
+    }
+
+    // The last question, and the one that makes every answer above reversible: everything is echoed
+    // and nothing has been written. A confirmation printed AFTER the write would be a receipt.
+    io.say("");
+    io.say("init: about to draft");
+    io.say(`  residence   ${answers.residence}`);
+    io.say(`  name        ${answers.name}`);
+    io.say(`  summary     ${answers.summary}`);
+    if (answers.residence === "pointer") {
+        io.say(`  governed by ${answers.governedBy}`);
+        io.say(`  feed        ${answers.feed ?? "(none)"}`);
+    } else {
+        io.say(`  cycle       ${answers.cycle ? answers.checkpoints : "(none — composing no packs)"}`);
+    }
+    io.say("");
+    const confirm = await io.ask("Write these files? [y/N]: ");
+    if (confirm === null || !/^y(es)?$/i.test(confirm.trim())) {
+        // Exit 2, because this file has exactly two codes and 0 means *it wrote*. A decline is not a
+        // verdict about anybody's workspace either, so 1 stays as absent as it has always been.
+        throw new InitError("nothing written — you declined at the confirmation. Run this again when the answers are right.");
+    }
+}
+
 // ------------------------------------------------------------------------- the entry point
 
 export function usage() {
@@ -1055,11 +1396,13 @@ export function usage() {
         "                                 confirmed to exist. Repeatable. `auto` discovers it from",
         "                                 the host's plugin cache; `./auto` names a directory.",
         "  --answers <file>               A JSON object of answers. Flags override its keys.",
+        "  --no-interview                 Never ask, even at a terminal: refuse instead, naming the flag.",
         "",
-        "Exit codes: 0 it wrote · 2 it could not run. There is no 1: init renders no verdict.",
+        "Exit codes: 0 it wrote · 2 it wrote nothing. There is no 1: init renders no verdict.",
         "",
-        "There is no interactive interview yet — the answers arrive as flags or as `--answers`.",
-        "The substrate an interview would drive is what ships today; the prompt loop does not.",
+        "At a terminal, anything you have not answered is asked, and nothing is written until you",
+        "confirm. Where stdin or stdout is not a TTY nothing is asked — the answers arrive as flags",
+        "or as `--answers`, and a missing one is refused with the flag that supplies it.",
     ].join("\n");
 }
 
@@ -1098,7 +1441,25 @@ export async function run(argv, options = {}) {
         if (!stat.isDirectory()) throw new InitError(`\`${parsed.target}\` is not a directory`);
 
         const answers = resolveAnswers(parsed.flags);
-        if (answers.name === null) answers.name = slugify(path.basename(target));
+        const derivedName = slugify(path.basename(target));
+
+        // The interview, and the two conditions on it. A prompt loop cannot be run by CI, by a test or
+        // by a headless host, so **everything below happens only where somebody is at both ends** —
+        // stdin and stdout are both TTYs — and a non-interactive run is byte-for-byte what it was
+        // before this existed. `--no-interview` is the escape for a TTY that wants the old refusals.
+        //
+        // The governance question is asked FIRST and by the machine, not the human: being made to
+        // answer five questions and then told this repository already has a workspace is the shape of
+        // a tool that asks before it looks. The same refusal stands where it always did, for callers
+        // that never reach this branch — running it twice is two reads and no writes.
+        const io = options.io ?? terminal();
+        const interviewing = io.interactive && !parsed.flags.noInterview;
+        if (interviewing) {
+            refuseIfGoverned(residenceAt(target), parsed.target);
+            await interview(answers, { io, target, derivedName });
+        }
+
+        if (answers.name === null) answers.name = derivedName;
         if (answers.name === null) {
             throw new InitError(
                 `the directory name \`${path.basename(target)}\` yields no usable workspace name — pass \`--name <slug>\`. ` +
@@ -1109,45 +1470,7 @@ export async function run(argv, options = {}) {
 
         // Before a byte: is this repository already governed? A repository is governed by exactly one
         // workspace, so finding one here is a refusal rather than a prompt to replace it.
-        const existing = residenceAt(target);
-        if (existing.state === "symlink") {
-            // Handled here rather than left to the collision check below, so the containment refusal
-            // does not depend on which check happens to run first — and so nothing outside the
-            // repository was read in order to produce it.
-            throw new InitError(
-                `\`${existing.where}\` is a symlink, and \`init\` will not follow one out of the repository — not to write ` +
-                    `through it, and not to read a workspace manifest through it either. A manifest reached that way ` +
-                    `describes some other directory, so any verdict about "this repository" drawn from it would be about ` +
-                    `somewhere else. Replace the link with a real directory, or draft into a repository that has none.`,
-            );
-        }
-        if (existing.state === "unreadable") {
-            const at = path.join(parsed.target, ".portulan");
-            throw new InitError(
-                existing.kind === "io"
-                    ? `could not examine \`${at}\` — ${existing.why}. Refusing rather than treating it as empty: ` +
-                      `a directory this tool cannot look into is a question it could not answer, and "nothing looked" ` +
-                      `must never be recorded as "nothing there". Fix the permissions and run this again.`
-                    : `could not read the workspace manifest already at \`${path.join(at, "workspace.json")}\` — ` +
-                      `${existing.why}. Refusing to write over a manifest it cannot understand: a corrupt policy layer ` +
-                      `is the case where overwriting costs the most and this tool knows the least. Repair the JSON and ` +
-                      `run \`doctor\` on it, or — if it was never a workspace you meant to keep — move it aside and run ` +
-                      `this again.`,
-            );
-        }
-        if (existing.state === "present") {
-            const what = existing.kind === "pointer" ? "a pointer to another workspace" : `a \`${existing.kind}\` workspace`;
-            throw new InitError(
-                `this repository already carries ${what}${existing.name ? ` (\`${existing.name}\`)` : ""} — a repository is ` +
-                    `governed by exactly one workspace, and \`init\` will not replace one. Moving between residences is a ` +
-                    `switch, not a re-run: the workspace is materialised in the new residence, a pointer or nothing is left ` +
-                    `in the old, and validation is green at both ends before the old one is retired. \`vendor\` is the ` +
-                    `subcommand that does it — \`portulan vendor <the workspace> --into <where it should live> --residence ` +
-                    `<in-repo|feed-side> --switch\` — and it holds that ordering so you do not have to. Doing it by hand the ` +
-                    `other way round leaves a window in which this repository is governed by nothing, which looks exactly ` +
-                    `like one that never adopted Portulan.`,
-            );
-        }
+        refuseIfGoverned(residenceAt(target), parsed.target);
 
         if (answers.residence === "in-repo" && answers.cycle && answers.packRoots.length) {
             const expanded = expandRoots(answers.packRoots);

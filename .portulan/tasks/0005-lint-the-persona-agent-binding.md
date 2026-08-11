@@ -1,5 +1,8 @@
 # Task — lint the persona↔agent binding, so separation cannot become duplication
 
+**Status: TWO OF THREE DELIVERED, 2026-08-11, milestone 7 session 7** — with the third left open on this
+task's own terms rather than quietly satisfied. See *What was built* at the end.
+
 **Goal.** A persona in [`../../core/personas/`](../../core/personas/) is doctrine; the agent file in
 [`../../agents/`](../../agents/) is that persona registered on one host. The relationship
 is source → binding, and it is the same shape as gate map → compiled hooks and verify recipes →
@@ -49,3 +52,34 @@ separate. The check belongs in [`../../cli/plugin-lint.mjs`](../../cli/plugin-li
 validates the agent files.
 
 **Lane.** full — a new check in a rail that gates every pull request.
+
+## What was built — 2026-08-11, milestone 7 session 7
+
+Reached from the other direction: row 7 of the plan names *"the persona↔agent binding nothing checks
+today"* as one of four validations `doctor` owes, and this task — opened eighteen days earlier and never
+scheduled — is the same obligation with a **different home and a different population**. Both were
+built, because one rule with a second, narrower carrier is obeyed at the narrower one
+([`../proposals/0020-a-fix-is-not-done-at-the-site-it-was-found.md`](../proposals/0020-a-fix-is-not-done-at-the-site-it-was-found.md)),
+and shipping only the row's half would have left this task's whole subject unchecked.
+
+| Criterion | Where | State |
+|---|---|---|
+| A persona with no binding is reported | [`../../cli/plugin-lint.mjs`](../../cli/plugin-lint.mjs) — this task's stated home | **Built, and it FAILS rather than reports.** This task's own first bullet argues for it: a plugin shipping no agents is legitimate, a *persona* with no binding is not. Forced red by hiding `agents/reviewer.md`, and restored. |
+| A binding naming no persona is reported | same | **Built, failing.** Forced red with a stranded `agents/ghost.md`. |
+| A binding that restates its charter is reported | — | **Deliberately not built.** The open question below is unsettled, and this task's own words are the reason: *"a check that cannot state what it measures should not ship."* A line count or a similarity threshold would be the magic number it refuses. |
+| The two files need not agree in wording | both | Held: nothing compares prose. What is compared is **correspondence** — that each side has the other, and that a binding's `name` field and its filename agree, since the host keys on the field. |
+
+**A fourth check landed that this task did not ask for, in another tool and over another population.**
+[`../../cli/doctor.mjs`](../../cli/doctor.mjs) resolves each persona a **composed pack** contributes to
+`<tree>/agents/<name>.md`. There, **absence is a report and never a failure**, and the asymmetry with
+the rows above is deliberate: `plugin-lint` grades *this bundle's packaging*, where an unbound persona is
+inert on the host the bundle targets; `doctor` grades *anybody's workspace*, where an adopter may run no
+agent layer at all — and this repository's own `checkpoints` supervisor is unbound **on purpose**, since
+that ritual's mechanism is a fresh context rather than a subagent. A graded absence would have demanded a
+binding the pack's own doctrine declines.
+
+`AGENT_DIR` — the one location a host loads agents from, measured with a positive control — is now
+exported from `plugin-lint` and imported by `doctor`, rather than spelled twice.
+
+**The better ending is unchanged and still undated:** a compiler that generates the bindings from the
+personas would delete both of these checks. Nothing schedules it.

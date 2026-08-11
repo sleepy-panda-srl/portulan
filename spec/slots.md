@@ -362,9 +362,16 @@ a product may override it. That is thesis 1's more-specific-wins rule applied on
 exists because a portfolio workspace covering a Markdown framework and a deployed service cannot offer
 one honest answer for both.
 
-**What `doctor` checks:** the path resolves. **What it does not do is score anything.** The
-agent-legibility score named in the vision's delivery tiers is not built, and this slot is the input such
-an audit would read, not the audit. One memory entry
+**What `doctor` checks:** the path resolves — **and, since milestone 7 session 7, it opens the document
+and scores it.** The agent-legibility score named in the vision's delivery tiers is built: eight
+dimensions, of which two read this slot — that every product has a document reachable here (its own, or
+the workspace-level default above), and that each such document names what an agent must **not** assume.
+The other six read the manifest, because a score confined to this slot could not discriminate between
+two workspaces at all; **this slot is the score's named input rather than its only one**. Two limits
+worth having in front of you: the score **moves no exit code**, since a measurement that could fail a
+workspace would make conformance a function of how much prose somebody wrote; and the *must not assume*
+dimension is a **form** check over a named table of headings, so a section with an empty body passes it.
+The claim it still cannot check is whether what the document promises is true. One memory entry
 ([`readme-map-must-match-shape.md`](../.portulan/memory/readme-map-must-match-shape.md)) records its own
 retirement as conditional on that score superseding the README map — worth stating plainly that this
 milestone does **not** fire that condition.
