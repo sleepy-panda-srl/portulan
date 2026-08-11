@@ -363,10 +363,10 @@ exists because a portfolio workspace covering a Markdown framework and a deploye
 one honest answer for both.
 
 **What `doctor` checks:** the path resolves — **and, since milestone 7 session 7, it opens the document
-and scores it.** The agent-legibility score named in the vision's delivery tiers is built: eight
+and scores it.** The agent-legibility score named in the vision's delivery tiers is built: **seven**
 dimensions, of which two read this slot — that every product has a document reachable here (its own, or
 the workspace-level default above), and that each such document names what an agent must **not** assume.
-The other six read the manifest, because a score confined to this slot could not discriminate between
+The other five read the manifest, because a score confined to this slot could not discriminate between
 two workspaces at all; **this slot is the score's named input rather than its only one**. Two limits
 worth having in front of you: the score **moves no exit code**, since a measurement that could fail a
 workspace would make conformance a function of how much prose somebody wrote; and the *must not assume*
