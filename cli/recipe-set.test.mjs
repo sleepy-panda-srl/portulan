@@ -368,3 +368,13 @@ test("`resolverFor` can actually reach discovery — `forced` rides beside `disc
     const forced = resolverFor({ workspaceDir: root, manifest, discovery, forced: true });
     assert.notEqual(forced("tools/thing"), null, "with `forced`, the discovered root answers");
 });
+
+test("`resolverFor` refuses a named root beside `forced` rather than resolving nothing", () => {
+    // Copilot, round 1 on #233: the first cut read `.roots` and dropped `refusal`, so an API caller
+    // passing both got an empty set and no word — the silent drop this change exists to remove,
+    // reintroduced one layer down by the change removing it.
+    assert.throws(
+        () => resolverFor({ workspaceDir: ".", manifest: { packs: [] }, named: ["/a"], forced: true, discovery: { ok: true, roots: [] } }),
+        /never both/,
+    );
+});

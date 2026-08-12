@@ -104,8 +104,8 @@ marketplace record, which points at a worktree deleted after merge. One graded t
 transcript question and the folding, and **reversed a decision this session had already made**. One
 specified the union, set three conditions, and found the live `skills-set` defect while reading.
 
-**Fourteen mutations run against the new tests; all caught**, four only after repair. Eleven recipes
-green; suite **1524 pass / 0 fail** against a measured baseline of **1505** at `dc1a2bd`, which the
+**Sixteen mutations run against the new tests; all caught**, five only after repair. Eleven recipes
+green; suite **1526 pass / 0 fail** against a measured baseline of **1505** at `dc1a2bd`, which the
 pre-commit checkpoint re-measured in a fresh clone rather than taking on trust. Seam scan clean over
 the diff, the branch name and the commit message, run term by term rather than as one pattern, by a
 scanner that was itself proved able to fire before it was trusted.

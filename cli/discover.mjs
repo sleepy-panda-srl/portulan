@@ -644,7 +644,13 @@ export const NAMED_WITH_AUTO =
  * Returns the sentence to print, or `null` when the combination was not asked for.
  */
 export function namedWithAuto(named = [], forced = false) {
-    return named.length > 0 && forced ? NAMED_WITH_AUTO : null;
+    // Takes the array a parser has or the boolean a resolver has, because the two callers genuinely
+    // hold different shapes of the same fact and the alternative was worse: the first cut passed a
+    // one-element array containing a SENTINEL STRING so an explicitly-empty named set would trip this.
+    // That put a fake root in a predicate about roots, and made the refusal say "a named root" about a
+    // set that had none. Raised by Copilot, round 1 on #233.
+    const given = Array.isArray(named) ? named.length > 0 : Boolean(named);
+    return given && forced ? NAMED_WITH_AUTO : null;
 }
 
 /**
@@ -738,7 +744,7 @@ export function resolutionRoots({ named = [], namedGiven = null, derived = [], d
         refusal,
     });
 
-    const refusal = namedWithAuto(givenNamed ? (named.length ? named : ["<empty named set>"]) : [], forced);
+    const refusal = namedWithAuto(givenNamed, forced);
     if (refusal) {
         return plan(
             [],

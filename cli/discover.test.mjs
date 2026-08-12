@@ -610,6 +610,17 @@ test("asking for a named root AND `auto` is refused, and the roots are empty so 
     assert.equal(called, 0, "a refused combination must not read the host on its way to refusing");
 });
 
+test("an explicitly EMPTY named set beside `auto` is refused, exactly as a non-empty one is", () => {
+    // The case the first cut reached by passing a one-element array holding a SENTINEL STRING into
+    // the shared predicate — a fake root in a predicate about roots, with a refusal that spoke of "a
+    // named root" for a set that had none. Copilot, round 1 on #233. The predicate now takes the
+    // boolean a resolver holds or the array a parser holds, and this is the assertion that keeps the
+    // empty case inside it.
+    const got = resolutionRoots({ named: [], namedGiven: true, derived: ["/derived"], forced: true, discovery: { ok: true, roots: ["/d"] } });
+    assert.deepEqual(got.roots, []);
+    assert.match(got.refusal, /never both/);
+});
+
 test("an explicitly EMPTY named set means search nowhere, and is not a fall-through to derived", () => {
     // `packRoots: []` is an API caller saying *search nowhere*; `named.length` alone cannot tell that
     // from *no roots were named*. Two tools disagreed about this once, which is why `namedGiven` is a
