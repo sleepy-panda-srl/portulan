@@ -83,22 +83,42 @@ describe("the derived paths are real, and reach the host", () => {
         }
     });
 
-    test("every skill under a derived path sits within the host's reach of it", () => {
+    test("every derived root is host-reachable in one of the two shapes, and which one is asserted", () => {
         // The equivalence the derivation rests on, checked against the tree rather than asserted about
         // a constant: a `SKILL.md` under a derived root is at depth 0 (the root IS the skill) or depth
         // 1 (the root CONTAINS them). A skill deeper than HOST_SKILL_DEPTH would be packaged, counted
-        // and inert — and `plugin-lint` is what fails it; this pins that the derivation does not
-        // CREATE that state.
+        // and inert — `plugin-lint` is what fails it, and this pins that the derivation does not CREATE
+        // that state.
+        //
+        // The first cut iterated subdirectories only, so the **depth-0 shape asserted nothing**: a root
+        // that is itself a skill has no subdirectories, the loop ran zero times, and the test passed
+        // while claiming to have checked both. A test that cannot fail on half its own subject —
+        // the same class as the tautology the pre-commit checkpoint caught one file over. Raised by
+        // Copilot on #229.
+        const seen = { root: 0, nested: 0 };
         for (const { path: p } of live().paths) {
             const root = path.join(REPO, p);
-            for (const entry of fs.readdirSync(root, { withFileTypes: true })) {
-                if (!entry.isDirectory()) continue;
-                const nested = path.join(root, entry.name);
+            if (fs.existsSync(path.join(root, "SKILL.md"))) {
+                seen.root += 1;
+                continue;
+            }
+            const children = fs.readdirSync(root, { withFileTypes: true }).filter((e) => e.isDirectory());
+            assert.ok(
+                children.length > 0,
+                `${p} holds neither a SKILL.md nor a skill directory — nothing there would register`,
+            );
+            for (const entry of children) {
                 assert.ok(
-                    fs.existsSync(path.join(nested, "SKILL.md")),
+                    fs.existsSync(path.join(root, entry.name, "SKILL.md")),
                     `${p}${entry.name}/ holds no SKILL.md — a skill below the host's ${HOST_SKILL_DEPTH} level would not register`,
                 );
+                seen.nested += 1;
             }
         }
+        // Which shape this repository actually exercises, stated rather than left implicit: every
+        // derived root here CONTAINS its skills. If that ever changes the count moves, and a reader
+        // learns it from a failure rather than from re-reading the loop.
+        assert.equal(seen.root, 0, "no derived root in this tree is itself a skill");
+        assert.ok(seen.nested > 0, "the depth-1 shape must actually have been exercised, not vacuously skipped");
     });
 });

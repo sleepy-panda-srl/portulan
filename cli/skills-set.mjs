@@ -510,10 +510,23 @@ export function run(argv = [], options = {}) {
 
     let manifest = options.manifest;
     if (manifest === undefined) {
+        // Read and parse are two failures with two repairs, and one sentence for both misdiagnoses the
+        // commoner one. A `SyntaxError` from `JSON.parse` carries no `.code`, so it fell through to
+        // `.message` under a sentence reading "could not be read" — sending an adopter with a malformed
+        // manifest to look at permissions and paths. `readManifest` below already keeps the two apart;
+        // this arm did not. Raised by Copilot on #229.
+        const file = path.join(workspaceDir, "workspace.json");
+        let text;
         try {
-            manifest = JSON.parse(fs.readFileSync(path.join(workspaceDir, "workspace.json"), "utf8"));
+            text = fs.readFileSync(file, "utf8");
         } catch (error) {
-            stderr.write(`skills-set: ${workspaceDir}/workspace.json could not be read — ${error.code ?? error.message}\n`);
+            stderr.write(`skills-set: ${file} could not be read — ${error.code ?? error.message}\n`);
+            return 2;
+        }
+        try {
+            manifest = JSON.parse(text);
+        } catch (error) {
+            stderr.write(`skills-set: ${file} does not parse as JSON — ${error.message}\n`);
             return 2;
         }
     }
