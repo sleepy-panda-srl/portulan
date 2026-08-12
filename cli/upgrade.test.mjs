@@ -246,6 +246,36 @@ describe("0002 — the bundle path a rewriter owes", () => {
         assert.equal(step().owed(ws, ctx()).owed, false);
     });
 
+    test("idempotent for a bundle path that JSON has to ESCAPE — the Windows shape", () => {
+        // `init` emits `JSON.stringify(...)`, so a bundle at `C:\Users\x` is written
+        // `"C:\\Users\\x/cli/index.mjs"`. Comparing that raw source text to an unescaped `want` never
+        // matches, and the step reports itself perpetually owed — rewriting the same file every run.
+        //
+        // Invisible on POSIX, where an ordinary path contains nothing JSON escapes, so every test and
+        // every live run here passed over it. Copilot's promoted note, round 4.
+        for (const bundle of ["C:\\Users\\x", "/tmp/with\\backslash", '/tmp/with"quote']) {
+            const ws = view(manifest("2.8", { tree: "../" }), { "verify/index.sh": railWith(bundle) });
+            const at = { bundle, spec: bundleSpec(), tree: null };
+            assert.equal(step().owed(ws, at).owed, false, `${bundle}: a rail already naming this bundle was reported owed`);
+
+            // And the other direction: a DIFFERENT escaped path is still owed, so the fix cannot be
+            // "always answer not-owed".
+            const stale = view(manifest("2.8", { tree: "../" }), { "verify/index.sh": railWith("C:\\Other\\bundle") });
+            assert.equal(step().owed(stale, at).owed, true, `${bundle}: a foreign escaped path was reported current`);
+        }
+    });
+
+    test("a round trip through the rewrite survives escaping", () => {
+        // Rewrite to an escaping path, then ask again: the value written must be the value read back.
+        const bundle = "C:\\Users\\x";
+        const ws = view(manifest("2.8", { tree: "../" }), { "verify/index.sh": railWith("/somewhere/else") });
+        const at = { bundle, spec: bundleSpec(), tree: null };
+        const planned = step().plan(ws, at);
+        assert.equal(planned.ok, true, planned.reason);
+        const after = view(manifest("2.8", { tree: "../" }), { "verify/index.sh": planned.edits[0].next });
+        assert.equal(step().owed(after, at).owed, false, "the rewrite's own output was reported owed again");
+    });
+
     test("not owed when nothing carries the marker at all — this repository's own state", () => {
         const ws = view(manifest("2.8", { tree: "../" }), { "verify/index.sh": "#!/usr/bin/env bash\nexit 0\n" });
         assert.equal(step().owed(ws, ctx()).owed, false);
@@ -699,6 +729,24 @@ describe("the three rules a tool writing into somebody's tree owes", () => {
         assert.equal(restore(dir, applied.snapshots).ok, true);
         assert.equal(fs.existsSync(path.join(dir, "nested/deeper/new.md")), false, "the new file survived the rollback");
         assert.equal(fs.existsSync(path.join(dir, "nested")), false, "the directories it created survived the rollback");
+    });
+
+    test("an edit naming a path OUTSIDE the workspace is refused, absolute or climbing", () => {
+        // A step's `edit.file` is text this tool did not author, and nothing in the step contract
+        // stops it naming `../` or `/etc`. This repository has paid for the class once already, at a
+        // persona's free-text `name`, where `../../poison` had `doctor` read, grade and GREEN a file
+        // outside the tree. Resolution rather than pattern-matching: every interesting escape parses
+        // fine and only fails once resolved. Copilot, round 4.
+        const dir = scratch();
+        const outside = path.join(dir, "..", `escaped-${path.basename(dir)}.md`);
+        for (const bad of ["../escaped.md", "a/../../escaped.md", path.join(dir, "..", "abs.md")]) {
+            const applied = applyEdits(dir, [{ file: bad, next: "owned\n" }]);
+            assert.equal(applied.ok, false, `${bad} was allowed`);
+            assert.match(applied.reason, /outside/i);
+        }
+        assert.equal(fs.existsSync(outside), false, "a refused edit still wrote outside the workspace");
+        // And the ordinary case still works, so the guard is not simply refusing everything.
+        assert.equal(applyEdits(dir, [{ file: "inside.md", next: "ok\n" }]).ok, true);
     });
 
     test("a write that fails AFTER creating directories leaves none of them behind", () => {
