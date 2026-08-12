@@ -737,16 +737,60 @@ describe("the three rules a tool writing into somebody's tree owes", () => {
         // persona's free-text `name`, where `../../poison` had `doctor` read, grade and GREEN a file
         // outside the tree. Resolution rather than pattern-matching: every interesting escape parses
         // fine and only fails once resolved. Copilot, round 4.
+        // **Every escaping path here is unique to this test's own scratch directory**, and that is not
+        // tidiness. A first version used `../escaped.md`, which resolves to `<tmpdir>/escaped.md` —
+        // the very path `cli/feedback.test.mjs` asserts must not exist. Refused, this test writes
+        // nothing; but a MUTATION run disables the guard on purpose, the write lands, and the file is
+        // left at a shared path where it fails an unrelated suite on the next run. Measured twice
+        // before the cause was found, and mistaken for a pre-existing flake both times, because the
+        // other test's own cleanup deletes the file and the failure self-heals on re-run.
         const dir = scratch();
-        const outside = path.join(dir, "..", `escaped-${path.basename(dir)}.md`);
-        for (const bad of ["../escaped.md", "a/../../escaped.md", path.join(dir, "..", "abs.md")]) {
+        const tag = path.basename(dir);
+        const outside = path.join(dir, "..", `escaped-${tag}.md`);
+        const absolute = path.join(dir, "..", `abs-${tag}.md`);
+        for (const bad of [`../escaped-${tag}.md`, `a/../../escaped-${tag}.md`, absolute]) {
             const applied = applyEdits(dir, [{ file: bad, next: "owned\n" }]);
             assert.equal(applied.ok, false, `${bad} was allowed`);
             assert.match(applied.reason, /outside/i);
         }
-        assert.equal(fs.existsSync(outside), false, "a refused edit still wrote outside the workspace");
+        // Cleaned up regardless, so a mutation run that defeats the guard cannot poison a later one.
+        for (const stray of [outside, absolute]) {
+            assert.equal(fs.existsSync(stray), false, "a refused edit still wrote outside the workspace");
+            fs.rmSync(stray, { force: true });
+        }
         // And the ordinary case still works, so the guard is not simply refusing everything.
         assert.equal(applyEdits(dir, [{ file: "inside.md", next: "ok\n" }]).ok, true);
+    });
+
+    test("ws.read() refuses an escaping path — the READ sibling of the write guard", () => {
+        // `list()` only yields what `walk` enumerated inside the workspace, so a step iterating it is
+        // safe. `read` takes whatever a step hands it, and the step contract does not constrain that.
+        // Guarding the write and not the read would be one rule at one of its two halves.
+        const root = scratch();
+        const dir = path.join(root, ".portulan");
+        fs.mkdirSync(dir, { recursive: true });
+        fs.writeFileSync(path.join(root, "secret.md"), "not part of the workspace\n");
+        fs.writeFileSync(path.join(dir, "workspace.json"), `${JSON.stringify(manifest("2.8", { tree: "../" }), null, 2)}\n`);
+
+        const read = readWorkspace(dir);
+        assert.equal(read.ok, true, read.reason);
+        assert.throws(() => read.ws.read("../secret.md"), /outside/i, "a step could read outside the workspace");
+        assert.throws(() => read.ws.read(path.join(root, "secret.md")), /outside/i, "an absolute path was read");
+        assert.equal(read.ws.read("workspace.json").length > 0, true, "the ordinary case must still work");
+    });
+
+    test("restore() refuses an escaping snapshot too — the guard's sibling site", () => {
+        // `applyEdits` got containment and `restore` did not: one rule at one of its two sites, in
+        // the change whose commit message was about sweeping for siblings. Copilot found it; my sweep
+        // did not. `restore` is exported and takes snapshots from its caller, so the guard has to
+        // hold here on its own rather than by trusting where the values came from.
+        const dir = scratch();
+        const outside = path.join(dir, "..", `restored-${path.basename(dir)}.md`);
+        fs.rmSync(outside, { force: true });
+        const result = restore(dir, [{ file: `../${path.basename(outside)}`, previous: "clobbered\n", mode: null, created: [] }]);
+        assert.equal(result.ok, false);
+        assert.deepEqual(result.restored, []);
+        assert.equal(fs.existsSync(outside), false, "restore wrote outside the workspace");
     });
 
     test("a write that fails AFTER creating directories leaves none of them behind", () => {

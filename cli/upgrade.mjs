@@ -177,8 +177,15 @@ export function readWorkspace(dir) {
             manifest,
             manifestText: text,
             list: () => files,
+            // The READ sibling of the write guard. `list()` only ever yields paths `walk` enumerated
+            // inside the workspace, so a step iterating it is safe — but `read` takes whatever a step
+            // hands it, and the step contract does not constrain that. A tool that refused to WRITE
+            // outside the workspace while reading anything on the disk would be guarding one half of
+            // the same rule. Found by sweeping after Copilot caught the `restore` sibling.
             read: (rel) => {
-                if (!cache.has(rel)) cache.set(rel, fs.readFileSync(path.join(root, rel), "utf8"));
+                const at = inside(root, rel);
+                if (at === null) throw new UpgradeError(`\`${rel}\` resolves outside ${root} — refusing to read there`);
+                if (!cache.has(rel)) cache.set(rel, fs.readFileSync(at, "utf8"));
                 return cache.get(rel);
             },
         },
@@ -248,6 +255,25 @@ export async function planFor(ws, ctx, steps) {
 }
 
 /**
+ * Resolve a step-supplied relative path inside `root`, or `null` if it escapes.
+ *
+ * **One carrier, and it has two callers because it has to.** `applyEdits` writes and `restore`
+ * writes back, and a guard on the first alone leaves the second reachable with the same value — one
+ * rule enforced at one of its two sites, which is `0020` exactly. That is not hypothetical here:
+ * `applyEdits` got the guard first and `restore` did not, and Copilot found the sibling before this
+ * session's own sweep did.
+ *
+ * `resolve`, never `join`: `path.join(root, "/etc/passwd")` CONCATENATES to `<root>/etc/passwd`,
+ * which hides an absolute path from the check instead of exposing it. And resolution rather than
+ * pattern-matching, because every interesting escape parses fine and only fails once resolved.
+ */
+function inside(root, rel) {
+    const resolved = path.resolve(root, rel);
+    if (resolved !== root && !resolved.startsWith(`${root}${path.sep}`)) return null;
+    return resolved;
+}
+
+/**
  * Remove directories this run created, deepest first, stopping at the first that will not go.
  *
  * **One carrier, two callers.** `applyEdits` needs it on every failure path between creating a
@@ -293,11 +319,6 @@ export function applyEdits(dir, edits, options = {}) {
     for (const edit of edits) {
         // `resolve`, not `join`. `path.join(root, "/etc/passwd")` CONCATENATES — it yields
         // `<root>/etc/passwd`, silently turning an absolute path into a nested one and hiding from the
-        // guard below what the caller actually asked for. `resolve` honours the absolute path, so the
-        // containment check sees the real target and refuses it. Measured: the first cut used `join`
-        // and the absolute-path case passed straight through the guard.
-        const file = path.resolve(root, edit.file);
-
         // **A path built from somebody else's text is contained before it is opened.** A step's
         // `edit.file` is a value this tool did not author — an absolute path, or one climbing out
         // with `..`, would have this writing outside the workspace it was pointed at. Nothing in the
@@ -305,14 +326,13 @@ export function applyEdits(dir, edits, options = {}) {
         //
         // This repository has already paid for the class once, at a persona's free-text `name`, where
         // `../../poison` had `doctor` read, grade and GREEN a file outside the tree. `cli/compile.mjs`
-        // guards the same way. Resolution rather than pattern-matching, because every interesting
-        // escape parses fine and only fails once resolved. Copilot, round 4 on #231.
-        const resolved = file;
-        if (resolved !== root && !resolved.startsWith(`${root}${path.sep}`)) {
+        // guards the same way. Copilot, round 4 on #231.
+        const file = inside(root, edit.file);
+        if (file === null) {
             return {
                 ok: false,
                 snapshots,
-                reason: `\`${edit.file}\` resolves to ${resolved}, which is outside ${root} — refusing to write there`,
+                reason: `\`${edit.file}\` resolves outside ${root} — refusing to write there`,
             };
         }
 
@@ -395,7 +415,16 @@ export function restore(dir, snapshots) {
     // Found by sweeping this file for the sibling of the note that added the directories, rather than
     // by a round that raised it.
     for (const snapshot of [...snapshots].reverse()) {
-        const file = path.resolve(root, snapshot.file);
+        // The SIBLING of the guard in `applyEdits`, and it is here because it was missing.
+        // `applyEdits` got containment first and this did not — one rule at one of its two sites,
+        // which is `0020`, in the change whose own commit message was about sweeping for siblings.
+        // Copilot found it; the sweep did not. A snapshot normally comes from `applyEdits` and is
+        // therefore already contained, but this function is exported and takes them from a caller.
+        const file = inside(root, snapshot.file);
+        if (file === null) {
+            failed.push(snapshot.file);
+            continue;
+        }
         try {
             if (snapshot.previous === null) {
                 fs.rmSync(file, { force: true });
