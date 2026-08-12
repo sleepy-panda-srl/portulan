@@ -194,12 +194,24 @@ moment one of them ships:
   `.claude-plugin/plugin.json` and of nothing else** — measured on 2026-08-09, Claude Code 2.1.226, by
   deleting the `packs` key from the governing workspace outright and reinstalling, which changed the
   host's inventory not at all. So a composed pack's ritual was invocable by coincidence of a
-  hand-written path. `plugin-lint`'s `compose` check now pins the two together in both directions — a
+  hand-written path. `plugin-lint`'s `compose` check pins the two together in both directions — a
   composed pack whose skills no declared path reaches is red, and a skills path inside `packs/`
   belonging to no composed pack is red — so *composed* and *registered* can no longer drift apart in
-  a bundle this validator runs over. What that buys is the **bundle's** parity, not the adopter's:
-  nothing here writes an adopter's plugin manifest, so a pack a customer composes still reaches their
-  host only where their own manifest names it.
+  a bundle this validator runs over.
+
+  **The adopter's half landed at milestone 7 session 8** ([#184](https://github.com/sleepy-panda-works/portulan/issues/184)),
+  and this bullet said the opposite until then — *"nothing here writes an adopter's plugin manifest"*,
+  true when written. `cli/skills-set.mjs` is the one carrier of the **registrable set**: it reads each
+  composed pack's own `contributes.skills` and derives the paths a plugin manifest must declare, with
+  `--check` reporting drift and `--write` deriving the key. So the path is computed rather than typed.
+  **What that is demonstrated on is two layouts** — this bundle's, where packs sit at `./packs/`, and a
+  workspace whose `tree` puts them elsewhere, which is the case an adopter is likelier to have and the
+  one a first cut got wrong in a way every test passed over. **Two limits, because the clause is not whole.**
+  It writes no manifest from nothing — only the pack portion of a `skills` key in one that already
+  exists, since a workspace shipping no plugin is a state rather than a hole. And the row's
+  *demonstration* — a composed pack's skill **invoked** through a host the same way a core skill is —
+  is still owed by a session that runs and records it. Derivable is not demonstrated, and a boot that
+  reported this as parity would be making exactly the claim the clause refuses.
 - **A pack's personas reach the workspace's own layer, and not the host.** A composing workspace lands
   the scope a pack's persona declares, and an index over it can be generated — so this one is not
   simply absent, and reporting it as absent would be as wrong as reporting it as loaded.

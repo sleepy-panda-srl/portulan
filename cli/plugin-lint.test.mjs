@@ -1191,6 +1191,113 @@ describe("compose — composition and registration are pinned to each other", ()
             "only the packs tree is subject to the composition rule",
         );
     });
+
+    // --- the DECLARATION side, added milestone 7 session 8 --------------------------------------
+    //
+    // Everything above asks about the TREE. These ask what each composed pack's own `pack.json`
+    // NOMINATES through `contributes.skills`, which is the key `spec/pack.schema.json` had already
+    // undertaken to open — *"Reaching parity means reading this key"* — and which nothing folded into
+    // registration until `cli/skills-set.mjs`.
+    //
+    // Written after discovering the fixtures above declare no `contributes` at all, so the whole
+    // suite passed green over a check it never once exercised. That is the same shape as every other
+    // blind-spot finding here, arriving in the change that cites them.
+
+    /** A bundle whose composed pack NOMINATES a skills root, as a real pack manifest does. */
+    function nominating({ declare = true, skills = ["skills/"], populate = true } = {}) {
+        const root = fixture({
+            plugin: declare
+                ? { skills: ["./skills/", "./packs/rituals/checkpoints/skills/"] }
+                : { skills: ["./skills/"] },
+        });
+        if (populate) {
+            write(
+                root,
+                "packs/rituals/checkpoints/skills/pre-commit/SKILL.md",
+                SKILL("pre-commit", "Grades a finished diff. Use before committing full-lane work."),
+            );
+        }
+        write(
+            root,
+            "packs/rituals/checkpoints/pack.json",
+            JSON.stringify({ name: "checkpoints", category: "rituals", contributes: { skills } }),
+        );
+        write(root, ".portulan/workspace.json", JSON.stringify({ name: "demo", packs: ["rituals/checkpoints"] }, null, 2));
+        return root;
+    }
+
+    test("a nominated root the manifest declares is green", () => {
+        const { findings } = inspect(nominating());
+        assert.equal(fails(findings).filter((f) => f.check === "compose").length, 0, messages(findings));
+    });
+
+    test("a nominated root the manifest does not declare fails, and names the root to declare", () => {
+        const bad = fails(inspect(nominating({ declare: false })).findings).filter((f) => f.check === "compose");
+        const nominated = bad.filter((f) => /nominates/.test(f.message));
+        assert.equal(nominated.length, 1, messages(inspect(nominating({ declare: false })).findings));
+        assert.match(nominated[0].message, /Declare \.\/packs\/rituals\/checkpoints\/skills\/$/);
+    });
+
+    test("a nominated root that does not EXIST fails — the walk finds nothing and would have been silent", () => {
+        // The case this half exists for. With no `skills/` directory at all, the tree walk has no
+        // skill to compare and says nothing, so a pack that registers nothing passed green. What the
+        // declaration side has that the walk does not is a claim to check against.
+        const root = nominating({ declare: false, populate: false });
+        const bad = fails(inspect(root).findings).filter((f) => f.check === "compose" && /nominates/.test(f.message));
+        assert.equal(bad.length, 1, messages(inspect(root).findings));
+    });
+
+    test("a nominated root that exists and holds no skill is a NOTE — there is nothing to register", () => {
+        const root = nominating({ declare: false, populate: false });
+        fs.mkdirSync(path.join(root, "packs", "rituals", "checkpoints", "skills"), { recursive: true });
+        const composeFindings = inspect(root).findings.filter((f) => f.check === "compose" && /nominates/.test(f.message));
+        assert.equal(composeFindings.length, 1);
+        assert.equal(composeFindings[0].severity, "note", messages(inspect(root).findings));
+    });
+
+    test("a pack with NO pack.json is skipped — this check does not invent a second answer to `what is a pack`", () => {
+        // `plugin-lint` deliberately refuses to require a `pack.json` of a `packs` entry, because that
+        // question is `doctor`'s. A declaration check failing on its absence would be that rule
+        // arriving through the back door.
+        const root = composed(); // its pack.json carries no `contributes` — and none is owed
+        fs.rmSync(path.join(root, "packs", "rituals", "checkpoints", "pack.json"));
+        const bad = fails(inspect(root).findings).filter((f) => f.check === "compose");
+        assert.equal(bad.length, 0, messages(inspect(root).findings));
+    });
+
+    test("a pack.json that will not PARSE is a failure — absent and unreadable are different answers", () => {
+        const root = composed();
+        fs.writeFileSync(path.join(root, "packs", "rituals", "checkpoints", "pack.json"), "{ not json");
+        const bad = fails(inspect(root).findings).filter((f) => f.check === "compose");
+        assert.equal(bad.length, 1, messages(inspect(root).findings));
+        assert.match(bad[0].message, /pack\.json could not be read/);
+    });
+
+    test("`contributes.skills` of the wrong type is could-not-run for the whole declaration side", () => {
+        const root = nominating({ skills: "skills/" });
+        const bad = fails(inspect(root).findings).filter((f) => f.check === "compose");
+        assert.equal(bad.length, 1, messages(inspect(root).findings));
+        assert.match(bad[0].message, /registrable set could not be derived/);
+    });
+
+    test("a manifest naming each skill individually satisfies the nomination — that registers them too", () => {
+        // The `"./"` form. Refusing it would be a false red on a bundle that is correct, so the check
+        // asks whether the skills are reachable rather than whether one exact string is present.
+        const root = fixture({ plugin: { skills: ["./skills/", "./packs/rituals/checkpoints/skills/pre-commit/"] } });
+        write(
+            root,
+            "packs/rituals/checkpoints/skills/pre-commit/SKILL.md",
+            SKILL("pre-commit", "Grades a finished diff. Use before committing full-lane work."),
+        );
+        write(
+            root,
+            "packs/rituals/checkpoints/pack.json",
+            JSON.stringify({ name: "checkpoints", category: "rituals", contributes: { skills: ["skills/"] } }),
+        );
+        write(root, ".portulan/workspace.json", JSON.stringify({ name: "demo", packs: ["rituals/checkpoints"] }, null, 2));
+        const bad = fails(inspect(root).findings).filter((f) => f.check === "compose");
+        assert.equal(bad.length, 0, messages(inspect(root).findings));
+    });
 });
 
 test("compose refuses a composed pack that is a symlink out of the bundle", () => {

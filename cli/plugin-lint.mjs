@@ -59,6 +59,11 @@ import fs from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 
+// The registrable set — what a composed pack's own `contributes.skills` says this manifest must
+// declare. `HOST_SKILL_DEPTH` was measured in THIS file and lives there now; see its note below for
+// why the direction is this way round rather than the other.
+import { HOST_SKILL_DEPTH, skillsSet, canonical } from "./skills-set.mjs";
+
 /** Raised when `plugin-lint` cannot run at all. Always exit 2, never 1. */
 export class PluginLintError extends Error {
     constructor(message) {
@@ -882,6 +887,95 @@ export function inspect(rawRoot, { payload = false } = {}) {
                     "workspace layer having asked for it. Compose the pack, or stop declaring it",
             );
         }
+
+        // --- the DECLARATION side, through the one carrier -------------------------------------
+        //
+        // Everything above asks about the TREE: is every skill actually sitting in a composed pack
+        // reachable from a declared path? This asks a different question from different evidence —
+        // does this manifest declare the root each composed pack's own `contributes.skills` NOMINATES?
+        //
+        // **These are not two implementations of one rule**, and collapsing them would delete a check.
+        // A pack whose declaration and tree disagree is a finding, and only asking both finds it. The
+        // distinctive case this half catches, which the walk cannot: a pack nominates a skills root
+        // that **is not there, or cannot be examined**, while the manifest declares nothing — the walk
+        // finds no skill, has nothing to compare, and goes green over a pack that registers nothing.
+        // That is *nothing looked* reported as *nothing wrong*, arriving through the composition path.
+        //
+        // A nominated root that exists and is genuinely EMPTY is a different answer and gets a note:
+        // there is nothing to register, so there is no hazard to report — an empty set is two
+        // questions, and this one has been examined.
+        //
+        // The policy — what a manifest must declare — lives once, in ./skills-set.mjs. This calls it.
+        //
+        // **Resolved against `./packs/`, never against the workspace's `tree`.** The carrier's own
+        // resolver derives roots from `tree`, which is right for a workspace on disk and wrong here: a
+        // bundle's packs sit where the PLUGIN layout puts them, and this check has already walked and
+        // contained exactly those directories. Resolving any other way would answer about a different
+        // set of directories than the ones above were graded on. Found by running the suite: every
+        // fixture bundle composes packs with no `tree` at all.
+        //
+        // **A composed entry with no `pack.json` is skipped, deliberately.** This file already refuses
+        // to require one — *"Requiring one here would put a second answer to what is a pack beside
+        // `doctor`'s"* — and a declaration check that failed on its absence would be that second
+        // answer arriving through the back door. No `pack.json` means no declaration to check, which
+        // is not the same as a declaration that could not be read: that one fails, below.
+        const declaring = [];
+        const resolved = new Map();
+        for (const { name, dir } of composed) {
+            let parsed;
+            try {
+                parsed = JSON.parse(fs.readFileSync(path.join(dir, "pack.json"), "utf8"));
+            } catch (error) {
+                if (error.code === "ENOENT") continue;
+                fail(
+                    "compose",
+                    `${GOVERNING} composes \`${name}\` and its pack.json could not be read — ` +
+                        `${error.code ?? error.message}. What it nominates for registration is unchecked`,
+                );
+                continue;
+            }
+            declaring.push(name);
+            resolved.set(name, { ref: name, root: dir, manifest: parsed });
+        }
+        const derived = skillsSet(composition, {
+            packs: declaring,
+            pluginRoot: root,
+            resolve: (ref) => resolved.get(ref) ?? null,
+        });
+        if (!derived.ok) {
+            fail(
+                "compose",
+                `the registrable set could not be derived from ${GOVERNING} — ${derived.reason}. ` +
+                    "Composition is unchecked on the declaration side",
+            );
+        } else {
+            const declaredRoots = new Set(declaredSkillRoots.map(({ file }) => canonical(path.relative(root, file))));
+            for (const { path: want, pack: packName } of derived.paths) {
+                if (declaredRoots.has(want)) continue;
+                // A manifest may name each skill individually — the `"./"` form — instead of the root.
+                // That registers them just as well, so it is not a failure, and the walk above has
+                // already held those to the tree. Checked rather than assumed, because failing it would
+                // be a false red on a bundle that is correct.
+                const problems = [];
+                const beneath = walkForSkills(root, path.join(root, want), 0, [], problems);
+                if (problems.length === 0 && beneath.length > 0 && beneath.every((d) => skillDirs.has(d))) continue;
+                if (problems.length === 0 && beneath.length === 0) {
+                    note(
+                        "compose",
+                        `${GOVERNING} composes \`${packName}\`, whose pack.json nominates ${want} as a skills ` +
+                            "root, and nothing there holds a SKILL.md — there is nothing to register. " +
+                            "`doctor` owns the verdict on that pack",
+                    );
+                    continue;
+                }
+                fail(
+                    "compose",
+                    `${GOVERNING} composes \`${packName}\`, whose pack.json nominates ${want} as a skills root, ` +
+                        `and no plugin.json \`skills\` path declares it${problems.length ? " (and it could not be examined in full)" : ""} — ` +
+                        `the host registers nothing from it. Declare ${want}`,
+                );
+            }
+        }
     }
 
     // A skill authored and never declared is a skill nobody ships, and its author will believe
@@ -1084,8 +1178,14 @@ export function inspect(rawRoot, { payload = false } = {}) {
                 );
             }
         }
+        // A Set rather than `personaFiles.includes(name)` inside the loop, which re-scanned the persona
+        // list once per bound agent — O(P·B). This bundle ships three of each, so the cost today is
+        // nothing and the SHAPE is an adopter's larger bundle: triaged out of #227 as
+        // [#228](https://github.com/sleepy-panda-works/portulan/issues/228) and taken here because this
+        // session already had the file open. Behaviour-preserving, and the suite is what says so.
+        const personaNames = new Set(personaFiles);
         for (const [name, binding] of bound) {
-            if (!personaFiles.includes(name)) {
+            if (!personaNames.has(name)) {
                 fail(
                     "agents",
                     `${binding.rel} binds no persona — there is no \`core/personas/${name}.md\`. A host file that outlived the doctrine it was ` +
@@ -1223,14 +1323,15 @@ function walkForSkills(root, dir = root, depth = 0, found = [], problems = null)
 // something the manifest pointed at; the other is a sweep of everything it did not.
 const MAX_DECLARED_SKILL_DEPTH = 3;
 
-// How far below a DECLARED skills root the host itself looks. One — `<root>/<skill>/SKILL.md` — and
-// no further. Measured 2026-08-07 on Claude Code 2.1.224 against a local marketplace built from this
-// repository, in both directions: `./packs/rituals/` registered 0 of the pack's 3 skills, and
-// `./packs/rituals/checkpoints/skills/` registered all 3. It is its own constant rather than a literal
-// because it is a PLATFORM fact this repository does not control, unlike the bound above, which is a
-// choice about how far to search. Re-measure it at a host upgrade; a change here is a change in what
-// installs, not in what this tool prefers.
-const HOST_SKILL_DEPTH = 1;
+// How far below a DECLARED skills root the host itself looks — measured here, and since milestone 7
+// session 8 it LIVES in ./skills-set.mjs and is imported at the top of this file.
+//
+// It moved because the `compose` check below now asks that carrier what a manifest must declare, so
+// this file imports it; exporting the constant back the other way would have made an import cycle.
+// The direction matches `AGENT_DIR`, which flows plugin-lint → doctor: the carrier of a derived set
+// carries the platform constant its derivation depends on. The measurement and its re-measure mandate
+// travel with it rather than being restated here, because a constant with two homes is the two-carrier
+// defect this repository keeps paying for.
 
 /**
  * Expand one DECLARED skills root into the skill directories beneath it.

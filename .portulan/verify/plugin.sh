@@ -1,10 +1,21 @@
 #!/usr/bin/env bash
 # Portulan workspace — verify recipe: the packaging validator.
 #
-# One check, run against every plugin root this repository ships:
-#   plugin  both manifests parse and agree, every declared component path resolves inside the tree,
-#           every skill behind those paths is a real artifact with a description, and so is every
-#           agent at `./agents/`, which nothing declares and which therefore nothing else covers
+# Two checks. The first runs against every plugin root this repository ships:
+#   plugin      both manifests parse and agree, every declared component path resolves inside the tree,
+#               every skill behind those paths is a real artifact with a description, and so is every
+#               agent at `./agents/`, which nothing declares and which therefore nothing else covers
+#   skills-set  the governing workspace's `packs` and this bundle's declared `skills` are one fact:
+#               every skills root a composed pack NOMINATES is a root the manifest declares. Milestone
+#               7 session 8, row 7 clause (b)'s adopter half
+#               ([#184](https://github.com/sleepy-panda-works/portulan/issues/184)) — until it landed,
+#               registration was a property of `.claude-plugin/plugin.json` alone and a composed pack's
+#               skill was invocable by coincidence of a hand-written path.
+#
+# It is a second INVOCATION rather than a second recipe on purpose: this recipe already owns packaging,
+# and a new recipe would be a manifest change and a CI job for one comparison. `plugin-lint` asks the
+# same question of the tree from the other side; the two are different evidence about one rule, and the
+# note in `cli/plugin-lint.mjs`'s compose check argues why neither replaces the other.
 #
 # Exit 0 green · 1 red · 2 could not run. The wrapper exists for the third code: `bash -c "node …"`
 # on a machine without node exits 127, which is neither a verdict nor "could not run".
@@ -123,4 +134,25 @@ case $? in
     2) exit 2 ;;
     *) status=1 ;;
 esac
+
+# The registrable set, against the governing workspace and this repository's own plugin root. Only
+# PLUGIN_ROOTS are asked: a payload root ships packs rather than composing them, so it has no `packs`
+# array to derive from and the question does not apply to it — stated here rather than left to be
+# inferred from an absent invocation.
+#
+# The same three codes, kept apart for the same reason: a drifted `skills` key is 1, and anything that
+# could not be read — the workspace manifest, a pack, the plugin manifest — is 2. Flattening 2 into 1
+# would report a verdict about a tree nothing looked at.
+[ -f cli/skills-set.mjs ] || {
+    printf 'verify: cli/skills-set.mjs not found — this recipe cannot run\n' >&2
+    exit 2
+}
+for root in "${PLUGIN_ROOTS[@]}"; do
+    node cli/skills-set.mjs --workspace .portulan --repo-root . --plugin-root "$root" --check
+    case $? in
+        0) ;;
+        2) exit 2 ;;
+        *) status=1 ;;
+    esac
+done
 exit "$status"
