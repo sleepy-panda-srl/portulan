@@ -410,7 +410,13 @@ describe("--write, and the three rules a tool writing into somebody's tree carri
     test("it rewrites only the `skills` array and leaves every other key alone", () => {
         const root = scratch();
         fs.mkdirSync(path.join(root, ".claude-plugin"), { recursive: true });
-        const before = { name: "x", version: "1.0.0", keywords: ["a"], skills: ["./core/skills/"] };
+        // `skills` sits in the MIDDLE deliberately. With it last, the assertion below could not fail
+        // for the reason it exists — a `--write` that moved the key to the end would still match — so
+        // the test was pinning nothing about order. Raised as a suppressed note on #229, alongside a
+        // second note claiming the spread DOES move it. This fixture is what settles that: it does not,
+        // because re-assigning an existing string key keeps its insertion position, and the key is
+        // appended only when the manifest had none.
+        const before = { name: "x", skills: ["./core/skills/"], version: "1.0.0", keywords: ["a"] };
         fs.writeFileSync(path.join(root, ".claude-plugin", "plugin.json"), `${JSON.stringify(before, null, 2)}\n`);
         fs.mkdirSync(path.join(root, "packs", "a", "b", "skills"), { recursive: true });
 
