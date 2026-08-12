@@ -111,7 +111,7 @@ the nearest instance of that rule may be twelve lines away in the file you are e
   at 30** and this pull request passed that, hiding a round on page two. A thread's "unanswered" test
   keyed on *last comment author*, and promoted notes are posted by the **same identity replies come
   from**, so an unanswered note was indistinguishable from my own reply. And a **bounded** watch ended
-  before the next finding arrived. A fourth would have been firing on `isResolved == false` for ever:
+  before the next finding arrived. A fourth would have been firing on `isResolved == false` forever:
   this identity is a GitHub App, and **no App may resolve a thread**, so answered-but-unresolved is
   the normal terminal state.
 - **A test of mine poisoned another suite**, and I mis-attributed it twice as a pre-existing flake.
