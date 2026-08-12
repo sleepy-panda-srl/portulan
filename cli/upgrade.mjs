@@ -319,10 +319,48 @@ export async function planFor(ws, ctx, steps) {
  * which hides an absolute path from the check instead of exposing it. And resolution rather than
  * pattern-matching, because every interesting escape parses fine and only fails once resolved.
  */
-function inside(root, rel) {
+export function inside(root, rel) {
     const resolved = path.resolve(root, rel);
     if (resolved !== root && !resolved.startsWith(`${root}${path.sep}`)) return null;
     return resolved;
+}
+
+/**
+ * The other half of containment: the path on DISK, not the path as a string.
+ *
+ * `inside()` is lexical. A symlink at any **parent component** makes the write escape while the
+ * string still resolves inside the root — `<root>/link/a.md` passes every character-level test and
+ * lands wherever `link` points. `{ flag: "wx" }` guards only the final component. This is the rule
+ * `cli/vendor.mjs` states as rule 2 and enforces by walking the chain, and `cli/skills-set.mjs`
+ * spells the same walk; this file had inherited the rule and implemented only its lexical half.
+ * Copilot, round 11 on #231.
+ *
+ * Components that do not exist are fine — they are about to be created, and nothing can be followed
+ * through a path that is not there — so the walk stops at the first `ENOENT`. Anything else is a
+ * question that could not be answered, and is refused rather than assumed absent: rule 3.
+ *
+ * The root itself is not checked, deliberately, and that is `vendor`'s boundary: **above the named
+ * path, resolve — the caller named it, and on macOS `os.tmpdir()` runs through `/var`. At it and
+ * below it, refuse.**
+ *
+ * Returns a reason to refuse, or `null` when the chain is clean.
+ */
+function linkOnPath(root, resolved) {
+    const rel = path.relative(root, resolved);
+    if (rel === "") return null;
+    let at = root;
+    for (const part of rel.split(path.sep)) {
+        at = path.join(at, part);
+        let stat;
+        try {
+            stat = fs.lstatSync(at);
+        } catch (error) {
+            if (error.code === "ENOENT") return null;
+            return `${at} could not be examined — ${error.code ?? error.message}`;
+        }
+        if (stat.isSymbolicLink()) return `${at} is a symlink, and this refuses to write through one`;
+    }
+    return null;
 }
 
 /**
@@ -391,6 +429,8 @@ export function applyEdits(dir, edits, options = {}) {
                 reason: `\`${edit.file}\` resolves outside ${root} — refusing to write there`,
             };
         }
+        const linked = linkOnPath(root, file);
+        if (linked !== null) return { ok: false, snapshots, reason: linked };
 
         let previous = null;
         let mode = null;
@@ -497,7 +537,7 @@ export function restore(dir, snapshots) {
         // Copilot found it; the sweep did not. A snapshot normally comes from `applyEdits` and is
         // therefore already contained, but this function is exported and takes them from a caller.
         const file = inside(root, snapshot.file);
-        if (file === null) {
+        if (file === null || linkOnPath(root, file) !== null) {
             failed.push(snapshot.file);
             continue;
         }
