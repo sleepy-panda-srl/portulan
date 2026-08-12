@@ -1898,6 +1898,133 @@ describe("--pack-root names a resolution root outside the workspace's tree", () 
     });
 });
 
+// ------------------------------------------- the union: a workspace composing from BOTH residences
+
+describe("`--pack-root auto` unions the discovered roots with the tree-derived one", () => {
+    // The measured table that forced the 2026-08-12 change, as a test rather than as a paragraph. The
+    // subject is the workspace `init` DRAFTS BY DEFAULT — it composes a checkpoints pack, which lives
+    // in the host's cache — once the adopter adds a pack of their own, which lives in their tree.
+    // Before the union no invocation resolved both without naming a cache path by hand.
+
+    /** A pack directory: `<root>/<category>/<name>/pack.json`, with a summary a test can tell apart. */
+    const packAt = (root, id, summary) => {
+        const [category, name] = id.split("/");
+        return tree(root, {
+            [`${category}/${name}/pack.json`]: JSON.stringify({
+                portulan: { pack: "1.0", version: "0.1.0" },
+                name,
+                category,
+                summary,
+                doc: "README.md",
+                contributes: {},
+            }),
+            [`${category}/${name}/README.md`]: "",
+        });
+    };
+
+    /** A host whose plugin cache carries `packs/` — the repository-shaped install. */
+    const hostCarrying = (build) => {
+        const config = scratch();
+        const installPath = path.join(config, "plugins", "cache", "feed", "pack-plugin", "0.1.0");
+        fs.mkdirSync(path.join(installPath, "packs"), { recursive: true });
+        build(path.join(installPath, "packs"));
+        const record = path.join(config, "plugins", "installed_plugins.json");
+        fs.mkdirSync(path.dirname(record), { recursive: true });
+        fs.writeFileSync(record, JSON.stringify({
+            version: 2,
+            plugins: { "pack-plugin@feed": [{ scope: "user", installPath, version: "0.1.0" }] },
+        }));
+        return { env: { CLAUDE_CONFIG_DIR: config }, cache: path.join(installPath, "packs") };
+    };
+
+    /** A workspace whose `tree` carries its own pack, composing one from each residence. */
+    const both = () => {
+        const repo = scratch();
+        packAt(path.join(repo, "packs"), "tools/mine", "the adopter's own pack");
+        const m = wellFormed();
+        m.packs = ["rituals/checkpoints", "tools/mine"];
+        m.tree = "../";
+        const dir = tree(path.join(repo, ".portulan"), { ...minimalFiles, "workspace.json": JSON.stringify(m) });
+        return dir;
+    };
+
+    test("the four arrangements, and only the union resolves both", async () => {
+        const host = hostCarrying((packs) => packAt(packs, "rituals/checkpoints", "from the cache"));
+        const dir = both();
+
+        // 1. No flag: the derived root only, so the cache pack is unreachable.
+        const derived = await inspect(dir, { schema: SCHEMA, ...host });
+        assert.equal(severities(checks(derived.findings, "packs"), "fail").length, 1, text(derived.findings));
+
+        // 2. `auto`: BOTH. This is the arrangement that could not exist before.
+        const union = await inspect(dir, { schema: SCHEMA, ...host, discoverPacks: true });
+        assert.equal(severities(checks(union.findings, "packs"), "fail").length, 0, text(union.findings));
+        assert.equal(union.stats.packs, 2);
+
+        // 3. The origin of EACH pack is stated — the whole contract of the union, and the reason it is
+        //    a field rather than a sentence. Asserted per pack, because one match on /root/ would be
+        //    satisfied by the plan line above them and would bind nothing.
+        const packs = text(checks(union.findings, "packs"));
+        assert.match(packs, /`rituals\/checkpoints` resolves from the discovered root/);
+        assert.match(packs, /`tools\/mine` resolves from the tree-derived root/);
+    });
+
+    test("order is load-bearing: where both roots carry the pack, the DISCOVERED copy wins", async () => {
+        // Identical fixtures on both sides would make this test unable to fail — the m6 defect where
+        // "the fixtures encoded the same assumption as the code". So the two copies differ, and the
+        // assertion is on which one was opened.
+        const host = hostCarrying((packs) => packAt(packs, "rituals/checkpoints", "from the cache"));
+        const repo = scratch();
+        packAt(path.join(repo, "packs"), "rituals/checkpoints", "from the local tree");
+        const m = wellFormed();
+        m.packs = ["rituals/checkpoints"];
+        m.tree = "../";
+        const dir = tree(path.join(repo, ".portulan"), { ...minimalFiles, "workspace.json": JSON.stringify(m) });
+
+        const union = await inspect(dir, { schema: SCHEMA, ...host, discoverPacks: true });
+        assert.equal(severities(checks(union.findings, "packs"), "fail").length, 0, text(union.findings));
+        assert.match(text(checks(union.findings, "packs")), /resolves from the discovered root/);
+        assert.doesNotMatch(text(checks(union.findings, "packs")), /resolves from the tree-derived root/);
+    });
+
+    test("origin is stated ONLY under the union — the other arrangements already said it", async () => {
+        // A negative control. If the suffix leaked onto every branch, every test above would still
+        // pass and the union would have stopped being distinguishable from the invocation.
+        const dir = both();
+        const derived = await inspect(dir, { schema: SCHEMA });
+        assert.doesNotMatch(text(checks(derived.findings, "packs")), /from the (discovered|tree-derived) root/);
+    });
+
+    test("asking for a named root and `auto` together is refused BEFORE a workspace is read", async () => {
+        // Asserting exit 2 alone did not bind: `resolutionRoots` refuses the same pair from inside
+        // `inspect`, so deleting the parse-time check left the test green through the other carrier.
+        // The property that distinguishes them is WHEN, so the workspace named here does not exist —
+        // a refusal at parse time never looks at it and exits 2, while any path that got as far as
+        // reading reports an unreadable manifest and exits 1.
+        const dir = both();
+        const absent = path.join(scratch(), "not-a-workspace");
+        assert.equal(await run(["--pack-root", "auto", "--pack-root", dir, absent], { quiet: true }), 2);
+        // The control: without the pair, the same absent workspace is a verdict rather than a refusal.
+        assert.equal(await run([absent], { quiet: true }), 1);
+    });
+
+    test("a malformed host record cannot reach an unasked run's verdict", async () => {
+        // Ground 1 of the replaced rule, at the level this level can see. It does NOT establish that
+        // nothing read the record — a read whose result is discarded is invisible from here, and a
+        // mutation proving that is what renamed this test. The never-reads property is held one layer
+        // down by a spy, in `discover.test.mjs`'s "a derived root wins unasked, and the host is never
+        // read", where a call can be counted rather than inferred.
+        const config = scratch();
+        const record = path.join(config, "plugins", "installed_plugins.json");
+        fs.mkdirSync(path.dirname(record), { recursive: true });
+        fs.writeFileSync(record, "{ not json");
+        const dir = both();
+        const derived = await inspect(dir, { schema: SCHEMA, env: { CLAUDE_CONFIG_DIR: config } });
+        assert.match(text(checks(derived.findings, "packs")), /resolution root derived/);
+        assert.doesNotMatch(text(checks(derived.findings, "packs")), /could not be read/);
+    });
+});
+
 describe("--pack-root fails closed in doctor too, not only in index", () => {
     // Copilot, round 7 on #117 — the SIBLING class, and the maintainer's ruling of 2026-07-27 names it:
     // "never ship a change that corrects one wrong claim while knowingly leaving its neighbours." The

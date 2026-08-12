@@ -44,7 +44,7 @@ import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 // Host plugin-cache discovery (#123). The record reader, the config directory and the version refusal
 // all live there, once — see that file's pack-root section for why this half arrived separately.
-import { AUTO, discoverPackRoots, resolutionRoots } from "./discover.mjs";
+import { AUTO, discoverPackRoots, namedWithAuto, resolutionRoots } from "./discover.mjs";
 
 /** Raised when `compile` cannot run, or cannot compile honestly. Always exit 2, never 1. */
 export class CompileError extends Error {
@@ -1492,7 +1492,8 @@ export const tierRank = (tier) => TIER_ORDER.indexOf(tier);
  * while an adopter installing from a feed resolves inside the installed plugin. One resolver, told
  * where to look, so the second case is the same code path rather than a parallel one discovered later.
  *
- * Returns `{ name, category, pack, dir, manifest }` with `dir` null when nothing matched.
+ * Returns `{ name, category, pack, dir, manifest, root }` with `dir` and `root` null when nothing
+ * matched. `root` is which root answered — the fact a caller states per pack once the set is a union.
  */
 export function resolvePack(rawName, roots = []) {
     // Coerced once, and the COERCED value is what every return carries. This compiler reads
@@ -1503,20 +1504,23 @@ export function resolvePack(rawName, roots = []) {
     const name = String(rawName);
     const parts = name.split("/");
     if (parts.length !== 2 || !parts[0] || !parts[1]) {
-        return { name, category: null, pack: null, dir: null, manifest: null, why: "not in `category/name` form" };
+        return { name, category: null, pack: null, dir: null, manifest: null, root: null, why: "not in `category/name` form" };
     }
     const [category, pack] = parts;
     // A name is a name, never a path: a `..` segment here would resolve a declared pack outside every
     // root it was supposed to be searched in.
     if (!SLUG.test(category) || !SLUG.test(pack)) {
-        return { name, category: null, pack: null, dir: null, manifest: null, why: "`category/name` must both be slugs" };
+        return { name, category: null, pack: null, dir: null, manifest: null, root: null, why: "`category/name` must both be slugs" };
     }
     for (const root of roots) {
         const dir = path.join(root, category, pack);
         const manifest = path.join(dir, "pack.json");
-        if (fs.existsSync(manifest)) return { name, category, pack, dir, manifest, why: null };
+        // `root` rides along because the resolution set may now be a union, and *which* root answered
+        // is the fact a caller states per pack. Deriving it afterwards by re-testing the roots would
+        // be a second implementation of this loop, and the two would drift on the first-match rule.
+        if (fs.existsSync(manifest)) return { name, category, pack, dir, manifest, root, why: null };
     }
-    return { name, category, pack, dir: null, manifest: null, why: "no pack.json under any resolution root" };
+    return { name, category, pack, dir: null, manifest: null, root: null, why: "no pack.json under any resolution root" };
 }
 
 /**
@@ -1571,8 +1575,8 @@ export function namedRootsOption(workspaceRoot, namedRoots) {
  * three, which is three more chances to diverge, so the ordering is written once in `discover.mjs`'s
  * `resolutionRoots` and **called** by each tool rather than described in three places.
  */
-export function rootPlan(workspaceDir, manifest, { named = [], discovery = null, forced = false } = {}) {
-    return resolutionRoots({ named, derived: packRoots(workspaceDir, manifest), discovery, forced });
+export function rootPlan(workspaceDir, manifest, { named = [], namedGiven = null, discovery = null, forced = false } = {}) {
+    return resolutionRoots({ named, namedGiven, derived: packRoots(workspaceDir, manifest), discovery, forced });
 }
 
 /**
@@ -1597,12 +1601,20 @@ export function packContributions(workspaceRoot, workspaceDir = ".portulan", opt
 
     // `options.packRoots` keeps its pre-discovery meaning — the FINAL root set, replacing the derived
     // one; a caller passing `[]` means the empty set and still gets it. `options.named` is the
-    // command-line shape, which takes its place in the shared precedence rule beside discovery and the
-    // derived root.
-    const plan =
-        options.packRoots !== undefined && options.packRoots !== null
-            ? { roots: [...options.packRoots], source: "named", why: "named on the command line" }
-            : rootPlan(base, manifest, { named: options.named ?? [], discovery: options.discovery ?? null, forced: options.forced ?? false });
+    // command-line shape. **Both now go through the shared rule**, `namedGiven` carrying the
+    // final-set meaning, because the literal plan this replaces was the sixth site of the defect this
+    // change is about: given `packRoots` AND `forced`, it silently ignored the discovery request, and
+    // it returned a plan with no `origins` and no `refusal` — breaking one file over the uniform shape
+    // `resolutionRoots` exists to guarantee. Found by the pre-commit checkpoint's own sibling sweep,
+    // after the same class had already been found once in `index` inside this change.
+    const givenPackRoots = options.packRoots !== undefined && options.packRoots !== null;
+    const plan = rootPlan(base, manifest, {
+        named: givenPackRoots ? [...options.packRoots] : (options.named ?? []),
+        namedGiven: givenPackRoots ? true : null,
+        discovery: options.discovery ?? null,
+        forced: options.forced ?? false,
+    });
+    if (plan.refusal) throw new CompileError(plan.refusal);
     const roots = plan.roots;
     const contributions = [];
     const unresolved = [];
@@ -1951,13 +1963,19 @@ export function run(argv, options = {}) {
         // is validated by exactly the code that validates a hand-written rule.
         // The thunk means the host's plugin record is read only on a path where it can win — which is
         // what keeps `compile --check`, a required check that names no root, independent of host state.
+        const bothAsked = namedWithAuto(namedRoots, forced);
+        if (bothAsked) throw new CompileError(bothAsked);
         const { contributions, unresolved, plan } = packContributions(workspaceRoot, workspaceDir, {
             named: namedRoots,
             discovery: () => discoverPackRoots(),
             forced,
         });
-        // Under `--matrix` only: this line moves with what is installed, and `--check` byte-compares.
-        if (plan && showMatrix) say(`packs: resolution root ${plan.source} — ${plan.why}`);
+        // Under `--matrix` only, EXCEPT when the set is a union: that line moves with what is
+        // installed, which is why it is normally withheld from a byte-compared run — but a union is the
+        // one arrangement where a tree-derived root joined the search without anyone naming it, and the
+        // whole contract of the union is that this is never silent. `--check` cannot reach it: it names
+        // no root and passes no `auto`, so `forced` is false and the plan is never a union there.
+        if (plan && (showMatrix || plan.source === "union")) say(`packs: resolution root ${plan.source} — ${plan.why}`);
         const composed = composeFragments(policy, contributions);
         const parsed = parse(composed.policy);
         const source = path.relative(workspaceRoot, policyFile).split(path.sep).join("/");

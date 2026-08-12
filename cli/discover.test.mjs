@@ -587,11 +587,36 @@ test("a record that could not be looked at is `ok: false`, never an empty discov
 });
 
 test("precedence: named wins, and the named branch never consults discovery", () => {
+    // This case used to pass `forced: true` alongside the named root, which is the combination the
+    // 2026-08-12 change REFUSES. The property it exists for — a named root is never silently
+    // overridden, and nothing consults the host to decide that — is unchanged, so the case keeps its
+    // assertions and drops the arrangement that is now an error in its own right.
     let called = 0;
-    const got = resolutionRoots({ named: ["/named"], derived: ["/derived"], discovery: () => (called += 1, { ok: true, roots: ["/discovered"] }), forced: true });
+    const got = resolutionRoots({ named: ["/named"], derived: ["/derived"], discovery: () => (called += 1, { ok: true, roots: ["/discovered"] }) });
     assert.deepEqual(got.roots, ["/named"]);
     assert.equal(got.source, "named");
+    assert.equal(got.refusal, null);
     assert.equal(called, 0, "a named root is never silently overridden, so there is nothing to override it with");
+});
+
+test("asking for a named root AND `auto` is refused, and the roots are empty so a caller fails closed", () => {
+    // The refusal exists because the alternative was a SILENT drop, and this change's whole claim is
+    // "never silently". Roots are empty rather than one of the two sets, so a caller that ignores
+    // `refusal` resolves nothing instead of resolving against half of what it asked for.
+    let called = 0;
+    const got = resolutionRoots({ named: ["/named"], derived: ["/derived"], discovery: () => (called += 1, { ok: true, roots: ["/discovered"] }), forced: true });
+    assert.deepEqual(got.roots, []);
+    assert.match(got.refusal, /never both/);
+    assert.equal(called, 0, "a refused combination must not read the host on its way to refusing");
+});
+
+test("an explicitly EMPTY named set means search nowhere, and is not a fall-through to derived", () => {
+    // `packRoots: []` is an API caller saying *search nowhere*; `named.length` alone cannot tell that
+    // from *no roots were named*. Two tools disagreed about this once, which is why `namedGiven` is a
+    // parameter rather than an inference.
+    const got = resolutionRoots({ named: [], namedGiven: true, derived: ["/derived"] });
+    assert.deepEqual(got.roots, []);
+    assert.equal(got.source, "named");
 });
 
 test("precedence: a derived root wins unasked, and the host is never read", () => {
@@ -615,17 +640,45 @@ test("discovery is NEVER consulted unless asked — not even where nothing is de
     assert.match(got.why, /discovery was not asked for/);
 });
 
-test("`--pack-root auto` finding NOTHING yields the empty set, never the derived root", () => {
-    // #117's substitution, in one assertion. A named root REPLACES the derived one so that "the pack
-    // resolved from the feed" cannot be met by a copy in the local tree; if `auto` on a host without
-    // the plugin fell back to derived, the compile would go green from exactly that copy.
+test("`--pack-root auto` UNIONS with the derived root, discovered first", () => {
+    // Replaces the case that pinned the opposite — "auto finding NOTHING yields the empty set, never
+    // the derived root" — which was the rule until 2026-08-12. What changed it: the workspace `init`
+    // drafts by default, plus one pack of the adopter's own, had NO green invocation that did not name
+    // a host cache path by hand. Order is asserted, not membership: `resolvePack` is first-match-wins,
+    // so discovered-first is what keeps every result the old `auto` gave as a subset of this one.
+    const got = resolutionRoots({ named: [], derived: ["/derived"], discovery: { ok: true, roots: ["/discovered"] }, forced: true });
+    assert.deepEqual(got.roots, ["/discovered", "/derived"]);
+    assert.equal(got.source, "union");
+    assert.deepEqual(got.origins, [
+        { root: "/discovered", origin: "discovered" },
+        { root: "/derived", origin: "derived" },
+    ]);
+});
+
+test("`auto` finding nothing still searches the derived root, and says both counts", () => {
+    // The half of the replaced rule that reversed outright. Under it this returned the empty set on
+    // #117's ground; that ground now rests on the NAMED branch, which is untouched.
     const got = resolutionRoots({ named: [], derived: ["/derived"], discovery: { ok: true, roots: [] }, forced: true });
-    assert.deepEqual(got.roots, []);
-    assert.equal(got.source, "discovered");
-    assert.match(got.why, /empty rather than falling back/);
+    assert.deepEqual(got.roots, ["/derived"]);
+    assert.equal(got.source, "union");
+    assert.match(got.why, /0 root\(s\)/);
+    assert.deepEqual(got.origins, [{ root: "/derived", origin: "derived" }]);
+});
+
+test("origin is stated on every branch, so a caller need not know which one produced the plan", () => {
+    // A negative control on the union: the other branches must carry `origins` too, or a consumer
+    // starts asking `source` before it dares read the field, which is the case analysis this shape
+    // exists to remove.
+    assert.deepEqual(resolutionRoots({ named: ["/n"] }).origins, [{ root: "/n", origin: "named" }]);
+    assert.deepEqual(resolutionRoots({ derived: ["/d"] }).origins, [{ root: "/d", origin: "derived" }]);
+    assert.deepEqual(resolutionRoots({}).origins, []);
 });
 
 test("forced discovery that could not RUN is `none`, and carries the reason", () => {
+    // Load-bearing in a way it was not before the union: *could not look* must not quietly become a
+    // derived-only green. The union is over what discovery FOUND, and a discovery that could not look
+    // found nothing to union with — so this branch returns the empty set while the one above it, where
+    // discovery ran and found nothing, returns the derived root.
     const got = resolutionRoots({ named: [], derived: ["/derived"], discovery: { ok: false, roots: [], why: "could not read the record" }, forced: true });
     assert.deepEqual(got.roots, []);
     assert.equal(got.source, "none");

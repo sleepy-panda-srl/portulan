@@ -43,7 +43,11 @@
 import { test, describe } from "node:test";
 import assert from "node:assert/strict";
 
-import { recipeSet, composedId, RECIPE_SET_READERS } from "./recipe-set.mjs";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
+
+import { recipeSet, composedId, resolverFor, RECIPE_SET_READERS } from "./recipe-set.mjs";
 
 /** A workspace manifest with `n` plain recipes, enough to be legal and no more. */
 function workspace(recipes, extra = {}) {
@@ -342,4 +346,25 @@ describe("the roster — every reader of the recipe set reaches this carrier", (
             "cli/vendor.mjs",
         ]);
     });
+});
+
+test("`resolverFor` can actually reach discovery — `forced` rides beside `discovery`", () => {
+    // It accepted `discovery` and passed it to `rootPlan` without `forced`, and `resolutionRoots`
+    // consults `discovery` only under `forced`. So the parameter looked wired and no caller could
+    // ever have reached it: dead plumbing wearing a capability's name.
+    const root = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), "recipe-set-forced-"));
+    const packDir = path.join(root, "tools", "thing");
+    fs.mkdirSync(packDir, { recursive: true });
+    fs.writeFileSync(
+        path.join(packDir, "pack.json"),
+        JSON.stringify({ portulan: { pack: "1.0", version: "0.1.0" }, name: "thing", category: "tools", summary: "x", doc: "README.md", contributes: {} }),
+    );
+    const manifest = { portulan: { spec: "2.8" }, name: "w", kind: "demo", packs: ["tools/thing"] };
+    const discovery = { ok: true, roots: [root] };
+
+    const unforced = resolverFor({ workspaceDir: root, manifest, discovery });
+    assert.equal(unforced("tools/thing"), null, "without `forced`, discovery is never consulted");
+
+    const forced = resolverFor({ workspaceDir: root, manifest, discovery, forced: true });
+    assert.notEqual(forced("tools/thing"), null, "with `forced`, the discovered root answers");
 });

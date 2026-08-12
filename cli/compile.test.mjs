@@ -2031,3 +2031,81 @@ describe("a workspace named directly, in either residence", () => {
         assert.deepEqual(resolveWorkspace(scratch()).workspaceDir, ".portulan");
     });
 });
+
+// -------------------------------------- `auto` beside a named root: refused, not half-honoured
+
+test("compile refuses a named root combined with `--pack-root auto`", () => {
+    // One of five carriers the pre-commit checkpoint could delete without the suite noticing. The
+    // refusal exists because the alternative was a SILENT drop, and a change justified by *never
+    // silently* cannot ship beside one.
+    //
+    // The fixture is a workspace compile can actually compile, and the CONTROL below is what makes
+    // this bind: an earlier version used an incompletable workspace, so it exited 2 whether or not the
+    // refusal fired. Two carriers can produce this 2 — the parse-time check and `packContributions` —
+    // so the control pins that the same fixture is 0 without the pair.
+    const dir = workspace();
+    assert.equal(run(["--workspace", path.join(dir, ".portulan")], { quiet: true }), 0, "the control: this workspace compiles");
+    assert.equal(run(["--workspace", path.join(dir, ".portulan"), "--pack-root", "auto", "--pack-root", dir], { quiet: true }), 2);
+});
+
+test("`packContributions` refuses `packRoots` beside `forced`, and returns the uniform plan shape", () => {
+    // The sixth site, found by the pre-commit checkpoint's sibling sweep. It kept a literal plan
+    // object — `{roots, source, why}` — which silently ignored a discovery request and carried neither
+    // `origins` nor `refusal`, breaking one file over the uniform shape `resolutionRoots` guarantees.
+    // Asserted HERE rather than through `run`, because `run` refuses at parse time and would answer
+    // for this function; a test that cannot tell the two apart pins neither.
+    const dir = scratch();
+    fs.mkdirSync(path.join(dir, ".portulan"), { recursive: true });
+    const manifest = { portulan: { spec: "2.8" }, name: "w", kind: "repository", tree: "../", packs: ["tools/thing"] };
+    fs.writeFileSync(path.join(dir, ".portulan", "workspace.json"), JSON.stringify(manifest));
+
+    assert.throws(
+        () => packContributions(dir, ".portulan", { packRoots: [dir], forced: true, discovery: { ok: true, roots: [dir] } }),
+        /never both/,
+    );
+
+    // And the shape a caller may rely on, on the branch that does answer.
+    const { plan } = packContributions(dir, ".portulan", { packRoots: [dir] });
+    assert.equal(plan.source, "named");
+    assert.deepEqual(plan.origins, [{ root: dir, origin: "named" }]);
+    assert.equal(plan.refusal, null);
+});
+
+test("compile prints the union plan line even without `--matrix`", () => {
+    // Normally that line is withheld from a byte-compared run because it moves with what is installed.
+    // A union is the one arrangement where a tree-derived root joined the search unnamed, and the
+    // union's whole contract is that this is never silent — so the line is not optional there.
+    // `--check` cannot reach it: it names no root and passes no `auto`.
+    const home = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), "compile-union-host-"));
+    const installPath = path.join(home, "plugins", "cache", "feed", "carrier", "0.1.0");
+    fs.mkdirSync(path.join(installPath, "packs"), { recursive: true });
+    const record = path.join(home, "plugins", "installed_plugins.json");
+    fs.mkdirSync(path.dirname(record), { recursive: true });
+    fs.writeFileSync(record, JSON.stringify({ version: 2, plugins: { "carrier@feed": [{ scope: "user", installPath, version: "0.1.0" }] } }));
+
+    const dir = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), "compile-union-ws-"));
+    fs.mkdirSync(path.join(dir, ".portulan"), { recursive: true });
+    fs.writeFileSync(
+        path.join(dir, ".portulan", "workspace.json"),
+        JSON.stringify({ portulan: { spec: "2.8" }, name: "w", kind: "repository", tree: "../", packs: ["rituals/checkpoints"], gates: "gates.json" }),
+    );
+    fs.writeFileSync(
+        path.join(dir, ".portulan", "gates.json"),
+        JSON.stringify({ portulan: { "gate-policy": "2.2" }, tiers: { auto: [], propose: [], gated: [] } }),
+    );
+
+    // `run` writes to stdout directly rather than through an injected sink, so the sink is stdout.
+    const said = [];
+    const write = process.stdout.write.bind(process.stdout);
+    const before = process.env.CLAUDE_CONFIG_DIR;
+    process.env.CLAUDE_CONFIG_DIR = home;
+    process.stdout.write = (chunk) => (said.push(String(chunk)), true);
+    try {
+        run(["--workspace", path.join(dir, ".portulan"), "--pack-root", "auto"]);
+    } finally {
+        process.stdout.write = write;
+        if (before === undefined) delete process.env.CLAUDE_CONFIG_DIR;
+        else process.env.CLAUDE_CONFIG_DIR = before;
+    }
+    assert.match(said.join(""), /resolution root union/);
+});

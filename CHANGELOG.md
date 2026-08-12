@@ -40,6 +40,46 @@ The Session log in [`docs/plan.md`](docs/plan.md) is the fuller record — it is
 records how things were found. This is per *release* and records what a reader gets.
 
 ## Unreleased
+### Changed
+
+- **`--pack-root auto` now searches the discovered roots *and* the `tree`-derived one, discovered
+  first.** It replaced the derived root before. The change is a measurement rather than a preference:
+  a workspace composing a cache-installed pack **and** a pack of its own — which is what `portulan
+  init` drafts by default the moment an adopter adds one — had **no green `doctor` invocation** that
+  did not require typing the host plugin-cache path by hand. All four arrangements were measured; only
+  the one naming both roots went green, and one of those two is a path nobody should have to know.
+
+  **A named root is unaffected and still wins outright**, so the property milestone 6 demonstrated —
+  *this pack resolved from the feed*, unsatisfiable by a copy lying in the local tree — holds wherever
+  a root is named. What the union trades is the weaker version of that guarantee, which `auto` alone
+  used to imply. It is bought back in the form the original constraint asked for, which objected to
+  roots being added **silently**: under the union, **every pack's resolution states which root
+  answered and whether it was discovered or tree-derived**, as a field rather than a sentence.
+  So `auto` no longer implies provenance, and a green under it certifies resolution rather than
+  origin. What bounds a pack's content is unchanged and is the feed pin.
+
+  **The unasked path is untouched by construction** — the union lives inside the branch `auto`
+  triggers — so no required verify recipe begins reading the host's plugin record.
+
+  **Asking for a named root and `auto` together is now refused (exit 2) in all five tools that take
+  the flag.** They silently dropped the `auto` before, which is the behaviour this change is about,
+  one layer up.
+
+### Fixed
+
+- **`skills-set --pack-root auto` was silently inert, and read the host to be so.** It passed a
+  discovery result without asking for discovery, so the answer was computed and discarded and
+  resolution fell back to the derived root with nothing said. The eager call also defeated the thunk
+  that keeps unasked paths off the host's plugin record.
+- **`init`'s closing advice contradicted a check `init` had already run.** After drafting a workspace
+  that composes a checkpoints pack it said *"nothing resolves a pack for you … validation is RED until
+  you name where it lives"* — unconditionally, including when `--pack-root` had just resolved the pack
+  and `init` had verified it. It now prints the invocation that works, and offers `auto` rather than
+  only `<dir>` where no root was named. Stale since discovery landed; found by running `init` on a
+  never-seen repository rather than by reading it.
+- **`resolverFor`'s `discovery` parameter could never be consulted** — `recipe-set` accepted it and
+  passed it on without the flag that reaches it, so the pair looked wired and was not.
+
 ### Added
 
 - **`portulan upgrade` — the eighth subcommand, and the migration mechanics under it.** All eight names
@@ -127,11 +167,17 @@ every invocation. It reads **both** shapes a plugin ships in: packs under `packs
 a repository checkout, and categories at the install root for a flat one, which is what this project's
 own private feed actually ships. On `compile`, `doctor`, `index`, `init` and `vendor`.
 
-Four limits, each a place this could read as more than it is. **Precedence, never union — named >
-discovered > derived:** a root you name is never overridden, and a discovered one *replaces* the
-`tree`-derived root rather than being searched beside it, so *"this pack resolved from the feed"* still
-cannot be satisfied by a copy lying in the local tree. **`auto` finding nothing yields the empty set**,
-not the derived root. **Discovery runs only when asked**, so `--pack-root` is not literally optional —
+Four limits, each a place this could read as more than it is. **Two of them were superseded before this
+release was cut — see *Changed* above, and read that entry rather than the next two sentences.** They
+are left standing because an `Unreleased` block is a ledger of what landed, and an entry rewritten to
+match a later one destroys the record of what the first change actually shipped. **Precedence, never
+union — named > discovered > derived:** a root you name is never overridden, and a discovered one
+*replaces* the `tree`-derived root rather than being searched beside it, so *"this pack resolved from
+the feed"* still cannot be satisfied by a copy lying in the local tree. **`auto` finding nothing yields
+the empty set**, not the derived root. _(Both sentences are the state as of 2026-08-09. Since
+2026-08-12 asked-for discovery is **unioned** with the derived root and `auto` alone no longer implies
+provenance; the **named**-root half of the first sentence is the part that still holds.)_ **Discovery
+runs only when asked**, so `--pack-root` is not literally optional —
 what stops being necessary is knowing the path; that is narrower than the milestone row's wording and
 deliberate, because an unasked-for discovered root would make `.portulan/verify/doctor.sh` read
 `~/.claude` on every run and answer differently per machine. And **`--repo-root` stays named-only**: a

@@ -79,7 +79,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 
 // Host plugin-cache discovery (#123). `init` composes a checkpoints pack by default — row 7 clause (a)
 // — so it is the tool that most needed a root it did not have to be told.
-import { AUTO, discoverPackRoots } from "./discover.mjs";
+import { AUTO, discoverPackRoots, namedWithAuto } from "./discover.mjs";
 
 // The handoff index is GENERATED, and this is the generator — the same one `index --check` compares
 // against. Imported rather than approximated: a draft that wrote its own version of this file would be
@@ -1128,19 +1128,35 @@ function packResolves(roots, packId) {
  * a persisted answer naming a machine-specific cache path is exactly what an answers file exists to
  * avoid, and `auto` replays correctly on another machine while a path does not.
  *
- * **Named roots win outright and are never UNIONED with a discovered one** — the first version of this
- * appended discovered roots beside named ones, which made `init` the only tool of five with union
- * semantics: the divergence `../cli/compile.mjs`'s `namedRootsOption` records, re-committed inside the
- * change that cites it. Returns `{ roots, why }`; `why` is non-null only when discovery **could not
- * run**, which a caller must be able to tell from *ran and found nothing*.
+ * **Two unions, and only one of them is law — do not collapse them.**
+ *
+ * - **Named ∪ discovered is still REFUSED.** The first version of this appended discovered roots
+ *   beside named ones, which made `init` the only tool of five with union semantics: the divergence
+ *   `../cli/compile.mjs`'s `namedRootsOption` records, re-committed inside the change that cites it.
+ *   Since 2026-08-12 asking for both is a refusal rather than a silent drop, which is stricter than
+ *   what that incident produced and in the same direction.
+ * - **Discovered ∪ derived IS law**, as of the same date, in `discover.mjs`'s `resolutionRoots`. A
+ *   later reader must not "fix" this arm by citing the incident above: that incident is about the
+ *   first pair, and this arm implements the second.
+ *
+ * The derived root here is the one the workspace **being drafted** would have — `<target>/packs` —
+ * because this check exists to predict the `doctor` run that follows the draft. Mirroring the shared
+ * rule is what stops `init` refusing a composition that `doctor --pack-root auto` then resolves
+ * happily: a false red against the very tool it is predicting.
+ *
+ * Returns `{ roots, why, refusal }`; `why` is non-null only when discovery **could not run**, which a
+ * caller must be able to tell from *ran and found nothing*.
  */
-function expandRoots(roots) {
+function expandRoots(roots, target) {
     const named = roots.filter((root) => root !== AUTO);
-    if (named.length) return { roots: named, why: null };
-    if (!roots.includes(AUTO)) return { roots: [], why: null };
+    const forced = roots.includes(AUTO);
+    const refusal = namedWithAuto(named, forced);
+    if (refusal) return { roots: [], why: null, refusal };
+    if (named.length) return { roots: named, why: null, refusal: null };
+    if (!forced) return { roots: [], why: null, refusal: null };
     const found = discoverPackRoots();
-    if (!found.ok) return { roots: [], why: found.why };
-    return { roots: found.roots, why: null };
+    if (!found.ok) return { roots: [], why: found.why, refusal: null };
+    return { roots: [...found.roots, path.join(target, "packs")], why: null, refusal: null };
 }
 
 /**
@@ -1503,7 +1519,8 @@ export async function run(argv, options = {}) {
         refuseIfGoverned(residenceAt(target), parsed.target);
 
         if (answers.residence === "in-repo" && answers.cycle && answers.packRoots.length) {
-            const expanded = expandRoots(answers.packRoots);
+            const expanded = expandRoots(answers.packRoots, target);
+            if (expanded.refusal) throw new InitError(expanded.refusal);
             if (expanded.why) {
                 throw new InitError(
                     `\`--pack-root auto\` could not read this host's plugin record, so whether \`${answers.checkpoints}\` ` +
@@ -1572,12 +1589,26 @@ export async function run(argv, options = {}) {
                 // Said at the surface rather than only in a file, because the alternative is that the
                 // adopter's very next command is `doctor`, it is RED on a pack nothing can find, and
                 // the tool that put it there said nothing about it.
-                say(
-                    `init: this workspace composes \`${answers.checkpoints}\` and nothing resolves a pack for you, so ` +
-                        `validation is RED until you name where it lives:`,
-                );
-                say(`init:   doctor --pack-root <dir> ${path.join(parsed.target, ".portulan")}`);
-                say("init: or re-draft with --no-cycle and compose it once you know.");
+                //
+                // **It used to say that unconditionally**, in the words "nothing resolves a pack for
+                // you … name where it lives" — which stopped being true when `--pack-root auto`
+                // landed at milestone 7 session 4, and read as advice to go and find a cache path by
+                // hand immediately after `auto` had found one. Worse than merely stale: this tool has
+                // ALREADY checked resolvability above, so it knew. Found by running `init` on a real
+                // never-seen repository for D1, which is the half of this class no reading catches.
+                const workspaceArg = path.join(parsed.target, ".portulan");
+                if (answers.packRoots.length) {
+                    const rootArgs = answers.packRoots.map((r) => `--pack-root ${r}`).join(" ");
+                    say(`init: this workspace composes \`${answers.checkpoints}\`, and it resolved — validate with:`);
+                    say(`init:   doctor ${rootArgs} ${workspaceArg}`);
+                } else {
+                    say(
+                        `init: this workspace composes \`${answers.checkpoints}\` and no root was named, so ` +
+                            `validation is RED until you say where to look:`,
+                    );
+                    say(`init:   doctor --pack-root auto ${workspaceArg}     (or --pack-root <dir>)`);
+                    say("init: or re-draft with --no-cycle and compose it once you know.");
+                }
             }
         }
         return 0;
