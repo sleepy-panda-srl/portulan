@@ -2,9 +2,10 @@
 
 > Generated from `handoffs/` by `node cli/index.mjs`. Do not edit by hand: it is regenerated
 > and byte-compared, so a hand-edit survives exactly until the next run.
-> 92 handoff(s), newest first. No budget: the series is append-only, so
+> 93 handoff(s), newest first. No budget: the series is append-only, so
 > the only remedy a budget could ask for is one this project rules out.
 
+- 2026-08-12 · [Handoff — the path that worked because someone typed it](handoffs/2026-08-12-the-path-that-worked-because-someone-typed-it.md)
 - 2026-08-11 · [Handoff — the check that read a file the pack chose, and the dimension that could not vary](handoffs/2026-08-11-the-check-that-read-a-file-the-pack-chose.md)
 - 2026-08-10 · [Handoff — the rail moves to the record, and the record was two facts](handoffs/2026-08-10-the-rail-moves-to-the-record.md)
 - 2026-08-10 · [Handoff — the preview is the payload, and the cycle the suite could not see](handoffs/2026-08-10-the-preview-is-the-payload-and-the-cycle-the-suite-could-not-see.md)
