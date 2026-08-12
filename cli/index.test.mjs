@@ -1606,3 +1606,11 @@ describe("a symlink cannot get a pack past either containment guard", () => {
         assert.equal(failures(inspect(dir, { write: true })).filter((f) => f.series === "scopes").length, 0);
     });
 });
+
+test("index refuses a named root combined with `--pack-root auto`", () => {
+    const dir = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), "index-bothroots-"));
+    fs.writeFileSync(path.join(dir, "workspace.json"), JSON.stringify({ portulan: { spec: "2.8" }, name: "w", kind: "demo" }));
+    const said = [];
+    assert.equal(run(["--pack-root", "auto", "--pack-root", dir, dir], (line) => said.push(line)), 2, said.join("\n"));
+    assert.match(said.join("\n"), /never both/);
+});

@@ -16,14 +16,19 @@
 // path and nothing anywhere resolved `governed_by`. The pointer kind landed at Workspace Definition
 // 2.7 with proposal `0017` and named the governing workspace; nothing dereferenced the name.
 //
-// **`--pack-root` is NOT wired to this file**, and that is a boundary rather than an oversight.
-// Making a named root optional where discovery finds one is
-// [#123](https://github.com/sleepy-panda-works/portulan/issues/123)'s half of the same amendment; it
-// changes what `compile`, `doctor` and `index` already do with `packs`, and #117 established a
-// property that a careless wiring would end — **a named root REPLACES the `tree`-derived one**, so
-// *"this pack resolved from the feed"* cannot be satisfied by a copy lying in the local tree. The
-// row states the direction discovery must take when that lands: it **adds a root only where none was
-// named**, and never replaces one that was. Nothing here adds a root at all.
+// **`--pack-root` IS wired to this file**, and this paragraph said the opposite until 2026-08-12. It
+// read *"`--pack-root` is NOT wired to this file … nothing here adds a root at all"*, which was true
+// when written and stopped being true at milestone 7 session 4, when
+// [#123](https://github.com/sleepy-panda-works/portulan/issues/123)'s half landed `resolutionRoots`
+// here — a stale sentence that survived a session because the change that falsified it added a
+// function below rather than editing the header above it. Corrected in the same stroke as the union,
+// whose whole subject is a rule with more carriers than its author remembered.
+//
+// #117's property is the one to keep hold of while reading the rest: **a NAMED root replaces the
+// `tree`-derived one**, so *"this pack resolved from the feed"* cannot be satisfied by a copy lying in
+// the local tree. That half is untouched. The row states the direction discovery takes: it **adds a
+// root only where none was named**, and never replaces one that was — and since 2026-08-12 the
+// implementation takes that verb literally, which is what `resolutionRoots`' own docblock argues.
 //
 // ## Four states, because three of them are not "no"
 //
@@ -621,78 +626,163 @@ export function discoverPackRoots(options = {}) {
 }
 
 /**
+ * The one sentence every tool prints when a caller asks for both a named root and `auto`.
+ *
+ * A constant because five commands reach this refusal and five spellings of it is how one of them ends
+ * up wording it as a warning — which is the silent drop it replaces, wearing a different coat.
+ */
+export const NAMED_WITH_AUTO =
+    "name roots or ask for `auto`, never both: `--pack-root auto` cannot be combined with a named root";
+
+/**
+ * The refusal's CONDITION, exported so an argument parser and the resolver share one, not two.
+ *
+ * Each command must refuse at parse time — that is where an exit 2 belongs, before a workspace is
+ * read — while `resolutionRoots` must refuse for API callers that never parsed anything. Two places
+ * have to ask, so the thing they ask is a function rather than a repeated `&&`.
+ *
+ * Returns the sentence to print, or `null` when the combination was not asked for.
+ */
+export function namedWithAuto(named = [], forced = false) {
+    return named.length > 0 && forced ? NAMED_WITH_AUTO : null;
+}
+
+/**
  * Apply the precedence rule to the sources of a pack-resolution root.
  *
- * ## Precedence, never union
+ * ## A named root wins outright; asked-for discovery ADDS
  *
  * Two ratified texts describe this and use the verb "add" for different objects, which reads as a
  * contradiction until the objects are named:
  *
  * - **The row** (`docs/plan.md` row 7): *"an explicitly named root is never silently overridden —
  *   discovery adds a root only where none was named"*. The object is a **named** root; discovery
- *   loses to `--pack-root`.
+ *   loses to `--pack-root`, and that half has never moved.
  * - **#123's closing constraint:** *"Discovery that silently adds roots would reintroduce exactly the
- *   substitution the pre-commit checkpoint caught."* The object is the **`tree`-derived** root, which
- *   whatever is in force must REPLACE rather than be searched beside — a union lets a copy lying in
- *   the local tree satisfy *"this pack resolved from the feed"*.
+ *   substitution the pre-commit checkpoint caught."* The object is the **`tree`-derived** root, and
+ *   the operative word in it is **silently**.
  *
- * Both hold under one rule, strict precedence with no union at any step: **named > discovered >
- * derived**.
+ * **The rule is: named > (discovered ∪ derived), discovered first.** It was *named > discovered >
+ * derived, never union* until 2026-08-12, and what changed it was a measurement rather than a
+ * preference — see below. The order inside the union is load-bearing and not cosmetic:
+ * `resolvePack` is first-match-wins, so where both carry a pack the **discovered** copy wins, which
+ * keeps every result the old `auto` produced as a subset of this one and keeps the pin meaningful.
  *
- * ## Discovery runs only when ASKED, and that is narrower than the row reads
+ * ## What forced the change: the ordinary workspace could not go green
  *
- * `--pack-root auto` is the whole trigger. An earlier draft also gave a discovered root, unasked, to a
- * workspace deriving none — the most natural reading of *"optional where discovery finds a root"*. A
- * pre-commit checkpoint priced it: `examples/workspace.json` declares packs and no `tree`, and
- * `.portulan/verify/doctor.sh` grades `examples`, so that branch made a **required recipe** read
- * `~/.claude` on every run — and `doctor` FAILS an unresolved pack where a root exists while merely
- * NOTING it where none does. The recipe's verdict would have moved with whatever happened to be
- * installed: red locally, green in CI.
+ * A workspace composing a cache-installed pack **and** one of its own — which is what `init` produces
+ * by default the moment an adopter adds a pack, since it composes `rituals/checkpoints` — had **no
+ * green invocation** that did not require typing the host plugin-cache path by hand. Measured
+ * 2026-08-12 across all four arrangements: no flag reds on the cache pack, `auto` reds on the
+ * adopter's own, `auto` plus a named root reds on the cache pack because named replaces both, and
+ * only two named roots — one of them a cache path nobody should have to know — went green. That
+ * falsified this docblock's own claim that the narrowing survived *"where it matters — nobody has to
+ * know the cache path"*. For that shape, somebody had to.
  *
- * So what the clause buys survives where it matters — nobody has to know the cache path — but
- * `--pack-root` is not thereby literally *optional*, and calling it that would be an overclaim.
- * Recorded as a narrowing and flagged for the maintainer; the broader default is one branch here.
+ * ## What the union costs, said plainly because the first framing of it did not
+ *
+ * The replaced rule had **two** grounds and only the first was surfaced when the change was proposed.
+ *
+ * 1. **The unasked path must not read the host.** An earlier draft gave a discovered root, unasked, to
+ *    a workspace deriving none. A pre-commit checkpoint priced it: `examples/workspace.json` declares
+ *    packs and no `tree`, and `.portulan/verify/doctor.sh` grades `examples`, so that branch made a
+ *    **required recipe** read `~/.claude` on every run — red locally, green in CI. **Untouched here by
+ *    construction:** the union lives inside the `forced` branch, so nothing changes when nobody asks.
+ * 2. **A structural provenance guarantee, now traded.** Under the old rule the resolution set held no
+ *    tree-derived root under `auto`, so *"this pack resolved from the feed"* was a property of the
+ *    set's composition — knowable from the invocation alone. Under the union it becomes a **statement
+ *    per pack**, which is detection where there was prevention, and this repository has measured that
+ *    nobody reads a passing validator's output. The trade was put to the maintainer and ruled: union,
+ *    **but never silently** — which is #123's own word, and the reason `origins` below is a field
+ *    rather than a sentence. A provenance a caller can only grep out of prose is checkable against
+ *    sentences this same change wrote.
+ *
+ * **What may be claimed after the trade:** under `--pack-root auto` no path needs typing; every pack's
+ * resolution names the root it used and whether that root was discovered or derived; a local-tree
+ * resolution is visible rather than silent. **What may NOT:** that `auto` resolves only from a feed —
+ * it no longer does — or that a green under `auto` certifies provenance. The green certifies
+ * resolution. What bounds a pack's *content* is unchanged and is the pin, never this function. The
+ * narrower property #117 demonstrated also stands verbatim: a **named** root still replaces the
+ * derived one, so a resolved-from-a-feed demonstration given a named root cannot be satisfied by a
+ * local copy.
+ *
+ * ## Asking for both is refused, not reconciled
+ *
+ * `--pack-root auto --pack-root ./packs` used to drop the `auto` without a word. A rule whose whole
+ * justification is *never silently* cannot ship beside a branch that silently discards an explicit
+ * request, so the combination is a **refusal** — `refusal` is set, and the roots are empty so a caller
+ * that forgets to check fails closed rather than resolving against half of what was asked for.
  *
  * `discovery` may be a THUNK, and every branch that cannot use it must not call it: that is what keeps
  * `compile --check` — a required check that names no root — independent of host state.
  */
-export function resolutionRoots({ named = [], derived = [], discovery = null, forced = false } = {}) {
+export function resolutionRoots({ named = [], namedGiven = null, derived = [], discovery = null, forced = false } = {}) {
     let cached;
     const resolveDiscovery = () => {
         if (cached === undefined) cached = typeof discovery === "function" ? discovery() : discovery;
         return cached;
     };
+    // `namedGiven` separates *a caller named roots* from *the list is non-empty*, because an
+    // explicitly EMPTY named set means **search nowhere** for API callers and must not fall through to
+    // the derived root. Three tools disagreed about that once; keeping the distinction here rather
+    // than in each of them is what stops a fourth from inventing a fifth answer.
+    const givenNamed = namedGiven ?? named.length > 0;
+    // Every branch returns the same shape, `origins` included: a caller joining a resolved pack to its
+    // root must not have to know which branch produced the plan.
+    const tag = (roots, origin) => roots.map((root) => ({ root, origin }));
+    const plan = (roots, source, why, origins = null, refusal = null) => ({
+        roots,
+        source,
+        why,
+        origins: origins ?? tag(roots, source),
+        refusal,
+    });
 
-    if (named.length) {
+    const refusal = namedWithAuto(givenNamed ? (named.length ? named : ["<empty named set>"]) : [], forced);
+    if (refusal) {
+        return plan(
+            [],
+            "none",
+            "both an explicit root and `auto` were given — discovery adds a root only where none was named, so this asks for two different resolution sets",
+            [],
+            refusal,
+        );
+    }
+    if (givenNamed) {
         // Deliberately does not consult discovery: the row's guarantee is that a named root is never
         // silently overridden, and the cheapest way to keep that true is to have nothing to override
         // it with on this branch.
-        return { roots: [...named], source: "named", why: "named on the command line" };
+        return plan(
+            [...named],
+            "named",
+            named.length ? "named on the command line" : "named on the command line as an empty set — search nowhere",
+        );
     }
     if (forced) {
         const found = resolveDiscovery();
-        if (!found) return { roots: [], source: "none", why: "discovery was requested and did not run" };
-        if (!found.ok) return { roots: [], source: "none", why: found.why };
-        return {
-            roots: [...found.roots],
-            source: "discovered",
-            why: found.roots.length
-                ? `discovered in the host plugin cache (${found.roots.length} root(s))`
-                : "discovery ran and found no installed plugin carrying packs — the resolution set is empty rather than falling back to the tree-derived root, so a pack cannot resolve from a local copy here",
-        };
+        if (!found) return plan([], "none", "discovery was requested and did not run");
+        // Could-not-look must never quietly become a derived-only green: the union is over what
+        // discovery FOUND, and a discovery that could not look found nothing to union with.
+        if (!found.ok) return plan([], "none", found.why);
+        return plan(
+            [...found.roots, ...derived],
+            "union",
+            `discovered in the host plugin cache (${found.roots.length} root(s)) and derived from the manifest's \`tree\` (${derived.length} root(s)) — each pack's resolution states which of the two it came from`,
+            [...tag(found.roots, "discovered"), ...tag(derived, "derived")],
+        );
     }
     if (derived.length) {
-        return {
-            roots: [...derived],
-            source: "derived",
-            why: "derived from the workspace manifest's `tree` — pass `--pack-root auto` to resolve from the host plugin cache instead",
-        };
+        return plan(
+            [...derived],
+            "derived",
+            "derived from the workspace manifest's `tree` — pass `--pack-root auto` to search the host plugin cache as well",
+        );
     }
-    return {
-        roots: [],
-        source: "none",
-        why: "no root was named and none is derivable from the manifest; discovery was not asked for (`--pack-root auto`)",
-    };
+    return plan(
+        [],
+        "none",
+        "no root was named and none is derivable from the manifest; discovery was not asked for (`--pack-root auto`)",
+    );
 }
 
 if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) {

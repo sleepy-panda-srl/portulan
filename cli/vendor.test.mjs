@@ -1273,3 +1273,13 @@ describe("parity across residences", () => {
         assert.equal(governors(repo, [feed]), 1);
     });
 });
+
+test("vendor refuses a named root combined with `--pack-root auto`", async () => {
+    // It forwards both to `doctor`, which would refuse a moment later — but by then this tool has
+    // begun reporting about a workspace, and a refusal wearing `doctor`'s name reads as a verdict
+    // about the copy rather than as an answer about the command line.
+    const h = harness();
+    const src = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), "vendor-bothroots-"));
+    assert.equal(await run([src, "--host", "generic", "--pack-root", "auto", "--pack-root", src], h.options), 2);
+    assert.match(text(h), /never both/);
+});

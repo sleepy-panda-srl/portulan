@@ -73,7 +73,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 
 import { inspect } from "./doctor.mjs";
 // The discovery keyword, imported so the five parse sites cannot spell it differently (#123).
-import { AUTO } from "./discover.mjs";
+import { AUTO, namedWithAuto } from "./discover.mjs";
 import { recipeSet } from "./recipe-set.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -209,6 +209,12 @@ export function parseArgs(argv) {
                 `and picking one of two would be choosing which one gets moved`,
         );
     }
+    // Forwarded, so refused here too — and in the SHARED sentence rather than a spelling of this
+    // tool's own. `doctor` would refuse the same pair a moment later, but by then this tool has begun
+    // reporting about a workspace, and a refusal that arrives wearing `doctor`'s name reads as a
+    // verdict about the copy rather than as an answer about the command line.
+    const bothAsked = namedWithAuto(out.packRoots, out.discoverPacks === true);
+    if (bothAsked) throw new VendorError(bothAsked);
     out.source = positional[0] ?? null;
     return out;
 }

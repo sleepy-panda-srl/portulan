@@ -82,11 +82,15 @@ import fs from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 
-// The precedence rule — **named > discovered > derived, never union** — lives once, in
-// `discover.mjs`'s `resolutionRoots`, reached through `compile.mjs`'s `rootPlan`. A second derivation
-// here would be a second carrier of the fact that file was built to hold.
+// The precedence rule — **a named root wins outright; asked-for discovery is unioned with the
+// tree-derived root, discovered first** — lives once, in `discover.mjs`'s `resolutionRoots`, reached
+// through `compile.mjs`'s `rootPlan`. A second derivation here would be a second carrier of the fact
+// that file was built to hold. _(It read "named > discovered > derived, never union" until
+// 2026-08-12. The rule changed because the workspace `init` drafts by default could not go green
+// under any invocation that did not name a host cache path; this comment is one of the carriers that
+// moved with it, and the file below it held the defect that made the class concrete.)_
 import { resolvePack, rootPlan } from "./compile.mjs";
-import { AUTO, discoverPackRoots } from "./discover.mjs";
+import { AUTO, discoverPackRoots, namedWithAuto } from "./discover.mjs";
 
 /**
  * How far below a DECLARED skills root the host itself looks. One — `<root>/<skill>/SKILL.md` — and no
@@ -584,11 +588,29 @@ export function run(argv = [], options = {}) {
     if (resolve === undefined) {
         const named = many("--pack-root");
         const wantsDiscovery = named.includes(AUTO);
-        const roots =
-            rootPlan(workspaceDir, manifest, {
-                named: named.filter((r) => r !== AUTO),
-                discovery: wantsDiscovery ? discoverPackRoots() : null,
-            }).roots ?? [];
+        const namedRoots = named.filter((r) => r !== AUTO);
+        // Two defects lived in this call until 2026-08-12, and both were the finding this change is
+        // about, one caller further on. It passed `discovery` WITHOUT `forced`, and `resolutionRoots`
+        // consults `discovery` only inside its forced branch — so `--pack-root auto` here read the
+        // host's record, threw the answer away, resolved from the derived root, and said nothing.
+        // Silently inert, and eagerly reading `~/.claude` to be so: `discovery` is a THUNK precisely
+        // so an unasked path never touches the host, and calling `discoverPackRoots()` at the
+        // argument site defeated that whichever branch ran.
+        const bothAsked = namedWithAuto(namedRoots, wantsDiscovery);
+        if (bothAsked) {
+            stderr.write(`skills-set: ${bothAsked}\n`);
+            return 2;
+        }
+        const plan = rootPlan(workspaceDir, manifest, {
+            named: namedRoots,
+            discovery: () => discoverPackRoots(),
+            forced: wantsDiscovery,
+        });
+        if (plan.refusal) {
+            stderr.write(`skills-set: ${plan.refusal}\n`);
+            return 2;
+        }
+        const roots = plan.roots ?? [];
         resolve = resolverFor({ workspaceDir, manifest, roots });
         // The same roots stand in as the owned set when nothing resolves — so a workspace that has
         // stopped composing gets its stale entries cleaned wherever its packs WOULD have been, not

@@ -976,8 +976,30 @@ describe("the draft does not overstate its own rails to the adopter", () => {
         const dir = scratch();
         const h = harness();
         await run(["--residence", "in-repo", dir], h.options);
-        assert.match(h.said.join("\n"), /RED until you name where it lives/);
-        assert.match(h.said.join("\n"), /--pack-root/);
+        assert.match(h.said.join("\n"), /RED until you say where to look/);
+        // `auto` is offered rather than only `<dir>`: it is the answer that needs no path, and the
+        // closing advice omitted it for the four sessions between discovery landing and this one.
+        assert.match(h.said.join("\n"), /--pack-root auto/);
+    });
+
+    test("where a root WAS given and the pack resolved, the closing advice says so and prints THAT invocation", async () => {
+        // The other half of the same sentence, and the one that was wrong. `init` verifies the pack
+        // resolves before it drafts, so telling the adopter afterwards that "nothing resolves a pack
+        // for you" contradicted a check this tool had already run. Found by running `init` against a
+        // real never-seen repository, not by reading it.
+        const feed = scratch();
+        fs.mkdirSync(path.join(feed, "rituals", "checkpoints"), { recursive: true });
+        fs.writeFileSync(
+            path.join(feed, "rituals", "checkpoints", "pack.json"),
+            JSON.stringify({ portulan: { pack: "1.0", version: "0.1.0" }, name: "checkpoints", category: "rituals", summary: "x", doc: "README.md", contributes: {} }),
+        );
+        const dir = scratch();
+        const h = harness();
+        await run(["--residence", "in-repo", "--pack-root", feed, dir], h.options);
+        const said = h.said.join("\n");
+        assert.match(said, /composes `rituals\/checkpoints`, and it resolved/);
+        assert.match(said, new RegExp(`doctor --pack-root ${feed.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`));
+        assert.doesNotMatch(said, /RED until/, "the pack resolved, so nothing here is RED for want of a root");
     });
 });
 
@@ -1331,4 +1353,11 @@ describe("the drafted rail's machine-local path stays findable", () => {
             assert.match(source, /portulan:bundle-fallback/, `${rel} must name the marker it re-derives or copies`);
         }
     });
+});
+
+test("init refuses a named root combined with `--pack-root auto`", async () => {
+    const h = harness();
+    const dir = scratch();
+    assert.equal(await run(["--residence", "in-repo", "--pack-root", "auto", "--pack-root", dir, dir], h.options), 2);
+    assert.match([...h.said, ...h.warned].join("\n"), /never both/);
 });

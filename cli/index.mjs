@@ -73,7 +73,7 @@ import { pathToFileURL } from "node:url";
 // three copies decided what counted as a record.
 import { resolvePack, rootPlan } from "./compile.mjs";
 // Host plugin-cache discovery (#123) — imported, never re-implemented, for the reason above.
-import { AUTO, discoverPackRoots } from "./discover.mjs";
+import { AUTO, discoverPackRoots, namedWithAuto } from "./discover.mjs";
 
 /** Raised when `index` cannot run, or cannot judge honestly. Always exit 2, never 1. */
 export class IndexError extends Error {
@@ -419,7 +419,9 @@ function packRecords(packDir, rel = "", out = []) {
 /**
  * Read the per-persona memory scopes a workspace's composed packs declare.
  *
- * Returns `{ scopes: [{ persona, pack, location, scope }], unresolved, carrying, broken }`.
+ * Returns `{ scopes: [{ persona, pack, location, scope, origin }], unresolved, carrying, broken }`.
+ * `origin` is which root answered — `"discovered"`, `"derived"`, or null when the set was not a
+ * union and the invocation therefore already said. It is reported and never written.
  *
  * **The one series whose source is the cascade rather than the tree.** A workspace declares `packs`;
  * each pack's manifest declares `contributes.personas`; each persona declares its memory scope. What
@@ -444,11 +446,21 @@ export function readScopes(dir, workspace, options = {}) {
     const declared = Array.isArray(workspace?.packs) ? workspace.packs : [];
     // `options.packRoots` is the FINAL root set when given, matching `compile`'s `packContributions` —
     // an explicitly empty array means search nowhere rather than falling through to the derived root.
-    const roots = (
-        options.packRoots !== undefined && options.packRoots !== null
-            ? { roots: [...options.packRoots] }
-            : rootPlan(dir, workspace, { discovery: () => discoverPackRoots(), forced: options.discoverPacks === true })
-    ).roots;
+    // Built through `rootPlan` on every path, `namedGiven` carrying this option's FINAL-set meaning.
+    // The short-circuit it replaces made `packRoots` silently ignore `discoverPacks`, so a caller
+    // asking for both got one of them and no word about the other.
+    const plan = rootPlan(dir, workspace, {
+        named: options.packRoots ?? [],
+        namedGiven: options.packRoots !== undefined && options.packRoots !== null,
+        discovery: () => discoverPackRoots(),
+        forced: options.discoverPacks === true,
+    });
+    if (plan.refusal) throw new IndexError(plan.refusal);
+    const roots = plan.roots;
+    // Origin is stated in what a reader SEES and never in what gets written: an index whose bytes
+    // recorded which root answered would regenerate differently on two machines, and `index --check`
+    // byte-compares. Provenance belongs in the finding, not in the artifact.
+    const originOf = new Map((plan.origins ?? []).map((o) => [o.root, o.origin]));
     const posixSlot = slot.split(path.sep).join(path.posix.sep).replace(/\/$/, "");
 
     const scopes = [];
@@ -541,7 +553,10 @@ export function readScopes(dir, workspace, options = {}) {
                 broken.push({ pack: found.name, persona, file: rel });
                 continue;
             }
-            scopes.push({ persona, pack: found.name, location: `${posixSlot}/${persona}/`, scope });
+            // `origin` rides on the finding and never reaches `expected` below — see the note at
+            // `originOf`. Only a union can produce a non-null value here.
+            const origin = plan.source === "union" ? originOf.get(found.root) ?? null : null;
+            scopes.push({ persona, pack: found.name, location: `${posixSlot}/${persona}/`, scope, origin });
         }
     }
 
@@ -1231,6 +1246,17 @@ export function run(argv, say = console.log) {
 
     if (dirs.length === 0) {
         say("usage: node cli/index.mjs [--check] [--pack-root <dir>|auto]... <workspace-dir> [<workspace-dir> ...]");
+        return 2;
+    }
+
+    // Refused at PARSE time like the other four tools, and NOT left to the plan built inside
+    // `judgeScopes`: that plan is only reached by a workspace declaring a scope index, so a workspace
+    // without one took both flags, silently kept one, and reported `ok`. Measured on this branch —
+    // four of the five carriers refused and this was the fifth, which is the whole class this change
+    // is about, found in the change that fixes it.
+    const bothAsked = namedWithAuto(roots, discoverPacks);
+    if (bothAsked) {
+        say(`  ✗ ${bothAsked}`);
         return 2;
     }
 

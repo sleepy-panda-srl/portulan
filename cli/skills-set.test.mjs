@@ -564,3 +564,84 @@ describe("--check", () => {
         assert.equal(checkAgainst([], ["a/b"], {}), 2);
     });
 });
+
+// ------------------------------------------------ `--pack-root auto`: the arm that was inert
+
+describe("`--pack-root auto` reaches discovery here, and refuses to be combined with a named root", () => {
+    // Both cases exist because a pre-commit checkpoint's own mutations survived this file. The fix
+    // for the inert-`auto` defect — the one this change names in its CHANGELOG — could be reverted
+    // verbatim and 1515 tests stayed green, because nothing here passed `auto` at all. A headline fix
+    // with no binding test is a fix that comes back.
+
+    const scratch = () => fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), "skills-set-auto-"));
+
+    /** A host whose plugin cache carries one repository-shaped install with `packs/`. */
+    function host(packId) {
+        const config = scratch();
+        const installPath = path.join(config, "plugins", "cache", "feed", "carrier", "0.1.0");
+        const [category, name] = packId.split("/");
+        const packDir = path.join(installPath, "packs", category, name);
+        fs.mkdirSync(path.join(packDir, "skills", "a-skill"), { recursive: true });
+        fs.writeFileSync(
+            path.join(packDir, "pack.json"),
+            JSON.stringify({ portulan: { pack: "1.0", version: "0.1.0" }, name, category, summary: "x", doc: "README.md", contributes: { skills: ["skills/"] } }),
+        );
+        fs.writeFileSync(path.join(packDir, "README.md"), "# x\n");
+        fs.writeFileSync(path.join(packDir, "skills", "a-skill", "SKILL.md"), "---\nname: a-skill\ndescription: x\n---\n");
+        const record = path.join(config, "plugins", "installed_plugins.json");
+        fs.mkdirSync(path.dirname(record), { recursive: true });
+        fs.writeFileSync(record, JSON.stringify({ version: 2, plugins: { "carrier@feed": [{ scope: "user", installPath, version: "0.1.0" }] } }));
+        return config;
+    }
+
+    /** A workspace composing that pack and deriving NO root of its own, so only discovery can answer. */
+    function workspace() {
+        const dir = scratch();
+        fs.mkdirSync(path.join(dir, ".portulan"), { recursive: true });
+        fs.writeFileSync(
+            path.join(dir, ".portulan", "workspace.json"),
+            JSON.stringify({ portulan: { spec: "2.8" }, name: "w", kind: "demo", packs: ["rituals/checkpoints"] }),
+        );
+        return dir;
+    }
+
+    function withHost(config, fn) {
+        const before = process.env.CLAUDE_CONFIG_DIR;
+        process.env.CLAUDE_CONFIG_DIR = config;
+        try {
+            return fn();
+        } finally {
+            if (before === undefined) delete process.env.CLAUDE_CONFIG_DIR;
+            else process.env.CLAUDE_CONFIG_DIR = before;
+        }
+    }
+
+    test("`auto` is CONSULTED — a pack only discovery can reach is found under it and not without it", () => {
+        const config = host("rituals/checkpoints");
+        const dir = workspace();
+        const said = [];
+        const io = { stdout: { write: (s) => said.push(s) }, stderr: { write: (s) => said.push(s) } };
+
+        // Without `auto`: the workspace derives no root, so the pack cannot resolve and the run refuses.
+        const without = withHost(config, () => run(["--workspace", path.join(dir, ".portulan"), "--check"], io));
+        assert.equal(without, 2, said.join(""));
+
+        // With `auto`: the same pack resolves out of the host's record. This is the assertion the
+        // reverted fix must break — `forced` is what carries the request into `resolutionRoots`.
+        said.length = 0;
+        const withAuto = withHost(config, () => run(["--workspace", path.join(dir, ".portulan"), "--pack-root", "auto", "--check"], io));
+        assert.notEqual(withAuto, 2, `discovery should have answered — ${said.join("")}`);
+    });
+
+    test("a named root AND `auto` is refused here too, in the one shared sentence", () => {
+        const config = host("rituals/checkpoints");
+        const dir = workspace();
+        const said = [];
+        const io = { stdout: { write: (s) => said.push(s) }, stderr: { write: (s) => said.push(s) } };
+        const code = withHost(config, () =>
+            run(["--workspace", path.join(dir, ".portulan"), "--pack-root", "auto", "--pack-root", dir, "--check"], io),
+        );
+        assert.equal(code, 2);
+        assert.match(said.join(""), /never both/);
+    });
+});

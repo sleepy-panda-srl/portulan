@@ -60,7 +60,7 @@ import { parseFrontmatter, AGENT_DIR } from "./plugin-lint.mjs";
 // becomes a directory. Imported rather than reimplemented for the reason above, and kept in its own
 // file for a second one: the boot skill's whole instruction is to report what THIS resolver said, so
 // there must be exactly one thing that says it.
-import { resolveGovernor, AUTO, discoverPackRoots } from "./discover.mjs";
+import { resolveGovernor, AUTO, discoverPackRoots, namedWithAuto } from "./discover.mjs";
 import { composedId } from "./recipe-set.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -1629,11 +1629,27 @@ export async function inspect(workspaceDir, options = {}) {
         // root set, replacing the derived one, so an explicitly empty array means search nowhere. The
         // three tools disagreed about this once and `../cli/compile.mjs`'s `namedRootsOption` records
         // what that cost; aligned here before a caller finds it the same way.
-        const plan =
-            options.packRoots !== undefined && options.packRoots !== null
-                ? { roots: [...options.packRoots], source: "named", why: "named on the command line" }
-                : rootPlan(dir, workspace, { discovery: () => discoverPackRoots(), forced: options.discoverPacks === true });
+        // Built through `rootPlan` on EVERY path, including the named one. It used to short-circuit
+        // here with a plan literal, which is how `options.packRoots` came to silently ignore
+        // `discoverPacks`: a caller asking for both got one of them and no word about the other.
+        // `namedGiven` is what lets the shared rule keep this option's meaning — the FINAL root set,
+        // so an explicitly empty array still means search nowhere.
+        const plan = rootPlan(dir, workspace, {
+            named: options.packRoots ?? [],
+            namedGiven: options.packRoots !== undefined && options.packRoots !== null,
+            // `options` carries the injected env — the same one the pointer resolver above is given.
+            // Without it this reader consulted the MACHINE the suite runs on, so the end-to-end pack
+            // cases could not build a host and the file header's "every environment input injectable"
+            // was true of one of its two readers.
+            discovery: () => discoverPackRoots(options),
+            forced: options.discoverPacks === true,
+        });
+        if (plan.refusal) throw new DoctorError(plan.refusal);
         const roots = plan.roots;
+        // Which root answered, for each root that could answer. A union's whole contract is that a
+        // tree-derived resolution is visible rather than silent, and a lookup is how a per-pack line
+        // says so without re-deriving the first-match rule.
+        const originOf = new Map((plan.origins ?? []).map((o) => [o.root, o.origin]));
         report("packs", `resolution root ${plan.source} — ${plan.why}`);
         for (const name of workspace.packs) {
             const found = resolvePack(name, roots);
@@ -1717,9 +1733,19 @@ export async function inspect(workspaceDir, options = {}) {
                     : null,
                 c.gates?.length ? `${c.gates.length} gate fragment(s)` : null,
             ].filter(Boolean);
+            // Stated only where the set is a union, because that is the only arrangement in which a
+            // reader cannot tell the origin from the invocation they typed. Adding it everywhere would
+            // put a sentence on every line that says nothing the command did not already say.
+            const origin = plan.source === "union" ? originOf.get(found.root) ?? null : null;
+            const from =
+                origin === "discovered"
+                    ? " from the discovered root"
+                    : origin === "derived"
+                      ? " from the tree-derived root"
+                      : "";
             report(
                 "packs",
-                `\`${name}\` resolves to ${path.relative(dir, found.dir)} and validates against Pack Definition ${manifest.portulan.pack} — contributes ${parts.length ? parts.join(", ") : "nothing"}`,
+                `\`${name}\` resolves${from} to ${path.relative(dir, found.dir)} and validates against Pack Definition ${manifest.portulan.pack} — contributes ${parts.length ? parts.join(", ") : "nothing"}`,
             );
         }
     }
@@ -2500,6 +2526,11 @@ export async function run(argv, options = {}) {
                 i += 1;
             } else if (!argv[i].startsWith("-")) dirs.push(argv[i]);
         }
+        // Refused at PARSE time, which is where an exit 2 belongs: before a workspace is read, so the
+        // refusal cannot be mistaken for a verdict about one. `resolutionRoots` refuses the same
+        // combination for callers that never parsed anything; both ask the same exported predicate.
+        const bothAsked = namedWithAuto(namedRoots, discoverPacks);
+        if (bothAsked) throw new DoctorError(bothAsked);
         if (dirs.length === 0) {
             if (!options.quiet) {
                 process.stderr.write("usage: node cli/doctor.mjs [--pack-root <dir>|auto]... [--repo-root <dir>]... <workspace-dir> [<workspace-dir> ...]\n");

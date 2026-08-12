@@ -262,13 +262,20 @@ export function recipeSet(manifest, options = {}) {
  * A resolver over a workspace's declared pack roots, for callers that actually compose.
  *
  * Reaches `compile.mjs`'s `rootPlan` and `resolvePack` rather than re-deriving where a pack lives —
- * the precedence rule (**named > discovered > derived, never union**) lives once, in `resolutionRoots`,
- * and a second derivation here would be a second carrier of the fact `cli/discover.mjs` was built to
- * hold. The pack root handed to `${PACK_ROOT}` is made **relative to the repository root**, because
- * that is the root a recipe's `run` is typed from.
+ * the precedence rule (**a named root wins outright; asked-for discovery is unioned with the derived
+ * root, discovered first**) lives once, in `resolutionRoots`, and a second derivation here would be a
+ * second carrier of the fact `cli/discover.mjs` was built to hold. The pack root handed to
+ * `${PACK_ROOT}` is made **relative to the repository root**, because that is the root a recipe's
+ * `run` is typed from.
+ *
+ * **`forced` rides beside `discovery` because without it the pair is dead plumbing.** This function
+ * accepted `discovery` and passed it on while `resolutionRoots` consults it only under `forced`, so no
+ * caller could ever have reached discovery through here — the parameter looked wired and was not. It
+ * is threaded rather than deleted because the recipe set is exactly a place an adopter will want it;
+ * what is refused is a parameter that reads as a capability and is none.
  */
-export function resolverFor({ workspaceDir, manifest, repoRoot = ".", named = [], discovery = null }) {
-    const roots = rootPlan(workspaceDir, manifest, { named, discovery }).roots ?? [];
+export function resolverFor({ workspaceDir, manifest, repoRoot = ".", named = [], discovery = null, forced = false }) {
+    const roots = rootPlan(workspaceDir, manifest, { named, discovery, forced }).roots ?? [];
     return (ref) => {
         const found = resolvePack(ref, roots);
         // `resolvePack` returns `manifest` as the PATH to `pack.json`, not as the parsed object —

@@ -2,9 +2,10 @@
 
 > Generated from `handoffs/` by `node cli/index.mjs`. Do not edit by hand: it is regenerated
 > and byte-compared, so a hand-edit survives exactly until the next run.
-> 94 handoff(s), newest first. No budget: the series is append-only, so
+> 95 handoff(s), newest first. No budget: the series is append-only, so
 > the only remedy a budget could ask for is one this project rules out.
 
+- 2026-08-12 · [Handoff — the workspace `init` drafts could not go green](handoffs/2026-08-12-the-workspace-init-drafts-could-not-go-green.md)
 - 2026-08-12 · [Handoff — the path that worked because someone typed it](handoffs/2026-08-12-the-path-that-worked-because-someone-typed-it.md)
 - 2026-08-12 · [Handoff — a test that passes is not a test that binds](handoffs/2026-08-12-a-test-that-passes-is-not-a-test-that-binds.md)
 - 2026-08-11 · [Handoff — the check that read a file the pack chose, and the dimension that could not vary](handoffs/2026-08-11-the-check-that-read-a-file-the-pack-chose.md)
