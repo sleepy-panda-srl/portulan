@@ -36,6 +36,39 @@ distinct ways one can fail to bind.** Four were found by mutation, one by re-run
    test red restored an *inert* rewrite and stayed green — correctly. A mutation that does not alter
    behaviour proves nothing about the test.
 
+## The pattern the second half of the loop found
+
+**A rule reached this file with one of its two halves, three times, each time from a rule this
+repository already enforces somewhere else.**
+
+- **Round 8** — the round-6 guards checked that a *key was present* and not that its *value was one
+  the contract defines*. `{ owed: "yes" }` was neither `true` nor `null`, so it counted as **not
+  owed**: a false green produced by the guard against false greens.
+- **Round 11** — containment was **lexical without being physical**. `inside()` validates the resolved
+  path string, so `<root>/link/a.md` passes every character-level test and lands wherever `link`
+  points. `cli/vendor.mjs` enforces the same rule by walking the chain; this file had copied the
+  half that is a string comparison and not the half that touches the disk.
+- **Round 12** — a fourth argument parser took **one refusal of three**. `init`, `new` and `vendor`
+  each refuse a missing value, a flag as a value, and an empty one; `--tree` refused only the first,
+  so `--tree --write <dir>` swallowed the write and silently reported instead of migrating.
+
+**Round 7 is the same shape from a different direction, and it is the one worth carrying furthest.**
+`resolveTarget()` wrapped `readFileSync` and `JSON.parse` in one `try/catch`, so a manifest that would
+not parse was reported as one that could not be **read** — sending a reader to look at permissions and
+paths instead of at their JSON. `readWorkspace()`, **twelve lines above it in the same file**, already
+keeps the two apart and its docblock states the distinction as a contract. So this was not a rule
+borrowed from elsewhere and half-copied; it was a rule this file *itself* argues for, not applied by
+the function written next to it. Sweeping rather than stopping where the note pointed found a **third**
+site in `bundleSpec()`.
+
+That is the previous session's headline lesson — *a fix is not done at the site it was found* — recurring
+in this session's new code, which is precisely what a handoff exists to carry rather than a commit
+message.
+
+The operative form is narrower than *sweep for siblings*: **when this repository already enforces a
+rule somewhere, the question is not whether to copy it but which parts of it are being copied** — and
+the nearest instance of that rule may be twelve lines away in the file you are editing.
+
 ## Four things that cost something, in the order they did
 
 - **Running the step over `.portulan` broke it, and no fixture could have.** A handoff that
@@ -73,6 +106,14 @@ distinct ways one can fail to bind.** Four were found by mutation, one by re-run
 - **Two things are NOT demonstrated**, and every carrier says so: the `1.0 → 2.0` step is
   **fixture-only** — nothing anywhere declares 1.0 — and the repair has no subject in this
   repository's own workspace, whose rail was hand-written and carries no marker.
+- **The review channel outran my instrumentation of it, three times.** Every finding was genuine; the
+  two occasions I reported a round as empty, I was measuring the wrong thing. `/reviews` **paginates
+  at 30** and this pull request passed that, hiding a round on page two. A thread's "unanswered" test
+  keyed on *last comment author*, and promoted notes are posted by the **same identity replies come
+  from**, so an unanswered note was indistinguishable from my own reply. And a **bounded** watch ended
+  before the next finding arrived. A fourth would have been firing on `isResolved == false` for ever:
+  this identity is a GitHub App, and **no App may resolve a thread**, so answered-but-unresolved is
+  the normal terminal state.
 - **A test of mine poisoned another suite**, and I mis-attributed it twice as a pre-existing flake.
   `../escaped.md` resolves to `<tmpdir>/escaped.md`, the exact global path `feedback.test.mjs`
   asserts must not exist. Refused, it writes nothing — but a **mutation run disables the guard on
@@ -97,6 +138,16 @@ what shipped, and it **corrected a citation**: `identity.md`'s byte-identity par
 npm package, not workspace installs; the load-bearing carrier is `0020`'s *"one identifier with two
 contents"*. What decided it was thesis 6, **storage follows ownership**.
 
-**Six Copilot rounds, seventeen findings, every one real and none refused.** Eleven recipes green;
-suite **1485 pass / 0 fail** against a 1415 baseline at `5a7b5ca`. Seam scan clean on every commit,
-term by term, over the diff, the branch name and the message.
+**Thirteen Copilot rounds to empty, twenty-four findings, every one real and none refused** — the
+thirteenth reviewed 26 of 26 files and generated nothing. Seventeen of the twenty-four arrived through
+the promoted-note channel (`0021`) after Copilot suppressed them as low confidence; without promotion
+none would have had a thread, a Resolve control, or any state distinguishing *answered* from
+*ignored*. Eleven recipes green; suite **1505 pass / 0 fail** against a 1415 baseline at `5a7b5ca`.
+Seam scan clean on every commit, term by term, over the diff, the branch name and the message.
+
+**The records were committed before their own checkpoint returned, and said otherwise.** `df84039`
+landed them under a message asserting they were *"graded by its own pre-commit pass"*; that pass was
+still running and returned **REQUEST-CHANGES**. It is `self-certify-a-checkpoint`, the fragment this
+workspace marks **prohibited** and which the pack states plainly it cannot mechanically enforce. The
+supervisor caught it by noticing the commit appear while it was grading. Recorded here rather than
+quietly repaired, and the correction it demanded was graded *before* it was committed.
