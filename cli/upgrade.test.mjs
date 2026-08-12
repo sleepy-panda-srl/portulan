@@ -701,6 +701,28 @@ describe("the three rules a tool writing into somebody's tree owes", () => {
         assert.equal(fs.existsSync(path.join(dir, "nested")), false, "the directories it created survived the rollback");
     });
 
+    test("a write that fails AFTER creating directories leaves none of them behind", () => {
+        // The snapshot is pushed only on success, so a failure between `mkdir` and `rename` orphans
+        // every directory it made — created, unrecorded, invisible to `restore`. That is the leak in
+        // the fix that ADDED the directories, one round earlier. Copilot's promoted note, round 3.
+        //
+        // The window is `mkdir` succeeding and the write then failing — a disk-full or permissions
+        // race, which cannot be staged honestly on a real filesystem. So the writer is injected,
+        // which is the seam `init` and `skills-set` already use for exactly this reason. A first
+        // attempt at this test tried to force it with a directory in the target's place and proved
+        // nothing: the edit that created the directories SUCCEEDED, so they were recorded and
+        // `restore` owned them — the failure was a later edit's, and nothing was orphaned.
+        const dir = scratch();
+        const boom = () => {
+            throw Object.assign(new Error("no space left on device"), { code: "ENOSPC" });
+        };
+        const applied = applyEdits(dir, [{ file: "a/b/c.md", next: "x\n" }], { write: boom });
+        assert.equal(applied.ok, false);
+        assert.match(applied.reason, /ENOSPC/);
+        assert.deepEqual(applied.snapshots, [], "a failed edit must record no snapshot");
+        assert.equal(fs.existsSync(path.join(dir, "a")), false, `directories were orphaned: ${fs.readdirSync(dir).join(", ")}`);
+    });
+
     test("two edits in ONE new directory still unwind it — the rollback runs in reverse", () => {
         // The directory is recorded as `created` on the first snapshot only. Unwound forwards, that
         // snapshot's `rmdir` fails because the second file is still there and the directory survives

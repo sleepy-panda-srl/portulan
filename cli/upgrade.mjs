@@ -248,6 +248,27 @@ export async function planFor(ws, ctx, steps) {
 }
 
 /**
+ * Remove directories this run created, deepest first, stopping at the first that will not go.
+ *
+ * **One carrier, two callers.** `applyEdits` needs it on every failure path between creating a
+ * directory and recording the snapshot that would have owned it, and `restore` needs it when undoing
+ * a file that did not exist. Two copies of this loop would be one rule at two sites — and the second
+ * site is precisely where the first copy was missing.
+ *
+ * Stops rather than forces: a directory that will not `rmdir` is one that is not empty, which means
+ * something else is in it and it was not ours to remove after all.
+ */
+function unwindDirs(dirs) {
+    for (const made of [...dirs].reverse()) {
+        try {
+            fs.rmdirSync(made);
+        } catch {
+            break;
+        }
+    }
+}
+
+/**
  * Write the edits, keeping the previous contents so a red verdict can be undone.
  *
  * Each file lands by write-temp-then-rename, so no file is ever half-written. **The mode is carried
@@ -260,7 +281,13 @@ export async function planFor(ws, ctx, steps) {
  * leaving: a later step adding a nested file would have failed `ENOENT` on a perfectly valid edit.
  * Copilot's promoted note, round 2 on #231.
  */
-export function applyEdits(dir, edits) {
+export function applyEdits(dir, edits, options = {}) {
+    // `write` is an injection point for the suite, the way `init` injects its reader and `skills-set`
+    // injects its manifest. No production caller passes it. It exists because the window this guards —
+    // `mkdir` succeeds, the write then fails — is a disk-full or permissions race that cannot be
+    // staged honestly on a real filesystem, and a failure path with no test is how the orphan it
+    // guards against got here in the first place.
+    const write = options.write ?? fs.writeFileSync;
     const root = path.resolve(dir);
     const snapshots = [];
     for (const edit of edits) {
@@ -276,10 +303,10 @@ export function applyEdits(dir, edits) {
             }
         }
 
-        // Deepest last, so a rollback can unwind in reverse. `lstat`, never `existsSync`: the latter
-        // follows links and answers *false* for an unreadable path, which would turn "I could not
-        // look" into "it is not there" — rule 3, at a third site.
-        const created = [];
+        // Shallowest first, so `unwindDirs` can take them in reverse. `lstat`, never `existsSync`:
+        // the latter follows links and answers *false* for an unreadable path, which would turn "I
+        // could not look" into "it is not there" — rule 3, at a third site.
+        const wanted = [];
         for (let at = path.dirname(file); at.startsWith(root) && at !== root; at = path.dirname(at)) {
             try {
                 fs.lstatSync(at);
@@ -288,18 +315,28 @@ export function applyEdits(dir, edits) {
                 if (error.code !== "ENOENT") {
                     return { ok: false, snapshots, reason: `${at} could not be examined — ${error.code ?? error.message}` };
                 }
-                created.unshift(at);
+                wanted.unshift(at);
             }
         }
+
+        // **What was actually made**, not what was wanted. The snapshot is pushed only after a
+        // successful rename, so every failure between here and there has to clean up its own
+        // directories or they are orphaned — created, unrecorded, and invisible to `restore`. That
+        // is the leak Copilot's promoted note found in the fix that added them, one round earlier.
+        const created = [];
         try {
-            for (const made of created) fs.mkdirSync(made);
+            for (const dir of wanted) {
+                fs.mkdirSync(dir);
+                created.push(dir);
+            }
         } catch (error) {
+            unwindDirs(created);
             return { ok: false, snapshots, reason: `${path.dirname(file)} could not be created — ${error.code ?? error.message}` };
         }
 
         const staging = `${file}.portulan-upgrade`;
         try {
-            fs.writeFileSync(staging, edit.next);
+            write(staging, edit.next);
             if (mode !== null) fs.chmodSync(staging, mode);
             fs.renameSync(staging, file);
         } catch (error) {
@@ -308,6 +345,7 @@ export function applyEdits(dir, edits) {
             } catch {
                 /* the staging file is the lesser problem; the write failure is what gets reported */
             }
+            unwindDirs(created);
             return { ok: false, snapshots, reason: `${file} could not be written — ${error.code ?? error.message}` };
         }
         snapshots.push({ file: edit.file, previous, mode, created });
@@ -337,16 +375,10 @@ export function restore(dir, snapshots) {
         try {
             if (snapshot.previous === null) {
                 fs.rmSync(file, { force: true });
-                // And the directories this run had to create for it, deepest first. Leaving them
-                // behind would make "the workspace is exactly as it was" false in a second way —
-                // quieter than a stray file, and still not true.
-                for (const made of [...(snapshot.created ?? [])].reverse()) {
-                    try {
-                        fs.rmdirSync(made);
-                    } catch {
-                        break; // not empty, or not ours to remove: stop rather than force
-                    }
-                }
+                // And the directories this run had to create for it. Leaving them behind would make
+                // "the workspace is exactly as it was" false in a second way — quieter than a stray
+                // file, and still not true.
+                unwindDirs(snapshot.created ?? []);
             } else {
                 fs.writeFileSync(file, snapshot.previous);
                 if (snapshot.mode !== null && snapshot.mode !== undefined) fs.chmodSync(file, snapshot.mode);
@@ -378,8 +410,11 @@ export function usage() {
         "  --write     apply the chain, then grade the result with doctor",
         "  --tree      the value a 1.0 `repository` workspace needs and this will not guess",
         "",
-        "A pointer is resolved through the host's installed-plugin record and reported; the workspace",
-        "it names is migrated at its own directory, never inside the install.",
+        // Precisely which half is refused. The older wording — \"never inside the install\" — read as
+        // *this tool does not touch an installed workspace*, and a bare or `--check` run DOES read one
+        // to work out what it owes. Only writing is refused. Copilot's promoted note, round 3.
+        "A pointer is resolved through the host's installed-plugin record; the installed workspace is",
+        "read and reported on, and `--write` is refused there — migrate it at its own directory.",
         "",
         "Exit codes: 0 succeeded · 1 a red verdict · 2 could not run.",
     ].join("\n");
