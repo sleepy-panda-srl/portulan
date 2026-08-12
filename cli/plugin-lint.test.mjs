@@ -1265,12 +1265,17 @@ describe("compose — composition and registration are pinned to each other", ()
         assert.equal(bad.length, 0, messages(inspect(root).findings));
     });
 
-    test("a pack.json that will not PARSE is a failure — absent and unreadable are different answers", () => {
+    test("a pack.json that will not PARSE says so, and does not blame the read", () => {
+        // Absent, unreadable and unparseable are three answers. This asserted the *read* message for a
+        // parse failure and passed while the diagnosis pointed at permissions — the same conflation
+        // `cli/skills-set.mjs` carried for `workspace.json`, fixed there a round earlier and left
+        // standing here. Raised as a promoted low-confidence note on #229.
         const root = composed();
         fs.writeFileSync(path.join(root, "packs", "rituals", "checkpoints", "pack.json"), "{ not json");
         const bad = fails(inspect(root).findings).filter((f) => f.check === "compose");
         assert.equal(bad.length, 1, messages(inspect(root).findings));
-        assert.match(bad[0].message, /pack\.json could not be read/);
+        assert.match(bad[0].message, /pack\.json does not parse as JSON/);
+        assert.doesNotMatch(bad[0].message, /could not be read/);
     });
 
     test("`contributes.skills` of the wrong type is could-not-run for the whole declaration side", () => {

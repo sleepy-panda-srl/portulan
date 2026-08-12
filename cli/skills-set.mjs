@@ -197,8 +197,18 @@ export function skillsSet(manifest, options = {}) {
             // Never silently absent. A pack quietly missing from this set is a manifest that looks
             // complete and registers nothing — the same false green the row refuses for recipes.
             return refuse(
-                `the pack \`${ref}\` is composed by this workspace and could not be resolved, so what it ` +
-                    "contributes to registration could not be read — could-not-run rather than a set that quietly lost it",
+                `the pack \`${ref}\` is composed by this workspace and could not be resolved — no pack.json ` +
+                    "under any resolution root, so what it contributes to registration could not be read. " +
+                    "Could-not-run rather than a set that quietly lost it",
+            );
+        }
+        // Resolved, and its manifest defeated the reader. Its own sentence because the repair is its own
+        // act: the pack is exactly where it should be and the file inside it is the problem, which is
+        // not what "could not be resolved" sends anyone to go and check.
+        if (found.unreadable) {
+            return refuse(
+                `the pack \`${ref}\` is composed by this workspace and resolves at ${found.root}, but its ` +
+                    `pack.json ${found.unreadable} — could-not-run rather than a set that quietly lost it`,
             );
         }
 
@@ -400,15 +410,23 @@ export function resolverFor({ workspaceDir, manifest, named = [], discovery = nu
         // so encoded the same assumption the code made. `cli/skills-set.live.test.mjs` is what stops
         // that here.
         if (!found?.dir || !found.manifest) return null;
-        let parsed;
+        // Present and unreadable is NOT a pack that contributes nothing — and it is not one that could
+        // not be FOUND either. Returning bare `null` for both made the caller's refusal say "could not
+        // be resolved" about a pack it had resolved perfectly well, misdiagnosing exactly the
+        // present-but-unreadable case this tool treats as could-not-run. Raised as a promoted
+        // low-confidence note on #229. Both stay could-not-run; what changes is the sentence the reader
+        // gets, and read is kept apart from parse for the reason the arm above it now does.
+        let text;
         try {
-            parsed = JSON.parse(fs.readFileSync(found.manifest, "utf8"));
-        } catch {
-            // Present and unreadable is NOT a pack that contributes nothing. Null makes it
-            // could-not-run at the caller, which is the honest answer — only absence is absence.
-            return null;
+            text = fs.readFileSync(found.manifest, "utf8");
+        } catch (error) {
+            return { ref, root: path.resolve(found.dir), unreadable: `could not be read — ${error.code ?? error.message}` };
         }
-        return { ref, root: path.resolve(found.dir), manifest: parsed };
+        try {
+            return { ref, root: path.resolve(found.dir), manifest: JSON.parse(text) };
+        } catch (error) {
+            return { ref, root: path.resolve(found.dir), unreadable: `does not parse as JSON — ${error.message}` };
+        }
     };
 }
 

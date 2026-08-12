@@ -211,6 +211,28 @@ describe("the refusals — could-not-run, never a quietly smaller set", () => {
         assert.equal(set.ok, false);
         assert.equal(set.exitCode, 2);
         assert.match(set.reason, /rituals\/missing/);
+        assert.match(set.reason, /no pack\.json under any resolution root/);
+    });
+
+    test("a pack that RESOLVES but whose pack.json defeats the reader gets its own sentence", () => {
+        // Both are could-not-run, and saying "could not be resolved" about a pack sitting exactly where
+        // it should be sends the reader to check roots and spelling instead of the file. `resolverFor`
+        // collapsed the two into `null`; it now reports why. Raised as a promoted low-confidence note
+        // on #229.
+        const set = skillsSet(
+            { packs: ["a/b"] },
+            {
+                pluginRoot: PLUGIN_ROOT,
+                resolve: resolverOver({
+                    "a/b": { ref: "a/b", root: path.join(PLUGIN_ROOT, "packs", "a", "b"), unreadable: "does not parse as JSON — Unexpected token" },
+                }),
+            },
+        );
+        assert.equal(set.ok, false);
+        assert.equal(set.exitCode, 2);
+        assert.match(set.reason, /resolves at .*packs.*a.*b/);
+        assert.match(set.reason, /does not parse as JSON/);
+        assert.doesNotMatch(set.reason, /could not be resolved/);
     });
 
     test("packs declared with NO resolver is could-not-run, not a workspace that composes nothing", () => {

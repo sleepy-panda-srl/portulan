@@ -922,15 +922,34 @@ export function inspect(rawRoot, { payload = false } = {}) {
         const declaring = [];
         const resolved = new Map();
         for (const { name, dir } of composed) {
-            let parsed;
+            // Read and parse are two failures with two repairs. This said "could not be read" for
+            // both, so a malformed `pack.json` sent a reader to look at permissions and paths — the
+            // same defect `cli/skills-set.mjs`'s workspace-manifest arm carried, fixed there one round
+            // earlier and left standing HERE. That is
+            // `../.portulan/proposals/0020-a-fix-is-not-done-at-the-site-it-was-found.md` in one
+            // sentence, and it was a suppressed low-confidence note that caught it rather than the
+            // session that wrote the sibling fix. Absent stays a `continue`: a composed entry with no
+            // `pack.json` is deliberately not this check's verdict.
+            let text;
             try {
-                parsed = JSON.parse(fs.readFileSync(path.join(dir, "pack.json"), "utf8"));
+                text = fs.readFileSync(path.join(dir, "pack.json"), "utf8");
             } catch (error) {
                 if (error.code === "ENOENT") continue;
                 fail(
                     "compose",
                     `${GOVERNING} composes \`${name}\` and its pack.json could not be read — ` +
                         `${error.code ?? error.message}. What it nominates for registration is unchecked`,
+                );
+                continue;
+            }
+            let parsed;
+            try {
+                parsed = JSON.parse(text);
+            } catch (error) {
+                fail(
+                    "compose",
+                    `${GOVERNING} composes \`${name}\` and its pack.json does not parse as JSON — ` +
+                        `${error.message}. What it nominates for registration is unchecked`,
                 );
                 continue;
             }
