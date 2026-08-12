@@ -64,7 +64,21 @@ function quotedEntry(line) {
     return matches.length === 1 ? matches[0] : null;
 }
 
-/** Every marked line in `text`, paired with the entry path it names — or a reason it is unreadable. */
+/**
+ * Every marked line in `text`, paired with the entry path it names — or a reason it is unreadable.
+ *
+ * **`quoted` is the DECODED path, not the source text between the quotes.** The regex captures what
+ * is written in the file, which is still JSON-escaped: `init` emits `JSON.stringify(...)`, so a
+ * bundle at `C:\Users\x` appears as `"C:\\Users\\x/cli/index.mjs"`. Comparing that raw capture to an
+ * unescaped `want` never matches, and the step reports itself **perpetually owed** — rewriting the
+ * same file on every run, for ever.
+ *
+ * Invisible on POSIX, where an ordinary path contains nothing JSON escapes, which is why every test
+ * and every live run here passed over it. Copilot's promoted note, round 4 on #231.
+ *
+ * A literal that will not decode is treated as unreadable rather than guessed at, which is the same
+ * refusal an unrecognised marked line already gets.
+ */
 function marked(text) {
     const lines = text.split("\n");
     const hits = [];
@@ -72,7 +86,13 @@ function marked(text) {
         if (!line.includes(MARKER)) continue;
         const found = quotedEntry(line);
         if (found === null) return { ok: false, line: n + 1, text: line };
-        hits.push({ n, quoted: found[1], whole: found[0] });
+        let decoded;
+        try {
+            decoded = JSON.parse(found[0]);
+        } catch {
+            return { ok: false, line: n + 1, text: line };
+        }
+        hits.push({ n, quoted: decoded, whole: found[0] });
     }
     return { ok: true, lines, hits };
 }

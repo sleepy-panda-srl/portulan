@@ -291,7 +291,31 @@ export function applyEdits(dir, edits, options = {}) {
     const root = path.resolve(dir);
     const snapshots = [];
     for (const edit of edits) {
-        const file = path.join(root, edit.file);
+        // `resolve`, not `join`. `path.join(root, "/etc/passwd")` CONCATENATES — it yields
+        // `<root>/etc/passwd`, silently turning an absolute path into a nested one and hiding from the
+        // guard below what the caller actually asked for. `resolve` honours the absolute path, so the
+        // containment check sees the real target and refuses it. Measured: the first cut used `join`
+        // and the absolute-path case passed straight through the guard.
+        const file = path.resolve(root, edit.file);
+
+        // **A path built from somebody else's text is contained before it is opened.** A step's
+        // `edit.file` is a value this tool did not author — an absolute path, or one climbing out
+        // with `..`, would have this writing outside the workspace it was pointed at. Nothing in the
+        // step contract prevents either, and a schema could not: the value is computed, not declared.
+        //
+        // This repository has already paid for the class once, at a persona's free-text `name`, where
+        // `../../poison` had `doctor` read, grade and GREEN a file outside the tree. `cli/compile.mjs`
+        // guards the same way. Resolution rather than pattern-matching, because every interesting
+        // escape parses fine and only fails once resolved. Copilot, round 4 on #231.
+        const resolved = file;
+        if (resolved !== root && !resolved.startsWith(`${root}${path.sep}`)) {
+            return {
+                ok: false,
+                snapshots,
+                reason: `\`${edit.file}\` resolves to ${resolved}, which is outside ${root} — refusing to write there`,
+            };
+        }
+
         let previous = null;
         let mode = null;
         try {
@@ -371,7 +395,7 @@ export function restore(dir, snapshots) {
     // Found by sweeping this file for the sibling of the note that added the directories, rather than
     // by a round that raised it.
     for (const snapshot of [...snapshots].reverse()) {
-        const file = path.join(root, snapshot.file);
+        const file = path.resolve(root, snapshot.file);
         try {
             if (snapshot.previous === null) {
                 fs.rmSync(file, { force: true });
