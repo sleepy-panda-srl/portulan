@@ -904,3 +904,38 @@ describe("a step that misbehaves degrades to a verdict, never to a crash", () =>
         }
     });
 });
+
+describe("resolveTarget keeps read and parse apart, like readWorkspace does", () => {
+    // `0020`, at the second site inside the file whose own contract states the distinction: a
+    // SyntaxError carries no `.code`, so a malformed manifest fell through to "could not be read"
+    // and sent the reader to look at permissions instead of at their JSON.
+    // Copilot's suppressed note, round 7 on #231.
+    test("a manifest that does not parse says so, and does not blame the read", async () => {
+        const dir = scratch();
+        fs.writeFileSync(path.join(dir, "workspace.json"), "{ not json");
+        const target = await resolveTarget(dir, {});
+        assert.equal(target.state, "could-not-look");
+        assert.match(target.sentence, /does not parse as JSON/);
+        assert.doesNotMatch(target.sentence, /could not be read/);
+    });
+
+    test("an absent manifest and an unreadable one still say their own thing", async () => {
+        const absent = await resolveTarget(path.join(scratch(), "nowhere"), {});
+        assert.match(absent.sentence, /does not exist/);
+        assert.doesNotMatch(absent.sentence, /does not parse/);
+    });
+
+    test("and it agrees with readWorkspace on the same file — one rule, both sites", () => {
+        const dir = scratch();
+        fs.writeFileSync(path.join(dir, "workspace.json"), "{ not json");
+        assert.match(readWorkspace(dir).reason, /does not parse as JSON/);
+    });
+});
+
+test("bundleSpec keeps read and parse apart too — the third site of one rule", () => {
+    const dir = scratch();
+    const bad = path.join(dir, "schema.json");
+    fs.writeFileSync(bad, "{ not json");
+    assert.throws(() => bundleSpec({ schemaPath: bad }), /does not parse as JSON/);
+    assert.throws(() => bundleSpec({ schemaPath: path.join(dir, "absent.json") }), /could not be read/);
+});

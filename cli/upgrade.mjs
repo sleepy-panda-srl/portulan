@@ -74,11 +74,21 @@ export class UpgradeError extends Error {}
  */
 export function bundleSpec({ schemaPath } = {}) {
     const file = schemaPath ?? path.join(BUNDLE, "spec", "workspace.schema.json");
+    // The THIRD site of the read-versus-parse rule, found by sweeping after Copilot named the second.
+    // This one reads a file the bundle ships rather than one a user wrote, so a malformed schema is a
+    // broken install rather than somebody's typo — which changes who the sentence is for, not whether
+    // it should be accurate. Two carriers here were already one too many.
+    let text;
+    try {
+        text = fs.readFileSync(file, "utf8");
+    } catch (cause) {
+        throw new UpgradeError(`the Workspace Definition at ${file} could not be read — ${cause.code ?? cause.message}`);
+    }
     let schema;
     try {
-        schema = JSON.parse(fs.readFileSync(file, "utf8"));
+        schema = JSON.parse(text);
     } catch (cause) {
-        throw new UpgradeError(`the Workspace Definition at ${file} could not be read — ${cause.message}`);
+        throw new UpgradeError(`the Workspace Definition at ${file} does not parse as JSON — ${cause.message}. This bundle's own schema is unreadable, which is a broken install rather than a fault in any workspace`);
     }
     return schemaVersion(schema);
 }
@@ -205,19 +215,30 @@ export function readWorkspace(dir) {
 export async function resolveTarget(dir, options = {}) {
     const root = path.resolve(dir);
     const file = path.join(root, "workspace.json");
+    // **Read and parse are two failures with two repairs, and this had them as one.** `readWorkspace`
+    // twelve lines up already keeps them apart — a `SyntaxError` carries no `.code`, so a malformed
+    // manifest fell through to the *could not be read* sentence and sent the reader to look at
+    // permissions and paths instead of at their JSON. One rule, two sites, enforced at one: `0020`,
+    // and the second site is inside the file whose own contract states the distinction.
+    // Copilot's suppressed note, round 7 on #231.
+    const fail = (sentence) => ({ state: "could-not-look", dir: null, resolution: null, sentence });
+
+    let text;
+    try {
+        text = fs.readFileSync(file, "utf8");
+    } catch (error) {
+        return fail(
+            error.code === "ENOENT"
+                ? `${file} does not exist — that is not a workspace directory`
+                : `${file} could not be read — ${error.code ?? error.message}`,
+        );
+    }
+
     let manifest;
     try {
-        manifest = JSON.parse(fs.readFileSync(file, "utf8"));
+        manifest = JSON.parse(text);
     } catch (error) {
-        return {
-            state: "could-not-look",
-            dir: null,
-            resolution: null,
-            sentence:
-                error.code === "ENOENT"
-                    ? `${file} does not exist — that is not a workspace directory`
-                    : `${file} could not be read — ${error.code ?? error.message}`,
-        };
+        return fail(`${file} does not parse as JSON — ${error.message}`);
     }
     if (manifest?.kind !== "pointer") {
         // **Not `discover`'s wording, deliberately, and the difference is the argument.** `discover`

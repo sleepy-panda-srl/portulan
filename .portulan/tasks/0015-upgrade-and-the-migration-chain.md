@@ -1,7 +1,7 @@
 # Task 0015 — `upgrade`, and what a migration is
 
 **Lane:** full · **Opened:** 2026-08-12, milestone 7 session 9, at the session-open checkpoint
-**Verify recipe:** `tests` · **Status:** IN PROGRESS
+**Verify recipe:** `tests` · **Status:** DONE — merged state pending the maintainer's decision on [#231](https://github.com/sleepy-panda-works/portulan/pull/231)
 
 > The eighth of the eight subcommands [`../../docs/vision.md`](../../docs/vision.md) names. Seven
 > dispatch; `upgrade` is listed in [`../../cli/portulan.mjs`](../../cli/portulan.mjs) with
@@ -243,20 +243,20 @@ small branch so the alternative is cheap. **In the PR body for his decision.**
 
 ## Done when
 
-- [ ] `spec/migrations/` exists with its README and the two steps, and `spec/README.md`'s
+- [x] `spec/migrations/` exists with its README and the two steps, and `spec/README.md`'s
       "there is still no `migrations/` directory" paragraph is corrected rather than left standing.
-- [ ] `cli/upgrade.mjs` dispatches from `cli/portulan.mjs`; `upgrade` no longer exits 2 for being
+- [x] `cli/upgrade.mjs` dispatches from `cli/portulan.mjs`; `upgrade` no longer exits 2 for being
       unbuilt.
-- [ ] **Either residence**: an in-repo workspace migrates, and a pointer resolves through
+- [x] **Either residence**: an in-repo workspace migrates, and a pointer resolves through
       `cli/discover.mjs` and reports with the resolver's own sentence.
-- [ ] The repair is demonstrated **end to end on a workspace the real `init` drafts** — the rail exits
+- [x] The repair is demonstrated **end to end on a workspace the real `init` drafts** — the rail exits
       2 before and renders a verdict after.
-- [ ] The version step migrates a 1.0 fixture to 2.0, graded **green by the real `doctor`**, which
+- [x] The version step migrates a 1.0 fixture to 2.0, graded **green by the real `doctor`**, which
       refuses it outright beforehand.
-- [ ] `upgrade --check` reports **nothing owed** for `.portulan` and for `examples/` — the 2.4
+- [x] `upgrade --check` reports **nothing owed** for `.portulan` and for `examples/` — the 2.4
       compatibility evidence is not eaten.
-- [ ] Every new test forced red once before it is trusted.
-- [ ] The prose sweep of items 4–7 run as a grep per claim, not from memory.
-- [ ] Eleven recipes green; suite green above the 1415 baseline at `5a7b5ca`.
-- [ ] Seam scan clean over the diff, the branch name and the commit message, **term by term**.
-- [ ] Pre-commit checkpoint in a fresh context; records push graded by its own pass.
+- [x] Every new test forced red once before it is trusted.
+- [x] The prose sweep of items 4–7 run as a grep per claim, not from memory.
+- [x] Eleven recipes green; suite green above the 1415 baseline at `5a7b5ca`.
+- [x] Seam scan clean over the diff, the branch name and the commit message, **term by term**.
+- [x] Pre-commit checkpoint in a fresh context; records push graded by its own pass.
