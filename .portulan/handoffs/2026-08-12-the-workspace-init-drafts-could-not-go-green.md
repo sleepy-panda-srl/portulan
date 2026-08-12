@@ -90,6 +90,36 @@ to say so at once rather than to note it in a record afterwards.
 - **The row is not closed by this session.** All six demonstrations are delivered and clause (c) is
   graded; what remains is the milestone-close verdict, in a fresh context, after this merges.
 
+## The review loop, and the one sentence it is worth
+
+**Four rounds to empty — two findings, then one, then one, then a round that reviewed 23 of 23 files
+and generated nothing.** Every finding was real and none was refused. Two arrived as inline comments
+and two through the **promoted-note channel** (`0021`), which is the difference between a low-confidence
+note nobody can tell answered from ignored and one that gates.
+
+**Three of the four were the same defect wearing different clothes, and the loop is what made that
+visible.** A correct refusal placed where something could skip it: below a workspace read in
+`compile`, below a manifest read in `skills-set`, and inside a `--no-cycle`-skippable branch in
+`init`. Each was found one round after the last, which is the shape of a class nobody had named yet.
+
+**The sentence to carry: a judgement about the COMMAND LINE belongs where the command line is
+assembled, not where its subject is used.** Every one of the three had been written at the first place
+the *subject* was to hand — the workspace, the manifest, the resolved pack — which reads as natural
+and is exactly wrong, because the answer does not depend on any of them.
+
+**Round 1's second finding is the one I would have least liked to ship**: `resolverFor` read
+`rootPlan`'s `.roots` and dropped its `refusal`, so an API caller passing both would have resolved
+nothing and been told nothing — the silent drop this whole change exists to remove, reintroduced one
+layer down by the change removing it.
+
+**One mutation was retired rather than repaired**, and the reasoning is the session's own: after round
+3 moved `init`'s refusal to `validateAnswers`, disabling the branch-local guard changed nothing
+observable, because the primary carrier refuses first. **A mutation that alters no behaviour proves
+nothing about the test it aims at**, so it was struck rather than kept as a green that means nothing.
+
+**Threads stay unanswered-but-unresolved by design**: this identity is a GitHub App, and no App may
+resolve a thread. Answered-and-unresolved is the terminal state, and resolution is the maintainer's.
+
 ## Fidelity
 
 Session-open ran in a fresh **Fable 5** context and returned **APPROVE-WITH-ADJUSTMENTS (8)**; all

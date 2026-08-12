@@ -1,7 +1,7 @@
 # Task 0016 — the three demonstrations: D1, D2, D5
 
 **Lane:** full · **Opened:** 2026-08-12, milestone 7 session 10, at the session-open checkpoint
-**Verify recipe:** `tests` · **Status:** IN PROGRESS
+**Verify recipe:** `tests` · **Status:** IN REVIEW — [#233](https://github.com/sleepy-panda-works/portulan/pull/233), four Copilot rounds to empty, awaiting the maintainer's merge
 
 > The last three of row 7's six demonstrations. Nothing here was planned as a mechanism: every clause
 > these exercise is already delivered and recorded in [`m07.md`](../../docs/milestones/m07.md), and what
@@ -353,3 +353,12 @@ would re-commit the count drift m07.md documents.
   pack-root change lands **before** the demonstrations for exactly this reason; anything that lands
   after re-runs what it touches.
 - **Derivable is not demonstrated**, and the inventory count is not the evidence.
+
+## The review loop
+
+**Four rounds to empty; four findings, none refused**, two of them through the promoted-note channel.
+**Three of the four were one defect** — a correct refusal placed where something could skip it, in
+`compile`, `skills-set` and `init` in turn — and the rule they share is recorded in the handoff rather
+than as three fixes: *a judgement about the command line belongs where the command line is assembled,
+not where its subject is used.* Round 1's second finding was the sharpest: `resolverFor` dropped
+`rootPlan`'s `refusal`, which is the silent drop this change exists to remove, one layer down.
