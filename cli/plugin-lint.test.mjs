@@ -1420,3 +1420,46 @@ describe("a shipped persona and its host binding must correspond", () => {
         assert.equal(fails(findings).filter((f) => /persona|binds no/.test(f.message)).length, 0, said(findings));
     });
 });
+
+// Raised by Copilot as a suppressed note on round 3 of #227 and promoted to a thread by the channel
+// proposal 0021 built — which is the first time that promotion has caught a defect here.
+describe("an unreadable agents directory is not evidence that personas are unbound", () => {
+    const PERSONA = (name) =>
+        ["---", `name: ${name}`, "description: A role.", "tools: [read]", "---", "", `# Persona — ${name}`, "", "## Charter", "It does one thing.", ""].join("\n");
+    const fails = (findings) => findings.filter((f) => f.severity === "fail");
+    const said = (findings) => findings.map((f) => f.message).join("\n");
+
+    test("a directory that cannot be listed yields ONE unanswered question, not a failure per persona", () => {
+        const root = fixture({ skip: ["agents"] });
+        write(root, "core/personas/worker.md", PERSONA("worker"));
+        write(root, "core/personas/second.md", PERSONA("second"));
+        write(root, "agents/worker.md", AGENT("worker", "Does work. Delegate work to it."));
+        const dir = path.join(root, "agents");
+        fs.chmodSync(dir, 0o000);
+        try {
+            const { findings } = inspect(root);
+            // Root ignores the mode bits, so the assertion is conditional on the read actually
+            // failing — a test that passes for the wrong reason in a container is worse than none.
+            if (/could not be read|could not be examined/.test(said(findings))) {
+                assert.match(said(findings), /correspondence went unchecked/);
+                assert.equal(
+                    fails(findings).filter((f) => /has no binding/.test(f.message)).length,
+                    0,
+                    "an empty binding set from an unread directory must not be reported as personas with nothing bound",
+                );
+            }
+        } finally {
+            fs.chmodSync(dir, 0o755);
+        }
+    });
+
+    test("an ABSENT agents directory still fails every unbound persona — absence is an answer", () => {
+        // The distinction the gate turns on: nothing there is a finding, nothing looked is not.
+        const root = fixture({ skip: ["agents"] });
+        write(root, "core/personas/worker.md", PERSONA("worker"));
+        const { findings } = inspect(root);
+        assert.equal(fails(findings).length, 1, said(findings));
+        assert.match(said(findings), /has no binding/);
+        assert.doesNotMatch(said(findings), /went unchecked/);
+    });
+});
