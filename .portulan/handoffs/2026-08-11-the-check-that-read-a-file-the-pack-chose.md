@@ -103,6 +103,25 @@ that restates a hard failure is a second carrier of one verdict.*
   question's validator is the one the flags path already used; adding a question means adding it in one
   place, not two.
 
+## The first defect the promoted-note channel caught
+
+Round 3 of #227 raised, as a **suppressed low-confidence note promoted to a thread** — the channel
+[`0021`](../proposals/0021-the-suppressed-channel-needs-a-state.md) built and the 2026-08-07 reversal
+made blocking — that the new correspondence in `plugin-lint` emits false *has no binding* failures when
+`./agents/` cannot be examined. It was right, and the shape is this file's own recurring defect **read
+backwards**: everywhere else the failure is *nothing looked* recorded as *nothing wrong*; here an empty
+`bound` map was read as **definitely missing**, failing every persona for a permission the pass never
+got to exercise.
+
+Gated on **examination**, not on the map being non-empty — an empty map has two causes and the check may
+only speak on one. `agentsExamined` is set by a successful listing **and** by a genuine ENOENT, because
+absence is an answer: a plugin shipping no `agents/` has bound nothing, which is the finding. Where the
+directory could not be examined the correspondence emits a note naming the unanswered question rather
+than a second failure, since the cause is already red above.
+
+**Worth recording for the channel rather than only for the bug:** until this round, promotion had only
+ever moved notes that were already visible. This is the first time it carried something that mattered.
+
 ## Fidelity
 
 Both checkpoints ran in fresh contexts **before** the commit. Session-open **APPROVE-WITH-ADJUSTMENTS

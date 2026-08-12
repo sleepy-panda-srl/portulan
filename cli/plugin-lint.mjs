@@ -240,6 +240,11 @@ export function inspect(rawRoot, { payload = false } = {}) {
     // it up by. Collected during the walk rather than re-read afterwards: the files are already open,
     // and a second read is a second chance to disagree about what they said.
     const bound = new Map();
+    // Whether the agents directory was actually EXAMINED, which is not the same as whether `bound` has
+    // anything in it. An empty map has two causes — nothing is bound, or nothing could be looked at —
+    // and the correspondence below may only speak on the first. Absent counts as examined: a plugin
+    // with no `agents/` has genuinely bound nothing, and that IS the finding.
+    let agentsExamined = false;
     const fail = (check, message) => findings.push({ severity: "fail", check, message });
     const note = (check, message) => findings.push({ severity: "note", check, message });
 
@@ -946,6 +951,7 @@ export function inspect(rawRoot, { payload = false } = {}) {
         // rather than a shrug. It stays a note for a plugin with no `core/personas/`, which is the
         // legitimate shape and the reason this cannot simply become a failure.
         note("agents", `no ./${AGENT_DIR}/ directory — this plugin ships no agents`);
+        agentsExamined = true;
     } else {
         // Routed through the same resolver as every declared path, so an `agents/` that is a symlink
         // out of the tree is an escape here too — undeclared does not mean unchecked, and this is the
@@ -963,6 +969,7 @@ export function inspect(rawRoot, { payload = false } = {}) {
                     entries = null;
                 }
                 if (entries) {
+                    agentsExamined = true;
                     // `isFile()` is false for a symlink, so the obvious filter *drops* a symlinked
                     // agent — present in the tree, absent from the count, nothing saying so, which
                     // is the exact failure this pass exists to prevent. Symlinks are taken in and
@@ -1043,7 +1050,22 @@ export function inspect(rawRoot, { payload = false } = {}) {
         // would report an absence nobody established.
         if (error.code !== "ENOENT") fail("agents", `core/personas/ could not be read — ${error.code ?? error.message}, so the binding correspondence went unchecked`);
     }
-    if (personaFiles) {
+    if (personaFiles && !agentsExamined) {
+        // **An empty `bound` is not evidence of an unbound persona when nothing could be listed.**
+        // Where `./agents/` could not be stat'd, resolved, or read, every persona would be failed for
+        // "no binding" — a red naming the wrong defect, blaming an author for a permission the pass
+        // could not exercise. The cause is already a failure of its own above, so this is a note: the
+        // run is red either way, and what this adds is which question went unanswered.
+        //
+        // Raised by Copilot as a suppressed note on round 3 of #227, promoted to a thread by the
+        // channel `0021` built. It is this file's own recurring defect read backwards — "nothing
+        // looked" recorded as "definitely missing" rather than as "nothing wrong".
+        note(
+            "agents",
+            `the persona↔binding correspondence went unchecked — ./${AGENT_DIR}/ could not be examined, so an empty binding set is a ` +
+                `question nobody answered rather than ${personaFiles.length} persona(s) with nothing bound to them`,
+        );
+    } else if (personaFiles) {
         for (const persona of personaFiles) {
             const binding = bound.get(persona);
             if (!binding) {
