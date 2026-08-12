@@ -77,6 +77,38 @@ worth more than any amount of designing.
   not close #184**. And nothing here writes an adopter's manifest from nothing: only the pack portion
   of a `skills` key in one that already exists.
 
+## The review loop, and the pattern it exposed
+
+**Five rounds to empty.** Round 1: two inline comments. Round 2: **no inline comment at all** — the
+whole round arrived through the suppressed low-confidence channel. Round 3: one inline comment (data
+loss) and one note. Round 4: no inline comment, two notes, **one of them refused with a measurement**.
+Round 5: empty, verdict APPROVED, `NOTES_STATE: none`.
+
+Two things this loop found that the three fresh-context checkpoints did not, and both are patterns
+rather than incidents:
+
+**Three fixes landed at one site of an operation and not at its sibling.** Round 2 split read from
+parse in `skills-set`'s `workspace.json` arm and left the identical conflation in `plugin-lint`'s
+`pack.json` arm. The pre-commit re-check added the ownership guard to the resolved-pack arm and left
+the fallback arm open — where `--write` then **deleted two hand-written `skills` entries and exited 0**,
+announcing that it wrote nothing. Each time the review found the sibling, never the session that had
+just written the fix. That is
+[`0020`](../proposals/0020-a-fix-is-not-done-at-the-site-it-was-found.md) committed three times inside
+the change that cites it, and the operative lesson is procedural: **after fixing a diagnostic or a
+guard, grep for the same operation elsewhere in the diff before pushing.**
+
+**Three tests could not fail for the reason they existed.** The tautological
+`assert.ok(0 <= HOST_SKILL_DEPTH && 1 <= HOST_SKILL_DEPTH)` (pre-commit), the live test that iterated
+only the depth-1 shape so the depth-0 case asserted nothing (round 1), and the key-order fixture with
+`skills` already last, which would have matched a `--write` that moved the key (round 4). A vacuous
+test is worse than none: it reports coverage it does not have, and all three were written by the
+session whose stated subject is harnesses inheriting blind spots.
+
+**One note was refused rather than fixed**, with the measurement in the reply: the claim that
+`{ ...value, skills: next }` re-inserts an existing key at the end is false — re-assignment keeps the
+insertion position. The fix for its sibling note (the vacuous fixture) is what makes that refusal
+checkable rather than asserted.
+
 ## Fidelity
 
 Session-open ran in a fresh **Fable 5** context (the standing instruction, since the session's records
@@ -86,7 +118,7 @@ invisibly into the plan they graded — including the two that changed the desig
 and the fourth outcome) and the one that removed scope (#228 item 1, dropped because nothing here
 opens `cli/doctor.mjs`).
 
-**Eleven recipes green; suite 1411 pass / 0 fail**, against a measured baseline of 1357 at `f30ab2d`.
+**Eleven recipes green; suite 1415 pass / 0 fail**, against a measured baseline of 1357 at `f30ab2d`.
 Seam scan clean over the staged diff, the branch name and the commit message, run term by term rather
 than as one pattern.
 
