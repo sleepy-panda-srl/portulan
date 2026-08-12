@@ -347,22 +347,36 @@ describe("the schema declares which Workspace Definition version it implements",
     const at = (spec) => tree(scratch(), { ...minimalFiles, "workspace.json": JSON.stringify({ ...wellFormed(), portulan: { spec } }) });
     const here = schemaVersion(SCHEMA);
 
+    /**
+     * The rejection, captured ONCE and asserted directly.
+     *
+     * A first cut ran `inspect` twice — through `assert.rejects(...).then(() => null).catch(e => e)`
+     * for the type and again for the message — which did double work and left `error` always `null`
+     * on the success path, so the line reading `assert.equal(error, null)` looked tautological to
+     * anyone reading it. In a suite whose subject is tests that cannot fail for the reason they
+     * exist, an assertion that *reads* as vacuous is barely better than one that is.
+     * Copilot, round 9 on #231.
+     */
+    const refusal = async (spec) => {
+        const error = await inspect(at(spec), { schema: SCHEMA }).then(() => null, (e) => e);
+        assert.ok(error instanceof DoctorError, `doctor must refuse a manifest declaring ${spec}`);
+        return error.message;
+    };
+
     test("a workspace BEHIND by a MAJOR is sent to `portulan upgrade`", async () => {
-        const error = await assert.rejects(() => inspect(at("1.0"), { schema: SCHEMA }), DoctorError).then(() => null).catch((e) => e);
-        const message = await inspect(at("1.0"), { schema: SCHEMA }).then(() => "", (e) => e.message);
+        const message = await refusal("1.0");
         assert.match(message, /portulan upgrade/, "the behind-arm must name the tool that migrates it");
         assert.doesNotMatch(message, /upgrade the CLI/, "a workspace behind this bundle is not fixed by upgrading the CLI");
-        assert.equal(error, null);
     });
 
     test("a workspace AHEAD by a MAJOR is sent to upgrade the CLI, never to `portulan upgrade`", async () => {
-        const message = await inspect(at(`${here.major + 1}.0`), { schema: SCHEMA }).then(() => "", (e) => e.message);
+        const message = await refusal(`${here.major + 1}.0`);
         assert.match(message, /upgrade the CLI/, "the ahead-arm must say the validator is the old thing");
         assert.doesNotMatch(message, /portulan upgrade/, "`portulan upgrade` cannot migrate a workspace this bundle does not understand");
     });
 
     test("a MINOR ahead names the same remedy as its MAJOR sibling — 0020, one rule, two arms", async () => {
-        const message = await inspect(at(`${here.major}.${here.minor + 1}`), { schema: SCHEMA }).then(() => "", (e) => e.message);
+        const message = await refusal(`${here.major}.${here.minor + 1}`);
         assert.match(message, /upgrade the CLI/, "the MINOR-ahead refusal stopped at `Refusing` while its sibling named the fix");
     });
 });
