@@ -22,15 +22,26 @@ lasted one pull request. Worth one sentence rather than none, because the *shape
 may be licensed by the row before the constitution catches up, and while that holds, the tool has to say
 which document names it.
 
-Beside those eight sit **four** runnable tools that are on none of the lists — `plugin-lint`,
-`librarian`, `control-chars` and `discover` — because milestone 3, milestone 5, issue
-[#68](https://github.com/sleepy-panda-works/portulan/issues/68) and milestone 7's plugin-cache
-discovery needed them. Two more files in this directory are neither subcommands nor tools: `gate` and
-`stop-gate` are the **compiled-hook runners**, invoked by generated host configuration rather than by a
-person, and `recipe-set` and `manifest` are modules other tools import.
+Beside those eight sit **five** runnable tools that are on none of the lists — `plugin-lint`,
+`librarian`, `control-chars`, `discover` and `rule-carriers` — because milestone 3, milestone 5, issue
+[#68](https://github.com/sleepy-panda-works/portulan/issues/68), milestone 7's plugin-cache discovery
+and [`../.portulan/verify/rule-carriers.sh`](../.portulan/verify/rule-carriers.sh) needed them.
+**Five** more files in this directory are neither subcommands nor tools: `gate` and `stop-gate` are the
+**compiled-hook runners**, invoked by generated host configuration rather than by a person, and
+`recipe-set`, `skills-set` and `manifest` are modules other tools import — the first two runnable in
+their own right, each printing the set it carries.
+
+_(Two counts moved at milestone 7 session 8 and both were wrong before it. The runnable tools read
+**four** while `rule-carriers` had been one since 2026-08-10 and appeared in this file **zero** times;
+the line below it read **two** while naming four. Corrected in the change that added a sibling rather
+than left to the next reader — the rule this repository applies to
+[`../.portulan/identity.md`](../.portulan/identity.md)'s rosters, and the one a first draft of this very
+parenthetical broke by invoking it while leaving `rule-carriers` uncounted. Found at the pre-commit
+checkpoint. A count is a claim, which is [#187](https://github.com/sleepy-panda-works/portulan/issues/187)'s
+subject; the missing table rows are [#203](https://github.com/sleepy-panda-works/portulan/issues/203)'s.)_
 
 Being off the list is a fact about `docs/vision.md`, which names these eight subcommands and is
-human-owned: whether any of the four ever joins them is the maintainer's call and not an implementer's,
+human-owned: whether any of the five ever joins them is the maintainer's call and not an implementer's,
 so none is described here as *coming to the CLI* — and none is wired behind the entry point, which is
 the same rule expressed in code rather than in a sentence.
 
@@ -41,14 +52,23 @@ disk. One rule with three carriers is obeyed at the narrowest, and the repair is
 [`0020`](../.portulan/proposals/0020-a-fix-is-not-done-at-the-site-it-was-found.md)'s where the rule
 cannot be a function: state it once, and let the others cite. Both now cite this file.
 
-The table below would be the check on it, and today it is not quite: **seven files in this directory
-have no row** — `gate`, `stop-gate`, `recipe-set` and its two suites, `collisions.test`, and
-`gh-bot.test`. It was **eleven** when milestone 7 session 6 measured it; that session added rows for the
-four it introduced and left these seven to
+The table below would be the check on it, and today it is not quite: **nine files in this directory
+have no row** — `gate`, `stop-gate`, `recipe-set` and its two suites, `collisions.test`, `gh-bot.test`,
+and `rule-carriers` with its suite. It was **eleven** when milestone 7 session 6 measured it; that session
+added rows for the four it introduced and left the rest to
 [#203](https://github.com/sleepy-panda-works/portulan/issues/203) rather than growing an unscheduled
-sweep inside a feature change. A table headed *What is here today* that is seven files short is still a
-claim its own directory falsifies, which is why the issue exists and why the number is stated here
-rather than left for a reader to count.
+sweep inside a feature change; session 8 added rows for the three it introduced and did the same.
+A table headed *What is here today* that is nine files short is still a claim its own directory
+falsifies, which is why the issue exists and why the number is stated here rather than left for a
+reader to count.
+
+_(This number was wrong twice in one session, and the second time is the instructive one. It read
+**seven**, omitting `rule-carriers` and its suite. A first correction said **eight** and claimed to have
+been "re-derived by walking `cli/*.mjs` against the table" — but the walk matched the filename **anywhere
+in the table**, so `stop-gate.mjs` counted as having a row on the strength of a link inside
+`stop-gate.test.mjs`'s description. **A row is an anchor at the start of a line**, and re-derived that
+way the answer is nine. The method was named accurately and executed differently, which is the failure
+this paragraph is otherwise about. Found at the pre-commit re-check.)_
 
 ## What is here today
 
@@ -65,6 +85,9 @@ rather than left for a reader to count.
 | [`discover.test.mjs`](discover.test.mjs) | Its test suite. Every case builds a whole fake host in a temp directory and points `CLAUDE_CONFIG_DIR` at it, because a suite that consulted the real machine would be green on the author's laptop and meaningless anywhere else. |
 | [`plugin-lint.mjs`](plugin-lint.mjs) | The packaging validator: the plugin and marketplace manifests, the skills they declare, and the agents at `./agents/` that nothing declares. Since milestone 7 session 7 it also holds **`core/personas/` and `agents/` to each other** — both directions fail, because a persona this bundle ships and does not bind is doctrine the host never registers, and a binding whose persona is gone registers a role with no charter. It is the one location a host loads agents from, exported here as `AGENT_DIR` and imported by `doctor` rather than spelled twice. |
 | [`plugin-lint.test.mjs`](plugin-lint.test.mjs) | Its test suite, likewise written first. |
+| [`skills-set.mjs`](skills-set.mjs) | **The registrable set**, added at milestone 7 session 8: the one carrier of *what a plugin manifest must declare so a composed pack's skills register*. It reads each composed pack's `contributes.skills` and derives the paths, relativised to the plugin root — `--check` reports drift (1) and `--write` derives the key rather than leaving it hand-typed. Row 7 clause (b)'s adopter half, [#184](https://github.com/sleepy-panda-works/portulan/issues/184): until it landed, registration was a property of `.claude-plugin/plugin.json` **alone**, so a composed pack's skill was invocable by coincidence of a path someone typed. It holds `HOST_SKILL_DEPTH` — the platform fact the derivation rests on, measured in `plugin-lint` and moved here when that file became a consumer. **Deliberately not a ninth `portulan` subcommand**, on `discover`'s precedent above. |
+| [`skills-set.test.mjs`](skills-set.test.mjs) | Its test suite, written first. Every refusal has a sibling in `recipe-set.test.mjs`, because those were found by review rather than by design and a second carrier of the same shape should not have to rediscover them. |
+| [`skills-set.live.test.mjs`](skills-set.live.test.mjs) | The same derivation against **this** repository rather than against fixtures — the guard for *a harness you write to check your own change inherits your change's blind spot*, which this project has now measured seven times, two of them in the session that added this file. Its load-bearing assertion is that the derived set equals what `.claude-plugin/plugin.json` already declares. |
 | [`new.mjs`](new.mjs) | **The authoring subcommand**, added at milestone 7 session 2: it scaffolds a skill · persona · pack · workspace · gate-policy · repo-card from a core template **into a layer you own, never into `core/`**. The refusal is resolution-based rather than pattern-based, because every interesting escape — `packs/../core`, a symlinked destination — parses fine and only fails once resolved. Two codes, `0` wrote and `2` could not run: it renders no verdict, so it has no red. |
 | [`new.test.mjs`](new.test.mjs) | Its test suite, written first. It establishes *never into `core/`* against the filesystem rather than against an argument check, and runs the real `doctor` and `plugin-lint` over what was scaffolded — a scaffold nothing validates is one nobody can trust. |
 | [`vendor.mjs`](vendor.mjs) | **Materialises a workspace where it is needed**, added at milestone 7 session 3 when the maintainer widened the constitution's gloss to cover both directions. `--host` writes a self-contained `AGENTS.md` — core's kernel inlined, the workspace's slots named, packs named-not-composed — beside a copied `.portulan/`, for a host that cannot install the plugin. `--switch` changes residence, feed-side ↔ in-repo, under proposal [`0017`](../.portulan/proposals/0017-one-repository-one-governing-workspace.md): materialise at the new residence, leave a pointer or nothing at the old, `doctor` green at **both** ends before the old one is retired. Every handled failure leaves exactly one governing workspace; the residence is **never inferred** from a path, which is `init`'s rule for `init`'s reason. |
