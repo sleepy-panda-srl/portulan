@@ -31,7 +31,7 @@ import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { applyEdits, bundleSpec, loadSteps, planFor, readWorkspace, resolveTarget, restore, run, UpgradeError } from "./upgrade.mjs";
+import { applyEdits, bundleSpec, inside, loadSteps, planFor, readWorkspace, resolveTarget, restore, run, UpgradeError } from "./upgrade.mjs";
 import { inspect } from "./doctor.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -1045,4 +1045,70 @@ describe("the staging path is a path the containment guard never saw", () => {
         assert.deepEqual(result.failed, ["linked.md"]);
         assert.equal(fs.readFileSync(path.join(dir, "elsewhere.md"), "utf8"), "outside\n", "it wrote through the link");
     });
+});
+
+describe("containment is a property of the path on DISK, not of the string", () => {
+    test("a symlinked PARENT is refused, though the string resolves inside", () => {
+        // `<root>/link/a.md` passes every character-level test and lands wherever `link` points.
+        // `wx` guards only the final component. Copilot, round 11 on #231.
+        const root = scratch();
+        const outside = scratch();
+        fs.symlinkSync(outside, path.join(root, "link"));
+        assert.notEqual(inside(root, "link/a.md"), null, "the lexical check should still pass — that is the point");
+
+        const applied = applyEdits(root, [{ file: "link/a.md", next: "escaped\n" }]);
+        assert.equal(applied.ok, false, "a symlinked parent was written through");
+        assert.match(applied.reason, /symlink/i);
+        assert.equal(fs.existsSync(path.join(outside, "a.md")), false, "the write landed outside the workspace");
+    });
+
+    test("a symlink deeper in the chain is caught too, not just the first component", () => {
+        const root = scratch();
+        const outside = scratch();
+        fs.mkdirSync(path.join(root, "a", "b"), { recursive: true });
+        fs.symlinkSync(outside, path.join(root, "a", "b", "link"));
+        const applied = applyEdits(root, [{ file: "a/b/link/c.md", next: "escaped\n" }]);
+        assert.equal(applied.ok, false);
+        assert.equal(fs.existsSync(path.join(outside, "c.md")), false);
+    });
+
+    test("restore refuses a snapshot whose parent became a symlink", () => {
+        const root = scratch();
+        const outside = scratch();
+        fs.writeFileSync(path.join(outside, "victim.md"), "outside\n");
+        fs.symlinkSync(outside, path.join(root, "link"));
+        const result = restore(root, [{ file: "link/victim.md", previous: "clobbered\n", mode: null, created: [] }]);
+        assert.equal(result.ok, false);
+        assert.deepEqual(result.failed, ["link/victim.md"]);
+        assert.equal(fs.readFileSync(path.join(outside, "victim.md"), "utf8"), "outside\n");
+    });
+
+    test("an ordinary nested path still works — the guard refuses links, not depth", () => {
+        const root = scratch();
+        const applied = applyEdits(root, [{ file: "x/y/z.md", next: "fine\n" }]);
+        assert.equal(applied.ok, true, applied.reason);
+        assert.equal(fs.readFileSync(path.join(root, "x/y/z.md"), "utf8"), "fine\n");
+    });
+});
+
+test("a component that cannot be EXAMINED is refused, never assumed absent", (t) => {
+    // Rule 3, at the containment walk. Reaching it needs a directory whose children cannot be
+    // stat'd, which root can read regardless — so the case is SKIPPED there rather than passing
+    // vacuously, since a green that proves nothing is what this suite exists to avoid. Found by
+    // mutating the branch and watching every test stay green.
+    if (typeof process.getuid === "function" && process.getuid() === 0) {
+        t.skip("running as root: a 0o000 directory is still traversable, so this branch is unreachable here");
+        return;
+    }
+    const root = scratch();
+    const closed = path.join(root, "closed");
+    fs.mkdirSync(closed);
+    fs.chmodSync(closed, 0o000);
+    try {
+        const applied = applyEdits(root, [{ file: "closed/a.md", next: "x\n" }]);
+        assert.equal(applied.ok, false, "an unreadable component was treated as absent");
+        assert.match(applied.reason, /could not be examined/);
+    } finally {
+        fs.chmodSync(closed, 0o755);
+    }
 });
