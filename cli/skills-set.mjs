@@ -562,6 +562,19 @@ export function run(argv = [], options = {}) {
     const workspaceDir = path.resolve(arg("--workspace", path.join(repoRoot, ".portulan")));
     const pluginRoot = path.resolve(arg("--plugin-root", repoRoot));
 
+    // Refused before the manifest is read, the sibling of the placement Copilot's round 2 found in
+    // `compile`. It sat below the read here too, so an unreadable or unparsable workspace answered
+    // first and this tool disagreed with the others about WHEN the command line is judged. Swept in
+    // the same stroke rather than left for the round that would eventually find it.
+    const askedBoth = namedWithAuto(
+        many("--pack-root").filter((r) => r !== AUTO),
+        many("--pack-root").includes(AUTO),
+    );
+    if (askedBoth) {
+        stderr.write(`skills-set: ${askedBoth}\n`);
+        return 2;
+    }
+
     let manifest = options.manifest;
     if (manifest === undefined) {
         // Read and parse are two failures with two repairs, and one sentence for both misdiagnoses the
@@ -598,11 +611,6 @@ export function run(argv = [], options = {}) {
         // Silently inert, and eagerly reading `~/.claude` to be so: `discovery` is a THUNK precisely
         // so an unasked path never touches the host, and calling `discoverPackRoots()` at the
         // argument site defeated that whichever branch ran.
-        const bothAsked = namedWithAuto(namedRoots, wantsDiscovery);
-        if (bothAsked) {
-            stderr.write(`skills-set: ${bothAsked}\n`);
-            return 2;
-        }
         const plan = rootPlan(workspaceDir, manifest, {
             named: namedRoots,
             discovery: () => discoverPackRoots(),
