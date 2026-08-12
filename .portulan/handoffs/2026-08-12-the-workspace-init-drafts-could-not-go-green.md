@@ -105,7 +105,7 @@ transcript question and the folding, and **reversed a decision this session had 
 specified the union, set three conditions, and found the live `skills-set` defect while reading.
 
 **Eighteen mutations run against the new tests; all caught**, five only after repair. Eleven recipes
-green; suite **1528 pass / 0 fail** against a measured baseline of **1505** at `dc1a2bd`, which the
+green; suite **1529 pass / 0 fail** against a measured baseline of **1505** at `dc1a2bd`, which the
 pre-commit checkpoint re-measured in a fresh clone rather than taking on trust. Seam scan clean over
 the diff, the branch name and the commit message, run term by term rather than as one pattern, by a
 scanner that was itself proved able to fire before it was trusted.
