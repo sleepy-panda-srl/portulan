@@ -1130,17 +1130,22 @@ export async function run(argv, options = {}) {
         // a comment. This loop does **not** rewrite them, and a switched workspace whose bundle path
         // no longer resolves exits **2 — could not run**, which is the fail-closed direction.
         //
-        // **The remedy now exists and is named rather than implied.** Milestone 7 session 9 built
-        // `spec/migrations/0002-bundle-fallback-path.mjs`, run by `portulan upgrade --write`, which
-        // re-derives every marked line for the bundle it is running from. Whether this loop should
-        // call it is a live question for the maintainer rather than an implementer's to settle: it
-        // changes what a `--switch` promises. It is also a smaller win than it looks — a
-        // same-machine switch leaves the absolute path still resolving, and the path breaks when the
-        // tree TRAVELS, which is where `upgrade` runs and this does not. Filed as
-        // https://github.com/sleepy-panda-works/portulan/issues/230 rather than left in a comment, so
-        // the deferral has an owner — an unowned deferral is the promised-but-unowned class
-        // `docs/milestones/m07.md` records three occurrences of, and this comment claimed the filing
-        // before it existed until the pre-commit checkpoint went looking for the issue.
+        // **The remedy exists elsewhere, and this loop deliberately does not call it.** Milestone 7
+        // session 9 built `spec/migrations/0002-bundle-fallback-path.mjs`, run by `portulan upgrade`,
+        // which re-derives every marked line for the bundle it is running from.
+        //
+        // **Ruled by the maintainer on 2026-08-12** — *vendor copies; upgrade repairs; vendor's
+        // comment names the remedy. One tool, one job* — and closed as
+        // https://github.com/sleepy-panda-works/portulan/issues/230. So this is a decision rather
+        // than a deferral, and the argument is worth keeping where the code is: a repair fixes a
+        // value that *is not true where the workspace now is*, and after a same-machine switch — the
+        // only kind this performs — **the baked path is still true**. This loop cannot observe the
+        // event that invalidates it, and the correct post-travel value is derivable only by the
+        // bundle running on the destination machine, which is what `upgrade` is. So copying and
+        // repairing are not the same operation, and this is not a sibling site under `0020`.
+        //
+        // _(This comment claimed the issue was filed before it existed, until the pre-commit
+        // checkpoint went looking for it.)_
         for (const file of files) {
             if (file.rel === "workspace.json") continue;
             const full = path.join(staging, file.rel);
