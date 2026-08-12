@@ -151,9 +151,19 @@ export function canonical(relPath) {
  *        found. Absent while packs are declared means nothing resolves, which is could-not-run: a
  *        resolver that silently is not there would derive nothing and report an empty set.
  *
+ * @param {string[]} [options.fallbackRoots]  roots to own when NO pack resolved, so a workspace that
+ *        has stopped composing still has its stale entries recognised. `run` passes the ones `rootPlan`
+ *        produced; the conventional `<pluginRoot>/packs` is the last resort.
+ *
  * @returns {{ ok: true, paths: {path: string, pack: string, root: string}[],
- *             external: {pack: string, root: string}[], composed: number }
+ *             external: {pack: string, root: string}[], composed: number, owned: string[] }
  *          | { ok: false, exitCode: 2, reason: string }}
+ *
+ * `owned` is part of the contract, not an implementation detail: `compare()` and `declaredFor()` take
+ * it to partition the manifest, and a caller holding a set from elsewhere must pass it through or those
+ * two will fall back to the conventional root and disagree with the derivation — which is the defect
+ * this whole partition exists to prevent. It went undocumented in the change that introduced it; raised
+ * as a promoted low-confidence note on #229.
  */
 export function skillsSet(manifest, options = {}) {
     const { packs = manifest?.packs ?? [], resolve = null, pluginRoot } = options;
@@ -302,7 +312,27 @@ export function skillsSet(manifest, options = {}) {
     // did that **only for the conventional layout**, silently preserving a stale entry forever anywhere
     // else. Layout-dependence in the fallback of a fix whose whole subject was layout-dependence.
     // Raised at the pre-commit re-check.
-    const fallback = (options.fallbackRoots ?? []).map((r) => path.resolve(r)).filter((r) => !escapes(pluginRoot, r));
+    // The same ambiguity the in-pack guard refuses, on the path that has no pack to guard. A fallback
+    // root that CONTAINS the plugin root makes every declared entry read as pack-owned, and with no
+    // packs composed the derived set is empty — so `--write` deleted `./core/skills/` and
+    // `./plugin/skills/` outright and **exited 0 announcing "wrote 0 skills path(s)"**. Silent data
+    // loss, reachable with `--pack-root <pluginRoot>`.
+    //
+    // The guard was written for the resolved-pack arm and not for this one, which is the third instance
+    // in this change of a fix landing at one site of an operation and not its sibling —
+    // `../.portulan/proposals/0020-a-fix-is-not-done-at-the-site-it-was-found.md`. Raised by Copilot on
+    // #229, after the two earlier instances were raised the same way.
+    const fallbackCandidates = (options.fallbackRoots ?? []).map((r) => path.resolve(r));
+    for (const candidate of fallbackCandidates) {
+        if (!escapes(candidate, pluginRoot)) {
+            return refuse(
+                `the pack root ${candidate} contains the plugin root itself — every declared skills path ` +
+                    "would be indistinguishable from a pack's, including hand-written ones this tool must " +
+                    "preserve. Name a narrower `--pack-root`",
+            );
+        }
+    }
+    const fallback = fallbackCandidates.filter((r) => !escapes(pluginRoot, r));
     return {
         ok: true,
         paths,

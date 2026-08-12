@@ -172,6 +172,19 @@ describe("one partition, so --check converges and --write is idempotent", () => 
         assert.match(set.reason, /contains the plugin root/);
     });
 
+    test("a FALLBACK root containing the plugin root is refused too — the guard's sibling site", () => {
+        // With no packs composed the derived set is empty, so an owned set of `[pluginRoot]` made every
+        // declared entry pack-owned and `--write` DELETED `./core/skills/` and `./plugin/skills/`,
+        // exiting 0 and announcing "wrote 0 skills path(s)". Silent data loss, reachable with
+        // `--pack-root <pluginRoot>`. The guard existed on the resolved-pack arm and not on this one —
+        // the third instance in this change of a fix landing at one site of an operation and not its
+        // sibling. Raised by Copilot on #229.
+        const set = skillsSet({ packs: [] }, { pluginRoot: PLUGIN_ROOT, fallbackRoots: [PLUGIN_ROOT] });
+        assert.equal(set.ok, false);
+        assert.equal(set.exitCode, 2);
+        assert.match(set.reason, /contains the plugin root/);
+    });
+
     test("the fallback owned set follows the caller's resolution roots, not the conventional path", () => {
         // A workspace that has STOPPED composing still needs its stale entries cleaned wherever its
         // packs would have been. Falling straight to `<pluginRoot>/packs` did that only for the
