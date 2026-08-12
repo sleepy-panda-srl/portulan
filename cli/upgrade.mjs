@@ -203,7 +203,19 @@ export async function resolveTarget(dir, options = {}) {
         };
     }
     if (manifest?.kind !== "pointer") {
-        return { state: "resides-here", dir: root, resolution: null, sentence: `this repository's workspace resides at \`${root}\`` };
+        // **Not `discover`'s wording, deliberately, and the difference is the argument.** `discover`
+        // answers *this repository's workspace resides here* because it is asked about a repository's
+        // own `.portulan` — that is its question. This tool takes ANY workspace directory: `examples/`,
+        // a feed-side portfolio, a path a user typed. Borrowing the sentence would have made a claim
+        // about ownership from the mere absence of `kind: pointer`, which is a different fact from the
+        // one that was checked. So it says what it actually established. Copilot, round 1 on #231.
+        const kind = typeof manifest?.kind === "string" ? `\`${manifest.kind}\`` : "a governing";
+        return {
+            state: "resides-here",
+            dir: root,
+            resolution: null,
+            sentence: `\`${root}\` carries ${kind} manifest, so it is the workspace this run acts on`,
+        };
     }
     const resolution = resolveGovernor(manifest.governed_by, options);
     return {

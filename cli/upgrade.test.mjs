@@ -606,6 +606,23 @@ describe("either residence", () => {
         assert.equal(target.dir, dir);
     });
 
+    test("the resides-here sentence claims no OWNERSHIP it did not check", async () => {
+        // `discover` says "this repository's workspace resides here" because it is asked about a
+        // repository's own `.portulan`. This tool takes any workspace directory — `examples/`, a
+        // portfolio, a typed path — so borrowing that sentence would infer ownership from the mere
+        // absence of `kind: pointer`, which is a different fact from the one checked.
+        // Copilot, round 1 on #231.
+        for (const kind of ["repository", "demo", "portfolio"]) {
+            const dir = path.join(scratch(), ".portulan");
+            fs.mkdirSync(dir, { recursive: true });
+            fs.writeFileSync(path.join(dir, "workspace.json"), `${JSON.stringify(manifest("2.8", { kind, tree: "../" }), null, 2)}\n`);
+            const target = await resolveTarget(dir, {});
+            assert.equal(target.state, "resides-here");
+            assert.doesNotMatch(target.sentence, /this repository's/i, `${kind}: the sentence claims the workspace belongs to a repository nobody asked about`);
+            assert.ok(target.sentence.includes(dir), `${kind}: the sentence must name what it examined`);
+        }
+    });
+
     test("a pointer is resolved through discover, and the resolver's OWN sentence is what gets printed", async () => {
         const gov = governing();
         const config = host("acme-platform", path.dirname(gov));
