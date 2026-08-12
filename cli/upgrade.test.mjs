@@ -397,6 +397,17 @@ describe("the pre-state gate — which direction the workspace is off in", () =>
         return dir;
     }
 
+    // These two assert on THIS TOOL'S OWN sentence, and say so, because a looser assertion was
+    // measured to pass for the wrong reason. `doctor` also refuses a workspace from the future, and
+    // once its refusal was taught to say "upgrade the CLI" (a later adjustment in this same session),
+    // disabling `upgrade`'s gate entirely STILL produced exit 2 with those words — `doctor`'s throw
+    // leaking through the `inspect` call further down. The test could no longer fail for its reason.
+    // Caught by re-running the mutation harness after the tree changed under it.
+    //
+    // So: match what only `upgrade` says, and prove the gate fired BEFORE anything reached `doctor`.
+    const OWN = /this bundle is OLDER than the workspace/;
+    const VIA_DOCTOR = /doctor could not grade/;
+
     test("a workspace from the FUTURE is could-not-run, never a green `nothing owed`", async () => {
         // The defect the session-open checkpoint caught. Branching on the FACT of doctor's throw
         // sent a 3.0 workspace into the plan, where every step answered `not owed`, and the run
@@ -404,15 +415,17 @@ describe("the pre-state gate — which direction the workspace is off in", () =>
         for (const spec of ["3.0", "9.9"]) {
             const h = harness();
             assert.equal(await run([onDisk(spec, { tree: "../" })], h.options), 2, `${spec} must be could-not-run`);
-            assert.match(h.text(), /older than|upgrade the CLI/i, `${spec}: the sentence must name the real remedy`);
+            assert.match(h.text(), OWN, `${spec}: this tool's own gate must be what refused`);
+            assert.doesNotMatch(h.text(), VIA_DOCTOR, `${spec}: the gate must fire before anything reaches doctor`);
         }
     });
 
-    test("a MINOR ahead is could-not-run too — doctor refuses it for its own reason", async () => {
+    test("a MINOR ahead is could-not-run too, and by the same gate", async () => {
         const { major, minor } = bundleSpec();
         const h = harness();
         assert.equal(await run([onDisk(`${major}.${minor + 1}`, { tree: "../" })], h.options), 2);
-        assert.match(h.text(), /older than|upgrade the CLI/i);
+        assert.match(h.text(), OWN);
+        assert.doesNotMatch(h.text(), VIA_DOCTOR);
     });
 
     test("a workspace doctor already REDS is refused before anything is planned", async () => {
