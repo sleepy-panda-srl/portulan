@@ -633,6 +633,17 @@ describe("`--pack-root auto` reaches discovery here, and refuses to be combined 
         assert.notEqual(withAuto, 2, `discovery should have answered — ${said.join("")}`);
     });
 
+    test("the pair is refused BEFORE the workspace manifest is read", () => {
+        // The sibling of Copilot's round-2 finding in `compile`, swept in the same stroke. It sat
+        // below the manifest read here too, so an unreadable workspace answered first.
+        const said = [];
+        const io = { stdout: { write: (s) => said.push(s) }, stderr: { write: (s) => said.push(s) } };
+        const absent = path.join(scratch(), "no-workspace-here");
+        const code = run(["--workspace", absent, "--pack-root", "auto", "--pack-root", ".", "--check"], io);
+        assert.equal(code, 2);
+        assert.match(said.join(""), /never both/, "the refusal must be the reason, not the missing manifest");
+    });
+
     test("a named root AND `auto` is refused here too, in the one shared sentence", () => {
         const config = host("rituals/checkpoints");
         const dir = workspace();

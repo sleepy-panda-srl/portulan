@@ -1954,6 +1954,14 @@ export function run(argv, options = {}) {
             } else throw new CompileError(`unknown argument ${JSON.stringify(argv[i])}`);
         }
 
+        // Refused HERE — the last statement of the argument parse, before a workspace is resolved or a
+        // policy read. It sat below both until Copilot's round 2, where an unrelated workspace or
+        // policy error masked the refusal and this tool disagreed with the four beside it about *when*
+        // the answer is given. The other tools' tests pin exactly that property; this one's did not,
+        // which is why the placement could drift here and nowhere else.
+        const bothAsked = namedWithAuto(namedRoots, forced);
+        if (bothAsked) throw new CompileError(bothAsked);
+
         // The workspace may be named as a repository root or as the workspace directory itself, and the
         // second is how a feed-side workspace is reachable at all — see `resolveWorkspace`.
         const { workspaceRoot, workspaceDir } = resolveWorkspace(named);
@@ -1963,8 +1971,6 @@ export function run(argv, options = {}) {
         // is validated by exactly the code that validates a hand-written rule.
         // The thunk means the host's plugin record is read only on a path where it can win — which is
         // what keeps `compile --check`, a required check that names no root, independent of host state.
-        const bothAsked = namedWithAuto(namedRoots, forced);
-        if (bothAsked) throw new CompileError(bothAsked);
         const { contributions, unresolved, plan } = packContributions(workspaceRoot, workspaceDir, {
             named: namedRoots,
             discovery: () => discoverPackRoots(),

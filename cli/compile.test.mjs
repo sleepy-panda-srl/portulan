@@ -2048,6 +2048,26 @@ test("compile refuses a named root combined with `--pack-root auto`", () => {
     assert.equal(run(["--workspace", path.join(dir, ".portulan"), "--pack-root", "auto", "--pack-root", dir], { quiet: true }), 2);
 });
 
+test("compile refuses the pair BEFORE it resolves a workspace or reads a policy", () => {
+    // Copilot, round 2 on #233: the refusal sat below `resolveWorkspace` and the policy read, so an
+    // unrelated workspace or policy error masked it — and this tool then disagreed with the four
+    // beside it about *when* the command line is judged. The other tools' tests pinned that property
+    // and this one's did not, which is exactly why the placement could drift here and nowhere else.
+    //
+    // The discriminator is a workspace that does not exist: refusing at parse time never looks at it,
+    // and anything later fails on the missing workspace with a different sentence.
+    const absent = path.join(fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), "compile-absent-")), "nope");
+    const said = [];
+    const write = process.stderr.write.bind(process.stderr);
+    process.stderr.write = (chunk) => (said.push(String(chunk)), true);
+    try {
+        assert.equal(run(["--workspace", absent, "--pack-root", "auto", "--pack-root", "."]), 2);
+    } finally {
+        process.stderr.write = write;
+    }
+    assert.match(said.join(""), /never both/, "the refusal must be the reason, not the missing workspace");
+});
+
 test("`packContributions` refuses `packRoots` beside `forced`, and returns the uniform plan shape", () => {
     // The sixth site, found by the pre-commit checkpoint's sibling sweep. It kept a literal plan
     // object — `{roots, source, why}` — which silently ignored a discovery request and carried neither
