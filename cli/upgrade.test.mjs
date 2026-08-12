@@ -1112,3 +1112,42 @@ test("a component that cannot be EXAMINED is refused, never assumed absent", (t)
         fs.chmodSync(closed, 0o755);
     }
 });
+
+describe("`--tree` refuses what the other three parsers refuse", () => {
+    // `cli/init.mjs`, `cli/new.mjs` and `cli/vendor.mjs` each refuse a missing value, a value that
+    // reads as another flag, and an empty one. This parser took only the first, so `--tree --write`
+    // swallowed the write and silently reported instead of migrating. Copilot, round 12 on #231.
+    const dir = () => scratch();
+
+    test("a flag as the value is refused rather than swallowed", async () => {
+        for (const argv of [["--tree", "--write", dir()], ["--tree", "--check", dir()]]) {
+            const h = harness();
+            assert.equal(await run(argv, h.options), 2, `${argv.join(" ")} was accepted`);
+            assert.match(h.text(), /refusing to read a flag as one/);
+        }
+    });
+
+    test("an empty value is refused", async () => {
+        for (const bad of ["", "   "]) {
+            const h = harness();
+            assert.equal(await run(["--tree", bad, dir()], h.options), 2);
+            assert.match(h.text(), /empty value/);
+        }
+    });
+
+    test("a missing value is still refused, and a real one still works", async () => {
+        const h = harness();
+        assert.equal(await run(["--tree"], h.options), 2);
+        assert.match(h.text(), /needs a value/);
+        // A legitimate value reaches the step: a 1.0 repository workspace with no derivable root.
+        const root = scratch();
+        const ws = path.join(root, ".portulan");
+        fs.mkdirSync(path.join(ws, "verify"), { recursive: true });
+        for (const f of ["identity.md", "principles.md", "gate-map.md"]) fs.writeFileSync(path.join(ws, f), `# ${f}\n`);
+        fs.writeFileSync(path.join(ws, "verify", "workspace.sh"), "#!/usr/bin/env bash\nexit 2\n", { mode: 0o755 });
+        fs.writeFileSync(path.join(ws, "workspace.json"), `${JSON.stringify(manifest("1.0"), null, 2)}\n`);
+        const ok = harness();
+        assert.equal(await run([ws, "--write", "--tree", "../"], ok.options), 0, ok.text());
+        assert.equal(JSON.parse(fs.readFileSync(path.join(ws, "workspace.json"), "utf8")).tree, "../");
+    });
+});

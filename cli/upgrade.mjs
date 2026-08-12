@@ -609,11 +609,27 @@ export async function run(argv = [], options = {}) {
     for (let i = 0; i < argv.length; i += 1) {
         const arg = argv[i];
         if (arg === "--tree") {
-            if (argv[i + 1] === undefined) {
+            // **Three refusals, matching the three parsers that already own this rule** —
+            // `cli/init.mjs`, `cli/new.mjs` and `cli/vendor.mjs` each refuse a missing value, a value
+            // that reads as another flag, and an empty one. This took only the first, so
+            // `--tree --write <dir>` swallowed `--write` as the tree value and **silently dropped the
+            // write**: a report where the user asked for a migration. A fourth parser inheriting half
+            // a rule is the shape this pull request has now hit three times.
+            // Copilot, round 12 on #231.
+            const value = argv[i + 1];
+            if (value === undefined) {
                 warn("upgrade: `--tree` needs a value — it is the one thing this tool will not guess");
                 return 2;
             }
-            tree = argv[i + 1];
+            if (value.startsWith("-")) {
+                warn(`upgrade: \`--tree\` needs a value and the next argument is \`${value}\` — refusing to read a flag as one`);
+                return 2;
+            }
+            if (value.trim() === "") {
+                warn("upgrade: `--tree` was given an empty value, and no option here has a meaningful empty value");
+                return 2;
+            }
+            tree = value;
             i += 1;
             continue;
         }
