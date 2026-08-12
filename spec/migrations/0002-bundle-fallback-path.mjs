@@ -71,7 +71,7 @@ function quotedEntry(line) {
  * is written in the file, which is still JSON-escaped: `init` emits `JSON.stringify(...)`, so a
  * bundle at `C:\Users\x` appears as `"C:\\Users\\x/cli/index.mjs"`. Comparing that raw capture to an
  * unescaped `want` never matches, and the step reports itself **perpetually owed** — rewriting the
- * same file on every run, for ever.
+ * same file on every run, forever.
  *
  * Invisible on POSIX, where an ordinary path contains nothing JSON escapes, which is why every test
  * and every live run here passed over it. Copilot's promoted note, round 4 on #231.
