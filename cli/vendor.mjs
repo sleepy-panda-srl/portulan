@@ -1127,11 +1127,20 @@ export async function run(argv, options = {}) {
         // milestone 7 session 7 `init` drafts `verify/index.sh` with a third CLI location baked in —
         // the bundle it ran from, an absolute path git cannot carry — and the two lines holding it are
         // marked `# portulan:bundle-fallback` so a rewriter can find them rather than having to notice
-        // a comment. This loop does **not** rewrite them, and that is the current state rather than a
-        // decision anybody defended: a switched workspace whose bundle path no longer resolves exits
-        // **2 — could not run**, which is the fail-closed direction and is why this is a gap rather
-        // than a defect. Re-deriving the marked lines belongs here the day a switch is expected to
-        // leave a runnable rail behind. Tracked so it is not rediscovered from a stale path.
+        // a comment. This loop does **not** rewrite them, and a switched workspace whose bundle path
+        // no longer resolves exits **2 — could not run**, which is the fail-closed direction.
+        //
+        // **The remedy now exists and is named rather than implied.** Milestone 7 session 9 built
+        // `spec/migrations/0002-bundle-fallback-path.mjs`, run by `portulan upgrade --write`, which
+        // re-derives every marked line for the bundle it is running from. Whether this loop should
+        // call it is a live question for the maintainer rather than an implementer's to settle: it
+        // changes what a `--switch` promises. It is also a smaller win than it looks — a
+        // same-machine switch leaves the absolute path still resolving, and the path breaks when the
+        // tree TRAVELS, which is where `upgrade` runs and this does not. Filed as
+        // https://github.com/sleepy-panda-works/portulan/issues/230 rather than left in a comment, so
+        // the deferral has an owner — an unowned deferral is the promised-but-unowned class
+        // `docs/milestones/m07.md` records three occurrences of, and this comment claimed the filing
+        // before it existed until the pre-commit checkpoint went looking for the issue.
         for (const file of files) {
             if (file.rel === "workspace.json") continue;
             const full = path.join(staging, file.rel);

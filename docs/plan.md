@@ -54,7 +54,7 @@ sleepy-panda-works/
 │   ├── agents/                   Claude Code agent bindings of core/personas/ — a platform-fixed
 │   │                             location: the default agents dir of the repo-rooted plugin
 │   ├── cli/                      init · doctor · compile · vendor · index · upgrade · new · feedback
-│   │                             (today: seven of the eight dispatch and `upgrade` exits 2; the tools that are
+│   │                             (today: all eight dispatch, `upgrade` since s9; the tools that are
 │   │                              on no list and the compiled-hook runners are rostered ONCE, in cli/README.md —
 │   │                              this line named two of four and was the narrowest of three carriers)
 │   ├── examples/                 fictional demo workspace

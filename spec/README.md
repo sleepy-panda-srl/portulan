@@ -295,9 +295,25 @@ _(Adopted from [proposal 0005](../.portulan/proposals/0005-a-repository-workspac
 `kind` is still self-declared, so the escape narrows from *omit a line* to *lie about what you are* —
 better, and not a fix.)_
 
-There is still no `migrations/` directory: this migration is a paragraph and a version bump, and a
-directory holding a document that says "add one line" would be scaffolding pretending to be machinery.
-One arrives when a migration needs code.
+This migration is a paragraph and a version bump, and a directory holding a document that says "add one
+line" would be scaffolding pretending to be machinery. This paragraph therefore ended **"There is still
+no `migrations/` directory: one arrives when a migration needs code"** — and at milestone 7 session 9
+one did, on that stated condition rather than because a tool wanted a home.
+
+**[`migrations/`](migrations/) is now the contract**, and its README is where a step is defined. What
+needed code was not this migration: it was the **second kind of step** the maintainer admitted on
+2026-08-12 — a **repair**, something a rewriter owes a workspace it touched, independent of any version.
+Re-deriving a machine-local path cannot be a paragraph. Without it the directory would have held this
+one migration and nothing else, with **no subject in this repository and none in any tree we have
+seen** — nothing here declares 1.0 — which is precisely the scaffolding the older sentence refused.
+
+The runner is [`../cli/upgrade.mjs`](../cli/upgrade.mjs), and `doctor`'s MAJOR refusal now names it:
+the sentence *"a migration exists and this validator is not the one to run"* pointed at a remedy that
+did not exist for two milestones.
+
+**Nothing there restamps a MINOR**, which is this section's own rule kept rather than quietly widened:
+a manifest declares the version its content needs, not the newest one. `examples/` stays at 2.4, and
+`upgrade --check` reporting it as owing nothing is pinned by a test.
 
 The schema sets `additionalProperties: false` throughout. Unknown keys fail rather than being ignored,
 because the common case is a typo in a slot name, and a silently-ignored `principals` would leave a

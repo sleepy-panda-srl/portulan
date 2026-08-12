@@ -40,6 +40,42 @@ The Session log in [`docs/plan.md`](docs/plan.md) is the fuller record — it is
 records how things were found. This is per *release* and records what a reader gets.
 
 ## Unreleased
+### Added
+
+- **`portulan upgrade` — the eighth subcommand, and the migration mechanics under it.** All eight names
+  in `docs/vision.md` now dispatch. `upgrade` migrates a workspace in **either** residence: an in-repo
+  one directly, and a `pointer` by resolving `governed_by` through the host's installed-plugin record
+  and reporting with the resolver's own sentence.
+
+  **`spec/migrations/` is new, and it is part of the Workspace Definition rather than part of a tool** —
+  it ships in the package, so it reaches an `npx` user. This README's own promise that a directory
+  *"arrives when a migration needs code"* is what admitted it: a step is a zero-dependency ESM module
+  of one of **two kinds** — `version` (a MAJOR migration) or `repair` (something a rewriter owes a
+  workspace it touched). Two ship: `1.0 → 2.0`, the one migration the spec documents, and the
+  re-derivation of the machine-local bundle path `init` bakes into a drafted `verify/index.sh`.
+
+  Three properties are the design, and each replaces machinery that would otherwise be needed.
+  **Owedness is derived from the workspace's state, never from a stamp**, so there is no applied-ledger
+  to keep in sync and nothing that can lie about what ran. **Every step is idempotent**, so a run
+  interrupted partway is recovered by re-running rather than by a transaction. And **`owed` is
+  three-valued** — `true`, `false`, and *could not tell*, which exits 2 and never green.
+
+  What it refuses is as much of the contract as what it does. A workspace **ahead** of this bundle, by
+  MAJOR or MINOR, is could-not-run: the CLI is the old thing, and the remedy names that. A workspace
+  **behind** by a MAJOR that no step reaches is could-not-run too — either would otherwise plan to
+  nothing and report *current*. A workspace `doctor` already reds is refused before anything is
+  planned, so a red afterwards cannot be confused with one the migration caused. `--write` grades the
+  result with the real `doctor` and **rolls back on a red**, reporting what it could not put back
+  rather than claiming the tree is clean. **No MINOR is ever restamped** — a manifest declares the
+  version its content needs — which is why `examples/` stays on 2.4 and `upgrade --check` says it owes
+  nothing.
+
+  **What is not demonstrated, said here rather than left to be inferred:** the `1.0 → 2.0` step has no
+  subject in this tree or any we have seen — nothing declares 1.0 — so it is exercised against a
+  fixture. The repair is exercised end to end on workspaces the real `init` drafts, with the drafting
+  bundle deleted and the rail **run** before and after; it has no subject in this repository's own
+  workspace, whose rail was hand-written and carries no marker.
+
 ### Changed
 
 - **Workspace Definition 2.8 — the memory byte rail moves from the store to the record.**
@@ -217,8 +253,8 @@ that **no rail can catch this class as a class**, because a rule has no token to
 
 **There is a command line.** One entry point over the subcommands
 [`docs/vision.md`](docs/vision.md) names. They dispatch, with each module imported **on demand** and each tool's exit code returned
-**unchanged**; verified byte-identical to invoking those tools directly. The unbuilt ones are listed and **exit 2, naming the milestone they arrive at**, because a stub exiting 0
-would be a fail-open exactly where a user trusts silence. `plugin-lint` and `librarian` are
+**unchanged**; verified byte-identical to invoking those tools directly. **None is unbuilt any more** — `upgrade`, the last, landed at milestone 7 session 9 — and while any was, it was listed and **exited 2, naming the milestone it arrived at**, because a stub exiting 0
+would be a fail-open exactly where a user trusts silence. That machinery is still in place for the next name the constitution carries ahead of the tree. `plugin-lint` and `librarian` are
 deliberately *not* behind it: `docs/vision.md` is human-owned, so anything it does not name is the
 maintainer's call. _(This paragraph said three dispatch and three exit 2, and then four and two.
 Each was true when written and stopped being true in the next session. Corrected here rather than left
@@ -229,10 +265,11 @@ paragraph below rather than being restated in two places, which is what made the
 six when this entry was first written: `new` and `feedback` reached the CLI licensed by row 7 of
 [`docs/plan.md`](docs/plan.md), and the maintainer folded both into the constitution on 2026-08-03 —
 along with widening `vendor`'s gloss to cover materialising a workspace **out of** a repository as well
-as into one, which is what lets the residence switch have a verb. Of the eight, **seven dispatch** —
-`init`, `doctor`, `compile`, `vendor`, `index`, `new`, `feedback` — and one (`upgrade`) exits 2 naming
-where it arrives. _(Six and two until milestone 7 session 6, when `feedback` shipped with D3; corrected
-here under this file's own accumulate-and-correct rule rather than left for a reader to trip over.)_
+as into one, which is what lets the residence switch have a verb. Of the eight, **all eight dispatch** —
+`init`, `doctor`, `compile`, `vendor`, `index`, `upgrade`, `new`, `feedback`. _(Six and two until
+milestone 7 session 6, when `feedback` shipped with D3; seven and one until session 9, when `upgrade`
+shipped with the migration chain. Corrected here under this file's own accumulate-and-correct rule
+rather than left for a reader to trip over — twice now, in the same sentence.)_
 
 **A workspace can move house, and `vendor` is what moves it.** One operation with a direction, which is
 what the constitution's widened gloss describes. `portulan vendor <workspace> --into <dir> --host <id>`
