@@ -180,7 +180,56 @@ feedback is addressed too): a symlink refusal surfaced through `upgrade` spoke i
 attribution left clean; and `shown` could print `../../../../…` chains for a target outside the tree,
 so it now takes the shorter of the relative and absolute spellings.
 
-## Open with the maintainer — asked, unanswered at time of writing
+## Both open questions — SETTLED by a fresh-context supervisor, 2026-08-12
+
+Routed to a supervisor on the maintainer's instruction, under a standing constraint to grade against
+**Portulan's vision and direction** rather than general software taste, and to test the implementer's
+framing rather than accept it. **Both ruled (a) — keep what is shipped. Neither needed a code change.**
+
+**Q1 — `upgrade --write` at a pointer-resolved install stays refused.**
+
+The framing survived with **one citation corrected**, and the correction is recorded rather than
+quietly fixed because a citation wrong about its own address is a defect class this repository names:
+[`../identity.md`](../identity.md)'s byte-identity paragraph is about the **npm package the CLI ships
+as**, not about workspace installs. The load-bearing carriers are `0020`'s version-bump paragraph —
+*"one identifier with two contents"* — and the m06/m07 records that read cache-vs-payload identity as
+provenance.
+
+What decided it was the constitution rather than the implementer's argument: **thesis 6, *storage
+follows ownership***. The plugin cache is a layer the host's **installer** owns, and a `marketplace
+update` rebuilds it from the pinned payload — so a migration written there is the team's durable value
+persisted in a layer that silently discards it. A "loud report" cannot survive that revert: the report
+is prose, the revert is machinery.
+
+It also refused the implementer's own fallback, an `--allow-installed` flag, on a ruling recorded in
+[`0017`](../proposals/0017-one-repository-one-governing-workspace.md) and forgotten here: ***"a flag
+that overwrites files is the flag that eventually overwrites the wrong ones."***
+
+And it separated the "against" argument into two people: a **non-owner** must not unilaterally fork a
+shared policy layer — `0017`'s own nightmare, distributed across a team — and an **owner** without a
+checkout has one by construction, since the feed is a git repository.
+
+**Q2 — `vendor --switch` does not call the repair, and does not report it either.**
+
+On a sharper argument than the one offered. [`../../spec/migrations/README.md`](../../spec/migrations/README.md)
+defines a repair as fixing *"a value that was true where it was written and is not true where the
+workspace now is"* — and after a same-machine switch, **the baked path is still true**. `vendor` cannot
+observe the event that breaks it, and the correct post-travel value is derivable only by the bundle
+running on the destination machine, which is what `upgrade` is. So `vendor` is **not a sibling
+enforcement site** under `0020`'s membership test: copying and repairing are not the same operation.
+
+It rated the session-open supervisor **too mild** rather than too generous — `0020` part 1 does not
+merely permit leaving it, it prescribes it.
+
+It also settled *write-the-limit* against *prefer-the-rail* without splitting the difference: **the
+rail already exists** — the drafted recipe's own fail-closed exit 2 with a self-describing remedy, plus
+`0002`'s state-derived `owed()`. Option (c) would add a *reminder*, attached to the wrong event, for an
+operator who can do nothing durable about it.
+
+**Left to the maintainer:** disposing of [#230](https://github.com/sleepy-panda-works/portulan/issues/230),
+which the supervisor recommends closing as option 1.
+
+## Open with the maintainer — asked, unanswered at time of writing (superseded above)
 
 **`upgrade --write` on a pointer-resolved workspace: where does the write land?** Adjustment 2. Two
 readings fit the criterion: migrate the resolved install in place and say loudly that it no longer

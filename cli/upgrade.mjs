@@ -59,6 +59,9 @@ const HERE = path.dirname(fileURLToPath(import.meta.url));
 const BUNDLE = path.resolve(HERE, "..");
 const MIGRATIONS = path.join(BUNDLE, "spec", "migrations");
 
+/** Distinguishes one run's staging files from another's, alongside the pid. */
+let stagingSeq = 0;
+
 /** Everything that means `upgrade` could not run. Carries no verdict about a workspace. */
 export class UpgradeError extends Error {}
 
@@ -240,13 +243,33 @@ export async function resolveTarget(dir, options = {}) {
     };
 }
 
-/** Ask every step whether it is owed. Three answers, and the third is not a shorter plan. */
+/**
+ * Ask every step whether it is owed. Three answers, and the third is not a shorter plan.
+ *
+ * **A step that THROWS is `could not tell`, not a crash.** The three-valued answer exists precisely so
+ * that "this step could not work out whether it applies" has somewhere to go other than a green — and
+ * an unhandled exception routed around it entirely, taking the whole tool down instead of producing
+ * the designed exit 2. A step is a module from `spec/migrations/`, so a bug in one, or an unexpected
+ * read error inside it, must degrade to the answer the contract already has a word for.
+ * Copilot's promoted note, round 6 on #231.
+ */
 export async function planFor(ws, ctx, steps) {
     const entries = [];
     let owed = 0;
     let unknown = 0;
     for (const step of steps) {
-        const answer = await step.owed(ws, ctx);
+        let answer;
+        try {
+            answer = await step.owed(ws, ctx);
+            if (answer === null || typeof answer !== "object" || !("owed" in answer)) {
+                // A step returning nothing usable is also `could not tell`. Reading `.owed` off it
+                // would yield `undefined`, which is neither `true`, `false` nor `null` — and would
+                // then be counted as *not owed* by the arithmetic below.
+                answer = { owed: null, because: `${step.id} returned no verdict from \`owed\`` };
+            }
+        } catch (error) {
+            answer = { owed: null, because: `${step.id} threw while deciding whether it is owed — ${error.message}` };
+        }
         entries.push({ step, owed: answer.owed, because: answer.because });
         if (answer.owed === null) unknown += 1;
         else if (answer.owed === true) owed += 1;
@@ -283,12 +306,18 @@ function inside(root, rel) {
  *
  * Stops rather than forces: a directory that will not `rmdir` is one that is not empty, which means
  * something else is in it and it was not ours to remove after all.
+ *
+ * **`ENOENT` is not that case, and stopping on it was a bug.** A directory already gone — removed out
+ * of band, or by a `rm -rf` of a subtree — satisfies the goal rather than blocking it, and treating it
+ * as an obstacle abandoned every parent above it while they may well have been empty. Absence means
+ * *done*, not *stop*. Copilot's promoted note, round 6 on #231.
  */
 function unwindDirs(dirs) {
     for (const made of [...dirs].reverse()) {
         try {
             fs.rmdirSync(made);
-        } catch {
+        } catch (error) {
+            if (error.code === "ENOENT") continue;
             break;
         }
     }
@@ -317,8 +346,6 @@ export function applyEdits(dir, edits, options = {}) {
     const root = path.resolve(dir);
     const snapshots = [];
     for (const edit of edits) {
-        // `resolve`, not `join`. `path.join(root, "/etc/passwd")` CONCATENATES — it yields
-        // `<root>/etc/passwd`, silently turning an absolute path into a nested one and hiding from the
         // **A path built from somebody else's text is contained before it is opened.** A step's
         // `edit.file` is a value this tool did not author — an absolute path, or one climbing out
         // with `..`, would have this writing outside the workspace it was pointed at. Nothing in the
@@ -370,15 +397,28 @@ export function applyEdits(dir, edits, options = {}) {
         const created = [];
         try {
             for (const dir of wanted) {
-                fs.mkdirSync(dir);
-                created.push(dir);
+                try {
+                    fs.mkdirSync(dir);
+                    created.push(dir);
+                } catch (error) {
+                    // A directory created between the `lstat` probe above and this line satisfies the
+                    // goal rather than defeating it — but only if what appeared is a DIRECTORY. An
+                    // `EEXIST` from a file of that name is a real failure, and swallowing both would
+                    // be the fail-open. Not recorded in `created`: this run did not make it, so this
+                    // run does not get to remove it. Copilot's promoted note, round 6.
+                    if (error.code !== "EEXIST" || !fs.lstatSync(dir).isDirectory()) throw error;
+                }
             }
         } catch (error) {
             unwindDirs(created);
             return { ok: false, snapshots, reason: `${path.dirname(file)} could not be created — ${error.code ?? error.message}` };
         }
 
-        const staging = `${file}.portulan-upgrade`;
+        // **Unique per edit, not a fixed suffix.** Two `upgrade --write` runs over one workspace —
+        // concurrent CI invocations, or a human beside a pipeline — would otherwise race on the same
+        // staging path and lose or corrupt an edit. Still in the same directory, so the `rename` stays
+        // atomic. Copilot, round 6 on #231.
+        const staging = `${file}.portulan-upgrade.${process.pid}.${stagingSeq++}`;
         try {
             write(staging, edit.next);
             if (mode !== null) fs.chmodSync(staging, mode);
@@ -676,7 +716,19 @@ export async function run(argv = [], options = {}) {
     };
 
     for (const entry of plan.entries.filter((e) => e.owed === true)) {
-        const planned = await entry.step.plan(current, ctx);
+        // **A step that throws mid-chain must not take the rollback with it.** `plan()` is a module's
+        // code, and an exception here — after earlier steps have already written — would abort the
+        // process with `undo()` never called, leaving a half-migrated workspace and no record of it.
+        // Converted into the refusal the loop already knows how to unwind from. Copilot, round 6.
+        let planned;
+        try {
+            planned = await entry.step.plan(current, ctx);
+            if (planned === null || typeof planned !== "object" || !("ok" in planned)) {
+                planned = { ok: false, reason: `${entry.step.id} returned no plan` };
+            }
+        } catch (error) {
+            planned = { ok: false, reason: `${entry.step.id} threw while planning its edits — ${error.message}` };
+        }
         if (!planned.ok) {
             if (!undo()) return 2;
             warn(`upgrade: ${entry.step.id} — ${planned.reason}`);
