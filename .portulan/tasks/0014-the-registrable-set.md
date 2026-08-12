@@ -1,7 +1,7 @@
 # Task 0014 — the registrable set: a composed pack's skills reach a host by derivation
 
 **Lane:** full · **Opened:** 2026-08-12, milestone 7 session 8, at the session-open checkpoint
-**Verify recipe:** `tests` · **Status:** IN PROGRESS
+**Verify recipe:** `tests` · **Status:** DONE — merged as [#227](https://github.com/sleepy-panda-works/portulan/pull/227) (`f30ab2d`), 2026-08-12
 
 > Row 7 clause (b)'s **adopter half** — [#184](https://github.com/sleepy-panda-works/portulan/issues/184),
 > *the generator that derives a plugin's `skills` from a workspace's `packs`* — chosen by the

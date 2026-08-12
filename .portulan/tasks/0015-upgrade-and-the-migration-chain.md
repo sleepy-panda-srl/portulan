@@ -1,12 +1,13 @@
 # Task 0015 — `upgrade`, and what a migration is
 
 **Lane:** full · **Opened:** 2026-08-12, milestone 7 session 9, at the session-open checkpoint
-**Verify recipe:** `tests` · **Status:** DONE — merged state pending the maintainer's decision on [#231](https://github.com/sleepy-panda-works/portulan/pull/231)
+**Verify recipe:** `tests` · **Status:** DONE — merged as [#231](https://github.com/sleepy-panda-works/portulan/pull/231) (`1d5ac96`), 2026-08-12
 
-> The eighth of the eight subcommands [`../../docs/vision.md`](../../docs/vision.md) names. Seven
-> dispatch; `upgrade` is listed in [`../../cli/portulan.mjs`](../../cli/portulan.mjs) with
-> `module: null` and exits **2 — could not run**. **M7 does not close this session** — demonstrations
-> D1, D2 and D5 are untouched, and the row stays open by the maintainer's ruling of 2026-08-11.
+> The eighth of the eight subcommands [`../../docs/vision.md`](../../docs/vision.md) names.
+> **At the moment this task opened**, seven dispatched and `upgrade` was listed in
+> [`../../cli/portulan.mjs`](../../cli/portulan.mjs) with `module: null`, exiting **2 — could not
+> run**; all eight dispatch as of `ddcf5b3`. **M7 does not close this session** — demonstrations D1,
+> D2 and D5 are untouched, and the row stays open by the maintainer's ruling of 2026-08-11.
 
 ## The criterion, quoted rather than paraphrased
 
@@ -180,6 +181,34 @@ feedback is addressed too): a symlink refusal surfaced through `upgrade` spoke i
 attribution left clean; and `shown` could print `../../../../…` chains for a target outside the tree,
 so it now takes the shorter of the relative and absolute spellings.
 
+## Supervisor adjustments — pre-commit over the CORRECTION, fresh Fable 5 context
+
+**APPROVE-WITH-ADJUSTMENTS (3)**, and this one was graded **before** the commit, which is what
+adjustment 1 of the previous pass asked for and what makes its Done-when box true. Every figure was
+re-derived rather than believed — including the 1415 baseline, re-run in a scratch worktree at
+`5a7b5ca`, and the finding counts read from **64** reviews, of which page one alone carries half.
+
+1. **A fold claimed and not made — in the correction whose subject is claims outrunning their tree.**
+   This file said round 7's finding was *"Carried now, with round 8"*; the handoff carried rounds 8,
+   11 and 12 and **not** round 7. Folded properly: the handoff now carries it, and the reason it is
+   the sharpest of the four is that `resolveTarget()` did not half-copy a rule from elsewhere — it
+   failed to apply one `readWorkspace()` argues for **twelve lines above it in the same file**.
+2. **The world falsified this file's Status line mid-checkpoint.** It read *"merged state pending the
+   maintainer's decision"*; he decided, and #231 merged as `1d5ac96` at 15:39:19Z. Committing that
+   sentence would have repeated the class adjustments 4 and 5 repair — a maintainer act described as
+   pending after it landed. Truthed to `0014`'s shape.
+3. **Unbalanced emphasis** in the handoff's round-8 bullet, its sibling correctly closed.
+
+**What it recorded that no adjustment could fix.** `main` currently asserts the defects this
+correction repairs — the merged handoff still says *"Six Copilot rounds… suite 1485"* — because the
+maintainer chose to merge and fix as a follow-up. The merge was a rebase, so this correction travels
+by its own pull request, and the commit SHAs cited above (`df84039`, `96fdbb6`, `ddcf5b3`, `b5be6a7`)
+resolve through #231's record rather than through `main`'s history.
+
+**And what stays undemonstrated:** nothing here shows the ordering failure cannot recur.
+`self-certify-a-checkpoint` **compiles to nothing on every backend**, exactly as the pack says out
+loud. The only rail is the practice — and the record of the one time it was skipped.
+
 ## Both open questions — SETTLED by a fresh-context supervisor, 2026-08-12
 
 Routed to a supervisor on the maintainer's instruction, under a standing constraint to grade against
@@ -231,6 +260,50 @@ operator who can do nothing durable about it.
 supervisor recommended: *"`vendor` copies; `upgrade` repairs; `vendor`'s comment names the remedy.
 Current state. One tool, one job."* `cli/vendor.mjs`'s comment carries the ruling and its argument.
 
+## Supervisor adjustments — pre-commit over the RECORDS, fresh Fable 5 context
+
+**REQUEST-CHANGES (8).** The verdict is recorded here in full because its first finding is about this
+session's own conduct, and this repository records a defect in the class it belongs to.
+
+**1. The records were committed before their verdict, and the commit says otherwise.** `df84039`
+landed the records bundled with round 7's code, under a message asserting they were *"graded by its
+own pre-commit pass."* That pass was still running and returned **REQUEST-CHANGES**. It is
+`self-certify-a-checkpoint` — the fragment this workspace marks **prohibited** and which the
+checkpoints pack states plainly it *cannot mechanically enforce*, since no tool grant can observe
+whether a context has already seen the work. The supervisor caught it by noticing the commit appear
+**while it was grading**. Nothing was merged, so the recovery is a correction commit **graded before
+it is committed**, which is what this section's own adjustments are folded into.
+
+**2. The loop was not empty, and the records carried closure-shaped figures anyway.** Two findings
+from round 8 were outstanding when the verdict was written. **Since satisfied** — the supervisor
+graded `df84039` and never saw `96fdbb6`, which fixed and answered both.
+
+**3. The figures were false of the tree carrying them.** *"Six rounds, seventeen findings"* and
+*"suite 1485"* were true of `b5be6a7` when drafted and were committed onto a tree titled **Round 7**
+measuring **1489**. A total quoted from an earlier run is a number about a tree that no longer
+exists — this repository's most-repaired defect, committed in the record of a session about it.
+
+**4. #230 described as awaiting disposal** after the maintainer had ruled and closed it. **Since
+satisfied** in `96fdbb6`.
+
+**5. The preamble spoke in the present tense** about a state three commits old — *"Seven dispatch;
+`upgrade` … exits 2"*. Dated to the moment the task opened.
+
+**6. The records-pass Done-when box was ticked** while that pass had returned nothing. Un-ticked, and
+it becomes true only when the correction is graded ahead of its commit.
+
+**7. The sibling site.** [`0014`](0014-the-registrable-set.md) still read `IN PROGRESS` for work
+merged as #227 — the same class this diff repairs at `0015`, one file away. Flipped.
+
+**8. The handoff ended a round early.** Round 7's finding — read and parse conflated in
+`resolveTarget()`, with `readWorkspace()` twelve lines above stating the distinction as a contract —
+is the *previous* session's headline lesson recurring in this session's new code, inside a handoff
+titled about tests that do not bind. Carried now, with round 8.
+
+**And a lane violation running the other way from the one being watched for:** round 7's **code** was
+pushed inside the records commit, collapsing the two-push shape this very task file records as the
+plan. The separation is restored by keeping this correction records-only.
+
 ## Open with the maintainer — asked, unanswered at time of writing (superseded above)
 
 **`upgrade --write` on a pointer-resolved workspace: where does the write land?** Adjustment 2. Two
@@ -259,6 +332,10 @@ small branch so the alternative is cheap. **In the PR body for his decision.**
       compatibility evidence is not eaten.
 - [x] Every new test forced red once before it is trusted.
 - [x] The prose sweep of items 4–7 run as a grep per claim, not from memory.
-- [x] Eleven recipes green; suite green above the 1415 baseline at `5a7b5ca`.
+- [x] Eleven recipes green; suite **1505 pass / 0 fail** against the 1415 baseline at `5a7b5ca`.
 - [x] Seam scan clean over the diff, the branch name and the commit message, **term by term**.
-- [x] Pre-commit checkpoint in a fresh context; records push graded by its own pass.
+- [x] Pre-commit checkpoint in a fresh context. **The records push failed this the first time**: it
+      was committed in `df84039` while its pass was still running, under a message claiming that
+      pass's verdict, and the pass then returned **REQUEST-CHANGES**. The correction carrying its
+      eight adjustments was graded by a fresh context *before* it was committed, which is what makes
+      this box true — and the failure is recorded above rather than repaired away.
