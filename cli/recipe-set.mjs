@@ -275,7 +275,13 @@ export function recipeSet(manifest, options = {}) {
  * what is refused is a parameter that reads as a capability and is none.
  */
 export function resolverFor({ workspaceDir, manifest, repoRoot = ".", named = [], discovery = null, forced = false }) {
-    const roots = rootPlan(workspaceDir, manifest, { named, discovery, forced }).roots ?? [];
+    const plan = rootPlan(workspaceDir, manifest, { named, discovery, forced });
+    // A refusal must not arrive as an empty root set. That is the silent drop this change exists to
+    // remove, and the first cut of this function reintroduced it one layer down — an API caller
+    // passing `named` beside `forced: true` would have resolved nothing and been told nothing.
+    // Raised by Copilot, round 1 on #233; swept to `skills-set.mjs`'s sibling in the same stroke.
+    if (plan.refusal) throw new Error(`recipe-set: ${plan.refusal}`);
+    const roots = plan.roots ?? [];
     return (ref) => {
         const found = resolvePack(ref, roots);
         // `resolvePack` returns `manifest` as the PATH to `pack.json`, not as the parsed object —

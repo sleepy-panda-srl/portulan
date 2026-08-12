@@ -435,7 +435,9 @@ export function resolverFor({ workspaceDir, manifest, named = [], discovery = nu
     // `roots` lets a caller that already computed the plan share it rather than deriving a second one —
     // `run` needs the same list twice, once to resolve and once as the fallback owned set, and two
     // derivations of one plan is the shape this file exists to refuse.
-    const resolved = roots ?? rootPlan(workspaceDir, manifest, { named, discovery }).roots ?? [];
+    const plan = roots ? null : rootPlan(workspaceDir, manifest, { named, discovery });
+    if (plan?.refusal) throw new Error(`skills-set: ${plan.refusal}`);
+    const resolved = roots ?? plan.roots ?? [];
     return (ref) => {
         const found = resolvePack(ref, resolved);
         // `resolvePack` returns `manifest` as the PATH to `pack.json`, not as the parsed object.
