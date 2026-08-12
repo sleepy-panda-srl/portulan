@@ -31,7 +31,7 @@ import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { bundleSpec, loadSteps, planFor, readWorkspace, resolveTarget, restore, run, UpgradeError } from "./upgrade.mjs";
+import { applyEdits, bundleSpec, loadSteps, planFor, readWorkspace, resolveTarget, restore, run, UpgradeError } from "./upgrade.mjs";
 import { inspect } from "./doctor.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -656,6 +656,72 @@ describe("either residence", () => {
 });
 
 describe("the three rules a tool writing into somebody's tree owes", () => {
+    test("a borrowed refusal keeps its owner's words, and this tool's frame says who declined", async () => {
+        // The first cut substituted `vendor`'s verb — and the pattern said `refusing to copy through`
+        // while the message says `refuses`, so the rewrite was INERT under a comment asserting it
+        // worked. Rewriting was the wrong shape regardless: matching another module's sentence makes
+        // this file a second carrier of that module's wording. Copilot's promoted note, round 2.
+        const root = scratch();
+        const dir = path.join(root, ".portulan");
+        fs.mkdirSync(dir, { recursive: true });
+        fs.writeFileSync(path.join(dir, "workspace.json"), `${JSON.stringify(manifest("1.0"), null, 2)}\n`);
+        fs.symlinkSync(path.join(root, "elsewhere.md"), path.join(dir, "identity.md"));
+        const result = readWorkspace(dir);
+        assert.equal(result.ok, false);
+        assert.match(result.reason, /could not be read for migration/, "the frame must say what THIS tool declined to do");
+        assert.match(result.reason, /symlink/i);
+        // The owner's sentence, verbatim — no half-substituted verb, and no claim that it was reworded.
+        assert.doesNotMatch(result.reason, /migrate through/, "a rewrite that half-fires is worse than none");
+    });
+
+    test("applyEdits creates a parent directory an edit names, and a rollback removes it again", () => {
+        // No step shipped today writes a new file, so nothing exercises this in production — which is
+        // why it is worth a test rather than a comment: a later step adding a nested file would have
+        // failed ENOENT on a valid edit. Copilot's promoted note, round 2.
+        const dir = scratch();
+        const applied = applyEdits(dir, [{ file: "nested/deeper/new.md", next: "# new\n" }]);
+        assert.equal(applied.ok, true, applied.reason);
+        assert.equal(fs.readFileSync(path.join(dir, "nested/deeper/new.md"), "utf8"), "# new\n");
+
+        assert.equal(restore(dir, applied.snapshots).ok, true);
+        assert.equal(fs.existsSync(path.join(dir, "nested/deeper/new.md")), false, "the new file survived the rollback");
+        assert.equal(fs.existsSync(path.join(dir, "nested")), false, "the directories it created survived the rollback");
+    });
+
+    test("two edits in ONE new directory still unwind it — the rollback runs in reverse", () => {
+        // The directory is recorded as `created` on the first snapshot only. Unwound forwards, that
+        // snapshot's `rmdir` fails because the second file is still there and the directory survives
+        // a rollback that reported success. Found by sweeping for the sibling of the note that added
+        // the directories, not by a review round.
+        const dir = scratch();
+        const applied = applyEdits(dir, [
+            { file: "fresh/one.md", next: "1\n" },
+            { file: "fresh/two.md", next: "2\n" },
+        ]);
+        assert.equal(applied.ok, true, applied.reason);
+        assert.deepEqual(applied.snapshots[1].created, [], "the second edit re-recorded a directory the first created");
+
+        assert.equal(restore(dir, applied.snapshots).ok, true);
+        assert.equal(fs.existsSync(path.join(dir, "fresh")), false, "the directory survived a rollback that claimed success");
+    });
+
+    test("a directory that already existed is NOT removed by a rollback", () => {
+        // The unwind stops at what it did not create. Removing a directory the workspace already had
+        // would be the rollback causing damage of its own.
+        //
+        // **The pre-existing directory is left EMPTY on purpose.** A first version put a file in it,
+        // which made the assertion unfalsifiable: a non-empty directory defeats `rmdir` regardless of
+        // whether the unwind was correctly scoped, so the test would have passed over exactly the
+        // defect it names. Found by mutating the scope and watching it stay green.
+        const dir = scratch();
+        fs.mkdirSync(path.join(dir, "kept"), { recursive: true });
+        const applied = applyEdits(dir, [{ file: "kept/new.md", next: "# new\n" }]);
+        assert.equal(applied.ok, true, applied.reason);
+        assert.deepEqual(applied.snapshots[0].created, [], "a directory that already existed was recorded as created");
+        assert.equal(restore(dir, applied.snapshots).ok, true);
+        assert.equal(fs.existsSync(path.join(dir, "kept")), true, "a pre-existing directory was removed by the rollback");
+    });
+
     test("a symlink under the workspace is refused rather than resolved", async () => {
         const root = scratch();
         const dir = path.join(root, ".portulan");

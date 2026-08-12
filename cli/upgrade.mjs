@@ -155,11 +155,18 @@ export function readWorkspace(dir) {
     try {
         files = walk(root).map((entry) => entry.rel);
     } catch (error) {
-        // Re-worded, never re-thrown as-is. `walk` is `vendor`'s and its refusals speak in `vendor`'s
-        // voice — "refusing to **copy** through one" — which is a true sentence about the wrong verb
-        // when this tool is migrating rather than copying. The attribution stays clean and the reader
-        // is told what THIS tool declined to do.
-        return { ok: false, code: 2, reason: `${root} could not be read for migration — ${error.message.replace(/refusing to copy through/gi, "refusing to migrate through")}` };
+        // **Framed, never rewritten.** `walk` is `vendor`'s and its refusals speak in `vendor`'s voice
+        // — *"this refuses to copy through one"* — which is the wrong verb for a tool that is
+        // migrating. The first attempt at this substituted the wording, and it was **inert**: the
+        // pattern said `refusing to copy through` and the message says `refuses`. A fix that could not
+        // fire, under a comment asserting it did — this repository's dominant defect class, committed
+        // here in the change that cites it. Copilot's promoted note, round 2 on #231.
+        //
+        // Rewriting was the wrong shape anyway: matching another module's sentence makes this file a
+        // second carrier of `vendor`'s wording, free to rot the next time that sentence is edited. So
+        // the prefix says who declined and why, and the borrowed sentence is left exactly as its owner
+        // wrote it.
+        return { ok: false, code: 2, reason: `${root} could not be read for migration — ${error.message}` };
     }
 
     const cache = new Map();
@@ -246,6 +253,12 @@ export async function planFor(ws, ctx, steps) {
  * Each file lands by write-temp-then-rename, so no file is ever half-written. **The mode is carried
  * across**: `rename(2)` replaces the inode, and `verify/index.sh` is executable — a repair that left
  * the rail unexecutable would have broken the thing it exists to fix.
+ *
+ * **A parent directory is created where an edit names one that does not exist**, and the directories
+ * created are recorded so a rollback can remove them again. Neither step shipped today writes a new
+ * file, so nothing exercised this in production — which is exactly why it was worth fixing rather than
+ * leaving: a later step adding a nested file would have failed `ENOENT` on a perfectly valid edit.
+ * Copilot's promoted note, round 2 on #231.
  */
 export function applyEdits(dir, edits) {
     const root = path.resolve(dir);
@@ -262,6 +275,28 @@ export function applyEdits(dir, edits) {
                 return { ok: false, snapshots, reason: `${file} could not be read before writing — ${error.code ?? error.message}` };
             }
         }
+
+        // Deepest last, so a rollback can unwind in reverse. `lstat`, never `existsSync`: the latter
+        // follows links and answers *false* for an unreadable path, which would turn "I could not
+        // look" into "it is not there" — rule 3, at a third site.
+        const created = [];
+        for (let at = path.dirname(file); at.startsWith(root) && at !== root; at = path.dirname(at)) {
+            try {
+                fs.lstatSync(at);
+                break;
+            } catch (error) {
+                if (error.code !== "ENOENT") {
+                    return { ok: false, snapshots, reason: `${at} could not be examined — ${error.code ?? error.message}` };
+                }
+                created.unshift(at);
+            }
+        }
+        try {
+            for (const made of created) fs.mkdirSync(made);
+        } catch (error) {
+            return { ok: false, snapshots, reason: `${path.dirname(file)} could not be created — ${error.code ?? error.message}` };
+        }
+
         const staging = `${file}.portulan-upgrade`;
         try {
             fs.writeFileSync(staging, edit.next);
@@ -275,7 +310,7 @@ export function applyEdits(dir, edits) {
             }
             return { ok: false, snapshots, reason: `${file} could not be written — ${error.code ?? error.message}` };
         }
-        snapshots.push({ file: edit.file, previous, mode });
+        snapshots.push({ file: edit.file, previous, mode, created });
     }
     return { ok: true, snapshots };
 }
@@ -291,11 +326,27 @@ export function restore(dir, snapshots) {
     const root = path.resolve(dir);
     const restored = [];
     const failed = [];
-    for (const snapshot of snapshots) {
+    // **Reverse order — an unwind runs against the stack that made it.** Two edits landing in the same
+    // newly-created directory record it as `created` on the FIRST of them only; forwards, that
+    // snapshot's `rmdir` fails because the second file is still there, and the directory is left
+    // behind. Backwards, the second file goes first and the directory is empty when its turn comes.
+    // Found by sweeping this file for the sibling of the note that added the directories, rather than
+    // by a round that raised it.
+    for (const snapshot of [...snapshots].reverse()) {
         const file = path.join(root, snapshot.file);
         try {
             if (snapshot.previous === null) {
                 fs.rmSync(file, { force: true });
+                // And the directories this run had to create for it, deepest first. Leaving them
+                // behind would make "the workspace is exactly as it was" false in a second way —
+                // quieter than a stray file, and still not true.
+                for (const made of [...(snapshot.created ?? [])].reverse()) {
+                    try {
+                        fs.rmdirSync(made);
+                    } catch {
+                        break; // not empty, or not ours to remove: stop rather than force
+                    }
+                }
             } else {
                 fs.writeFileSync(file, snapshot.previous);
                 if (snapshot.mode !== null && snapshot.mode !== undefined) fs.chmodSync(file, snapshot.mode);
