@@ -874,3 +874,33 @@ describe("the three rules a tool writing into somebody's tree owes", () => {
         assert.match(result.reason, /parse/i, "a syntax error must not be reported as a read failure");
     });
 });
+
+// ===========================================================================================
+// A step is somebody else's code — Copilot round 6 on #231
+// ===========================================================================================
+
+describe("a step that misbehaves degrades to a verdict, never to a crash", () => {
+    const ctx = () => ({ bundle: REPO, spec: bundleSpec(), tree: null });
+    const ws = () => view(manifest("2.8", { tree: "../" }));
+
+    test("a step whose `owed` THROWS is `could not tell`, not an exception out of the tool", async () => {
+        // The three-valued answer exists so that "this step could not work out whether it applies"
+        // has somewhere to go other than a green. An unhandled throw routed around it entirely.
+        const boom = { id: "9999-boom", kind: "repair", from: null, to: null, title: "t", why: "w",
+            owed() { throw new Error("a bug in a step"); }, plan: () => ({ ok: true, edits: [] }) };
+        const planned = await planFor(ws(), ctx(), [boom]);
+        assert.equal(planned.unknown, 1, "a throwing step was counted as `not owed`");
+        assert.match(planned.entries[0].because, /threw while deciding/);
+    });
+
+    test("a step whose `owed` returns nothing usable is `could not tell` too", async () => {
+        // `undefined.owed` is neither true, false nor null — and would have been counted as NOT owed
+        // by the arithmetic, which is the same false green from a third direction.
+        for (const bad of [undefined, null, 42, {}]) {
+            const junk = { id: "9998-junk", kind: "repair", from: null, to: null, title: "t", why: "w",
+                owed: () => bad, plan: () => ({ ok: true, edits: [] }) };
+            const planned = await planFor(ws(), ctx(), [junk]);
+            assert.equal(planned.unknown, 1, `${JSON.stringify(bad)} was not treated as could-not-tell`);
+        }
+    });
+});
