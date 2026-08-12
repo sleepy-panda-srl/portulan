@@ -276,18 +276,19 @@ what it *enforces* is the thing an agent must not paper over:
   no generated index" from 2026-07-26 until now, and milestone 5 built one on 2026-07-28 — a sentence
   denying a capability that exists, which is condition 4 of a definition of done pointing the other
   way.)_
-- **The CLI is not published, so nothing is one `npx` away.** Seven of the eight subcommands are built
-  and run from a checkout — `init`, which drafts a workspace for a team that has none; `new`, which
+- **The CLI is not published, so nothing is one `npx` away.** All eight subcommands are built and run
+  from a checkout — `init`, which drafts a workspace for a team that has none; `new`, which
   scaffolds a skill, persona, pack, workspace, gate policy or repo card into a layer you own; `vendor`,
   which materialises a workspace into a host or moves it between residences; `feedback`, which files an
-  issue from a report you previewed, seam-scanned before it leaves the machine; plus `doctor`, `compile`
-  and `index`. `upgrade` is not built and exits 2 naming where it arrives. What `init`
+  issue from a report you previewed, seam-scanned before it leaves the machine; `upgrade`, which applies
+  the migrations and repairs a workspace owes, in either residence; plus `doctor`, `compile`
+  and `index`. What `init`
   and `new` emit is a **draft**: a human curates it, and `init`'s verify recipe exits 2 until they say
   what green means for their repository. _(This bullet said "there is no CLI" and listed `compile` and
   `index` as arriving later; both had shipped at milestones 4 and 5, and the entry point at milestone 7.
-  Corrected at milestone 7 session 1, then session 2, then session 3 — the count has now gone stale
-  three times, which is the argument for deriving such a figure rather than writing it down, in a file
-  where nothing can.)_
+  Corrected at milestone 7 session 1, then session 2, then session 3, and at session 9 when `upgrade`
+  — the last unbuilt one — landed. The count went stale **four** times, which is the argument for
+  deriving such a figure rather than writing it down, in a file where nothing can.)_
 
 - **Where the workspace came from is part of the report.** In the repository, or resolved from a
   pointer — and where it was resolved, name the plugin and the **version**, because that install is

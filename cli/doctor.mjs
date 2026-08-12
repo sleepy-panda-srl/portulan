@@ -1143,14 +1143,25 @@ export async function inspect(workspaceDir, options = {}) {
             throw new DoctorError(
                 `${path.relative(process.cwd(), dir)} declares Workspace Definition ${major}.${minor}; ` +
                     `this schema is ${here.major}.${here.minor}. A MAJOR difference means a migration ` +
-                    `exists and this validator is not the one to run.`,
+                    `exists and this validator is not the one to run — ` +
+                    // Named since milestone 7 session 9. This sentence said a migration exists and
+                    // stopped there, which is a refusal that describes a remedy nobody could reach:
+                    // the tool did not exist when it was written. It reads the direction too, since
+                    // a workspace AHEAD of this bundle is not one `upgrade` can help with.
+                    (major > here.major
+                        ? "and this validator is OLDER than that workspace, so upgrade the CLI rather than the workspace."
+                        : "run `portulan upgrade <workspace-dir>` to see what it owes, and `--write` to apply it."),
             );
         }
         if (minor > here.minor) {
             throw new DoctorError(
                 `${path.relative(process.cwd(), dir)} declares Workspace Definition ${major}.${minor}, ` +
                     `which is ahead of the ${here.major}.${here.minor} this schema implements. Refusing ` +
-                    `rather than grading it against an older contract and reporting the difference as errors.`,
+                    `rather than grading it against an older contract and reporting the difference as errors — ` +
+                    // The MAJOR arm above names its remedy and this one stopped at "Refusing", which is
+                    // one rule enforced at two sites and repaired at one — `0020`, ten lines apart, in
+                    // the change that repaired the other site. Caught at the pre-commit checkpoint.
+                    "and this validator is OLDER than that workspace, so upgrade the CLI rather than the workspace.",
             );
         }
         if (minor < here.minor) {

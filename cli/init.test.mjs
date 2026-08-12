@@ -1315,12 +1315,20 @@ describe("the drafted rail's machine-local path stays findable", () => {
         }
     });
 
-    test("the two tools that will rewrite a drafted workspace cite the marker", () => {
-        // A note in the writer is read by whoever edits the writer. These two are read by whoever
-        // moves or migrates a workspace, which is when the path stops being true.
-        for (const file of ["vendor.mjs", "portulan.mjs"]) {
-            const source = fs.readFileSync(path.join(REPO, "cli", file), "utf8");
-            assert.match(source, /portulan:bundle-fallback/, `cli/${file} must name the marker it will have to re-derive`);
+    test("the marker's carriers cite it — the one that re-derives, and the one that copies it stale", () => {
+        // A note in the writer is read by whoever edits the writer. These are read by whoever moves
+        // or migrates a workspace, which is when the path stops being true.
+        //
+        // **The set moved at milestone 7 session 9 and is not the same two.** It was `vendor.mjs`
+        // and `portulan.mjs`, the latter because the `upgrade` entry carried a note for whoever
+        // would one day build the re-deriver. That re-deriver now exists, so the note belongs where
+        // the work is: `spec/migrations/0002-bundle-fallback-path.mjs` OWNS the re-derivation, and
+        // `cli/vendor.mjs` still copies these files byte for byte and must point at the remedy.
+        // Leaving `portulan.mjs` in this list would have held a shipped tool to a note written for
+        // its absence.
+        for (const rel of ["cli/vendor.mjs", "spec/migrations/0002-bundle-fallback-path.mjs"]) {
+            const source = fs.readFileSync(path.join(REPO, rel), "utf8");
+            assert.match(source, /portulan:bundle-fallback/, `${rel} must name the marker it re-derives or copies`);
         }
     });
 });

@@ -981,12 +981,17 @@ exit 2
  *
  * **Both lines carrying it are marked `# portulan:bundle-fallback`, and the marker is the point.** A
  * workspace is not fixed where it was drafted: `vendor --switch` copies these files byte for byte into
- * another residence, and `upgrade` will rewrite them — so this path travels to machines it was never
- * true on, and it does so silently, because a stale absolute path exits 2 rather than failing loudly.
- * A comment asking the next implementer to notice is the reminder this project trades away wherever it
- * can; a fixed token is something a rewriter can **find**. `cli/vendor.mjs` and the `upgrade` entry in
- * `cli/portulan.mjs` both cite it, and `init.test.mjs` asserts it survives, so the marker cannot be
- * dropped by an edit to the recipe that forgets why it was there.
+ * another residence — so this path travels to machines it was never true on, and it does so silently,
+ * because a stale absolute path exits 2 rather than failing loudly. A comment asking the next
+ * implementer to notice is the reminder this project trades away wherever it can; a fixed token is
+ * something a rewriter can **find**.
+ *
+ * **The rewriter arrived at milestone 7 session 9**, and this sentence read "`upgrade` *will* rewrite
+ * them" until it did: `spec/migrations/0002-bundle-fallback-path.mjs`, run by `portulan upgrade`,
+ * re-derives every marked line for the bundle it is running from — wherever the line is, since the
+ * marker rather than the filename is the contract. `cli/vendor.mjs` and that step both cite the token
+ * and `init.test.mjs` asserts they do, so the marker cannot be dropped by an edit to this recipe that
+ * forgets why it was there.
  */
 function draftIndexRecipe() {
     const bundle = path.resolve(HERE, "..");

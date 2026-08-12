@@ -155,25 +155,42 @@ test("modules are loaded lazily — help imports nothing", async () => {
     assert.deepEqual(h.loaded, [], "the help screen must not pay for doctor");
 });
 
-test("an unbuilt subcommand exits 2 and names where it arrives — never 0", async () => {
-    // `init` left this list at milestone 7, session 1, when it was built; `vendor` left it at session
-    // 3, when it took the residence switch; `feedback` left it at session 6, when it took D3. The list
-    // is written out rather than derived from `SUBCOMMANDS` on purpose: deriving it would make the
-    // assertion vacuously true the moment a subcommand's `module` was set, and the whole point is that
-    // a subcommand crossing from unbuilt to built is a change somebody looked at. This red is the
-    // mechanism working — it is what made a reader edit this line rather than a green that noticed
-    // nothing, three times now.
-    for (const name of ["upgrade"]) {
+test("NOTHING is unbuilt any more — the list emptied at milestone 7 session 9", () => {
+    // `init` left the unbuilt list at session 1, `vendor` at session 3, `feedback` at session 6, and
+    // `upgrade` — the last — at session 9. This assertion replaces the loop that used to name the
+    // stragglers, and it is deliberately the OPPOSITE shape: the old one went red when a subcommand
+    // was built, which is what made a reader come here rather than a green that noticed nothing
+    // (three times). This one goes red when a subcommand is ADDED unbuilt, which is the only way the
+    // state can now change, and the case below is what keeps the refusal itself covered.
+    assert.deepEqual(
+        SUBCOMMANDS.filter((entry) => !entry.module).map((entry) => entry.name),
+        [],
+        "a subcommand is unbuilt again — give it `arrives`, and restore a case that exercises its refusal for real",
+    );
+});
+
+test("the refusal for an unbuilt subcommand still works, exercised on a synthetic entry", async () => {
+    // With nothing unbuilt, every assertion about that branch would be vacuous — and a test that
+    // cannot fail for the reason it exists is worse than no test, which this repository shipped three
+    // of one session ago. So the entry is synthesised: `run` resolves names through the exported
+    // `SUBCOMMANDS`, and node's runner is sequential within a file, so pushing one and popping it in
+    // a `finally` exercises the real code path without leaving the list changed for its neighbours.
+    SUBCOMMANDS.push({ name: "zzz-not-built", module: null, arrives: "a later milestone", summary: "a synthetic entry" });
+    try {
         const h = harness();
-        const code = await run([name], h.options);
-        assert.equal(code, 2, `${name} must exit 2, not 0 — a silent success here is a fail-open`);
+        const code = await run(["zzz-not-built"], h.options);
+        assert.equal(code, 2, "a silent success here is a fail-open");
         assert.deepEqual(h.loaded, [], "an unbuilt subcommand must not try to load anything");
         assert.match(h.warned.join("\n"), /not built yet/);
-        assert.match(h.warned.join("\n"), /milestone 7/);
+        assert.match(h.warned.join("\n"), /a later milestone/);
+    } finally {
+        SUBCOMMANDS.pop();
     }
 });
 
 test("every unbuilt subcommand names where it arrives, per dod.md condition 4", () => {
+    // Vacuous today, by design rather than by accident: the set is empty and the test above is what
+    // says so out loud. It binds again the moment a ninth subcommand is listed ahead of its module.
     for (const entry of SUBCOMMANDS.filter((s) => !s.module)) {
         assert.ok(entry.arrives, `${entry.name} is unbuilt and must name where it arrives`);
     }

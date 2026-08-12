@@ -28,8 +28,12 @@ its author can adopt in an afternoon.
 27 July → 3 August 2026 and has been **private again since 3 August 2026**, so the marketplace install
 path currently requires authentication. The newest release entry is `0.2.0`. The
 engine, this workspace, the enforcement compiler and the memory lifecycle are authored; the CLI
-milestone 7 describes is two subcommands short — `upgrade` and `feedback` (`init`, `new` and `vendor`
-shipped at milestone 7 sessions 1, 2 and 3). What that release
+milestone 7 describes is **complete on the subcommand list** — all eight dispatch, the last (`upgrade`)
+at session 9, with `init`, `new` and `vendor` at sessions 1, 2 and 3 and `feedback` at session 6. The
+row itself is not thereby closed: three of its six demonstrations are still owed. _(This line said "two
+subcommands short — `upgrade` and `feedback`" and was already wrong by one when milestone 7 session 9
+found it: `feedback` had shipped three sessions earlier. A count in prose beside a list nothing derives
+it from, which is this repository's most-repaired defect.)_ What that release
 contains, and what it does not,
 is [`../../../CHANGELOG.md`](../../../CHANGELOG.md), which is where that list
 belongs rather than here. The living map is

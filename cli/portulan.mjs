@@ -32,14 +32,17 @@
 // when the list held six. A count in prose beside a list nothing derives it from is the drift this
 // file's own suite catches for `SUBCOMMANDS.length` and cannot catch here.)_
 //
-// ## One of the eight is not built
+// ## All eight are built, and the shape of the answer while one was not is kept
 //
-// `upgrade` is milestone 7 work that has not landed. It is listed, and it exits **2 — could not
-// run**, naming what is missing. The alternative shapes were both worse: hiding it makes the package
-// look like a smaller tool and the row like it is further along than it is, and stubbing it to exit 0
-// would be a fail-open in the one place a user is most likely to trust silence. "Nothing looked" is
-// never "nothing wrong" — the same three-code discipline the verify recipes hold
-// (`.portulan/memory/verify-preconditions-fail-closed.md`).
+// `upgrade` carried `module: null` from milestone 7 session 0 until session 9 and exited **2 — could
+// not run**, naming where it arrived. It dispatches now like the rest. The paragraph is kept rather
+// than deleted, because the state it describes recurs: the constitution may name a verb before the
+// tree carries it, and both alternatives to that answer were worse — hiding the entry makes the
+// package look like a smaller tool and the row like it is further along than it is, and stubbing it
+// to exit 0 is a fail-open in the one place a user is most likely to trust silence. "Nothing looked"
+// is never "nothing wrong" — the same three-code discipline the verify recipes hold
+// (`.portulan/memory/verify-preconditions-fail-closed.md`). The machinery for the next such entry is
+// still here: `module: null` plus `arrives`, and the refusal below reads them.
 //
 // _(`vendor` was one of three until milestone 7 session 3, and `feedback` one of two until session 6.
 // The count is written out here and derived in the suite, which is the split that has held: the
@@ -112,16 +115,13 @@ export const SUBCOMMANDS = [
     },
     {
         name: "upgrade",
-        module: null,
-        arrives: "milestone 7, a later session",
-        summary: "migrate a workspace to a newer Workspace Definition",
-        // One thing waiting for whoever builds this, recorded where they will be rather than in a
-        // handoff they may not read: a workspace drafted since milestone 7 session 7 carries an
-        // ABSOLUTE path in `verify/index.sh` — the bundle `init` ran from, the last of three CLI
-        // locations — on two lines marked `# portulan:bundle-fallback`. A migration that rewrites a
-        // workspace should re-derive them; one that does not leaves a rail exiting 2 on a machine
-        // that is not the drafting one. `cli/init.mjs`'s `draftIndexRecipe` owns the marker and
-        // `cli/vendor.mjs` carries the same note at its copy loop.
+        module: "upgrade.mjs",
+        // BOTH kinds, because the chain carries both. A summary naming only the version half would
+        // be the narrower of two carriers of one fact — and the narrower is the one a reader obeys.
+        // What a step is lives in `spec/migrations/README.md`; this line only has to not contradict
+        // it, which the older wording ("migrate a workspace to a newer Workspace Definition") would
+        // have started doing the moment the maintainer admitted repairs on 2026-08-12.
+        summary: "migrate a workspace: the Workspace Definition steps it owes, and the repairs a rewriter owes it",
     },
     {
         name: "new",

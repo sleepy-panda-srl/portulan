@@ -8,12 +8,18 @@ entry point exists:
 [`portulan.mjs`](portulan.mjs), reached as `portulan <subcommand>` through the `bin` in the
 repository's `package.json`.
 
-**Seven of the eight dispatch; one exits 2.** `doctor`, `compile` and `index` exist because milestones
-2, 4 and 5 needed them; `init` was built at milestone 7 session 1, `new` at session 2, `vendor` at
-session 3, and `feedback` at session 6. The entry point calls each one's exported `run` and returns the
-code unchanged. `upgrade` is named in `docs/vision.md`, is not built, and says so: it exits **2 — could
-not run**, naming where it arrives, because a stub exiting 0 would be a fail-open where a user is most
-likely to trust silence.
+**All eight dispatch, as of milestone 7 session 9.** `doctor`, `compile` and `index` exist because
+milestones 2, 4 and 5 needed them; `init` was built at milestone 7 session 1, `new` at session 2,
+`vendor` at session 3, `feedback` at session 6, and `upgrade` — the last — at session 9. The entry
+point calls each one's exported `run` and returns the code unchanged.
+
+_This paragraph read **"Seven of the eight dispatch; one exits 2"** until `upgrade` landed, and what
+that sentence described is worth one line rather than none, because the state recurs: a subcommand may
+be named by `docs/vision.md` before the tree carries it, and while that holds the honest answer is to
+**list it and refuse** — exit 2, naming where it arrives. A stub exiting 0 would be a fail-open where a
+user is most likely to trust silence. `portulan.mjs` still carries that machinery (`module: null` plus
+`arrives`) and its suite still exercises the refusal, on a synthetic entry now that nothing real is
+unbuilt._
 
 **Why eight.** `docs/vision.md` names all eight and is human-owned. It named six until 2026-08-03:
 `new` and `feedback` reached the CLI first, licensed by row 7 naming them in its own ratified text, and
@@ -57,7 +63,10 @@ have no row** — `gate`, `stop-gate`, `recipe-set` and its two suites, `collisi
 and `rule-carriers` with its suite. It was **eleven** when milestone 7 session 6 measured it; that session
 added rows for the four it introduced and left the rest to
 [#203](https://github.com/sleepy-panda-works/portulan/issues/203) rather than growing an unscheduled
-sweep inside a feature change; session 8 added rows for the three it introduced and did the same.
+sweep inside a feature change; session 8 added rows for the three it introduced and did the same, and
+session 9 added rows for `upgrade` and its two suites on the same rule — **so the arrears are still
+nine, and still #203's**, which is the point of stating the figure beside the sessions that did not
+move it.
 A table headed *What is here today* that is nine files short is still a claim its own directory
 falsifies, which is why the issue exists and why the number is stated here rather than left for a
 reader to count.
@@ -92,6 +101,9 @@ this paragraph is otherwise about. Found at the pre-commit re-check.)_
 | [`new.test.mjs`](new.test.mjs) | Its test suite, written first. It establishes *never into `core/`* against the filesystem rather than against an argument check, and runs the real `doctor` and `plugin-lint` over what was scaffolded — a scaffold nothing validates is one nobody can trust. |
 | [`vendor.mjs`](vendor.mjs) | **Materialises a workspace where it is needed**, added at milestone 7 session 3 when the maintainer widened the constitution's gloss to cover both directions. `--host` writes a self-contained `AGENTS.md` — core's kernel inlined, the workspace's slots named, packs named-not-composed — beside a copied `.portulan/`, for a host that cannot install the plugin. `--switch` changes residence, feed-side ↔ in-repo, under proposal [`0017`](../.portulan/proposals/0017-one-repository-one-governing-workspace.md): materialise at the new residence, leave a pointer or nothing at the old, `doctor` green at **both** ends before the old one is retired. Every handled failure leaves exactly one governing workspace; the residence is **never inferred** from a path, which is `init`'s rule for `init`'s reason. |
 | [`vendor.test.mjs`](vendor.test.mjs) | Its test suite, written first. The group that matters *forces* a failure after each named write step, because the property this tool exists to protect is what a failure partway leaves on disk — an ordering nothing can interrupt is an ordering nobody has checked. Every end state is graded by the real `doctor`, never by a second opinion about what valid means. |
+| [`upgrade.mjs`](upgrade.mjs) | **The migration runner**, added at milestone 7 session 9 and the last of the eight to be built. It reads [`../spec/migrations/`](../spec/migrations/) — the chain lives in the **spec**, because a migration is part of the Workspace Definition rather than part of a tool — and applies what a workspace owes. **Two kinds of step**, on the maintainer's ruling of 2026-08-12: a `version` step migrates a MAJOR, and a `repair` fixes what a rewriter owes a workspace it touched. Owedness is derived from the workspace's **state**, never from a stamp, so every step is idempotent and an interrupted run is recovered by re-running. It refuses in **both** directions: a workspace ahead of this bundle is could-not-run (upgrade the CLI, not the workspace), and one behind by a MAJOR that no step reaches is could-not-run too — either would otherwise plan to nothing and exit 0. `--write` applies, then grades with the real `doctor` and **rolls back on a red**, reporting what it could not put back rather than claiming the tree is clean. |
+| [`upgrade.test.mjs`](upgrade.test.mjs) | Its test suite, written first, against `ws` views built in memory — the honest way to force a step's own branches red. Every case in it was **forced red by mutating the code it guards** before being trusted; the pass that did so found a guard with no test at all, where the arithmetic was covered and the tool's response to it was not. |
+| [`upgrade.live.test.mjs`](upgrade.live.test.mjs) | The other half, and the one that matters: workspaces the **real `init`** drafts, from a real second bundle that is then deleted, with the drafted rail **run** before and after — exit 2 with its bundle gone, a verdict once repaired. Behaviour, not a string comparison on a script. It also pins that `.portulan` and `examples/` owe nothing, so `examples/` staying four MINORs back at 2.4 cannot be quietly restamped. Written because running the step over `.portulan` found what no fixture could: a handoff that *documents* the marker was read as a malformed marked line. |
 | [`feedback.mjs`](feedback.mjs) | **The inbound half**, added at milestone 7 session 6: it files an issue from a report the user previewed, seam-scanned before it leaves the machine, under the Gated tier. Three verbs — `draft` writes a report into the workspace's `feedback/` directory, `preview` prints the exact bytes, `send --approve` files them through the user's own `gh` login. The payload is assembled from a **closed list** rather than filtered, so nothing here reads a workspace name, a repo card, a gate map, memory, a remote or a path. It ships **no seam terms** — the list is the adopter's and is looked for at `--seam-terms`, `$PORTULAN_SEAM_TERMS`, then `<workspace>/seam-terms.txt`; a hit refuses the send with **1**, a named list that cannot be read refuses it with **2**, and no list at all is *stated in the sentence the user approves* rather than passed over. Approval is per send and is never inherited from a draft or a preview. |
 | [`feedback.test.mjs`](feedback.test.mjs) | Its test suite, written first, against `.portulan/tasks/0012-a-feedback-pipe-points-out-of-the-seam.md`'s *Done when* list. Nothing here reaches the network: `gh` arrives injected. The one property injection cannot prove — that the approved bytes are the sent bytes — is not proven by comparison but held by construction, and the suite asserts the construction: the previewed body **is** `payload()`'s return value, not a second rendering that agrees with it today. |
 | [`feedback.live.test.mjs`](feedback.live.test.mjs) | The rail on the pair that cannot be collapsed. `package.json`'s `files` does not ship `.github/ISSUE_TEMPLATE/`, so the sender must carry the forms' field ids, labels, required flags, dropdown options and acknowledgement texts — one fact, two carriers, and the repair is `0020`'s: one carrier plus a rail. This reads the real forms and fails when the two disagree. Its own instrument is guarded first: if the reader stops understanding a form and returns nothing, the test goes **red** rather than vacuously green. |
@@ -116,6 +128,7 @@ node cli/doctor.mjs <workspace-dir> [<workspace-dir> ...]
 node cli/plugin-lint.mjs [--payload] <plugin-root> [<plugin-root> ...]
 node cli/compile.mjs [--workspace <repository-dir | workspace-dir>] [--check]
 node cli/index.mjs [--check] <workspace-dir> [<workspace-dir> ...]
+node cli/upgrade.mjs [--check | --write] [--tree <path>] <workspace-dir>
 node cli/librarian.mjs [--as-of YYYY-MM-DD] [--write] [--log <path>] [--reviews <path>] <workspace-dir> [...]
 ```
 
@@ -134,7 +147,14 @@ collapsing *the workspace I materialised is invalid* into *I could not run* woul
 to tell a bad workspace from a missing flag. `index` uses the same three
 codes and differs from `compile` in one way worth knowing before reading it: **writing can still return
 `1`**, because a budget breach is a verdict about the store rather than about the artifact, and the
-artifact is written anyway so there is something to consolidate from. Both workspaces this repository
+artifact is written anyway so there is something to consolidate from. `upgrade` uses all three and its
+`1` is the widest here — steps owed under `--check`, a workspace `doctor` reds **before** the migration,
+a migrated workspace that comes back red and is rolled back, **and a pointer that does not resolve**
+(`not-installed` or `ambiguous`, which is [`discover.mjs`](discover.mjs)'s own mapping carried through
+rather than a second opinion about it). Its `2` covers the two directions it cannot help with — a
+workspace ahead of this bundle, and one behind by a MAJOR that no step reaches — plus a step that
+**could not tell**, and a `--write` aimed at an installed workspace. A bare run with no flag prints the
+plan and exits **0**, on `skills-set`'s precedent, because reporting is not a verdict. Both workspaces this repository
 owns are validated on every pull request, because
 [`../.portulan/workspace.json`](../.portulan/workspace.json) declares
 [`../.portulan/verify/doctor.sh`](../.portulan/verify/doctor.sh) as a verify recipe and CI runs every

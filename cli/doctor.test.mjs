@@ -338,6 +338,33 @@ describe("the schema declares which Workspace Definition version it implements",
         assert.throws(() => schemaVersion({ $id: "https://portulan.dev/spec/workspace.schema.json" }), DoctorError);
         assert.throws(() => schemaVersion({}), DoctorError);
     });
+
+    // A version refusal names the remedy that is actually REACHABLE, and which one that is depends
+    // on the DIRECTION. Added at milestone 7 session 9 when `upgrade` gave the behind-arm a remedy
+    // to name at all — and pinned because the pre-commit checkpoint INVERTED the two arms and every
+    // one of the 259 tests across this suite and `upgrade`'s stayed green. A rail nobody has seen
+    // fail is a rail nobody has seen work.
+    const at = (spec) => tree(scratch(), { ...minimalFiles, "workspace.json": JSON.stringify({ ...wellFormed(), portulan: { spec } }) });
+    const here = schemaVersion(SCHEMA);
+
+    test("a workspace BEHIND by a MAJOR is sent to `portulan upgrade`", async () => {
+        const error = await assert.rejects(() => inspect(at("1.0"), { schema: SCHEMA }), DoctorError).then(() => null).catch((e) => e);
+        const message = await inspect(at("1.0"), { schema: SCHEMA }).then(() => "", (e) => e.message);
+        assert.match(message, /portulan upgrade/, "the behind-arm must name the tool that migrates it");
+        assert.doesNotMatch(message, /upgrade the CLI/, "a workspace behind this bundle is not fixed by upgrading the CLI");
+        assert.equal(error, null);
+    });
+
+    test("a workspace AHEAD by a MAJOR is sent to upgrade the CLI, never to `portulan upgrade`", async () => {
+        const message = await inspect(at(`${here.major + 1}.0`), { schema: SCHEMA }).then(() => "", (e) => e.message);
+        assert.match(message, /upgrade the CLI/, "the ahead-arm must say the validator is the old thing");
+        assert.doesNotMatch(message, /portulan upgrade/, "`portulan upgrade` cannot migrate a workspace this bundle does not understand");
+    });
+
+    test("a MINOR ahead names the same remedy as its MAJOR sibling — 0020, one rule, two arms", async () => {
+        const message = await inspect(at(`${here.major}.${here.minor + 1}`), { schema: SCHEMA }).then(() => "", (e) => e.message);
+        assert.match(message, /upgrade the CLI/, "the MINOR-ahead refusal stopped at `Refusing` while its sibling named the fix");
+    });
 });
 
 // -------------------------------------------------------------- the committed fixtures
