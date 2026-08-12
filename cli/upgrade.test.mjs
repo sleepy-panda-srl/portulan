@@ -939,3 +939,71 @@ test("bundleSpec keeps read and parse apart too — the third site of one rule",
     assert.throws(() => bundleSpec({ schemaPath: bad }), /does not parse as JSON/);
     assert.throws(() => bundleSpec({ schemaPath: path.join(dir, "absent.json") }), /could not be read/);
 });
+
+describe("a field that exists is not a value this contract defines", () => {
+    const ctx = () => ({ bundle: REPO, spec: bundleSpec(), tree: null });
+    const mk = (over) => ({ id: "9997-shape", kind: "repair", from: null, to: null, title: "t", why: "w",
+        owed: () => ({ owed: true, because: "b" }), plan: () => ({ ok: true, edits: [] }), ...over });
+
+    test("`owed` must be exactly true, false or null — a truthy string is could-not-tell", async () => {
+        // The guard added in round 6 checked that the KEY existed. `{ owed: "yes" }` is neither true
+        // nor null, so it was counted as NOT owed — a false green through the guard meant to stop one.
+        for (const bad of ["yes", 1, 0, "", undefined, {}]) {
+            const planned = await planFor(view(manifest("2.8", { tree: "../" })), ctx(), [mk({ owed: () => ({ owed: bad, because: "b" }) })]);
+            assert.equal(planned.unknown, 1, `${JSON.stringify(bad)} was accepted as a verdict`);
+            assert.equal(planned.owed, 0);
+        }
+        // …and the three legal values still pass through untouched.
+        for (const [value, o, u] of [[true, 1, 0], [false, 0, 0], [null, 0, 1]]) {
+            const planned = await planFor(view(manifest("2.8", { tree: "../" })), ctx(), [mk({ owed: () => ({ owed: value, because: "b" }) })]);
+            assert.equal(planned.owed, o, `${value} changed the owed count`);
+            assert.equal(planned.unknown, u);
+        }
+    });
+
+    test("a verdict with no reason keeps its verdict and names the absence", async () => {
+        const planned = await planFor(view(manifest("2.8", { tree: "../" })), ctx(), [mk({ owed: () => ({ owed: true }) })]);
+        assert.equal(planned.owed, 1, "a good verdict was discarded over a missing sentence");
+        assert.match(planned.entries[0].because, /gave no reason/);
+        assert.doesNotMatch(planned.entries[0].because, /undefined/);
+    });
+});
+
+describe("the apply loop refuses a plan a step did not describe", () => {
+    /** A workspace `doctor` grades green, so the run reaches the apply loop. */
+    function green() {
+        const { major, minor } = bundleSpec();
+        const root = scratch();
+        fs.mkdirSync(path.join(root, ".git"));
+        const dir = path.join(root, ".portulan");
+        fs.mkdirSync(path.join(dir, "verify"), { recursive: true });
+        for (const f of ["identity.md", "principles.md", "gate-map.md"]) fs.writeFileSync(path.join(dir, f), `# ${f}\n`);
+        fs.writeFileSync(path.join(dir, "verify", "workspace.sh"), "#!/usr/bin/env bash\nexit 2\n", { mode: 0o755 });
+        fs.writeFileSync(path.join(dir, "workspace.json"), `${JSON.stringify(manifest(`${major}.${minor}`, { tree: "../" }), null, 2)}\n`);
+        return dir;
+    }
+    const owed = (plan) => [{ id: "9996-badplan", kind: "repair", from: null, to: null, title: "t", why: "w",
+        owed: () => ({ owed: true, because: "forced" }), plan }];
+
+    test("`{ ok: true }` with no edits array is a refusal, not a throw past the rollback", async () => {
+        // Previously `applyEdits(current.dir, undefined)` threw, which bypassed `undo()` entirely —
+        // the exact outcome the try/catch around the call exists to prevent. Copilot, round 8.
+        const h = harness();
+        const code = await run([green(), "--write"], { ...h.options, steps: owed(() => ({ ok: true })) });
+        assert.equal(code, 2, h.text());
+        assert.match(h.text(), /no `edits` array|did not describe/);
+    });
+
+    test("`{ ok: false }` with no reason does not print `undefined` at the user", async () => {
+        const h = harness();
+        assert.equal(await run([green(), "--write"], { ...h.options, steps: owed(() => ({ ok: false })) }), 2);
+        assert.match(h.text(), /without giving a reason/);
+        assert.doesNotMatch(h.text(), /undefined/);
+    });
+
+    test("a well-formed empty plan is still applied and still lands green", async () => {
+        // The guards must refuse what is malformed, not what is merely empty.
+        const h = harness();
+        assert.equal(await run([green(), "--write"], { ...h.options, steps: owed(() => ({ ok: true, edits: [] })) }), 0, h.text());
+    });
+});

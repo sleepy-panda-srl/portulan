@@ -282,11 +282,19 @@ export async function planFor(ws, ctx, steps) {
         let answer;
         try {
             answer = await step.owed(ws, ctx);
-            if (answer === null || typeof answer !== "object" || !("owed" in answer)) {
-                // A step returning nothing usable is also `could not tell`. Reading `.owed` off it
-                // would yield `undefined`, which is neither `true`, `false` nor `null` — and would
-                // then be counted as *not owed* by the arithmetic below.
-                answer = { owed: null, because: `${step.id} returned no verdict from \`owed\`` };
+            // **The VALUE, not the presence of the key.** A first cut accepted any object carrying an
+            // `owed` property, which let `{ owed: "yes" }` or `{ owed: undefined }` through: neither is
+            // `true` and neither is `null`, so the arithmetic below counted them as **not owed** — a
+            // false green produced by the very guard added to prevent one. Checking that a field exists
+            // is not checking that its value is one this contract defines.
+            // Copilot, round 8 on #231.
+            if (answer === null || typeof answer !== "object" || ![true, false, null].includes(answer.owed)) {
+                answer = { owed: null, because: `${step.id} returned no usable verdict from \`owed\` (${JSON.stringify(answer?.owed)})` };
+            } else if (typeof answer.because !== "string" || answer.because === "") {
+                // The reason is what a reader is given when the run refuses. A missing one is not
+                // grounds to discard a good verdict, so the verdict stands and the sentence is named
+                // as absent rather than printed as `undefined`.
+                answer = { owed: answer.owed, because: `${step.id} gave no reason` };
             }
         } catch (error) {
             answer = { owed: null, because: `${step.id} threw while deciding whether it is owed — ${error.message}` };
@@ -591,7 +599,11 @@ export async function run(argv = [], options = {}) {
     let steps;
     try {
         spec = bundleSpec();
-        steps = await loadSteps();
+        // Injected only by the suite, alongside `write` and `env`. The apply loop's guards against a
+        // step returning an unusable plan cannot be reached from the two steps this bundle ships —
+        // both are well-behaved — and a failure path with no test is how the defect those guards
+        // exist for arrived in the first place.
+        steps = options.steps ?? (await loadSteps());
     } catch (error) {
         warn(`upgrade: ${error.message}`);
         return 2;
@@ -744,8 +756,17 @@ export async function run(argv = [], options = {}) {
         let planned;
         try {
             planned = await entry.step.plan(current, ctx);
-            if (planned === null || typeof planned !== "object" || !("ok" in planned)) {
+            // Same lesson as `planFor` above, at the second site: presence of `ok` is not a usable
+            // plan. `{ ok: true }` with no `edits` array made `applyEdits` throw on `undefined` —
+            // **bypassing the rollback entirely** and leaving a partially migrated workspace, which is
+            // the exact outcome the try/catch around this call exists to prevent. `{ ok: false }` with
+            // no `reason` printed `undefined` at the user. Copilot, round 8 on #231.
+            if (planned === null || typeof planned !== "object" || typeof planned.ok !== "boolean") {
                 planned = { ok: false, reason: `${entry.step.id} returned no plan` };
+            } else if (planned.ok && !Array.isArray(planned.edits)) {
+                planned = { ok: false, reason: `${entry.step.id} reported a plan with no \`edits\` array — refusing to apply a plan it did not describe` };
+            } else if (!planned.ok && (typeof planned.reason !== "string" || planned.reason === "")) {
+                planned = { ok: false, reason: `${entry.step.id} refused without giving a reason` };
             }
         } catch (error) {
             planned = { ok: false, reason: `${entry.step.id} threw while planning its edits — ${error.message}` };

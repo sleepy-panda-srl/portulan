@@ -226,8 +226,10 @@ rail already exists** — the drafted recipe's own fail-closed exit 2 with a sel
 `0002`'s state-derived `owed()`. Option (c) would add a *reminder*, attached to the wrong event, for an
 operator who can do nothing durable about it.
 
-**Left to the maintainer:** disposing of [#230](https://github.com/sleepy-panda-works/portulan/issues/230),
-which the supervisor recommends closing as option 1.
+**Ruled and closed.** The maintainer disposed of
+[#230](https://github.com/sleepy-panda-works/portulan/issues/230) on 2026-08-12, taking the option the
+supervisor recommended: *"`vendor` copies; `upgrade` repairs; `vendor`'s comment names the remedy.
+Current state. One tool, one job."* `cli/vendor.mjs`'s comment carries the ruling and its argument.
 
 ## Open with the maintainer — asked, unanswered at time of writing (superseded above)
 
