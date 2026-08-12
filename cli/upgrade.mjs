@@ -449,7 +449,14 @@ export function applyEdits(dir, edits, options = {}) {
         // atomic. Copilot, round 6 on #231.
         const staging = `${file}.portulan-upgrade.${process.pid}.${stagingSeq++}`;
         try {
-            write(staging, edit.next);
+            // **Exclusive create.** The staging path is a path `walk` never saw — it does not exist
+            // when the workspace is read — so the containment guard above says nothing about it. With
+            // default flags a symlink planted there would be **followed**, writing outside the
+            // workspace and defeating that guard entirely; a leftover file would be clobbered. `wx`
+            // fails with `EEXIST` on anything already at the path, symlink included, which is the
+            // fail-closed direction and rule 2 of the three a tool writing into somebody's tree owes.
+            // Copilot, round 10 on #231.
+            write(staging, edit.next, { flag: "wx" });
             if (mode !== null) fs.chmodSync(staging, mode);
             fs.renameSync(staging, file);
         } catch (error) {
@@ -502,6 +509,11 @@ export function restore(dir, snapshots) {
                 // file, and still not true.
                 unwindDirs(snapshot.created ?? []);
             } else {
+                // The sibling: a rollback writes back to a path that existed when the run began, but
+                // "existed then" is not "is a regular file now". Refusing to write through a link
+                // here costs nothing and keeps the rule whole at both write sites.
+                const at = fs.lstatSync(file, { throwIfNoEntry: false });
+                if (at?.isSymbolicLink()) throw new UpgradeError(`${file} is a symlink — refusing to restore through it`);
                 fs.writeFileSync(file, snapshot.previous);
                 if (snapshot.mode !== null && snapshot.mode !== undefined) fs.chmodSync(file, snapshot.mode);
             }

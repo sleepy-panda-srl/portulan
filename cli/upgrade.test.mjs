@@ -1007,3 +1007,42 @@ describe("the apply loop refuses a plan a step did not describe", () => {
         assert.equal(await run([green(), "--write"], { ...h.options, steps: owed(() => ({ ok: true, edits: [] })) }), 0, h.text());
     });
 });
+
+describe("the staging path is a path the containment guard never saw", () => {
+    test("it is created EXCLUSIVELY, so a symlink there cannot be followed", () => {
+        // `walk` validates what exists when the workspace is read; the staging path does not exist
+        // then, so the containment guard says nothing about it. With default flags a symlink planted
+        // there is FOLLOWED and the write lands outside the workspace. Copilot, round 10 on #231.
+        const dir = scratch();
+        const seen = [];
+        applyEdits(dir, [{ file: "a.md", next: "x\n" }], {
+            write: (target, data, options) => {
+                seen.push(options);
+                fs.writeFileSync(target, data, options);
+            },
+        });
+        assert.deepEqual(seen, [{ flag: "wx" }], "the staging write did not demand exclusive creation");
+    });
+
+    test("an EEXIST at the staging path is a refusal that unwinds, not a clobber", () => {
+        const dir = scratch();
+        const applied = applyEdits(dir, [{ file: "deep/nested/a.md", next: "x\n" }], {
+            write: () => {
+                throw Object.assign(new Error("file already exists"), { code: "EEXIST" });
+            },
+        });
+        assert.equal(applied.ok, false);
+        assert.match(applied.reason, /EEXIST/);
+        assert.equal(fs.existsSync(path.join(dir, "deep")), false, "the refusal orphaned its directories");
+    });
+
+    test("restore refuses to write back through a symlink", () => {
+        const dir = scratch();
+        fs.writeFileSync(path.join(dir, "elsewhere.md"), "outside\n");
+        fs.symlinkSync(path.join(dir, "elsewhere.md"), path.join(dir, "linked.md"));
+        const result = restore(dir, [{ file: "linked.md", previous: "restored\n", mode: null, created: [] }]);
+        assert.equal(result.ok, false);
+        assert.deepEqual(result.failed, ["linked.md"]);
+        assert.equal(fs.readFileSync(path.join(dir, "elsewhere.md"), "utf8"), "outside\n", "it wrote through the link");
+    });
+});
