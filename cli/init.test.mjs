@@ -1361,3 +1361,14 @@ test("init refuses a named root combined with `--pack-root auto`", async () => {
     assert.equal(await run(["--residence", "in-repo", "--pack-root", "auto", "--pack-root", dir, dir], h.options), 2);
     assert.match([...h.said, ...h.warned].join("\n"), /never both/);
 });
+
+test("init refuses the pair even with `--no-cycle`, where nothing resolves a pack", async () => {
+    // Copilot, round 3 on #233: the refusal lived inside the branch that resolves a checkpoints pack,
+    // so `--no-cycle` skipped it and one of the two flags was silently ignored — in the fifth of the
+    // five tools whose refusal this change claims. It is validated on every path now.
+    const h = harness();
+    const dir = scratch();
+    assert.equal(await run(["--residence", "in-repo", "--no-cycle", "--pack-root", "auto", "--pack-root", dir, dir], h.options), 2);
+    assert.match([...h.said, ...h.warned].join("\n"), /never both/);
+    assert.equal(fs.existsSync(path.join(dir, ".portulan")), false, "a refused command line writes nothing");
+});

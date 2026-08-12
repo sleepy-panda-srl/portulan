@@ -321,6 +321,20 @@ export function resolveAnswers(flags) {
 
 /** Everything that must be true before a single byte is written. Each refusal names what to type. */
 export function validateAnswers(answers) {
+    // The named+auto pair, refused for EVERY path rather than inside the one branch that resolves a
+    // pack. It lived in the `residence === "in-repo" && cycle && packRoots.length` arm until Copilot's
+    // round 3, so `--no-cycle` with both flags was accepted and one of them silently ignored —
+    // breaking the *refused in all five tools* claim this very change makes, in the fifth tool.
+    //
+    // Third time this session that a correct refusal was placed where something could skip it: below a
+    // workspace read in `compile`, below a manifest read in `skills-set`, and inside a conditional
+    // here. The rule the three share is that a judgement about the COMMAND LINE belongs where the
+    // command line is assembled, not where its subject is used.
+    const bothAsked = namedWithAuto(
+        (answers.packRoots ?? []).filter((r) => r !== AUTO),
+        (answers.packRoots ?? []).includes(AUTO),
+    );
+    if (bothAsked) throw new InitError(bothAsked);
     if (!answers.residence) {
         throw new InitError(
             "no residence given — `init` asks where this repository's workspace lives and will not choose for you. " +
@@ -1520,6 +1534,8 @@ export async function run(argv, options = {}) {
 
         if (answers.residence === "in-repo" && answers.cycle && answers.packRoots.length) {
             const expanded = expandRoots(answers.packRoots, target);
+            // Belt and braces: `validateAnswers` has already refused this pair on every path. Kept
+            // because `expandRoots` is reachable on its own and must not answer with an empty set.
             if (expanded.refusal) throw new InitError(expanded.refusal);
             if (expanded.why) {
                 throw new InitError(
