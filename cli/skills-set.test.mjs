@@ -461,6 +461,37 @@ describe("--write, and the three rules a tool writing into somebody's tree carri
     });
 });
 
+describe("the workspace manifest: absent, unreadable and unparseable are three answers", () => {
+    // Raised by Copilot on #229. A `SyntaxError` from `JSON.parse` carries no `.code`, so the arm that
+    // reported `error.code ?? error.message` under "could not be read" told an adopter with a malformed
+    // manifest to go looking at permissions. Both messages are asserted, because the repair is the
+    // sentence and a test on the exit code alone would pass over it.
+    function runWith(contents) {
+        const root = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), "skills-set-"));
+        fs.mkdirSync(path.join(root, ".portulan"), { recursive: true });
+        if (contents !== null) fs.writeFileSync(path.join(root, ".portulan", "workspace.json"), contents);
+        let said = "";
+        const code = run(["--plugin-root", root, "--workspace", path.join(root, ".portulan")], {
+            stdout: { write() {} },
+            stderr: { write(s) { said += s; } },
+        });
+        return { code, said };
+    }
+
+    test("a manifest that will not parse says so, and does not blame the read", () => {
+        const { code, said } = runWith("{ not json\n");
+        assert.equal(code, 2);
+        assert.match(said, /does not parse as JSON/);
+        assert.doesNotMatch(said, /could not be read/);
+    });
+
+    test("a manifest that is not there still reports a read failure", () => {
+        const { code, said } = runWith(null);
+        assert.equal(code, 2);
+        assert.match(said, /could not be read — ENOENT/);
+    });
+});
+
 describe("--check", () => {
     function checkAgainst(skills, packs, table) {
         const root = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), "skills-set-"));
