@@ -83,5 +83,6 @@ demo rather than only in the one repository that did compile.
 carries two, and composition merges a pack's fragments **into a policy** — this workspace declares none,
 so there is nothing for them to merge into and `compile` here exits **2** with *"cannot read the gate
 policy … ENOENT"* — a could-not-run rather than a refusal, which is the distinction this project keeps
-everywhere else and should keep in its own demo. Composing a gates-contributing pack is therefore not the same as being governed by one,
-which is a property of the cascade better shown than asserted.
+everywhere else and should keep in its own demo. So composing a gates-contributing pack is not the
+same as being governed by one. That is a property of the cascade, and it is better shown than
+asserted.

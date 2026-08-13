@@ -4,15 +4,21 @@
 
 > `examples/workspace.json` declared `stacks/python`. Nothing in the tree answers to that name — the
 > string appears in **no commit that ever added such a pack**. The manifest was the only carrier
-> *claiming the pack against the tree*; `git grep` finds four more mentions, and they are a different
-> thing: one comment in [`../../cli/plugin-lint.mjs`](../../cli/plugin-lint.mjs) narrating the demo's
-> composition, and three test fixtures that need a deliberately non-resolving name and keep working.
+> *claiming the pack against the tree*. Measured at `7a280b9`, `git grep` finds **five matches in four
+> files**: that manifest; one comment in [`../../cli/plugin-lint.mjs`](../../cli/plugin-lint.mjs)
+> narrating the demo's composition; and **three uses across two test files**
+> ([`../../cli/plugin-lint.test.mjs`](../../cli/plugin-lint.test.mjs) once,
+> [`../../cli/recipe-set.test.mjs`](../../cli/recipe-set.test.mjs) twice), each needing a deliberately
+> non-resolving name and each still binding after the swap. **`cli/fixtures/` contains none** — worth
+> saying because that directory exists and is where a reader would look.
 >
-> _An earlier draft of this line said **"grep finds it in exactly one place"** and added "no prose
-> anywhere narrates a stack pack". Both were false, and `git grep` refutes them in one command — a
-> bolded figure nobody measured, inside a change whose subject is claims nobody measured. Caught by
-> the pre-commit checkpoint; recorded rather than quietly corrected, because it is this repository's
-> most-named defect class committed inside the fix for an instance of it._
+> _This line has now been wrong twice, in opposite directions, and both are recorded rather than
+> tidied away. The first draft said **"grep finds it in exactly one place"** and added "no prose
+> anywhere narrates a stack pack" — a bolded figure nobody measured, inside a change whose subject is
+> claims nobody measured, caught by the pre-commit checkpoint. The correction then said "three test
+> fixtures", which reads as `cli/fixtures/` and is wrong about where they are; caught by Copilot,
+> round 1. **A figure corrected without being re-measured is a second unmeasured figure**, and that is
+> the lesson this file owes rather than the count._
 
 ## Why this is a claim about Portulan rather than part of the fiction
 
@@ -65,15 +71,15 @@ customer zero **does** compose that one and its recipe is one of the eleven that
    does not declare. Measured: `compile --workspace examples` exits **2**, *"cannot read the gate
    policy … ENOENT"* — a could-not-run rather than a refusal, and quoted as the tool spells it.
    Composing a gates-contributing pack is not the same as being governed by one.
-6. **[`../../cli/plugin-lint.mjs`](../../cli/plugin-lint.mjs)** — a comment justifying why the compose
+4. **[`../../cli/plugin-lint.mjs`](../../cli/plugin-lint.mjs)** — a comment justifying why the compose
    check is scoped to the governing workspace said the demo's packs *"deliberately do not exist"* and
    that holding the demo to the rule would be *"a red by construction"*. The first was half-false since
    session 5 and wholly false after this swap; the second inverts, because the demo now composes what
    the governing workspace composes and would coincidentally **pass**. The scoping now rests on
    governance alone, which is the durable ground its own last sentence already gave.
-4. **`packs/README.md`** — *"`stacks/` and `tools/` are still empty"*, false since `tools/github`
+5. **`packs/README.md`** — *"`stacks/` and `tools/` are still empty"*, false since `tools/github`
    landed at milestone 7 session 5.
-5. **`packs/tools/README.md`** — *"No tool pack exists yet"*, beside the directory that refutes it.
+6. **`packs/tools/README.md`** — *"No tool pack exists yet"*, beside the directory that refutes it.
 
 Both of the last two are condition-4 defects that have been live in `main` for days, found by grading
 this one.
