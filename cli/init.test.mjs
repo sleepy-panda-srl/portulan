@@ -1372,3 +1372,32 @@ test("init refuses the pair even with `--no-cycle`, where nothing resolves a pac
     assert.match([...h.said, ...h.warned].join("\n"), /never both/);
     assert.equal(fs.existsSync(path.join(dir, ".portulan")), false, "a refused command line writes nothing");
 });
+
+test("init on a fresh host: absent record is a verdict, unreadable is could-not-run", async () => {
+    // Adjustment 8 of the pre-commit pass: `init` is the sixth consumer of this split and the records
+    // did not mention it. On a host with NO record, `--pack-root auto` with the cycle now says the
+    // pack does not resolve — a verdict — rather than the older "unknown rather than no". On a host
+    // whose record will not parse, it is could-not-run. Both exit 2 here because `init` refuses to
+    // draft either way; the DISCRIMINATOR is which sentence the adopter is given, since one sends
+    // them to install a pack and the other to look at their host.
+    const withEnvVar = async (config, fn) => {
+        const before = process.env.CLAUDE_CONFIG_DIR;
+        process.env.CLAUDE_CONFIG_DIR = config;
+        try { return await fn(); } finally {
+            if (before === undefined) delete process.env.CLAUDE_CONFIG_DIR;
+            else process.env.CLAUDE_CONFIG_DIR = before;
+        }
+    };
+
+    const absent = scratch();
+    const h1 = harness();
+    assert.equal(await withEnvVar(absent, () => run(["--residence", "in-repo", "--pack-root", "auto", scratch()], h1.options)), 2);
+    assert.match([...h1.said, ...h1.warned].join("\n"), /does not resolve/, "nothing installed is a verdict about the pack");
+
+    const bad = scratch();
+    fs.mkdirSync(path.join(bad, "plugins"), { recursive: true });
+    fs.writeFileSync(path.join(bad, "plugins", "installed_plugins.json"), "{ not json");
+    const h2 = harness();
+    assert.equal(await withEnvVar(bad, () => run(["--residence", "in-repo", "--pack-root", "auto", scratch()], h2.options)), 2);
+    assert.match([...h2.said, ...h2.warned].join("\n"), /could not read|unknown rather than no/, "an unreadable host is a fact about the host");
+});

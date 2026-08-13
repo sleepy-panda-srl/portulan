@@ -1614,3 +1614,43 @@ test("index refuses a named root combined with `--pack-root auto`", () => {
     assert.equal(run(["--pack-root", "auto", "--pack-root", dir, dir], (line) => said.push(line)), 2, said.join("\n"));
     assert.match(said.join("\n"), /never both/);
 });
+
+// A host whose plugin record EXISTS and will not parse — could-not-look, not absence.
+function unreadableHost(scratchDir) {
+    const record = path.join(scratchDir, "plugins", "installed_plugins.json");
+    fs.mkdirSync(path.dirname(record), { recursive: true });
+    fs.writeFileSync(record, "{ not json");
+    return scratchDir;
+}
+function withEnv(config, fn) {
+    const before = process.env.CLAUDE_CONFIG_DIR;
+    process.env.CLAUDE_CONFIG_DIR = config;
+    try { return fn(); } finally {
+        if (before === undefined) delete process.env.CLAUDE_CONFIG_DIR;
+        else process.env.CLAUDE_CONFIG_DIR = before;
+    }
+}
+
+test("index: `auto` against an unreadable record is exit 2", () => {
+    // A scope index AND composed packs: the plan is built inside the scopes pass, so a workspace
+    // declaring neither never reaches the mapping. Correct, and the reason the records scope the claim
+    // to where a plan is built.
+    const dir = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), "index-unreadable-ws-"));
+    // `slots.personas` is required beside a `personas` index — without it the run exits 2 for THAT
+    // reason and the test passes vacuously, which is how the first cut of this case failed to bind.
+    fs.mkdirSync(path.join(dir, "personas"), { recursive: true });
+    fs.writeFileSync(path.join(dir, "workspace.json"), JSON.stringify({
+        portulan: { spec: "2.8" }, name: "w", kind: "demo",
+        packs: ["rituals/checkpoints"],
+        slots: { personas: "personas/" },
+        personas: { index: { path: "personas-index.md" } },
+    }));
+    const config = unreadableHost(fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), "index-unreadable-")));
+    const said = [];
+    const code = withEnv(config, () => run(["--pack-root", "auto", dir], (l) => said.push(l)));
+    assert.equal(code, 2, said.join("\n"));
+    // The DISCRIMINATOR: exit 2 alone does not bind, because an unresolvable pack is could-not-run
+    // here by contract and would produce a 2 either way. The message is what says which.
+    // See the note in the sibling case: `could not be read` is in both messages.
+    assert.match(said.join("\n"), /Discovery could not look/);
+});

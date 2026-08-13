@@ -656,3 +656,38 @@ describe("`--pack-root auto` reaches discovery here, and refuses to be combined 
         assert.match(said.join(""), /never both/);
     });
 });
+
+// A host whose plugin record EXISTS and will not parse — could-not-look, not absence.
+function unreadableHost(scratchDir) {
+    const record = path.join(scratchDir, "plugins", "installed_plugins.json");
+    fs.mkdirSync(path.dirname(record), { recursive: true });
+    fs.writeFileSync(record, "{ not json");
+    return scratchDir;
+}
+function withEnv(config, fn) {
+    const before = process.env.CLAUDE_CONFIG_DIR;
+    process.env.CLAUDE_CONFIG_DIR = config;
+    try { return fn(); } finally {
+        if (before === undefined) delete process.env.CLAUDE_CONFIG_DIR;
+        else process.env.CLAUDE_CONFIG_DIR = before;
+    }
+}
+
+test("skills-set: `auto` against an unreadable record is exit 2", () => {
+    const dir = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), "skills-set-unreadable-ws-"));
+    fs.mkdirSync(path.join(dir, ".portulan"), { recursive: true });
+    fs.writeFileSync(path.join(dir, ".portulan", "workspace.json"), JSON.stringify({
+        portulan: { spec: "2.8" }, name: "w", kind: "demo", packs: ["rituals/checkpoints"],
+    }));
+    const config = unreadableHost(fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), "skills-set-host-")));
+    const said = [];
+    const io = { stdout: { write: (x) => said.push(x) }, stderr: { write: (x) => said.push(x) } };
+    assert.equal(withEnv(config, () => run(["--workspace", path.join(dir, ".portulan"), "--pack-root", "auto", "--check"], io)), 2, said.join(""));
+    // Exit 2 alone cannot bind this: a pack that will not resolve is could-not-run here BY CONTRACT,
+    // so the code is 2 whether or not the mapping exists. The message is the discriminator — with the
+    // mapping it names the unreadable record; without it, it names an unresolvable pack.
+    // `could not be read` appears in the UNRESOLVABLE-PACK sentence too, so it discriminates
+    // nothing; `Discovery could not look` is only ever the discovery diagnostic. Measured by
+    // mutating the mapping away and reading what the other path actually says.
+    assert.match(said.join(""), /Discovery could not look/);
+});

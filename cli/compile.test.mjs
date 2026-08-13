@@ -2129,3 +2129,40 @@ test("compile prints the union plan line even without `--matrix`", () => {
     }
     assert.match(said.join(""), /resolution root union/);
 });
+
+// A host whose plugin record EXISTS and will not parse — could-not-look, not absence.
+function unreadableHost(scratchDir) {
+    const record = path.join(scratchDir, "plugins", "installed_plugins.json");
+    fs.mkdirSync(path.dirname(record), { recursive: true });
+    fs.writeFileSync(record, "{ not json");
+    return scratchDir;
+}
+function withEnv(config, fn) {
+    const before = process.env.CLAUDE_CONFIG_DIR;
+    process.env.CLAUDE_CONFIG_DIR = config;
+    try { return fn(); } finally {
+        if (before === undefined) delete process.env.CLAUDE_CONFIG_DIR;
+        else process.env.CLAUDE_CONFIG_DIR = before;
+    }
+}
+
+test("compile: `auto` against an unreadable record is exit 2, not a green over an unread host", () => {
+    // One of four carriers a pre-commit checkpoint could delete without the suite noticing. The claim
+    // "every caller maps couldNotRun to exit 2" was demonstrated by `doctor` alone.
+    // The workspace must COMPOSE a pack: with none declared, `packContributions` returns before a plan
+    // is built and never reaches the mapping. That short-circuit is correct — there is nothing to
+    // resolve — and it is why the records say the mapping is reached wherever a plan is BUILT rather
+    // than at every invocation.
+    const dir = workspace();
+    const manifestPath = path.join(dir, ".portulan", "workspace.json");
+    const m = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
+    m.packs = ["rituals/checkpoints"];
+    fs.writeFileSync(manifestPath, JSON.stringify(m, null, 2));
+
+    const config = unreadableHost(fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), "compile-unreadable-")));
+    assert.equal(withEnv(config, () => run(["--workspace", path.join(dir, ".portulan"), "--pack-root", "auto"], { quiet: true })), 2);
+    // The control: the same flag on a host whose record is merely ABSENT is not a refusal — the run
+    // proceeds and the unresolved pack is reported rather than the command being rejected.
+    const empty = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), "compile-absent-"));
+    assert.notEqual(withEnv(empty, () => run(["--workspace", path.join(dir, ".portulan"), "--pack-root", "auto"], { quiet: true })), 2);
+});

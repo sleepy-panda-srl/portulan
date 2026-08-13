@@ -456,6 +456,7 @@ export function readScopes(dir, workspace, options = {}) {
         forced: options.discoverPacks === true,
     });
     if (plan.refusal) throw new IndexError(plan.refusal);
+    if (plan.couldNotRun) throw new IndexError(plan.couldNotRun);
     const roots = plan.roots;
     // Origin is stated in what a reader SEES and never in what gets written: an index whose bytes
     // recorded which root answered would regenerate differently on two machines, and `index --check`

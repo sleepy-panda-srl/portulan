@@ -595,16 +595,58 @@ export function isPackRoot(dir) {
 /**
  * Pack-resolution roots discovered from the host's plugin cache.
  *
- * Returns `{ ok, roots, installs, why }`. `ok: false` is **could not look** — the record was absent or
- * unreadable — and is never the same answer as `ok: true` with no roots, which is *looked, found
- * nothing installed that carries packs*. `readInstalls` keeps those three states apart at the source
- * and this preserves the distinction rather than flattening it.
+ * Returns `{ ok, roots, installs, why }`. `ok: false` is **could not look** — the record is there and
+ * could not be read — and is never the same answer as `ok: true` with no roots, which is *looked,
+ * found nothing installed that carries packs*.
+ *
+ * ## An ABSENT record is `ok: true`, and this line was the opposite until 2026-08-13
+ *
+ * `readInstalls` keeps three states apart at the source — `read`, `absent`, `unreadable` — and its
+ * docblock says collapsing them is how a resolver starts lying. **This function then collapsed two of
+ * them**, mapping `absent` to could-not-look from the day this function was written (2026-08-09) to
+ * 2026-08-13 — four days, not the "year of sessions" an earlier draft of this paragraph claimed, which
+ * was a superlative nobody counted in a file about answers nobody measured. The docblock above
+ * described the collapse as though it were the design.
+ *
+ * It is not a style question, and the measurement is what settles it. A host with **no record at all**
+ * is a host with nothing installed — which is every CI runner, and precisely what
+ * `readInstalls`'s own comment above says `absent` means. Reported as could-not-look it made
+ * `--pack-root auto` return the **empty set**, and an empty set makes `doctor` report every declared
+ * pack *unverifiable* and exit **0**. Measured on the workspace `init` drafts by default: with no
+ * flag, exit 1 and the cache pack correctly FAILS; with `--pack-root auto`, exit **0** and neither
+ * pack is looked at — including one that resolves perfectly well from the adopter's own tree. The flag
+ * did not merely fail to help, it **discarded a root it already had** and converted a correct red into
+ * a green.
+ *
+ * The target behaviour was already in the table: a host with a **valid record and nothing installed**
+ * has always done the right thing here. `absent` now joins it, and **this module already said so in
+ * two other places** — `readInstalls`'s ENOENT comment, and the pointer path below, which has always
+ * turned `absent` into a `not-installed` VERDICT ("nothing is installed for it to be among") rather
+ * than a could-not-look. `../cli/plugin-lint.mjs` states the general rule: *"Absent counts as
+ * examined … that IS the finding."* `discoverPackRoots` was the outlier inside its own file.
+ *
+ * **The distinction that keeps this from contradicting the fail-closed rule:** a *dependency the check
+ * needs* being missing is could-not-run — that is `../.portulan/memory/verify-preconditions-fail-closed.md`'s
+ * subject, and why a missing tool still exits 2. A *world-state the check observes* being empty is an
+ * answer. The plugin record is the second kind: discovery's whole question is "what is installed
+ * here", and "nothing" answers it.
  *
  * Both shapes are offered per install, repository-shaped first; `resolvePack` is first-match-wins, and
  * no plugin carries both.
  */
 export function discoverPackRoots(options = {}) {
     const read = readInstalls(options);
+    // Absent is an ANSWER: nothing is installed. Only a record that is there and will not be read is
+    // could-not-look, and that one keeps `ok: false` — asking for discovery and being unable to look
+    // must never be spendable as a green.
+    if (read.state === "absent") {
+        return {
+            ok: true,
+            roots: [],
+            installs: [],
+            why: `${read.path} does not exist — this host has nothing installed, which is an answer rather than a failure to look`,
+        };
+    }
     if (read.state !== "read") {
         return {
             ok: false,
@@ -628,8 +670,10 @@ export function discoverPackRoots(options = {}) {
 /**
  * The one sentence every tool prints when a caller asks for both a named root and `auto`.
  *
- * A constant because five commands reach this refusal and five spellings of it is how one of them ends
- * up wording it as a warning — which is the silent drop it replaces, wearing a different coat.
+ * A constant because **seven** commands reach this refusal — `compile`, `doctor`, `index`, `init`,
+ * `vendor`, `skills-set` and, since 2026-08-13, `recipe-set` — and seven spellings of it is how one of
+ * them ends up wording it as a warning, which is the silent drop it replaces wearing a different coat.
+ * _(It said "five" until `recipe-set` gained the flag; six was already wrong.)_
  */
 export const NAMED_WITH_AUTO =
     "name roots or ask for `auto`, never both: `--pack-root auto` cannot be combined with a named root";
@@ -736,12 +780,17 @@ export function resolutionRoots({ named = [], namedGiven = null, derived = [], d
     // Every branch returns the same shape, `origins` included: a caller joining a resolved pack to its
     // root must not have to know which branch produced the plan.
     const tag = (roots, origin) => roots.map((root) => ({ root, origin }));
-    const plan = (roots, source, why, origins = null, refusal = null) => ({
+    // `refusal` and `couldNotRun` are separate fields because they are separate facts, and both map to
+    // exit 2. `refusal` says *your command line asked for two different resolution sets*; `couldNotRun`
+    // says *you asked me to look and I could not*. Collapsing them would send a reader with an
+    // unreadable plugin record to re-read their flags.
+    const plan = (roots, source, why, origins = null, refusal = null, couldNotRun = null) => ({
         roots,
         source,
         why,
         origins: origins ?? tag(roots, source),
         refusal,
+        couldNotRun,
     });
 
     const refusal = namedWithAuto(givenNamed, forced);
@@ -767,13 +816,33 @@ export function resolutionRoots({ named = [], namedGiven = null, derived = [], d
     if (forced) {
         const found = resolveDiscovery();
         if (!found) return plan([], "none", "discovery was requested and did not run");
-        // Could-not-look must never quietly become a derived-only green: the union is over what
-        // discovery FOUND, and a discovery that could not look found nothing to union with.
-        if (!found.ok) return plan([], "none", found.why);
+        // **Asked for, and could not look — exit 2.** Ruled 2026-08-13 on a measurement: this branch
+        // returned an empty plan, and an empty root set makes `doctor` report every declared pack
+        // *unverifiable* and exit **0**. So `--pack-root auto` against an unreadable record was a
+        // green over a host nobody could read, and it discarded the tree-derived root on the way —
+        // turning a correct red into a green while losing information it already had. A discovery that
+        // could not look is a could-not-run, which is what the third exit code exists for.
+        //
+        // An **absent** record no longer reaches here: `discoverPackRoots` answers `ok: true` with no
+        // roots for that, because a host with no record is a host with nothing installed. Only a
+        // record that exists and will not be read is this branch.
+        //
+        // **The strongest ground for exit 2 rather than a quiet degrade is `RECORD_VERSIONS`.** That
+        // constant promises discovery stops on a record schema this reader has not seen, "until this
+        // set is widened by someone who has looked". A host bumping its record version lands exactly
+        // here — so a degrade-and-carry-on would silently convert every `auto` user to derived-only on
+        // that day, fleet-wide, repealing a decision the constant records as deliberate. Exit 2 makes
+        // it loud, which is what the constant asked for.
+        if (!found.ok) return plan([], "none", found.why, [], null, found.why);
+        // Where discovery found NOTHING, its own sentence rides through. "0 root(s)" alone cannot tell
+        // a host with no record from a host with a valid record listing nothing installed, and those
+        // are different facts about the machine — the second is a host that has Portulan packs
+        // available and none of them relevant; the first is a host that has never installed one.
+        const nothingFound = found.roots.length === 0 && found.why;
         return plan(
             [...found.roots, ...derived],
             "union",
-            `discovered in the host plugin cache (${found.roots.length} root(s)) and derived from the manifest's \`tree\` (${derived.length} root(s)) — each pack's resolution states which of the two it came from`,
+            `discovered in the host plugin cache (${found.roots.length} root(s))${nothingFound ? ` — ${found.why}` : ""} and derived from the manifest's \`tree\` (${derived.length} root(s)) — each pack's resolution states which of the two it came from`,
             [...tag(found.roots, "discovered"), ...tag(derived, "derived")],
         );
     }

@@ -2008,6 +2008,22 @@ describe("`--pack-root auto` unions the discovered roots with the tree-derived o
         assert.equal(await run([absent], { quiet: true }), 1);
     });
 
+    test("`auto` against an unreadable record is exit 2, never a green over a host nobody read", async () => {
+        // The fail-open this change closes, at the level a user meets it. An empty root set makes
+        // `doctor` report every declared pack *unverifiable* and exit 0 — so `--pack-root auto` on a
+        // corrupt record was a GREEN, and it discarded the tree-derived root on the way, so a pack
+        // that resolves locally stopped being looked at too. Measured before the fix: exit 0.
+        const config = scratch();
+        const record = path.join(config, "plugins", "installed_plugins.json");
+        fs.mkdirSync(path.dirname(record), { recursive: true });
+        fs.writeFileSync(record, "{ not json");
+        const dir = both();
+        assert.equal(await run(["--pack-root", "auto", dir], { quiet: true, env: { CLAUDE_CONFIG_DIR: config } }), 2);
+        // The control: the same workspace and the same flag, on a host whose record is merely ABSENT,
+        // is a verdict rather than a refusal — nothing installed is an answer.
+        assert.equal(await run(["--pack-root", "auto", dir], { quiet: true, env: { CLAUDE_CONFIG_DIR: scratch() } }), 1);
+    });
+
     test("a malformed host record cannot reach an unasked run's verdict", async () => {
         // Ground 1 of the replaced rule, at the level this level can see. It does NOT establish that
         // nothing read the record — a read whose result is discarded is invisible from here, and a

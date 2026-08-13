@@ -2,9 +2,10 @@
 
 > Generated from `handoffs/` by `node cli/index.mjs`. Do not edit by hand: it is regenerated
 > and byte-compared, so a hand-edit survives exactly until the next run.
-> 96 handoff(s), newest first. No budget: the series is append-only, so
+> 97 handoff(s), newest first. No budget: the series is append-only, so
 > the only remedy a budget could ask for is one this project rules out.
 
+- 2026-08-13 · [Handoff — the flag made the verdict worse](handoffs/2026-08-13-the-flag-made-the-verdict-worse.md)
 - 2026-08-13 · [Handoff — the demo composed a pack that does not exist](handoffs/2026-08-13-the-demo-composed-a-pack-that-does-not-exist.md)
 - 2026-08-12 · [Handoff — the workspace `init` drafts could not go green](handoffs/2026-08-12-the-workspace-init-drafts-could-not-go-green.md)
 - 2026-08-12 · [Handoff — the path that worked because someone typed it](handoffs/2026-08-12-the-path-that-worked-because-someone-typed-it.md)

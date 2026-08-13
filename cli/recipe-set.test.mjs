@@ -47,7 +47,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 
-import { recipeSet, composedId, resolverFor, RECIPE_SET_READERS } from "./recipe-set.mjs";
+import { recipeSet, composedId, resolverFor, run, RECIPE_SET_READERS } from "./recipe-set.mjs";
 
 /** A workspace manifest with `n` plain recipes, enough to be legal and no more. */
 function workspace(recipes, extra = {}) {
@@ -377,4 +377,75 @@ test("`resolverFor` refuses a named root beside `forced` rather than resolving n
         () => resolverFor({ workspaceDir: ".", manifest: { packs: [] }, named: ["/a"], forced: true, discovery: { ok: true, roots: [] } }),
         /never both/,
     );
+});
+
+describe("`--pack-root` at the CLI, which this tool had no way to reach", () => {
+    // The plumbing existed and nothing could get to it: `resolverFor` took `discovery` and `forced`
+    // while `run` parsed no root flag at all. CI calls this command for the set it runs, so a
+    // workspace composing from the host cache had no invocation that could enumerate its own recipes.
+    const io = () => {
+        const out = [], err = [];
+        return { out, err, sink: { stdout: { write: (s) => out.push(s) }, stderr: { write: (s) => err.push(s) } } };
+    };
+
+    test("a named root reaches resolution — a pack found only there is composed", () => {
+        const root = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), "recipe-set-cli-"));
+        const packDir = path.join(root, "packs", "tools", "thing");
+        fs.mkdirSync(packDir, { recursive: true });
+        fs.writeFileSync(path.join(packDir, "pack.json"), JSON.stringify({
+            portulan: { pack: "1.0", version: "0.1.0" }, name: "thing", category: "tools",
+            summary: "x", doc: "README.md",
+            contributes: { verify: [{ id: "check", run: "bash ${PACK_ROOT}/v.sh", requires: ["bash"] }] },
+        }));
+        fs.writeFileSync(path.join(packDir, "README.md"), "# x\n");
+        const ws = path.join(root, ".portulan");
+        fs.mkdirSync(ws, { recursive: true });
+        fs.writeFileSync(path.join(ws, "workspace.json"), JSON.stringify({
+            portulan: { spec: "2.8" }, name: "w", kind: "demo", packs: ["tools/thing"],
+            verify: { default: "own", recipes: [{ id: "own", run: "./own.sh", requires: ["bash"] }] },
+        }));
+
+        const bare = io();
+        assert.equal(run(["--workspace", ws, "--repo-root", root], bare.sink), 2, "no root: the pack cannot resolve");
+
+        const pinned = io();
+        assert.equal(run(["--workspace", ws, "--repo-root", root, "--pack-root", path.join(root, "packs")], pinned.sink), 0, pinned.err.join(""));
+        assert.match(pinned.out.join(""), /tools\/thing:check/, "the composed recipe is in the set");
+    });
+
+    test("a named root beside `auto` is refused here too, in the one shared sentence", () => {
+        const h = io();
+        assert.equal(run(["--pack-root", "auto", "--pack-root", "."], h.sink), 2);
+        assert.match(h.err.join(""), /never both/);
+    });
+});
+
+// A host whose plugin record EXISTS and will not parse — could-not-look, not absence.
+function unreadableHost(scratchDir) {
+    const record = path.join(scratchDir, "plugins", "installed_plugins.json");
+    fs.mkdirSync(path.dirname(record), { recursive: true });
+    fs.writeFileSync(record, "{ not json");
+    return scratchDir;
+}
+function withEnv(config, fn) {
+    const before = process.env.CLAUDE_CONFIG_DIR;
+    process.env.CLAUDE_CONFIG_DIR = config;
+    try { return fn(); } finally {
+        if (before === undefined) delete process.env.CLAUDE_CONFIG_DIR;
+        else process.env.CLAUDE_CONFIG_DIR = before;
+    }
+}
+
+test("recipe-set: `auto` against an unreadable record is exit 2", () => {
+    const root = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), "recipe-set-unreadable-"));
+    const ws = path.join(root, ".portulan");
+    fs.mkdirSync(ws, { recursive: true });
+    fs.writeFileSync(path.join(ws, "workspace.json"), JSON.stringify({
+        portulan: { spec: "2.8" }, name: "w", kind: "demo",
+        verify: { default: "own", recipes: [{ id: "own", run: "./own.sh", requires: ["bash"] }] },
+    }));
+    const config = unreadableHost(fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), "recipe-set-host-")));
+    const err = [];
+    const sink = { stdout: { write: () => {} }, stderr: { write: (x) => err.push(x) } };
+    assert.equal(withEnv(config, () => run(["--workspace", ws, "--repo-root", root, "--pack-root", "auto"], sink)), 2, err.join(""));
 });

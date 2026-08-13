@@ -97,4 +97,16 @@ if [ "$present" != "$named" ]; then
     exit 2
 fi
 
-node cli/doctor.mjs "${WORKSPACES[@]}"
+
+# ---------------------------------------------------------------------------------------------
+# **The resolution root is PINNED, and that is what keeps this recipe's verdict about the tree.**
+#
+# A required check answers *does this tree hold its own claims*, so its answer may not move with what
+# happens to be installed on the machine running it. Naming the root is how that is guaranteed: it
+# replaces every other source, so nothing here consults the host's plugin cache whatever the default
+# becomes.
+#
+# It is the same argument this file already makes one noun over — the workspaces below are NAMED
+# rather than discovered, so adding one is a visible edit here rather than a silent omission.
+# ---------------------------------------------------------------------------------------------
+node cli/doctor.mjs --pack-root packs "${WORKSPACES[@]}"

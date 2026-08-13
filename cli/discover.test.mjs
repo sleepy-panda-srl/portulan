@@ -576,14 +576,48 @@ test("`isPackRoot` tests for a pack.json, not for a directory named `packs`", ()
     assert.deepEqual(discoverPackRoots({ env: h.env }).roots, []);
 });
 
-test("a record that could not be looked at is `ok: false`, never an empty discovery", () => {
-    // ../.portulan/memory/verify-preconditions-fail-closed.md, carried across the reconciliation:
-    // `readInstalls` keeps `absent` and `unreadable` apart from `read`, and this must not flatten them.
+test("an ABSENT record is `ok: true` with no roots — nothing installed is an answer", () => {
+    // This case asserted `ok: false` until 2026-08-13, pinning the very collapse the function's
+    // docblock says it preserves against: `readInstalls` keeps `absent` apart from `unreadable`, and
+    // `discoverPackRoots` then mapped both to could-not-look. A host with NO record is a host with
+    // nothing installed — which is every CI runner — and reporting that as could-not-look made
+    // `--pack-root auto` return the empty set, which `doctor` reports as *unverifiable* and exits 0.
+    // Rewritten rather than deleted, because the property it was reaching for is real and now lives
+    // in the case below.
     const h = host({}, { record: false });
     const got = discoverPackRoots({ env: h.env });
+    assert.equal(got.ok, true, "absent is an answer, not a failure to look");
+    assert.deepEqual(got.roots, []);
+    assert.match(got.why, /nothing installed/);
+});
+
+test("an UNREADABLE record is `ok: false` — the distinction the absent case used to swallow", () => {
+    // The half that was always true, now on its own subject: a record that IS there and will not parse
+    // is could-not-look, and must never be spendable as *nothing installed*.
+    const dir = scratch();
+    write(path.join(dir, RECORD), "{ not json");
+    const got = discoverPackRoots({ env: { CLAUDE_CONFIG_DIR: dir } });
     assert.equal(got.ok, false);
     assert.deepEqual(got.roots, []);
     assert.match(got.why, /not the same as finding nothing installed/);
+});
+
+test("asked-for discovery that could not look is COULD-NOT-RUN, not an empty plan", () => {
+    // The consequence of the line above, at the resolver. An empty plan reads as *unverifiable* and
+    // exits 0 — a green over a host nobody could read — and it discards the tree-derived root on the
+    // way, so a pack that resolves perfectly well locally stops being looked at too.
+    const got = resolutionRoots({ derived: ["/derived"], forced: true, discovery: { ok: false, why: "record will not parse" } });
+    assert.deepEqual(got.roots, []);
+    assert.equal(got.couldNotRun, "record will not parse");
+});
+
+test("but an ABSENT record under `auto` keeps the derived root, and unions with nothing", () => {
+    // The other half of the same fix: *looked, found nothing* is a union with the empty set, which
+    // leaves the tree-derived root standing rather than throwing it away.
+    const got = resolutionRoots({ derived: ["/derived"], forced: true, discovery: { ok: true, roots: [], why: "nothing installed" } });
+    assert.deepEqual(got.roots, ["/derived"]);
+    assert.equal(got.couldNotRun, null);
+    assert.equal(got.source, "union");
 });
 
 test("precedence: named wins, and the named branch never consults discovery", () => {
@@ -631,9 +665,10 @@ test("an explicitly EMPTY named set means search nowhere, and is not a fall-thro
 });
 
 test("precedence: a derived root wins unasked, and the host is never read", () => {
-    // Load-bearing beyond tidiness. `.portulan/verify/compile.sh` runs `compile --check` with no root
-    // named and byte-compares its output; if this path read the plugin cache, a required check would
-    // depend on what happens to be installed on the machine.
+    // Load-bearing beyond tidiness. `.portulan/verify/compile.sh` byte-compares `compile --check`'s
+    // output, and every required recipe now NAMES its root (2026-08-13) so none of them can reach the
+    // host at all. This property is what protected them before the pins existed, and it still protects
+    // every unpinned caller — an adopter's CI, and anyone running the tool by hand.
     let called = 0;
     const got = resolutionRoots({ named: [], derived: ["/derived"], discovery: () => (called += 1, { ok: true, roots: ["/x"] }), forced: false });
     assert.equal(called, 0);

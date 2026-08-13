@@ -42,6 +42,24 @@ records how things were found. This is per *release* and records what a reader g
 ## Unreleased
 ### Changed
 
+- **`--pack-root auto` no longer turns a correct red into a green on a host it could not read.** Two
+  fail-opens, measured on the workspace `portulan init` drafts by default plus one pack of the
+  adopter's own. On a host whose installed-plugin record is **absent** — which is every CI runner —
+  or **unreadable**, asking for discovery took a run that correctly exited **1** and made it exit
+  **0**, by discarding the tree-derived root it already had; a pack that resolved perfectly well from
+  the adopter's own tree stopped being looked at.
+
+  **An absent record is now an answer, not a failure to look.** A host with no record is a host with
+  nothing installed, so discovery reports *looked, found nothing* and the derived root survives.
+
+  **An asked-for discovery that could not look is now could-not-run — exit 2** at every caller that
+  builds a resolution plan. The user asked; the question is unanswerable; that is what the third exit
+  code is for. It also keeps the promise `RECORD_VERSIONS` makes: on the day a host bumps its record
+  schema, discovery stops loudly rather than silently converting every `auto` user to derived-only.
+
+  **What did NOT change:** the unasked path, byte for byte. A run with no `--pack-root` resolves
+  exactly as before.
+
 - **`--pack-root auto` now searches the discovered roots *and* the `tree`-derived one, discovered
   first.** It replaced the derived root before. The change is a measurement rather than a preference:
   a workspace composing a cache-installed pack **and** a pack of its own — which is what `portulan
@@ -61,8 +79,8 @@ records how things were found. This is per *release* and records what a reader g
   **The unasked path is untouched by construction** — the union lives inside the branch `auto`
   triggers — so no required verify recipe begins reading the host's plugin record.
 
-  **Asking for a named root and `auto` together is now refused (exit 2) in all five tools that take
-  the flag.** They silently dropped the `auto` before, which is the behaviour this change is about,
+  **Asking for a named root and `auto` together is now refused (exit 2) in every tool that takes
+  the flag** — five when this entry was written, seven since `recipe-set` and `init` joined them.** They silently dropped the `auto` before, which is the behaviour this change is about,
   one layer up.
 
 ### Fixed
@@ -81,6 +99,19 @@ records how things were found. This is per *release* and records what a reader g
   passed it on without the flag that reaches it, so the pair looked wired and was not.
 
 ### Added
+
+- **`portulan`'s verify recipes name their resolution root.** A required check answers *does this tree
+  hold its own claims*, so its verdict must not move with what happens to be installed on the machine
+  running it — and a named root replaces every other source. Six invocations pin: the `doctor`,
+  `compile`, `index` and `plugin` recipes, the CI workflow's recipe-set call, and the command the
+  definition of done quotes. `cli/pinned-roots.live.test.mjs` fails if any of them drops it.
+
+  Pinning also changes what the demo workspace's grade *means*: `examples/` was reported
+  *unverifiable* and is now actually validated.
+
+- **`recipe-set` takes `--pack-root`** (repeatable, `auto`, and the shared refusal when both are
+  asked). It is the one carrier of the runnable recipe set and CI calls it, and it had no way to name
+  a root while its resolver already accepted one.
 
 - **`portulan upgrade` — the eighth subcommand, and the migration mechanics under it.** All eight names
   in `docs/vision.md` now dispatch. `upgrade` migrates a workspace in **either** residence: an in-repo

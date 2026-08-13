@@ -148,7 +148,7 @@ esac
     exit 2
 }
 for root in "${PLUGIN_ROOTS[@]}"; do
-    node cli/skills-set.mjs --workspace .portulan --repo-root . --plugin-root "$root" --check
+    node cli/skills-set.mjs --workspace .portulan --repo-root . --pack-root packs --plugin-root "$root" --check
     case $? in
         0) ;;
         2) exit 2 ;;
