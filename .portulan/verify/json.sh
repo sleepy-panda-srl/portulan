@@ -42,8 +42,12 @@ pass() { printf 'ok    %s\n' "$1"; }
 # And the same precondition check, for the same reason: an unchecked failure here yields an
 # empty list, zero files scanned, and a GREEN report from a recipe that examined nothing.
 # See ./README.md, Provenance.
+# `-z` rather than the newline-separated form, and the reason is #209: a tracked filename may legally
+# contain a newline, and splitting on one mis-splits it into two paths that do not exist — silently,
+# because a path that does not exist is skipped as "tracked but deleted" two screens down. `-z` is the
+# shape ./control-chars.sh already models, and it recorded this file as the sibling it had not fixed.
 manifest="$tmp/manifest"
-if ! git ls-files --cached --others --exclude-standard >"$manifest"; then
+if ! git ls-files --cached --others --exclude-standard -z >"$manifest"; then
     printf 'verify: git ls-files failed — cannot enumerate the tree\n' >&2
     exit 2
 fi
@@ -53,12 +57,13 @@ fi
 # that is easy to get wrong — the first draft of this check indexed it wrongly and reported a
 # perfectly good file as malformed. A false red is the one outcome ./README.md says to avoid at
 # any cost, so the argument handling is gone rather than fixed.
-grep -E '\.json$' "$manifest" >"$tmp/json-files"
-count=$(wc -l <"$tmp/json-files" | tr -d '[:space:]')
-
+# Filtered in node rather than by `grep -E` into a second file: the list is NUL-delimited now, and a
+# `grep`/`wc -l` pair over NUL records would count lines rather than paths — an instrument reporting a
+# number about a shape it is not reading. node splits on NUL, filters, and reports the count it used.
 node -e '
     const fs = require("fs");
-    const files = fs.readFileSync(0, "utf8").split("\n").filter(Boolean);
+    const files = fs.readFileSync(0, "utf8").split("\0").filter(Boolean).filter((f) => f.endsWith(".json"));
+    process.stderr.write(String(files.length));
     for (const file of files) {
         if (!fs.existsSync(file)) continue;   // tracked but deleted in the working tree
         try {
@@ -67,13 +72,18 @@ node -e '
             process.stdout.write(file + " -> " + String(e.message).split("\n")[0] + "\n");
         }
     }
-' <"$tmp/json-files" >"$tmp/bad" 2>"$tmp/node-err"
+' <"$manifest" >"$tmp/bad" 2>"$tmp/count"
 
-if [ -s "$tmp/node-err" ]; then
-    printf 'verify: node failed while parsing\n' >&2
-    sed 's/^/        /' "$tmp/node-err" >&2
-    exit 2
-fi
+# The count arrives on stderr and is the only thing written there on success, so a non-numeric stderr
+# is node itself having failed — which stays exit 2, never a verdict about the tree.
+count=$(cat "$tmp/count")
+case "$count" in
+    '' | *[!0-9]*)
+        printf 'verify: node failed while parsing\n' >&2
+        sed 's/^/        /' "$tmp/count" >&2
+        exit 2
+        ;;
+esac
 
 if [ -s "$tmp/bad" ]; then
     fail "parse — $(wc -l <"$tmp/bad" | tr -d '[:space:]') malformed JSON file(s)"

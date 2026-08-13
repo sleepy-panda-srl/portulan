@@ -100,6 +100,42 @@ describe("what a tracked file may not carry", () => {
         for (let b = 0x80; b <= 0xff; b += 1) assert.equal(isForbidden(b), false);
     });
 
+    // #207. C1 is two UTF-8 bytes, `0xc2` then `0x80`-`0x9f`, so `isForbidden` cannot reach it by
+    // construction and the assertion directly above stays true. The scan is what had to learn it.
+    //
+    // **Asserted through the byte scanner, never through `grep -P`**: on this host `grep` is ugrep
+    // 7.5.0, and `grep -clP '\xc2[\x80-\x9f]'` MISSES a planted U+009B — exit 1, nothing printed.
+    // Measured against the planted file before this rail was written, which is why the rail does not
+    // use it. An instrument keyed on a tool that cannot see the class would rail nothing.
+    test("a C1 control character is found, named by code point, and located at its LEAD byte", () => {
+        const found = scanBytes(Buffer.from([0x61, 0xc2, 0x9b, 0x62]));
+        assert.equal(found.length, 1);
+        assert.equal(found[0].offset, 1, "the lead byte, not the continuation");
+        assert.equal(found[0].name, "U+009B CSI");
+        assert.equal(found[0].column, 2);
+    });
+
+    test("every C1 is caught, and each is named", () => {
+        for (let second = 0x80; second <= 0x9f; second += 1) {
+            const found = scanBytes(Buffer.from([0xc2, second]));
+            assert.equal(found.length, 1, `U+00${second.toString(16)} missed`);
+            assert.match(found[0].name, /^U\+00[89A-F][0-9A-F] [A-Z0-9]+$/);
+        }
+    });
+
+    // The negative controls: `0xc2` is also the lead of legitimate two-byte characters, and a bare
+    // `0x80`-`0x9f` with no lead is a continuation byte of some other sequence. Neither is C1, and a
+    // check that flagged them would red every accented character in the tree.
+    test("a two-byte character that is not C1 is untouched", () => {
+        assert.deepEqual(scanBytes(Buffer.from("café", "utf8")), [], "é is c3 a9");
+        assert.deepEqual(scanBytes(Buffer.from([0xc2, 0xa0])), [], "c2 a0 is NBSP, outside C1");
+        assert.deepEqual(scanBytes(Buffer.from([0xc2, 0xbf])), [], "c2 bf is an inverted question mark");
+    });
+
+    test("a continuation byte with no C1 lead is not a finding", () => {
+        assert.deepEqual(scanBytes(Buffer.from([0xe2, 0x80, 0x94])), [], "an em dash carries 0x80 inside it");
+    });
+
     test("a finding names the byte and never prints it", () => {
         // A report that carried the character would reproduce the defect inside the report, and a
         // check whose own output can silence its next run is not a rail.
