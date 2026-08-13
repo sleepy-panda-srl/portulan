@@ -3109,7 +3109,7 @@ describe("a persona's name is a pack's free text, so the binding read is contain
                 const { findings } = await inspect(dir, { schema: SCHEMA, packRoots: [root] });
                 const said = text(checks(findings, "bindings"));
                 assert.match(said, /leaves this workspace's tree/, present ? "with the target present" : "with the target absent");
-                assert.doesNotMatch(said, new RegExp(`is bound by .* — ${BINDING_OK}`));
+                assert.ok(!said.includes(`— ${BINDING_OK}`), "an escaping key must never be reported as a successful binding");
                 assert.doesNotMatch(said, /no host binding/, "an escaping key must never be reported as merely unbound");
             } finally {
                 fs.rmSync(outside, { force: true });
@@ -3136,7 +3136,7 @@ describe("a persona's name is a pack's free text, so the binding read is contain
         // Matched on the phrase that carries the meaning rather than on one word of it: the previous
         // `/agree/` was a single word of a sentence that milestone 7's close rewrote, so it broke on a
         // wording change while a whole class of wrong reports would have satisfied it.
-        assert.match(text(checks(findings, "bindings")), new RegExp(`is bound by .* — ${BINDING_OK}`));
+        assert.ok(text(checks(findings, "bindings")).includes(`— ${BINDING_OK}`), "an ordinary binding must still report success");
     });
 });
 

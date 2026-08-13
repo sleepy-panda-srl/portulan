@@ -70,6 +70,20 @@ const DEFAULT_SCHEMA = path.resolve(HERE, "..", "spec", "workspace.schema.json")
 // either mean a change in the other.
 const DEFAULT_PACK_SCHEMA = path.resolve(HERE, "..", "spec", "pack.schema.json");
 
+/**
+ * The tail of `doctor`'s binding-success line, exported so the suite keys on ONE carrier.
+ *
+ * Two tests guard this sentence: one asserts it IS printed for an ordinary binding, the other that it is
+ * NOT printed for a name that traverses out of the tree — a path-traversal case where a green would mean
+ * `doctor` had opened a file the pack chose. Held as two literals, a reword satisfies the negative
+ * assertion **for the wrong reason**: the string is gone, nothing prints it, the test passes, and it
+ * would go on passing with the traversal guard deleted. Measured at milestone 7's close, where exactly
+ * that happened. Kept here beside the other module constants rather than beside its use, because the
+ * first attempt put it between `validatePersona`'s docblock and `validatePersona` — a doc comment
+ * attaches to the next symbol, so that silently reassigned it. (Copilot, round 1 on #240.)
+ */
+export const BINDING_OK = "names match and a tool grant is declared";
+
 /** Raised when `doctor` cannot run at all. Always exit 2, never 1. */
 export class DoctorError extends Error {
     constructor(message) {
@@ -736,19 +750,6 @@ export function validateContributions(packDir, contributes, { fail, report, pack
  * because the frontmatter has already been read here, and two parses of one block are two chances to
  * disagree about what it said.
  */
-/**
- * The tail of `doctor`'s binding-success line, exported so the suite keys on ONE carrier.
- *
- * Both of the tests that guard this sentence match on its text: one asserts it IS printed for an
- * ordinary binding, the other that it is NOT printed for a name that traverses out of the tree — a
- * path-traversal case where a green would mean `doctor` had opened a file the pack chose. Written as
- * two literals, a reword satisfies the negative assertion **for the wrong reason**: the string is gone,
- * nothing prints it, the test passes, and it would go on passing with the traversal guard deleted.
- * Measured at milestone 7's close, where exactly that happened — the reword landed and the negative
- * assertion stopped binding without going red.
- */
-export const BINDING_OK = "names match and a tool grant is declared";
-
 export function validatePersona(text, { fail, pack, rel }) {
     const { fields, error } = parseFrontmatter(text);
     if (!fields) {
