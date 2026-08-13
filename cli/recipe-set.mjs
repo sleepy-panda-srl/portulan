@@ -367,19 +367,23 @@ export function run(argv = [], { stdout = process.stdout, stderr = process.stder
         // root yields "unresolvable" for every pack while the argument is what was wrong. Fourth carrier
         // of a rule `compile`, `doctor` and `index` already hold; raised by Copilot, round 1 on #236,
         // as an inconsistency with them.
-        const resolved = path.resolve(value);
+        // **The RAW value is stat'd, and resolution happens after.** `path.resolve("")` is the current
+        // working directory, so resolving first would let `--pack-root ""` pass the directory check and
+        // silently adopt the cwd as a pack root — the empty-value refusal this file gained one round
+        // earlier for `--workspace`, still missing here. `doctor`'s `directoryRoot` stats the raw value
+        // for exactly this reason. Copilot, round 6 on #236.
         let rootStat = null;
         try {
-            rootStat = fs.statSync(resolved);
+            rootStat = fs.statSync(value);
         } catch (cause) {
-            stderr.write(`--pack-root ${value} cannot be read — ${cause.code ?? cause.message}. Refusing to report a pack unresolvable against a root nothing looked in\n`);
+            stderr.write(`--pack-root ${JSON.stringify(value)} cannot be read — ${cause.code ?? cause.message}. Refusing to report a pack unresolvable against a root nothing looked in\n`);
             return 2;
         }
         if (!rootStat.isDirectory()) {
-            stderr.write(`--pack-root ${value} is not a directory — a resolution root is a directory packs are looked up under\n`);
+            stderr.write(`--pack-root ${JSON.stringify(value)} is not a directory — a resolution root is a directory packs are looked up under\n`);
             return 2;
         }
-        named.push(resolved);
+        named.push(path.resolve(value));
     }
     const bothAsked = namedWithAuto(named, forced);
     if (bothAsked) {
