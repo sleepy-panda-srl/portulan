@@ -91,5 +91,12 @@ stripping each of the six in a copy and watching it go red.
   inoculate the session that named it; the only thing that caught either instance was somebody
   mutating the assertion and reading what the *other* path says.
 
+**Four Copilot rounds, and every finding after the first was a sibling of this change's own class** —
+a rail deriving its list with one quote style after being fixed for a hand-written list; the
+discriminator defect committed again two files from where it was named; and, at round 4, a **second**
+fail-open one line above the one this change is about: `forced` with no discovery thunk wired returned
+a bare empty plan whose own `why` said *discovery was requested and did not run*. Asked-and-could-not
+had two arms and only one was repaired.
+
 Eleven recipes green under pinned roots; suite **1535 pass / 0 fail**. Seam scan clean over the diff,
 the branch name and the commit message, term by term.

@@ -815,7 +815,16 @@ export function resolutionRoots({ named = [], namedGiven = null, derived = [], d
     }
     if (forced) {
         const found = resolveDiscovery();
-        if (!found) return plan([], "none", "discovery was requested and did not run");
+        // **Also could-not-run**, and it took Copilot's round 4 to see it: this branch's own `why`
+        // says *discovery was requested and did not run*, which is the definition of the third exit
+        // code, and it was returning a bare empty plan — the exact fail-open the branch below was just
+        // repaired for, one line above it. `resolutionRoots` is exported and `rootPlan` takes `forced`
+        // and `discovery` independently, so a caller can reach this with no thunk wired and, treating
+        // an empty root set as *nothing to check*, exit 0 over a discovery that never happened.
+        if (!found) {
+            const why = "discovery was requested and did not run — no discovery was wired into this call";
+            return plan([], "none", why, [], null, why);
+        }
         // **Asked for, and could not look — exit 2.** Ruled 2026-08-13 on a measurement: this branch
         // returned an empty plan, and an empty root set makes `doctor` report every declared pack
         // *unverifiable* and exit **0**. So `--pack-root auto` against an unreadable record was a
