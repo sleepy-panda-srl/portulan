@@ -218,8 +218,13 @@ const lower = normalise;
 /**
  * The scan. `read(file)` returns the file's text; a file that cannot be read is reported rather than
  * skipped, because a check class that disappears quietly is worse than one that says it could not run.
+ *
+ * `resolve` turns a listed path and a registered carrier into the same kind of thing before they are
+ * compared, and it defaults to resolving against the process's own directory rather than to identity.
+ * A default of identity would be the string comparison this parameter exists to remove, spelled as a
+ * default — correct for the one caller that already resolves and silently wrong for every other.
  */
-export function scan({ registry, files, read }) {
+export function scan({ registry, files, read, resolve = (p) => path.resolve(p) }) {
     const findings = [];
     const unreadable = [];
     // Nested maps, NOT a joined string key. The first version joined the rule id and the tell with a
@@ -229,10 +234,15 @@ export function scan({ registry, files, read }) {
     // having one. `evolution.md` ranks removing what would otherwise need enforcing above enforcing it.
     const tellSeen = new Map(); // rule id -> Map(tell -> seen)
 
+    // Resolved once per rule rather than once per file × rule, and kept beside the rule id so the
+    // comparison below has an identity on both sides instead of two spellings.
+    const carrierId = new Map();
+
     for (const rule of registry.rules) {
         const seen = new Map();
         for (const tell of rule.tells) seen.set(tell, false);
         tellSeen.set(rule.id, seen);
+        carrierId.set(rule.id, resolve(rule.carrier));
     }
 
     for (const file of files) {
@@ -244,10 +254,18 @@ export function scan({ registry, files, read }) {
             continue;
         }
         const hay = lower(text);
+        const fileId = resolve(file);
 
         for (const rule of registry.rules) {
             // The carrier is where the rule LIVES; its own spellings are the point of it.
-            const isCarrier = file === rule.carrier;
+            //
+            // Compared as RESOLVED paths, not as strings — the same repair `run()` already applies to
+            // the registry's own exclusion one screen below, and for the same reason. `git ls-files -z`
+            // emits `/` while a registry author writes whatever resolves on disk, so `./cli/x.mjs` names
+            // the carrier perfectly well, passes the carrier audit, and then fails to equal the string
+            // `cli/x.mjs`. The rule would flag its own carrier as a restatement of itself: the one file
+            // allowed to spell the rule, reported for spelling it.
+            const isCarrier = fileId === carrierId.get(rule.id);
 
             const hits = rule.tells.filter((t) => hay.includes(lower(t)));
             for (const t of hits) tellSeen.get(rule.id).set(t, true);
@@ -272,13 +290,27 @@ export function scan({ registry, files, read }) {
     return { findings, deadTells, unreadable };
 }
 
-/** The carrier must exist. A rule pointing at a file that is gone is could-not-run, never green. */
-export function auditCarriers(registry, { exists }) {
-    const absent = [];
+/**
+ * The carrier must exist **and be a file**. A rule pointing at a file that is gone is could-not-run,
+ * never green — and so is one pointing at a directory.
+ *
+ * `existsSync` was the first spelling and it answers `true` for a directory. A directory carrier then
+ * passed the audit, matched no file in the scan, and left the rule covering **nothing** while the
+ * recipe printed green: the quiet-coverage-loss shape the three audits exist to prevent, arriving
+ * through the audit itself.
+ *
+ * `state(carrier)` answers `file`, `absent` or `not-a-file`, and the three are kept apart rather than
+ * collapsed to a boolean because the caller prints them. Telling a maintainer a directory *"does not
+ * resolve"* sends them looking for a missing file that is sitting right there — the same defect
+ * `control-chars`'s exemption audit was corrected for, where *dead* and *never read* had to be split.
+ */
+export function auditCarriers(registry, { state }) {
+    const unusable = [];
     for (const rule of registry.rules) {
-        if (!exists(rule.carrier)) absent.push({ rule: rule.id, carrier: rule.carrier });
+        const found = state(rule.carrier);
+        if (found !== "file") unusable.push({ rule: rule.id, carrier: rule.carrier, state: found });
     }
-    return absent;
+    return unusable;
 }
 
 function readList(stdin) {
@@ -310,10 +342,28 @@ export function run(argv = [], { stdout = process.stdout, stderr = process.stder
         return 2;
     }
 
-    const absent = auditCarriers(registry, { exists: (p) => fs.existsSync(path.resolve(cwd, p)) });
-    if (absent.length > 0) {
-        for (const a of absent) {
-            stderr.write(`rule-carriers: rule \`${a.rule}\` names a carrier that does not resolve: ${a.carrier}\n`);
+    // `statSync` rather than `lstatSync`: a symlink pointing at a real file IS a usable carrier, and
+    // the scan reads through it exactly the same way. What is refused is a target that is not a file
+    // once followed.
+    const unusable = auditCarriers(registry, {
+        state: (p) => {
+            let st;
+            try {
+                st = fs.statSync(path.resolve(cwd, p));
+            } catch {
+                return "absent";
+            }
+            return st.isFile() ? "file" : "not-a-file";
+        },
+    });
+    if (unusable.length > 0) {
+        for (const a of unusable) {
+            stderr.write(
+                a.state === "absent"
+                    ? `rule-carriers: rule \`${a.rule}\` names a carrier that does not resolve: ${a.carrier}\n`
+                    : `rule-carriers: rule \`${a.rule}\` names a carrier that is not a file: ${a.carrier} — ` +
+                          "it resolves, so this is not a typo, and it matches no file in the scan, which would leave the rule covering nothing\n",
+            );
         }
         return 2;
     }
@@ -340,6 +390,7 @@ export function run(argv = [], { stdout = process.stdout, stderr = process.stder
         registry,
         files,
         read: (f) => fs.readFileSync(path.resolve(cwd, f), "utf8"),
+        resolve: (p) => path.resolve(cwd, p),
     });
 
     if (unreadable.length > 0) {

@@ -7,8 +7,26 @@
 
 import { test, describe } from "node:test";
 import assert from "node:assert/strict";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
 
-import { parseRegistry, RegistryError, inDomain, scan, auditCarriers, normalise } from "./rule-carriers.mjs";
+import { parseRegistry, RegistryError, inDomain, scan, auditCarriers, normalise, run } from "./rule-carriers.mjs";
+
+// This suite created no temp directory until the `run` case below, which makes it a NEW scratch site —
+// the 24th, and the one [#244](https://github.com/sleepy-panda-works/portulan/issues/244) records that
+// nothing rails. Registered here rather than trusted to memory, in the shape session 14 settled: one
+// exit handler for the whole list, because the per-directory form exceeds node's default ten-listener
+// limit. Nothing here chmods a directory, so the bare `rmSync` is correct and matches `recipe-set`'s.
+const SCRATCH = [];
+process.on("exit", () => {
+    for (const dir of SCRATCH) fs.rmSync(dir, { recursive: true, force: true });
+});
+const scratch = (prefix) => {
+    const dir = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), prefix));
+    SCRATCH.push(dir);
+    return dir;
+};
 
 const RULE = {
     id: "example-rule",
@@ -172,6 +190,24 @@ describe("scan — restatement, citation, and the carrier itself", () => {
         assert.equal(findings.length, 0);
     });
 
+    // #225's first gap. `parseRegistry` accepts any non-empty string for `carrier`, and
+    // `./cli/carrier.mjs` resolves perfectly well on disk — so it passed the carrier audit and then
+    // failed to equal the listed `cli/carrier.mjs`, and the rail flagged the carrier as a restatement
+    // of its own rule: the one file allowed to spell it, reported for spelling it.
+    //
+    // The scope override is load-bearing. `isCarrier` short-circuits AHEAD of `inDomain`, so with the
+    // carrier outside the rule's scope this case would pass for the wrong reason — green whether or
+    // not the comparison was ever repaired. Checked by mutation, not by reading.
+    test("a carrier written in a non-canonical spelling is still its own carrier", () => {
+        const rule = { ...RULE, carrier: "./cli/carrier.mjs", scope: ["cli/"] };
+        const { findings } = scan({
+            registry: registryOf(rule),
+            files: ["cli/carrier.mjs"],
+            read: reader({ "cli/carrier.mjs": "the retired sentence" }),
+        });
+        assert.equal(findings.length, 0, "a carrier is a path identity, never a spelling");
+    });
+
     test("a citation anywhere in the file exempts it — the declared weakness, pinned so it cannot drift silently", () => {
         const { findings } = scan({
             registry: registryOf(RULE),
@@ -237,12 +273,22 @@ describe("the three audits — each exit 2, never a quiet green", () => {
     });
 
     test("a carrier that does not resolve is reported", () => {
-        const absent = auditCarriers(registryOf(RULE), { exists: () => false });
-        assert.deepEqual(absent, [{ rule: "example-rule", carrier: "cli/carrier.mjs" }]);
+        const unusable = auditCarriers(registryOf(RULE), { state: () => "absent" });
+        assert.deepEqual(unusable, [{ rule: "example-rule", carrier: "cli/carrier.mjs", state: "absent" }]);
     });
 
     test("a carrier that resolves is not", () => {
-        assert.deepEqual(auditCarriers(registryOf(RULE), { exists: () => true }), []);
+        assert.deepEqual(auditCarriers(registryOf(RULE), { state: () => "file" }), []);
+    });
+
+    // #225's second gap. `existsSync` answers true for a directory, so a directory carrier passed the
+    // audit, matched no file in the scan, and left the rule covering nothing under a green recipe.
+    // Reported SEPARATELY from absent, because "does not resolve" about a directory that is sitting
+    // right there sends a maintainer hunting for a missing file.
+    test("a carrier that resolves to a directory is unusable, and says so in its own words", () => {
+        const unusable = auditCarriers(registryOf(RULE), { state: () => "not-a-file" });
+        assert.deepEqual(unusable, [{ rule: "example-rule", carrier: "cli/carrier.mjs", state: "not-a-file" }]);
+        assert.notEqual(unusable[0].state, "absent", "a directory is not a missing file and must not be reported as one");
     });
 });
 
@@ -302,7 +348,79 @@ describe("this repository's own registry", () => {
         const repo = path.resolve(path.dirname(url.fileURLToPath(import.meta.url)), "..");
         const registry = parseRegistry(fs.readFileSync(path.join(repo, ".portulan/rule-carriers.json"), "utf8"));
         assert.ok(registry.rules.length >= 1);
-        const absent = auditCarriers(registry, { exists: (p) => fs.existsSync(path.join(repo, p)) });
-        assert.deepEqual(absent, [], "a rule pointing at a file that is gone is could-not-run");
+        const unusable = auditCarriers(registry, {
+            state: (p) => {
+                let st;
+                try {
+                    st = fs.statSync(path.join(repo, p));
+                } catch {
+                    return "absent";
+                }
+                return st.isFile() ? "file" : "not-a-file";
+            },
+        });
+        assert.deepEqual(unusable, [], "a rule pointing at a file that is gone, or at a directory, is could-not-run");
+    });
+});
+
+describe("run — the carrier audit reaching the real filesystem", () => {
+    // `auditCarriers` is unit-tested with `state` injected, which says nothing about the wiring that
+    // decides `file` from `not-a-file` on disk. An injected capability with no test over its real
+    // caller is this repository's twice-bitten defect, so the stat itself is exercised here.
+    const registryFor = (carrier) => JSON.stringify({
+        rules: [{
+            id: "example-rule",
+            carrier,
+            summary: "the one carrier",
+            incident: "https://example.invalid/1",
+            tells: ["the retired sentence"],
+            cites: ["carrier.mjs"],
+            scope: ["cli/"],
+        }],
+        exclude: [],
+    });
+
+    const invoke = (root, stdin) => {
+        let err = "";
+        const code = run(["--registry", "registry.json"], {
+            stdout: { write: () => {} },
+            stderr: { write: (s) => { err += s; } },
+            cwd: root,
+            stdin,
+        });
+        return { code, err };
+    };
+
+    test("a carrier that resolves to a DIRECTORY is could-not-run, and is not called missing", () => {
+        const root = scratch("rule-carriers-dircarrier-");
+        // A directory named exactly like a source file: `existsSync` answers true, and the old audit
+        // let it through to match no file at all.
+        fs.mkdirSync(path.join(root, "cli", "carrier.mjs"), { recursive: true });
+        fs.writeFileSync(path.join(root, "registry.json"), registryFor("cli/carrier.mjs"));
+
+        const { code, err } = invoke(root, "cli/other.mjs\0");
+        assert.equal(code, 2, "a rule covering nothing must never reach a green");
+        assert.match(err, /is not a file/);
+        assert.doesNotMatch(err, /does not resolve/, "it resolves; saying otherwise sends a maintainer hunting for a file that is there");
+    });
+
+    test("a carrier that is genuinely absent still says so, in the other sentence", () => {
+        const root = scratch("rule-carriers-gonecarrier-");
+        fs.writeFileSync(path.join(root, "registry.json"), registryFor("cli/carrier.mjs"));
+
+        const { code, err } = invoke(root, "cli/other.mjs\0");
+        assert.equal(code, 2);
+        assert.match(err, /does not resolve/);
+        assert.doesNotMatch(err, /is not a file/, "absent and not-a-file are different findings and must read differently");
+    });
+
+    test("a real file carrier passes the audit and the scan runs", () => {
+        const root = scratch("rule-carriers-okcarrier-");
+        fs.mkdirSync(path.join(root, "cli"), { recursive: true });
+        fs.writeFileSync(path.join(root, "cli", "carrier.mjs"), "the retired sentence\n");
+        fs.writeFileSync(path.join(root, "registry.json"), registryFor("cli/carrier.mjs"));
+
+        const { code } = invoke(root, "cli/carrier.mjs\0");
+        assert.equal(code, 0, "the carrier spelling its own rule is the green case");
     });
 });
