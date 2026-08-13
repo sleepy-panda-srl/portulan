@@ -189,6 +189,12 @@ export function parseFrontmatter(text) {
 // Inspection
 // ===========================================================================================
 
+/** True when `target` lies outside `root`. Lexical — the caller decides what it is fed. */
+function escapes(root, target) {
+    const inside = path.relative(root, target);
+    return inside.startsWith("..") || path.isAbsolute(inside);
+}
+
 /**
  * Lint the packaging rooted at `root`.
  *
@@ -207,12 +213,6 @@ export function parseFrontmatter(text) {
  * @returns {{findings: Array<{severity: "fail"|"note", check: string, message: string}>,
  *            stats: {skills: number, agents: number, paths: number, unverifiable: number}}}
  */
-/** True when `target` lies outside `root`. Lexical — the caller decides what it is fed. */
-function escapes(root, target) {
-    const inside = path.relative(root, target);
-    return inside.startsWith("..") || path.isAbsolute(inside);
-}
-
 export function inspect(rawRoot, { payload = false } = {}) {
     // Absolute from here on. Two sets of paths are compared later — the skills the manifest declares
     // and the skills found by walking the tree — and they are only comparable if both are built the

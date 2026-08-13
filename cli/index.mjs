@@ -217,14 +217,6 @@ const normalize = (s) => s.toLowerCase().replace(/[^a-z0-9]+/g, "");
 // ===========================================================================================
 
 /**
- * Read a workspace's memory store.
- *
- * Returns `{ records: [{ file, title, type, heading, bytes }], bytes }`. Throws `IndexError` rather than
- * returning an empty store for anything it cannot read: an empty list renders an empty index, and an
- * empty index compares equal to an empty committed one and passes — the enumeration fail-open this
- * repository has now fixed four times (../.portulan/memory/verify-preconditions-fail-closed.md).
- */
-/**
  * The `.md` files of a series, sorted, or an `IndexError`.
  *
  * One enumeration for both series, because the failure it guards is the same one and this repository
@@ -246,6 +238,14 @@ function listSeries(seriesDir, slot, what) {
     return names.filter((n) => n.endsWith(".md") && !NOT_A_RECORD.has(n)).sort();
 }
 
+/**
+ * Read a workspace's memory store.
+ *
+ * Returns `{ records: [{ file, title, type, heading, bytes }], bytes }`. Throws `IndexError` rather than
+ * returning an empty store for anything it cannot read: an empty list renders an empty index, and an
+ * empty index compares equal to an empty committed one and passes — the enumeration fail-open this
+ * repository has now fixed four times (../.portulan/memory/verify-preconditions-fail-closed.md).
+ */
 export function readStore(dir, workspace) {
     const slot = workspace?.slots?.memory;
     if (!slot) {
