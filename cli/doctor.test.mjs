@@ -27,6 +27,11 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+// Beside the other imports rather than beside its use, because an ES import is HOISTED: placed below
+// the hermetic-host block it would read as though that block ran first, and it does not. Nothing here
+// depends on the order today — `compile.mjs` reads no environment at module scope, checked — but a
+// reader should not have to know that to trust the file.
+import { run as compileRun } from "./compile.mjs";
 
 // A HERMETIC HOST. The tools consult the host's installed-plugin record on the UNASKED path as of
 // 2026-08-13, so a suite that does not neutralise it reads the machine it runs on and a fixture's
@@ -36,7 +41,6 @@ const HERMETIC_HOST = fs.mkdtempSync(path.join(os.tmpdir(), "portulan-hermetic-"
 process.env.CLAUDE_CONFIG_DIR = HERMETIC_HOST;
 process.on("exit", () => fs.rmSync(HERMETIC_HOST, { recursive: true, force: true }));
 
-import { run as compileRun } from "./compile.mjs";
 import {
     DoctorError,
     compileSchema,
@@ -3181,11 +3185,27 @@ describe("--help is a request that succeeded", () => {
         const said = out.join("");
         assert.match(said, /^portulan doctor — validate a workspace/, "the identity line agrees with `portulan --help`'s summary");
         assert.match(said, /Exit codes: 0 succeeded · 1 a red verdict · 2 could not run/);
-        // dod condition 4: the screen may name only flags that exist. Derived from the source rather
-        // than from a list kept beside it, so a flag added without a screen line is caught here.
-        const real = new Set([...fs.readFileSync(path.join(HERE, "doctor.mjs"), "utf8").matchAll(/"(--[a-z-]+)"/g)].map((m) => m[1]));
+        // dod condition 4: the screen may name only flags that exist — and the way this is established
+        // matters. The first cut grepped `"--flag"` strings out of `doctor.mjs`, which was VACUOUS: the
+        // help screen is in that file, so a flag added to `usage()` and never parsed would put its own
+        // string into the "real" set and satisfy the check it was meant to fail. (Copilot, round 2 on
+        // #241, and the same measures-the-convention-not-the-phenomenon shape this session keeps
+        // finding.) So the parser is ASKED instead: a flag this tool takes is one it does not refuse as
+        // unknown. That cannot be satisfied by prose, because prose is not what answers.
         for (const flag of said.match(/^\s+(--[a-z-]+)/gm)?.map((s) => s.trim()) ?? []) {
-            assert.ok(real.has(flag), `the help screen names \`${flag}\`, which this tool does not take`);
+            const err = [];
+            const w = process.stderr.write.bind(process.stderr);
+            process.stderr.write = (chunk) => (err.push(String(chunk)), true);
+            try {
+                await run([flag, "--", "/nonexistent-workspace"]);
+            } finally {
+                process.stderr.write = w;
+            }
+            assert.doesNotMatch(
+                err.join(""),
+                /unknown argument/,
+                `the help screen names \`${flag}\`, which this tool's own parser refuses as unknown`,
+            );
         }
     });
 
