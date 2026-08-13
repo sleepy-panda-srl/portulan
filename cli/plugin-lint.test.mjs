@@ -38,9 +38,27 @@ const REPO = path.resolve(HERE, "..");
 // exceeds node's default limit of ten listeners partway through this suite and prints a
 // MaxListenersExceededWarning — noise that trains a reader to skim warnings from a test run, which
 // is where a real listener leak would then hide. Found by review on the pull request.
+//
+// The per-directory `try` is not defensive habit: five cases chmod a NON-EMPTY scratch child to
+// `0o000`, and one chmods the scratch ROOT to `0o600` (3 entries, no search bit), each restoring in
+// `finally` — so a case dying before its `finally` leaves a directory `rmSync` cannot enter. `force:
+// true` suppresses ENOENT, not EACCES. Naked, that throw aborts the loop inside an `exit` handler and
+// abandons every directory after it.
+//
+// Which locks actually bite was measured, not assumed, because a hazard claimed where none exists
+// is the same defect as one missed: an EMPTY directory still removes if it is READABLE, so only an
+// unreadable one blocks while empty; a NON-EMPTY one additionally needs write and search. The errno
+// follows readability, not position: an UNREADABLE root gives EACCES, while everything else — a
+// locked child, or a readable-but-unwritable root — gives ENOTEMPTY.
 const SCRATCH = [];
 process.on("exit", () => {
-    for (const dir of SCRATCH) fs.rmSync(dir, { recursive: true, force: true });
+    for (const dir of SCRATCH) {
+        try {
+            fs.rmSync(dir, { recursive: true, force: true });
+        } catch {
+            /* a case died before restoring a mode — sweep what is left rather than abandoning it */
+        }
+    }
 });
 
 /** A throwaway directory, removed when the process exits. */

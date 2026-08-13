@@ -57,6 +57,15 @@ const HERMETIC_HOST = fs.mkdtempSync(path.join(os.tmpdir(), "portulan-hermetic-"
 process.env.CLAUDE_CONFIG_DIR = HERMETIC_HOST;
 process.on("exit", () => fs.rmSync(HERMETIC_HOST, { recursive: true, force: true }));
 
+// One exit handler for all scratch directories rather than one each — the per-directory form exceeds
+// node's default ten-listener limit and prints a MaxListenersExceededWarning (`./doctor.test.mjs`,
+// which carries the same block for the same reason). This suite had no sweeper at all until now and
+// left five directories behind per run, of the suite's 78.
+const SCRATCH = [];
+process.on("exit", () => {
+    for (const dir of SCRATCH) fs.rmSync(dir, { recursive: true, force: true });
+});
+
 /** A workspace manifest with `n` plain recipes, enough to be legal and no more. */
 function workspace(recipes, extra = {}) {
     return { name: "w", verify: { default: recipes[0]?.id, recipes }, ...extra };
@@ -365,6 +374,7 @@ test("`resolverFor` reaches discovery with or without `forced`, and reaches noth
     // present resolves, a thunk absent does not — and it is a stronger proof than the old one, because
     // the old one would also have passed if `discovery` had been ignored on both paths.
     const root = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), "recipe-set-forced-"));
+    SCRATCH.push(root);
     const packDir = path.join(root, "tools", "thing");
     fs.mkdirSync(packDir, { recursive: true });
     fs.writeFileSync(
@@ -411,6 +421,7 @@ describe("`--pack-root` at the CLI, which this tool had no way to reach", () => 
 
     test("a named root reaches resolution — a pack found only there is composed", () => {
         const root = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), "recipe-set-cli-"));
+        SCRATCH.push(root);
         const packDir = path.join(root, "packs", "tools", "thing");
         fs.mkdirSync(packDir, { recursive: true });
         fs.writeFileSync(path.join(packDir, "pack.json"), JSON.stringify({
@@ -459,6 +470,7 @@ function withEnv(config, fn) {
 
 test("recipe-set: `auto` against an unreadable record is exit 2", () => {
     const root = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), "recipe-set-unreadable-"));
+    SCRATCH.push(root);
     const ws = path.join(root, ".portulan");
     fs.mkdirSync(ws, { recursive: true });
     fs.writeFileSync(path.join(ws, "workspace.json"), JSON.stringify({
@@ -466,6 +478,7 @@ test("recipe-set: `auto` against an unreadable record is exit 2", () => {
         verify: { default: "own", recipes: [{ id: "own", run: "./own.sh", requires: ["bash"] }] },
     }));
     const config = unreadableHost(fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), "recipe-set-host-")));
+    SCRATCH.push(config);
     const err = [];
     const sink = { stdout: { write: () => {} }, stderr: { write: (x) => err.push(x) } };
     assert.equal(withEnv(config, () => run(["--workspace", ws, "--repo-root", root, "--pack-root", "auto"], sink)), 2, err.join(""));
@@ -480,6 +493,7 @@ test("recipe-set refuses a --pack-root that is missing or is a file", () => {
     // is counting drifts against every rule at once.)_
     const io = () => { const err = []; return { err, sink: { stdout: { write: () => {} }, stderr: { write: (x) => err.push(x) } } }; };
     const root = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), "recipe-set-badroot-"));
+    SCRATCH.push(root);
     const aFile = path.join(root, "not-a-directory");
     fs.writeFileSync(aFile, "x");
 

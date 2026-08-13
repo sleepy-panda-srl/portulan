@@ -51,9 +51,28 @@ const REPO = path.resolve(HERE, "..");
 
 // One exit handler for every scratch directory — the per-directory form exceeds node's default ten
 // listeners partway through a suite this size, which ./doctor.test.mjs learned in review.
+//
+// The per-directory `try` is not defensive habit: two cases lock a scratch child and restore it in
+// `finally` — `personas/supervisor` to `0o000` while EMPTY (unreadable, so still a hazard) and the
+// non-empty `personas` to `0o400` — so a case dying before its `finally` leaves a directory `rmSync`
+// cannot enter. `force: true` suppresses ENOENT, not EACCES. Naked, that throw aborts the loop inside
+// an `exit` handler and abandons every directory after it. (The `0o500` locked-output case is not a
+// hazard and is not cited as one: it is empty when locked, and readable.)
+//
+// Which locks actually bite was measured, not assumed, because a hazard claimed where none exists
+// is the same defect as one missed: an EMPTY directory still removes if it is READABLE, so only an
+// unreadable one blocks while empty; a NON-EMPTY one additionally needs write and search. The errno
+// follows readability, not position: an UNREADABLE root gives EACCES, while everything else — a
+// locked child, or a readable-but-unwritable root — gives ENOTEMPTY.
 const SCRATCH = [];
 process.on("exit", () => {
-    for (const dir of SCRATCH) fs.rmSync(dir, { recursive: true, force: true });
+    for (const dir of SCRATCH) {
+        try {
+            fs.rmSync(dir, { recursive: true, force: true });
+        } catch {
+            /* a case died before restoring a mode — sweep what is left rather than abandoning it */
+        }
+    }
 });
 
 function scratch() {
@@ -1617,6 +1636,7 @@ describe("a symlink cannot get a pack past either containment guard", () => {
 
 test("index refuses a named root combined with `--pack-root auto`", () => {
     const dir = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), "index-bothroots-"));
+    SCRATCH.push(dir);
     fs.writeFileSync(path.join(dir, "workspace.json"), JSON.stringify({ portulan: { spec: "2.8" }, name: "w", kind: "demo" }));
     const said = [];
     assert.equal(run(["--pack-root", "auto", "--pack-root", dir, dir], (line) => said.push(line)), 2, said.join("\n"));
@@ -1644,6 +1664,7 @@ test("index: `auto` against an unreadable record is exit 2", () => {
     // declaring neither never reaches the mapping. Correct, and the reason the records scope the claim
     // to where a plan is built.
     const dir = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), "index-unreadable-ws-"));
+    SCRATCH.push(dir);
     // `slots.personas` is required beside a `personas` index — without it the run exits 2 for THAT
     // reason and the test passes vacuously, which is how the first cut of this case failed to bind.
     fs.mkdirSync(path.join(dir, "personas"), { recursive: true });
@@ -1654,6 +1675,7 @@ test("index: `auto` against an unreadable record is exit 2", () => {
         personas: { index: { path: "personas-index.md" } },
     }));
     const config = unreadableHost(fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), "index-unreadable-")));
+    SCRATCH.push(config);
     const said = [];
     const code = withEnv(config, () => run(["--pack-root", "auto", dir], (l) => said.push(l)));
     assert.equal(code, 2, said.join("\n"));

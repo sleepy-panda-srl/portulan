@@ -117,6 +117,13 @@ process.on("exit", () => {
         } catch {
             /* absent, or already gone — nothing to unlock */
         }
+        // This `rmSync` is bare where the eight carriers listed in
+        // ../.portulan/handoffs/2026-08-13-the-suites-that-never-swept-their-scratch.md wrap theirs in a
+        // per-directory `try`, and that is not an oversight: the unlock above is what those `try`s are
+        // for. They exist because a case dying before its `finally` leaves a locked directory, and a
+        // throw inside an `exit` handler aborts the loop and abandons every directory after it. Here
+        // the lock is undone unconditionally first — this suite knows the one path it ever locks — so
+        // there is nothing left to throw. Wrap it too if that ever stops being true.
         fs.rmSync(dir, { recursive: true, force: true });
     }
 });

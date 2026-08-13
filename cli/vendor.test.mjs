@@ -1333,6 +1333,7 @@ test("vendor refuses a named root combined with `--pack-root auto`", async () =>
     // about the copy rather than as an answer about the command line.
     const h = harness();
     const src = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), "vendor-bothroots-"));
+    SCRATCH.push(src);
     assert.equal(await run([src, "--host", "generic", "--pack-root", "auto", "--pack-root", src], h.options), 2);
     assert.match(text(h), /never both/);
 });

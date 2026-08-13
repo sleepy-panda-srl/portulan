@@ -46,6 +46,19 @@ const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO = path.resolve(HERE, "..");
 const MARKER = "portulan:bundle-fallback";
 
+// The per-directory `try` is not defensive habit: the unreadable-component case chmods a scratch
+// child to `0o000` while EMPTY — unreadable, so still a hazard — and restores it in `finally`, so a
+// case dying before its `finally` leaves a directory `rmSync` cannot enter. `force: true` suppresses
+// ENOENT, not EACCES. Naked, that throw aborts the loop inside an `exit` handler and abandons every
+// directory after it. This was the LAST carrier found, because the sweep that fixed the other seven
+// grepped for `SCRATCH` and this array is named `scratches` — the same measure-the-convention-not-the-
+// phenomenon defect the sweep existed to repair.
+//
+// Which locks actually bite was measured, not assumed, because a hazard claimed where none exists
+// is the same defect as one missed: an EMPTY directory still removes if it is READABLE, so only an
+// unreadable one blocks while empty; a NON-EMPTY one additionally needs write and search. The errno
+// follows readability, not position: an UNREADABLE root gives EACCES, while everything else — a
+// locked child, or a readable-but-unwritable root — gives ENOTEMPTY.
 const scratches = [];
 function scratch() {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), "portulan-upgrade-"));
@@ -53,7 +66,13 @@ function scratch() {
     return dir;
 }
 process.on("exit", () => {
-    for (const dir of scratches) fs.rmSync(dir, { recursive: true, force: true });
+    for (const dir of scratches) {
+        try {
+            fs.rmSync(dir, { recursive: true, force: true });
+        } catch {
+            /* a case died before restoring a mode — sweep what is left rather than abandoning it */
+        }
+    }
 });
 
 /** A harness that captures both streams, so a test can assert what a user was told. */
