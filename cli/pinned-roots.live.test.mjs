@@ -46,14 +46,23 @@ const PINNED = Object.freeze([
 
 const readLines = (rel) => fs.readFileSync(path.join(REPO, rel), "utf8").split("\n");
 
-/** Invocation lines only: a line that RUNS the tool, never one that merely mentions it in prose. */
+/**
+ * Lines that name a run of the tool, with whole-line `#` comments stripped first.
+ *
+ * **Described at its real width, because the first draft was not.** It said "a line that RUNS the
+ * tool, never one that merely mentions it in prose", and the matcher does no such thing — it takes any
+ * surviving line containing `node <tool>`. That is deliberate rather than sloppy: the sixth pinned
+ * site is `.portulan/dod.md`, where the command sits **inside prose, in backticks**, and is a command
+ * a reader copies. A matcher that excluded prose would exclude the one carrier most likely to be
+ * copied wrong.
+ *
+ * What the stripping buys is narrower and real: a shell comment ABOVE an invocation, explaining it,
+ * does not count as a second invocation. What it cannot do is tell a documented example from a live
+ * one on the same line — which would matter if a file ever wrote "do not run `node cli/doctor.mjs`
+ * without a root", and does not today. Raised as a promoted note by Copilot, round 2 on #236.
+ */
 function invocations(rel, tool) {
-    return readLines(rel).filter((line) => {
-        const code = line.replace(/^\s*#.*$/, "");
-        if (!code.includes(`node ${tool}`)) return false;
-        // `dod.md` names the command inside backticks, which is an invocation a reader will copy.
-        return true;
-    });
+    return readLines(rel).filter((line) => line.replace(/^\s*#.*$/, "").includes(`node ${tool}`));
 }
 
 test("every required check names its resolution root", () => {

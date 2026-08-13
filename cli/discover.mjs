@@ -622,7 +622,7 @@ export function isPackRoot(dir) {
  * has always done the right thing here. `absent` now joins it, and **this module already said so in
  * two other places** — `readInstalls`'s ENOENT comment, and the pointer path below, which has always
  * turned `absent` into a `not-installed` VERDICT ("nothing is installed for it to be among") rather
- * than a could-not-look. `../cli/plugin-lint.mjs` states the general rule: *"Absent counts as
+ * than a could-not-look. `./plugin-lint.mjs` states the general rule: *"Absent counts as
  * examined … that IS the finding."* `discoverPackRoots` was the outlier inside its own file.
  *
  * **The distinction that keeps this from contradicting the fail-closed rule:** a *dependency the check
