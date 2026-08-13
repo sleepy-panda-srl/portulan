@@ -9,8 +9,17 @@ which is deciding what belongs in your own layer.
 It also does a job the reader does not see. This is the Workspace Definition's **second** instance, and
 a schema derived from one sample is not tested until it meets a differently-shaped one. Rooftop is
 deliberately unlike [customer zero](../.portulan/): two products instead of one, a deployed service
-alongside a static site, packs it composes, affordances that resolve down the cascade, and a rule whose
-incident it is not allowed to publish.
+alongside a static site, affordances that resolve down the cascade, and a rule whose incident it is not
+allowed to publish.
+
+_This list said **"packs it composes"** until 2026-08-13, and it was true twice over when written: this
+workspace declared `stacks/python`, and customer zero composed nothing at all. Both halves have since
+gone — the pack it named **never existed**, and customer zero now composes the same two this does. A
+differentiator that has stopped differentiating is removed rather than left standing, and the packs
+array earns its place here for a different reason: it is the one field of this demo that is **not**
+fiction, because `doctor` resolves those names against this repository's own `packs/` — **under a
+named or discovered root**, which the bare `doctor examples` further down this page does not pass, and
+so resolves neither._
 
 ## Read it in this order
 
@@ -69,3 +78,10 @@ not exist. The recipes are declarations, and `doctor` never executes a recipe in
 one is the Stop-gate runner (milestone 4), which Rooftop has not compiled — it declares no `gates`, so
 nothing here is enforced by machinery. That is the ordinary state of a workspace, and worth seeing in the
 demo rather than only in the one repository that did compile.
+
+**And it stays true even though a pack it composes contributes gate fragments.** `rituals/checkpoints`
+carries two, and composition merges a pack's fragments **into a policy** — this workspace declares none,
+so there is nothing for them to merge into and `compile` here exits **2** with *"cannot read the gate
+policy … ENOENT"* — a could-not-run rather than a refusal, which is the distinction this project keeps
+everywhere else and should keep in its own demo. Composing a gates-contributing pack is therefore not the same as being governed by one,
+which is a property of the cascade better shown than asserted.

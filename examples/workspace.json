@@ -81,5 +81,5 @@
     }
   ],
 
-  "packs": ["stacks/python", "tools/github"]
+  "packs": ["rituals/checkpoints", "tools/github"]
 }

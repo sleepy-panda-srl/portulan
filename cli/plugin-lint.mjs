@@ -671,10 +671,17 @@ export function inspect(rawRoot, { payload = false } = {}) {
     //                            decision.
     //
     // **Scoped to the workspace that GOVERNS this bundle, never to every manifest it ships.** The demo
-    // under `examples/` composes `stacks/python` and `tools/github`, which deliberately do not exist,
-    // and the fixture under `cli/fixtures/` exists to be invalid; holding either to this rule would be
-    // a red by construction. That scoping is the whole reason this reads one named path rather than
-    // discovering manifests.
+    // under `examples/` composes packs of its own and the fixture under `cli/fixtures/` exists to be
+    // invalid; neither governs this bundle, and that is the durable reason — it is the whole reason
+    // this reads one named path rather than discovering manifests.
+    //
+    // _This paragraph justified the scoping by saying the demo's packs "deliberately do not exist",
+    // which was half-false from milestone 7 session 5 (`tools/github` landed) and wholly false from
+    // 2026-08-13 (`stacks/python`, which never existed, was swapped for `rituals/checkpoints`). It
+    // also said holding the demo to this rule would be "a red by construction" — and after that swap
+    // the demo composes what the governing workspace composes, so it would now coincidentally PASS.
+    // A justification that has become an accident is worse than none, which is why the scoping now
+    // rests on governance alone. Found by the pre-commit checkpoint on the change that falsified it._
     //
     // What this does NOT establish, each found by the pre-commit checkpoint on #195 rather than
     // assumed:

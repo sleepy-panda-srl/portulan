@@ -49,8 +49,11 @@ observed through a *local* marketplace over a copy of this directory. The quoted
 exists and the feed's pin moves to it. Until then the green is demonstrated on the payload and inferred
 for the feed — a distinction this repository would rather write down than round off.
 
-> **One pack exists**, as of milestone 6: [`rituals/checkpoints`](rituals/checkpoints/README.md), the
-> supervised-build ritual. `stacks/` and `tools/` are still empty and each says why.
+> **Two packs exist.** [`rituals/checkpoints`](rituals/checkpoints/README.md), the supervised-build
+> ritual, as of milestone 6; and [`tools/github`](tools/github/README.md), one verify recipe, authored
+> at milestone 7 session 5 because a demonstration needed a real subject. `stacks/` is still empty and
+> says why. _(This said "One pack exists … `stacks/` and `tools/` are still empty" from milestone 6
+> until 2026-08-13, and the second half went false the day `tools/github` landed beside it.)_
 >
 > This file read "Nothing here yet" for four milestones, and the pack it predicted — a cross-artifact
 > consistency check — is not the one that arrived. Recorded rather than quietly replaced: the first

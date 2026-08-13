@@ -3,7 +3,9 @@
 Tool packs — integrations for the tools and MCP servers an agent drives (issue trackers, cloud
 CLIs, design tools, databases), with the how-to and the gate classification for each.
 
-> Placeholder. **No tool pack exists yet**, and what changed at milestone 6 is the machinery rather
+> **One tool pack exists** — [`github/`](github/README.md), since milestone 7 session 5. _(This read
+> "No tool pack exists yet" until 2026-08-13, beside the directory that refutes it.)_ What changed at
+> milestone 6 was the machinery rather
 > than this directory. Milestone 4 built the thing that would read one — a gate policy in a
 > host-neutral vocabulary, dispatched on by [`../../cli/compile.mjs`](../../cli/compile.mjs) — and the
 > cascade's missing middle (`core < pack < workspace`) is now bridged: a pack's `contributes.gates`
