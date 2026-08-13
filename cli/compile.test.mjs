@@ -1384,7 +1384,11 @@ describe("customer zero", () => {
         // Without this, a `packs` key that stopped resolving would silently shrink both rails back to
         // declared-only and they would go on passing — the shape this session's sibling suite calls a
         // rail losing its most important members and reporting nothing.
-        assert.ok(composedGates.length >= 2, `expected the composed packs to contribute gates, got ${composedGates.length}`);
+        // `> 0`, matching this test's name, rather than a floor of 2: a hard-coded count would red on a
+        // legitimate change to what the packs contribute. The narrower property — that a SPECIFIC gate is
+        // still composed — is already covered, since the citation rail fails the moment gate-map.md names
+        // an id the composed set no longer carries. (Copilot, round 1 on #240.)
+        assert.ok(composedGates.length > 0, "the composed packs contribute no gates, so the rails above check nothing");
     });
 
     test("every rule is cited under the gate map section matching its TIER", () => {
