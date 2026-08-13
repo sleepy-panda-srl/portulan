@@ -96,30 +96,46 @@ see a `.live.test.mjs` sibling — and `cli/upgrade.live.test.mjs` was reading t
 new unasked arm while the file's own header claimed the sweep would catch that. The fix landed at twelve
 sites and not at their `.live` siblings, inside the instrument built to catch exactly that.
 
-Membership is derived from **imports** now, and that one predicate was written **three times**:
+Membership is derived from **imports** now, and that one predicate was written **four times** — a
+substring match, a line anchor, a semicolon-bounded statement match, and finally that plus dynamic
+imports. Each spelling fixed the previous one's blindness and introduced its own; what each was blind to
+is enumerated once, under *An instrument that measures less than it claims* below.
 
-1. A substring match made `pinned-roots.live.test.mjs` a member of its own closure — it contains
-   `from "./recipe-set.mjs"` as the *data* for the case that severs it. An instrument counting its own
-   test data as evidence.
-2. A **line anchor** fixed that and silently dropped `compile.test.mjs`, `doctor.test.mjs` and
-   `index.test.mjs` — the three whose imports span lines, and the three that matter most. The sweep
-   stayed green, because those files were guarded anyway. **A rail can lose its most important members
-   and report nothing**, and the only thing that noticed was re-running the mutation harness after the
-   fold: removing a guard no longer red the sweep.
-3. Bounded by the statement's semicolon, which holds both directions at once.
-
-**Three instruments in one session measured less than they claimed** — the harness reading only
-column-zero TAP, the substring closure, the line-anchored closure. That is the session's real subject and
-it is not the one it started with. The cheap check that caught two of the three is *mutate, then read what
-the instrument actually says* — and the count assertion the sweep leaned on (`>= 10`) was satisfied by a
-set missing all three of its most important members, which is why it now names them.
+The cheap check that caught most of them is *mutate, then read what the instrument actually says*. The
+one that caught the rest is asserting that an instrument is **not its own evidence**.
 
 Its second must-fix found a prose overclaim in three carriers; **grepping for the claim rather than
 trusting the list found a fourth**. And writing the one assertion it asked for exposed an asymmetry
 nobody had recorded: the two arms reach the union builder differently, and the fixture I first wrote
 passed the asked half while binding nothing on the unasked one.
 
-Suite **1556 pass / 0 fail**, identical on two hosts. _(This line said **1560** for one draft — I assumed
+## The Copilot loop, and what each round was
+
+**Both findings were this change's own class, arriving from outside it.**
+
+- **Round 1, inline.** `discoverPackRoots` returns `why: null` on its **ordinary** success path — a
+  record that read fine and lists no pack-carrying plugin — and the unasked arm interpolated it bare, so
+  `plan.why` rendered *"…found no root — null"* into `doctor`'s note and every unresolved-pack line under
+  it. The `union` helper **one screen above guards exactly that condition**. One operation, two sites,
+  correct at one, inside the change whose subject is that class.
+- **Round 2, and the inline round was empty.** All three findings came through the promoted-note channel
+  ([`0021`](../proposals/0021-the-suppressed-channel-needs-a-state.md)) — that proposal earning its keep
+  again, because the channel that carried them is the one a reader would have skipped. The hermetic guard
+  I had just added created a temp directory per test file and removed none: **18 per full suite run**,
+  **4,288 accumulated in this session**. Copilot named three files; the fix is at all eighteen.
+
+**And one more instance of the session's real subject** — see *An instrument that measures less than it
+claims* below, which is the one place this session counts it. Rewriting the guard across eighteen files
+also rewrote the **rail's own `HERMETIC` constant**, whose value is that same line, turning a
+single-quoted literal into an invalid multi-line one. `node --check` caught it.
+
+**Filed rather than folded in:** the same measurement found **28,484** `portulan-feedback-*` temp
+directories, **7,477 older than today** — a long-standing leak in `cli/feedback.test.mjs` this change
+neither caused nor touches.
+
+## Fidelity, in numbers
+
+Suite **1557 pass / 0 fail**, identical on two hosts. _(This line said **1560** for one draft — I assumed
 the five folded adjustments had added tests, and four of them added assertions and guards to existing
 cases instead. A figure I did not re-measure after the tree moved, in the session whose own handoff says
 to re-measure after the tree moves.)_ Eleven recipes green under pinned roots.
@@ -128,10 +144,29 @@ to re-measure after the tree moves.)_ Eleven recipes green under pinned roots.
 is written.** Stated forward on purpose: an earlier draft attested a scan of a message that did not
 exist, and its first repair re-attested it in the past tense — the same claim wearing a different coat.
 Caught by a **re-check on the frozen diff**, which returned A-W-A (7) and found three must-fixes *inside
-the fold of the previous checkpoint's five*, including a third instance of the rail losing members it
-claims: `cli/new.test.mjs` reaches `doctor` through a **dynamic** import, which a static-import predicate
-cannot see, and it was the one file still consulting the real machine — traced by instrumenting
-`readInstalls` across the whole suite. **Three checkpoints, three spellings of one predicate, three times
-the instrument measured less than it claimed.** The self-membership assertion added in the same fold
-caught the fourth within a minute of being written, when the docblock explaining the dynamic case spelled
-a dynamic import in prose and put this file back into its own closure.
+the fold of the previous checkpoint's five*.
+
+## An instrument that measures less than it claims — the session's real subject, counted once
+
+Six instances, and the only reason the number is six rather than higher is that each was caught by a
+*different* instrument. Counted here and nowhere else, because a figure with two carriers drifts:
+
+1. **The mutation harness read only column-zero TAP**, so nine cases inside a `describe` reported their
+   parent's name and nine mutations looked unbound when they were not.
+2. **The closure predicate, as a substring match**, made the sweep file a member of its own closure — it
+   holds `from "./recipe-set.mjs"` as the *data* for the case that severs it.
+3. **The same predicate, line-anchored**, silently dropped `compile`, `doctor` and `index`'s test files —
+   the three with multi-line imports, and the three that matter most. Green throughout, because those
+   files were guarded anyway. **A rail can lose its most important members and report nothing.**
+4. **The same predicate, static-only**, missed a **dynamic** import in `cli/new.test.mjs` — which was the
+   one file still consulting the real machine, traced by a checkpoint that instrumented `readInstalls`
+   across the whole suite.
+5. **Its count floor** (`>= 10`, then `>= 14`) was satisfied by a set missing every member that mattered.
+   It names them now.
+6. **A mechanical rewrite across eighteen test files hit the rail's own `HERMETIC` constant**, whose
+   value is the very line being rewritten.
+
+**Two, four and six are one shape: an instrument cannot tell code from prose about code.** The
+self-membership assertion added for (2) caught (4)'s sibling within a minute of being written, when the
+docblock explaining the dynamic case spelled a dynamic import in prose. That is the cheapest lesson here
+— *the assertion that an instrument is not its own evidence pays for itself immediately.*
