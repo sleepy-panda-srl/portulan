@@ -565,20 +565,6 @@ const PATH_SLOTS = {
 };
 
 /**
- * The Workspace Definition version a schema implements, read from its `$id`.
- *
- * Carried in the identifier rather than parsed out of `title`, because a machine fact read from a
- * human sentence drifts the first time somebody rewords the sentence. Absent is a hard stop: a
- * validator that cannot tell which version of the contract it implements cannot honestly say a
- * manifest conforms to it.
- */
-/**
- * The Pack Definition version a schema implements, read from its `$id` — the same argument as
- * `schemaVersion` above, on the other version train. Separate rather than shared because the two
- * `$id` shapes differ deliberately (`/spec/2.5/` and `/spec/pack/1.0/`), and a single regex loose
- * enough to read both would read `/spec/pack/1.0/` as Workspace Definition version 1.0.
- */
-/**
  * The five parts `core/personas/README.md` fixes, each with the pattern that finds it and the word a
  * failure must use so a reader learns **which** part is missing rather than that "the contract" is unmet.
  *
@@ -937,6 +923,12 @@ function claimsProhibited(reach) {
     return false;
 }
 
+/**
+ * The Pack Definition version a schema implements, read from its `$id` — the same argument as
+ * `schemaVersion` below, on the other version train. Separate rather than shared because the two
+ * `$id` shapes differ deliberately (`/spec/2.5/` and `/spec/pack/1.0/`), and a single regex loose
+ * enough to read both would read `/spec/pack/1.0/` as Workspace Definition version 1.0.
+ */
 export function packSchemaVersion(schema) {
     const match = /\/spec\/pack\/([0-9]+)\.([0-9]+)\//.exec(schema.$id ?? "");
     if (!match) {
@@ -948,6 +940,14 @@ export function packSchemaVersion(schema) {
     return { major: Number(match[1]), minor: Number(match[2]) };
 }
 
+/**
+ * The Workspace Definition version a schema implements, read from its `$id`.
+ *
+ * Carried in the identifier rather than parsed out of `title`, because a machine fact read from a
+ * human sentence drifts the first time somebody rewords the sentence. Absent is a hard stop: a
+ * validator that cannot tell which version of the contract it implements cannot honestly say a
+ * manifest conforms to it.
+ */
 export function schemaVersion(schema) {
     const match = /\/spec\/([0-9]+)\.([0-9]+)\//.exec(schema.$id ?? "");
     if (!match) {
