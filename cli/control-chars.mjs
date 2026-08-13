@@ -31,8 +31,19 @@
 //
 // ## What counts, and the one thing that does not
 //
-// Every byte in the C0 range — `0x00`–`0x1F` — except **TAB** and **LF**, plus **DEL** (`0x7F`).
+// Every byte in the C0 range — `0x00`–`0x1F` — except **TAB** and **LF**, plus **DEL** (`0x7F`),
+// plus every **C1** control character, `U+0080`–`U+009F`.
 // DEL is not in C0 and is the same defect: invisible, and printed by `cat -v` as `^?`.
+//
+// **C1 was the half this could not see until #207**, and the gap was not theoretical: a planted U+009B
+// (CSI — the byte that opens a terminal escape sequence) left the recipe green, measured at the
+// retrospective pass over #167. C1 arrives as TWO UTF-8 bytes, `0xc2` then `0x80`–`0x9f`, so a per-byte
+// C0 test cannot reach it however carefully it is written.
+//
+// **Format characters are deliberately still out** — zero-width space, the bidi marks, word joiner,
+// BOM (`U+200B`–`U+200F`, `U+2060`–`U+206F`, `U+FEFF`). They are a different question, not a smaller
+// one: unlike C1 they appear legitimately in prose, so a rail over them needs an exemption mechanism far
+// busier than the named-path list below, and that is a proposal rather than an addition here.
 //
 // **CR is refused**, which is a decision rather than an oversight. No tracked file in this repository
 // carries one, so the rail costs nothing today and stops CRLF arriving unnoticed in a tree that is
@@ -120,6 +131,38 @@ export const nameOf = (byte) => (byte === DEL ? "DEL" : (NAMES[byte] ?? `0x${byt
 export const isForbidden = (byte) => byte !== TAB && byte !== LF && (byte < 0x20 || byte === DEL);
 
 /**
+ * The C1 mnemonics, `0x80`–`0x9f`, indexed from `0x80`.
+ *
+ * C1 is the half this check could not see until #207. These are control characters by every definition
+ * that matters here — invisible, semantically active in terminals (`CSI` opens an escape sequence), and
+ * unreachable by the byte test above, because in UTF-8 they arrive as **two** bytes, `0xc2` followed by
+ * `0x80`–`0x9f`, and neither of those is in C0.
+ *
+ * Measured at the retrospective pass over #167: a planted U+009B left this recipe green.
+ */
+const C1_NAMES = [
+    "PAD", "HOP", "BPH", "NBH", "IND", "NEL", "SSA", "ESA",
+    "HTS", "HTJ", "VTS", "PLD", "PLU", "RI", "SS2", "SS3",
+    "DCS", "PU1", "PU2", "STS", "CCH", "MW", "SPA", "EPA",
+    "SOS", "SGCI", "SCI", "CSI", "ST", "OSC", "PM", "APC",
+];
+
+const C1_LEAD = 0xc2;
+
+/**
+ * Is a C1 control character encoded at `i`? Two bytes, `0xc2` then `0x80`–`0x9f`.
+ *
+ * **This is the one place the scan looks at more than one byte, and it stays a byte test rather than
+ * becoming a decode.** Decoding is refused for the reason the header gives — U+FFFD both hides bytes and
+ * invents characters — and it is not needed: `0xc2` is a two-byte lead whose only continuations are
+ * `0x80`–`0xbf`, so this sequence is unambiguous without decoding anything around it.
+ */
+const isC1At = (buffer, i) => buffer[i] === C1_LEAD && buffer[i + 1] >= 0x80 && buffer[i + 1] <= 0x9f;
+
+/** `0x9b` → `U+009B CSI`. The code point, never the character — `nameOf`'s rule on the other range. */
+export const nameOfC1 = (second) => `U+00${second.toString(16).toUpperCase()} ${C1_NAMES[second - 0x80]}`;
+
+/**
  * Bytes rendered for a message, with everything outside printable ASCII as `\xNN` — **never raw**.
  *
  * `nameOf`'s rule, applied to a run of bytes instead of to one. It lives beside it because it is the
@@ -179,6 +222,14 @@ export function scanBytes(buffer) {
         }
         if (isForbidden(byte)) {
             found.push({ offset: i, byte, name: nameOf(byte), line, column: i - lineStart + 1 });
+            continue;
+        }
+        // C1, and reported at the LEAD byte: that is where the character starts, and an offset pointing
+        // at the continuation would send a reader one byte past the thing they are looking for. `i` is
+        // not advanced — the continuation is `0x80`–`0x9f`, which no other branch here matches, so there
+        // is nothing to skip and the line counting stays a single rule.
+        if (isC1At(buffer, i)) {
+            found.push({ offset: i, byte: buffer[i + 1], name: nameOfC1(buffer[i + 1]), line, column: i - lineStart + 1 });
         }
     }
     return found;
