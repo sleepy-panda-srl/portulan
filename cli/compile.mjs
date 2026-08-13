@@ -1884,10 +1884,41 @@ export function resolveWorkspace(named) {
     return { workspaceRoot: dir, workspaceDir: "." };
 }
 
+/**
+ * The help screen — see `./doctor.mjs`'s for the contract and why these three gained one late.
+ * `../.portulan/dod.md` condition 4 binds it: every flag below exists in the parser above.
+ */
+function usage() {
+    return [
+        "portulan compile — compile a workspace's gate policy into host enforcement",
+        "",
+        "  portulan compile [--check] [--matrix] [--workspace <dir>] [--pack-root <dir>|auto]...",
+        "",
+        "  (no flag)     compile the policy and write each backend's artifact",
+        "  --check       write nothing; exit 1 if an artifact is out of date against the policy",
+        "  --matrix      print every rule against every backend, and the gates neither compiles",
+        "  --workspace   the workspace directory to compile; defaults to `.portulan`",
+        "  --pack-root   where declared packs are resolved from; `auto` discovers the host's plugin cache.",
+        "                A named root REPLACES every other source. A directory actually named `auto` is `./auto`",
+        "",
+        "The compiler emits RESTRICTION only: `auto` and `propose` compile to nothing in the Claude Code",
+        "backend by design, and the partition inverts in the repository ruleset, which is the floor.",
+        "",
+        "Exit codes: 0 succeeded · 1 a red verdict · 2 could not run.",
+    ].join("\n");
+}
+
 export function run(argv, options = {}) {
     const say = (line = "") => {
         if (!options.quiet) process.stdout.write(`${line}\n`);
     };
+    // **Before every other argument decision**, so asking for help cannot be outranked by a
+    // complaint about the rest of the command line. `./portulan.mjs` states the contract: an
+    // explicit `--help` exits 0, because asking for help is a request and it succeeded.
+    if (argv.includes("--help") || argv.includes("-h")) {
+        say(usage());
+        return 0;
+    }
     try {
         let named = process.cwd();
         let check = false;

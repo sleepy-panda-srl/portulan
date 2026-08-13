@@ -1212,7 +1212,35 @@ function budgetFindings(memory, store, expected, fail) {
 // The command
 // ===========================================================================================
 
+/**
+ * The help screen — see `./doctor.mjs`'s for the contract and why these three gained one late.
+ * `../.portulan/dod.md` condition 4 binds it: every flag below exists in the parser above.
+ */
+function usage() {
+    return [
+        "portulan index — regenerate the memory, handoff and scope indexes",
+        "",
+        "  portulan index [--check] [--pack-root <dir>|auto]... <workspace-dir> [<workspace-dir> ...]",
+        "",
+        "  --check       write nothing; exit 1 if any index is out of date against its store",
+        "  --pack-root   where declared packs are resolved from; `auto` discovers the host's plugin cache.",
+        "                A named root REPLACES every other source. A directory actually named `auto` is `./auto`",
+        "",
+        "What is WRITTEN never records which root answered: an index whose bytes carried that would",
+        "regenerate differently on two machines, and `--check` byte-compares.",
+        "",
+        "Exit codes: 0 succeeded · 1 a red verdict · 2 could not run.",
+    ].join("\n");
+}
+
 export function run(argv, say = console.log) {
+    // **Before every other argument decision**, so asking for help cannot be outranked by a
+    // complaint about the rest of the command line. `./portulan.mjs` states the contract: an
+    // explicit `--help` exits 0, because asking for help is a request and it succeeded.
+    if (argv.includes("--help") || argv.includes("-h")) {
+        say(usage());
+        return 0;
+    }
     let check = false;
     const dirs = [];
     // Named pack roots, which REPLACE a workspace's own derived root rather than being searched ahead
@@ -1250,6 +1278,13 @@ export function run(argv, say = console.log) {
             // Raw-argument match, before `path.resolve` — `./auto` still names a directory.
             if (dir === AUTO) discoverPacks = true;
             else roots.push(path.resolve(dir));
+        } else if (argv[i].startsWith("-")) {
+            // Loud, where it used to be ENOENT noise. Before this, an unrecognised flag fell into
+            // `dirs` and was resolved as a workspace path — `index --help` reported `cannot read
+            // --help/workspace.json`, which reads as a broken workspace rather than a bad argument.
+            // Both real invocations are named for #155's reason.
+            say(`  ✗ unknown argument \`${argv[i]}\` — run \`portulan index --help\` or \`node cli/index.mjs --help\` for the flags this tool takes`);
+            return 2;
         } else dirs.push(argv[i]);
     }
 

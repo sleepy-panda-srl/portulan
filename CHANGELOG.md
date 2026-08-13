@@ -42,6 +42,33 @@ records how things were found. This is per *release* and records what a reader g
 ## Unreleased
 ### Changed
 
+- **`doctor`'s enforcement report now counts the gate policy a workspace *yields* — declared plus
+  composed — rather than the rules its own `gates.json` declares.** Measured before the change on
+  `d5a5eb7`: it printed `Claude Code: 10 of 23 rule(s) compiled … → .claude/settings.json` while that
+  file carried **eleven** rules' compilation, and it reported **3** uncovered gates where
+  `compile --matrix` reported **4**. An arrow naming an artifact beside a number that was not that
+  artifact's. Composed rules are now **attributed to the pack that contributes them**, so a reader knows
+  which file to change, and the sentence says *policy this workspace yields* rather than *declared
+  policy*. Counts and coverage remain reports and move no exit code. Composition runs through
+  `compile`'s own `packContributions`/`composeFragments` rather than a second implementation.
+
+  A workspace that composes gate-contributing packs while declaring **no** policy of its own is now
+  reported too, instead of passing in silence — `compile` exits 2 on that shape, and `doctor` said
+  nothing at all. Report severity, deliberately: `examples/` is that shape and a required recipe grades
+  it every run.
+
+- **`doctor`, `compile` and `index` answer `--help`**, on stdout, exit 0, in the shape the other five
+  subcommands already used — `portulan.mjs` has always stated the contract ("asking for help is a
+  request, and it succeeded"). `compile` previously answered `unknown argument "--help"`; `index`
+  treated it as a workspace path and reported `cannot read --help/workspace.json`; `doctor` had no
+  `--help` handling at all and fell through to its no-arguments usage line on stderr at exit 2.
+
+- **`doctor` and `index` now refuse an unknown flag by name instead of swallowing it.** `doctor`'s
+  parser silently discarded any `-`-prefixed argument it did not recognise, so
+  `doctor --repo-rot /some/path` **dropped the misspelled flag and graded `/some/path` as a
+  workspace** — a red verdict for a reason unrelated to what was asked. A typo in a flag is
+  could-not-run, and each refusal names both real invocations.
+
 - **A pack root is now discovered whether or not you ask, so `--pack-root` is optional where discovery
   finds one.** It was not optional before, and the measurement rather than the wording is what settles
   that: on the workspace `portulan init` drafts by default plus one pack of the adopter's own,

@@ -86,10 +86,10 @@ Honest limits, each with the milestone that closes it:
   where the partition inverts and `propose` is exactly what is enforced. **Three gates this workspace
   *declares* are compiled by neither backend** — renaming or transferring the repository, spending money,
   sending something outward — and `compile --matrix` and `doctor` both name them, because a policy
-  stating a gate nothing enforces must never read as configured. **Composition adds a fourth and the two
-  printers disagree on the total** — `--matrix` counts `rituals/checkpoints`' `self-certify-a-checkpoint`
-  and reports 4, `doctor` reports 3 — which [`gate-map.md`](gate-map.md) states in full and leaves as an
-  open behaviour question rather than settling it here. The **platform floor beneath it all is configured and live** — `main` rejects
+  stating a gate nothing enforces must never read as configured. **Composition adds a fourth, and until 2026-08-13 the two
+  printers disagreed on the total** — `--matrix` counted `rituals/checkpoints`'
+  `self-certify-a-checkpoint` and reported 4 where `doctor` reported 3. `doctor` now reads the policy the
+  workspace *yields* and they agree; [`gate-map.md`](gate-map.md) carries the argument. The **platform floor beneath it all is configured and live** — `main` rejects
   direct pushes and requires `workspace-verify` and `pr-labeled` green, with no exemption for
   administrators — so what still rests on review is the tiers above the floor, not the floor. _(The exact
   context string matters when cross-checking branch protection: it is the job id, not the workflow's
