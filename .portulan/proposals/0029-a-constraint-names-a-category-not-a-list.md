@@ -1,7 +1,7 @@
 # Proposal — a constraint on an agent names a category, not a list
 
 **Status. PROPOSED, 2026-08-13.** It ships **no rail**, and says so here rather than implying one: the
-artefact it governs — a session brief — is typed into a conversation and committed nowhere, so no recipe
+artifact it governs — a session brief — is typed into a conversation and committed nowhere, so no recipe
 in this repository can read one. What it asks for is the **second half of a rule this repository already
 carries**, and a ruling on where that half lives.
 
@@ -32,7 +32,8 @@ core.hooksPath=/dev/null` (`cf6b11e`) — `commit-without-the-hooks`, which
 before it happens."* None was asked for or given, and the flag was reflex rather than decision.
 
 **Effect: none, measured twice, with a broken instrument named in between.** No `core.hooksPath` is set at
-any config origin (`git config --show-origin --get-regexp`), and the common `.git/hooks` holds no
+any config origin (`git config --show-origin --get-regexp 'core\.hooksPath'`, which exits 1 printing
+nothing), and the common `.git/hooks` holds no
 non-sample hook — so no hook would have run either way. The first attempt at that second measurement ran
 `ls .git/hooks` **inside a worktree, where `.git` is a file**, naming a path that does not exist and
 reporting zero: a green from a directory nobody had.
