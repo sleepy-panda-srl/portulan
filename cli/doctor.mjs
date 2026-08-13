@@ -2442,9 +2442,18 @@ export async function inspect(workspaceDir, options = {}) {
             const { contributions } = packContributions(dir, ".", { packRoots: resolvedPackRoots ?? [] });
             const fragments = contributions.reduce((n, c) => n + (c.fragments?.length ?? 0), 0);
             if (fragments) {
+                // `fragments` counts RESOLVED packs only — `packContributions` cannot read a manifest it
+                // could not find — so where a declared pack did not resolve this number is a floor and
+                // not a total. Saying "composes N from its packs" without that caveat implies the count
+                // covers every declared pack, which is the same overstatement this whole change repairs
+                // one branch up: a number claiming more than it measured. The gates-slot branch already
+                // carried the caveat and this one did not. (Copilot, round 1 on #241.)
+                const incomplete = packsUnresolved
+                    ? `, and ${packsUnresolved} declared pack(s) did not resolve, so this count is a floor rather than a total`
+                    : "";
                 report(
                     "enforcement",
-                    `this workspace composes ${fragments} gate rule(s) from its packs and declares no \`gates\` policy for them to join, so nothing here compiles them — \`compile\` exits 2 on this shape rather than emitting a partial policy`,
+                    `this workspace composes ${fragments} gate rule(s) from the packs that resolved and declares no \`gates\` policy for them to join, so nothing here compiles them — \`compile\` exits 2 on this shape rather than emitting a partial policy${incomplete}`,
                 );
             }
         } catch (cause) {
