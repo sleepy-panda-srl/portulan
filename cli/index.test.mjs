@@ -1684,3 +1684,24 @@ test("index: `auto` against an unreadable record is exit 2", () => {
     // See the note in the sibling case: `could not be read` is in both messages.
     assert.match(said.join("\n"), /Discovery could not look/);
 });
+
+// `--help` is a request that succeeded — `./portulan.mjs` states the contract and five siblings kept
+// it. Before this, `index --help` treated `--help` as a workspace path and reported
+// `cannot read --help/workspace.json`, which reads as a broken workspace rather than a bad argument.
+describe("--help, and an argument this tool does not take", () => {
+    test("`--help` exits 0 and prints the screen", () => {
+        const said = [];
+        assert.equal(run(["--help"], (l) => said.push(l)), 0);
+        assert.match(said.join("\n"), /^portulan index — regenerate the memory, handoff and scope indexes/);
+        assert.match(said.join("\n"), /Exit codes: 0 succeeded/);
+    });
+
+    test("an unknown flag is refused by name, not resolved as a workspace path", () => {
+        const said = [];
+        assert.equal(run(["--chekc", "."], (l) => said.push(l)), 2);
+        const text = said.join("\n");
+        assert.match(text, /unknown argument/);
+        assert.match(text, /--chekc/);
+        assert.doesNotMatch(text, /workspace\.json/, "the flag must never reach the filesystem as a path");
+    });
+});

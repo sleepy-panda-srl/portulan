@@ -1354,8 +1354,9 @@ describe("customer zero", () => {
     // than a convenience. They used to read `real.rules` alone — the ids in `.portulan/gates.json` — so
     // a gate contributed by a composed pack was invisible to them: naming one in the prose failed the
     // second rail, and leaving one undocumented satisfied the first. Milestone 7's close found the same
-    // blind spot in two other readers of this policy (`compile --matrix` counts composed gates and
-    // reports 4 uncompiled, `doctor` counts only declared ones and reports 3), and this file carried two
+    // blind spot in two other readers of this policy (`compile --matrix` counted composed gates and
+    // reported 4 uncompiled where `doctor` counted only declared ones and reported 3 — `doctor` was
+    // repaired on 2026-08-13 and they now agree), and this file carried two
     // more — the citation rails here and the tier rail below — making FOUR readers of one policy.
     // The tier rail was still narrow when the first two were widened, which is this comment's own rule
     // broken in the change that states it; the pre-commit pass caught it. A rule with several readers is repaired at all of them or at none —
@@ -2238,4 +2239,23 @@ test("compile: `auto` against an unreadable record is exit 2, not a green over a
     const empty = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), "compile-absent-"));
     SCRATCH.push(empty);
     assert.notEqual(withEnv(empty, () => run(["--workspace", path.join(dir, ".portulan"), "--pack-root", "auto"], { quiet: true })), 2);
+});
+
+// `--help` is a request that succeeded. Before this, `compile --help` answered
+// `unknown argument "--help"` at exit 2 — a refusal to the one argument every tool should answer.
+describe("--help", () => {
+    test("`--help` exits 0 and prints the screen to stdout", () => {
+        const out = [];
+        const write = process.stdout.write.bind(process.stdout);
+        process.stdout.write = (chunk) => (out.push(String(chunk)), true);
+        let code;
+        try {
+            code = run(["--help"]);
+        } finally {
+            process.stdout.write = write;
+        }
+        assert.equal(code, 0);
+        assert.match(out.join(""), /^portulan compile — compile a workspace's gate policy into host enforcement/);
+        assert.match(out.join(""), /Exit codes: 0 succeeded/);
+    });
 });

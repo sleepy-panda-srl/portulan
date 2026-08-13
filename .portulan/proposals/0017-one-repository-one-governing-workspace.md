@@ -187,6 +187,17 @@ primitive changes both, so the ordering above chooses the loud failure over the 
 avoiding both — and **`compile` was keyed to residence**, which the parity clause above says is
 refusable. It was refused, and fixed, in the change that built the switch._
 
+_**The cross-repo claims-lint gap has a tracker and no owner, appended 2026-08-13** — appended rather
+than folded into the limits bullet above, for the reason this file's other notes give. The gap the
+bullet prices is tracked as
+[#138](https://github.com/sleepy-panda-works/portulan/issues/138), filed 2026-07-30 at the maintainer's
+instruction, which names the two design questions (per-card tree resolution; a CI job holding both
+checkouts) and the seam question beneath them — whether a private feed's CI may check out a customer's
+repository at all. **What it still lacks is an owning milestone.** Milestone 9 has been proposed on the
+ground that its criterion is the first to need both halves green together, but a milestone criterion is
+amended by the maintainer and by nobody else, so this note records the proposal and not a decision. The
+limits bullet above is unchanged and remains true._
+
 _**`upgrade`'s migration landed, appended 2026-08-13** — again appended rather than corrected in place,
 for the reason the block above gives. The sentence *"`upgrade`'s migration is still owed"* was true when
 it was written on 2026-08-03 and stopped being true at **milestone 7 session 9**, which shipped the

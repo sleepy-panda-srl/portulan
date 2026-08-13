@@ -36,6 +36,7 @@ const HERMETIC_HOST = fs.mkdtempSync(path.join(os.tmpdir(), "portulan-hermetic-"
 process.env.CLAUDE_CONFIG_DIR = HERMETIC_HOST;
 process.on("exit", () => fs.rmSync(HERMETIC_HOST, { recursive: true, force: true }));
 
+import { run as compileRun } from "./compile.mjs";
 import {
     DoctorError,
     compileSchema,
@@ -3153,4 +3154,183 @@ describe("every legibility dimension can actually vary", () => {
         }
         assert.equal(ids.length, 7, "seven is what the can-it-vary rule leaves; the count is derived here rather than trusted in prose");
     });
+});
+
+// ===========================================================================================
+// An explicit `--help`, and an unknown flag that is refused rather than swallowed
+// ===========================================================================================
+//
+// `./portulan.mjs` states the contract — an explicit `--help` exits 0, because asking for help is a
+// request and it succeeded — and five sibling tools kept it while this one did not. What a user got
+// instead was the no-arguments usage line on stderr at exit 2: the could-not-run fallback, not an
+// answer. Milestone 7's close handoff called this "the only two of eight"; measuring found three.
+describe("--help is a request that succeeded", () => {
+    test("`--help` exits 0, prints to stdout, and names only flags this tool takes", async () => {
+        // `run` writes to stdout directly rather than through an injected sink, so the sink is stdout —
+        // the idiom ./compile.test.mjs already uses for the same shape.
+        const out = [];
+        const write = process.stdout.write.bind(process.stdout);
+        process.stdout.write = (chunk) => (out.push(String(chunk)), true);
+        let code;
+        try {
+            code = await run(["--help"]);
+        } finally {
+            process.stdout.write = write;
+        }
+        assert.equal(code, 0, "asking for help succeeded");
+        const said = out.join("");
+        assert.match(said, /^portulan doctor — validate a workspace/, "the identity line agrees with `portulan --help`'s summary");
+        assert.match(said, /Exit codes: 0 succeeded · 1 a red verdict · 2 could not run/);
+        // dod condition 4: the screen may name only flags that exist. Derived from the source rather
+        // than from a list kept beside it, so a flag added without a screen line is caught here.
+        const real = new Set([...fs.readFileSync(path.join(HERE, "doctor.mjs"), "utf8").matchAll(/"(--[a-z-]+)"/g)].map((m) => m[1]));
+        for (const flag of said.match(/^\s+(--[a-z-]+)/gm)?.map((s) => s.trim()) ?? []) {
+            assert.ok(real.has(flag), `the help screen names \`${flag}\`, which this tool does not take`);
+        }
+    });
+
+    test("`-h` is the same request", async () => {
+        assert.equal(await run(["-h"], { quiet: true }), 0);
+    });
+
+    // The hazard this closes is not cosmetic. Measured before the fix: `doctor --repo-rot /nonexistent`
+    // silently DISCARDED the misspelled flag and graded `/nonexistent` as a workspace — red, for a
+    // reason that had nothing to do with what was asked. A typo in a flag is could-not-run.
+    test("an unknown flag is refused loudly rather than swallowed and graded", async () => {
+        // A refusal is could-not-run, so it lands on STDERR beside every other `doctor:` refusal —
+        // stdout carries verdicts, and this run reached none.
+        const out = [];
+        const write = process.stderr.write.bind(process.stderr);
+        process.stderr.write = (chunk) => (out.push(String(chunk)), true);
+        let code;
+        try {
+            code = await run(["--repo-rot", "/nonexistent"]);
+        } finally {
+            process.stderr.write = write;
+        }
+        assert.equal(code, 2, "a flag this tool does not take is could-not-run, never a verdict");
+        const said = out.join("");
+        assert.match(said, /unknown argument/);
+        assert.match(said, /--repo-rot/, "the refusal names the argument it refused");
+        // #155's lesson: name BOTH real invocations, since a user who typed one cannot act on advice
+        // about the other.
+        assert.match(said, /portulan doctor --help/);
+        assert.match(said, /node cli\/doctor\.mjs --help/);
+        assert.doesNotMatch(said, /nonexistent\/workspace\.json/, "the bad path must never be read as a workspace");
+    });
+});
+
+// ===========================================================================================
+// The enforcement report reads the policy the workspace YIELDS, not the one it declares
+// ===========================================================================================
+//
+// Measured on `d5a5eb7`, before this: `doctor .portulan --pack-root packs` printed
+// `Claude Code: 10 of 23 rule(s) compiled … → .claude/settings.json` while that file carried ELEVEN
+// rules' compilation, the eleventh composed from `rituals/checkpoints`. An arrow naming an artifact
+// beside a number that is not that artifact's, which is what `../.portulan/dod.md` condition 4 exists
+// against. `compile --matrix` said 4 uncovered gates and this said 3.
+//
+// The word is the one condition 1 was already rewritten to for the recipe set: **yields**, not
+// declares. These tests pin the agreement rather than the numbers, so they keep binding as the
+// workspace's own policy grows.
+describe("the enforcement report counts composed gates", () => {
+    const enforcement = async () => {
+        const { findings } = await inspect(path.join(REPO, ".portulan"), { schema: SCHEMA, packRoots: [path.join(REPO, "packs")] });
+        return text(checks(findings, "enforcement"));
+    };
+
+    test("`doctor` and `compile --matrix` agree on how many gates no backend compiles", async () => {
+        const said = await enforcement();
+        const mine = said.match(/(\d+) gate\(s\) no backend compiles/)?.[1];
+        assert.ok(mine, "the uncovered-gate line is printed");
+
+        const out = [];
+        const write = process.stdout.write.bind(process.stdout);
+        process.stdout.write = (chunk) => (out.push(String(chunk)), true);
+        try {
+            compileRun(["--matrix", "--pack-root", path.join(REPO, "packs")]);
+        } finally {
+            process.stdout.write = write;
+        }
+        const theirs = out.join("").match(/(\d+) GATE\(S\) no backend compiles/)?.[1];
+        assert.equal(mine, theirs, "two readers of one policy must not answer the same question differently");
+    });
+
+    test("composed rules are attributed BY NAME to the pack that contributes them", async () => {
+        const said = await enforcement();
+        // The members, not just a count. A bare "N are composed" tells a reader nothing about which file
+        // to change when two packs contribute gates — and its "N of those" also read as the uncovered
+        // gates on the line above rather than as the whole yield. Both were pre-commit findings.
+        assert.match(said, /composed from its packs rather than declared in/);
+        assert.match(said, /`commit-without-the-hooks` \(rituals\/checkpoints\)/, "the rule and its pack are named");
+        assert.match(said, /of the \d+ rule\(s\) this workspace yields/, "the subject is the yield, not the uncovered gates");
+    });
+
+    test("the sentence says YIELDS, never DECLARES — the word that made it wrong", async () => {
+        const said = await enforcement();
+        assert.doesNotMatch(said, /declared policy that nothing enforces/);
+    });
+});
+
+// A workspace may compose gate-contributing packs while declaring no policy of its own — the guard
+// above keys on `workspace.gates`, and composition does not. `examples/` is exactly that shape in this
+// tree, and `../.portulan/verify/doctor.sh` grades it on every run, so this note is REPORT severity:
+// a failure would turn the repository's own required verify red over a workspace behaving as designed.
+// The property the else-branch's comment claims: the note keys on gate FRAGMENTS, not on `packs` being
+// non-empty, so a workspace composing packs that contribute no gates stays silent here. The comment
+// cited `doctor.test.mjs`'s no-gates case for this, and that fixture declares no `packs` at all — so it
+// could not bind the keying, and rekeying the guard to `contributions.length` left the whole suite
+// green. Written at the pre-commit checkpoint, which measured exactly that. `tools/github` is the real
+// instance: a composed pack contributing verify recipes and no gates.
+// The other half of what this tool can KNOW. An unresolved pack's manifest is unreadable, so whether it
+// would have contributed gates is not a fact in reach — the sentence must say the totals may be
+// incomplete, never that gates were missed, which would claim knowledge of a file it could not open.
+// Listed as undemonstrated by the pre-commit pass; pinned here rather than left as prose.
+test("an unresolved pack makes the totals INCOMPLETE, never a claim about gates it could not read", async () => {
+    const dir = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), "portulan-unresolvedpack-"));
+    SCRATCH.push(dir);
+    for (const [rel, body] of Object.entries(minimalFiles)) fs.writeFileSync(path.join(dir, rel), body);
+    fs.writeFileSync(path.join(dir, "verify.sh"), "#!/bin/sh\nexit 0\n", { mode: 0o755 });
+    fs.writeFileSync(
+        path.join(dir, "gates.json"),
+        JSON.stringify({
+            portulan: { spec: "2.2" },
+            why: "gate-map.md",
+            rules: [{ id: "a-gated-thing", tier: "gated", action: { shell: "true" }, reason: "so the policy has a rule to count." }],
+        }),
+    );
+    fs.writeFileSync(
+        path.join(dir, "workspace.json"),
+        JSON.stringify({ ...wellFormed(), gates: "gates.json", packs: ["tools/github", "no/such-pack"] }),
+    );
+    const { findings } = await inspect(dir, { schema: SCHEMA, packRoots: [path.join(REPO, "packs")] });
+    const said = text(checks(findings, "enforcement"));
+    assert.match(said, /did not resolve, so whether they contribute gates could not be seen/);
+    assert.match(said, /totals above may be incomplete/);
+    assert.doesNotMatch(said, /gate\(s\) (were )?missed/, "it must never claim to know what an unreadable manifest held");
+});
+
+test("a workspace composing a pack that contributes NO gates says nothing about enforcement", async () => {
+    // Built from `wellFormed()` and its files, not hand-rolled: the first cut of this test declared a
+    // bare manifest, failed schema validation, and never reached the packs or enforcement sections at
+    // all — so it passed with zero enforcement findings for a reason that had nothing to do with gate
+    // fragments, and rekeying the guard left it green. A fixture that does not reach the code under
+    // test is a test that cannot fail. Measured, then rebuilt.
+    const dir = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), "portulan-nogatefrag-"));
+    SCRATCH.push(dir);
+    for (const [rel, body] of Object.entries(minimalFiles)) fs.writeFileSync(path.join(dir, rel), body);
+    fs.writeFileSync(path.join(dir, "verify.sh"), "#!/bin/sh\nexit 0\n", { mode: 0o755 });
+    fs.writeFileSync(path.join(dir, "workspace.json"), JSON.stringify({ ...wellFormed(), packs: ["tools/github"] }));
+    const { findings } = await inspect(dir, { schema: SCHEMA, packRoots: [path.join(REPO, "packs")] });
+    // The precondition: this fixture really did reach the composition. Without it the assertion below
+    // is satisfied by any early return.
+    assert.ok(checks(findings, "packs").length > 0, "the packs section ran — otherwise the assertion below proves nothing");
+    assert.equal(checks(findings, "enforcement").length, 0, "no gate fragments composed, so nothing to say about enforcement");
+});
+
+test("a workspace composing gates with no policy to join is reported, never failed", async () => {
+    const { findings } = await inspect(path.join(REPO, "examples"), { schema: SCHEMA, packRoots: [path.join(REPO, "packs")] });
+    const said = text(checks(findings, "enforcement"));
+    assert.match(said, /composes \d+ gate rule\(s\) from its packs and declares no `gates` policy/);
+    assert.equal(severities(checks(findings, "enforcement"), "fail").length, 0, "reported, because a required recipe grades this workspace");
 });

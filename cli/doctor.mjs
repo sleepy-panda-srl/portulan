@@ -43,7 +43,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 // it looks like enforcement that quietly stopped covering something. Same reasoning that has
 // ./gate.mjs import the matcher instead of writing a second one. Zero
 // dependencies on both sides, so nothing is added to what this tool needs to run.
-import { parse, backends, resolvePack, rootPlan } from "./compile.mjs";
+import { parse, backends, resolvePack, rootPlan, packContributions, composeFragments } from "./compile.mjs";
 // The containment test the memory-index siting rule turns on, imported for the reason directly
 // above: the copy that used to live here drifted into the identical fail-open as the original.
 import { isInside, recordType } from "./index.mjs";
@@ -1630,6 +1630,15 @@ export async function inspect(workspaceDir, options = {}) {
     // composing no packs contributes no personas, which is an empty list and not a missing one.
     const composedPersonas = [];
 
+    // The roots the packs section resolved, carried to the enforcement section so the two read ONE
+    // resolution rather than each running `rootPlan`. Two calls would be two answers whenever
+    // discovery is in play — the host's plugin record can change between them, and more to the point a
+    // second call is a second carrier of the precedence rule this file already imports rather than
+    // respells. `null` means the packs section never ran, which is not the same as "it ran and found
+    // nothing": the enforcement section keys on that difference below.
+    let resolvedPackRoots = null;
+    let packsUnresolved = 0;
+
     if (workspace.packs?.length) {
         // Resolution, not a count. Until milestone 6 this reported how many packs were declared and
         // said so — "a declaration only" — because there was no format to validate one against and
@@ -1662,6 +1671,7 @@ export async function inspect(workspaceDir, options = {}) {
         // Asked-for discovery that could not look is could-not-run, never a green over an unread host.
         if (plan.couldNotRun) throw new DoctorError(plan.couldNotRun);
         const roots = plan.roots;
+        resolvedPackRoots = roots;
         // Which root answered, for each root that could answer. A union's whole contract is that a
         // tree-derived resolution is visible rather than silent, and a lookup is how a per-pack line
         // says so without re-deriving the first-match rule.
@@ -1705,6 +1715,11 @@ export async function inspect(workspaceDir, options = {}) {
                 } else {
                     fail("packs", `\`${name}\` does not resolve — ${found.why}`);
                 }
+                // Counted, not inspected: an unresolved pack's manifest is unreadable, so this tool
+                // cannot know whether it would have contributed gates. The enforcement section says
+                // only that — never that gates were missed, which would claim knowledge of a file it
+                // could not open.
+                packsUnresolved += 1;
                 continue;
             }
             let manifest;
@@ -2261,8 +2276,25 @@ export async function inspect(workspaceDir, options = {}) {
         const policyFile = path.resolve(dir, workspace.gates);
         let parsed = null;
         let columns = null;
+        let composed = null;
         try {
-            parsed = parse(JSON.parse(fs.readFileSync(policyFile, "utf8")));
+            // **Composed before the policy is parsed**, which is the order `compile` uses and for its
+            // reason: a pack's fragment is then validated by exactly the code that validates a
+            // hand-written rule, rather than by a second, laxer path. Through `compile.mjs`'s own
+            // `packContributions` + `composeFragments` — this file already imports four functions from
+            // there and mints none of them, because the last thing a policy needs is a second opinion
+            // about what it contains.
+            //
+            // Why this reads the composed set at all: until 2026-08-13 it read `gates.json` alone, so
+            // its report described a policy the workspace does not have. Measured on `d5a5eb7`, this
+            // section printed `Claude Code: 10 of 23 rule(s) compiled → .claude/settings.json` while
+            // that file carried **eleven** rules' compilation, the eleventh being a composed one — an
+            // arrow naming an artifact beside a number that is not that artifact's. `../.portulan/dod.md`
+            // condition 1 had already been rewritten from *declares* to **yields** for the recipe set,
+            // for the identical reason; this is that word applied to the gate policy.
+            const composition = packContributions(dir, ".", { packRoots: resolvedPackRoots ?? [] });
+            composed = composeFragments(JSON.parse(fs.readFileSync(policyFile, "utf8")), composition.contributions);
+            parsed = parse(composed.policy);
             // Inside the SAME guard as the parse, which it was not for one checkpoint. A policy can
             // parse cleanly and still be refused by a backend — a declared floor no rule reaches, or
             // gate rules that all compile to nothing — and with `backends()` outside the try, that
@@ -2294,12 +2326,41 @@ export async function inspect(workspaceDir, options = {}) {
                     (rule.tier === "gated" || rule.tier === "prohibited") &&
                     columns.every((c) => !c.compiled.some((x) => x.id === rule.id)),
             );
+            // "policy this workspace yields" rather than "declared policy": the count now includes
+            // composed rows, so *declared* would be the word that made this sentence wrong.
             report(
                 "enforcement",
                 uncovered.length
-                    ? `${uncovered.length} gate(s) no backend compiles — declared policy that nothing enforces: ${uncovered.map((r) => `\`${r.id}\``).join(", ")}. Each is a prompt-level habit until a backend reaches it`
-                    : "every gate in this policy is compiled by at least one backend — which says the policy is reachable, never that a host honours what was emitted",
+                    ? `${uncovered.length} gate(s) no backend compiles — policy this workspace yields that nothing enforces: ${uncovered.map((r) => `\`${r.id}\``).join(", ")}. Each is a prompt-level habit until a backend reaches it`
+                    : "every gate this workspace yields is compiled by at least one backend — which says the policy is reachable, never that a host honours what was emitted",
             );
+
+            // Declared from composed, kept legible. A reader who cannot tell which rows came from a
+            // pack cannot tell which half to go and change, and the composed half lives in a file this
+            // workspace does not own.
+            if (composed.added?.length) {
+                // Its own subject and its own members. "N of those" read as the uncovered gates named on
+                // the line above — of which only one is composed — while the real antecedent was the
+                // whole yield two lines up. And a count alone does not tell a reader which file to
+                // change: with two gate-contributing packs, "composed from this workspace's packs" names
+                // neither. `composed.added` already carries `{ pack, id }`, so the members are printed.
+                const members = composed.added.map((a) => `\`${a.id}\` (${a.pack})`).join(", ");
+                report(
+                    "enforcement",
+                    `${composed.added.length} of the ${parsed.rules.length} rule(s) this workspace yields are composed from its packs rather than declared in \`${workspace.gates}\` — ${members}; change them in the pack that contributes them`,
+                );
+            }
+
+            // What this tool can KNOW, and no more. An unresolved pack's manifest is unreadable, so
+            // whether it would have contributed gates is not a fact in reach — the sentence says the
+            // totals may be incomplete, never that gates were missed. Severity is the packs section's
+            // to set and it has already set it above, origin-keyed; this line does not re-litigate it.
+            if (packsUnresolved) {
+                report(
+                    "enforcement",
+                    `${packsUnresolved} declared pack(s) did not resolve, so whether they contribute gates could not be seen — the totals above may be incomplete`,
+                );
+            }
 
             // ---- the floor's declared contexts, against the tree and against the prose
             for (const check of parsed.floor?.checks ?? []) {
@@ -2358,6 +2419,38 @@ export async function inspect(workspaceDir, options = {}) {
                     );
                 }
             }
+        }
+    } else if (workspace.packs?.length) {
+        // **The edge one door down, named rather than left to be found.** This section is guarded on
+        // the workspace declaring a `gates` slot, and composition does not care whether it does: a
+        // workspace can compose a pack that contributes gates while declaring no policy of its own,
+        // and then the guard above skips — silence, over a policy that has gate rules in it. That is
+        // the same shape as the divergence this whole change repairs, displaced by one condition.
+        //
+        // Measured on `d5a5eb7`: `examples/` is exactly this workspace — it composes
+        // `rituals/checkpoints`, which contributes two gate fragments, and declares no `gates` and
+        // carries no `gates.json`. `compile --workspace examples --check` exits **2** there
+        // (could-not-run: nothing to compose *into*), while `doctor` said nothing at all.
+        //
+        // **Report, never fail**, and the severity is not a preference: `../.portulan/verify/doctor.sh`
+        // grades `examples` on every run as part of a required check, so a failure here would turn the
+        // repository's own verify red over a workspace that is behaving as designed. It is also keyed
+        // on contributions being non-empty rather than on `packs` being non-empty, so a workspace
+        // composing packs that contribute no gates keeps producing zero enforcement findings — which
+        // is what `./doctor.test.mjs`'s no-gates case pins.
+        try {
+            const { contributions } = packContributions(dir, ".", { packRoots: resolvedPackRoots ?? [] });
+            const fragments = contributions.reduce((n, c) => n + (c.fragments?.length ?? 0), 0);
+            if (fragments) {
+                report(
+                    "enforcement",
+                    `this workspace composes ${fragments} gate rule(s) from its packs and declares no \`gates\` policy for them to join, so nothing here compiles them — \`compile\` exits 2 on this shape rather than emitting a partial policy`,
+                );
+            }
+        } catch (cause) {
+            // A composition this tool cannot even read is the packs section's finding, not this one's;
+            // saying it twice would be one defect wearing two severities.
+            report("enforcement", `the composed gate contributions could not be read — ${cause.message}`);
         }
     }
 
@@ -2497,8 +2590,44 @@ function display(target) {
 }
 
 /** Run against one or more workspace directories. Returns the exit code; never throws. */
+/**
+ * The help screen. An explicit `--help` exits **0** and prints to stdout — `./portulan.mjs` states that
+ * contract ("asking for help is a request, and it succeeded") and five sibling tools already keep it;
+ * this tool did not, and what a user saw instead was the no-arguments usage line on **stderr** at exit
+ * 2, which is the could-not-run fallback rather than an answered question. Added at milestone 7's
+ * follow-up, with `compile` and `index`, after the close pass found three nonconformers where its own
+ * handoff had said two.
+ *
+ * `../.portulan/dod.md` condition 4 binds this text: every flag below exists in the parser above it.
+ */
+function usage() {
+    return [
+        "portulan doctor — validate a workspace against the Workspace Definition",
+        "",
+        "  portulan doctor [--pack-root <dir>|auto]... [--repo-root <dir>]... <workspace-dir> [<workspace-dir> ...]",
+        "",
+        "  --pack-root   where declared packs are resolved from; `auto` discovers the host's plugin cache.",
+        "                A named root REPLACES every other source. A directory actually named `auto` is `./auto`",
+        "  --repo-root   where the repositories this workspace's cards NAME are checked out, so their",
+        "                claims can be checked against a tree rather than taken on trust",
+        "",
+        "Reports are notes unless something is wrong: a note moves no exit code. Discovery may turn an",
+        "unresolved pack into a resolved one and never a miss into a failure, so a verdict about the",
+        "repository does not become a function of what this machine happens to have installed.",
+        "",
+        "Exit codes: 0 succeeded · 1 a red verdict · 2 could not run.",
+    ].join("\n");
+}
+
 export async function run(argv, options = {}) {
     const say = options.quiet ? () => {} : (line = "") => process.stdout.write(`${line}\n`);
+    // **Before every other argument decision**, so asking for help cannot be outranked by a
+    // complaint about the rest of the command line. `./portulan.mjs` states the contract: an
+    // explicit `--help` exits 0, because asking for help is a request and it succeeded.
+    if (argv.includes("--help") || argv.includes("-h")) {
+        say(usage());
+        return 0;
+    }
     try {
         // `--pack-root <dir>`, repeatable: resolution roots that REPLACE the one derived from `tree`
         // rather than being searched ahead of it. `inspect` has read `options.packRoots` since session 0
@@ -2587,6 +2716,19 @@ export async function run(argv, options = {}) {
                 else namedRoots.push(directoryRoot("--pack-root", argv[i + 1], PACK_ROOT));
                 i += 1;
             } else if (!argv[i].startsWith("-")) dirs.push(argv[i]);
+            else {
+                // **Refused loudly, where it used to be swallowed.** This arm read `else if
+                // (!startsWith("-")) dirs.push(...)` with no `else` at all, so any `-`-prefixed
+                // argument this parser did not recognise was silently discarded. Measured on
+                // `d5a5eb7`: `doctor --repo-rot /nonexistent` dropped the misspelled flag and graded
+                // `/nonexistent` **as a workspace**, red for a reason that had nothing to do with what
+                // was asked. A typo in a flag is could-not-run, never a verdict — and #155's lesson is
+                // that the refusal names both real invocations, because a user who typed one of them
+                // cannot act on advice about the other.
+                throw new DoctorError(
+                    `unknown argument \`${argv[i]}\` — run \`portulan doctor --help\` or \`node cli/doctor.mjs --help\` for the flags this tool takes`,
+                );
+            }
         }
         // Refused at PARSE time, which is where an exit 2 belongs: before a workspace is read, so the
         // refusal cannot be mistaken for a verdict about one. `resolutionRoots` refuses the same

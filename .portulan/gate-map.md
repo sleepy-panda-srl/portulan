@@ -381,15 +381,16 @@ as a narrower prefix matched ahead of an ordinary `git commit`, because `--no-ve
 that turns a compiled gate back into a convention on a workspace that compiles its policy into hooks. The
 second is not compiled by either backend.
 
-**So the uncompiled count is not fixed, because composition moves it, and the two printers do not agree
-on it.** `self-certify-a-checkpoint` is a fourth gate no backend compiles. Measured on `74240fa`: `compile --matrix` reports **4** and names it;
-`doctor` reports **3** and does not. Neither is wrong about what it read — `--matrix` walks the
+**So the uncompiled count is not fixed, because composition moves it — and for one milestone the two
+printers did not agree on it.** `self-certify-a-checkpoint` is a fourth gate no backend compiles. Measured on `74240fa`: `compile --matrix` reported **4** and named it;
+`doctor` reported **3** and did not. **Settled 2026-08-13: `doctor` now reads the policy this workspace
+yields — declared plus composed — through `compile`'s own `packContributions`/`composeFragments`, and
+the two agree.** The divergence is kept here as the record of what it cost, not as current behaviour. Neither is wrong about what it read — `--matrix` walks the
 composed rows, `doctor` walks the rules this workspace declares — but they are two readers of one
 policy answering the same question differently, which is
-[`0020`](proposals/0020-a-fix-is-not-done-at-the-site-it-was-found.md)'s shape. **Whether `doctor`
-should count composed gates is a behaviour question and is deliberately not settled here**, since it
-would change what a verdict says about every workspace that composes a pack; filed by milestone 7's
-close pass, which found this sentence claiming three and citing two printers that disagree.
+[`0020`](proposals/0020-a-fix-is-not-done-at-the-site-it-was-found.md)'s shape. It was ruled a **behaviour change** rather than a record repair — it moves what a verdict says about
+every workspace composing a pack — and so landed in its own change after milestone 7's close, which is
+the pass that found this sentence claiming three while citing two printers that disagreed.
 
 **Two layers are emitted for every gate, and only one of them is the gate.** The permission rule holds;
 the hook supplies the sentence. That split is forced by a measurement rather than chosen: on CLI 2.1.220 a
