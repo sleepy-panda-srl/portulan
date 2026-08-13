@@ -467,3 +467,23 @@ test("recipe-set refuses a --pack-root that is missing or is a file", () => {
     assert.equal(run(["--pack-root", aFile], file.sink), 2);
     assert.match(file.err.join(""), /is not a directory/);
 });
+
+test("recipe-set's valued flags take all three refusals, not one", () => {
+    // Copilot, round 5 on #236: `--repo-root` and `--workspace` used `argv.indexOf` plus a truthiness
+    // test, so `--workspace --pack-root packs` bound the workspace to the literal string `--pack-root`
+    // and the run failed with a misleading "manifest could not be read". Fifth parser in this tree to
+    // take one refusal of three; session 9's handoff records the fourth.
+    const io = () => { const err = []; return { err, sink: { stdout: { write: () => {} }, stderr: { write: (x) => err.push(x) } } }; };
+
+    const asFlag = io();
+    assert.equal(run(["--workspace", "--pack-root", "packs"], asFlag.sink), 2);
+    assert.match(asFlag.err.join(""), /flag rather than a value/);
+
+    const missing = io();
+    assert.equal(run(["--repo-root"], missing.sink), 2);
+    assert.match(missing.err.join(""), /needs a value/);
+
+    const empty = io();
+    assert.equal(run(["--workspace", "   "], empty.sink), 2);
+    assert.match(empty.err.join(""), /empty value/);
+});

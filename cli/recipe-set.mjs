@@ -317,12 +317,28 @@ export function resolverFor({ workspaceDir, manifest, repoRoot = ".", named = []
  * over a recipe nobody ran, which is the false green the row names in words.
  */
 export function run(argv = [], { stdout = process.stdout, stderr = process.stderr } = {}) {
+    // **Three refusals, not one.** `init`, `new` and `vendor` each refuse a missing value, a FLAG as a
+    // value, and an empty one; session 9 recorded a fourth parser taking only the first, where
+    // `--tree --write <dir>` swallowed the write and silently reported instead of migrating. This was
+    // the fifth: `argv.indexOf` plus a truthiness test meant `--workspace --pack-root packs` bound the
+    // workspace to the string `--pack-root`, and the run then failed with a misleading *manifest could
+    // not be read* about a directory nobody asked for. Copilot, round 5 on #236.
+    let argError = null;
     const arg = (flag, fallback) => {
         const i = argv.indexOf(flag);
-        return i >= 0 && argv[i + 1] ? argv[i + 1] : fallback;
+        if (i < 0) return fallback;
+        const value = argv[i + 1];
+        if (value === undefined) argError ??= `${flag} needs a value`;
+        else if (value.startsWith("-")) argError ??= `${flag} was given ${JSON.stringify(value)}, which is a flag rather than a value`;
+        else if (value.trim() === "") argError ??= `${flag} was given an empty value, and no option here has a meaningful empty value`;
+        return argError ? fallback : value;
     };
     const repoRoot = arg("--repo-root", ".");
     const workspaceDir = arg("--workspace", path.join(repoRoot, ".portulan"));
+    if (argError) {
+        stderr.write(`${argError}\n`);
+        return 2;
+    }
 
     // `--pack-root`, repeatable, with `auto` and the shared refusal — the same surface the other six
     // tools take (`compile`, `doctor`, `index`, `init`, `vendor`, `skills-set`). It was missing here, and the plumbing behind it (`resolverFor`'s `discovery` and
