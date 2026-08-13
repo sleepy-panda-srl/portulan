@@ -33,6 +33,12 @@ import path from "node:path";
 
 import { HOST_SKILL_DEPTH, skillsSet, packPortion, compare, declaredFor, canonical, run } from "./skills-set.mjs";
 
+// A HERMETIC HOST. The tools consult the host's installed-plugin record on the UNASKED path as of
+// 2026-08-13, so a suite that does not neutralise it reads the machine it runs on and a fixture's
+// verdict moves with what somebody has installed. Swept by `pinned-roots.live.test.mjs`, whose header
+// carries the argument and the limit. A case that wants a host passes `env:` explicitly, which wins.
+process.env.CLAUDE_CONFIG_DIR = fs.mkdtempSync(path.join(os.tmpdir(), "portulan-hermetic-"));
+
 /** A resolver over an in-memory table, mirroring `resolverFor`'s return shape (root ABSOLUTE). */
 function resolverOver(table) {
     return (ref) => (Object.hasOwn(table, ref) ? table[ref] : null);
@@ -616,21 +622,35 @@ describe("`--pack-root auto` reaches discovery here, and refuses to be combined 
         }
     }
 
-    test("`auto` is CONSULTED — a pack only discovery can reach is found under it and not without it", () => {
+    test("discovery is CONSULTED on both paths since the disposal — `auto` insists, it no longer unlocks", () => {
+        // **This case pinned the clause under disposal and is re-derived rather than adjusted.** Its
+        // title was *"a pack only discovery can reach is found under it and NOT WITHOUT it"*, and the
+        // second half was precisely `--pack-root` failing to be *optional where discovery finds a root*:
+        // measured 2026-08-13, this exact shape made `skills-set --check` exit **2** with no flag, which
+        // is a hard block rather than a worse verdict. The first half is untouched and still asserted.
         const config = host("rituals/checkpoints");
         const dir = workspace();
         const said = [];
         const io = { stdout: { write: (s) => said.push(s) }, stderr: { write: (s) => said.push(s) } };
 
-        // Without `auto`: the workspace derives no root, so the pack cannot resolve and the run refuses.
+        // Unasked: the workspace derives no root, and discovery answers anyway. Not exit 2 — the pack
+        // was READ, so whatever this returns is a verdict about the registrable set rather than a
+        // refusal to compute one.
         const without = withHost(config, () => run(["--workspace", path.join(dir, ".portulan"), "--check"], io));
-        assert.equal(without, 2, said.join(""));
+        assert.notEqual(without, 2, `discovery should have answered unasked — ${said.join("")}`);
 
-        // With `auto`: the same pack resolves out of the host's record. This is the assertion the
-        // reverted fix must break — `forced` is what carries the request into `resolutionRoots`.
+        // With `auto`: the same answer. `forced` still carries the request into `resolutionRoots`, and
+        // asking is now a way of insisting rather than the only way of reaching.
         said.length = 0;
         const withAuto = withHost(config, () => run(["--workspace", path.join(dir, ".portulan"), "--pack-root", "auto", "--check"], io));
         assert.notEqual(withAuto, 2, `discovery should have answered — ${said.join("")}`);
+
+        // **The control that keeps this from passing for the wrong reason.** On a host with nothing
+        // installed the pack is unreachable from anywhere, and THAT is still could-not-run — so the two
+        // assertions above are about discovery answering, not about this tool having stopped refusing.
+        said.length = 0;
+        const emptyHost = withHost(scratch(), () => run(["--workspace", path.join(dir, ".portulan"), "--check"], io));
+        assert.equal(emptyHost, 2, `a pack nothing can reach is still could-not-run — ${said.join("")}`);
     });
 
     test("the pair is refused BEFORE the workspace manifest is read", () => {

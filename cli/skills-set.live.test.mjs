@@ -26,6 +26,13 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { skillsSet, resolverFor, compare, canonical, manifestPath, HOST_SKILL_DEPTH } from "./skills-set.mjs";
+import os from "node:os";
+
+// A HERMETIC HOST. The tools consult the host's installed-plugin record on the UNASKED path as of
+// 2026-08-13, so a suite that does not neutralise it reads the machine it runs on and a fixture's
+// verdict moves with what somebody has installed. Swept by `pinned-roots.live.test.mjs`, whose header
+// carries the argument and the limit. A case that wants a host passes `env:` explicitly, which wins.
+process.env.CLAUDE_CONFIG_DIR = fs.mkdtempSync(path.join(os.tmpdir(), "portulan-hermetic-"));
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const WORKSPACE = path.join(REPO, ".portulan");

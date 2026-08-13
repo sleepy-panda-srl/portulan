@@ -1131,8 +1131,19 @@ export function residenceAt(target) {
     return { state: "present", kind: parsed?.kind ?? "unknown", name: parsed?.name ?? null };
 }
 
-function packResolves(roots, packId) {
-    return roots.some((root) => fs.existsSync(path.join(root, packId, "pack.json")));
+/**
+ * The FIRST root that carries the pack, or null.
+ *
+ * It returned a boolean until 2026-08-13, and the root is needed now rather than merely convenient: the
+ * unasked path resolves from **either** the host's plugin cache or the workspace's own `<target>/packs`,
+ * and the closing advice was written claiming the cache for both. A sentence naming the wrong residence
+ * is worse than one naming none — it sends an adopter to uninstall a plugin that had nothing to do with
+ * it. Found by trying to write the test for the degrade, which is the half reading never catches.
+ *
+ * First-match-wins, matching `resolvePack`, so the order `expandRoots` returns is the order that decides.
+ */
+function packResolvedAt(roots, packId) {
+    return roots.find((root) => fs.existsSync(path.join(root, packId, "pack.json"))) ?? null;
 }
 
 /**
@@ -1158,19 +1169,41 @@ function packResolves(roots, packId) {
  * rule is what stops `init` refusing a composition that `doctor --pack-root auto` then resolves
  * happily: a false red against the very tool it is predicting.
  *
- * Returns `{ roots, why, refusal }`; `why` is non-null only when discovery **could not run**, which a
- * caller must be able to tell from *ran and found nothing*.
+ * ## The UNASKED arm, added 2026-08-13 with the disposal, and its one hard rule
+ *
+ * `doctor` consults discovery unasked as of that date, so this check must too or it stops predicting
+ * the run it exists to predict — and the prediction is the whole reason it is here. But `init` **WRITES
+ * FILES**, and that makes one arm of the disposal non-negotiable here:
+ *
+ * **On the unasked path, a pack that does not resolve is ADVICE and never a refusal.** A refusal would
+ * mean `init` drafts a workspace on a host where the pack is installed and refuses to draft one where
+ * it is not — host-dependence deciding whether files exist, which is worse than any verdict moving.
+ * `--pack-root <dir>` and `--pack-root auto` keep their refusals: a caller who said where to look and
+ * was wrong is owed one. Nobody who said nothing is.
+ *
+ * **And the DRAFT ITSELF is byte-identical on every host.** Discovery reaches the advice and the
+ * resolvability answer, never `draft()`. That is `../docs/vision.md`'s *no auto-generated curated
+ * context* at the one tool that could break it, and `init.test.mjs` hashes the drafted files on a host
+ * with a record and on one without to keep it that way.
+ *
+ * Returns `{ roots, why, refusal, asked }`. `why` is non-null only when discovery **could not look**,
+ * which a caller must be able to tell from *looked and found nothing*; `asked` is what lets the caller
+ * choose between a refusal and a sentence for the same answer.
  */
-function expandRoots(roots, target) {
+function expandRoots(roots, target, env) {
     const named = roots.filter((root) => root !== AUTO);
     const forced = roots.includes(AUTO);
+    const derived = path.join(target, "packs");
     const refusal = namedWithAuto(named, forced);
-    if (refusal) return { roots: [], why: null, refusal };
-    if (named.length) return { roots: named, why: null, refusal: null };
-    if (!forced) return { roots: [], why: null, refusal: null };
-    const found = discoverPackRoots();
-    if (!found.ok) return { roots: [], why: found.why, refusal: null };
-    return { roots: [...found.roots, path.join(target, "packs")], why: null, refusal: null };
+    if (refusal) return { roots: [], why: null, refusal, asked: true };
+    if (named.length) return { roots: named, why: null, refusal: null, asked: true };
+    // `env` is the injection seam — see `index.mjs`'s `readScopes`.
+    const found = discoverPackRoots({ env });
+    // Could not look. Asked, that is a refusal at the call site; unasked, the derived root carries on
+    // alone and the sentence says why the other half is missing — the same degrade
+    // `../cli/discover.mjs`'s `resolutionRoots` makes, for the same reason.
+    if (!found.ok) return { roots: forced ? [] : [derived], why: found.why, refusal: null, asked: forced };
+    return { roots: [...found.roots, derived], why: null, refusal: null, asked: forced };
 }
 
 /**
@@ -1532,25 +1565,43 @@ export async function run(argv, options = {}) {
         // workspace, so finding one here is a refusal rather than a prompt to replace it.
         refuseIfGoverned(residenceAt(target), parsed.target);
 
-        if (answers.residence === "in-repo" && answers.cycle && answers.packRoots.length) {
-            const expanded = expandRoots(answers.packRoots, target);
+        // **`answers.packRoots.length` was the gate, and dropping it is what makes the unasked arm
+        // live.** With it, `expandRoots`' new branch was unreachable from the command line — the exact
+        // shape of dead plumbing `skills-set` and `recipe-set` were each caught with, a capability that
+        // reads as wired and is none. Every `in-repo` run that composes a pack now asks the question;
+        // what differs is whether the answer can refuse.
+        let packAdvice = null;
+        if (answers.residence === "in-repo" && answers.cycle) {
+            const expanded = expandRoots(answers.packRoots, target, options.env);
             // Belt and braces: `validateAnswers` has already refused this pair on every path. Kept
             // because `expandRoots` is reachable on its own and must not answer with an empty set.
             if (expanded.refusal) throw new InitError(expanded.refusal);
-            if (expanded.why) {
-                throw new InitError(
-                    `\`--pack-root auto\` could not read this host's plugin record, so whether \`${answers.checkpoints}\` ` +
-                        `is installed is unknown rather than no — ${expanded.why}. Name a root explicitly, or run with ` +
-                        `\`--no-cycle\` and compose the pack later.`,
-                );
+            const resolvedAt = packResolvedAt(expanded.roots, answers.checkpoints);
+            const resolved = resolvedAt !== null;
+            if (expanded.asked) {
+                if (expanded.why) {
+                    throw new InitError(
+                        `\`--pack-root auto\` could not read this host's plugin record, so whether \`${answers.checkpoints}\` ` +
+                            `is installed is unknown rather than no — ${expanded.why}. Name a root explicitly, or run with ` +
+                            `\`--no-cycle\` and compose the pack later.`,
+                    );
+                }
+                if (!resolved) {
+                    throw new InitError(
+                        `the pack \`${answers.checkpoints}\` does not resolve under ${answers.packRoots.map((r) => `\`${r}\``).join(", ")} ` +
+                            `— refusing to compose a pack that is not there. Pass a root that carries it, name a different pack ` +
+                            `with \`--checkpoints\`, or run with \`--no-cycle\` and compose it later.`,
+                    );
+                }
             }
-            if (!packResolves(expanded.roots, answers.checkpoints)) {
-                throw new InitError(
-                    `the pack \`${answers.checkpoints}\` does not resolve under ${answers.packRoots.map((r) => `\`${r}\``).join(", ")} ` +
-                        `— refusing to compose a pack that is not there. Pass a root that carries it, name a different pack ` +
-                        `with \`--checkpoints\`, or run with \`--no-cycle\` and compose it later.`,
-                );
-            }
+            // **Unasked: an answer, never a refusal.** Carried to the closing advice rather than thrown,
+            // because a run that refuses to draft on one host and drafts on another has made the
+            // existence of files a function of the machine. The three answers are kept apart — resolved,
+            // looked-and-absent, could-not-look — because "the pack is not here" and "I could not tell"
+            // send a reader to different places.
+            // `inTree` is what keeps the advice from naming the wrong residence: the unasked path
+            // searches the host cache AND `<target>/packs`, and only the second is the repository's own.
+            packAdvice = { resolved, why: expanded.why, inTree: resolvedAt !== null && resolvedAt === path.join(target, "packs") };
         }
 
         const files = draft(answers, scan(target));
@@ -1612,17 +1663,39 @@ export async function run(argv, options = {}) {
                 // hand immediately after `auto` had found one. Worse than merely stale: this tool has
                 // ALREADY checked resolvability above, so it knew. Found by running `init` on a real
                 // never-seen repository for D1, which is the half of this class no reading catches.
+                // **The invocation printed is the one that WORKS, and since 2026-08-13 that is usually
+                // the bare one.** `doctor` consults discovery unasked, so a host carrying the pack needs
+                // no flag at all — and printing `--pack-root auto` there would be the same defect this
+                // branch was already fixed for once, advice to type something the tool no longer needs.
                 const workspaceArg = path.join(parsed.target, ".portulan");
                 if (answers.packRoots.length) {
                     const rootArgs = answers.packRoots.map((r) => `--pack-root ${r}`).join(" ");
                     say(`init: this workspace composes \`${answers.checkpoints}\`, and it resolved — validate with:`);
                     say(`init:   doctor ${rootArgs} ${workspaceArg}`);
+                } else if (packAdvice?.resolved) {
+                    const where = packAdvice.inTree ? "from `packs/` in this repository" : "from this host's plugin cache";
+                    say(`init: this workspace composes \`${answers.checkpoints}\`, and it resolved ${where} — validate with:`);
+                    say(`init:   doctor ${workspaceArg}`);
+                    // Said out loud because it is the one thing the green does not certify — and only
+                    // where it is TRUE. A pack found on this machine is not in the repository, so a CI
+                    // runner with nothing installed derives `<repo>/packs` alone and reports it
+                    // unresolved; a pack found in the tree travels with the tree and needs no warning.
+                    if (!packAdvice.inTree) {
+                        say("init: that root is this machine's, not the repository's — pin `--pack-root <dir>` in CI.");
+                    }
+                } else if (packAdvice?.why) {
+                    say(
+                        `init: this workspace composes \`${answers.checkpoints}\` and this host's plugin record ` +
+                            `could not be read, so whether it is installed is unknown rather than no:`,
+                    );
+                    say(`init:   ${packAdvice.why}`);
+                    say(`init:   doctor --pack-root <dir> ${workspaceArg}     (naming where the pack lives)`);
                 } else {
                     say(
-                        `init: this workspace composes \`${answers.checkpoints}\` and no root was named, so ` +
-                            `validation is RED until you say where to look:`,
+                        `init: this workspace composes \`${answers.checkpoints}\` and nothing here resolves it — ` +
+                            `not the host's plugin cache, and not \`packs/\` in the repository — so validation is RED until you say where to look:`,
                     );
-                    say(`init:   doctor --pack-root auto ${workspaceArg}     (or --pack-root <dir>)`);
+                    say(`init:   doctor --pack-root <dir> ${workspaceArg}`);
                     say("init: or re-draft with --no-cycle and compose it once you know.");
                 }
             }

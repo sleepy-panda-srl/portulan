@@ -29,6 +29,12 @@ import path from "node:path";
 
 import { configDir, recordPath, readInstalls, resolveGovernor, run, EXIT, MANIFEST_AT, RECORD, RECORD_VERSIONS, AUTO, isPackRoot, discoverPackRoots, resolutionRoots } from "./discover.mjs";
 
+// A HERMETIC HOST. The tools consult the host's installed-plugin record on the UNASKED path as of
+// 2026-08-13, so a suite that does not neutralise it reads the machine it runs on and a fixture's
+// verdict moves with what somebody has installed. Swept by `pinned-roots.live.test.mjs`, whose header
+// carries the argument and the limit. A case that wants a host passes `env:` explicitly, which wins.
+process.env.CLAUDE_CONFIG_DIR = fs.mkdtempSync(path.join(os.tmpdir(), "portulan-hermetic-"));
+
 const SCRATCH = [];
 
 test.after(() => {
@@ -664,26 +670,90 @@ test("an explicitly EMPTY named set means search nowhere, and is not a fall-thro
     assert.equal(got.source, "named");
 });
 
-test("precedence: a derived root wins unasked, and the host is never read", () => {
-    // Load-bearing beyond tidiness. `.portulan/verify/compile.sh` byte-compares `compile --check`'s
-    // output, and every required recipe now NAMES its root (2026-08-13) so none of them can reach the
-    // host at all. This property is what protected them before the pins existed, and it still protects
-    // every unpinned caller — an adopter's CI, and anyone running the tool by hand.
+// ─────────────────────────────────────────────────────────────────────────────────────────────
+// The unasked arm. **Two cases here pinned the behaviour the 2026-08-13 disposal reverses, and both
+// are REWRITTEN into the property they were reaching for rather than deleted** — session 12's lesson
+// about a case that "pinned the collapse itself". They asserted a spy at zero calls with a thunk
+// wired, which was the narrowing; what they were actually protecting is that a caller which wires NO
+// thunk stays hermetic, and that is now a case of its own and still forceable red.
+// ─────────────────────────────────────────────────────────────────────────────────────────────
+
+test("unasked, a wired thunk IS consulted and unions — discovered first", () => {
+    // The disposal, at the layer that implements it. Measured before it landed: on the workspace `init`
+    // drafts by default plus one pack of the adopter's own, `doctor` exited 1 with no flag and 0 under
+    // `auto` — so `--pack-root` was not "optional where discovery finds a root", it was mandatory.
     let called = 0;
     const got = resolutionRoots({ named: [], derived: ["/derived"], discovery: () => (called += 1, { ok: true, roots: ["/x"] }), forced: false });
-    assert.equal(called, 0);
-    assert.equal(got.source, "derived");
+    assert.equal(called, 1, "a wired thunk is consulted on the unasked path");
+    assert.equal(got.source, "union");
+    // Order, not membership. `resolvePack` is first-match-wins, so discovered-first is what keeps the
+    // unasked union's answers a superset of the old `auto`'s — and one order in BOTH arms is what stops
+    // the flag changing the meaning of resolution rather than its inputs.
+    assert.deepEqual(got.roots, ["/x", "/derived"]);
+    assert.deepEqual(got.origins, [
+        { root: "/x", origin: "discovered" },
+        { root: "/derived", origin: "derived" },
+    ]);
 });
 
-test("discovery is NEVER consulted unless asked — not even where nothing is derived", () => {
-    // The narrowing this change makes deliberately. An earlier draft gave a workspace deriving no root
-    // a discovered one unasked; `examples/workspace.json` declares packs and no `tree` and
-    // `.portulan/verify/doctor.sh` grades it, so that branch made a REQUIRED recipe read `~/.claude`.
+test("unasked with NO thunk wired, the host is never read and the derived root stands alone", () => {
+    // What the two replaced cases were protecting, kept as its own property. The switch is the thunk's
+    // PRESENCE, not a flag — so an API caller that wires none keeps the behaviour this function had
+    // before the disposal, on every arm. `compile --check`'s host-independence is delivered by the
+    // pinned root in `.portulan/verify/compile.sh` (railed in `pinned-roots.live.test.mjs`), and this
+    // is the second, narrower guarantee underneath it.
+    const got = resolutionRoots({ named: [], derived: ["/derived"] });
+    assert.equal(got.source, "derived");
+    assert.deepEqual(got.roots, ["/derived"]);
+    assert.match(got.why, /pass `--pack-root auto`/);
+});
+
+test("unasked and the record could not be read: derived-only, the diagnostic REPORTED, never exit 2", () => {
+    // **The asymmetry with `forced`, and the reason the two arms are two.** Asked-and-could-not-look is
+    // could-not-run (exit 2, ruled 2026-08-13); unasked-and-could-not-look degrades, because nobody
+    // asked and the readability of a host's record cannot be a precondition for grading a repository.
+    // Silent it must not be: the diagnostic rides in `why`. Asserted as a PAIR with the case below, so
+    // reusing the `forced` branch as the unasked default — the deadliest implementation of this change,
+    // since it would make every CI runner exit 2 or go green on an empty set — cannot pass both.
+    const got = resolutionRoots({ named: [], derived: ["/derived"], discovery: { ok: false, why: "the record is not JSON" } });
+    assert.deepEqual(got.roots, ["/derived"], "the derived root survives; an empty set is not a neutral element");
+    assert.equal(got.couldNotRun, null, "nobody asked, so this is not a could-not-run");
+    assert.match(got.why, /could not look/);
+    assert.match(got.why, /the record is not JSON/, "discovery's own sentence, not a paraphrase of it");
+});
+
+test("ASKED and the record could not be read is still exit 2 — the other half of the pair", () => {
+    const got = resolutionRoots({ named: [], derived: ["/derived"], discovery: { ok: false, why: "the record is not JSON" }, forced: true });
+    assert.deepEqual(got.roots, [], "an asked-for discovery that could not look resolves nothing");
+    assert.match(got.couldNotRun, /the record is not JSON/);
+});
+
+test("unasked where nothing is derived: a discovered root still answers, and none is still none", () => {
+    // The arm that had no root at all. `examples/workspace.json` is the live instance — it declares
+    // `packs` and no `tree`, so this is the branch that grades it, and `doctor`'s note-vs-fail keying on
+    // ORIGIN is what keeps that workspace green either way. See `doctor.test.mjs`.
     let called = 0;
-    const got = resolutionRoots({ named: [], derived: [], discovery: () => (called += 1, { ok: true, roots: ["/d"] }) });
-    assert.equal(called, 0, "the host's plugin record must not be read on an unasked path");
-    assert.equal(got.source, "none");
-    assert.match(got.why, /discovery was not asked for/);
+    const found = resolutionRoots({ named: [], derived: [], discovery: () => (called += 1, { ok: true, roots: ["/d"] }) });
+    assert.equal(called, 1);
+    assert.equal(found.source, "union");
+    assert.deepEqual(found.origins, [{ root: "/d", origin: "discovered" }]);
+
+    // And with no thunk, unchanged: the stem of this sentence is asserted by `doctor.test.mjs`'s
+    // "a declared pack on a workspace with no tree is REPORTED, never failed" too, which is why the
+    // implementation keeps it one string and varies only the tail.
+    const hermetic = resolutionRoots({ named: [], derived: [] });
+    assert.equal(hermetic.source, "none");
+    assert.match(hermetic.why, /none is derivable from the manifest/);
+    assert.match(hermetic.why, /discovery was not asked for/);
+});
+
+test("unasked, discovery answering `nothing installed` keeps its own sentence rather than a bare zero", () => {
+    // "0 root(s)" cannot tell a host with no record from a host whose record lists nothing relevant, and
+    // those are different facts about the machine. The same reasoning as the `forced` arm's, and the
+    // reason both arms build their plan through one `union` helper.
+    const got = resolutionRoots({ named: [], derived: ["/derived"], discovery: { ok: true, roots: [], why: "no record — nothing installed" } });
+    assert.equal(got.source, "derived");
+    assert.match(got.why, /no record — nothing installed/);
 });
 
 test("`--pack-root auto` UNIONS with the derived root, discovered first", () => {

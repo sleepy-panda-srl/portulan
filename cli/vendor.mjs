@@ -1187,7 +1187,17 @@ export async function run(argv, options = {}) {
         // moment the old residence still governs — that pair IS the two-governor red. The both-ends
         // check with `--repo-root` runs after the flip, which is the first moment it can be satisfied.
 
+        // **`env` is threaded into every `verdict` call, and it stopped being optional hygiene on
+        // 2026-08-13.** `verdict` calls `doctor`'s `inspect`, which builds its own resolution plan and
+        // wires its own discovery thunk — so `vendor` acquired the unasked-discovery behaviour without a
+        // line of it being edited here, and with `env` absent every run read the machine it happened to
+        // be on. That is the hazard `vendor.test.mjs`'s own `green()` helper already names for the
+        // pointer half: *the suite would behave one way on his laptop and another in CI.* Passed as part
+        // of the doctor-options bundle so the two `verdict` sites below cannot disagree about it —
+        // `oldResidence` was called with a bare `{}` and is exactly the sibling a fix at one site leaves
+        // standing.
         const roots = {
+            ...(options.env ? { env: options.env } : {}),
             ...(parsed.packRoots.length ? { packRoots: parsed.packRoots.map((r) => path.resolve(r)) } : {}),
             ...(parsed.discoverPacks ? { discoverPacks: true } : {}),
         };
@@ -1327,7 +1337,15 @@ export async function run(argv, options = {}) {
 
         const bothRoots = { ...roots, ...(parsed.repoRoots.length ? { repoRoots: parsed.repoRoots.map((r) => path.resolve(r)) } : {}) };
         const newEnd = await verdict(dest, bothRoots);
-        const oldEnd = leave === "pointer" ? await verdict(oldResidence, {}) : fs.existsSync(oldManifest) ? [{ check: "residence", message: `a manifest still stands at ${display(oldManifest)}` }] : [];
+        // `env` and nothing else: the old residence is graded as a POINTER, so its pack roots are not
+        // the question — but its `governed_by` is dereferenced against the host's record, and the
+        // injection seam has to reach here too. It was a bare `{}`.
+        const oldEnd =
+            leave === "pointer"
+                ? await verdict(oldResidence, { ...(options.env ? { env: options.env } : {}) })
+                : fs.existsSync(oldManifest)
+                  ? [{ check: "residence", message: `a manifest still stands at ${display(oldManifest)}` }]
+                  : [];
         if (newEnd.length || oldEnd.length) {
             // Past the flip. Rolling back would re-open the window in the other direction, so this goes
             // forward and reports: exactly one workspace governs, and it is the new one. The old

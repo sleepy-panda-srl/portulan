@@ -77,6 +77,12 @@ import { collisions as initCollisions } from "./init.mjs";
 import { collisions as newCollisions } from "./new.mjs";
 import { collisions as vendorCollisions } from "./vendor.mjs";
 
+// A HERMETIC HOST. The tools consult the host's installed-plugin record on the UNASKED path as of
+// 2026-08-13, so a suite that does not neutralise it reads the machine it runs on and a fixture's
+// verdict moves with what somebody has installed. Swept by `pinned-roots.live.test.mjs`, whose header
+// carries the argument and the limit. A case that wants a host passes `env:` explicitly, which wins.
+process.env.CLAUDE_CONFIG_DIR = fs.mkdtempSync(path.join(os.tmpdir(), "portulan-hermetic-"));
+
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 
 // ONE exit handler for every scratch directory, not one each — ./new.test.mjs records why, and

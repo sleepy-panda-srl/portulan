@@ -22,6 +22,12 @@ import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
+// A HERMETIC HOST. The tools consult the host's installed-plugin record on the UNASKED path as of
+// 2026-08-13, so a suite that does not neutralise it reads the machine it runs on and a fixture's
+// verdict moves with what somebody has installed. Swept by `pinned-roots.live.test.mjs`, whose header
+// carries the argument and the limit. A case that wants a host passes `env:` explicitly, which wins.
+process.env.CLAUDE_CONFIG_DIR = fs.mkdtempSync(path.join(os.tmpdir(), "portulan-hermetic-"));
+
 import {
     CompileError,
     parse,
@@ -2095,10 +2101,26 @@ test("compile prints the union plan line even without `--matrix`", () => {
     // Normally that line is withheld from a byte-compared run because it moves with what is installed.
     // A union is the one arrangement where a tree-derived root joined the search unnamed, and the
     // union's whole contract is that this is never silent — so the line is not optional there.
-    // `--check` cannot reach it: it names no root and passes no `auto`.
+    // _(This said "`--check` cannot reach it: it names no root and passes no `auto`", which stopped
+    // being true on 2026-08-13 — a bare `--check` unions unasked and prints the line for exactly this
+    // reason. The REQUIRED check still cannot reach it, because `../.portulan/verify/compile.sh` names a
+    // root and `source` is `named` there.)_
     const home = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), "compile-union-host-"));
     const installPath = path.join(home, "plugins", "cache", "feed", "carrier", "0.1.0");
     fs.mkdirSync(path.join(installPath, "packs"), { recursive: true });
+    // **A REAL pack in the cache, and the first draft of the unasked half omitted it.** `isPackRoot` asks
+    // whether a directory holds `<category>/<name>/pack.json`, so an empty `packs/` is not a root and
+    // discovery finds nothing. The `forced` arm unions anyway — it reports what came back from a search
+    // somebody asked for, including nothing — while the unasked arm returns `derived` and says discovery
+    // found no root in its `why`. That asymmetry is deliberate and it made this fixture pass the asked
+    // half while binding nothing on the unasked one.
+    const cachePack = path.join(installPath, "packs", "rituals", "checkpoints");
+    fs.mkdirSync(cachePack, { recursive: true });
+    fs.writeFileSync(
+        path.join(cachePack, "pack.json"),
+        JSON.stringify({ portulan: { pack: "1.0", version: "0.1.0" }, name: "checkpoints", category: "rituals", summary: "x", doc: "README.md", contributes: {} }),
+    );
+    fs.writeFileSync(path.join(cachePack, "README.md"), "# x\n");
     const record = path.join(home, "plugins", "installed_plugins.json");
     fs.mkdirSync(path.dirname(record), { recursive: true });
     fs.writeFileSync(record, JSON.stringify({ version: 2, plugins: { "carrier@feed": [{ scope: "user", installPath, version: "0.1.0" }] } }));
@@ -2120,14 +2142,24 @@ test("compile prints the union plan line even without `--matrix`", () => {
     const before = process.env.CLAUDE_CONFIG_DIR;
     process.env.CLAUDE_CONFIG_DIR = home;
     process.stdout.write = (chunk) => (said.push(String(chunk)), true);
+    const unasked = [];
     try {
         run(["--workspace", path.join(dir, ".portulan"), "--pack-root", "auto"]);
+        // **The unasked path prints it too, and this half was unbound until the pre-commit checkpoint
+        // asked for it.** "Never silently" is the union's whole justification and `--check` reaches the
+        // union now, so the assertion that mattered most was the one nobody had written. The two runs
+        // share one `if`, which is exactly why a reader might assume the second needs no case — and why
+        // it does: the condition is `plan.source === "union"`, and only a run proves the unasked arm
+        // produces that source through this tool rather than only through `resolutionRoots`.
+        process.stdout.write = (chunk) => (unasked.push(String(chunk)), true);
+        run(["--workspace", path.join(dir, ".portulan"), "--check"]);
     } finally {
         process.stdout.write = write;
         if (before === undefined) delete process.env.CLAUDE_CONFIG_DIR;
         else process.env.CLAUDE_CONFIG_DIR = before;
     }
     assert.match(said.join(""), /resolution root union/);
+    assert.match(unasked.join(""), /resolution root union — discovered in the host plugin cache unasked/);
 });
 
 // A host whose plugin record EXISTS and will not parse — could-not-look, not absence.

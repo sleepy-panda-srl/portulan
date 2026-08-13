@@ -42,6 +42,45 @@ records how things were found. This is per *release* and records what a reader g
 ## Unreleased
 ### Changed
 
+- **A pack root is now discovered whether or not you ask, so `--pack-root` is optional where discovery
+  finds one.** It was not optional before, and the measurement rather than the wording is what settles
+  that: on the workspace `portulan init` drafts by default plus one pack of the adopter's own,
+  `doctor` exited **1** with no flag and **0** under `--pack-root auto`, `recipe-set` and
+  `skills-set --check` exited **2**, and `compile` composed the bound checkpoint pack's two gate
+  fragments into nothing. Three of five tools were unusable without a flag whose value is a path nobody
+  should have to know.
+
+  **What `auto` still does, since it no longer unlocks anything: it selects the strict degrade.** Asking
+  for discovery and being unable to look is **could-not-run — exit 2**, unchanged. Not asking and being
+  unable to look keeps the `tree`-derived root and **reports the diagnostic** — never an empty set and
+  never exit 2, because nobody asked and the readability of a host's record cannot be a precondition for
+  grading a repository. One union order in both arms, discovered first.
+
+  **A named root is untouched and still wins outright**, so *"this pack resolved from the feed"* remains
+  unsatisfiable by a copy in the local tree wherever a root is named, and asking for a named root **and**
+  `auto` is still refused.
+
+  **Two things, stated at their real width because a bare-run verdict DOES move with the machine — by
+  design, since this tool is a per-host capability report.** First, every **required** check names its
+  root, which replaces every other source, so a required check cannot consult the host at all; that is
+  what the old narrowing was really protecting and it is now carried by the pins rather than by the
+  absence of a default. Second, `doctor`'s note-vs-fail distinction is keyed on a root's **origin** rather
+  than on how many roots there are, so machine state can never turn a **miss** into a failure — a
+  *discovered* root is nobody's claim about this workspace, and it can only turn a note into a
+  resolution. Neither makes a bare run host-independent, and the second does not cover a *hit*: a
+  discovered copy that resolves and is invalid FAILS, with its origin named, because that is a claim the
+  pack's own files make — measured: `doctor --pack-root auto
+  examples` exited **1** before this change and **0** after, because `examples` derives no root and the
+  count-based key let host state flip a workspace's verdict.
+
+  **What `init` does with it, and the line it may not cross.** The pre-draft resolvability check and the
+  closing advice consult discovery, so an adopter on a host carrying the pack is told to run `doctor
+  <workspace>` with no flag at all — and is told that the root used is the machine's, not the
+  repository's. On the unasked path a pack that does not resolve is **advice and never a refusal**: `init`
+  drafting on one host and refusing on another would make the existence of files a function of the
+  machine. **The drafted files are byte-identical on every host** — advice may vary, files may not, which
+  is [`docs/vision.md`](docs/vision.md)'s *no auto-generated curated context*.
+
 - **`--pack-root auto` no longer turns a correct red into a green on a host it could not read.** Two
   fail-opens, measured on the workspace `portulan init` drafts by default plus one pack of the
   adopter's own. On a host whose installed-plugin record is **absent** — which is every CI runner —
@@ -58,7 +97,9 @@ records how things were found. This is per *release* and records what a reader g
   schema, discovery stops loudly rather than silently converting every `auto` user to derived-only.
 
   **What did NOT change:** the unasked path, byte for byte. A run with no `--pack-root` resolves
-  exactly as before.
+  exactly as before. _(True of this change and no longer true of the tool: the entry above it, dated
+  2026-08-13, makes the unasked path consult discovery. Kept as written because it is scoped to what
+  **this** change did, which is the ordering that made it safe to land first.)_
 
 - **`--pack-root auto` now searches the discovered roots *and* the `tree`-derived one, discovered
   first.** It replaced the derived root before. The change is a measurement rather than a preference:
@@ -77,7 +118,9 @@ records how things were found. This is per *release* and records what a reader g
   origin. What bounds a pack's content is unchanged and is the feed pin.
 
   **The unasked path is untouched by construction** — the union lives inside the branch `auto`
-  triggers — so no required verify recipe begins reading the host's plugin record.
+  triggers — so no required verify recipe begins reading the host's plugin record. _(Scoped to this
+  change. The unasked path gained the union on 2026-08-13; what still keeps a required recipe off the
+  host is that each one **names** its root, which the same day's pins delivered.)_
 
   **Asking for a named root and `auto` together is now refused (exit 2) in every tool that takes the
   flag** — five when this entry was written, seven since `recipe-set` and `init` joined them. They
@@ -211,7 +254,12 @@ provenance; the **named**-root half of the first sentence is the part that still
 runs only when asked**, so `--pack-root` is not literally optional —
 what stops being necessary is knowing the path; that is narrower than the milestone row's wording and
 deliberate, because an unasked-for discovered root would make `.portulan/verify/doctor.sh` read
-`~/.claude` on every run and answer differently per machine. And **`--repo-root` stays named-only**: a
+`~/.claude` on every run and answer differently per machine. _(**Superseded 2026-08-13** — see *"a pack
+root is now discovered whether or not you ask"* above. `--pack-root` **is** optional now; the narrowing's
+stated reason was answered by **pinning that recipe's root** rather than by keeping the default. This
+sentence is amended rather than left standing because it states a **current property**, and it and its
+replacement sit under the same unreleased heading: a reader of one release would otherwise be given both
+answers with nothing to choose between them.)_ And **`--repo-root` stays named-only**: a
 repository checkout is not something a plugin record lists. Closes
 [#123](https://github.com/sleepy-panda-works/portulan/issues/123).
 

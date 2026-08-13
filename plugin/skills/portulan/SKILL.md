@@ -176,12 +176,28 @@ stand — owed rather than broken** — the split is stated because a bare count
 [#133](https://github.com/sleepy-panda-works/portulan/issues/133) names, and "four" alone goes stale the
 moment one of them ships:
 
-- **Discovering the root — LANDED at milestone 7** (#123), and in the CLI only. `--pack-root auto` reads
-  the host's installed-plugin record, in both shapes a plugin lands in, and **only when asked**: a named
-  root **replaces** the derived one, and a discovered root that silently joined the search would end that
-  property. So *"declared"* and *"resolved"* are still two states here, and a boot cannot assume a
-  declared pack resolved from a feed unless somebody said `auto`. **A workspace resolved from a pointer
-  is in exactly the same state about its own packs as an in-repo one.**
+- **Discovering the root — LANDED at milestone 7** (#123), and in the CLI only. The CLI reads the host's
+  installed-plugin record, in both shapes a plugin lands in. It read it **only when asked** until
+  2026-08-13; since then it reads it **by default**, because row 7's clause is that `--pack-root` and its
+  siblings are *optional where discovery finds a root* and they were not — on the workspace `init` drafts
+  by default plus one pack of the adopter's own, `doctor` exited **1** bare and **0** under `auto`.
+  `--pack-root auto` now selects the strict degrade (asked-and-could-not-look is exit 2) rather than
+  unlocking discovery, and a **named** root still **replaces** the derived one, which is the property that
+  never moved.
+
+  **What this changes for a boot's report, and it is the load-bearing half.** *"Declared"* and
+  *"resolved"* are still two states, and a boot still cannot assume a declared pack resolved **from a
+  feed** — a green certifies resolution, never provenance, and each pack's resolution names which root
+  answered and whether it was discovered or derived. What a boot may no longer say is that a declared pack
+  is unresolved *because nobody passed a flag*. **A workspace resolved from a pointer is in exactly the
+  same state about its own packs as an in-repo one.**
+
+  **What bounds it, at its real width.** A bare run's verdict *does* move with the host — `doctor` is a
+  per-host capability report and that is what it is for. What is bounded is narrower and is two things: a
+  **required** check names its root, which replaces every other source, so it cannot consult the host at
+  all; and a **discovered** root can turn an unresolved pack from a note into a resolution and never a
+  **miss** into a failure. A discovered copy that resolves and is *invalid* still fails, with its origin
+  named — so report the host's answer as the host's, and never as the repository's.
 - **A pack's skills register only where the plugin declares the directory that actually holds them.**
   Since 2026-08-09 a *validator* also refuses a bundle where that declaration and the workspace's `packs`
   array disagree — a rail on the packaging, never a change to how the host decides. A host expands a declared skills

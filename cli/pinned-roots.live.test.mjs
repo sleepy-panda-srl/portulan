@@ -16,6 +16,31 @@
 // argument list dynamically would pass while naming nothing. Both are out of reach of a text sweep,
 // and a stronger check would need the recipes to report their own plan — which is worth doing when a
 // second pinned caller wants it, not before.
+//
+// ## The second subject, added 2026-08-13 with the disposal: the SUITE's own hermeticity
+//
+// A pinned root keeps a required *check* off the host. Nothing kept the **suite** off it, and from the
+// day the tools began consulting discovery on the unasked path that mattered: measured on the
+// disposal's branch, **nine cases** across `compile.test.mjs` and `index.test.mjs` failed on a machine
+// carrying an installed pack and passed on an empty host. A suite whose verdict depends on the
+// developer's plugin inventory is worse than a red one, because the direction of the error is
+// unpredictable — a fixture can start passing for a reason its author never wrote down.
+//
+// The containment is one line per test file — `process.env.CLAUDE_CONFIG_DIR` pointed at an empty
+// directory that EXISTS, so discovery *answers* `absent` rather than being unable to look — and the
+// sweep below is what stops the next test file omitting it.
+//
+// **Its limits, both of them measured rather than reasoned.** It reads the file as text, so it knows the
+// line is present and not that it runs before the first case. And **its membership rule was wrong when
+// first written**: it mapped `<module>.mjs` to `<module>.test.mjs`, which structurally cannot see a
+// `.live.test.mjs` sibling, so `cli/upgrade.live.test.mjs` was reading the real machine while this
+// header claimed otherwise. Membership is derived from the test file's own **imports** now. What the
+// sweep buys is that a new test file reaching an in-closure module cannot be silently un-neutralised.
+//
+// _Its correctness was established by measurement rather than by argument: with the guards in place the
+// full suite was run twice, against two different `CLAUDE_CONFIG_DIR` values, and the failure lists were
+// byte-identical. That comparison is the real proof and it is not automated here — it costs two full
+// suite runs, and a rail that nobody will wait for is a rail that gets switched off._
 
 import test from "node:test";
 import assert from "node:assert/strict";
@@ -112,4 +137,141 @@ test("the roster covers every verify recipe that invokes a root-taking tool", ()
         [],
         "a verify recipe invokes a root-taking tool and is not in this file's roster",
     );
+});
+
+/** The line every test file in the closure must carry. Asserted as a substring, not re-spelled. */
+const HERMETIC = 'process.env.CLAUDE_CONFIG_DIR = fs.mkdtempSync(path.join(os.tmpdir(), "portulan-hermetic-"));';
+
+/**
+ * Does this source IMPORT that module — as a statement, not as a mention?
+ *
+ * **Bounded by the statement's semicolon, and that is the third spelling of this predicate rather than
+ * the first.** Both earlier ones measured less than they claimed:
+ *
+ * 1. A bare substring test made **this file** a member of its own closure — it contains the literal
+ *    `from "./recipe-set.mjs"` as the *data* for the severing case below, so the instrument counted its
+ *    own test data as evidence.
+ * 2. Anchoring to a single LINE fixed that and silently dropped `compile.test.mjs`, `doctor.test.mjs`
+ *    and `index.test.mjs` — the three whose imports are **multi-line**, and the three that matter most.
+ *    The sweep stayed green throughout, because those files were guarded anyway: a rail can lose its
+ *    most important members and report nothing. Caught by the mutation harness, which removed a guard
+ *    and found the sweep no longer noticed.
+ *
+ * `[^;]*?` is what makes both true at once: an import statement contains no semicolon before its `from`,
+ * however many lines it spans, and a string literal mentioning one is always separated from any earlier
+ * `import` by at least one semicolon.
+ *
+ * **A DYNAMIC import counts, and leaving it out was the same defect a third time.** `cli/new.test.mjs`
+ * reaches `doctor` only through an awaited dynamic import, so a static-import predicate could not see it
+ * — and that file **was** consulting the real machine, measured by a checkpoint that instrumented
+ * `readInstalls` and found exactly one ambient consult across the whole suite. It is the pointer half,
+ * which is reported and never graded, so no verdict moved today; it becomes the pack arm the moment a
+ * scaffolded workspace declares packs. Static membership derived without its dynamic sibling is
+ * `../.portulan/proposals/0020-a-fix-is-not-done-at-the-site-it-was-found.md` inside the rail built
+ * against it, for the third time in one change.
+ *
+ * **This paragraph deliberately does not SPELL a dynamic import**, and the omission is the point rather
+ * than a style choice: writing the call with its specifier inline put this file back into its own
+ * closure the moment the dynamic pattern was added, and the self-membership assertion below caught it
+ * within a minute of being written. A predicate that reads source cannot tell prose from code, so prose
+ * about it has to avoid the shapes it matches — which is a real cost of the design and is stated rather
+ * than left for the next person to rediscover.
+ */
+function importsModule(src, mod) {
+    const spec = mod.replace(/\./g, "\\.");
+    const statically = new RegExp(`(?:^|\\n)\\s*import\\b[^;]*?from\\s+"\\./${spec}"`);
+    // `import(` with the specifier attached, so a bare mention in prose or a string still does not count.
+    const dynamically = new RegExp(`\\bimport\\s*\\(\\s*"\\./${spec}"`);
+    return statically.test(src) || dynamically.test(src);
+}
+
+/**
+ * Every test file whose subject can reach the host's plugin record, derived rather than listed.
+ *
+ * Two hops: a module that calls `discoverPackRoots` directly, plus a module that imports one of those.
+ * `upgrade` and `vendor` are only in the set through the second hop — they never mention discovery and
+ * acquired its behaviour through `doctor`'s `inspect`, which is exactly the reason this is derived. A
+ * hand-written list would have held the five obvious files and missed those two.
+ *
+ * **The test side is derived from IMPORTS too, and mapping by filename was a real hole rather than a
+ * stylistic choice.** It read `<module>.mjs` → `<module>.test.mjs`, which structurally cannot see a
+ * `.live.test.mjs` sibling: `cli/upgrade.live.test.mjs` reached the host's record through the new
+ * unasked arm — traced `upgrade.run` → `doctor`'s `inspect` → `resolutionRoots` → `readInstalls` — and
+ * this sweep could never have flagged it, while the header above claimed it would. Found by the
+ * pre-commit checkpoint, in the rail this change added **against that class**, which is
+ * `../.portulan/proposals/0020-a-fix-is-not-done-at-the-site-it-was-found.md` at its sharpest: the fix
+ * landed at twelve sites and not at their `.live` siblings.
+ */
+function hermeticClosure(read = (rel) => fs.readFileSync(path.join(REPO, rel), "utf8")) {
+    const entries = fs.readdirSync(path.join(REPO, "cli")).filter((f) => f.endsWith(".mjs"));
+    const modules = entries.filter((f) => !f.includes(".test."));
+    const direct = modules.filter((f) => /discoverPackRoots\(/.test(read(`cli/${f}`)));
+    const closure = new Set(direct);
+    // Two passes rather than one: `librarian.mjs` reaches discovery through `index.mjs`, so a single
+    // pass over `direct` would miss it.
+    for (let hop = 0; hop < 2; hop += 1) {
+        for (const f of modules) {
+            const src = read(`cli/${f}`);
+            for (const seen of [...closure]) {
+                if (importsModule(src, seen)) closure.add(f);
+            }
+        }
+    }
+    return entries
+        .filter((f) => f.endsWith(".test.mjs"))
+        .filter((f) => {
+            const src = read(`cli/${f}`);
+            return [...closure].some((m) => importsModule(src, m));
+        })
+        .sort();
+}
+
+test("every test file whose tool can reach the host's plugin record neutralises it", () => {
+    const closure = hermeticClosure();
+    // **The floor is the MEASURED size, not a comfortable margin.** It was `>= 10`, which a derivation
+    // missing its three most important members satisfied; raised to `>= 14`, which still left two members
+    // free to drop in silence. A count assertion cannot tell a broad set from a broad-enough one, so it
+    // is pinned at what the tree actually holds and the members whose absence a count could hide are
+    // named — one per failure mode this predicate has actually had: multi-line imports, and a dynamic one.
+    assert.ok(closure.length >= 17, `the closure shrank to ${closure.length}: ${closure.join(" ")} — see \`importsModule\``);
+    for (const owed of ["compile.test.mjs", "doctor.test.mjs", "index.test.mjs", "upgrade.live.test.mjs", "new.test.mjs"]) {
+        assert.ok(closure.includes(owed), `${owed} dropped out of the derived closure — see \`importsModule\``);
+    }
+    // **The instrument must not be its own evidence.** A substring predicate makes this file a member of
+    // its own closure, because it holds `from "./recipe-set.mjs"` as the severing case's data — and the
+    // guard check would then pass anyway, since the file also holds `HERMETIC` as a constant. So that
+    // failure mode was unbindable by the sweep until this line: it is the only assertion that reds under
+    // it. Measured by regressing the predicate to a substring match and watching this go red.
+    assert.equal(closure.includes("pinned-roots.live.test.mjs"), false, "the sweep counted its own test data as an import");
+    const unguarded = closure.filter((f) => !fs.readFileSync(path.join(REPO, "cli", f), "utf8").includes(HERMETIC));
+    assert.deepEqual(
+        unguarded,
+        [],
+        "a test file whose tool consults the plugin record reads the machine it runs on — see this file's header",
+    );
+});
+
+test("the closure is derived from the imports, not from a list — shown by severing one", () => {
+    // **The rail's own rail.** The sweep above passes trivially if `hermeticClosure` returns few files or
+    // the wrong ones, and a derivation nobody has forced is a list with extra steps. So the derivation is
+    // re-run against a substituted reader with one import removed, and the assertion is that the file
+    // DROPS OUT — only possible if membership comes from the import graph.
+    //
+    // `stop-gate.mjs` is the subject because it reaches discovery by **exactly one** route
+    // (`recipe-set.mjs`). The first draft of this case used `librarian.mjs` and asserted the wrong thing:
+    // librarian imports `doctor.mjs` **and** `index.mjs`, both direct members, so severing one changed
+    // nothing and the case failed for a reason that was about the fixture rather than the derivation.
+    // Measured, not assumed — the route count of every second-hop member was listed before choosing.
+    const real = (rel) => fs.readFileSync(path.join(REPO, rel), "utf8");
+    assert.ok(hermeticClosure(real).includes("stop-gate.test.mjs"), "the two-hop member is missing from the closure");
+
+    const severed = (rel) => (rel === "cli/stop-gate.mjs" ? real(rel).replaceAll('from "./recipe-set.mjs"', 'from "./nothing.mjs"') : real(rel));
+    assert.equal(
+        hermeticClosure(severed).includes("stop-gate.test.mjs"),
+        false,
+        "membership must follow the imports; it did not change when the only route was removed",
+    );
+    // And the sever is a real one: a typo in the pattern would leave the source untouched and this case
+    // would then be asserting nothing at all.
+    assert.notEqual(severed("cli/stop-gate.mjs"), real("cli/stop-gate.mjs"), "the substitution changed nothing");
 });
