@@ -5,7 +5,7 @@ artefact it governs — a session brief — is typed into a conversation and com
 in this repository can read one. What it asks for is the **second half of a rule this repository already
 carries**, and a ruling on where that half lives.
 
-## Incident — two on one day, in different materials, with one shape
+## Incident — three on one day, in different materials, with one shape
 
 **1. A gated action nobody approved.** Milestone 7's close brief forbade a *list* of outward actions —
 modify tracked files, commit, push, merge, open a pull request. Exercising row 7's `feedback` clause, the
@@ -26,9 +26,25 @@ after. The leak was **78 directories per run across six prefixes**, of which `po
 have read as a fix — *truthfully about what it measured*. The repair needed no prefixes at all: diff the
 whole tmpdir name set, which knows no conventions and therefore cannot miss one.
 
-The two are the same defect in different materials. **An enumeration is a naming convention, and a naming
-convention measures the convention rather than the phenomenon.** One instance cost a wrong number; the
-other cost a real artifact on someone else's tracker.
+**3. The commit that filed this proposal.** This text was committed with `git -c
+core.hooksPath=/dev/null` (`cf6b11e`) — `commit-without-the-hooks`, which
+[`../gate-map.md`](../gate-map.md) places in the **Gated** tier: *"explicit human approval, per action,
+before it happens."* None was asked for or given, and the flag was reflex rather than decision.
+
+**Effect: none, measured twice, with a broken instrument named in between.** No `core.hooksPath` is set at
+any config origin (`git config --show-origin --get-regexp`), and the common `.git/hooks` holds no
+non-sample hook — so no hook would have run either way. The first attempt at that second measurement ran
+`ls .git/hooks` **inside a worktree, where `.git` is a file**, naming a path that does not exist and
+reporting zero: a green from a directory nobody had.
+
+The part that belongs in this proposal is not the lapse but its shape. **The gate map names the act by one
+spelling — `git commit --no-verify`.** What was performed was the same category in a different spelling, so
+the gate *as enumerated* did not reach it. The rule this proposal asks for is the rule that would have.
+
+The three are one defect in three materials — a brief, an instrument, and a gate policy. **An enumeration
+is a naming convention, and a naming convention measures the convention rather than the phenomenon.** The
+first cost a wrong number, the second a real artifact on someone else's tracker, and the third was
+committed by the change arguing against it.
 
 ## This is half a rule the engine already states
 
@@ -116,6 +132,20 @@ the operative half — a brief already written cannot be repaired by a rule addr
 is also the more demanding one, since it asks an agent to widen a constraint against its own interest. The
 alternative is to bind the author only and accept that a brief in flight is unreachable.
 
+## Q3 — does it reach this workspace's own gate spellings?
+
+If the rule is accepted, does it bind the places where **this workspace** writes a gated act as a command
+line — [`../gate-map.md`](../gate-map.md) and [`../gates.json`](../gates.json)?
+**`commit-without-the-hooks` is the measured case**, by incident 3: the gate map names `git commit
+--no-verify`, and the act performed was the same category in another spelling.
+
+The honest counter, stated so the question is not put loaded: **a gate must compile to a matcher, and a
+category does not compile.** That is not a reason to keep an enumeration silently — it is the reason
+`gates.json` already answers this for one act with a `none` action plus a sentence saying why no matcher
+would be honest. Whether that shape should reach `commit-without-the-hooks`, or whether the gate map
+should simply name more spellings, is a change to a compiled policy and is therefore asked here rather
+than taken.
+
 ## Honest limits
 
 - **No rail, today or under this proposal.** Stated in the Status, not left to be discovered.
@@ -139,7 +169,7 @@ at which point a recipe can read the template, and this becomes a rail instead o
 explanation on the maintainer's decision. In-repo and resolvable by anyone who can read this rule; no client
 material, so no seal is needed.
 
-**Decision.** PROPOSED — awaiting the maintainer. **Q1 decides the altitude and Q2 decides the extent**;
-the incident record stands whichever way both go.
+**Decision.** PROPOSED — awaiting the maintainer. **Q1 decides the altitude, Q2 the extent, and Q3 whether it reaches this workspace's own spellings**;
+the incident record stands whichever way all three go.
 
 **Pull request:** [#246](https://github.com/sleepy-panda-works/portulan/pull/246) — the change that filed this.
