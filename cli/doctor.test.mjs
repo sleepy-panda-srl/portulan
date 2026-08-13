@@ -2982,6 +2982,68 @@ describe("agent legibility is scored, reported, and never graded", () => {
         return legibility(manifest, dir);
     };
 
+    // #228 item 1. Products resolve `product.affordances ?? workspace.affordances`, so N products
+    // inheriting one workspace-level default all name the SAME document — which was read N times, and
+    // when it could not be read, counted N times under a name that says documents.
+    //
+    // The read count is the only observable: `legibility` returns `met`/`applicable`/`dimensions`, and
+    // neither half moves a verdict — `limits` asks `unreadable === 0`, never the magnitude. So the
+    // instrument is a counting spy on `fs.readFileSync`, which measures the actual claim ("once per
+    // document") rather than a proxy for it. Restored in `finally` so a failing assertion cannot leave
+    // the module patched for every case after it.
+    const readsOf = (manifest, files) => {
+        const real = fs.readFileSync;
+        const hits = [];
+        fs.readFileSync = (p, ...rest) => {
+            if (String(p).endsWith("affordances.md")) hits.push(String(p));
+            return real(p, ...rest);
+        };
+        try {
+            scoreOf(manifest, files);
+        } finally {
+            fs.readFileSync = real;
+        }
+        return hits;
+    };
+
+    test("one inherited affordances document is read once, not once per product", () => {
+        const m = full();
+        m.affordances = "affordances.md";
+        m.products = [
+            { id: "a", name: "A", product: "product.md" },
+            { id: "b", name: "B", product: "product.md" },
+            { id: "c", name: "C", product: "product.md" },
+        ];
+        assert.equal(readsOf(m, { "affordances.md": withLimits }).length, 1, "three products, one document, one read");
+    });
+
+    test("an unreadable inherited document counts once — the counter is of documents, not products", () => {
+        const m = full();
+        m.affordances = "affordances.md";
+        m.products = [
+            { id: "a", name: "A", product: "product.md" },
+            { id: "b", name: "B", product: "product.md" },
+            { id: "c", name: "C", product: "product.md" },
+        ];
+        // No affordances.md on disk: every read attempt fails. Before the fix there were three
+        // attempts and `unreadable` reached 3 for one missing document.
+        assert.equal(readsOf(m, {}).length, 1, "three products, one missing document, one attempt");
+    });
+
+    test("distinct documents are still each read — dedup is by `rel`, not a cap of one", () => {
+        const m = full();
+        m.products = [
+            { id: "a", name: "A", product: "product.md", affordances: "affordances.md" },
+            { id: "b", name: "B", product: "product.md", affordances: "other-affordances.md" },
+        ];
+        // The negative control for the two cases above: dedup keyed on `rel` must not collapse two
+        // genuinely different documents into one read. Without this, a fix that simply stopped after
+        // the first document would pass both cases above and lose a product's own affordances.
+        const hits = readsOf(m, { "affordances.md": withLimits, "other-affordances.md": withLimits });
+        assert.equal(hits.length, 2, "two products naming two documents are two reads");
+        assert.equal(new Set(hits).size, 2, "and two distinct paths, not one read twice");
+    });
+
     test("a workspace declaring everything scores every applicable dimension", () => {
         const score = scoreOf(full());
         assert.equal(score.met, score.applicable, JSON.stringify(score.dimensions.filter((d) => !d.met), null, 2));

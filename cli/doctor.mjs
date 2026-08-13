@@ -1081,12 +1081,28 @@ export function legibility(workspace, dir) {
     );
 
     // The slot the amendment names, read for both of its dimensions in one pass.
+    //
+    // **Per DOCUMENT, not per product**, and the distinction is the whole of #228 item 1. `products`
+    // resolve `product.affordances ?? workspace.affordances`, so N products inheriting one
+    // workspace-level default all name the same `rel` — which was read N times, and, when it could not
+    // be read, counted N times. `unreadable` was therefore a count of **products**, under a name that
+    // says documents, and both dimensions below are about documents.
+    //
+    // Nothing read the magnitude — `limits` asks only `unreadable === 0`, so no verdict moved — which
+    // is exactly why it is worth fixing now rather than after something starts reading it. A count
+    // wrong about its own unit, in the tool whose subject is claims being checkable.
+    //
+    // Triaged out of [#227](https://github.com/sleepy-panda-works/portulan/pull/227) at the two-fix-round
+    // bound and **dropped on 2026-08-12 for scope, not on merits** — "nothing here opens
+    // cli/doctor.mjs" — which is the disposition this change reverses now that something does.
     const products = workspace.products ?? [];
     const docs = [];
+    const seen = new Set();
     let unreadable = 0;
     for (const product of products) {
         const rel = product.affordances ?? workspace.affordances;
-        if (!rel) continue;
+        if (!rel || seen.has(rel)) continue;
+        seen.add(rel);
         try {
             docs.push({ rel, text: fs.readFileSync(path.resolve(dir, rel), "utf8") });
         } catch {
