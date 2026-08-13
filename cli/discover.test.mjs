@@ -735,3 +735,22 @@ test("the keyword is the literal `auto`, so `./auto` stays a directory", () => {
     assert.equal(AUTO, "auto");
     assert.notEqual(AUTO, path.resolve("./auto"));
 });
+
+test("`forced` with NO discovery wired is could-not-run, not an empty plan", () => {
+    // Copilot, round 4 on #236. The sibling of the unreadable-record case, one line above it: this
+    // branch's own `why` says *discovery was requested and did not run*, and it returned a bare empty
+    // plan — which a caller treating an empty root set as "nothing to check" spends as exit 0. Both
+    // arms of "asked and could not" now carry `couldNotRun`.
+    const missing = resolutionRoots({ derived: ["/derived"], forced: true });
+    assert.deepEqual(missing.roots, []);
+    assert.match(missing.couldNotRun, /did not run/);
+
+    const nulled = resolutionRoots({ derived: ["/derived"], forced: true, discovery: () => null });
+    assert.match(nulled.couldNotRun, /did not run/);
+
+    // The control: a discovery that RAN and found nothing is not could-not-run — it unions with the
+    // derived root, which is the whole point of the absent fix.
+    const ran = resolutionRoots({ derived: ["/derived"], forced: true, discovery: { ok: true, roots: [] } });
+    assert.equal(ran.couldNotRun, null);
+    assert.deepEqual(ran.roots, ["/derived"]);
+});
