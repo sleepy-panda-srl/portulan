@@ -941,16 +941,23 @@ export function resolutionRoots({ named = [], namedGiven = null, derived = [], d
     // Everything below is derived-only, and the three ways of getting here need three sentences,
     // because collapsing them is how this module started lying about `absent` in the first place.
     // `couldNotRun` is null on every one of them: nobody asked.
+    // `found.why` is **optional**, and appending it unguarded put the literal `null` in a user-facing
+    // sentence. `discoverPackRoots` returns `why: null` on its ordinary success path — a record that
+    // READ fine and simply lists no plugin carrying packs — which is a real host rather than an edge:
+    // anyone with plugins installed and none of them a pack feed. The `union` helper one screen up
+    // guards exactly this (`found.roots.length === 0 && found.why`) and this arm did not: one operation,
+    // two sites, correct at one. Raised by Copilot, round 1 on #237.
+    const said = (lead) => (found.why ? `${lead} — ${found.why}` : lead);
     const because = !found
         ? null
         : found.ok
-          ? // Looked, nothing installed that carries packs. Discovery's own sentence distinguishes a
-            // host with no record from one whose record lists nothing relevant.
-            `discovery was consulted and found no root — ${found.why}`
+          ? // Looked, nothing installed that carries packs. Discovery's own sentence, where it has one,
+            // distinguishes a host with no record from one whose record lists nothing relevant.
+            said("discovery was consulted and found no root")
           : // Could not look, and it is REPORTED rather than swallowed. Degrading in silence would
             // make a corrupt plugin record indistinguishable from a clean host, which is the pair
             // `discoverPackRoots` keeps apart one function above.
-            `discovery was consulted and could not look, so only the derived root is searched — ${found.why}`;
+            said("discovery was consulted and could not look, so only the derived root is searched");
     if (derived.length) {
         // Same discipline as the arm below: the stem is ONE string and only the tail branches, so a
         // discriminator matching on it cannot be broken by editing the other case.

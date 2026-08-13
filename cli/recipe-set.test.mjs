@@ -470,9 +470,12 @@ test("recipe-set: `auto` against an unreadable record is exit 2", () => {
 });
 
 test("recipe-set refuses a --pack-root that is missing or is a file", () => {
-    // Copilot, round 1 on #236: the other five tools refuse an unreadable or non-directory root, and
-    // this one pushed it through — so a file-valued root reported every pack unresolvable while the
-    // argument was what was wrong.
+    // Copilot, round 1 on #236: the tools that RESOLVE roots refuse an unreadable or non-directory one
+    // and this one pushed it through — so a file-valued root reported every pack unresolvable while the
+    // argument was what was wrong. _(It said "the other five tools". Measured 2026-08-13: three others
+    // carry this refusal — `compile`, `doctor`, `index` — because `init` and `vendor` FORWARD roots
+    // rather than resolving them and never stat one. A count of tools that does not say which rule it
+    // is counting drifts against every rule at once.)_
     const io = () => { const err = []; return { err, sink: { stdout: { write: () => {} }, stderr: { write: (x) => err.push(x) } } }; };
     const root = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), "recipe-set-badroot-"));
     const aFile = path.join(root, "not-a-directory");

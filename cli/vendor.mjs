@@ -72,7 +72,11 @@ import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 import { inspect } from "./doctor.mjs";
-// The discovery keyword, imported so the five parse sites cannot spell it differently (#123).
+// The discovery keyword, imported so no parse site can spell it differently (#123). _(This said
+// "the five parse sites"; there are seven, and `discover.mjs`'s `NAMED_WITH_AUTO` had already been
+// corrected from five to seven while this copy kept the old figure. The number is dropped rather than
+// re-typed, because a count nothing derives goes stale again — which that constant's own docblock
+// records happening twice.)_
 import { AUTO, namedWithAuto } from "./discover.mjs";
 import { recipeSet } from "./recipe-set.mjs";
 

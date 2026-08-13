@@ -747,6 +747,28 @@ test("unasked where nothing is derived: a discovered root still answers, and non
     assert.match(hermetic.why, /discovery was not asked for/);
 });
 
+test("unasked, a discovery that found nothing and has NO sentence does not print `null`", () => {
+    // **`found.why` is optional, and this is its ordinary case rather than an edge.**
+    // `discoverPackRoots` returns `why: null` whenever the record READ fine — a host with plugins
+    // installed, none of which carries packs, which is most hosts. Appending it unguarded rendered
+    // "discovery was consulted and found no root — null" into `plan.why`, and from there into `doctor`'s
+    // resolution-root note and every unresolved-pack line.
+    //
+    // The `union` helper one screen up already guards exactly this (`found.roots.length === 0 &&
+    // found.why`); the unasked arm did not. One operation, two sites, correct at one — raised by
+    // Copilot, round 1 on #237. Asserted on `null` rather than on the rendered sentence, because a
+    // matcher for the word "null" would also match a diagnostic that legitimately contained it.
+    for (const derived of [["/derived"], []]) {
+        const got = resolutionRoots({ named: [], derived, discovery: { ok: true, roots: [], why: null } });
+        assert.doesNotMatch(got.why, /null/, `derived=${JSON.stringify(derived)}: ${got.why}`);
+        assert.match(got.why, /discovery was consulted and found no root$/, "the lead survives; only the dangling suffix goes");
+    }
+    // The control, and it is what stops the fix from being "drop the suffix": where discovery DOES have
+    // a sentence, it still rides through.
+    const spoken = resolutionRoots({ named: [], derived: ["/derived"], discovery: { ok: true, roots: [], why: "no record — nothing installed" } });
+    assert.match(spoken.why, /found no root — no record — nothing installed/);
+});
+
 test("unasked, discovery answering `nothing installed` keeps its own sentence rather than a bare zero", () => {
     // "0 root(s)" cannot tell a host with no record from a host whose record lists nothing relevant, and
     // those are different facts about the machine. The same reasoning as the `forced` arm's, and the

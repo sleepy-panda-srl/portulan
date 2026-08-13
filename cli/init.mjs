@@ -324,7 +324,9 @@ export function validateAnswers(answers) {
     // The named+auto pair, refused for EVERY path rather than inside the one branch that resolves a
     // pack. It lived in the `residence === "in-repo" && cycle && packRoots.length` arm until Copilot's
     // round 3, so `--no-cycle` with both flags was accepted and one of them silently ignored —
-    // breaking the *refused in all five tools* claim this very change makes, in the fifth tool.
+    // breaking the *refused in all five tools* claim that change made, in the fifth tool. _(Five was the
+    // set on #233; it is seven since `recipe-set` and this file joined. Kept as the round's own words
+    // rather than re-typed, and dated so it does not read as a present count.)_
     //
     // Third time this session that a correct refusal was placed where something could skip it: below a
     // workspace read in `compile`, below a manifest read in `skills-set`, and inside a conditional
@@ -1156,18 +1158,23 @@ function packResolvedAt(roots, packId) {
  * **Two unions, and only one of them is law — do not collapse them.**
  *
  * - **Named ∪ discovered is still REFUSED.** The first version of this appended discovered roots
- *   beside named ones, which made `init` the only tool of five with union semantics: the divergence
+ *   beside named ones, which made `init` the odd tool out with union semantics: the divergence
  *   `../cli/compile.mjs`'s `namedRootsOption` records, re-committed inside the change that cites it.
  *   Since 2026-08-12 asking for both is a refusal rather than a silent drop, which is stricter than
- *   what that incident produced and in the same direction.
+ *   what that incident produced and in the same direction. _(This said "the only tool of **five**",
+ *   a figure that was seven by the time `recipe-set` and `init` joined the refusal — see
+ *   `NAMED_WITH_AUTO`, which derives nothing and has now been wrong twice. The count is dropped rather
+ *   than corrected, because nothing in the sentence needs it.)_
  * - **Discovered ∪ derived IS law**, as of the same date, in `discover.mjs`'s `resolutionRoots`. A
  *   later reader must not "fix" this arm by citing the incident above: that incident is about the
  *   first pair, and this arm implements the second.
  *
  * The derived root here is the one the workspace **being drafted** would have — `<target>/packs` —
  * because this check exists to predict the `doctor` run that follows the draft. Mirroring the shared
- * rule is what stops `init` refusing a composition that `doctor --pack-root auto` then resolves
- * happily: a false red against the very tool it is predicting.
+ * rule is what stops `init` refusing a composition that `doctor` then resolves happily: a false red
+ * against the very tool it is predicting. _(That read "`doctor --pack-root auto`" until 2026-08-13,
+ * when the bare invocation started resolving the same way — which is precisely why this arm had to
+ * gain its own unasked branch below rather than staying a named-roots check.)_
  *
  * ## The UNASKED arm, added 2026-08-13 with the disposal, and its one hard rule
  *
