@@ -3328,9 +3328,28 @@ test("a workspace composing a pack that contributes NO gates says nothing about 
     assert.equal(checks(findings, "enforcement").length, 0, "no gate fragments composed, so nothing to say about enforcement");
 });
 
+// The no-policy branch counts only packs that RESOLVED, so where one did not it must say the count is a
+// floor. Without that, "composes N from its packs" implies the number covers every declared pack — the
+// same overstatement this change repairs one branch up. (Copilot, round 1 on #241.)
+test("the no-policy note says its count is a FLOOR when a declared pack did not resolve", async () => {
+    const dir = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), "portulan-partialcompose-"));
+    SCRATCH.push(dir);
+    for (const [rel, body] of Object.entries(minimalFiles)) fs.writeFileSync(path.join(dir, rel), body);
+    fs.writeFileSync(path.join(dir, "verify.sh"), "#!/bin/sh\nexit 0\n", { mode: 0o755 });
+    // Declares no `gates`, composes one pack that resolves and contributes fragments, and one that does not.
+    fs.writeFileSync(
+        path.join(dir, "workspace.json"),
+        JSON.stringify({ ...wellFormed(), slots: { identity: "identity.md", principles: "principles.md", gates: "gate-map.md" }, packs: ["rituals/checkpoints", "no/such-pack"] }),
+    );
+    const { findings } = await inspect(dir, { schema: SCHEMA, packRoots: [path.join(REPO, "packs")] });
+    const said = text(checks(findings, "enforcement"));
+    assert.match(said, /from the packs that resolved/, "the subject is the resolved set, not 'its packs'");
+    assert.match(said, /this count is a floor rather than a total/);
+});
+
 test("a workspace composing gates with no policy to join is reported, never failed", async () => {
     const { findings } = await inspect(path.join(REPO, "examples"), { schema: SCHEMA, packRoots: [path.join(REPO, "packs")] });
     const said = text(checks(findings, "enforcement"));
-    assert.match(said, /composes \d+ gate rule\(s\) from its packs and declares no `gates` policy/);
+    assert.match(said, /composes \d+ gate rule\(s\) from the packs that resolved and declares no `gates` policy/);
     assert.equal(severities(checks(findings, "enforcement"), "fail").length, 0, "reported, because a required recipe grades this workspace");
 });
