@@ -1645,6 +1645,8 @@ export async function inspect(workspaceDir, options = {}) {
             forced: options.discoverPacks === true,
         });
         if (plan.refusal) throw new DoctorError(plan.refusal);
+        // Asked-for discovery that could not look is could-not-run, never a green over an unread host.
+        if (plan.couldNotRun) throw new DoctorError(plan.couldNotRun);
         const roots = plan.roots;
         // Which root answered, for each root that could answer. A union's whole contract is that a
         // tree-derived resolution is visible rather than silent, and a lookup is how a per-pack line

@@ -1615,6 +1615,7 @@ export function packContributions(workspaceRoot, workspaceDir = ".portulan", opt
         forced: options.forced ?? false,
     });
     if (plan.refusal) throw new CompileError(plan.refusal);
+    if (plan.couldNotRun) throw new CompileError(plan.couldNotRun);
     const roots = plan.roots;
     const contributions = [];
     const unresolved = [];

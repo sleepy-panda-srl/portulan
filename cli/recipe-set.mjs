@@ -62,6 +62,7 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 
 import { resolvePack, rootPlan } from "./compile.mjs";
+import { AUTO, discoverPackRoots, namedWithAuto } from "./discover.mjs";
 
 /**
  * Every reader of the recipe set, by path.
@@ -281,6 +282,7 @@ export function resolverFor({ workspaceDir, manifest, repoRoot = ".", named = []
     // passing `named` beside `forced: true` would have resolved nothing and been told nothing.
     // Raised by Copilot, round 1 on #233; swept to `skills-set.mjs`'s sibling in the same stroke.
     if (plan.refusal) throw new Error(`recipe-set: ${plan.refusal}`);
+    if (plan.couldNotRun) throw new Error(`recipe-set: ${plan.couldNotRun}`);
     const roots = plan.roots ?? [];
     return (ref) => {
         const found = resolvePack(ref, roots);
@@ -322,6 +324,32 @@ export function run(argv = [], { stdout = process.stdout, stderr = process.stder
     const repoRoot = arg("--repo-root", ".");
     const workspaceDir = arg("--workspace", path.join(repoRoot, ".portulan"));
 
+    // `--pack-root`, repeatable, with `auto` and the shared refusal — the same surface the other six
+    // tools take (`compile`, `doctor`, `index`, `init`, `vendor`, `skills-set`). It was missing here, and the plumbing behind it (`resolverFor`'s `discovery` and
+    // `forced`) existed with no way to reach it: a capability that looked wired and was not, which is
+    // the defect this file's neighbour `skills-set` was caught with a day earlier. CI calls this
+    // command for the recipe set it runs, so without the flag a workspace composing from the host
+    // cache had no invocation that could enumerate its own recipes.
+    const named = [];
+    let forced = false;
+    for (let i = 0; i < argv.length; i += 1) {
+        if (argv[i] !== "--pack-root") continue;
+        const value = argv[i + 1];
+        i += 1;
+        if (value === undefined || value.startsWith("-")) {
+            stderr.write("--pack-root needs a directory, or `auto` to discover one from the host plugin cache. A directory actually named `auto` is `./auto`\n");
+            return 2;
+        }
+        // The keyword on the RAW argument, before any resolution, so `./auto` still names a directory.
+        if (value === AUTO) forced = true;
+        else named.push(path.resolve(value));
+    }
+    const bothAsked = namedWithAuto(named, forced);
+    if (bothAsked) {
+        stderr.write(`${bothAsked}\n`);
+        return 2;
+    }
+
     let manifest;
     try {
         manifest = JSON.parse(fs.readFileSync(path.join(workspaceDir, "workspace.json"), "utf8"));
@@ -330,7 +358,15 @@ export function run(argv = [], { stdout = process.stdout, stderr = process.stder
         return 2;
     }
 
-    const set = recipeSet(manifest, { resolve: resolverFor({ workspaceDir, manifest, repoRoot }) });
+    let resolve;
+    try {
+        resolve = resolverFor({ workspaceDir, manifest, repoRoot, named, discovery: () => discoverPackRoots(), forced });
+    } catch (err) {
+        // `resolverFor` throws on a refusal or a could-not-look; both are exit 2 rather than a set.
+        stderr.write(`${err.message}\n`);
+        return 2;
+    }
+    const set = recipeSet(manifest, { resolve });
     if (!set.ok) {
         stderr.write(`${set.reason}\n`);
         return set.exitCode;

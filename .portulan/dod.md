@@ -11,7 +11,9 @@ A change is done when **all** of the following hold.
    manifest **yields**, which since milestone 7's composition amendment is what
    [`workspace.json`](workspace.json) declares **plus** what this workspace's composed packs
    contribute; [`../cli/recipe-set.mjs`](../cli/recipe-set.mjs) is the one carrier of that set, and
-   `node cli/recipe-set.mjs --workspace .portulan --repo-root .` prints it. Read the output.
+   `node cli/recipe-set.mjs --workspace .portulan --repo-root . --pack-root packs` prints it. Read
+   the output. _The root is pinned so this command answers about the tree rather than about the
+   machine, which is the same reason CI pins it._
    _Why this says yields rather than declares: a composed recipe runs in CI, so a condition scoped to
    the declared list would let one go red with this condition satisfied._ _Why: since milestone 4 the
    Stop-gate runs the **default** recipe automatically and blocks "done" on a red or an exit 2 — but it

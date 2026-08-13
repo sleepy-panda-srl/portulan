@@ -437,6 +437,7 @@ export function resolverFor({ workspaceDir, manifest, named = [], discovery = nu
     // derivations of one plan is the shape this file exists to refuse.
     const plan = roots ? null : rootPlan(workspaceDir, manifest, { named, discovery });
     if (plan?.refusal) throw new Error(`skills-set: ${plan.refusal}`);
+    if (plan?.couldNotRun) throw new Error(`skills-set: ${plan.couldNotRun}`);
     const resolved = roots ?? plan.roots ?? [];
     return (ref) => {
         const found = resolvePack(ref, resolved);
@@ -616,8 +617,8 @@ export function run(argv = [], options = {}) {
             discovery: () => discoverPackRoots(),
             forced: wantsDiscovery,
         });
-        if (plan.refusal) {
-            stderr.write(`skills-set: ${plan.refusal}\n`);
+        if (plan.refusal || plan.couldNotRun) {
+            stderr.write(`skills-set: ${plan.refusal ?? plan.couldNotRun}\n`);
             return 2;
         }
         const roots = plan.roots ?? [];

@@ -119,7 +119,7 @@ jobs:
           # and are asserted there rather than trusted to have survived the move. The roster of
           # readers, this workflow included, is pinned in `cli/recipe-set.live.test.mjs`.
           err=$(mktemp)
-          recipes=$(node cli/recipe-set.mjs --workspace .portulan --repo-root . 2>"$err")
+          recipes=$(node cli/recipe-set.mjs --workspace .portulan --repo-root . --pack-root packs 2>"$err")
           rc=$?
           if [ "$rc" -ne 0 ]; then
             # The annotation carries the emitter's own message rather than a generic one. A manifest that
