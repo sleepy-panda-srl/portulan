@@ -33,7 +33,9 @@ import { inspect as inspectIndex } from "./index.mjs";
 // 2026-08-13, so a suite that does not neutralise it reads the machine it runs on and a fixture's
 // verdict moves with what somebody has installed. Swept by `pinned-roots.live.test.mjs`, whose header
 // carries the argument and the limit. A case that wants a host passes `env:` explicitly, which wins.
-process.env.CLAUDE_CONFIG_DIR = fs.mkdtempSync(path.join(os.tmpdir(), "portulan-hermetic-"));
+const HERMETIC_HOST = fs.mkdtempSync(path.join(os.tmpdir(), "portulan-hermetic-"));
+process.env.CLAUDE_CONFIG_DIR = HERMETIC_HOST;
+process.on("exit", () => fs.rmSync(HERMETIC_HOST, { recursive: true, force: true }));
 import {
     LibrarianError,
     parseArgs,

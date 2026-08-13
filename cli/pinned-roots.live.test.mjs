@@ -139,8 +139,26 @@ test("the roster covers every verify recipe that invokes a root-taking tool", ()
     );
 });
 
-/** The line every test file in the closure must carry. Asserted as a substring, not re-spelled. */
-const HERMETIC = 'process.env.CLAUDE_CONFIG_DIR = fs.mkdtempSync(path.join(os.tmpdir(), "portulan-hermetic-"));';
+/**
+ * The block every test file in the closure must carry. Asserted as a substring, not re-spelled.
+ *
+ * **The cleanup line is part of it, and that is a round-2 finding rather than tidiness.** The guard
+ * creates a temp directory per test file and nothing removed it: measured 2026-08-13, **18 leaked
+ * directories per full suite run**, and four thousand accumulated in a single session of running the
+ * suite. Copilot's suppressed notes named three files; the fix is at all eighteen, because three named
+ * sites are the shape `../.portulan/proposals/0020-a-fix-is-not-done-at-the-site-it-was-found.md`
+ * exists against. Asserting the whole block is what stops the next file copying the two lines that
+ * neutralise the host and dropping the one that tidies up.
+ *
+ * The path is captured in a `const` rather than re-read from `process.env` at exit: several suites
+ * save, overwrite and restore that variable around a case, and a handler reading it at exit would
+ * remove whatever happened to be there instead of what the guard made.
+ */
+const HERMETIC = [
+    'const HERMETIC_HOST = fs.mkdtempSync(path.join(os.tmpdir(), "portulan-hermetic-"));',
+    "process.env.CLAUDE_CONFIG_DIR = HERMETIC_HOST;",
+    'process.on("exit", () => fs.rmSync(HERMETIC_HOST, { recursive: true, force: true }));',
+].join("\n");
 
 /**
  * Does this source IMPORT that module — as a statement, not as a mention?

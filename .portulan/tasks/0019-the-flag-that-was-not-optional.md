@@ -249,6 +249,32 @@ interpolation is safe because every `plan(...)` call in `resolutionRoots` passes
 rather than on the rendered sentence, because matching the word would also match a diagnostic that
 legitimately contained it.
 
+**Round 2 — nothing inline, and three suppressed notes carrying one finding.** All three arrived through
+the promoted-note channel ([`0021`](../proposals/0021-the-suppressed-channel-needs-a-state.md)), which is
+that proposal earning its keep again: the inline round was empty and the finding was real.
+
+**The hermetic guard created a temp directory per test file and nothing removed it.** Measured before
+fixing: **18 leaked directories per full suite run**, and **4,288** accumulated in this one session —
+the notes said "temp dirs on developer machines" and the machine already had four thousand of them.
+Copilot named **three** files; the fix is at **all eighteen**, which is the difference between answering
+a note and answering the class it is an instance of. Verified by measurement rather than by reading: a
+full suite run now moves the count by **0**.
+
+The cleanup is part of the block the sweep asserts, so the next test file cannot copy the two lines that
+neutralise the host and drop the one that tidies up — and the path is captured in a `const` rather than
+re-read from `process.env` at exit, because several suites save, overwrite and restore that variable
+around a case and a handler reading it at exit would remove whatever happened to be there.
+
+_(Rewriting the guard across eighteen files also rewrote **the rail's own `HERMETIC` constant**, whose
+value was that same line, turning a single-quoted literal into an invalid multi-line one. Caught
+immediately by `node --check`. A mechanical sweep over `cli/*.test.mjs` does not know which occurrence is
+the subject and which is the *description* of the subject — the third time in this change that an
+instrument could not tell code from prose about code.)_
+
+**Out of scope and filed rather than fixed:** the same measurement found **28,484** `portulan-feedback-*`
+temp directories, **7,477 of them older than today** — a long-standing leak in `cli/feedback.test.mjs`
+that this change neither caused nor touches. Reported to the maintainer rather than folded in.
+
 ## A defect of mine the repository's own rail caught
 
 Two **control characters** — a NUL and a SOH — reached `cli/init.test.mjs` through an edit of mine, as
