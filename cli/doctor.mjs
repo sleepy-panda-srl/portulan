@@ -736,6 +736,19 @@ export function validateContributions(packDir, contributes, { fail, report, pack
  * because the frontmatter has already been read here, and two parses of one block are two chances to
  * disagree about what it said.
  */
+/**
+ * The tail of `doctor`'s binding-success line, exported so the suite keys on ONE carrier.
+ *
+ * Both of the tests that guard this sentence match on its text: one asserts it IS printed for an
+ * ordinary binding, the other that it is NOT printed for a name that traverses out of the tree — a
+ * path-traversal case where a green would mean `doctor` had opened a file the pack chose. Written as
+ * two literals, a reword satisfies the negative assertion **for the wrong reason**: the string is gone,
+ * nothing prints it, the test passes, and it would go on passing with the traversal guard deleted.
+ * Measured at milestone 7's close, where exactly that happened — the reword landed and the negative
+ * assertion stopped binding without going red.
+ */
+export const BINDING_OK = "names match and a tool grant is declared";
+
 export function validatePersona(text, { fail, pack, rel }) {
     const { fields, error } = parseFrontmatter(text);
     if (!fields) {
@@ -2068,7 +2081,14 @@ export async function inspect(workspaceDir, options = {}) {
                 );
                 continue;
             }
-            report("bindings", `${where} is bound by \`${rel}\`${keyed} — names and tool grant agree`);
+            // *Declared*, not *agrees*: the check above establishes only that `tools:` is a non-empty
+            // string. Nothing here compares it against the persona's own contract — the persona's
+            // `tools:` never reaches `bindable` — and by design, since `../docs/milestones/m07.md`
+            // holds that a binding may licitly grant less, or other, than the persona describes. The
+            // previous wording said the two *agree*, which reported a grant of `Read, Write, Bash` to a
+            // persona whose contract is *does not write* as though it had been checked. Found by
+            // milestone 7's close pass, forcing exactly that case green.
+            report("bindings", `${where} is bound by \`${rel}\`${keyed} — ${BINDING_OK}`);
         }
     }
 

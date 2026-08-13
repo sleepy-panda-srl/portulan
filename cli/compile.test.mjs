@@ -1350,21 +1350,41 @@ describe("customer zero", () => {
         }
     });
 
-    test("every rule id in the policy appears in the gate map's prose", () => {
+    // Both directions below read the policy as *declared plus composed*, and that is the repair rather
+    // than a convenience. They used to read `real.rules` alone — the ids in `.portulan/gates.json` — so
+    // a gate contributed by a composed pack was invisible to them: naming one in the prose failed the
+    // second rail, and leaving one undocumented satisfied the first. Milestone 7's close found the same
+    // blind spot in two other readers of this policy (`compile --matrix` counts composed gates and
+    // reports 4 uncompiled, `doctor` counts only declared ones and reports 3), and this file carried two
+    // more — the citation rails here and the tier rail below — making FOUR readers of one policy.
+    // The tier rail was still narrow when the first two were widened, which is this comment's own rule
+    // broken in the change that states it; the pre-commit pass caught it. A rule with several readers is repaired at all of them or at none —
+    // `../.portulan/proposals/0020-a-fix-is-not-done-at-the-site-it-was-found.md`.
+    const composedGates = (JSON.parse(fs.readFileSync(path.join(REPO, ".portulan", "workspace.json"), "utf8")).packs ?? [])
+        .flatMap((ref) => JSON.parse(fs.readFileSync(path.join(REPO, "packs", ref, "pack.json"), "utf8")).contributes?.gates ?? []);
+
+    test("every rule id in the policy — declared or composed — appears in the gate map's prose", () => {
         const prose = fs.readFileSync(path.join(REPO, ".portulan", "gate-map.md"), "utf8");
-        for (const rule of real.rules) {
+        for (const rule of [...real.rules, ...composedGates]) {
             assert.match(prose, new RegExp(`\`${rule.id}\``), `gate-map.md never mentions \`${rule.id}\``);
         }
     });
 
-    test("every rule id the gate map cites exists in the policy", () => {
+    test("every rule id the gate map cites exists in the policy — declared or composed", () => {
         const prose = fs.readFileSync(path.join(REPO, ".portulan", "gate-map.md"), "utf8");
-        const ids = new Set(real.rules.map((r) => r.id));
+        const ids = new Set([...real.rules, ...composedGates].map((r) => r.id));
         const cited = [...prose.matchAll(/`([a-z0-9]+(?:-[a-z0-9]+){2,})`/g)].map((m) => m[1]);
         for (const id of cited) {
             if (/\.(md|json|sh|mjs)$/.test(id) || id.includes("/")) continue;
             assert.ok(ids.has(id), `gate-map.md cites \`${id}\`, which no rule declares`);
         }
+    });
+
+    test("the composed set is non-empty, so the two rails above are not widened to a no-op", () => {
+        // Without this, a `packs` key that stopped resolving would silently shrink both rails back to
+        // declared-only and they would go on passing — the shape this session's sibling suite calls a
+        // rail losing its most important members and reporting nothing.
+        assert.ok(composedGates.length >= 2, `expected the composed packs to contribute gates, got ${composedGates.length}`);
     });
 
     test("every rule is cited under the gate map section matching its TIER", () => {
@@ -1393,12 +1413,19 @@ describe("customer zero", () => {
             assert.ok(section, `gate-map.md has no section speaking for tier \`${tier}\``);
         }
 
-        for (const rule of real.rules) {
+        // Declared PLUS composed, like the two rails above and for the same reason — this is the third
+        // of the three that read this document against the policy, and it was the one left behind when
+        // the other two were widened. It is also the one that matters most: the other two ask whether an
+        // id is mentioned *somewhere*, while this asks whether it is filed under the tier it actually
+        // carries. Left narrow, a composed Gated action could be enforced on every commit, mentioned
+        // once in a paragraph about the compiler, and never listed among the things that need approval —
+        // which is exactly what `commit-without-the-hooks` was until milestone 7's close.
+        for (const rule of [...real.rules, ...composedGates]) {
             const section = owner[rule.tier];
             assert.match(
                 section.body,
                 new RegExp(`\`${rule.id}\``),
-                `\`${rule.id}\` is tier \`${rule.tier}\` in gates.json, but gate-map.md does not cite it under "${section.title}"`,
+                `\`${rule.id}\` is tier \`${rule.tier}\` in the policy, but gate-map.md does not cite it under "${section.title}"`,
             );
         }
     });

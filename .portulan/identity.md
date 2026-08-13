@@ -50,9 +50,13 @@ is not on the registry today — and nothing else. `npm install` fetches nothing
 runs as `node cli/<tool>.mjs` straight from a clone.
 
 **The `npx` path IS an install, and having no build step makes that a checkable claim rather than a
-preference: it installs the SAME BYTES.** Measured 2026-07-31 on `0f49868` — `npm pack` produces 72
-files and **all 72 are byte-identical to `git show HEAD:<path>`**, `package.json` included, with no
-exemption. This is milestone 6's install-cache byte-identity discipline turned on the package the CLI
+preference: it installs the SAME BYTES.** Re-measured 2026-08-13 on `74240fa` — `npm pack` produces
+**114** files and **all 114 are byte-identical to `git show HEAD:<path>`**, `package.json` included,
+with no exemption. _(First measured 2026-07-31 at 72 files, all 72 identical — recorded then against `0f49868`, **an object that does not resolve in this repository today**, the branch having been squashed at merge; the date is the durable half and the sha is kept only as the original record. The property
+strengthened as the package grew; only the count moved, and it is restated rather than left standing,
+because a count is the half of this claim that goes stale silently. **Measure it on a clean checkout:**
+re-measuring inside a working tree with uncommitted edits reports those edits as drift — it did here,
+at milestone 7's close, and the two "differing" files were the measurer's own.)_ This is milestone 6's install-cache byte-identity discipline turned on the package the CLI
 ships as, and it is what a build step would end: a compiled artifact cannot be compared to a tracked
 file, so *no build* stops being a taste and becomes a property an adopter can verify. Measured by hand
 so far — the rail is routed, not built (see the handoff).

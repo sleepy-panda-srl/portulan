@@ -187,6 +187,19 @@ primitive changes both, so the ordering above chooses the loud failure over the 
 avoiding both — and **`compile` was keyed to residence**, which the parity clause above says is
 refusable. It was refused, and fixed, in the change that built the switch._
 
+_**`upgrade`'s migration landed, appended 2026-08-13** — again appended rather than corrected in place,
+for the reason the block above gives. The sentence *"`upgrade`'s migration is still owed"* was true when
+it was written on 2026-08-03 and stopped being true at **milestone 7 session 9**, which shipped the
+migration chain: `owed` is three-valued with *could not tell* mapping to exit 2, owedness is derived
+from state rather than stamped so an interrupted run recovers by re-running, `--write` grades with the
+real `doctor` and rolls back on a red, and it refuses in both directions — a workspace ahead of the
+bundle and one behind by a MAJOR no step reaches. **This file is cited from row 7 and from the gate map as
+the standing record of the one-workspace ruling, so a superseded sentence in it is read as current by
+anyone who follows those citations** — it is *not* in the boot skill's read list, which was this note's
+first stated reason and was false: `plugin/skills/portulan/SKILL.md` reads seven slots and `proposals/`
+is not among them — which is how it was found, by
+milestone 7's close pass reading it as current._
+
 ## Provenance
 
 `form=link` `href=`[`https://github.com/sleepy-panda-works/portulan/pull/135`](https://github.com/sleepy-panda-works/portulan/pull/135)

@@ -46,6 +46,7 @@ import {
     schemaVersion,
     packSchemaVersion,
     legibility,
+    BINDING_OK,
 } from "./doctor.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -3089,8 +3090,13 @@ describe("a persona's name is a pack's free text, so the binding read is contain
 
     test("a name that traverses upward is refused, not opened and greened", async () => {
         // Measured before the guard: a persona named `../../poison` had `doctor` read
-        // `<tree>/../poison.md`, validate it, and print "names and tool grant agree" — a green over a
+        // `<tree>/../poison.md`, validate it, and print its binding-success line — a green over a
         // file no host would ever load, with that file's own `name:` echoed into the report.
+        // That line's wording changed at milestone 7's close ("names and tool grant agree" →
+        // "names match and a tool grant is declared"), so the negative assertion below matches the
+        // stable half of it rather than the full sentence. A `doesNotMatch` against a string the tool
+        // no longer emits passes for the wrong reason: it would go on being green if this guard were
+        // removed tomorrow, which is the one thing it exists to catch.
         // `path.join("agents", "../../poison.md")` is `../poison.md`, so the read this aims at is one
         // level above the tree. Asserted BOTH ways — with the target present and absent — because the
         // first cut only refused it when the file existed, which makes the refusal depend on whether
@@ -3103,7 +3109,7 @@ describe("a persona's name is a pack's free text, so the binding read is contain
                 const { findings } = await inspect(dir, { schema: SCHEMA, packRoots: [root] });
                 const said = text(checks(findings, "bindings"));
                 assert.match(said, /leaves this workspace's tree/, present ? "with the target present" : "with the target absent");
-                assert.doesNotMatch(said, /names and tool grant agree/);
+                assert.doesNotMatch(said, new RegExp(`is bound by .* — ${BINDING_OK}`));
                 assert.doesNotMatch(said, /no host binding/, "an escaping key must never be reported as merely unbound");
             } finally {
                 fs.rmSync(outside, { force: true });
@@ -3127,7 +3133,10 @@ describe("a persona's name is a pack's free text, so the binding read is contain
         fs.mkdirSync(path.join(dir, "agents"), { recursive: true });
         fs.writeFileSync(path.join(dir, "agents", "my-role.md"), "---\nname: my-role\ndescription: x\ntools: Read\n---\n");
         const { findings } = await inspect(dir, { schema: SCHEMA, packRoots: [root] });
-        assert.match(text(checks(findings, "bindings")), /agree/);
+        // Matched on the phrase that carries the meaning rather than on one word of it: the previous
+        // `/agree/` was a single word of a sentence that milestone 7's close rewrote, so it broke on a
+        // wording change while a whole class of wrong reports would have satisfied it.
+        assert.match(text(checks(findings, "bindings")), new RegExp(`is bound by .* — ${BINDING_OK}`));
     });
 });
 

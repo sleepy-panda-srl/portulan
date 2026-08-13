@@ -47,5 +47,10 @@ remaining top-level directories are scaffolding that fills in milestone by miles
 **Provenance.** Written in milestone 1, session 3 — the first repo card in the first real workspace.
 Amended in milestone 2, session 2, when `doctor` gave this card's own claims a checker: the build/test/run
 lines and the layout above are now linted against the tree, which is the first time anything in this
-repository has held a workspace document to reality. Rewrite it when the CLI lands at milestone 7 and the
-build line stops reading "none".
+repository has held a workspace document to reality. **The standing instruction here — *"rewrite it when
+the CLI lands at milestone 7 and the build line stops reading none"* — is discharged 2026-08-13, and
+discharged rather than deleted because its second half can never come true:** the CLI landed at
+milestone 7, but `build: none` is **permanent** by the maintainer's ruling of 2026-07-31, recorded at
+the build line above. An instruction conditioned on two events, one of which was ruled impossible after
+it was written, is a rewrite nobody can ever be obliged to perform — so it is retired here with its
+reason rather than left as an obligation that reads live. Found by milestone 7's close pass.
