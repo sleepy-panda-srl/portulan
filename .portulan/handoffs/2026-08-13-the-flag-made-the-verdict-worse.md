@@ -85,5 +85,11 @@ stripping each of the six in a copy and watching it go red.
   `Discovery could not look`, which only the discovery diagnostic emits. **A discriminator has to be
   measured against the thing it is meant to exclude**, not just against the thing it should match.
 
+  **And then I committed it again, two files away, after writing that sentence.** The `init` case
+  added in the same session matched `/could not read|unknown rather than no/` — broad enough for any
+  other `init` failure — and Copilot found it at round 3. Naming a defect class in a handoff does not
+  inoculate the session that named it; the only thing that caught either instance was somebody
+  mutating the assertion and reading what the *other* path says.
+
 Eleven recipes green under pinned roots; suite **1535 pass / 0 fail**. Seam scan clean over the diff,
 the branch name and the commit message, term by term.
