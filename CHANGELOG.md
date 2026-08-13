@@ -79,9 +79,9 @@ records how things were found. This is per *release* and records what a reader g
   **The unasked path is untouched by construction** — the union lives inside the branch `auto`
   triggers — so no required verify recipe begins reading the host's plugin record.
 
-  **Asking for a named root and `auto` together is now refused (exit 2) in every tool that takes
-  the flag** — five when this entry was written, seven since `recipe-set` and `init` joined them.** They silently dropped the `auto` before, which is the behaviour this change is about,
-  one layer up.
+  **Asking for a named root and `auto` together is now refused (exit 2) in every tool that takes the
+  flag** — five when this entry was written, seven since `recipe-set` and `init` joined them. They
+  silently dropped the `auto` before, which is the behaviour this change is about, one layer up.
 
 ### Fixed
 

@@ -449,3 +449,21 @@ test("recipe-set: `auto` against an unreadable record is exit 2", () => {
     const sink = { stdout: { write: () => {} }, stderr: { write: (x) => err.push(x) } };
     assert.equal(withEnv(config, () => run(["--workspace", ws, "--repo-root", root, "--pack-root", "auto"], sink)), 2, err.join(""));
 });
+
+test("recipe-set refuses a --pack-root that is missing or is a file", () => {
+    // Copilot, round 1 on #236: the other five tools refuse an unreadable or non-directory root, and
+    // this one pushed it through — so a file-valued root reported every pack unresolvable while the
+    // argument was what was wrong.
+    const io = () => { const err = []; return { err, sink: { stdout: { write: () => {} }, stderr: { write: (x) => err.push(x) } } }; };
+    const root = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), "recipe-set-badroot-"));
+    const aFile = path.join(root, "not-a-directory");
+    fs.writeFileSync(aFile, "x");
+
+    const missing = io();
+    assert.equal(run(["--pack-root", path.join(root, "nope")], missing.sink), 2);
+    assert.match(missing.err.join(""), /cannot be read/);
+
+    const file = io();
+    assert.equal(run(["--pack-root", aFile], file.sink), 2);
+    assert.match(file.err.join(""), /is not a directory/);
+});

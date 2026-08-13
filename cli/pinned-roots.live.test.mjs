@@ -76,7 +76,16 @@ test("the roster covers every verify recipe that invokes a root-taking tool", ()
     // The count assertion the roster leans on. If a recipe grows an invocation of a tool that takes
     // `--pack-root`, this goes red and somebody has to decide whether it pins — rather than the
     // roster quietly not mentioning it, which is how a list stops being a rail.
-    const takesRoot = ["cli/doctor.mjs", "cli/compile.mjs", "cli/index.mjs", "cli/skills-set.mjs", "cli/recipe-set.mjs"];
+    // EVERY tool that accepts `--pack-root`, not just the ones a recipe happens to call today. The
+    // first cut listed five and omitted `init` and `vendor`, so a recipe invoking either would have
+    // slipped past the sweep — this rail carrying the exact hole it exists to catch. Copilot, round 1
+    // on #236. Derived rather than remembered: a tool takes a root if its source parses the flag.
+    const takesRoot = fs
+        .readdirSync(path.join(REPO, "cli"))
+        .filter((f) => f.endsWith(".mjs") && !f.includes(".test."))
+        .filter((f) => fs.readFileSync(path.join(REPO, "cli", f), "utf8").includes('"--pack-root"'))
+        .map((f) => `cli/${f}`);
+    assert.ok(takesRoot.length >= 5, `expected several root-taking tools, derived ${takesRoot.length}`);
     const found = [];
     for (const entry of fs.readdirSync(path.join(REPO, ".portulan", "verify"))) {
         if (!entry.endsWith(".sh")) continue;

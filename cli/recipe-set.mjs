@@ -341,8 +341,29 @@ export function run(argv = [], { stdout = process.stdout, stderr = process.stder
             return 2;
         }
         // The keyword on the RAW argument, before any resolution, so `./auto` still names a directory.
-        if (value === AUTO) forced = true;
-        else named.push(path.resolve(value));
+        if (value === AUTO) {
+            forced = true;
+            continue;
+        }
+        // A root that is not there is a fact about the FILESYSTEM, not a pack that failed to resolve,
+        // and reporting it as the latter sends an author to the one file that is not at fault. A FILE
+        // is the sharper case: `resolvePack` only tests for `pack.json` under the root, so a file-valued
+        // root yields "unresolvable" for every pack while the argument is what was wrong. Fourth carrier
+        // of a rule `compile`, `doctor` and `index` already hold; raised by Copilot, round 1 on #236,
+        // as an inconsistency with them.
+        const resolved = path.resolve(value);
+        let rootStat = null;
+        try {
+            rootStat = fs.statSync(resolved);
+        } catch (cause) {
+            stderr.write(`--pack-root ${value} cannot be read — ${cause.code ?? cause.message}. Refusing to report a pack unresolvable against a root nothing looked in\n`);
+            return 2;
+        }
+        if (!rootStat.isDirectory()) {
+            stderr.write(`--pack-root ${value} is not a directory — a resolution root is a directory packs are looked up under\n`);
+            return 2;
+        }
+        named.push(resolved);
     }
     const bothAsked = namedWithAuto(named, forced);
     if (bothAsked) {
