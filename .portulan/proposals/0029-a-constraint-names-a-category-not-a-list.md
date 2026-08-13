@@ -142,5 +142,4 @@ material, so no seal is needed.
 **Decision.** PROPOSED — awaiting the maintainer. **Q1 decides the altitude and Q2 decides the extent**;
 the incident record stands whichever way both go.
 
-**Pull request:** _not yet openable — filled in the commit after this branch's pull request exists, which is
-the sequencing [#143](https://github.com/sleepy-panda-works/portulan/issues/143) is about._
+**Pull request:** [#246](https://github.com/sleepy-panda-works/portulan/pull/246) — the change that filed this.
