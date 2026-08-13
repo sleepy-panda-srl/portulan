@@ -88,7 +88,11 @@ import { pathToFileURL } from "node:url";
 // that file was built to hold. _(It read "named > discovered > derived, never union" until
 // 2026-08-12. The rule changed because the workspace `init` drafts by default could not go green
 // under any invocation that did not name a host cache path; this comment is one of the carriers that
-// moved with it, and the file below it held the defect that made the class concrete.)_
+// moved with it, and the file below it held the defect that made the class concrete. **On 2026-08-13
+// "asked-for" went too**: the unasked arm consults a wired thunk as well, so the rule is now **a named
+// root wins outright; otherwise discovery is unioned with the derived root, discovered first** — asking
+// only selects the strict degrade. This tool exited **2** on the ordinary drafted workspace until then,
+// which is what the row's "optional where discovery finds a root" was not.)_
 import { resolvePack, rootPlan } from "./compile.mjs";
 import { AUTO, discoverPackRoots, namedWithAuto } from "./discover.mjs";
 
@@ -610,8 +614,13 @@ export function run(argv = [], options = {}) {
         // consults `discovery` only inside its forced branch — so `--pack-root auto` here read the
         // host's record, threw the answer away, resolved from the derived root, and said nothing.
         // Silently inert, and eagerly reading `~/.claude` to be so: `discovery` is a THUNK precisely
-        // so an unasked path never touches the host, and calling `discoverPackRoots()` at the
-        // argument site defeated that whichever branch ran.
+        // so a branch that cannot use the answer never touches the host, and calling
+        // `discoverPackRoots()` at the argument site defeated that whichever branch ran.
+        //
+        // _(The thunk's reason NARROWED on 2026-08-13 and the wording followed: it was *an unasked path
+        // never touches the host*, and the unasked path now consults discovery deliberately. What the
+        // thunk still guarantees is that the **named** and **refused** arms do not — and that an API
+        // caller wiring no thunk stays hermetic on every arm.)_
         const plan = rootPlan(workspaceDir, manifest, {
             named: namedRoots,
             discovery: () => discoverPackRoots(),

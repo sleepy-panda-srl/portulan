@@ -25,6 +25,12 @@ import { execFileSync } from "node:child_process";
 
 import { bumpCount, clearReason, today, verdict, REASONS, MAX_BLOCKS, MAX_TOTAL_BLOCKS } from "./stop-gate.mjs";
 
+// A HERMETIC HOST. The tools consult the host's installed-plugin record on the UNASKED path as of
+// 2026-08-13, so a suite that does not neutralise it reads the machine it runs on and a fixture's
+// verdict moves with what somebody has installed. Swept by `pinned-roots.live.test.mjs`, whose header
+// carries the argument and the limit. A case that wants a host passes `env:` explicitly, which wins.
+process.env.CLAUDE_CONFIG_DIR = fs.mkdtempSync(path.join(os.tmpdir(), "portulan-hermetic-"));
+
 const SCRATCH = [];
 process.on("exit", () => {
     for (const dir of SCRATCH) fs.rmSync(dir, { recursive: true, force: true });

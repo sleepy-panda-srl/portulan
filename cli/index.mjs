@@ -1223,10 +1223,18 @@ export function run(argv, say = console.log) {
     // the local tree at all. The three tools that take this flag disagreed about it once, and
     // ./compile.mjs's `namedRootsOption` carries what that cost.
     // Discovery of a host's plugin cache is built for both halves as of milestone 7 (#123): a POINTER's
-    // `governed_by` through ./discover.mjs, and a PACK root through `--pack-root auto`. What is
-    // deliberately not taken is a DEFAULT — asking is the whole trigger, because defaulting would change
-    // what every existing run resolves against, and the row fixes the only safe direction: add a root
-    // where none was named, never replace one that was.
+    // `governed_by` through ./discover.mjs, and a PACK root through `--pack-root auto`.
+    //
+    // **Discovery is the default as of 2026-08-13** — this said *"asking is the whole trigger"*, and row
+    // 7's clause is that `--pack-root` is *optional where discovery finds a root*. `auto` now insists
+    // rather than unlocks. The row's direction is unchanged and is the arm above: **add a root where none
+    // was named, never replace one that was.**
+    //
+    // **What this tool WRITES is unaffected, and that is stated in `readScopes` rather than here**: an
+    // index whose bytes recorded which root answered would regenerate differently on two machines and
+    // `index --check` byte-compares, so origin lives in the finding and never in the artifact. The
+    // required `index` recipe also pins its root (`../.portulan/verify/index.sh`), so its verdict is
+    // about the tree whatever this default is.
     const roots = [];
     let discoverPacks = false;
     for (let i = 0; i < argv.length; i += 1) {

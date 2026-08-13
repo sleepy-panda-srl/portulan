@@ -1899,9 +1899,17 @@ export function run(argv, options = {}) {
         // beside it — and nothing ever set it, so the parameter was reachable only from a test.
         // Discovery of a host's plugin cache landed at milestone 7 for BOTH halves (#123): ./discover.mjs
         // dereferences a POINTER's `governed_by`, and `--pack-root auto` resolves a pack root from the same
-        // record. What is deliberately NOT taken is a DEFAULT — discovery runs only when asked, because
-        // defaulting it would change what every existing run resolves against and would put a discovered
-        // root where #117 established that a named one REPLACES the derived one.
+        // record.
+        //
+        // **Discovery IS the default as of 2026-08-13**, and this comment said the opposite — *"what is
+        // deliberately NOT taken is a DEFAULT … defaulting it would change what every existing run
+        // resolves against"*. It would, and the maintainer ruled the change: row 7's clause makes
+        // `--pack-root` *optional where discovery finds a root*, and it was not. Both of the old
+        // sentence's grounds survive where they were actually load-bearing — a **named** root still
+        // REPLACES the derived one (#117, untouched, the arm above), and a required check's verdict still
+        // cannot move with the machine, because `../.portulan/verify/compile.sh` **names its root** and
+        // `./pinned-roots.live.test.mjs` reds if it stops. What changed is which carrier holds that
+        // second guarantee: the pin, not the absence of a default.
         const namedRoots = [];
         let forced = false;
         for (let i = 0; i < argv.length; i += 1) {
@@ -1971,7 +1979,11 @@ export function run(argv, options = {}) {
         // The cascade's middle layer, composed before the policy is parsed so that a pack's fragment
         // is validated by exactly the code that validates a hand-written rule.
         // The thunk means the host's plugin record is read only on a path where it can win — which is
-        // what keeps `compile --check`, a required check that names no root, independent of host state.
+        // still true of the **named** and **refused** arms and is no longer what keeps `compile --check`
+        // host-independent. That sentence read *"a required check that names no root"*, and since
+        // 2026-08-13 `../.portulan/verify/compile.sh` runs `--pack-root packs --check`: it names one, and
+        // a named root replaces every other source. The pin is the carrier; the thunk is what keeps an
+        // API caller wiring none hermetic.
         const { contributions, unresolved, plan } = packContributions(workspaceRoot, workspaceDir, {
             named: namedRoots,
             discovery: () => discoverPackRoots(),
@@ -1980,8 +1992,15 @@ export function run(argv, options = {}) {
         // Under `--matrix` only, EXCEPT when the set is a union: that line moves with what is
         // installed, which is why it is normally withheld from a byte-compared run — but a union is the
         // one arrangement where a tree-derived root joined the search without anyone naming it, and the
-        // whole contract of the union is that this is never silent. `--check` cannot reach it: it names
-        // no root and passes no `auto`, so `forced` is false and the plan is never a union there.
+        // whole contract of the union is that this is never silent.
+        //
+        // **`--check` CAN reach it now, and that is the point rather than a leak.** This read *"`--check`
+        // cannot reach it: it names no root and passes no `auto`, so `forced` is false and the plan is
+        // never a union there"* — all three clauses went false on 2026-08-13, when the unasked arm began
+        // consulting discovery. A `--check` run whose resolution set included a discovered root and said
+        // nothing would be the silent substitution `--pack-root auto`'s own justification refuses, so the
+        // line prints. The **required** check reaches neither, because it names a root: `source` is
+        // `named` there and this condition is false for the right reason.
         if (plan && (showMatrix || plan.source === "union")) say(`packs: resolution root ${plan.source} — ${plan.why}`);
         const composed = composeFragments(policy, contributions);
         const parsed = parse(composed.policy);

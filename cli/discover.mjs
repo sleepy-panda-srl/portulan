@@ -29,6 +29,10 @@
 // the local tree. That half is untouched. The row states the direction discovery takes: it **adds a
 // root only where none was named**, and never replaces one that was — and since 2026-08-12 the
 // implementation takes that verb literally, which is what `resolutionRoots`' own docblock argues.
+// **On 2026-08-13 it began taking the row's OTHER verb literally too** — *`--pack-root` and its
+// siblings are optional where discovery finds a root* — so the unasked arm consults a wired thunk
+// as well. `resolutionRoots`' docblock carries the ruling, the asymmetry between the two arms, and
+// what now holds the boundary the old narrowing was standing in for.
 //
 // ## Four states, because three of them are not "no"
 //
@@ -747,14 +751,18 @@ export function namedWithAuto(named = [], forced = false) {
  *    rather than a sentence. A provenance a caller can only grep out of prose is checkable against
  *    sentences this same change wrote.
  *
- * **What may be claimed after the trade:** under `--pack-root auto` no path needs typing; every pack's
- * resolution names the root it used and whether that root was discovered or derived; a local-tree
- * resolution is visible rather than silent. **What may NOT:** that `auto` resolves only from a feed —
- * it no longer does — or that a green under `auto` certifies provenance. The green certifies
- * resolution. What bounds a pack's *content* is unchanged and is the pin, never this function. The
- * narrower property #117 demonstrated also stands verbatim: a **named** root still replaces the
- * derived one, so a resolved-from-a-feed demonstration given a named root cannot be satisfied by a
- * local copy.
+ * **What may be claimed after the trade:** no path needs typing; every pack's resolution names the root
+ * it used and whether that root was discovered or derived; a local-tree resolution is visible rather
+ * than silent. **What may NOT:** that `auto` resolves only from a feed — it no longer does — or that a
+ * green under it certifies provenance. The green certifies resolution. What bounds a pack's *content* is
+ * unchanged and is the pin, never this function. The narrower property #117 demonstrated also stands
+ * verbatim: a **named** root still replaces the derived one, so a resolved-from-a-feed demonstration
+ * given a named root cannot be satisfied by a local copy.
+ *
+ * _(Each clause above read "under `--pack-root auto`" until 2026-08-13. The trade is the same trade and
+ * it now applies to the bare invocation as well, which is the disposal: a flag whose absence bought a
+ * provenance guarantee could not also be optional. What asking still buys is the **strict degrade** —
+ * see the asymmetry below — and nothing else.)_
  *
  * ## Asking for both is refused, not reconciled
  *
@@ -763,8 +771,48 @@ export function namedWithAuto(named = [], forced = false) {
  * request, so the combination is a **refusal** — `refusal` is set, and the roots are empty so a caller
  * that forgets to check fails closed rather than resolving against half of what was asked for.
  *
- * `discovery` may be a THUNK, and every branch that cannot use it must not call it: that is what keeps
- * `compile --check` — a required check that names no root — independent of host state.
+ * ## The unasked arm consults discovery too, as of 2026-08-13 — the row's word, met
+ *
+ * The row's clause is *"optional where discovery finds a root"*, and until this date `--pack-root` was
+ * not optional: on the workspace `init` drafts by default plus one pack of the adopter's own, `doctor`
+ * exited **1** with no flag and **0** under `auto`. Measured, and it was worse than one red — the same
+ * arrangement made `recipe-set` and `skills-set --check` exit **2**, and left `compile` composing the
+ * bound checkpoint pack's two gate fragments into nothing. Three of five tools were unusable unasked.
+ *
+ * The maintainer ruled a **behaviour change rather than a row amendment**: the row's word stands and
+ * the implementation meets it. A fresh supervisor graded that ruling sound from `../docs/vision.md`,
+ * which defines `doctor` as a **per-host capability report** — answering about the host is what it is
+ * for — and sharpened the boundary to: **a verdict about the *repository* must not depend on the
+ * machine.**
+ *
+ * **What holds that boundary is the PIN, not this branch.** Six required invocations name their root
+ * (2026-08-13), a named root **replaces** every other source, and `../cli/pinned-roots.live.test.mjs`
+ * fails if any of them drops it or if a seventh joins them unpinned. So a required check's verdict
+ * cannot move with what is installed on the machine running it, whatever the unasked default is. This
+ * docblock said the **thunk** was what kept `compile --check` host-independent, and that sentence had
+ * already gone false one pull request earlier, when `.portulan/verify/compile.sh` gained
+ * `--pack-root packs`: it names a root. The guarantee moved carriers and the prose had not.
+ *
+ * ## The asymmetry between the two arms, which is the whole reason they are two
+ *
+ * **`forced` and unasked differ on exactly one question: what an unreadable record means.**
+ *
+ * - **Asked and could not look is could-not-run** — exit 2, ruled 2026-08-13. You asked; the question
+ *   is unanswerable; that is what the third code is for.
+ * - **Unasked and could not look degrades to derived-only, with the diagnostic REPORTED** — never an
+ *   empty set, never exit 2. Nobody asked, so the readability of the host's record cannot be a
+ *   precondition for grading a repository. Silent, though, it must not be: the diagnostic rides in
+ *   `why`, so a host with a corrupt record is visible rather than merely survived.
+ *
+ * **Reusing the `forced` branch as the unasked default is therefore the one implementation that must
+ * not happen.** It would import that branch's `couldNotRun` and every CI runner — where the record is
+ * absent, then unreadable the day a host bumps its schema — would exit 2 or, worse, be given an empty
+ * root set and go green by not looking. That is the fail-open this module spent a session closing.
+ *
+ * `discovery` may be a THUNK, and **its presence is the switch**: an API caller that wires none keeps
+ * the hermetic behaviour this function had before, on every arm. There is no second flag for it,
+ * because a per-caller opt-out would be a second carrier of the precedence rule — the
+ * three-tools-two-semantics defect `./compile.mjs`'s `namedRootsOption` records.
  */
 export function resolutionRoots({ named = [], namedGiven = null, derived = [], discovery = null, forced = false } = {}) {
     let cached;
@@ -792,6 +840,29 @@ export function resolutionRoots({ named = [], namedGiven = null, derived = [], d
         refusal,
         couldNotRun,
     });
+    // **ONE union, reached from both arms.** Discovered-first is load-bearing rather than cosmetic:
+    // `resolvePack` is first-match-wins, so where both roots carry a pack the discovered copy answers,
+    // which keeps every result the old `auto` produced a subset of this one. Written once because two
+    // orders keyed on whether a flag was typed would make the flag change the *meaning* of resolution
+    // rather than its inputs — and two matching literals are a convention, while one function is a
+    // guarantee. `lead` is the only difference between the arms: who asked.
+    //
+    // **What `source: "union"` means, because the arms reach this differently and a reader will assume
+    // they do not.** The `forced` arm calls this even when discovery found **nothing** — you asked, and
+    // *"I looked, and there is nothing installed"* is the answer to report. The unasked arm calls it only
+    // where discovery contributed a root; otherwise it returns `derived`, with discovery's own sentence in
+    // the `why`. So `union` reads as *discovery contributed, or was asked for* — never as *the set has two
+    // origins*. Recorded because a test fixture with an empty cache passed the asked half and bound
+    // nothing on the unasked one, which is how the asymmetry was noticed at all.
+    const union = (found, lead) => {
+        const nothingFound = found.roots.length === 0 && found.why;
+        return plan(
+            [...found.roots, ...derived],
+            "union",
+            `${lead} (${found.roots.length} root(s))${nothingFound ? ` — ${found.why}` : ""} and derived from the manifest's \`tree\` (${derived.length} root(s)) — each pack's resolution states which of the two it came from`,
+            [...tag(found.roots, "discovered"), ...tag(derived, "derived")],
+        );
+    };
 
     const refusal = namedWithAuto(givenNamed, forced);
     if (refusal) {
@@ -842,30 +913,63 @@ export function resolutionRoots({ named = [], namedGiven = null, derived = [], d
         // here — so a degrade-and-carry-on would silently convert every `auto` user to derived-only on
         // that day, fleet-wide, repealing a decision the constant records as deliberate. Exit 2 makes
         // it loud, which is what the constant asked for.
+        //
+        // **That argument is about the ASKED arm alone, and saying so is the point.** Since the unasked
+        // arm began consulting discovery (2026-08-13) a record-version bump degrades the *bare* fleet to
+        // derived-only rather than stopping it — which is correct, because nobody asked — so "loud" has
+        // to be delivered there by the diagnostic rather than by an exit code. Where each tool surfaces
+        // it: `doctor` prints `plan.why` on its `resolution root` note and on every unresolved pack;
+        // `compile` prints the plan line whenever the source is a union and an `UNRESOLVED` line per
+        // pack; `recipe-set` and `skills-set` still exit **2** on a composed artefact they could not
+        // read, which is the row's own could-not-run rule and is untouched by the degrade.
         if (!found.ok) return plan([], "none", found.why, [], null, found.why);
-        // Where discovery found NOTHING, its own sentence rides through. "0 root(s)" alone cannot tell
-        // a host with no record from a host with a valid record listing nothing installed, and those
-        // are different facts about the machine — the second is a host that has Portulan packs
+        // Where discovery found NOTHING, its own sentence rides through — see `union`. "0 root(s)" alone
+        // cannot tell a host with no record from a host with a valid record listing nothing installed,
+        // and those are different facts about the machine — the second is a host that has Portulan packs
         // available and none of them relevant; the first is a host that has never installed one.
-        const nothingFound = found.roots.length === 0 && found.why;
-        return plan(
-            [...found.roots, ...derived],
-            "union",
-            `discovered in the host plugin cache (${found.roots.length} root(s))${nothingFound ? ` — ${found.why}` : ""} and derived from the manifest's \`tree\` (${derived.length} root(s)) — each pack's resolution states which of the two it came from`,
-            [...tag(found.roots, "discovered"), ...tag(derived, "derived")],
-        );
+        return union(found, "discovered in the host plugin cache");
     }
+    // ── The unasked arm. Nobody named a root and nobody typed `auto`.
+    //
+    // A wired thunk is consulted here, and the DEGRADES are the whole of the difference from the arm
+    // above: an unreadable record loses the discovered half and keeps the derived one, rather than
+    // becoming a could-not-run. Guarded on `discovery` rather than on the memoised value, so a caller
+    // that wires nothing never reaches the thunk at all — that identity, not a flag, is what keeps an
+    // API caller hermetic.
+    const found = discovery === null || discovery === undefined ? null : resolveDiscovery();
+    if (found && found.ok && found.roots.length) return union(found, "discovered in the host plugin cache unasked");
+    // Everything below is derived-only, and the three ways of getting here need three sentences,
+    // because collapsing them is how this module started lying about `absent` in the first place.
+    // `couldNotRun` is null on every one of them: nobody asked.
+    const because = !found
+        ? null
+        : found.ok
+          ? // Looked, nothing installed that carries packs. Discovery's own sentence distinguishes a
+            // host with no record from one whose record lists nothing relevant.
+            `discovery was consulted and found no root — ${found.why}`
+          : // Could not look, and it is REPORTED rather than swallowed. Degrading in silence would
+            // make a corrupt plugin record indistinguishable from a clean host, which is the pair
+            // `discoverPackRoots` keeps apart one function above.
+            `discovery was consulted and could not look, so only the derived root is searched — ${found.why}`;
     if (derived.length) {
+        // Same discipline as the arm below: the stem is ONE string and only the tail branches, so a
+        // discriminator matching on it cannot be broken by editing the other case.
         return plan(
             [...derived],
             "derived",
-            "derived from the workspace manifest's `tree` — pass `--pack-root auto` to search the host plugin cache as well",
+            `derived from the workspace manifest's \`tree\`${because ? `; ${because}` : " — pass `--pack-root auto` to search the host plugin cache as well"}`,
         );
     }
+    // The STEM is deliberately the same clause in both arms — *no root was named and none is derivable
+    // from the manifest* — and only the tail differs. Rewording it cost a test that was asserting the
+    // right property for the right reason: `doctor.test.mjs`'s *"a declared pack on a workspace with no
+    // tree is REPORTED, never failed"* matched on `none is derivable from the manifest`, and a
+    // paraphrase broke a discriminator this change had no business touching. Prose that carries a
+    // discriminator is an interface.
     return plan(
         [],
         "none",
-        "no root was named and none is derivable from the manifest; discovery was not asked for (`--pack-root auto`)",
+        `no root was named and none is derivable from the manifest; ${because ?? "discovery was not asked for (`--pack-root auto`)"}`,
     );
 }
 

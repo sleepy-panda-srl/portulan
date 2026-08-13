@@ -49,6 +49,12 @@ import path from "node:path";
 
 import { recipeSet, composedId, resolverFor, run, RECIPE_SET_READERS } from "./recipe-set.mjs";
 
+// A HERMETIC HOST. The tools consult the host's installed-plugin record on the UNASKED path as of
+// 2026-08-13, so a suite that does not neutralise it reads the machine it runs on and a fixture's
+// verdict moves with what somebody has installed. Swept by `pinned-roots.live.test.mjs`, whose header
+// carries the argument and the limit. A case that wants a host passes `env:` explicitly, which wins.
+process.env.CLAUDE_CONFIG_DIR = fs.mkdtempSync(path.join(os.tmpdir(), "portulan-hermetic-"));
+
 /** A workspace manifest with `n` plain recipes, enough to be legal and no more. */
 function workspace(recipes, extra = {}) {
     return { name: "w", verify: { default: recipes[0]?.id, recipes }, ...extra };
@@ -348,10 +354,14 @@ describe("the roster — every reader of the recipe set reaches this carrier", (
     });
 });
 
-test("`resolverFor` can actually reach discovery — `forced` rides beside `discovery`", () => {
-    // It accepted `discovery` and passed it to `rootPlan` without `forced`, and `resolutionRoots`
-    // consults `discovery` only under `forced`. So the parameter looked wired and no caller could
-    // ever have reached it: dead plumbing wearing a capability's name.
+test("`resolverFor` reaches discovery with or without `forced`, and reaches nothing with no thunk", () => {
+    // **The original subject stands and its second assertion is re-derived.** `resolverFor` accepted
+    // `discovery` and passed it to `rootPlan` without `forced`, and `resolutionRoots` then consulted
+    // `discovery` only under `forced` — dead plumbing wearing a capability's name. The old proof of the
+    // wiring was that WITHOUT `forced` nothing resolved, which stopped being true on 2026-08-13: the
+    // unasked arm consults a wired thunk too. What proves the wiring now is the pair below — a thunk
+    // present resolves, a thunk absent does not — and it is a stronger proof than the old one, because
+    // the old one would also have passed if `discovery` had been ignored on both paths.
     const root = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), "recipe-set-forced-"));
     const packDir = path.join(root, "tools", "thing");
     fs.mkdirSync(packDir, { recursive: true });
@@ -363,10 +373,19 @@ test("`resolverFor` can actually reach discovery — `forced` rides beside `disc
     const discovery = { ok: true, roots: [root] };
 
     const unforced = resolverFor({ workspaceDir: root, manifest, discovery });
-    assert.equal(unforced("tools/thing"), null, "without `forced`, discovery is never consulted");
+    assert.notEqual(unforced("tools/thing"), null, "unasked, a wired thunk is still consulted");
 
     const forced = resolverFor({ workspaceDir: root, manifest, discovery, forced: true });
     assert.notEqual(forced("tools/thing"), null, "with `forced`, the discovered root answers");
+
+    // No thunk, no discovered root. **Priced honestly: this assertion is an echo, not a rail.** No
+    // mutation can force it red, because in a hermetic test environment *no thunk* and *a host with
+    // nothing installed* produce the same answer — measured, by trying. The binding version of the
+    // property lives at the resolver, in `discover.test.mjs`'s "unasked with NO thunk wired, the host is
+    // never read", which asserts `source` and so distinguishes the two. This is kept because it states
+    // the contract at the layer an API caller reads, and it is labelled so nobody counts it twice.
+    const hermetic = resolverFor({ workspaceDir: root, manifest });
+    assert.equal(hermetic("tools/thing"), null, "with no thunk wired, the host is never reached");
 });
 
 test("`resolverFor` refuses a named root beside `forced` rather than resolving nothing", () => {

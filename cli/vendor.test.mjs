@@ -46,6 +46,12 @@ import { fileURLToPath } from "node:url";
 import { inspect } from "./doctor.mjs";
 import { VendorError, RESIDENCES, parseArgs, residenceOf, retarget, walk, directories, escapingSlots, collisions, agentsMd, run } from "./vendor.mjs";
 
+// A HERMETIC HOST. The tools consult the host's installed-plugin record on the UNASKED path as of
+// 2026-08-13, so a suite that does not neutralise it reads the machine it runs on and a fixture's
+// verdict moves with what somebody has installed. Swept by `pinned-roots.live.test.mjs`, whose header
+// carries the argument and the limit. A case that wants a host passes `env:` explicitly, which wins.
+process.env.CLAUDE_CONFIG_DIR = fs.mkdtempSync(path.join(os.tmpdir(), "portulan-hermetic-"));
+
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 
 // ONE exit handler for every scratch directory, not one each — the per-directory form exceeds node's
@@ -1272,6 +1278,51 @@ describe("parity across residences", () => {
         assert.equal(returned.workspace.tree, "../");
         assert.equal(governors(repo, [feed]), 1);
     });
+});
+
+test("`env` reaches `doctor` through `verdict`, at BOTH ends of the switch", async () => {
+    // **`vendor` acquired unasked discovery without a line of it being edited**, because `verdict` calls
+    // `doctor`'s `inspect`, which builds its own resolution plan and wires its own thunk. `verdict` took
+    // no `env`, so from 2026-08-13 every vendor run — this suite's included — would have read whatever
+    // was installed on the machine. Found at the session-open checkpoint, which went and traced the call
+    // rather than reading the tool's own flags.
+    //
+    // Bound by making the host DECIDE the outcome: a workspace composing a pack that only the host
+    // carries is green when `env` names that host and red when it names an empty one. Remove the `env`
+    // spread in `vendor.mjs` and the second half resolves against the real machine instead of the
+    // fixture, which is the leak this asserts against.
+    const packInHost = () => {
+        const config = scratch();
+        const installPath = path.join(config, "plugins", "cache", "feed", "carrier", "0.1.0");
+        const packDir = path.join(installPath, "rituals", "checkpoints");
+        fs.mkdirSync(packDir, { recursive: true });
+        write(packDir, "pack.json", json({ portulan: { pack: "1.0", version: "0.1.0" }, name: "checkpoints", category: "rituals", summary: "x", doc: "README.md", contributes: {} }));
+        write(packDir, "README.md", "# x\n");
+        const record = path.join(config, "plugins", "installed_plugins.json");
+        fs.mkdirSync(path.dirname(record), { recursive: true });
+        write(path.dirname(record), "installed_plugins.json", json({ version: 2, plugins: { "carrier@feed": [{ scope: "user", installPath, version: "0.1.0" }] } }));
+        return { CLAUDE_CONFIG_DIR: config };
+    };
+
+    // A source workspace composing a pack that exists in NO tree — so only a host can answer for it.
+    const stage = (env) => {
+        const root = scratch();
+        const src = inRepo(root, "acme-app", { extra: { packs: ["rituals/checkpoints"] } });
+        const h = harness();
+        // `--into` must end in `.portulan` for an in-repo residence — the tool refuses otherwise, and a
+        // fixture tripping that refusal would have asserted exit 2 for a reason with nothing to do with
+        // discovery.
+        return run([src, "--into", path.join(root, "vendored", ".portulan"), "--residence", "in-repo", "--host", "generic"], { ...h.options, ...(env ? { env } : {}) }).then((code) => ({ code, said: text(h) }));
+    };
+
+    const carrying = await stage(packInHost());
+    assert.equal(carrying.code, 0, carrying.said);
+
+    // The control. An empty host cannot answer for the pack, the staged copy's own tree does not carry
+    // it, so `doctor` FAILs it and the switch is refused before it begins.
+    const empty = await stage({ CLAUDE_CONFIG_DIR: scratch() });
+    assert.equal(empty.code, 1, empty.said);
+    assert.match(empty.said, /rituals\/checkpoints/);
 });
 
 test("vendor refuses a named root combined with `--pack-root auto`", async () => {

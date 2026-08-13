@@ -1652,21 +1652,42 @@ export async function inspect(workspaceDir, options = {}) {
         // tree-derived resolution is visible rather than silent, and a lookup is how a per-pack line
         // says so without re-deriving the first-match rule.
         const originOf = new Map((plan.origins ?? []).map((o) => [o.root, o.origin]));
+        // **A MISS is a failure only where somebody CLAIMED a root**, and since 2026-08-13 that is a
+        // question about origin rather than about count. A named root is the caller's claim; a root
+        // derived from `tree` is the workspace's own claim; a **discovered** root is neither — it is a
+        // fact about the machine, and this tool must not turn a fact about the machine into a verdict
+        // about the repository. Keyed on `roots.length` alone, it did exactly that: measured
+        // 2026-08-13, `doctor examples` exited **0** and `doctor --pack-root auto examples` exited
+        // **1**, because `examples` derives no root and `tools/github` is not in this host's cache. The
+        // count key let host state flip a workspace's verdict, and making discovery the unasked default
+        // would have moved that flip onto the bare invocation — red on a laptop, green in CI.
+        //
+        // So: **discovery may flip a note to resolved, and may never turn a MISS into a FAIL.** A hit is
+        // a different matter and is graded whatever its origin — a resolved-but-invalid copy fails with
+        // its origin named, below, because that is a claim the pack's own files make about themselves.
+        const claimed = roots.filter((root) => originOf.get(root) !== "discovered");
         report("packs", `resolution root ${plan.source} — ${plan.why}`);
         for (const name of workspace.packs) {
             const found = resolvePack(name, roots);
             if (!found.dir) {
-                // A workspace with no `tree` has no root to search, so its declared packs are
+                // A workspace with no `tree` has no root of its own to search, so its declared packs are
                 // *unverifiable* rather than *wrong* — the same answer `tree`'s absence already gives
-                // every other claim needing a tree. Where a root exists, resolution was claimed and a
-                // miss is a failure.
-                if (roots.length === 0) {
+                // every other claim needing a tree. Where a claimed root exists, resolution was claimed
+                // and a miss is a failure.
+                if (claimed.length === 0) {
+                    // Counted, never skipped: the pack was not graded, and `stats.unverifiable`'s
+                    // contract at the head of this file is that a check class which disappears without
+                    // saying so is the defect. A discovered-only miss is exactly that class.
                     stats.unverifiable += 1;
-                    // The empty set has more than one cause since discovery landed: no `tree`, or
-                    // `--pack-root auto` finding nothing, or the record not being readable at all — and
-                    // the last two happen on workspaces that DO declare a tree. `plan.why` is the one
-                    // carrier of which it was, so it is what gets printed.
-                    report("packs", `\`${name}\` cannot be resolved — there is no packs root to search: ${plan.why}`);
+                    // Two causes, two sentences. The claimed set is empty either because there was no
+                    // root at all — no `tree`, or discovery finding nothing — or because every root
+                    // there IS was discovered, which is a real search that nobody asked for and whose
+                    // failure is therefore nobody's claim. Saying "there is no packs root to search"
+                    // about the second is false: there was one, and it was looked in.
+                    const why = roots.length
+                        ? `\`${name}\` was looked for under ${roots.length} discovered root(s) and is not there — reported rather than failed, because a root discovered on this host is not a claim this workspace made: ${plan.why}`
+                        : `\`${name}\` cannot be resolved — there is no packs root to search: ${plan.why}`;
+                    report("packs", why);
                 } else {
                     fail("packs", `\`${name}\` does not resolve — ${found.why}`);
                 }
@@ -2465,12 +2486,30 @@ export async function run(argv, options = {}) {
         // feed" cannot be satisfied by a copy in the local tree at all — the three tools disagreed about
         // this once, and `../cli/compile.mjs`'s `namedRootsOption` carries what that cost.
         //
-        // **A PACK root is discovered only when asked, and that is a boundary rather than an absence.**
-        // `./discover.mjs` reads the host's installed-plugin record, and this tool uses it for two things:
-        // dereferencing a POINTER's `governed_by`, and resolving a pack root under `--pack-root auto`
-        // (#123). What is deliberately not taken is a DEFAULT — it would change what a `packs` array
-        // resolves against on every existing run, and the row fixes the only safe direction for it (add a
-        // root where none was named; never replace one that was).
+        // **A PACK root IS discovered by default as of 2026-08-13, and the boundary moved rather than
+        // being dropped.** `./discover.mjs` reads the host's installed-plugin record, and this tool uses
+        // it for two things: dereferencing a POINTER's `governed_by`, and resolving pack roots (#123).
+        //
+        // This passage read *"discovered only when asked … what is deliberately not taken is a DEFAULT"*,
+        // and defended it as a boundary. Row 7's clause is that discovery makes `--pack-root` **optional
+        // where discovery finds a root**, and it was not: measured on the workspace `init` drafts by
+        // default plus one pack of the adopter's own, `doctor` exited **1** with no flag and **0** under
+        // `auto`. The maintainer ruled a behaviour change rather than a row amendment; a fresh supervisor
+        // graded that sound from `../docs/vision.md`, which defines this tool as a **per-host capability
+        // report** — answering about the host is what it is for.
+        //
+        // **The boundary it replaces, sharpened, is: a verdict about the *repository* must not depend on
+        // the machine.** Three things hold it, and none of them is the absence of a default:
+        //
+        // 1. **The pins.** Six required invocations name their root, a named root REPLACES every other
+        //    source, and `./pinned-roots.live.test.mjs` reds if one drops it or a seventh joins unpinned.
+        // 2. **The note-vs-fail keying below is on ORIGIN**, so a root nobody claimed can turn an
+        //    unresolved pack from a note into a resolution, and never into a failure.
+        // 3. **Never silently.** The `resolution root` note names the source, and each pack's line names
+        //    which root answered and whether it was discovered or derived.
+        //
+        // The row's own direction is unchanged and is what the arms above implement: **add a root where
+        // none was named; never replace one that was.**
         //
         // `--repo-root <dir>`, repeatable, is its sibling and is deliberately shaped the same way: the
         // directories under which the repositories a workspace's cards NAME are checked out, so the

@@ -263,17 +263,21 @@ export function recipeSet(manifest, options = {}) {
  * A resolver over a workspace's declared pack roots, for callers that actually compose.
  *
  * Reaches `compile.mjs`'s `rootPlan` and `resolvePack` rather than re-deriving where a pack lives —
- * the precedence rule (**a named root wins outright; asked-for discovery is unioned with the derived
+ * the precedence rule (**a named root wins outright; otherwise discovery is unioned with the derived
  * root, discovered first**) lives once, in `resolutionRoots`, and a second derivation here would be a
- * second carrier of the fact `cli/discover.mjs` was built to hold. The pack root handed to
+ * second carrier of the fact `cli/discover.mjs` was built to hold. _(It read "asked-for discovery" until
+ * 2026-08-13; the unasked arm consults a wired thunk too, and what asking still changes is the degrade —
+ * asked-and-could-not-look is exit 2, unasked-and-could-not-look keeps the derived root.)_ The pack root handed to
  * `${PACK_ROOT}` is made **relative to the repository root**, because that is the root a recipe's
  * `run` is typed from.
  *
- * **`forced` rides beside `discovery` because without it the pair is dead plumbing.** This function
- * accepted `discovery` and passed it on while `resolutionRoots` consults it only under `forced`, so no
- * caller could ever have reached discovery through here — the parameter looked wired and was not. It
- * is threaded rather than deleted because the recipe set is exactly a place an adopter will want it;
- * what is refused is a parameter that reads as a capability and is none.
+ * **`forced` rides beside `discovery` because without it the pair WAS dead plumbing.** This function
+ * accepted `discovery` and passed it on while `resolutionRoots` consulted it only under `forced`, so no
+ * caller could ever have reached discovery through here — the parameter looked wired and was not. Both
+ * are still threaded and `forced` now carries less: since 2026-08-13 a wired `discovery` is consulted
+ * either way, and `forced` selects the strict degrade. A caller passing neither stays hermetic, which is
+ * the property `recipe-set.test.mjs` pins — and it is the reason `stop-gate`, which passes `packs: []`,
+ * still reaches no host at all.
  */
 export function resolverFor({ workspaceDir, manifest, repoRoot = ".", named = [], discovery = null, forced = false }) {
     const plan = rootPlan(workspaceDir, manifest, { named, discovery, forced });

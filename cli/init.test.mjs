@@ -35,6 +35,12 @@ import { fileURLToPath } from "node:url";
 
 import { InitError, SLUG, slugify, parseArgs, scan, draft, collisions, residenceAt, run } from "./init.mjs";
 
+// A HERMETIC HOST. The tools consult the host's installed-plugin record on the UNASKED path as of
+// 2026-08-13, so a suite that does not neutralise it reads the machine it runs on and a fixture's
+// verdict moves with what somebody has installed. Swept by `pinned-roots.live.test.mjs`, whose header
+// carries the argument and the limit. A case that wants a host passes `env:` explicitly, which wins.
+process.env.CLAUDE_CONFIG_DIR = fs.mkdtempSync(path.join(os.tmpdir(), "portulan-hermetic-"));
+
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO = path.resolve(HERE, "..");
 
@@ -972,14 +978,125 @@ describe("the draft does not overstate its own rails to the adopter", () => {
         assert.match(readme, /exits\s+\*\*2/i, "the rail's honest first state on an adopter's CI belongs in the artifact that ships it");
     });
 
-    test("the run itself says the pack is unresolved, not only the file it wrote", async () => {
+    test("on a host where nothing resolves it, the run says so and offers a root to name", async () => {
+        // **Re-derived, and the change is which advice is honest.** This asserted `--pack-root auto` was
+        // offered, on the ground that it "is the answer that needs no path". Since the disposal `auto` is
+        // no longer an answer this branch can offer: the unasked run has ALREADY consulted discovery and
+        // it found nothing, so printing `auto` would advise typing a flag whose answer the tool just
+        // read — the same defect this branch was fixed for once, in the other direction. Naming a
+        // directory is the only advice left that can change the outcome.
+        //
+        // `harness()` gives no host, and the module-scope hermetic guard means the ambient one is empty
+        // too, so this is CI's arrangement.
         const dir = scratch();
         const h = harness();
         await run(["--residence", "in-repo", dir], h.options);
-        assert.match(h.said.join("\n"), /RED until you say where to look/);
-        // `auto` is offered rather than only `<dir>`: it is the answer that needs no path, and the
-        // closing advice omitted it for the four sessions between discovery landing and this one.
-        assert.match(h.said.join("\n"), /--pack-root auto/);
+        const said = h.said.join("\n");
+        assert.match(said, /RED until you say where to look/);
+        assert.match(said, /not the host's plugin cache, and not `packs\/` in the repository/);
+        assert.match(said, /doctor --pack-root <dir>/);
+        assert.doesNotMatch(said, /--pack-root auto/, "advice to ask for a discovery this run already made");
+    });
+
+    test("on a host that CARRIES the pack, the unasked run resolves it and advises the bare invocation", async () => {
+        // The disposal at `init`. Two things are asserted and the second is the one with teeth: the run
+        // prints `doctor <ws>` with no flag, and it warns that the root it used is the MACHINE's — an
+        // adopter whose CI has nothing installed derives `<repo>/packs` alone and needs a pin there.
+        const config = scratch();
+        const installPath = path.join(config, "plugins", "cache", "feed", "carrier", "0.1.0");
+        const packDir = path.join(installPath, "rituals", "checkpoints");
+        fs.mkdirSync(packDir, { recursive: true });
+        fs.writeFileSync(
+            path.join(packDir, "pack.json"),
+            JSON.stringify({ portulan: { pack: "1.0", version: "0.1.0" }, name: "checkpoints", category: "rituals", summary: "x", doc: "README.md", contributes: {} }),
+        );
+        const record = path.join(config, "plugins", "installed_plugins.json");
+        fs.mkdirSync(path.dirname(record), { recursive: true });
+        fs.writeFileSync(record, JSON.stringify({ version: 2, plugins: { "carrier@feed": [{ scope: "user", installPath, version: "0.1.0" }] } }));
+
+        const dir = scratch();
+        const h = harness();
+        assert.equal(await run(["--residence", "in-repo", dir], { ...h.options, env: { CLAUDE_CONFIG_DIR: config } }), 0);
+        const said = h.said.join("\n");
+        assert.match(said, /it resolved from this host's plugin cache/);
+        assert.match(said, new RegExp(`doctor ${path.join(dir, ".portulan").replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`));
+        assert.match(said, /that root is this machine's, not the repository's/);
+    });
+
+    test("unasked with an UNREADABLE record, the derived root still answers and the advice names it", async () => {
+        // **Two properties the mutation harness proved nothing was binding.**
+        //
+        // 1. The unasked degrade keeps `<target>/packs` rather than emptying the set. `expandRoots`
+        //    returned `roots: []` for a could-not-look on both arms; unasked, that discards a root it
+        //    already had — the same *"a fallback that empties the set is worse than no fallback"* shape
+        //    the previous session measured one function over.
+        // 2. The advice names the residence that ACTUALLY answered. It said *"it resolved from this
+        //    host's plugin cache"* for every unasked resolution, including this one, where the cache is
+        //    unreadable and the pack came out of the repository. Found by writing this test, not by
+        //    reading the branch.
+        const config = scratch();
+        const record = path.join(config, "plugins", "installed_plugins.json");
+        fs.mkdirSync(path.dirname(record), { recursive: true });
+        fs.writeFileSync(record, "{ not json");
+
+        // The adopter already has the pack in their own tree — which is why an unreadable host record
+        // must not be allowed to decide anything here.
+        const dir = scratch();
+        const packDir = path.join(dir, "packs", "rituals", "checkpoints");
+        fs.mkdirSync(packDir, { recursive: true });
+        fs.writeFileSync(
+            path.join(packDir, "pack.json"),
+            JSON.stringify({ portulan: { pack: "1.0", version: "0.1.0" }, name: "checkpoints", category: "rituals", summary: "x", doc: "README.md", contributes: {} }),
+        );
+
+        const h = harness();
+        assert.equal(await run(["--residence", "in-repo", dir], { ...h.options, env: { CLAUDE_CONFIG_DIR: config } }), 0, h.warned.join("\n"));
+        const said = h.said.join("\n");
+        assert.match(said, /it resolved from `packs\/` in this repository/);
+        assert.doesNotMatch(said, /this host's plugin cache/, "the cache was unreadable and did not answer");
+        // And the CI warning is withheld: a pack in the tree travels with the tree.
+        assert.doesNotMatch(said, /that root is this machine's/);
+    });
+
+    test("the DRAFT is byte-identical on a host that carries the pack and one that does not", async () => {
+        // **`docs/vision.md`'s *no auto-generated curated context*, at the one tool that could break it.**
+        // Discovery reaches the advice and the resolvability answer; it must never reach `draft()`. Hashed
+        // over every drafted file rather than spot-checked, because the failure this guards against is a
+        // single interpolated path in a single README.
+        const config = scratch();
+        const installPath = path.join(config, "plugins", "cache", "feed", "carrier", "0.1.0");
+        const packDir = path.join(installPath, "rituals", "checkpoints");
+        fs.mkdirSync(packDir, { recursive: true });
+        fs.writeFileSync(
+            path.join(packDir, "pack.json"),
+            JSON.stringify({ portulan: { pack: "1.0", version: "0.1.0" }, name: "checkpoints", category: "rituals", summary: "x", doc: "README.md", contributes: {} }),
+        );
+        const record = path.join(config, "plugins", "installed_plugins.json");
+        fs.mkdirSync(path.dirname(record), { recursive: true });
+        fs.writeFileSync(record, JSON.stringify({ version: 2, plugins: { "carrier@feed": [{ scope: "user", installPath, version: "0.1.0" }] } }));
+
+        // The workspace NAME is derived from the directory, so both runs use the same one — otherwise
+        // this would compare two drafts that legitimately differ and pass for the wrong reason.
+        const digest = async (env) => {
+            const dir = path.join(scratch(), "same-name");
+            fs.mkdirSync(dir, { recursive: true });
+            assert.equal(await run(["--residence", "in-repo", dir], { ...harness().options, ...(env ? { env } : {}) }), 0);
+            const root = path.join(dir, ".portulan");
+            const walk = (at, rel = "") =>
+                fs
+                    .readdirSync(at, { withFileTypes: true })
+                    .flatMap((e) =>
+                        e.isDirectory()
+                            ? walk(path.join(at, e.name), `${rel}${e.name}/`)
+                            : [`${rel}${e.name} :: ${fs.readFileSync(path.join(at, e.name), "utf8")}`],
+                    )
+                    .sort();
+            return walk(root).join("\n");
+        };
+
+        const carrying = await digest({ CLAUDE_CONFIG_DIR: config });
+        const bare = await digest(null);
+        assert.equal(carrying, bare, "the drafted files must not vary with what is installed on the host");
     });
 
     test("where a root WAS given and the pack resolved, the closing advice says so and prints THAT invocation", async () => {

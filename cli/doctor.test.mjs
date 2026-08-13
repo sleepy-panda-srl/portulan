@@ -28,6 +28,12 @@ import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
+// A HERMETIC HOST. The tools consult the host's installed-plugin record on the UNASKED path as of
+// 2026-08-13, so a suite that does not neutralise it reads the machine it runs on and a fixture's
+// verdict moves with what somebody has installed. Swept by `pinned-roots.live.test.mjs`, whose header
+// carries the argument and the limit. A case that wants a host passes `env:` explicitly, which wins.
+process.env.CLAUDE_CONFIG_DIR = fs.mkdtempSync(path.join(os.tmpdir(), "portulan-hermetic-"));
+
 import {
     DoctorError,
     compileSchema,
@@ -1948,15 +1954,24 @@ describe("`--pack-root auto` unions the discovered roots with the tree-derived o
         return dir;
     };
 
-    test("the four arrangements, and only the union resolves both", async () => {
+    test("the arrangements, and BOTH resolve with no flag at all since the disposal", async () => {
         const host = hostCarrying((packs) => packAt(packs, "rituals/checkpoints", "from the cache"));
         const dir = both();
 
-        // 1. No flag: the derived root only, so the cache pack is unreachable.
+        // 1. **No flag, and this is the disposal.** It read *"the derived root only, so the cache pack is
+        //    unreachable"* and asserted one failure — which was the row's clause going unmet: this exact
+        //    workspace shape is what `init` drafts by default the moment an adopter adds a pack of its
+        //    own, and it had no green invocation that did not name a host cache path by hand. The four
+        //    arrangements are three now, because two of them are the same answer.
         const derived = await inspect(dir, { schema: SCHEMA, ...host });
-        assert.equal(severities(checks(derived.findings, "packs"), "fail").length, 1, text(derived.findings));
+        assert.equal(severities(checks(derived.findings, "packs"), "fail").length, 0, text(derived.findings));
+        assert.equal(derived.stats.packs, 2, "both packs are graded with no flag");
+        // Never silently: the unasked union says so on its own line, and says which half was discovered.
+        assert.match(text(checks(derived.findings, "packs")), /resolution root union — discovered in the host plugin cache unasked/);
+        assert.match(text(checks(derived.findings, "packs")), /`rituals\/checkpoints` resolves from the discovered root/);
 
-        // 2. `auto`: BOTH. This is the arrangement that could not exist before.
+        // 2. `auto`: the same two packs, reached by asking. The flag is now a way of *insisting* rather
+        //    than the only way of reaching, which is what "optional where discovery finds a root" means.
         const union = await inspect(dir, { schema: SCHEMA, ...host, discoverPacks: true });
         assert.equal(severities(checks(union.findings, "packs"), "fail").length, 0, text(union.findings));
         assert.equal(union.stats.packs, 2);
@@ -2024,12 +2039,18 @@ describe("`--pack-root auto` unions the discovered roots with the tree-derived o
         assert.equal(await run(["--pack-root", "auto", dir], { quiet: true, env: { CLAUDE_CONFIG_DIR: scratch() } }), 1);
     });
 
-    test("a malformed host record cannot reach an unasked run's verdict", async () => {
-        // Ground 1 of the replaced rule, at the level this level can see. It does NOT establish that
-        // nothing read the record — a read whose result is discarded is invisible from here, and a
-        // mutation proving that is what renamed this test. The never-reads property is held one layer
-        // down by a spy, in `discover.test.mjs`'s "a derived root wins unasked, and the host is never
-        // read", where a call can be counted rather than inferred.
+    test("a malformed host record cannot reach an unasked run's verdict — and IS reported", async () => {
+        // **The property survives the disposal and its mechanism inverts, which is why this is
+        // re-derived rather than adjusted.** It used to hold because nothing read the record; it now
+        // holds because the unasked arm reads it, fails to parse it, and degrades to the derived root
+        // *while saying so*. So the assertion that the diagnostic is ABSENT became the assertion that it
+        // is PRESENT — and the verdict-independence it was really about is unchanged and still asserted:
+        // the resolution root is the derived one and the exit code is what the tree earns.
+        //
+        // Kept as its own case because the alternative disposition — could-not-run, as the `forced` arm
+        // does — would make every CI runner's first schema-bump day an exit 2 on a question nobody asked.
+        // The pair is asserted at the resolver in `discover.test.mjs`; this is the tool-level half, which
+        // is the layer that was measured green while the mapping was deleted at four callers.
         const config = scratch();
         const record = path.join(config, "plugins", "installed_plugins.json");
         fs.mkdirSync(path.dirname(record), { recursive: true });
@@ -2037,7 +2058,51 @@ describe("`--pack-root auto` unions the discovered roots with the tree-derived o
         const dir = both();
         const derived = await inspect(dir, { schema: SCHEMA, env: { CLAUDE_CONFIG_DIR: config } });
         assert.match(text(checks(derived.findings, "packs")), /resolution root derived/);
-        assert.doesNotMatch(text(checks(derived.findings, "packs")), /could not be read/);
+        // `Discovery could not look` and not `could not be read`: the latter is in the unresolvable-pack
+        // sentence too, so it would hold with the degrade deleted. Measured against the path it must
+        // exclude — the discriminator defect this repository has now committed three times.
+        assert.match(text(checks(derived.findings, "packs")), /Discovery could not look/);
+        // And it is a verdict, never a refusal: exit 1 on what the tree earns, not 2.
+        assert.equal(await run([dir], { quiet: true, env: { CLAUDE_CONFIG_DIR: config } }), 1);
+    });
+
+    test("the note-vs-fail keying is on ORIGIN, not on how many roots there are", async () => {
+        // **`examples/` is the live instance, and this is the case that makes the disposal safe.** A
+        // workspace with no `tree` derives no root, so under a count key its declared packs became a
+        // FAIL the moment a discovered root joined the set — measured on the real tree before this
+        // landed: `doctor examples` exited 0 and `doctor --pack-root auto examples` exited **1**. Making
+        // discovery the unasked default would have moved that flip onto the bare invocation: red on a
+        // laptop carrying a pack, green in CI. So a MISS under discovered-only roots is a note.
+        const host = hostCarrying((packs) => packAt(packs, "rituals/checkpoints", "from the cache"));
+        const repo = scratch();
+        const noTree = wellFormed();
+        noTree.packs = ["rituals/checkpoints", "tools/absent"];
+        delete noTree.tree;
+        const dir = tree(path.join(repo, ".portulan"), { ...minimalFiles, "workspace.json": JSON.stringify(noTree) });
+
+        const got = await inspect(dir, { schema: SCHEMA, ...host });
+        // The hit is graded whatever its origin — origin decides whether a MISS fails, never whether a
+        // hit is examined.
+        assert.equal(got.stats.packs, 1, text(got.findings));
+        // The miss is a note, and its sentence does NOT claim there was nowhere to look, because there
+        // was: `tools/absent` was searched for under a real root that nobody asked for.
+        assert.equal(severities(checks(got.findings, "packs"), "fail").length, 0, text(got.findings));
+        assert.match(text(checks(got.findings, "packs")), /`tools\/absent` was looked for under 1 discovered root\(s\) and is not there/);
+        assert.doesNotMatch(text(checks(got.findings, "packs")), /`tools\/absent` cannot be resolved — there is no packs root to search/);
+        // Counted rather than skipped: a check class that disappears in silence is the defect
+        // `stats.unverifiable` exists against.
+        assert.ok(got.stats.unverifiable >= 1, "a discovered-only miss is unverifiable, not nothing");
+
+        // **The control, and it is what stops this case licensing a general softening.** The same
+        // arrangement with a root the WORKSPACE claims — a `tree` — still FAILS the pack that is not
+        // there. Without this half, deleting the origin filter entirely would leave the case above green.
+        const withTree = wellFormed();
+        withTree.packs = ["rituals/checkpoints", "tools/absent"];
+        withTree.tree = "../";
+        const claimedDir = tree(path.join(scratch(), ".portulan"), { ...minimalFiles, "workspace.json": JSON.stringify(withTree) });
+        const claimed = await inspect(claimedDir, { schema: SCHEMA, ...host });
+        assert.equal(severities(checks(claimed.findings, "packs"), "fail").length, 1, text(claimed.findings));
+        assert.match(text(checks(claimed.findings, "packs")), /`tools\/absent` does not resolve/);
     });
 });
 
