@@ -41,6 +41,15 @@ const HERMETIC_HOST = fs.mkdtempSync(path.join(os.tmpdir(), "portulan-hermetic-"
 process.env.CLAUDE_CONFIG_DIR = HERMETIC_HOST;
 process.on("exit", () => fs.rmSync(HERMETIC_HOST, { recursive: true, force: true }));
 
+// One exit handler for all scratch directories rather than one each — the per-directory form exceeds
+// node's default ten-listener limit and prints a MaxListenersExceededWarning (`./doctor.test.mjs`,
+// which carries the same block for the same reason). This suite had no sweeper at all until now: it
+// was the second-largest leak in `cli/`, at 18 directories per run against 78 for the whole suite.
+const SCRATCH = [];
+process.on("exit", () => {
+    for (const dir of SCRATCH) fs.rmSync(dir, { recursive: true, force: true });
+});
+
 /** A resolver over an in-memory table, mirroring `resolverFor`'s return shape (root ABSOLUTE). */
 function resolverOver(table) {
     return (ref) => (Object.hasOwn(table, ref) ? table[ref] : null);
@@ -412,6 +421,9 @@ describe("--write, and the three rules a tool writing into somebody's tree carri
     let dir;
     function scratch() {
         dir = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), "skills-set-"));
+        // Pushed here rather than tracked through `dir`, which this suite reassigns per case: the
+        // sweeper must hold every value the variable ever had, not whichever one it ends on.
+        SCRATCH.push(dir);
         return dir;
     }
 
@@ -477,6 +489,7 @@ describe("--write, and the three rules a tool writing into somebody's tree carri
         // the pre-commit checkpoint. The rule is `cli/new.mjs`'s: above the named path resolve, at it
         // and below refuse.
         const base = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), "skills-set-"));
+        SCRATCH.push(base);
         const real = path.join(base, "real");
         fs.mkdirSync(path.join(real, ".claude-plugin"), { recursive: true });
         const manifest = path.join(real, ".claude-plugin", "plugin.json");
@@ -517,6 +530,7 @@ describe("the workspace manifest: absent, unreadable and unparseable are three a
     // sentence and a test on the exit code alone would pass over it.
     function runWith(contents) {
         const root = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), "skills-set-"));
+        SCRATCH.push(root);
         fs.mkdirSync(path.join(root, ".portulan"), { recursive: true });
         if (contents !== null) fs.writeFileSync(path.join(root, ".portulan", "workspace.json"), contents);
         let said = "";
@@ -544,6 +558,7 @@ describe("the workspace manifest: absent, unreadable and unparseable are three a
 describe("--check", () => {
     function checkAgainst(skills, packs, table) {
         const root = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), "skills-set-"));
+        SCRATCH.push(root);
         fs.mkdirSync(path.join(root, ".claude-plugin"), { recursive: true });
         fs.writeFileSync(
             path.join(root, ".claude-plugin", "plugin.json"),
@@ -581,7 +596,11 @@ describe("`--pack-root auto` reaches discovery here, and refuses to be combined 
     // verbatim and 1515 tests stayed green, because nothing here passed `auto` at all. A headline fix
     // with no binding test is a fix that comes back.
 
-    const scratch = () => fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), "skills-set-auto-"));
+    const scratch = () => {
+        const dir = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), "skills-set-auto-"));
+        SCRATCH.push(dir);
+        return dir;
+    };
 
     /** A host whose plugin cache carries one repository-shaped install with `packs/`. */
     function host(packId) {
@@ -697,11 +716,13 @@ function withEnv(config, fn) {
 
 test("skills-set: `auto` against an unreadable record is exit 2", () => {
     const dir = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), "skills-set-unreadable-ws-"));
+    SCRATCH.push(dir);
     fs.mkdirSync(path.join(dir, ".portulan"), { recursive: true });
     fs.writeFileSync(path.join(dir, ".portulan", "workspace.json"), JSON.stringify({
         portulan: { spec: "2.8" }, name: "w", kind: "demo", packs: ["rituals/checkpoints"],
     }));
     const config = unreadableHost(fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), "skills-set-host-")));
+    SCRATCH.push(config);
     const said = [];
     const io = { stdout: { write: (x) => said.push(x) }, stderr: { write: (x) => said.push(x) } };
     assert.equal(withEnv(config, () => run(["--workspace", path.join(dir, ".portulan"), "--pack-root", "auto", "--check"], io)), 2, said.join(""));

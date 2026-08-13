@@ -2064,7 +2064,11 @@ test("compile refuses the pair BEFORE it resolves a workspace or reads a policy"
     //
     // The discriminator is a workspace that does not exist: refusing at parse time never looks at it,
     // and anything later fails on the missing workspace with a different sentence.
-    const absent = path.join(fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), "compile-absent-")), "nope");
+    // Bound to a name rather than consumed inline, so the scratch root can be swept — the inline form
+    // left one directory behind per run with no handle to remove it by.
+    const absentRoot = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), "compile-absent-"));
+    SCRATCH.push(absentRoot);
+    const absent = path.join(absentRoot, "nope");
     const said = [];
     const write = process.stderr.write.bind(process.stderr);
     process.stderr.write = (chunk) => (said.push(String(chunk)), true);
@@ -2108,6 +2112,7 @@ test("compile prints the union plan line even without `--matrix`", () => {
     // reason. The REQUIRED check still cannot reach it, because `../.portulan/verify/compile.sh` names a
     // root and `source` is `named` there.)_
     const home = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), "compile-union-host-"));
+    SCRATCH.push(home);
     const installPath = path.join(home, "plugins", "cache", "feed", "carrier", "0.1.0");
     fs.mkdirSync(path.join(installPath, "packs"), { recursive: true });
     // **A REAL pack in the cache, and the first draft of the unasked half omitted it.** `isPackRoot` asks
@@ -2128,6 +2133,7 @@ test("compile prints the union plan line even without `--matrix`", () => {
     fs.writeFileSync(record, JSON.stringify({ version: 2, plugins: { "carrier@feed": [{ scope: "user", installPath, version: "0.1.0" }] } }));
 
     const dir = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), "compile-union-ws-"));
+    SCRATCH.push(dir);
     fs.mkdirSync(path.join(dir, ".portulan"), { recursive: true });
     fs.writeFileSync(
         path.join(dir, ".portulan", "workspace.json"),
@@ -2194,9 +2200,11 @@ test("compile: `auto` against an unreadable record is exit 2, not a green over a
     fs.writeFileSync(manifestPath, JSON.stringify(m, null, 2));
 
     const config = unreadableHost(fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), "compile-unreadable-")));
+    SCRATCH.push(config);
     assert.equal(withEnv(config, () => run(["--workspace", path.join(dir, ".portulan"), "--pack-root", "auto"], { quiet: true })), 2);
     // The control: the same flag on a host whose record is merely ABSENT is not a refusal — the run
     // proceeds and the unresolved pack is reported rather than the command being rejected.
     const empty = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), "compile-absent-"));
+    SCRATCH.push(empty);
     assert.notEqual(withEnv(empty, () => run(["--workspace", path.join(dir, ".portulan"), "--pack-root", "auto"], { quiet: true })), 2);
 });

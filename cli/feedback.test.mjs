@@ -39,9 +39,38 @@ import {
 
 const AT = new Date("2026-08-10T09:15:00Z");
 
+// One exit handler for all scratch directories rather than one each — the per-directory form exceeds
+// node's default ten-listener limit and prints a MaxListenersExceededWarning (`./doctor.test.mjs`,
+// which carries the same block for the same reason). This suite had no sweeper at all until now: it
+// leaked 46 directories per run, the largest single share of the suite's 78.
+//
+// The per-directory `try` is not defensive habit: the unreadable-workspace case chmods the scratch
+// ROOT ITSELF to `0o000` while it holds 2 entries, and restores it in `finally` — so a case dying
+// before its `finally` leaves a directory `rmSync` cannot enter, as EACCES. `force: true` suppresses
+// ENOENT, not EACCES. Naked, that throw aborts the loop inside an `exit` handler and abandons every
+// directory after it: one locked case would cost the other 45. (The `0o500` `feedback/` case is
+// deliberately not cited — it is empty when locked, and an empty readable directory still removes.)
+//
+// Which locks actually bite was measured, not assumed, because a hazard claimed where none exists
+// is the same defect as one missed: an EMPTY directory still removes if it is READABLE, so only an
+// unreadable one blocks while empty; a NON-EMPTY one additionally needs write and search. The errno
+// follows readability, not position: an UNREADABLE root gives EACCES, while everything else — a
+// locked child, or a readable-but-unwritable root — gives ENOTEMPTY.
+const SCRATCH = [];
+process.on("exit", () => {
+    for (const dir of SCRATCH) {
+        try {
+            fs.rmSync(dir, { recursive: true, force: true });
+        } catch {
+            /* a case died before restoring a mode — sweep what is left rather than abandoning it */
+        }
+    }
+});
+
 /** A workspace directory with a manifest, plus whatever extra files a case plants. */
 function workspace(extra = {}) {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), "portulan-feedback-"));
+    SCRATCH.push(dir);
     fs.writeFileSync(
         path.join(dir, "workspace.json"),
         JSON.stringify({ portulan: { spec: "2.7" }, name: "acme-platform", kind: "repository" }, null, 2),
@@ -839,6 +868,7 @@ describe("the pieces", () => {
 
         // And a `feedback/` directory whose parent carries no manifest is refused for the same reason.
         const orphan = fs.mkdtempSync(path.join(os.tmpdir(), "portulan-orphan-"));
+        SCRATCH.push(orphan);
         fs.mkdirSync(path.join(orphan, "feedback"));
         const stray = path.join(orphan, "feedback", path.basename(file));
         fs.copyFileSync(file, stray);

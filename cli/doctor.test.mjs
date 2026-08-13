@@ -66,9 +66,28 @@ const provenanceSchema = { $defs: SCHEMA.$defs, ...SCHEMA.$defs.provenance };
 // MaxListenersExceededWarning. Found by review on ../.portulan/handoffs/2026-07-26-plugin-and-public-marketplace.md's
 // pull request, in the *new* suite; this file had the same defect first and the new one inherited
 // it by being modelled on it, which is how a defect in an exemplar becomes a defect in a family.
+//
+// The per-directory `try` is not defensive habit: two cases chmod a NON-EMPTY scratch child
+// (`nested`, `skills`) to `0o000` and restore it in `finally`, so a case dying before its `finally`
+// leaves a directory `rmSync` cannot enter. `force: true` suppresses ENOENT, not EACCES. Naked, that
+// throw aborts the loop inside an `exit` handler and abandons every directory after it — and at 260
+// scratch directories per run (measured on `d9be6e3`, counting every `mkdtempSync` landing directly
+// in `os.tmpdir()`, the hermetic host included) this file has the widest blast radius in `cli/`.
+//
+// Which locks actually bite was measured, not assumed, because a hazard claimed where none exists
+// is the same defect as one missed: an EMPTY directory still removes if it is READABLE, so only an
+// unreadable one blocks while empty; a NON-EMPTY one additionally needs write and search. The errno
+// follows readability, not position: an UNREADABLE root gives EACCES, while everything else — a
+// locked child, or a readable-but-unwritable root — gives ENOTEMPTY.
 const SCRATCH = [];
 process.on("exit", () => {
-    for (const dir of SCRATCH) fs.rmSync(dir, { recursive: true, force: true });
+    for (const dir of SCRATCH) {
+        try {
+            fs.rmSync(dir, { recursive: true, force: true });
+        } catch {
+            /* a case died before restoring a mode — sweep what is left rather than abandoning it */
+        }
+    }
 });
 
 /** A throwaway directory, removed when the process exits. */
