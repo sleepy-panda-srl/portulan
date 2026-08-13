@@ -91,7 +91,7 @@ stripping each of the six in a copy and watching it go red.
   inoculate the session that named it; the only thing that caught either instance was somebody
   mutating the assertion and reading what the *other* path says.
 
-**Five Copilot rounds, and every finding after the first was a sibling of this change's own class** —
+**Six Copilot rounds, and every finding after the first was a sibling of this change's own class** —
 a rail deriving its list with one quote style after being fixed for a hand-written list; the
 discriminator defect committed again two files from where it was named; and, at round 4, a **second**
 fail-open one line above the one this change is about: `forced` with no discovery thunk wired returned
@@ -104,7 +104,10 @@ workspace to the literal string `--pack-root` — which is the class session 9 r
 left its neighbours.** The unreadable arm but not the missing-thunk arm; the hand-written roster but
 not the quote style; the discriminator in two files but not the third. Each round found the sibling of
 the thing the previous round had repaired, which is `0020` restated — a fix is not done at the site it
-was found — and five rounds is what it cost to learn that this change's own subject applied to itself.
+was found — and six rounds is what it cost to learn that this change's own subject applied to itself. Round 6 is the
+cleanest instance: I had just added all three refusals to `--workspace`, and the `--pack-root` arm one
+screen away still resolved before it stat'd — so `--pack-root ""` became the working directory and
+passed the directory check. The empty-value refusal, added and not swept.
 
 Eleven recipes green under pinned roots; suite **1535 pass / 0 fail**. Seam scan clean over the diff,
 the branch name and the commit message, term by term.

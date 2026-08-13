@@ -466,6 +466,13 @@ test("recipe-set refuses a --pack-root that is missing or is a file", () => {
     const file = io();
     assert.equal(run(["--pack-root", aFile], file.sink), 2);
     assert.match(file.err.join(""), /is not a directory/);
+
+    // The empty string, which `path.resolve` turns into the CURRENT WORKING DIRECTORY — so resolving
+    // before stat'ing would have let `--pack-root ""` pass the directory check and silently adopt cwd
+    // as a pack root. The raw value is stat'd for this reason. Copilot, round 6 on #236.
+    const blank = io();
+    assert.equal(run(["--pack-root", ""], blank.sink), 2);
+    assert.match(blank.err.join(""), /cannot be read|is not a directory/);
 });
 
 test("recipe-set's valued flags take all three refusals, not one", () => {
