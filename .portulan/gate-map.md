@@ -131,6 +131,21 @@ paid for it in code._
 
 ### Gated — explicit human approval, per action, before it happens
 
+**Composed into this tier: `commit-without-the-hooks`** — `git commit --no-verify`, contributed by the
+`rituals/checkpoints` pack rather than declared in [`gates.json`](gates.json). Gated for the reason the
+pack gives: `--no-verify` skips the local hooks, and on a workspace that compiles its gate policy *into*
+those hooks it is the one spelling that turns a compiled gate back into a convention. It is a narrower
+prefix than an ordinary `git commit`, which is Auto, so it is matched ahead of that rule — **and that
+last clause is the pack's own reason restated, not a measurement.** Whether a narrower `ask` outranks a
+broader `allow` is host precedence [this file records as never measured here](#what-the-compiler-refuses);
+the question does not arise against the compiled output, since `auto` compiles to nothing and the `allow`
+list is empty, so it would only bite against a hand-added local allow. _Listed here as
+of 2026-08-13: it was composed into this policy and compiled into
+[`../.claude/settings.json`](../.claude/settings.json) for a milestone before any section of this file
+named it, because the three rails checking this document against the policy read
+[`gates.json`](gates.json) alone. Found by milestone 7's close; the rails now read declared **plus**
+composed._
+
 Outward-facing or hard to undo. The agent prepares the action and asks; it does not proceed on inference,
 and approval for one action never generalises to the next.
 
@@ -257,6 +272,16 @@ ever to be bought back, the place is the token's scopes — see [The platform fl
 
 ## Prohibited — what no yes makes acceptable
 
+**Composed into this tier: `self-certify-a-checkpoint`** — contributed by the `rituals/checkpoints` pack
+rather than declared in [`gates.json`](gates.json). Prohibited because a checkpoint graded by the context
+that did the work is not a checkpoint: [`0018`](proposals/0018-a-verdict-from-the-context-that-did-the-work-is-not-a-verdict.md)'s
+rule given a tier — *no approval exists* for a session signing off on its own diff, which is why it is
+here and not under Gated. **Neither backend compiles it**, for the reason
+[`0019`](proposals/0019-the-development-cycle-is-doctrine-not-anecdote.md) states outright: *no permission
+rule can observe whether the context reading a checkpoint skill has already seen the work*. The clearest
+instance in this file of a gate that is doctrine and habit and nothing else. _Listed here as of
+2026-08-13, for the same reason as `commit-without-the-hooks` and found in the same pass._
+
 `edit-the-constitution` — [`../docs/vision.md`](../docs/vision.md) is the constitution, and it is
 **human-owned**. No agent edits it — not with approval, not as a proposal that rewrites it in place. An
 agent that believes the constitution is wrong raises the question with the maintainer and stops.
@@ -343,10 +368,28 @@ Three kinds of refusal from the Claude Code backend, all printed on every run:
 | tier `propose` | Enforced by the platform floor — pull request, required check, review — not by a permission rule on one machine. **The floor backend compiles exactly these**, which is what makes that sentence a hand-off rather than a shrug. |
 | action `none` | No tool-level surface exists. Spending money and sending something outward are the two here. |
 
-**Three gates neither backend compiles**, printed by `--matrix` and by `doctor` because a policy stating
-a gate nothing enforces should never read as configured: `rename-or-transfer-a-repository`,
-`spend-money-or-register-a-domain`, `send-something-outside-this-repository`. Each is a
-prompt-level habit and the Gated tier's header, and nothing else, until something reaches it.
+**Three gates *this workspace declares* are compiled by neither backend**, printed by `--matrix` and by
+`doctor` because a policy stating a gate nothing enforces should never read as configured:
+`rename-or-transfer-a-repository`, `spend-money-or-register-a-domain`,
+`send-something-outside-this-repository`. Each is a prompt-level habit and the Gated tier's header, and
+nothing else, until something reaches it.
+
+**Composition contributes gates to this policy, and until milestone 7's close nothing here said so.**
+`rituals/checkpoints` adds two: `commit-without-the-hooks` (tier `gated`, `git commit --no-verify`) and
+`self-certify-a-checkpoint` (tier `prohibited`). The first **is** compiled — by the Claude Code backend,
+as a narrower prefix matched ahead of an ordinary `git commit`, because `--no-verify` is the one spelling
+that turns a compiled gate back into a convention on a workspace that compiles its policy into hooks. The
+second is not compiled by either backend.
+
+**So the uncompiled count is not fixed, because composition moves it, and the two printers do not agree
+on it.** `self-certify-a-checkpoint` is a fourth gate no backend compiles. Measured on `74240fa`: `compile --matrix` reports **4** and names it;
+`doctor` reports **3** and does not. Neither is wrong about what it read — `--matrix` walks the
+composed rows, `doctor` walks the rules this workspace declares — but they are two readers of one
+policy answering the same question differently, which is
+[`0020`](proposals/0020-a-fix-is-not-done-at-the-site-it-was-found.md)'s shape. **Whether `doctor`
+should count composed gates is a behaviour question and is deliberately not settled here**, since it
+would change what a verdict says about every workspace that composes a pack; filed by milestone 7's
+close pass, which found this sentence claiming three and citing two printers that disagree.
 
 **Two layers are emitted for every gate, and only one of them is the gate.** The permission rule holds;
 the hook supplies the sentence. That split is forced by a measurement rather than chosen: on CLI 2.1.220 a
