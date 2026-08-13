@@ -92,7 +92,10 @@ test("the roster covers every verify recipe that invokes a root-taking tool", ()
     const takesRoot = fs
         .readdirSync(path.join(REPO, "cli"))
         .filter((f) => f.endsWith(".mjs") && !f.includes(".test."))
-        .filter((f) => fs.readFileSync(path.join(REPO, "cli", f), "utf8").includes('"--pack-root"'))
+        // Quote-agnostic. The first derivation searched for the double-quoted spelling alone, so a
+        // tool parsing `'--pack-root'` would have been missed — this rail carrying a NARROWER version
+        // of the hole it had just been fixed for, two rounds running. Copilot, round 3 on #236.
+        .filter((f) => /["']--pack-root["']/.test(fs.readFileSync(path.join(REPO, "cli", f), "utf8")))
         .map((f) => `cli/${f}`);
     assert.ok(takesRoot.length >= 5, `expected several root-taking tools, derived ${takesRoot.length}`);
     const found = [];

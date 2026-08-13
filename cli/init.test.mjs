@@ -1399,5 +1399,10 @@ test("init on a fresh host: absent record is a verdict, unreadable is could-not-
     fs.writeFileSync(path.join(bad, "plugins", "installed_plugins.json"), "{ not json");
     const h2 = harness();
     assert.equal(await withEnvVar(bad, () => run(["--residence", "in-repo", "--pack-root", "auto", scratch()], h2.options)), 2);
-    assert.match([...h2.said, ...h2.warned].join("\n"), /could not read|unknown rather than no/, "an unreadable host is a fact about the host");
+    // `Discovery could not look` and nothing broader. The first draft matched
+    // `/could not read|unknown rather than no/`, which any other `init` failure could satisfy — the
+    // SAME defect this session had just fixed in `index` and `skills-set` and written up as a lesson,
+    // committed again two files away. Copilot, round 3 on #236. Measured: `init` forwards the
+    // discovery diagnostic verbatim, so this phrase is present and is unique to it.
+    assert.match([...h2.said, ...h2.warned].join("\n"), /Discovery could not look/, "an unreadable host is a fact about the host");
 });
