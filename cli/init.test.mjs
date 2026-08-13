@@ -1482,7 +1482,8 @@ test("init refuses a named root combined with `--pack-root auto`", async () => {
 test("init refuses the pair even with `--no-cycle`, where nothing resolves a pack", async () => {
     // Copilot, round 3 on #233: the refusal lived inside the branch that resolves a checkpoints pack,
     // so `--no-cycle` skipped it and one of the two flags was silently ignored — in the fifth of the
-    // five tools whose refusal this change claims. It is validated on every path now.
+    // five tools whose refusal that change claimed. It is validated on every path now. _(Five was the set
+    // on #233 and is seven now; dated rather than re-typed, for the reason `NAMED_WITH_AUTO` gives.)_
     const h = harness();
     const dir = scratch();
     assert.equal(await run(["--residence", "in-repo", "--no-cycle", "--pack-root", "auto", "--pack-root", dir, dir], h.options), 2);

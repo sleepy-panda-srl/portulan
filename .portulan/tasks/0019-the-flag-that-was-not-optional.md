@@ -141,9 +141,16 @@ guards in place the two-host comparison returns **identical** failure lists.
 
 ## Tests, and the harness that graded them
 
-**17 of 17 properties mutation-tested**: each reverted in turn, with the case it must break named in
-advance, and the harness failing if the suite stayed green *or* if a different case broke instead. It
-found four things:
+**17 of 17 properties mutation-tested**: each reverted in turn, with the cases it must break named in
+advance, and the harness failing if the suite stayed green *or* if **none** of the named cases broke.
+
+**Its pass criterion is *at least one* named case, not all of them, and that is worth stating because a
+reader would infer the stronger rule.** Two entries hit one of two names and passed — legitimately, since
+a mutation reverting a shared branch reds whichever consumer reaches it first — but the criterion is the
+looser one and the harness prints which names were and were not hit on every run, so the slack is visible
+rather than implied. Raised as not-covered by the re-check on the frozen diff.
+
+It found four things:
 
 - **Three properties nothing was binding.** `init`'s unasked degrade keeping the derived root; the advice
   naming the right residence; and — recorded rather than repaired — **vendor's old-residence `env`, which
@@ -222,6 +229,25 @@ reaching for, never deleted** — session 12's lesson about a case that pinned a
   *had been* re-run on the message, which was the same claim in the past tense. Both carriers now state it
   forward: the diff and the branch are scanned and clean; the message is scanned when it is written, which
   is the only order the facts allow.
+
+## The Copilot loop
+
+**Round 1 — one finding, taken, and it is this change's own class again.** `discoverPackRoots` returns
+`why: null` on its ordinary success path — a record that **read fine** and simply lists no plugin
+carrying packs, which is any host with plugins installed and no pack feed among them. The unasked arm
+appended it unguarded, so `plan.why` rendered *"discovery was consulted and found no root — null"* and
+carried that into `doctor`'s resolution-root note and every unresolved-pack line beneath it.
+
+**The `union` helper one screen above guards exactly this** — `found.roots.length === 0 && found.why` —
+and the arm below it did not. One operation, two sites, correct at one, in the change whose own subject
+is that class. Reproduced on both unasked arms before fixing, and the guard is now a single `said()`
+helper so the two sentences cannot diverge again.
+
+**Nothing else in the diff shares it, and that was checked rather than assumed**: every `plan.why`
+interpolation is safe because every `plan(...)` call in `resolutionRoots` passes a non-null string, and
+`read.detail` was already guarded at its one site. The new case asserts on **`null` not appearing**
+rather than on the rendered sentence, because matching the word would also match a diagnostic that
+legitimately contained it.
 
 ## A defect of mine the repository's own rail caught
 
