@@ -56,13 +56,18 @@ base=${PORTULAN_BASE_REF:-origin/main}
 # it. Both routes a shallow clone takes are covered, because they are different failures: the ref may be
 # absent entirely (a `--depth 1` single-branch clone, the common CI shape) or present with its history
 # truncated (`--no-single-branch`). Measured on both.
-if ! git rev-parse --verify "${base}^{commit}" >/dev/null 2>&1; then
+# `--end-of-options` on both, because `$base` is user-supplied through PORTULAN_BASE_REF and git reads a
+# value beginning with `-` as a FLAG. Measured on git 2.50.1: `git merge-base --is-ancestor HEAD` is
+# parsed as the option and exits 129 — the command stops being a merge-base lookup and becomes an
+# ancestry test, so the precondition would be answering a different question than the one asked. Copilot
+# proposed `--` for this on #274; measured, `--` is the PATH separator for rev-parse and breaks it (128).
+if ! git rev-parse --verify --end-of-options "${base}^{commit}" >/dev/null 2>&1; then
     printf 'verify: base ref %s is not in this repository — cannot ask what this change did.\n' "$base" >&2
     printf '        A shallow single-branch clone never fetches it. Set fetch-depth: 0, or name another\n' >&2
     printf '        base with PORTULAN_BASE_REF. Refusing to report green having compared nothing.\n' >&2
     exit 2
 fi
-if ! git merge-base "$base" HEAD >/dev/null 2>&1; then
+if ! git merge-base --end-of-options "$base" HEAD >/dev/null 2>&1; then
     printf 'verify: no merge-base between %s and HEAD — the ref resolved but its history did not.\n' "$base" >&2
     printf '        This is a shallow clone, or genuinely unrelated histories. Set fetch-depth: 0.\n' >&2
     exit 2

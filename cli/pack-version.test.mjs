@@ -17,7 +17,7 @@ import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { run, judge, sameValue, packManifests, mergeBase, CannotRun } from "./pack-version.mjs";
+import { run, judge, sameValue, packManifests, mergeBase, insideRepo, CannotRun } from "./pack-version.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const RUNNER = path.join(HERE, "pack-version.mjs");
@@ -437,6 +437,56 @@ describe("it refuses rather than guessing", () => {
         const { code, err } = check(scratch(), ["--base", "main"]);
         assert.equal(code, 2);
         assert.match(err, /git could not find a git repository/);
+    });
+
+    test("an option-shaped base ref is refused as a REF, never obeyed as a flag", () => {
+        // `base` is user-supplied — `PORTULAN_BASE_REF` or `--base` — and git reads a leading `-` as a
+        // flag. Measured on git 2.50.1: unguarded, `git merge-base --is-ancestor HEAD` is parsed as the
+        // option and exits 129, so the command stops being a merge-base lookup and becomes an ancestry
+        // test — the precondition silently answering a different question. `--end-of-options` is the
+        // guard; `--` is NOT (measured: it is rev-parse's PATH separator and breaks it at 128).
+        const root = repo();
+        for (const hostile of ["--is-ancestor", "--git-dir=/tmp", "-n"]) {
+            const { code } = check(root, ["--base", `${hostile}`]);
+            // Refused at the argument parser (leading `-`) or by git as an unknown ref — never 0 or 1.
+            assert.equal(code, 2, hostile);
+        }
+        // `--help` ANYWHERE outranks the rest of the command line — the contract `./portulan.mjs` states
+        // and this file follows — so `--base --help` prints help and exits 0 rather than refusing. Noted
+        // as behaviour rather than smoothed over: it is harmless (help writes nothing and judges nothing)
+        // and it is the reason this loop does not include it. A draft of this test did, and went red.
+        assert.equal(check(root, ["--base", "--help"]).code, 0);
+    });
+
+    test("the guard is not vacuous: unguarded, git obeys an option-shaped ref", () => {
+        // The instrument check. Without this, the case above passes for any reason at all — including a
+        // parser that happens to refuse everything. Measured directly on git: `merge-base --is-ancestor`
+        // is consumed as the OPTION (exit 129, an arity complaint about an ancestry test), and with
+        // `--end-of-options` it is refused as a ref (128). Two different failures, and only the second
+        // is git being asked the question this rail means to ask.
+        const root = repo();
+        const status = (args) => {
+            try {
+                execFileSync("git", ["-C", root, ...args], { stdio: ["ignore", "pipe", "pipe"] });
+                return 0;
+            } catch (error) {
+                return error.status;
+            }
+        };
+        assert.equal(status(["merge-base", "--is-ancestor", "HEAD"]), 129, "unguarded, git takes it as a flag");
+        assert.equal(status(["merge-base", "--end-of-options", "--is-ancestor", "HEAD"]), 128, "guarded, it is a bad ref");
+    });
+
+    test("`--packs` may not escape the repository", () => {
+        // `path.join("/repo", "../../etc")` is `/etc`, so the filesystem scan left the repository while
+        // the failure that surfaced named `git ls-tree` instead. Containment is checked after resolution,
+        // because a `..` chain satisfies any pattern and still escapes.
+        assert.throws(() => insideRepo("../..", { root: "/repo" }), /resolves outside the repository/);
+        assert.throws(() => insideRepo("packs/../../..", { root: "/repo" }), /resolves outside the repository/);
+        assert.throws(() => insideRepo("/etc", { root: "/repo" }), /absolute path/);
+        assert.throws(() => insideRepo(".", { root: "/repo" }), /resolves outside the repository/);
+        assert.equal(insideRepo("packs", { root: "/repo" }), "packs");
+        assert.equal(insideRepo("vendor/packs", { root: "/repo" }), "vendor/packs");
     });
 
     test("bad arguments exit 2, and `--help` exits 0", () => {

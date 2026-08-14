@@ -106,12 +106,28 @@ function git(root, args, what) {
  * can also be a typo or an unfetched remote, and a missing merge-base can also be genuinely unrelated
  * histories. Naming only one of the two would send half of the readers to the wrong repair.
  */
+// **`--end-of-options` on every call that takes the caller's ref**, because `base` is user-supplied —
+// `PORTULAN_BASE_REF`, or `--base` — and git will otherwise read a value that starts with `-` as a FLAG.
+// Measured on git 2.50.1: `git merge-base --is-ancestor HEAD` is parsed as the `--is-ancestor` option and
+// exits 129, so the command silently stops being a merge-base lookup and becomes an ancestry test. With
+// the guard it exits 128, refused as a ref, which is what a bad ref should do.
+//
+// `rev-parse` was already shielded by accident rather than by design: the `^{commit}` suffix makes
+// `--help^{commit}` an unparseable revision rather than a flag. Guarded anyway, so the protection is
+// stated instead of resting on a suffix somebody could reasonably remove.
+//
+// _(Copilot proposed `--` for both, and it is the wrong separator here: measured,
+// `git rev-parse --verify -- HEAD^{commit}` exits **128** — `--` marks the start of PATHS for rev-parse,
+// so the fix would have broken every call. Raised on #274, round 2; the concern was right and the
+// mechanism was not.)_
+const END = "--end-of-options";
+
 export function mergeBase(root, base = DEFAULT_BASE) {
     const shallowHint =
         "`actions/checkout` is shallow by default — `../cli/librarian.mjs` calls that the normal clone rather than a " +
         "theoretical one — so the usual repair is `fetch-depth: 0` on the job running this check; see .github/workflows/verify.yml.";
     try {
-        git(root, ["rev-parse", "--verify", `${base}^{commit}`], `resolve ${base}`);
+        git(root, ["rev-parse", "--verify", END, `${base}^{commit}`], `resolve ${base}`);
     } catch {
         throw new CannotRun(
             `base ref \`${base}\` is not in this repository — refusing to report a verdict against a ref nothing could read. ` +
@@ -120,13 +136,45 @@ export function mergeBase(root, base = DEFAULT_BASE) {
         );
     }
     try {
-        return git(root, ["merge-base", base, "HEAD"], `find the merge-base of ${base} and HEAD`).trim();
+        return git(root, ["merge-base", END, base, "HEAD"], `find the merge-base of ${base} and HEAD`).trim();
     } catch {
         throw new CannotRun(
             `no merge-base between \`${base}\` and HEAD, though the ref itself resolved — a SHALLOW clone that fetched ` +
                 `the ref and truncated its history looks exactly like this, as do genuinely unrelated histories. ${shallowHint}`,
         );
     }
+}
+
+/**
+ * `--packs` as a repository-relative path, or a refusal.
+ *
+ * The flag is documented as *relative to the repository root* and, until #274's round 2, the parser took
+ * that on trust. Measured: `path.join("/repo", "../../etc")` is `/etc`, so `--packs ../..` sent the
+ * filesystem scan **outside the repository** — and the escape was invisible in the result, because
+ * `git ls-tree` then refused the same path and the run ended at exit 2 for a reason that named the wrong
+ * thing. Containment is checked after resolution rather than by pattern, since a `..` chain satisfies any
+ * regex and still escapes; the same shape `../compile.mjs`'s `policyPath` uses for the same reason.
+ *
+ * An absolute path is refused outright rather than silently re-rooted: `path.join` turns `/etc` into
+ * `<root>/etc`, which is *contained* and is not what the caller asked for, and a flag that quietly means
+ * something else is worse than one that refuses.
+ */
+export function insideRepo(value, { root = "/repo" } = {}) {
+    if (path.isAbsolute(value)) {
+        throw new CannotRun(
+            `--packs ${value} is an absolute path — this flag names a directory RELATIVE to the repository root, and ` +
+                `joining an absolute path would silently re-root it under the repository instead of refusing.`,
+        );
+    }
+    const resolved = path.resolve(root, value);
+    const inside = path.relative(root, resolved);
+    if (inside === "" || inside.startsWith("..") || path.isAbsolute(inside)) {
+        throw new CannotRun(
+            `--packs ${value} resolves outside the repository — refusing to scan a directory this check has no business ` +
+                `reading. A \`..\` chain passes any pattern and still escapes, so containment is checked after resolution.`,
+        );
+    }
+    return value;
 }
 
 /**
@@ -342,7 +390,7 @@ export function run(argv = [], { stdout = process.stdout, stderr = process.stder
                 // the help path. Measured.)_
                 if (value === undefined || value.startsWith("-")) throw new CannotRun(`${which} needs a value`);
                 if (which === "--base") base = value;
-                else packsDir = value;
+                else packsDir = insideRepo(value);
             } else if (argv[i].startsWith("-")) {
                 throw new CannotRun(`unknown argument ${JSON.stringify(argv[i])}`);
             } else if (root === null) {
