@@ -158,6 +158,23 @@ export function mergeBase(root, base = DEFAULT_BASE) {
 }
 
 /**
+ * Is this path THERE — as a directory entry, not as something openable?
+ *
+ * `fs.existsSync` follows symlinks, so it answers **false** for a dangling link and the entry disappears
+ * from every listing built on it. That is the same absent-versus-unreadable confusion this file has now
+ * repaired at three sites, and this helper is the sweep `0020` asks for *at the first fix* rather than
+ * after a third round found the third one: existence is `lstat`, readability is whoever opens the file.
+ */
+function presentOnDisk(file) {
+    try {
+        fs.lstatSync(file);
+        return true;
+    } catch {
+        return false;
+    }
+}
+
+/**
  * `--packs` as a repository-relative path, or a refusal.
  *
  * The flag is documented as *relative to the repository root* and, until #274's round 2, the parser took
@@ -232,7 +249,7 @@ export function packManifests(root, packsDir = "packs") {
         for (const pack of packs) {
             if (!pack.isDirectory()) continue;
             const rel = [packsDir, category.name, pack.name, "pack.json"].join("/");
-            if (fs.existsSync(path.join(root, rel))) found.push(rel);
+            if (presentOnDisk(path.join(root, rel))) found.push(rel);
         }
     }
     return found.sort();
@@ -396,7 +413,7 @@ export function compare(root, { base = DEFAULT_BASE, packsDir = "packs", packsNa
     const there = git(root, ["ls-tree", "-r", "--name-only", at, "--", `${packsDir}/`], `list packs at ${at.slice(0, 7)}`)
         .split("\n")
         .filter((line) => line.endsWith("/pack.json"));
-    if (packsNamed && here.length === 0 && there.length === 0 && !fs.existsSync(path.join(root, packsDir))) {
+    if (packsNamed && here.length === 0 && there.length === 0 && !presentOnDisk(path.join(root, packsDir))) {
         throw new CannotRun(
             `--packs ${packsDir} names a directory that exists neither in the working tree nor at the merge-base. ` +
                 `Refusing to report green having examined nothing: an empty set is a verdict about packs, and this is a ` +
