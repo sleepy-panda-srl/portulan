@@ -2989,24 +2989,29 @@ describe("agent legibility is scored, reported, and never graded", () => {
     // The read count is the only observable: `legibility` returns `met`/`applicable`/`dimensions`, and
     // neither half moves a verdict — `limits` asks `unreadable === 0`, never the magnitude. So the
     // instrument is a counting spy on `fs.readFileSync`, which measures the actual claim ("once per
-    // document") rather than a proxy for it. Restored in `finally` so a failing assertion cannot leave
-    // the module patched for every case after it.
-    const readsOf = (manifest, files) => {
+    // document") rather than a proxy for it.
+    //
+    // `t.mock.method` RATHER THAN A HAND-ROLLED PATCH-AND-RESTORE, so the substitution is scoped to the
+    // test and restored by the runner. The first version assigned to `fs.readFileSync` and restored in
+    // `finally` — correct today, because tests within a file run sequentially, but it made this suite's
+    // correctness rest on a scheduling property no assertion here states. That is not a new argument:
+    // `./init.test.mjs` carries it almost word for word, in a comment ending "Found by review on the
+    // pull request" — the rule was fixed there and never swept to its other sites. This is one of them,
+    // and it was NEW code, so it ships fixed rather than filed. The six pre-existing hand-rolled sites
+    // in `./feedback.test.mjs`, `./compile.test.mjs` and `./vendor.test.mjs` are a different change's
+    // business. Copilot, #250 round 1.
+    const readsOf = (t, manifest, files) => {
         const real = fs.readFileSync;
         const hits = [];
-        fs.readFileSync = (p, ...rest) => {
+        t.mock.method(fs, "readFileSync", (p, ...rest) => {
             if (String(p).endsWith("affordances.md")) hits.push(String(p));
             return real(p, ...rest);
-        };
-        try {
-            scoreOf(manifest, files);
-        } finally {
-            fs.readFileSync = real;
-        }
+        });
+        scoreOf(manifest, files);
         return hits;
     };
 
-    test("one inherited affordances document is read once, not once per product", () => {
+    test("one inherited affordances document is read once, not once per product", (t) => {
         const m = full();
         m.affordances = "affordances.md";
         m.products = [
@@ -3014,10 +3019,10 @@ describe("agent legibility is scored, reported, and never graded", () => {
             { id: "b", name: "B", product: "product.md" },
             { id: "c", name: "C", product: "product.md" },
         ];
-        assert.equal(readsOf(m, { "affordances.md": withLimits }).length, 1, "three products, one document, one read");
+        assert.equal(readsOf(t, m, { "affordances.md": withLimits }).length, 1, "three products, one document, one read");
     });
 
-    test("an unreadable inherited document counts once — the counter is of documents, not products", () => {
+    test("an unreadable inherited document counts once — the counter is of documents, not products", (t) => {
         const m = full();
         m.affordances = "affordances.md";
         m.products = [
@@ -3027,10 +3032,10 @@ describe("agent legibility is scored, reported, and never graded", () => {
         ];
         // No affordances.md on disk: every read attempt fails. Before the fix there were three
         // attempts and `unreadable` reached 3 for one missing document.
-        assert.equal(readsOf(m, {}).length, 1, "three products, one missing document, one attempt");
+        assert.equal(readsOf(t, m, {}).length, 1, "three products, one missing document, one attempt");
     });
 
-    test("distinct documents are still each read — dedup is by `rel`, not a cap of one", () => {
+    test("distinct documents are still each read — dedup is by `rel`, not a cap of one", (t) => {
         const m = full();
         m.products = [
             { id: "a", name: "A", product: "product.md", affordances: "affordances.md" },
@@ -3039,7 +3044,7 @@ describe("agent legibility is scored, reported, and never graded", () => {
         // The negative control for the two cases above: dedup keyed on `rel` must not collapse two
         // genuinely different documents into one read. Without this, a fix that simply stopped after
         // the first document would pass both cases above and lose a product's own affordances.
-        const hits = readsOf(m, { "affordances.md": withLimits, "other-affordances.md": withLimits });
+        const hits = readsOf(t, m, { "affordances.md": withLimits, "other-affordances.md": withLimits });
         assert.equal(hits.length, 2, "two products naming two documents are two reads");
         assert.equal(new Set(hits).size, 2, "and two distinct paths, not one read twice");
     });
