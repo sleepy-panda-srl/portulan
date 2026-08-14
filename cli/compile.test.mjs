@@ -253,6 +253,40 @@ describe("refusing what it cannot compile", () => {
         assert.doesNotThrow(() => parse(p));
     });
 
+    // #205. The reserved-character check was applied to all four action kinds on one justification —
+    // the value is interpolated into the host's permission DSL. A `none` value never is: it is the
+    // PROSE the policy gives for why no surface exists, which the compiler reports verbatim (see the
+    // `none` arm of the emitter, and the refusal test above). So the DSL reasoning did not reach it,
+    // and the DSL regex forbade parentheses in an English sentence — a gate refusing to compile over
+    // an aside.
+    test("a `none` value may contain parentheses — it is prose, not a permission pattern", () => {
+        const p = policy();
+        p.rules.push({
+            id: "money",
+            tier: "gated",
+            action: { none: "no tool-level surface exists for spending money (the host has no payment tool)" },
+            reason: "gated",
+        });
+        assert.doesNotThrow(() => parse(p));
+        const refusal = claudeCode(parse(p)).refused.find((r) => r.id === "money");
+        assert.match(refusal.why, /\(the host has no payment tool\)/, "the aside survives into the reported reason");
+    });
+
+    // …and the half of the old check that DOES reach `none`, kept for its own reason rather than
+    // folded back into the DSL one. That sentence is printed into a line-based refusal report —
+    // `refused ${id.padEnd(38)} ${why}` — so a newline splits one refusal across two lines and
+    // misaligns every column after it. Same class as `json.sh`'s report, one tool over.
+    for (const [label, bad] of [
+        ["a newline", "no surface exists\nfor this"],
+        ["a tab", "no surface exists\tfor this"],
+    ]) {
+        test(`a \`none\` value containing ${label} still refuses — the report is line-based`, () => {
+            const p = policy();
+            p.rules.push({ id: "money", tier: "gated", action: { none: bad }, reason: "gated" });
+            assert.throws(() => parse(p), CompileError);
+        });
+    }
+
     // These arrived on `main` in `f545228` while the floor backend was in flight, written against the
     // `compile()` name this branch renamed to `parse()` when the tier partition moved into the
     // backends. Retargeted, not rewritten: the validation is the shared stage's either way, and it is
