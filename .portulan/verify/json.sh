@@ -60,9 +60,45 @@ fi
 # Filtered in node rather than by `grep -E` into a second file: the list is NUL-delimited now, and a
 # `grep`/`wc -l` pair over NUL records would count lines rather than paths — an instrument reporting a
 # number about a shape it is not reading. node splits on NUL, filters, and reports the count it used.
+#
+# THE SPLIT AND THE DECODE ARE TWO DIFFERENT FAIL-OPENS, and the first version of this change closed
+# only the first. `-z` above stops a newline in a pathname being mis-SPLIT; reading the list back with
+# `readFileSync(0, "utf8")` left it mis-DECODED, and git allows a pathname to be any bytes except NUL
+# and `/`. An invalid sequence comes back U+FFFD-substituted — a DIFFERENT name — so `existsSync` finds
+# nothing, the file is skipped as "tracked but deleted" two lines down, and a malformed JSON file passes
+# unparsed under a green. That is the same silent skip this recipe's own header cites `-z` to prevent,
+# one layer in. `../../cli/control-chars.mjs`'s `splitList` is the model, and this now copies BOTH of
+# its halves rather than one: split as bytes, and keep a name only if it round-trips through UTF-8.
+# Found by Copilot on #251 round 1, in the same place its sibling had already been fixed.
 node -e '
     const fs = require("fs");
-    const files = fs.readFileSync(0, "utf8").split("\0").filter(Boolean).filter((f) => f.endsWith(".json"));
+    const buf = fs.readFileSync(0);
+    const names = [];
+    const undecodable = [];
+    let start = 0;
+    for (let i = 0; i <= buf.length; i += 1) {
+        if (i !== buf.length && buf[i] !== 0) continue;
+        if (i > start) {
+            const chunk = buf.subarray(start, i);
+            const text = chunk.toString("utf8");
+            // The round trip is the test, not a search for U+FFFD: a filename may legitimately
+            // CONTAIN U+FFFD, and rejecting that would be a false red on a name git stores as given.
+            // Re-encoding answers the only question that matters — did anything change on the way in.
+            if (Buffer.from(text, "utf8").equals(chunk)) names.push(text);
+            else undecodable.push(chunk);
+        }
+        start = i + 1;
+    }
+    // Refused before anything is parsed, and refused rather than skipped: the tree may be perfectly
+    // clean and this run cannot say so, which is the difference between a verdict and a failure to
+    // reach one. No count is written, so the guard below routes it to exit 2.
+    if (undecodable.length) {
+        const show = (c) => Array.from(c).map((b) => (b >= 0x20 && b <= 0x7e ? String.fromCharCode(b) : "\\x" + b.toString(16).padStart(2, "0"))).join("");
+        for (const chunk of undecodable) process.stderr.write("a tracked pathname is not valid UTF-8: " + show(chunk) + "\n");
+        process.stderr.write("refusing to report on " + names.length + " file(s) beside " + undecodable.length + " pathname(s) this recipe cannot name\n");
+        process.exit(2);
+    }
+    const files = names.filter((f) => f.endsWith(".json"));
     process.stderr.write(String(files.length));
     for (const file of files) {
         if (!fs.existsSync(file)) continue;   // tracked but deleted in the working tree
@@ -79,7 +115,7 @@ node -e '
 count=$(cat "$tmp/count")
 case "$count" in
     '' | *[!0-9]*)
-        printf 'verify: node failed while parsing\n' >&2
+        printf 'verify: node wrote no count — it failed while parsing, or refused the file list\n' >&2
         sed 's/^/        /' "$tmp/count" >&2
         exit 2
         ;;
