@@ -2,9 +2,10 @@
 
 > Generated from `handoffs/` by `node cli/index.mjs`. Do not edit by hand: it is regenerated
 > and byte-compared, so a hand-edit survives exactly until the next run.
-> 101 handoff(s), newest first. No budget: the series is append-only, so
+> 102 handoff(s), newest first. No budget: the series is append-only, so
 > the only remedy a budget could ask for is one this project rules out.
 
+- 2026-08-14 · [Handoff — a measurement's authority is not its author](handoffs/2026-08-14-a-measurements-authority-is-not-its-author.md)
 - 2026-08-13 · [Handoff — what a workspace yields, and a flag that was swallowed](handoffs/2026-08-13-what-a-workspace-yields-and-a-flag-that-was-swallowed.md)
 - 2026-08-13 · [Handoff — the suites that never swept their scratch](handoffs/2026-08-13-the-suites-that-never-swept-their-scratch.md)
 - 2026-08-13 · [Handoff — the suite was reading the machine](handoffs/2026-08-13-the-suite-was-reading-the-machine.md)
