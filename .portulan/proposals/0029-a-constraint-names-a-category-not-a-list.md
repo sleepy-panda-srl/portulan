@@ -195,13 +195,14 @@ recorded here rather than in it. All three questions answered, each with the gro
   written unrepaired — and the converse is demonstrably performable rather than merely asked for. Session
   17's implementer treated opening a pull request as outside a merge grant that never mentioned it,
   unprompted and against its own convenience, which is the behaviour this clause names._
-- **Q3 — YES, it reaches this workspace's own gate spellings.** `commit-without-the-hooks` takes the
-  `none`-action form [`../gates.json`](../gates.json) already uses — the category stated, plus a sentence
-  saying why no matcher would be honest — on the `send-something-outside-this-repository` precedent this
-  proposal cites above. _Ground: hook-bypass spellings are unbounded shell, and in incident 3 the
-  enumerated matcher gave **zero** protection while reading as coverage. The `none` form trades a partial
-  mechanical block for honesty, and the uncompiled-gate count moving **4 → 5** in both printers is the
-  honest price rather than a regression._
+- **Q3 — YES, it reaches this workspace's own gate spellings.** `commit-without-the-hooks` takes the same
+  `none`-action **form** that [`../gates.json`](../gates.json) already uses for
+  `send-something-outside-this-repository`, the precedent this proposal cites above — the category stated,
+  plus a sentence saying why no matcher would be honest. *The **form** is what carries over; where the rule
+  itself lives is a separate question, and the note below answers it.* _Ground: hook-bypass spellings are
+  unbounded shell, and in incident 3 the enumerated matcher gave **zero** protection while reading as
+  coverage. The `none` form trades a partial mechanical block for honesty, and the uncompiled-gate count
+  moving **4 → 5** in both printers is the honest price rather than a regression._
 
 _One measurement the ruling did not need but a reader following it will: `commit-without-the-hooks` is
 **not declared in [`../gates.json`](../gates.json)**. It is a gate fragment composed from
