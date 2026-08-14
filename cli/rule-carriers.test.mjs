@@ -17,7 +17,18 @@ import { parseRegistry, RegistryError, inDomain, scan, auditCarriers, normalise,
 // the 24th, and the one [#244](https://github.com/sleepy-panda-works/portulan/issues/244) records that
 // nothing rails. Registered here rather than trusted to memory, in the shape session 14 settled: one
 // exit handler for the whole list, because the per-directory form exceeds node's default ten-listener
-// limit. Nothing here chmods a directory, so the bare `rmSync` is correct and matches `recipe-set`'s.
+// limit.
+//
+// THE BARE `rmSync` IS CORRECT ONLY BECAUSE EVERY CHMOD HERE IS RESTORED BEFORE CLEANUP RUNS, and that
+// is now a load-bearing sentence rather than a note. This header used to read "nothing here chmods a
+// directory", which the EACCES case below made false the moment it was added — it drops a directory to
+// `0o000` to deny the stat. Measured rather than reasoned about: a `0o000` subdirectory defeats
+// `rmSync(dir, { recursive: true, force: true })` with **ENOTEMPTY**, so the handler above would leak
+// the scratch directory it exists to remove — one of the 24 sites #244 already records as unrailed.
+// What keeps it correct is the `t.after` restore in that test, which the runner runs even when an
+// assertion throws. Any future case that chmods must restore in a hook, not at the end of a body.
+// Copilot, #249 round 1, suppressed and promoted — the comment was falsified by the change that added
+// the case, which is the class this repository keeps finding in its own prose.
 const SCRATCH = [];
 process.on("exit", () => {
     for (const dir of SCRATCH) fs.rmSync(dir, { recursive: true, force: true });
