@@ -36,7 +36,7 @@ set -uo pipefail
 # Needs column and `requires` in ../workspace.json name only the substantial dependencies — `bash`,
 # `git`, `node` — and are deliberately coarser, so neither is the thing to edit alongside this. The
 # prose that does match it utility for utility is the "`docs.sh` needs …" paragraph in ./README.md.
-for need in awk cut dirname git grep mktemp rm sed sort tail tr wc; do
+for need in awk comm cut dirname git grep mktemp rm sed sort tail tr wc; do
     command -v "$need" >/dev/null 2>&1 || {
         printf 'verify: %s not found — this recipe needs it; see .portulan/verify/README.md\n' "$need" >&2
         exit 2
@@ -807,6 +807,84 @@ else
         sed 's/^/        /' "$tmp/planstatus"
     else
         pass "plan — every Status cell is within ${PLAN_STATUS_BUDGET} bytes ($readable of $rowcount row(s) readable)"
+    fi
+fi
+
+# ------------------------------------------------------------------ 7. cli table
+# One check, in BOTH directions, on `cli/README.md`'s *What is here today* table: every file in `cli/`
+# has a row, and every row names a file that exists. #203.
+#
+# **Why a rail rather than a corrected number.** That table carried a hand-maintained count of its own
+# arrears — "nine files have no row" — and the count went wrong four times: eleven, then seven, then a
+# correction to eight, then nine, and finally ten while the sentence still said nine. The last one is
+# the argument: `pinned-roots.live.test.mjs` landed at session 12 and reached neither the table nor the
+# sentence that counts the table's arrears, because a figure maintained by hand about a table maintained
+# by hand drifts by the same mechanism. Both directions are checked because both failed in practice —
+# files arrived without rows, and `fixtures/` shows a row can outlive what it names.
+#
+# **The pattern is ANCHORED, and that is the load-bearing detail.** A previous hand re-derivation
+# searched for each filename *anywhere in the table*, so `stop-gate.mjs` counted as rowed on the
+# strength of a link inside `stop-gate.test.mjs`'s prose, and reported one fewer arrear than the tree
+# held. A row is `| [` + backtick + name + backtick + `]` at the START of a line, and this extracts
+# exactly one subject per row rather than searching for names.
+#
+# **Tracked files only** (`git ls-files`), so an untracked scratch file in `cli/` is not a failure of
+# the table — the table describes what the repository ships, and `git` is already in this recipe's
+# dependency guard.
+CLI_README=cli/README.md
+CLI_FILE_EXEMPT=README.md
+CLI_ROW_EXEMPT=fixtures/
+
+if [ ! -f "$CLI_README" ]; then
+    fail "cli-table — $CLI_README does not exist"
+else
+    # `cli/*.md` as a git PATHSPEC matches across `/`, so it also sweeps in `cli/fixtures/**/*.md` —
+    # this rail's first run went red on four files inside `fixtures/drifted-workspace/`. Shell `ls`,
+    # which the hand measurement used, does not cross a slash; swapping in `git ls-files` swapped the
+    # question for a broader one, which is the same instrument-substitution defect this recipe checks
+    # documents for. The remaining-slash filter is what makes the two agree, and it is stated rather
+    # than left as a silent narrowing.
+    git ls-files 'cli/*.mjs' 'cli/*.md' | sed 's|^cli/||' | grep -v '/' | sort >"$tmp/clifiles"
+    grep -oE '^\| \[`[^`]+`\]' "$CLI_README" | sed 's/^| \[`//; s/`\]$//' | sort >"$tmp/clirows"
+
+    clifiles=$(wc -l <"$tmp/clifiles" | tr -d '[:space:]')
+    clirows=$(wc -l <"$tmp/clirows" | tr -d '[:space:]')
+
+    # The precondition, for the reason ./tests.sh states: an empty enumeration would make both
+    # comparisons below vacuously green, which is the same shape as a recipe reporting on nothing.
+    if [ "$clifiles" -eq 0 ] || [ "$clirows" -eq 0 ]; then
+        printf 'verify: cli-table enumerated %s file(s) and %s row(s) — refusing to compare nothing\n' \
+            "$clifiles" "$clirows" >&2
+        exit 2
+    fi
+
+    # THE EXEMPTIONS ARE AUDITED, NOT ASSUMED. A stale exemption is a defect in the declaration rather
+    # than a verdict about the table, so it exits 2 — the same code and the same reasoning as
+    # `index.sh`'s stale WORKSPACES entry and `control-chars`'s stale `--exempt`. Declaring an exception
+    # that no longer applies teaches the next reader to widen a pattern until it stops complaining.
+    if ! grep -qxF "$CLI_FILE_EXEMPT" "$tmp/clifiles"; then
+        printf 'verify: cli-table exempts the file %s, which is not in cli/ — stale exemption\n' \
+            "$CLI_FILE_EXEMPT" >&2
+        exit 2
+    fi
+    if ! grep -qxF "$CLI_ROW_EXEMPT" "$tmp/clirows"; then
+        printf 'verify: cli-table exempts the row %s, which the table no longer carries — stale exemption\n' \
+            "$CLI_ROW_EXEMPT" >&2
+        exit 2
+    fi
+
+    comm -23 "$tmp/clifiles" "$tmp/clirows" | grep -vxF "$CLI_FILE_EXEMPT" >"$tmp/clinorow" || true
+    comm -13 "$tmp/clifiles" "$tmp/clirows" | grep -vxF "$CLI_ROW_EXEMPT" >"$tmp/clinofile" || true
+
+    norow=$(wc -l <"$tmp/clinorow" | tr -d '[:space:]')
+    nofile=$(wc -l <"$tmp/clinofile" | tr -d '[:space:]')
+
+    if [ "$norow" -gt 0 ] || [ "$nofile" -gt 0 ]; then
+        fail "cli-table — $norow file(s) with no row, $nofile row(s) naming no file"
+        sed 's/^/        no row: /' "$tmp/clinorow"
+        sed 's/^/        no file: /' "$tmp/clinofile"
+    else
+        pass "cli-table — $clifiles file(s), $clirows row(s), both directions clean (exempt: file $CLI_FILE_EXEMPT, row $CLI_ROW_EXEMPT)"
     fi
 fi
 
