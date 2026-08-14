@@ -197,16 +197,18 @@ export function parse(policy) {
         // THE SAME OVER-REACH, NINE LINES BELOW THE SPLIT THAT FIXED IT. This message told every kind
         // that the host "would not match" its value — and nothing about a `none` value is ever matched
         // by the host, for the reason set out directly above. Surrounding whitespace on a `none` value
-        // is still worth refusing, because that sentence is printed into a padded, line-based report
-        // where it would misalign the column; but that is a different reason and the message now says
-        // which one applies. Found by Copilot on #256 round 1, in the change that had just split the
+        // is still worth refusing, but for a reason this comment got wrong once: the report's padding
+        // comes from `r.id.padEnd(38)`, not from `why`, so whitespace on the sentence cannot misalign a
+        // column. What it does do is shift the sentence out of line with every other refusal, and hide
+        // itself in the record. The message says that now — a refusal's stated reason must match its
+        // actual mechanism, which is this change's own subject, missed nine lines below its own fix. Found by Copilot on #256 round 1, in the change that had just split the
         // reserved-character check on exactly this distinction: `0020` at its shortest range yet.
         if (action[kind] !== action[kind].trim()) {
             throw new CompileError(
                 kind === "none"
-                    ? `rule \`${id}\`'s none target has leading or trailing whitespace. That sentence is printed into a ` +
-                          `padded, line-based refusal report, and the padding is computed from a width that does not ` +
-                          `count the whitespace, so the column would misalign.`
+                    ? `rule \`${id}\`'s none target has leading or trailing whitespace. That sentence is printed ` +
+                          `verbatim into the refusal report, where leading whitespace shifts it out of line with every ` +
+                          `other refusal and trailing whitespace is invisible in the record.`
                     : `rule \`${id}\`'s ${kind} target has leading or trailing whitespace, which the host would not match`,
             );
         }

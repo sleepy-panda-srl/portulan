@@ -280,8 +280,10 @@ describe("refusing what it cannot compile", () => {
 
     // The whitespace refusal carried the SAME over-reach nine lines below the split above: it told
     // every kind the host "would not match" its value, and nothing about a `none` value is matched by
-    // the host. The refusal is right and the reason was wrong — the sentence is printed into a padded,
-    // line-based report — so the message now names which reason applies. Copilot, #256 round 1.
+    // the host. The refusal is right and the reason was wrong. Round 2 then got the REPLACEMENT reason
+    // wrong too — it blamed the report's padding, which comes from `r.id.padEnd(38)` and cannot be
+    // affected by the sentence — so this asserts the reason that is actually true: leading whitespace
+    // shifts the sentence out of line with every other refusal. Copilot, #256 rounds 1 and 3.
     test("a `none` value with surrounding whitespace refuses, and NOT because the host would not match it", () => {
         const p = policy();
         p.rules.push({ id: "money", tier: "gated", action: { none: " no surface exists " }, reason: "gated" });
@@ -289,7 +291,7 @@ describe("refusing what it cannot compile", () => {
             () => parse(p),
             (e) =>
                 e instanceof CompileError &&
-                /line-based refusal report/.test(e.message) &&
+                /out of line with every other refusal/.test(e.message) &&
                 !/the host would not match/.test(e.message),
             "the refusal stands; the reason must be the report, not a host match that never happens",
         );
