@@ -8,11 +8,11 @@ entry point exists:
 [`portulan.mjs`](portulan.mjs), reached as `portulan <subcommand>` through the `bin` in the
 repository's `package.json`.
 
-**`npx` names a path that is not open yet, and this file says so once so that nothing below has to.**
-Publishing is a Gated act and has not happened, so `@sleepy-panda-works/portulan` **is not on the
-registry today** — `npx @sleepy-panda-works/portulan` resolves nothing. `package.json` declares the
-`bin` that path *will* use; every tool here runs today as `node cli/<tool>.mjs` from a clone, which is
-the only invocation anything in this repository has ever been measured through.
+**`npx` names a path that is not open yet, and this file states that once rather than hedging every
+mention below.** Publishing is a Gated act and has not happened, so `@sleepy-panda-works/portulan` **is
+not on the registry today** — `npx @sleepy-panda-works/portulan` resolves nothing. `package.json`
+declares the `bin` that path would use, and that `bin` is reachable now from a working copy; what every
+measurement in this repository has actually been taken through is `node cli/<tool>.mjs` from a clone.
 [`../.portulan/identity.md`](../.portulan/identity.md) is the carrier of that fact and of what the
 `npx` path is measured to buy when it opens — the same bytes, `npm pack` against `git show`. The
 routing question the gap leaves open is

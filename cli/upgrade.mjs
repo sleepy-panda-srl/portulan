@@ -8,8 +8,9 @@
 //
 // Not here. `spec/migrations/` is the contract — a directory of steps, each a module — because a
 // migration is part of the **Workspace Definition** rather than part of a tool, and `spec/` ships in
-// `package.json`'s `files` so it WILL reach an `npx` user — publishing is Gated and has not happened,
-// so there is no such user today; see `../.portulan/identity.md`. This file is the runner: it decides which
+// `package.json`'s `files` so it would reach an `npx` user if the package were published — publishing
+// is Gated and has not happened, so there is no such user today, and whether there ever is remains
+// open (#242). See `../.portulan/identity.md`. This file is the runner: it decides which
 // steps a workspace owes, applies them, and grades the result with the real validator.
 //
 // **Two kinds of step**, by the maintainer's ruling of 2026-08-12: a `version` step migrates a
