@@ -401,9 +401,10 @@ printers did not agree on it.** It stands at **five**, both composed gates among
 tree by `compile --matrix` and `doctor` alike. It was **four** until 2026-08-14. Measured on `74240fa`: `compile --matrix` reported **4** and named it;
 `doctor` reported **3** and did not. **Settled 2026-08-13: `doctor` now reads the policy this workspace
 yields — declared plus composed — through `compile`'s own `packContributions`/`composeFragments`, and
-the two agree.** The divergence is kept here as the record of what it cost, not as current behaviour. Neither is wrong about what it read — `--matrix` walks the
-composed rows, `doctor` walks the rules this workspace declares — but they are two readers of one
-policy answering the same question differently, which is
+the two agree.** The divergence is kept here as the record of what it cost, not as current behaviour —
+**and the sentences describing it are past tense for that reason.** Neither printer *was* wrong about what
+it read: `--matrix` *walked* the composed rows and `doctor` *walked* only the rules this workspace
+declares. They *were* two readers of one policy answering the same question differently, which is
 [`0020`](proposals/0020-a-fix-is-not-done-at-the-site-it-was-found.md)'s shape. It was ruled a **behaviour change** rather than a record repair — it moves what a verdict says about
 every workspace composing a pack — and so landed in its own change after milestone 7's close, which is
 the pass that found this sentence claiming three while citing two printers that disagreed.
