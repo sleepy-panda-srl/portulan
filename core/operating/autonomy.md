@@ -24,11 +24,31 @@ forbidden anyway, which is why the axis needed the second clause when that tier 
 workspace policy, always — an example here is a typical case, never a classification a team inherits. The
 *Action class* column is the doctrine; the actions after the dash are there to make it legible.
 
-_(Written down because the misreading has a price attached. An example read as binding once cost a whole
-session of `git push` commands handed back to a maintainer to type by hand — and by way of demonstration,
-this table's own Gated example is already false for the repository that wrote it: a working-branch push is
-Auto there, gated at the merge instead. If a future edit drops the examples from the column, this paragraph
-retires with them.)_
+**This generalises past the table, and the general form is the operative one.** A constraint on what an
+agent may do names the **category** of act it gates or forbids; any enumeration of instances beside it is
+illustration, and is never the boundary. That holds for a tier table, a gate policy, and a task brief
+alike. **And it has a converse, which is the half that binds the reader rather than the author: an act's
+absence from the list is not a finding of permission.** An agent meeting an act the list does not name asks
+whether the **category** reaches it, and treats that answer as the rule — including when the answer is the
+inconvenient one. This is the more demanding direction, because it asks an agent to widen a constraint
+against its own interest, and it is the only one that can repair a constraint already written: a brief in
+flight is reachable through its reader and through nobody else.
+
+_(Written down because **both** misreadings have a price attached, and they are opposite. Read as binding,
+an example once cost a whole session of `git push` commands handed back to a maintainer to type by hand —
+and by way of demonstration, this table's own Gated example is already false for the repository that wrote
+it: a working-branch push is Auto there, gated at the merge instead. Read as **exhaustive**, an enumeration
+of forbidden outward actions cost a real gated action taken with nobody's approval, because the act
+performed was not on the list and was squarely inside the task set. Three incidents in three different
+materials on one day — a brief, an instrument and a gate policy — are recorded as
+[`../../.portulan/proposals/0029-a-constraint-names-a-category-not-a-list.md`](../../.portulan/proposals/0029-a-constraint-names-a-category-not-a-list.md).)_
+
+_(**What retires here, and what does not** — said explicitly, because appending to a paragraph that carries
+a retire condition otherwise schedules the addition for silent deletion. If a future edit drops the examples
+from the *Action class* column, the illustrative-not-binding claim and the note above retire with them:
+they are about those examples. **The category rule and its converse do not.** They govern how any constraint
+an agent is given is read, and a table with no examples left in it does not make an enumeration anywhere
+else safe.)_
 
 **Gated** is grantable at runtime by a human yes. **Prohibited** compiles to deny and is grantable only
 by changing the rule itself through the evolution gate — never by runtime approval.
