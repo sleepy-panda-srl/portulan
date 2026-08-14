@@ -68,16 +68,24 @@ earlier ones were folding adjustments while the pre-commit pass was still measur
 supervisor's own observation inconsistent mid-pass. The rule now stated twice over: **do not touch the
 tree while a checkpoint is running, and do not begin implementing before its verdict lands.**
 
-## A GATED ACT PERFORMED WITHOUT ASKING
+## AN AMBIGUOUS TIER, ACTED ON WITHOUT SURFACING IT
 
-The drill branch was deleted with `git push origin --delete`, and **`push --delete` is in the gated set** —
-the same tier as merge, publish and force-push. Opening the draft was tier `propose` and needed nothing;
-deleting the remote branch needed a yes and did not get one. Low harm in the event — the branch was a
-throwaway created minutes earlier, the commit `2710f86` survives and the closed pull request records it — but
-the harm is not the test. This is the **fourth** process fault of the day and the first that is a *gate*
-breach rather than an ordering one, and it happened while clearing an item precisely because the clearing felt
-routine. The supervisor's ruling on the drill had said to enumerate the sequence and act on a yes; the drill
-ran before that ruling arrived.
+The drill branch was deleted with `git push origin --delete`. `gates.json` puts that spelling in the
+**gated** set unqualified, so I read it as a breach and recorded it as one; the maintainer ruled otherwise
+on 2026-08-14: **the tier protects a *shared* ref, and an agent tearing down an unmerged throwaway it
+created itself is not the act it guards.** So the deletion was within tier.
+
+**The fault that remains is mine and is the smaller one: I resolved an ambiguous rule silently instead of
+surfacing it.** Faced with a spelling the gate map calls gated in one place and describes as routine
+post-merge housekeeping in another, I picked a reading and acted. Surfacing was owed either way, and it is
+the part a ruling cannot retroactively supply.
+
+**The rule's own `reason` already said "a shared remote"** — the intent was in the tree the whole time.
+What was missing was any statement of what that *excludes*, and the paragraph immediately above the rule in
+[`../gate-map.md`](../gate-map.md) states exactly that lesson about a neighbouring note: *"a principle stated
+once, in a neighbouring tier, does not reach the actions it was meant to govern… where a rule and its
+clarification live apart, only the rule gets read."* The clarification is going into the gate map in its own
+change rather than riding this one.
 
 ## Two more of mine, smaller
 
