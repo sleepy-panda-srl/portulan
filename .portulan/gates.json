@@ -33,7 +33,7 @@
       "id": "delete-a-remote-branch",
       "tier": "gated",
       "action": { "shell": "git push --delete" },
-      "reason": "Deleting a branch on a shared remote destroys a ref rather than adding one, which is why it is the single push spelling that did not move to Auto on 2026-07-27."
+      "reason": "Deleting a branch on a shared remote destroys a ref rather than adding one, which is why it is the single push spelling that did not move to Auto on 2026-07-27. SHARED is the operative word, ruled 2026-08-14: removing a branch you created yourself, that was never merged and holds no unique work, is not the act this gate guards. Anything else — a branch somebody else pushed, one whose commits exist nowhere but there, or any branch you are unsure about — stays Gated, and unsure resolves to Gated."
     },
     {
       "id": "merge-a-pull-request",
