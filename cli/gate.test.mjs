@@ -311,6 +311,43 @@ describe("it degrades rather than disappearing, and never blocks", () => {
         assert.equal(out.status, 0);
     });
 
+    test("a fragment that composes but is not a valid RULE falls back, rather than denying with `— undefined`", () => {
+        // `composeFragments` checks a fragment's tier, and the action shape only when tightening — so an
+        // ADDED fragment with no `reason` composed cleanly, and this hook denied with the literal
+        // sentence `— undefined` while `compile` refused the same input at exit 2. Measured on the
+        // runner; raised by Copilot on #272. The layer whose whole job is the sentence must not invent
+        // one, so the composed policy now goes through the compiler's own `parse` before it is used.
+        const dir = composing([{ id: "no-reason", tier: "prohibited", action: { shell: "curl" } }]);
+        const out = hook(dir, bash("curl https://example.com"));
+        assert.equal(out.decision, null);
+        assert.equal(out.stdout, "");
+        // The declared rules are untouched by one pack's malformed fragment — fallback, not step-aside.
+        // This half is what separates the two, and `decision === null` above cannot: a step-aside and a
+        // fallback-that-matches-nothing look identical on the payload above and differ here.
+        const still = hook(dir, bash("git push origin main"));
+        assert.equal(still.decision, "ask");
+        assert.doesNotMatch(still.reason, /undefined/);
+    });
+
+    test("the DECLARED arm keeps its `— undefined`, which is the limit of that fix rather than an oversight", () => {
+        // The composed arm is validated; the declared one is not, and a rule missing its `reason` in the
+        // workspace's own file still denies with `— undefined` — byte-identically with every predecessor,
+        // measured. That is the right answer and not a gap to close here: the fallback for an inadmissible
+        // declared policy IS the declared policy, and stepping aside would drop a live prohibition over a
+        // missing string. `compile` refuses the shape at build time, which is where a refusal belongs.
+        // Pinned so a later "improvement" cannot convert this arm to a step-aside without saying so.
+        const dir = workspace({
+            packs: undefined,
+            rules: [
+                { id: "no-reason-declared", tier: "prohibited", action: { shell: "curl" } },
+                { id: "push", tier: "gated", action: { shell: "git push" }, reason: "ask first" },
+            ],
+        });
+        const out = hook(dir, bash("curl https://example.com"));
+        assert.equal(out.decision, "deny");
+        assert.match(out.reason, /`no-reason-declared` \(prohibited\) — undefined/);
+    });
+
     test("a pack manifest that is not readable JSON also falls back rather than blocking", () => {
         const dir = composing([{ id: "x", tier: "gated", action: { shell: "curl" }, reason: "r" }]);
         fs.writeFileSync(path.join(dir, "packs", "tools", "contributor", "pack.json"), "{ not json");
