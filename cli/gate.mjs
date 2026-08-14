@@ -130,7 +130,15 @@ function stepAside() {
 // a live case would have meant giving a `none` rule a matcher — reversing the ruling recorded in
 // `../.portulan/proposals/0029-a-constraint-names-a-category-not-a-list.md` Q3, which removed one.
 //
-// **Two limits, named rather than left to be measured.**
+// **Three limits, named rather than left to be measured.** _(This said "Two" while enumerating three:
+// the third arrived with the round-1 fix below and the count above it did not move. Exactly the
+// undercount-by-enumeration `../.portulan/gate-map.md`'s own `action none` row was corrected for on
+// 2026-08-14, repeated here within the week. Found by Copilot on #272, round 2.)_
+//
+// The three share one principle, and stating it is what keeps a later reader from deriving the wrong
+// rule from the pair: **this runner degrades toward whatever intact policy remains — composed to
+// declared, declared to nothing — and never toward a block.** It is never the load-bearing layer, so
+// every arm below hands the decision back rather than taking it.
 //
 //   1. **No discovery.** `packContributions` is called with no `discovery` thunk, so `resolutionRoots`'
 //      unasked arm never consults the host's plugin cache and roots come from the workspace manifest's

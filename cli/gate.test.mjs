@@ -67,7 +67,23 @@ function hook(project, payload, env = {}) {
         });
     } catch (error) {
         status = error.status ?? 1;
-        stdout = error.stdout ?? "";
+        // `String(...)` rather than a bare `??`, and it is HARDENING rather than a fix — the difference
+        // is worth stating instead of letting the next reader assume a bug was found here. Copilot
+        // (#272, round 2) reported that `error.stdout` can be a Buffer despite `encoding`, which would
+        // make `.trim()` below throw and bury the runner's real status under an unrelated TypeError.
+        // Probed on node 26.7.0 across six error paths — non-zero exit, ENOENT, SIGKILL, maxBuffer,
+        // timeout, module-not-found — and it is a string on five and `undefined` on ENOENT, never a
+        // Buffer. **A negative result carries its control:** the identical spawn with `encoding` ABSENT
+        // does produce a Buffer, so the probe can see the thing it reports missing — which is the guard
+        // the hermeticity case below had to learn the hard way in this same change. Invalid UTF-8 on
+        // stdout is the intuitive Buffer case and is not one either: it decodes to replacement
+        // characters and stays a string. So the reported mechanism did not reproduce. Coerced anyway,
+        // and `String()` is faithful over the whole documented domain rather than merely safe — a
+        // Buffer would decode to the text it carries, which is a correct report and not a swallow. One
+        // call, against an implementation detail this helper would otherwise depend on silently — and
+        // the ground is misattribution rather than noise: the TypeError is loud, but it sends a reader
+        // to the helper's transport when the signal under test is the runner's status and text.
+        stdout = String(error.stdout ?? "");
     }
     const out = stdout.trim() ? JSON.parse(stdout).hookSpecificOutput : null;
     return { status, stdout, decision: out?.permissionDecision ?? null, reason: out?.permissionDecisionReason ?? null };
