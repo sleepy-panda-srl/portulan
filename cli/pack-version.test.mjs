@@ -433,6 +433,30 @@ describe("it refuses rather than guessing", () => {
         assert.doesNotMatch(err, /no merge-base/);
     });
 
+    test("a NAMED packs directory that exists nowhere is a refusal; the DEFAULT one being absent is an answer", () => {
+        // The distinction is the whole finding. `--packs paks` — a typo — found nothing at head and
+        // nothing at the merge-base and reported "nothing to check" at exit 0: a false green, and a
+        // bypass reachable by accident. But a workspace with no `packs/` at all genuinely composes
+        // nothing, and must stay green. So absence is an answer only when nobody named the directory.
+        const root = repo();
+        assert.equal(check(root, ["--base", "main", "--packs", "paks"]).code, 2);
+        assert.match(check(root, ["--base", "main", "--packs", "paks"]).err, /exists neither in the working tree nor at the merge-base/);
+        // Named AND real stays green.
+        assert.equal(check(root, ["--base", "main", "--packs", "packs"]).code, 0);
+
+        // The default, in a repository that has no `packs/` at all: an answer, not a refusal.
+        const bare = scratch();
+        git(bare, "init", "-q", "-b", "main");
+        git(bare, "config", "user.email", "t@example.com");
+        git(bare, "config", "user.name", "t");
+        fs.writeFileSync(path.join(bare, "readme.md"), "no packs here\n");
+        git(bare, "add", "-A");
+        git(bare, "commit", "-qm", "a workspace that composes nothing");
+        const { code, out } = check(bare, ["--base", "main"]);
+        assert.equal(code, 0);
+        assert.match(out, /nothing to check/);
+    });
+
     test("a refusal carries GIT's own words, not only this file's guess at the cause", () => {
         // A bare `catch {}` reported every failure of the ref lookup as an unknown ref — so a corrupt
         // object store, a permissions failure or a git that would not start all arrived wearing the one
