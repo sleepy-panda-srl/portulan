@@ -19,8 +19,7 @@
       "Bash(gh repo delete:*)",
       "Bash(git tag:*)",
       "Bash(gh release:*)",
-      "Bash(npm publish:*)",
-      "Bash(git commit --no-verify:*)"
+      "Bash(npm publish:*)"
     ],
     "allow": []
   },
