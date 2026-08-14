@@ -409,6 +409,38 @@ declares. They *were* two readers of one policy answering the same question diff
 every workspace composing a pack — and so landed in its own change after milestone 7's close, which is
 the pass that found this sentence claiming three while citing two printers that disagreed.
 
+**The third reader of one policy was [`cli/gate.mjs`](../cli/gate.mjs), and it was swept last.** *Declares*
+versus *yields* has now been repaired three times: `dod.md`'s condition 1, then `doctor` above, then the
+PreToolUse hook — which walked `gates.json` alone while the permission rules compiled beside it came from
+the composed set ([#269](https://github.com/sleepy-panda-works/portulan/issues/269)). It composes through
+the same `packContributions`/`composeFragments` for the same reason it already imported `matchesRule`: a
+second composer drifts the way a second matcher does. Session 16 wrote the transferable rule down —
+*when a rule has been fixed on one noun, look for the other nouns* — without naming which nouns were
+left; this was one of them, and the sweep it asks for did not happen until [#269](https://github.com/sleepy-panda-works/portulan/issues/269).
+
+**What that cost on this repository is nothing, and the number is the point rather than a reassurance.**
+Both fragments `rituals/checkpoints` contributes carry `action: none`, so no matcher reaches them and
+neither layer ever could; the defect was **latent here and fixed on its shape**, demonstrated on a fixture
+whose pack contributes a *matchable* prohibition. Manufacturing a live case on this tree would have meant
+giving a `none` rule a matcher, which is the ruling [`0029`](proposals/0029-a-constraint-names-a-category-not-a-list.md)
+Q3 made in the opposite direction. Measured before and after on the live runner: a composed `prohibited`
+fragment matching `curl` drew **zero bytes** from the hook and now draws `deny`, wrapper spellings included.
+
+**Two decisions inside that repair, both deliberate.** The hook answers with the **strongest** matching
+tier rather than the first listed. Composition is what makes that matter *systematically* — added rules
+are appended, so a pack-contributed `prohibited` rule is always the later one and first-match hands the
+call to a broader declared `gated` rule, answering `ask` on an action the policy prohibits. **It is not
+composition's defect alone, and a draft of this paragraph implied it was:** a workspace composing nothing
+and declaring `git push` gated above `git push --mirror` prohibited diverged the same way, measured. So
+this repair reaches single-file policies too — and this repository's own is unchanged only because
+`edit-the-constitution`, the one `prohibited` rule it declares, is listed first. The change is
+strengthen-only in every case: `ask` may become `deny`, never the reverse.
+And a composition that is *refused* — a pack demoting a rule, a `pack.json` that will not parse — falls
+back to the **declared** policy rather than stepping aside, so a dependency cannot switch off the gates
+this workspace declares in its own file. Composition only ever adds a rule or raises a tier, which is what
+makes **the fallback** strengthen-only; the strongest-tier answer is strengthen-only on the tier order
+alone, composition or none — as the measured single-file divergence one paragraph up already shows.
+
 **Two layers are emitted for every gate, and only one of them is the gate.** The permission rule holds;
 the hook supplies the sentence. That split is forced by a measurement rather than chosen: on CLI 2.1.220 a
 hook that *crashes* fails **open** — the tool proceeds — on the identical wiring that blocks when the hook
@@ -416,7 +448,7 @@ is healthy. A permission rule does not fail open. So [`cli/gate.mjs`](../cli/gat
 step aside silently on any internal error, handing the decision back to the layer that cannot be removed by
 a syntax error.
 
-**The honest holes, named because they are the ones to know.** Six of them, and the first is smaller than
+**The honest holes, named because they are the ones to know.** Seven of them, and the first is smaller than
 an earlier draft of this paragraph claimed — that draft said the wrapper spelling "falls through to the
 host's default mode", which was true *before* the hook existed and false of the shipped configuration. A
 pre-commit supervisor measured it and found the hook's `ask` governing and its sentence reaching the agent.
@@ -551,6 +583,20 @@ Corrected here rather than left, because a gate map that overstates a hole is as
    that App converts this from a documented gap into a live bypass, and nothing in this tree would say
    so — the same class as every other live-settings claim on this page, and read by hand at the
    supervised checkpoints.
+7. **A pack the hook cannot resolve, where `compile` can.** Added 2026-08-14, and it is the remainder of
+   [#269](https://github.com/sleepy-panda-works/portulan/issues/269) rather than a hole that change
+   opened. [`cli/gate.mjs`](../cli/gate.mjs) composes from the root **derived** from the workspace
+   manifest's `tree` and wires **no discovery**, so a pack that resolves only from the host's plugin
+   cache contributes to what a bare `compile` yields and not to what the hook composes. Deliberate: this
+   runner is on every tool call, and a gate whose answer moved with what is installed on the machine
+   could not be reviewed from the repository. Two consequences follow and are named rather than left to
+   be met — a workspace with **no `tree`** composes nothing here, and a **refused** composition falls
+   back to the declared rules. Which of the two resolution sets is the right one for a *rail* is
+   [#264](https://github.com/sleepy-panda-works/portulan/issues/264)'s question, not this entry's; what
+   this entry states is which one the hook uses. Asserted as a test rather than only written down —
+   and the first draft of that test was **inert**, a poisoned plugin record shaped so that no reader
+   could have picked it up, green against a runner that went looking. Found by the pre-commit
+   supervisor, which wired discovery in and watched the rail stay green.
 
 All of which is the same point: **this layer is a convenience above a rail, not the rail.** The rail is the
 platform floor below, which refuses the push at the server regardless of what any local file says, and is

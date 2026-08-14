@@ -2,8 +2,10 @@
 // The PreToolUse gate runner — the *explanation* half of the enforcement compiler.
 //
 // Wired by `./compile.mjs` into `.claude/settings.json`. It reads the host's hook payload on
-// stdin, finds which rule in `.portulan/gates.json` the attempted action matches, and returns that rule's
-// own sentence as the decision reason.
+// stdin, finds which rule of the policy the workspace **yields** the attempted action matches, and
+// returns that rule's own sentence as the decision reason. *Yields*, not *declares*: the rules in
+// `.portulan/gates.json` plus the fragments its packs contribute — see "The policy this runner reads"
+// below, which is the whole of what `#269` was.
 //
 // ## This file is not the gate. Read that twice.
 //
@@ -71,7 +73,14 @@ import { fileURLToPath } from "node:url";
 // The action vocabulary is defined ONCE, in the compiler, and imported here. Two implementations of
 // one matcher is the drift this repository keeps finding — and a matcher that drifts does not look
 // wrong, it looks like a gate that quietly stopped covering something.
-import { matchesRule, policyPath } from "./compile.mjs";
+//
+// **The same argument reaches one level up, and for a milestone it was applied only to the matcher.**
+// Importing `matchesRule` kept the two layers agreeing about what an action *is* while they disagreed
+// about which rules *exist*: this file read the workspace's declared policy, and `./compile.mjs`
+// enforced that policy plus its packs' contributions. `packContributions` and `composeFragments` are
+// imported for the same reason as the matcher — a second composer would drift the same way — and
+// `doctor` took this identical repair for this identical noun one session earlier.
+import { matchesRule, policyPath, packContributions, composeFragments } from "./compile.mjs";
 
 // **The project root is TOLD to this runner, never derived from where this file sits.**
 //
@@ -104,14 +113,94 @@ function stepAside() {
     process.exit(0);
 }
 
+// ## The policy this runner reads
+//
+// **Declared plus composed, and until #269 it was declared alone.** A pack contributes gate fragments
+// (`contributes.gates` in its `pack.json`); `./compile.mjs` composes them onto the workspace's own rules
+// before it emits anything, so the permission rules sitting beside this hook are compiled from the
+// composed set. This file read `.portulan/gates.json` and nothing else, so a rule a pack contributed was
+// enforced by the layer that cannot say why and invisible to the layer whose whole job is the sentence —
+// and for a `prohibited` fragment with a matcher, the two layers returned different decisions.
+//
+// **What this cost on THIS repository is nothing, and saying so is the point.** Its one gate-contributing
+// pack (`rituals/checkpoints`) contributes two fragments and both carry `action: {none: …}`, which no
+// matcher can reach — `compile --matrix` lists them among the gates no backend compiles. So the defect
+// here was latent rather than live, and it is fixed on the shape rather than on an incident. The demonstration
+// in `./gate.test.mjs` uses a fixture whose pack contributes a *matchable* fragment, because manufacturing
+// a live case would have meant giving a `none` rule a matcher — reversing the ruling recorded in
+// `../.portulan/proposals/0029-a-constraint-names-a-category-not-a-list.md` Q3, which removed one.
+//
+// **Two limits, named rather than left to be measured.**
+//
+//   1. **No discovery.** `packContributions` is called with no `discovery` thunk, so `resolutionRoots`'
+//      unasked arm never consults the host's plugin cache and roots come from the workspace manifest's
+//      `tree` alone. Deliberate twice over: this runs on every tool call, and a gate whose answer moved
+//      with what is installed on the machine would be a gate nobody could review. A pack resolving ONLY
+//      from the host cache therefore contributes to what a bare `compile` yields and not to what this
+//      hook composes — the residual gap, stated in `../.portulan/gate-map.md` and owned by `#264`.
+//   2. **A composition failure falls back to the DECLARED policy**, and does not step aside. Composition
+//      only ever adds a rule or raises a tier — `composeFragments` throws on a demotion rather than
+//      applying it — so the composed policy is never weaker than the declared one, and falling back can
+//      only lose coverage this file already had rather than drop below it. Stepping aside instead would
+//      let a malformed `pack.json` switch off gates the workspace declares in its own file, which hands a
+//      dependency a lever on the layer above it. `./compile.mjs` refuses to build in the same case, and
+//      the divergence is the intended one: it fails closed at build time against a file you can edit,
+//      while this runs on every tool call.
+function yielded(declared) {
+    try {
+        const { contributions } = packContributions(PROJECT, WORKSPACE_DIR);
+        return composeFragments(declared, contributions).policy;
+    } catch {
+        return declared;
+    }
+}
+
+/**
+ * The rule this call answers to: the STRONGEST gate it falls under, not the first one listed.
+ *
+ * This returned the first match for one milestone, which is not the same rule whenever two of different
+ * tiers match one call: the weaker one wins if it is listed higher. The shape is ordinary rather than
+ * exotic — one dangerous spelling prohibited beneath a prefix the workspace already gates broadly,
+ * `git push` at `gated` and `git push --mirror` at `prohibited` — and it lands on `ask` for an action the
+ * policy prohibits.
+ *
+ * **Composition makes that systematic rather than causing it, and a draft of this paragraph had it the
+ * other way round** — *"indistinguishable from the strongest for as long as the policy came from one
+ * file"*. Measured on a workspace composing nothing, with those two rules in that order: the old scan
+ * answered `ask`, this one answers `deny`. What composition adds is that a contributed rule can never
+ * win the tie-break, because `composeFragments` APPENDS added rules after the workspace's own — so a
+ * pack-contributed `prohibited` rule is always the later one and always the one first-match discards.
+ * That is #269's case reached through the ordering rather than through the missing rules, and closing
+ * only the missing-rules half would have left it.
+ *
+ * Grounded in the policy's own semantics rather than in host precedence between two matching patterns,
+ * which this repository has never measured and which nothing here needs: `prohibited` means the action
+ * must not happen, so answering `ask` on a call the policy prohibits is wrong on the policy's terms
+ * whatever the host does with the compiled pair.
+ *
+ * **It only ever moves a decision UP, and that is the honest form of the guarantee.** `prohibited` is the
+ * top of the tier order and `gated` the only other tier considered, so "strongest, ties to the first" is
+ * exactly *the first `prohibited` match if there is one, otherwise the first `gated` match* — which is
+ * what the loop below is. Output is byte-identical wherever no two matching rules sit at different tiers,
+ * and `ask` becomes `deny` where they do. **Not** "byte-identical for any workspace that composes
+ * nothing" — that is the claim the counterexample above kills, and this repository is not evidence for it
+ * either: its own policy is unchanged only because `edit-the-constitution`, the one `prohibited` rule it
+ * declares, is listed FIRST, so first-match already returned it. Measured, on a command matching both it
+ * and a gated shell rule: `deny` from either runner. Move that rule down the file and the two disagree.
+ * The early return on `prohibited` also keeps the denied path's short-circuit: nothing later can outrank
+ * the top of the order.
+ */
 function decide(payload, policy) {
     const tool = payload.tool_name;
     const input = payload.tool_input ?? {};
+    let gated = null;
     for (const rule of policy.rules ?? []) {
         if (rule.tier !== "gated" && rule.tier !== "prohibited") continue;
-        if (matchesRule(rule, tool, input)) return rule;
+        if (!matchesRule(rule, tool, input)) continue;
+        if (rule.tier === "prohibited") return rule;
+        if (gated === null) gated = rule;
     }
-    return null;
+    return gated;
 }
 
 async function main() {
@@ -128,7 +217,7 @@ async function main() {
         return;
     }
 
-    const rule = decide(payload, policy);
+    const rule = decide(payload, yielded(policy));
     if (!rule) stepAside();
 
     const decision = rule.tier === "prohibited" ? "deny" : "ask";
