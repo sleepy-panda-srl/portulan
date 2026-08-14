@@ -205,8 +205,8 @@ export function parse(policy) {
             throw new CompileError(
                 kind === "none"
                     ? `rule \`${id}\`'s none target has leading or trailing whitespace. That sentence is printed into a ` +
-                          `padded, line-based refusal report, where the padding is computed from a width the whitespace ` +
-                          `is not part of`
+                          `padded, line-based refusal report, and the padding is computed from a width that does not ` +
+                          `count the whitespace, so the column would misalign.`
                     : `rule \`${id}\`'s ${kind} target has leading or trailing whitespace, which the host would not match`,
             );
         }

@@ -267,8 +267,14 @@ describe("refusing what it cannot compile", () => {
             action: { none: "no tool-level surface exists for spending money (the host has no payment tool)" },
             reason: "gated",
         });
-        assert.doesNotThrow(() => parse(p));
-        const refusal = claudeCode(parse(p)).refused.find((r) => r.id === "money");
+        // Parsed ONCE and reused: the first draft called `parse(p)` twice, once inside `doesNotThrow`
+        // and once to build the backend, so the assertion about the reported reason rode a second
+        // parse that no assertion had checked. Copilot, #256 round 2.
+        let parsed;
+        assert.doesNotThrow(() => {
+            parsed = parse(p);
+        });
+        const refusal = claudeCode(parsed).refused.find((r) => r.id === "money");
         assert.match(refusal.why, /\(the host has no payment tool\)/, "the aside survives into the reported reason");
     });
 
