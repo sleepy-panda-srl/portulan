@@ -668,7 +668,7 @@ function draftPolicy() {
                 id: "delete-a-remote-branch",
                 tier: "gated",
                 action: { shell: "git push --delete" },
-                reason: "Deleting a branch on a shared remote destroys a ref rather than adding one. It is the single push spelling whose damage outlives the working copy.",
+                reason: "Deleting a branch on a shared remote destroys a ref rather than adding one. It is the single push spelling whose damage outlives the working copy. SHARED is the operative word: removing a branch you created yourself, that was never merged and holds no unique work, is not the act this gate guards. Anything else stays gated, and unsure resolves to gated.",
             },
             {
                 id: "merge-a-pull-request",

@@ -188,6 +188,34 @@ file: where a rule and its clarification live apart, only the rule gets read.)_
 - `merge-a-pull-request`, and `delete-a-remote-branch` — which is a push, and is the one push spelling
   that did not move to Auto, because it destroys a ref on a shared remote rather than adding one.
 
+  **What that tier does NOT cover, ruled 2026-08-14 after an agent hit the ambiguity and resolved it
+  silently.** The rule protects a **shared** ref — a branch other people, or the platform, may be relying
+  on. An agent removing a branch **it created itself**, which was **never merged** and holds **no unique
+  work**, is not the act this gate guards, and needs no approval: the throwaway branch of a forced-red
+  drill is the case that raised it. Deleting anything else — a branch somebody else pushed, a branch whose
+  commits exist nowhere but there, or any branch when you are unsure which of those it is — stays Gated,
+  and *unsure* resolves to Gated rather than to convenience.
+
+  **The compiled matcher cannot see any of this, and that is the safe direction.** `Bash(git push
+  --delete:*)` reads a command string; it cannot read who created a branch, whether it merged, or whether
+  its commits exist anywhere else. So the host still prompts on every spelling it catches, and this
+  exclusion narrows the **doctrine** rather than the gate — the answer to the prompt is what changed, not
+  whether it appears.
+
+  **A neighbouring case this does NOT settle: deleting a branch after its pull request merges.** The
+  branch conventions treat that as routine cleanup, and it **fails this exclusion's never-merged clause**,
+  so by the rule above it stays Gated. That is a seam between two standing practices, recorded here rather
+  than resolved in passing — it wants the maintainer's ruling, not a footnote's.
+
+  _(This paragraph exists because the rule's `reason` already said "a shared remote" and **nothing said
+  what that excluded**, so the matcher was the only readable half — the exact failure the note directly
+  above records: where a rule and its clarification live apart, only the rule gets read. It took an agent
+  deleting its own drill branch, calling it a breach, and the maintainer ruling that it was not, for the
+  missing half to get written. A first draft of this note pointed at a post-merge paragraph "two sections
+  down" that **does not exist in this file at all** — the practice lives in the maintainer's own memory,
+  outside the repository — which is a dangling pointer written into the very paragraph about clarifications
+  that cannot be found. Caught by the pre-commit checkpoint.)_
+
   **The merge carries a precondition the approval does not waive: the head must not be behind `main`.**
   Sync first — `git rebase origin/main`, then `git push --force-with-lease`, both Auto — let
   `workspace-verify` re-run, and merge after that. The approval is the maintainer's decision that the

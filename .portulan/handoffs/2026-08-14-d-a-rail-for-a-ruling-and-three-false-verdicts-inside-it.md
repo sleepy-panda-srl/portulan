@@ -76,8 +76,12 @@ on 2026-08-14: **the tier protects a *shared* ref, and an agent tearing down an 
 created itself is not the act it guards.** So the deletion was within tier.
 
 **The fault that remains is mine and is the smaller one: I resolved an ambiguous rule silently instead of
-surfacing it.** Faced with a spelling the gate map calls gated in one place and describes as routine
-post-merge housekeeping in another, I picked a reading and acted. Surfacing was owed either way, and it is
+surfacing it.** Faced with a spelling `gates.json` calls gated unqualified, while the branch
+conventions I work under treat branch deletion as routine cleanup, I picked a reading and acted. _(A first
+draft of this sentence said the **gate map** described it as routine housekeeping "in another place". It
+does not — measured, no such paragraph exists in that file; the routine practice lives in the maintainer's
+own memory, outside the repository. Caught by the pre-commit checkpoint, in the paragraph confessing that I
+resolve ambiguities without checking them.)_ Surfacing was owed either way, and it is
 the part a ruling cannot retroactively supply.
 
 **The rule's own `reason` already said "a shared remote"** — the intent was in the tree the whole time.
