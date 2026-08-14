@@ -89,11 +89,19 @@ node -e '
         }
         start = i + 1;
     }
+    // A pathname as it may be PRINTED, and every message below that names a path goes through here —
+    // `../../cli/control-chars.mjs`s `escapeBytes`/`displayPath` pair, same rule for the same reason.
+    // THE BACKSLASH IS ESCAPED FIRST and that is the load-bearing half: a filename literally holding
+    // the characters \, x, f, f would otherwise render exactly like the byte 0xff, so the message meant
+    // to remove an ambiguity would carry one. The first version of this helper skipped that step —
+    // copied the models shape and not its rule, which is the same half-copy this whole change exists
+    // to correct, one turn later and in my own hand.
+    const show = (c) => Array.from(c).map((b) => (b === 0x5c ? "\\\\" : b >= 0x20 && b < 0x7f ? String.fromCharCode(b) : "\\x" + b.toString(16).padStart(2, "0"))).join("");
+    const displayPath = (f) => show(Buffer.from(f, "utf8"));
     // Refused before anything is parsed, and refused rather than skipped: the tree may be perfectly
     // clean and this run cannot say so, which is the difference between a verdict and a failure to
     // reach one. No count is written, so the guard below routes it to exit 2.
     if (undecodable.length) {
-        const show = (c) => Array.from(c).map((b) => (b >= 0x20 && b <= 0x7e ? String.fromCharCode(b) : "\\x" + b.toString(16).padStart(2, "0"))).join("");
         for (const chunk of undecodable) process.stderr.write("a tracked pathname is not valid UTF-8: " + show(chunk) + "\n");
         process.stderr.write("refusing to report on " + names.length + " file(s) beside " + undecodable.length + " pathname(s) this recipe cannot name\n");
         process.exit(2);
@@ -105,7 +113,14 @@ node -e '
         try {
             JSON.parse(fs.readFileSync(file, "utf8"));
         } catch (e) {
-            process.stdout.write(file + " -> " + String(e.message).split("\n")[0] + "\n");
+            // The pathname is ESCAPED into this report, not interpolated raw. It is a line-based
+            // report — the shell counts it with `wc -l` and indents it with `sed` — and a tracked
+            // `.json` filename may legally contain a newline, which is the exact class this change
+            // exists to support. Raw, one malformed file became TWO lines: the count overcounted and
+            // the diagnostic was cut in half. Demonstrated on a real file named `two<LF>lines.json`,
+            // 1 file reported as 2, then 1 again once escaped. Copilot, #251 round 2, suppressed and
+            // promoted — the same class as the round-1 finding, one layer further out.
+            process.stdout.write(displayPath(file) + " -> " + String(e.message).split("\n")[0] + "\n");
         }
     }
 ' <"$manifest" >"$tmp/bad" 2>"$tmp/count"
