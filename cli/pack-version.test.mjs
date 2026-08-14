@@ -342,6 +342,20 @@ describe("the edges", () => {
         assert.doesNotMatch(out, /deleted/);
     });
 
+    test("a NEW pack whose manifest is a dangling link is SEEN and refused, not silently skipped", () => {
+        // Found by sweeping rather than by a review round — the sibling `0020` asks for at the first fix.
+        // The listing used `fs.existsSync`, which FOLLOWS links and so answered false for a dangling one,
+        // dropping the entry from the report entirely. With the pack present at the merge-base the union
+        // still caught it; a pack that exists only in the working tree vanished without a row.
+        const root = repo();
+        const dir = path.join(root, "packs", "rituals", "fresh");
+        fs.mkdirSync(dir, { recursive: true });
+        fs.symlinkSync(path.join(root, "no-such-target"), path.join(dir, "pack.json"));
+        const { code, err } = check(root, ["--base", "main"]);
+        assert.equal(code, 2, "a manifest that is there but unreadable must refuse, even for a new pack");
+        assert.match(err, /not a removal/);
+    });
+
     test("a manifest unparseable AT THE BASE is could-not-run too, not only at head", () => {
         const root = scratch();
         git(root, "init", "-q", "-b", "main");
