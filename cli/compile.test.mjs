@@ -272,6 +272,29 @@ describe("refusing what it cannot compile", () => {
         assert.match(refusal.why, /\(the host has no payment tool\)/, "the aside survives into the reported reason");
     });
 
+    // The whitespace refusal carried the SAME over-reach nine lines below the split above: it told
+    // every kind the host "would not match" its value, and nothing about a `none` value is matched by
+    // the host. The refusal is right and the reason was wrong — the sentence is printed into a padded,
+    // line-based report — so the message now names which reason applies. Copilot, #256 round 1.
+    test("a `none` value with surrounding whitespace refuses, and NOT because the host would not match it", () => {
+        const p = policy();
+        p.rules.push({ id: "money", tier: "gated", action: { none: " no surface exists " }, reason: "gated" });
+        assert.throws(
+            () => parse(p),
+            (e) =>
+                e instanceof CompileError &&
+                /line-based refusal report/.test(e.message) &&
+                !/the host would not match/.test(e.message),
+            "the refusal stands; the reason must be the report, not a host match that never happens",
+        );
+    });
+
+    test("a shell target with surrounding whitespace still refuses for the HOST reason", () => {
+        const p = policy();
+        p.rules[1].action = { shell: " git push " };
+        assert.throws(() => parse(p), (e) => e instanceof CompileError && /the host would not match/.test(e.message));
+    });
+
     // …and the half of the old check that DOES reach `none`, kept for its own reason rather than
     // folded back into the DSL one. That sentence is printed into a line-based refusal report —
     // `refused ${id.padEnd(38)} ${why}` — so a newline splits one refusal across two lines and
