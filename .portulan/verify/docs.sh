@@ -845,7 +845,12 @@ else
     # documents for. The remaining-slash filter is what makes the two agree, and it is stated rather
     # than left as a silent narrowing.
     git ls-files 'cli/*.mjs' 'cli/*.md' | sed 's|^cli/||' | grep -v '/' | sort >"$tmp/clifiles"
-    grep -oE '^\| \[`[^`]+`\]' "$CLI_README" | sed 's/^| \[`//; s/`\]$//' | sort >"$tmp/clirows"
+    # POSIX `sed` rather than `grep -o`: `-o` is not in POSIX grep, and ./README.md states this recipe's
+    # dependencies are POSIX text utilities. (`docs.sh` already breaks that claim once, at the `grep -nEo`
+    # in the links check — a pre-existing inconsistency between the recipe and its own documented
+    # dependency set, not introduced here and not widened here either.) One capture per line, printed
+    # only when it matches, which is the anchored extraction stated above.
+    sed -n 's/^| \[`\([^`]*\)`\].*/\1/p' "$CLI_README" | sort >"$tmp/clirows"
 
     clifiles=$(wc -l <"$tmp/clifiles" | tr -d '[:space:]')
     clirows=$(wc -l <"$tmp/clirows" | tr -d '[:space:]')
@@ -862,8 +867,18 @@ else
     # than a verdict about the table, so it exits 2 — the same code and the same reasoning as
     # `index.sh`'s stale WORKSPACES entry and `control-chars`'s stale `--exempt`. Declaring an exception
     # that no longer applies teaches the next reader to widen a pattern until it stops complaining.
+    # BOTH HALVES, because the exemption claims both. `README.md` is exempt from the files-need-rows
+    # direction, so the exemption is stale if the file is gone AND stale if it has since GAINED a row —
+    # and the first version audited only the former, exempting a row that no longer needed exempting
+    # without noticing. An exemption audited on half its own claim is the asymmetry this check exists to
+    # catch, in the check itself. Copilot, #255 round 1.
     if ! grep -qxF "$CLI_FILE_EXEMPT" "$tmp/clifiles"; then
         printf 'verify: cli-table exempts the file %s, which is not in cli/ — stale exemption\n' \
+            "$CLI_FILE_EXEMPT" >&2
+        exit 2
+    fi
+    if grep -qxF "$CLI_FILE_EXEMPT" "$tmp/clirows"; then
+        printf 'verify: cli-table exempts the file %s from needing a row, and it now HAS one — stale exemption\n' \
             "$CLI_FILE_EXEMPT" >&2
         exit 2
     fi
