@@ -299,10 +299,18 @@ export function scan({ registry, files, read, resolve = (p) => path.resolve(p) }
  * recipe printed green: the quiet-coverage-loss shape the three audits exist to prevent, arriving
  * through the audit itself.
  *
- * `state(carrier)` answers `file`, `absent` or `not-a-file`, and the three are kept apart rather than
- * collapsed to a boolean because the caller prints them. Telling a maintainer a directory *"does not
- * resolve"* sends them looking for a missing file that is sitting right there — the same defect
- * `control-chars`'s exemption audit was corrected for, where *dead* and *never read* had to be split.
+ * `state(carrier)` answers `file`, `absent`, `not-a-file`, or **`unreadable:<errno>`**, and they are
+ * kept apart rather than collapsed to a boolean because the caller prints them. Telling a maintainer a
+ * directory *"does not resolve"* sends them looking for a missing file that is sitting right there —
+ * the same defect `control-chars`'s exemption audit was corrected for, where *dead* and *never read*
+ * had to be split.
+ *
+ * **This function does not enumerate the states; it forwards whatever `state` returns.** Anything but
+ * `file` is unusable and is carried through with its own label, so a caller may add a state without
+ * touching this code — which is exactly how `unreadable:<errno>` arrived, and exactly how this
+ * docstring came to describe three states while the caller returned four. A doc that lists a set it
+ * does not enforce goes stale silently, so it now says both the set it knows and the rule it actually
+ * applies. Copilot, #249 round 1, suppressed and promoted.
  */
 export function auditCarriers(registry, { state }) {
     const unusable = [];
