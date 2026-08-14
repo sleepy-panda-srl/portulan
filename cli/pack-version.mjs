@@ -159,22 +159,31 @@ export function mergeBase(root, base = DEFAULT_BASE) {
  * `<root>/etc`, which is *contained* and is not what the caller asked for, and a flag that quietly means
  * something else is worse than one that refuses.
  */
-export function insideRepo(value, { root = "/repo" } = {}) {
+// **It returns the CANONICAL path, and the first draft returned the caller's spelling.** That was a
+// correctness defect rather than untidiness, and it produced a false green. `--packs packs/../packs`
+// validated fine — it resolves inside — and then the two halves of `compare` disagreed about what a pack
+// is called: the filesystem scan joined the raw value (`packs/../packs/tools/github/pack.json`) while
+// `git ls-tree` canonicalised its pathspec (`packs/tools/github/pack.json`). Measured: every pack was
+// reported TWICE, once `added` from the uncanonical spelling and once `unchanged` from git's — and
+// `added` is exempt, so a real unbumped change would have passed. Raised by Copilot on #274, round 3.
+export function insideRepo(value) {
     if (path.isAbsolute(value)) {
         throw new CannotRun(
             `--packs ${value} is an absolute path — this flag names a directory RELATIVE to the repository root, and ` +
                 `joining an absolute path would silently re-root it under the repository instead of refusing.`,
         );
     }
-    const resolved = path.resolve(root, value);
-    const inside = path.relative(root, resolved);
-    if (inside === "" || inside.startsWith("..") || path.isAbsolute(inside)) {
+    // Normalised, then checked — a `..` chain satisfies any pattern and still escapes, so containment is
+    // decided on the resolved form. Separators are forced to `/` because every downstream consumer is a
+    // git pathspec or a repository-relative id, neither of which is a platform path.
+    const canonical = path.normalize(value).split(path.sep).join("/").replace(/\/+$/, "");
+    if (canonical === "" || canonical === "." || canonical === ".." || canonical.startsWith("../")) {
         throw new CannotRun(
-            `--packs ${value} resolves outside the repository — refusing to scan a directory this check has no business ` +
-                `reading. A \`..\` chain passes any pattern and still escapes, so containment is checked after resolution.`,
+            `--packs ${value} resolves to ${JSON.stringify(canonical)}, which is not a directory inside the repository — ` +
+                `refusing to scan somewhere this check has no business reading.`,
         );
     }
-    return value;
+    return canonical;
 }
 
 /**
