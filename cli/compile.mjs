@@ -156,17 +156,38 @@ export function parse(policy) {
         if (typeof action[kind] !== "string" || action[kind].trim() === "") {
             throw new CompileError(`rule \`${id}\`'s action \`${kind}\` has no value`);
         }
-        // The value is interpolated into the host's permission DSL — `Bash(prefix:*)`, `Edit(./path)`.
-        // Characters that are structural THERE would emit a rule the host parses differently from what
-        // the policy meant, and an ambiguous gate is indistinguishable from an absent one. Refuse rather
-        // than escape: a workspace needing a gate on a command containing `(` or `:` needs this
-        // compiler extended deliberately, not quietly reinterpreted. Found by review on the pull request.
-        const RESERVED = kind === "shell" ? /[()\n\r\t:]/ : /[()\n\r\t]/;
+        // ONE REGEX WAS CARRYING TWO DIFFERENT JUSTIFICATIONS, and only one of them reaches every kind.
+        //
+        // For `shell`, `write` and `read` the value is interpolated into the host's permission DSL —
+        // `Bash(prefix:*)`, `Edit(./path)`. Characters structural THERE would emit a rule the host
+        // parses differently from what the policy meant, and an ambiguous gate is indistinguishable
+        // from an absent one. Refuse rather than escape: a workspace needing a gate on a command
+        // containing `(` or `:` needs this compiler extended deliberately, not quietly reinterpreted.
+        // Found by review on the pull request.
+        //
+        // **A `none` value is never interpolated into a permission pattern.** It is PROSE: the sentence
+        // the policy gives for why there is no surface, which the compiler reports verbatim rather than
+        // inventing its own — see the `kind === "none"` arm of the emitter, which pushes it as `why`,
+        // and `describeRefusal`, which prints it. So the DSL justification above does not reach it, and
+        // applying the DSL regex to it forbade **parentheses in an English sentence** — a gate refusing
+        // to compile over an aside. #205.
+        //
+        // What DOES still reach it is narrower and worth stating rather than folding back in: that
+        // sentence is printed into a LINE-BASED report — `refused ${id.padEnd(38)} ${why}` — so a
+        // newline or a tab in it breaks the column and splits one refusal across two lines. That is a
+        // different defect with a different fix, and it is the reason `none` keeps `\n\r\t` while
+        // losing `()` and `:`. Two justifications, two scopes, stated separately so the next reader
+        // cannot collapse them again.
+        const RESERVED = kind === "none" ? /[\n\r\t]/ : kind === "shell" ? /[()\n\r\t:]/ : /[()\n\r\t]/;
         if (RESERVED.test(action[kind])) {
             throw new CompileError(
-                `rule \`${id}\`'s ${kind} target ${JSON.stringify(action[kind])} contains a character that is ` +
-                    `structural in the host's permission syntax. Emitting it would produce a rule the host reads ` +
-                    `differently from what this policy says, which is worse than refusing to compile.`,
+                kind === "none"
+                    ? `rule \`${id}\`'s none target ${JSON.stringify(action[kind])} contains a line break or tab. ` +
+                          `That sentence is printed into a line-based refusal report, where it would split one ` +
+                          `refusal across two lines and misalign every column after it.`
+                    : `rule \`${id}\`'s ${kind} target ${JSON.stringify(action[kind])} contains a character that is ` +
+                          `structural in the host's permission syntax. Emitting it would produce a rule the host reads ` +
+                          `differently from what this policy says, which is worse than refusing to compile.`,
             );
         }
         if (action[kind] !== action[kind].trim()) {
