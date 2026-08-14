@@ -344,8 +344,20 @@ export function judge(rel, before, after) {
     return { rel, verdict: "ok", why: `\`contributes\` changed and \`portulan.version\` moved \`${was ?? "(absent)"}\` → \`${now}\`` };
 }
 
-/** Compare every pack in the tree against the merge-base. */
-export function compare(root, { base = DEFAULT_BASE, packsDir = "packs" } = {}) {
+/**
+ * Compare every pack in the tree against the merge-base.
+ *
+ * `packsNamed` says whether the caller *chose* `packsDir`, and it decides what an empty result means.
+ * **A directory that is absent is an answer only when nobody named it.** The default `packs/` missing is
+ * a workspace that composes nothing — green, correctly. But `--packs paks`, a typo, found nothing at head
+ * and nothing at the merge-base and reported *"nothing to check"* at exit **0**: a false green, and a
+ * bypass anyone experimenting locally could reach by accident. Measured. So a named directory that exists
+ * in neither tree is a refusal, and the ENOENT carve-out in `packManifests` keeps its narrower job.
+ * Raised by Copilot on #274, round 5 — on the `Copilot` login of the comments endpoint rather than the
+ * `copilot-pull-request-reviewer[bot]` login of `/reviews`, which is the two-logins gotcha this
+ * repository already records.
+ */
+export function compare(root, { base = DEFAULT_BASE, packsDir = "packs", packsNamed = false } = {}) {
     const at = mergeBase(root, base);
     // The union of what exists NOW and what existed at the merge-base — a pack deleted in this change
     // has no working-tree manifest and would otherwise never be looked at. It is green either way, but
@@ -354,6 +366,14 @@ export function compare(root, { base = DEFAULT_BASE, packsDir = "packs" } = {}) 
     const there = git(root, ["ls-tree", "-r", "--name-only", at, "--", `${packsDir}/`], `list packs at ${at.slice(0, 7)}`)
         .split("\n")
         .filter((line) => line.endsWith("/pack.json"));
+    if (packsNamed && here.length === 0 && there.length === 0 && !fs.existsSync(path.join(root, packsDir))) {
+        throw new CannotRun(
+            `--packs ${packsDir} names a directory that exists neither in the working tree nor at the merge-base. ` +
+                `Refusing to report green having examined nothing: an empty set is a verdict about packs, and this is a ` +
+                `verdict about the path you typed. (The DEFAULT \`packs/\` being absent is different — that is a ` +
+                `workspace which composes nothing, and it passes.)`,
+        );
+    }
     const atBase = new Set(there);
     const all = [...new Set([...here, ...there])].sort();
     return {
@@ -391,6 +411,7 @@ export function run(argv = [], { stdout = process.stdout, stderr = process.stder
     }
     let base = DEFAULT_BASE;
     let packsDir = "packs";
+    let packsNamed = false;
     let root = null;
     try {
         for (let i = 0; i < argv.length; i += 1) {
@@ -406,7 +427,10 @@ export function run(argv = [], { stdout = process.stdout, stderr = process.stder
                 // the help path. Measured.)_
                 if (value === undefined || value.startsWith("-")) throw new CannotRun(`${which} needs a value`);
                 if (which === "--base") base = value;
-                else packsDir = insideRepo(value);
+                else {
+                    packsDir = insideRepo(value);
+                    packsNamed = true;
+                }
             } else if (argv[i].startsWith("-")) {
                 throw new CannotRun(`unknown argument ${JSON.stringify(argv[i])}`);
             } else if (root === null) {
@@ -421,7 +445,7 @@ export function run(argv = [], { stdout = process.stdout, stderr = process.stder
         // which is #131's class — paths against the author's layout.
         const top = git(where, ["rev-parse", "--show-toplevel"], `find a git repository at ${where}`).trim();
 
-        const { at, results } = compare(top, { base, packsDir });
+        const { at, results } = compare(top, { base, packsDir, packsNamed });
         const red = results.filter((r) => r.verdict === "stale" || r.verdict === "unversioned");
         const moved = results.filter((r) => r.verdict === "ok");
 
