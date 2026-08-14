@@ -68,7 +68,8 @@ arrives; it does not exist today and nothing here depends on it.
 
 ## Buying
 
-Both paid products are fixed-price and bookable without a call. Until the milestone-10 checkout
+Both paid products are bookable without a call — the engagement at a fixed price, the retainer at
+its stated band by cadence. Until the milestone-10 checkout
 ships, founding engagements are arranged by email — and "founding" is meant literally: the first
 adopter cycle outside this repository has not run yet, the framework versions its spec at `0.x`,
 and early customers get the prices above held for their first year in exchange for being the
