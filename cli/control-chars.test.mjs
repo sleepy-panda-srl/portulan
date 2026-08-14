@@ -113,6 +113,27 @@ describe("what a tracked file may not carry", () => {
         assert.equal(found[0].offset, 1, "the lead byte, not the continuation");
         assert.equal(found[0].name, "U+009B CSI");
         assert.equal(found[0].column, 2);
+        assert.equal(found[0].byte, 0xc2, "`byte` is the byte AT `offset` — the lead, not the continuation");
+    });
+
+    // The rail for the class rather than the instance. `byte` and `offset` are two answers about one
+    // position, and the first version of the C1 branch answered them about two different bytes:
+    // `offset` on the lead, `byte` on the continuation. Nothing in the tree read the field, which is
+    // why three tests above passed over it — an unread field is where an untrue one survives. Asserted
+    // as an INVARIANT over every finding a mixed buffer produces, so it binds the C0 branch and the C1
+    // branch at once and a future third branch cannot quietly disagree with both. Copilot, #251 round 1.
+    test("in every finding, `byte` is the byte at `offset` — both branches", () => {
+        const buffer = Buffer.from([0x61, 0x07, 0x62, 0xc2, 0x9b, 0x63, 0x7f, 0xc2, 0x85]);
+        const found = scanBytes(buffer);
+        assert.equal(found.length, 4, "BEL, CSI, DEL, NEL — two from each branch");
+        for (const f of found) {
+            assert.equal(f.byte, buffer[f.offset], `finding ${f.name} at offset ${f.offset} disagrees with its own byte`);
+        }
+        assert.deepEqual(
+            found.map((f) => f.name),
+            ["BEL", "U+009B CSI", "DEL", "U+0085 NEL"],
+            "and the names still identify the character, which for C1 comes from the continuation",
+        );
     });
 
     test("every C1 is caught, and each is named", () => {

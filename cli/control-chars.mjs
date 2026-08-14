@@ -228,8 +228,18 @@ export function scanBytes(buffer) {
         // at the continuation would send a reader one byte past the thing they are looking for. `i` is
         // not advanced — the continuation is `0x80`–`0x9f`, which no other branch here matches, so there
         // is nothing to skip and the line counting stays a single rule.
+        //
+        // `byte` is the byte AT `offset`, which for C1 is the lead `0xc2` — not the continuation that
+        // says which C1 this is. The first draft put the continuation here and left `offset` on the
+        // lead, so one record answered "where" and "what" about two different bytes: a reader seeking
+        // `byte` at `offset` would not find it. Nothing consumes the field today — the locator prints
+        // `name`, `line`, `column` and `offset` — so this is latent rather than a live wrong message,
+        // and that is exactly why it is worth fixing now: an unread field is where an untrue one
+        // survives. `name` already carries which character it is, via the continuation, so nothing is
+        // lost. The C0 branch above sets `byte` to the byte at its own offset; both branches now mean
+        // the same thing by the same key. Copilot, #251 round 1.
         if (isC1At(buffer, i)) {
-            found.push({ offset: i, byte: buffer[i + 1], name: nameOfC1(buffer[i + 1]), line, column: i - lineStart + 1 });
+            found.push({ offset: i, byte: buffer[i], name: nameOfC1(buffer[i + 1]), line, column: i - lineStart + 1 });
         }
     }
     return found;
