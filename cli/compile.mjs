@@ -168,7 +168,11 @@ export function parse(policy) {
         // **A `none` value is never interpolated into a permission pattern.** It is PROSE: the sentence
         // the policy gives for why there is no surface, which the compiler reports verbatim rather than
         // inventing its own — see the `kind === "none"` arm of the emitter, which pushes it as `why`,
-        // and `describeRefusal`, which prints it. So the DSL justification above does not reach it, and
+        // and the `refused` loop in the reporter, which prints it. (An earlier draft of this comment
+        // cited `describeRefusal`, a function that does not exist in this file — a name asserted without
+        // being looked up, in the same change whose subject is tracing what a value actually reaches.
+        // The nearest real thing is `floorRefusal`, which answers a different question.) So the DSL
+        // justification above does not reach it, and
         // applying the DSL regex to it forbade **parentheses in an English sentence** — a gate refusing
         // to compile over an aside. #205.
         //
@@ -190,8 +194,21 @@ export function parse(policy) {
                           `differently from what this policy says, which is worse than refusing to compile.`,
             );
         }
+        // THE SAME OVER-REACH, NINE LINES BELOW THE SPLIT THAT FIXED IT. This message told every kind
+        // that the host "would not match" its value — and nothing about a `none` value is ever matched
+        // by the host, for the reason set out directly above. Surrounding whitespace on a `none` value
+        // is still worth refusing, because that sentence is printed into a padded, line-based report
+        // where it would misalign the column; but that is a different reason and the message now says
+        // which one applies. Found by Copilot on #256 round 1, in the change that had just split the
+        // reserved-character check on exactly this distinction: `0020` at its shortest range yet.
         if (action[kind] !== action[kind].trim()) {
-            throw new CompileError(`rule \`${id}\`'s ${kind} target has leading or trailing whitespace, which the host would not match`);
+            throw new CompileError(
+                kind === "none"
+                    ? `rule \`${id}\`'s none target has leading or trailing whitespace. That sentence is printed into a ` +
+                          `padded, line-based refusal report, where the padding is computed from a width the whitespace ` +
+                          `is not part of`
+                    : `rule \`${id}\`'s ${kind} target has leading or trailing whitespace, which the host would not match`,
+            );
         }
         // A path target that leaves the workspace is refused rather than normalised, for the reason
         // directly above. Two spellings, one defect: `pattern()` and `matchesPath()` compare against a
