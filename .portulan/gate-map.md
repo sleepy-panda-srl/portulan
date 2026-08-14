@@ -131,20 +131,34 @@ paid for it in code._
 
 ### Gated — explicit human approval, per action, before it happens
 
-**Composed into this tier: `commit-without-the-hooks`** — `git commit --no-verify`, contributed by the
-`rituals/checkpoints` pack rather than declared in [`gates.json`](gates.json). Gated for the reason the
-pack gives: `--no-verify` skips the local hooks, and on a workspace that compiles its gate policy *into*
-those hooks it is the one spelling that turns a compiled gate back into a convention. It is a narrower
-prefix than an ordinary `git commit`, which is Auto, so it is matched ahead of that rule — **and that
-last clause is the pack's own reason restated, not a measurement.** Whether a narrower `ask` outranks a
-broader `allow` is host precedence [this file records as never measured here](#what-the-compiler-refuses);
-the question does not arise against the compiled output, since `auto` compiles to nothing and the `allow`
-list is empty, so it would only bite against a hand-added local allow. _Listed here as
-of 2026-08-13: it was composed into this policy and compiled into
+**Composed into this tier: `commit-without-the-hooks`** — contributed by the `rituals/checkpoints` pack
+rather than declared in [`gates.json`](gates.json), and **as of 2026-08-14 it carries no matcher at all.**
+Gated for the reason the pack gives, restated **whole** and not measured here: bypassing the local hooks
+**by any spelling** turns a compiled gate back into a convention on a workspace that compiles its gate
+policy *into* those hooks — and if the hooks are wrong, change the policy through the evolution gate rather
+than stepping around it for one commit, because a bypass leaves no trace in the record that a policy change
+would have left. _(That second clause is the what-to-do-instead, and this file carried only the first half
+until 2026-08-14 — restating half a reason is the same half-copy defect the repository keeps finding.)_
+
+**Why it compiles to nothing, which is a decision and not a gap nobody noticed.** The category is
+*committing with the local hooks bypassed*, and its spellings are unbounded shell: `--no-verify`; the
+`-c core.hooksPath=/dev/null` form that
+[`0029`](proposals/0029-a-constraint-names-a-category-not-a-list.md)'s incident 3 actually used;
+`core.hooksPath` set at any config origin beforehand; `HUSKY=0` and its equivalents; a wrapper earlier on
+`PATH`. This rule carried `git commit --no-verify` for one milestone, and **in that measured incident the
+matcher gave zero protection while reading as coverage** — the act performed was the same category in
+another spelling, so the gate *as enumerated* never reached it. A matcher covering one spelling of an
+unbounded set is worse than an honest gap, because only the gap is visible. Enforcement here is the
+reader's discipline under [`../core/operating/autonomy.md`](../core/operating/autonomy.md)'s rule that an
+act's absence from a list is not a finding of permission. _On the maintainer's ruling of 2026-08-14,
+[`0029`](proposals/0029-a-constraint-names-a-category-not-a-list.md) Q3; the uncompiled count moving
+**4 → 5** is the price that ruling names rather than a regression._
+
+_Listed here as of 2026-08-13: it was composed into this policy and compiled into
 [`../.claude/settings.json`](../.claude/settings.json) for a milestone before any section of this file
 named it, because the three rails checking this document against the policy read
 [`gates.json`](gates.json) alone. Found by milestone 7's close; the rails now read declared **plus**
-composed._
+composed. Its matcher was removed 2026-08-14, and the `ask` entry left `.claude/settings.json` with it._
 
 Outward-facing or hard to undo. The agent prepares the action and asks; it does not proceed on inference,
 and approval for one action never generalises to the next.
@@ -366,7 +380,7 @@ Three kinds of refusal from the Claude Code backend, all printed on every run:
 |---|---|
 | tier `auto` | Unattended by **policy**, not by the host — and the difference is the cost. There is nothing for *this compiler* to enforce, but Claude Code prompts for any command it has not been told about, so every Auto action is answered by hand, and the answers land in a per-machine settings file: unseen by review, absent from every diff, and thrown away with the worktree that earned them. Measured on one host, 2026-07-28: **404 hand-added allow entries, exactly one** of them matching an Auto rule here. The maintainer's ruling of 2026-07-27 stands — the compiler only ever adds restriction — but on a narrower reason than the one this row used to give. *"An `allow` would loosen a check"* is not established: `git push` is Auto and `git push --force` is Gated, and whether a narrower `ask` outranks a broader `allow` is host precedence **this repository has never measured**. What holds without that answer is that an allow prefix reaches every spelling beneath it, including ones no rule names — `git push --mirror` is destructive and sits in no tier. |
 | tier `propose` | Enforced by the platform floor — pull request, required check, review — not by a permission rule on one machine. **The floor backend compiles exactly these**, which is what makes that sentence a hand-off rather than a shrug. |
-| action `none` | No tool-level surface exists. Spending money and sending something outward are the two here. |
+| action `none` | No tool-level surface exists, or none that a matcher could honestly cover. **Five**, and the enumeration is the count: renaming or transferring the repository, spending money, and sending something outward are declared here; `commit-without-the-hooks` and `self-certify-a-checkpoint` are composed from `rituals/checkpoints`. _(This row said "the two" while the policy declared three — it never counted `rename-or-transfer-a-repository`. Corrected 2026-08-14 in the change that added the fifth, which is the same undercount-by-enumeration the change is about.)_ |
 
 **Three gates *this workspace declares* are compiled by neither backend**, printed by `--matrix` and by
 `doctor` because a policy stating a gate nothing enforces should never read as configured:
@@ -375,14 +389,16 @@ Three kinds of refusal from the Claude Code backend, all printed on every run:
 nothing else, until something reaches it.
 
 **Composition contributes gates to this policy, and until milestone 7's close nothing here said so.**
-`rituals/checkpoints` adds two: `commit-without-the-hooks` (tier `gated`, `git commit --no-verify`) and
-`self-certify-a-checkpoint` (tier `prohibited`). The first **is** compiled — by the Claude Code backend,
-as a narrower prefix matched ahead of an ordinary `git commit`, because `--no-verify` is the one spelling
-that turns a compiled gate back into a convention on a workspace that compiles its policy into hooks. The
-second is not compiled by either backend.
+`rituals/checkpoints` adds two: `commit-without-the-hooks` (tier `gated`) and `self-certify-a-checkpoint`
+(tier `prohibited`). **Neither is compiled by either backend.** The first was, by the Claude Code backend,
+until 2026-08-14 — it carried `git commit --no-verify` as a matcher, and that matcher was removed on the
+ruling recorded in [`0029`](proposals/0029-a-constraint-names-a-category-not-a-list.md) Q3, for the reason
+set out in the **Gated** section above: a hook bypass has unbounded spellings, and one of them is not
+coverage.
 
 **So the uncompiled count is not fixed, because composition moves it — and for one milestone the two
-printers did not agree on it.** `self-certify-a-checkpoint` is a fourth gate no backend compiles. Measured on `74240fa`: `compile --matrix` reported **4** and named it;
+printers did not agree on it.** It stands at **five**, both composed gates among them, measured on this
+tree by `compile --matrix` and `doctor` alike. It was **four** until 2026-08-14. Measured on `74240fa`: `compile --matrix` reported **4** and named it;
 `doctor` reported **3** and did not. **Settled 2026-08-13: `doctor` now reads the policy this workspace
 yields — declared plus composed — through `compile`'s own `packContributions`/`composeFragments`, and
 the two agree.** The divergence is kept here as the record of what it cost, not as current behaviour. Neither is wrong about what it read — `--matrix` walks the

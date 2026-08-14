@@ -86,8 +86,12 @@ Honest limits, each with the milestone that closes it:
   where the partition inverts and `propose` is exactly what is enforced. **Three gates this workspace
   *declares* are compiled by neither backend** — renaming or transferring the repository, spending money,
   sending something outward — and `compile --matrix` and `doctor` both name them, because a policy
-  stating a gate nothing enforces must never read as configured. **Composition adds a fourth, and until 2026-08-13 the two
-  printers disagreed on the total** — `--matrix` counted `rituals/checkpoints`'
+  stating a gate nothing enforces must never read as configured. **Composition adds two more, for a total
+  of five**: `rituals/checkpoints` contributes `self-certify-a-checkpoint`, which never compiled, and
+  `commit-without-the-hooks`, which did until 2026-08-14 — its `git commit --no-verify` matcher was
+  removed on the ruling in [`proposals/0029`](proposals/0029-a-constraint-names-a-category-not-a-list.md),
+  because a hook bypass has unbounded spellings and matching one of them read as coverage the rule did not
+  have. **Until 2026-08-13 the two printers disagreed on the total** — `--matrix` counted
   `self-certify-a-checkpoint` and reported 4 where `doctor` reported 3. `doctor` now reads the policy the
   workspace *yields* and they agree; [`gate-map.md`](gate-map.md) carries the argument. The **platform floor beneath it all is configured and live** — `main` rejects
   direct pushes and requires `workspace-verify` and `pr-labeled` green, with no exemption for

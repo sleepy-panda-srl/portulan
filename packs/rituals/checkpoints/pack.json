@@ -18,8 +18,10 @@
       {
         "id": "commit-without-the-hooks",
         "tier": "gated",
-        "action": { "shell": "git commit --no-verify" },
-        "reason": "`--no-verify` skips the local hooks, and on a workspace that compiles its gate policy into them that is the one spelling which turns a compiled gate back into a convention. It is a narrower prefix than an ordinary `git commit`, so it is matched ahead of whatever tier that carries. If the hooks are wrong, change the policy through the evolution gate rather than stepping around it for one commit — a bypass leaves no trace in the record that a policy change would have left."
+        "action": {
+          "none": "No honest matcher. The CATEGORY is committing with the local hooks bypassed, and its spellings are unbounded shell: `--no-verify`, the `-c core.hooksPath=/dev/null` form an incident in this repository actually used, `core.hooksPath` set at any config origin beforehand, `HUSKY=0` and its equivalents, or a wrapper on PATH. This rule carried `git commit --no-verify` for one milestone, and in the measured incident that matcher gave ZERO protection while reading as coverage — the act performed was the same category in another spelling, so the gate as enumerated never reached it. A matcher covering one spelling of an unbounded set is worse than an honest gap, because only the gap is visible. Enforcement here is the reader's discipline under the rule that an act's absence from a list is not a finding of permission (`core/operating/autonomy.md`); the incident is recorded as incident 3 of `.portulan/proposals/0029-a-constraint-names-a-category-not-a-list.md`."
+        },
+        "reason": "Bypassing the local hooks — by any spelling — turns a compiled gate back into a convention on a workspace that compiles its gate policy into those hooks. If the hooks are wrong, change the policy through the evolution gate rather than stepping around it for one commit: a bypass leaves no trace in the record that a policy change would have left."
       },
       {
         "id": "self-certify-a-checkpoint",
