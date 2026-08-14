@@ -317,11 +317,29 @@ describe("the edges", () => {
                 return;
             }
             assert.equal(code, 2);
-            assert.match(err, /is not a pack somebody deleted/);
+            assert.match(err, /not a removal/);
             assert.doesNotMatch(out, /deleted/);
         } finally {
             fs.chmodSync(file, 0o644);
         }
+    });
+
+    test("a DANGLING SYMLINK is could-not-run, not a deletion — the third site of one class", () => {
+        // The sharpest of the three: `readFileSync` on a dangling link throws **ENOENT**, so an
+        // ENOENT-only carve-out called a present-but-unreadable manifest a deleted pack, at exit 0.
+        // `lstat` succeeds on the link itself and settles it. `./control-chars.mjs`'s `bytesOf` already
+        // uses this pattern for this reason; this test pins that the sibling's lesson landed here too.
+        const root = repo();
+        const file = path.join(root, "packs", "tools", "contributor", "pack.json");
+        fs.rmSync(file);
+        fs.symlinkSync(path.join(root, "no-such-target"), file);
+        assert.ok(fs.lstatSync(file).isSymbolicLink(), "the fixture must actually be a dangling link");
+        assert.throws(() => fs.readFileSync(file, "utf8"), { code: "ENOENT" }, "and readFileSync must give ENOENT, or this proves nothing");
+
+        const { code, err, out } = check(root, ["--base", "main"]);
+        assert.equal(code, 2);
+        assert.match(err, /not a removal/);
+        assert.doesNotMatch(out, /deleted/);
     });
 
     test("a manifest unparseable AT THE BASE is could-not-run too, not only at head", () => {

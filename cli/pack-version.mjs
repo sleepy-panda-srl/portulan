@@ -266,18 +266,43 @@ export function manifestAt(root, commit, rel, present) {
     }
 }
 
-/** The manifest in the working tree, or `null` where the pack has genuinely been deleted. */
+/**
+ * The manifest in the working tree, or `null` where the pack has genuinely been deleted.
+ *
+ * **`lstat` decides whether the file is there; `readFileSync`'s ENOENT does not.** Third instance of one
+ * class in this file, and the sharpest: a **dangling symlink** at `pack.json` makes `readFileSync` throw
+ * ENOENT while the path itself plainly exists — measured, `lstat` succeeds and reports
+ * `isSymbolicLink: true` — so an ENOENT-only carve-out reported a present-but-unreadable manifest as a
+ * pack somebody deleted, at exit 0. The same shape as the `readdir` guard and the absent-vs-unreadable
+ * repair before it, at a site both of those left alone.
+ *
+ * The lstat-first pattern is not invented here: `./control-chars.mjs`'s `bytesOf` already does exactly
+ * this, for exactly this reason, down to the sentence — *"Refusing to report it clean: this is a fact
+ * about the filesystem, not about the file."* Raised by Copilot on #274, round 7, which also supplied the
+ * precedent.
+ */
 export function manifestHere(root, rel) {
-    let raw;
+    const file = path.join(root, rel);
     try {
-        raw = fs.readFileSync(path.join(root, rel), "utf8");
+        // `lstat`, not `stat`: `stat` follows the link and would throw ENOENT for the dangling case,
+        // which is the very confusion this guard exists to end.
+        fs.lstatSync(file);
     } catch (cause) {
-        // ENOENT is the deleted-pack case and an answer. Everything else — EACCES, EISDIR, a symlink
-        // loop — is the check failing to look, and must not be spent as `deleted`.
         if (cause.code === "ENOENT") return null;
         throw new CannotRun(
-            `cannot read ${rel} — ${cause.code ?? cause.message}. Refusing to report it as removed: a manifest this ` +
-                `check could not open is not a pack somebody deleted.`,
+            `cannot stat ${rel} — ${cause.code ?? cause.message}. Refusing to report it as removed: this is a fact ` +
+                `about the filesystem, not about the pack.`,
+        );
+    }
+    let raw;
+    try {
+        raw = fs.readFileSync(file, "utf8");
+    } catch (cause) {
+        // The path EXISTS — `lstat` just said so — so every failure here is the check unable to look:
+        // a dangling symlink, EACCES, EISDIR, a symlink loop. None of them is a deletion.
+        throw new CannotRun(
+            `cannot read ${rel} — ${cause.code ?? cause.message}. The path exists, so this is not a removal: a ` +
+                `dangling symlink, an unreadable mode or a directory in its place all land here.`,
         );
     }
     try {
