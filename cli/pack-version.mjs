@@ -128,19 +128,26 @@ export function mergeBase(root, base = DEFAULT_BASE) {
         "theoretical one — so the usual repair is `fetch-depth: 0` on the job running this check; see .github/workflows/verify.yml.";
     try {
         git(root, ["rev-parse", "--verify", END, `${base}^{commit}`], `resolve ${base}`);
-    } catch {
+    } catch (cause) {
+        // The cause rides along. A bare `catch {}` here reported EVERY failure of this command as an
+        // unknown ref — including a corrupt object store, a permissions failure, or a git that would not
+        // start — so the message named the one cause it could think of and discarded the one git gave.
+        // `git()` has already captured that stderr; throwing it away and substituting a guess is the
+        // wrong-mechanism-in-a-user-facing-string class this repository keeps finding. Raised by Copilot
+        // on #274, round 4.
         throw new CannotRun(
             `base ref \`${base}\` is not in this repository — refusing to report a verdict against a ref nothing could read. ` +
                 `A SHALLOW single-branch clone does not fetch it at all, which is the common case; it can also be a typo ` +
-                `or an unfetched remote. ${shallowHint}`,
+                `or an unfetched remote. ${shallowHint} — git said: ${cause.message}`,
         );
     }
     try {
         return git(root, ["merge-base", END, base, "HEAD"], `find the merge-base of ${base} and HEAD`).trim();
-    } catch {
+    } catch (cause) {
         throw new CannotRun(
             `no merge-base between \`${base}\` and HEAD, though the ref itself resolved — a SHALLOW clone that fetched ` +
-                `the ref and truncated its history looks exactly like this, as do genuinely unrelated histories. ${shallowHint}`,
+                `the ref and truncated its history looks exactly like this, as do genuinely unrelated histories. ` +
+                `${shallowHint} — git said: ${cause.message}`,
         );
     }
 }

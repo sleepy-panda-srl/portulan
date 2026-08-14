@@ -433,6 +433,18 @@ describe("it refuses rather than guessing", () => {
         assert.doesNotMatch(err, /no merge-base/);
     });
 
+    test("a refusal carries GIT's own words, not only this file's guess at the cause", () => {
+        // A bare `catch {}` reported every failure of the ref lookup as an unknown ref — so a corrupt
+        // object store, a permissions failure or a git that would not start all arrived wearing the one
+        // explanation this file could think of, while the stderr `git()` had already captured was thrown
+        // away. Guidance and cause both, rather than guidance instead of cause.
+        const { code, err } = check(repo(), ["--base", "no-such-ref"]);
+        assert.equal(code, 2);
+        assert.match(err, /fetch-depth: 0/, "the guidance survives");
+        assert.match(err, /git said:/, "and so does the cause");
+        assert.match(err, /Needed a single revision/, "which is git's text, not ours");
+    });
+
     test("a directory that is not a git repository exits 2", () => {
         const { code, err } = check(scratch(), ["--base", "main"]);
         assert.equal(code, 2);
