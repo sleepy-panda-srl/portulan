@@ -71,9 +71,13 @@ function hook(project, payload, env = {}) {
         // is worth stating instead of letting the next reader assume a bug was found here. Copilot
         // (#272, round 2) reported that `error.stdout` can be a Buffer despite `encoding`, which would
         // make `.trim()` below throw and bury the runner's real status under an unrelated TypeError.
-        // Probed on node 26.7.0 across six error paths — non-zero exit, ENOENT, SIGKILL, maxBuffer,
-        // timeout, module-not-found — and it is a string on five and `undefined` on ENOENT, never a
-        // Buffer. **A negative result carries its control:** the identical spawn with `encoding` ABSENT
+        // Probed on node 26.7.0 across **ten** error paths — non-zero exit, ENOENT, SIGKILL, `maxBuffer`
+        // exceeded, timeout, module-not-found, invalid UTF-8 on stdout, empty stdout with a non-zero
+        // exit, large output under `maxBuffer`, and abort/SIGSEGV-class death — and it is a string on
+        // the nine that produce output and `undefined` on ENOENT, never a Buffer. _(The count is the
+        // enumeration, and it took two goes: an earlier draft said six, then nine, while the union of
+        // what had actually been run was neither. A count nobody can re-run is what round 2's own
+        // Finding A was about.)_ **A negative result carries its control:** the identical spawn with `encoding` ABSENT
         // does produce a Buffer, so the probe can see the thing it reports missing — which is the guard
         // the hermeticity case below had to learn the hard way in this same change. Invalid UTF-8 on
         // stdout is the intuitive Buffer case and is not one either: it decodes to replacement
