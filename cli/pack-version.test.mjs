@@ -481,12 +481,32 @@ describe("it refuses rather than guessing", () => {
         // `path.join("/repo", "../../etc")` is `/etc`, so the filesystem scan left the repository while
         // the failure that surfaced named `git ls-tree` instead. Containment is checked after resolution,
         // because a `..` chain satisfies any pattern and still escapes.
-        assert.throws(() => insideRepo("../..", { root: "/repo" }), /resolves outside the repository/);
-        assert.throws(() => insideRepo("packs/../../..", { root: "/repo" }), /resolves outside the repository/);
-        assert.throws(() => insideRepo("/etc", { root: "/repo" }), /absolute path/);
-        assert.throws(() => insideRepo(".", { root: "/repo" }), /resolves outside the repository/);
-        assert.equal(insideRepo("packs", { root: "/repo" }), "packs");
-        assert.equal(insideRepo("vendor/packs", { root: "/repo" }), "vendor/packs");
+        assert.throws(() => insideRepo("../.."), /not a directory inside the repository/);
+        assert.throws(() => insideRepo("packs/../../.."), /not a directory inside the repository/);
+        assert.throws(() => insideRepo("/etc"), /absolute path/);
+        assert.throws(() => insideRepo("."), /not a directory inside the repository/);
+        assert.equal(insideRepo("packs"), "packs");
+        assert.equal(insideRepo("vendor/packs"), "vendor/packs");
+    });
+
+    test("`--packs` is CANONICALISED, or the two halves of the comparison disagree about a pack's name", () => {
+        // Not tidiness — a false green, measured. `packs/../packs` validates (it resolves inside), and
+        // then the filesystem scan joins the raw spelling while `git ls-tree` canonicalises its pathspec.
+        // Every pack was reported TWICE: `added` under the uncanonical name and `unchanged` under git's.
+        // `added` is exempt, so a real unbumped change would have passed.
+        assert.equal(insideRepo("packs/../packs"), "packs");
+        assert.equal(insideRepo("./packs"), "packs");
+        assert.equal(insideRepo("packs/"), "packs");
+        assert.equal(insideRepo("vendor/./sub/../packs"), "vendor/packs");
+
+        const root = repo();
+        writePack(root, manifest({ version: "0.1.0", reason: "changed, not bumped" }));
+        commit(root, "a red-worthy change");
+        const plain = check(root, ["--base", "main"]);
+        const noisy = check(root, ["--base", "main", "--packs", "packs/../packs"]);
+        assert.equal(plain.code, 1);
+        assert.equal(noisy.code, 1, "the uncanonical spelling must reach the same verdict");
+        assert.equal(noisy.out, plain.out, "and the same report — no pack counted twice under two names");
     });
 
     test("bad arguments exit 2, and `--help` exits 0", () => {
