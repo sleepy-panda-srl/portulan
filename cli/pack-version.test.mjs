@@ -385,7 +385,7 @@ describe("it refuses rather than guessing", () => {
     // knew about only one — it asserted the no-merge-base message and got the unknown-ref one. Measured
     // and split, because they are different fixtures and a reader landing on either needs `fetch-depth`.
     for (const [label, cloneArgs, expected] of [
-        ["single-branch (the common CI shape) — the ref is never fetched", ["--depth", "1"], /is not in this repository/],
+        ["single-branch (the common CI shape) — the ref is never fetched", ["--depth", "1"], /could not resolve base ref/],
         ["--no-single-branch — the ref resolves, its history does not", ["--depth", "1", "--no-single-branch"], /no merge-base/],
     ]) {
         test(`a SHALLOW clone exits 2 and names \`fetch-depth: 0\`: ${label}`, () => {
@@ -395,7 +395,7 @@ describe("it refuses rather than guessing", () => {
             git(origin, "checkout", "-q", "main");
 
             const shallow = scratch();
-            execFileSync("git", ["clone", "-q", ...cloneArgs, `file://${origin}`, shallow, "--branch", "feature"], {
+            execFileSync("git", ["clone", "-q", "--branch", "feature", ...cloneArgs, `file://${origin}`, shallow], {
                 stdio: ["ignore", "pipe", "pipe"],
             });
             const { code, err } = check(shallow, ["--base", "origin/main"]);
@@ -416,7 +416,7 @@ describe("it refuses rather than guessing", () => {
         git(origin, "checkout", "-q", "main");
 
         const full = scratch();
-        execFileSync("git", ["clone", "-q", `file://${origin}`, full, "--branch", "feature"], { stdio: ["ignore", "pipe", "pipe"] });
+        execFileSync("git", ["clone", "-q", "--branch", "feature", `file://${origin}`, full], { stdio: ["ignore", "pipe", "pipe"] });
         const { code, err } = check(full, ["--base", "origin/main"]);
         assert.equal(code, 1, "at full depth the same change must red");
         assert.match(err, /stayed at `0\.1\.0`/);
@@ -426,7 +426,7 @@ describe("it refuses rather than guessing", () => {
         const root = repo();
         const { code, err } = check(root, ["--base", "no-such-ref"]);
         assert.equal(code, 2);
-        assert.match(err, /is not in this repository/);
+        assert.match(err, /could not resolve base ref/);
         // Both refusals mention shallow clones — measured, both shapes produce one of them — so the
         // discriminator is the CLAUSE, not the word. Asserting the absence of "SHALLOW" here would pin a
         // property the messages deliberately do not have.

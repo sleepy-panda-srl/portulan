@@ -134,11 +134,16 @@ export function mergeBase(root, base = DEFAULT_BASE) {
         // start — so the message named the one cause it could think of and discarded the one git gave.
         // `git()` has already captured that stderr; throwing it away and substituting a guess is the
         // wrong-mechanism-in-a-user-facing-string class this repository keeps finding. Raised by Copilot
-        // on #274, round 4.
+        // on #274, round 4 — and its round 6 caught that the FIX was half-done: the cause rode along
+        // while the leading clause still asserted `is not in this repository`, so the sentence stated one
+        // cause as fact and listed the alternatives underneath it. It now says what HAPPENED (could not
+        // resolve) and ranks the causes as causes. The defect class named in this very comment, surviving
+        // one round inside the repair for it.
         throw new CannotRun(
-            `base ref \`${base}\` is not in this repository — refusing to report a verdict against a ref nothing could read. ` +
-                `A SHALLOW single-branch clone does not fetch it at all, which is the common case; it can also be a typo ` +
-                `or an unfetched remote. ${shallowHint} — git said: ${cause.message}`,
+            `could not resolve base ref \`${base}\` — refusing to report a verdict against a ref nothing could read. ` +
+                `The usual cause is a SHALLOW single-branch clone, which does not fetch it at all; a typo or an ` +
+                `unfetched remote look the same from here, and so does a repository that cannot be read at all. ` +
+                `${shallowHint} — git said: ${cause.message}`,
         );
     }
     try {
