@@ -94,7 +94,22 @@ jobs:
       # does is stop this step qualifying for the default-self-checkout early-out, so the check is
       # called and then returns on the event. What would actually matter is this workflow moving to
       # `pull_request_target` or `workflow_run`, which is the change to think twice about.
+      # `fetch-depth: 0` since #265, and it is load-bearing rather than cautious. The `pack-version`
+      # recipe asks what this change DID — whether a pack whose `contributes` moved also moved its
+      # `portulan.version` — which is a question about a diff against the merge-base, not about the tree.
+      # The default checkout is shallow, and measured on both of its shapes that produces either a base
+      # ref this repository does not have (`--depth 1` is also `--single-branch`) or a ref whose history
+      # is truncated so no merge-base exists. Either way the recipe exits **2**, could not run.
+      #
+      # **And an exit 2 here is not a shrug — the loop below turns ANY nonzero recipe exit into
+      # `status=1`, so it FAILS this required check.** So without full depth the rail would not be
+      # decorative; it would block every pull request in the repository, including ones touching no pack
+      # at all. The two changes ship together for that reason. (A draft of this comment said
+      # "decorative", which is the pleasanter error and the wrong one — corrected on the measurement.)
+      # `librarian.yml` sets this for the same underlying reason and says so in its own header.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
 
       - name: Run every verify recipe the workspace manifest yields
         run: |

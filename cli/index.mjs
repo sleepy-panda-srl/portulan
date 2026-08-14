@@ -43,9 +43,12 @@
 //
 // Stated in ../core/operating/memory.md and carried out by ../core/skills/consolidate/SKILL.md.
 // What this tool can enforce is the breach; it cannot enforce the remedy. Refusing a budget RAISE
-// would mean reading git history, and a check that reads history is a false-red generator in a
-// shallow CI checkout — the failure ../.portulan/verify/README.md holds to be worse than no check.
-// So the raise stays at the human gate, and the limit is written down rather than implied away.
+// would mean reading git history — and **the reason that used to settle the matter no longer holds.**
+// This said a history check is "a false-red generator in a shallow CI checkout"; since #265 the verify
+// job sets `fetch-depth: 0`, because `./pack-version.mjs` reads a diff and cannot answer without one.
+// So a history-reading check now runs in this repository's CI, and the remaining reason is the smaller
+// and more honest one: nobody has written this particular check. #75 is its issue, and it is reachable
+// rather than blocked. The raise stays at the human gate until then, stated rather than implied away.
 //
 // ## Why this generator writes an over-budget index instead of refusing to
 //

@@ -86,6 +86,12 @@
         "run": "./.portulan/verify/rule-carriers.sh",
         "requires": ["bash", "git", "node"],
         "doc": "verify/README.md"
+      },
+      {
+        "id": "pack-version",
+        "run": "./.portulan/verify/pack-version.sh",
+        "requires": ["bash", "git", "node"],
+        "doc": "verify/README.md"
       }
     ]
   },
