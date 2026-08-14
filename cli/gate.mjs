@@ -80,7 +80,7 @@ import { fileURLToPath } from "node:url";
 // enforced that policy plus its packs' contributions. `packContributions` and `composeFragments` are
 // imported for the same reason as the matcher — a second composer would drift the same way — and
 // `doctor` took this identical repair for this identical noun one session earlier.
-import { matchesRule, policyPath, packContributions, composeFragments } from "./compile.mjs";
+import { matchesRule, policyPath, packContributions, composeFragments, parse } from "./compile.mjs";
 
 // **The project root is TOLD to this runner, never derived from where this file sits.**
 //
@@ -146,10 +146,37 @@ function stepAside() {
 //      dependency a lever on the layer above it. `./compile.mjs` refuses to build in the same case, and
 //      the divergence is the intended one: it fails closed at build time against a file you can edit,
 //      while this runs on every tool call.
+//   3. **The composed policy is VALIDATED, by the same `parse` the compiler validates with.** Composition
+//      checks a fragment's *tier* and, when tightening, that the action shape is unchanged; it does not
+//      check that an ADDED fragment is a well-formed rule. So a pack contributing
+//      `{id, tier: prohibited, action: {shell: curl}}` and no `reason` composed cleanly and this hook
+//      denied with the sentence `— undefined`, where `compile` refuses the same input at exit 2 with
+//      *"rule `no-reason` carries no reason — a gate with no sentence to show a human is not finished"*.
+//      Measured, on the runner. The two layers disagreeing about whether a policy is admissible is this
+//      file's own defect one step further in. Raised by Copilot on #272, round 1, in the suppressed
+//      channel. **The limit, since the fix is narrower than it reads:** this covers the COMPOSED arm. A
+//      rule missing its `reason` in the *declared* policy still denies with `— undefined`, byte-identically
+//      with every predecessor — because the fallback for an inadmissible declared policy is that same
+//      policy, and stepping aside there would drop a live prohibition over a missing string. `compile`
+//      refuses that shape at build time, which is where it belongs. Pinned in `./gate.test.mjs` so the
+//      arm cannot be quietly converted to a step-aside.
+//
+//      **Validation only — the decision is still made on the composed policy, not on `parse`'s return.**
+//      Not because the parsed shape would not match: measured, `parse` returns rules carrying the SAME
+//      `action` object beside the added `kind`/`target`, and `matchesRule` answers correctly on them —
+//      a draft of this comment claimed otherwise and was wrong. The two real grounds: `parse` **refuses
+//      rather than normalises**, so once it passes, the composed and parsed forms are identical for
+//      matching and deciding on the parsed one buys nothing; and the fallback path has no parsed form to
+//      offer — an inadmissible policy produces none — so deciding on `parse`'s return would hand
+//      `decide()` two different shapes on its two paths, importing a representational seam rather than
+//      closing one. **If `parse` ever stops refusing and starts normalising, that change must sweep this
+//      hook too.** The check costs 0.003 ms against a ~30 ms invocation, 2000 iterations, so it is free.
 function yielded(declared) {
     try {
         const { contributions } = packContributions(PROJECT, WORKSPACE_DIR);
-        return composeFragments(declared, contributions).policy;
+        const composed = composeFragments(declared, contributions).policy;
+        parse(composed);
+        return composed;
     } catch {
         return declared;
     }
