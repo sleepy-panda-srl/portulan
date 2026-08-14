@@ -1,7 +1,12 @@
 #!/usr/bin/env bash
 # Portulan workspace — verify recipe for a docs-first repository.
 #
-# Six checks. Only the kernel budget was a rule this repo had already stated; links and map were
+# THE CHECKS ARE THE LIST BELOW, AND THE LIST IS THE COUNT. This line read "Six checks." until the
+# `cli table` check was added and did not — a fixed numeral in a header about a file that grows, which
+# is the same hand-maintained-figure defect the `cli table` check itself exists to retire, arriving in
+# the rail's own file within one change. Naming a number here buys nothing the enumeration does not
+# already give, and costs a claim that goes stale silently. Copilot, #255 round 2.
+# Only the kernel budget was a rule this repo had already stated; links and map were
 # minted from the defect that this recipe's first run exposed (see ./README.md, Provenance), record
 # from the 2026-07-27 audit that found a merged arc with no record at all, proposal from milestone
 # 5, where "a rule change is a proposal as a pull request" turned out to bind nothing, and plan from
@@ -17,6 +22,9 @@
 #   plan      no milestone row carries an amendment argument or a session note, every row parses into
 #             its five cells, and its Status cell stays inside a byte budget
 #                                                             (the scoreboard is law, not an archive)
+#   cli table every file in cli/ has a row in cli/README.md's table, and every row names a file that
+#             exists — both directions, two declared exemptions, each audited
+#                                                    (a table headed What is here today, kept honest)
 #
 # Exit 0 green · 1 red · 2 could not run. The Stop-gate (milestone 4) calls this;
 # until it exists, the definition of done in ../dod.md requires running it by hand.
