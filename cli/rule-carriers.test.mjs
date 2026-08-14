@@ -414,6 +414,41 @@ describe("run — the carrier audit reaching the real filesystem", () => {
         assert.doesNotMatch(err, /is not a file/, "absent and not-a-file are different findings and must read differently");
     });
 
+    // #249 round 1, Copilot. The audit caught every `statSync` failure with a bare `catch` and called
+    // all of them "absent", so a carrier the process could not LOOK at was reported as one it had
+    // looked at and not found. The exit code was right either way — this is entirely about the
+    // sentence, which is what this change is for. The rule already existed on a sibling noun:
+    // `control-chars.mjs`'s `bytesOf` returns null for ENOENT alone and refuses every other errno.
+    //
+    // EACCES is injected by chmod rather than mocked, so the test exercises the real `statSync`. The
+    // PRECONDITION is asserted rather than assumed: if the platform (or a root test runner) does not
+    // actually deny the stat, the injection never reached the code and a passing assertion below would
+    // mean nothing — the failure mode this repository has hit three times.
+    test("a carrier the run could not examine is not called missing", (t) => {
+        const root = scratch("rule-carriers-unreadable-");
+        const dir = path.join(root, "cli");
+        fs.mkdirSync(dir, { recursive: true });
+        fs.writeFileSync(path.join(dir, "carrier.mjs"), "the retired sentence\n");
+        fs.writeFileSync(path.join(root, "registry.json"), registryFor("cli/carrier.mjs"));
+
+        fs.chmodSync(dir, 0o000);
+        t.after(() => fs.chmodSync(dir, 0o755));
+
+        let denied = false;
+        try {
+            fs.statSync(path.join(dir, "carrier.mjs"));
+        } catch (cause) {
+            denied = cause.code !== "ENOENT";
+        }
+        assert.ok(denied, "precondition: the stat must actually be denied, or this case tests nothing");
+
+        const { code, err } = invoke(root, "cli/other.mjs\0");
+        assert.equal(code, 2, "could-not-examine is could-not-run, exactly as absent is");
+        assert.match(err, /could not examine/);
+        assert.match(err, /EACCES/, "the errno is named — it is the difference between the two repairs");
+        assert.doesNotMatch(err, /does not resolve/, "the file is right there; calling it missing sends a maintainer hunting for it");
+    });
+
     test("a real file carrier passes the audit and the scan runs", () => {
         const root = scratch("rule-carriers-okcarrier-");
         fs.mkdirSync(path.join(root, "cli"), { recursive: true });
