@@ -69,7 +69,8 @@ disk. One rule with three carriers is obeyed at the narrowest, and the repair is
 cannot be a function: state it once, and let the others cite. Both now cite this file.
 
 The table below is the check on it, and as of this change it is one: **every file in this directory has
-a row, and every row names a file that exists.** The arrears are nil and
+a row, and every row names a file that exists — save two, named in the next paragraph and declared to
+the rail rather than left as quiet exceptions.** The arrears are nil and
 [#203](https://github.com/sleepy-panda-works/portulan/issues/203) is closed — and the figure is not
 stated here any more, because a number maintained by hand is the thing that kept going wrong. It is
 checked by [`../.portulan/verify/docs.sh`](../.portulan/verify/docs.sh), in **both directions**, on
