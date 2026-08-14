@@ -350,20 +350,40 @@ export function run(argv = [], { stdout = process.stdout, stderr = process.stder
             let st;
             try {
                 st = fs.statSync(path.resolve(cwd, p));
-            } catch {
-                return "absent";
+            } catch (cause) {
+                // ONLY `ENOENT` IS ABSENT. A bare `catch` here turned every errno into "does not
+                // resolve" — so a carrier the process could not LOOK at (EACCES on a parent directory,
+                // ELOOP on a symlink cycle, ENAMETOOLONG) was reported as one it had looked at and not
+                // found. The exit code was right either way; the sentence was not, and an accurate
+                // error sentence is this change's whole subject.
+                //
+                // The rule already existed on a sibling noun and was not swept to this one:
+                // `./control-chars.mjs`'s `bytesOf` returns `null` for `ENOENT` alone and refuses every
+                // other errno, citing `../.portulan/memory/a-checker-must-refuse-what-it-cannot-check.md`
+                // — *could not look* reported as *looked and found nothing*. Same rule, same words, now
+                // on this noun too. Copilot, #249 round 1.
+                if (cause.code === "ENOENT") return "absent";
+                return `unreadable:${cause.code ?? cause.message}`;
             }
             return st.isFile() ? "file" : "not-a-file";
         },
     });
     if (unusable.length > 0) {
         for (const a of unusable) {
-            stderr.write(
-                a.state === "absent"
-                    ? `rule-carriers: rule \`${a.rule}\` names a carrier that does not resolve: ${a.carrier}\n`
-                    : `rule-carriers: rule \`${a.rule}\` names a carrier that is not a file: ${a.carrier} — ` +
-                          "it resolves, so this is not a typo, and it matches no file in the scan, which would leave the rule covering nothing\n",
-            );
+            if (a.state === "absent") {
+                stderr.write(`rule-carriers: rule \`${a.rule}\` names a carrier that does not resolve: ${a.carrier}\n`);
+            } else if (a.state.startsWith("unreadable:")) {
+                stderr.write(
+                    `rule-carriers: rule \`${a.rule}\` names a carrier this run could not examine: ${a.carrier} — ` +
+                        `${a.state.slice("unreadable:".length)}. Refusing to call it missing: that is a fact about the ` +
+                        "filesystem, not about the carrier, and the two want different repairs\n",
+                );
+            } else {
+                stderr.write(
+                    `rule-carriers: rule \`${a.rule}\` names a carrier that is not a file: ${a.carrier} — ` +
+                        "it resolves, so this is not a typo, and it matches no file in the scan, which would leave the rule covering nothing\n",
+                );
+            }
         }
         return 2;
     }
