@@ -3,8 +3,8 @@
 **Status. ACCEPTED 2026-08-14 by the maintainer, with Q1, Q2 and Q3 all ruled** — the three answers and
 their grounds are in **Decision** at the foot. It still ships **no rail**, and says so here rather than
 implying one: the artifact it governs — a session brief — is typed into a conversation and committed
-nowhere, so no recipe in this repository can read one. Acceptance does not change that, and Q3's edit
-*removes* a matcher rather than adding one. What it asked for is the **second half of a rule this
+nowhere, so no recipe in this repository can read one. Acceptance does not change that, and the edit Q3
+calls for *removes* a matcher rather than adding one. What it asked for is the **second half of a rule this
 repository already carries**, and a ruling on where that half lives; Q1 put it in the engine.
 
 _Proposed 2026-08-13. Everything below this header is left **exactly as drafted**, except the Decision
@@ -195,11 +195,13 @@ recorded here rather than in it. All three questions answered, each with the gro
   written unrepaired — and the converse is demonstrably performable rather than merely asked for. Session
   17's implementer treated opening a pull request as outside a merge grant that never mentioned it,
   unprompted and against its own convenience, which is the behaviour this clause names._
-- **Q3 — YES, it reaches this workspace's own gate spellings.** `commit-without-the-hooks` takes the same
-  `none`-action **form** that [`../gates.json`](../gates.json) already uses for
+- **Q3 — YES, it reaches this workspace's own gate spellings.** `commit-without-the-hooks` **is to take** the
+  same `none`-action **form** that [`../gates.json`](../gates.json) already uses for
   `send-something-outside-this-repository`, the precedent this proposal cites above — the category stated,
-  plus a sentence saying why no matcher would be honest. *The **form** is what carries over; where the rule
-  itself lives is a separate question, and the note below answers it.* _Ground: hook-bypass spellings are
+  plus a sentence saying why no matcher would be honest. *As of this ruling the rule still carries its
+  `shell` matcher: what is recorded here is the decision, and the edit follows as its own review. The
+  **form** is what carries over; where the rule itself lives is answered in the note below.* _Ground:
+  hook-bypass spellings are
   unbounded shell, and in incident 3 the enumerated matcher gave **zero** protection while reading as
   coverage. The `none` form trades a partial mechanical block for honesty, and the uncompiled-gate count
   moving **4 → 5** in both printers is the honest price rather than a regression._
@@ -208,8 +210,8 @@ _One measurement the ruling did not need but a reader following it will: `commit
 **not declared in [`../gates.json`](../gates.json)**. It is a gate fragment composed from
 [`../../packs/rituals/checkpoints/pack.json`](../../packs/rituals/checkpoints/pack.json), and
 `composeFragments` refuses both a re-declaration that does not tighten and one that changes what a rule
-matches — so the pack is the only carrier the tree admits, and Q3's edit lands there. The ruled act and
-form are unchanged by where they land; the widened radius is that every workspace composing that pack
-gets the change, which is the review's to weigh._
+matches — so the pack is the only carrier the tree admits, and Q3's edit is to land there. The ruled act
+and form would be unchanged by where they land; the widened radius is that every workspace composing that
+pack would get the change, which is that review's to weigh._
 
 **Pull request:** [#246](https://github.com/sleepy-panda-works/portulan/pull/246) — the change that filed this.
