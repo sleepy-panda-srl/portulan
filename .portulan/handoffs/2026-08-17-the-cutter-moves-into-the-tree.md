@@ -1,4 +1,4 @@
-# The cutter moves into the tree — and the tree starts checking it
+# Handoff — the cutter moves into the tree, and the tree starts checking it
 
 **Session:** 2026-08-17, distribution machinery (off-row). **PR:** [#280](https://github.com/sleepy-panda-works/portulan/pull/280). **Ruling implemented:** the maintainer's, mid-session, verbatim — *"This tool should live in the public tree as a reviewable product machinery."*
 
@@ -13,7 +13,8 @@ tool's own header with dod condition 5's outside-the-repository phrasing.
 
 ## What landed
 
-`cli/eval-bundle.mjs` (+ suite, + the twelfth verify recipe) — the port, with both rosters pinned
+`cli/eval-bundle.mjs` (+ suite, + the twelfth declared verify recipe; the yielded set is thirteen
+with the composed one) — the port, with both rosters pinned
 in both directions and enforced on every pull request. Deltas vs. the verified original, each
 argued in the file header: the cut README's own `## License` section is patched rather than
 disclaimed from a banner; the cutter and its suite are self-excluded from the payload (issuer
@@ -46,6 +47,10 @@ in BOTH `eval-bundle.sh` and `pack-version.sh` (a deleted module printed RED abo
 judged). Copilot round 1: write-site containment — resolution, not pattern, now holds the cut's
 boundary. Round 2, four promoted notes, all real, all fixed: digest byte-order (UTF-16 vs UTF-8,
 two carriers repaired as one definition), umask-proof `chmod` after write, ICU-independent date.
+A third fresh-context pass ran over these records themselves and returned A-W-A ×2 — the recipe
+ordinal said "twelfth" unqualified while the yielded set is thirteen (the same series the
+session-20 entry had already claimed "twelfth" for), and the fidelity note undercounted its own
+gates by omitting this pass. Both folded before commit.
 
 ## Routed to the maintainer, still open
 
