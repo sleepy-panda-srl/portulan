@@ -1709,6 +1709,29 @@ export function composeFragments(policy, contributions) {
     for (const { pack, fragments } of contributions) {
         for (const fragment of fragments ?? []) {
             const id = fragment?.id;
+            // **The id is validated HERE even though `parse` validates it too, and the duplication is
+            // the point** (#111). Composition deliberately runs BEFORE `parse`, so that a fragment is
+            // graded by exactly the code that grades a hand-written rule — but that ordering means a
+            // malformed id survives composition and surfaces from `parse` with **no pack context at
+            // all**: `rule id undefined is not a slug`, which sends an adopter to audit their own
+            // `gates.json`, the one file that is not at fault. Every other refusal in this loop names
+            // the contributing pack, because naming the dependency is what the merge step is for.
+            //
+            // It fails closed either way — `parse` refuses the composed policy and nothing invalid
+            // compiles — so this is a diagnostic repair, not a correctness one, and it is written down
+            // as such.
+            //
+            // **It also closes a path the issue did not name.** `at` is keyed by `rule?.id`, so with no
+            // check here a SECOND id-less fragment finds `at.has(undefined)` true and is composed onto
+            // the first one — two unrelated fragments from two packs merged because they were equally
+            // malformed, reported as a tightening of a rule that does not exist.
+            if (typeof id !== "string" || !SLUG.test(id)) {
+                throw new CompileError(
+                    `pack \`${pack}\` contributes a fragment whose id is ${JSON.stringify(id)}, which is not a slug. ` +
+                        "Ids are referenced from prose and must be greppable, and a fragment without one cannot be " +
+                        "matched against the policy it means to tighten. Fix the pack, not the workspace's own gate policy.",
+                );
+            }
             const rank = tierRank(fragment?.tier);
             if (rank < 0) {
                 throw new CompileError(
