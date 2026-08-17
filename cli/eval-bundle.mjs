@@ -12,8 +12,12 @@
 // ## What a cut does
 //
 //   1. Materialises the PAYLOAD roster at a named commit — tracked blobs only, so neither local
-//      state nor secrets can ride along — minus the SELF_EXCLUDED pair below.
-//   2. Writes EVAL-LICENSE.md, stamped to the named recipient (name, GitHub login, date).
+//      state nor secrets can ride along — minus the SELF_EXCLUDED entries below.
+//   2. Renders EVAL-LICENSE.md from the template AT THAT SAME COMMIT (`cli/eval-license.template.md`,
+//      read with `git show`, never from the invoking working tree), stamped to the named recipient
+//      (name, GitHub login, date). The supervisor's ruling of 2026-08-17, binding: payload and
+//      terms pin to ONE sha in EVAL-STAMP.json's `source_commit`, so issued copies keep their
+//      issued wording and a later template edit cannot drift under an already-stamped bundle.
 //   3. Replaces NOTICE with the evaluation-issue NOTICE.
 //   4. Patches every machine-read `"license"` field (PATCHED_MANIFESTS) to `LicenseRef-Portulan-Eval`.
 //   5. Rewrites README.md's own `## License` section and prepends the evaluation banner. The
@@ -75,17 +79,18 @@
 //
 // ## The self-exclusion, and which backstop covers it
 //
-// This file and its test suite are payload paths (`cli/` ships) and are excluded from the cut by a
-// CODE-LEVEL filter — never a git pathspec, whose exclude form matches nothing silently. Two
-// reasons, either sufficient: issuer machinery is not part of what an evaluee receives, and both
-// files necessarily carry the guard's own needle bytes, so a cut containing them could never pass
-// its own guard. That last fact is also the backstop: if the filter ever fails, the guard refuses
-// the bundle, and its diagnosis for a SELF_EXCLUDED offender says "the self-exclusion failed"
-// rather than misreporting a licensing breach. `--check` states on every run whether the
-// exclusion was exercised (the paths exist at the commit being cut) or vacuous (they do not —
-// true until the first commit that contains this file), so a green cannot quietly rest on the
-// vacuous case; the test suite exercises the filter positively against a fixture repository that
-// plants files at exactly these paths.
+// This file, its test suite and the license template are payload paths (`cli/` ships) and are
+// excluded from the cut by a CODE-LEVEL filter — never a git pathspec, whose exclude form matches
+// nothing silently. Issuer machinery is not part of what an evaluee receives — a bundle carries
+// the STAMPED license, never the stamp press — and this file and the suite additionally carry the
+// guard's own needle bytes, so a cut containing either could never pass its own guard. That last
+// fact is also the backstop: if the filter ever fails on those two, the guard refuses the bundle,
+// and its diagnosis for a SELF_EXCLUDED offender says "the self-exclusion failed" rather than
+// misreporting a licensing breach. The template carries no needle, so its exclusion rests on the
+// filter alone — which the test suite exercises positively against a fixture repository that
+// plants files at exactly these paths. `--check` states on every run whether the exclusion was
+// exercised (the paths exist at the commit being cut) or vacuous, so a green cannot quietly rest
+// on the vacuous case.
 //
 // ## Two hashes, because they answer different questions
 //
@@ -101,12 +106,13 @@
 // digest is how a bundle in the wild is tied to a commit; the tar hash is how a specific
 // delivery is recognised.
 //
-// ## Routed to the maintainer, not resolved here (session-open checkpoint, adjustment 8)
+// ## The template's public future — routed, then RULED (supervisor, 2026-08-17)
 //
-// When this repository goes public, the evaluation-license template below becomes world-readable
+// When this repository goes public, `cli/eval-license.template.md` becomes world-readable
 // Apache-licensed text. That relicenses nothing already issued — each bundle carries its own
-// stamped instrument — but whether counsel reads this wording before the flip is the
-// maintainer's call, alongside the flip's other legal gates. The `--check` recipient is a
+// stamped instrument — and the ruling routed counsel's read of the wording to the flip's
+// legal-gate checklist, approving the tracking with the binding condition the sections above now
+// implement: terms ship FROM the payload commit, one sha for both. The `--check` recipient is a
 // fixture and says so in its own name, so no reader of a public tree can mistake it for a person.
 //
 // ## Exit codes
@@ -164,8 +170,18 @@ export const EXCLUDED_TOP_LEVEL = {
 };
 
 // Excluded from the cut by the code-level filter in `payloadEntries`. See the header for why, and
-// for which backstop covers a failed filter.
-export const SELF_EXCLUDED = ["cli/eval-bundle.mjs", "cli/eval-bundle.test.mjs"];
+// for which backstop covers a failed filter. The template is issuer machinery like the other two —
+// an evaluee receives the STAMPED license, never the stamp press — though unlike them it carries
+// no guard needle, so its exclusion rests on the filter alone.
+export const SELF_EXCLUDED = ["cli/eval-bundle.mjs", "cli/eval-bundle.test.mjs", "cli/eval-license.template.md"];
+
+// Where the evaluation-license template lives, read FROM THE PAYLOAD COMMIT — never from the
+// invoking working tree. The supervisor's ruling of 2026-08-17, binding: EVAL-STAMP.json's
+// `source_commit` pins payload and terms together as ONE sha, so issued copies keep their issued
+// wording, the ledger cites one commit for both, and a later edit to this template cannot drift
+// underneath an already-stamped bundle.
+export const TEMPLATE_PATH = "cli/eval-license.template.md";
+const TEMPLATE_PLACEHOLDERS = ["{{name}}", "{{login}}", "{{date}}", "{{shortSha}}"];
 
 // Every machine-read license assertion in the payload, patched to `LicenseRef-Portulan-Eval`.
 // The census in `--check` keeps this enumeration equal to what the tree actually carries.
@@ -415,45 +431,52 @@ export function assertCensus(cutDir) {
     throw new Refused(`the license census no longer matches PATCHED_MANIFESTS:\n  ${problems.join("\n  ")}`);
 }
 
-/** The stamped per-copy license. Text ported verbatim from the install-verified original. */
-export function evalLicenseText({ name, login, date, fullSha }) {
-    return `# Portulan Evaluation License
+/**
+ * The evaluation-license template AT a commit — read with `git show`, NEVER from the invoking
+ * working tree. The supervisor's ruling of 2026-08-17, binding: the payload commit is the terms
+ * commit, so `source_commit` pins both as one sha and a later template edit cannot drift under
+ * an already-stamped bundle. A commit that does not carry the template cannot be cut, and the
+ * refusal says why rather than falling back to any other copy — a fallback would be exactly the
+ * working-tree read the ruling forbids. The template is validated before use: all four
+ * placeholders must be present, because a template that lost one would stamp an incomplete
+ * license and the cut must refuse, not improvise.
+ */
+export function readTemplateAt(root, fullSha) {
+    let template;
+    try {
+        template = git(root, ["show", `${fullSha}:${TEMPLATE_PATH}`], `read ${TEMPLATE_PATH} at ${fullSha.slice(0, 7)}`);
+    } catch (cause) {
+        throw new CannotRun(
+            `${TEMPLATE_PATH} is not in commit ${fullSha.slice(0, 7)} — evaluation terms ship FROM the payload ` +
+                `commit, so EVAL-STAMP.json's source_commit pins payload and terms as one sha. Cut from a commit ` +
+                `that carries the template; falling back to the working tree's copy is exactly the drift this ` +
+                `refusal exists to prevent. (${cause.message})`,
+        );
+    }
+    for (const placeholder of TEMPLATE_PLACEHOLDERS) {
+        if (!template.includes(placeholder)) {
+            throw new CannotRun(
+                `${TEMPLATE_PATH} at ${fullSha.slice(0, 7)} does not carry the ${placeholder} placeholder — a ` +
+                    `template that lost a stamp field would issue an incomplete license; refusing to improvise one.`,
+            );
+        }
+    }
+    return template;
+}
 
-Copyright © 2026 Sleepy Panda SRL. All rights reserved.
-
-This copy of Portulan is licensed, not sold — and this copy is **not** distributed under
-the Apache-2.0 license that public Portulan materials reference. It is provided to the
-named recipient only, for evaluation.
-
-- **Issued to:** ${name} (github.com/${login})
-- **Issued on:** ${date}, from commit \`${fullSha.slice(0, 7)}\`
-- **Issued by:** Sleepy Panda SRL (sleepypanda.ro)
-- **Term:** 90 days from issue unless extended in writing; revocable at any time.
-
-**Permitted:** installing and running this copy on machines you control; reading and
-modifying it for your own evaluation; giving the issuer feedback about it.
-
-**Not permitted without prior written permission from Sleepy Panda SRL:** redistributing,
-publishing, or sublicensing this copy or any part of it, in any form; using it to provide
-services to third parties; production or commercial use; removing this file or its
-issued-to stamp.
-
-**Quiet about the materials, free about the experience.** The bundle and its contents are
-non-public materials of Sleepy Panda SRL: showing or passing the materials themselves to
-others requires permission, while describing your experience — what Portulan is like to
-use, what worked, what did not — is welcome anywhere.
-
-**Your work stays yours.** Workspaces, rules, and records you create with this copy during
-evaluation are yours; nothing in your repositories is claimed. Feedback you choose to give
-may be used by Sleepy Panda SRL without restriction or obligation.
-
-**No warranty.** This software is provided "as is", without warranty of any kind. To the
-maximum extent permitted by law, Sleepy Panda SRL is not liable for damages arising from
-its use.
-
-When the term ends or the license is revoked, stop using this copy and delete it. What
-using it taught you, you keep.
-`;
+/** The stamped per-copy license: the commit's template, rendered. Refuses any unfilled placeholder. */
+export function renderEvalLicense(template, { name, login, date, fullSha }) {
+    const rendered = template
+        .replaceAll("{{name}}", name)
+        .replaceAll("{{login}}", login)
+        .replaceAll("{{date}}", date)
+        .replaceAll("{{shortSha}}", fullSha.slice(0, 7));
+    const leftover = rendered.match(/\{\{[a-zA-Z]+\}\}/);
+    if (leftover) {
+        throw new CannotRun(`the license template carries a placeholder this tool does not fill: ${leftover[0]} — ` +
+            `extend renderEvalLicense in cli/eval-bundle.mjs or fix the template at the commit being cut.`);
+    }
+    return rendered;
 }
 
 /** The evaluation-issue NOTICE. Ported verbatim from the install-verified original. */
@@ -613,11 +636,14 @@ export function auditCut(cutDir) {
  */
 export function cut(root, commit, { name, login, date }, cutDir) {
     const fullSha = git(root, ["rev-parse", "--verify", `${commit}^{commit}`], `resolve ${commit}`).trim();
+    // The template is read FIRST, from the same sha the payload will come from — a commit that
+    // cannot supply its own terms is refused before a single payload byte is written.
+    const template = readTemplateAt(root, fullSha);
     assertPartition(root, fullSha);
     const { entries, selfExcludedPresent } = payloadEntries(root, fullSha);
     materialize(root, entries, cutDir);
     assertCensus(cutDir);
-    fs.writeFileSync(path.join(cutDir, "EVAL-LICENSE.md"), evalLicenseText({ name, login, date, fullSha }));
+    fs.writeFileSync(path.join(cutDir, "EVAL-LICENSE.md"), renderEvalLicense(template, { name, login, date, fullSha }));
     fs.writeFileSync(path.join(cutDir, "NOTICE"), EVAL_NOTICE);
     patchManifests(cutDir);
     patchReadmeLicense(cutDir, fullSha);
@@ -653,8 +679,9 @@ function usage() {
         "  --commit    the commit to cut from — named explicitly; issuance cuts from a main commit",
         "  --out       where to write portulan-eval/ and the tarball",
         "  --date      the issue date; defaults to today. Stamped into the license, the banner and the stamp",
-        "  --check     cut from HEAD to a scratch directory with a fixture recipient, verify every",
-        "              invariant, delete the scratch — what .portulan/verify/eval-bundle.sh runs",
+        "  --check     cut the INDEX (as an unreferenced probe commit) to a scratch directory with a",
+        "              fixture recipient, verify every invariant, delete the scratch — what",
+        "              .portulan/verify/eval-bundle.sh runs; judges what is about to ship",
         "",
         "After an issuance cut: record the issue in the private ledger BEFORE sending. A copy with",
         "no ledger entry is not sent. The ledger, and all recipient data, live outside this repository.",
@@ -697,8 +724,25 @@ export function run(argv = [], { stdout = process.stdout, stderr = process.stder
 
         if (check) {
             if (name || login || commit || out || date) {
-                throw new CannotRun("--check takes no stamping flags — it cuts HEAD for a fixture recipient and deletes the result");
+                throw new CannotRun("--check takes no stamping flags — it cuts the index for a fixture recipient and deletes the result");
             }
+            // --check cuts a PROBE COMMIT of the index — `write-tree` + `commit-tree`, an
+            // unreferenced commit object no branch ever points at — rather than HEAD. Two reasons,
+            // both load-bearing. First, a pre-commit gate should judge what is ABOUT to ship: the
+            // old HEAD-read carried a named limit ("an uncommitted manifest edit is invisible
+            // until committed"), and the probe narrows it to unstaged edits only. Second, the
+            // terms-from-the-commit rule (the supervisor's ruling above) must hold for --check
+            // exactly as for issuance — no working-tree fallback anywhere — and a staged template
+            // is IN the probe, so the strict read needs no bootstrap exception in the very change
+            // that lands the template. In CI the checkout's index IS the merge commit, so the
+            // probe judges precisely what a green would vouch for. The ident is pinned because a
+            // CI checkout configures none, and commit-tree refuses an empty ident.
+            const probeTree = git(top, ["write-tree"], "snapshot the index as a tree").trim();
+            const probe = git(
+                top,
+                ["-c", "user.name=eval-bundle-check", "-c", "user.email=check@verify-fixture.invalid", "commit-tree", probeTree, "-p", "HEAD", "-m", "eval-bundle --check probe (unreferenced)"],
+                "wrap the index snapshot as a probe commit",
+            ).trim();
             // The scratch is cleaned in `finally`, unconditionally — this repository has already
             // paid for verify machinery that leaked scratch directories on every run (the incident
             // proposal 0029 records), and a cleanup that only runs on success re-buys it.
@@ -706,18 +750,19 @@ export function run(argv = [], { stdout = process.stdout, stderr = process.stder
             try {
                 const cutDir = path.join(scratch, "portulan-eval");
                 fs.mkdirSync(cutDir);
-                const result = cut(top, "HEAD", { ...CHECK_RECIPIENT, date: localDate() }, cutDir);
+                const result = cut(top, probe, { ...CHECK_RECIPIENT, date: localDate() }, cutDir);
                 const exercised = result.selfExcludedPresent.length > 0;
-                stdout.write(`eval-bundle --check: cut HEAD (${result.fullSha.slice(0, 7)}) for ${CHECK_RECIPIENT.name} — ${result.fileCount} file(s)\n`);
+                stdout.write(`eval-bundle --check: cut the INDEX as probe ${result.fullSha.slice(0, 7)} (parent HEAD) for ${CHECK_RECIPIENT.name} — ${result.fileCount} file(s)\n`);
+                stdout.write(`  terms: EVAL-LICENSE.md rendered from ${TEMPLATE_PATH} AT the probe — payload and terms are one sha\n`);
                 stdout.write(`  partition: ${PAYLOAD.length} payload + ${Object.keys(EXCLUDED_TOP_LEVEL).length} excluded top-level entries — matches the tree\n`);
                 stdout.write(`  census: machine-read Apache assertions == the ${PATCHED_MANIFESTS.length} patched manifest(s), all patched to ${EVAL_LICENSE_ID}\n`);
                 stdout.write(
                     exercised
-                        ? `  self-exclusion: exercised — ${result.selfExcludedPresent.join(", ")} present at HEAD and filtered out of the cut\n`
-                        : `  self-exclusion: vacuous at this commit (the cutter is not in it yet) — the filter is exercised positively in cli/eval-bundle.test.mjs\n`,
+                        ? `  self-exclusion: exercised — ${result.selfExcludedPresent.join(", ")} present in the index and filtered out of the cut\n`
+                        : `  self-exclusion: vacuous in this index (the cutter is not in it) — the filter is exercised positively in cli/eval-bundle.test.mjs\n`,
                 );
                 stdout.write(`  guard: no machine-read Apache assertion survives; content digest sha256:${bundleDigest(cutDir).slice(0, 12)}…\n`);
-                stdout.write("ok  eval-bundle — a clean evaluation bundle cuts from HEAD\n");
+                stdout.write("ok  eval-bundle — a clean evaluation bundle cuts from the index\n");
             } finally {
                 fs.rmSync(scratch, { recursive: true, force: true });
             }

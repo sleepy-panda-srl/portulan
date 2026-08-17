@@ -179,7 +179,10 @@ records how things were found. This is per *release* and records what a reader g
   by parsing every JSON's `license` fields at any depth, because one spelling is not a category.
   `EVAL-STAMP.json` carries the recipient, the source commit, and a content digest reproducible
   from the commit plus the stamp's own recorded parameters — the tarball hash identifies one
-  delivery; the digest identifies the content. The payload roster is **pinned in both directions**
+  delivery; the digest identifies the content. The license text renders from
+  `cli/eval-license.template.md` **as it stood at the payload commit**, never from the invoking
+  working tree, so `source_commit` pins payload and terms as one sha and a later template edit
+  cannot drift under an already-stamped bundle. The payload roster is **pinned in both directions**
   and enforced on every pull request by the new `eval-bundle` recipe: a new top-level path, or a new
   manifest asserting Apache, goes red with a repair menu instead of silently thinning or
   mislicensing the next bundle. Issuance stays a human act — the tool cuts and stamps;

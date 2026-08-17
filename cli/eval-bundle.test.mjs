@@ -38,7 +38,9 @@ import {
     bundleDigest,
     filesCarrying,
     localDate,
-    evalLicenseText,
+    readTemplateAt,
+    renderEvalLicense,
+    TEMPLATE_PATH,
     PAYLOAD,
     EXCLUDED_TOP_LEVEL,
     SELF_EXCLUDED,
@@ -84,6 +86,17 @@ function sink() {
 // The stamping fixture for issuance-path tests. The login is impossible as a GitHub login (dot)
 // and the name says what it is, so nothing in a public tree can read it as a person.
 const FIXTURE = { name: "Example Evaluator (test fixture)", login: "example-evaluator.invalid", date: "2026-01-15" };
+
+/**
+ * The index of `root` wrapped as an unreferenced probe commit — the same move `--check` makes,
+ * and what lets this suite cut THIS repository strictly from a commit even in the window where
+ * the working tree carries files HEAD does not (the template landed exactly that way). Ident
+ * pinned for environments that configure none.
+ */
+function probeCommit(root) {
+    const tree = git(root, "write-tree").trim();
+    return git(root, "-c", "user.name=suite", "-c", "user.email=suite@verify-fixture.invalid", "commit-tree", tree, "-p", "HEAD", "-m", "suite probe").trim();
+}
 
 /** Walk every file under a directory, relative paths sorted. */
 function walkFiles(dir, sub = "") {
@@ -140,24 +153,34 @@ describe("the pinned rosters, measured with this suite's own instruments", () =>
 
 describe("a full issuance cut of this repository", () => {
     // One cut, shared by the assertions below — cutting is the expensive step and every assertion
-    // here reads the same artifact.
+    // here reads the same artifact. The commit is an index probe, so the suite exercises the
+    // strict terms-from-the-commit read on the REAL repository whether or not HEAD carries the
+    // template yet.
     const out = scratch();
     const stdout = sink();
-    const code = run(["--to", FIXTURE.name, "--github", FIXTURE.login, "--commit", "HEAD", "--out", out, "--date", FIXTURE.date, REPO], { stdout, stderr: sink() });
+    const probeSha = probeCommit(REPO);
+    const code = run(["--to", FIXTURE.name, "--github", FIXTURE.login, "--commit", probeSha, "--out", out, "--date", FIXTURE.date, REPO], { stdout, stderr: sink() });
     const cutDir = path.join(out, "portulan-eval");
-    const headSha = git(REPO, "rev-parse", "HEAD").trim();
 
     test("exits 0 and the cut exists", () => {
         assert.equal(code, 0, stdout.toString());
         assert.ok(fs.existsSync(cutDir));
     });
 
-    test("EVAL-LICENSE.md is stamped to the recipient, the date and the source commit", () => {
+    test("EVAL-LICENSE.md is the COMMIT's template rendered — verified with this suite's own read", () => {
         const text = fs.readFileSync(path.join(cutDir, "EVAL-LICENSE.md"), "utf8");
-        assert.equal(text, evalLicenseText({ ...FIXTURE, fullSha: headSha }));
-        for (const needle of [FIXTURE.name, `github.com/${FIXTURE.login}`, FIXTURE.date, headSha.slice(0, 7)]) {
+        // The suite's own instrument: its own `git show` of the template at the probe, its own
+        // substitution — never the module's render, which would test agreement with itself.
+        const independent = git(REPO, "show", `${probeSha}:${TEMPLATE_PATH}`)
+            .replaceAll("{{name}}", FIXTURE.name)
+            .replaceAll("{{login}}", FIXTURE.login)
+            .replaceAll("{{date}}", FIXTURE.date)
+            .replaceAll("{{shortSha}}", probeSha.slice(0, 7));
+        assert.equal(text, independent);
+        for (const needle of [FIXTURE.name, `github.com/${FIXTURE.login}`, FIXTURE.date, probeSha.slice(0, 7)]) {
             assert.ok(text.includes(needle), `the license does not carry ${needle}`);
         }
+        assert.ok(!text.includes("{{"), "an unfilled placeholder survived into the stamped license");
     });
 
     test("NOTICE is the evaluation-issue NOTICE", () => {
@@ -187,7 +210,7 @@ describe("a full issuance cut of this repository", () => {
         assert.equal(stamp.artifact, "portulan-eval");
         assert.deepEqual(stamp.issued_to, { name: FIXTURE.name, github: FIXTURE.login });
         assert.equal(stamp.issued_on, FIXTURE.date);
-        assert.equal(stamp.source_commit, headSha);
+        assert.equal(stamp.source_commit, probeSha);
         assert.equal(stamp.term_days, 90);
         assert.equal(stamp.license, EVAL_LICENSE_ID);
         assert.equal(stamp.content_digest, `sha256:${bundleDigest(cutDir)}`, "the digest in the stamp does not recompute from the cut");
@@ -216,7 +239,7 @@ describe("a full issuance cut of this repository", () => {
 
     test("the content digest is reproducible: a second cut of the same commit carries the same digest", () => {
         const again = scratch();
-        const code2 = run(["--to", FIXTURE.name, "--github", FIXTURE.login, "--commit", "HEAD", "--out", again, "--date", FIXTURE.date, REPO], { stdout: sink(), stderr: sink() });
+        const code2 = run(["--to", FIXTURE.name, "--github", FIXTURE.login, "--commit", probeSha, "--out", again, "--date", FIXTURE.date, REPO], { stdout: sink(), stderr: sink() });
         assert.equal(code2, 0);
         const first = JSON.parse(fs.readFileSync(path.join(cutDir, "EVAL-STAMP.json"), "utf8")).content_digest;
         const second = JSON.parse(fs.readFileSync(path.join(again, "portulan-eval", "EVAL-STAMP.json"), "utf8")).content_digest;
@@ -267,7 +290,7 @@ describe("the guard, fed cuts built to deserve refusal", () => {
     function freshCut() {
         const dir = path.join(scratch(), "portulan-eval");
         fs.mkdirSync(dir);
-        cut(REPO, "HEAD", FIXTURE, dir);
+        cut(REPO, probeCommit(REPO), FIXTURE, dir);
         return dir;
     }
 
@@ -372,6 +395,7 @@ describe("fixture repositories — the filter exercised positively, and every re
         // POSITIVE exercise of the filter.
         for (const rel of SELF_EXCLUDED) file(rel, `// planted at ${rel}\n`);
         file("cli/sibling.mjs", "// stays\n");
+        file(TEMPLATE_PATH, "# Fixture Eval License\nTERMS-V1 · to {{name}} ({{login}}) on {{date}} from {{shortSha}}\n");
         git(root, "add", "-A");
         git(root, "commit", "-qm", "fixture");
         return root;
@@ -506,6 +530,49 @@ describe("fixture repositories — the filter exercised positively, and every re
             return true;
         });
     });
+
+    // The supervisor's ruling of 2026-08-17: terms ship FROM the payload commit, one sha for
+    // both. The three tests below are the ruling's own demonstrations — the pin holding, the
+    // refusal when a commit cannot supply its terms, and the refusal when the terms lost a field.
+    test("THE PIN: cutting an old commit stamps the OLD template, whatever the tree says now", () => {
+        const root = fixtureRepo();
+        const oldSha = git(root, "rev-parse", "HEAD").trim();
+        fs.writeFileSync(path.join(root, TEMPLATE_PATH), "# Fixture Eval License\nTERMS-V2 · to {{name}} ({{login}}) on {{date}} from {{shortSha}}\n");
+        git(root, "add", "-A");
+        git(root, "commit", "-qm", "terms v2");
+        const dir = path.join(scratch(), "portulan-eval");
+        fs.mkdirSync(dir);
+        cut(root, oldSha, FIXTURE, dir);
+        const stamped = fs.readFileSync(path.join(dir, "EVAL-LICENSE.md"), "utf8");
+        assert.ok(stamped.includes("TERMS-V1"), "the old commit's terms did not survive its own cut");
+        assert.ok(!stamped.includes("TERMS-V2"), "a later template edit drifted under an old commit's stamp — the exact drift the ruling forbids");
+        const stamp = JSON.parse(fs.readFileSync(path.join(dir, "EVAL-STAMP.json"), "utf8"));
+        assert.equal(stamp.source_commit, oldSha, "the stamp does not pin the sha the terms came from");
+    });
+
+    test("a commit that cannot supply its own terms is refused, naming the one-sha rule", () => {
+        const root = fixtureRepo();
+        git(root, "rm", "-q", TEMPLATE_PATH);
+        git(root, "commit", "-qm", "template gone");
+        const dir = path.join(scratch(), "portulan-eval");
+        fs.mkdirSync(dir);
+        assert.throws(() => cut(root, "HEAD", FIXTURE, dir), (error) => {
+            assert.ok(error instanceof CannotRun);
+            assert.match(error.message, /terms ship FROM the payload commit/);
+            assert.match(error.message, /falling back to the working tree's copy/);
+            return true;
+        });
+    });
+
+    test("a template that lost a stamp field is refused, never improvised around", () => {
+        const root = fixtureRepo();
+        fs.writeFileSync(path.join(root, TEMPLATE_PATH), "# Fixture Eval License\nto {{name}} ({{login}}) from {{shortSha}} — no date field\n");
+        git(root, "add", "-A");
+        git(root, "commit", "-qm", "dateless");
+        const dir = path.join(scratch(), "portulan-eval");
+        fs.mkdirSync(dir);
+        assert.throws(() => cut(root, "HEAD", FIXTURE, dir), /does not carry the \{\{date\}\} placeholder/);
+    });
 });
 
 describe("round-2 mechanics — the digest's byte order, the umask, the locale", () => {
@@ -609,7 +676,8 @@ describe("the command line", () => {
         assert.match(result, /partition: \d+ payload \+ \d+ excluded/);
         assert.match(result, /census: machine-read Apache assertions ==/);
         assert.match(result, /self-exclusion: (exercised|vacuous)/);
-        assert.match(result, /ok {2}eval-bundle — a clean evaluation bundle cuts from HEAD/);
+        assert.match(result, /ok {2}eval-bundle — a clean evaluation bundle cuts from the index/);
+        assert.match(result, /terms: EVAL-LICENSE\.md rendered from cli\/eval-license\.template\.md AT the probe/);
     });
 
     test("--check leaves no scratch behind — measured on the whole tmpdir name set, not a prefix", () => {

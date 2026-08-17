@@ -63,15 +63,27 @@ ordinal said "twelfth" unqualified while the yielded set is thirteen (the same s
 session-20 entry had already claimed "twelfth" for), and the fidelity note undercounted its own
 gates by omitting this pass. Both folded before commit.
 
-## Routed to the maintainer, still open
+## Routed, then RULED (supervisor, on the maintainer's commission, 2026-08-17)
 
-1. The evaluation-license template text is now tracked and becomes world-readable at the flip —
-   counsel's read of that wording sits with the flip's other legal gates.
-2. The private-side script is now the second carrier of this mechanism — recommended: retire it
-   after merge, leaving the ledger (which never moves) beside a pointer at the in-tree tool.
+Both routed items came back approved with binding conditions, folded before the final push:
+
+1. **Terms ship FROM the payload commit.** The license text moved out of the tool's source into
+   `cli/eval-license.template.md` (tracked, self-excluded issuer machinery), read with
+   `git show <sha>:` — never from the invoking working tree — so `EVAL-STAMP.json`'s
+   `source_commit` pins payload and terms as ONE sha. Demonstrated in the suite: an old commit
+   stamps its old template whatever the tree says now; a commit without the template refuses,
+   naming the rule instead of falling back. `--check` moved from HEAD to an **index probe
+   commit** for the same reason — the strict read holds everywhere, and the pre-commit gate now
+   judges what is about to ship. Counsel's read of the wording rides the flip's legal-gate
+   checklist.
+2. **The private-side script retires only after merge PLUS one demonstrated in-tree bundle**
+   (isolated-config install green, the guard shown refusing) — and the retirement act is the
+   supervisor's, beside the ledger. This PR neither waits on it nor treats the old script as
+   living; until the evidence exists, the pre-port script remains the carrier of record.
 
 ## Undemonstrated, named
 
-No bundle has been issued to anyone by this tool; no cut has been installed as a plugin; the
-guard has fired only on fixtures and probes; the 13 dead relative links in a cut README are
-named, not repaired, and no rail sees them — by design, now a standing limit.
+No bundle has been issued to anyone by this tool; no cut has been installed as a plugin — that
+isolated-config install demonstration is the ruling's own post-merge gate before the old script
+retires; the guard has fired only on fixtures and probes; the 13 dead relative links in a cut
+README are named, not repaired, and no rail sees them — by design, now a standing limit.
