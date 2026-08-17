@@ -199,7 +199,7 @@ file: where a rule and its clarification live apart, only the rule gets read.)_
 
   **Condition 1 has no mechanical instrument, and must not be given a wrong one.** The obvious candidate
   is the pull request's author field, and it is **measurably wrong here**: PRs in this repository are
-  opened under the maintainer's identity, so `gh pr view 274 --json author` returns **`marius-cetanas`**
+  opened under the maintainer's identity, so `gh pr view 274 --json author --jq .author.login` returns **`marius-cetanas`**
   for a branch an agent created. Platform events are ephemeral, and your clone's reflog
   (`branch: Created from`) is corroboration where it survives, never proof of absence. So condition 1 is
   epistemic with a fail-closed default — *cannot establish it → Gated* — and that is sounder than a proxy
@@ -215,7 +215,7 @@ file: where a rule and its clarification live apart, only the rule gets read.)_
   being destroyed, and a local branch can be a stale image of it:
 
   ```
-  git fetch origin <branch> && git cherry origin/main origin/<branch>
+  git fetch origin <branch>:refs/remotes/origin/<branch> && git cherry origin/main origin/<branch>
   ```
 
   It must **exit 0** *and* show **zero `+` lines**. **Requiring the exit is the whole guard:** measured,

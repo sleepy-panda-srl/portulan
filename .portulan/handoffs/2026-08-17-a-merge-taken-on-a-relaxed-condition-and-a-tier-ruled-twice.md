@@ -45,7 +45,7 @@ never-merged clause**. He then delegated: *"Rule the post-merge deletion seam."*
 **The ruling: two conditions, both required.** (1) You created the branch, and (2) deleting the ref
 destroys no work that exists nowhere else. Condition 2 replaces *never merged*, which was an approximation
 that misfires both ways. Its test is mechanical and fail-closed —
-`git fetch origin <branch> && git cherry origin/main origin/<branch>` must **exit 0 and show zero `+`
+`git fetch origin <branch>:refs/remotes/origin/<branch> && git cherry origin/main origin/<branch>` must **exit 0 and show zero `+`
 lines** — aimed at the **remote** ref, because that is what deletion destroys.
 
 **The first version of this ruling was wrong, and wrong in the dangerous direction.** It collapsed the two
@@ -94,7 +94,7 @@ that `main`'s dated records stay untouched — append-and-supersede, not amendme
 this session could not:
 
 **Condition 1 must NOT be given a mechanical instrument, because every candidate is measurably wrong.**
-`gh pr view 274 --json author` returns **`marius-cetanas`** for a branch an agent created, because pull
+`gh pr view 274 --json author --jq .author.login` returns **`marius-cetanas`** for a branch an agent created, because pull
 requests here open under the maintainer's identity — so the obvious proxy is wrong in this repository's
 commonest case. Platform events are ephemeral; a clone's reflog is corroboration where it survives, never
 proof of absence. The gate map now says so, to foreclose a future session sharpening it into a confident
