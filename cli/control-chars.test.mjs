@@ -17,11 +17,11 @@
 
 import { test, describe } from "node:test";
 import assert from "node:assert/strict";
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 import {
     ControlCharsError,
@@ -524,6 +524,111 @@ describe("run", () => {
         const lines = [];
         assert.equal(run([], list, (s) => lines.push(s)), 2);
         assert.match(messages(lines), /a\\\\xff\\xfe/);
+    });
+});
+
+// ---------------------------------------------------------------- a crash is not a verdict
+
+// #208. Everything above calls `run` in process, so none of it reaches the entry block — and the entry
+// block is where the exit code is actually decided. These spawn the real binary.
+//
+// **The fault is injected from OUTSIDE the module**, with a `node --import` preload that makes
+// `fs.lstatSync` return a stat-shaped object carrying no `isSymbolicLink`. That is a programming defect
+// rather than a filesystem fact, which matters: `bytesOf` converts every filesystem error into a
+// `ControlCharsError` and exits 2 already, so a planted EACCES or EISDIR would demonstrate nothing about
+// this arm. The TypeError lands in the one unwrapped call — `bytesOf`'s `try` covers the `lstatSync`
+// CALL and `stat.isSymbolicLink()` sits outside it — then travels up through `inspect`, past `run`'s
+// `catch` (which rethrows anything that is not a `ControlCharsError`), and out.
+//
+// Injecting from outside is what keeps the seam out of shipped code. The issue offered two directions —
+// export a `main()` whose only caller is the entry block, or gate a throw behind an env var — and both
+// put a test-only surface into the scanner. This puts none there. **Measured red before the arm was
+// written:** the same preload against the unrepaired entry block exited **1**, with the TypeError's
+// stack on stderr and nothing saying the tree had not been judged.
+describe("the entry block, spawned", () => {
+    // The preload is written at run time rather than committed. ./fixtures/README.md scopes that
+    // directory to ../doctor.test.mjs and says cases needing a broken RUNTIME rather than a broken
+    // document are built in temp directories — this is one, and committing it would falsify that page.
+    const preload = () => {
+        const dir = scratch();
+        const file = path.join(dir, "break-lstat.mjs");
+        fs.writeFileSync(
+            file,
+            'import fs from "node:fs";\n' +
+                "const real = fs.lstatSync;\n" +
+                "fs.lstatSync = (p, ...rest) => {\n" +
+                "    const st = real(p, ...rest);\n" +
+                "    return { isFile: () => st.isFile() };\n" +
+                "};\n",
+        );
+        return pathToFileURL(file).href;
+    };
+
+    /** Spawn the real binary over a NUL-separated list, optionally with a preload. */
+    const spawnScanner = (list, importUrl) =>
+        spawnSync(
+            process.execPath,
+            [...(importUrl ? ["--import", importUrl] : []), path.join(REPO, "cli", "control-chars.mjs")],
+            { input: list, encoding: "utf8" },
+        );
+
+    const listOf = (...names) => names.map((n) => `${n}${NUL}`).join("");
+
+    test("a crash is exit 2 — never 1, which is the code a FINDING owns", () => {
+        const done = spawnScanner(listOf("cli/control-chars.mjs"), preload());
+        assert.equal(
+            done.status,
+            2,
+            `a crash must not borrow the finding's exit code. stderr:\n${done.stderr}`,
+        );
+    });
+
+    test("the crash report names the SCANNER, and says no file was judged", () => {
+        // The sentence IS the defect this closes, so the sentence is what gets bound. A verdict about
+        // the tree from a run that judged nothing is the shape ../.portulan/verify/compile.sh is cited
+        // for in the recipe's own `2)` arm.
+        const done = spawnScanner(listOf("cli/control-chars.mjs"), preload());
+        assert.match(done.stderr, /control-chars: could not run/);
+        assert.match(done.stderr, /defect in the scanner, not a verdict about the tree/);
+        assert.match(done.stderr, /no file was judged/);
+        // And it must not read as a finding: nothing here may claim a file carries anything.
+        assert.doesNotMatch(done.stderr, /control character\(s\)/);
+    });
+
+    test("the stack still prints, because a crash is a defect somebody has to fix", () => {
+        // Hiding it would trade one wrong report for another — the issue's own words. The assertion is
+        // on the FRAME rather than on the message text, so it binds that a stack arrived at all.
+        //
+        // **This one is GREEN on both sides of the repair and is written down as such**, because a
+        // check nobody has seen fail is a check nobody has seen work: node's default handler prints the
+        // stack anyway, so before the arm existed this passed too. What it guards is the FUTURE — an
+        // "improvement" that catches the error and reports only the tidy sentence. Of the five here,
+        // the first two are the ones measured red without the arm; these last three are controls.
+        const done = spawnScanner(listOf("cli/control-chars.mjs"), preload());
+        assert.match(done.stderr, /TypeError/);
+        assert.match(done.stderr, /at bytesOf/, "the stack must survive, or a crash is unfixable from the report");
+    });
+
+    test("without the fault the same spawn is a real verdict, so the preload is what moved the code", () => {
+        // The control. Without this, all three assertions above would also pass on a binary that exited
+        // 2 for some unrelated reason — an instrument that cannot tell its own effect from the
+        // background is the class this repository has been bitten by more than once.
+        const done = spawnScanner(listOf("cli/control-chars.mjs"));
+        assert.equal(done.status, 0, `the unbroken scanner must judge the tree: ${done.stderr}`);
+        assert.doesNotMatch(done.stderr, /could not run/);
+    });
+
+    test("a real FINDING still exits 1, so the reservation did not swallow the verdict", () => {
+        // The other side of "1 is reserved for a finding": widening the crash arm must not have made
+        // every nonzero exit a 2. A planted byte in a scratch tree, listed by its own path.
+        const dir = tree({ "bad.md": `x${ch(0x01)}y` });
+        const done = spawnSync(process.execPath, [path.join(REPO, "cli", "control-chars.mjs")], {
+            input: `bad.md${NUL}`,
+            encoding: "utf8",
+            cwd: dir,
+        });
+        assert.equal(done.status, 1, `a finding owns exit 1: ${done.stdout}${done.stderr}`);
+        assert.match(done.stdout, /control character\(s\)/);
     });
 });
 
