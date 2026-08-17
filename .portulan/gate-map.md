@@ -223,7 +223,7 @@ file: where a rule and its clarification live apart, only the rule gets read.)_
   satisfied by a command that failed — a fail-open written into the sentence meant to close one. An error,
   an unresolvable ref, or a view too shallow to answer is **not zero**; it is Gated.
 
-  Not `git branch --merged` and not `merge-base --is-ancestor`, both of which **lie here** in practice:
+  Not `git branch --merged` and not `git merge-base --is-ancestor`, both of which **lie here** in practice:
   this repository rebase-merges, so a merged branch's tip is never an ancestor of `main`. Measured on
   `a78f077`, merged as #274 — `--is-ancestor` exits 1, `git cherry` reports **zero** `+` lines.
 
