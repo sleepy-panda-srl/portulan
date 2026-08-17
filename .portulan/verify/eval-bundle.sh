@@ -2,24 +2,28 @@
 # Portulan workspace — verify recipe: a clean evaluation bundle cuts from HEAD.
 #
 # One check:
-#   eval-bundle   cli/eval-bundle.mjs --check cuts HEAD to a scratch directory for a fixture
-#                 recipient and verifies every invariant — the top-level payload partition matches
-#                 the tree, the machine-read license census equals the patch list, the transforms
-#                 land, and no machine-read Apache assertion survives the cut — then deletes the
-#                 scratch. What it enforces day to day is the two pinned rosters: a new top-level
-#                 path, or a new manifest asserting Apache inside the payload, goes red HERE with
-#                 a repair menu, instead of silently thinning or mislicensing the next bundle.
-#                 A fourth refusal sits at 2, not 1: a payload entry that is neither a plain nor
-#                 an executable blob (a symlink, a gitlink) is could-not-run, named — no licensing
-#                 verdict can be formed from a payload the tool will not materialise.
+#   eval-bundle   cli/eval-bundle.mjs --check cuts the INDEX — wrapped as an unreferenced probe
+#                 commit, so the terms-from-the-commit rule holds for the check exactly as for an
+#                 issuance — to a scratch directory for a fixture recipient and verifies every
+#                 invariant: the top-level payload partition matches the tree, the machine-read
+#                 license census equals the patch list, EVAL-LICENSE.md renders from the template
+#                 AT that same commit, the transforms land, and no machine-read Apache assertion
+#                 survives the cut. Then it deletes the scratch. What it enforces day to day is
+#                 the two pinned rosters: a new top-level path, or a new manifest asserting Apache
+#                 inside the payload, goes red HERE with a repair menu, instead of silently
+#                 thinning or mislicensing the next bundle. A fourth refusal sits at 2, not 1: a
+#                 payload entry that is neither a plain nor an executable blob (a symlink, a
+#                 gitlink) is could-not-run, named — no licensing verdict can be formed from a
+#                 payload the tool will not materialise.
 #
 # The judgement lives in cli/eval-bundle.mjs, which the test suite covers; this wrapper does the
 # dependency guard and the exit-code passthrough. NO tar in the guard, deliberately: the cut is
 # materialised through git plumbing and hashed in node, so this recipe adds nothing to the verify
 # set's dependency floor — tar exists only on the issuance path, which no recipe runs.
 #
-# A limit, named: --check reads HEAD, so an uncommitted manifest edit is invisible to it until
-# committed. CI runs this on the merge commit, which is the enforcing instance.
+# A limit, named: --check reads the INDEX (an UNSTAGED edit is invisible to it until staged) —
+# narrowed from the first cut's HEAD-read, whose limit was a whole commit wide. CI runs this on
+# the merge commit, where index and commit coincide; that run is the enforcing instance.
 #
 # Exit 0 green · 1 red · 2 could not run.
 
