@@ -1,7 +1,9 @@
 # Pricing
 
-> **DRAFT — awaiting the maintainer's ruling.** Prices are a commercial decision and commercial
-> decisions are human-owned; this page proposes, the maintainer disposes. It is written for the
+> **DRAFT — awaiting the maintainer's ruling. No figure on this page is established.** The numbers
+> below are first thoughts, recorded so the offer's shape is concrete enough to argue with; pricing
+> is a commercial decision and commercial decisions are human-owned — this page proposes, the
+> maintainer disposes. It is written for the
 > milestone-10 docs surface and holds nothing that surface would need to retract: every capability
 > named here was demonstrated on this repository's tree (session of 2026-08-14, `c93a819` — eleven
 > verify recipes green, suite 1608 of 1608, and the onboarding path run end to end on a repository
@@ -29,7 +31,8 @@ yours whether or not you hire us for it.
 
 ## Chartmaking — the onboarding engagement
 
-**$10,000, one-time, fixed scope.** We author your portulan with you: the `init` interview and
+**Indicative: $10,000, one-time, fixed scope — a first thought, not an established price.** We
+author your portulan with you: the `init` interview and
 codebase scan, then human curation with your team — identity, principles, and definition-of-done
 written in your terms; a gate map argued tier by tier; verify recipes bound to your real CI and
 demonstrated red→green, not asserted; the supervised-evolution cadence installed (checkpoints,
@@ -40,7 +43,8 @@ after delivery, everything keeps working.
 
 ## Chart-keeping — the curation retainer
 
-**$1,500–3,000 per month, by cadence (monthly or weekly pass).** The framework defines a
+**Indicative: $1,500–3,000 per month, by cadence (monthly or weekly pass) — first thoughts, not
+established prices.** The framework defines a
 librarian and a supervisor; the retainer staffs those roles across your boundary until your own
 team does. Each pass: mine your incidents and reviews into drafted rules with provenance,
 consolidate memory against its budgets, keep your compiled gates current as hosts and the
@@ -72,6 +76,6 @@ Both paid products are bookable without a call — the engagement at a fixed pri
 its stated band by cadence. Until the milestone-10 checkout
 ships, founding engagements are arranged by email — and "founding" is meant literally: the first
 adopter cycle outside this repository has not run yet, the framework versions its spec at `0.x`,
-and early customers get the prices above held for their first year in exchange for being the
-proof. That trade is stated rather than hidden because the alternative — a pricing page that
+and early customers get the ruled founding prices held for their first year in exchange for
+being the proof. That trade is stated rather than hidden because the alternative — a pricing page that
 implies a queue of references — would fail this repository's own definition of done.
