@@ -1770,6 +1770,59 @@ describe("composing pack fragments onto a policy — tighten-only", () => {
         // composeFragments places it; parse is what refuses it, which is the point of composing first.
         assert.throws(() => parse(out.policy), /carries no reason/);
     });
+
+    // #111. The ordering above is deliberate and stays — but it cost the diagnostic, because a
+    // malformed id reached `parse` stripped of the one fact the reader needs: which dependency put it
+    // there. Both halves are asserted: the refusal happens, and it NAMES THE PACK.
+    test("a fragment whose id is not a slug is refused BY NAME OF THE PACK, not left to `parse`", () => {
+        for (const bad of [undefined, null, "", "  ", 7, {}, ["x"], "Not A Slug", "trailing-", "UPPER"]) {
+            assert.throws(
+                () => composeFragments(policy(), [{ pack: "p/q", fragments: [{ ...(bad === undefined ? {} : { id: bad }), tier: "gated", action: { shell: "x" }, reason: "r" }] }]),
+                (e) => {
+                    assert.ok(e instanceof CompileError, `id ${JSON.stringify(bad)} threw ${e?.constructor?.name}`);
+                    assert.match(e.message, /pack `p\/q`/, `the refusal must name the pack: ${e.message}`);
+                    assert.match(e.message, /is not a slug/);
+                    return true;
+                },
+                `id ${JSON.stringify(bad)} was not refused`,
+            );
+        }
+    });
+
+    test("the bare `parse` refusal is what this replaced, and it names no pack — the measurement, kept", () => {
+        // The control, so the fix is not credited with a diagnostic the old path already gave. This is
+        // the sentence an adopter used to get, reproduced from `parse` directly: correct, closed, and
+        // silent about which dependency to go and look at.
+        //
+        // Built from `policy()` rather than hand-rolled, and that is a measurement rather than a
+        // preference: the first draft passed a bare `{ rules: [...] }` and got *"gate policy declares
+        // gate-policy spec undefined"* — `parse` refuses the envelope long before it reaches an id, so
+        // the control was asserting a sentence this tool never emits for this shape. It failed, which
+        // is the only reason it is right now.
+        assert.throws(
+            () => parse(policy({ rules: [{ tier: "gated", action: { shell: "x" }, reason: "r" }] })),
+            (e) => {
+                assert.match(e.message, /rule id undefined is not a slug/);
+                assert.doesNotMatch(e.message, /pack/, "the old path never named the pack — that is the whole defect");
+                return true;
+            },
+        );
+    });
+
+    test("two id-less fragments are not merged into one another", () => {
+        // Not in the issue, and reachable: `at` is keyed by `rule?.id`, so before the guard the second
+        // id-less fragment found `at.has(undefined)` TRUE and was composed onto the first — two packs'
+        // unrelated fragments merged because both were malformed, then reported as a tightening of a
+        // rule that does not exist. The refusal now lands on the first one, so the path is closed.
+        assert.throws(
+            () =>
+                composeFragments(policy(), [
+                    { pack: "a/one", fragments: [{ tier: "gated", action: { shell: "x" }, reason: "r" }] },
+                    { pack: "b/two", fragments: [{ tier: "prohibited", action: { shell: "y" }, reason: "r" }] },
+                ]),
+            (e) => e instanceof CompileError && /pack `a\/one`/.test(e.message),
+        );
+    });
 });
 
 describe("what a workspace's declared packs contribute", () => {
