@@ -95,10 +95,11 @@
 // the commit PLUS the stamped parameters, never from the commit alone: recipient, login and date
 // are baked into the license, the banner and the README section, so two recipients' digests
 // differ by design — and the stamp records every parameter a re-derivation needs. sha256 over
-// `path NUL sha256(bytes) LF` lines for every file in the cut except the stamp itself, paths
-// sorted bytewise. Re-cutting with a stamp's own recorded parameters and matching its digest is
-// how a bundle in the wild is tied to a commit; the tar hash is how a specific delivery is
-// recognised.
+// `UTF-8 path bytes NUL sha256(file bytes) hex LF` lines for every file in the cut except the
+// stamp itself, entries sorted by the UTF-8 bytes of the path — encodings named so the digest is
+// re-derivable outside Node. Re-cutting with a stamp's own recorded parameters and matching its
+// digest is how a bundle in the wild is tied to a commit; the tar hash is how a specific
+// delivery is recognised.
 //
 // ## Routed to the maintainer, not resolved here (session-open checkpoint, adjustment 8)
 //
@@ -308,7 +309,13 @@ export function materialize(root, entries, dir) {
         }
         fs.mkdirSync(path.dirname(target), { recursive: true });
         const bytes = git(root, ["cat-file", "blob", oid], `read ${rel}`, { binary: true });
-        fs.writeFileSync(target, bytes, { mode: mode === "100755" ? 0o755 : 0o644 });
+        const fileMode = mode === "100755" ? 0o755 : 0o644;
+        fs.writeFileSync(target, bytes);
+        // `chmod` AFTER the write, never `writeFileSync`'s `mode` option: the option feeds
+        // open(2), which the process umask masks — an umask of 0o111 would silently strip the
+        // executable bit and break the preserved-mode promise on exactly the environments nobody
+        // tests. chmod(2) is not umask-subject. Raised by Copilot on the porting pull request.
+        fs.chmodSync(target, fileMode);
     }
 }
 
@@ -517,9 +524,10 @@ export function prependBanner(cutDir, { name, date, fullSha }) {
 }
 
 /**
- * The reproducible identity of the cut: sha256 over `path NUL sha256(bytes) LF` for every file
- * except EVAL-STAMP.json itself (which must carry the digest and so cannot be under it), paths
- * sorted bytewise. A property of the content — re-derivable from the commit plus the stamped
+ * The reproducible identity of the cut: sha256 over `UTF-8 path bytes NUL sha256(bytes) hex LF`
+ * for every file except EVAL-STAMP.json itself (which must carry the digest and so cannot be
+ * under it), entries sorted by the UTF-8 bytes of the path. A property of the content —
+ * re-derivable from the commit plus the stamped
  * parameters the stamp itself records, never from the commit alone, since the stamping bakes the
  * recipient into three files — where the tarball's hash is a property of one delivery. Both
  * matter; they answer different questions, and the stamp says which is which.
@@ -535,9 +543,16 @@ export function bundleDigest(cutDir) {
         }
     };
     walk("");
-    for (const rel of files.sort()) {
+    // Sorted by the UTF-8 BYTES of the path, and hashed as those bytes — never by JS string
+    // order, which compares UTF-16 code units and disagrees with byte order for non-ASCII names
+    // (every payload path is ASCII today, where the two agree; the digest must be re-derivable
+    // outside Node regardless). Raised by Copilot on the porting pull request, in two notes —
+    // the ordering and the stamp's self-description — repaired together because they are one
+    // definition with two carriers.
+    const encoded = files.map((rel) => ({ rel, bytes: Buffer.from(rel, "utf8") })).sort((a, b) => Buffer.compare(a.bytes, b.bytes));
+    for (const { rel, bytes } of encoded) {
         const fileHash = crypto.createHash("sha256").update(fs.readFileSync(path.join(cutDir, rel))).digest("hex");
-        digest.update(rel);
+        digest.update(bytes);
         digest.update(Buffer.from([0]));
         digest.update(fileHash);
         digest.update("\n");
@@ -558,7 +573,7 @@ export function writeStamp(cutDir, { name, login, date, fullSha }) {
         license_file: "EVAL-LICENSE.md",
         content_digest: `sha256:${bundleDigest(cutDir)}`,
         content_digest_scope:
-            "sha256 over 'path NUL sha256(file bytes) LF' for every file in this bundle except this stamp, paths sorted bytewise",
+            "sha256 over 'UTF-8 bytes of relative path, NUL, lowercase sha256 hex of file bytes, LF' for every file in this bundle except this stamp, entries sorted by the UTF-8 bytes of the path",
     };
     fs.writeFileSync(path.join(cutDir, "EVAL-STAMP.json"), `${JSON.stringify(stamp, null, 2)}\n`);
 }
@@ -600,9 +615,15 @@ export function cut(root, commit, { name, login, date }, cutDir) {
     return { fullSha, fileCount: entries.length, selfExcludedPresent };
 }
 
-/** Today in the machine's local calendar, as YYYY-MM-DD — what the pre-port script's date(1) printed. */
-function localDate() {
-    return new Date().toLocaleDateString("en-CA");
+/**
+ * Today in the machine's local calendar, as YYYY-MM-DD — what the pre-port script's date(1)
+ * printed. Formatted from date PARTS, never through a locale: `toLocaleDateString("en-CA")`
+ * happens to print this shape only where full ICU data is present, and a small-ICU node falls
+ * back to another locale's order — the tool would then violate its own `--date wants YYYY-MM-DD`
+ * contract. Raised by Copilot on the porting pull request.
+ */
+export function localDate(now = new Date()) {
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
 }
 
 function usage() {

@@ -37,6 +37,7 @@ import {
     auditCut,
     bundleDigest,
     filesCarrying,
+    localDate,
     evalLicenseText,
     PAYLOAD,
     EXCLUDED_TOP_LEVEL,
@@ -487,6 +488,53 @@ describe("fixture repositories — the filter exercised positively, and every re
             assert.match(error.message, /0 `## License` heading/);
             return true;
         });
+    });
+});
+
+describe("round-2 mechanics — the digest's byte order, the umask, the locale", () => {
+    test("bundleDigest orders by UTF-8 bytes, pinned against this suite's own re-implementation", () => {
+        // Two names whose JS-string order and UTF-8-byte order DISAGREE — U+10000 is one
+        // supplementary character (UTF-16: surrogate 0xD800…; UTF-8: F0 90 80 80) and U+FF61 is
+        // a BMP character above it in code units (0xFF61) and below it in bytes (EF BD A1). The
+        // guard assertion proves the fixture exercises the divergence; without it, an ASCII-only
+        // fixture would pin nothing.
+        const a = "\u{10000}b.txt";
+        const b = "｡a.txt";
+        assert.notDeepEqual(
+            [a, b].sort(),
+            [a, b].sort((x, y) => Buffer.compare(Buffer.from(x, "utf8"), Buffer.from(y, "utf8"))),
+            "the fixture names no longer diverge between string order and byte order — replace them",
+        );
+        const dir = scratch();
+        fs.writeFileSync(path.join(dir, a), "alpha\n");
+        fs.writeFileSync(path.join(dir, b), "beta\n");
+        // The suite's OWN expression of the stamp's scope sentence — an independent instrument,
+        // so the digest definition is re-derivable outside the module that mints it.
+        const independent = crypto.createHash("sha256");
+        for (const rel of [b, a]) {
+            const fileHash = crypto.createHash("sha256").update(fs.readFileSync(path.join(dir, rel))).digest("hex");
+            independent.update(Buffer.concat([Buffer.from(rel, "utf8"), Buffer.from([0]), Buffer.from(fileHash, "utf8"), Buffer.from("\n")]));
+        }
+        assert.equal(bundleDigest(dir), independent.digest("hex"));
+    });
+
+    test("the executable bit survives a hostile umask — chmod holds the mode, not open(2)", () => {
+        const root = scratch();
+        git(root, "init", "-q", "-b", "main");
+        const oid = execFileSync("git", ["-C", root, "hash-object", "-w", "--stdin"], { input: "#!/bin/sh\n", encoding: "utf8" }).trim();
+        const dir = scratch();
+        const previous = process.umask(0o111);
+        try {
+            materialize(root, [{ mode: "100755", oid, path: "bin.sh" }], dir);
+        } finally {
+            process.umask(previous);
+        }
+        assert.equal(fs.statSync(path.join(dir, "bin.sh")).mode & 0o755, 0o755, "the umask stripped what the tool promised to preserve");
+    });
+
+    test("localDate is YYYY-MM-DD from date parts, not from a locale that needs full ICU", () => {
+        assert.match(localDate(), /^\d{4}-\d{2}-\d{2}$/);
+        assert.equal(localDate(new Date(2026, 0, 5)), "2026-01-05", "single-digit month and day are zero-padded");
     });
 });
 
