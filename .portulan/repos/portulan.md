@@ -3,8 +3,8 @@
 **What it is.** The Portulan monorepo: the engine, the spec, plugin packaging, the CLI, and the demo
 workspace, plus the manifest that makes the repository installable as a Claude Code plugin feed. Blast
 radius is the whole product — this is the only repository the product ships from, its history is
-permanent, and part of that history **was world-readable**: the repository was public 2026-07-27 →
-2026-08-03 and is **private again since 2026-08-03** (re-measured 2026-08-10).
+permanent, and **all of that history is world-readable**: the repository was public 2026-07-27 →
+2026-08-03, private after that, and is public again.
 
 **Build / test / run.**
 - build: none, and as of the maintainer's ruling of 2026-07-31 that is permanent rather than pending — the CLI ships as zero-dependency ESM, so `package.json` (milestone 7) declares the `bin` and no dependencies, and `npm install` fetches nothing
@@ -13,9 +13,9 @@ permanent, and part of that history **was world-readable**: the repository was p
 
 **Gates.** Inherits [`../gate-map.md`](../gate-map.md) with no deviations. Two worth keeping in front of
 mind because they are unusual: [`../../docs/vision.md`](../../docs/vision.md) is never edited by an agent
-at all, and repository **visibility** is Gated — **private since 2026-08-03**, after a public window of
-2026-07-27 → 2026-08-03. The setting has now moved **twice**, both times by the maintainer's decision;
-further visibility changes stay Gated, by decision, not by accident
+at all, and repository **visibility** is Gated — **public**, after a first public window of
+2026-07-27 → 2026-08-03 and a private one from 2026-08-03. The setting has now moved **three** times,
+each time by the maintainer's decision; further visibility changes stay Gated, by decision, not by accident
 ([`../memory/repo-is-private-until-flip-clearance.md`](../memory/repo-is-private-until-flip-clearance.md)).
 
 **Layout.** [`../../core/`](../../core/) the engine · [`../../spec/`](../../spec/) the Workspace
@@ -38,11 +38,11 @@ remaining top-level directories are scaffolding that fills in milestone by miles
   sits next to it and is the opposite: frozen, human-owned, never agent-edited.
 - A build-session bootstrap file at the repository root is deliberately git-ignored and never committed.
   If it appears in a diff, that is the bug.
-- History cleanliness is load-bearing here in a way it is not in most repositories: part of this history
-  **was** world-readable (public 2026-07-27 → 2026-08-03), clones from that window cannot be recalled,
-  and visibility has already moved twice — so the pre-commit scan ([`../dod.md`](../dod.md), condition
-  5) runs before every commit rather than before releases. **Being private again does not relax it**;
-  condition 5 spells out why.
+- History cleanliness is load-bearing here in a way it is not in most repositories: this history **is**
+  world-readable, clones from the first public window (2026-07-27 → 2026-08-03) could never be recalled,
+  and visibility has now moved three times — so the pre-commit scan ([`../dod.md`](../dod.md), condition
+  5) runs before every commit rather than before releases. **No move of that setting relaxes it**, in
+  either direction; condition 5 spells out why, and now a commit is world-readable the moment it lands.
 
 **Provenance.** Written in milestone 1, session 3 — the first repo card in the first real workspace.
 Amended in milestone 2, session 2, when `doctor` gave this card's own claims a checker: the build/test/run

@@ -79,6 +79,12 @@ contradicting setting:
   untouched, and what moved is which of its two paragraphs is live. The grant itself is the maintainer's
   and is not reopened here._
 
+  _**Further note appended 2026-08-17, same rule.** The repository went **public again**, so the premise
+  is restored and the cost is back to approximately zero — which of the two paragraphs is live has now
+  moved twice in a week. **The right lesson is not that the argument-below was wrong; it is that a cost
+  argued from a live setting is re-derived at every move of it and is never settled by any of them.**
+  The grant remains the maintainer's and is not reopened here either._
+
 **What the widening does still cost, stated because the paragraph above is an argument for the change
 and this one is the argument against it.** Visibility is a live setting, not a pinned one: if this
 repository were ever made private again, `contents: read` would become a real grant that nobody would

@@ -32,14 +32,18 @@ A change is done when **all** of the following hold.
    enforcement exists or the sentence names the milestone where it arrives. _Why: "write the limit, not
    the aspiration" — [`identity.md`](identity.md)._
 5. **The pre-commit scan is clean** across the changed files, the commit message, and the branch name.
-   The term list lives outside this repository. _Why: this history **was** world-readable — the
-   repository was public 2026-07-27 → 2026-08-03 and is **private again since 2026-08-03**
-   (re-measured 2026-08-10: `private: true`, unauthenticated `GET` **404**, 0 forks) — and a commit
-   cannot be cleaned afterwards, only rewritten, which is worse and leaves its own trace. **The
-   flip-back does not relax this clause, and must not be read as relaxing it.** Clones taken in that
-   window cannot be recalled; visibility is a Gated setting that has already moved twice; and a scan
-   that runs only while the repository happens to be public is a scan that stops exactly when it is
-   cheapest to keep. It binds harder now than when it was drafted, not less._
+   The term list lives outside this repository. _Why: this history **is** world-readable — the
+   repository was public 2026-07-27 → 2026-08-03, private after that, and is public again — and a
+   commit cannot be cleaned afterwards, only rewritten, which is worse and leaves its own trace.
+   **This clause has now survived visibility moving in both directions and relaxes on neither, and no
+   move of that setting may be read as relaxing it.** While the repository was private it bound
+   because clones from the first public window could not be recalled and the setting sat one Gated act
+   from moving back; it now binds for the plainest reason available — **every commit pushed is
+   world-readable the moment it lands**, so this scan is the last check before publication rather than
+   a check before some later one. A scan kept only while the repository happens to be public stops
+   exactly when it is cheapest to keep; a scan kept only while it is private has the argument
+   backwards. Visibility is a Gated setting that has moved three times. The clause binds at its
+   maximum now, and it has never bound less._
 6. **The plan reflects reality.** Every session appends its Session log entry to
    [`../docs/plan.md`](../docs/plan.md) — unconditionally, in the shape and within the budget that
    file's **Session log header** sets out. This condition **cites** that mandate and deliberately does

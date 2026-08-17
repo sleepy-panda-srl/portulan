@@ -14,10 +14,12 @@ delivered as private-marketplace plugins.
 
 ## Status
 
-Pre-release, and **private as of 3 August 2026** — by the maintainer's decision, after a public window of
-27 July – 3 August 2026. Two consequences worth stating plainly: the marketplace install path
-**currently requires authentication**, and "public" in the paragraph above names the open-core **layer**
-this repository holds rather than who can reach it today. Reopening it is Gated and the maintainer's.
+Pre-release, and **public** — by the maintainer's decision, after a private window that began on
+3 August 2026 and followed the first public window of 27 July – 3 August 2026. Two consequences worth
+stating plainly: the marketplace install path **needs no authentication**, and "public" in the paragraph
+above now names both the open-core **layer** this repository holds and who can reach it — through the
+private window those two answers differed, which is why this paragraph used to be longer. Visibility
+stays Gated and the maintainer's; it has moved three times, so trust a fresh check over this line.
 The newest release entry
 is **`0.2.0`**; what it contains — and, just as usefully, what it does not — is
 [`CHANGELOG.md`](CHANGELOG.md). The engine in `core/`, the Workspace Definition in `spec/`, two
@@ -54,14 +56,15 @@ run `node cli/doctor.mjs examples` to watch it validate.
 
 ## Contributing
 
-Portulan is built as an open-core product and is **not** open to outside code contributions. When the
-repository is reachable: reading, cloning and forking are what the licence allows; bugs, proposals and
-feedback go through the [issue forms](https://github.com/sleepy-panda-works/portulan/issues/new/choose);
-and code lands only through team members.
+Portulan is built as an open-core product and is **not** open to outside code contributions. Reading,
+cloning and forking are what the licence allows; bugs, proposals and feedback go through the
+[issue forms](https://github.com/sleepy-panda-works/portulan/issues/new/choose); and code lands only
+through team members.
 
-**None of those paths is open to an outsider today** — see **Status** above. The repository is private as
-of 3 August 2026 and forking is disabled, and an issue form is no more reachable than the tree: filing one
-needs access to the repository too. [`CONTRIBUTING.md`](CONTRIBUTING.md) has the whole of it, including why.
+**Those paths are open to anyone, and the closed one is closed by choice rather than by reach** — the
+tree and the issue forms need no account of ours and no permission from us, and code still lands only
+through team members. That distinction is the whole posture, and it reads the same whichever way
+visibility points. [`CONTRIBUTING.md`](CONTRIBUTING.md) has the whole of it, including why.
 
 ## License
 

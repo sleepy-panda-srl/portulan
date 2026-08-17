@@ -106,14 +106,16 @@
 // digest is how a bundle in the wild is tied to a commit; the tar hash is how a specific
 // delivery is recognised.
 //
-// ## The template's public future — routed, then RULED (supervisor, 2026-08-17)
+// ## The template in a public tree — routed, RULED (supervisor, 2026-08-17), and now arrived
 //
-// When this repository goes public, `cli/eval-license.template.md` becomes world-readable
-// Apache-licensed text. That relicenses nothing already issued — each bundle carries its own
-// stamped instrument — and the ruling routed counsel's read of the wording to the flip's
-// legal-gate checklist, approving the tracking with the binding condition the sections above now
-// implement: terms ship FROM the payload commit, one sha for both. The `--check` recipient is a
-// fixture and says so in its own name, so no reader of a public tree can mistake it for a person.
+// The repository is public, so `cli/eval-license.template.md` is world-readable Apache-licensed
+// text. That relicenses nothing already issued — each bundle carries its own stamped instrument —
+// and the binding condition the sections above implement is what makes that so: terms ship FROM the
+// payload commit, one sha for both. **What the ruling routed to the flip was a read of the
+// template's own wording, and that wording is the maintainer's to settle** — see the template's
+// header. Nothing here depends on how he settles it: the mechanism stamps whatever the payload
+// commit carries. The `--check` recipient is a fixture and says so in its own name, so no reader of
+// a public tree can mistake it for a person.
 //
 // ## Exit codes
 //

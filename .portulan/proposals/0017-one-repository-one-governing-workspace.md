@@ -36,6 +36,11 @@ layer's name, and it is also now false as a reachability claim — the repositor
 2026-08-03**. The comparison is doubly unreproducible for a stranger, and the point it supports is
 untouched.)_
 
+_(Further note 2026-08-17: the repository is **public again**, so "this public tree" reads true in both
+senses once more and the comparison is back to being **singly** unreproducible — the portfolio workspace
+lives in `portulan-internal`, and that is the half no flip touches. The point it supports is untouched by
+either move, which is why both notes leave the argued text alone.)_
+
 What differs is **reach** and **delivery**:
 
 - **Feed-side.** One workspace reaches many repositories, and it keeps team context out of product trees

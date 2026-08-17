@@ -80,6 +80,14 @@ this repository intends to grow.
 - **It adds a fourth thing that can open a pull request** against `main`. That is the intended behaviour
   and it is still a cost: the gate's value depends on somebody reading what arrives at it.
 
+_**Note appended 2026-08-17; the argued text above is left as it was ruled on.** Two of the costs above
+were priced against a private repository and have been re-priced by the second flip to public: the
+dependency-graph bullet's *"private today"* is the record of a window that has closed, and the flip it
+called *"a separate authorization hold"* has been taken by the maintainer. The alerts bullet moves with
+it — on a public repository the audience for an alert is no longer bounded by who holds a permission.
+**Neither changes what this proposal asked for or what was accepted**; both are named so the next reader
+prices them against the repository as it is rather than as the bullets found it._
+
 **What this proposal deliberately does not ask for.** No change to the pinning policy, the version-update
 config, branch protection, or the required check. It asks for three toggles and one sentence in the gate
 map. Bundling more would make a settings change into a doctrine change.

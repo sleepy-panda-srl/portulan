@@ -18,6 +18,14 @@ relax it.** Three reasons, and any one of them is sufficient: the published wind
 unpublished; visibility is a live setting that has already moved twice; and a scan kept only while the
 repository is public stops exactly when it is cheapest to keep.
 
+_(Amended 2026-08-17, the ruled text above left standing per this store's forward-only rule: the
+repository went **public again** on the maintainer's direction, so "private again" and "moved twice"
+are the record of a window that has closed, not the current setting — it has now moved three times.
+**Nothing in the successor rule turns on which way it points**, which is the half this second move
+tests and confirms: the scan's ground is the unrecallable window and the permanence of history, and
+those are unchanged. What changes is only how immediate the exposure is — a commit is now world-readable
+the moment it lands, so the scan binds at its maximum.)_
+
 **Why it holds:** the flip is one-way *in the sense that matters*, and the flip-back is the proof rather
 than the refutation. Once a history is public it cannot be made private again in any sense that matters
 — it may already be cloned, cached, or indexed. On 2026-08-03 the **setting** moved back; the
@@ -26,7 +34,8 @@ default is the recoverable direction.
 
 **When to apply:** before anything that would widen visibility — flipping the repository, forking it into
 a public organisation, publishing a package that embeds its contents, or pasting its files anywhere
-public. **And before assuming this repository is reachable — it is not.** Measure rather than recall:
+public. **And never assume which way this repository points — it was public on 2026-08-17, and the
+setting has moved three times.** Measure rather than recall:
 `gh repo view sleepy-panda-works/portulan --json isPrivate,visibility,forkCount`, plus an
 unauthenticated `GET`, which is the negative control.
 

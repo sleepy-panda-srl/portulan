@@ -12,9 +12,11 @@ without being a team member.
 declined** — [`../../CONTRIBUTING.md`](../../CONTRIBUTING.md) says so in as many words rather than
 leaving a contributor to discover it in a closed pull request. **What changed is the reach the policy
 sits on.** *"Anyone may read, clone and fork"* was true while the repository was public
-(2026-07-27 → 2026-08-03); since **2026-08-03 it is private again**, and re-measured 2026-08-10
-`allow_forking` is **`false`**, so today nobody outside the organisation may read, clone **or** fork.
-The read-back below carries the numbers.
+(2026-07-27 → 2026-08-03); it went false on **2026-08-03**, when the repository went private and
+`allow_forking` read **`false`** (re-measured 2026-08-10); and it is **true again** with the second flip
+to public. **The policy never moved through any of it** — that is the record's whole point, and the
+reason this sentence has now been rewritten twice while the sentence above it has not. The read-backs
+below carry the numbers, and the third one is owed at the flip rather than assumed from it.
 
 **Why it holds:** *"that's just GitHub's default for a public repository"* is the reasoning this record
 exists to refuse. It is approximately true and it is not a measurement, and the gap between the two is
@@ -89,7 +91,12 @@ backstop this record called absent is no longer merely switched off — secret s
 protection are free on **public** repositories, and private vulnerability reporting is a public-repository
 feature, so on a private repository the gap is harder to close rather than one setting away. The
 per-commit human scan ([`../dod.md`](../dod.md), condition 5) is carrying more than it was, which is why
-condition 5 now says in as many words that being private again does not relax it.
+condition 5 now says in as many words that no move of the setting relaxes it.
+
+_(2026-08-17, at the second flip to public: those three are **available again**, so the gap is back to
+being one setting away — and all three are Gated repository settings, the maintainer's alone. **Named
+here, applied nowhere:** this record's job is to say what is switched off, not to switch anything on.
+Whether to enable them is his call, and until he takes it the per-commit scan is still the backstop.)_
 
 **Retire when:** a second person gains push access, or the external-contribution posture changes. Both
 falsify the table above rather than merely dating it, and the table is the part that must not be

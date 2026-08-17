@@ -43,7 +43,7 @@ agent does here, and this section is written to be followed by a human once.
      it becomes is what appears on every comment, so pick something that reads as a bot at a glance.
    - *Homepage URL:* required. Use `https://sleepypanda.ro` — **not** the repository URL, which is
      private until 2026-07-27 and would have 404'd for anyone who saw it before the flip.
-   - *Description:* shown on the App's page and in the install prompt, and public once the repository is.
+   - *Description:* shown on the App's page and in the install prompt, and public — as the repository is.
      Draft to paste:
 
      > **What it does.** Posts pull-request comments and review replies on behalf of coding agents working
@@ -233,7 +233,11 @@ silently re-attributes everything typed afterwards, which is the failure this me
   repository is private again** — flipped back 2026-08-03, re-measured 2026-08-10: `private: true`,
   unauthenticated `GET` **404**, 0 forks. There is no stranger with that view, so the grant is a real
   one; `0015` priced this exact counterfactual before it happened, and [`../gate-map.md`](../gate-map.md)
-  now carries the realized cost. (2) It read *"ruled and not yet applied"* — false since **2026-07-29**,
+  now carries the realized cost. **(Further note, at the second flip to public: the stranger is back, so
+  the original clause reads true again — and the lesson is the opposite of reassuring. This paragraph
+  has now been wrong in both directions inside three weeks, on a fact no file here can read. Do not take
+  the permission set, or its price, from this paragraph; the gate map carries the argument and the
+  re-measure is the only thing that settles it.)** (2) It read *"ruled and not yet applied"* — false since **2026-07-29**,
   when the grant was applied and accepted, which the gate map recorded and this paragraph never got
   re-read against. Two carriers of one fact drifting at the weaker one, three lines below the sentence
   telling you not to read the permission set from this paragraph._

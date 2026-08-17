@@ -79,6 +79,13 @@ and the repository's visibility has already moved twice. If anything the sender 
 its seam check more, because *"nobody can see it right now"* is exactly the reasoning that would talk a
 future reader out of them._
 
+_**Further note appended 2026-08-17, same rule.** The repository is **public again** and visibility has
+now moved three times, so an issue filed today lands somewhere anyone can read — the original wording,
+as first drafted, reads true once more. **The 2026-08-10 note's argument is what this second move
+confirms:** the finding never depended on the adjective, and a record that had been rewritten to lean on
+*"fewer people can currently read"* would now be wrong in the opposite direction. Permanence, not
+reachability, is still what does the work._
+
 The sender points the other way through the same wall. Everything below follows from that one sentence.
 
 ## The design

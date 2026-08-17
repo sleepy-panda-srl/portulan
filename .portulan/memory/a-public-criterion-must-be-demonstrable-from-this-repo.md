@@ -20,9 +20,12 @@ exit criterion.
 **This rule binds exit criteria and nothing else. It never touches an authorization hold.** An exit
 criterion answers *is this done?* — a claim about work, which must be demonstrable where it is claimed.
 An authorization hold answers *may this happen?* — a permission, which is legitimately granted from
-outside and stays a gate no matter where the granting lives. The public flip is the live
-example: it is held on a clearance tracked in the private context, that hold is real, and **this rule is
-not an argument for removing it.** Read without this paragraph the rule is exactly such an argument,
+outside and stays a gate no matter where the granting lives. The public flip was the worked
+example: it was held outside this repository, that hold was real, and **this rule was never an argument
+for removing it** — the flips that followed were taken by the maintainer's authorization, which is the
+distinction this paragraph draws, not a counter-example to it. The example is past tense now; the
+distinction is not, and it binds the next hold the same way. Read without this paragraph the rule is
+exactly such an argument,
 which is how it was first drafted and what a fresh-context supervisor caught before it merged — a rule
 written to prevent one bad strike, loaded to authorise the next.
 

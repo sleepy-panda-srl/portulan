@@ -375,7 +375,14 @@ manifest names `./packs/rituals/checkpoints/skills/`, adding `pre-commit`, `sess
 repair in the message — a validator counting more skills than the host loads is a green over skills
 nobody can invoke.
 
-<<<<<<< HEAD
+_Two limits, because a fresh-context review found the first claim of this entry reaching further than its
+evidence. **Registration is a property of `plugin.json`, not of a workspace's `packs` array**: the same
+`Skills (7)` is measured from a directory holding no workspace at all, so this does **not** demonstrate
+row 7's clause (b), whose subject is a *composed* pack in an *adopting* workspace — that parity is still
+owed. And the always-on token cost of the public plugin moves **~590 → ~881** for every installer,
+composed or not: the intent predates this change, since the pack directory was already declared, but the
+effect arrives with it and no other carrier names it._
+
 **The npm manifest states the version this repository is.** It said `0.1.0` while all three plugin
 manifest fields said `0.2.0` — and `0.1.0` had already been released with different contents — so one
 release train carried two numbers and `portulan --version` from a checkout printed the odd one out. It
@@ -401,15 +408,6 @@ chosen reading made checkable: *the manifest states the repository's current ver
 together at a cut. It deliberately does **not** check for a tag: the documented cut order renames
 `## Unreleased` in a change merged *before* the tag exists, so a tag check would red every release at
 the moment it is being done correctly.
-=======
-_Two limits, because a fresh-context review found the first claim of this entry reaching further than its
-evidence. **Registration is a property of `plugin.json`, not of a workspace's `packs` array**: the same
-`Skills (7)` is measured from a directory holding no workspace at all, so this does **not** demonstrate
-row 7's clause (b), whose subject is a *composed* pack in an *adopting* workspace — that parity is still
-owed. And the always-on token cost of the public plugin moves **~590 → ~881** for every installer,
-composed or not: the intent predates this change, since the pack directory was already declared, but the
-effect arrives with it and no other carrier names it._
->>>>>>> 0b3a0d4 (The supervisor said keep it open, and it was right about why)
 
 **A fix is not done at the site it was found.** Core now states the rule the engine had only ever
 practised: a rule holds where it is enforced, so a rule enforced in two places can be repaired in one,

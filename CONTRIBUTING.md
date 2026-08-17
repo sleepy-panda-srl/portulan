@@ -5,18 +5,18 @@ Portulan is built as an open-core product and is **not** open to outside code co
 That is a deliberate posture, not an oversight or a temporary state, so it is worth stating plainly
 rather than leaving you to infer it from a closed pull request.
 
-> **Reachability, as of 2026-08-10 — read this before the sections below.** This repository is
-> **private**. It was public 27 July – 3 August 2026 and was flipped back on **3 August 2026**; forking
-> is disabled and an unauthenticated request returns 404. So everything below describes the posture
-> that applies **when the repository is reachable**, and none of those paths is open to an outsider
-> today. Reopening it is a repository-settings change: Gated, and the maintainer's alone. This notice is
-> dated because the setting is live and has already moved twice — trust a fresh check over this line.
+> **Reachability, restated for the second public window — read this before the sections below.** This
+> repository is **public**: it was public 27 July – 3 August 2026, private from **3 August 2026**, and is
+> open again; forking is enabled and an unauthenticated request succeeds. So everything below describes a
+> posture that is live rather than conditional, and the paths it names are open to anyone. Changing that
+> is a repository-settings change: Gated, and the maintainer's alone. The setting has now moved **three**
+> times, which is the reason this notice exists at all — trust a fresh check over this line.
 
 ## What anyone may do
 
-- **Read, clone, and fork** — under the terms in [`LICENSE`](LICENSE), and **subject to the notice
-  above**: forking is currently disabled and the repository is not reachable without access. What the
-  licence grants is unchanged; what is reachable is not the same question. Everything here — the engine,
+- **Read, clone, and fork** — under the terms in [`LICENSE`](LICENSE). What the licence grants and what
+  is reachable are still two questions, and the notice above is where the second one is answered; they
+  currently agree. Everything here — the engine,
   the workspace, the plan, the record of how each decision was reached — is yours to read and to learn
   from.
 - **Report a bug.** [Open an issue](https://github.com/sleepy-panda-works/portulan/issues/new/choose) using the **Bug report** form.
@@ -76,9 +76,10 @@ resolved, and administrators have no exemption. Every pull request carries at le
 
 ## Security
 
-**Please do not report a security issue in an issue.** _(This read "in a public issue"; the repository
-is private as of 2026-08-03 and the instruction is the same either way — an issue is a permanent record
-that everyone with access reads, and visibility here has already moved twice.)_ The repository's
+**Please do not report a security issue in an issue.** _(This read "in a public issue", then dropped the
+adjective while the repository was private. The instruction never depended on it — an issue is a
+permanent record that everyone with access reads, and here "everyone with access" has meant the whole
+internet twice over. Visibility has moved three times; the instruction has not.)_ The repository's
 **Security tab** is the
 authority on what private channel exists, because it reflects the live setting rather than this file's
 memory of it: if it offers *Report a vulnerability*, use that — it reaches the maintainer with no public
