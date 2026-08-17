@@ -320,20 +320,22 @@ export function materialize(root, entries, dir) {
 }
 
 /**
- * Every file under `dir` (relative, sorted bytewise) whose bytes contain `needle`. Reading bytes,
- * never decoding — the same rule `./control-chars.mjs` holds and for the same reason.
+ * Every file under `dir` whose bytes contain `needle`, sorted by the UTF-8 bytes of the relative
+ * path — the one ordering rule this file uses, `bundleDigest`'s included, because two sort rules
+ * in one tool is the two-definitions defect wearing a comparator. Reading bytes, never decoding —
+ * the same rule `./control-chars.mjs` holds and for the same reason.
  */
 export function filesCarrying(dir, needle) {
     const found = [];
     const walk = (sub) => {
-        for (const entry of fs.readdirSync(path.join(dir, sub), { withFileTypes: true }).sort((a, b) => (a.name < b.name ? -1 : 1))) {
+        for (const entry of fs.readdirSync(path.join(dir, sub), { withFileTypes: true })) {
             const rel = sub === "" ? entry.name : `${sub}/${entry.name}`;
             if (entry.isDirectory()) walk(rel);
             else if (fs.readFileSync(path.join(dir, rel)).includes(needle)) found.push(rel);
         }
     };
     walk("");
-    return found.sort();
+    return found.sort((a, b) => Buffer.compare(Buffer.from(a, "utf8"), Buffer.from(b, "utf8")));
 }
 
 /** Does a parsed JSON value, anywhere in its depth, bind a `license` key to an Apache-ish string? */
@@ -384,7 +386,9 @@ export function apacheAssertions(dir) {
         }
     };
     walk("");
-    return [...found.entries()].map(([rel, how]) => ({ rel, how })).sort((a, b) => (a.rel < b.rel ? -1 : 1));
+    // The same UTF-8-byte ordering as everything else in this file — swept when `filesCarrying`'s
+    // comparator was corrected, per 0020, rather than left for a later round to find.
+    return [...found.entries()].map(([rel, how]) => ({ rel, how })).sort((a, b) => Buffer.compare(Buffer.from(a.rel, "utf8"), Buffer.from(b.rel, "utf8")));
 }
 
 /**
@@ -396,7 +400,7 @@ export function apacheAssertions(dir) {
  */
 export function assertCensus(cutDir) {
     const carrying = apacheAssertions(cutDir).map((o) => o.rel);
-    const expected = [...PATCHED_MANIFESTS].sort();
+    const expected = [...PATCHED_MANIFESTS].sort((a, b) => Buffer.compare(Buffer.from(a, "utf8"), Buffer.from(b, "utf8")));
     if (JSON.stringify(carrying) === JSON.stringify(expected)) return;
     const extra = carrying.filter((f) => !expected.includes(f));
     const gone = expected.filter((f) => !carrying.includes(f));
@@ -487,23 +491,31 @@ export function patchManifests(cutDir) {
  */
 export function patchReadmeLicense(cutDir, fullSha) {
     const file = path.join(cutDir, "README.md");
-    const text = fs.readFileSync(file, "utf8");
-    const headings = text.split("\n").filter((line) => line === "## License").length;
-    if (headings !== 1) {
+    const lines = fs.readFileSync(file, "utf8").split("\n");
+    // ONE parse: the splice is derived from the same line list the count read, so the two cannot
+    // disagree about where the heading is. The first cut re-found the heading with
+    // `indexOf("\n## License\n")` — a SECOND definition, which returns -1 for a heading at byte 0
+    // and would have silently sliced from character 11 instead of refusing. The two-definitions
+    // defect the record check's own history documents, caught here by a Copilot note on the
+    // porting pull request.
+    const headingIndexes = lines.flatMap((line, i) => (line === "## License" ? [i] : []));
+    if (headingIndexes.length !== 1) {
         throw new CannotRun(
-            `README.md carries ${headings} \`## License\` heading(s) and this tool patches exactly one — the source ` +
-                `README has changed shape; update patchReadmeLicense in cli/eval-bundle.mjs to match it.`,
+            `README.md carries ${headingIndexes.length} \`## License\` heading(s) and this tool patches exactly one — the ` +
+                `source README has changed shape; update patchReadmeLicense in cli/eval-bundle.mjs to match it.`,
         );
     }
-    const start = text.indexOf("\n## License\n");
-    const afterHeading = start + "\n## License\n".length;
-    const next = text.indexOf("\n## ", afterHeading);
-    const replacement =
-        `\nThis copy is an evaluation issue governed by [\`EVAL-LICENSE.md\`](EVAL-LICENSE.md) — issued to the\n` +
-        `named recipient it records, not distributed under Apache-2.0. Public releases of Portulan are\n` +
-        `licensed under the [Apache License, Version 2.0](https://www.apache.org/licenses/LICENSE-2.0);\n` +
-        `the repository this bundle was cut from (commit \`${fullSha.slice(0, 7)}\`) carries that license. © 2026 Sleepy Panda SRL.\n`;
-    fs.writeFileSync(file, text.slice(0, afterHeading) + replacement + (next === -1 ? "" : text.slice(next)));
+    const nextHeadingAt = lines.findIndex((line, i) => i > headingIndexes[0] && line.startsWith("## "));
+    const body = [
+        "",
+        "This copy is an evaluation issue governed by [`EVAL-LICENSE.md`](EVAL-LICENSE.md) — issued to the",
+        "named recipient it records, not distributed under Apache-2.0. Public releases of Portulan are",
+        "licensed under the [Apache License, Version 2.0](https://www.apache.org/licenses/LICENSE-2.0);",
+        `the repository this bundle was cut from (commit \`${fullSha.slice(0, 7)}\`) carries that license. © 2026 Sleepy Panda SRL.`,
+    ];
+    const kept = lines.slice(0, headingIndexes[0] + 1);
+    const tail = nextHeadingAt === -1 ? [""] : ["", ...lines.slice(nextHeadingAt)];
+    fs.writeFileSync(file, [...kept, ...body, ...tail].join("\n"));
 }
 
 /**
@@ -715,16 +727,32 @@ export function run(argv = [], { stdout = process.stdout, stderr = process.stder
         for (const [flag, value] of [["--to", name], ["--github", login], ["--commit", commit], ["--out", out]]) {
             if (!value) throw new CannotRun(`${flag} is required for an issuance cut (or pass --check); see --help`);
         }
+        // `--github` names the tarball, so it is held to what can name a file safely — path
+        // separators and dot-dot are refused by CONTENT, and the tarball path is then re-checked
+        // by RESOLUTION below, the same belt-and-resolution pair the materialiser wears. Not the
+        // full GitHub login grammar on purpose: the suite's own fixture logins carry a dot
+        // (`.invalid`, so they cannot be mistaken for people), and a grammar check would refuse
+        // the fixtures while adding nothing the two real checks miss. `--to` reaches file
+        // CONTENT only, never a path, so it takes no such check. Raised by Copilot on the
+        // porting pull request — the write-site containment class, at its second site.
+        if (/[/\\]|\.\./.test(login)) {
+            throw new CannotRun(`--github ${JSON.stringify(login)} cannot name a file safely — path separators and dot-dot are refused`);
+        }
         const outDir = path.resolve(where, out);
         const cutDir = path.join(outDir, "portulan-eval");
+        const stampDate = date ?? localDate();
+        // The ONE computation of the tarball path — validated here, written to below. A second
+        // spelling at the write site would be a second definition of where the archive goes.
+        const tarball = path.resolve(outDir, `portulan-eval-${login}-${stampDate}.tgz`);
+        if (!tarball.startsWith(outDir + path.sep)) {
+            throw new CannotRun(`the tarball name resolves outside --out — refusing to write beyond the requested directory`);
+        }
         if (fs.existsSync(cutDir)) {
             throw new CannotRun(`${cutDir} already exists — refusing to cut into a directory that may hold a previous bundle`);
         }
         fs.mkdirSync(cutDir, { recursive: true });
-        const stampDate = date ?? localDate();
         const result = cut(top, commit, { name, login, date: stampDate }, cutDir);
 
-        const tarball = path.join(outDir, `portulan-eval-${login}-${stampDate}.tgz`);
         // tar is issuance-only on purpose: the recipe path above never reaches here, so the verify
         // set's dependency floor stays bash · git · node. A machine without tar can run every
         // check and cannot issue, which is the right way round.

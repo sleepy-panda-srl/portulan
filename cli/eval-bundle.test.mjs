@@ -476,6 +476,23 @@ describe("fixture repositories — the filter exercised positively, and every re
         assert.ok(fs.existsSync(path.join(dir, "b.txt")));
     });
 
+    test("a README that OPENS with the License heading is patched correctly, not sliced from character 11", () => {
+        // The heading at byte 0 is the case where a second definition of "where is the heading"
+        // (an indexOf on "\n## License\n") returns -1 and silently slices the wrong region — the
+        // splice now derives from the same line list the count reads. Raised by a Copilot note.
+        const root = fixtureRepo();
+        fs.writeFileSync(path.join(root, "README.md"), "## License\n\n[Apache-2.0](LICENSE) © nobody.\n");
+        git(root, "add", "-A");
+        git(root, "commit", "-qm", "heading-first");
+        const dir = path.join(scratch(), "portulan-eval");
+        fs.mkdirSync(dir);
+        cut(root, "HEAD", FIXTURE, dir);
+        const text = fs.readFileSync(path.join(dir, "README.md"), "utf8");
+        assert.ok(text.includes("## License\n\nThis copy is an evaluation issue"), "the section body was not replaced in place");
+        assert.ok(!text.includes("[Apache-2.0](LICENSE)"), "the old section survived beside the patch");
+        assert.ok(text.startsWith("> **EVALUATION COPY"), "the banner still lands first");
+    });
+
     test("a README without exactly one License heading is could-not-run, naming the repair", () => {
         const root = fixtureRepo();
         fs.writeFileSync(path.join(root, "README.md"), "# Fixture\n\nno license heading at all\n");
@@ -549,6 +566,16 @@ describe("the command line", () => {
         const stderr = sink();
         assert.equal(run(["--check", "--to", "x"], { stdout: sink(), stderr, cwd: REPO }), 2);
         assert.match(stderr.toString(), /--check takes no stamping flags/);
+    });
+
+    test("a --github that could walk the filesystem is refused by content, before anything is read", () => {
+        // The write-site containment class at its second site: the login names the tarball. The
+        // fixture logins' dot survives on purpose — only separators and dot-dot are path-capable.
+        for (const hostile of ["../../outside", "a/b", "a\\b", "x..y"]) {
+            const stderr = sink();
+            assert.equal(run(["--to", "x", "--github", hostile, "--commit", "HEAD", "--out", scratch(), REPO], { stdout: sink(), stderr }), 2, hostile);
+            assert.match(stderr.toString(), /cannot name a file safely/);
+        }
     });
 
     test("an issuance cut without its required flags is could-not-run naming the flag", () => {
