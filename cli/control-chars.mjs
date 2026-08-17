@@ -5,6 +5,11 @@
 //
 // Exit 0 every scanned file is clean · 1 one is not · 2 could not run.
 //
+// **1 is RESERVED for a finding**, which is a promise the entry block at the foot of this file keeps
+// rather than a description of what node does by default: an uncaught error would otherwise leave node
+// to exit 1, and the recipe reads 1 as *a tracked file carries a control character* — a judged verdict
+// about a tree, from a run that judged nothing (#208).
+//
 // ## Why this exists
 //
 // A raw NUL shipped inside `../.portulan/verify/workflow-filters.mjs` as the separator in a template
@@ -527,5 +532,32 @@ if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) {
     }
     // `process.exitCode` rather than `process.exit`: this writes its findings to stdout, and exiting
     // outright can truncate a pipe that has not drained. `./plugin-lint.mjs` settled that already.
-    if (stdin !== null) process.exitCode = run(process.argv.slice(2), stdin);
+    //
+    // **1 is reserved for a finding, so everything unhandled is 2** (#208). An uncaught error here used
+    // to leave node to exit **1**, which `../.portulan/verify/control-chars.sh` reads as this tool's
+    // documented "a tracked file carries a control character" — a judged verdict about a tree, produced
+    // by a run that judged nothing. The direction was always safe; the SENTENCE was false, which is the
+    // shape this file's own recipe cites `compile.sh` for. The stack still prints, because a crash is a
+    // defect in this tool and hiding it would trade one wrong report for another.
+    //
+    // **The test that binds this forces the crash from OUTSIDE the module** — a `node --import` preload
+    // that makes `fs.lstatSync` return a stat-shaped object with no `isSymbolicLink`, so the TypeError
+    // lands in `bytesOf`'s one unwrapped call: the `try` there covers the `lstatSync` CALL, and
+    // `stat.isSymbolicLink()` sits outside it. That is deliberate — it keeps the fault injection out of
+    // the shipped code, where a test-only `main()` export or an env-gated throw would both have added a
+    // surface whose only caller is this block. **The coupling is worth knowing before it bites:** if a
+    // later change wraps `stat.isSymbolicLink()` inside that `try`, the preload stops producing an
+    // uncaught error and the test goes red for a reason that has nothing to do with this arm. The repair
+    // then is a NEW fault seam, never a revert of the wrapping.
+    if (stdin !== null) {
+        try {
+            process.exitCode = run(process.argv.slice(2), stdin);
+        } catch (cause) {
+            process.stderr.write(
+                `control-chars: could not run — ${cause?.stack ?? cause}\n` +
+                    "This is a defect in the scanner, not a verdict about the tree: no file was judged.\n",
+            );
+            process.exitCode = 2;
+        }
+    }
 }
