@@ -286,10 +286,26 @@ export function assertPartition(root, commit) {
     }
 }
 
-/** Write the payload blobs under `dir`, executable bit preserved. */
+/**
+ * Write the payload blobs under `dir`, executable bit preserved.
+ *
+ * Containment is decided on the RESOLVED path, never by pattern — a `..` chain satisfies any
+ * regex and still escapes, the shape `./new.mjs` and `./pack-version.mjs` already refuse by
+ * resolution for the same reason. git refuses to CREATE a tree entry named `..`, but `ls-tree`
+ * faithfully prints what a crafted tree carries, and this tool can be pointed at an arbitrary
+ * repository — so the write site holds the boundary rather than trusting the listing. Raised by
+ * Copilot on the pull request that ported this tool; agreed and held here.
+ */
 export function materialize(root, entries, dir) {
+    const base = path.resolve(dir);
     for (const { mode, oid, path: rel } of entries) {
-        const target = path.join(dir, rel);
+        const target = path.resolve(base, rel);
+        if (!target.startsWith(base + path.sep)) {
+            throw new CannotRun(
+                `the payload listing carries ${JSON.stringify(rel)}, which resolves outside the cut directory — ` +
+                    `refusing to write beyond the bundle. A tree entry that escapes its own tree is crafted, not tracked.`,
+            );
+        }
         fs.mkdirSync(path.dirname(target), { recursive: true });
         const bytes = git(root, ["cat-file", "blob", oid], `read ${rel}`, { binary: true });
         fs.writeFileSync(target, bytes, { mode: mode === "100755" ? 0o755 : 0o644 });
