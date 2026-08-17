@@ -80,9 +80,14 @@ any of that. Every commit still carries `Co-Authored-By` marking the agent's han
 **The one real cost, named rather than waved past:** a push is the moment content leaves this machine for
 GitHub, and it was the last human checkpoint before that happened. The confidentiality seam does not depend
 on it — the seam scan is a **commit**-time obligation, and commits were already Auto — so nothing moves
-from checked to unchecked. But the honest statement is that an unreviewed push now publishes to a private
-remote where it is visible to anyone with access and may be cached or indexed. That is judged acceptable on a
-one-collaborator private repository and is the thing to revisit first if either of those facts changes.
+from checked to unchecked. But the honest statement is that an unreviewed push now publishes to a remote
+where it may be cached or indexed. That was judged acceptable on a one-collaborator **private**
+repository and was named as *the thing to revisit first if either of those facts changes*. **One of them
+has changed: the repository is public again, so an unreviewed push is visible to everyone, not to
+everyone with access.** This clause has therefore fired, and it is recorded as fired rather than
+answered — the tier is Gated policy and the maintainer's alone, and the same clause fired at the
+2026-07-27 flip and was likewise flagged rather than edited. Nothing here moves the tier; what moves is
+the sentence that described the remote.
 
 ### Propose — a human or an eval gate reviews before it counts
 
@@ -304,16 +309,21 @@ file: where a rule and its clarification live apart, only the rule gets read.)_
   `administration`, which is still absent, and **read is read**. Write is still refused, so *the
   permission set is the enforcement, not the wrapper* is unchanged.
 
-  **What that scope costs changed on 2026-08-03, and this entry no longer argues it is free.** It read
-  *"the scope grants seeing what any stranger can already see in a public repository"*. **The repository
-  is private again** — flipped back 2026-08-03, re-measured 2026-08-10: `private: true`, unauthenticated
-  `GET` **404**, 0 forks, `allow_forking: false`. There is no stranger with that view, so the grant is a
-  real one and the sentence that made it cheap has expired.
-  [`proposals/0015`](proposals/0015-the-librarian-files-as-the-agent.md) priced this exact case as its
-  own argument-against, **before it happened**: *"Visibility is a live setting, not a pinned one: if
-  this repository were ever made private again, `contents: read` would become a real grant that nobody
-  would revisit, because permissions are not re-derived from visibility."* That is what occurred. The
-  re-measure mandate directly below is the operative rail; the trade is the maintainer's.
+  **What that scope costs has now moved twice, and the entry records the price rather than settling on
+  one.** It originally read *"the scope grants seeing what any stranger can already see in a public
+  repository"*. That went false on 2026-08-03: with the repository private there was no such stranger,
+  so the grant became a real one and the sentence that made it cheap expired. **The second flip to
+  public restores the cheap reading** — a stranger can see these contents again, so `contents: read`
+  once more grants no view the world lacks. What must not be taken from that is the comfortable
+  conclusion. [`proposals/0015`](proposals/0015-the-librarian-files-as-the-agent.md) priced this exact
+  case as its own argument-against, **before it happened the first time**: *"Visibility is a live
+  setting, not a pinned one: if this repository were ever made private again, `contents: read` would
+  become a real grant that nobody would revisit, because permissions are not re-derived from
+  visibility."* That is what occurred, and the flip back to public does not refute it — it demonstrates
+  the other half of the same point, that a permission argued from a setting is re-priced by every move
+  of that setting and by nothing else. The setting has moved three times. The re-measure mandate
+  directly below is the operative rail; the trade is the maintainer's, and no change to the permission
+  set is proposed or implied here.
 
   _This line and the two below it are re-measured at each supervised checkpoint and never written from
   memory: **the permission set is a live setting no file here can pin**, and it went stale in all three

@@ -25,13 +25,14 @@
    expression** — concepts may be re-expressed; prose is never copied. The repo started **private**;
    it went public on 2026-07-27 by the maintainer's directive, ahead of the predecessor-IP
    clearance completing — a decision on record in the Session log; the clearance track continues
-   in the private context, not here. **It was flipped back to private on 2026-08-03 and is private
-   today** — re-measured 2026-08-10: `private: true`, unauthenticated `GET` **404**, 0 forks.
+   in the private context, not here. **It was flipped back to private on 2026-08-03, and public again
+   on 2026-08-17 by his direction.**
    *(Amended 2026-07-27; original: "The repo starts **private** and flips public at milestone 3
    only after the predecessor-IP clearance completes". Amended again 2026-08-10 to record the second
-   flip, on the maintainer's commissioning of that date. The seam clause below is unchanged, and per
-   [`../.portulan/dod.md`](../.portulan/dod.md) condition 5 **being private again does not relax
-   it** — the 2026-07-27 → 2026-08-03 window was world-readable and its clones cannot be recalled.)*
+   flip, on the maintainer's commissioning of that date, and 2026-08-17 to record the third. The seam
+   clause below is unchanged, and per
+   [`../.portulan/dod.md`](../.portulan/dod.md) condition 5 **no move of that setting relaxes
+   it** — every public window is world-readable and its clones cannot be recalled.)*
    The seam scan (term list in the private context) runs before every commit.
 3. **Proof workspaces:** fictional demo (public, `examples/`) + Sleepy Panda portfolio workspace
    (ALL Sleepy Panda products, Tipar API first) via the private feed. Workspaces ship as plugins.
@@ -45,8 +46,8 @@
 ```
 sleepy-panda-works/
 ├── portulan                      monorepo + open-core-tier marketplace
-│                                 PRIVATE since 2026-08-03 (public 2026-07-27 → 2026-08-03);
-│                                 install path currently requires authentication
+│                                 PUBLIC since 2026-08-17 (public 2026-07-27 → 2026-08-03,
+│                                 private 2026-08-03 → 2026-08-17); install path is unauthenticated
 │   ├── core/                     engine: operating docs, personas, universal skills, templates
 │   ├── packs/                    stacks/ · tools/ · rituals/
 │   ├── spec/                     Workspace Definition schema, docs, migrations
@@ -1450,7 +1451,10 @@ _The seam applies here too: no client-identifying references._
   **private** since 2026-08-03 and `allow_forking` is `false`, so there are no fork pull requests for a
   check to report on. #67 is **still open**, and the blocker rationale recorded here is now the
   maintainer's to re-derive against a private repository that also declines external pull requests. The
-  entry's own words are left standing, per this log's forward-only rule)*. · **A declaration
+  entry's own words are left standing, per this log's forward-only rule)* *(noted 2026-08-17: the third
+  flip restores this entry's original premise — the repository is public, forks are possible again, and
+  the question #67 was opened to measure is live rather than moot. Both notes stand; the entry was right
+  on its date, the 2026-08-10 note was right on its own, and #67 is still open)*. · **A declaration
   that had been false since #54 was repaired:** `labels.json` declared an intake vocabulary of which
   `improvement` and `feedback` did not exist on GitHub, so two of the three issue forms were wired to
   labels nothing could apply; `bug`'s live description was GitHub's stock *"Something isn't working"*

@@ -95,6 +95,14 @@ should.
   and a private repository, and it is **not bounded by this proposal**. At the milestone-3 public flip it
   needs deciding properly; that belongs with the milestone-4 runner, not here, and pretending otherwise
   would be this repository's own overclaiming failure.
+
+  _**Note appended 2026-08-17, the argued text left as ruled on: this bullet's deferred decision has come
+  due.** The repository is public again, so the third of the three bounds — *a private repository* — no
+  longer holds, and a public repository is forkable. **The bullet said the flip is when this needs
+  deciding properly, and it is recorded here as arrived rather than answered:** the threat model, the
+  fork-PR question it names, and [#67](https://github.com/sleepy-panda-works/portulan/issues/67)'s
+  fork/required-check half are the maintainer's to rule on. Nothing here decides any of them, and the
+  first two bounds are unchanged._
 - **The 0/1/2 contract is flattened at the job level.** A recipe that exits 2 (*could not run*) surfaces
   as a step exit of 1, because GitHub's status is binary; the `::error::` annotation carries the real code,
   so nothing is lost to a reader, but anything that later consumes this step's own exit code under the

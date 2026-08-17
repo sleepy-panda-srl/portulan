@@ -14,12 +14,14 @@
 - **Write the limit, not the aspiration.** Every document says what exists *today* and names the
   milestone where the rest lands. _Why:_ this is a pre-release written to be read by strangers, and a
   framework that overclaims about its own enforcement burns the only asset an unknown project has.
-  Reach is a live setting rather than a property — the repository was public 2026-07-27 → 2026-08-03
-  and is **private again since 2026-08-03** — so the principle binds on what is written, never on who
+  Reach is a live setting rather than a property — the repository was public 2026-07-27 → 2026-08-03,
+  private after that, and is **public again** — so the principle binds on what is written, never on who
   can currently reach it.
   _Applied:_ every "arrives in milestone N" note in this workspace, the platform-floor admission in
-  [`gate-map.md`](gate-map.md), and the 2026-08-10 sweep that truthed the present-tense carriers the
-  flip-back left false.
+  [`gate-map.md`](gate-map.md), the 2026-08-10 sweep that truthed the present-tense carriers the
+  flip-back left false, and the sweep in the other direction that shipped with the second flip. **Two
+  sweeps a week apart, over largely the same sentences, are evidence for the principle rather than an
+  embarrassment to it:** a claim about reach cannot be written once and left alone.
 - **Prefer the rail to the reminder.** Given a choice between a rule an agent must remember and a check
   that fails loudly, take the check — even a cruder one. _Why:_ solo-maintainer economics; an unenforced
   rule in a repository with one reviewer is a rule that quietly stops being true. _Applied:_

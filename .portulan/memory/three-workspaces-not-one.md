@@ -30,6 +30,12 @@ cells were fixed together — one is the other's sibling, and fixing the row tha
 the row beside it is the class [`../proposals/0020-a-fix-is-not-done-at-the-site-it-was-found.md`](../proposals/0020-a-fix-is-not-done-at-the-site-it-was-found.md)
 names. See [`repo-is-private-until-flip-clearance.md`](repo-is-private-until-flip-clearance.md)._
 
+_(Further note 2026-08-17, the corrected text above left standing: the repository is **public again**, so
+"what a stranger can reach today is nothing" is the record of the private window and not the present —
+a stranger can now reach the first two. **The correction's own point is untouched and is the reason this
+is a note rather than an edit:** that column asks about **residence**, which has not moved once through
+three changes of reach.)_
+
 **When to apply:** whenever adding workspace content, before choosing where it goes. The test is who the
 reader is — ourselves building this repository, a stranger evaluating the product, or Sleepy Panda across
 all its products.
