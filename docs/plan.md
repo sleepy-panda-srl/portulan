@@ -2329,3 +2329,13 @@ _The seam applies here too: no client-identifying references._
   · Seam scan clean by construction — this pass composes no new prose at run time, so its
   diff carries nothing the scan had not already passed.
   Handoff: [`2026-08-17`](../.portulan/handoffs/2026-08-17-librarian-pass.md).
+- 2026-08-17 · distribution machinery (off-row) · **The eval-bundle cutter moves into the public tree, on his
+  mid-session ruling** — `cli/eval-bundle.mjs` + 41-test suite + the twelfth declared recipe (thirteenth yielded): the
+  payload partition (11 ship + 10 excluded, each exclusion carrying its reason) and the machine-read license census
+  pinned in BOTH directions on every pull request; the guard grew a second detector when the byte form alone passed
+  `"license":"Apache-2.0"`; the cut README's own License section is patched rather than disclaimed; the cutter
+  self-excludes from the payload. The issuance ledger and all recipient data stay outside the repository. Swept at
+  the first fix: `pack-version.sh`'s missing module precondition, the run-list's missing eleventh line,
+  `cli/README.md`'s five-that-was-six. Suite 1686, thirteen recipes green. Seam scan clean. · Fidelity: session-open
+  (fresh Opus 5) A-W-A ×9 and pre-commit (fresh Opus 5) A-W-A ×7 — it re-ran every recipe and cut a probe bundle —
+  all folded, plus a fresh-context records pass; Copilot r1 + r2 five findings, all real, all fixed. Handoff: [`2026-08-17`](../.portulan/handoffs/2026-08-17-the-cutter-moves-into-the-tree.md) · PR [#280](https://github.com/sleepy-panda-works/portulan/pull/280).
