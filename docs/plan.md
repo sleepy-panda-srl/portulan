@@ -2336,6 +2336,6 @@ _The seam applies here too: no client-identifying references._
   `"license":"Apache-2.0"`; the cut README's own License section is patched rather than disclaimed; the cutter
   self-excludes from the payload. The issuance ledger and all recipient data stay outside the repository. Swept at
   the first fix: `pack-version.sh`'s missing module precondition, the run-list's missing eleventh line,
-  `cli/README.md`'s five-that-was-six. Suite 1686, thirteen recipes green. Seam scan clean. · Fidelity: session-open
-  (fresh Opus 5) A-W-A ×9 and pre-commit (fresh Opus 5) A-W-A ×7 — it re-ran every recipe and cut a probe bundle —
-  all folded, plus a fresh-context records pass; Copilot r1 + r2 five findings, all real, all fixed. Handoff: [`2026-08-17`](../.portulan/handoffs/2026-08-17-the-cutter-moves-into-the-tree.md) · PR [#280](https://github.com/sleepy-panda-works/portulan/pull/280).
+  `cli/README.md`'s five-that-was-six. Suite 1688, thirteen recipes green. Seam scan clean. · Fidelity: session-open
+  (fresh Opus 5) A-W-A ×9, pre-commit (fresh Opus 5) A-W-A ×7 (it re-ran every recipe and cut a probe bundle), a
+  records pass — all folded; Copilot eight findings in five rounds: six fixed (three siblings under the exemption's test), two false-red root-edge notes triaged to [#281](https://github.com/sleepy-panda-works/portulan/issues/281) at the bound. Handoff: [`2026-08-17`](../.portulan/handoffs/2026-08-17-the-cutter-moves-into-the-tree.md) · PR [#280](https://github.com/sleepy-panda-works/portulan/pull/280).

@@ -47,6 +47,17 @@ in BOTH `eval-bundle.sh` and `pack-version.sh` (a deleted module printed RED abo
 judged). Copilot round 1: write-site containment — resolution, not pattern, now holds the cut's
 boundary. Round 2, four promoted notes, all real, all fixed: digest byte-order (UTF-16 vs UTF-8,
 two carriers repaired as one definition), umask-proof `chmod` after write, ICU-independent date.
+Rounds 3–4 were siblings of 1–2, taken under the exemption's own test — the class generated its
+round: the login naming the tarball (containment at its second site, refused by content and
+re-checked by resolution), `filesCarrying`'s comparator (plus two more string sorts the 0020
+sweep found beside it), and `patchReadmeLicense` holding two definitions of where the heading is
+(a heading at byte 0 would have been sliced silently, not refused). Round 5 raised one class at
+two sites — `startsWith(base + sep)` false-refuses a filesystem-root base — real, fail-closed,
+unreachable on the tool's own paths, and triaged to
+[#281](https://github.com/sleepy-panda-works/portulan/issues/281) at the bound on
+[#211](https://github.com/sleepy-panda-works/portulan/pull/211)'s precedent rather than spending
+a fifth fix-push. One unpromoted note (the entry's hand-maintained test count) was answered by
+deleting the figure, #77's repair. Every thread and note carries a reply.
 A third fresh-context pass ran over these records themselves and returned A-W-A ×2 — the recipe
 ordinal said "twelfth" unqualified while the yielded set is thirteen (the same series the
 session-20 entry had already claimed "twelfth" for), and the fidelity note undercounted its own
