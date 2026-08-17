@@ -453,6 +453,28 @@ describe("fixture repositories — the filter exercised positively, and every re
         });
     });
 
+    test("a listing entry that resolves outside the cut is refused at the write site", () => {
+        // `materialize` takes the listing as input, so the hostile path is fed directly — git
+        // will not CREATE a `..` tree entry through any porcelain, but a crafted tree carries
+        // one and `ls-tree` faithfully prints it, so the boundary belongs to the writer. The
+        // blob is real; only the path is hostile. Raised by Copilot on the porting pull request.
+        const root = fixtureRepo();
+        const oid = execFileSync("git", ["-C", root, "hash-object", "-w", "--stdin"], { input: "escape\n", encoding: "utf8" }).trim();
+        const dir = scratch();
+        for (const rel of ["../escape.txt", "a/../../escape.txt"]) {
+            assert.throws(() => materialize(root, [{ mode: "100644", oid, path: rel }], dir), (error) => {
+                assert.ok(error instanceof CannotRun);
+                assert.match(error.message, /resolves outside the cut directory/);
+                return true;
+            });
+            assert.ok(!fs.existsSync(path.join(dir, "..", "escape.txt")), "the refusal came after the write");
+        }
+        // The benign shape stays writable: `a/../b` RESOLVES inside, and resolution — not a
+        // pattern — is the rule, so it lands at `b` rather than being refused for its spelling.
+        materialize(root, [{ mode: "100644", oid, path: "a/../b.txt" }], dir);
+        assert.ok(fs.existsSync(path.join(dir, "b.txt")));
+    });
+
     test("a README without exactly one License heading is could-not-run, naming the repair", () => {
         const root = fixtureRepo();
         fs.writeFileSync(path.join(root, "README.md"), "# Fixture\n\nno license heading at all\n");
