@@ -43,7 +43,7 @@ after delivery, everything keeps working.
 
 ## Chart-keeping — the curation retainer
 
-**Indicative: $1,500–3,000 per month, by cadence (monthly or weekly pass) — first thoughts, not
+**Indicative: $1,500–$3,000 per month, by cadence (monthly or weekly pass) — first thoughts, not
 established prices.** The framework defines a
 librarian and a supervisor; the retainer staffs those roles across your boundary until your own
 team does. Each pass: mine your incidents and reviews into drafted rules with provenance,
