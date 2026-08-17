@@ -188,13 +188,49 @@ file: where a rule and its clarification live apart, only the rule gets read.)_
 - `merge-a-pull-request`, and `delete-a-remote-branch` — which is a push, and is the one push spelling
   that did not move to Auto, because it destroys a ref on a shared remote rather than adding one.
 
-  **What that tier does NOT cover, ruled 2026-08-14 after an agent hit the ambiguity and resolved it
-  silently.** The rule protects a **shared** ref — a branch other people, or the platform, may be relying
-  on. An agent removing a branch **it created itself**, which was **never merged** and holds **no unique
-  work**, is not the act this gate guards, and needs no approval: the throwaway branch of a forced-red
-  drill is the case that raised it. Deleting anything else — a branch somebody else pushed, a branch whose
-  commits exist nowhere but there, or any branch when you are unsure which of those it is — stays Gated,
-  and *unsure* resolves to Gated rather than to convenience.
+  **What that tier does NOT cover, ruled 2026-08-14 and sharpened 2026-08-17.** The rule protects a
+  **shared** ref — one other people, or the platform, may be **relying on**. Two conditions, and **both**
+  must hold before a deletion is outside this gate:
+
+  > **1. You created the branch**, and **2. deleting the ref destroys no work that exists nowhere else.**
+
+  Fail either, or be unable to establish either, and it stays Gated. *Unsure resolves to Gated rather
+  than to convenience.*
+
+  **Condition 1 has no mechanical instrument, and must not be given a wrong one.** The obvious candidate
+  is the pull request's author field, and it is **measurably wrong here**: PRs in this repository are
+  opened under the maintainer's identity, so `gh pr view 274 --json author` returns **`marius-cetanas`**
+  for a branch an agent created. Platform events are ephemeral, and your clone's reflog
+  (`branch: Created from`) is corroboration where it survives, never proof of absence. So condition 1 is
+  epistemic with a fail-closed default — *cannot establish it → Gated* — and that is sounder than a proxy
+  that answers confidently and wrongly. Anyone tempted to "sharpen" this into a check should measure the
+  candidate against an agent-created branch first. **Condition 1 is not decoration and must not be dropped:** a branch somebody else
+  pushed stays Gated **however** condition 2 comes out — they may be relying on it, and reliance is wider
+  than uniqueness. _(A draft of this paragraph collapsed the two into condition 2 alone. That was a
+  widening past what was delegated — it would have permitted deleting the maintainer's own merged branch,
+  or any branch whose patches landed independently while its pull request is still open, since deleting a
+  head branch closes its pull request. Caught by the pre-commit checkpoint.)_
+
+  **Condition 2's test, spelled fail-closed** — it is about the **remote** ref, because that is what is
+  being destroyed, and a local branch can be a stale image of it:
+
+  ```
+  git fetch origin <branch> && git cherry origin/main origin/<branch>
+  ```
+
+  It must **exit 0** *and* show **zero `+` lines**. **Requiring the exit is the whole guard:** measured,
+  `git cherry` against an unknown ref exits **128** and prints nothing, so "zero `+` lines" alone is
+  satisfied by a command that failed — a fail-open written into the sentence meant to close one. An error,
+  an unresolvable ref, or a view too shallow to answer is **not zero**; it is Gated.
+
+  Not `git branch --merged` and not `merge-base --is-ancestor`, both of which **lie here** in practice:
+  this repository rebase-merges, so a merged branch's tip is never an ancestor of `main`. Measured on
+  `a78f077`, merged as #274 — `--is-ancestor` exits 1, `git cherry` reports **zero** `+` lines.
+
+  _(The `git cherry` method is **recorded** in the handoffs of 2026-07-27, 2026-08-07 and 2026-08-09, and
+  **prescribed** in the branch conventions the maintainer keeps outside this repository; **it was not written in this file
+  before this paragraph** — a draft claimed it was, which is the second dangling citation in two rounds,
+  the first being recorded in the note that closes this section.)_
 
   **The compiled matcher cannot see any of this, and that is the safe direction.** `Bash(git push
   --delete:*)` reads a command string; it cannot read who created a branch, whether it merged, or whether
@@ -202,19 +238,37 @@ file: where a rule and its clarification live apart, only the rule gets read.)_
   exclusion narrows the **doctrine** rather than the gate — the answer to the prompt is what changed, not
   whether it appears.
 
-  **A neighbouring case this does NOT settle: deleting a branch after its pull request merges.** The
-  branch conventions treat that as routine cleanup, and it **fails this exclusion's never-merged clause**,
-  so by the rule above it stays Gated. That is a seam between two standing practices, recorded here rather
-  than resolved in passing — it wants the maintainer's ruling, not a footnote's.
+  **The seam this closes, ruled 2026-08-17 on the maintainer's delegation.** The 2026-08-14 wording said
+  *created by you, **never merged**, no unique work* — three clauses — and a **post-merge** deletion fails
+  the middle one while plainly satisfying the purpose. That produced a rule under which the routine
+  cleanup the branch conventions prescribe read as Gated. The never-merged clause was an **approximation
+  of the real test**, and it approximates badly in both directions: a merged branch destroys nothing,
+  while an unmerged branch you created may still be the only copy of something.
+
+  **Two facts settled it rather than taste.** `git cherry` on the merged branch reports **zero** unmerged
+  patches — there is nothing left to destroy. And this repository sets **`delete_branch_on_merge = true`**,
+  which is the maintainer's standing consent to unattended deletion of **a merged pull request's own head
+  branch**: the platform already does it, on every merge, with no agent involved. Gating an agent for that
+  exact act would bind only the agent.
+
+  **What the second fact does NOT license, stated because a draft of this paragraph stretched it.** The
+  setting speaks to the just-merged head branch and nothing else — not a branch somebody restored after the
+  auto-delete, not somebody else's branch, not one whose patches merely landed by another route. So it
+  carries the seam and cannot carry a general replacement of condition 1.
+
+  The never-merged clause is therefore **replaced by condition 2**, which covers the drill branch and the
+  post-merge branch alike, while **condition 1 stays exactly as ruled**. No third special case is added.
+  _(Adding one was the tempting move and the wrong one — a rule with a case per incident is the
+  discretionary shape this workspace prefers rails to.)_
 
   _(This paragraph exists because the rule's `reason` already said "a shared remote" and **nothing said
   what that excluded**, so the matcher was the only readable half — the exact failure the note directly
   above records: where a rule and its clarification live apart, only the rule gets read. It took an agent
   deleting its own drill branch, calling it a breach, and the maintainer ruling that it was not, for the
   missing half to get written. A first draft of this note pointed at a post-merge paragraph "two sections
-  down" that **does not exist in this file at all** — the practice lives in the maintainer's own memory,
-  outside the repository — which is a dangling pointer written into the very paragraph about clarifications
-  that cannot be found. Caught by the pre-commit checkpoint.)_
+  down" that **did not exist in this file at all** — until this change the practice lived only in the
+  handoffs and the maintainer's own memory, outside this document — which was a dangling pointer written
+  into the very paragraph about clarifications that cannot be found. Caught by the pre-commit checkpoint.)_
 
   **The merge carries a precondition the approval does not waive: the head must not be behind `main`.**
   Sync first — `git rebase origin/main`, then `git push --force-with-lease`, both Auto — let

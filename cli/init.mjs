@@ -668,7 +668,7 @@ function draftPolicy() {
                 id: "delete-a-remote-branch",
                 tier: "gated",
                 action: { shell: "git push --delete" },
-                reason: "Deleting a branch on a shared remote destroys a ref rather than adding one. It is the single push spelling whose damage outlives the working copy. SHARED is the operative word: removing a branch you created yourself, that was never merged and holds no unique work, is not the act this gate guards. Anything else stays gated, and unsure resolves to gated.",
+                reason: "Deleting a branch on a shared remote destroys a ref rather than adding one. It is the single push spelling whose damage outlives the working copy. SHARED is the operative word. Two conditions, both required: you created the branch, AND deleting the ref destroys no work that exists nowhere else. A branch somebody else pushed stays gated however the second comes out — they may be relying on it. Test the second against the REMOTE ref and fail closed: `git fetch origin <branch> && git cherry <base> origin/<branch>` must exit 0 and show zero + lines, because an unknown ref exits 128 and prints nothing, which reads as zero. `--merged` lies wherever you rebase-merge. Any + line, any error, or any doubt about either condition: gated.",
             },
             {
                 id: "merge-a-pull-request",
