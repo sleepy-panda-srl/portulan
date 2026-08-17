@@ -2330,7 +2330,7 @@ _The seam applies here too: no client-identifying references._
   diff carries nothing the scan had not already passed.
   Handoff: [`2026-08-17`](../.portulan/handoffs/2026-08-17-librarian-pass.md).
 - 2026-08-17 · distribution machinery (off-row) · **The eval-bundle cutter moves into the public tree, on his
-  mid-session ruling** — `cli/eval-bundle.mjs` + 41-test suite + the twelfth declared recipe (thirteenth yielded): the
+  mid-session ruling** — `cli/eval-bundle.mjs` + its suite + the twelfth declared recipe (thirteenth yielded): the
   payload partition (11 ship + 10 excluded, each exclusion carrying its reason) and the machine-read license census
   pinned in BOTH directions on every pull request; the guard grew a second detector when the byte form alone passed
   `"license":"Apache-2.0"`; the cut README's own License section is patched rather than disclaimed; the cutter
