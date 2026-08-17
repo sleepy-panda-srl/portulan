@@ -2,9 +2,10 @@
 
 > Generated from `handoffs/` by `node cli/index.mjs`. Do not edit by hand: it is regenerated
 > and byte-compared, so a hand-edit survives exactly until the next run.
-> 105 handoff(s), newest first. No budget: the series is append-only, so
+> 106 handoff(s), newest first. No budget: the series is append-only, so
 > the only remedy a budget could ask for is one this project rules out.
 
+- 2026-08-17 · [Handoff — a merge taken on a relaxed condition, and a tier ruled twice](handoffs/2026-08-17-a-merge-taken-on-a-relaxed-condition-and-a-tier-ruled-twice.md)
 - 2026-08-14 · [Handoff — a rail for a ruling, and three false verdicts inside it](handoffs/2026-08-14-d-a-rail-for-a-ruling-and-three-false-verdicts-inside-it.md)
 - 2026-08-14 · [Handoff — the third noun, and a brief that asked for an impossible demonstration](handoffs/2026-08-14-c-the-third-noun-and-a-brief-that-asked-for-an-impossible-demonstration.md)
 - 2026-08-14 · [Handoff — a ruling lands in three reviews, and the brief was wrong twice](handoffs/2026-08-14-b-a-ruling-lands-in-three-reviews-and-the-brief-was-wrong-twice.md)
