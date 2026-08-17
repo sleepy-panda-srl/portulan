@@ -92,6 +92,12 @@
         "run": "./.portulan/verify/pack-version.sh",
         "requires": ["bash", "git", "node"],
         "doc": "verify/README.md"
+      },
+      {
+        "id": "eval-bundle",
+        "run": "./.portulan/verify/eval-bundle.sh",
+        "requires": ["bash", "git", "node"],
+        "doc": "verify/README.md"
       }
     ]
   },

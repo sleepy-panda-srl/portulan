@@ -73,6 +73,16 @@ if ! git merge-base --end-of-options "$base" HEAD >/dev/null 2>&1; then
     exit 2
 fi
 
+# The module is the judgement, so its absence is could-not-run, never a red — measured: node's
+# MODULE_NOT_FOUND exits 1, which the passthrough below would print as "RED — verify recipe
+# failed" about packs nothing had compared. The same precondition ./control-chars.sh carries, for
+# the same reason; the gap was found by the pre-commit checkpoint on ./eval-bundle.sh and this
+# recipe had it too — the 0020 sweep at the first fix.
+[ -f cli/pack-version.mjs ] || {
+    printf 'verify: cli/pack-version.mjs not found — this recipe cannot run\n' >&2
+    exit 2
+}
+
 # Exit read DIRECTLY, never through a pipe: a pipeline reports the LAST command's status, so `| tail`
 # would report tail's 0 over a printed RED. Measured on this repository, 2026-08-14, on another recipe.
 node cli/pack-version.mjs --base "$base"

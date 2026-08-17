@@ -38,10 +38,13 @@ lasted one pull request. Worth one sentence rather than none, because the *shape
 may be licensed by the row before the constitution catches up, and while that holds, the tool has to say
 which document names it.
 
-Beside those eight sit **five** runnable tools that are on none of the lists — `plugin-lint`,
-`librarian`, `control-chars`, `discover` and `rule-carriers` — because milestone 3, milestone 5, issue
-[#68](https://github.com/sleepy-panda-works/portulan/issues/68), milestone 7's plugin-cache discovery
-and [`../.portulan/verify/rule-carriers.sh`](../.portulan/verify/rule-carriers.sh) needed them.
+Beside those eight sit **seven** runnable tools that are on none of the lists — `plugin-lint`,
+`librarian`, `control-chars`, `discover`, `rule-carriers`, `pack-version` and `eval-bundle` — because
+milestone 3, milestone 5, issue
+[#68](https://github.com/sleepy-panda-works/portulan/issues/68), milestone 7's plugin-cache discovery,
+[`../.portulan/verify/rule-carriers.sh`](../.portulan/verify/rule-carriers.sh), the
+[#265](https://github.com/sleepy-panda-works/portulan/issues/265) rail, and the maintainer's 2026-08-17
+ruling that the evaluation-bundle cutter lives in the public tree needed them.
 **Five** more files in this directory are neither subcommands nor tools: `gate` and `stop-gate` are the
 **compiled-hook runners**, invoked by generated host configuration rather than by a person, and
 `recipe-set`, `skills-set` and `manifest` are modules other tools import — the first two runnable in
@@ -54,10 +57,14 @@ than left to the next reader — the rule this repository applies to
 [`../.portulan/identity.md`](../.portulan/identity.md)'s rosters, and the one a first draft of this very
 parenthetical broke by invoking it while leaving `rule-carriers` uncounted. Found at the pre-commit
 checkpoint. A count is a claim, which is [#187](https://github.com/sleepy-panda-works/portulan/issues/187)'s
-subject; the missing table rows are [#203](https://github.com/sleepy-panda-works/portulan/issues/203)'s.)_
+subject; the missing table rows are [#203](https://github.com/sleepy-panda-works/portulan/issues/203)'s.
+**And it happened again**: the sentence above read **five** while `pack-version` had been runnable since
+2026-08-14 and appeared in it zero times — the session-open checkpoint for the change that added
+`eval-bundle` found the arrear, and the count moved six-then-seven in that one change rather than
+leaving the five for the next reader.)_
 
 Being off the list is a fact about `docs/vision.md`, which names these eight subcommands and is
-human-owned: whether any of the five ever joins them is the maintainer's call and not an implementer's,
+human-owned: whether any of the seven ever joins them is the maintainer's call and not an implementer's,
 so none is described here as *coming to the CLI* — and none is wired behind the entry point, which is
 the same rule expressed in code rather than in a sentence.
 
@@ -141,6 +148,8 @@ check on it.)_
 | [`control-chars.test.mjs`](control-chars.test.mjs) | Its test suite, written first. Its fixtures build their forbidden bytes with `String.fromCharCode` rather than carrying them literally — a suite that carried one would be a tracked file the check must go red on, and a rail red on its own tests is a rail somebody switches off. Its last group scans this repository's own tracked set. |
 | [`pack-version.mjs`](pack-version.mjs) | **A change to a pack's `contributes` must move that pack's `portulan.version`** — the maintainer's ruling on [#265](https://github.com/sleepy-panda-works/portulan/issues/265), arm 3, including that a **prose-only** edit to a fragment's `reason` counts. The **second** tool here that reads history rather than the tree, and the comparison is **three-dot** — the merge-base of the base ref and `HEAD` — so work that landed on the base is never attributed to this branch. Manifests are compared as **values**, so reindenting or reordering keys is correctly not a change. The bundle version in `packs/.claude-plugin/plugin.json` is out of scope by measurement: it is one field and the packs are many. |
 | [`pack-version.test.mjs`](pack-version.test.mjs) | Its test suite, written first, on **real `git init` repositories** rather than a stubbed `execFileSync` — the three-dot property cannot be observed at all without two branches and a merge-base. The shallow-clone refusal is asserted on **both** shapes a shallow clone takes, and is guarded by a full-depth clone of the same fixture reaching the red, so the `2` is the depth rather than the fixture. |
+| [`eval-bundle.mjs`](eval-bundle.mjs) | **The evaluation-bundle cutter** — a named-recipient, 90-day-term copy of the shippable payload, cut from an explicitly named commit, ported into the tree on the maintainer's ruling of 2026-08-17. The payload partition and the machine-read license census are **pinned in both directions**, the Apache-for-eval swap patches the machine-read fields AND the README's own License section, and a guard refuses any cut in which a machine-read Apache assertion survives — each offender diagnosed as a failed patch, a failed self-exclusion, or an unknown manifest, because the wrong story sends an operator to the wrong repair. The issuance ledger, and all recipient data, stay OUTSIDE this repository; `--check` (what [`../.portulan/verify/eval-bundle.sh`](../.portulan/verify/eval-bundle.sh) runs) cuts `HEAD` for a fixture recipient into scratch it always deletes. **Deliberately not a ninth `portulan` subcommand**, on `discover`'s precedent above — and deliberately **self-excluded from the payload**, so an evaluee never receives the issuer's machinery. |
+| [`eval-bundle.test.mjs`](eval-bundle.test.mjs) | Its test suite. The rosters are pinned with the suite's **own** instruments — `git ls-tree` and `git grep`, never the module's helpers — because a pin that asks the subject to measure itself tests agreement, not truth; the self-exclusion is exercised **positively** on a fixture repository that plants files at exactly the excluded paths; and the plumbing transport is asserted byte-identical, modes included, to `git archive \| tar -x`, so the port's one mechanical delta is demonstrated rather than trusted. |
 | [`librarian.test.mjs`](librarian.test.mjs) | Its test suite, written first, on real scratch git repositories rather than an injected clock — a fake history proves nothing about the one call this tool exists to make. |
 | [`recipe-set.mjs`](recipe-set.mjs) | **The recipe set**, the one carrier of *what this workspace runs*. Row 7's amendment of 2026-07-31 ruled that a composed pack's verify recipes reach the adopting workspace's runnable set, under a contract stated in the row rather than left to this file: **additive only** — a pack may add a recipe and may never redefine, remove or replace one the workspace declares, nor become `verify.default` — and **namespaced by its pack, so a collision is impossible rather than resolved**. |
 | [`recipe-set.test.mjs`](recipe-set.test.mjs) | Its test suite, against a fixture resolver: the additive-only rule, the namespacing, the refusal to become `verify.default`, and **could-not-run — exit 2, never silently absent** when a composed recipe cannot resolve. |
