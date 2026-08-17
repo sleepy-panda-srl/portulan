@@ -2,9 +2,10 @@
 
 > Generated from `handoffs/` by `node cli/index.mjs`. Do not edit by hand: it is regenerated
 > and byte-compared, so a hand-edit survives exactly until the next run.
-> 108 handoff(s), newest first. No budget: the series is append-only, so
+> 109 handoff(s), newest first. No budget: the series is append-only, so
 > the only remedy a budget could ask for is one this project rules out.
 
+- 2026-08-17 · [Handoff — the tree says public before the setting does](handoffs/2026-08-17-the-tree-says-public-before-the-setting-does.md)
 - 2026-08-17 · [Handoff — the cutter moves into the tree, and the tree starts checking it](handoffs/2026-08-17-the-cutter-moves-into-the-tree.md)
 - 2026-08-17 · [Handoff — the librarian's scheduled pass](handoffs/2026-08-17-librarian-pass.md)
 - 2026-08-17 · [Handoff — a merge taken on a relaxed condition, and a tier ruled twice](handoffs/2026-08-17-a-merge-taken-on-a-relaxed-condition-and-a-tier-ruled-twice.md)

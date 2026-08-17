@@ -2342,3 +2342,13 @@ _The seam applies here too: no client-identifying references._
   Swept at the first fix: `pack-version.sh`'s missing module precondition, the run-list's missing eleventh line, `cli/README.md`'s five-that-was-six. Suite 1691, thirteen recipes green. Seam scan clean. · Fidelity: session-open
   (fresh Opus 5) A-W-A ×9, pre-commit (fresh Opus 5) A-W-A ×7 (it re-ran every recipe and cut a probe bundle), a
   records pass — all folded; Copilot eight findings in five rounds: six fixed (three siblings under the exemption's test), two false-red root-edge notes triaged to [#281](https://github.com/sleepy-panda-works/portulan/issues/281) at the bound. Handoff: [`2026-08-17`](../.portulan/handoffs/2026-08-17-the-cutter-moves-into-the-tree.md) · PR [#280](https://github.com/sleepy-panda-works/portulan/pull/280).
+- 2026-08-17 · Off the milestone row · **The tree says public before the setting does** — Phase A of the flip
+  commission: thirty-three edited passages across twenty-three files, counted from the diff, written to be true the
+  instant the repository is public, so merging is part of the flip motion and reverting is the abort path. Governed by
+  the 2026-08-10 sweep's rule, inverted: state moves, identity stays; dated records forward-only. `dod.md` condition 5
+  re-grounded so no move of the setting reads as relaxing the seam scan; `contents: read` inverts back at three sibling
+  sites; the push-tier revisit clause recorded as fired, not answered. Counted separately: `CHANGELOG.md` carried three
+  real conflict markers since `56da8f0`, nine days with thirteen recipes green over them. Thirteen green; seam scan clean
+  across diff, message, branch, and 177 pull requests, 104 issues and every comment surface — zero hits. · Fidelity:
+  session-open A-W-A ×14 all folded — four missed carriers, all in `proposals/`, the directory the sweep skipped. Routed
+  untaken: `docs/vision.md` (his hand, hard blocker), the eval-license wording, three settings, `0004`'s fork model. Handoff: [`2026-08-17`](../.portulan/handoffs/2026-08-17-the-tree-says-public-before-the-setting-does.md) · PR [#282](https://github.com/sleepy-panda-works/portulan/pull/282).
