@@ -426,6 +426,60 @@ describe("the skills the plugin declares", () => {
         const text = messages(inspect(root).findings);
         assert.match(text, /did not search/);
         assert.match(text, /a\/b\/c\//);
+
+        // **#108's negative assertion, and it is the one that was red.** This test asserted only that
+        // the truncation line was PRESENT, which is why the second, false line rode alongside it for a
+        // milestone: `walk()` returned `false` for *stopped searching* exactly as it did for *searched
+        // and found nothing*, so the caller also reported `skills/a/ has no SKILL.md`. It is not
+        // barren — the validator stopped looking. One defect wore two failures and one of them was a
+        // false claim about the tree.
+        assert.doesNotMatch(text, /a\/ has no SKILL\.md/);
+        // The widened sentence, so a reader is not left to infer "empty" from "did not search".
+        assert.match(text, /did not finish and find nothing/);
+    });
+
+    test("an UNREADABLE branch says so, and is never reported as barren", () => {
+        // The third outcome folded into `barren`, and the one with no report at all before #108: the
+        // `readdirSync` catch was silent, so a subtree nobody could read arrived as a subtree somebody
+        // had searched. *Could not look* is not *nothing there*.
+        //
+        // chmod rather than a stub here, because the failure has to come out of the real `readdirSync`
+        // inside the walk — ./compile.test.mjs:2117 prefers a stub where the call is reachable from the
+        // test, and this one is three frames inside a closure. The root guard below is this suite's own
+        // shape (`:1491`, `../cli/pack-version.test.mjs:292`): root traverses a 0o000 directory, so the
+        // probe cannot bite there and a silent pass would be a check that stops checking in CI.
+        const root = fixture({ skip: ["skills"] });
+        write(root, "skills/reachable/SKILL.md", SKILL("reachable", "Findable. Use when findable."));
+        const dark = path.join(root, "skills", "locked");
+        fs.mkdirSync(dark, { recursive: true });
+        fs.chmodSync(dark, 0o000);
+        try {
+            let probed;
+            try {
+                probed = fs.readdirSync(dark).length >= 0;
+            } catch {
+                probed = false;
+            }
+            assert.ok(
+                !probed || process.getuid?.() === 0,
+                "a non-root run must not be able to read a 0o000 directory — the probe did not bite",
+            );
+            if (probed) return; // running as root: the branch under test is unreachable here
+
+            const text = messages(inspect(root).findings);
+            assert.match(text, /locked\/ could not be read/, text);
+            assert.match(text, /could-not-look is not nothing-there/);
+            // The whole point: the unreadable branch must not ALSO be called barren.
+            assert.doesNotMatch(text, /locked\/ has no SKILL\.md/);
+            // And it must not borrow the truncation sentence, which would name the depth bound as the
+            // cause of a permission error — a confident wrong reason.
+            assert.doesNotMatch(text, /locked\/ has subdirectories this validator did not search/);
+            // The readable sibling is still resolved, so the failure did not discard the findings
+            // around it — ./plugin-lint.test.mjs's own "failing closed" rule.
+            assert.equal(inspect(root).stats.skills, 1);
+        } finally {
+            fs.chmodSync(dark, 0o755);
+        }
     });
 
     test("a skill at exactly the bound is found, and reported as out of the host's reach", () => {

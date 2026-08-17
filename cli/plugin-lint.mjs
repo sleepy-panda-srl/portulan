@@ -605,7 +605,20 @@ export function inspect(rawRoot, { payload = false } = {}) {
                 `${path.relative(root, dir)}/ has subdirectories this validator did not search — the ` +
                     `walk below a declared skills path stops ${MAX_DECLARED_SKILL_DEPTH} levels down. ` +
                     `Declare the deeper directory as its own skills path, or flatten the tree; what ` +
-                    `this check must never do is go green over what it could not reach`,
+                    `this check must never do is go green over what it could not reach. It is NOT a ` +
+                    `report that the directory is empty — this walk stopped, it did not finish and ` +
+                    `find nothing`,
+            );
+        }
+        // Its own heading, and its own sentence. Sharing `truncated`'s would have named the depth
+        // bound as the cause of a permission error — a confident wrong reason, which is worse than
+        // no reason, and the class this whole batch is about. (#108)
+        for (const { dir, why } of expanded.unreadableBranches ?? []) {
+            fail(
+                "skills",
+                `${path.relative(root, dir)}/ could not be read — ${why}. This validator cannot say ` +
+                    `whether a skill is packaged below it, so it says that rather than reporting the ` +
+                    `branch empty: could-not-look is not nothing-there`,
             );
         }
         // The host expands a declared root ONE level. A skill this validator resolves deeper than that
@@ -1368,13 +1381,25 @@ const MAX_DECLARED_SKILL_DEPTH = 3;
  * failed it with `has no SKILL.md`, which blocked packs from carrying skills — most of what a pack is
  * for (../.portulan/tasks/0008-a-declared-skills-path-sees-one-level-down.md).
  *
- * Three results, because the fix must not buy depth with silence:
+ * Four results, because the fix must not buy depth with silence — and because for one milestone three
+ * of these were reported as one, which is #108:
  *   `found`     — directories holding a SKILL.md, at any depth within the bound.
  *   `barren`    — a directory under the root that is not a skill and holds none beneath it. This is
  *                 the real failure the one-level version already caught, kept with its own wording.
+ *                 **It means SEARCHED, and found nothing** — never *the search stopped here*.
  *   `truncated` — where the bound stopped the search with subdirectories still unlooked-at. Reported
  *                 rather than passed over: a check that goes green on what it could not reach is the
  *                 `docs.sh` `map` hole and the `git ls-files` precondition, a third time.
+ *   `unreadableBranches` — a subtree below the root that could not be read at all. Kept apart from
+ *                 `truncated` because they are different facts with different repairs: one is this
+ *                 validator's own bound, which the packager fixes by declaring a deeper path, and the
+ *                 other is a permission on their disk. Reporting them through one sentence made that
+ *                 sentence wrong about whichever case it was not written for.
+ *
+ * **Until #108 the last three were one.** `walk()` returned `false` for all of them and the caller
+ * turned any `false` into `barren`, so `skills/a/` was reported as holding no SKILL.md when the truth
+ * was that the walk had stopped looking — a false classification riding alongside the true one, which
+ * is the shape this repository keeps naming: a verdict about something never examined.
  *
  * A skill directory is a leaf — skills do not nest inside skills — so the walk stops descending the
  * moment it finds one. Symlinked directories are not descended, which is `Dirent.isDirectory()`'s
@@ -1385,6 +1410,14 @@ function expandDeclaredSkillRoot(skillRoot) {
     const found = [];
     const truncated = [];
     const barren = [];
+    // **`unreadableBranches`, and the clumsy name is load-bearing.** This function returns a UNION the
+    // caller discriminates with `expanded.unreadable !== undefined` — the arm for a declared root that
+    // could not be read at all. Naming this list `unreadable` would make that test true on every
+    // ordinary return, since `[] !== undefined`, and every successful expansion would be reported as an
+    // unreadable root. A silent catastrophe reachable by picking the obvious word, so the word is not
+    // picked. _(The two facts are genuinely different: one is the declared path itself, which is the
+    // manifest's claim; these are subtrees below it.)_
+    const unreadableBranches = [];
     // Skills this validator resolves and the HOST will never see. Measured 2026-08-07 on Claude Code
     // 2.1.224 by installing this repository as a local marketplace and reading the inventory back: the
     // host expands a declared skills root exactly one level — `<root>/<skill>/SKILL.md` — and descends
@@ -1400,6 +1433,16 @@ function expandDeclaredSkillRoot(skillRoot) {
     // sibling field, and it is why this is a FAILURE rather than a note.
     const beyondHostReach = [];
 
+    // **The boolean means ACCOUNTED FOR, not *holds a skill*, and the distinction is this function's
+    // whole repair** (#108). Three outcomes used to return `false` — genuinely barren, stopped by the
+    // depth bound, and could-not-be-read — and the caller turned every `false` into `barren`. So a
+    // branch the walk never finished searching was reported as one it had searched and found empty:
+    // one defect wearing two failures, and one of the two classifications simply false. *Searched and
+    // found nothing* and *did not finish searching* are different facts, and only the first is barren.
+    //
+    // Truncated and unreadable now return `true` — they are reported under their own headings by the
+    // caller, so the barren list must not claim them as well. `false` is left meaning exactly one
+    // thing: this branch was searched to the bottom and holds no skill.
     const walk = (dir, depth) => {
         if (fs.existsSync(path.join(dir, "SKILL.md"))) {
             found.push(dir);
@@ -1409,16 +1452,18 @@ function expandDeclaredSkillRoot(skillRoot) {
         let entries;
         try {
             entries = fs.readdirSync(dir, { withFileTypes: true });
-        } catch {
-            // An unreadable subtree below a declared root is not a verdict about packaging; the
-            // declared path's own readability is judged by the caller, which reports it.
-            return false;
+        } catch (error) {
+            // *Could not look* is not *nothing there* — `cli/vendor.mjs` rule 3, and the fail-open this
+            // repository names more than any other. It was silent here, and silence let the caller call
+            // it barren. Now it is a fact with its own list and its own sentence.
+            unreadableBranches.push({ dir, why: error.code ?? error.message });
+            return true;
         }
         const children = entries.filter((e) => e.isDirectory() && !SKIP_DIRS.has(e.name));
         if (children.length === 0) return false;
         if (depth >= MAX_DECLARED_SKILL_DEPTH) {
             truncated.push(dir);
-            return false;
+            return true;
         }
         let any = false;
         for (const child of children) {
@@ -1430,7 +1475,7 @@ function expandDeclaredSkillRoot(skillRoot) {
     // The `"./"` form: the root is itself one skill. Checked before the expansion so a root holding
     // both a SKILL.md and subdirectories stays one skill rather than becoming several.
     if (fs.existsSync(path.join(skillRoot, "SKILL.md"))) {
-        return { found: [skillRoot], barren, truncated, beyondHostReach, empty: false };
+        return { found: [skillRoot], barren, truncated, unreadableBranches, beyondHostReach, empty: false };
     }
 
     let entries;
@@ -1440,7 +1485,7 @@ function expandDeclaredSkillRoot(skillRoot) {
         return { unreadable: error.code ?? error.message };
     }
     const children = entries.filter((e) => e.isDirectory() && !SKIP_DIRS.has(e.name));
-    if (children.length === 0) return { found, barren, truncated, beyondHostReach, empty: true };
+    if (children.length === 0) return { found, barren, truncated, unreadableBranches, beyondHostReach, empty: true };
 
     // Attribution is per immediate child rather than per branch: a barren branch reported at every
     // level of itself is one defect wearing three failures.
@@ -1448,7 +1493,7 @@ function expandDeclaredSkillRoot(skillRoot) {
         const dir = path.join(skillRoot, child.name);
         if (!walk(dir, 1)) barren.push(dir);
     }
-    return { found, barren, truncated, beyondHostReach, empty: false };
+    return { found, barren, truncated, unreadableBranches, beyondHostReach, empty: false };
 }
 
 // ===========================================================================================
