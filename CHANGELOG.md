@@ -170,6 +170,23 @@ records how things were found. This is per *release* and records what a reader g
 
 ### Added
 
+- **The evaluation-bundle cutter, `cli/eval-bundle.mjs`, with its verify rail.** Cuts a
+  named-recipient, 90-day-term evaluation copy of the shippable payload from an explicitly named
+  commit: the Apache licensing is swapped for a stamped per-copy `EVAL-LICENSE.md`, NOTICE and every
+  machine-read `"license"` field are patched to `LicenseRef-Portulan-Eval`, the README's own License
+  section is rewritten to describe the copy it is in, and a guard **refuses any cut in which a
+  machine-read Apache assertion survives** — detected both as the canonical byte form anywhere and
+  by parsing every JSON's `license` fields at any depth, because one spelling is not a category.
+  `EVAL-STAMP.json` carries the recipient, the source commit, and a content digest reproducible
+  from the commit plus the stamp's own recorded parameters — the tarball hash identifies one
+  delivery; the digest identifies the content. The payload roster is **pinned in both directions**
+  and enforced on every pull request by the new `eval-bundle` recipe: a new top-level path, or a new
+  manifest asserting Apache, goes red with a repair menu instead of silently thinning or
+  mislicensing the next bundle. Issuance stays a human act — the tool cuts and stamps;
+  the issuance ledger, and all recipient data, live outside the repository permanently. In the tree
+  on the maintainer's ruling of 2026-08-17, replacing the unreviewed, untested script that ran
+  outside it.
+
 - **`portulan`'s verify recipes name their resolution root.** A required check answers *does this tree
   hold its own claims*, so its verdict must not move with what happens to be installed on the machine
   running it — and a named root replaces every other source. Six invocations pin: the `doctor`,

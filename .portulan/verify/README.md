@@ -49,7 +49,15 @@ Run any of the recipes declared here from anywhere in the tree:
 ./.portulan/verify/index.sh
 ./.portulan/verify/control-chars.sh
 ./.portulan/verify/rule-carriers.sh
+./.portulan/verify/pack-version.sh
+./.portulan/verify/eval-bundle.sh
 ```
+
+_(The block above listed ten while the manifest declared eleven — `pack-version.sh` was in the table
+below and not here. Swept in the change that added `eval-bundle.sh` rather than left for the next
+reader: adding a twelfth line while walking past the missing eleventh is the class
+[`../proposals/0020-a-fix-is-not-done-at-the-site-it-was-found.md`](../proposals/0020-a-fix-is-not-done-at-the-site-it-was-found.md)
+names.)_
 
 | Recipe | Covers | Needs |
 |---|---|---|
@@ -64,6 +72,7 @@ Run any of the recipes declared here from anywhere in the tree:
 | [`control-chars.sh`](control-chars.sh) | no tracked file carries a byte in the C0 range other than TAB and LF, nor DEL — scanned as bytes, because the one tool that would have shown the last one is the tool the byte silences | `bash`, `git`, `node` |
 | [`rule-carriers.sh`](rule-carriers.sh) | a rule an incident reduced to **one** carrier stays reduced — a registered spelling appears only in its carrier or beside a citation of it. Covers **only registered rules**, which is a ratchet over what incidents have taught it and never coverage of doctrine | `bash`, `git`, `node` |
 | [`pack-version.sh`](pack-version.sh) | a pack whose `contributes` differs from the **merge-base** also moved its `portulan.version` — [#265](https://github.com/sleepy-panda-works/portulan/issues/265), arm 3, and a **prose-only** edit to a fragment's `reason` counts. **The only recipe here that reads a *diff* rather than the tree**, so it refuses at **2** where the base ref or merge-base is unreachable, and [`../../.github/workflows/verify.yml`](../../.github/workflows/verify.yml) sets `fetch-depth: 0` for it | `bash`, `git`, `node` |
+| [`eval-bundle.sh`](eval-bundle.sh) | a clean evaluation bundle cuts from `HEAD` — [`../../cli/eval-bundle.mjs`](../../cli/eval-bundle.mjs) `--check` materialises the payload for a fixture recipient into scratch it always deletes, and refuses when the **top-level payload partition** stops matching the tree, when the **machine-read license census** stops equalling the patch list, or when a machine-read Apache assertion survives the transforms. Day to day it is the roster-drift rail: a new top-level path, or a new manifest asserting Apache in the payload, goes red here with a repair menu instead of silently thinning or mislicensing the next bundle. A payload entry that is neither a plain nor an executable blob (a symlink, a gitlink) is **could-not-run — 2, named** — no licensing verdict can be formed from a payload the tool will not materialise | `bash`, `git`, `node` |
 
 Exit `0` green · `1` red · `2` could not run — and that third code is why each recipe declares its needs
 in the manifest rather than discovering them: a recipe that *could not run* must never be mistaken for
@@ -226,6 +235,21 @@ suite rather than one fewer check. And unlike `claude plugin validate --strict`,
 not make a permanently-red recipe: `jq` ships on `ubuntu-latest`, so CI runs the check rather than
 skipping it, and installs nothing to do so.
 
+**Why `eval-bundle.sh` needs no `tar`, although its subject is an archive.** The cut is materialised
+through git plumbing — `ls-tree` and `cat-file` — and hashed with node's own crypto, so this recipe
+adds **nothing** to the directory's dependency floor. The pre-port script piped `git archive` into
+tar, and porting that shape would have made every pull request's green depend on a binary the checks
+never otherwise need — the exact "recipe that needs a toolchain" this page warns stops being run. The
+only tar invocation in the tool lives on its issuance path, which no recipe reaches: a machine
+without tar can run every check here and cannot issue a bundle, which is the right way round.
+Equivalence of the plumbing transport with `git archive | tar -x` is not assumed — the suite asserts
+the two materialise byte-identical trees, executable bits included — **and that one equivalence test
+is the suite's single use of tar**: it skips by name on a machine without it, so `tests` stays green
+with the gap stated rather than red about the environment. _(The first draft of this paragraph said
+no recipe needs tar while the suite failed four tests without it, turning `tests` red — the page's
+own could-not-run-reported-as-red class, found by the pre-commit checkpoint with tar taken off the
+`PATH`.)_
+
 **What `json.sh` does not do.** It does not validate the manifest against
 [`../../spec/workspace.schema.json`](../../spec/workspace.schema.json), and it does not check that the
 paths a manifest names exist. That is [`doctor.sh`](doctor.sh), and well-formed is a long way from
@@ -249,17 +273,32 @@ number that makes it not. It was stale when filed and stale again twice since. T
 rather than corrected, because `tests.sh` prints the live one on every run and that carrier cannot be
 wrong. `spec/README.md` carried a sibling of this defect and lost its count in the same change.)_
 **Nothing tests the recipes themselves** — `docs.sh`, `json.sh`, `doctor.sh`, `tests.sh`, `plugin.sh`,
-`compile.sh`, `workflow-filters.sh`, `index.sh` and `control-chars.sh` are verified by being run, which
+`compile.sh`, `workflow-filters.sh`, `index.sh`, `control-chars.sh`, `rule-carriers.sh`,
+`pack-version.sh` and `eval-bundle.sh` are verified by being run, which
 is a weaker claim than it sounds, and it is weakest on `workflow-filters.sh`: its reader of the workflow
 files is code that can be subtly wrong, and what stands behind that reader is a second, independent
-reading of the same file that has to agree with it — not a suite. **`index.sh` and `control-chars.sh`
+reading of the same file that has to agree with it — not a suite. _(That enumeration had quietly stopped
+covering the directory — it named nine while twelve recipes sat beside it, `rule-carriers.sh` and
+`pack-version.sh` having joined the tree without joining the sentence about what tests them. Swept when
+`eval-bundle.sh` was added, on the same [`0020`](../proposals/0020-a-fix-is-not-done-at-the-site-it-was-found.md)
+ground as the run-list above.)_ **`index.sh` and `control-chars.sh`
 are not in that position**: everything in either that could be subtly wrong lives in
 [`../../cli/index.mjs`](../../cli/index.mjs) and
 [`../../cli/control-chars.mjs`](../../cli/control-chars.mjs), which the suite does cover, and each
 wrapper itself does dependency guarding, a named-list audit, and exit-code passthrough — the three
 things every recipe here has had a defect in, and the three the paragraphs above exist to explain.
 Neither is the *smallest*, which their shape might suggest; both sit near the top of this directory by
-size, because the audit and the guard are what take the room.
+size, because the audit and the guard are what take the room. `rule-carriers.sh`, `pack-version.sh`
+and `eval-bundle.sh` are in that same position: each wrapper is a dependency guard, a precondition
+and an exit-code passthrough, and the judgement lives in
+[`../../cli/rule-carriers.mjs`](../../cli/rule-carriers.mjs),
+[`../../cli/pack-version.mjs`](../../cli/pack-version.mjs) and
+[`../../cli/eval-bundle.mjs`](../../cli/eval-bundle.mjs), which the suite covers. _(The
+missing-module precondition was real in two of the three only after the pre-commit checkpoint: a
+deleted module made `pack-version.sh` and `eval-bundle.sh` print RED about work nothing had judged —
+node's module-not-found exits 1 — where `control-chars.sh` and `rule-carriers.sh` already refused at
+2. Both now carry the `[ -f ]` guard, on the sweep [`0020`](../proposals/0020-a-fix-is-not-done-at-the-site-it-was-found.md)
+asks for at the first fix.)_
 _(That sentence used to carry `index.sh`'s line count, and the count was stale by eleven lines when this
 paragraph was next edited. The figure is gone rather than corrected, on the repair
 [#77](https://github.com/sleepy-panda-works/portulan/issues/77) already established for a sibling of it
