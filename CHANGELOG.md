@@ -61,8 +61,8 @@ unaffected.)_
 
 ### Added
 
-- **`@sleepy_panda_srl/portulan` is on the npm registry**, published `0.1.0` on 2026-08-18. `npx
-  @sleepy_panda_srl/portulan` is a live path — demonstrated from a directory containing no git
+- **`@sleepy_panda_srl/portulan` is on the npm registry**, published `0.1.0` on 2026-08-18.
+  `npx @sleepy_panda_srl/portulan` is a live path — demonstrated from a directory containing no git
   repository, which is what milestone 7 named as its undemonstrated clause and what
   [#242](https://github.com/sleepy-panda-srl/portulan/issues/242) was filed to route. Both are closed
   by it.
