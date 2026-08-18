@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Portulan workspace — verify recipe: no tracked file carries a control character nobody can see.
+# Portulan workspace — verify recipe: no scanned file carries a control character nobody can see.
+# (Scanned = tracked plus new-and-not-ignored; the set is named exactly two lines down. #170.)
 #
 # One check, over every tracked file plus everything new and not ignored:
 #   chars   no file carries a byte in the C0 range other than TAB and LF, nor DEL
@@ -69,7 +70,7 @@ root=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." && pwd) || exit 2
 cd -- "$root" || exit 2
 
 # The scanner's own presence is a precondition, not a red. `node` on a missing file exits 1, and
-# passing that through would report "a tracked file carries a control character" about a tree nothing
+# passing that through would report "a scanned file carries a control character" about a tree nothing
 # had looked at — the defect a reviewer found in ./doctor.sh.
 [ -f cli/control-chars.mjs ] || {
     printf 'verify: cli/control-chars.mjs not found — this recipe cannot run\n' >&2
@@ -128,7 +129,7 @@ if ! git ls-files --cached --others --exclude-standard -z >"$manifest"; then
     exit 2
 fi
 
-printf 'chars: scanning every tracked file for control characters outside TAB and LF\n'
+printf 'chars: scanning every tracked file, plus every new and not-ignored one, for control characters outside TAB and LF\n'
 
 node cli/control-chars.mjs ${flags[@]+"${flags[@]}"} <"$manifest"
 status=$?

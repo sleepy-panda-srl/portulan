@@ -7,8 +7,11 @@
 //
 // **1 is RESERVED for a finding**, which is a promise the entry block at the foot of this file keeps
 // rather than a description of what node does by default: an uncaught error would otherwise leave node
-// to exit 1, and the recipe reads 1 as *a tracked file carries a control character* — a judged verdict
-// about a tree, from a run that judged nothing (#208).
+// to exit 1, and the recipe reads 1 as *a scanned file carries a control character* — a judged verdict
+// about a tree, from a run that judged nothing (#208). **Scanned, not tracked**: the listing is
+// `--cached --others --exclude-standard`, so it is the tracked set PLUS everything new and not ignored,
+// which is the point — a byte is caught before it is committed. This line said "tracked" when #208 wrote
+// it, adding a fresh carrier to the narrowing #170 already had on the roster; swept here with the rest.
 //
 // ## Why this exists
 //
@@ -539,7 +542,7 @@ if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) {
     //
     // **1 is reserved for a finding, so everything unhandled is 2** (#208). An uncaught error here used
     // to leave node to exit **1**, which `../.portulan/verify/control-chars.sh` reads as this tool's
-    // documented "a tracked file carries a control character" — a judged verdict about a tree, produced
+    // documented "a scanned file carries a control character" — a judged verdict about a tree, produced
     // by a run that judged nothing. The direction was always safe; the SENTENCE was false, which is the
     // shape this file's own recipe cites `compile.sh` for. The stack still prints, because a crash is a
     // defect in this tool and hiding it would trade one wrong report for another.
