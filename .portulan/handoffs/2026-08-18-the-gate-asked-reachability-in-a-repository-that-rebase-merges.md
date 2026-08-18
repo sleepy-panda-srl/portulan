@@ -1,10 +1,11 @@
 # Handoff — the gate asked reachability in a repository that rebase-merges
 
-**Post-M7 hardening, session 23. Full lane.** No milestone row moves. Closes
-[#220](https://github.com/sleepy-panda-srl/portulan/issues/220). Suite **1706 → 1715**, twelve
+**Post-M7 hardening, session 23. Full lane.** No milestone row moves. **Takes the first arm of
+[#220](https://github.com/sleepy-panda-srl/portulan/issues/220) and does NOT close it** — the close
+ruling is in *What this does not fix, and the residue nobody had named*. Suite **1714 → 1723**, twelve
 workspace recipes plus the pack-composed `tools/github:actions-pinned` green — **re-measured on the
-final head after rebasing onto `4ce7b04`**, which is the tree these figures belong to, with `4ce7b04`
-itself measured at 1706 rather than assumed. `main` moved **three times** under this session:
+final head after the maintainer merged `main` into this branch**, which is the tree these figures
+belong to; that base (`48ece93`) was itself measured at 1714 rather than assumed. `main` moved **four times** under this session:
 [#291](https://github.com/sleepy-panda-srl/portulan/pull/291) merged at 13:04Z, the organisation was
 renamed `sleepy-panda-works` → `sleepy-panda-srl` (which killed every issue URL written earlier in
 this change, corrected before the first rebase), and then the repository went public and the package
@@ -150,6 +151,29 @@ explicit OR, and its compare-and-report branch is satisfiable in `doctor` alone 
 from `discover.mjs`), provided the report says **what differs** and not merely that a shadow exists.
 Arm 4 — recording the resolution roots in the emitted artifact — needs `cli/compile.mjs`, which is
 now available.
+
+## What this does not fix, and the residue nobody had named
+
+**The close ruling: #220 stays OPEN.** The fresh-context checkpoint refused the close and was right;
+recording its reasoning here rather than the version I argued for.
+
+My argument for shipping reporting instead of rescoping was that the incident's worktree had been
+removed, so there was no tree to rescope to. **That is true of that one stop and false as an argument
+against the arm.** For the whole of that session's working phase the told root and the session's tree
+both existed and differed — every mid-session Stop was already answering about the wrong tree. The
+removal did not create the divergence; it exposed it. And rescoping is reachable: a Stop payload
+carries `cwd`, `main()` already parses the payload and keeps only `session_id`, and the sibling
+runner reads richer payload fields (`./gate.mjs:229-230`). What I shipped as the whole repair is the
+right *fallback* for the removed-worktree case, not the repair.
+
+**The residue that decides it, and which I had not named anywhere.** Both naming arms live inside
+`if (!handoffPresent && didWork())` — they fire **only when the gate blocks**. Where the told tree is
+clean while the session's work sits in a live divergent tree, `didWork()` reads the clean tree,
+returns false, and the gate **allows, silently**. That is a false pass, in the direction this file's
+own doctrine ranks worst — the same asymmetry the degraded path's fail-closed choice cites. Naming
+the tree cannot reach it by construction. The PR body, the #220 comment and an earlier draft of this
+handoff all presented defect B's remainder as a visibility problem; it is also, silently, a
+false-green one.
 
 ## Honest limits
 
