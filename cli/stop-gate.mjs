@@ -298,7 +298,8 @@ function didWork() {
         // answers no-unique-work about a question nobody asked"* — and `main` is not a name this file
         // may assume, for the same reason signal 2 above stopped hard-coding `origin/main`.
         let base = null;
-        for (const remote of remotes.split("\n").filter(Boolean)) {
+        const named = remotes.split("\n").filter(Boolean);
+        for (const remote of named) {
             try {
                 base = git(["rev-parse", "--abbrev-ref", "--symbolic-full-name", `${remote}/HEAD`]).trim() || null;
                 if (base) break;
@@ -331,9 +332,18 @@ function didWork() {
             return true;
         };
         if (!base) {
+            // **The remotes are NAMED, because this runner already knows them** — it just tried every
+            // one. A `<remote>` placeholder in a multi-remote repository invites the reader to run the
+            // repair against whichever they think of first, which is how a diagnosis sends someone to
+            // the wrong ref. Copilot, round 3. **`origin` is preferred where it exists** rather than
+            // simply taking the first: `git remote` lists alphabetically, so a repository carrying a
+            // `backup` remote would otherwise be told to repair `backup` — measured, and it is the
+            // wrong-ref failure this naming was added to prevent, reintroduced one line lower.
+            const which = named.includes("origin") ? "origin" : named[0];
             return degraded(
-                "no remote records a default head",
-                "record one with `git remote set-head <remote> -a`, then check with `git cherry <remote>/HEAD HEAD`",
+                `no remote records a default head (tried \`${named.join("`, `")}\`)`,
+                `record one with \`git remote set-head ${which} -a\`, then check with ` +
+                    `\`git cherry ${which}/HEAD HEAD\``,
             );
         }
 
