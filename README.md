@@ -38,7 +38,7 @@ claude plugin marketplace add sleepy-panda-works/portulan
 claude plugin install portulan@portulan
 ```
 
-Then `/portulan` boots the engine. _(Measured on 2026-08-18 into an isolated `CLAUDE_CONFIG_DIR`: the
+Then, inside Claude Code, run the `/portulan` slash command to boot the engine. _(Measured on 2026-08-18 into an isolated `CLAUDE_CONFIG_DIR`: the
 marketplace resolved, the plugin installed, and the payload landed in the cache with `core/engine.md`
 present. What that gives you is the **engine** — a workspace is still yours to draft, which is what
 [`cli/init.mjs`](cli/init.mjs) is for.)_
