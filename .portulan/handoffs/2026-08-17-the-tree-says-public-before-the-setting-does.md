@@ -70,13 +70,25 @@ annotation twice before asking whether it was owed.
 
 `docs/vision.md` is a **hard blocker on this PR's own promise** and only the maintainer's hand can clear
 it: two sites go false at the flip, and unedited the constitution is the one file still saying private at
-the moment strangers arrive. The evaluation-license wording (`cli/eval-license.template.md`, *"non-public
-materials"*) needs his word and **gates Phase A's completion**; the two files that promised a read of it
-have had the promise replaced with *the wording is the maintainer's to settle*, rather than shipping a
-promise that is off the table or deleting it silently. Three platform settings become available on a
-public repository, named and applied nowhere. `proposals/0004`'s deferred fork threat-model decision has
-come due. The memory record whose **filename** asserts present-tense state is routed rather than renamed —
-its Retire-when says supersession, and a rename is not one.
+the moment strangers arrive. **It is the only item on this list still open at the close.**
+
+_The rest were routed to him and he took them all, in-session:_
+
+- **The evaluation-license wording — SETTLED.** He ruled it, and asked how the 90-day term was tracked.
+  It was not: `term_days: 90` was a field in `EVAL-STAMP.json` with no expiry check, no revocation path
+  and no call home anywhere. Withdrawn from template, stamp and the test that pinned it. The mechanism
+  contradiction this exposed is #284, ruled on his delegation.
+- **Three platform settings — TWO APPLIED**, on his instruction and measured after the PATCH rather than
+  assumed from it: `secret_scanning: enabled`, `secret_scanning_push_protection: enabled`. **Both took
+  while the repository was still private**, refuting this workspace's own record that called them
+  public-only and *"one setting away"* — they were one setting away all along. Private vulnerability
+  reporting genuinely is public-only (endpoint answers 404 here) and is owed at the flip.
+- **`proposals/0004`'s fork threat model — ANSWERED**, with #67, as proposal `0030`. Measured: only one
+  of `0004`'s three bounds actually fell, because a fork's read-only token and withheld secrets are
+  platform behaviour rather than this repository's private setting.
+- **The memory record — RENAMED on his word**, `repo-is-private-until-flip-clearance.md` →
+  `a-published-window-cannot-be-unpublished.md`. Its Retire-when reserved this to written supersession
+  and he gave it. A filename cannot carry state: nothing re-derives it and every inbound link pins it.
 
 ## Undemonstrated, named
 
@@ -92,3 +104,28 @@ The arrangement records Opus 5 implementing and Fable 5 supervising, never same-
 session ran as **Fable 5** and its session-open checkpoint was also Fable 5. The last three commits on
 `main` already carry `Co-Authored-By: Claude Fable 5`, so the divergence predates this session. Flagged
 for the maintainer, not resolved here.
+
+## The finding that outgrew the change, and the ruling on it
+
+Copilot's second round found, from two directions, that the eval-bundle cutter's **mechanism** still
+told the opposite story to the terms this session had just trued: `LICENSE` excluded from the payload,
+machine-read `license` fields rewritten to `LicenseRef-Portulan-Eval`, and a guard refusing any surviving
+Apache assertion. A cut bundle would have shipped human text saying *Apache-2.0, redistribute freely* over
+metadata asserting a proprietary ref — wrong in the direction that under-reports a permissive licence.
+
+Triaged to [#284](https://github.com/sleepy-panda-works/portulan/issues/284) at the bound, then **ruled
+there on the maintainer's explicit delegation** (*"be true to Portulan vision and take the right decision
+for Portulan's best interest as a product"*): the bundle stops being a differently-licensed copy and
+becomes a curated stamped snapshot — `LICENSE` returns to the payload, the manifest patching retires, and
+**the guard is inverted rather than retired**, refusing any machine-read field that is *not* Apache-2.0.
+
+The reasoning worth keeping: a proprietary snapshot **of the open-core layer** was never where the moat
+was. `docs/vision.md` puts commercial value in the private feeds; restricting the public layer would have
+sold what the project gives away and added nothing. The flip removed the device's possibility and its
+purpose in the same act. And the rail's value was never its direction — inverted, it protects the more
+valuable claim, that an evaluator's SCA tool reading the bundle gets the truth.
+
+**Deliberately not implemented in this change.** One change carries one subject; this is a mechanism
+rewrite of a licensing guard whose suite is 46 tests, several asserting exactly the behaviours being
+inverted, and it merits its own checkpoints and review loop. A half-migrated licensing guard is worse than
+a delayed one. Acceptance criterion stated in advance on the issue.
