@@ -3,7 +3,7 @@
 **Status.** Accepted on merge — the maintainer decided both halves on 2026-07-30 and his merge of the
 pull request below ratifies the drafting.
 
-**Pull request:** https://github.com/sleepy-panda-works/portulan/pull/137
+**Pull request:** https://github.com/sleepy-panda-srl/portulan/pull/137
 
 **Companion:** [`0018`](0018-a-verdict-from-the-context-that-did-the-work-is-not-a-verdict.md) makes the
 fresh verdict a full-lane obligation of the loop. This proposal states the **cycle** that obligation is
@@ -107,7 +107,7 @@ the three moments have **none**, and the freshness that makes them work is unenf
 — *"no permission rule can observe whether the context reading a checkpoint skill has already seen the
 work."* Those record rails are **customer zero's**, wired in this repository's compiled policy, not
 something a new workspace receives. Closing that gap is the instantiation half, drafted for the
-maintainer's ratification **in [#137](https://github.com/sleepy-panda-works/portulan/pull/137)'s own
+maintainer's ratification **in [#137](https://github.com/sleepy-panda-srl/portulan/pull/137)'s own
 diff** — row 7 of [`../../docs/plan.md`](../../docs/plan.md), with the argument in
 [`../../docs/milestones/m07.md`](../../docs/milestones/m07.md) — and not claimed here as shipped.
 
@@ -127,6 +127,6 @@ diff** — row 7 of [`../../docs/plan.md`](../../docs/plan.md), with the argumen
 ## Decision
 
 Marius Cetanas — decided 2026-07-30; **accepted on the merge of
-[#137](https://github.com/sleepy-panda-works/portulan/pull/137)** — because the framework's own
+[#137](https://github.com/sleepy-panda-srl/portulan/pull/137)** — because the framework's own
 development cycle is the most load-bearing thing it has learned, and it was recorded only as a story
 about this repository rather than as a principle an adopter receives.

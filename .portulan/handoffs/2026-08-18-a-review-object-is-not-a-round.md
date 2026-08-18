@@ -1,7 +1,7 @@
 # Handoff — a review object is not a round
 
 **Post-M7 hardening, session 22. Full lane.** No milestone row moves. Closes
-[#286](https://github.com/sleepy-panda-works/portulan/issues/286). Suite **1706**, thirteen recipes
+[#286](https://github.com/sleepy-panda-srl/portulan/issues/286). Suite **1706**, thirteen recipes
 green. Implementer Opus 5, identity line checked at boot before any file was written — the check the
 previous session failed, and the reason two merged pull requests carry no valid pre-commit checkpoint.
 
@@ -10,7 +10,7 @@ previous session failed, and the reason two merged pull requests carry no valid 
 `copilot-reviewed` reported **green** over a review whose entire body read *"Copilot encountered an
 error and was unable to review this pull request"*, and the derived verdict then submitted an
 **APPROVED** asserting that round *"raised no inline comment and no suppressed low-confidence note"*.
-On [#283](https://github.com/sleepy-panda-works/portulan/pull/283) that approval was submitted
+On [#283](https://github.com/sleepy-panda-srl/portulan/pull/283) that approval was submitted
 **4m36s before** the only genuine round arrived, so it cannot have been derived from it. The real round
 then found nothing, which made the sentence true by coincidence — the worst available outcome, because
 nothing on that pull request now distinguishes an earned approval from an unearned one.

@@ -104,7 +104,7 @@ the `shell` branch had already received, which is the defect class this handoff 
 demonstrating it. A hole list is only ever checked by somebody attacking the matcher; that held for the
 checkpoint, and it held again for a reviewer after it.
 
-Open PRs [#53](https://github.com/sleepy-panda-works/portulan/pull/53) and
-[#55](https://github.com/sleepy-panda-works/portulan/pull/55) touch all five of these files and will
+Open PRs [#53](https://github.com/sleepy-panda-srl/portulan/pull/53) and
+[#55](https://github.com/sleepy-panda-srl/portulan/pull/55) touch all five of these files and will
 conflict textually — neither changes `matchesRule`'s body, only its call sites, so nothing here duplicates
 them; whichever lands second rebases.

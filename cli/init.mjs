@@ -22,7 +22,7 @@
 // **It refuses rather than emitting a manifest a validator would misread.** A governor or a name that
 // is not a slug is caught here, at the boundary, because `doctor`'s cross-repository check still
 // mis-reports an empty governor as a *conflicting* one
-// ([#141](https://github.com/sleepy-panda-works/portulan/issues/141)). That bug is `doctor`'s to fix;
+// ([#141](https://github.com/sleepy-panda-srl/portulan/issues/141)). That bug is `doctor`'s to fix;
 // what this tool owes is that it can never be the thing that produced the input.
 //
 // ## Two capabilities this draft deliberately does not claim

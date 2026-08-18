@@ -1,7 +1,7 @@
 # Handoff — the tree says public before the setting does
 
 **Session:** 2026-08-17, the flip-day sweep (Phase A of the commission of that date). **PR:**
-[#282](https://github.com/sleepy-panda-works/portulan/pull/282). **No milestone row moves.** Doctrine
+[#282](https://github.com/sleepy-panda-srl/portulan/pull/282). **No milestone row moves.** Doctrine
 and records work, so it takes both checkpoints under [`../gate-map.md`](../gate-map.md).
 
 ## The shape of the job, and why it is the inverse of a known one
@@ -118,7 +118,7 @@ machine-read `license` fields rewritten to `LicenseRef-Portulan-Eval`, and a gua
 Apache assertion. A cut bundle would have shipped human text saying *Apache-2.0, redistribute freely* over
 metadata asserting a proprietary ref — wrong in the direction that under-reports a permissive licence.
 
-Triaged to [#284](https://github.com/sleepy-panda-works/portulan/issues/284) at the bound, then **ruled
+Triaged to [#284](https://github.com/sleepy-panda-srl/portulan/issues/284) at the bound, then **ruled
 there on the maintainer's explicit delegation** (*"be true to Portulan vision and take the right decision
 for Portulan's best interest as a product"*): the bundle stops being a differently-licensed copy and
 becomes a curated stamped snapshot — `LICENSE` returns to the payload, the manifest patching retires, and

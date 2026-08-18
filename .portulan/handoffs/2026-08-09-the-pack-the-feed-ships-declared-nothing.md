@@ -13,7 +13,7 @@ whole of milestone 6 and after.
 
 The feed's own repository is correct as written. Nothing there needed changing except, later, the pin.
 
-**And [#134](https://github.com/sleepy-panda-works/portulan/issues/134)'s diagnosis of its own bullet was
+**And [#134](https://github.com/sleepy-panda-srl/portulan/issues/134)'s diagnosis of its own bullet was
 wrong.** It attributed the zero to a declared path one level too high. That trap is real — a host expands
 a declared skills path exactly one level — and it is a *different* trap from having no declaration at all.
 Both were reproduced from scratch on Claude Code 2.1.226, installed through a local marketplace under an

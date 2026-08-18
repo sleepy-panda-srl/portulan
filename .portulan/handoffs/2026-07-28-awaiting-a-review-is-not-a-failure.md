@@ -92,7 +92,7 @@ string whose continuation lines sat at column 0 pass all thirteen while the work
 parsed.
 
 **Verification, on the platform** — the 0007 obligation, discharged where it counts, on
-[#63](https://github.com/sleepy-panda-works/portulan/pull/63):
+[#63](https://github.com/sleepy-panda-srl/portulan/pull/63):
 
 | Head | Job start → green | Polls | Click needed |
 |---|---|---|---|

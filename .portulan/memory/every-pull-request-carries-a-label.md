@@ -56,7 +56,7 @@ paid for. So the workflow merged to `main` first (#46), reported green on real p
 then did `pr-labeled` join the floor, on the maintainer's explicit instruction, by exactly this command:
 
 ```
-gh api -X PATCH repos/sleepy-panda-works/portulan/branches/main/protection/required_status_checks \
+gh api -X PATCH repos/sleepy-panda-srl/portulan/branches/main/protection/required_status_checks \
   --input - <<'JSON'
 {"strict":true,"checks":[{"context":"workspace-verify","app_id":15368},{"context":"pr-labeled","app_id":15368}]}
 JSON

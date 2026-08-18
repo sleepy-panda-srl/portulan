@@ -1,6 +1,6 @@
 # The table stops being its own archive, and the rows keep the law
 
-**Date:** 2026-07-29 · Post-M5 reconciliation · [#96](https://github.com/sleepy-panda-works/portulan/pull/96)
+**Date:** 2026-07-29 · Post-M5 reconciliation · [#96](https://github.com/sleepy-panda-srl/portulan/pull/96)
 
 The package the maintainer deferred with *"Merge #80 as is. We'll reconcile after M5 lands"*, landed as
 one pull request. What follows is the *why* — the log entry is the pointer.

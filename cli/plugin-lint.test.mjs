@@ -855,7 +855,7 @@ describe("a public marketplace entry may not point into a private feed", () => {
                 owner: { name: "Someone" },
                 plugins: [
                     { name: "demo", source: "./", version: "0.1.0" },
-                    { name: "premium", source: { source: "github", repo: "sleepy-panda-works/portulan-internal" } },
+                    { name: "premium", source: { source: "github", repo: "sleepy-panda-srl/portulan-internal" } },
                 ],
             },
         });
@@ -872,7 +872,7 @@ describe("a public marketplace entry may not point into a private feed", () => {
                     { name: "demo", source: "./", version: "0.1.0" },
                     {
                         name: "premium",
-                        source: { source: "git-subdir", url: "https://github.com/sleepy-panda-works/portulan-internal", path: "packs" },
+                        source: { source: "git-subdir", url: "https://github.com/sleepy-panda-srl/portulan-internal", path: "packs" },
                     },
                 ],
             },
@@ -928,9 +928,9 @@ describe("the private-feed refusal matches a name, not a substring", () => {
 
     test("the real feed is still refused, by every spelling of its name", async () => {
         for (const source of [
-            { source: "github", repo: "sleepy-panda-works/portulan-internal" },
-            { source: "git-subdir", url: "https://github.com/sleepy-panda-works/portulan-internal", path: "packs" },
-            { source: "url", url: "git@github.com:sleepy-panda-works/portulan-internal.git" },
+            { source: "github", repo: "sleepy-panda-srl/portulan-internal" },
+            { source: "git-subdir", url: "https://github.com/sleepy-panda-srl/portulan-internal", path: "packs" },
+            { source: "url", url: "git@github.com:sleepy-panda-srl/portulan-internal.git" },
         ]) {
             const root = fixture({
                 marketplace: {
@@ -947,15 +947,15 @@ describe("the private-feed refusal matches a name, not a substring", () => {
 
 describe("the private-feed refusal cannot be bypassed by case", () => {
     test("GitHub repo names are case-insensitive, so the rail must be too", async () => {
-        // Copilot, round 6 on #117 — a bypass of the rail added one round earlier. `Sleepy-Panda-Works/
+        // Copilot, round 6 on #117 — a bypass of the rail added one round earlier. `Sleepy-Panda-Srl/
         // Portulan-Internal` resolves to the same repository and would have passed a case-sensitive
         // membership test. A rail that a different capitalisation walks through is not a rail, which is
         // why this went past the review loop's two-fix-round bound rather than to triage: the precedent
         // is #105, which did the same to close a genuine fail-open.
         for (const repo of [
-            "Sleepy-Panda-Works/Portulan-Internal",
-            "sleepy-panda-works/PORTULAN-INTERNAL",
-            "SLEEPY-PANDA-WORKS/portulan-internal",
+            "Sleepy-Panda-Srl/Portulan-Internal",
+            "sleepy-panda-srl/PORTULAN-INTERNAL",
+            "SLEEPY-PANDA-SRL/portulan-internal",
         ]) {
             const root = fixture({
                 marketplace: {
@@ -1006,9 +1006,9 @@ describe("the private-feed rail names an owner as well as a repo", () => {
 
     test("the real feed is still refused, in any case and by every spelling", async () => {
         for (const source of [
-            { source: "github", repo: "Sleepy-Panda-Works/Portulan-Internal" },
-            { source: "git-subdir", url: "https://github.com/sleepy-panda-works/portulan-internal", path: "packs" },
-            { source: "url", url: "git@github.com:sleepy-panda-works/portulan-internal.git" },
+            { source: "github", repo: "Sleepy-Panda-Srl/Portulan-Internal" },
+            { source: "git-subdir", url: "https://github.com/sleepy-panda-srl/portulan-internal", path: "packs" },
+            { source: "url", url: "git@github.com:sleepy-panda-srl/portulan-internal.git" },
         ]) {
             const root = fixture({
                 marketplace: {

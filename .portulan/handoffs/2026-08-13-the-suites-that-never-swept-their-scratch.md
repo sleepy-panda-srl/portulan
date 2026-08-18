@@ -160,7 +160,7 @@ task's literal boundary* — and `proposals/0020`. Fixing only the file the brie
 
 ## For the next session
 
-**This branch conflicts with [#237](https://github.com/sleepy-panda-works/portulan/pull/237) in four
+**This branch conflicts with [#237](https://github.com/sleepy-panda-srl/portulan/pull/237) in four
 files, not one — measured at the second pre-commit pass, the first draft having reasoned about it
 rather than running it.** With `git merge-tree` against `refs/pull/237/head` (`0c3546d`):
 `cli/recipe-set.test.mjs`, `cli/skills-set.test.mjs` and `docs/plan.md` conflict, and

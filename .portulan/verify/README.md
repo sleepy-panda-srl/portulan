@@ -71,7 +71,7 @@ names.)_
 | [`index.sh`](index.sh) | every generated index a workspace declares — the memory store's, and since 2.5 the handoff series' — is exactly what its source renders, and neither the store index, nor the store, nor any single record in it is over the budget its manifest declares | `bash`, `git`, `node` |
 | [`control-chars.sh`](control-chars.sh) | no tracked file carries a byte in the C0 range other than TAB and LF, nor DEL — scanned as bytes, because the one tool that would have shown the last one is the tool the byte silences | `bash`, `git`, `node` |
 | [`rule-carriers.sh`](rule-carriers.sh) | a rule an incident reduced to **one** carrier stays reduced — a registered spelling appears only in its carrier or beside a citation of it. Covers **only registered rules**, which is a ratchet over what incidents have taught it and never coverage of doctrine | `bash`, `git`, `node` |
-| [`pack-version.sh`](pack-version.sh) | a pack whose `contributes` differs from the **merge-base** also moved its `portulan.version` — [#265](https://github.com/sleepy-panda-works/portulan/issues/265), arm 3, and a **prose-only** edit to a fragment's `reason` counts. **The only recipe here that reads a *diff* rather than the tree**, so it refuses at **2** where the base ref or merge-base is unreachable, and [`../../.github/workflows/verify.yml`](../../.github/workflows/verify.yml) sets `fetch-depth: 0` for it | `bash`, `git`, `node` |
+| [`pack-version.sh`](pack-version.sh) | a pack whose `contributes` differs from the **merge-base** also moved its `portulan.version` — [#265](https://github.com/sleepy-panda-srl/portulan/issues/265), arm 3, and a **prose-only** edit to a fragment's `reason` counts. **The only recipe here that reads a *diff* rather than the tree**, so it refuses at **2** where the base ref or merge-base is unreachable, and [`../../.github/workflows/verify.yml`](../../.github/workflows/verify.yml) sets `fetch-depth: 0` for it | `bash`, `git`, `node` |
 | [`eval-bundle.sh`](eval-bundle.sh) | a clean evaluation bundle cuts from the **index** (wrapped as an unreferenced probe commit, so the pre-commit gate judges what is about to ship) — [`../../cli/eval-bundle.mjs`](../../cli/eval-bundle.mjs) `--check` materialises the payload for a fixture recipient into scratch it always deletes, renders the evaluation terms from the template **at that same commit**, and refuses when the **top-level payload partition** stops matching the tree, when the **machine-read license census** stops equalling the patch list, or when a machine-read Apache assertion survives the transforms. Day to day it is the roster-drift rail: a new top-level path, or a new manifest asserting Apache in the payload, goes red here with a repair menu instead of silently thinning or mislicensing the next bundle. A payload entry that is neither a plain nor an executable blob (a symlink, a gitlink) is **could-not-run — 2, named** — no licensing verdict can be formed from a payload the tool will not materialise | `bash`, `git`, `node` |
 
 Exit `0` green · `1` red · `2` could not run — and that third code is why each recipe declares its needs
@@ -126,16 +126,16 @@ position is a count wearing a word — **which is why this said three until 2026
 that counts occurrences answers a different question from the sentence's verb, and the retrospective
 pass over this very pull request found it, then itself said four by leaving out the recipe the
 paragraph is about. Third time on one page. The correction then asserted `seventeen invocations`, a
-figure taken from a word count that included comments, which is [#77](https://github.com/sleepy-panda-works/portulan/issues/77)'s lesson walked into twice on one page. A false
+figure taken from a word count that included comments, which is [#77](https://github.com/sleepy-panda-srl/portulan/issues/77)'s lesson walked into twice on one page. A false
 universal inside the paragraph doing the persuading is this page's own dominant defect class, and it sat
 in the passage introducing the rail against claims nobody measured. Found by Copilot on
-[#167](https://github.com/sleepy-panda-works/portulan/pull/167) in the suppressed channel, in two
+[#167](https://github.com/sleepy-panda-srl/portulan/pull/167) in the suppressed channel, in two
 carriers; a third was swept with them.)_ `git` rendered the diff as text only because the byte
 sat past its first 8000 bytes; a few hundred lines earlier and the whole instrument would have arrived
 in review as `Binary files differ`, a file nobody could read in a pull request that looked complete. It
 then reproduced twice more while being fixed. The defect was repaired in
-[#64](https://github.com/sleepy-panda-works/portulan/pull/64) and the *rail* was filed as
-[#68](https://github.com/sleepy-panda-works/portulan/issues/68) under
+[#64](https://github.com/sleepy-panda-srl/portulan/pull/64) and the *rail* was filed as
+[#68](https://github.com/sleepy-panda-srl/portulan/issues/68) under
 [`a-review-loop-needs-a-bound`](../memory/a-review-loop-needs-a-bound.md) rule 4; this is that rail.
 
 **It scans BYTES, and its exemption is a NAME rather than a sniff.** Both follow from the incident.
@@ -267,7 +267,7 @@ The claim is still bounded, and the bound was demonstrated within hours of being
 read off the tree rather than named in a list: `tests.sh` counts every `*.test.mjs` under
 [`../../cli/`](../../cli/) with `find`, then runs that same set through a recursive glob — so a suite
 added to `cli/` is covered without this paragraph changing.
-_(This sentence used to end with the count, and [#77](https://github.com/sleepy-panda-works/portulan/issues/77)
+_(This sentence used to end with the count, and [#77](https://github.com/sleepy-panda-srl/portulan/issues/77)
 is filed about exactly that: a paragraph claiming to be self-maintaining and then hard-coding the
 number that makes it not. It was stale when filed and stale again twice since. The figure is gone
 rather than corrected, because `tests.sh` prints the live one on every run and that carrier cannot be
@@ -301,7 +301,7 @@ node's module-not-found exits 1 — where `control-chars.sh` and `rule-carriers.
 asks for at the first fix.)_
 _(That sentence used to carry `index.sh`'s line count, and the count was stale by eleven lines when this
 paragraph was next edited. The figure is gone rather than corrected, on the repair
-[#77](https://github.com/sleepy-panda-works/portulan/issues/77) already established for a sibling of it
+[#77](https://github.com/sleepy-panda-srl/portulan/issues/77) already established for a sibling of it
 two paragraphs above: a number nothing regenerates is a claim that rots, and `wc -l` is one command.)_
 That gap now has a task of its own rather than a mention in a handoff:
 [`../tasks/0004-a-harness-for-the-verify-recipes.md`](../tasks/0004-a-harness-for-the-verify-recipes.md). Every defect ever found in them was found by a human or a reviewer, and
@@ -328,7 +328,7 @@ less.
 
 | Check | The rule | Why it is machinery rather than a reminder |
 |---|---|---|
-| `links` | Every relative Markdown link resolves **in the repository** — against the tracked set, not against the disk the check is running on. | The engine is a web of cross-references between doctrine, templates, personas, and skills — progressive disclosure *is* those links. A dead link in a framework about context engineering is a product defect, not a docs defect. And the domain is half the rule: a check that asks the filesystem answers a question about one machine, which is how a green stood in front of an author while CI went red on the same commit ([#121](https://github.com/sleepy-panda-works/portulan/issues/121)). |
+| `links` | Every relative Markdown link resolves **in the repository** — against the tracked set, not against the disk the check is running on. | The engine is a web of cross-references between doctrine, templates, personas, and skills — progressive disclosure *is* those links. A dead link in a framework about context engineering is a product defect, not a docs defect. And the domain is half the rule: a check that asks the filesystem answers a question about one machine, which is how a green stood in front of an author while CI went red on the same commit ([#121](https://github.com/sleepy-panda-srl/portulan/issues/121)). |
 | `kernel` | [`../../core/engine.md`](../../core/engine.md) stays within 60 lines. | The always-loaded layer is the scarcest thing the framework spends, and the budget is constitutional. A budget that lives only in prose is the first thing a busy session negotiates with. |
 | `map` | Every top-level entry appears in the root `README.md` layout table. | Agent legibility: a repository whose own map omits directories teaches an agent a false shape of the ground. This one exists because that had already happened — see below. |
 | `record` | The Session log and `../handoffs/` correspond **both ways** — every log date since 2026-07-25 has a handoff of that date, and every date carries at least as many log entries as it has handoffs; no Markdown file in `../handoffs/` escapes that count by being named without a date; every log entry dated after 2026-07-28 is within the log's 10-line budget; and the newest entry carries a seam attestation. | The Session log and the handoffs are the repository's memory of *how* things were decided, and a session that leaves no record cannot be audited afterwards — which stopped being hypothetical the day a merged doctrine rewrite (#32/#33) turned out to have neither, and again when a two-day review found **five** handoff-documented sessions with no log entry. The budget half exists because the same review found entries at 105 lines against a log that asks for one line per session: an entry that swells into a record makes the file every session must read to boot cost more each time, and moves the *why* out of the handoff written to hold it. Both floors are forward-only cutoffs — the day each rule became a ruling — because a rule cannot bind a record written before it without rewriting that record to suit it. |
@@ -342,7 +342,7 @@ less.
 | `plan` | No milestone row in [`../../docs/plan.md`](../../docs/plan.md) carries an amendment argument (`**Criterion amended`) or a session note (`[Ss]ession N of`); every row parses into its five cells; and every row's Status cell stays within 500 **bytes**. The two text patterns are matched **inside a milestone-table row only**. | The table is what a session reads to learn what it must build, and it had become the archive of how each row got that way: 63,420 characters of row, **11% of it criterion**, one Status cell holding 16,505 characters on a single line. None of that history was junk — it is the amendment arguments, the expansion/narrowing verdicts and the close evidence that make a criterion auditable — but in the row it buried the binding words, and the file every session boots from paid for it on every boot. The history now lives in [`../../docs/milestones/`](../../docs/milestones/), moved verbatim, and this is what stops it flowing back. The Status budget is a **byte** count: the cell is one line by construction, so a line budget would be the number 1 and bound nothing — and bytes are what `awk`'s `length()` actually measures on the `mawk` Ubuntu runners ship, in cells full of three-byte em dashes. Labelling it *characters* would have printed a number the reader could not reproduce, inside the check whose subject is claims that outrun their measurement. Unlike `record`'s two floors this rail is deliberately **retroactive**: there, a cutoff was mandatory because a rule written after a record cannot bind it without rewriting the record to suit the rule; here the remedy is *relocation*, which preserves a merged record byte-for-byte, so every historical row can comply without one word being lost. Retroactivity is honest exactly when compliance destroys nothing. |
 | `plugin` | Both packaging manifests parse and agree; every component path resolves inside the tree — after canonicalisation, so a symlink out of it is an escape rather than containment; every declared skill and agent is a real artifact with a kebab-case `name` and a non-empty `description`. | From milestone 3 the repository *is* a distribution channel, and a marketplace declaring no plugins — or a skill path resolving to nothing — installs cleanly and delivers nothing. The platform's own validator reports the empty-marketplace case as a *warning*, which is the severity a milestone walks past. |
 | `chars` | No tracked file — nor anything new and not ignored — carries a byte in the C0 range other than TAB and LF, nor DEL. Read as bytes and **never decoded**, from the file list through to a symlink's target, which is read as its target's *bytes* rather than followed. A path this repository declares binary is exempt by NAME, and that declaration is audited three ways, each exit `2`: an entry naming nothing in the list is stale, an entry over a file tracked-and-not-on-disk was never read, and an entry over a clean file is dead. | A NUL shipped in an instrument here and **nothing in this repository could see it**: `file` called the source binary data, and `grep` against a line that plainly contains the text it was given exited `1` — a silent false negative, in the tool [`docs.sh`](docs.sh) is built out of — the default recipe, the one a Stop-gate runs when nothing more specific applies. That is what makes this a rail rather than a matter of taste: the failure mode is not *somebody wrote something wrong*, it is *the checks went quiet*. It is red rather than one of `doctor`'s notes because an invisible byte is not a question of judgement, and the exemption is a name rather than a content test because every binary sniff in use is keyed on NUL — the one byte a sniff would therefore have hidden. |
-| `pack-version` | A pack whose `contributes` block differs from the **merge-base** also moved that pack's `portulan.version`. Ruled on [#265](https://github.com/sleepy-panda-works/portulan/issues/265): arm 3, the whole `contributes` block rather than only `gates`, and a **prose-only** edit to a fragment's `reason` counts. Manifests are compared as **values**, so reindenting or reordering keys is correctly not a change. An added pack passes — it has no prior state to bump from — and a pack that changed `contributes` while declaring no version at all is red, which is what makes an optional schema field mandatory *for a pack that changes*. | Changing a pack's `contributes` changes what **every composing workspace yields**, and a consumer pinning that pack has nothing but this field to pin on. Nothing read `portulan.version` at all before this — measured across `cli/`, zero readers — so the field was documentation. **This is the only recipe here that reads a diff rather than the tree**, which is why it refuses at `2` on an unreachable base or merge-base rather than reporting green on a history it could not see; a shallow clone reaches that refusal by two different routes and both are named in the message. What it does *not* see is content the block points at — a skill's body, a persona file, the script a contributed recipe names — which is [#259](https://github.com/sleepy-panda-works/portulan/issues/259)'s class and is stated rather than closed. |
+| `pack-version` | A pack whose `contributes` block differs from the **merge-base** also moved that pack's `portulan.version`. Ruled on [#265](https://github.com/sleepy-panda-srl/portulan/issues/265): arm 3, the whole `contributes` block rather than only `gates`, and a **prose-only** edit to a fragment's `reason` counts. Manifests are compared as **values**, so reindenting or reordering keys is correctly not a change. An added pack passes — it has no prior state to bump from — and a pack that changed `contributes` while declaring no version at all is red, which is what makes an optional schema field mandatory *for a pack that changes*. | Changing a pack's `contributes` changes what **every composing workspace yields**, and a consumer pinning that pack has nothing but this field to pin on. Nothing read `portulan.version` at all before this — measured across `cli/`, zero readers — so the field was documentation. **This is the only recipe here that reads a diff rather than the tree**, which is why it refuses at `2` on an unreachable base or merge-base rather than reporting green on a history it could not see; a shallow clone reaches that refusal by two different routes and both are named in the message. What it does *not* see is content the block points at — a skill's body, a persona file, the script a contributed recipe names — which is [#259](https://github.com/sleepy-panda-srl/portulan/issues/259)'s class and is stated rather than closed. |
 
 ## Provenance
 
@@ -372,7 +372,7 @@ half of a check's design and the one this recipe had got wrong since milestone 1
 about the machine it ran on. The two diverge exactly when git cannot carry what the disk holds, and in
 milestone 6 they diverged inside a **generated** file: a link to a deliberately empty directory, green in
 front of the author who had just created it, red in CI on the clean checkout
-([#121](https://github.com/sleepy-panda-works/portulan/issues/121), and the retirement condition in
+([#121](https://github.com/sleepy-panda-srl/portulan/issues/121), and the retirement condition in
 [`../memory/a-generated-file-must-not-point-at-what-git-cannot-carry.md`](../memory/a-generated-file-must-not-point-at-what-git-cannot-carry.md)).
 Resolution now reads `git ls-files --cached`; **enumeration** deliberately still reads
 `--cached --others --exclude-standard`, because the two lists want opposite directions — scanning more
@@ -508,8 +508,8 @@ one — applied to the check that exists to catch it, which is why it is worth m
 bug it closes.
 
 Raised as a suppressed low-confidence note on round 6 of
-[#73](https://github.com/sleepy-panda-works/portulan/pull/73), triaged to
-[#79](https://github.com/sleepy-panda-works/portulan/issues/79) under the review bound rather than fixed
+[#73](https://github.com/sleepy-panda-srl/portulan/pull/73), triaged to
+[#79](https://github.com/sleepy-panda-srl/portulan/issues/79) under the review bound rather than fixed
 there, and fixed here. Measured red-first on the merged tree, with the genuine-absence case asserted as
 the negative control and the 2026-07-28 wrap case asserted as a regression guard.
 
@@ -541,7 +541,7 @@ the one that costs the operator the diagnosis rather than the alarm. The audit n
 three outcomes separate: undated Markdown present is **red** naming the files and saying plainly that
 neither correspondence check could run; nothing readable at all is the only honest `2`; a stray alongside
 real handoffs is red while correspondence still runs. Raised as a suppressed low-confidence note on #73,
-twice — round 3 filed it as [#78](https://github.com/sleepy-panda-works/portulan/issues/78) under the
+twice — round 3 filed it as [#78](https://github.com/sleepy-panda-srl/portulan/issues/78) under the
 review bound, and the maintainer then authorised a further round, which is what fixed it.
 
 **Then the fix needed a second ordering, for the same reason as the first.** With the audit moved ahead
@@ -573,12 +573,12 @@ those: with `awk` gone, `docs.sh` printed `ok    map — every top-level entry i
 README.md` having enumerated **zero** directories, in a check whose own comment already warns about
 reporting green over an entry it never looked at. Only `tests.sh` and `compile.sh` were clean
 throughout. Each recipe now guards its whole list up front and the probe returns `2` in all thirty
-cases. Provenance: a Copilot review comment on [#3](https://github.com/sleepy-panda-works/portulan/pull/3)
+cases. Provenance: a Copilot review comment on [#3](https://github.com/sleepy-panda-srl/portulan/pull/3)
 that said exactly this, three days earlier, and was filed *suppressed due to low confidence* — a form
 that never becomes a review thread and therefore can never be resolved or block a merge.
 
 The `filters` check was added 2026-07-28, out of the **suppressed** half of a Copilot round on
-[#63](https://github.com/sleepy-panda-works/portulan/pull/63). Two low-confidence comments claimed
+[#63](https://github.com/sleepy-panda-srl/portulan/pull/63). Two low-confidence comments claimed
 that `join("|")` errors on a null element and asked for a coalesce. The claim is wrong — jq renders
 null as the empty string in `join` and errors only on arrays and objects — and it was refused on the
 pull request with that evidence. **What survived the refusal is the gap the comment had walked past:**
@@ -621,7 +621,7 @@ both sites named — there the fixture would be asserting about a filter nobody 
 
 **And the dependency claim above is measured rather than argued.** "`jq` ships on `ubuntu-latest`, so
 this does not become a permanently-red recipe" was a prediction until the first CI run on
-[#64](https://github.com/sleepy-panda-works/portulan/pull/64) printed `filters: 7 jq program(s) in 2
+[#64](https://github.com/sleepy-panda-srl/portulan/pull/64) printed `filters: 7 jq program(s) in 2
 workflow file(s), 24 fixture(s), run through jq-1.7` and went green. Worth the sentence because the
 runner's jq is **1.7** and the maintainer's is **1.7.1** — two versions, same 24 answers, which is the
 first evidence anyone here has that these programs are not pinned to one build. It is not evidence
@@ -774,11 +774,11 @@ mechanically:
 
 | Run | Date | Recipe | What it was |
 |---|---|---|---|
-| [`30129932310`](https://github.com/sleepy-panda-works/portulan/actions/runs/30129932310) | 2026-07-24 | *none* | `actions/checkout@v4` refused for not being SHA-pinned — the job died before the loop |
-| [`30398437030`](https://github.com/sleepy-panda-works/portulan/actions/runs/30398437030) | 2026-07-28 | `docs` | `FAIL proposal — 1 proposal(s) name no pull request` |
-| [`30445601122`](https://github.com/sleepy-panda-works/portulan/actions/runs/30445601122) | 2026-07-29 | `docs` | the same, on the next branch to add a proposal |
-| [`30530100431`](https://github.com/sleepy-panda-works/portulan/actions/runs/30530100431) | 2026-07-30 | `docs` | `FAIL links — 1 unresolvable relative link(s)` |
-| [`30530283558`](https://github.com/sleepy-panda-works/portulan/actions/runs/30530283558) | 2026-07-30 | `docs` | the same link, after the first repair missed it |
+| [`30129932310`](https://github.com/sleepy-panda-srl/portulan/actions/runs/30129932310) | 2026-07-24 | *none* | `actions/checkout@v4` refused for not being SHA-pinned — the job died before the loop |
+| [`30398437030`](https://github.com/sleepy-panda-srl/portulan/actions/runs/30398437030) | 2026-07-28 | `docs` | `FAIL proposal — 1 proposal(s) name no pull request` |
+| [`30445601122`](https://github.com/sleepy-panda-srl/portulan/actions/runs/30445601122) | 2026-07-29 | `docs` | the same, on the next branch to add a proposal |
+| [`30530100431`](https://github.com/sleepy-panda-srl/portulan/actions/runs/30530100431) | 2026-07-30 | `docs` | `FAIL links — 1 unresolvable relative link(s)` |
+| [`30530283558`](https://github.com/sleepy-panda-srl/portulan/actions/runs/30530283558) | 2026-07-30 | `docs` | the same link, after the first repair missed it |
 
 **So on the morning of 2026-07-30, one rail of eight had ever been seen to fire, and none had been
 fired on purpose.** The two `proposal` reds are the anticipated one Known limits below already
@@ -788,7 +788,7 @@ and not in a clean checkout. Neither is a drill. A rail nobody has watched fire 
 seen work, and seven of the eight were in that position.
 
 **Drill 1 — `tests`, 2026-07-30.** Run on
-[#118](https://github.com/sleepy-panda-works/portulan/pull/118), branch
+[#118](https://github.com/sleepy-panda-srl/portulan/pull/118), branch
 `drill-the-tests-rail-fires-the-block`, opened as a draft and **closed unmerged**; the branch carried
 nothing but the drill and was deleted after. Forced in **both** directions in two pushes, because a
 rail that only ever reds proves nothing about its green — a recipe hard-wired to fail would have
@@ -796,8 +796,8 @@ produced the identical red transcript.
 
 | Push | Tree | Result |
 |---|---|---|
-| `45c931b` | `cli/drill.test.mjs` asserting `1 === 2` | run [`30532642890`](https://github.com/sleepy-panda-works/portulan/actions/runs/30532642890) → **failure**, annotation `verify recipe tests exited 1` |
-| `f89ed35` | the same file deleted, nothing else moved | run [`30532774286`](https://github.com/sleepy-panda-works/portulan/actions/runs/30532774286) → **success** |
+| `45c931b` | `cli/drill.test.mjs` asserting `1 === 2` | run [`30532642890`](https://github.com/sleepy-panda-srl/portulan/actions/runs/30532642890) → **failure**, annotation `verify recipe tests exited 1` |
+| `f89ed35` | the same file deleted, nothing else moved | run [`30532774286`](https://github.com/sleepy-panda-srl/portulan/actions/runs/30532774286) → **success** |
 
 The red job's `tests` group, quoted:
 
@@ -867,7 +867,7 @@ check, becoming `BLOCKED` — is now covered twice by two different recipes and 
 once per recipe. What is *not*
 covered is anything recipe-specific about running under CI, and this page already documents three
 places that bites: **the runner's checkout WAS shallow, so anything reading `git log` refused or lied —
-and since [#265](https://github.com/sleepy-panda-works/portulan/issues/265) the verify job sets
+and since [#265](https://github.com/sleepy-panda-srl/portulan/issues/265) the verify job sets
 `fetch-depth: 0`, because the `pack-version` recipe reads a diff and cannot answer its question without
 one.** The hazard has not vanished, it has moved: it now bites any *other* workflow whose checkout is
 still shallow, and it returns the moment someone removes that setting to speed a job up;
@@ -876,12 +876,12 @@ and green everywhere else; and the two `links` reds above exist precisely becaus
 not a working copy. Those are per-recipe facts, and a drill is how each one stops being a guess.
 
 **One of those three is now closed, and the sibling beside it is not.** `links` stopped asking the
-filesystem on 2026-07-30 ([#121](https://github.com/sleepy-panda-works/portulan/issues/121)) — it
+filesystem on 2026-07-30 ([#121](https://github.com/sleepy-panda-srl/portulan/issues/121)) — it
 resolves against the tracked set, so it answers the same question here and in CI, and the two reds above
 could not happen again. `doctor`'s claim resolution is the **same class pointing the other way** — a
 false *red* rather than a false green — and it is deliberately not fixed in the same change: it lives in
 a tested JS tool with a different repair, and bundling it would have put an unforced rewrite inside a
-milestone-close diff. Filed as [#131](https://github.com/sleepy-panda-works/portulan/issues/131) rather
+milestone-close diff. Filed as [#131](https://github.com/sleepy-panda-srl/portulan/issues/131) rather
 than left as a symmetry a reader has to notice, on the rule the same change minted:
 [`a-recorded-limit-is-not-a-managed-limit`](../memory/a-recorded-limit-is-not-a-managed-limit.md).
 
@@ -914,7 +914,7 @@ than left as a symmetry a reader has to notice, on the rule the same change mint
   three days, and was closed only when an unrelated instance of the *same class* made someone go looking.
   A limit written down is not a limit managed.
 - **A `%`-encoded target is a false red, and a nested-parenthesis target is not fully read** —
-  [#130](https://github.com/sleepy-panda-works/portulan/issues/130). Both are in
+  [#130](https://github.com/sleepy-panda-srl/portulan/issues/130). Both are in
   the extraction rather than the resolution, both predate the 2026-07-30 domain change, and both were found
   by a fresh context attacking that change rather than by a run — no path in this tree reaches either. A
   target written with `%20` where the file has a space reds, although a renderer decodes the escape and
@@ -967,10 +967,10 @@ than left as a symmetry a reader has to notice, on the rule the same change mint
   that a breach is answered by consolidation and never by widening the number in the same change
   ([`../../core/operating/memory.md`](../../core/operating/memory.md)). Refusing it needs a check that
   reads git *history*. **That used to be the end of the argument — history checks false-red in a shallow
-  CI checkout — and since [#265](https://github.com/sleepy-panda-works/portulan/issues/265) it is not:
+  CI checkout — and since [#265](https://github.com/sleepy-panda-srl/portulan/issues/265) it is not:
   the verify job sets `fetch-depth: 0`, and `pack-version` is a history-reading recipe running in it.**
   So the ground this refusal stood on is gone, and what remains is smaller and worth stating plainly: no
-  such check has been *written*, and [#75](https://github.com/sleepy-panda-works/portulan/issues/75) is
+  such check has been *written*, and [#75](https://github.com/sleepy-panda-srl/portulan/issues/75) is
   the open issue for it — now reachable rather than blocked. Measured rather than argued: with the budget
   raised from 14 to 18 on a twelve-record scratch store, the recipe goes **green**, exactly as it does
   after a real consolidation. So the breach is a rail and the remedy is a human-gate rule. What stands
@@ -983,7 +983,7 @@ than left as a symmetry a reader has to notice, on the rule the same change mint
   a subdirectory of it leave the index, the KB budget and the store report together, in silence. No
   workspace does this today; the plausible accident is an `archive/` directory arriving with the
   librarian's demotion drafts at milestone 5, session 1, which is why it is written down now rather
-  than discovered then. **Still open as [issue #76](https://github.com/sleepy-panda-works/portulan/issues/76),
+  than discovered then. **Still open as [issue #76](https://github.com/sleepy-panda-srl/portulan/issues/76),
   and milestone 6 session 1 deliberately did not settle it:** the per-persona scope layer that arrived
   with Workspace Definition 2.6 is a second store, and siting it *inside* `slots.memory` would have been
   the cheapest thing to build and would have made this limit load-bearing — a nested store railed by a

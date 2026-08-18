@@ -1,6 +1,6 @@
 **type:** rule
 **scope:** workspace — every session working in this repository
-**provenance:** `form=link` `href=https://github.com/sleepy-panda-works/portulan/pull/5`
+**provenance:** `form=link` `href=https://github.com/sleepy-panda-srl/portulan/pull/5`
 — the maintainer's ruling, Marius Cetanas, 2026-07-25, taken after milestone 1 session 3 produced the
 first handoff and the question was raised whether one is warranted per session or only when useful.
 

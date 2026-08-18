@@ -1,6 +1,6 @@
 # Handoff — a blank governor is no governor
 
-**Off the milestone row.** Issue [#141](https://github.com/sleepy-panda-works/portulan/issues/141), filed
+**Off the milestone row.** Issue [#141](https://github.com/sleepy-panda-srl/portulan/issues/141), filed
 from Copilot's confirming round on #135 and left rather than fixed there on the maintainer's instruction.
 
 ## The defect

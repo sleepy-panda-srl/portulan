@@ -6,17 +6,17 @@ session opened all landed today, and one of them closed an issue it had been cor
 **State.** `main` = `46e7b81`. Nine recipes green, suite **1059**, store **118,730 / 122,880**,
 `claude plugin validate --strict` passes. Merged in dependency order, rebase-merged, branches deleted at
 both ends after `git cherry origin/main <branch>` showed zero `+` lines:
-[#179](https://github.com/sleepy-panda-works/portulan/pull/179) →
-[#177](https://github.com/sleepy-panda-works/portulan/pull/177) →
-[#178](https://github.com/sleepy-panda-works/portulan/pull/178) →
-[#176](https://github.com/sleepy-panda-works/portulan/pull/176). Issues **#66** and **#148** closed;
+[#179](https://github.com/sleepy-panda-srl/portulan/pull/179) →
+[#177](https://github.com/sleepy-panda-srl/portulan/pull/177) →
+[#178](https://github.com/sleepy-panda-srl/portulan/pull/178) →
+[#176](https://github.com/sleepy-panda-srl/portulan/pull/176). Issues **#66** and **#148** closed;
 **#134 reopened** — see below.
 
 ## The one thing here a diff cannot reconstruct
 
 **#134 was closed by a commit message, not by a decision, and the decision had gone the other way.**
 
-[#178](https://github.com/sleepy-panda-works/portulan/pull/178) carried `Closes #134` in an early commit
+[#178](https://github.com/sleepy-panda-srl/portulan/pull/178) carried `Closes #134` in an early commit
 (`fce158c`). A fresh-context supervisor then ruled **KEEP OPEN**, the pull-request description was rewritten
 to `Refs #134`, and a later commit (`56da8f0`) withdrew the claim in as many words. **GitHub reads closing
 keywords from every commit a merge lands**, so the retracted one fired anyway and the issue closed on merge.
@@ -48,10 +48,10 @@ close, the residue must land somewhere first.
 _Both were ruled the same day, hours after this was written, and the wording above is left standing with the
 rulings recorded beneath it rather than rewritten — a record says what was owed when it was written._
 **The maintainer licensed an agent to draft the narrowing for his review**, and it is drafted on
-[#181](https://github.com/sleepy-panda-works/portulan/pull/181). **And the residue did not land on #123**,
+[#181](https://github.com/sleepy-panda-srl/portulan/pull/181). **And the residue did not land on #123**,
 which this handoff proposed: #123 is being closed for good in its own session, so widening it would have
 parked the remainder on an issue about to close. It went to a new issue,
-[#184](https://github.com/sleepy-panda-works/portulan/issues/184) — the pack-registration half and the
+[#184](https://github.com/sleepy-panda-srl/portulan/issues/184) — the pack-registration half and the
 no-inheritance half, the two this file correctly identified as uncarried — and **#134 closed on the
 maintainer's explicit ruling** with that comment recording what did and did not close. The sentence this
 paragraph amends was right about the hazard and wrong about the destination.

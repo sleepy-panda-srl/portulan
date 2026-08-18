@@ -48,7 +48,7 @@ that visibility costs is stated below rather than defined away.
   the work is full-lane, the pre-commit checkpoint
   ([Supervised-build checkpoints](#supervised-build-checkpoints)) — because a tier says who must attend
   an action, not what the session owes before it. Ruled on
-  [#174](https://github.com/sleepy-panda-works/portulan/issues/174), recorded as
+  [#174](https://github.com/sleepy-panda-srl/portulan/issues/174), recorded as
   [`proposals/0024`](proposals/0024-a-tier-says-who-attends-a-checkpoint-says-what-is-owed.md).
 - `push-a-working-branch` — **to `origin`, including its first push.** Never `main`, which the platform
   refuses anyway. See below for why this stopped being Gated. Force-pushing a working branch is included,
@@ -123,8 +123,8 @@ Reversible but consequential: it changes what the repository says, or how it beh
 **An idea that adds an axis, a mode, or a surface starts as a proposal.** It is written into
 [`proposals/`](proposals/) and ruled on there — never opened as an implementation pull request with
 tests. _Why, measured on two arcs that both reached a maintainer's ruling and paid very different
-prices for it: [#53](https://github.com/sleepy-panda-works/portulan/pull/53) and
-[#55](https://github.com/sleepy-panda-works/portulan/pull/55) **built** a three-mode autonomy axis over
+prices for it: [#53](https://github.com/sleepy-panda-srl/portulan/pull/53) and
+[#55](https://github.com/sleepy-panda-srl/portulan/pull/55) **built** a three-mode autonomy axis over
 the four tiers and hardened it through seven review rounds, with regression tests for each finding,
 before the ruling that declined it — "the single posture `main` already runs is sufficient", declined as
 unnecessary rather than rejected as wrong — so the entire build was waste, and what survived is the
@@ -328,7 +328,7 @@ file: where a rule and its clarification live apart, only the rule gets read.)_
   _This line and the two below it are re-measured at each supervised checkpoint and never written from
   memory: **the permission set is a live setting no file here can pin**, and it went stale in all three
   carriers within an hour of the grant. Raised by the reviewing session of 2026-07-29 against `main`;
-  the read-back is `gh api /orgs/sleepy-panda-works/installations --jq '.installations[] |
+  the read-back is `gh api /orgs/sleepy-panda-srl/installations --jq '.installations[] |
   select(.app_id==4390104) | .permissions'`._
 
   So for the agent identity a settings **change** is refused by GitHub — the half
@@ -504,11 +504,11 @@ the pass that found this sentence claiming three while citing two printers that 
 **The third reader of one policy was [`cli/gate.mjs`](../cli/gate.mjs), and it was swept last.** *Declares*
 versus *yields* has now been repaired three times: `dod.md`'s condition 1, then `doctor` above, then the
 PreToolUse hook — which walked `gates.json` alone while the permission rules compiled beside it came from
-the composed set ([#269](https://github.com/sleepy-panda-works/portulan/issues/269)). It composes through
+the composed set ([#269](https://github.com/sleepy-panda-srl/portulan/issues/269)). It composes through
 the same `packContributions`/`composeFragments` for the same reason it already imported `matchesRule`: a
 second composer drifts the way a second matcher does. Session 16 wrote the transferable rule down —
 *when a rule has been fixed on one noun, look for the other nouns* — without naming which nouns were
-left; this was one of them, and the sweep it asks for did not happen until [#269](https://github.com/sleepy-panda-works/portulan/issues/269).
+left; this was one of them, and the sweep it asks for did not happen until [#269](https://github.com/sleepy-panda-srl/portulan/issues/269).
 
 **What that cost on this repository is nothing, and the number is the point rather than a reassurance.**
 Both fragments `rituals/checkpoints` contributes carry `action: none`, so no matcher reaches them and
@@ -676,7 +676,7 @@ Corrected here rather than left, because a gate map that overstates a hole is as
    so — the same class as every other live-settings claim on this page, and read by hand at the
    supervised checkpoints.
 7. **A pack the hook cannot resolve, where `compile` can.** Added 2026-08-14, and it is the remainder of
-   [#269](https://github.com/sleepy-panda-works/portulan/issues/269) rather than a hole that change
+   [#269](https://github.com/sleepy-panda-srl/portulan/issues/269) rather than a hole that change
    opened. [`cli/gate.mjs`](../cli/gate.mjs) composes from the root **derived** from the workspace
    manifest's `tree` and wires **no discovery**, so a pack that resolves only from the host's plugin
    cache contributes to what a bare `compile` yields and not to what the hook composes. Deliberate: this
@@ -684,7 +684,7 @@ Corrected here rather than left, because a gate map that overstates a hole is as
    could not be reviewed from the repository. Two consequences follow and are named rather than left to
    be met — a workspace with **no `tree`** composes nothing here, and a **refused** composition falls
    back to the declared rules. Which of the two resolution sets is the right one for a *rail* is
-   [#264](https://github.com/sleepy-panda-works/portulan/issues/264)'s question, not this entry's; what
+   [#264](https://github.com/sleepy-panda-srl/portulan/issues/264)'s question, not this entry's; what
    this entry states is which one the hook uses. Asserted as a test rather than only written down —
    and the first draft of that test was **inert**, a poisoned plugin record shaped so that no reader
    could have picked it up, green against a runner that went looking. Found by the pre-commit
@@ -714,10 +714,10 @@ because an unattended actor left off this table is exactly the drift the table e
 | Commits and pushes | **The maintainer's** git identity and credentials | The build's provenance discipline requires his authorship on the commit record. An agent co-authoring is fine and already conventional; an agent *replacing* him there is not. |
 | Pull-request conversation — comments and review replies | **The agent identity**, via [`tools/gh-bot`](tools/gh-bot) | A reply written by an agent and posted through the maintainer's credentials makes the conversation read as human when it is not, and the reader cannot tell. See [`memory/agent-activity-is-attributable.md`](memory/agent-activity-is-attributable.md). |
 | **Opening a pull request** — by a person or a session | **The maintainer's credentials**, with the body carrying an attribution line naming the agent | The practice, not a platform limit any more. It is the one this repository used before the App existed: post under his name and *say so in the artifact*, which serves the rule's actual purpose — a reader can tell. Conversation on the pull request still comes from the bot. |
-| **Opening a pull request** — by the scheduled librarian | **The agent identity**, via an App installation token minted inside the workflow | The one artifact nobody is present to open, so *say so in the artifact* has nobody to say it. Creating a pull request needs repository-**contents** read, which this App is refused — GitHub answers `not all refs are readable` (HTTP 422), measured 2026-07-26 opening [#18](https://github.com/sleepy-panda-works/portulan/pull/18). [`proposals/0015`](proposals/0015-the-librarian-files-as-the-agent.md) reverses that on the maintainer's ruling of 2026-07-28; **the ruling is recorded and the setting is his to apply**, so this row describes the design while the live permission set is read back at the supervised checkpoints and never from here and records what the earlier reasoning got wrong: it priced `contents` as *the ability to write code*, which **read** is not, and it was written while this repository was private. Write is still refused, so "the permission set is the enforcement, not the wrapper" is unchanged. The alternative was worse than it looks — `GITHUB_TOKEN` opening the pull request starts no `pull_request` runs at all, so the two required checks never report and the thing can never merge. |
+| **Opening a pull request** — by the scheduled librarian | **The agent identity**, via an App installation token minted inside the workflow | The one artifact nobody is present to open, so *say so in the artifact* has nobody to say it. Creating a pull request needs repository-**contents** read, which this App is refused — GitHub answers `not all refs are readable` (HTTP 422), measured 2026-07-26 opening [#18](https://github.com/sleepy-panda-srl/portulan/pull/18). [`proposals/0015`](proposals/0015-the-librarian-files-as-the-agent.md) reverses that on the maintainer's ruling of 2026-07-28; **the ruling is recorded and the setting is his to apply**, so this row describes the design while the live permission set is read back at the supervised checkpoints and never from here and records what the earlier reasoning got wrong: it priced `contents` as *the ability to write code*, which **read** is not, and it was written while this repository was private. Write is still refused, so "the permission set is the enforcement, not the wrapper" is unchanged. The alternative was worse than it looks — `GITHUB_TOKEN` opening the pull request starts no `pull_request` runs at all, so the two required checks never report and the thing can never merge. |
 | **Committing and pushing a scheduled pass** | **The workflow**, as `github-actions[bot]` | The identity that actually pushes, named as itself. Committing as the maintainer would be fabricated contemporaneity — he was not there — and committing as `portulan-agent[bot]` would be worse: that App holds no `contents` write and could not have pushed this. The row above it stays true of everything a person or a session commits. What keeps this honest without his authorship is the same thing that keeps the row above honest *with* it: the merge is Gated, so nothing an unattended pass writes reaches `main` without his decision. |
 | **Filing an issue from `portulan feedback`** — by a person or a session here | **The maintainer's** GitHub credentials: the `gh` login already on the machine | Added 2026-08-10 with the sender, because an act this table does not name is exactly the drift it was built to catch — and the answer is the one worth recording: **no new identity**. The tool operates no service and mints nothing; it shells out to whatever `gh` is logged in, so every issue is attributable to an accountable account and GitHub's own abuse limits apply. That is proposal [`0014`](proposals/0014-a-feedback-pipe-points-out-of-the-seam.md)'s Q5(a), and it is why Q5(b) — a Sleepy-Panda-operated relay — stays unbuilt and constitutional. **The approval is the tool's rather than this table's:** `send` refuses without `--approve`, per send, never inherited from a draft or a preview. **The count above is unchanged**: an outside reporter running the same tool files under their own account, and that is not an actor on this team's behalf — this table's subject — any more than someone filling the web form is. |
-| **Resolving a review thread** | **The maintainer decides**; the command is his or an agent's, on his explicit per-action approval of the merge the thread blocks | Not the agent identity's **token** — the App, not the runtime the Identity cell means by *an agent's* — and that half is a platform refusal that still holds: `resolveReviewThread` returns `FORBIDDEN — Resource not accessible by integration` for a GitHub App, whatever its permission set. The maintainer's own credentials **can resolve a review thread** — measured 2026-07-27 on two Copilot threads on [#42](https://github.com/sleepy-panda-works/portulan/pull/42), where resolution was a precondition of a merge he had already approved and the agent ran the command. This cell read "**The maintainer**, by hand" and called that question "untested and deliberately so"; the test arrived the only way it safely could, carried by an approved merge rather than sought for its own sake. The answer is the one row 223 already records: **impossibility stated where the truth is authorization**, and what stops an agent here is this row and the Gated tier's header, not the platform. The split is still right on the merits rather than only on capability — a reply is *what the agent says*, while resolving is *the judgement that a review point is settled*, and this repository requires conversation resolution before merge, which makes it part of the merge gate rather than part of the conversation. So the judgement travels **with** the merge approval, and never ahead of it: absent an approved merge there is nothing for an agent to resolve on. Measured once, with an admin account under `enforce_admins`; it says nothing about a non-admin collaborator's token. **And the requirement this row leans on is weaker than it reads.** `required_conversation_resolution` does not establish that a *human* judged a point settled: on [#44](https://github.com/sleepy-panda-works/portulan/pull/44) the Copilot review bot — login *copilot-pull-request-reviewer* — raised a thread, and the account named `Copilot` resolved it once a reply addressed it, so the party that made the objection cleared the gate on it, unasked. Read `resolvedBy` before reading a resolved thread as anyone's judgement. Two things this is not: the comment's author is typed `Bot` and the resolver `User`, so it does not contradict the App refusal above; and the platform does **not** auto-resolve a thread for going outdated — that was inferred here from a resolution landing beside an outdated flag, and `resolvedBy` is the field that disproved it. |
+| **Resolving a review thread** | **The maintainer decides**; the command is his or an agent's, on his explicit per-action approval of the merge the thread blocks | Not the agent identity's **token** — the App, not the runtime the Identity cell means by *an agent's* — and that half is a platform refusal that still holds: `resolveReviewThread` returns `FORBIDDEN — Resource not accessible by integration` for a GitHub App, whatever its permission set. The maintainer's own credentials **can resolve a review thread** — measured 2026-07-27 on two Copilot threads on [#42](https://github.com/sleepy-panda-srl/portulan/pull/42), where resolution was a precondition of a merge he had already approved and the agent ran the command. This cell read "**The maintainer**, by hand" and called that question "untested and deliberately so"; the test arrived the only way it safely could, carried by an approved merge rather than sought for its own sake. The answer is the one row 223 already records: **impossibility stated where the truth is authorization**, and what stops an agent here is this row and the Gated tier's header, not the platform. The split is still right on the merits rather than only on capability — a reply is *what the agent says*, while resolving is *the judgement that a review point is settled*, and this repository requires conversation resolution before merge, which makes it part of the merge gate rather than part of the conversation. So the judgement travels **with** the merge approval, and never ahead of it: absent an approved merge there is nothing for an agent to resolve on. Measured once, with an admin account under `enforce_admins`; it says nothing about a non-admin collaborator's token. **And the requirement this row leans on is weaker than it reads.** `required_conversation_resolution` does not establish that a *human* judged a point settled: on [#44](https://github.com/sleepy-panda-srl/portulan/pull/44) the Copilot review bot — login *copilot-pull-request-reviewer* — raised a thread, and the account named `Copilot` resolved it once a reply addressed it, so the party that made the objection cleared the gate on it, unasked. Read `resolvedBy` before reading a resolved thread as anyone's judgement. Two things this is not: the comment's author is typed `Bot` and the resolver `User`, so it does not contradict the App refusal above; and the platform does **not** auto-resolve a thread for going outdated — that was inferred here from a resolution landing beside an outdated flag, and `resolvedBy` is the field that disproved it. |
 | **Submitting or dismissing the round's derived verdict** | **The agent identity**, via an App installation token minted inside the workflow | The verdict is computed from Copilot's round by [`copilot-review.yml`](../.github/workflows/copilot-review.yml) — approve, approve with the suppressed notes quoted, or nothing — **derived, never judged**, and the review body says so. Nobody else can carry it: Copilot submits every round as `COMMENTED` by platform design (re-checked against GitHub's documentation 2026-07-29), and `GITHUB_TOKEN` is refused approving reviews outright — `can_approve_pull_request_reviews` is `false` at organisation and repository, read back 2026-07-29 via `gh api repos/{owner}/{repo}/actions/permissions/workflow` — a refusal left standing on purpose, so the identity that runs unattended jobs and the identity that speaks about code stay distinct. Self-approval is platform-refused, so App-authored pull requests carry no derived verdict and the maintainer's review is the verdict there. This is a new act for this identity beyond conversation — the *Merge discipline* section owns the rationale, and the row exists because an act this table does not name is exactly the drift it was built to catch. |
 | Everything Gated above — settings, releases, merges | **The maintainer decides**; the command is his or an agent's, on his explicit per-action approval | The agent identity's token cannot **change** any of these — that half is a platform refusal and is the load-bearing one. The other half is a *prohibition*: an agent running with the maintainer's credentials can call most of these, so what stops it is the Gated tier's header, not the platform. This cell read "**The maintainer**, by hand", which stated impossibility where the truth is authorization — corrected 2026-07-27, the same conflation proposal [`0006`](proposals/0006-dependabot-security-updates.md) shipped and had to fix, here in the file that defines the tier. **And the correction did not go far enough, in the direction it was already about.** It then read "cannot do these *at all*", which is false of reading: the App's `metadata: read` carries repository **ruleset reads**, and `GET repos/{owner}/{repo}/rulesets` through [`tools/gh-bot`](tools/gh-bot) returned `200` on 2026-07-28 — while `branches/main/protection` returned `403`, so the surface is narrower than `gh api` and is not empty. The `gh api` gate covered reads on purpose while it stood, so this was a gap and not a technicality — and it is the read half that outlived the gate, since the wrapper still refuses it. Corrected 2026-07-28 by measuring rather than by re-reading: the permission set was recorded accurately below all along and the *inference* drawn from it here was too strong, which is the one drift a claims lint over this tree can never catch. |
 
@@ -728,7 +728,7 @@ Note the asymmetry, because it looks inconsistent until you say it out loud: the
 **Pull-request ownership is authorship, not assignment — and the assignee field cannot say otherwise.**
 Measured 2026-07-29: only `marius-cetanas` is assignable on this repository. `portulan-agent[bot]` and
 `Copilot` both answer 404 on the assignability check, and the assignee list has exactly one entry —
-read-back `gh api repos/sleepy-panda-works/portulan/assignees`, per-login check
+read-back `gh api repos/sleepy-panda-srl/portulan/assignees`, per-login check
 `…/assignees/{login}`. A GitHub App's bot identity cannot be an assignee whatever its permission set:
 the field takes user accounts with repository access and nothing else, so no setting this repository
 controls changes the answer. The App-authored pull request therefore already carries the only
@@ -803,13 +803,13 @@ check matches every review's `commit_id` against the pull request's current head
 `synchronize`, so pushing puts it back to pending. It also **fails closed** — an unreadable API is
 `could not look`, never `nothing wrong`.
 
-**A review object is not a round — amended 2026-08-18, issue [#286](https://github.com/sleepy-panda-works/portulan/issues/286).**
+**A review object is not a round — amended 2026-08-18, issue [#286](https://github.com/sleepy-panda-srl/portulan/issues/286).**
 The row above said *the round has landed* and the check asked something weaker: that a review by the
 right login, on the right commit, not dismissed, EXISTS. Those came apart during a platform incident.
 Copilot returned a review whose entire body read *"Copilot encountered an error and was unable to review
 this pull request"*, `copilot-reviewed` reported **green** on it, and the derived verdict then submitted
 an **APPROVED** asserting that round *"raised no inline comment and no suppressed low-confidence note"* —
-about a round that never happened. On [#283](https://github.com/sleepy-panda-works/portulan/pull/283) the
+about a round that never happened. On [#283](https://github.com/sleepy-panda-srl/portulan/pull/283) the
 approval was submitted **4m36s before** the only genuine round arrived, so it cannot have been derived
 from it; the real round then found nothing, which made the sentence true by coincidence and left nothing
 on that pull request distinguishing an earned approval from an unearned one.
@@ -944,7 +944,7 @@ after, by one command that is a repository-settings change and therefore **Gated
 ruled 2026-08-09, exit (2) of
 [`proposals/0023-a-head-that-never-draws-a-round-needs-an-answer.md`](proposals/0023-a-head-that-never-draws-a-round-needs-an-answer.md).**
 The check can be left holding a state that never clears: on
-[#157](https://github.com/sleepy-panda-works/portulan/pull/157) a rebase force-push drew no round at all
+[#157](https://github.com/sleepy-panda-srl/portulan/pull/157) a rebase force-push drew no round at all
 — the re-request was accepted and abandoned — and the pull request merged past the red check on the
 maintainer's explicit override. That exception is now the procedure, unchanged in substance: **the check
 stays red**, because a gate that opens itself on an unexplained absence is not a gate, and the maintainer
@@ -953,7 +953,7 @@ request *before* the merge — his own comment, or an agent's via [`tools/gh-bot
 his instruction verbatim. **The recording is the difference between an override and a habit.**
 
 The cause is unestablished — authorship is the surviving lead
-([#161](https://github.com/sleepy-panda-works/portulan/issues/161)) — and while it stands the weekly
+([#161](https://github.com/sleepy-panda-srl/portulan/issues/161)) — and while it stands the weekly
 librarian pass meets this whenever it needs a rebase, so the expected price is **one recorded override
 per stranded pass**. Measured 2026-08-09: the scheduled pass has run **once**, and it stranded. This is
 doctrine standing where a rail should eventually stand, and [`../docs/vision.md`](../docs/vision.md)'s
@@ -1000,7 +1000,7 @@ If supervision is unavailable in a session, that is stated plainly and the maint
 A milestone is never self-certified.
 
 **The tiers above do not move these moments — ruled 2026-08-09 on
-[#174](https://github.com/sleepy-panda-works/portulan/issues/174), recorded as
+[#174](https://github.com/sleepy-panda-srl/portulan/issues/174), recorded as
 [`proposals/0024`](proposals/0024-a-tier-says-who-attends-a-checkpoint-says-what-is-owed.md).**
 `commit-to-a-working-branch` and `push-a-working-branch` are Auto, and the pre-commit verdict is still
 owed before finished full-lane work is committed: a tier says who must attend an action — no person, for
@@ -1008,10 +1008,10 @@ those two — while this table says what the session owes before it acts, the sa
 scan has always had with commits being Auto. The reading this retires held that a change committed,
 pushed and opened while its own checkpoint ran was *"compliant with the gate map"*
 ([`0020`](proposals/0020-a-fix-is-not-done-at-the-site-it-was-found.md) *Where this lands*,
-[#168](https://github.com/sleepy-panda-works/portulan/pull/168)) — it was compliant with the tier half of
+[#168](https://github.com/sleepy-panda-srl/portulan/pull/168)) — it was compliant with the tier half of
 this file and out of order under this table, the pack's sentence, and core's *"the diff before it goes
 outward"*: the breach class the Session log already names on
-[#137](https://github.com/sleepy-panda-works/portulan/pull/137). No carrier puts this checkpoint at the
+[#137](https://github.com/sleepy-panda-srl/portulan/pull/137). No carrier puts this checkpoint at the
 pull request; that boundary was an inference from the Auto tier, drawn three times in one arc, which is
 why the commit bullet above now carries the citing clause.
 
@@ -1068,7 +1068,7 @@ the floor backend has to emit them. Two files stating one fact is this repositor
 above. It is worth knowing exactly how narrow the older check was: `doctor`'s claims lint reads this row and
 compares it against the **tree**, where both jobs exist, so a row naming one of two contexts passed. The
 cross-check is what closes that, and it closed it on its first run — against a branch whose checkout
-predated [#50](https://github.com/sleepy-panda-works/portulan/pull/50), where this row still named one
+predated [#50](https://github.com/sleepy-panda-srl/portulan/pull/50), where this row still named one
 context and `main` had already fixed it. A fair demonstration of the class, and not a defect found in the
 record.
 
@@ -1078,7 +1078,7 @@ these contexts is an API fact no check here fetches. It is read by hand at the s
 **One row is weaker than it reads, and it is the one another section leans on.** Conversation resolution
 requires every thread **resolved**; it does not require that anyone holding the merge gate agrees with it.
 A thread can be resolved by the very reviewer that raised it — measured 2026-07-27 on
-[#44](https://github.com/sleepy-panda-works/portulan/pull/44), where Copilot cleared its own objection once
+[#44](https://github.com/sleepy-panda-srl/portulan/pull/44), where Copilot cleared its own objection once
 a reply addressed it, unasked. So the row stops a comment being *ignored* and establishes nothing about
 whether it was *answered*; `resolvedBy` is the field that tells them apart. This matters beyond the floor,
 because "Which identity acts" argues that resolving belongs to the merge gate on the strength of this
@@ -1134,7 +1134,7 @@ It gates nothing directly: required approving reviews remain 0, and a Copilot re
 rather than as an approval. The honest qualification is that it can still decide whether a change lands —
 conversation resolution is required on `main`, so a Copilot review that leaves an inline comment opens a
 thread that blocks merge until the maintainer resolves it, which is exactly what happened on
-[#25](https://github.com/sleepy-panda-works/portulan/pull/25). Not a gate, then, but upstream of one.
+[#25](https://github.com/sleepy-panda-srl/portulan/pull/25). Not a gate, then, but upstream of one.
 _Since 2026-07-29 the round's outcome is also displayed as an approval — submitted by the agent
 identity, not by Copilot, so the sentence above stays true; see *Merge discipline* for the derived
 verdict and why the approving-review count still does not move._
@@ -1190,7 +1190,7 @@ one the API does.
 
 **`CODEOWNERS` exists as of milestone 3 — and it is not yet part of the floor.**
 [`../CODEOWNERS`](../CODEOWNERS) records who owns which paths and routes review requests. Every path is
-owned by the org team **`@sleepy-panda-works/maintainers`** rather than by a person: the team was created
+owned by the org team **`@sleepy-panda-srl/maintainers`** rather than by a person: the team was created
 visible, granted write on this repository, and only then referenced — that order matters because every
 way of getting it wrong is silent, since GitHub *skips* an invalid owner line rather than refusing it,
 leaving the paths it named unowned while the file still reads as complete. Naming a team means the day a

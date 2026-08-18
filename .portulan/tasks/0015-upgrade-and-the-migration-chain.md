@@ -1,7 +1,7 @@
 # Task 0015 — `upgrade`, and what a migration is
 
 **Lane:** full · **Opened:** 2026-08-12, milestone 7 session 9, at the session-open checkpoint
-**Verify recipe:** `tests` · **Status:** DONE — merged as [#231](https://github.com/sleepy-panda-works/portulan/pull/231) (`1d5ac96`), 2026-08-12
+**Verify recipe:** `tests` · **Status:** DONE — merged as [#231](https://github.com/sleepy-panda-srl/portulan/pull/231) (`1d5ac96`), 2026-08-12
 
 > The eighth of the eight subcommands [`../../docs/vision.md`](../../docs/vision.md) names.
 > **At the moment this task opened**, seven dispatched and `upgrade` was listed in
@@ -13,7 +13,7 @@
 
 Row 7 of [`../../docs/plan.md`](../../docs/plan.md), in two places. The base clause:
 
-> `npx @sleepy-panda-works/portulan` ships init/doctor/compile/vendor/index/**upgrade** …
+> `npx @sleepy-panda-srl/portulan` ships init/doctor/compile/vendor/index/**upgrade** …
 
 and the 2026-07-30 residence amendment, ratified 2026-07-31:
 
@@ -162,7 +162,7 @@ judged the rewritten tripwire in `cli/portulan.test.mjs` **not disarmed** — it
 
 3. **An unfiled "Filed".** `cli/vendor.mjs` claimed the `--switch` deferral had been filed as an issue
    and no such issue existed — the promised-but-unowned class wearing the word. **Folded:** filed as
-   [#230](https://github.com/sleepy-panda-works/portulan/issues/230) and cited by URL.
+   [#230](https://github.com/sleepy-panda-srl/portulan/issues/230) and cited by URL.
 4. **The MINOR-ahead refusal is the MAJOR arm's sibling, ten lines below.** It still stopped at
    *"Refusing"* while the arm this change repaired named its remedy — `0020` committed inside the
    change that cites it. **Folded:** it names the same remedy, and a test pins it.
@@ -256,7 +256,7 @@ rail already exists** — the drafted recipe's own fail-closed exit 2 with a sel
 operator who can do nothing durable about it.
 
 **Ruled and closed.** The maintainer disposed of
-[#230](https://github.com/sleepy-panda-works/portulan/issues/230) on 2026-08-12, taking the option the
+[#230](https://github.com/sleepy-panda-srl/portulan/issues/230) on 2026-08-12, taking the option the
 supervisor recommended: *"`vendor` copies; `upgrade` repairs; `vendor`'s comment names the remedy.
 Current state. One tool, one job."* `cli/vendor.mjs`'s comment carries the ruling and its argument.
 

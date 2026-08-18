@@ -5,16 +5,16 @@ controlled experiment, whose opportunistic design is bound in the **Decision** a
 below is the evidence as it stood at the ruling and still recommends no exit: the recommendation half of
 this record is the Decision.
 
-**Pull request:** https://github.com/sleepy-panda-works/portulan/pull/186
+**Pull request:** https://github.com/sleepy-panda-srl/portulan/pull/186
 
 ## Incident
 
-[#161](https://github.com/sleepy-panda-works/portulan/issues/161). On
-[#157](https://github.com/sleepy-panda-works/portulan/pull/157), 2026-08-03, a rebase force-push drew
+[#161](https://github.com/sleepy-panda-srl/portulan/issues/161). On
+[#157](https://github.com/sleepy-panda-srl/portulan/pull/157), 2026-08-03, a rebase force-push drew
 **no Copilot round at all**: the `copilot auto-review on pull requests` ruleset — the full live name, read from the
 rulesets API rather than abbreviated — carries `review_on_push: true` and did not fire; `copilot-review.yml` re-requested at 625s and the `POST .../requested_reviewers` was **accepted**;
 at 1216s the request list read empty with no review submitted. No platform incident — Copilot had
-reviewed [#158](https://github.com/sleepy-panda-works/portulan/pull/158) normally about ninety minutes
+reviewed [#158](https://github.com/sleepy-panda-srl/portulan/pull/158) normally about ninety minutes
 earlier.
 
 `copilot-reviewed` exists so a pull request waits for the round on the commit it is actually merging. A
@@ -24,7 +24,7 @@ each other directly.
 
 ## What is established, and what is not
 
-**Refuted — diff-similarity.** [#160](https://github.com/sleepy-panda-works/portulan/pull/160) was
+**Refuted — diff-similarity.** [#160](https://github.com/sleepy-panda-srl/portulan/pull/160) was
 rebased onto a moved `main`; the intervening commits did not touch the workflow, so the diff was
 **byte-identical** — `git diff origin/main..HEAD | git hash-object --stdin` returned
 `6f4b38d320945b68a69aa04fe4a57853fb18db67` on both sides, and `range-diff` replayed all six commits as
@@ -44,7 +44,7 @@ head at 10:04, so a blanket *"Copilot does not review App-authored pull requests
 evidence. The shape that fits is narrower — `synchronize` specifically, `opened` unaffected — and **one
 uncontrolled variable across two pull requests is not a mechanism**. Two things stay unexplained: why the
 explicit re-request is *accepted* and then yields nothing, and why that differs from
-[#86](https://github.com/sleepy-panda-works/portulan/pull/86), where a re-request produced a round in
+[#86](https://github.com/sleepy-panda-srl/portulan/pull/86), where a re-request produced a round in
 about ninety seconds.
 
 **The experiment that would settle it** is a controlled pair: one App-authored and one user-authored
@@ -56,7 +56,7 @@ here so the next session does not re-derive it.
 
 **Structural, and weekly.** `librarian.yml` files its pull request as the App **by design**: a
 `GITHUB_TOKEN`-opened one starts no `pull_request` runs at all, so the required checks would never
-report ([#86](https://github.com/sleepy-panda-works/portulan/pull/86)). The pass has no update path,
+report ([#86](https://github.com/sleepy-panda-srl/portulan/pull/86)). The pass has no update path,
 so any pass not merged before `main` moves needs a rebase — the exact operation that appears to suppress
 the round. If the lead holds, **every scheduled pass needing a rebase strands this way**. It is not
 limited to the librarian: any pull request rebased after review meets it.
@@ -74,7 +74,7 @@ that bug **predated** #160 and was live in `copilot-review.yml`. Weakening this 
 
 ## The floor as it actually stands, measured
 
-Read live from `repos/sleepy-panda-works/portulan/branches/main/protection` on 2026-08-09, because this
+Read live from `repos/sleepy-panda-srl/portulan/branches/main/protection` on 2026-08-09, because this
 is exactly the class of fact `.portulan/gate-map.md` says no file here can pin:
 
 | Setting | Value |
@@ -132,11 +132,11 @@ a ruling rather than a note.
 
 ## Provenance
 
-`form=link href=https://github.com/sleepy-panda-works/portulan/issues/161`, with the refutation and
-finding-rate comments on it, [#157](https://github.com/sleepy-panda-works/portulan/pull/157),
-[#160](https://github.com/sleepy-panda-works/portulan/pull/160),
-[#162](https://github.com/sleepy-panda-works/portulan/pull/162) and
-[#86](https://github.com/sleepy-panda-works/portulan/pull/86).
+`form=link href=https://github.com/sleepy-panda-srl/portulan/issues/161`, with the refutation and
+finding-rate comments on it, [#157](https://github.com/sleepy-panda-srl/portulan/pull/157),
+[#160](https://github.com/sleepy-panda-srl/portulan/pull/160),
+[#162](https://github.com/sleepy-panda-srl/portulan/pull/162) and
+[#86](https://github.com/sleepy-panda-srl/portulan/pull/86).
 
 **Retire when:** ~~the ruling lands and its mechanism is configured — or when a controlled experiment
 establishes the cause and the exit follows from it rather than from a lead.~~ **SATISFIED on the first

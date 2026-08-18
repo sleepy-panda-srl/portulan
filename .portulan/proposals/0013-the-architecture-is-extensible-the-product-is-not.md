@@ -120,4 +120,4 @@ scale down*, *No auto-generated curated context*), read against the maintainer's
 
 **Decision.** Marius Cetanas — pending.
 
-**Pull request:** [#52](https://github.com/sleepy-panda-works/portulan/pull/52) — the change that filed this.
+**Pull request:** [#52](https://github.com/sleepy-panda-srl/portulan/pull/52) — the change that filed this.

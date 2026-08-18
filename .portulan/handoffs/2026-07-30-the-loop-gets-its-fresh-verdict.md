@@ -1,6 +1,6 @@
 # Handoff — the loop gets its fresh verdict, and the build cycle stops being an anecdote
 
-**Pull request:** [#137](https://github.com/sleepy-panda-works/portulan/pull/137) · **Branch:**
+**Pull request:** [#137](https://github.com/sleepy-panda-srl/portulan/pull/137) · **Branch:**
 `claude/loop-doctrine-implementation-fc9567` · **Milestone state:** none moved. Row 7's criterion is
 **amended** (an expansion); its Status stays `todo`.
 
@@ -49,7 +49,7 @@ records every session. Portulan stays named as the instance it generalises from.
 ## What is drafted, not shipped
 
 Row 7's amendment — `init` binding the checkpoint ritual and the records conventions by default,
-pack-skill parity through a host ([#134](https://github.com/sleepy-panda-works/portulan/issues/134)),
+pack-skill parity through a host ([#134](https://github.com/sleepy-panda-srl/portulan/issues/134)),
 and the parity clause. It is a **draft for the maintainer's ratification**. `cli/init.mjs` does not
 exist; nothing here claims it does. The argument is in
 [`../../docs/milestones/m07.md`](../../docs/milestones/m07.md).
@@ -64,7 +64,7 @@ not have. Seam scan clean over diff, message and branch.
 **The recursion is the point and is worth one line:** this change was graded by the mechanism it
 describes. A fresh-context session-open returned APPROVE-WITH-ADJUSTMENTS with nine numbered
 adjustments — including the two-proposal split, the omission of the table edit, and a boot claim that
-had gone stale during the checkpoint itself ([#136](https://github.com/sleepy-panda-works/portulan/pull/136)
+had gone stale during the checkpoint itself ([#136](https://github.com/sleepy-panda-srl/portulan/pull/136)
 merged mid-verdict) — and a second fresh context re-measured the complete diff, returning
 APPROVE-WITH-ADJUSTMENTS with five.
 
@@ -86,7 +86,7 @@ superset of an outside diff-reader, the two classes are disjoint, and 0018 says 
 ## A breach, recorded as one
 
 **The doctrine commit was committed, pushed to a public history, and
-[#137](https://github.com/sleepy-panda-works/portulan/pull/137) opened before any pre-commit checkpoint
+[#137](https://github.com/sleepy-panda-srl/portulan/pull/137) opened before any pre-commit checkpoint
 ran.** [`../gate-map.md`](../gate-map.md) says pre-commit runs *before any commit, and before anything
 goes outward*. This did not.
 
@@ -105,7 +105,7 @@ declined to soften it, which is the checkpoint working.
 
 ## Open, for whoever picks this up
 
-- [#135](https://github.com/sleepy-panda-works/portulan/pull/135) is open and also touches
+- [#135](https://github.com/sleepy-panda-srl/portulan/pull/135) is open and also touches
   `docs/plan.md` and `docs/milestones/m07.md`. Whichever merges second rebases; the strict-up-to-date
   floor forces it anyway.
 - Nothing rails the freshness, and nothing can — *"no permission rule can observe whether the context

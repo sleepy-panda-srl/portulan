@@ -2,7 +2,7 @@
 
 2026-08-09, second of three sessions off the board's `Now` column, on
 `m7-a-claim-about-a-mechanism-is-a-figure`.
-[#133](https://github.com/sleepy-panda-works/portulan/issues/133): fix the one instance the issue
+[#133](https://github.com/sleepy-panda-srl/portulan/issues/133): fix the one instance the issue
 deliberately left unfixed, and file a proposal on the class. Both here; the ruling is the maintainer's.
 
 ## The instance, and why it is worth more than a one-line fix
@@ -22,7 +22,7 @@ replacement would have shipped a second wrong sentence. **That is the argument f
 by the instance.**
 
 Two other corrections in the same stroke. The neighbouring comment cited
-[#68](https://github.com/sleepy-panda-works/portulan/issues/68) as *"the rail that would make such a
+[#68](https://github.com/sleepy-panda-srl/portulan/issues/68) as *"the rail that would make such a
 path impossible"* — wrong twice: **#68 is closed**, and the rail it shipped scans file **contents**,
 never path names. And the new sentence itself carried a residual overclaim, caught at the checkpoint: it
 covers the **path** channel only. A raw `\001` in a link **target** still reaches the sentinel through
@@ -66,7 +66,7 @@ exact shape, three lines below, with the verb flipped in valence, in the one fil
 carries it. The final text *cites* the motto instead of coining a rival. Verified against the file
 before accepting: epigraph at line 8, step 1 at line 26, step 2 at line 28.
 
-**(a) is not bundled** — filed as [#187](https://github.com/sleepy-panda-works/portulan/issues/187), so
+**(a) is not bundled** — filed as [#187](https://github.com/sleepy-panda-srl/portulan/issues/187), so
 the mechanical rail is costed as a build rather than decided inside a doctrine ruling. **The two errata
 stand**, on the ground that a record which demonstrated its thesis against its own author is evidence,
 and scrubbing it would trade a demonstrated claim for an asserted one.
@@ -77,6 +77,6 @@ this standard, so a stale claim found in old prose after this lands is **arrears
 #133 closes with this change.
 
 The proposal names its pull request by prediction, per
-[#143](https://github.com/sleepy-panda-works/portulan/issues/143)'s chicken-and-egg — `docs.sh` check 5c
+[#143](https://github.com/sleepy-panda-srl/portulan/issues/143)'s chicken-and-egg — `docs.sh` check 5c
 asserts URL *shape* and never that the pull request exists, so the number was verified by hand after
 opening rather than by any rail.

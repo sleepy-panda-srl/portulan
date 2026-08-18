@@ -28,7 +28,7 @@
       "id": "recipe-set-yields",
       "carrier": "cli/recipe-set.mjs",
       "summary": "What CI runs is the set the workspace manifest YIELDS — its own declared recipes plus those its composed packs contribute, namespaced by pack — and not the list it declares. Landed at milestone 7 session 5; cli/recipe-set.mjs is the one carrier of the set and CI calls it rather than enumerating a manifest.",
-      "incident": "https://github.com/sleepy-panda-works/portulan/pull/222",
+      "incident": "https://github.com/sleepy-panda-srl/portulan/pull/222",
       "registered": "2026-08-10",
       "_tells_comment": "Every tell below was MEASURED against the pre-sweep tree (27705ae), not invented. Two plural variants were written from memory, matched nothing, and the dead-tell audit rejected them on its first run — `invented is a claim`, and the audit is what makes that checkable rather than a maxim.",
       "tells": [

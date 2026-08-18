@@ -1,7 +1,7 @@
 # Handoff — a rail against instrument blindness went blind four ways while being built
 
 2026-08-10, off the milestone row, commissioned by the maintainer after
-[#222](https://github.com/sleepy-panda-works/portulan/pull/222): *"This needs a well structured change
+[#222](https://github.com/sleepy-panda-srl/portulan/pull/222): *"This needs a well structured change
 to stop from it resurfacing."* **No criterion moves.** Stacked on #222, because the rail is green only
 on the tree #222 sweeps.
 
@@ -14,7 +14,7 @@ Three defect classes were named, in three separate instructions:
 - **C** — records asserting things about git and GitHub state that no rail can see.
 
 A fresh-context supervisor graded the draft design and returned **REQUEST-CHANGES**, with the finding
-that mattered most: **B is already filed as [#187](https://github.com/sleepy-panda-works/portulan/issues/187)**,
+that mattered most: **B is already filed as [#187](https://github.com/sleepy-panda-srl/portulan/issues/187)**,
 and re-proposing it would have been the two-carrier defect committed on the deliverable itself. It also
 reframed A entirely — see below — and split C three ways.
 
@@ -66,7 +66,7 @@ Every one found by **running or forcing red**, none by reading. This is the part
    were also **invented rather than measured**, and the audit rejected them. *Invented is a claim*, and
    the audit is what makes that checkable instead of a maxim.
 4. **Four raw NUL bytes in the source** — a map-key separator where the escape was meant, which is
-   [#68](https://github.com/sleepy-panda-works/portulan/issues/68)'s incident verbatim. `file` called the
+   [#68](https://github.com/sleepy-panda-srl/portulan/issues/68)'s incident verbatim. `file` called the
    file *data*; **`grep` returned nothing for strings that were plainly there**, which is the only reason
    it was noticed. `control-chars.sh` named it in one run. **A rail written against instrument blindness
    was itself silently corrupted, and an existing rail caught it.** Then the *proposal describing that

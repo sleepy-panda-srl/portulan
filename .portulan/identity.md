@@ -44,7 +44,7 @@ Deliberately thin, and it stays thin:
 
 No framework, no build step, no service, and nothing installed before it runs **from a checkout** —
 which is the property, stated with the boundary the CLI put on it. `package.json` exists as of
-milestone 7 and declares **no dependencies**: it names the `bin` that `npx @sleepy-panda-works/portulan`
+milestone 7 and declares **no dependencies**: it names the `bin` that `npx @sleepy-panda-srl/portulan`
 **will** expose once the maintainer publishes — publishing is Gated and has not happened, so the package
 is not on the registry today — and nothing else. `npm install` fetches nothing, and every tool here still
 runs as `node cli/<tool>.mjs` straight from a clone.

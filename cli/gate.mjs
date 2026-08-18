@@ -89,7 +89,7 @@ import { matchesRule, policyPath, packContributions, composeFragments, parse } f
 // the author's — and it is why the file could not ship. Milestone 7 moves both runners into `cli/` so an
 // adopter actually receives them (`package.json`'s `files` never carried `.portulan/`, so every compiled
 // policy named a file the adopter did not have, and a missing hook fails open). From `cli/`, and even
-// more so from `node_modules/@sleepy-panda-works/portulan/cli/`, this file has no idea where the
+// more so from `node_modules/@sleepy-panda-srl/portulan/cli/`, this file has no idea where the
 // adopter's workspace is — and inferring one would be #131's class, paths resolved against the author's
 // layout, in the tool with the most to lose from it.
 //

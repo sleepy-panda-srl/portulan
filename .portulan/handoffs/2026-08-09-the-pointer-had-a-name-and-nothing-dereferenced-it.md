@@ -1,6 +1,6 @@
 # Handoff — the pointer had a name and nothing dereferenced it
 
-**Milestone 7, session 5.** Issue [#134](https://github.com/sleepy-panda-works/portulan/issues/134)'s
+**Milestone 7, session 5.** Issue [#134](https://github.com/sleepy-panda-srl/portulan/issues/134)'s
 still-open half: *a feed-installed workspace is invisible to `/portulan`*. The other half — *a workspace
 cannot inherit another* — was answered by proposal
 [`0017`](../proposals/0017-one-repository-one-governing-workspace.md) and the `pointer` kind at Workspace
@@ -45,7 +45,7 @@ and so is every CI run — so failing there would red an honest manifest and mak
 workspace into a fact about somebody's laptop.
 
 **`--pack-root` is deliberately NOT defaulted from the same record.** That is
-[#123](https://github.com/sleepy-panda-works/portulan/issues/123)'s half: it changes what a `packs` array
+[#123](https://github.com/sleepy-panda-srl/portulan/issues/123)'s half: it changes what a `packs` array
 resolves against on every existing run, and #117 established that a **named root replaces** the derived
 one, so *"this pack resolved from the feed"* cannot be satisfied by a copy in the local tree. The row
 fixes the only safe direction — add a root where none was named, never replace one that was — and this
@@ -92,7 +92,7 @@ provenance.
   Row 7's clause (b) parenthetical named clause (b) as closing #134 while the same Status cell lists
   `(b) parity` as *Left*; the maintainer licensed an agent to **draft** the narrowing for his review, and
   it is drafted in this change — the parenthetical now closes the **pack-registration half** and points at
-  [#184](https://github.com/sleepy-panda-works/portulan/issues/184).
+  [#184](https://github.com/sleepy-panda-srl/portulan/issues/184).
 
   **#134 was then closed twice, and the first close was wrong.** The first carried the residue honestly to
   #184 and closed on the ruling — and the maintainer refused it: *"I don't want #134 simply closed. I want
@@ -168,7 +168,7 @@ config, which is exactly the reasoning `cli/doctor.test.mjs` had already written
 
 ## The loop, and where it stopped
 
-[#181](https://github.com/sleepy-panda-works/portulan/pull/181). **Seven rounds, five answering pushes** —
+[#181](https://github.com/sleepy-panda-srl/portulan/pull/181). **Seven rounds, five answering pushes** —
 the bound held for the first four, the fifth ran on the maintainer's grant rather than past him, and rounds
 6 and 7 were siblings of that fix — three sites it had not reached, each found by the round that reviewed it. _(This
 read "three rounds, two answering pushes, and the bound held rather than being argued past", which was true
@@ -189,7 +189,7 @@ that can still move.)_
   Definition requires of that block — with the pattern left to `doctor`. And `options.discover` was called
   synchronously inside an `async` function, so a promise-returning hook would have produced a report about
   a Promise rather than about a host, green and silently wrong.
-- **Round 3, triaged rather than pushed** — [#182](https://github.com/sleepy-panda-works/portulan/issues/182).
+- **Round 3, triaged rather than pushed** — [#182](https://github.com/sleepy-panda-srl/portulan/issues/182).
   A blank `governed_by.feed` constrains discovery to a marketplace named `"   "` and answers *not installed*
   about something installed: real, and a **sibling** of `configDir`'s blank handling one screen up, which
   rule 4 exempts from the bound — but the same clause holds that an extension past two is **the

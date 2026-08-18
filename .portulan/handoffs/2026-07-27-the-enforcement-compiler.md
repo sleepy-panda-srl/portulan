@@ -9,7 +9,7 @@ Gated, and this branch's first push is the maintainer's call.
 `.claude/settings.json` — permission rules and hooks — with `compile --check` declared as the **sixth
 verify recipe**, so a policy edited without recompiling fails CI with no workflow edit. That is
 proposal 0004's mechanism paying out a fourth time — and it was **collected**: the `workspace-verify` job
-on [#31](https://github.com/sleepy-panda-works/portulan/pull/31) ran `compile — ./.portulan/verify/compile.sh`
+on [#31](https://github.com/sleepy-panda-srl/portulan/pull/31) ran `compile — ./.portulan/verify/compile.sh`
 and reported `10 compiled, 12 refused`, GREEN, with no workflow edit in the diff. Written as a conditional
 until that run existed. `.portulan/compile/gate.mjs` and `stop.mjs` are
 the runtime the artifact points at. Spec 2.0 → **2.1**: one optional `gates` key, additive.
@@ -232,7 +232,7 @@ to confirm or overrule.
 
 ## The Copilot review, which found the exit code the gate rests on
 
-Two findings on [#31](https://github.com/sleepy-panda-works/portulan/pull/31), both real.
+Two findings on [#31](https://github.com/sleepy-panda-srl/portulan/pull/31), both real.
 
 **A recipe that cannot run was being reported as RED.** The runner read every non-zero status except 2 as
 a verdict, so a missing script — exit 127 — arrived as "the repository is red" about a tree nothing had

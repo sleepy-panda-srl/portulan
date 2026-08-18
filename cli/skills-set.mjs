@@ -8,7 +8,7 @@
  *
  * Exit 0 derived (or, with `--check`, agrees) · 1 the manifest has drifted · 2 could not run.
  *
- * Row 7 clause (b)'s adopter half, [#184](https://github.com/sleepy-panda-works/portulan/issues/184):
+ * Row 7 clause (b)'s adopter half, [#184](https://github.com/sleepy-panda-srl/portulan/issues/184):
  * *the generator that derives a plugin's `skills` from a workspace's `packs`*.
  *
  * ## The gap this closes, measured rather than argued

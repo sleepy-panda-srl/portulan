@@ -62,7 +62,7 @@ provenance links, the retirement condition and its unit, the operational sentenc
 re-derive a count (*count pushes and then look inside each one*; two endpoints, two logins) all stand.
 
 **Rule 3's text is left byte-identical to `main`, deliberately.** Pull request
-[#176](https://github.com/sleepy-panda-works/portulan/pull/176) amends exactly that block, so touching it
+[#176](https://github.com/sleepy-panda-srl/portulan/pull/176) amends exactly that block, so touching it
 here would have turned a mechanical stack into a hand-merge over doctrine. Different hunks, no conflict.
 
 ## What this does not do

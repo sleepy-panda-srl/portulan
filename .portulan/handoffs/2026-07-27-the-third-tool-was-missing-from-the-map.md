@@ -12,8 +12,8 @@ banner. Branch synced onto `9e449ad` and merged on the maintainer's explicit ins
 **What this session was asked to do, and why almost none of it shipped.** The brief was the `tests`
 recipe's understatement — the row in `../verify/README.md` and the header of `../verify/tests.sh` naming
 two suites where the glob runs four. Two parallel sessions were fixing the same drift at the same time.
-[#42](https://github.com/sleepy-panda-works/portulan/pull/42) had already done the brief and merged
-mid-session; [#43](https://github.com/sleepy-panda-works/portulan/pull/43) then did the `identity.md` and
+[#42](https://github.com/sleepy-panda-srl/portulan/pull/42) had already done the brief and merged
+mid-session; [#43](https://github.com/sleepy-panda-srl/portulan/pull/43) then did the `identity.md` and
 `affordances.md` siblings — work this session had also written and had reviewed — and merged too. That
 work was discarded rather than rebased into a competing pull request: it was superseded, and #43's
 version is the better text on the affordances bullet, which states the recipes gap at six without the

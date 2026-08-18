@@ -1,7 +1,7 @@
 # Proposal — configure the platform floor on `main`
 
 **Incident.** Milestone 1, session 3. A check against the live remote found that
-`sleepy-panda-works/portulan` has **no branch protection on `main`**, no required status checks, and no
+`sleepy-panda-srl/portulan` has **no branch protection on `main`**, no required status checks, and no
 `CODEOWNERS`. The constitution calls the platform floor "the universal gate no model can bypass"
 ([`../../docs/vision.md`](../../docs/vision.md)) and core states it as the floor that "holds when
 everything above it fails" ([`../../core/operating/autonomy.md`](../../core/operating/autonomy.md)) — and
@@ -84,4 +84,4 @@ So the honest state is unchanged where it counts and should not be read as close
 is *required* on any file, including [`../../docs/vision.md`](../../docs/vision.md), which remains
 protected by prohibition rather than by the platform ([`../gate-map.md`](../gate-map.md)).
 
-**Pull request:** [#3](https://github.com/sleepy-panda-works/portulan/pull/3) — the change that filed this.
+**Pull request:** [#3](https://github.com/sleepy-panda-srl/portulan/pull/3) — the change that filed this.

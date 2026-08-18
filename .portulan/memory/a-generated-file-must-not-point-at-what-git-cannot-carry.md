@@ -1,6 +1,6 @@
 **type:** rule
 **scope:** workspace — Portulan's generated artifacts and its verify recipes
-**provenance:** `form=link` `href=https://github.com/sleepy-panda-works/portulan/pull/117`
+**provenance:** `form=link` `href=https://github.com/sleepy-panda-srl/portulan/pull/117`
 
 **A generated file may not carry a relative link to a path git does not track — and a green from a
 filesystem check is scoped to the filesystem it ran on.** Two halves of one incident, and neither is
@@ -33,7 +33,7 @@ may assert, not about who catches it.
 **NARROWED 2026-07-30 — the second half is discharged, and the first is not.** The retirement condition
 below was met: `links` now resolves against `git ls-files --cached`, so a local run and a CI run answer
 the same question and *this repository's* divergence is gone
-([#121](https://github.com/sleepy-panda-works/portulan/issues/121)). What is deliberately **not** retired
+([#121](https://github.com/sleepy-panda-srl/portulan/issues/121)). What is deliberately **not** retired
 is the rule in the first line. Three reasons, and the third is the one that decides it: a generated file
 pointing at what git cannot carry is still wrong in a repository whose checks are weaker or absent —
 `vendor` mode ships `.portulan/` to hosts with no recipes at all; the naming repair stands on its own

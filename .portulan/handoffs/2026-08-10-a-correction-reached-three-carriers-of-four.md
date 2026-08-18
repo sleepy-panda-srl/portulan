@@ -20,8 +20,8 @@ Four measurements, 2026-08-10, none of them taken on trust from the report that 
 |---|---|
 | The live installation's permission set | `{"contents": "read", "metadata": "read", "pull_requests": "write"}` |
 | `resolveReviewThread` through this wrapper | `FORBIDDEN — Resource not accessible by integration` |
-| Review-thread **replies** through this wrapper | Real — both threads on [#212](https://github.com/sleepy-panda-works/portulan/pull/212) carry `portulan-agent` comments |
-| Who actually resolves, on [#195](https://github.com/sleepy-panda-works/portulan/pull/195) | 21 threads, 21 resolved, **all 21 by `marius-cetanas`** |
+| Review-thread **replies** through this wrapper | Real — both threads on [#212](https://github.com/sleepy-panda-srl/portulan/pull/212) carry `portulan-agent` comments |
+| Who actually resolves, on [#195](https://github.com/sleepy-panda-srl/portulan/pull/195) | 21 threads, 21 resolved, **all 21 by `marius-cetanas`** |
 
 The refusal probe was aimed at a thread that was **already resolved**, so had it succeeded the mutation
 would have been a no-op. It did not succeed — the row above is what came back — but a capability test
@@ -103,7 +103,7 @@ introducing itself.
   triage-lane change and amending a proposal is not.
 - **An unrelated observation from the sweep, recorded because it confirms an existing rule rather than
   raising a new one:** one of #212's two threads was resolved by the account named `Copilot`, exactly the
-  self-resolution the gate map's floor section records from [#44](https://github.com/sleepy-panda-works/portulan/pull/44).
+  self-resolution the gate map's floor section records from [#44](https://github.com/sleepy-panda-srl/portulan/pull/44).
   *Resolved* is still not *judged*; read `resolvedBy`.
 - **Nothing in `.portulan/gate-map.md` was touched**, so the *any change to this gate map* trigger for the
   full lane never fired. If a later session wants the survival story in the gate map rather than in a tool's

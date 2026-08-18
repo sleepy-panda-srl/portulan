@@ -1,12 +1,12 @@
 # Handoff — a round gets its definition, and the first count under it was still wrong
 
 **Date:** 2026-07-30 · **Doctrine — no milestone row touched** · Branch
-`a-review-round-gets-its-definition` · [#119](https://github.com/sleepy-panda-works/portulan/pull/119)
+`a-review-round-gets-its-definition` · [#119](https://github.com/sleepy-panda-srl/portulan/pull/119)
 
 **State.** `a-review-loop-needs-a-bound.md` built a four-rule bound on counting rounds from 2026-07-28
 without ever defining one. It has a definition now, on the maintainer's ruling of 2026-07-30: **a round is a
 Copilot review the working session answers with a push**, the **push** is the unit, and a records-only correction
-counts. Applying it, [#105](https://github.com/sleepy-panda-works/portulan/pull/105) received **five** —
+counts. Applying it, [#105](https://github.com/sleepy-panda-srl/portulan/pull/105) received **five** —
 three past the bound — and its three merged carriers, which had said two, three and two, are corrected: an
 append-only errata block on the handoff, the count fixed in the Session log, and an errata block appended to
 the pull-request body plus the same text as a comment (posted 2026-07-30T10:15:08Z, on his explicit
@@ -85,7 +85,7 @@ the rule, because the method matters more than the answer.
   "round" where they meant submission — including *"Nine rounds on #49"* three sections below a table row now
   reading *nine submissions*. All five are re-worded, each marked as a re-wording. A file holding two
   carriers of *what a round is* is exactly the defect
-  [#115](https://github.com/sleepy-panda-works/portulan/pull/115) shipped a fix for **earlier the same day**
+  [#115](https://github.com/sleepy-panda-srl/portulan/pull/115) shipped a fix for **earlier the same day**
   — it merged 07:53:48Z, roughly two hours before this branch's first commit, not "four days ago" as the
   first draft said.
 
@@ -228,8 +228,8 @@ consolidates it — and must not be ticked on #109's interim wording.
 in fix-rounds, so the 2.0 retire threshold has never been evaluated in the units the rule now defines. And
 **#105's final submission carried two findings that no push answered — and both were triaged, promptly.**
 This handoff and issue #125 first claimed otherwise; measured afterwards, the claim was false.
-[#108](https://github.com/sleepy-panda-works/portulan/issues/108) was filed at 15:41:52Z for the plugin-lint
-finding and [#111](https://github.com/sleepy-panda-works/portulan/issues/111) at **16:10:38Z — 117 seconds
+[#108](https://github.com/sleepy-panda-srl/portulan/issues/108) was filed at 15:41:52Z for the plugin-lint
+finding and [#111](https://github.com/sleepy-panda-srl/portulan/issues/111) at **16:10:38Z — 117 seconds
 after** the review that raised the `fragment.id` gap, and 24 minutes before the merge. So rule 4's triage
 clause did not merely execute on #105; it executed faster than the merge. **#125 is closed as refuted**, and
 the correction is recorded there. What survives is only the hypothetical: an unanswered finding costs zero

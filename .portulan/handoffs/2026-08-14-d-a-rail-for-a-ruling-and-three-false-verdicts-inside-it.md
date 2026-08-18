@@ -9,7 +9,7 @@ Claude Opus 5 implemented.
 
 ## What landed
 
-[#265](https://github.com/sleepy-panda-works/portulan/issues/265) — *does a change to a pack's gate
+[#265](https://github.com/sleepy-panda-srl/portulan/issues/265) — *does a change to a pack's gate
 fragment owe a version bump? Nothing says, nothing checks.* Ruled by the maintainer in three parts on
 2026-08-14: **arm 3** (a rail, not a convention), **the whole `contributes` block** rather than only
 `contributes.gates`, and the field is **`pack.json`'s `portulan.version`**. A **prose-only** edit to a
@@ -49,7 +49,7 @@ rail going quiet. That is [`0020`](../proposals/0020-a-fix-is-not-done-at-the-si
 shape at its smallest: **a fix missing its siblings inside a single diff**, where the fix and the miss were
 written minutes apart.
 
-The third is [#208](https://github.com/sleepy-panda-works/portulan/issues/208)'s class, shipped **new** in
+The third is [#208](https://github.com/sleepy-panda-srl/portulan/issues/208)'s class, shipped **new** in
 a file whose own header forbids it two screens above where it was happening: an uncaught throw left the
 checker exiting 1, which the recipe faithfully printed as *"RED — verify recipe failed"*, accusing a pull
 request of a breach it had not committed. A defect in the checker is not a finding about the work.
@@ -102,7 +102,7 @@ as *not a change*. Reverted and redone surgically: +6 and +1/−1.
 
 ## Where this leaves the tree
 
-**PR [#274](https://github.com/sleepy-panda-works/portulan/pull/274), open and unmerged.** Suite **1640**
+**PR [#274](https://github.com/sleepy-panda-srl/portulan/pull/274), open and unmerged.** Suite **1640**
 (was 1608 on `main`; 32 in the new file), **twelve** yielded recipes exit 0 each read directly, seam scan
 clean against 51 distinguishing terms with the grep control-cased both directions. Mutations, each with its
 exact edit named: base-tip reads **2 red**, emptied union **14**, missing-version-ok **3**, swallowing every
@@ -112,7 +112,7 @@ argument-injection findings below and round 3 is the one that must come back emp
 **Live CI proof rather than assertion, in BOTH directions.** Green: `workspace-verify` printed
 `comparing against origin/main at merge-base c93a819 (three-dot)` and examined both packs, so
 `fetch-depth: 0` materialises the base ref on a `pull_request` checkout as intended. **Red: a forced-red
-drill** — draft PR [#275](https://github.com/sleepy-panda-works/portulan/pull/275) at `2710f86`, one
+drill** — draft PR [#275](https://github.com/sleepy-panda-srl/portulan/pull/275) at `2710f86`, one
 **prose-only** edit to a gate fragment's `reason` with no bump, which is the ruling's hardest clause made
 to fire on a real runner. `workspace-verify` **failed**; the recipe reported `stale` and named the pack at
 `0.2.1`; the check-run annotation read **`verify recipe pack-version exited 1`**, and it was the **only**
@@ -144,16 +144,16 @@ conditional requirements no schema can carry. Narrowing was rejected on a measur
 equality is checked first, so a pull request that only *deletes* the version reads as `unchanged` and passes,
 and a follow-up changing `contributes` would be exempt — two green pull requests, with the packs that have no
 versioning story becoming the free ones. The birth question is **filed as
-[#276](https://github.com/sleepy-panda-works/portulan/issues/276)**, since requiring the field at birth is a
+[#276](https://github.com/sleepy-panda-srl/portulan/issues/276)**, since requiring the field at birth is a
 Pack Definition change belonging at the evolution gate.
 
 **Three carriers argued from a premise this change removes** — *the CI checkout is shallow* — and were
-corrected: `.portulan/verify/README.md` twice and `cli/index.mjs`. [#75](https://github.com/sleepy-panda-works/portulan/issues/75)'s
+corrected: `.portulan/verify/README.md` twice and `cli/index.mjs`. [#75](https://github.com/sleepy-panda-srl/portulan/issues/75)'s
 budget-raise rail rested on it as a blocker and is now **reachable rather than blocked**.
 `core/operating/memory.md` and `spec/slots.md` were judged and **left alone**: they speak at the framework
 and spec layer, where an adopter's checkout is shallow by default and the claim stays true.
 
-**Arm 4 filed as [#273](https://github.com/sleepy-panda-works/portulan/issues/273)** — the bundle version
+**Arm 4 filed as [#273](https://github.com/sleepy-panda-srl/portulan/issues/273)** — the bundle version
 and the pack versions are kept equal by hand and cannot stay equal (bundle `0.2.1`, `rituals/checkpoints`
 `0.2.1`, `tools/github` `0.1.0`).
 

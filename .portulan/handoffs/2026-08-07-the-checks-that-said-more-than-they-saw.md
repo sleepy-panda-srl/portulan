@@ -1,9 +1,9 @@
 # Handoff — the checks that said more than they saw
 
 **State.** Three items off the board's **Now** column, one pull request each, all open and none merged:
-[#165](https://github.com/sleepy-panda-works/portulan/pull/165) (issue #92),
-[#166](https://github.com/sleepy-panda-works/portulan/pull/166) (issue #91),
-[#167](https://github.com/sleepy-panda-works/portulan/pull/167) (issue #68). Each branches from `main`
+[#165](https://github.com/sleepy-panda-srl/portulan/pull/165) (issue #92),
+[#166](https://github.com/sleepy-panda-srl/portulan/pull/166) (issue #91),
+[#167](https://github.com/sleepy-panda-srl/portulan/pull/167) (issue #68). Each branches from `main`
 at `d2d8f2a` independently, so they merge in any order; #165 and #166 touch
 [`../../cli/index.mjs`](../../cli/index.mjs) in different functions and do not overlap textually. Suite
 983 → 986 · 987 · 1014 respectively. All nine recipes green on #167, all eight on the other two.

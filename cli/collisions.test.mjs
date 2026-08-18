@@ -14,7 +14,7 @@
 // the others, which is the class `0020` names and the standing ruling of 2026-07-27 forbids — *"never
 // ship a change that corrects one wrong claim while knowingly leaving its neighbours"*. It is not
 // hypothetical here: on
-// [#164](https://github.com/sleepy-panda-works/portulan/pull/164) round 4 found a directory sitting at a
+// [#164](https://github.com/sleepy-panda-srl/portulan/pull/164) round 4 found a directory sitting at a
 // leaf that `vendor`'s preflight passed and `writeFileSync` then threw `EISDIR` on, the shape had been
 // copied from `new.mjs`, and the fix had to land in two files; round 12 then found the same collision
 // reached from the source side, eight rounds later, in a rule the same change had written two rounds

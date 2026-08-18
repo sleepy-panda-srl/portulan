@@ -2,8 +2,8 @@
 
 **Date:** 2026-07-29 · **Triage lane, post-M5** · Branch `one-definition-of-where-an-entry-ends`
 
-Closes [#79](https://github.com/sleepy-panda-works/portulan/issues/79), the finding
-[#73](https://github.com/sleepy-panda-works/portulan/pull/73) triaged out under the review bound rather
+Closes [#79](https://github.com/sleepy-panda-srl/portulan/issues/79), the finding
+[#73](https://github.com/sleepy-panda-srl/portulan/pull/73) triaged out under the review bound rather
 than fixing in place.
 
 ## The defect
@@ -54,7 +54,7 @@ one does — and correspondence is still by date rather than by session. Both re
 
 Every one of the four findings on #73 that reached real defects arrived through Copilot's **suppressed
 low-confidence** channel — no thread, no Resolve control, `copilot-reviewed` green throughout — and this
-was the last of them. [#66](https://github.com/sleepy-panda-works/portulan/issues/66), which proposes
+was the last of them. [#66](https://github.com/sleepy-panda-srl/portulan/issues/66), which proposes
 promoting those notes into real threads, now has a five-for-five record behind it rather than an
 argument.
 

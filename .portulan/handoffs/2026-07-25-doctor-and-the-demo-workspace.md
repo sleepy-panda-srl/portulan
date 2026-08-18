@@ -249,7 +249,7 @@ check this repository has.
 ## Open questions
 
 1. **Nothing tests the recipes themselves — and this stopped being hypothetical during the review.** A
-   Copilot review on [PR #15](https://github.com/sleepy-panda-works/portulan/pull/15) found two more
+   Copilot review on [PR #15](https://github.com/sleepy-panda-srl/portulan/pull/15) found two more
    exit-code defects, both in the recipes this session added and both of the same shape as the three
    before them. `doctor.sh` passed a missing validator through as exit `1` — a red verdict about two
    workspaces nothing had looked at — one dependency over from the `node` guard written to stop exactly
@@ -283,7 +283,7 @@ check this repository has.
 ## Both pending proposals were decided during the review, and the argument came from elsewhere
 
 The maintainer commissioned a fresh-context Fable 5 to review `0003` and `0005` and posted its
-recommendation as [`portulan-agent[bot]` on the pull request](https://github.com/sleepy-panda-works/portulan/pull/15#issuecomment-5078534991).
+recommendation as [`portulan-agent[bot]` on the pull request](https://github.com/sleepy-panda-srl/portulan/pull/15#issuecomment-5078534991).
 Both **accepted**. Worth recording that on `0005` the recommendation **reversed this session's own
 conclusion, and was right to**: the proposal argued a MAJOR bump for one check was a poor trade and
 should ride milestone 4's. It priced that against the wrong date. Two manifests exist, one already

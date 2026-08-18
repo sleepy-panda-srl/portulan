@@ -1,6 +1,6 @@
 # Task 0011 — `vendor` materialises a workspace, in both directions
 
-**Lane:** full · **Opened:** 2026-08-03, milestone 7 session 2, after [#158](https://github.com/sleepy-panda-works/portulan/pull/158) merged
+**Lane:** full · **Opened:** 2026-08-03, milestone 7 session 2, after [#158](https://github.com/sleepy-panda-srl/portulan/pull/158) merged
 **Verify recipe:** `tests` · **Status:** DONE, 2026-08-03, milestone 7 session 3 · **Unblocked as of 2026-08-03**
 
 > Scoped rather than started, with the blocking question already answered. Task 0010 was written the
@@ -68,7 +68,7 @@ is not a suggestion: green at both ends **first**, retire **after**.
   is actually measured.
 - **The collision, symlink and only-`ENOENT`-means-absent rules are settled** in `init` and `new`. A
   third tool that writes into somebody's tree must carry them too — this is the sibling class
-  ([#91](https://github.com/sleepy-panda-works/portulan/issues/91)) that has bitten this milestone in
+  ([#91](https://github.com/sleepy-panda-srl/portulan/issues/91)) that has bitten this milestone in
   every session so far.
 
 ## Done when
@@ -100,7 +100,7 @@ is not a suggestion: green at both ends **first**, retire **after**.
 ## What M7 still owes after this
 
 `upgrade` · verify-recipe composition · clause (b)'s parity · `feedback` · `init`'s interview loop · the
-agent-legibility score · pack-cache discovery ([#123](https://github.com/sleepy-panda-works/portulan/issues/123)) ·
+agent-legibility score · pack-cache discovery ([#123](https://github.com/sleepy-panda-srl/portulan/issues/123)) ·
 the **persona↔agent binding** check (the one row-7 validation family session 2 did not deliver, and the
 smallest remaining item) · and the row's **six** demonstrations, of which this task carries D4 — the enumeration is pinned in
 [`../../docs/milestones/m07.md`](../../docs/milestones/m07.md), because the number was claimed as four,

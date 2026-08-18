@@ -3,7 +3,7 @@
 **Status.** Accepted on merge — the maintainer decided both halves on 2026-07-30 and his merge of the
 pull request below ratifies the drafting.
 
-**Pull request:** https://github.com/sleepy-panda-works/portulan/pull/137
+**Pull request:** https://github.com/sleepy-panda-srl/portulan/pull/137
 
 **Companion:** [`0019`](0019-the-development-cycle-is-doctrine-not-anecdote.md) states the cycle this
 obligation is one moment of. The incident list below is the evidence for both; 0019 cites it rather
@@ -116,8 +116,8 @@ the one that made the change, and every one was invisible to the change's own au
    was drafted as a *presence* test and passed on the very plan.md whose defect had motivated it; it
    reds on `origin/main`'s own plan.md only after being rewritten to count both directions. Caught at
    the **session-open** checkpoint — before implementation, which is the moment a self-graded session
-   has nothing to grade yet. _(Session log, 2026-07-28, [#73](https://github.com/sleepy-panda-works/portulan/pull/73).)_
-2. **The hole list that was itself a hole.** [#60](https://github.com/sleepy-panda-works/portulan/pull/60)'s
+   has nothing to grade yet. _(Session log, 2026-07-28, [#73](https://github.com/sleepy-panda-srl/portulan/pull/73).)_
+2. **The hole list that was itself a hole.** [#60](https://github.com/sleepy-panda-srl/portulan/pull/60)'s
    constitution write-gate was called *done* and shipped with a published list of its own gaps. A
    supervisor's attack pass found **five holes that list had missed** — the list had four entries — and
    fourteen review rounds then found **three more live bypasses the attack pass had not tried**. Eight
@@ -126,11 +126,11 @@ the one that made the change, and every one was invisible to the change's own au
 3. **The relocation that dropped a deliverable.** Moving 55,643 characters of argument into
    `docs/milestones/` lost a clause from milestone 5's row. Caught at **pre-commit** by a fresh context
    re-measuring the diff against the criterion it claimed to preserve. _(Session log, 2026-07-29,
-   [#96](https://github.com/sleepy-panda-works/portulan/pull/96): "pre-commit (4), which caught M5's row
+   [#96](https://github.com/sleepy-panda-srl/portulan/pull/96): "pre-commit (4), which caught M5's row
    losing a deliverable".)_
 4. **Six prose defects, zero wrong counts** —
-   [#133](https://github.com/sleepy-panda-works/portulan/issues/133). Every figure
-   [#129](https://github.com/sleepy-panda-works/portulan/pull/129)'s code emitted was right, in every
+   [#133](https://github.com/sleepy-panda-srl/portulan/issues/133). Every figure
+   [#129](https://github.com/sleepy-panda-srl/portulan/pull/129)'s code emitted was right, in every
    drill, on every run. Six *sentences about* those mechanisms were wrong. **This is the entry that cuts
    both ways and it is stated as such:** two fresh-context checkpoints, a twenty-five-shape forced-red
    drill and eight green recipes found **none** of them — they attacked mechanisms, and nobody attacked
@@ -201,6 +201,6 @@ that the context which wrote it was fresh.
 ## Decision
 
 Marius Cetanas — decided 2026-07-30; **accepted on the merge of
-[#137](https://github.com/sleepy-panda-works/portulan/pull/137)** — because a verdict primed by the
+[#137](https://github.com/sleepy-panda-srl/portulan/pull/137)** — because a verdict primed by the
 context that produced the work measures agreement rather than correctness, and the loop's lane system is
 the valve that keeps the obligation off small work.

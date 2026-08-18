@@ -1,12 +1,12 @@
 # Proposal — a tier says who attends; a checkpoint says what is owed
 
 **Status. RULED, 2026-08-09** — by a fresh-context Fable 5 supervisor under the maintainer's named
-in-session delegation on [#174](https://github.com/sleepy-panda-works/portulan/issues/174), the third
+in-session delegation on [#174](https://github.com/sleepy-panda-srl/portulan/issues/174), the third
 ruling delegated this way after [`0022`](0022-a-claim-about-a-mechanism-is-re-derived-like-a-figure.md)
 and [`0023`](0023-a-head-that-never-draws-a-round-needs-an-answer.md). Like both of those, **it corrected
 the framing it was handed rather than picking from the options offered.** Accepted on merge.
 
-**Pull request:** https://github.com/sleepy-panda-works/portulan/pull/194
+**Pull request:** https://github.com/sleepy-panda-srl/portulan/pull/194
 
 ## The question as it was put, and why none of its answers was taken
 
@@ -27,7 +27,7 @@ _(This change edits that cell to **"when the work is finished, before it is comm
 rather than a move, because the literal *any commit* would demand a verdict before a work-in-progress
 commit and before the fold-in of an APPROVE-WITH-ADJUSTMENTS verdict's own adjustments. The tense is
 anchored here because the sentence above would otherwise be falsified by the diff carrying it — the class
-[#133](https://github.com/sleepy-panda-works/portulan/issues/133) names, arriving inside a proposal about
+[#133](https://github.com/sleepy-panda-srl/portulan/issues/133) names, arriving inside a proposal about
 carriers disagreeing.)_
 
 **No carrier in this tree puts this checkpoint at the pull request** — not core, not the pack, not this
@@ -55,7 +55,7 @@ outward"* — the pull request **is** outward under this workspace's own tier de
 the verdict was pending).
 
 So #168 is reclassified as the breach class the Session log already names on
-[#137](https://github.com/sleepy-panda-works/portulan/pull/137): *"**Breach recorded:** the doctrine
+[#137](https://github.com/sleepy-panda-srl/portulan/pull/137): *"**Breach recorded:** the doctrine
 commit went out before pre-commit ran."* **Forward-only** — #168's own record is not rewritten, and
 `0020`'s file is not edited. The sentence is overturned here, which is `0020`'s own precedent for a
 merged sentence: *overturned here rather than left to disagree quietly*.

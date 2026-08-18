@@ -1,7 +1,7 @@
 # Handoff — a fix is not done where it was found
 
 **Milestone 7, session 4.** The maintainer's ruling of 2026-08-07: the lesson of
-[#164](https://github.com/sleepy-panda-works/portulan/pull/164) becomes a proposal, and the proposal must
+[#164](https://github.com/sleepy-panda-srl/portulan/pull/164) becomes a proposal, and the proposal must
 decide **what a rail for the class would be** rather than only that the class exists. **M7 still open** —
 this session touches none of its outstanding deliverables.
 
@@ -120,8 +120,8 @@ request number are named as in-flight below rather than stated, and are filled i
 
 - **The rule itself, the reflexive `persona.md` edit, and the `collisions()` unification issue** — all
   three are the maintainer's, and all three were put to him. On 2026-08-07 he approved opening the pull
-  request ([#168](https://github.com/sleepy-panda-works/portulan/pull/168)), keeping the `persona.md`
-  edit, and filing the issue (now [#169](https://github.com/sleepy-panda-works/portulan/issues/169)).
+  request ([#168](https://github.com/sleepy-panda-srl/portulan/pull/168)), keeping the `persona.md`
+  edit, and filing the issue (now [#169](https://github.com/sleepy-panda-srl/portulan/issues/169)).
   **What remains open for him is the rule itself**, plus the four things listed under *Found and
   deliberately not fixed*.
 - **Whether the *use*-versus-*carrier* distinction survives review.** Named above as the first thing to
@@ -252,8 +252,8 @@ nothing else, and each cost a full verify sweep to diagnose.
 ## Recoverability
 
 Nothing is in a partial state. `0020` is committed and pushed;
-[#168](https://github.com/sleepy-panda-works/portulan/pull/168) is open and labelled, and
-[#169](https://github.com/sleepy-panda-works/portulan/issues/169) is filed. The records — this file, the
+[#168](https://github.com/sleepy-panda-srl/portulan/pull/168) is open and labelled, and
+[#169](https://github.com/sleepy-panda-srl/portulan/issues/169) is filed. The records — this file, the
 handoff index and the Session-log entry — are deliberately **uncommitted** until the loop settles, per
 rule 2 of the file this change amends, so a lost session would need to re-write only them. **`main` moved
 under this branch once mid-session** (three commits, two of them closing #91 and #92) and the branch was

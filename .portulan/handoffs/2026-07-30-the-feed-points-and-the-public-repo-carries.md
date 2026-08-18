@@ -1,7 +1,7 @@
 # Handoff — the feed points, the public repository carries, and a scope lands empty
 
 **Date:** 2026-07-30 · **M6, session 1** · Branch `m6-the-feed-resolves-and-a-scope-lands`, opened as a
-pull request against `main` as [#117](https://github.com/sleepy-panda-works/portulan/pull/117)
+pull request against `main` as [#117](https://github.com/sleepy-panda-srl/portulan/pull/117)
 
 **State.** Three of milestone 6's four remaining clauses are demonstrated. `portulan-internal`
 **publishes** two plugins; the `rituals/checkpoints` pack **resolves from it**; and a pack-declared
@@ -62,7 +62,7 @@ first checkpoint had asked for. **Milestone-close has not run and could not** �
   would be Portulan choosing a location inside every adopter's workspace in a key nobody typed. Not nested
   in the store, because doctrine holds per-agent memory apart so a reviewer's recall does not spend the
   implementer's budget — and because a nested store would be railed by a `kilobytes` budget the flat walk
-  cannot see, which is [#76](https://github.com/sleepy-panda-works/portulan/issues/76). Siting it outside
+  cannot see, which is [#76](https://github.com/sleepy-panda-srl/portulan/issues/76). Siting it outside
   leaves #76 to be decided on its merits instead of settled as a side effect of an unrelated feature.
 
 - **"Present and empty" binds literally — the maintainer's ruling, and the design leans on it.** The

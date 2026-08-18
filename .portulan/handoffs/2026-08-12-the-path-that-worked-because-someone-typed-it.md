@@ -2,7 +2,7 @@
 
 **Milestone 7, session 8. Full lane.** Task
 [`0014`](../tasks/0014-the-registrable-set.md). Row 7 clause (b)'s **adopter half**,
-[#184](https://github.com/sleepy-panda-works/portulan/issues/184).
+[#184](https://github.com/sleepy-panda-srl/portulan/issues/184).
 
 ## What this session was handed
 

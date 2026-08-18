@@ -58,10 +58,10 @@ all. Merging PR #27 was simultaneously the proof and the revert — the experime
   here, because both halves could become manifest fields. Retire the prose if the compiler subsumes it.
 
 **Provenance.** `form=link`
-`href=`[`https://github.com/sleepy-panda-works/portulan/pull/22`](https://github.com/sleepy-panda-works/portulan/pull/22)
+`href=`[`https://github.com/sleepy-panda-srl/portulan/pull/22`](https://github.com/sleepy-panda-srl/portulan/pull/22)
 — the change that added a watcher and no way to know it worked. The demonstration that closed it is
-[`#25`](https://github.com/sleepy-panda-works/portulan/pull/25) and
-[`#27`](https://github.com/sleepy-panda-works/portulan/pull/27). All in-repo and resolvable by anyone who
+[`#25`](https://github.com/sleepy-panda-srl/portulan/pull/25) and
+[`#27`](https://github.com/sleepy-panda-srl/portulan/pull/27). All in-repo and resolvable by anyone who
 can read this rule, carrying no client material, so no seal is needed — "resolvable" here does not mean
 public. Retire the rule if the enforcement compiler subsumes it, or if this repository stops adding things
 whose job is to notice.
@@ -80,7 +80,7 @@ whose job is to notice.
   hand-requested at 09:26:44Z and arrived at 09:28:00Z — two and a half minutes *before* the ruleset
   existed, so that review was not evidence for it.
 
-  **Observed on [#28](https://github.com/sleepy-panda-works/portulan/pull/28), the first pull request opened
+  **Observed on [#28](https://github.com/sleepy-panda-srl/portulan/pull/28), the first pull request opened
   after that timestamp: Copilot was requested at 09:39:15Z, the same instant as the `CODEOWNERS` team
   request and therefore at pull-request open, with no request made by the maintainer or by the agent.** The
   timestamps are what make that conclusive rather than the attribution — GitHub credits a ruleset-driven
@@ -108,4 +108,4 @@ a safe red test. Applied in a change separate from the one that proposed it, the
 [`0006-dependabot-security-updates.md`](0006-dependabot-security-updates.md) followed, so that the record
 shows a decision taken rather than a proposal that applied itself.
 
-**Pull request:** [#28](https://github.com/sleepy-panda-works/portulan/pull/28) — the change that filed this.
+**Pull request:** [#28](https://github.com/sleepy-panda-srl/portulan/pull/28) — the change that filed this.

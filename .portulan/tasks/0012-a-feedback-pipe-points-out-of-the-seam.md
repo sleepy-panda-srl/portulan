@@ -120,7 +120,7 @@ code it was meant to grade has stopped being a spec.
 ## What M7 still owes after this
 
 `upgrade` · persona↔agent binding · the legibility score · clause (b) parity's adopter half
-([#184](https://github.com/sleepy-panda-works/portulan/issues/184)) · `init`'s interview · the index
+([#184](https://github.com/sleepy-panda-srl/portulan/issues/184)) · `init`'s interview · the index
 rail · and **three of six** demonstrations — D1, D2 and D5.
 
 _(This line said **D5 stays blocked on the feed pin, which is the maintainer's act** when it was written

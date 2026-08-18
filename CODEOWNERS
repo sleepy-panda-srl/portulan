@@ -20,7 +20,7 @@
 # clears ownership for those paths. An owner is `@username`, `@org/team-name`, or an email address on
 # that account — nothing else. A bare organisation name is not an owner, and neither is a person's name.
 #
-# **The owner is a team, not a person**, and that is the point of it. `@sleepy-panda-works/maintainers`
+# **The owner is a team, not a person**, and that is the point of it. `@sleepy-panda-srl/maintainers`
 # has one member today and this repository has one human, so nothing about *who reviews* changes. What
 # changes is what the day of the second reviewer costs: adding them to the team, rather than editing
 # every line below. This file stops needing to know who the people are — the same separation between
@@ -37,27 +37,27 @@
 # nobody, and the file would look exactly as it does now.
 
 # Everything, by default.
-*                       @sleepy-panda-works/maintainers
+*                       @sleepy-panda-srl/maintainers
 
 # The constitution. Human-owned, never edited by an agent at all — see .portulan/gate-map.md,
 # "Above the tiers". This line does not enforce that; it records who must be asked.
-/docs/vision.md         @sleepy-panda-works/maintainers
+/docs/vision.md         @sleepy-panda-srl/maintainers
 
 # The living plan: milestone status and the session log are the build's own record.
-/docs/plan.md           @sleepy-panda-works/maintainers
+/docs/plan.md           @sleepy-panda-srl/maintainers
 
 # The engine and the contract other people's workspaces are validated against. A change here reaches
 # every installation, which is what makes it worth naming separately from the default.
-/core/                  @sleepy-panda-works/maintainers
-/spec/                  @sleepy-panda-works/maintainers
+/core/                  @sleepy-panda-srl/maintainers
+/spec/                  @sleepy-panda-srl/maintainers
 
 # Packaging and distribution: the marketplace manifest, the plugin manifest, and the release surface.
-/.claude-plugin/        @sleepy-panda-works/maintainers
-/plugin/                @sleepy-panda-works/maintainers
+/.claude-plugin/        @sleepy-panda-srl/maintainers
+/plugin/                @sleepy-panda-srl/maintainers
 
 # The gates themselves. A change that relaxes a check is the one worth scrutinising hardest, because it
 # is the change that makes every future green mean less.
-/.github/               @sleepy-panda-works/maintainers
-/.portulan/verify/      @sleepy-panda-works/maintainers
-/.portulan/gate-map.md  @sleepy-panda-works/maintainers
-/CODEOWNERS             @sleepy-panda-works/maintainers
+/.github/               @sleepy-panda-srl/maintainers
+/.portulan/verify/      @sleepy-panda-srl/maintainers
+/.portulan/gate-map.md  @sleepy-panda-srl/maintainers
+/CODEOWNERS             @sleepy-panda-srl/maintainers

@@ -1,7 +1,7 @@
 # Task 0016 — the three demonstrations: D1, D2, D5
 
 **Lane:** full · **Opened:** 2026-08-12, milestone 7 session 10, at the session-open checkpoint
-**Verify recipe:** `tests` · **Status:** IN REVIEW — [#233](https://github.com/sleepy-panda-works/portulan/pull/233), four Copilot rounds to empty, awaiting the maintainer's merge
+**Verify recipe:** `tests` · **Status:** IN REVIEW — [#233](https://github.com/sleepy-panda-srl/portulan/pull/233), four Copilot rounds to empty, awaiting the maintainer's merge
 
 > The last three of row 7's six demonstrations. Nothing here was planned as a mechanism: every clause
 > these exercise is already delivered and recorded in [`m07.md`](../../docs/milestones/m07.md), and what

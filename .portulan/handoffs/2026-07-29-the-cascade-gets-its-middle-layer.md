@@ -2,7 +2,7 @@
 
 **Date:** 2026-07-29 · **M6, the first session** · Branch
 `m6-pack-schema-and-the-checkpoint-ritual-pack` ·
-[#105](https://github.com/sleepy-panda-works/portulan/pull/105)
+[#105](https://github.com/sleepy-panda-srl/portulan/pull/105)
 
 **State.** The public-repo mechanism half of milestone 6 is built and open as a pull request: the Pack
 Definition, the first pack, resolution, and the tighten-only merge. `portulan-internal` does not exist
@@ -63,7 +63,7 @@ repository's own gate rules rather than an argument.
 
 ## Open questions — both the maintainer's
 
-- **Issue [#98](https://github.com/sleepy-panda-works/portulan/issues/98) — routed, not answered.** Put
+- **Issue [#98](https://github.com/sleepy-panda-srl/portulan/issues/98) — routed, not answered.** Put
   to him at session-open; his answer was to forward it to a **process-lessons-learned session**. Two
   things were done so that session does not re-derive them. First, the framing was corrected at source:
   **#98's body quotes a draft that never merged.** It says `memory.md` "now states the arrival as
@@ -96,7 +96,7 @@ repository's own gate rules rather than an argument.
   not our feed through it. It refuted a sentence this session had itself written into
   `spec/pack.schema.json` before measuring — corrected in the same change.
 
-- **`sleepy-panda-works/portulan-internal` exists**, created on his explicit approval. **Verified
+- **`sleepy-panda-srl/portulan-internal` exists**, created on his explicit approval. **Verified
   PRIVATE by negative control, not assertion**: the authenticated API reports `private: true`, and an
   unauthenticated GET returns **404** from both `api.github.com` and `github.com`. It carries a
   marketplace manifest with `plugins: []` and a README, and **publishes nothing** — how the ritual pack
@@ -104,7 +104,7 @@ repository's own gate rules rather than an argument.
   checkpoint rather than settled by the change that created the repository. The seam is restated in that
   README, because private changes who can read a thing, not where client material may exist.
 
-- **Issue [#108](https://github.com/sleepy-panda-works/portulan/issues/108) opened** — he corrected my
+- **Issue [#108](https://github.com/sleepy-panda-srl/portulan/issues/108) opened** — he corrected my
   standing assumption that issues are his alone and delegated it. It carries the triaged `plugin-lint`
   finding: a truncated or unreadable branch is also reported as barren.
 

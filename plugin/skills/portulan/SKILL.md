@@ -123,7 +123,7 @@ _(This section read **"Do not fetch it. Resolving `governed_by` to an installed 
 plugin cache, and nothing here discovers one"** until milestone 7 built the discovery. Both halves of
 that sentence were true when written and one of them stopped being: nothing is still fetched, and a
 cache is now read. The instruction it produced — *report it and stop* — was the whole open half of
-[#134](https://github.com/sleepy-panda-works/portulan/issues/134), where a workspace installed on the
+[#134](https://github.com/sleepy-panda-srl/portulan/issues/134), where a workspace installed on the
 machine was invisible to the thing booting beside it.)_
 
 ## 3. Read the slots the manifest names
@@ -173,7 +173,7 @@ cannot satisfy. Where a pack resolves, its gate-policy fragments reach the compi
 add-restriction-only. Nothing here is pinned — a `packs` entry is a name, and the version is whatever
 the root holds. Four things do not follow. **The first and the last have since been LIFTED, and two still
 stand — owed rather than broken** — the split is stated because a bare count beside a mechanism is the class
-[#133](https://github.com/sleepy-panda-works/portulan/issues/133) names, and "four" alone goes stale the
+[#133](https://github.com/sleepy-panda-srl/portulan/issues/133) names, and "four" alone goes stale the
 moment one of them ships:
 
 - **Discovering the root — LANDED at milestone 7** (#123), and in the CLI only. The CLI reads the host's
@@ -215,7 +215,7 @@ moment one of them ships:
   belonging to no composed pack is red — so *composed* and *registered* can no longer drift apart in
   a bundle this validator runs over.
 
-  **The adopter's half landed at milestone 7 session 8** ([#184](https://github.com/sleepy-panda-works/portulan/issues/184)),
+  **The adopter's half landed at milestone 7 session 8** ([#184](https://github.com/sleepy-panda-srl/portulan/issues/184)),
   and this bullet said the opposite until then — *"nothing here writes an adopter's plugin manifest"*,
   true when written. `cli/skills-set.mjs` is the one carrier of the **registrable set**: it reads each
   composed pack's own `contributes.skills` and derives the paths a plugin manifest must declare, with

@@ -1092,7 +1092,7 @@ export function legibility(workspace, dir) {
     // is exactly why it is worth fixing now rather than after something starts reading it. A count
     // wrong about its own unit, in the tool whose subject is claims being checkable.
     //
-    // Triaged out of [#227](https://github.com/sleepy-panda-works/portulan/pull/227) at the two-fix-round
+    // Triaged out of [#227](https://github.com/sleepy-panda-srl/portulan/pull/227) at the two-fix-round
     // bound and **dropped on 2026-08-12 for scope, not on merits** — "nothing here opens
     // cli/doctor.mjs" — which is the disposition this change reverses now that something does.
     const products = workspace.products ?? [];
@@ -1613,7 +1613,7 @@ export async function inspect(workspaceDir, options = {}) {
                     // this block forbids. So `"  sleepy-panda  "` stays a conflict rather than becoming
                     // "no name", and a test pins that boundary. The schema would refuse `""` through `$defs/slug`, but the schema
                     // never runs here, and that is the whole point of read-not-validated.
-                    // ([#141](https://github.com/sleepy-panda-works/portulan/issues/141), found by Copilot
+                    // ([#141](https://github.com/sleepy-panda-srl/portulan/issues/141), found by Copilot
                     // on #135 and filed rather than fixed there.)
                     const named = other.governed_by?.workspace;
                     report(

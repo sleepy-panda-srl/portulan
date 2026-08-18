@@ -1,11 +1,11 @@
 # Handoff — the rows name what they owe
 
 **Date:** 2026-07-28 · **Full lane, no milestone row moved in Status** · Branch
-`the-rows-name-what-they-owe` · [#80](https://github.com/sleepy-panda-works/portulan/pull/80)
+`the-rows-name-what-they-owe` · [#80](https://github.com/sleepy-panda-srl/portulan/pull/80)
 
 The amendments half of the 2026-07-28 two-day review — R9, R4+R11, R10, R3. Scope was exactly those
 four and exactly prose: five milestone-row criteria and three doctrine sentences. R1/R2/R7/R8 shipped
-as [#73](https://github.com/sleepy-panda-works/portulan/pull/73) and are untouched here.
+as [#73](https://github.com/sleepy-panda-srl/portulan/pull/73) and are untouched here.
 
 ## State
 

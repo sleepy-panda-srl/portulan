@@ -1,6 +1,6 @@
 # Handoff — the public flip
 
-**State.** `sleepy-panda-works/portulan` is **public** as of 2026-07-27, flipped by the maintainer's
+**State.** `sleepy-panda-srl/portulan` is **public** as of 2026-07-27, flipped by the maintainer's
 explicit directive, executed and verified in the same hour (~17:46 UTC) (`visibility=PUBLIC`, anonymous fetch 200).
 The marketplace is now publicly installable, which was milestone 3's purpose. This handoff ships in the
 truth-up pull request that follows the flip, correcting every tracked claim the flip falsified.

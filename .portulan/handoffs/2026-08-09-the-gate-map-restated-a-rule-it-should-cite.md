@@ -1,7 +1,7 @@
 # Handoff — the gate map restated a rule it should cite
 
 **Off the milestone row. Full lane**, per the triage threshold's *any change to this gate map*.
-Pull request [#201](https://github.com/sleepy-panda-works/portulan/pull/201).
+Pull request [#201](https://github.com/sleepy-panda-srl/portulan/pull/201).
 
 ## The defect
 

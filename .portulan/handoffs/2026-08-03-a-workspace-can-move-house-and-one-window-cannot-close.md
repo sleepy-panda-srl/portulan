@@ -116,6 +116,6 @@ world the session **meant** to leave rather than the one on disk._
 ## What M7 still owes
 
 `upgrade` · verify-recipe composition · clause (b)'s parity · `feedback` · `init`'s interview loop · the
-agent-legibility score · pack-cache discovery ([#123](https://github.com/sleepy-panda-works/portulan/issues/123)) ·
+agent-legibility score · pack-cache discovery ([#123](https://github.com/sleepy-panda-srl/portulan/issues/123)) ·
 the persona↔agent binding check · and **five of the six** demonstrations. D4 is done; the count is pinned
 in [`../../docs/milestones/m07.md`](../../docs/milestones/m07.md) and must not be re-derived from memory.

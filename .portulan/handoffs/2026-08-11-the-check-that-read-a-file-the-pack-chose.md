@@ -1,7 +1,7 @@
 # Handoff — the check that read a file the pack chose, and the dimension that could not vary
 
 **Milestone 7, session 7. Full lane.** Pull request
-[#227](https://github.com/sleepy-panda-works/portulan/pull/227), task
+[#227](https://github.com/sleepy-panda-srl/portulan/pull/227), task
 [`0013`](../tasks/0013-the-interview-the-rail-and-two-checks.md), with
 [`0005`](../tasks/0005-lint-the-persona-agent-binding.md) two-thirds discharged along the way.
 
@@ -15,7 +15,7 @@ with M7 left open. So *M7 stays in-progress by his decision rather than by this 
 which is the sentence the Status cell and the Session log both now carry, because a milestone left open
 without a recorded reason reads as one nobody finished.
 
-**Left after this: `upgrade`, clause (b) parity's adopter half ([#184](https://github.com/sleepy-panda-works/portulan/issues/184)), and D1, D2, D5.**
+**Left after this: `upgrade`, clause (b) parity's adopter half ([#184](https://github.com/sleepy-panda-srl/portulan/issues/184)), and D1, D2, D5.**
 
 ## The finding worth carrying forward
 

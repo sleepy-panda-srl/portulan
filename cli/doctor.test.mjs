@@ -2636,7 +2636,7 @@ describe("a repository is governed by exactly one workspace", () => {
 // ---------------------------------------------------------------- what a pack ships (milestone 7)
 
 // Row 7's validation half, under the maintainer's ruling of 2026-08-03 on
-// https://github.com/sleepy-panda-works/portulan/issues/150: the **broad** reading. `doctor` validates a
+// https://github.com/sleepy-panda-srl/portulan/issues/150: the **broad** reading. `doctor` validates a
 // skill's frontmatter, a persona against its five-part contract, a pack against its schema, and the
 // persona↔agent binding — and it does so for **a pack's** skills and personas, not only for what `new`
 // scaffolds. Seven carriers promised that split ("row 6 declares, row 7 validates") and the row's own

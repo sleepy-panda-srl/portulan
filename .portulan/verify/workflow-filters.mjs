@@ -22,7 +22,7 @@
 // one open follow-up rather than smuggling it in.
 //
 // **Provenance.** Two suppressed low-confidence Copilot comments on
-// [#63](https://github.com/sleepy-panda-works/portulan/pull/63) claimed `join("|")` errors on a null
+// [#63](https://github.com/sleepy-panda-srl/portulan/pull/63) claimed `join("|")` errors on a null
 // element and asked for a coalesce. The claim is **wrong** — jq renders null as the empty string in
 // `join` and errors only on arrays and objects (jq 1.7.1) — and it was refused with that evidence on
 // the pull request. The gap it pointed at was real: the refusal rested on a measurement taken once,

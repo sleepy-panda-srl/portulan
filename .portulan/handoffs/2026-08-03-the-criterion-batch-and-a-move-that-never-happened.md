@@ -1,11 +1,11 @@
 # Handoff — the criterion batch, and a move that never happened
 
-**Milestone 7, session 2, third batch** — [#159](https://github.com/sleepy-panda-works/portulan/pull/159).
+**Milestone 7, session 2, third batch** — [#159](https://github.com/sleepy-panda-srl/portulan/pull/159).
 **M7 still open.** No mechanism in this batch: it is criterion and records.
 
 ## What landed
 
-Row 7 gains a **sixth amendment — it owns plugin-cache discovery** ([#123](https://github.com/sleepy-panda-works/portulan/issues/123)),
+Row 7 gains a **sixth amendment — it owns plugin-cache discovery** ([#123](https://github.com/sleepy-panda-srl/portulan/issues/123)),
 on the maintainer's ruling: *"M7 needs to be properly closed, not cheaply, no matter the cost."* Bounded
 in the row itself — feed authentication, network calls in recipes, and discovery of anything not
 installed are out — so the close cannot be held to what nobody undertook. Plus the switch-verb correction,

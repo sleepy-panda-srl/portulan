@@ -1,6 +1,6 @@
 # Handoff — the override becomes the procedure, and the experiment arrives for free
 
-2026-08-09, fourth session of the day. [#161](https://github.com/sleepy-panda-works/portulan/issues/161)
+2026-08-09, fourth session of the day. [#161](https://github.com/sleepy-panda-srl/portulan/issues/161)
 ruled: proposal `0023` was merged as evidence-only this morning, and the maintainer asked for the issue
 to be addressed. The ruling was **delegated to a Fable 5 supervisor**, as `0022`'s was.
 

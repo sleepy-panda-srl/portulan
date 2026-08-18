@@ -124,7 +124,7 @@ rather than remembered; `plugin/README.md` and the boot skill both said two.
 ## The install, and the limits of the simulation
 
 ```
-SSH not configured, cloning via HTTPS: https://github.com/sleepy-panda-works/portulan.git
+SSH not configured, cloning via HTTPS: https://github.com/sleepy-panda-srl/portulan.git
 ✔ Successfully added marketplace: portulan
 ✔ Successfully installed plugin: portulan@portulan (scope: user)
 ```
@@ -321,7 +321,7 @@ because the checklist was written before it was possible. With `v0.1.0` on `9305
 carry the fix, so the install ran the way a stranger runs it:
 
 ```
-CLAUDE_CONFIG_DIR=<empty temp dir> claude plugin marketplace add sleepy-panda-works/portulan
+CLAUDE_CONFIG_DIR=<empty temp dir> claude plugin marketplace add sleepy-panda-srl/portulan
 CLAUDE_CONFIG_DIR=<same>           claude plugin install portulan@portulan
 CLAUDE_CONFIG_DIR=<same>           claude plugin details portulan
   Skills (3)  clarify, codify, portulan

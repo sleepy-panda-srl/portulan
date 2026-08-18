@@ -7,7 +7,7 @@ merged `74240fa`, and this session landed the verdict in row 7 (399/500 bytes), 
 ## The finding worth carrying forward
 
 **A rule stated as an enumeration covers less than it claims.** The verifier I spawned to close M7
-**filed a real GitHub issue** — [#239](https://github.com/sleepy-panda-works/portulan/issues/239),
+**filed a real GitHub issue** — [#239](https://github.com/sleepy-panda-srl/portulan/issues/239),
 authored under the maintainer's own `gh` login — while exercising row 7's `feedback` clause. It was a
 Gated outward action taken with nobody's approval.
 
@@ -32,7 +32,7 @@ it.
 ## What the close found, beyond the verdict
 
 **An ambiguity the pass refused to resolve, correctly.** Row 7's opening clause — *`npx
-@sleepy-panda-works/portulan` ships …* — reads as *the bundle declares the bin and all eight subcommands
+@sleepy-panda-srl/portulan` ships …* — reads as *the bundle declares the bin and all eight subcommands
 dispatch* (demonstrated) or as *an adopter can `npx` it* (not demonstrated: the package is **404** on the
 registry and publishing is Gated). `identity.md` already states the gap, so the settled reading is the
 first; the row's words are the second. **A criterion that reads two ways is the ritual's finding to

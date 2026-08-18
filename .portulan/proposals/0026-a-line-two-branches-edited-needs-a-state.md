@@ -17,10 +17,10 @@ It appears once, as context in a diff, and nothing distinguishes *carried forwar
 
 Row 7's Status cell in `docs/plan.md`. Two commits, thirty-nine minutes apart:
 
-- **`3cf47e9`, 19:00:43+03:00** — merged from [#197](https://github.com/sleepy-panda-works/portulan/pull/197).
+- **`3cf47e9`, 19:00:43+03:00** — merged from [#197](https://github.com/sleepy-panda-srl/portulan/pull/197).
   Its `s5:` clause reads **verify composition — one carrier, four readers, `tools/github` composed;
   D6 done**, and its `Left:` list ends **(b) parity, interview, index rail, four of six demos**.
-- **`47bc92b`, 19:40:22+03:00** — merged from [#195](https://github.com/sleepy-panda-works/portulan/pull/195).
+- **`47bc92b`, 19:40:22+03:00** — merged from [#195](https://github.com/sleepy-panda-srl/portulan/pull/195).
   Its `s5:` clause reads **compose pins `packs` to `plugin.json`'s `skills`**, D6 is gone, and its `Left:`
   list reads **legibility, verify composition, (b) parity's adopter half, interview, index rail, five of
   six demos**.
@@ -44,8 +44,8 @@ close reads *second*.
 generated no comments. A human reading a diff of a 3,000-byte table row does not re-read the row.
 
 **And it came within one review of happening again, in the opposite direction.** On 2026-08-10,
-[#206](https://github.com/sleepy-panda-works/portulan/pull/206) corrected the same cell for D3 while
-[#212](https://github.com/sleepy-panda-works/portulan/pull/212) was open to correct it for D6. The
+[#206](https://github.com/sleepy-panda-srl/portulan/pull/206) corrected the same cell for D3 while
+[#212](https://github.com/sleepy-panda-srl/portulan/pull/212) was open to correct it for D6. The
 second was caught only because a person compared the two by hand.
 
 ## What already exists, and why none of it fires
@@ -204,7 +204,7 @@ recorded here because the first draft answered it differently. A commit trailer 
 note that this repository **rebase-merges** rather than squashing, so a trailer survives — the draft's
 earlier claim that the body would outlast a squash was beside the point.
 
-**Provenance.** `form=link href=https://github.com/sleepy-panda-works/portulan/pull/212` — that pull
+**Provenance.** `form=link href=https://github.com/sleepy-panda-srl/portulan/pull/212` — that pull
 request's own body named this gap and declined to propose it: *"a rail comparing a PR's touched lines
 against what merged into the merge-base since the branch forked would make this class mechanical. Not
 proposed here — it is a doctrine question, not a records fix."* The right call by that session, and the
@@ -213,4 +213,4 @@ the second near-miss: *"file a rail proposal for the status cell."*
 
 **Decision.** Marius Cetanas — pending.
 
-**Pull request:** [#218](https://github.com/sleepy-panda-works/portulan/pull/218) — the change that filed this.
+**Pull request:** [#218](https://github.com/sleepy-panda-srl/portulan/pull/218) — the change that filed this.

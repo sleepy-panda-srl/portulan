@@ -23,7 +23,7 @@ Read from the API rather than assumed, on 2026-07-27:
 | Dependency graph | **off** | `GET /repos/{o}/{r}/dependency-graph/sbom` → `404` |
 | Dependabot alerts | **off** | `GET /repos/{o}/{r}/vulnerability-alerts` → `404` |
 | Dependabot security updates | **off** | `security_and_analysis.dependabot_security_updates.status` = `disabled`; `GET /automated-security-fixes` → `{"enabled": false}` |
-| Org default for new repositories | **off** for all three | `GET /orgs/sleepy-panda-works` |
+| Org default for new repositories | **off** for all three | `GET /orgs/sleepy-panda-srl` |
 
 They are three settings and they chain: the graph feeds alerts, and alerts feed security updates. Turning
 on only the last one does nothing.
@@ -134,4 +134,4 @@ _Not closed by this: the **version**-update side from PR #22. Version-update job
 no probe here can speak to them; that is read at Insights → Dependency graph → Dependabot, and the first
 scheduled run is the Monday after this._
 
-**Pull request:** [#23](https://github.com/sleepy-panda-works/portulan/pull/23) — the change that filed this.
+**Pull request:** [#23](https://github.com/sleepy-panda-srl/portulan/pull/23) — the change that filed this.

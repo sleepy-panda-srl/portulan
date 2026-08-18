@@ -8,7 +8,7 @@
 #   skills-set  the governing workspace's `packs` and this bundle's declared `skills` are one fact:
 #               every skills root a composed pack NOMINATES is a root the manifest declares. Milestone
 #               7 session 8, row 7 clause (b)'s adopter half
-#               ([#184](https://github.com/sleepy-panda-works/portulan/issues/184)) — until it landed,
+#               ([#184](https://github.com/sleepy-panda-srl/portulan/issues/184)) — until it landed,
 #               registration was a property of `.claude-plugin/plugin.json` alone and a composed pack's
 #               skill was invocable by coincidence of a hand-written path.
 #
@@ -69,7 +69,7 @@ PLUGIN_ROOTS=(.)
 # nobody had named. It is a payload because the private feed's `portulan-checkpoints` entry is a
 # `git-subdir` source rooted there — so a host installs the contents of `packs/` and reads
 # `packs/.claude-plugin/plugin.json`, which did not exist until that day, which is why that install
-# reported `Skills (0)` for a milestone ([#134](https://github.com/sleepy-panda-works/portulan/issues/134)).
+# reported `Skills (0)` for a milestone ([#134](https://github.com/sleepy-panda-srl/portulan/issues/134)).
 PAYLOAD_ROOTS=(packs)
 
 if [ "${#PLUGIN_ROOTS[@]}" -eq 0 ]; then

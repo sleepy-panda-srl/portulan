@@ -13,13 +13,13 @@ the class, never as the carrier that names it**. *"Missing a sibling is issue #9
 incident and is right; *"the class #91 names"* is false, because
 [`0020`](../proposals/0020-a-fix-is-not-done-at-the-site-it-was-found.md) names it and #91 is the
 fail-open. _(Clause added 2026-08-10, stating in the rule's own voice the maintainer's ruling of
-2026-08-09 on [#196](https://github.com/sleepy-panda-works/portulan/issues/196), which is quoted rather
+2026-08-09 on [#196](https://github.com/sleepy-panda-srl/portulan/issues/196), which is quoted rather
 than paraphrased because this clause is about quoting accurately: **"Citing it as the incident whose
 repair taught a class is correct. Citing it as the carrier that names the class is false; `0020` names
 it."** That issue found three carriers making the false claim and thirteen making the true one;
-[#211](https://github.com/sleepy-panda-works/portulan/pull/211) repaired the three and left the thirteen.
+[#211](https://github.com/sleepy-panda-srl/portulan/pull/211) repaired the three and left the thirteen.
 **Accepted on merge** of the pull request closing
-[#217](https://github.com/sleepy-panda-works/portulan/issues/217).)_
+[#217](https://github.com/sleepy-panda-srl/portulan/issues/217).)_
 
 ## Why it holds
 

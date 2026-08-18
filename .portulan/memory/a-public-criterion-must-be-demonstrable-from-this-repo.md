@@ -1,6 +1,6 @@
 **type:** rule
 **scope:** workspace — anyone writing or amending a milestone exit criterion in `docs/plan.md`
-**provenance:** `form=link` `href=https://github.com/sleepy-panda-works/portulan/pull/15`
+**provenance:** `form=link` `href=https://github.com/sleepy-panda-srl/portulan/pull/15`
 — milestone 2 spent a session and part of the next "open on the pilot clause", with the maintainer asked twice to do
 client-rooted work in order to close a public milestone. The clause had been contradicted since
 2026-07-25 by the ruling that closed milestone 1, which established in the governing private context

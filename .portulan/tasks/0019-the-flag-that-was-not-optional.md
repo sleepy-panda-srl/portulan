@@ -219,7 +219,7 @@ reaching for, never deleted** — session 12's lesson about a case that pinned a
   shows it: reverting the unasked arm in `resolutionRoots` leaves `init`'s cases green, because `init`
   spells its own. It is the class
   [`0020`](../proposals/0020-a-fix-is-not-done-at-the-site-it-was-found.md) names and the shape it filed
-  [#169](https://github.com/sleepy-panda-works/portulan/issues/169) for — three `collisions()` that cannot
+  [#169](https://github.com/sleepy-panda-srl/portulan/issues/169) for — three `collisions()` that cannot
   be merged in the change that found them. Recorded here rather than repaired, because merging two
   resolvers is its own change; **and recorded as a pointer to that issue's class rather than to a
   "ledger", which was the first wording and names a register 0020 does not keep** — it is an accepted

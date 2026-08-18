@@ -1,6 +1,6 @@
 **type:** rule
 **scope:** workspace — anyone writing or changing a verify recipe here
-**provenance:** `form=link` `href=https://github.com/sleepy-panda-works/portulan/pull/8#discussion_r3649661115`
+**provenance:** `form=link` `href=https://github.com/sleepy-panda-srl/portulan/pull/8#discussion_r3649661115`
 — a Copilot review comment on the milestone-2 pull request, which flagged the pattern in the newly added
 `json.sh`; checking it showed the identical defect had been in the default recipe `docs.sh` since
 milestone 1, session 3.

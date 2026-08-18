@@ -1,13 +1,13 @@
 # Handoff — the rulings applied, and a matcher reading for a word Copilot had stopped using
 
 **Opens milestone 7.** Session 0 of the CLI & onboarding row, and the first session since
-[#146](https://github.com/sleepy-panda-works/portulan/pull/146) closed milestone 6. **Milestone state:
+[#146](https://github.com/sleepy-panda-srl/portulan/pull/146) closed milestone 6. **Milestone state:
 M6 closed, M7 in progress** — four rulings taken, the review rail repaired, and the row's packaging
 clause landed: there is a command line. `init`, `vendor` and `upgrade` are named by it and unbuilt.
 
 ## What landed
 
-[#147](https://github.com/sleepy-panda-works/portulan/pull/147), open and awaiting the maintainer's
+[#147](https://github.com/sleepy-panda-srl/portulan/pull/147), open and awaiting the maintainer's
 merge. Suite **774/774**, eight recipes green, seam clean. **Five Copilot rounds answered** — see the
 loop record at the end, which is worth reading before the next pull request opens.
 
@@ -38,7 +38,7 @@ Four questions went to the maintainer at session-open, before a file was written
   ever joins them is the maintainer's call. Wiring it would have minted a seventh into a list an
   implementer does not own. Session 0 wires the six and asks.
 - **Clause (a) needs a pack root and nothing discovers one.** `init` scaffolding the checkpoint ritual
-  by default has to find a checkpoints pack, and [#123](https://github.com/sleepy-panda-works/portulan/issues/123)
+  by default has to find a checkpoints pack, and [#123](https://github.com/sleepy-panda-srl/portulan/issues/123)
   is open: no tool discovers a host's plugin cache. Session 0 takes a **named** `--pack-root`, the same
   honest arrangement milestone 6 demonstrated. **Do not read the skeleton as closing #123.**
 - **The `verify`-composition limits are not a security boundary, and the first draft of that argument
@@ -55,7 +55,7 @@ Four questions went to the maintainer at session-open, before a file was written
 
 ## The rail, and what it cost while it was blind
 
-[#142](https://github.com/sleepy-panda-works/portulan/issues/142) predicted two markup spellings. The
+[#142](https://github.com/sleepy-panda-srl/portulan/issues/142) predicted two markup spellings. The
 by-hand sweep found **four**, varying on two axes independently — container (`<summary>` vs markdown
 heading) and phrase — and **they interleave**: heading-new at 05:52, summary-new at 06:04, heading-new
 again at 06:12 on 2026-07-31. **So no spelling is "the current one", and a repair written against the

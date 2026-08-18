@@ -20,8 +20,8 @@ byte-identical** to the git tree, so session 0's no-build-step property survives
 
 All to the maintainer, all answered. **(1)** Go for the M7 close at full bar — nothing amended out of
 row 7; the session count bends, not the criterion. He was offered narrowing the row to fit and declined
-it. **(2)** [#150](https://github.com/sleepy-panda-works/portulan/issues/150) resolves **broad**.
-**(3)** [#151](https://github.com/sleepy-panda-works/portulan/issues/151) resolves by **rewording**.
+it. **(2)** [#150](https://github.com/sleepy-panda-srl/portulan/issues/150) resolves **broad**.
+**(3)** [#151](https://github.com/sleepy-panda-srl/portulan/issues/151) resolves by **rewording**.
 **(4)** The residence switch's verb: **widen `vendor`'s `vision.md` gloss** — his edit, drafted for his
 hand, and it belongs with PR 2 where `vendor` lands. **(5)** `init` owes a **TTY interview loop**; flags
 and `--answers` stay the headless path. **(6)** **No npm publish** for the close — it demonstrates
@@ -107,7 +107,7 @@ repository's own five live hooks** in `.claude/settings.json` unless the same ch
 
 **The close owes six demonstrations, not four** — amendment 4's composed-recipe demonstration and clause
 (c)'s parity clause are row-owed and were missing from this session's first plan; the checkpoint found
-both. Subjects are settled: D1 onboards `sleepy-panda-works/sleepypanda-site`, measured ungoverned and
+both. Subjects are settled: D1 onboards `sleepy-panda-srl/sleepypanda-site`, measured ungoverned and
 already checked out locally; D4's feed end is the real `portulan-internal`; D3's send is **Gated** and
 goes to Marius with its exact payload before it leaves the machine.
 
@@ -174,7 +174,7 @@ change's fault would be the one to triage, and neither round produced one.
 
 ## State at handoff
 
-[#156](https://github.com/sleepy-panda-works/portulan/pull/156) is **open, not merged** — merging is the
+[#156](https://github.com/sleepy-panda-srl/portulan/pull/156) is **open, not merged** — merging is the
 maintainer's. `workspace-verify` and `pr-labeled` are green; one review thread is unresolved and
 `required_conversation_resolution` waits on him rather than on the bot, which cannot resolve threads.
 Suite **902**, eight recipes green, `npm pack` byte-identical.

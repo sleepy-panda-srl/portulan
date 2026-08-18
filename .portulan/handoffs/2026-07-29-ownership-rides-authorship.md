@@ -1,7 +1,7 @@
 # Handoff — ownership rides authorship, and the label makes it filterable
 
 **Date:** 2026-07-29 · **post-M5, no milestone row touched** · Branch
-`agent-driven-ownership-label` · [#99](https://github.com/sleepy-panda-works/portulan/pull/99)
+`agent-driven-ownership-label` · [#99](https://github.com/sleepy-panda-srl/portulan/pull/99)
 
 **State.** The maintainer ruled on the ownership question #95 refuted (verbatim: *"go with option B,
 wire the agent-driven label"*) — the machine-user route declined, authorship confirmed as the
@@ -21,8 +21,8 @@ asserted.
 ## What was applied live, and by whose hand
 
 The label was created with `gh label create` (declaring in the file does not create it — the recorded
-lesson), then applied to open [#95](https://github.com/sleepy-panda-works/portulan/pull/95) and
-[#96](https://github.com/sleepy-panda-works/portulan/pull/96), the two open agent-driven pull
+lesson), then applied to open [#95](https://github.com/sleepy-panda-srl/portulan/pull/95) and
+[#96](https://github.com/sleepy-panda-srl/portulan/pull/96), the two open agent-driven pull
 requests — forward-only, no backfill of merged ones. Those two label writes were the agent's hand
 under the maintainer's credentials, executing his dated ruling; each pull request carries a bot
 comment saying exactly that, the in-artifact attribution the identity table requires. Labeling

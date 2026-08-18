@@ -4,8 +4,8 @@ Fourth handoff of 2026-08-07, and the first of three from one working thread: th
 the top three `Now` items addressed one by one, **one pull request each**, and ruled that each carries
 its own handoff and Session log entry rather than the thread carrying one — `identity.md`'s definition
 of a session is one branch and one pull request, and three pull requests are three sessions under it.
-This one is [#176](https://github.com/sleepy-panda-works/portulan/pull/176), for
-[#66](https://github.com/sleepy-panda-works/portulan/issues/66).
+This one is [#176](https://github.com/sleepy-panda-srl/portulan/pull/176), for
+[#66](https://github.com/sleepy-panda-srl/portulan/issues/66).
 
 **State.** Proposal `0021` written, and shape 2 of it implemented — the concurrency key and the
 fenced-block fix in [`copilot-review.yml`](../../.github/workflows/copilot-review.yml), with three
@@ -25,7 +25,7 @@ written and the ruling asked for.
 
 ## The part that was not in #66, and how it was nearly missed
 
-The first draft counted eleven lost notes on [#167](https://github.com/sleepy-panda-works/portulan/pull/167)
+The first draft counted eleven lost notes on [#167](https://github.com/sleepy-panda-srl/portulan/pull/167)
 and attributed all of them to the one mechanism anybody had noticed: the verdict step stays silent when
 a submission raised an inline comment. **A fresh-context pre-commit checkpoint refused it** and sent the
 session to `/actions/runs`, where the real cause was sitting:

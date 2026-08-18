@@ -1,7 +1,7 @@
 # Handoff — a lead is not a cause, and the gate is not a required check
 
 2026-08-09, third of three sessions off the board's `Now` column, on `m7-the-strand-that-has-no-state`.
-[#161](https://github.com/sleepy-panda-works/portulan/issues/161) as **proposal `0023`**, evidence-only,
+[#161](https://github.com/sleepy-panda-srl/portulan/issues/161) as **proposal `0023`**, evidence-only,
 by the maintainer's ruling this session — no controlled experiment, no throwaway pull requests.
 
 ## What this is and what it deliberately is not
@@ -43,7 +43,7 @@ The cause. #157 **did** draw a round on its original head, so a blanket *Copilot
 App-authored pull requests* does not fit; the shape that fits is `synchronize` specifically, with
 `opened` unaffected. **One uncontrolled variable across two pull requests is not a mechanism.** Two
 things stay unexplained beyond that: why the explicit re-request is *accepted* and then yields nothing,
-and why that differs from [#86](https://github.com/sleepy-panda-works/portulan/pull/86), where a
+and why that differs from [#86](https://github.com/sleepy-panda-srl/portulan/pull/86), where a
 re-request produced a round in about ninety seconds.
 
 The experiment that would settle it is named in the proposal — a controlled App/user pair, each drawing a

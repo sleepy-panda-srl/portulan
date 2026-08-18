@@ -7,7 +7,7 @@ moves*, and it took a session-open one as well.
 
 ## What was wrong
 
-`sleepy-panda-works/portulan` was flipped back to **private on 2026-08-03**. The tree kept saying it was
+`sleepy-panda-srl/portulan` was flipped back to **private on 2026-08-03**. The tree kept saying it was
 public. These were not stale sentences that drifted — **the flip minted them**, in the condition-4
 sense: every one was true when written and went false at a single instant, without anyone touching a
 file. _(The commissioning gives the time as 13:07Z. That is carried, not measured: GitHub exposes no
@@ -94,7 +94,7 @@ repository's own idiom — **append a dated bracket, leave the original words**.
 [`../../CHANGELOG.md`](../../CHANGELOG.md)'s `v0.1.0` entry (*"The repository was private at this tag …
 _(2026-07-27: it went public …)_"*) and [`../../docs/plan.md`](../../docs/plan.md)'s milestone-0 Status
 cell. One site here: `docs/plan.md`'s **2026-07-28** entry on
-[#67](https://github.com/sleepy-panda-works/portulan/issues/67).
+[#67](https://github.com/sleepy-panda-srl/portulan/issues/67).
 
 _(Cited by content rather than by line, deliberately. This paragraph first read "CHANGELOG.md line 588",
 which two rebases moved to 589 — and `main`'s own newest commit at the time of writing is another
@@ -138,10 +138,10 @@ GitHub setting no file can read."* Both left alone, deliberately.
   neither is a defect. They are surfaced because vision is the one file that **cannot carry a dated
   annotation from an agent**, so a reader who disagrees with the identity reading has no way to see the
   question was asked. The call is his; this handoff should not be read as recommending a change.
-- **Row 7's Status-cell true-up** and **[#196](https://github.com/sleepy-panda-works/portulan/issues/196)'s
+- **Row 7's Status-cell true-up** and **[#196](https://github.com/sleepy-panda-srl/portulan/issues/196)'s
   citation repair** — other sessions own them.
 - **One fact found in passing, of another class, named rather than folded in.**
-  `sleepy-panda-works/portulan-workspace-template` **does not exist** (404), and
+  `sleepy-panda-srl/portulan-workspace-template` **does not exist** (404), and
   [`../../docs/plan.md`](../../docs/plan.md) names it in decision 1 and the topology as though it does.
   Not a visibility carrier, so not fixed here.
 
@@ -159,7 +159,7 @@ independently by the pre-commit checkpoint rather than taken from this paragraph
 after the rebase**, which is where the count changed from nine.
 
 **The rebase produced a thirtieth carrier, and it is the most instructive one here.** Rebasing onto
-`43f1e54` picked up [#206](https://github.com/sleepy-panda-works/portulan/pull/206), which shipped
+`43f1e54` picked up [#206](https://github.com/sleepy-panda-srl/portulan/pull/206), which shipped
 `cli/feedback.mjs` — and with it **a second copy of the acknowledgement sentence this change had just
 rewritten** in `feedback.yml`. The census could not have seen it: the file did not exist when the census
 ran. **#206's own rail caught it**, holding the shipped field map against the real issue forms, which is
@@ -173,7 +173,7 @@ corrections themselves**, which quote the sentence they retire.
 
 **The install path is measured rather than derived**, because *"requires authentication"* was asserted
 in four files off nothing but `private` + 404. A stranger's fetch, with the credential helper
-explicitly disabled: `git -c credential.helper= ls-remote https://github.com/sleepy-panda-works/portulan`
+explicitly disabled: `git -c credential.helper= ls-remote https://github.com/sleepy-panda-srl/portulan`
 → `fatal: could not read Username for 'https://github.com'`. The same command **succeeds** with the
 helper left on, which is the control: the first attempt this session ran passed only because macOS
 supplied the maintainer's credentials from the keychain, and that near-miss is the reason the negative

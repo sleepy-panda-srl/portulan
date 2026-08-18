@@ -3,14 +3,14 @@
 **Status. RULED, 2026-08-09** — twice, by fresh-context Fable 5 supervisors under the maintainer's
 delegation, the fourth and fifth in the `0022`–`0024` series. The second ruling was asked whether the
 number should move and **corrected the record rather than the cap**. Both are recorded in full on
-[#199](https://github.com/sleepy-panda-works/portulan/issues/199). Accepted on merge.
+[#199](https://github.com/sleepy-panda-srl/portulan/issues/199). Accepted on merge.
 
-**Pull request:** https://github.com/sleepy-panda-works/portulan/pull/215
+**Pull request:** https://github.com/sleepy-panda-srl/portulan/pull/215
 
 ## Incident
 
 Three unrelated changes in two weeks breached `memory.store.budget.kilobytes` — a rail on the store's
-**total** size. The third, [#172](https://github.com/sleepy-panda-works/portulan/issues/172)'s ordinary
+**total** size. The third, [#172](https://github.com/sleepy-panda-srl/portulan/issues/172)'s ordinary
 new record, hit it with **551 bytes** of headroom, having done nothing unusual. The record actually
 driving the total — `a-review-loop-needs-a-bound.md` at **15,879 bytes, 13.1% of the whole store**
 (measured at `34d62e0^`, the commit before the demote) — had never breached anything, because at write
@@ -65,7 +65,7 @@ over-budget record is reported, not merely the first: unlike a `columns` breach,
 same trivial rename every time, each of these is a separate editorial decision.
 
 **Demonstrated red → green rather than asserted**, on the real store, with the demote half of the
-migration already upstream from [#202](https://github.com/sleepy-panda-works/portulan/pull/202):
+migration already upstream from [#202](https://github.com/sleepy-panda-srl/portulan/pull/202):
 
 ```
 ✗ .portulan: the record a-review-loop-needs-a-bound.md is 8.5 KB (8654 bytes) against a per-record
@@ -146,7 +146,7 @@ Post-split: the bound **7,047 B (86%)**, the channel **3,095 B (38%)**, index **
 ## What it does not solve
 
 Not **recall quality** — an eval question, milestone 8, and the split changed what a recall loads without
-anyone measuring whether either half recalls better. Not [#75](https://github.com/sleepy-panda-works/portulan/issues/75):
+anyone measuring whether either half recalls better. Not [#75](https://github.com/sleepy-panda-srl/portulan/issues/75):
 nothing yet refuses a cap raise in a breaching change, and this adds one more key that rule must cover.
 Not the count-axis conversation above. And `memory/README.md` remains the one `.md` name invisible to
 both byte rails — pre-existing, consistent across three tools, and the old aggregate missed it
@@ -155,7 +155,7 @@ identically.
 ## Provenance
 
 `form=link` `href=../../.portulan/handoffs/2026-08-10-the-rail-moves-to-the-record.md` — and the two
-rulings in full on [#199](https://github.com/sleepy-panda-works/portulan/issues/199), with the
+rulings in full on [#199](https://github.com/sleepy-panda-srl/portulan/issues/199), with the
 sequencing note that recorded #202 landing the demote half early and alone.
 
 ## Decision

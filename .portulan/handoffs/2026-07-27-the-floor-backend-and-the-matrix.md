@@ -51,7 +51,7 @@ policy's `floor`. Its first run on this branch reported that the row named one r
 where the policy declared two. The draft of this handoff called that a live defect found in the record,
 and said the row had been stale for a day.
 
-**It was not.** [#50](https://github.com/sleepy-panda-works/portulan/pull/50) — merged 21 minutes after
+**It was not.** [#50](https://github.com/sleepy-panda-srl/portulan/pull/50) — merged 21 minutes after
 this branch's base commit — added `pr-labeled` to the live floor *and corrected that row in the same
 change*. What was stale was this branch's checkout. Caught at the pre-commit checkpoint, by a supervisor
 that fetched `origin/main` instead of trusting the working copy.

@@ -1,7 +1,7 @@
 # Handoff — a reply belongs where the comment is
 
 **Date:** 2026-07-29 · **post-M6-session-0, no milestone row touched** · Branch
-`a-reply-belongs-where-the-comment-is` · [#110](https://github.com/sleepy-panda-works/portulan/pull/110)
+`a-reply-belongs-where-the-comment-is` · [#110](https://github.com/sleepy-panda-srl/portulan/pull/110)
 
 **State.** `main` at `6840bd7`, eight recipes green, seam clean. Doctrine wording plus two workflow
 report strings. No logic, no criterion.
@@ -44,8 +44,8 @@ class; only a reader who checks the claim against the code can.
   retirement condition is not met and will not be soon. Worth knowing that the reviewer, not the
   implementer, caught it every time.
 - **Rule 3 still says suppressed notes are "never a reason to push again".** Twice on
-  [#107](https://github.com/sleepy-panda-works/portulan/pull/107) they demonstrated statements that were
-  false, and pushing was right; once on [#109](https://github.com/sleepy-panda-works/portulan/pull/109) a
+  [#107](https://github.com/sleepy-panda-srl/portulan/pull/107) they demonstrated statements that were
+  false, and pushing was right; once on [#109](https://github.com/sleepy-panda-srl/portulan/pull/109) a
   note was a rendering preference about pre-existing prose, and refusing was right. **The rule has no
   words for that difference** — it is the shape #94 replaced, where the compliant answer to a known
   falsehood is to leave it standing. Raised in #110's body and unresolved; a carve-out is a doctrine

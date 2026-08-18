@@ -1498,7 +1498,7 @@ jobs:
           # low-confidence note" about a review whose whole text was that Copilot could not review —
           # submitted 4m36s before the only genuine round arrived. One carrier, both branches.
           body="${body}Computed from that round by [\`copilot-review.yml\`](${run_url}) and submitted by the agent identity — derived, never judged."$'\n\n'
-          body="${body}**That a round happened is established rather than assumed.** The review this is derived from carries an announcement this workflow recognises as a round, and it is the newest word on \`${head}\`; a body reporting that the reviewer was unable to review does not satisfy the check above, and one this workflow cannot classify greens the check without licensing this verdict ([#286](https://github.com/sleepy-panda-works/portulan/issues/286))."$'\n\n'
+          body="${body}**That a round happened is established rather than assumed.** The review this is derived from carries an announcement this workflow recognises as a round, and it is the newest word on \`${head}\`; a body reporting that the reviewer was unable to review does not satisfy the check above, and one this workflow cannot classify greens the check without licensing this verdict ([#286](https://github.com/sleepy-panda-srl/portulan/issues/286))."$'\n\n'
           body="${body}The merge gate is unchanged: the maintainer decides."
 
           if GH_TOKEN="$token" gh api --silent -X POST \

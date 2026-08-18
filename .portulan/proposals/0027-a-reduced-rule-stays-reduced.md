@@ -11,9 +11,9 @@ runnable set is what the manifest **yields** — the workspace's own recipes plu
 contribute — and no longer what it **declares**. The rule was carried in prose at eleven sites.
 
 - `3cf47e9`, the change that landed the mechanism, repaired **two** of them.
-- [#206](https://github.com/sleepy-panda-works/portulan/pull/206) repaired two more, independently,
+- [#206](https://github.com/sleepy-panda-srl/portulan/pull/206) repaired two more, independently,
   three weeks later.
-- [#222](https://github.com/sleepy-panda-works/portulan/pull/222) swept the remaining **ten**, and
+- [#222](https://github.com/sleepy-panda-srl/portulan/pull/222) swept the remaining **ten**, and
   needed **three instruments** to find them, because each was blind to what the last had found:
 
 | The instrument | What it could not see |
@@ -106,7 +106,7 @@ spelling.
 3. **Counts and rosters.** `.portulan/identity.md`'s seven-recipe roster shares no words with any
    sentence, so **no tell can reach it**. That subclass wants *derive-and-compare* — a card's roster
    against the manifest, tree-against-tree, the shape `doctor` already uses for gate-map-versus-workflows
-   — and it belongs to [#187](https://github.com/sleepy-panda-works/portulan/issues/187), not here.
+   — and it belongs to [#187](https://github.com/sleepy-panda-srl/portulan/issues/187), not here.
 4. **A sentence that cites the carrier and then contradicts it.** `spec/slots.md` already states this
    ceiling for its own reverse check: what no check can hold is whether a sentence contradicts the rule
    it names.
@@ -184,7 +184,7 @@ repository's own argument for why demonstrations are not ceremony:
 
 **And the byte rail this repository already owns caught a fourth.** `cli/rule-carriers.mjs` shipped
 **four raw NUL bytes** — a map-key separator where a raw NUL was meant, which is
-[#68](https://github.com/sleepy-panda-works/portulan/issues/68)'s incident exactly. `file` classified the
+[#68](https://github.com/sleepy-panda-srl/portulan/issues/68)'s incident exactly. `file` classified the
 source as *data* and **`grep` returned nothing for strings that were plainly there**, which is how it was
 noticed at all. `control-chars.sh` named it in one run. A rail written against instrument blindness was
 itself silently corrupted, and an existing rail caught it.
@@ -223,7 +223,7 @@ building the day the verdict format is fixed**. Fixing that format is your rulin
 ## Provenance
 
 `form=link`
-`href=`[`https://github.com/sleepy-panda-works/portulan/pull/222`](https://github.com/sleepy-panda-works/portulan/pull/222)
+`href=`[`https://github.com/sleepy-panda-srl/portulan/pull/222`](https://github.com/sleepy-panda-srl/portulan/pull/222)
 — the sweep that found ten carriers with three instruments and needed a fresh context to find the last
 two. In-repo and resolvable by anyone who can read this rule; it carries no client material, so no seal
 is needed.
@@ -231,4 +231,4 @@ is needed.
 **Decision.** PROPOSED — awaiting the maintainer. Q1 and Q2 are his; the rail in this change stands or
 falls with the rule.
 
-**Pull request:** [#223](https://github.com/sleepy-panda-works/portulan/pull/223) — the change that filed this.
+**Pull request:** [#223](https://github.com/sleepy-panda-srl/portulan/pull/223) — the change that filed this.

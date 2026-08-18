@@ -99,7 +99,7 @@ function invoke(argv, options = {}) {
             ((cmd, args, spawn = {}) => {
                 calls.push({ cmd, args, input: spawn.input });
                 if (args[0] === "auth") return { status: 0, stdout: "", stderr: "" };
-                return { status: 0, stdout: "https://github.com/sleepy-panda-works/portulan/issues/999\n", stderr: "" };
+                return { status: 0, stdout: "https://github.com/sleepy-panda-srl/portulan/issues/999\n", stderr: "" };
             }),
         facts: options.facts ?? { platform: "darwin", release: "25.6.0", arch: "arm64", node: "v22.0.0" },
         ...options.extra,
@@ -300,7 +300,7 @@ describe("preview — the bytes the user sees", () => {
         const body = between(out);
         assert.equal(body, built.body, "the previewed body must be the payload call's own bytes");
         assert.ok(out.includes(built.title), "the previewed title must be the payload call's own");
-        assert.match(out, /sleepy-panda-works\/portulan/);
+        assert.match(out, /sleepy-panda-srl\/portulan/);
     });
 
     test("the title carries the form's own prefix and the user's words, and no label is sent", () => {
@@ -392,7 +392,7 @@ describe("send — Gated, per action", () => {
         assert.ok(!create.args.includes("--label"), "the client sets no labels");
 
         const after = fs.readFileSync(file, "utf8");
-        assert.match(after, /\nissue: https:\/\/github\.com\/sleepy-panda-works\/portulan\/issues\/999\n/);
+        assert.match(after, /\nissue: https:\/\/github\.com\/sleepy-panda-srl\/portulan\/issues\/999\n/);
         assert.match(after, /\nsent: 2026-08-10T09:15:00\.000Z\n/);
         assert.match(out, /issues\/999/);
     });
@@ -480,7 +480,7 @@ describe("send — Gated, per action", () => {
             exec: (cmd, args) =>
                 args[0] === "auth"
                     ? { status: 0, stdout: "", stderr: "" }
-                    : { status: 0, stdout: "https://github.com/sleepy-panda-works/portulan/issues/1000\n", stderr: "" },
+                    : { status: 0, stdout: "https://github.com/sleepy-panda-srl/portulan/issues/1000\n", stderr: "" },
             facts: { platform: "darwin", release: "25.6.0", arch: "arm64", node: "v22.0.0" },
         });
         assert.equal(later, 0, out.join("\n"));
@@ -526,14 +526,14 @@ describe("send — Gated, per action", () => {
     test("--repo is a named override, and the default is derived from the shipped package manifest", () => {
         const dir = workspace();
         const file = previewed(dir, "feedback", FILLED.feedback);
-        const { calls } = invoke(["send", file, "--approve", "--repo", "sleepy-panda-works/scratch"]);
+        const { calls } = invoke(["send", file, "--approve", "--repo", "sleepy-panda-srl/scratch"]);
         const create = calls.find((c) => c.args[0] === "issue");
-        assert.ok(create.args.includes("sleepy-panda-works/scratch"));
+        assert.ok(create.args.includes("sleepy-panda-srl/scratch"));
 
         const other = workspace();
         const plain = invoke(["send", previewed(other, "feedback", FILLED.feedback), "--approve"]);
         const first = plain.calls.find((c) => c.args[0] === "issue");
-        assert.ok(first.args.includes("sleepy-panda-works/portulan"));
+        assert.ok(first.args.includes("sleepy-panda-srl/portulan"));
     });
 });
 

@@ -2,7 +2,7 @@
 
 **Date:** 2026-07-30 · **post-M5, no milestone row touched** · Branch
 `the-tests-rail-has-been-seen-to-fire` · drill run on
-[#118](https://github.com/sleepy-panda-works/portulan/pull/118), closed unmerged
+[#118](https://github.com/sleepy-panda-srl/portulan/pull/118), closed unmerged
 
 **State.** `main` at `5a707e3`, eight recipes green, seam clean. One drill, both directions, and a
 survey that turned out to be the larger half of the finding.

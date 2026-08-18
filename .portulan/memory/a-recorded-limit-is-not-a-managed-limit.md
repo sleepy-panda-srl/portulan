@@ -1,6 +1,6 @@
 **type:** rule
 **scope:** workspace — this repository's Known-limits sections and the records that stand in for rails
-**provenance:** `form=link` `href=https://github.com/sleepy-panda-works/portulan/pull/129`
+**provenance:** `form=link` `href=https://github.com/sleepy-panda-srl/portulan/pull/129`
 
 **A limit written down is not a limit managed.** A known defect recorded in prose — even with its repair
 named in the same sentence — has been *documented*, not *queued*, and nothing will ever return to it. So a
@@ -12,7 +12,7 @@ permanent by design. Prose alone is where a limit goes to be forgotten politely.
 instead would close it; until then this is a known false green, recorded rather than left to be
 discovered."* The diagnosis was right, the repair was right, and it sat for three days. It was closed only
 because an **unrelated** instance of the same class — a generated file linking an empty directory, green
-locally and red in CI ([#121](https://github.com/sleepy-panda-works/portulan/issues/121)) — sent a session
+locally and red in CI ([#121](https://github.com/sleepy-panda-srl/portulan/issues/121)) — sent a session
 looking for siblings. Nothing about the recording produced the fix; a different defect did.
 
 **Why the recording still helped, which is the part that makes this a rule and not a complaint.** When the

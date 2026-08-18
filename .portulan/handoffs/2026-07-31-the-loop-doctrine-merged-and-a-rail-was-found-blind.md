@@ -1,12 +1,12 @@
 # Handoff — the loop doctrine merged, and the rail that watches reviews was found blind
 
 **Continues** [`2026-07-30-the-loop-gets-its-fresh-verdict.md`](2026-07-30-the-loop-gets-its-fresh-verdict.md).
-Same working stretch, past midnight: that handoff covers drafting [#137](https://github.com/sleepy-panda-works/portulan/pull/137)
+Same working stretch, past midnight: that handoff covers drafting [#137](https://github.com/sleepy-panda-srl/portulan/pull/137)
 through its two checkpoints; this one covers landing it. **Milestone state: none moved.**
 
 ## What landed
 
-[#137](https://github.com/sleepy-panda-works/portulan/pull/137) **merged** — `main` = `2939050`, five
+[#137](https://github.com/sleepy-panda-srl/portulan/pull/137) **merged** — `main` = `2939050`, five
 commits, rebased linear. The merged tree was re-verified in a **clean clone**: eight recipes green,
 756/756, kernel 44/60. Branch auto-deleted.
 
@@ -48,7 +48,7 @@ moment it had not.
 project has measured that it **carries most real findings**. A silent zero there is the review loop's least
 visible failure, and nothing retains the bodies, so the number of past rounds that reported a false zero is
 **unknown and not recoverable** without a hand sweep. Filed as
-[#142](https://github.com/sleepy-panda-works/portulan/issues/142); the final round on #137 was swept by
+[#142](https://github.com/sleepy-panda-srl/portulan/issues/142); the final round on #137 was swept by
 hand instead, and was genuinely clean.
 
 It is the class `.portulan/memory/a-checkers-coverage-is-measured-not-named.md` names, and a live argument
@@ -57,14 +57,14 @@ incident rather than by the drill, which is precisely what happened.
 
 ## Also filed
 
-[#143](https://github.com/sleepy-panda-works/portulan/issues/143) — the proposal-names-its-PR rail forces a
+[#143](https://github.com/sleepy-panda-srl/portulan/issues/143) — the proposal-names-its-PR rail forces a
 commit to exist before the first pre-commit checkpoint has anywhere to stand. It records the breach #137
 committed, the compliant path that existed, and three options, with the rule-change one marked as the
 maintainer's and belonging in a proposal rather than an issue.
 
 ## Open, for whoever picks this up
 
-- [#144](https://github.com/sleepy-panda-works/portulan/pull/144) also adds a 2026-07-31 handoff and a
+- [#144](https://github.com/sleepy-panda-srl/portulan/pull/144) also adds a 2026-07-31 handoff and a
   `docs/plan.md` entry. Whichever of the two lands second **rebases and regenerates the handoff index** —
   the `record` check counts entries against handoffs per date, so both records must be present and balanced.
 - The **M6 close-hold and #135's M7 residence amendment are still drafted and unapplied**, as is `vendor` as

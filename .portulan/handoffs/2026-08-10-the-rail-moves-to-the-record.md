@@ -2,15 +2,15 @@
 
 **Off the milestone row. Full lane** — a doctrine change: Workspace Definition 2.8, the memory byte
 rail, and a split of the record this repository's review process runs on. Pull request
-[#215](https://github.com/sleepy-panda-works/portulan/pull/215), proposal
+[#215](https://github.com/sleepy-panda-srl/portulan/pull/215), proposal
 [`0025`](../proposals/0025-the-byte-rail-moves-from-the-store-to-the-record.md), ruled twice on
-[#199](https://github.com/sleepy-panda-works/portulan/issues/199).
+[#199](https://github.com/sleepy-panda-srl/portulan/issues/199).
 
 ## What this session was handed, and what had changed under it
 
 #199 carries two fresh-context Fable 5 rulings and a sequencing note. The note is the part that changed
 the work: **the demote half landed early and alone** in
-[#202](https://github.com/sleepy-panda-works/portulan/pull/202) on 2026-08-09, so the ruled sequence
+[#202](https://github.com/sleepy-panda-srl/portulan/pull/202) on 2026-08-09, so the ruled sequence
 *demote → split → rail* became **split + rail in one pull request**, with the demote already upstream.
 
 **Measured at session open rather than inherited** — `Buffer.byteLength` over `.portulan/memory/*.md`,
@@ -134,7 +134,7 @@ Nine recipes green, suite **1200 pass / 0 fail**. Seam scan clean, with links co
 first — the instrument lesson from 2026-08-09, where a markdown URL inside the phrase hid a carrier.
 
 **Left for the next session:** the proposal and these records land in a second push, per
-[#143](https://github.com/sleepy-panda-works/portulan/issues/143)'s ruled sequence (a proposal must name
+[#143](https://github.com/sleepy-panda-srl/portulan/issues/143)'s ruled sequence (a proposal must name
 its pull request, so it cannot precede it), which owes a second pre-commit pass on the additions. Then
 Copilot rounds to empty. **Marius merges.**
 

@@ -145,7 +145,7 @@ where a reader already knows to look is stated at the narrowest carrier.
 **Settled by the maintainer on 2026-07-29** — verbatim, *"row 6 declares, row 7 validates"* — after two
 sessions put the same question to him within the hour without knowing of each other and were given
 different answers. The record of both, and of the third option that reconciles them, is
-[#98](https://github.com/sleepy-panda-works/portulan/issues/98) and
+[#98](https://github.com/sleepy-panda-srl/portulan/issues/98) and
 [`docs/milestones/m06.md`](../../docs/milestones/m06.md). Neither row needed a criterion edit to carry
 this: both already demanded their half. Said plainly because the
 alternative is a page describing an enforcement that does not exist — the failure a workspace's

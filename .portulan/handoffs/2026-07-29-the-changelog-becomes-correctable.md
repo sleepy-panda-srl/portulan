@@ -1,7 +1,7 @@
 # Handoff — the changelog becomes correctable, and 0.2.0 is cut
 
 **Date:** 2026-07-29 · **post-M5, no milestone row touched** · Branch
-`changelog-unreleased-accumulates` · [#106](https://github.com/sleepy-panda-works/portulan/pull/106)
+`changelog-unreleased-accumulates` · [#106](https://github.com/sleepy-panda-srl/portulan/pull/106)
 
 **State.** Sent at the first two **Now** items on the board. #94 is closed by this change; **#98 was
 routed away and is still the maintainer's**. All eight recipes green, seam clean, `main` at `b6b3af1`.
@@ -78,7 +78,7 @@ old changelog rule would have forbidden.
   said "is the current release", which the reviewer caught five times across both channels, and which
   this bullet then described as a window to be tolerated rather than a sentence to be fixed. Still, an
   entry and its tag should not stay apart for long.
-- **#98 should ride [#105](https://github.com/sleepy-panda-works/portulan/pull/105), not a new branch.**
+- **#98 should ride [#105](https://github.com/sleepy-panda-srl/portulan/pull/105), not a new branch.**
   That pull request already owns `docs/plan.md` and `docs/milestones/m06.md` and has written the option
   analysis into m06.md. Amending row 6 from anywhere else puts two branches on one milestone row — the
   #95/#96 collision, which cost a rebase. The choice is the maintainer's on four carriers.

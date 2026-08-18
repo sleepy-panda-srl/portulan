@@ -19,7 +19,7 @@ compensation was measurement: every claim below is something the tree was made t
 Not wrong that a defect existed — wrong about *what it was*. A fix written to the stated reason would
 have been justified by something that does not happen, and in one case would have introduced a defect.
 
-**[#209](https://github.com/sleepy-panda-works/portulan/issues/209)** said the recipes "split file
+**[#209](https://github.com/sleepy-panda-srl/portulan/issues/209)** said the recipes "split file
 lists on newlines" and would mis-split a filename containing one, "into two paths that do not exist."
 Measured on a repository built to hold `we<LF>ird.md` and `café.md`: **git C-quotes a newline
 regardless of `core.quotePath`** — both settings measured — so it arrives as the single line
@@ -33,7 +33,7 @@ fixed by #251. The four that were not named were the broken ones — `doctor.sh`
 dropping the file and passing, **the only false green of the class and the least conspicuous line in
 the sweep**.
 
-**[#254](https://github.com/sleepy-panda-works/portulan/issues/254)** swept for the NAME
+**[#254](https://github.com/sleepy-panda-srl/portulan/issues/254)** swept for the NAME
 `fs.*Sync = `, so it structurally could not see the same shape wearing another. By SHAPE the class is
 **fourteen sites, not six** — `process.stdout.write` and `process.stderr.write` too. Eleven converted;
 **three deliberately not**, because `t.mock.method` scopes a mock to the TEST and those mean a helper
@@ -43,13 +43,13 @@ call, a loop iteration, and a `process.env` restore. That last one is the measur
 descriptor` — because it installs the mock as a getter/setter pair. This session's own planning note
 had claimed that API made the env sites convertible, reasoning from the API existing to it applying.
 
-**[#170](https://github.com/sleepy-panda-works/portulan/issues/170)** named two carriers. There were
+**[#170](https://github.com/sleepy-panda-srl/portulan/issues/170)** named two carriers. There were
 **seven**, including the recipe's **runtime output**, printed on every run of a required check and
 named by nobody. And one of the seven was `cli/control-chars.mjs:10` — written by `0ec9cfb`, **this
 session's own #208 fix, three commits earlier**. A change closing one issue added a fresh carrier of a
 narrowing already sitting on the roster it was working from. Called out rather than folded in.
 
-**[#257](https://github.com/sleepy-panda-works/portulan/issues/257)** was the one whose brief held, and
+**[#257](https://github.com/sleepy-panda-srl/portulan/issues/257)** was the one whose brief held, and
 it left the arm choice open. **Arm 1**, and the reason is the neighbouring line:
 `.portulan/verify/README.md:204` does not merely list dependencies, it makes `docs.sh` the REASON
 something else is safe; and #255 hit this same choice on the cli-table extraction *in that recipe* and
@@ -61,7 +61,7 @@ preserved deliberately.
 
 ## The gate that guards the commission has the commission's own defect
 
-Filed as [#286](https://github.com/sleepy-panda-works/portulan/issues/286). During a GitHub incident
+Filed as [#286](https://github.com/sleepy-panda-srl/portulan/issues/286). During a GitHub incident
 Copilot returned a review whose entire body was *"encountered an error and was unable to review"*.
 **`copilot-reviewed` went GREEN on it**, `mergeStateStatus` read `CLEAN`, and `portulan-agent` then
 submitted a derived **APPROVED** reading *"Copilot's round … raised no inline comment"* — a positive
@@ -108,7 +108,7 @@ Six, each caught by forcing it rather than reading it, and every one cost a re-m
 
 ## Also
 
-**[#141](https://github.com/sleepy-panda-works/portulan/issues/141) closed by comment, no code.** The
+**[#141](https://github.com/sleepy-panda-srl/portulan/issues/141) closed by comment, no code.** The
 guard it asks for is at `cli/doctor.mjs:1601`, blamed to **`6165218` (2026-08-09, the maintainer's own
 hand)**, pinned by six variants plus a padded-slug boundary, all green. It outlived its fix by nine
 days because that commit cites the issue in a **code comment and never in its message**, so nothing

@@ -2,11 +2,11 @@
 
 **Status.** **Accepted — shape 1, on the maintainer's ruling of 2026-08-07**, and implemented in the pull request below.
 
-**Pull request:** https://github.com/sleepy-panda-works/portulan/pull/176
+**Pull request:** https://github.com/sleepy-panda-srl/portulan/pull/176
 
-## Why this began as a proposal rather than as the change [#66](https://github.com/sleepy-panda-works/portulan/issues/66) describes
+## Why this began as a proposal rather than as the change [#66](https://github.com/sleepy-panda-srl/portulan/issues/66) describes
 
-[#66](https://github.com/sleepy-panda-works/portulan/issues/66) asks that Copilot's suppressed
+[#66](https://github.com/sleepy-panda-srl/portulan/issues/66) asks that Copilot's suppressed
 low-confidence notes be posted as real review comments at their `file:line`, so each becomes a thread
 and `required_conversation_resolution` — already required on `main` — gates it. Building that would
 **invert rule 3 of [`../memory/a-review-loop-needs-a-bound.md`](../memory/a-review-loop-needs-a-bound.md)**,
@@ -18,8 +18,8 @@ change starts:
 > and ruled on there — never opened as an implementation pull request with tests.
 
 That tier prices the other route with its own measurement:
-[#53](https://github.com/sleepy-panda-works/portulan/pull/53) and
-[#55](https://github.com/sleepy-panda-works/portulan/pull/55) built a three-mode autonomy axis and
+[#53](https://github.com/sleepy-panda-srl/portulan/pull/53) and
+[#55](https://github.com/sleepy-panda-srl/portulan/pull/55) built a three-mode autonomy axis and
 hardened it through seven review rounds before the ruling that declined it — **declined as unnecessary
 rather than rejected as wrong**, which is the part that makes the precedent sting — so the whole build
 was waste. #66's own body ends by naming the open question — *"whether that is enough is the design
@@ -31,15 +31,15 @@ Re-derived against the API on 2026-08-07. **Units: a *submission* is a Copilot r
 push, which is what these figures count. It is not a *round*** — rule 4's unit — and
 [`../memory/a-review-loop-needs-a-bound.md`](../memory/a-review-loop-needs-a-bound.md) exists in part
 because that conflation produced three disagreeing records of
-[#105](https://github.com/sleepy-panda-works/portulan/pull/105).
+[#105](https://github.com/sleepy-panda-srl/portulan/pull/105).
 
 **The channel carries most of the findings.**
 
 | Pull request | Inline threads | Suppressed notes |
 |---|---|---|
-| [#81](https://github.com/sleepy-panda-works/portulan/pull/81) | 3 | 11 |
-| [#85](https://github.com/sleepy-panda-works/portulan/pull/85) | 6 | 17 |
-| [#167](https://github.com/sleepy-panda-works/portulan/pull/167) | **2** | **26** |
+| [#81](https://github.com/sleepy-panda-srl/portulan/pull/81) | 3 | 11 |
+| [#85](https://github.com/sleepy-panda-srl/portulan/pull/85) | 6 | 17 |
+| [#167](https://github.com/sleepy-panda-srl/portulan/pull/167) | **2** | **26** |
 
 Three non-consecutive pull requests are not a trend and no trend is claimed here. #167's figures:
 `/pulls/167/comments` filtered to login `Copilot` returns **2**; of the **10** submissions from
@@ -85,7 +85,7 @@ first note's quoted snippet is a **shell comment at column 0**, so extraction st
 fence of note one. The column-0 anchor is deliberate and its reasoning is sound — it exists so an
 *indented* `#` inside quoted code is not mistaken for a heading — but a column-0 `#` inside quoted code
 was not considered, in a repository whose reviews routinely quote shell files back at it. **A verdict review therefore posted a
-false count onto a pull request that merged**, which is [#133](https://github.com/sleepy-panda-works/portulan/issues/133)'s
+false count onto a pull request that merged**, which is [#133](https://github.com/sleepy-panda-srl/portulan/issues/133)'s
 class arriving inside the machinery built to prevent it.
 
 **One of the cancelled submissions is the one this project got wrong.** The handoff of 2026-08-07
@@ -99,7 +99,7 @@ faithfully in the record and is narrowed here rather than repeated.
 ## What #66 would cost, stated rather than waved past
 
 Rule 3 was a calibration and the rule priced it: on
-[#63](https://github.com/sleepy-panda-works/portulan/pull/63) the suppressed notes ran one correct fix
+[#63](https://github.com/sleepy-panda-srl/portulan/pull/63) the suppressed notes ran one correct fix
 with a wrong diagnosis, two flatly wrong, and one genuinely right. **That taxonomy is cited and its total
 is not re-derivable** — the memory says four, #66's body says *"two of six"*, and summing #63's
 suppressed headers by the method used above gives nine across six submissions. Three carriers, three
@@ -186,8 +186,8 @@ the claim had been measured against the wrong layer, which is the failure this f
 
 ## Provenance
 
-`form=link` `href=https://github.com/sleepy-panda-works/portulan/issues/66` — deferred from
-[#63](https://github.com/sleepy-panda-works/portulan/pull/63) and promoted to `Now` on the maintainer's
+`form=link` `href=https://github.com/sleepy-panda-srl/portulan/issues/66` — deferred from
+[#63](https://github.com/sleepy-panda-srl/portulan/pull/63) and promoted to `Now` on the maintainer's
 ruling recorded in the board refinement of 2026-08-07. The surfacing table, the concurrency correlation
 and the extractor truncation were measured on 2026-08-07 against `/pulls/167/reviews`,
 `/pulls/167/comments` and `/actions/runs`. **They were measured because a fresh-context pre-commit
