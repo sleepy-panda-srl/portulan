@@ -1353,12 +1353,22 @@ jobs:
           # quietly disagreeing about what a round is. That is a stronger guarantee than the runtime
           # re-read gives on its own: the head is re-read above because a head MOVES, and a review body
           # does not, so what this second application buys is the verify-time coupling.
+          # ONLY WHERE IT CAN CHANGE THE ANSWER. The guard below refuses on any `ROUND_STATE` that
+          # is not `round`, so re-reading the body on those paths spends an API call to confirm a
+          # refusal already decided — rate-limit pressure and a fresh failure surface on exactly the
+          # paths that are already degraded. Raised by Copilot on #290.
+          #
+          # This does NOT weaken the coupling the repetition buys: `bindAwk` compares the program TEXT
+          # across sites, which is a static property of this file, so the fixture set still binds both
+          # copies and still exits 2 if they drift. What is conditional is when the program RUNS.
           round_recheck=''
-          if ! verdict_body=$(gh api "repos/${GITHUB_REPOSITORY}/pulls/${PR_NUMBER}/reviews/${REVIEW_ID}" \
-                --jq '.body // ""'); then
-            round_recheck='could not re-read the round body'
-          elif [ -z "$(printf '%s\n' "$verdict_body" | awk '/^```/ { fence = !fence } !fence && ((/<summary/ || /^#+[[:blank:]]/) && (index(tolower($0), "pull request overview") || index(tolower($0), "review details") || index(tolower($0), "ready to approve")) || tolower($0) ~ /copilot reviewed [0-9]+ out of [0-9]+ changed files/) { print "round"; exit }')" ]; then
-            round_recheck='the round body carries no evidence this step recognises as a round'
+          if [ "$ROUND_STATE" = 'round' ]; then
+            if ! verdict_body=$(gh api "repos/${GITHUB_REPOSITORY}/pulls/${PR_NUMBER}/reviews/${REVIEW_ID}" \
+                  --jq '.body // ""'); then
+              round_recheck='could not re-read the round body'
+            elif [ -z "$(printf '%s\n' "$verdict_body" | awk '/^```/ { fence = !fence } !fence && ((/<summary/ || /^#+[[:blank:]]/) && (index(tolower($0), "pull request overview") || index(tolower($0), "review details") || index(tolower($0), "ready to approve")) || tolower($0) ~ /copilot reviewed [0-9]+ out of [0-9]+ changed files/) { print "round"; exit }')" ]; then
+              round_recheck='the round body carries no evidence this step recognises as a round'
+            fi
           fi
 
           # One integer and nothing else. If `--paginate` ever stops merging pages into one array,
