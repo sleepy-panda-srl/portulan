@@ -167,6 +167,7 @@ export const EXCLUDED_TOP_LEVEL = {
     ".portulan": "the build record — handoffs, proposals, memory; the bundle ships the product, not the record",
     CODEOWNERS: "review routing for this repository's own pull requests",
     "CONTRIBUTING.md": "describes contribution to THIS repository; an evaluation copy is not a contribution surface",
+    "SECURITY.md": "names the reporting channels for THIS repository — its Security tab and its maintainer; an evaluation copy has neither",
     docs: "vision, plan, milestones and pricing drafts — the company's record, not the product",
     evals: "milestone-8 scaffolding; one README today, and the bundle should not imply more",
     "package.json": "the npm publish surface — a copy is not published from, and its scripts and metadata describe this repository's release, not the bundle",

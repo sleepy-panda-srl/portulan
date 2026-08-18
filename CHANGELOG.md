@@ -41,8 +41,38 @@ records how things were found. This is per *release* and records what a reader g
 
 ## Unreleased
 
-_Nothing yet. This heading is the accumulator the header above describes: an entry lands here as it
-merges, and the cut renames it to the version._
+### Changed
+
+- **`README.md` and `CONTRIBUTING.md` are rewritten for a first-time reader.** Both carried the
+  repository's own archaeology in the reading path — parenthetical corrections of counts the file had
+  previously got wrong, and a visibility history restated in three places — which is the record's job
+  and not the front page's. Every operative claim survives: the install paths, the eight subcommands
+  and the issue links behind them, the three issue forms, `portulan feedback`'s digest and seam
+  guarantees, the team-member discipline, `main`'s protection, and the security path. The record they
+  were carrying is untouched in [`.portulan/handoffs/`](.portulan/handoffs/),
+  [`.portulan/proposals/`](.portulan/proposals/) and [`docs/milestones/`](docs/milestones/).
+
+- **The release number the tree states is `0.1.0`, in both places that state it.** `README.md` and
+  [`.portulan/products/portulan/product.md`](.portulan/products/portulan/product.md) each said the
+  newest release entry was `0.2.0` — a number this file retired on 2026-08-18, when the two prepared
+  cuts that never shipped were folded into the first real one. Both are siblings of one defect and are
+  fixed in one stroke. Nothing checks a release number written in prose against `package.json`, which
+  is why this is the second correction of the same sentence.
+
+### Added
+
+- **A `SECURITY.md`**, so the Security tab and GitHub's community-standards checklist stop reporting
+  that this repository has no policy. It states the reporting channels in the order a reporter should
+  try them, and it names what it does *not* offer — there is one maintainer and no rotation, so it
+  promises acknowledgement rather than a response time nobody is staffed to meet. Two properties are
+  named as limits rather than sold as guarantees: a verify recipe's `run` is arbitrary shell, and the
+  compiled enforcement is a host's permission table rather than a sandbox.
+
+  **It is the only carrier of that procedure.** `CONTRIBUTING.md` kept the one-line instruction and
+  cites it; `README.md` and the bug issue form point at it. The first draft of this change left
+  `CONTRIBUTING.md` restating all three steps, which would have created a second full carrier of one
+  procedure in the same change whose message argues against exactly that — and the drift was already
+  observable, since the three surfaces had begun to disagree on the opening sentence.
 
 ## 0.1.0 — 2026-08-18
 
