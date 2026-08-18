@@ -102,9 +102,14 @@ done
 # Tracked plus new-and-not-ignored, so a byte is caught before it is committed, not after — the same
 # manifest rule ./docs.sh and ./json.sh use, for the same reason.
 #
-# `-z` rather than the newline-separated form those two use, and deliberately: a filename containing a
-# newline would be mis-split by them, and this is the one check in the repository that must not be the
-# tool that trusts an invisible byte in the input it was given to police. The scanner splits on NUL.
+# `-z` rather than the newline-separated form ./docs.sh uses, and deliberately — though not for the
+# reason this comment gave until #209 was measured. It said such a filename "would be mis-split" by the
+# others. **It would not:** without `-z` git C-quotes a control character regardless of `core.quotePath`,
+# so the name arrives as one printable line and never as two. What the line-based form loses is the
+# name's SPELLING, and a check that policed the quoted spelling would be reporting on a path the tree
+# does not carry. This is the one check in the repository that must not be the tool that trusts a
+# transformed name in the input it was given to police. The scanner splits on NUL.
+# (./json.sh reads `-z` too, since #251 — this line used to call it a newline-separated sibling.)
 #
 # The precondition is the same too. An unchecked failure here yields an empty list, zero files scanned,
 # and a GREEN report from a recipe that examined nothing — see ./README.md, Provenance, and

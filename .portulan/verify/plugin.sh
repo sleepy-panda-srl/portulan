@@ -95,7 +95,10 @@ fi
 # listed by this command and the audit exited 2 naming it. Worth the comment because the "fix" —
 # adding `:(glob)` or a second `**` pattern — would be a change made in the belief it closed a hole
 # that was never open, and under the wrong magic it would open one.
-if ! manifests=$(git ls-files --cached --others --exclude-standard \
+# `core.quotePath=false` for the reason ../verify/docs.sh states beside its own enumeration: a C-quoted
+# path defeats the `$`-anchored strip below and refuses a legal tree. Same defect, same repair, swept
+# together rather than left as the next site someone rediscovers.
+if ! manifests=$(git -c core.quotePath=false ls-files --cached --others --exclude-standard \
     -- '.claude-plugin/plugin.json' '*/.claude-plugin/plugin.json'); then
     printf 'verify: git ls-files failed — cannot audit the plugin-root list\n' >&2
     exit 2

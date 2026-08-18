@@ -42,10 +42,18 @@ pass() { printf 'ok    %s\n' "$1"; }
 # And the same precondition check, for the same reason: an unchecked failure here yields an
 # empty list, zero files scanned, and a GREEN report from a recipe that examined nothing.
 # See ./README.md, Provenance.
-# `-z` rather than the newline-separated form, and the reason is #209: a tracked filename may legally
-# contain a newline, and splitting on one mis-splits it into two paths that do not exist — silently,
-# because a path that does not exist is skipped as "tracked but deleted" two screens down. `-z` is the
-# shape ./control-chars.sh already models, and it recorded this file as the sibling it had not fixed.
+# `-z` rather than the newline-separated form, and the reason is #209 — but NOT the reason #209 gives,
+# nor the one this comment gave until it was measured. **A newline is never mis-split, because it never
+# arrives raw.** Without `-z`, git C-quotes any pathname holding a byte outside printable ASCII, and it
+# C-quotes a control character **regardless of `core.quotePath`** — measured both ways — so `we<LF>ird.md`
+# comes back as the single line `"we\nird.md"`, quotes and backslash-n included. One line, never two.
+#
+# What `-z` actually buys is the **spelling**, not the split: that quoted form is not the path, so
+# `existsSync` misses it and the file is skipped as "tracked but deleted" two screens down — green over
+# a file nothing parsed. The outcome the old wording named is real; the mechanism it named is not, and
+# the true one is strictly wider, covering non-ASCII and control bytes and not only the newline.
+# `-z` is the shape ./control-chars.sh already models, and it recorded this file as the sibling it had
+# not fixed.
 manifest="$tmp/manifest"
 if ! git ls-files --cached --others --exclude-standard -z >"$manifest"; then
     printf 'verify: git ls-files failed — cannot enumerate the tree\n' >&2
@@ -62,7 +70,8 @@ fi
 # number about a shape it is not reading. node splits on NUL, filters, and reports the count it used.
 #
 # THE SPLIT AND THE DECODE ARE TWO DIFFERENT FAIL-OPENS, and the first version of this change closed
-# only the first. `-z` above stops a newline in a pathname being mis-SPLIT; reading the list back with
+# only the first. `-z` above stops a pathname being mis-SPELLED (see the header — not mis-split, which
+# git's own quoting already prevented); reading the list back with
 # `readFileSync(0, "utf8")` left it mis-DECODED, and git allows a pathname to be any bytes except NUL
 # and `/`. An invalid sequence comes back U+FFFD-substituted — a DIFFERENT name — so `existsSync` finds
 # nothing, the file is skipped as "tracked but deleted" two lines down, and a malformed JSON file passes

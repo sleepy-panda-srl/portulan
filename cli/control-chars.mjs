@@ -395,7 +395,11 @@ export function inspect(files, { exempt = new Set() } = {}) {
  * Returns `{ paths, undecodable }`. A trailing separator yields no empty entry.
  *
  * **The split and the decode are two different fail-opens, and only the first was closed.** `-z` was
- * chosen so a filename containing a newline could not be mis-split — but the list was then decoded
+ * chosen so a filename could not reach this scanner mis-SPELLED — git C-quotes a control character in
+ * the line-based form regardless of `core.quotePath`, so the alternative delivers `"we\nird.md"` as one
+ * printable line rather than two, and the loss is the name and not the split (#209, measured; an earlier
+ * version of this sentence said "could not be mis-split", which named a failure git already prevents) —
+ * but the list was then decoded
  * whole with `readFileSync(0, "utf8")`, and git allows a pathname to be **any bytes except NUL and
  * `/`**. Node replaces an invalid sequence with U+FFFD, so such a name arrived here as a *different
  * string*, `bytesOf` looked for that string, got `ENOENT`, and the file was counted as *tracked and

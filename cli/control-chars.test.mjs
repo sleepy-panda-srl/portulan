@@ -437,9 +437,11 @@ describe("run", () => {
     });
 
     test("the list is NUL-separated, so a filename cannot be split by its own bytes", () => {
-        // `git ls-files -z`. The `\n`-separated form the other recipes use would mis-split a filename
-        // containing a newline — and this is the one check in the repository that must not be the tool
-        // that trusts invisible bytes in the input it was given to police.
+        // `git ls-files -z`. NOT because the line-based form would mis-split such a name — git C-quotes
+        // a control character regardless of `core.quotePath`, so it arrives as one line, `"we\nird.md"`
+        // (#209, measured both ways). It is the SPELLING that the line-based form loses, and this is the
+        // one check in the repository that must not police a transformed name. What the assertions below
+        // bind is unchanged and still the point: a NUL split carries an embedded newline through intact.
         assert.deepEqual(splitList("a.md\0b.md\0").paths, ["a.md", "b.md"]);
         assert.deepEqual(splitList("one\ntwo.md\0").paths, ["one\ntwo.md"]);
         assert.deepEqual(splitList("").paths, []);
