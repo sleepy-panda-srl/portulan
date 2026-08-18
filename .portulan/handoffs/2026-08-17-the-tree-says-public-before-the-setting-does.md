@@ -69,8 +69,13 @@ annotation twice before asking whether it was owed.
 ## Routed, not taken
 
 `docs/vision.md` is a **hard blocker on this PR's own promise** and only the maintainer's hand can clear
-it: two sites go false at the flip, and unedited the constitution is the one file still saying private at
-the moment strangers arrive. **It is the only item on this list still open at the close.**
+it: two sites go false at the flip, and unedited the constitution would be the one file still saying
+private at the moment strangers arrive. **He took it too, and it is now closed** — he trued both sites
+himself (`4642af1`), and then granted this session permission to amend the file, because the edit had
+dropped three facts while fixing two: the naming decision's date, the `portulan.dev` registration, and
+the sentence putting commercial value in the **private feeds**. The third is the one that mattered and
+the review could not see it — Copilot reads a line at a time, and what had happened was that a paragraph
+ended early. All three restored verbatim. **Nothing on this list is still open at the close.**
 
 _The rest were routed to him and he took them all, in-session:_
 
