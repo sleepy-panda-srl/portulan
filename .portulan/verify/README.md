@@ -1056,11 +1056,17 @@ than left as a symmetry a reader has to notice, on the rule the same change mint
   recipe exits `2`. The audit counts tokens, though — a *second* program on a line whose first one
   parsed is caught, and a jq call hidden inside a string that the audit's own token pattern misses is
   the residue nobody has found a cheap check for.
-- **It covers workflows, not every jq or awk program anyone runs.** Nothing else in the tree executes jq
-  today — the remaining occurrences are commands in prose that a person types
-  ([`../gate-map.md`](../gate-map.md), [`../tools/README.md`](../tools/README.md)) — and the audit
-  looks only inside [`../../.github/workflows/`](../../.github/workflows/), so a script under
-  [`../tools/`](../tools/) that grew a filter would be covered by nothing and nothing would say so.
+- **It covers workflows, not every jq or awk program anyone runs — and the two halves are not
+  symmetrical.** For **jq** the claim is strong: nothing else in the tree executes it today, the
+  remaining occurrences being commands in prose that a person types
+  ([`../gate-map.md`](../gate-map.md), [`../tools/README.md`](../tools/README.md)). For **awk** it is
+  plainly false — [`docs.sh`](docs.sh) alone invokes it sixteen times, and
+  [`../../cli/control-chars.mjs`](../../cli/control-chars.mjs) does too. Those are covered where they
+  live, by their own recipe and by the suite, and **not** by this one. The audit looks only inside
+  [`../../.github/workflows/`](../../.github/workflows/), so a script under [`../tools/`](../tools/)
+  that grew a filter — of either kind — would be covered by nothing and nothing would say so. _Stated
+  after Copilot pointed out on #290 that widening the sentence to `awk` had made it untrue; the
+  measurement is the repair, not the wording._
 - **`node --test` given a glob matching nothing exits `0`.** A green suite that ran nothing. `tests.sh`
   counts the files first for that reason, and the count and the glob deliberately cover the same set —
   a recursive `find` beside a non-recursive glob would let a test be counted and never run.

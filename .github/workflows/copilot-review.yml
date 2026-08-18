@@ -223,6 +223,9 @@ jobs:
           # that it could not review. Read only by the expiry message below, which must not print
           # `no Copilot review` over a head that drew one and was told nothing came of it.
           refused_seen=''
+          # Set when a body read fails PAST the newest match, so the walk for an older round stopped
+          # early. Not a verdict about the head — a limit on what this step got to look at.
+          walk_unread=''
 
           while : ; do
             # Reset per poll: these describe one look at the pull request, not the accumulation of
@@ -433,9 +436,26 @@ jobs:
                   for cand in $matched_ids; do
                     if ! cand_body=$(gh api "repos/${GITHUB_REPOSITORY}/pulls/${PR_NUMBER}/reviews/${cand}" \
                           --jq '.body // ""'); then
-                      # Could not read is not a classification. It keeps the `unread` path this step
-                      # already had, which greens the check and refuses the verdict.
-                      [ -n "$newest_state" ] || newest_state='unread'
+                      # Could not read is not a classification, and WHERE it happens decides what it
+                      # costs. On the NEWEST match it takes the `unread` path this step already had —
+                      # green check, no verdict — because nothing better is knowable about the head.
+                      # Further down the list it only cuts the walk short: the newest is already
+                      # classified, so the verdict is withheld either way under the newest-word rule
+                      # above, and what is lost is the chance to find an OLDER round. That does not
+                      # license a green — a round nobody could read is not a round established — but it
+                      # does change the sentence this step is entitled to print, so the cut is recorded
+                      # instead of being folded into a flat "no round came".
+                      #
+                      # Raised by Copilot on #290, against a comment here that claimed the `unread`
+                      # path for both cases while the code took it for one. The comment was the wrong
+                      # half: #89's rule is that a message must not name a cause it has not
+                      # established, and "no round" over a list this step could not finish reading is
+                      # exactly that.
+                      if [ -z "$newest_state" ]; then
+                        newest_state='unread'
+                      else
+                        walk_unread="$cand"
+                      fi
                       break
                     fi
                     if [ -n "$(printf '%s\n' "$cand_body" | awk '/^```/ { fence = !fence } !fence && ((/<summary/ || /^#+[[:blank:]]/) && (index(tolower($0), "pull request overview") || index(tolower($0), "review details") || index(tolower($0), "ready to approve")) || tolower($0) ~ /copilot reviewed [0-9]+ out of [0-9]+ changed files/) { print "round"; exit }')" ]; then
@@ -469,6 +489,7 @@ jobs:
                     printf 'NOT A ROUND — the newest Copilot review on %s says the reviewer was unable to review it.\n' "$first_head"
                     printf 'A review object exists and no judgement happened, so it does not satisfy this check.\n'
                     printf 'Still waiting for a round on this head, on the same budget.\n'
+                    [ -z "$walk_unread" ] || printf 'NOTE: review %s could not be read, so an OLDER round on this head may exist and was not established here.\n' "$walk_unread"
                   fi
                 fi
 
@@ -494,10 +515,13 @@ jobs:
                   # blocker, and making it one would be a different rule than the one the maintainer
                   # gave. What it must not do is go quiet when it could not look — that is the false
                   # green this whole file exists to refuse — so an unreadable body says so.
-                  # `notes_state` rides to the verdict step below, and its four values are the four
-                  # facts the parse can establish — none, present, unparsable, unread. The verdict
-                  # approves on the first two only: the last two are "could not look", and a verdict
-                  # computed over an unread channel is the false green this file refuses.
+                  # `notes_state` rides to the verdict step below, and its values are the facts the
+                  # parse can establish — none, present, unparsable, unread, and since #286
+                  # `unconsulted`, for a review whose body carried no round to parse notes out of. The
+                  # verdict approves on the first two only: the rest are "could not look" or "never
+                  # looked", and a verdict computed over an unread channel is the false green this file
+                  # refuses. It is spelled rather than left empty because an undocumented value on the
+                  # wire is one somebody downstream will read as "fine" — Copilot, #290.
                   # WHAT THE VERDICT STEP IS ALLOWED TO SAY, decided here because this is where the
                   # evidence is. `round` means a round was established AND it is the NEWEST word on
                   # this head — one condition, not two that can be traded off. Anything newer than the
@@ -533,6 +557,10 @@ jobs:
                     notes_state='unread'
                     printf 'suppressed low-confidence notes: COULD NOT READ review %s\n' "$matched_id"
                   elif [ -z "$round_id" ]; then
+                    # Spelled, never left as the initialiser's empty string: this channel was
+                    # never consulted, because there was no round to parse notes out of. An
+                    # undocumented value on the wire is one somebody downstream reads as fine.
+                    notes_state='unconsulted'
                     opening=$(printf '%s\n' "$newest_body" | sed -n '/[^[:blank:]]/{p;q;}' | cut -c1-160)
                     report="**Could not establish that review \`${matched_id}\` on \`${first_head}\` is a round.** Its body carries no announcement this step recognises — no \`<summary>\` or column-0 heading naming an overview, review details or an approval, and no coverage line — and it does not say the reviewer was unable to review. Copilot's prose has probably moved. **The check is green on the review object and NO derived verdict is computed from it**, which is the disposition an unparsable notes block already gets. The body opens: \`${opening}\`. Sweep \`/pulls/${PR_NUMBER}/reviews\` by hand, and when you teach this step the new spelling **the fixture goes into \`.portulan/verify/workflow-filters.mjs\` first and the matcher changes second** — the rule this file already keeps for the notes marker. **This is not a report that a round happened.**"
                     printf 'round evidence: NONE RECOGNISED on review %s — the check is green on the object and no verdict may be derived\n' "$matched_id"
@@ -851,6 +879,7 @@ jobs:
             printf 'Try it in the order the evidence supports. The halfway re-request this job makes is\n'
             printf 'measured to have worked on #86 (2026-07-29, about 90s), so re-run this job first\n'
             printf 'and close/reopen only if the refusal repeats.\n'
+            [ -z "$walk_unread" ] || printf 'ONE THING THIS DID NOT ESTABLISH: review %s could not be read,\nso an older round on this head may exist. Re-run before acting on the above.\n' "$walk_unread"
           else
             printf '::error::no Copilot review for the commit this run awaited (%s) after %ss of waiting.\n' \
               "$first_head" "$SECONDS"
