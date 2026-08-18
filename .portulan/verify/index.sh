@@ -85,7 +85,13 @@ if [ "${#WORKSPACES[@]}" -eq 0 ]; then
     exit 2
 fi
 
-if ! manifests=$(git ls-files --cached --others --exclude-standard -- 'workspace.json' '*/workspace.json'); then
+# `core.quotePath=false` is load-bearing here, and ../verify/docs.sh states the full argument beside its
+# own enumeration. In short: git C-quotes any path holding a byte outside printable ASCII, so a workspace
+# at `café/workspace.json` arrives as `"caf\303\251/workspace.json"` — quotes included. The `$`-anchored
+# `sed` below cannot strip a suffix that now ends in a quote, so `present` carries a spelling that matches
+# no declared workspace and this recipe refuses a tree that is perfectly legal. **A false red**, which
+# ./README.md names as the failure that gets a check switched off.
+if ! manifests=$(git -c core.quotePath=false ls-files --cached --others --exclude-standard -- 'workspace.json' '*/workspace.json'); then
     printf 'verify: git ls-files failed — cannot audit the workspace list\n' >&2
     exit 2
 fi

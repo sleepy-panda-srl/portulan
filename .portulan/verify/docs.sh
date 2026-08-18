@@ -852,7 +852,15 @@ else
     # question for a broader one, which is the same instrument-substitution defect this recipe checks
     # documents for. The remaining-slash filter is what makes the two agree, and it is stated rather
     # than left as a silent narrowing.
-    git ls-files 'cli/*.mjs' 'cli/*.md' | sed 's|^cli/||' | grep -v '/' | sort >"$tmp/clifiles"
+    # **`core.quotePath=false`, for the reason given at the enumeration above and NOT for tidiness.**
+    # This pipeline is the one place in this recipe where the C-quoted spelling is dropped instead of
+    # carried: a quoted path keeps its `cli/` prefix inside the quote, so `sed 's|^cli/||'` does not
+    # match it and `grep -v '/'` then discards it as a subdirectory entry. Measured, not reasoned —
+    # `cli/café.mjs` leaves this pipeline as nothing at all, so the table check below compares a list
+    # the file is missing from and passes. **A false GREEN, and the only one this class produces here**:
+    # the enumeration reads above turn a quoted path into a false RED, which is loud. This one is silent,
+    # which is why it outranks the rest of the sweep despite being the least conspicuous line in it.
+    git -c core.quotePath=false ls-files 'cli/*.mjs' 'cli/*.md' | sed 's|^cli/||' | grep -v '/' | sort >"$tmp/clifiles"
     # POSIX `sed` rather than `grep -o`: `-o` is not in POSIX grep, and ./README.md states this recipe's
     # dependencies are POSIX text utilities. (`docs.sh` already breaks that claim once, at the `grep -nEo`
     # in the links check — a pre-existing inconsistency between the recipe and its own documented

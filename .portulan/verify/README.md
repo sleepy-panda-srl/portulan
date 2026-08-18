@@ -402,7 +402,12 @@ printable ASCII, so a committed `docs/naïve.md` comes back as `"docs/na\303\257
 table keys the quoted spelling — a correctly tracked file reported as untracked, with `git add` unable to
 discharge it. `core.quotePath=false` on both `ls-files` reads closes it, and it closes the same latent
 defect in the `map` check, which shares the enumeration and would have reported a top-level entry named
-`"docs`. Second: `normalize()` returned the same value for a `..` that walks off the root and for a path
+`"docs`. (**Both** was right about this recipe on the day it was written and is no longer the whole
+count — #209's sweep found the same unclosed defect at four more reads, one of them the cli-table
+enumeration in this very file, and added the setting there too. The narrative above is left as it was
+rather than restated, because it records what that change did; `../../cli/list-quoting.live.test.mjs`
+is the rail that now holds the property across every recipe, which is what stops the count going stale
+again.) Second: `normalize()` returned the same value for a `..` that walks off the root and for a path
 that lands exactly *on* the root, so `./`, `.` and `../` from a subdirectory were red as *"escapes the
 repository root"* — a false red carrying a confidently wrong reason, which is worse than either alone.
 
