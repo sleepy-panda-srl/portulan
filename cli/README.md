@@ -8,15 +8,17 @@ entry point exists:
 [`portulan.mjs`](portulan.mjs), reached as `portulan <subcommand>` through the `bin` in the
 repository's `package.json`.
 
-**`npx` names a path that is not open yet, and this file states that once rather than hedging every
-mention below.** Publishing is a Gated act and has not happened, so `@sleepy_panda_srl/portulan` **is
-not on the registry today** — `npx @sleepy_panda_srl/portulan` resolves nothing. `package.json`
-declares the `bin` that path would use, and that `bin` is reachable now from a working copy; what every
-measurement in this repository has actually been taken through is `node cli/<tool>.mjs` from a clone.
-[`../.portulan/identity.md`](../.portulan/identity.md) is the carrier of that fact and of what the
-`npx` path is measured to buy when it opens — the same bytes, `npm pack` against `git show`. The
-routing question the gap leaves open is
-[#242](https://github.com/sleepy-panda-srl/portulan/issues/242).
+**`npx` is a live path as of 2026-08-18, and this file states that once rather than hedging every
+mention below.** `@sleepy_panda_srl/portulan@0.1.0` is on the registry, and
+`npx @sleepy_panda_srl/portulan` resolves — demonstrated from a directory containing no git repository
+at all, which is what milestone 7 named as undemonstrated and
+[#242](https://github.com/sleepy-panda-srl/portulan/issues/242) was filed to route.
+`node cli/<tool>.mjs` from a clone remains the invocation most measurements in this repository were
+taken through, and it still works; what changed is that it is no longer the only one.
+[`../.portulan/identity.md`](../.portulan/identity.md) carries what the `npx` path buys — the same
+bytes — and that is now **measured against the registry rather than against `npm pack` alone**: the
+published tarball and a fresh pack hash identically, all 73 files byte-for-byte
+([#149](https://github.com/sleepy-panda-srl/portulan/issues/149)).
 
 **All eight dispatch, as of milestone 7 session 9.** `doctor`, `compile` and `index` exist because
 milestones 2, 4 and 5 needed them; `init` was built at milestone 7 session 1, `new` at session 2,

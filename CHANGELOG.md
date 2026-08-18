@@ -41,8 +41,24 @@ records how things were found. This is per *release* and records what a reader g
 
 ## Unreleased
 
-_Nothing yet. This heading is the accumulator the header above describes: an entry lands here as it
-merges, and the cut renames it to the version._
+### Added
+
+- **`@sleepy_panda_srl/portulan` is on the npm registry**, published `0.1.0` on 2026-08-18. `npx
+  @sleepy_panda_srl/portulan` is a live path — demonstrated from a directory containing no git
+  repository, which is what milestone 7 named as its undemonstrated clause and what
+  [#242](https://github.com/sleepy-panda-srl/portulan/issues/242) was filed to route. Both are closed
+  by it.
+
+  **The same-bytes claim is now measured against the registry rather than against `npm pack` alone.**
+  The published tarball and a fresh pack of the same tree hash identically —
+  `b3790b7159b9e3ba7199c6901a01cee554fe6a3c` — and all 73 files compare byte-for-byte
+  ([#149](https://github.com/sleepy-panda-srl/portulan/issues/149), where the measurement also
+  corrects this repository's recorded belief that a tarball hash cannot be reproducible: true of
+  `tar`, not of `npm pack`, which normalises mtimes and ordering).
+
+  What the package contains is narrower than what the repository holds: 73 files, no test suite, no
+  fixtures, and none of the evaluation-bundle issuer machinery — an npm consumer receives the eight
+  subcommands, not the stamp press.
 
 ## 0.1.0 — 2026-08-18
 
