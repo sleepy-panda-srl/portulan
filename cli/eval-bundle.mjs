@@ -173,8 +173,10 @@ export const EXCLUDED_TOP_LEVEL = {
 
 // Excluded from the cut by the code-level filter in `payloadEntries`. See the header for why, and
 // for which backstop covers a failed filter. The template is issuer machinery like the other two —
-// an evaluee receives the STAMPED license, never the stamp press — though unlike them it carries
-// no guard needle, so its exclusion rests on the filter alone.
+// an evaluee receives the STAMPED license, never the stamp press. All three used to rest on the
+// filter plus an accidental backstop (they carry the old guard's needle); since the inversion
+// `auditCut` checks these paths DIRECTLY with `fs.existsSync`, so the backstop is explicit and
+// covers the template too, which the needle never did.
 export const SELF_EXCLUDED = ["cli/eval-bundle.mjs", "cli/eval-bundle.test.mjs", "cli/eval-license.template.md"];
 
 // Where the evaluation-license template lives, read FROM THE PAYLOAD COMMIT — never from the
@@ -563,7 +565,11 @@ export function writeStamp(cutDir, { name, login, date, fullSha }) {
         issued_by: "Sleepy Panda SRL",
         source_commit: fullSha,
         license: "Apache-2.0",
-        license_file: "EVAL-LICENSE.md",
+        // Points at the LICENCE, which the bundle now ships — a consumer following this field wants
+        // the terms, not the paperwork. The issuance record is a separate field so both are
+        // findable and neither is mistaken for the other (#288).
+        license_file: "LICENSE",
+        issuance_record: "EVAL-LICENSE.md",
         content_digest: `sha256:${bundleDigest(cutDir)}`,
         content_digest_scope:
             "sha256 over 'UTF-8 bytes of relative path, NUL, lowercase sha256 hex of file bytes, LF' for every file in this bundle except this stamp, entries sorted by the UTF-8 bytes of the path",
