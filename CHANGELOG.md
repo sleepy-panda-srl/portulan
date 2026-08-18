@@ -54,7 +54,7 @@ and it is the second-order cost of the defect `0.1.0` recorded rather than a new
 
 ### Added
 
-- **The package is published to GitHub Packages as well, as `@sleepy-panda-srl/portulan`.** That
+- **This release begins publishing the package to GitHub Packages as well, as `@sleepy-panda-srl/portulan`.** That
   registry requires the npm scope to equal the repository owner, and the owner is `sleepy-panda-srl`
   with hyphens while the npm organisation is `sleepy_panda_srl` with underscores — no single name
   satisfies both, so the same tree ships under two names.
