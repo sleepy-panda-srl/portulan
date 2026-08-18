@@ -19,13 +19,10 @@
 //      terms pin to ONE sha in EVAL-STAMP.json's `source_commit`, so issued copies keep their
 //      issued wording and a later template edit cannot drift under an already-stamped bundle.
 //   3. Replaces NOTICE with the evaluation-issue NOTICE.
-//   4. Patches every machine-read `"license"` field (PATCHED_MANIFESTS) to `LicenseRef-Portulan-Eval`.
-//   5. Rewrites README.md's own `## License` section and prepends the evaluation banner. The
-//      section is patched rather than merely disclaimed from sixty lines above: an issued bundle
-//      whose README says "Apache-2.0" with a link to a LICENSE file the roster deliberately drops
-//      would contradict its own terms in the one file an evaluee actually opens. (The banner alone
-//      was the shape of the first, pre-port issue; the section patch is this port's correction,
-//      found at the session-open checkpoint.)
+//   4. Prepends the evaluation banner to README.md. Nothing else about the README is touched, and
+//      `LICENSE` ships: the bundle is the public tree's bytes under the public tree's licence, so
+//      the README's own `## License` section is already correct and its link now resolves. That
+//      retires one of the thirteen dead relative links this tool used to create, for free.
 //   6. Writes EVAL-STAMP.json, carrying the recipient, the source commit, and a reproducible
 //      content digest (see below).
 //   7. Runs the guard over the finished cut, with TWO detectors: the canonical byte form
@@ -39,12 +36,13 @@
 //
 // ## What the guard's category is, and what it is not — stated so the sentence cannot overclaim
 //
-// The guard refuses the MACHINE-READ assertion, detected as above. Prose mentions of Apache
-// survive on purpose — the banner, the NOTICE and the patched License section themselves explain
-// the relationship to the public license, and refusing the word would refuse the explanation.
-// The named residual limit: a machine-read assertion in a NON-JSON format, spelled other than
-// the byte form, would survive — today the payload carries no machine-read format but JSON, and
-// the census keeps every known assertion enumerated. What also survives, named rather than
+// INVERTED on the maintainer's ruling of 2026-08-18 (issue 284): the guard refuses a machine-read
+// `license` field that is NOT Apache-2.0, plus any SELF_EXCLUDED path that leaked into the cut.
+// It used to refuse the presence of Apache, which was right while a bundle was a differently-
+// licensed copy and became false the moment the source tree went public — the same bytes cannot
+// be Apache-2.0 in the repository and proprietary in a tarball. The named residual limit is the
+// mirror of the old one: a machine-read assertion in a NON-JSON format would not be read, and
+// today the payload carries no machine-read format but JSON. What also survives, named rather than
 // discovered by the first evaluee: README.md carries relative links into trees the roster
 // excludes (`docs/`, `.portulan/`, `.github/`, `.claude/`, `CONTRIBUTING.md` — measured on a cut:
 // thirteen link instances over ten targets), and those links resolve only in the source
@@ -156,6 +154,7 @@ export const PAYLOAD = [
     "README.md",
     "NOTICE",
     "CHANGELOG.md",
+    "LICENSE",
 ];
 
 // Every top-level tracked entry that deliberately does NOT ship, each with its reason — the
@@ -168,10 +167,9 @@ export const EXCLUDED_TOP_LEVEL = {
     ".portulan": "the build record — handoffs, proposals, memory; the bundle ships the product, not the record",
     CODEOWNERS: "review routing for this repository's own pull requests",
     "CONTRIBUTING.md": "describes contribution to THIS repository; an evaluation copy is not a contribution surface",
-    LICENSE: "the Apache-2.0 text — replaced by the stamped EVAL-LICENSE.md, which is the copy's instrument",
     docs: "vision, plan, milestones and pricing drafts — the company's record, not the product",
     evals: "milestone-8 scaffolding; one README today, and the bundle should not imply more",
-    "package.json": "the npm publish surface, and a machine-read `\"license\": \"Apache-2.0\"` the bundle must not carry",
+    "package.json": "the npm publish surface — a copy is not published from, and its scripts and metadata describe this repository's release, not the bundle",
 };
 
 // Excluded from the cut by the code-level filter in `payloadEntries`. See the header for why, and
@@ -188,19 +186,19 @@ export const SELF_EXCLUDED = ["cli/eval-bundle.mjs", "cli/eval-bundle.test.mjs",
 export const TEMPLATE_PATH = "cli/eval-license.template.md";
 const TEMPLATE_PLACEHOLDERS = ["{{name}}", "{{login}}", "{{date}}", "{{shortSha}}"];
 
-// Every machine-read license assertion in the payload, patched to `LicenseRef-Portulan-Eval`.
-// The census in `--check` keeps this enumeration equal to what the tree actually carries.
-export const PATCHED_MANIFESTS = [
+// Every machine-read license assertion in the payload. These MUST assert Apache-2.0 in a cut —
+// the bundle is the public tree's own bytes and carries the public tree's licence. The census in
+// `--check` keeps this enumeration equal to what the tree actually carries, in both directions.
+export const APACHE_MANIFESTS = [
     ".claude-plugin/plugin.json",
     ".claude-plugin/marketplace.json",
     "packs/.claude-plugin/plugin.json",
 ];
 
-export const EVAL_LICENSE_ID = "LicenseRef-Portulan-Eval";
-
-// The guard's needle: the machine-read assertion, exactly as every manifest in this tree spells
-// it. This literal is why this file is SELF_EXCLUDED — a cut containing it could not pass its own
-// guard, which is the backstop the header describes.
+// The census detector: the machine-read assertion, exactly as every manifest in this tree spells
+// it. It is no longer a refusal trigger — the guard below refuses the ABSENCE of Apache, not its
+// presence — so the accidental backstop this literal used to give SELF_EXCLUDED is gone, and
+// `auditCut` now checks those paths directly instead of relying on a side effect.
 export const APACHE_NEEDLE = Buffer.from('"license": "Apache-2.0"');
 
 // The `--check` recipient. The dot makes the login impossible as a GitHub login (GitHub allows
@@ -421,19 +419,19 @@ export function apacheAssertions(dir) {
  */
 export function assertCensus(cutDir) {
     const carrying = apacheAssertions(cutDir).map((o) => o.rel);
-    const expected = [...PATCHED_MANIFESTS].sort((a, b) => Buffer.compare(Buffer.from(a, "utf8"), Buffer.from(b, "utf8")));
+    const expected = [...APACHE_MANIFESTS].sort((a, b) => Buffer.compare(Buffer.from(a, "utf8"), Buffer.from(b, "utf8")));
     if (JSON.stringify(carrying) === JSON.stringify(expected)) return;
     const extra = carrying.filter((f) => !expected.includes(f));
     const gone = expected.filter((f) => !carrying.includes(f));
     const problems = [
         ...extra.map(
             (f) =>
-                `${f} carries a machine-read Apache assertion and is not in PATCHED_MANIFESTS — add it there (it must be ` +
-                `patched) or to the exclusion rosters (it must not ship), in cli/eval-bundle.mjs`,
+                `${f} carries a machine-read Apache assertion and is not in APACHE_MANIFESTS — add it there (the ` +
+                `bundle carries the public tree's licence) or to the exclusion rosters (it must not ship), in cli/eval-bundle.mjs`,
         ),
-        ...gone.map((f) => `${f} is in PATCHED_MANIFESTS and no longer carries the assertion — remove the stale entry`),
+        ...gone.map((f) => `${f} is in APACHE_MANIFESTS and no longer carries the assertion — it must, or the entry is stale`),
     ];
-    throw new Refused(`the license census no longer matches PATCHED_MANIFESTS:\n  ${problems.join("\n  ")}`);
+    throw new Refused(`the license census no longer matches APACHE_MANIFESTS:\n  ${problems.join("\n  ")}`);
 }
 
 /**
@@ -493,59 +491,6 @@ This copy is an evaluation issue recorded in EVAL-LICENSE.md, and is licensed
 under the Apache License, Version 2.0 — the same terms as the public repository
 it was cut from.
 `;
-
-/**
- * Patch every machine-read `"license"` field in the named manifests. The write mirrors the
- * pre-port script exactly: parsed, patched, re-serialised at two spaces with a trailing newline —
- * which is also how every manifest in this tree is formatted.
- */
-export function patchManifests(cutDir) {
-    for (const rel of PATCHED_MANIFESTS) {
-        const file = path.join(cutDir, rel);
-        const manifest = JSON.parse(fs.readFileSync(file, "utf8"));
-        if (manifest.license) manifest.license = EVAL_LICENSE_ID;
-        if (Array.isArray(manifest.plugins)) {
-            for (const plugin of manifest.plugins) if (plugin.license) plugin.license = EVAL_LICENSE_ID;
-        }
-        fs.writeFileSync(file, `${JSON.stringify(manifest, null, 2)}\n`);
-    }
-}
-
-/**
- * Rewrite the cut README's own `## License` section — the human-read half of the swap, and the
- * session-open checkpoint's adjustment 1: a banner sixty lines up does not repair a section that
- * asserts Apache and links a LICENSE file the roster drops. Exactly one `## License` heading must
- * exist; zero or two is the source README having moved, and the cut refuses rather than guessing
- * which section is the one that lies about the copy's terms.
- */
-export function patchReadmeLicense(cutDir, fullSha) {
-    const file = path.join(cutDir, "README.md");
-    const lines = fs.readFileSync(file, "utf8").split("\n");
-    // ONE parse: the splice is derived from the same line list the count read, so the two cannot
-    // disagree about where the heading is. The first cut re-found the heading with
-    // `indexOf("\n## License\n")` — a SECOND definition, which returns -1 for a heading at byte 0
-    // and would have silently sliced from character 11 instead of refusing. The two-definitions
-    // defect the record check's own history documents, caught here by a Copilot note on the
-    // porting pull request.
-    const headingIndexes = lines.flatMap((line, i) => (line === "## License" ? [i] : []));
-    if (headingIndexes.length !== 1) {
-        throw new CannotRun(
-            `README.md carries ${headingIndexes.length} \`## License\` heading(s) and this tool patches exactly one — the ` +
-                `source README has changed shape; update patchReadmeLicense in cli/eval-bundle.mjs to match it.`,
-        );
-    }
-    const nextHeadingAt = lines.findIndex((line, i) => i > headingIndexes[0] && line.startsWith("## "));
-    const body = [
-        "",
-        "This copy is an evaluation issue recorded in [`EVAL-LICENSE.md`](EVAL-LICENSE.md) — issued to the",
-        "named recipient it records, and licensed under the",
-        "[Apache License, Version 2.0](https://www.apache.org/licenses/LICENSE-2.0), the same terms as",
-        `the repository this bundle was cut from (commit \`${fullSha.slice(0, 7)}\`). © 2026 Sleepy Panda SRL.`,
-    ];
-    const kept = lines.slice(0, headingIndexes[0] + 1);
-    const tail = nextHeadingAt === -1 ? [""] : ["", ...lines.slice(nextHeadingAt)];
-    fs.writeFileSync(file, [...kept, ...body, ...tail].join("\n"));
-}
 
 /**
  * Prepend the evaluation banner. Reworded from the pre-port original in one place, and the delta
@@ -609,7 +554,7 @@ export function writeStamp(cutDir, { name, login, date, fullSha }) {
         issued_on: date,
         issued_by: "Sleepy Panda SRL",
         source_commit: fullSha,
-        license: EVAL_LICENSE_ID,
+        license: "Apache-2.0",
         license_file: "EVAL-LICENSE.md",
         content_digest: `sha256:${bundleDigest(cutDir)}`,
         content_digest_scope:
@@ -619,19 +564,68 @@ export function writeStamp(cutDir, { name, login, date, fullSha }) {
 }
 
 /**
- * The guard. Refuses the finished cut if ANY file still carries the machine-read assertion, each
- * offender with its own diagnosis — a SELF_EXCLUDED path in the cut is a failed filter, not a
- * licensing breach, and telling an operator the wrong story sends them to the wrong repair.
+ * Every machine-read `license` field in the cut whose value is NOT Apache-2.0, as `{ rel, saw }`.
+ * The walk is the census walk's mirror: parse each `.json`, descend to every depth, and read every
+ * `license` key bound to a string. An unparseable `.json` is skipped for the same reason the census
+ * skips it — a file no JSON parser reads is not machine-readable as JSON.
+ */
+export function nonApacheAssertions(dir) {
+    const found = [];
+    const scan = (rel, value) => {
+        if (Array.isArray(value)) return value.forEach((v) => scan(rel, v));
+        if (value === null || typeof value !== "object") return;
+        for (const [key, inner] of Object.entries(value)) {
+            if (key === "license" && typeof inner === "string" && inner !== "Apache-2.0") found.push({ rel, saw: inner });
+            else scan(rel, inner);
+        }
+    };
+    const walk = (sub) => {
+        for (const entry of fs.readdirSync(path.join(dir, sub), { withFileTypes: true })) {
+            const rel = sub === "" ? entry.name : `${sub}/${entry.name}`;
+            if (entry.isDirectory()) {
+                walk(rel);
+                continue;
+            }
+            if (!rel.endsWith(".json")) continue;
+            let parsed;
+            try {
+                parsed = JSON.parse(fs.readFileSync(path.join(dir, rel), "utf8"));
+            } catch {
+                continue;
+            }
+            scan(rel, parsed);
+        }
+    };
+    walk("");
+    return found.sort((a, b) => Buffer.compare(Buffer.from(a.rel, "utf8"), Buffer.from(b.rel, "utf8")));
+}
+
+/**
+ * The guard, INVERTED on the maintainer's ruling of 2026-08-18 (issue 284). The bundle is cut from
+ * tracked blobs of a public Apache-2.0 tree, so its files carry Apache-2.0 and a machine-read field
+ * saying anything else is the defect — it under-reports a permissive licence as proprietary, which
+ * is the direction that actually costs an evaluee's tooling something. What the rail is for is
+ * unchanged: SOMETHING holds machine-read licence metadata to a stated intent, and a bundle cannot
+ * silently mislicense itself.
+ *
+ * It also checks the SELF_EXCLUDED paths DIRECTLY. That used to ride on a side effect — those files
+ * carry the needle, so a cut containing them failed the old presence-guard — and inverting the guard
+ * would have dropped the backstop silently. Checked rather than inherited, and diagnosed as its own
+ * failure, because telling an operator the wrong story sends them to the wrong repair.
  */
 export function auditCut(cutDir) {
-    const offenders = apacheAssertions(cutDir);
-    if (offenders.length === 0) return;
-    const lines = offenders.map(({ rel, how }) => {
-        if (SELF_EXCLUDED.includes(rel)) return `${rel} (${how}) — the self-exclusion FAILED; this issuer-machinery file must not be in a cut at all`;
-        if (PATCHED_MANIFESTS.includes(rel)) return `${rel} (${how}) — the manifest patch FAILED to reach this file`;
-        return `${rel} (${how}) — a machine-read Apache assertion this tool does not know about; add the file to PATCHED_MANIFESTS or stop shipping it`;
-    });
-    throw new Refused(`REFUSING: a machine-read Apache assertion survived in the cut:\n  ${lines.join("\n  ")}`);
+    const leaked = SELF_EXCLUDED.filter((rel) => fs.existsSync(path.join(cutDir, rel)));
+    const wrong = nonApacheAssertions(cutDir);
+    if (leaked.length === 0 && wrong.length === 0) return;
+    const lines = [
+        ...leaked.map((rel) => `${rel} — the self-exclusion FAILED; this issuer-machinery file must not be in a cut at all`),
+        ...wrong.map(({ rel, saw }) =>
+            APACHE_MANIFESTS.includes(rel)
+                ? `${rel} — a known manifest declares \`${saw}\`, not Apache-2.0; the bundle carries the public tree's licence`
+                : `${rel} — declares \`${saw}\`, not Apache-2.0; add it to APACHE_MANIFESTS if it should assert, or stop shipping it`,
+        ),
+    ];
+    throw new Refused(`REFUSING: the cut does not carry the licence it ships under:\n  ${lines.join("\n  ")}`);
 }
 
 /**
@@ -650,8 +644,6 @@ export function cut(root, commit, { name, login, date }, cutDir) {
     assertCensus(cutDir);
     fs.writeFileSync(path.join(cutDir, "EVAL-LICENSE.md"), renderEvalLicense(template, { name, login, date, fullSha }));
     fs.writeFileSync(path.join(cutDir, "NOTICE"), EVAL_NOTICE);
-    patchManifests(cutDir);
-    patchReadmeLicense(cutDir, fullSha);
     prependBanner(cutDir, { name, date, fullSha });
     writeStamp(cutDir, { name, login, date, fullSha });
     auditCut(cutDir);
@@ -760,13 +752,13 @@ export function run(argv = [], { stdout = process.stdout, stderr = process.stder
                 stdout.write(`eval-bundle --check: cut the INDEX as probe ${result.fullSha.slice(0, 7)} (parent HEAD) for ${CHECK_RECIPIENT.name} — ${result.fileCount} file(s)\n`);
                 stdout.write(`  terms: EVAL-LICENSE.md rendered from ${TEMPLATE_PATH} AT the probe — payload and terms are one sha\n`);
                 stdout.write(`  partition: ${PAYLOAD.length} payload + ${Object.keys(EXCLUDED_TOP_LEVEL).length} excluded top-level entries — matches the tree\n`);
-                stdout.write(`  census: machine-read Apache assertions == the ${PATCHED_MANIFESTS.length} patched manifest(s), all patched to ${EVAL_LICENSE_ID}\n`);
+                stdout.write(`  census: machine-read Apache assertions == the ${APACHE_MANIFESTS.length} declaring manifest(s), unchanged by the cut\n`);
                 stdout.write(
                     exercised
                         ? `  self-exclusion: exercised — ${result.selfExcludedPresent.join(", ")} present in the index and filtered out of the cut\n`
                         : `  self-exclusion: vacuous in this index (the cutter is not in it) — the filter is exercised positively in cli/eval-bundle.test.mjs\n`,
                 );
-                stdout.write(`  guard: no machine-read Apache assertion survives; content digest sha256:${bundleDigest(cutDir).slice(0, 12)}…\n`);
+                stdout.write(`  guard: every machine-read license field reads Apache-2.0 and no issuer machinery leaked; content digest sha256:${bundleDigest(cutDir).slice(0, 12)}…\n`);
                 stdout.write("ok  eval-bundle — a clean evaluation bundle cuts from the index\n");
             } finally {
                 fs.rmSync(scratch, { recursive: true, force: true });

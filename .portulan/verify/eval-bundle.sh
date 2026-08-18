@@ -6,10 +6,12 @@
 #                 commit, so the terms-from-the-commit rule holds for the check exactly as for an
 #                 issuance — to a scratch directory for a fixture recipient and verifies every
 #                 invariant: the top-level payload partition matches the tree, the machine-read
-#                 license census equals the patch list, EVAL-LICENSE.md renders from the template
-#                 AT that same commit, the transforms land, and no machine-read Apache assertion
-#                 survives the cut. Then it deletes the scratch. What it enforces day to day is
-#                 the two pinned rosters: a new top-level path, or a new manifest asserting Apache
+#                 license census equals the declaring roster, EVAL-LICENSE.md renders from the
+#                 template AT that same commit, the stamp and banner land, and — since the guard
+#                 was inverted on the maintainer's ruling of 2026-08-18 — every machine-read
+#                 `license` field in the cut reads Apache-2.0 and no issuer machinery leaked into
+#                 it. Then it deletes the scratch. What it enforces day to day is the two pinned
+#                 rosters: a new top-level path, or a manifest whose licence drifts off Apache
 #                 inside the payload, goes red HERE with a repair menu, instead of silently
 #                 thinning or mislicensing the next bundle. A fourth refusal sits at 2, not 1: a
 #                 payload entry that is neither a plain nor an executable blob (a symlink, a
