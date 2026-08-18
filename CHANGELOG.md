@@ -80,6 +80,20 @@ unaffected.)_
 
 ### Changed
 
+- **The Stop-gate no longer demands a handoff from a session that did nothing, in a repository that
+  rebase-merges.** Its third did-work signal asked `git log HEAD --not --remotes` — a *reachability*
+  question. A rebase-merge rewrites commits, so a merged branch's originals are on no remote, and once
+  the remote branch is deleted on merge they never will be: every commit of every merged-and-deleted
+  branch satisfied it **permanently**, and any checkout left on such a branch reported *did work*
+  forever. The signal now compares by **patch-id** (`git cherry`) against the remote's own recorded
+  default head. A repository with no remote still reads every commit as work, unchanged. Where the
+  comparison cannot be made the gate **keeps the blocking reading and says which comparison failed** —
+  `git cherry` on an unknown ref exits 128 printing nothing, so counting `+` lines alone would have read
+  a failed command as *nothing unmerged*, and that direction would have turned a case that blocks into
+  a pass. A refusal now also **names the working tree and branch it read**, and reports a handoff dated
+  today carried by some other ref already on disk, because the sentence was once true about a tree the reader was
+  not thinking of. ([#220](https://github.com/sleepy-panda-srl/portulan/issues/220))
+
 - **`doctor`'s enforcement report now counts the gate policy a workspace *yields* — declared plus
   composed — rather than the rules its own `gates.json` declares.** Measured before the change on
   `d5a5eb7`: it printed `Claude Code: 10 of 23 rule(s) compiled … → .claude/settings.json` while that

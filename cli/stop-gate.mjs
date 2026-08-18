@@ -256,10 +256,78 @@ function didWork() {
         // No upstream configured. Ordinary for a branch that has never been pushed — fall through.
     }
 
-    // 3. Commits that are on no remote at all. Works with no upstream, and with no remote either —
-    //    in a repository with no remotes every commit qualifies, which is the correct reading there.
+    // 3. Commits whose PATCHES are on no remote — compared by patch-id, never by reachability.
+    //
+    // **This repository rebase-merges, and that makes reachability the wrong question** (#220). A
+    // rebase-merge rewrites commits, so a merged branch's originals appear on no remote; once the
+    // remote branch is deleted on merge they never will. `HEAD --not --remotes` therefore answers
+    // *yes, there is unrecorded work* **permanently**, for every commit of every merged-and-deleted
+    // branch — and any checkout left on such a branch demanded a handoff from a session that had
+    // done nothing. Measured 2026-08-10: the gate blocked twice over a handoff that was already on
+    // `main`, on the strength of four commits `git cherry` showed as fully upstream.
+    //
+    // The class is named in this repository for a different tool —
+    // `../.portulan/memory/a-branch-syncs-with-main-before-it-merges.md`, *"a rebase-merge leaves the
+    // branch tip an ancestor of nothing"* — and the sanctioned test there is `git cherry`:
+    // comparison by patch-id. This is that record applied at the site that asked the same wrong
+    // question.
     try {
-        return git(["log", "--oneline", "HEAD", "--not", "--remotes"]).trim() !== "";
+        // The coarse reading first, because it is cheap and it BOUNDS the expensive one: nothing on
+        // no remote by reachability means nothing on no remote by patch either, since a rewritten
+        // commit is still a commit that reachability would have found.
+        if (git(["log", "--oneline", "HEAD", "--not", "--remotes"]).trim() === "") return false;
+
+        // No remote at all: every commit qualifies, which is the correct reading there and is what
+        // this signal has always said. Documented rather than degraded, so it reports nothing.
+        const remotes = git(["remote"]).trim();
+        if (remotes === "") return true;
+
+        // A base to compare patches against: the remote's own recorded default head, never a branch
+        // picked by name. `./init.mjs`'s `delete-a-remote-branch` reason settles that — *"a wrong base
+        // answers no-unique-work about a question nobody asked"* — and `main` is not a name this file
+        // may assume, for the same reason signal 2 above stopped hard-coding `origin/main`.
+        let base = null;
+        for (const remote of remotes.split("\n").filter(Boolean)) {
+            try {
+                base = git(["rev-parse", "--abbrev-ref", "--symbolic-full-name", `${remote}/HEAD`]).trim() || null;
+                if (base) break;
+            } catch {
+                // This remote records no default head. Try the next one.
+            }
+        }
+
+        // **The refinement failed, so the coarse reading stands — and it stands as TRUE.**
+        //
+        // This is the fail-CLOSED direction and it is chosen rather than defaulted into. Commits on
+        // no remote is an established fact by the time we are here; only the attempt to excuse them
+        // as already-upstream could not be made. Reading that as *no work* would newly convert a
+        // case that blocks today into a pass — a relaxation, and this gate's own refusal message
+        // says relaxing a check is the change to scrutinise hardest. The asymmetry decides it: a
+        // wrong block is capped at MAX_BLOCKS and speaks, a wrong pass is unbounded and silent.
+        // `../.portulan/memory/verify-preconditions-fail-closed.md` is cited in this file's header
+        // for exactly this direction.
+        const degraded = (why) => {
+            process.stderr.write(
+                `portulan stop-gate: could not compare by patch-id (${why}), so commits on no remote are ` +
+                    "being read as work. If this branch was rebase-merged the handoff demand may be spurious — " +
+                    "check with `git cherry <remote>/HEAD HEAD` and say so rather than working around the gate.\n",
+            );
+            return true;
+        };
+        if (!base) return degraded("no remote records a default head");
+
+        // **Exit 0 AND zero `+` lines, both required.** `git cherry` against an unknown ref exits 128
+        // and prints NOTHING, so counting `+` alone reads a failed command as *nothing unmerged* —
+        // measured, and already recorded in `../.portulan/gate-map.md` and `./init.mjs`'s
+        // `delete-a-remote-branch` reason as a fail-open closed once before. The exit half is carried
+        // by `git()` itself, which throws on non-zero; the catch below is that half, not decoration.
+        let cherry;
+        try {
+            cherry = git(["cherry", base, "HEAD"]);
+        } catch {
+            return degraded(`\`git cherry ${base} HEAD\` could not run`);
+        }
+        return cherry.split("\n").some((line) => line.startsWith("+"));
     } catch {
         // Genuinely cannot tell. Say so rather than inventing an obligation OR silently dropping one:
         // a gate that disables itself without a word is the failure this whole runner exists against.
@@ -275,6 +343,64 @@ function handoffToday() {
         return fs.readdirSync(path.join(WORKSPACE, "handoffs")).some((f) => f.startsWith(stamp) && f.endsWith(".md"));
     } catch {
         return false;
+    }
+}
+
+/**
+ * WHICH TREE this gate just answered about — the working copy and the branch it is on.
+ *
+ * `handoffToday()` reads the directory under `WORKSPACE`, which is derived from `PROJECT`, which is
+ * whatever the host told this hook or whatever the cwd happens to be. That is deliberate — this file
+ * is TOLD its root rather than deriving one, for the reason its header gives — but it means the gate
+ * can ask a question about one tree and answer it from another. Measured 2026-08-10: a session whose
+ * worktree had been removed had its cwd fall back to the origin repository, parked on an unrelated
+ * branch 84 commits behind, and was told *"no handoff dated 2026-08-10"* while five sat on `main`.
+ *
+ * **This names the tree rather than rescoping the gate to it, and that is a choice with a cost.**
+ * #220 offers rescoping as the alternative and it is the more thorough repair — but the tree a
+ * removed worktree wrote to no longer exists to be read, so rescoping cannot answer the very
+ * incident that produced the issue. What a reader needed, and did not get, was to see that the
+ * sentence was true about a tree they were not thinking of.
+ */
+function treeIdentity() {
+    try {
+        const branch = execFileSync("git", ["rev-parse", "--abbrev-ref", "HEAD"], {
+            cwd: REPO, encoding: "utf8", timeout: 10_000, stdio: ["ignore", "pipe", "pipe"],
+        }).trim();
+        return `${REPO} (on \`${branch}\`)`;
+    } catch {
+        return REPO;
+    }
+}
+
+/**
+ * A handoff dated today somewhere in this repository's history — every ref already on disk — or null.
+ *
+ * **No network, deliberately.** A Stop hook runs on every attempt to end a turn, and a fetch would
+ * put a remote round trip — and an offline host's timeout — inside the gate. So this reads refs that
+ * are already on disk — `--all` is every ref this repository carries, local branches included, not only
+ * remote-tracking ones. The sentence it feeds must not overclaim: *absent from this working tree* is
+ * always true when it fires; *present at `<ref>`* is claimed only where some ref on disk shows one.
+ */
+function handoffInHistory() {
+    const stamp = today();
+    try {
+        const dir = path.relative(REPO, path.join(WORKSPACE, "handoffs"));
+        // A workspace outside the repository is not a question git can answer about this history.
+        if (dir === "" || dir.startsWith("..") || path.isAbsolute(dir)) return null;
+        const git = (args) => execFileSync("git", args, { cwd: REPO, encoding: "utf8", timeout: 10_000, stdio: ["ignore", "pipe", "pipe"] });
+        // `--all` is every ref already on disk, local and remote-tracking. `-1` because existence is
+        // the whole question — this is the doctrine's checkable form, not a census.
+        const commit = git(["log", "--all", "-1", "--format=%H", "--", `${dir}/${stamp}*`]).trim();
+        if (!commit) return null;
+        const refs = git(["branch", "--all", "--contains", commit, "--format=%(refname:short)"])
+            .split("\n").map((r) => r.trim()).filter(Boolean);
+        return { commit: commit.slice(0, 7), ref: refs[0] ?? null };
+    } catch {
+        // Cannot look. Say nothing rather than claim an absence — the refusal below is already
+        // correct without this sentence, and a false "nowhere in history either" would be worse
+        // than silence.
+        return null;
     }
 }
 
@@ -334,12 +460,22 @@ function collectProblems() {
 
     const handoffPresent = handoffToday();
     if (didWork() && !handoffPresent) {
+        // The tree is NAMED, because the sentence was once true about a tree the reader was not
+        // thinking of and read as a verdict about their session (#220).
+        const elsewhere = handoffInHistory();
+        const found = elsewhere
+            ? ` One dated ${today()} does exist elsewhere in this repository's refs, at ` +
+              `${elsewhere.commit}${elsewhere.ref ? ` on \`${elsewhere.ref}\`` : ""} — so this working tree may not be ` +
+              "the tree that did the work. Check before writing a second one: a duplicate handoff reds `docs.sh`'s " +
+              "record check, which is the trap the bare sentence used to set."
+            : "";
         problems.push({
             reason: "handoff",
             text:
-                `no handoff dated ${today()} in .portulan/handoffs/. Every session ends with a dated handoff — ` +
-                "five lines is enough, absent is not. The Session log records what landed; the handoff records why, " +
-                "and the why is the part the next session cannot reconstruct from the diff.",
+                `no handoff dated ${today()} in ${path.join(WORKSPACE, "handoffs")}, read from ${treeIdentity()}. ` +
+                "Every session ends with a dated handoff — five lines is enough, absent is not. The Session log " +
+                "records what landed; the handoff records why, and the why is the part the next session cannot " +
+                `reconstruct from the diff.${found}`,
         });
     }
 
