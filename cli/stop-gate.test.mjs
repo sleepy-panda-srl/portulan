@@ -633,6 +633,27 @@ describe("the handoff question names the tree it answered about (#220, second ha
         assert.match(reason, /feat/, "and the branch that tree is on");
     });
 
+    test("one date per verdict — the refusal never carries two", () => {
+        // There were four independent `today()` calls on this path: the tree check, the history query,
+        // and both halves of the sentence. A stop spanning local midnight could check one date and
+        // report another, and search history for a date nobody checked the tree for. `today()`'s own
+        // header records that this file has already produced one false red from a date disagreement.
+        const repo = rebaseMerged({ genuinelyUnmerged: true });
+        const stamp = today();
+        git(repo, ["checkout", "-q", "-b", "carries-the-handoff"]);
+        fs.writeFileSync(path.join(repo, ".portulan", "handoffs", `${stamp}-merged-already.md`), "why\n");
+        git(repo, ["add", "-A"]);
+        git(repo, ["commit", "-m", "the handoff"]);
+        git(repo, ["checkout", "-q", "feat"]);
+
+        const { reason } = gate(repo, "one-date-per-verdict");
+        const dates = [...new Set(reason.match(/\d{4}-\d{2}-\d{2}/g) ?? [])];
+        assert.deepEqual(dates, [stamp], `every date in one refusal must be the same one: ${dates.join(", ")}`);
+        // Both halves must actually be present, or this passes by having nothing to disagree with.
+        assert.match(reason, /no handoff dated/, "the check half");
+        assert.match(reason, /does exist elsewhere/, "the elsewhere half");
+    });
+
     test("the history lookup survives a host that reads `*` literally", () => {
         // `GIT_NOGLOB_PATHSPECS` makes a bare `*` literal, which would match nothing and return null —
         // silently reinstating the gap this arm closes, on a host that looks fine. Measured on git

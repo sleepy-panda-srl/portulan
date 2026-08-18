@@ -387,8 +387,7 @@ function didWork() {
 }
 
 /** Is there a handoff dated today? The doctrine's checkable form: existence and a date, never length. */
-function handoffToday() {
-    const stamp = today();
+function handoffToday(stamp) {
     try {
         return fs.readdirSync(path.join(WORKSPACE, "handoffs")).some((f) => f.startsWith(stamp) && f.endsWith(".md"));
     } catch {
@@ -439,8 +438,7 @@ function treeIdentity() {
  * remote-tracking ones. The sentence it feeds must not overclaim: *absent from this working tree* is
  * always true when it fires; *present at `<ref>`* is claimed only where some ref on disk shows one.
  */
-function handoffInHistory() {
-    const stamp = today();
+function handoffInHistory(stamp) {
     try {
         // **Separators normalised to `/`, because this becomes a git PATHSPEC.** `path.relative` yields
         // `\` on Windows and git would match nothing — and the failure is silent: this returns null,
@@ -528,7 +526,14 @@ function collectProblems() {
         }
     }
 
-    const handoffPresent = handoffToday();
+    // **ONE date per Stop event, captured once and threaded through every use.** There were four
+    // independent `today()` calls on this path — the tree check, the history query, and both halves of
+    // the sentence. A stop spanning local midnight (or a host clock that jumps) could therefore CHECK
+    // one date and REPORT another, and worse, search history for a date nobody checked the tree for.
+    // `today()`'s own header records that this file has already produced one false red from a date
+    // disagreement; two dates inside a single verdict is the same class. Copilot, round 3.
+    const stamp = today();
+    const handoffPresent = handoffToday(stamp);
     // **`!handoffPresent` first, and the order is load-bearing rather than stylistic.** `didWork()`
     // shells out to git several times and can print the could-not-compare sentence; ordered the other
     // way, a session that HAS written its handoff still paid that cost on every Stop event and could
@@ -536,9 +541,9 @@ function collectProblems() {
     if (!handoffPresent && didWork()) {
         // The tree is NAMED, because the sentence was once true about a tree the reader was not
         // thinking of and read as a verdict about their session (#220).
-        const elsewhere = handoffInHistory();
+        const elsewhere = handoffInHistory(stamp);
         const found = elsewhere
-            ? ` One dated ${today()} does exist elsewhere in this repository's refs, at ` +
+            ? ` One dated ${stamp} does exist elsewhere in this repository's refs, at ` +
               `${elsewhere.commit}${elsewhere.ref ? ` on \`${elsewhere.ref}\`` : ""} — so this working tree may not be ` +
               "the tree that did the work. Check before writing a second one: a duplicate handoff reds `docs.sh`'s " +
               "record check, which is the trap the bare sentence used to set."
@@ -546,7 +551,7 @@ function collectProblems() {
         problems.push({
             reason: "handoff",
             text:
-                `no handoff dated ${today()} in ${path.join(WORKSPACE, "handoffs")}, read from ${treeIdentity()}. ` +
+                `no handoff dated ${stamp} in ${path.join(WORKSPACE, "handoffs")}, read from ${treeIdentity()}. ` +
                 "Every session ends with a dated handoff — five lines is enough, absent is not. The Session log " +
                 "records what landed; the handoff records why, and the why is the part the next session cannot " +
                 `reconstruct from the diff.${found}`,
