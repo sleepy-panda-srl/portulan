@@ -406,7 +406,12 @@ function treeIdentity() {
 function handoffInHistory() {
     const stamp = today();
     try {
-        const dir = path.relative(REPO, path.join(WORKSPACE, "handoffs"));
+        // **Separators normalised to `/`, because this becomes a git PATHSPEC.** `path.relative` yields
+        // `\` on Windows and git would match nothing — and the failure is silent: this returns null,
+        // the refusal loses the half that tells a reader their handoff is already recorded, and nothing
+        // says why. The same spelling is used wherever this repository hands git a derived path
+        // (`./librarian.mjs`, `./compile.mjs`). Copilot, round 3.
+        const dir = path.relative(REPO, path.join(WORKSPACE, "handoffs")).split(path.sep).join("/");
         // A workspace outside the repository is not a question git can answer about this history.
         if (dir === "" || dir.startsWith("..") || path.isAbsolute(dir)) return null;
         const git = (args) => execFileSync("git", args, { cwd: REPO, encoding: "utf8", timeout: 10_000, stdio: ["ignore", "pipe", "pipe"] });
