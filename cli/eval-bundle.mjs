@@ -494,10 +494,17 @@ it was cut from.
 `;
 
 /**
- * Prepend the evaluation banner. Reworded from the pre-port original in one place, and the delta
- * is deliberate: the original said the License section below "describes the public repository",
- * which stopped being true the moment `patchReadmeLicense` started rewriting that section. A
- * banner describing the bundle must describe the bundle it is in.
+ * Prepend the evaluation banner. The banner is now the ONLY thing the cut writes into README.md:
+ * `LICENSE` ships and the tree's own `## License` section is correct for a bundle carrying
+ * Apache-2.0, so nothing rewrites it (#284, 2026-08-18).
+ *
+ * The wording still carries one deliberate delta from the pre-port original, and the reason
+ * outlived the mechanism that prompted it. The original banner said the License section below
+ * "describes the public repository". That was false while the cut rewrote the section, which is
+ * what the port fixed; it is true again now that the cut leaves the section alone. The banner says
+ * what the bundle IS anyway, rather than deferring to a section whose content depends on which
+ * transforms ran — because a banner describing the bundle must describe the bundle it is in, and
+ * that rule does not move when the transforms do.
  */
 export function prependBanner(cutDir, { name, date, fullSha }) {
     const file = path.join(cutDir, "README.md");
