@@ -3,7 +3,7 @@
 **An operating framework for agentic engineering** — the tailored context, standards, gates, and
 institutional memory a team needs so any coding agent works *their* way.
 
-Portulan is an open-core product by [Sleepy Panda Works](https://sleepypanda.ro). The public engine,
+Portulan is an open-core product by [Sleepy Panda](https://sleepypanda.ro). The public engine,
 spec, CLI, and a demo workspace live here, and the repository doubles as a public Claude Code plugin
 marketplace. Commercial value lives in private feeds — customer workspaces and premium packs
 delivered as private-marketplace plugins.

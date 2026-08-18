@@ -5,7 +5,7 @@
   "version": "0.1.0",
   "description": "An operating framework for agentic engineering: a small always-loaded kernel, doctrine for the loop, autonomy tiers, verification and memory, and the Workspace Definition your team's own policy layer is validated against.",
   "author": {
-    "name": "Sleepy Panda Works",
+    "name": "Sleepy Panda",
     "url": "https://sleepypanda.ro"
   },
   "repository": "https://github.com/sleepy-panda-srl/portulan",

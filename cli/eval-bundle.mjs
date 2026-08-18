@@ -490,7 +490,7 @@ export function renderEvalLicense(template, { name, login, date, fullSha }) {
 export const EVAL_NOTICE = `Portulan
 Copyright 2026 Sleepy Panda SRL
 
-This product is developed by Sleepy Panda Works (https://sleepypanda.ro).
+This product is developed by Sleepy Panda (https://sleepypanda.ro).
 This copy is an evaluation issue recorded in EVAL-LICENSE.md, and is licensed
 under the Apache License, Version 2.0 — the same terms as the public repository
 it was cut from.

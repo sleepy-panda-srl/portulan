@@ -5,7 +5,7 @@
   "version": "0.2.1",
   "description": "The supervised-build checkpoint ritual as a pack: session-open, pre-commit and milestone-close, each graded by a context that has not seen the implementation, in a fixed verdict vocabulary.",
   "author": {
-    "name": "Sleepy Panda Works",
+    "name": "Sleepy Panda",
     "url": "https://sleepypanda.ro"
   },
   "repository": "https://github.com/sleepy-panda-srl/portulan",
