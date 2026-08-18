@@ -19,6 +19,12 @@
 # is "npm did not run" sends someone hunting a drift that does not exist.
 set -uo pipefail
 cd "$(dirname "$0")/../.." || { printf 'verify: pack-identity could not reach the repository root\n' >&2; exit 2; }
+# Preconditions before the check, per ../memory/verify-preconditions-fail-closed.md: a missing tool is
+# COULD-NOT-RUN, never a finding about the bytes. Without this the shell exits 127 on an absent binary,
+# which the runner reads as a red verdict about the work.
+for need in node npm git; do
+    command -v "$need" >/dev/null 2>&1 || { printf 'verify: pack-identity could not run — %s is not on PATH\n' "$need" >&2; exit 2; }
+done
 node cli/pack-identity.mjs .
 rc=$?
 if [ "$rc" -eq 2 ]; then printf 'verify: pack-identity could not run (exit 2)\n' >&2; fi

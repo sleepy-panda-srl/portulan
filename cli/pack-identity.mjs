@@ -16,7 +16,8 @@
 // being run.
 //
 // What this checks instead needs neither: `npm pack --dry-run --json` lists what the package would
-// contain, and every one of those paths must be byte-identical to `git show HEAD:<path>`. That is the
+// contain, and every one of those paths must be byte-identical to its STAGED blob, `git show :<path>`
+// — the index rather than HEAD, for the reason the comment on `blobAt` gives. That is the
 // property the registry comparison DEPENDS on — if the packed bytes match the tree, and the published
 // tarball matches a fresh pack, then the published bytes are the tree's. This rail owns the first half,
 // which is the half that can drift silently on any commit; the second half is a hand measurement taken
@@ -33,6 +34,7 @@
 // happened is "npm did not run" sends someone hunting a drift that does not exist.
 
 import { execFileSync } from "node:child_process";
+import fs from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import process from "node:process";
@@ -91,7 +93,10 @@ export function compare(root) {
         // that claim.
         const blob = blobAt(root, rel);
         if (blob === null) untracked.push(rel);
-        else if (!blob.equals(run("cat", [path.join(root, rel)], { stdio: ["ignore", "pipe", "ignore"] }))) differing.push(rel);
+        // Read with `fs`, not by shelling out. `cat` would be an undeclared dependency this recipe's
+        // `requires` does not list, and it takes its argument as an OPTION when a filename begins with
+        // `-` — so a file named `-n` would silently be read as a flag rather than compared.
+        else if (!blob.equals(fs.readFileSync(path.join(root, rel)))) differing.push(rel);
     }
     return { packed, untracked, differing };
 }
