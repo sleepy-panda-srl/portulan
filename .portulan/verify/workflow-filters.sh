@@ -48,7 +48,14 @@ set -uo pipefail
 # is guarded here rather than left to the instrument because `node` exiting on a missing binary and
 # this recipe reporting "could not run" are two different sentences, and the second is the one the
 # Stop-gate and CI read. The instrument checks it again anyway, for a direct `node` invocation.
-for need in dirname jq node; do
+#
+# `awk` joined the list on 2026-08-18, several weeks after the awk half of the instrument landed, and
+# the omission is the reason the list says EVERY: the instrument did refuse correctly without it — its
+# `awkVersion()` throws could-not-run — but the wrapper claimed a completeness it did not have, so the
+# clear exit-2 precondition arrived from the wrong layer and named the wrong thing. Raised by Copilot
+# on #290 as a suppressed note, against the very line this change had just widened to say `jq and awk`.
+# `../workspace.json`'s `requires` for this recipe moves with it: one rule, two carriers.
+for need in awk dirname jq node; do
     command -v "$need" >/dev/null 2>&1 || {
         printf 'verify: %s not found — this recipe needs it; see .portulan/verify/README.md\n' "$need" >&2
         exit 2
