@@ -23,16 +23,15 @@
 //      `LICENSE` ships: the bundle is the public tree's bytes under the public tree's licence, so
 //      the README's own `## License` section is already correct and its link now resolves. That
 //      retires one of the thirteen dead relative links this tool used to create, for free.
-//   6. Writes EVAL-STAMP.json, carrying the recipient, the source commit, and a reproducible
-//      content digest (see below).
-//   7. Runs the guard over the finished cut, with TWO detectors: the canonical byte form
-//      `"license": "Apache-2.0"` searched in every file, and every `.json` parsed with any
-//      `license` key at any depth flagged when its string value mentions Apache — one spelling is
-//      not a category, and the byte form alone passed `"license":"Apache-2.0"` (no space) at the
-//      pre-commit checkpoint. ANY survivor refuses the bundle — a bundle asserting Apache
-//      anywhere would undermine the per-copy terms. Exit 1, every offender named with its
-//      detector and its own diagnosis.
-//   8. Issuance only: tars the cut and prints two hashes (see "Two hashes" below).
+//   5. Writes EVAL-STAMP.json, carrying the recipient, the source commit, `Apache-2.0`, and a
+//      reproducible content digest (see below).
+//   6. Runs the guard over the finished cut. INVERTED on the maintainer's ruling of 2026-08-18
+//      (issue 284): it refuses any parsed JSON `license` field whose value is not `Apache-2.0`,
+//      and any SELF_EXCLUDED path that leaked into the cut. The bundle is the public tree's bytes
+//      under the public tree's licence, so a machine-read field saying otherwise is the defect —
+//      it under-reports a permissive licence as proprietary. ANY offender refuses the bundle:
+//      exit 1, each named with the value seen and the repair that actually clears it.
+//   7. Issuance only: tars the cut and prints two hashes (see "Two hashes" below).
 //
 // ## What the guard's category is, and what it is not — stated so the sentence cannot overclaim
 //
