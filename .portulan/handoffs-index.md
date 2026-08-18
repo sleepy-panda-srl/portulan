@@ -2,9 +2,10 @@
 
 > Generated from `handoffs/` by `node cli/index.mjs`. Do not edit by hand: it is regenerated
 > and byte-compared, so a hand-edit survives exactly until the next run.
-> 111 handoff(s), newest first. No budget: the series is append-only, so
+> 112 handoff(s), newest first. No budget: the series is append-only, so
 > the only remedy a budget could ask for is one this project rules out.
 
+- 2026-08-18 · [Handoff — the flip, the publish, and what each measurement cost](handoffs/2026-08-18-the-flip-the-publish-and-what-each-measurement-cost.md)
 - 2026-08-18 · [Handoff — the brief was wrong about its own mechanism](handoffs/2026-08-18-the-brief-was-wrong-about-its-own-mechanism.md)
 - 2026-08-18 · [Handoff — a review object is not a round](handoffs/2026-08-18-a-review-object-is-not-a-round.md)
 - 2026-08-17 · [Handoff — the tree says public before the setting does](handoffs/2026-08-17-the-tree-says-public-before-the-setting-does.md)
