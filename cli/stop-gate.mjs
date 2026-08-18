@@ -237,9 +237,12 @@ function defaultRecipe() {
  * Found by review on the pull request.
  */
 function didWork() {
-    // `maxBuffer` raised from node's 1 MiB default for the same reason the probe below is bounded:
-    // `git cherry` prints one line per compared commit, and an overflow here would throw into the outer
-    // catch and read as *cannot tell* on precisely the branches that carry the most commits.
+    // `maxBuffer` raised from node's 1 MiB default **for `git cherry`, which cannot be bounded the way
+    // the emptiness probe below can**: it must print a line per compared commit to be read at all,
+    // where the probe only has to answer yes-or-no and so is asked with `--max-count=1`. An overflow
+    // here throws into the outer catch and reads as *cannot tell* on precisely the branches that carry
+    // the most commits. This raise moves that cliff rather than removing it — every buffer is finite —
+    // which is why the probe is bounded instead of merely given more room.
     const git = (args) => execFileSync("git", args, { cwd: REPO, encoding: "utf8", timeout: 10_000, maxBuffer: 64 * 1024 * 1024 });
 
     // 1. Uncommitted changes. Portable, and the strongest signal there is.
@@ -282,10 +285,17 @@ function didWork() {
         // **`rev-list --max-count=1`, not `log --oneline`, and the difference is a fail-open.** This
         // asks only whether the set is EMPTY, but `log --oneline` answers by printing one line per
         // commit — and a long-lived checkout on a rebase-merged branch is exactly where that set gets
-        // large, which is the situation this whole signal exists for. Past node's default `maxBuffer`
-        // that throws `ENOBUFS` (measured), the outer catch below turns it into `return false`, and the
-        // handoff check disables itself on the repositories most likely to need it. Bounded to one hash,
-        // the question is the same and the output cannot grow. Copilot, round 3.
+        // large, which is the situation this whole signal exists for. Past whatever `maxBuffer` is in
+        // force, `execFileSync` throws `ENOBUFS` (measured against node's 1 MiB default, which is what
+        // this ran on when the defect was found), the outer catch below turns that into `return false`,
+        // and the handoff check disables itself on the repositories most likely to need it.
+        //
+        // **The raised `maxBuffer` above does not make this redundant, and the order matters.** That
+        // raise moves the cliff; it does not remove one, because every buffer is finite and the set
+        // this probe asks about has no bound. Bounding the QUESTION is what removes the failure: one
+        // hash cannot outgrow any buffer. The raise is defence in depth for `git cherry`, which must
+        // print a line per compared commit and so cannot be bounded the same way. Copilot, round 3;
+        // the wording corrected in the same round after the raise made the original rationale stale.
         if (git(["rev-list", "--max-count=1", "HEAD", "--not", "--remotes"]).trim() === "") return false;
 
         // No remote at all: every commit qualifies, which is the correct reading there and is what
