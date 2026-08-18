@@ -17,7 +17,11 @@
     "packs/",
     "README.md",
     "LICENSE",
-    "NOTICE"
+    "NOTICE",
+    "!cli/*.test.mjs",
+    "!cli/fixtures",
+    "!cli/eval-bundle.mjs",
+    "!cli/eval-license.template.md"
   ],
   "repository": {
     "type": "git",
