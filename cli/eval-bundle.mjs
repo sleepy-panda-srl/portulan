@@ -67,10 +67,10 @@
 // ## The three rosters are pinned, in both directions
 //
 // PAYLOAD ∪ EXCLUDED must equal the commit's top-level tracked entries exactly, and the census of
-// machine-read Apache assertions inside the payload must equal PATCHED_MANIFESTS exactly. Both are
+// machine-read Apache assertions inside the payload must equal APACHE_MANIFESTS exactly. Both are
 // enforced live by `--check` (and so by CI on every pull request): a new top-level path, or a new
 // manifest asserting Apache, fails with a message naming the repair menu — classify the path,
-// patch-list the manifest, or exclude it — rather than silently thinning or silently mislicensing
+// roster the manifest, or exclude it — rather than silently thinning or silently mislicensing
 // the next bundle. Proposal 0029's shape, taken for its honesty half: the lists are enumerations,
 // the guard is the category, and the census is what keeps enumeration and category equal.
 //
@@ -79,12 +79,13 @@
 // This file, its test suite and the license template are payload paths (`cli/` ships) and are
 // excluded from the cut by a CODE-LEVEL filter — never a git pathspec, whose exclude form matches
 // nothing silently. Issuer machinery is not part of what an evaluee receives — a bundle carries
-// the STAMPED license, never the stamp press — and this file and the suite additionally carry the
-// guard's own needle bytes, so a cut containing either could never pass its own guard. That last
-// fact is also the backstop: if the filter ever fails on those two, the guard refuses the bundle,
-// and its diagnosis for a SELF_EXCLUDED offender says "the self-exclusion failed" rather than
-// misreporting a licensing breach. The template carries no needle, so its exclusion rests on the
-// filter alone — which the test suite exercises positively against a fixture repository that
+// the STAMPED license, never the stamp press. The backstop beneath that filter USED to be an
+// accident: this file and the suite carry the old guard's needle bytes, so a cut containing either
+// failed the presence-guard, while the template carried no needle and rested on the filter alone.
+// Inverting the guard would have dropped that accident silently, so `auditCut` now checks ALL
+// THREE paths directly with `fs.existsSync` — explicit, equal for the template, and diagnosed as
+// "the self-exclusion failed" rather than as a licensing breach. The filter itself
+// is exercised positively against a fixture repository that
 // plants files at exactly these paths. `--check` states on every run whether the exclusion was
 // exercised (the paths exist at the commit being cut) or vacuous, so a green cannot quietly rest
 // on the vacuous case.
@@ -579,9 +580,11 @@ export function writeStamp(cutDir, { name, login, date, fullSha }) {
 
 /**
  * Every machine-read `license` field in the cut whose value is NOT Apache-2.0, as `{ rel, saw }`.
- * The walk is the census walk's mirror: parse each `.json`, descend to every depth, and read every
- * `license` key bound to a string. An unparseable `.json` is skipped for the same reason the census
- * skips it — a file no JSON parser reads is not machine-readable as JSON.
+ * The walk is the census walk's mirror: parse each `.json`, descend to every depth, and judge every
+ * `license` key WHATEVER ITS TYPE — string, object, array, number or null. Reading only strings was
+ * a fail-open, since npm's own historic form is an object; the type is reported so an operator sees
+ * what the field holds. An unparseable `.json` is skipped for the same reason the census skips it —
+ * a file no JSON parser reads is not machine-readable as JSON.
  */
 export function nonApacheAssertions(dir) {
     const found = [];
