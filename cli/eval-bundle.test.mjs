@@ -129,12 +129,33 @@ describe("the pinned rosters, measured with this suite's own instruments", () =>
         // independent instrument for the census the cutter re-runs on every cut. `HEAD:` prefixes
         // are stripped; exit 1 (no match) would surface as a throw and fail loudly, which is the
         // right failure for a census that found nothing.
-        const hits = git(REPO, "grep", "-l", "--fixed-strings", APACHE_NEEDLE.toString(), "HEAD", "--", ...PAYLOAD)
+        const byteForm = git(REPO, "grep", "-l", "--fixed-strings", APACHE_NEEDLE.toString(), "HEAD", "--", ...PAYLOAD)
             .split("\n")
             .filter(Boolean)
-            .map((line) => line.replace(/^HEAD:/, ""))
-            .filter((rel) => !SELF_EXCLUDED.includes(rel))
-            .sort();
+            .map((line) => line.replace(/^HEAD:/, ""));
+        // TWO detectors here as well, mirroring `apacheAssertions`. The byte form alone would miss a
+        // manifest asserting Apache in different whitespace or another spelling — `assertCensus`
+        // would refuse that cut, but this test, whose whole job is to catch roster drift BEFORE a
+        // cut, would have stayed green. One spelling is not a category (0029), and this pin had the
+        // same gap the guard was built against. The suite's own walk, not the module's.
+        const assertsApache = (value) => {
+            if (Array.isArray(value)) return value.some(assertsApache);
+            if (value === null || typeof value !== "object") return false;
+            return Object.entries(value).some(
+                ([k, v]) => (k === "license" && typeof v === "string" && /apache/i.test(v)) || assertsApache(v),
+            );
+        };
+        const parsed = git(REPO, "ls-tree", "-r", "--name-only", "HEAD", "--", ...PAYLOAD)
+            .split("\n")
+            .filter((rel) => rel.endsWith(".json"))
+            .filter((rel) => {
+                try {
+                    return assertsApache(JSON.parse(git(REPO, "show", `HEAD:${rel}`)));
+                } catch {
+                    return false;
+                }
+            });
+        const hits = [...new Set([...byteForm, ...parsed])].filter((rel) => !SELF_EXCLUDED.includes(rel)).sort();
         assert.deepEqual(
             hits,
             [...APACHE_MANIFESTS].sort(),
