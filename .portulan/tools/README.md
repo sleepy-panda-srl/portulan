@@ -237,7 +237,8 @@ silently re-attributes everything typed afterwards, which is the failure this me
   the original clause reads true again — and the lesson is the opposite of reassuring. This paragraph
   has now been wrong in both directions inside three weeks, on a fact no file here can read. Do not take
   the permission set, or its price, from this paragraph; the gate map carries the argument and the
-  re-measure is the only thing that settles it.)** (2) It read *"ruled and not yet applied"* — false since **2026-07-29**,
+  re-measure is the only thing that settles it.)**
+  (2) It read *"ruled and not yet applied"* — false since **2026-07-29**,
   when the grant was applied and accepted, which the gate map recorded and this paragraph never got
   re-read against. Two carriers of one fact drifting at the weaker one, three lines below the sentence
   telling you not to read the permission set from this paragraph._

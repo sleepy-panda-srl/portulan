@@ -18,7 +18,7 @@ Measured on this tree, 2026-08-17, rather than recalled:
 |---|---|---|
 | `verify.yml` trigger | the workflow | `pull_request` — **not** `pull_request_target` |
 | its token scope | the workflow | `permissions: contents: read` |
-| secrets referenced | `grep 'secrets\.'` | **zero** |
+| secrets referenced | `grep 'secrets\.' .github/workflows/verify.yml` — that file only | **zero** |
 | Actions cache used | the workflow | **none**, deliberately, and it says so |
 
 Those four together are the whole of the fork exposure argument, and three of them are the bounds `0004`
