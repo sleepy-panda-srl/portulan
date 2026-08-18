@@ -297,8 +297,18 @@ function didWork() {
         // picked by name. `./init.mjs`'s `delete-a-remote-branch` reason settles that — *"a wrong base
         // answers no-unique-work about a question nobody asked"* — and `main` is not a name this file
         // may assume, for the same reason signal 2 above stopped hard-coding `origin/main`.
+        // **ONE ordering, used by both the base selection and the sentence that reports its failure.**
+        // `git remote` lists alphabetically, so a repository carrying `backup` beside `origin` offered
+        // `backup/HEAD` first — and this loop takes the first that resolves, which means comparing
+        // patch-ids against a non-canonical remote and reaching a wrong allow/block, not merely a
+        // clumsy message. `origin` is the conventional canonical remote and is preferred where it
+        // exists. Written as one list rather than two matching literals because the first version of
+        // this preferred `origin` in the DEGRADED SENTENCE only, leaving the verdict itself on the
+        // alphabetical remote — a fix that repaired the report of a defect and not the defect.
+        // Copilot, round 3.
         let base = null;
-        const named = remotes.split("\n").filter(Boolean);
+        const listed = remotes.split("\n").filter(Boolean);
+        const named = listed.includes("origin") ? ["origin", ...listed.filter((r) => r !== "origin")] : listed;
         for (const remote of named) {
             try {
                 base = git(["rev-parse", "--abbrev-ref", "--symbolic-full-name", `${remote}/HEAD`]).trim() || null;
@@ -335,11 +345,10 @@ function didWork() {
             // **The remotes are NAMED, because this runner already knows them** — it just tried every
             // one. A `<remote>` placeholder in a multi-remote repository invites the reader to run the
             // repair against whichever they think of first, which is how a diagnosis sends someone to
-            // the wrong ref. Copilot, round 3. **`origin` is preferred where it exists** rather than
-            // simply taking the first: `git remote` lists alphabetically, so a repository carrying a
-            // `backup` remote would otherwise be told to repair `backup` — measured, and it is the
-            // wrong-ref failure this naming was added to prevent, reintroduced one line lower.
-            const which = named.includes("origin") ? "origin" : named[0];
+            // the wrong ref. Copilot, round 3. `named` is already ordered `origin`-first above, so the
+            // remote this repairs is the same one the loop would have compared against — the two
+            // cannot disagree, which is why the ordering is computed once.
+            const which = named[0];
             return degraded(
                 `no remote records a default head (tried \`${named.join("`, `")}\`)`,
                 `record one with \`git remote set-head ${which} -a\`, then check with ` +

@@ -564,6 +564,28 @@ describe("did-work, in a repository that rebase-merges (#220)", () => {
         assert.equal(gate(repo, "handoff-present").decision, "allow");
     });
 
+    test("with several remotes, the base is `origin` — not whichever git lists first", () => {
+        // `git remote` lists alphabetically, so a `backup` remote sorts ahead of `origin`. Comparing
+        // patch-ids against a non-canonical remote is a wrong VERDICT, not a clumsy message: here
+        // `backup` carries none of the work, so a gate that chose it would see the branch as entirely
+        // unmerged and demand a handoff from a session that owes none.
+        const repo = rebaseMerged();
+        const root = path.dirname(repo);
+        execFileSync("git", ["init", "-q", "--bare", path.join(root, "backup.git")]);
+        execFileSync("git", ["--git-dir", path.join(root, "backup.git"), "symbolic-ref", "HEAD", "refs/heads/main"]);
+        git(repo, ["remote", "add", "backup", path.join(root, "backup.git")]);
+        // `backup` gets only the base commit, so it shares no patch with the rebase-merged work.
+        git(repo, ["push", "-q", "backup", `${git(repo, ["rev-list", "--max-parents=0", "HEAD"]).trim()}:refs/heads/main`]);
+        git(repo, ["fetch", "-q", "backup"]);
+        git(repo, ["remote", "set-head", "backup", "-a"]);
+        assert.equal(git(repo, ["remote"]).trim().split("\n")[0], "backup", "premise: git lists `backup` first");
+        assert.ok(git(repo, ["cherry", "backup/HEAD", "HEAD"]).split("\n").filter((l) => l.startsWith("+")).length > 0,
+            "premise: against `backup` the work looks entirely unmerged");
+
+        const { decision, reason } = gate(repo, "several-remotes");
+        assert.equal(decision, "allow", `the base must be origin, whose patches this branch carries — got: ${reason}`);
+    });
+
     test("when patch-id cannot answer, the gate keeps the coarse reading and SAYS the refinement failed", () => {
         // A remote is configured and has never been fetched, so `origin/HEAD` does not resolve — the
         // innocent shape `git init` + `git remote add` produces. Reading that as "no work" would turn a
