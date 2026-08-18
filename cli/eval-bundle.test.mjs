@@ -229,7 +229,9 @@ describe("a full issuance cut of this repository", () => {
         assert.equal(stamp.content_digest, `sha256:${bundleDigest(cutDir)}`, "the digest in the stamp does not recompute from the cut");
     });
 
-    test("what must be absent is absent — the excluded top level, the license file, and the cutter", () => {
+    // "the license file" was in this name while LICENSE was excluded to make room for a proprietary
+    // instrument. It ships now (#284), and is asserted PRESENT in the LICENSE test above.
+    test("what must be absent is absent — the excluded top level and the issuer machinery", () => {
         for (const name of [...Object.keys(EXCLUDED_TOP_LEVEL), ...SELF_EXCLUDED]) {
             assert.ok(!fs.existsSync(path.join(cutDir, name)), `${name} is in the cut and must not be`);
         }
