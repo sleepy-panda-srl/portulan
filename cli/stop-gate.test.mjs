@@ -537,8 +537,10 @@ function rebaseMerged({ genuinelyUnmerged = false } = {}) {
 describe("did-work, in a repository that rebase-merges (#220)", () => {
     test("a rebase-orphaned branch whose every patch is upstream owes no handoff", () => {
         const repo = rebaseMerged();
-        // The premise, measured against real git rather than asserted: reachability says two, patch-id
-        // says none. If this premise ever stops holding the case below is testing nothing.
+        // The premise, measured against real git rather than asserted: reachability finds the orphaned
+        // commit this fixture makes, patch-id finds nothing unmerged. Asserted as non-empty rather than
+        // as a count, so the fixture may grow a commit without this going red for the wrong reason. If
+        // this premise ever stops holding the case below is testing nothing.
         assert.notEqual(git(repo, ["log", "--oneline", "HEAD", "--not", "--remotes"]).trim(), "", "premise: orphans exist by reachability");
         assert.equal(git(repo, ["cherry", "origin/main", "HEAD"]).split("\n").filter((l) => l.startsWith("+")).length, 0, "premise: every patch is upstream");
         assert.equal(git(repo, ["status", "--porcelain"]).trim(), "", "premise: the tree is clean");
@@ -607,6 +609,22 @@ describe("the handoff question names the tree it answered about (#220, second ha
         assert.equal(decision, "block");
         assert.ok(reason.includes(repo), `the refusal must name the tree it read (${repo}) — got: ${reason}`);
         assert.match(reason, /feat/, "and the branch that tree is on");
+    });
+
+    test("a DETACHED tree is named by its commit, never as a branch called HEAD", () => {
+        // Not an exotic case here: this repository routinely has several detached worktrees checked out
+        // at once, and `git rev-parse --abbrev-ref HEAD` answers the literal string `HEAD` in every one
+        // of them. Naming a branch that does not exist, in the sentence added so a reader could identify
+        // the tree, would be the same defect this half of #220 is about.
+        const repo = rebaseMerged({ genuinelyUnmerged: true });
+        git(repo, ["checkout", "-q", "--detach"]);
+        assert.equal(git(repo, ["rev-parse", "--abbrev-ref", "HEAD"]).trim(), "HEAD", "premise: git says the branch is `HEAD`");
+        const short = git(repo, ["rev-parse", "--short", "HEAD"]).trim();
+
+        const { decision, reason } = gate(repo, "detached-tree");
+        assert.equal(decision, "block");
+        assert.doesNotMatch(reason, /on `HEAD`/, "must not name a branch that does not exist");
+        assert.ok(reason.includes(short), `must name the commit instead — expected ${short} in: ${reason}`);
     });
 
     test("a handoff dated today in fetched history, absent from THIS tree, is reported rather than hidden", () => {
