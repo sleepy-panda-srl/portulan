@@ -10,18 +10,25 @@
 //   2. The unwritable-counter fallback returned exactly the cap, which is not ABOVE it — so a red
 //      tree blocked forever, the precise opposite of the comment beside it.
 //
-// The runner's other half — running a recipe, reading git, listing handoffs — is deliberately not
-// unit-tested here: it is I/O against a real tree, and the honest test of it is the demonstration in
-// `../.portulan/handoffs/2026-07-27-the-enforcement-compiler.md`, where a planted dead link held a
-// live session and a green tree let it go. What is tested here is the arithmetic that decides
-// whether this gate can be talked past.
+// What is tested here is the arithmetic that decides whether this gate can be talked past — and,
+// since #220, the DID-WORK signals, which are I/O against a real tree and are pinned at the bottom of
+// this file by spawning the real binary against real git fixtures. That half used to say it was
+// deliberately untested, resting on the demonstration in
+// `../.portulan/handoffs/2026-07-27-the-enforcement-compiler.md` where a planted dead link held a
+// live session. The demonstration was real and is still cited; what it could not do was notice that
+// one of those signals had been answering a rebase-merging repository wrongly since it was written.
+// Reading git is no longer untested here. Running a recipe and listing handoffs are exercised only as
+// PRECONDITIONS of the cases below — a green recipe so `handoff` is the only live reason, a dated file
+// so one case clears — and neither has a directed case: a recipe that reds or cannot run through the
+// spawned binary, and the handoff-listing edge shapes, are still nobody's.
 
 import { test, describe } from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
 
 import { bumpCount, clearReason, today, verdict, REASONS, MAX_BLOCKS, MAX_TOTAL_BLOCKS } from "./stop-gate.mjs";
 
@@ -410,5 +417,200 @@ describe("a recipe that cannot run is not a verdict about the repository", () =>
         const code = statusOf("exit 1");
         assert.equal(code, 1);
         assert.ok(!CANNOT_RUN.has(code), "exit 1 is a verdict about the tree and must stay one");
+    });
+});
+
+// ---------------------------------------------------------------------------------------------
+// The DID-WORK signals, driven as the host drives them — real git, real binary, real fixtures.
+//
+// **Every case here spawns `node cli/stop-gate.mjs`** with a payload on stdin and
+// `CLAUDE_PROJECT_DIR` pointed at a fixture repository, rather than importing `didWork` and handing
+// it a stubbed runner. The shape is `./gate.test.mjs`'s and the reason is the same one, sharpened by
+// what is under test here: **the defect is that real git, in a repository that rebase-merges,
+// behaves otherwise than the signal assumed.** A stubbed runner is a copy of that assumption, so it
+// would pass on every day the gate was wrong. The arm withheld from `#208` was rejected for the
+// neighbouring reason — a test-only export adds a surface whose only caller is the entry block — and
+// shipped by injecting the fault from outside instead.
+//
+// `#220`: a rebase-merge rewrites commits, so a merged branch's originals are on no remote; once the
+// remote branch is deleted they never will be. `HEAD --not --remotes` therefore reports did-work
+// **permanently** for any checkout left on such a branch, and the gate demands a handoff from a
+// session that did nothing.
+
+const RUNNER = fileURLToPath(new URL("./stop-gate.mjs", import.meta.url));
+
+/** Git with a fixed identity, so the suite does not read the machine's. */
+function git(cwd, args) {
+    return execFileSync(
+        "git",
+        ["-c", "user.name=portulan-test", "-c", "user.email=test@example.invalid", "-c", "commit.gpgsign=false", ...args],
+        { cwd, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] },
+    );
+}
+
+/**
+ * Drive the gate as the host does: one process, payload on stdin, decision on stdout.
+ *
+ * `spawnSync` rather than `execFileSync` because **this runner always exits 0** — it reports a
+ * refusal in its stdout JSON, not in its status — so the stderr this suite asserts on would be
+ * unreachable through the throw path `./gate.test.mjs` reads it from.
+ */
+function gate(project, sessionId) {
+    const run = spawnSync("node", [RUNNER], {
+        input: JSON.stringify({ session_id: sessionId }),
+        env: { ...process.env, CLAUDE_PROJECT_DIR: project },
+        encoding: "utf8",
+    });
+    const out = run.stdout.trim() ? JSON.parse(run.stdout) : null;
+    return { decision: out?.decision ?? "allow", reason: out?.reason ?? "", stderr: run.stderr ?? "" };
+}
+
+const MANIFEST = JSON.stringify({
+    spec: "2.1",
+    name: "fixture",
+    // A green recipe, so `handoff` is the only reason that can be live and every assertion below is
+    // about the did-work question rather than about a red tree.
+    verify: { default: "always-green", recipes: [{ id: "always-green", run: "true" }] },
+});
+
+/**
+ * A repository whose branch was REBASE-MERGED and whose remote branch was then deleted — #220's
+ * shape, built by cloning a scratch origin so `origin/HEAD` exists as it did in the incident.
+ */
+function rebaseMerged({ genuinelyUnmerged = false } = {}) {
+    const root = scratch();
+    const origin = path.join(root, "origin.git");
+    const work = path.join(root, "work");
+    const hub = path.join(root, "hub");
+    execFileSync("git", ["init", "-q", "--bare", origin]);
+    execFileSync("git", ["clone", "-q", origin, work], { stdio: ["ignore", "pipe", "pipe"] });
+    fs.mkdirSync(path.join(work, ".portulan", "handoffs"), { recursive: true });
+    fs.writeFileSync(path.join(work, ".portulan", "workspace.json"), MANIFEST);
+    fs.writeFileSync(path.join(work, "f.txt"), "base\n");
+    git(work, ["add", "-A"]);
+    git(work, ["commit", "-m", "base"]);
+    git(work, ["branch", "-M", "main"]);
+    git(work, ["push", "-q", "origin", "main"]);
+    git(work, ["checkout", "-q", "-b", "feat"]);
+    fs.appendFileSync(path.join(work, "f.txt"), "one\n");
+    git(work, ["commit", "-am", "feat one"]);
+    git(work, ["push", "-q", "origin", "feat"]);
+    // The platform rebase-merges: the same patches land on main under NEW shas, then the branch goes.
+    execFileSync("git", ["clone", "-q", origin, hub], { stdio: ["ignore", "pipe", "pipe"] });
+    git(hub, ["checkout", "-q", "main"]);
+    // A FIXED, DIFFERENT committer date, because that is what makes this a rebase-merge rather than a
+    // no-op. Cherry-picking the same patch onto the same parent with the same identity inside the same
+    // second reproduces the ORIGINAL sha exactly — measured: the first draft of this fixture did that,
+    // and its own premise assertion caught it, since a fixture with no orphan tests nothing.
+    execFileSync(
+        "git",
+        ["-c", "user.name=portulan-test", "-c", "user.email=test@example.invalid", "-c", "commit.gpgsign=false",
+            "cherry-pick", "origin/feat"],
+        { cwd: hub, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"],
+            env: { ...process.env, GIT_COMMITTER_DATE: "2026-01-01T00:00:00 +0000" } },
+    );
+    git(hub, ["push", "-q", "origin", "main"]);
+    git(hub, ["push", "-q", "origin", "--delete", "feat"]);
+    git(work, ["fetch", "-q", "--prune", "origin"]);
+    git(work, ["remote", "set-head", "origin", "-a"]);
+    if (genuinelyUnmerged) {
+        fs.appendFileSync(path.join(work, "f.txt"), "work nobody has seen\n");
+        git(work, ["commit", "-am", "genuinely unmerged"]);
+    }
+    return work;
+}
+
+describe("did-work, in a repository that rebase-merges (#220)", () => {
+    test("a rebase-orphaned branch whose every patch is upstream owes no handoff", () => {
+        const repo = rebaseMerged();
+        // The premise, measured against real git rather than asserted: reachability says two, patch-id
+        // says none. If this premise ever stops holding the case below is testing nothing.
+        assert.notEqual(git(repo, ["log", "--oneline", "HEAD", "--not", "--remotes"]).trim(), "", "premise: orphans exist by reachability");
+        assert.equal(git(repo, ["cherry", "origin/main", "HEAD"]).split("\n").filter((l) => l.startsWith("+")).length, 0, "premise: every patch is upstream");
+        assert.equal(git(repo, ["status", "--porcelain"]).trim(), "", "premise: the tree is clean");
+
+        const { decision, reason } = gate(repo, "orphaned-and-upstream");
+        assert.equal(decision, "allow", `a session that did nothing must not be told to write a handoff — got: ${reason}`);
+    });
+
+    test("genuinely unmerged work still owes one — the control that stops this becoming a fail-open", () => {
+        const repo = rebaseMerged({ genuinelyUnmerged: true });
+        assert.equal(git(repo, ["cherry", "origin/main", "HEAD"]).split("\n").filter((l) => l.startsWith("+")).length, 1, "premise: exactly one patch is not upstream");
+
+        const { decision, reason } = gate(repo, "genuinely-unmerged");
+        assert.equal(decision, "block", "work that is on no remote by PATCH must still demand a handoff");
+        assert.match(reason, /no handoff dated/, "and it must block for the handoff reason");
+    });
+
+    test("a handoff dated today clears it, orphans or no orphans", () => {
+        const repo = rebaseMerged({ genuinelyUnmerged: true });
+        fs.writeFileSync(path.join(repo, ".portulan", "handoffs", `${today()}-a-session-that-did-its-job.md`), "five lines is enough\n");
+        assert.equal(gate(repo, "handoff-present").decision, "allow");
+    });
+
+    test("when patch-id cannot answer, the gate keeps the coarse reading and SAYS the refinement failed", () => {
+        // A remote is configured and has never been fetched, so `origin/HEAD` does not resolve — the
+        // innocent shape `git init` + `git remote add` produces. Reading that as "no work" would turn a
+        // case that blocks today into a pass, which is the direction this gate's own message says to
+        // scrutinise hardest. It blocks, and the sentence names what it could not refine.
+        const root = scratch();
+        const repo = path.join(root, "repo");
+        fs.mkdirSync(path.join(repo, ".portulan", "handoffs"), { recursive: true });
+        fs.writeFileSync(path.join(repo, ".portulan", "workspace.json"), MANIFEST);
+        fs.writeFileSync(path.join(repo, "f.txt"), "work\n");
+        execFileSync("git", ["init", "-q", repo]);
+        git(repo, ["add", "-A"]);
+        git(repo, ["commit", "-m", "unpushed work"]);
+        git(repo, ["remote", "add", "origin", path.join(root, "nowhere.git")]);
+        assert.equal(git(repo, ["remote"]).trim(), "origin", "premise: a remote is configured");
+
+        const { decision, stderr } = gate(repo, "cherry-cannot-answer");
+        assert.equal(decision, "block", "could-not-tell must not be spendable as a green");
+        assert.match(stderr, /patch/i, "the sentence must name the refinement that failed rather than passing silently");
+    });
+
+    test("a repository with no remote at all reads every commit as work, and says nothing about patch-id", () => {
+        const root = scratch();
+        const repo = path.join(root, "repo");
+        fs.mkdirSync(path.join(repo, ".portulan", "handoffs"), { recursive: true });
+        fs.writeFileSync(path.join(repo, ".portulan", "workspace.json"), MANIFEST);
+        fs.writeFileSync(path.join(repo, "f.txt"), "work\n");
+        execFileSync("git", ["init", "-q", repo]);
+        git(repo, ["add", "-A"]);
+        git(repo, ["commit", "-m", "local only"]);
+        assert.equal(git(repo, ["remote"]).trim(), "", "premise: no remotes");
+
+        const { decision, stderr } = gate(repo, "no-remotes-at-all");
+        assert.equal(decision, "block", "with nowhere to have pushed, every commit is unrecorded work");
+        assert.doesNotMatch(stderr, /patch/i, "this is the documented reading, not a degradation — it must not report one");
+    });
+});
+
+describe("the handoff question names the tree it answered about (#220, second half)", () => {
+    test("a refusal names the working tree and branch, so a reader can see WHICH tree was asked", () => {
+        const repo = rebaseMerged({ genuinelyUnmerged: true });
+        const { decision, reason } = gate(repo, "names-the-tree");
+        assert.equal(decision, "block");
+        assert.ok(reason.includes(repo), `the refusal must name the tree it read (${repo}) — got: ${reason}`);
+        assert.match(reason, /feat/, "and the branch that tree is on");
+    });
+
+    test("a handoff dated today in fetched history, absent from THIS tree, is reported rather than hidden", () => {
+        // The 2026-08-10 incident's shape: the handoff was written, committed and merged; the tree the
+        // gate happened to read did not carry it. The gate still blocks — it cannot know this session
+        // wrote that file — but "no handoff dated X" alone sent a reader to write a duplicate, which
+        // `docs.sh`'s record check would then have refused. The sentence is the repair.
+        const repo = rebaseMerged({ genuinelyUnmerged: true });
+        const stamp = today();
+        git(repo, ["checkout", "-q", "-b", "carries-the-handoff"]);
+        fs.writeFileSync(path.join(repo, ".portulan", "handoffs", `${stamp}-merged-already.md`), "why\n");
+        git(repo, ["add", "-A"]);
+        git(repo, ["commit", "-m", "the handoff"]);
+        git(repo, ["checkout", "-q", "feat"]);
+        assert.ok(!fs.existsSync(path.join(repo, ".portulan", "handoffs", `${stamp}-merged-already.md`)), "premise: absent from this working tree");
+
+        const { decision, reason } = gate(repo, "handoff-lives-elsewhere");
+        assert.equal(decision, "block", "still blocks: the gate cannot know this session wrote it");
+        assert.match(reason, /carries-the-handoff|history|another/i, "but it must SAY the record exists elsewhere rather than only that this tree lacks it");
     });
 });
