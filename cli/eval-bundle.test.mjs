@@ -420,19 +420,24 @@ describe("fixture repositories — the filter exercised positively, and every re
             fs.mkdirSync(path.join(root, path.dirname(rel)), { recursive: true });
             fs.writeFileSync(path.join(root, rel), text);
         };
+        // Top-level PAYLOAD entries that are FILES in the real tree must be files here too, or the
+        // fixture stops exercising the shape the partition and the cut actually walk. `LICENSE`
+        // joined PAYLOAD with #284 and would otherwise have been built as a directory.
+        const TOP_LEVEL_FILES = new Set(["NOTICE", "LICENSE"]);
         for (const top of PAYLOAD) {
-            if (top.includes(".md") || top === "NOTICE") continue;
+            if (top.includes(".md") || TOP_LEVEL_FILES.has(top)) continue;
             file(`${top}/keep.txt`, `${top}\n`);
         }
         for (const top of Object.keys(EXCLUDED_TOP_LEVEL)) {
             // Neutral content on purpose: a fixture `.gitignore` whose body was its own name
             // ignored ITSELF, went untracked, and the partition correctly called it stale — a
             // fixture defect wearing a rail's message.
-            if (/[.]md$|^[.]gitignore$|^LICENSE$|^CODEOWNERS$|^package[.]json$/.test(top)) file(top, "# fixture\n");
+            if (/[.]md$|^[.]gitignore$|^CODEOWNERS$|^package[.]json$/.test(top)) file(top, "# fixture\n");
             else file(`${top}/keep.txt`, `${top}\n`);
         }
         file("README.md", "# Fixture\n\nBody.\n\n## License\n\n[Apache-2.0](LICENSE) © nobody.\n");
         file("NOTICE", "fixture notice\n");
+        file("LICENSE", "Apache License\nVersion 2.0, January 2004\n");
         file("CHANGELOG.md", "# Changelog\n");
         // The three census files, each asserting Apache the way the real manifests do — built by
         // concatenation so the needle appears here exactly once, in the import above.
