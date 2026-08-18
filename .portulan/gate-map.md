@@ -789,7 +789,7 @@ The two halves need different mechanisms, and only one of them existed:
 | Half | What it means | What enforces it |
 |---|---|---|
 | **Resolved** | No Copilot thread is left unaddressed | `required_conversation_resolution` on `main` — already in the floor below |
-| **Awaited** | The round on the **current head** has landed | [`../.github/workflows/copilot-review.yml`](../.github/workflows/copilot-review.yml) — new |
+| **Awaited** | A **round** on the **current head** has landed — and a review object is not a round | [`../.github/workflows/copilot-review.yml`](../.github/workflows/copilot-review.yml) — new |
 
 **Awaited was the gap.** The Copilot ruleset *requests* a review on every pull request; nothing made a
 merge wait for one. So a merge could land in the window between the final push and the review arriving,
@@ -802,6 +802,34 @@ that is precisely the defect: the review existed and described a different tree 
 check matches every review's `commit_id` against the pull request's current head and re-runs on
 `synchronize`, so pushing puts it back to pending. It also **fails closed** — an unreadable API is
 `could not look`, never `nothing wrong`.
+
+**A review object is not a round — amended 2026-08-18, issue [#286](https://github.com/sleepy-panda-works/portulan/issues/286).**
+The row above said *the round has landed* and the check asked something weaker: that a review by the
+right login, on the right commit, not dismissed, EXISTS. Those came apart during a platform incident.
+Copilot returned a review whose entire body read *"Copilot encountered an error and was unable to review
+this pull request"*, `copilot-reviewed` reported **green** on it, and the derived verdict then submitted
+an **APPROVED** asserting that round *"raised no inline comment and no suppressed low-confidence note"* —
+about a round that never happened. On [#283](https://github.com/sleepy-panda-works/portulan/pull/283) the
+approval was submitted **4m36s before** the only genuine round arrived, so it cannot have been derived
+from it; the real round then found nothing, which made the sentence true by coincidence and left nothing
+on that pull request distinguishing an earned approval from an unearned one.
+
+The check now classifies the matched review's body before it counts as a round. A body carrying no
+announcement it recognises **and** saying the reviewer was unable to review does not satisfy this half,
+and the wait continues. The `unread` guard could not reach this: an error notice is a body the step reads
+perfectly, and it parses to *no suppressed notes*, which is an approving state. **The guard for "I could
+not look" does not fire when the answer is "I looked, and it says the reviewer could not look."**
+
+**The residual, stated rather than left to be found.** Recognition rests on Copilot's own prose, so a body
+this step cannot classify — neither round nor refusal — **greens the check** and carries no verdict. That
+is the disposition an unparsable notes block already has, and it is chosen over a red on purpose: a
+vendor rewording would otherwise hold every pull request in the repository until somebody edited a
+matcher. The cost is real and is the honest half of the trade: if Copilot ever rewords its ERROR notice
+in particular, this check goes green again on a review that judged nothing, and the only tell is the
+missing derived verdict plus a loud job summary. On an App-authored pull request no verdict was coming
+anyway, so there the job summary is the whole signal. Both matchers are exercised by
+[`verify/workflow-filters.mjs`](verify/workflow-filters.mjs) against bodies measured off this repository,
+and a new spelling is taught **fixture first, matcher second**.
 
 **Awaiting is pending, not failing — amended 2026-07-28.** The first cut had two outcomes for a question
 with three answers, so *the round has not arrived yet* was reported in the same colour as *the round is

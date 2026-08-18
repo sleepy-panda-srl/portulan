@@ -179,7 +179,7 @@ jobs:
       # together.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - name: A Copilot review exists for the current head commit
+      - name: A Copilot round has landed on the current head commit
         id: await
         env:
           GH_TOKEN: ${{ github.token }}
@@ -219,6 +219,10 @@ jobs:
           unread=''
           first_head=''
           superseded_note=''
+          # Set when a matched review on this head classifies as a REFUSAL — Copilot answering
+          # that it could not review. Read only by the expiry message below, which must not print
+          # `no Copilot review` over a head that drew one and was told nothing came of it.
+          refused_seen=''
 
           while : ; do
             # Reset per poll: these describe one look at the pull request, not the accumulation of
@@ -345,6 +349,13 @@ jobs:
               else
                 matched=0
                 matched_id=''
+                # EVERY match on this head, newest first, and not just the newest one. The newest
+                # matching review is not necessarily a ROUND — an error notice is a review object too
+                # — so the classifier below walks this list until it finds one that is, and a genuine
+                # round followed by a notice on the same head must not red the check. Two reviews on
+                # one SHA is measured here, not hypothetical (#57, `599fd30` at 06:56:49Z and again at
+                # 07:00:07Z, 2026-07-28).
+                matched_ids=''
                 while IFS='|' read -r login commit state id; do
                   [ -n "${login:-}" ] || continue
                   lower=$(printf '%s' "$login" | tr '[:upper:]' '[:lower:]')
@@ -358,12 +369,116 @@ jobs:
                       # this head — Copilot reviews the same SHA twice when a re-review is requested
                       # (measured on #57, `599fd30` at 06:56:49Z and again at 07:00:07Z, 2026-07-28).
                       matched_id="$id"
+                      # PREPENDED, so this list reads newest first while `matched_id` keeps meaning
+                      # the newest — the two carriers must not disagree about which review that is.
+                      matched_ids="$id $matched_ids"
                     fi
                   done
                 done <<<"$reviews"
 
+                # A REVIEW OBJECT IS NOT A ROUND, and until 2026-08-18 this branch treated the two as
+                # one thing. The test above establishes identity, head and not-DISMISSED; an error
+                # notice satisfies all three, because it IS a review by the right login on the right
+                # commit. Issue #286: `copilot-reviewed` reported GREEN over a body reading *"Copilot
+                # encountered an error and was unable to review this pull request"*, and the verdict
+                # step then submitted a derived APPROVED asserting the round *"raised no inline comment
+                # and no suppressed low-confidence note"* — a positive claim about a round that never
+                # happened. On #283 the approval was submitted 4m36s BEFORE the only genuine round
+                # arrived, so it cannot have been derived from it.
+                #
+                # `notes_state` could not catch it and the reason is worth stating, because the guard
+                # looks like it should: an error notice is a body this step reads perfectly well. It
+                # parses to `none` — no notes section, because there was no review — and `none` is an
+                # approving state. The guard for *I could not look* does not fire when the answer is
+                # *I looked, and it says the reviewer could not look*.
+                #
+                # THE CLASS IS ALREADY NAMED IN THIS REPOSITORY, twice, which is what makes the gap a
+                # miss rather than a judgement call. `../../.portulan/memory/a-review-is-awaited-not-just-resolved.md`
+                # says a checker matching on *"a Copilot review exists"* would have reported green on
+                # every case that rule was written for — of the HEAD, one level up from here. And
+                # `librarian.yml` refuses to read a branch's existence as evidence a pull request was
+                # filed, in a comment written for exactly this reason. This is that repair, applied to
+                # the artifact this file is about.
+                #
+                # TWO MATCHERS, AND WHY IT IS NOT ONE. Both arms the issue proposed were measured
+                # against this repository's own review corpus — every Copilot review on pull requests
+                # 230-288, 129 bodies — and NEITHER survives alone:
+                #
+                #   * Keying green on the coverage line *"Copilot reviewed N out of M changed files"*
+                #     REDS THREE GENUINE ROUNDS. #246, #262 and #263 open `## Pull request overview`
+                #     and summarise the diff without ever announcing coverage. A positive signal that
+                #     3 in 129 real rounds do not carry is a false red, not a rail.
+                #   * Keying refusal on the body CONTAINING *"unable to review"* reds a genuine round
+                #     too, and this repository mints that case itself: #287's round quotes the phrase
+                #     out of `docs/plan.md` while carrying the coverage line. The phrase now lives in
+                #     this file, in `../../.portulan/gate-map.md`, in the memory record above and in
+                #     the plan — so a body-contains test would red this repository against its own
+                #     writing about the defect. It is the trap `../../.portulan/verify/workflow-filters.mjs`
+                #     already pins for the notes matcher, arriving one channel over.
+                #
+                # So: round evidence is STRUCTURAL and fence-aware, on the same `/^```/` toggle and the
+                # same column-0 anchor the notes matcher uses and for the same reason; and the refusal
+                # test reads the FIRST NON-BLANK LINE only, so a later quotation cannot reach it. The
+                # refusal test is consulted only where round evidence is already absent, which is a
+                # second guard rather than a decoration. Over the 129 measured bodies this classifies
+                # every one correctly.
+                round_ok=0
+                round_id=''
+                round_body=''
+                newest_body=''
+                newest_state=''
                 if [ "$matched" -eq 1 ]; then
-                  printf 'GREEN — Copilot has reviewed the current head commit.\n'
+                  # Newest first, stopping at the first REAL round. One body read in the ordinary case,
+                  # which is what this step already spent; two only when the newest match is a notice.
+                  for cand in $matched_ids; do
+                    if ! cand_body=$(gh api "repos/${GITHUB_REPOSITORY}/pulls/${PR_NUMBER}/reviews/${cand}" \
+                          --jq '.body // ""'); then
+                      # Could not read is not a classification. It keeps the `unread` path this step
+                      # already had, which greens the check and refuses the verdict.
+                      [ -n "$newest_state" ] || newest_state='unread'
+                      break
+                    fi
+                    if [ -n "$(printf '%s\n' "$cand_body" | awk '/^```/ { fence = !fence } !fence && ((/<summary/ || /^#+[[:blank:]]/) && (index(tolower($0), "pull request overview") || index(tolower($0), "review details") || index(tolower($0), "ready to approve")) || tolower($0) ~ /copilot reviewed [0-9]+ out of [0-9]+ changed files/) { print "round"; exit }')" ]; then
+                      cand_state='round'
+                    elif [ -n "$(printf '%s\n' "$cand_body" | awk '/^[[:blank:]]*$/ { next } { if (index(tolower($0), "unable to review")) print "refused"; exit }')" ]; then
+                      cand_state='refused'
+                    else
+                      cand_state='unrecognised'
+                    fi
+                    if [ -z "$newest_state" ]; then
+                      newest_state="$cand_state"
+                      newest_body="$cand_body"
+                    fi
+                    if [ "$cand_state" = 'round' ]; then
+                      round_id="$cand"
+                      round_body="$cand_body"
+                      break
+                    fi
+                  done
+
+                  # THE GATE OPENS ON A ROUND, or on a review this step could not classify — never on
+                  # one that says it judged nothing. `unrecognised` greens and suppresses the verdict,
+                  # which is the disposition `unparsable` already has for the notes channel: read, not
+                  # understood, so loud and recoverable rather than a permanent red that a vendor
+                  # rewording would inflict on every pull request. The residual is named in the report
+                  # below and in `../../.portulan/gate-map.md` rather than left for someone to find.
+                  if [ -n "$round_id" ] || [ "$newest_state" = 'unrecognised' ] || [ "$newest_state" = 'unread' ]; then
+                    round_ok=1
+                  elif [ -z "$refused_seen" ]; then
+                    refused_seen='yes'
+                    printf 'NOT A ROUND — the newest Copilot review on %s says the reviewer was unable to review it.\n' "$first_head"
+                    printf 'A review object exists and no judgement happened, so it does not satisfy this check.\n'
+                    printf 'Still waiting for a round on this head, on the same budget.\n'
+                  fi
+                fi
+
+                if [ "$round_ok" -eq 1 ]; then
+                  if [ -n "$round_id" ]; then
+                    printf 'GREEN — a Copilot round has landed on the current head commit.\n'
+                  else
+                    printf 'GREEN — a Copilot review is on the current head commit and this step could NOT establish it is a round.\n'
+                    printf 'The check passes on the review object; no derived verdict may be computed from it.\n'
+                  fi
 
                   # THE HALF NOBODY READS. Copilot's low-confidence comments are delivered inside the
                   # review BODY: no thread, no Resolve control, and therefore no effect on
@@ -383,15 +498,46 @@ jobs:
                   # facts the parse can establish — none, present, unparsable, unread. The verdict
                   # approves on the first two only: the last two are "could not look", and a verdict
                   # computed over an unread channel is the false green this file refuses.
+                  # WHAT THE VERDICT STEP IS ALLOWED TO SAY, decided here because this is where the
+                  # evidence is. `round` means a round was established AND it is the NEWEST word on
+                  # this head — one condition, not two that can be traded off. Anything newer than the
+                  # round, whatever it is, withholds the verdict: adding a review this step did not
+                  # understand, or one saying the reviewer could not judge, must never leave the
+                  # displayed approval standing on an older round.
+                  #
+                  # An earlier cut of this carved out a `refused` newest — the notice is readable and
+                  # carries nothing, so why not derive from the round beneath it — and the carve-out
+                  # was wrong for a reason this file is the wrong place to be casual about: the
+                  # verdict body asserts the round "is the newest word on this head", and under the
+                  # exception that sentence is FALSE. A positive claim the step has not established is
+                  # the whole defect of #286, reintroduced by the change closing it, one field over.
+                  # Caught at the pre-commit checkpoint.
+                  #
+                  # THE CHECK IS UNAFFECTED and that is what makes this cheap: `round_ok` is decided
+                  # above and independently, so a pull request whose head drew a real round is never
+                  # held red by this. Only the displayed approval waits — derived, never judged.
+                  if [ -z "$round_id" ] || [ "$newest_state" != 'round' ]; then
+                    round_state="$newest_state"
+                  else
+                    round_state='round'
+                  fi
+
                   report=''
                   notes_state=''
                   notes_file=''
-                  if ! body=$(gh api "repos/${GITHUB_REPOSITORY}/pulls/${PR_NUMBER}/reviews/${matched_id}" \
-                        --jq '.body // ""'); then
+                  # The body is already in hand: the classifier above read it. Reading it again here
+                  # would be a second carrier of one fact, and the two reads could disagree about the
+                  # review this step is reporting on.
+                  if [ "$round_state" = 'unread' ]; then
                     report='**Could not read review body `'"${matched_id}"'`.** Sweep `/pulls/'"${PR_NUMBER}"'/reviews` by hand — this section is not evidence of absence.'
                     notes_state='unread'
                     printf 'suppressed low-confidence notes: COULD NOT READ review %s\n' "$matched_id"
+                  elif [ -z "$round_id" ]; then
+                    opening=$(printf '%s\n' "$newest_body" | sed -n '/[^[:blank:]]/{p;q;}' | cut -c1-160)
+                    report="**Could not establish that review \`${matched_id}\` on \`${first_head}\` is a round.** Its body carries no announcement this step recognises — no \`<summary>\` or column-0 heading naming an overview, review details or an approval, and no coverage line — and it does not say the reviewer was unable to review. Copilot's prose has probably moved. **The check is green on the review object and NO derived verdict is computed from it**, which is the disposition an unparsable notes block already gets. The body opens: \`${opening}\`. Sweep \`/pulls/${PR_NUMBER}/reviews\` by hand, and when you teach this step the new spelling **the fixture goes into \`.portulan/verify/workflow-filters.mjs\` first and the matcher changes second** — the rule this file already keeps for the notes marker. **This is not a report that a round happened.**"
+                    printf 'round evidence: NONE RECOGNISED on review %s — the check is green on the object and no verdict may be derived\n' "$matched_id"
                   else
+                    body="$round_body"
                     # THE SECTION MARKER MOVES, AND IT DOES NOT MOVE IN ONE DIRECTION. Measured by
                     # sweeping `/pulls/N/reviews` by hand on 2026-07-31 for #142, Copilot has
                     # announced this section FOUR ways on this repository. Both axes vary
@@ -561,7 +707,15 @@ jobs:
                   {
                     printf 'round=green\n'
                     printf 'head=%s\n' "$first_head"
-                    printf 'review_id=%s\n' "$matched_id"
+                    # THE REVIEW THE VERDICT IS ABOUT is the one classified as a round, which is not
+                    # always the newest match — see the classifier above. When no round was
+                    # established this falls back to the newest, so the verdict step's own re-read has
+                    # something to name in its refusal.
+                    printf 'review_id=%s\n' "${round_id:-$matched_id}"
+                    # `round=green` says the CHECK passed. `round_state` says what it passed ON, and
+                    # only `round` licenses a verdict. Two facts, two carriers, because collapsing
+                    # them is the defect #286 records.
+                    printf 'round_state=%s\n' "$round_state"
                     printf 'author=%s\n' "${author:-}"
                     printf 'notes_state=%s\n' "$notes_state"
                     printf 'notes_count=%s\n' "${count:-0}"
@@ -617,7 +771,7 @@ jobs:
             if [ -n "$unread" ]; then
               printf 'waiting (%ss of %ss): %s — retrying\n' "$SECONDS" "$WAIT_SECONDS" "$unread"
             else
-              printf 'waiting (%ss of %ss): no Copilot review for %s yet\n' "$SECONDS" "$WAIT_SECONDS" "$first_head"
+              printf 'waiting (%ss of %ss): no Copilot round for %s yet\n' "$SECONDS" "$WAIT_SECONDS" "$first_head"
             fi
             sleep "$POLL_SECONDS"
           done
@@ -681,10 +835,26 @@ jobs:
             printf 'This is not a finding about the review. It is "could not look", held for the whole\n'
             printf 'budget, which stays red because a gate that opens when it is unwell is not a gate.\n'
             printf 'The last head SHA read successfully was %s, which may be stale — do not act on it.\n' "${head:-none}"
+          elif [ -n "$refused_seen" ]; then
+            printf '::error::Copilot answered on %s to say it was unable to review it, and no round arrived in %ss.\n' \
+              "$first_head" "$SECONDS"
+            printf 'This is NOT "no review came". A review object exists on this head and it reports\n'
+            printf 'that the reviewer could not judge the change, so no round has happened. The four\n'
+            printf 'request-state branches below do not apply: they answer "was a round ever asked\n'
+            printf 'for", and here one was asked for and answered with a refusal (issue #286).\n\n'
+            printf 'MEASURED DURING THE INCIDENT THIS BRANCH WAS MINTED FROM (2026-08-17/18, #286),\n'
+            printf 'and scoped to it rather than offered as a rule: re-requesting did not clear that\n'
+            printf 'state — POST requested_reviewers returned 200 whose own requested_reviewers array\n'
+            printf 'came back empty, three times across about forty minutes, and a draft/ready toggle\n'
+            printf 're-ran this workflow without re-requesting. CLOSING AND REOPENING the pull request\n'
+            printf 'did: a real round in about 200 seconds.\n'
+            printf 'Try it in the order the evidence supports. The halfway re-request this job makes is\n'
+            printf 'measured to have worked on #86 (2026-07-29, about 90s), so re-run this job first\n'
+            printf 'and close/reopen only if the refusal repeats.\n'
           else
             printf '::error::no Copilot review for the commit this run awaited (%s) after %ss of waiting.\n' \
               "$first_head" "$SECONDS"
-            printf 'A pull request may not merge until Copilot has reviewed the commit it is actually\n'
+            printf 'A pull request may not merge until Copilot has delivered a ROUND on the commit it is\n'
             printf 'merging, and until that feedback is resolved. Conversation resolution covers the\n'
             printf 'resolved half; this covers the awaited half.\n\n'
             # FOUR outcomes, because the answer to "was a round even requested?" has four states and
@@ -1069,6 +1239,7 @@ jobs:
           AWAITED_HEAD: ${{ steps.await.outputs.head }}
           REVIEW_ID: ${{ steps.await.outputs.review_id }}
           AUTHOR: ${{ steps.await.outputs.author }}
+          ROUND_STATE: ${{ steps.await.outputs.round_state }}
           NOTES_STATE: ${{ steps.await.outputs.notes_state }}
           NOTES_COUNT: ${{ steps.await.outputs.notes_count }}
           NOTES_FILE: ${{ steps.await.outputs.notes_file }}
@@ -1136,6 +1307,22 @@ jobs:
             warn "no verdict: the round's comment listing did not parse as an array."
             exit 0
           fi
+          # THE SAME MATCHER AS THE AWAIT STEP, BYTE FOR BYTE, and the repetition is the point
+          # rather than an oversight. `../../.portulan/verify/workflow-filters.mjs` binds a fixture to
+          # a program by its text and refuses — exit 2, could not run — when one anchor covers two
+          # DISTINCT programs. So writing the same bytes at both sites makes them one covered program,
+          # and the day somebody edits one and not the other the verify recipe reds instead of the two
+          # quietly disagreeing about what a round is. That is a stronger guarantee than the runtime
+          # re-read gives on its own: the head is re-read above because a head MOVES, and a review body
+          # does not, so what this second application buys is the verify-time coupling.
+          round_recheck=''
+          if ! verdict_body=$(gh api "repos/${GITHUB_REPOSITORY}/pulls/${PR_NUMBER}/reviews/${REVIEW_ID}" \
+                --jq '.body // ""'); then
+            round_recheck='could not re-read the round body'
+          elif [ -z "$(printf '%s\n' "$verdict_body" | awk '/^```/ { fence = !fence } !fence && ((/<summary/ || /^#+[[:blank:]]/) && (index(tolower($0), "pull request overview") || index(tolower($0), "review details") || index(tolower($0), "ready to approve")) || tolower($0) ~ /copilot reviewed [0-9]+ out of [0-9]+ changed files/) { print "round"; exit }')" ]; then
+            round_recheck='the round body carries no evidence this step recognises as a round'
+          fi
+
           # One integer and nothing else. If `--paginate` ever stops merging pages into one array,
           # `length` prints one figure per page, the numeric test below errors and evaluates false,
           # and a misparsed listing would read as a clean round — validate the corpus shape, never
@@ -1189,20 +1376,35 @@ jobs:
             fi
           done <<<"$reviews"
 
-          if [ "$NOTES_STATE" = 'unread' ] || [ "$NOTES_STATE" = 'unparsable' ]; then
+          # POSITIVE, not a list of the bad states. The comment in the await step has always said
+          # this step "approves on the first two only", and until 2026-08-18 the code said something
+          # narrower — it named `unread` and `unparsable`, so any value that was neither, including an
+          # empty one, fell through to approve. `round_state` adds a second channel with the same
+          # shape, and an unknown value on either must refuse rather than approve. Same discipline as
+          # `../../.portulan/verify/workflow-filters.sh`'s `*)` arm: a state this step does not
+          # document is not a state it may act on.
+          if [ "$ROUND_STATE" != 'round' ] || [ -n "$round_recheck" ] \
+                || { [ "$NOTES_STATE" != 'none' ] && [ "$NOTES_STATE" != 'present' ]; }; then
+            if [ "$ROUND_STATE" != 'round' ]; then
+              why="the awaited check could not establish that the newest review on ${head} is a round (round_state=${ROUND_STATE:-unset})"
+            elif [ -n "$round_recheck" ]; then
+              why="${round_recheck}, though the awaited check reported one — the two readings disagree"
+            else
+              why="the round's suppressed-notes channel is ${NOTES_STATE}"
+            fi
             # A chip from an earlier round may not outlive a round this step cannot read — the
             # same-head dismissal lives here as well as under the findings branch, because "no
             # verdict" and "the old verdict stands" are different sentences.
             if [ -n "$approved_here" ]; then
               if GH_TOKEN="$token" gh api --silent -X PUT \
                     "repos/${GITHUB_REPOSITORY}/pulls/${PR_NUMBER}/reviews/${approved_here}/dismissals" \
-                    -f message="Withdrawn: the newest round on ${head} carries a notes channel this step could not read, so no derived approval may stand on it."; then
-                say "dismissed the derived approval on this head — the newest round's notes channel is ${NOTES_STATE}."
+                    -f message="Withdrawn: ${why}, so no derived approval may stand on this head."; then
+                say "dismissed the derived approval on this head — ${why}."
               else
-                warn "could not dismiss the derived approval ${approved_here} on this head, though the newest round's notes channel is ${NOTES_STATE} — dismiss it by hand."
+                warn "could not dismiss the derived approval ${approved_here} on this head, though ${why} — dismiss it by hand."
               fi
             fi
-            warn "no verdict: the round's suppressed-notes channel is ${NOTES_STATE} — an approval computed over an unread channel would be a false green. Sweep /pulls/${PR_NUMBER}/reviews by hand."
+            warn "no verdict: ${why} — an approval computed over a channel this step could not establish would be a false green. Sweep /pulls/${PR_NUMBER}/reviews by hand."
             exit 0
           fi
 
@@ -1242,7 +1444,14 @@ jobs:
             body="**Derived verdict: approve.**"$'\n\n'
             body="${body}Copilot's round on \`${head}\` raised no inline comment and no suppressed low-confidence note."$'\n\n'
           fi
-          body="${body}Computed from that round by [\`copilot-review.yml\`](${run_url}) and submitted by the agent identity — derived, never judged. The merge gate is unchanged: the maintainer decides."
+          # WHAT ESTABLISHED THAT A ROUND HAPPENED, said in the verdict itself. Every sentence above
+          # describes what the round FOUND; until 2026-08-18 nothing here said what made it a round,
+          # and on #283 that gap let this body assert "raised no inline comment and no suppressed
+          # low-confidence note" about a review whose whole text was that Copilot could not review —
+          # submitted 4m36s before the only genuine round arrived. One carrier, both branches.
+          body="${body}Computed from that round by [\`copilot-review.yml\`](${run_url}) and submitted by the agent identity — derived, never judged."$'\n\n'
+          body="${body}**That a round happened is established rather than assumed.** The review this is derived from carries an announcement this workflow recognises as a round, and it is the newest word on \`${head}\`; a body reporting that the reviewer was unable to review does not satisfy the check above, and one this workflow cannot classify greens the check without licensing this verdict ([#286](https://github.com/sleepy-panda-works/portulan/issues/286))."$'\n\n'
+          body="${body}The merge gate is unchanged: the maintainer decides."
 
           if GH_TOKEN="$token" gh api --silent -X POST \
                 "repos/${GITHUB_REPOSITORY}/pulls/${PR_NUMBER}/reviews" \
