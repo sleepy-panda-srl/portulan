@@ -112,9 +112,12 @@
 // text. That relicenses nothing already issued — each bundle carries its own stamped instrument —
 // and the binding condition the sections above implement is what makes that so: terms ship FROM the
 // payload commit, one sha for both. **What the ruling routed to the flip was a read of the
-// template's own wording, and that wording is the maintainer's to settle** — see the template's
-// header. Nothing here depends on how he settles it: the mechanism stamps whatever the payload
-// commit carries. The `--check` recipient is a fixture and says so in its own name, so no reader of
+// template's own wording, and the maintainer settled it on 2026-08-17:** the bundle's files are
+// Apache-2.0, the same terms as the public repository, so the template's "non-public materials"
+// and no-redistribution clauses were withdrawn rather than left standing over world-readable
+// material. The NOTICE, the patched README section and the banner were trued with it — a bundle
+// must not contradict its own instrument. The mechanism is unchanged: it stamps whatever the
+// payload commit carries. The `--check` recipient is a fixture and says so in its own name, so no reader of
 // a public tree can mistake it for a person.
 //
 // ## Exit codes
@@ -486,8 +489,9 @@ export const EVAL_NOTICE = `Portulan
 Copyright 2026 Sleepy Panda SRL
 
 This product is developed by Sleepy Panda Works (https://sleepypanda.ro).
-This copy is an evaluation issue governed by EVAL-LICENSE.md; public releases
-of Portulan are licensed under the Apache License, Version 2.0.
+This copy is an evaluation issue recorded in EVAL-LICENSE.md, and is licensed
+under the Apache License, Version 2.0 — the same terms as the public repository
+it was cut from.
 `;
 
 /**
@@ -533,10 +537,10 @@ export function patchReadmeLicense(cutDir, fullSha) {
     const nextHeadingAt = lines.findIndex((line, i) => i > headingIndexes[0] && line.startsWith("## "));
     const body = [
         "",
-        "This copy is an evaluation issue governed by [`EVAL-LICENSE.md`](EVAL-LICENSE.md) — issued to the",
-        "named recipient it records, not distributed under Apache-2.0. Public releases of Portulan are",
-        "licensed under the [Apache License, Version 2.0](https://www.apache.org/licenses/LICENSE-2.0);",
-        `the repository this bundle was cut from (commit \`${fullSha.slice(0, 7)}\`) carries that license. © 2026 Sleepy Panda SRL.`,
+        "This copy is an evaluation issue recorded in [`EVAL-LICENSE.md`](EVAL-LICENSE.md) — issued to the",
+        "named recipient it records, and licensed under the",
+        "[Apache License, Version 2.0](https://www.apache.org/licenses/LICENSE-2.0), the same terms as",
+        `the repository this bundle was cut from (commit \`${fullSha.slice(0, 7)}\`). © 2026 Sleepy Panda SRL.`,
     ];
     const kept = lines.slice(0, headingIndexes[0] + 1);
     const tail = nextHeadingAt === -1 ? [""] : ["", ...lines.slice(nextHeadingAt)];
@@ -552,11 +556,11 @@ export function patchReadmeLicense(cutDir, fullSha) {
 export function prependBanner(cutDir, { name, date, fullSha }) {
     const file = path.join(cutDir, "README.md");
     const banner =
-        `> **EVALUATION COPY — issued to ${name}, ${date}.** This bundle is governed by\n` +
-        `> [\`EVAL-LICENSE.md\`](EVAL-LICENSE.md), **not** by the Apache-2.0 terms public Portulan materials\n` +
-        `> reference — the License section below says the same. It was cut from commit \`${fullSha.slice(0, 7)}\` of the\n` +
+        `> **EVALUATION COPY — issued to ${name}, ${date}.** This bundle is recorded in\n` +
+        `> [\`EVAL-LICENSE.md\`](EVAL-LICENSE.md) and licensed under the **same Apache-2.0 terms as the public\n` +
+        `> repository** — the License section below says the same. It was cut from commit \`${fullSha.slice(0, 7)}\` of the\n` +
         `> source repository; relative links into \`docs/\` and other paths the bundle excludes resolve only\n` +
-        `> there. Do not redistribute.\n\n`;
+        `> there. If you pass Portulan on, point at the repository rather than this snapshot.\n\n`;
     fs.writeFileSync(file, banner + fs.readFileSync(file, "utf8"));
 }
 
