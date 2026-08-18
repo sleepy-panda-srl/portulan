@@ -624,7 +624,9 @@ export function auditCut(cutDir) {
         ...wrong.map(({ rel, saw }) =>
             APACHE_MANIFESTS.includes(rel)
                 ? `${rel} — a known manifest declares \`${saw}\`, not Apache-2.0; the bundle carries the public tree's licence`
-                : `${rel} — declares \`${saw}\`, not Apache-2.0; add it to APACHE_MANIFESTS if it should assert, or stop shipping it`,
+                : `${rel} — declares \`${saw}\`, not Apache-2.0. Change the field to Apache-2.0 or remove it; ` +
+                  `rostering the file in APACHE_MANIFESTS does NOT clear this on its own, and belongs in the same ` +
+                  `change only if the file is meant to declare. If neither is right, stop shipping it.`,
         ),
     ];
     throw new Refused(`REFUSING: the cut does not carry the licence it ships under:\n  ${lines.join("\n  ")}`);

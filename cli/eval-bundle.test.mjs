@@ -317,7 +317,10 @@ describe("the guard, fed cuts built to deserve refusal", () => {
             assert.ok(error instanceof Refused);
             assert.match(error.message, /spec\/planted\.json/);
             assert.match(error.message, /LicenseRef-Something-Else/);
-            assert.match(error.message, /add it to APACHE_MANIFESTS if it should assert, or stop shipping it/);
+            // The menu must name the repair that actually clears the refusal. Rostering alone does not:
+            // the census would then expect an Apache assertion this file still does not make.
+            assert.match(error.message, /Change the field to Apache-2\.0 or remove it/);
+            assert.match(error.message, /does NOT clear this on its own/);
             return true;
         });
     });
