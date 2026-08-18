@@ -562,7 +562,16 @@ jobs:
                     # undocumented value on the wire is one somebody downstream reads as fine.
                     notes_state='unconsulted'
                     opening=$(printf '%s\n' "$newest_body" | sed -n '/[^[:blank:]]/{p;q;}' | cut -c1-160)
-                    report="**Could not establish that review \`${matched_id}\` on \`${first_head}\` is a round.** Its body carries no announcement this step recognises — no \`<summary>\` or column-0 heading naming an overview, review details or an approval, and no coverage line — and it does not say the reviewer was unable to review. Copilot's prose has probably moved. **The check is green on the review object and NO derived verdict is computed from it**, which is the disposition an unparsable notes block already gets. The body opens: \`${opening}\`. Sweep \`/pulls/${PR_NUMBER}/reviews\` by hand, and when you teach this step the new spelling **the fixture goes into \`.portulan/verify/workflow-filters.mjs\` first and the matcher changes second** — the rule this file already keeps for the notes marker. **This is not a report that a round happened.**"
+                    report="**Could not establish that review \`${matched_id}\` on \`${first_head}\` is a round.** Its body carries no announcement this step recognises — no \`<summary>\` or column-0 heading naming an overview, review details or an approval, and no coverage line — and it does not say the reviewer was unable to review. Copilot's prose has probably moved. **The check is green on the review object and NO derived verdict is computed from it**, which is the disposition an unparsable notes block already gets. Sweep \`/pulls/${PR_NUMBER}/reviews\` by hand, and when you teach this step the new spelling **the fixture goes into \`.portulan/verify/workflow-filters.mjs\` first and the matcher changes second** — the rule this file already keeps for the notes marker. **This is not a report that a round happened.**"
+                    # THE OPENING LINE GOES IN A FENCE, NOT AN INLINE SPAN, and the case is the one
+                    # this branch exists for. Copilot raised it as a suppressed note on #290: a body
+                    # whose first non-blank line carries a backtick — a code fence being the obvious
+                    # one — breaks an inline-code span and garbles the diagnostic exactly when the
+                    # vendor's markup has moved and somebody is trying to read what it moved TO. Four
+                    # backticks rather than three, so a quoted fence inside the line is content; a line
+                    # opening with four would still degrade, and that degrades to untidy text rather
+                    # than to a broken report.
+                    report="${report}"$'\n\n'"The body opens:"$'\n\n'"\`\`\`\`"$'\n'"${opening}"$'\n'"\`\`\`\`"
                     printf 'round evidence: NONE RECOGNISED on review %s — the check is green on the object and no verdict may be derived\n' "$matched_id"
                   else
                     body="$round_body"
