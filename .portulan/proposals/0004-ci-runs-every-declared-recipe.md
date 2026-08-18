@@ -102,7 +102,10 @@ should.
   deciding properly, and it is recorded here as arrived rather than answered:** the threat model, the
   fork-PR question it names, and [#67](https://github.com/sleepy-panda-works/portulan/issues/67)'s
   fork/required-check half are the maintainer's to rule on. Nothing here decides any of them, and the
-  first two bounds are unchanged._
+  first two bounds are unchanged — measured at the flip, only the third fell, because a fork's
+  read-only token and withheld secrets are platform behaviour rather than this repository's private
+  setting. The answer is drafted in
+  [`0030`](0030-a-declined-contribution-is-not-a-blocked-one.md) and is his to take._
 - **The 0/1/2 contract is flattened at the job level.** A recipe that exits 2 (*could not run*) surfaces
   as a step exit of 1, because GitHub's status is binary; the `::error::` annotation carries the real code,
   so nothing is lost to a reader, but anything that later consumes this step's own exit code under the
