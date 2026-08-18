@@ -479,7 +479,7 @@ describe("the draft claims no capability it does not have", () => {
     });
 
     test("nothing in the draft tells the adopter to run an unpublished command", async () => {
-        // The package is not on the registry (#148 is open on its version), so a drafted file
+        // The package is not on the registry, so a drafted file
         // instructing an adopter to run `npx @sleepy_panda_srl/portulan …` would be a capability
         // claim that 404s. Whatever the draft says, it may not say that yet.
         const dir = scratch();
@@ -487,7 +487,7 @@ describe("the draft claims no capability it does not have", () => {
         const walk = (d) => fs.readdirSync(d, { withFileTypes: true }).flatMap((e) =>
             e.isDirectory() ? walk(path.join(d, e.name)) : [path.join(d, e.name)]);
         for (const file of walk(path.join(dir, ".portulan"))) {
-            assert.doesNotMatch(fs.readFileSync(file, "utf8"), /npx @sleepy-panda-srl\/portulan/, `${path.basename(file)} promises an unpublished command`);
+            assert.doesNotMatch(fs.readFileSync(file, "utf8"), /npx @sleepy_panda_srl\/portulan/, `${path.basename(file)} promises an unpublished command`);
         }
     });
 });
