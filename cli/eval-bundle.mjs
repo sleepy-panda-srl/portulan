@@ -609,7 +609,6 @@ export function writeStamp(cutDir, { name, login, date, fullSha }) {
         issued_on: date,
         issued_by: "Sleepy Panda SRL",
         source_commit: fullSha,
-        term_days: 90,
         license: EVAL_LICENSE_ID,
         license_file: "EVAL-LICENSE.md",
         content_digest: `sha256:${bundleDigest(cutDir)}`,

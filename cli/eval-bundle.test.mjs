@@ -211,7 +211,7 @@ describe("a full issuance cut of this repository", () => {
         assert.deepEqual(stamp.issued_to, { name: FIXTURE.name, github: FIXTURE.login });
         assert.equal(stamp.issued_on, FIXTURE.date);
         assert.equal(stamp.source_commit, probeSha);
-        assert.equal(stamp.term_days, 90);
+        assert.ok(!("term_days" in stamp), "the stamp asserts a term nothing tracks or enforces");
         assert.equal(stamp.license, EVAL_LICENSE_ID);
         assert.equal(stamp.content_digest, `sha256:${bundleDigest(cutDir)}`, "the digest in the stamp does not recompute from the cut");
     });

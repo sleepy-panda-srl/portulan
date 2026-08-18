@@ -12,9 +12,11 @@ itself.
 - **Issued to:** {{name}} (github.com/{{login}})
 - **Issued on:** {{date}}, from commit `{{shortSha}}`
 - **Issued by:** Sleepy Panda SRL (sleepypanda.ro)
-- **Evaluation window:** 90 days from issue unless extended in writing. The window bounds
-  what Sleepy Panda SRL undertakes around this copy — support, questions, the engagement
-  itself. It does **not** bound your licence to the files, which does not expire.
+- **Nothing here expires.** Earlier issues of this document set a 90-day term. Nothing ever
+  tracked or enforced it — there is no expiry check, no revocation mechanism, and no call
+  home anywhere in Portulan — and Apache-2.0 does not expire, so the term described a
+  restriction that did not exist. It is withdrawn. Any support or engagement arrangement is
+  agreed separately and is not what this file records.
 
 **What you may do with the files.** Whatever Apache-2.0 permits: run them, modify them,
 use them in production, redistribute them. `LICENSE` in the public repository is the full
@@ -40,4 +42,4 @@ may be used by Sleepy Panda SRL without restriction or obligation.
 maximum extent permitted by law, Sleepy Panda SRL is not liable for damages arising from
 its use.
 
-When the evaluation window ends, what using it taught you, you keep — and so do the files.
+There is no end date. What using it taught you, you keep — and so do the files.
