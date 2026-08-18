@@ -28,7 +28,7 @@ workspace in [`../../examples/`](../../examples/), and the claims-against-the-tr
   reason. Found by designing against the real instance instead of a hypothetical one.
 - **`products` is an array although this workspace has exactly one product.** Deliberately resisting the
   only sample available: a faithful one-sample derivation models product as singular, correctly for today
-  and wrongly by milestone 6, when the portfolio workspace covers all Sleepy Panda products. The criterion
+  and wrongly by milestone 6, when the portfolio workspace covers all Sleepy Panda SRL products. The criterion
   says *portfolio-aware* and this is the only line in the schema where that phrase costs anything.
 - **Provenance is a record field, not a manifest key.** A rule lives in a Markdown record, so a manifest
   key would have described a workspace's *policy about* provenance while leaving every actual rule

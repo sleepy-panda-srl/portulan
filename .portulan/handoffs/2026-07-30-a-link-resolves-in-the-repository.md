@@ -3,7 +3,7 @@
 **Date:** 2026-07-30 · **M6, session 2** · Branch `m6-a-link-resolves-in-the-repository`, opened as
 [#129](https://github.com/sleepy-panda-srl/portulan/pull/129) against `main`
 
-**State.** Milestone 6's fourth clause — *a Sleepy Panda product task runs the full loop from a
+**State.** Milestone 6's fourth clause — *a Sleepy Panda SRL product task runs the full loop from a
 private-feed install* — is **demonstrated** for Portulan. The task was
 [#121](https://github.com/sleepy-panda-srl/portulan/issues/121), and every one of the five phases was
 governed by an artifact the private feed delivered, against session 1's one phase. **The row still does

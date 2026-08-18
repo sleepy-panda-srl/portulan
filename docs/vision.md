@@ -8,13 +8,13 @@
 
 Portulan is an **operating framework for agentic engineering** — the tailored context, standards,
 gates, and institutional memory a team needs so any coding agent works *their* way. It is an
-**open-core product by Sleepy Panda** that any team, any company, any product domain (web,
+**open-core product by Sleepy Panda SRL** that any team, any company, any product domain (web,
 mobile, gaming, embedded) can adopt. It distills, in fresh expression, operating concepts proven
 in real production engineering practice.
 
 **The name.** *Portulan* is the Romanian word for a portolan chart — a mariner's map compiled
 from the accumulated observations of real voyages: hard-won local knowledge, closely guarded,
-more valuable with every trip. That is the product thesis in one object, in Sleepy Panda's own
+more valuable with every trip. That is the product thesis in one object, in Sleepy Panda SRL's own
 language: **the engine is the chartmaking method; your workspace is your portulan.** (Decided
 final 24 Jul 2026; **portulan.dev registered by Sleepy Panda SRL the same day.** A knockout
 trademark sweep in classes 9/42 cleared before the repository's first public window (27 Jul–3 Aug
@@ -74,7 +74,7 @@ One sentence: **cockpit products sell the dashboard; Portulan sells the doctrine
   protection, required checks, CODEOWNERS, PR-as-gate) is the universal gate no model can bypass.
 - **Reference workspaces:** a private pilot workspace at a design-partner company (local-only,
   never part of this repository), a fictional demo workspace (in `examples/`, public whenever the
-  repository is), and the Sleepy Panda portfolio workspace (all Sleepy Panda products, via the private
+  repository is), and the Sleepy Panda SRL portfolio workspace (all Sleepy Panda SRL products, via the private
   `portulan-internal` feed).
 
 ## Non-goals (as binding as the goals)

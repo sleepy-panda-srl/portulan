@@ -20,14 +20,14 @@ constitutional and is left to the maintainer.
 ## The ruling on Q5, 2026-08-10
 
 **(a): the user's own GitHub identity, through an existing `gh` login.** Accountable, rate-limited by
-GitHub, no Sleepy Panda service in the path — which is what makes it compliant with the constitution as
+GitHub, no Sleepy Panda SRL service in the path — which is what makes it compliant with the constitution as
 it stands rather than requiring a change to it. That is what `cli/feedback.mjs` ships: it shells out to
 whatever `gh` is logged in, mints no identity of its own, and refuses with exit **2** when `gh` is
 absent or unauthenticated rather than finding another way out.
 
 **(b) is not taken up.** Said that way rather than *refused*, because the maintainer's words were
 "stays unbuilt" and a refusal reaches a question he did not reach. What is recorded is narrower and
-checkable: a Sleepy Panda-operated relay is a hosted service, `docs/vision.md` **as written** permits
+checkable: a Sleepy Panda SRL-operated relay is a hosted service, `docs/vision.md` **as written** permits
 exactly one by name, so building one would need a change to the constitution, **no such change is being
 made, and it stays unbuilt.** _Deliberately not grounded on "the constitution forbids it": that ground
 would presuppose the answer to the second question below — whether the relay exception is a name or a
@@ -120,7 +120,7 @@ product feature, which is the strongest form of dogfooding available here.
 **Rate and abuse limits come from the identity, not from a limiter we operate.** Because the sender uses
 the user's own GitHub identity (Q5 below), GitHub's abuse limits apply and every issue is attributable
 to an accountable account. There is no anonymous firehose into a public tracker, and there is nothing
-for Sleepy Panda to run, meter or pay for. Local guards only: a report file records its issue URL once
+for Sleepy Panda SRL to run, meter or pay for. Local guards only: a report file records its issue URL once
 sent, so re-sending is a no-op, and a short cooldown catches a loop.
 
 **Offline queueing is the folder.** Unsent drafts sit in `.portulan/feedback/`. Nothing auto-sends on
@@ -152,9 +152,9 @@ that blocks a send it should block.**
 
 **Q5 — Whose identity files the issue, and is a relay permitted?** Two options:
 &nbsp;&nbsp;**(a) The user's own GitHub identity** (OAuth device flow, or an existing `gh` login).
-Accountable, rate-limited by GitHub, no Sleepy Panda service in the path, **fully compliant today**.
+Accountable, rate-limited by GitHub, no Sleepy Panda SRL service in the path, **fully compliant today**.
 Cost: the user needs a GitHub account. **This is the recommendation.**
-&nbsp;&nbsp;**(b) A Sleepy Panda-operated relay** that files on the user's behalf. Serves people without
+&nbsp;&nbsp;**(b) A Sleepy Panda SRL-operated relay** that files on the user's behalf. Serves people without
 GitHub accounts — and it is a hosted service. `vision.md` permits exactly one, the approval relay, by
 name. So (b) needs a constitutional ruling, and it also inherits an abuse surface we would then have to
 operate.

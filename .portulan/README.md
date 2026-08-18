@@ -57,7 +57,7 @@ Three workspaces appear in the plan and they are easy to confuse:
 |---|---|---|---|
 | **This one** — `.portulan/` | here | by design yes — **and reachable**, see below | building Portulan itself: dogfooding |
 | Demo workspace | [`../examples/`](../examples/) | by design yes — same reach as above | a fictional team with two products, so a stranger can read a complete workspace end to end |
-| Sleepy Panda portfolio | private feed (milestone 6) | no, by design | every Sleepy Panda product |
+| Sleepy Panda SRL portfolio | private feed (milestone 6) | no, by design | every Sleepy Panda SRL product |
 
 _**Reach.** `Public?` above is design intent; this line is state, and the two disagreed from 2026-08-03
 until the second flip. The first two ship in the open-core repository, which was public 2026-07-27 →

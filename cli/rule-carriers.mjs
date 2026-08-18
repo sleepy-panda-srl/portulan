@@ -461,7 +461,7 @@ export function run(argv = [], { stdout = process.stdout, stderr = process.stder
  * Two ways to get this wrong, and this file has now had both:
  *
  *   1. Comparing `process.argv[1]` against `new URL(import.meta.url).pathname`. This working copy lives
- *      under "Sleepy Panda Projects", a URL pathname percent-encodes the spaces, the comparison failed,
+ *      under "Sleepy Panda SRL Projects", a URL pathname percent-encodes the spaces, the comparison failed,
  *      and the tool **exited 0 having run nothing**. Comparing URLs on both sides removes that entirely.
  *   2. Comparing resolved paths when the script is reached through a **symlink** — an npm `bin`, most
  *      obviously. `path.resolve` does not follow links, so the same silent skip returns. Hence the

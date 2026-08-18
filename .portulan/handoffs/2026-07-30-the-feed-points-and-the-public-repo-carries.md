@@ -8,7 +8,7 @@ pull request against `main` as [#117](https://github.com/sleepy-panda-srl/portul
 persona memory scope **lands empty in the adopting workspace's own layer**, on the feed adopter and on
 customer zero, each forced red three ways. Workspace Definition **2.6** is the mechanism, and it did not
 exist in any form when the session opened. Suite 674 → 721, eight recipes green. **The row does not
-close:** the Sleepy Panda product task through the full loop remains, scoped by the maintainer to
+close:** the Sleepy Panda SRL product task through the full loop remains, scoped by the maintainer to
 Portulan first and Tipar API next. Supervision: session-open APPROVE-WITH-ADJUSTMENTS (12), all folded
 in; pre-commit APPROVE-WITH-ADJUSTMENTS (7), all folded in — one of them a fail-open in the flag the
 first checkpoint had asked for. **Milestone-close has not run and could not** — it grades a merged tree.
@@ -91,7 +91,7 @@ first checkpoint had asked for. **Milestone-close has not run and could not** �
   same discipline pointing the other way, and both are now in `spec/README.md` so the next bump is held to
   the pair rather than to whichever is convenient.
 
-- **Tipar API's card is sealed rather than invented.** The portfolio workspace covers every Sleepy Panda
+- **Tipar API's card is sealed rather than invented.** The portfolio workspace covers every Sleepy Panda SRL
   product, and this agent has not been told Tipar's stack, repositories, commands or gates. A plausible
   guess would have put false claims in the one layer whose entire purpose is to hold true ones — and would
   have been caught by the claims lint the moment a repos card existed to check. The card carries a sealed
@@ -162,7 +162,7 @@ queue.
 
 ## For the next session
 
-**One clause of the row remains: the Sleepy Panda product task through the full loop from a private-feed
+**One clause of the row remains: the Sleepy Panda SRL product task through the full loop from a private-feed
 install.** The maintainer scoped it *"both, Portulan first"* — demonstrate the loop on Portulan, whose tree
 is public and so whose five phases and red→green verify a stranger can check, then Tipar API once he
 supplies its repos card, affordances and gate deltas. Then **milestone-close**, which needs the merged

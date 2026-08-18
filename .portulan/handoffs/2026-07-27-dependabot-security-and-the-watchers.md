@@ -115,7 +115,7 @@ against treating maintainer-at-merge as a substitute.
 - **Organisation defaults for new repositories remain `false`** for all three Dependabot settings,
   deliberately untouched: this task was about one repository.
 - Housekeeping, both Marius's: three older `claude/…` local branches are fully upstream and safe to clear,
-  and the main worktree `~/Sleepy Panda Projects/portulan` sits at `589f76c`, **ten commits behind**
+  and the main worktree `~/Sleepy Panda SRL Projects/portulan` sits at `589f76c`, **ten commits behind**
   `origin/main`.
 
 **Next action.** Decide 0008. If accepted, the change is an edit to

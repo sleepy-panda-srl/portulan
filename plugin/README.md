@@ -188,7 +188,7 @@ the project.
 
 **No hooks directory ships, and that is deliberate rather than pending.** A plugin carrying
 `hooks/hooks.json` has those hooks fire for everyone who installs it, in unrelated projects — measured,
-with a positive control. Putting compiled enforcement there would push Sleepy Panda's gate map onto
+with a positive control. Putting compiled enforcement there would push Sleepy Panda SRL's gate map onto
 strangers' machines, denying their pushes and blocking their sessions over a policy they never adopted.
 See [`../.portulan/memory/a-plugin-payload-can-enforce-on-strangers.md`](../.portulan/memory/a-plugin-payload-can-enforce-on-strangers.md).
 When Portulan ships gate enforcement *for* an adopter, it will be by compiling **their** policy into

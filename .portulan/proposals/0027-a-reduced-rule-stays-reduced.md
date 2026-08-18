@@ -172,7 +172,7 @@ Three defects, none visible by reading, each found by running or by forcing red 
 repository's own argument for why demonstrations are not ceremony:
 
 1. **The tool exited 0 having run nothing.** The direct-invocation check compared `process.argv[1]` with
-   `new URL(import.meta.url).pathname`, and this working copy lives under *Sleepy Panda Projects* — a
+   `new URL(import.meta.url).pathname`, and this working copy lives under *Sleepy Panda SRL Projects* — a
    URL pathname percent-encodes the spaces, so the comparison silently failed. `fileURLToPath` now.
 2. **The dead-tell audit was self-satisfied.** Every tell is spelled in the registry, so scanning the
    registry made every tell find *itself* and read as alive. It reported green over a tell matching
