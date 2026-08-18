@@ -17,7 +17,8 @@ at all, which is what milestone 7 named as undemonstrated and
 taken through, and it still works; what changed is that it is no longer the only one.
 [`../.portulan/identity.md`](../.portulan/identity.md) carries what the `npx` path buys — the same
 bytes — and that is now **measured against the registry rather than against `npm pack` alone**: the
-published tarball and a fresh pack hash identically, every file byte-for-byte
+published tarball and a fresh `npm pack` hash to the same value, and every file in them compares
+byte-for-byte
 ([#149](https://github.com/sleepy-panda-srl/portulan/issues/149)). _(The roster the package ships is
 narrower than the tree and is not restated here as a number — `npm pack --dry-run` derives it, and a
 hand-copied count is the thing that keeps going wrong in this file.)_
