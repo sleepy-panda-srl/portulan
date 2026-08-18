@@ -1,10 +1,17 @@
 #!/usr/bin/env bash
-# Portulan workspace — verify recipe: the jq programs the workflows run are executed, not described.
+# Portulan workspace — verify recipe: the jq and awk programs the workflows run are executed, not
+# described.
 #
 # One check:
-#   filters   every jq program in .github/workflows/ produces the exact bytes and the exit status
-#             the surrounding shell branches on — read out of the workflow files themselves and run
-#             through the real `jq` binary against null-bearing and ordinary fixtures
+#   filters   every jq and awk program in .github/workflows/ produces the exact bytes and the exit
+#             status the surrounding shell branches on — read out of the workflow files themselves
+#             and run through the real `jq` and `awk` binaries against null-bearing and ordinary
+#             fixtures
+#
+# _The name and the first line said `jq` alone until 2026-08-18, some weeks after the awk half landed:
+# a summary in one file drifting from the thing it summarises, which is the class
+# [`0020`](../proposals/0020-a-fix-is-not-done-at-the-site-it-was-found.md) names. Swept with the #286
+# matchers rather than after them._
 #
 # The argument, the fixtures and the two-way coverage rule are in ./workflow-filters.mjs, which is
 # the instrument; this is the wrapper, and the wrapper is the point (./README.md). Two merge-gate
@@ -56,7 +63,7 @@ cd -- "$root" || exit 2
 # The defect a reviewer found in doctor.sh, one dependency over from the guard written to stop it.
 for required in .portulan/verify/workflow-filters.mjs .github/workflows; do
     if [ ! -e "$required" ]; then
-        printf 'verify: %s is missing — cannot judge the workflows'"'"' jq programs\n' "$required" >&2
+        printf 'verify: %s is missing — cannot judge the workflows'"'"' jq and awk programs\n' "$required" >&2
         exit 2
     fi
 done

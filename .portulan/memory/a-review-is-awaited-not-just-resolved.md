@@ -74,5 +74,28 @@ recorded on the pull request before the merge. **Not a weakening** — `copilot-
 context, so the platform never held this door; what the record buys is that routing around the gate stops
 being invisible.
 
+**A review OBJECT is not a round — amended 2026-08-18,
+[#286](https://github.com/sleepy-panda-works/portulan/issues/286).** The paragraph above says a checker
+matching on *"a Copilot review exists"* would have reported green on every case this rule was written
+for. It said that of the HEAD; the checker written from it made the same error one notch lower, asking
+whether a review object existed — right login, right commit, not dismissed — and never whether a
+judgement had happened. Copilot returned a review reading only *"encountered an error and was unable to
+review this pull request"*, `copilot-reviewed` went **green**, and the derived verdict asserted that
+round *"raised no inline comment and no suppressed low-confidence note"* — submitted **4m36s before** the
+only genuine round arrived on [#283](https://github.com/sleepy-panda-works/portulan/pull/283), so it
+cannot have come from it.
+
+**The durable half is where a rule got weaker, not Copilot.** A rule stated at the right altitude was
+re-implemented one notch below it, in the file written to enforce it, while the sentence naming the error
+sat in this record throughout. So the pattern above — *a watcher that is only requested is not a gate* —
+has a sibling: **an artifact a watcher produced is not the judgement it was asked for.**
+
+**What changed.** The check classifies the matched body — round, refusal, unrecognised — and only a round
+satisfies the awaited half; the verdict now states what established that a round occurred. Both arms the
+issue proposed were measured against this repository's own corpus and neither survives alone. Fixtures
+are in [`../verify/workflow-filters.mjs`](../verify/workflow-filters.mjs); the residual — a reworded
+error notice greens the check again, the missing verdict being the tell — is stated in
+[`../gate-map.md`](../gate-map.md).
+
 **Retire when:** Copilot review is no longer part of this repository's review path, or the platform gains
 a native *"require a review from this app on the current head"* setting that makes the workflow redundant.

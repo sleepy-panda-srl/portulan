@@ -533,6 +533,50 @@ const BODY_INDENTED_HASH = "## Pull request overview\n\n<details>\n<summary>Revi
     + "                    # THE SECTION MARKER MOVES, and suppress is the word it keeps\n"
     + "                    SUPPRESS='suppress'\n```\n\n- **Files reviewed:** 1/1 changed files\n</details>\n";
 
+// ---- copilot-review.yml: is a matched review a ROUND at all — issue #286 ---------------------
+// Every body below is a real one, read off this repository with
+// `gh api repos/.../pulls/N/reviews` on 2026-08-18, because the whole subject here is what Copilot
+// actually writes rather than what it is assumed to write. The census behind the two matchers is
+// every Copilot review on pull requests 230-288 — 129 bodies with content — and it refuted BOTH of
+// the repair arms issue #286 proposed, each in a way only measurement could show.
+const BODY_ROUND_COVERAGE = "## Pull request overview\n\n"
+    + "Copilot reviewed 6 out of 6 changed files in this pull request and generated no new comments.\n";
+
+// #246, 2026-08-13. A real round — it summarises the diff — that never announces coverage. Three of
+// these are in the census (#246, #262, #263), which is what makes "require the coverage line" a
+// false red rather than a stricter rail.
+const BODY_ROUND_NO_COVERAGE = "## Pull request overview\n\n"
+    + "Adds proposal **0029** documenting that constraints name **categories of acts**, and that any\n"
+    + "enumerated instances are illustrative (non-exhaustive and non-binding).\n\n"
+    + "**Changes:**\n"
+    + "- Introduces proposal text capturing the \u201ccategory, not list\u201d rule and its converse.\n";
+
+// #283, 2026-08-17T14:52:09Z — the body the gate reported GREEN over, verbatim and entire.
+const BODY_REVIEWER_ERROR = "Copilot encountered an error and was unable to review this pull request."
+    + " You can try again by re-requesting a review.\n";
+
+// #287, 2026-08-18T09:40:37Z. A GENUINE round that contains "unable to review", quoted out of
+// `docs/plan.md` because this repository writes about its own gate. The phrase now also sits in
+// `copilot-review.yml`, `../gate-map.md` and `../memory/a-review-is-awaited-not-just-resolved.md`,
+// so a body-contains test would red this repository against its own writing.
+const BODY_ROUND_QUOTING_THE_REFUSAL = "## Pull request overview\n\n"
+    + "Copilot reviewed 3 out of 3 changed files in this pull request and generated no new comments.\n\n"
+    + "<details>\n<summary>Suppressed comments (1)</summary>\n\n"
+    + "**docs/plan.md:2343**\n"
+    + "* The entry and the handoff word the same measurement differently.\n"
+    + "```\n"
+    + "  a derived **APPROVED** was posted over a review reading *\"unable to review\"*\n"
+    + "```\n"
+    + "</details>\n";
+
+const BODY_FENCED_REFUSAL = "Some prose about the incident.\n\n```\n"
+    + "Copilot encountered an error and was unable to review this pull request.\n"
+    + "```\n\nNothing else.\n";
+
+const BODY_FENCED_ROUND_MARKERS = "```\n## Pull request overview\n"
+    + "Copilot reviewed 3 out of 3 changed files in this pull request\n```\n"
+    + "Nothing outside the fence announces a round.\n";
+
 const AWK_CASES = [
     {
         id: "note-records-two-notes",
@@ -788,6 +832,126 @@ const AWK_CASES = [
             + "word nowhere. It must stay silent, or `unparsable` would fire on nearly every round "
             + "and the verdict would never approve — the cost that keeps this trade honest",
         input: BODY_CHROME,
+        stdout: "",
+        status: 0,
+    },
+    // ---- copilot-review.yml: is the matched review a round at all — issue #286 -----------------
+    // The gate reported GREEN over an error notice and the verdict step then asserted what that
+    // non-existent round had found. These fixtures are the forcing case the issue asks for: they
+    // exist so the matchers are watched discriminating rather than merely present.
+    {
+        id: "round-evidence-coverage-line",
+        anchor: 'print "round"',
+        why: "the ordinary round, and the one shape both of #286's proposed arms agree on — the "
+            + "coverage clause 122 of the census's 129 bodies carry",
+        input: BODY_ROUND_COVERAGE,
+        stdout: "round\n",
+        status: 0,
+    },
+    {
+        id: "round-evidence-overview-without-a-coverage-line",
+        anchor: 'print "round"',
+        why: "**the case that refutes #286's arm 2.** A real round that summarises the diff and never "
+            + "announces coverage — #246, and #262 and #263 the next day. Keying green on the "
+            + "coverage line alone would red all three, which is a measured false red on rounds that "
+            + "already happened rather than a hypothetical wording drift. The structural marker is "
+            + "what carries this one",
+        input: BODY_ROUND_NO_COVERAGE,
+        stdout: "round\n",
+        status: 0,
+    },
+    {
+        id: "round-evidence-refuses-the-error-notice",
+        anchor: 'print "round"',
+        why: "**#286 itself**, verbatim: the entire body Copilot returned on #283, over which "
+            + "`copilot-reviewed` reported GREEN and a derived APPROVED was submitted 4m36s before "
+            + "the only genuine round arrived. No evidence, so no round — this is the byte the whole "
+            + "change turns on",
+        input: BODY_REVIEWER_ERROR,
+        stdout: "",
+        status: 0,
+    },
+    {
+        id: "round-evidence-survives-the-phrase-quoted-inside-a-round",
+        anchor: 'print "round"',
+        why: "**the trap the naive repair falls into.** #287's genuine round quotes `unable to "
+            + "review` out of `docs/plan.md`, because this repository writes about this gate. A "
+            + "body-contains test would call this an error notice and red a pull request whose round "
+            + "was perfect. Round evidence is read independently of the refusal test for exactly this",
+        input: BODY_ROUND_QUOTING_THE_REFUSAL,
+        stdout: "round\n",
+        status: 0,
+    },
+    {
+        id: "round-evidence-ignores-markers-inside-a-fence",
+        anchor: 'print "round"',
+        why: "the fence toggle carries over from the notes matcher, and it is load-bearing here for "
+            + "the same reason: this repository's reviews quote this workflow back at it, so a "
+            + "quoted `## Pull request overview` must not manufacture a round out of a body that "
+            + "announces none",
+        input: BODY_FENCED_ROUND_MARKERS,
+        stdout: "",
+        status: 0,
+    },
+    {
+        id: "round-evidence-empty-body",
+        anchor: 'print "round"',
+        why: "**the degenerate case the API really produces.** `.body // \"\"` yields an empty string "
+            + "for a null body — the `body-null` fixture above pins that — and until this change an "
+            + "empty body on the head went GREEN and APPROVED, because it parses to zero suppressed "
+            + "notes and `none` approves. No evidence, so no round, so no verdict",
+        input: "",
+        stdout: "",
+        status: 0,
+    },
+    {
+        id: "refusal-is-the-first-non-blank-line",
+        anchor: 'print "refused"',
+        why: "the notice, read where it actually sits: the whole body is one sentence. Anchoring on "
+            + "the first non-blank line rather than on containment is what separates *the reviewer "
+            + "said it could not review* from *somebody quoted that sentence*",
+        input: BODY_REVIEWER_ERROR,
+        stdout: "refused\n",
+        status: 0,
+    },
+    {
+        id: "refusal-not-triggered-by-a-later-quotation",
+        anchor: 'print "refused"',
+        why: "**the other half of the #287 trap, pinned from the refusal side.** The phrase is in "
+            + "this body and the first non-blank line is a heading, so the matcher stops before it "
+            + "ever reaches the quote. If this ever reds, the anchor has been loosened and a genuine "
+            + "round is about to be called an error",
+        input: BODY_ROUND_QUOTING_THE_REFUSAL,
+        stdout: "",
+        status: 0,
+    },
+    {
+        id: "refusal-skips-leading-blank-lines",
+        anchor: 'print "refused"',
+        why: "*first non-blank*, not *first*. A notice preceded by blank lines is the same notice, "
+            + "and reading line 1 literally would let a leading newline turn a refusal into an "
+            + "unrecognised body — which greens the check",
+        input: "\n\n   \n" + BODY_REVIEWER_ERROR,
+        stdout: "refused\n",
+        status: 0,
+    },
+    {
+        id: "refusal-ignores-a-fenced-occurrence",
+        anchor: 'print "refused"',
+        why: "prose that quotes the notice inside a code block is not the notice. The first non-blank "
+            + "line is ordinary text, so the matcher exits there and the body routes to "
+            + "`unrecognised` — green on the object, no verdict — rather than to a refusal",
+        input: BODY_FENCED_REFUSAL,
+        stdout: "",
+        status: 0,
+    },
+    {
+        id: "refusal-empty-body",
+        anchor: 'print "refused"',
+        why: "an empty body says nothing, including that the reviewer could not review. It must not "
+            + "read as a refusal, or the degenerate case above would hold the check red for the "
+            + "whole budget instead of greening it with the verdict suppressed",
+        input: "",
         stdout: "",
         status: 0,
     },
