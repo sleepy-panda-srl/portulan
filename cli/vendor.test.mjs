@@ -375,7 +375,7 @@ describe("the three refusals `init` and `new` paid for", () => {
         assert.deepEqual(collisions(path.join(link, "repo", ".portulan"), ["workspace.json"]), []);
     });
 
-    test("an unreadable staging path is refused, not treated as clear", async () => {
+    test("an unreadable staging path is refused, not treated as clear", async (t) => {
         // `existsSync` answers **false** on `EACCES`, so the staging check reported "clear" for a path
         // whose state nobody could read and the run proceeded into `mkdirSync`, failing later with an
         // error about the wrong thing. The only-`ENOENT` rule, stated three times in this tool's header
@@ -391,19 +391,15 @@ describe("the three refusals `init` and `new` paid for", () => {
 
         const h = harness();
         const original = fs.lstatSync;
-        fs.lstatSync = (target, ...rest) => {
+        t.mock.method(fs, "lstatSync", (target, ...rest) => {
             if (String(target) === staging) {
                 const error = new Error("permission denied");
                 error.code = "EACCES";
                 throw error;
             }
             return original(target, ...rest);
-        };
-        try {
-            assert.equal(await run([src, "--into", dst, "--residence", "in-repo", "--host", "generic"], h.options), 2);
-        } finally {
-            fs.lstatSync = original;
-        }
+        });
+        assert.equal(await run([src, "--into", dst, "--residence", "in-repo", "--host", "generic"], h.options), 2);
         assert.match(text(h), /could not be examined/);
         assert.match(text(h), /EACCES/);
         assert.equal(exists(dst), false, "an unanswerable question wrote nothing");
@@ -640,7 +636,7 @@ describe("vendoring into a host", () => {
         assert.match(fs.readFileSync(path.join(host, "AGENTS.md"), "utf8"), /Resolution cascade/);
     });
 
-    test("a failure after AGENTS.md moves leaves no AGENTS.md behind", async () => {
+    test("a failure after AGENTS.md moves leaves no AGENTS.md behind", async (t) => {
         // The undo was registered AFTER the last write rather than before the first, so every failure
         // *between* the two renames was uncovered: `AGENTS.md` landed, the workspace rename then failed,
         // and the rollback removed the staging directory while leaving the file — a run that reported
@@ -657,19 +653,15 @@ describe("vendoring into a host", () => {
 
         const h = harness();
         const original = fs.renameSync;
-        fs.renameSync = (from, to, ...rest) => {
+        t.mock.method(fs, "renameSync", (from, to, ...rest) => {
             if (String(to) === path.join(host, ".portulan")) {
                 const error = new Error("cross-device link not permitted");
                 error.code = "EXDEV";
                 throw error;
             }
             return original(from, to, ...rest);
-        };
-        try {
-            assert.equal(await run([src, "--into", path.join(host, ".portulan"), "--residence", "in-repo", "--host", "generic"], h.options), 2);
-        } finally {
-            fs.renameSync = original;
-        }
+        });
+        assert.equal(await run([src, "--into", path.join(host, ".portulan"), "--residence", "in-repo", "--host", "generic"], h.options), 2);
         assert.equal(exists(path.join(host, "AGENTS.md")), false, "a failed vendoring must leave no artifact");
         assert.equal(exists(path.join(host, ".portulan")), false);
         assert.deepEqual(fs.readdirSync(host), [], "and no staging directory either");
@@ -850,7 +842,7 @@ describe("the switch, in-repo → feed-side", () => {
         assert.match(text(h), /nothing here writes outside/);
     });
 
-    test("`--leave nothing` does NOT delete an old residence it could not scan", async () => {
+    test("`--leave nothing` does NOT delete an old residence it could not scan", async (t) => {
         // The destructive one, and the shape is this repository's own fail-open: a scan that FAILED was
         // read as an EMPTY directory, `leftovers` came back empty, and the `--leave nothing` branch then
         // removed the whole tree — deleting exactly the files the sentence beside it promises never to
@@ -873,19 +865,15 @@ describe("the switch, in-repo → feed-side", () => {
 
         const h = harness();
         const original = fs.readdirSync;
-        fs.readdirSync = (target, ...rest) => {
+        t.mock.method(fs, "readdirSync", (target, ...rest) => {
             if (String(target) === src && fs.existsSync(path.join(feed, "workspace.json"))) {
                 const error = new Error("permission denied");
                 error.code = "EACCES";
                 throw error;
             }
             return original(target, ...rest);
-        };
-        try {
-            assert.equal(await run([src, "--into", feed, "--residence", "feed-side", "--switch", "--leave", "nothing"], h.options), 0);
-        } finally {
-            fs.readdirSync = original;
-        }
+        });
+        assert.equal(await run([src, "--into", feed, "--residence", "feed-side", "--switch", "--leave", "nothing"], h.options), 0);
 
         assert.ok(exists(keep), "a file the run could not account for must survive");
         assert.match(text(h), /could NOT be scanned/);
@@ -1068,7 +1056,7 @@ describe("the ordering, and what a failure at each step leaves behind", () => {
         assert.equal(governors(path.dirname(src), [feed]), 1);
     });
 
-    test("a failed manifest retirement leaves no `.vendoring` temp file behind", async () => {
+    test("a failed manifest retirement leaves no `.vendoring` temp file behind", async (t) => {
         // The SIBLING of the `AGENTS.md` leak, one function over, and it was missed inside the fix for
         // that one — issue #91's class exactly. The pointer manifest is staged beside the old one and
         // renamed into place; a failure in that rename left the temp file in a residence a later run
@@ -1080,19 +1068,15 @@ describe("the ordering, and what a failure at each step leaves behind", () => {
 
         const h = harness();
         const original = fs.renameSync;
-        fs.renameSync = (from, to, ...rest) => {
+        t.mock.method(fs, "renameSync", (from, to, ...rest) => {
             if (String(to) === path.join(src, "workspace.json")) {
                 const error = new Error("cross-device link not permitted");
                 error.code = "EXDEV";
                 throw error;
             }
             return original(from, to, ...rest);
-        };
-        try {
-            assert.equal(await run([src, "--into", feed, "--residence", "feed-side", "--switch"], h.options), 2);
-        } finally {
-            fs.renameSync = original;
-        }
+        });
+        assert.equal(await run([src, "--into", feed, "--residence", "feed-side", "--switch"], h.options), 2);
         assert.equal(exists(path.join(src, "workspace.json.vendoring")), false, "no temp file survives a failed retirement");
         // And the invariant the whole ordering exists for: the flip did not happen, so the old residence
         // still governs and there is exactly one governor.

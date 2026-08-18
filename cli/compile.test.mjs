@@ -2142,6 +2142,10 @@ describe("a workspace named directly, in either residence", () => {
         fs.writeFileSync(path.join(feed, "workspace.json"), JSON.stringify({ name: "acme", kind: "portfolio" }));
         fs.writeFileSync(path.join(feed, "gates.json"), JSON.stringify(shared));
 
+        // **Hand-restored on purpose (#254).** `t.mock.method` scopes a mock to the TEST; this one is
+        // scoped to a single CALL of `said`, which runs twice and must return only its own call's
+        // output. The runner cannot express that, so the manual pair is the correct shape here rather
+        // than the unswept one — the sweep converted the sites whose scope the runner does match.
         const said = (argv) => {
             const lines = [];
             const write = process.stdout.write.bind(process.stdout);
@@ -2157,7 +2161,7 @@ describe("a workspace named directly, in either residence", () => {
         assert.equal(only(said(["--workspace", path.join(repo, ".portulan")])), only(said(["--workspace", feed])));
     });
 
-    test("only ENOENT means `this is a repository root` — an unreadable manifest refuses", () => {
+    test("only ENOENT means `this is a repository root` — an unreadable manifest refuses", (t) => {
         // The only-ENOENT rule, and the first cut of
         // `resolveWorkspace` broke it in the change whose own header states it three times: ANY failure
         // reading `workspace.json` fell back to `.portulan`, so a present-but-unreadable manifest sent
@@ -2171,19 +2175,16 @@ describe("a workspace named directly, in either residence", () => {
         // runs as root, and a check that stops checking where it matters is worse than none.
         const dir2 = scratch();
         const original = fs.readFileSync;
-        fs.readFileSync = (p, ...rest) => {
+        t.mock.method(fs, "readFileSync", (p, ...rest) => {
             if (String(p) === path.join(dir2, "workspace.json")) {
                 const error = new Error("permission denied");
                 error.code = "EACCES";
                 throw error;
             }
             return original(p, ...rest);
-        };
-        try {
-            assert.throws(() => resolveWorkspace(dir2), (e) => e instanceof CompileError && /EACCES/.test(e.message));
-        } finally {
-            fs.readFileSync = original;
-        }
+        });
+        assert.throws(() => resolveWorkspace(dir2), (e) => e instanceof CompileError && /EACCES/.test(e.message));
+        t.mock.restoreAll();
 
         // A genuinely absent manifest is still the ordinary repository-root case.
         assert.deepEqual(resolveWorkspace(scratch()).workspaceDir, ".portulan");
@@ -2206,7 +2207,7 @@ test("compile refuses a named root combined with `--pack-root auto`", () => {
     assert.equal(run(["--workspace", path.join(dir, ".portulan"), "--pack-root", "auto", "--pack-root", dir], { quiet: true }), 2);
 });
 
-test("compile refuses the pair BEFORE it resolves a workspace or reads a policy", () => {
+test("compile refuses the pair BEFORE it resolves a workspace or reads a policy", (t) => {
     // Copilot, round 2 on #233: the refusal sat below `resolveWorkspace` and the policy read, so an
     // unrelated workspace or policy error masked it — and this tool then disagreed with the four
     // beside it about *when* the command line is judged. The other tools' tests pinned that property
@@ -2220,13 +2221,9 @@ test("compile refuses the pair BEFORE it resolves a workspace or reads a policy"
     SCRATCH.push(absentRoot);
     const absent = path.join(absentRoot, "nope");
     const said = [];
-    const write = process.stderr.write.bind(process.stderr);
-    process.stderr.write = (chunk) => (said.push(String(chunk)), true);
-    try {
-        assert.equal(run(["--workspace", absent, "--pack-root", "auto", "--pack-root", "."]), 2);
-    } finally {
-        process.stderr.write = write;
-    }
+    t.mock.method(process.stderr, "write", (chunk) => (said.push(String(chunk)), true));
+    assert.equal(run(["--workspace", absent, "--pack-root", "auto", "--pack-root", "."]), 2);
+    t.mock.restoreAll();
     assert.match(said.join(""), /never both/, "the refusal must be the reason, not the missing workspace");
 });
 
@@ -2295,6 +2292,13 @@ test("compile prints the union plan line even without `--matrix`", () => {
     );
 
     // `run` writes to stdout directly rather than through an injected sink, so the sink is stdout.
+    // **Hand-restored, and the reason is a measurement rather than a preference (#254).** This block
+    // restores TWO things in one `finally`, and one of them cannot be handed to the runner at all:
+    // `t.mock.property` exists on this Node (26.7.0) but throws on `process.env` —
+    // `ERR_INVALID_OBJECT_DEFINE_PROPERTY: 'process.env' does not accept an accessor(getter/setter)
+    // descriptor` — because it installs the mock as a getter/setter pair. So the `finally` stays for the
+    // env half whatever happens to the stdout half, and splitting one restore across two mechanisms
+    // would read as an oversight rather than a choice.
     const said = [];
     const write = process.stdout.write.bind(process.stdout);
     const before = process.env.CLAUDE_CONFIG_DIR;
@@ -2362,16 +2366,11 @@ test("compile: `auto` against an unreadable record is exit 2, not a green over a
 // `--help` is a request that succeeded. Before this, `compile --help` answered
 // `unknown argument "--help"` at exit 2 — a refusal to the one argument every tool should answer.
 describe("--help", () => {
-    test("`--help` exits 0 and prints the screen to stdout", () => {
+    test("`--help` exits 0 and prints the screen to stdout", (t) => {
         const out = [];
-        const write = process.stdout.write.bind(process.stdout);
-        process.stdout.write = (chunk) => (out.push(String(chunk)), true);
-        let code;
-        try {
-            code = run(["--help"]);
-        } finally {
-            process.stdout.write = write;
-        }
+        t.mock.method(process.stdout, "write", (chunk) => (out.push(String(chunk)), true));
+        const code = run(["--help"]);
+        t.mock.restoreAll();
         assert.equal(code, 0);
         assert.match(out.join(""), /^portulan compile — compile a workspace's gate policy into host enforcement/);
         assert.match(out.join(""), /Exit codes: 0 succeeded/);

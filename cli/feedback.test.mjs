@@ -791,31 +791,27 @@ describe("the pieces", () => {
         }
     });
 
-    test("a send that files but cannot record the URL says so, and exits 1 rather than 0 or 2", () => {
+    test("a send that files but cannot record the URL says so, and exits 1 rather than 0 or 2", (t) => {
         // The one write that cannot be a refusal: the issue exists by then. Reporting could-not-run
         // would deny a send that happened and send the reader back to repeat it — and the guard that
         // makes a second send a no-op is precisely what failed to land.
         const dir = workspace();
         const file = previewed(dir, "feedback", FILLED.feedback);
         const real = fs.writeFileSync;
-        fs.writeFileSync = (target, ...rest) => {
+        t.mock.method(fs, "writeFileSync", (target, ...rest) => {
             if (target === file) {
                 const error = new Error("EROFS: read-only file system");
                 error.code = "EROFS";
                 throw error;
             }
             return real(target, ...rest);
-        };
-        try {
-            const { code, out, err } = invoke(["send", file, "--approve"]);
-            assert.equal(code, 1, "the send happened; only the local record did not");
-            assert.match(out, /FILED https:\/\/github\.com\/.*issues\/999/);
-            assert.match(err, /could not be updated/);
-            assert.match(err, /duplicate/);
-            assert.match(err, /issue: https:\/\/github\.com\/.*issues\/999/, "it names the line to add by hand");
-        } finally {
-            fs.writeFileSync = real;
-        }
+        });
+        const { code, out, err } = invoke(["send", file, "--approve"]);
+        assert.equal(code, 1, "the send happened; only the local record did not");
+        assert.match(out, /FILED https:\/\/github\.com\/.*issues\/999/);
+        assert.match(err, /could not be updated/);
+        assert.match(err, /duplicate/);
+        assert.match(err, /issue: https:\/\/github\.com\/.*issues\/999/, "it names the line to add by hand");
     });
 
     test("a title carrying a line break is refused at the door", () => {
