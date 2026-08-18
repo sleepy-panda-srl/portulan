@@ -50,7 +50,7 @@ the same line by **re-arming** them. A handoff on `main` is titled
 Every one found by **running or forcing red**, none by reading. This is the part worth keeping.
 
 1. **It exited 0 having run nothing.** The direct-invocation guard compared `process.argv[1]` against
-   `new URL(import.meta.url).pathname`. This working copy lives under *Sleepy Panda Projects*, and a URL
+   `new URL(import.meta.url).pathname`. This working copy lives under *Sleepy Panda SRL Projects*, and a URL
    pathname **percent-encodes the spaces**, so the comparison silently failed. A green that was the tool
    never starting. `fileURLToPath` now.
 2. **The dead-tell audit was self-satisfied.** Every tell is spelled *in the registry*, so scanning the

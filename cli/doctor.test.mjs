@@ -2257,7 +2257,7 @@ describe("a repository is governed by exactly one workspace", () => {
         // mechanism by one key. The prose is corrected; this is the half that stops it drifting back,
         // because nothing held the permit-list before and a future tightening would have broken no test.
         const dir = tree(scratch(), {
-            "workspace.json": JSON.stringify(pointer({ summary: "Governed by the Sleepy Panda portfolio workspace." })),
+            "workspace.json": JSON.stringify(pointer({ summary: "Governed by the Sleepy Panda SRL portfolio workspace." })),
         });
         const { findings } = await inspect(dir, { schema: SCHEMA, ...emptyHost() });
         assert.equal(severities(findings, "fail").length, 0, text(findings));

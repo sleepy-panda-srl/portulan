@@ -491,7 +491,7 @@ own silence is not evidence.** Re-run the table on every Claude Code upgrade.
 Because this repository **is** a plugin whose payload is the whole tree, and that makes the obvious
 location dangerous. Measured: a plugin shipping `hooks/hooks.json` has those hooks **fire for anyone
 who installs it**, in projects unrelated to this one — a positive control ran the same command
-successfully with the plugin absent. A top-level `hooks/` here would push Sleepy Panda's own gate map
+successfully with the plugin absent. A top-level `hooks/` here would push Sleepy Panda SRL's own gate map
 onto every installer's machine, denying *their* pushes and blocking *their* sessions.
 
 `.claude/settings.json`, by contrast, ships as inert data: measured, a plugin carrying one has no

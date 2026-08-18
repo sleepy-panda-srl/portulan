@@ -43,5 +43,5 @@ two disagree about status.
 
 **Provenance.** Written in milestone 2, when the Workspace Definition gave the product layer a slot of
 its own. Before that it was a section of [`../../identity.md`](../../identity.md), which does not scale
-to a workspace covering more than one product — which the Sleepy Panda portfolio workspace (milestone 6)
+to a workspace covering more than one product — which the Sleepy Panda SRL portfolio workspace (milestone 6)
 will.

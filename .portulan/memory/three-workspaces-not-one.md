@@ -20,7 +20,7 @@ Which of *this repository's* directories is which workspace kind:
 |---|---|---|
 | `.portulan/` | `repository` | with the open-core repo |
 | [`../../examples/`](../../examples/) | `demo` | with the open-core repo — the worked example a stranger reads |
-| the Sleepy Panda portfolio workspace | `portfolio` | privately, through the feed at milestone 6 |
+| the Sleepy Panda SRL portfolio workspace | `portfolio` | privately, through the feed at milestone 6 |
 
 _Corrected 2026-08-10: the first two cells read "publicly with the repo — since 2026-07-27" and
 "publicly". That described **reach** in a column that asks about **residence**, and the reach half went
@@ -37,7 +37,7 @@ is a note rather than an edit:** that column asks about **residence**, which has
 three changes of reach.)_
 
 **When to apply:** whenever adding workspace content, before choosing where it goes. The test is who the
-reader is — ourselves building this repository, a stranger evaluating the product, or Sleepy Panda across
+reader is — ourselves building this repository, a stranger evaluating the product, or Sleepy Panda SRL across
 all its products.
 
 **Why this half stayed while the rest went.** What the three kinds *are*, and the two failure modes that

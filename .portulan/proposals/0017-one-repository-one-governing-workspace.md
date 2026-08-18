@@ -6,7 +6,7 @@ nobody can audit. The maintainer ruled the substance before this was drafted. Wh
 measurement behind it, the rails that make it checkable, and the limits it does not close.
 
 **Incident.** No failure — a question, asked before the shape that would answer it wrongly had been
-built. The Sleepy Panda portfolio workspace ships through the private `portulan-internal` feed and names
+built. The Sleepy Panda SRL portfolio workspace ships through the private `portulan-internal` feed and names
 Tipar API among the repositories it covers. Tipar API is a repository, and a repository can carry a
 `.portulan/` workspace of its own. Nothing in the Workspace Definition, in `doctor`, or in the boot skill
 said which of those governs when both exist — so the answer would have been settled by whichever was

@@ -80,8 +80,8 @@ agent does here, and this section is written to be followed by a human once.
    named `<app-slug>.<date>.private-key.pem`, so the glob deliberately does **not** assume the App's name:
 
    ```
-   mv ~/Downloads/*.private-key.pem "$HOME/Sleepy Panda Projects/portulan-private/portulan-agent.pem"
-   chmod 600 "$HOME/Sleepy Panda Projects/portulan-private/portulan-agent.pem"
+   mv ~/Downloads/*.private-key.pem "$HOME/Sleepy Panda SRL Projects/portulan-private/portulan-agent.pem"
+   chmod 600 "$HOME/Sleepy Panda SRL Projects/portulan-private/portulan-agent.pem"
    ```
 
    `zsh: no matches found` here means step 3 has not happened yet — the key was never generated — rather
@@ -104,7 +104,7 @@ agent does here, and this section is written to be followed by a human once.
 
    ```
    echo 'export PORTULAN_BOT_APP_ID=1234567' >> ~/.zshenv
-   echo 'export PORTULAN_BOT_PRIVATE_KEY="$HOME/Sleepy Panda Projects/portulan-private/portulan-agent.pem"' >> ~/.zshenv
+   echo 'export PORTULAN_BOT_PRIVATE_KEY="$HOME/Sleepy Panda SRL Projects/portulan-private/portulan-agent.pem"' >> ~/.zshenv
    ```
 
    **`~/.zshenv`, not `~/.zshrc` — and the difference is the whole point.** An agent's shell is

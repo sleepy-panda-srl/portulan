@@ -19,7 +19,7 @@ holds two different things:
    than redundant: it is duplicated into `spec/README.md`, so the two can drift, and the workspace copy
    is the one nothing checks.
 2. **Which of *this repository's* directories is which kind** — `.portulan/` is the `repository`
-   workspace, [`../../examples/`](../../examples/) is the `demo`, and the Sleepy Panda portfolio ships
+   workspace, [`../../examples/`](../../examples/) is the `demo`, and the Sleepy Panda SRL portfolio ships
    through the private feed at milestone 6. That is not in the spec and must not be: it is this team's
    specific mapping, and a spec that named customer zero's directories would have absorbed exactly the
    specifics thesis 6 says stay with their owner.

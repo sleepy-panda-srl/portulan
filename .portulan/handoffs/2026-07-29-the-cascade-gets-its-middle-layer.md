@@ -6,7 +6,7 @@
 
 **State.** The public-repo mechanism half of milestone 6 is built and open as a pull request: the Pack
 Definition, the first pack, resolution, and the tighten-only merge. `portulan-internal` does not exist
-and the Sleepy Panda product task is untouched — both Gated, both session 1. The row moved `todo →
+and the Sleepy Panda SRL product task is untouched — both Gated, both session 1. The row moved `todo →
 in-progress`; the milestone is **not** closed. Suite 635 → 673, eight recipes green. Supervision:
 session-open APPROVE-WITH-ADJUSTMENTS (12), pre-commit REQUEST-CHANGES (2 blockers + 1 minor), all
 folded in before the push. Two Copilot rounds answered inside the loop's bound: three inline findings
@@ -121,7 +121,7 @@ repository's own gate rules rather than an argument.
 Session 1 is what remains, and the Gated half of it is now unblocked: the feed **exists**. What is left
 is to decide how `rituals/checkpoints` resolves from a private feed when the pack's content is universal
 and lives in the public repo — the question recorded in that repository's README, and one for a
-session-open checkpoint rather than an implementer — then demonstrate it, and run a Sleepy Panda product
+session-open checkpoint rather than an implementer — then demonstrate it, and run a Sleepy Panda SRL product
 task through the full loop from a private-feed install. The amended row now also owes the persona's
 memory scope landing in the adopter's own layer, which exists in no form today. The seam holds with a
 thesis-6 edge: the public repo keeps mechanism only, anything Sleepy-Panda-specific lives in the private

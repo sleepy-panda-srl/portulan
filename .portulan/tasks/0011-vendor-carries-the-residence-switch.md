@@ -88,7 +88,7 @@ is not a suggestion: green at both ends **first**, retire **after**.
       and record it as part of one.
 - [x] Row 7's **fourth demonstration** — parity: one workspace exercised in both residences with no
       functionality difference, and the switch run in both directions. The feed end is the real
-      `portulan-internal`, checked out at `~/Sleepy Panda Projects/portulan-internal-repo`.
+      `portulan-internal`, checked out at `~/Sleepy Panda SRL Projects/portulan-internal-repo`.
       **It found a parity breach**: `compile` keyed on `.portulan` and exited 2 — *could not run* — on
       the feed-side end, where `doctor`, `index` and the workspace's own verify recipe were all
       identical. Fixed in the same change, which is what `0017`'s *"a feature that ever dispatches on

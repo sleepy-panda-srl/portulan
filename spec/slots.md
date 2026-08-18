@@ -324,7 +324,7 @@ at someone else's workspace.
 ## `products[]` — repeated, even though customer zero has one
 
 The criterion says *portfolio-aware: many products per workspace*, and the vision's Reference workspaces
-bullet describes a Sleepy Panda workspace covering **all** Sleepy Panda products. So the product layer is
+bullet describes a Sleepy Panda SRL workspace covering **all** Sleepy Panda SRL products. So the product layer is
 per-product from the start, not a workspace-level field that a later milestone has to unpick.
 
 This is the schema's most deliberate act of resisting its own evidence. Derived faithfully from the only

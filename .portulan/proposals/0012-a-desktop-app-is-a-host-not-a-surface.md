@@ -74,7 +74,7 @@ survives only until someone opens the friendlier window. **A surface that exempt
 is worse than no surface**, because the gate map would still claim to describe the repository.
 
 **4. The model is the user's.** Bring-your-own credentials, at least two providers demonstrated driving
-the same loop. No Sleepy Panda service in the request path. This is `vision.md`'s *LLM-agnostic by
+the same loop. No Sleepy Panda SRL service in the request path. This is `vision.md`'s *LLM-agnostic by
 construction* applied to the one artifact most likely to quietly break it, and it is also what keeps the
 app a **reference host** — a proof the standards work on a host we control end to end — rather than a
 product competing for the seat Claude Desktop already has.
@@ -190,7 +190,7 @@ customer keeps their portulan. Is disposable the standard, or does *thin* mean t
 to build regardless of the cockpit question?
 
 **Q4 — Do signing and update endpoints cross the *no hosted SaaS* line?** A desktop build needs Apple
-notarisation, Windows code signing, and an update feed — Sleepy Panda-operated infrastructure the
+notarisation, Windows code signing, and an update feed — Sleepy Panda SRL-operated infrastructure the
 constitution does not contemplate. Proposed distinction, wanted as a ruling: **release, signing and
 update endpoints carry bits, never workspace content, and are outside the line; anything that receives a
 user's context is inside it.** Worth writing into `vision.md` if he agrees, so the next session does not

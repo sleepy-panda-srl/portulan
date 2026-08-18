@@ -622,7 +622,7 @@ replacing what it matches removes the gate and still reads as a tightening.
 
 **The first pack: [`rituals/checkpoints`](packs/rituals/checkpoints/README.md).** The supervised-build
 ritual this project runs on itself, now a distributable artifact — session-open, pre-commit and
-milestone-close skills, a `supervisor` persona, and the verdict vocabulary. It carries no Sleepy Panda
+milestone-close skills, a `supervisor` persona, and the verdict vocabulary. It carries no Sleepy Panda SRL
 specifics and does not set the adopter's triage boundary, because a ritual that cannot scale down is one
 that gets switched off wholesale.
 
