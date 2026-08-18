@@ -293,7 +293,7 @@ what it *enforces* is the thing an agent must not paper over:
   denying a capability that exists, which is condition 4 of a definition of done pointing the other
   way.)_
 - **The CLI is published, so all eight are one `npx` away.**
-  `npx @sleepy_panda_srl/portulan <subcommand>`, at `0.1.0` since 2026-08-18.
+  `npx @sleepy_panda_srl/portulan <subcommand>`, first published 2026-08-18.
   `npx @sleepy_panda_srl/portulan doctor --help` is the cheapest thing to run first. They also run
   from a checkout, which is how this repository measures them — `init`, which drafts a workspace for
   a team that has none; `new`, which

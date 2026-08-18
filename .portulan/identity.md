@@ -55,7 +55,12 @@ preference: it installs the SAME BYTES.** Re-measured 2026-08-13 on `74240fa` �
 with no exemption. **Re-measured again 2026-08-18 at the first publish, and the roster narrowed:
 `files` stopped being a directory sweep, so `npm pack` produces 73 — every one byte-identical, and
 this time the comparison ran against THE REGISTRY rather than a local pack: the published tarball and
-a fresh `npm pack` of the same tree hash to the same value.** _(First measured 2026-07-31 at 72 files, all 72 identical — recorded then against `0f49868`, **an object that does not resolve in this repository today**, the branch having been squashed at merge; the date is the durable half and the sha is kept only as the original record. The property
+a fresh `npm pack` of the same tree hash to the same value.** _(**Re-measured at the 0.1.1 cut: 74.**
+`cli/pack-identity.mjs` joined the payload after the 0.1.0 publish, so the roster grew by one — the
+count is restated here rather than left standing, per this file's own convention, and the property is
+unchanged: every one of the 74 is byte-identical to its staged blob, which is now railed on every
+commit by the `pack-identity` recipe rather than measured by hand. The 73 above remains the correct
+figure for the tree `0.1.0` was published from, which is `d6498f0` and is what `v0.1.0` tags.)_ _(First measured 2026-07-31 at 72 files, all 72 identical — recorded then against `0f49868`, **an object that does not resolve in this repository today**, the branch having been squashed at merge; the date is the durable half and the sha is kept only as the original record. The property
 strengthened as the package grew; only the count moved, and it is restated rather than left standing,
 because a count is the half of this claim that goes stale silently. **Measure it on a clean checkout:**
 re-measuring inside a working tree with uncommitted edits reports those edits as drift — it did here,

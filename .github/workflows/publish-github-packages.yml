@@ -1,0 +1,103 @@
+# Publish the package to GitHub Packages, under the name that registry forces.
+#
+# ## Why this workflow exists at all, and what it costs
+#
+# The package's real home is npmjs, as `@sleepy_panda_srl/portulan` — that is the name `README.md`
+# documents, the name `npx` resolves, and the one `.portulan/identity.md`'s same-bytes claim is about.
+# GitHub Packages is a SECOND registry, and its npm half requires the scope to equal the repository
+# owner. The owner is `sleepy-panda-srl` with hyphens; the npm organisation is `sleepy_panda_srl` with
+# underscores. There is no name that satisfies both, so this workflow publishes the same tree under a
+# DIFFERENT name, `@sleepy-panda-srl/portulan`.
+#
+# Two consequences, stated here rather than discovered later:
+#
+#   1. **The two tarballs are not byte-identical, and must never be claimed to be.** They differ in
+#      `package.json`'s `name` field, by construction. `pack-identity` compares a pack against the
+#      TREE and is unaffected; what would be false is any sentence saying the two registries serve the
+#      same bytes. They serve the same tree under two names.
+#   2. **GitHub Packages requires a token to install, even for a public package.** So this path does
+#      NOT have the property the npmjs path has and that `README.md` and `CONTRIBUTING.md` both make a
+#      point of — that installing needs no account of ours. It is an additional route for people who
+#      are already inside GitHub's auth, never the documented one.
+#
+# Ruled by the maintainer on 2026-08-18, with both costs above put to him first.
+#
+# Triggered by a published release so the registry entry and the release cannot drift, plus a manual
+# dispatch for a tag whose release predates this workflow.
+name: publish-github-packages
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: The tag to publish (for example v0.1.1)
+        required: true
+        type: string
+
+# `packages: write` is the only elevated grant, and `contents: read` is narrower than the default.
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: publish-github-packages-${{ github.event.release.tag_name || inputs.ref }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.release.tag_name || inputs.ref }}
+          persist-credentials: false
+
+      # No `actions/setup-node`: the runner's node is preinstalled and every other workflow here
+      # relies on that. The `.npmrc` that step would generate is three lines, written below where it
+      # can be read, rather than produced by an action whose output nobody sees.
+      - name: Publish under the owner-scoped name GitHub Packages requires
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          SCOPE='@sleepy-panda-srl'
+          TARGET="$SCOPE/portulan"
+
+          # Rewrite `name` in the working copy only — never committed, and the rewrite is VERIFIED
+          # before anything is published. A publish that silently kept the npmjs name would either
+          # fail on a scope mismatch or, worse, succeed against the wrong registry entry.
+          node -e '
+            const fs = require("fs");
+            const target = process.argv[1];
+            const pkg = JSON.parse(fs.readFileSync("package.json", "utf8"));
+            const was = pkg.name;
+            pkg.name = target;
+            fs.writeFileSync("package.json", JSON.stringify(pkg, null, 2) + "\n");
+            const now = JSON.parse(fs.readFileSync("package.json", "utf8")).name;
+            if (now !== target) { console.error(`rewrite did not take: ${now}`); process.exit(1); }
+            console.log(`name: ${was} -> ${now} (version ${pkg.version})`);
+          ' "$TARGET"
+
+          VERSION="$(node -p 'require("./package.json").version')"
+
+          # Two lines, not three. `always-auth` was removed in npm 9 and this runner is on 11 —
+          # measured: `always-auth is not a valid npm option`. A dead setting in a generated file is
+          # the kind of thing that reads as configuration and is noise.
+          # The token is written as a literal `${NODE_AUTH_TOKEN}` reference, single-quoted so the
+          # SHELL does not expand it; npm expands it at request time, so the secret is never bytes
+          # on disk. `.npmrc` is not in `files`, so it cannot reach the tarball either.
+          printf '%s:registry=https://npm.pkg.github.com\n' "$SCOPE" > .npmrc
+          printf '//npm.pkg.github.com/:_authToken=${NODE_AUTH_TOKEN}\n' >> .npmrc
+
+          # Idempotent by design: a re-run of a published release must not fail the workflow. npm
+          # refuses to overwrite a version, and that refusal is correct rather than an error here.
+          if npm view "$TARGET@$VERSION" version --registry=https://npm.pkg.github.com >/dev/null 2>&1; then
+            echo "$TARGET@$VERSION is already on GitHub Packages — nothing to do."
+            exit 0
+          fi
+
+          npm publish --registry=https://npm.pkg.github.com
+          echo "published $TARGET@$VERSION to GitHub Packages"
