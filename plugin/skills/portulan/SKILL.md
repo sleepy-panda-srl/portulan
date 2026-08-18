@@ -292,8 +292,9 @@ what it *enforces* is the thing an agent must not paper over:
   no generated index" from 2026-07-26 until now, and milestone 5 built one on 2026-07-28 — a sentence
   denying a capability that exists, which is condition 4 of a definition of done pointing the other
   way.)_
-- **The CLI is published, so all eight are one `npx` away** — `npx @sleepy_panda_srl/portulan`, at
-  `0.1.0` since 2026-08-18. They also run from a checkout, which is how this repository measures them — `init`, which drafts a workspace for a team that has none; `new`, which
+- **The CLI is published, so all eight are one `npx` away** — `npx @sleepy_panda_srl/portulan
+  <subcommand>`, at `0.1.0` since 2026-08-18; `npx @sleepy_panda_srl/portulan doctor --help` is the
+  cheapest thing to run first. They also run from a checkout, which is how this repository measures them — `init`, which drafts a workspace for a team that has none; `new`, which
   scaffolds a skill, persona, pack, workspace, gate policy or repo card into a layer you own; `vendor`,
   which materialises a workspace into a host or moves it between residences; `feedback`, which files an
   issue from a report you previewed, seam-scanned before it leaves the machine; `upgrade`, which applies
