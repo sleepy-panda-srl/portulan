@@ -483,6 +483,14 @@ function rebaseMerged({ genuinelyUnmerged = false } = {}) {
     const work = path.join(root, "work");
     const hub = path.join(root, "hub");
     execFileSync("git", ["init", "-q", "--bare", origin]);
+    // **The bare repository's HEAD is set EXPLICITLY, not inherited.** `git init --bare` points HEAD at
+    // whatever `init.defaultBranch` says, which is the HOST's setting: `main` on this machine, `master`
+    // on a stock CI runner. The fixture then pushes `main` and `git remote set-head origin -a` fails
+    // with *"Cannot determine remote HEAD"* wherever the two disagree — so `origin/HEAD` never exists,
+    // and the very base this suite's subject resolves is missing. Measured: the first version of this
+    // fixture passed on this machine and took the whole did-work block red on CI, which is `./gate.mjs`'s
+    // `#131` — paths resolved against the author's layout — in another spelling.
+    execFileSync("git", ["--git-dir", origin, "symbolic-ref", "HEAD", "refs/heads/main"]);
     execFileSync("git", ["clone", "-q", origin, work], { stdio: ["ignore", "pipe", "pipe"] });
     fs.mkdirSync(path.join(work, ".portulan", "handoffs"), { recursive: true });
     fs.writeFileSync(path.join(work, ".portulan", "workspace.json"), MANIFEST);
