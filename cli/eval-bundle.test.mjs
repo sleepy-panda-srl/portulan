@@ -44,9 +44,8 @@ import {
     PAYLOAD,
     EXCLUDED_TOP_LEVEL,
     SELF_EXCLUDED,
-    PATCHED_MANIFESTS,
+    APACHE_MANIFESTS,
     APACHE_NEEDLE,
-    EVAL_LICENSE_ID,
     EVAL_NOTICE,
     CannotRun,
     Refused,
@@ -125,7 +124,7 @@ describe("the pinned rosters, measured with this suite's own instruments", () =>
         assert.deepEqual(overlap, [], "a path ships or it does not — never both");
     });
 
-    test("the payload files carrying the machine-read assertion at HEAD are exactly PATCHED_MANIFESTS", () => {
+    test("the payload files carrying the machine-read assertion at HEAD are exactly APACHE_MANIFESTS", () => {
         // `git grep` against HEAD, limited to the payload minus the self-excluded pair — the
         // independent instrument for the census the cutter re-runs on every cut. `HEAD:` prefixes
         // are stripped; exit 1 (no match) would surface as a throw and fail loudly, which is the
@@ -138,13 +137,13 @@ describe("the pinned rosters, measured with this suite's own instruments", () =>
             .sort();
         assert.deepEqual(
             hits,
-            [...PATCHED_MANIFESTS].sort(),
-            "a payload file carries a machine-read Apache assertion the cutter does not patch — add it to PATCHED_MANIFESTS in cli/eval-bundle.mjs, or stop shipping it",
+            [...APACHE_MANIFESTS].sort(),
+            "a payload file's machine-read Apache assertions have drifted from APACHE_MANIFESTS — reconcile the roster in cli/eval-bundle.mjs, or stop shipping the file",
         );
     });
 
     test("every patched manifest and self-excluded path is inside the payload roster", () => {
-        for (const rel of [...PATCHED_MANIFESTS, ...SELF_EXCLUDED]) {
+        for (const rel of [...APACHE_MANIFESTS, ...SELF_EXCLUDED]) {
             const top = rel.split("/")[0];
             assert.ok(PAYLOAD.includes(top), `${rel} is rostered under ${top}, which is not a payload entry — a patch or exclusion outside the payload is dead configuration`);
         }
@@ -187,22 +186,30 @@ describe("a full issuance cut of this repository", () => {
         assert.equal(fs.readFileSync(path.join(cutDir, "NOTICE"), "utf8"), EVAL_NOTICE);
     });
 
-    test("every patched manifest reads LicenseRef-Portulan-Eval, in every license field", () => {
-        for (const rel of PATCHED_MANIFESTS) {
+    // The inversion of #284, in executable form: the cut no longer rewrites licence metadata, so
+    // every declaring manifest must come through the cut still saying what the public tree says.
+    test("every declaring manifest still reads Apache-2.0 after the cut — nothing rewrites licence metadata", () => {
+        for (const rel of APACHE_MANIFESTS) {
             const manifest = JSON.parse(fs.readFileSync(path.join(cutDir, rel), "utf8"));
-            if (manifest.license) assert.equal(manifest.license, EVAL_LICENSE_ID, rel);
+            if (manifest.license) assert.equal(manifest.license, "Apache-2.0", rel);
             for (const plugin of manifest.plugins ?? []) {
-                if (plugin.license) assert.equal(plugin.license, EVAL_LICENSE_ID, `${rel} plugins[]`);
+                if (plugin.license) assert.equal(plugin.license, "Apache-2.0", `${rel} plugins[]`);
             }
         }
     });
 
-    test("README opens with the banner and its License section describes THIS copy, not Apache", () => {
+    test("LICENSE ships, so the README's own License link resolves inside the bundle", () => {
+        const text = fs.readFileSync(path.join(cutDir, "LICENSE"), "utf8");
+        assert.match(text, /Apache License/, "the shipped LICENSE is not the Apache text");
+    });
+
+    test("README opens with the banner, and its own License section is left exactly as the tree wrote it", () => {
         const text = fs.readFileSync(path.join(cutDir, "README.md"), "utf8");
         assert.ok(text.startsWith("> **EVALUATION COPY — issued to"), "the banner is not the first thing an evaluee reads");
         assert.ok(text.includes(FIXTURE.name) && text.includes(FIXTURE.date), "the banner is not stamped");
-        assert.ok(!text.includes("[Apache-2.0](LICENSE)"), "the License section still asserts Apache and links a file the roster drops");
-        assert.ok(text.includes("EVAL-LICENSE.md"), "the License section does not point at the copy's own instrument");
+        assert.ok(text.includes("EVAL-LICENSE.md"), "the banner does not point at the copy's issuance record");
+        // The section is no longer rewritten, and its LICENSE link now resolves because LICENSE ships.
+        assert.ok(text.includes("[Apache-2.0](LICENSE)"), "the README's own License section was altered; the cut must not touch it");
     });
 
     test("EVAL-STAMP.json carries the recipient, the commit, and a digest that recomputes", () => {
@@ -212,7 +219,7 @@ describe("a full issuance cut of this repository", () => {
         assert.equal(stamp.issued_on, FIXTURE.date);
         assert.equal(stamp.source_commit, probeSha);
         assert.ok(!("term_days" in stamp), "the stamp asserts a term nothing tracks or enforces");
-        assert.equal(stamp.license, EVAL_LICENSE_ID);
+        assert.equal(stamp.license, "Apache-2.0");
         assert.equal(stamp.content_digest, `sha256:${bundleDigest(cutDir)}`, "the digest in the stamp does not recompute from the cut");
     });
 
@@ -222,8 +229,15 @@ describe("a full issuance cut of this repository", () => {
         }
     });
 
-    test("no file in the cut carries the machine-read assertion", () => {
-        assert.deepEqual(filesCarrying(cutDir, APACHE_NEEDLE), []);
+    // Inverted with the guard (#284). This read "no file in the cut carries the machine-read
+    // assertion" while a bundle was a differently-licensed copy; the cut now preserves the public
+    // tree's licence, so the assertion must SURVIVE in exactly the declaring manifests.
+    test("the machine-read assertion survives the cut — the declaring manifests, plus the stamp", () => {
+        // EVAL-STAMP.json is written BY the cut and now records `"license": "Apache-2.0"` itself, so
+        // it joins the list here while `assertCensus` (which runs before the stamp exists) does not
+        // see it. That the stamp agrees with the payload is the point rather than an artefact: the
+        // guard reads it too, so a stamp that disagreed with what it stamps would be refused.
+        assert.deepEqual(filesCarrying(cutDir, APACHE_NEEDLE).sort(), [...APACHE_MANIFESTS, "EVAL-STAMP.json"].sort());
     });
 
     test("the tarball exists and the printed sha256 is the tarball's", () => {
@@ -294,64 +308,64 @@ describe("the guard, fed cuts built to deserve refusal", () => {
         return dir;
     }
 
-    test("a planted unknown assertion is refused, named, with the add-or-stop-shipping menu", () => {
+    // INVERTED with the guard (#284): the refusal is a licence field that is NOT Apache-2.0, and a
+    // self-excluded path is checked directly rather than riding on the old needle side effect.
+    test("a manifest declaring a non-Apache licence is refused, named, with the value it saw", () => {
         const dir = freshCut();
-        fs.writeFileSync(path.join(dir, "spec", "planted.json"), `{\n  ${APACHE_NEEDLE.toString()}\n}\n`);
+        fs.writeFileSync(path.join(dir, "spec", "planted.json"), `{"license": "LicenseRef-Something-Else"}\n`);
         assert.throws(() => auditCut(dir), (error) => {
             assert.ok(error instanceof Refused);
             assert.match(error.message, /spec\/planted\.json/);
-            assert.match(error.message, /does not know about/);
+            assert.match(error.message, /LicenseRef-Something-Else/);
+            assert.match(error.message, /add it to APACHE_MANIFESTS if it should assert, or stop shipping it/);
             return true;
         });
     });
 
-    test("a survived patch target is refused with the patch-FAILED diagnosis, not the unknown one", () => {
+    test("a KNOWN manifest drifting off Apache gets its own diagnosis, not the unknown-file one", () => {
         const dir = freshCut();
-        const rel = PATCHED_MANIFESTS[0];
+        const rel = APACHE_MANIFESTS[0];
         const manifest = JSON.parse(fs.readFileSync(path.join(dir, rel), "utf8"));
-        manifest.license = "Apache-2.0";
+        manifest.license = "LicenseRef-Portulan-Eval";
         fs.writeFileSync(path.join(dir, rel), `${JSON.stringify(manifest, null, 2)}\n`);
         assert.throws(() => auditCut(dir), (error) => {
-            assert.match(error.message, new RegExp(`${rel.replace(/[./]/g, "\\$&")} \\(.*\\) — the manifest patch FAILED`));
+            assert.match(error.message, new RegExp(`${rel.replace(/[./]/g, "\\$&")} — a known manifest declares`));
+            assert.match(error.message, /the bundle carries the public tree's licence/);
             return true;
         });
     });
 
-    test("a self-excluded file appearing in a cut is diagnosed as a failed filter, not a licensing breach", () => {
+    // The backstop that used to be accidental. Under the old presence-guard these files tripped it
+    // because they carry the needle; the inverted guard would not have noticed, so it checks the
+    // paths directly and diagnoses a leak as a failed filter rather than a licensing breach.
+    test("a self-excluded file appearing in a cut is diagnosed as a failed filter, and carries no needle to catch it", () => {
         const dir = freshCut();
         fs.mkdirSync(path.join(dir, "cli"), { recursive: true });
-        fs.writeFileSync(path.join(dir, "cli", "eval-bundle.mjs"), `// planted\nconst needle = '${APACHE_NEEDLE.toString()}';\n`);
+        fs.writeFileSync(path.join(dir, "cli", "eval-bundle.mjs"), "// planted, and deliberately mentioning no licence at all\n");
         assert.throws(() => auditCut(dir), (error) => {
-            assert.match(error.message, /cli\/eval-bundle\.mjs \(.*\) — the self-exclusion FAILED/);
+            assert.match(error.message, /cli\/eval-bundle\.mjs — the self-exclusion FAILED/);
             return true;
         });
-    });
-
-    // One spelling is not a category — proposal 0029, measured on this very guard: the byte form
-    // alone passed all three of the shapes below at the pre-commit checkpoint. Each is caught by
-    // the parsed-JSON detector; the last shape shows the honest edge of its scope.
-    test("the no-space spelling is refused — the byte form alone passed it", () => {
-        const dir = freshCut();
-        fs.writeFileSync(path.join(dir, "spec", "nospace.json"), `{"license":${JSON.stringify("Apache-2.0")}}\n`);
-        assert.throws(() => auditCut(dir), (error) => {
-            assert.match(error.message, /spec\/nospace\.json \(a parsed `license` field\)/);
-            return true;
-        });
-    });
-
-    test("an Apache value in another wording is refused — the category is the value, not the bytes", () => {
-        const dir = freshCut();
-        fs.writeFileSync(path.join(dir, "spec", "worded.json"), `{"license": "Apache License 2.0"}\n`);
-        assert.throws(() => auditCut(dir), /spec\/worded\.json \(a parsed `license` field\)/);
     });
 
     test("a license key at depth is refused — plugins[] is not the only nesting a manifest can grow", () => {
         const dir = freshCut();
-        fs.writeFileSync(path.join(dir, "spec", "nested.json"), `{"components": [{"license":"Apache-2.0"}]}\n`);
-        assert.throws(() => auditCut(dir), /spec\/nested\.json \(a parsed `license` field\)/);
+        fs.writeFileSync(path.join(dir, "spec", "nested.json"), `{"components": [{"license":"MIT"}]}\n`);
+        assert.throws(() => auditCut(dir), /spec\/nested\.json — declares `MIT`/);
     });
 
-    test("a broken .json with no byte form passes — a file no parser reads is not machine-readable JSON", () => {
+    test("an Apache value in another wording is refused — Apache-2.0 is the value, not a family", () => {
+        const dir = freshCut();
+        fs.writeFileSync(path.join(dir, "spec", "worded.json"), `{"license": "Apache License 2.0"}\n`);
+        assert.throws(() => auditCut(dir), /spec\/worded\.json — declares `Apache License 2\.0`/);
+    });
+
+    test("a clean cut passes the inverted guard", () => {
+        const dir = freshCut();
+        auditCut(dir);
+    });
+
+    test("a broken .json passes — a file no parser reads is not machine-readable JSON", () => {
         const dir = freshCut();
         fs.writeFileSync(path.join(dir, "spec", "broken.json"), "{ this is not json, and mentions Apache only in prose\n");
         auditCut(dir);
@@ -390,7 +404,7 @@ describe("fixture repositories — the filter exercised positively, and every re
         // The three census files, each asserting Apache the way the real manifests do — built by
         // concatenation so the needle appears here exactly once, in the import above.
         const asserting = `{\n  ${APACHE_NEEDLE.toString()}\n}\n`;
-        for (const rel of PATCHED_MANIFESTS) file(rel, asserting);
+        for (const rel of APACHE_MANIFESTS) file(rel, asserting);
         // Files at exactly the self-excluded paths, plus a sibling that must survive — the
         // POSITIVE exercise of the filter.
         for (const rel of SELF_EXCLUDED) file(rel, `// planted at ${rel}\n`);
@@ -450,20 +464,20 @@ describe("fixture repositories — the filter exercised positively, and every re
         const { entries } = payloadEntries(root, "HEAD");
         materialize(root, entries, dir);
         assert.throws(() => assertCensus(dir), (error) => {
-            assert.match(error.message, /spec\/extra\.json carries a machine-read Apache assertion and is not in PATCHED_MANIFESTS/);
+            assert.match(error.message, /spec\/extra\.json carries a machine-read Apache assertion and is not in APACHE_MANIFESTS/);
             return true;
         });
     });
 
-    test("a patch target that stopped asserting is refused as stale, not silently skipped", () => {
+    test("a declaring manifest that stopped asserting is refused, not silently skipped", () => {
         const root = fixtureRepo();
-        fs.writeFileSync(path.join(root, PATCHED_MANIFESTS[0]), "{}\n");
+        fs.writeFileSync(path.join(root, APACHE_MANIFESTS[0]), "{}\n");
         git(root, "add", "-A");
         git(root, "commit", "-qm", "quiet");
         const dir = scratch();
         const { entries } = payloadEntries(root, "HEAD");
         materialize(root, entries, dir);
-        assert.throws(() => assertCensus(dir), /no longer carries the assertion — remove the stale entry/);
+        assert.throws(() => assertCensus(dir), /no longer carries the assertion — it must, or the entry is stale/);
     });
 
     test("a symlink in the payload is a refusal by name, never followed and never dropped", () => {
@@ -500,36 +514,12 @@ describe("fixture repositories — the filter exercised positively, and every re
         assert.ok(fs.existsSync(path.join(dir, "b.txt")));
     });
 
-    test("a README that OPENS with the License heading is patched correctly, not sliced from character 11", () => {
-        // The heading at byte 0 is the case where a second definition of "where is the heading"
-        // (an indexOf on "\n## License\n") returns -1 and silently slices the wrong region — the
-        // splice now derives from the same line list the count reads. Raised by a Copilot note.
-        const root = fixtureRepo();
-        fs.writeFileSync(path.join(root, "README.md"), "## License\n\n[Apache-2.0](LICENSE) © nobody.\n");
-        git(root, "add", "-A");
-        git(root, "commit", "-qm", "heading-first");
-        const dir = path.join(scratch(), "portulan-eval");
-        fs.mkdirSync(dir);
-        cut(root, "HEAD", FIXTURE, dir);
-        const text = fs.readFileSync(path.join(dir, "README.md"), "utf8");
-        assert.ok(text.includes("## License\n\nThis copy is an evaluation issue"), "the section body was not replaced in place");
-        assert.ok(!text.includes("[Apache-2.0](LICENSE)"), "the old section survived beside the patch");
-        assert.ok(text.startsWith("> **EVALUATION COPY"), "the banner still lands first");
-    });
-
-    test("a README without exactly one License heading is could-not-run, naming the repair", () => {
-        const root = fixtureRepo();
-        fs.writeFileSync(path.join(root, "README.md"), "# Fixture\n\nno license heading at all\n");
-        git(root, "add", "-A");
-        git(root, "commit", "-qm", "headless");
-        const dir = path.join(scratch(), "portulan-eval");
-        fs.mkdirSync(dir);
-        assert.throws(() => cut(root, "HEAD", FIXTURE, dir), (error) => {
-            assert.ok(error instanceof CannotRun);
-            assert.match(error.message, /0 `## License` heading/);
-            return true;
-        });
-    });
+    // Two tests stood here and are RETIRED with `patchReadmeLicense` (#284): one proving the
+    // section was spliced in place when the heading sat at byte 0, one proving a README without
+    // exactly one `## License` heading was could-not-run. The cut no longer touches that section —
+    // the bundle ships the public tree's licence, so the tree's own wording is already correct and
+    // its `LICENSE` link now resolves. The replacement guarantee is asserted positively above, in
+    // "README opens with the banner, and its own License section is left exactly as the tree wrote it".
 
     // The supervisor's ruling of 2026-08-17: terms ship FROM the payload commit, one sha for
     // both. The three tests below are the ruling's own demonstrations — the pin holding, the
