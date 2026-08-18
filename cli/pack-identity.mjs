@@ -59,7 +59,19 @@ function packedPaths(root) {
     }
     const files = parsed?.[0]?.files;
     if (!Array.isArray(files) || files.length === 0) throw new CannotRun("`npm pack` reported no files — refusing to report a green over an empty roster");
-    return files.map((f) => f.path);
+    // The SHAPE is checked, not assumed. `files` is npm's JSON, and a changed schema or an odd entry
+    // would otherwise yield `undefined` paths that crash further down — surfacing as an uncaught
+    // exception the runner reads as a red FINDING about the package. npm's output is an input like any
+    // other; a roster this tool cannot read is could-not-run.
+    const paths = [];
+    for (const [i, entry] of files.entries()) {
+        const rel = entry?.path;
+        if (typeof rel !== "string" || rel.length === 0) {
+            throw new CannotRun(`\`npm pack\` reported an entry at index ${i} with no usable \`path\` — its JSON shape is not what this rail reads`);
+        }
+        paths.push(rel);
+    }
+    return paths;
 }
 
 // The blob is read from the INDEX (`git show :<path>`), not from HEAD, and the difference is the whole
@@ -142,7 +154,12 @@ function main(argv, stdout, stderr) {
             stderr.write(`pack-identity: could not run — ${error.message}\n`);
             return 2;
         }
-        throw error;
+        // An unexpected throw is COULD-NOT-RUN, never a finding. Rethrowing would exit non-contractually
+        // — node's own code, typically 1 — and the runner would read a crash in this rail as a verdict
+        // about the package's bytes. `1` is reserved for a finding; this repository has a commit by that
+        // name. The diagnostic names the rail so the exit is traceable to the thing that broke.
+        stderr.write(`pack-identity: could not run — unexpected ${error?.name ?? "error"}: ${String(error?.message ?? error).split("\n")[0]}\n`);
+        return 2;
     }
     const { packed, untracked, differing } = result;
     if (untracked.length === 0 && differing.length === 0) {
