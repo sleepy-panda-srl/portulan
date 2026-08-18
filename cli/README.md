@@ -17,8 +17,10 @@ at all, which is what milestone 7 named as undemonstrated and
 taken through, and it still works; what changed is that it is no longer the only one.
 [`../.portulan/identity.md`](../.portulan/identity.md) carries what the `npx` path buys — the same
 bytes — and that is now **measured against the registry rather than against `npm pack` alone**: the
-published tarball and a fresh pack hash identically, all 73 files byte-for-byte
-([#149](https://github.com/sleepy-panda-srl/portulan/issues/149)).
+published tarball and a fresh pack hash identically, every file byte-for-byte
+([#149](https://github.com/sleepy-panda-srl/portulan/issues/149)). _(The roster the package ships is
+narrower than the tree and is not restated here as a number — `npm pack --dry-run` derives it, and a
+hand-copied count is the thing that keeps going wrong in this file.)_
 
 **All eight dispatch, as of milestone 7 session 9.** `doctor`, `compile` and `index` exist because
 milestones 2, 4 and 5 needed them; `init` was built at milestone 7 session 1, `new` at session 2,

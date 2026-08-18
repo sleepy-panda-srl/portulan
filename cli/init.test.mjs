@@ -489,7 +489,7 @@ describe("the draft claims no capability it does not have", () => {
     // recommends the npx path or the checkout path is a product decision nobody has taken, and a test
     // asserting either would invent one. The honest state is that the prohibition expired and no
     // obligation replaced it.
-    test("a draft may now name the published command — the prohibition expired with the publish", async () => {
+    test("init still drafts a workspace once the npx prohibition is gone", async () => {
         const dir = scratch();
         await run(["--residence", "in-repo", dir], harness().options);
         // The draft still validates, which is the property the retired test was protecting from the

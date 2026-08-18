@@ -52,7 +52,10 @@ runs as `node cli/<tool>.mjs` straight from a clone.
 **The `npx` path IS an install, and having no build step makes that a checkable claim rather than a
 preference: it installs the SAME BYTES.** Re-measured 2026-08-13 on `74240fa` — `npm pack` produces
 **114** files and **all 114 are byte-identical to `git show HEAD:<path>`**, `package.json` included,
-with no exemption. _(First measured 2026-07-31 at 72 files, all 72 identical — recorded then against `0f49868`, **an object that does not resolve in this repository today**, the branch having been squashed at merge; the date is the durable half and the sha is kept only as the original record. The property
+with no exemption. **Re-measured again 2026-08-18 at the first publish, and the roster narrowed:
+`files` stopped being a directory sweep, so `npm pack` produces 73 — every one byte-identical, and
+this time the comparison ran against THE REGISTRY rather than a local pack, the published tarball and
+a fresh pack hashing the same.** _(First measured 2026-07-31 at 72 files, all 72 identical — recorded then against `0f49868`, **an object that does not resolve in this repository today**, the branch having been squashed at merge; the date is the durable half and the sha is kept only as the original record. The property
 strengthened as the package grew; only the count moved, and it is restated rather than left standing,
 because a count is the half of this claim that goes stale silently. **Measure it on a clean checkout:**
 re-measuring inside a working tree with uncommitted edits reports those edits as drift — it did here,

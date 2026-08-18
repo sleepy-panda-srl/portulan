@@ -51,13 +51,13 @@ records how things were found. This is per *release* and records what a reader g
 
   **The same-bytes claim is now measured against the registry rather than against `npm pack` alone.**
   The published tarball and a fresh pack of the same tree hash identically —
-  `b3790b7159b9e3ba7199c6901a01cee554fe6a3c` — and all 73 files compare byte-for-byte
+  `b3790b7159b9e3ba7199c6901a01cee554fe6a3c` — and every file in it compares byte-for-byte
   ([#149](https://github.com/sleepy-panda-srl/portulan/issues/149), where the measurement also
   corrects this repository's recorded belief that a tarball hash cannot be reproducible: true of
   `tar`, not of `npm pack`, which normalises mtimes and ordering).
 
-  What the package contains is narrower than what the repository holds: 73 files, no test suite, no
-  fixtures, and none of the evaluation-bundle issuer machinery — an npm consumer receives the eight
+  What the package contains is narrower than what the repository holds: no test suite, no fixtures,
+  and none of the evaluation-bundle issuer machinery — an npm consumer receives the eight
   subcommands, not the stamp press.
 
 ## 0.1.0 — 2026-08-18
