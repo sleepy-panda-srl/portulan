@@ -14,6 +14,7 @@
 - [A mechanical revert is not a narrative revert](memory/a-mechanical-revert-is-not-a-narrative-revert.md) — rule
 - [A plugin payload can enforce on strangers](memory/a-plugin-payload-can-enforce-on-strangers.md) — rule
 - [A public criterion must be demonstrable from this repo](memory/a-public-criterion-must-be-demonstrable-from-this-repo.md) — rule
+- [A published window cannot be unpublished](memory/a-published-window-cannot-be-unpublished.md) — decision
 - [A recorded limit is not a managed limit](memory/a-recorded-limit-is-not-a-managed-limit.md) — rule
 - [A review is awaited not just resolved](memory/a-review-is-awaited-not-just-resolved.md) — rule
 - [A review loop needs a bound](memory/a-review-loop-needs-a-bound.md) — rule
@@ -28,7 +29,6 @@
 - [Every pull request carries a label](memory/every-pull-request-carries-a-label.md) — rule
 - [Every session ends with a handoff](memory/every-session-ends-with-a-handoff.md) — rule
 - [Readme map must match shape](memory/readme-map-must-match-shape.md) — rule
-- [Repo is private until flip clearance](memory/repo-is-private-until-flip-clearance.md) — decision
 - [Three workspaces not one](memory/three-workspaces-not-one.md) — reference
 - [Two layers need two jobs](memory/two-layers-need-two-jobs.md) — rule
 - [Verify preconditions fail closed](memory/verify-preconditions-fail-closed.md) — rule

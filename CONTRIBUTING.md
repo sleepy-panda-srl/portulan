@@ -7,8 +7,10 @@ rather than leaving you to infer it from a closed pull request.
 
 > **Reachability, restated for the second public window — read this before the sections below.** This
 > repository is **public**: it was public 27 July – 3 August 2026, private from **3 August 2026**, and is
-> open again; forking is enabled and an unauthenticated request succeeds. So everything below describes a
-> posture that is live rather than conditional, and the paths it names are open to anyone. Changing that
+> open again, so an unauthenticated request reaches it. **Forking is a separate setting from visibility** —
+> a public repository may still have it switched off, so the fork control on the repository page is the
+> live answer and this line is not. So everything below describes a posture that is live rather than
+> conditional, and the paths it names are open to anyone. Changing that
 > is a repository-settings change: Gated, and the maintainer's alone. The setting has now moved **three**
 > times, which is the reason this notice exists at all — trust a fresh check over this line.
 

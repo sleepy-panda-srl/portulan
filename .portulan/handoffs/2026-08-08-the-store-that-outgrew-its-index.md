@@ -38,7 +38,7 @@ established. **Merging them would have bought bytes and lost precision**, which 
 exists to refuse.
 
 **3. Contradiction — one, surfaced and not resolved.**
-[`repo-is-private-until-flip-clearance`](../memory/repo-is-private-until-flip-clearance.md) says the
+[`repo-is-private-until-flip-clearance`](../memory/a-published-window-cannot-be-unpublished.md) says the
 repository *"went public"* and reasons in the present tense. **It is private** — `private=true`,
 `visibility=private`, `forks=0`, unauthenticated `GET` returns **404**, measured rather than recalled. The
 flip back happened 2026-08-03 and the window 27 Jul – 3 Aug was world-readable.

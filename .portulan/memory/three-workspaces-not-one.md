@@ -28,7 +28,7 @@ false when the repository flipped back to **private on 2026-08-03** (public wind
 2026-08-03). Where each workspace ships is unchanged; what a stranger can reach today is nothing. Both
 cells were fixed together — one is the other's sibling, and fixing the row that was cited while leaving
 the row beside it is the class [`../proposals/0020-a-fix-is-not-done-at-the-site-it-was-found.md`](../proposals/0020-a-fix-is-not-done-at-the-site-it-was-found.md)
-names. See [`repo-is-private-until-flip-clearance.md`](repo-is-private-until-flip-clearance.md)._
+names. See [`a-published-window-cannot-be-unpublished.md`](a-published-window-cannot-be-unpublished.md)._
 
 _(Further note 2026-08-17, the corrected text above left standing: the repository is **public again**, so
 "what a stranger can reach today is nothing" is the record of the private window and not the present —
