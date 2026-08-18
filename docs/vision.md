@@ -8,7 +8,7 @@
 
 Portulan is an **operating framework for agentic engineering** — the tailored context, standards,
 gates, and institutional memory a team needs so any coding agent works *their* way. It is an
-**open-core product by Sleepy Panda Works** that any team, any company, any product domain (web,
+**open-core product by Sleepy Panda** that any team, any company, any product domain (web,
 mobile, gaming, embedded) can adopt. It distills, in fresh expression, operating concepts proven
 in real production engineering practice.
 

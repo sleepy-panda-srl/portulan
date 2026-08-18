@@ -1,4 +1,4 @@
-# Identity — Sleepy Panda Works, building Portulan
+# Identity — Sleepy Panda, building Portulan
 
 > The **identity slot** ([`../spec/workspace.schema.json`](../spec/workspace.schema.json)): who this team
 > is and what it works with — the first thing an agent should read after the kernel. Identity is policy:
@@ -12,7 +12,7 @@
 
 ## Who
 
-**Sleepy Panda Works** (Sleepy Panda SRL), a small product studio. On this repository the team is one
+**Sleepy Panda** (Sleepy Panda SRL), a small product studio. On this repository the team is one
 human maintainer who owns every decision, plus coding agents implementing under the supervised-build
 protocol in [`../docs/plan.md`](../docs/plan.md): an implementer proposes, a **fresh-context** supervisor
 grades against the constitution, and the human merges.
