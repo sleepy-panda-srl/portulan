@@ -14,7 +14,7 @@ this validator counted seven. **A host expands a declared skills root exactly on
 
 `.claude-plugin/plugin.json` now declares **`./packs/rituals/checkpoints/skills/`**, and the same
 read-back reports **`Skills (7)`**, naming `pre-commit`, `session-open` and `milestone-close`. That is
-[#134](https://github.com/sleepy-panda-works/portulan/issues/134)'s clause (b) — a composed pack's skill
+[#134](https://github.com/sleepy-panda-srl/portulan/issues/134)'s clause (b) — a composed pack's skill
 invoked the way a core skill is — demonstrated rather than asserted.
 
 The task stays **MET** and its acceptance criteria are untouched: what it asked for is the walk that

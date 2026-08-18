@@ -13,7 +13,7 @@ the residence ruling, a different event; a dated citation here would have sent a
 
 ## What landed
 
-[#269](https://github.com/sleepy-panda-works/portulan/issues/269) — `cli/gate.mjs` read the policy this
+[#269](https://github.com/sleepy-panda-srl/portulan/issues/269) — `cli/gate.mjs` read the policy this
 workspace **declares** where `cli/compile.mjs` enforces the one it **yields**. The PreToolUse hook walked
 `.portulan/gates.json` alone while the permission rules compiled beside it came from the composed set, so
 a pack-contributed gate was enforced by the layer that cannot say why and invisible to the layer whose
@@ -102,7 +102,7 @@ observed it was the first where every reported number matched the supervisor's t
 
 ## Where this leaves the tree
 
-**PR [#272](https://github.com/sleepy-panda-works/portulan/pull/272) open at `4af99d8`, unmerged — the
+**PR [#272](https://github.com/sleepy-panda-srl/portulan/pull/272) open at `4af99d8`, unmerged — the
 maintainer merges, and #269 stays OPEN until he does.** `mergeStateStatus` is `BLOCKED` on unresolved threads, which is
 `required_conversation_resolution` doing its job: the App cannot resolve threads, so all four carry
 replies and none is resolved by the party that answered it.
@@ -116,7 +116,7 @@ is not needed and the threshold for revisiting it is stated rather than left to 
 The gate map's honest-holes list moves **six → seven**: the hook composes from the root derived from the
 manifest's `tree` and wires no discovery, so a pack resolving only from the host cache reaches a bare
 `compile` and not this hook. Which resolution set is right for a *rail* is
-[#264](https://github.com/sleepy-panda-works/portulan/issues/264)'s question and was not decided here.
+[#264](https://github.com/sleepy-panda-srl/portulan/issues/264)'s question and was not decided here.
 
 **Still open by name, untouched:** #264, #266, #268, #270, and **#265 routed to the maintainer** as a
 policy question — whether a change to a pack's gate fragment owes a version bump — with nothing in the

@@ -1,6 +1,6 @@
 **type:** rule
 **scope:** workspace — anyone adopting a rule here that no machine yet enforces
-**provenance:** `form=link` `href=https://github.com/sleepy-panda-works/portulan/pull/8`
+**provenance:** `form=link` `href=https://github.com/sleepy-panda-srl/portulan/pull/8`
 — proposal `0002` was accepted on 2026-07-25 and its two-form provenance mandate written into the spec,
 the schema, and two core templates the same day. When `doctor` ran against this workspace for the first
 time one session later, **three of the five rules here did not satisfy it**: two written before the

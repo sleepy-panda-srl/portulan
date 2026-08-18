@@ -1,8 +1,8 @@
 # Handoff — two sessions built one module, and the order decided itself
 
 2026-08-09, the pack-root half of row 7's discovery clause
-([#123](https://github.com/sleepy-panda-works/portulan/issues/123)), rebuilt on top of
-[#181](https://github.com/sleepy-panda-works/portulan/pull/181) after both landed on the same file.
+([#123](https://github.com/sleepy-panda-srl/portulan/issues/123)), rebuilt on top of
+[#181](https://github.com/sleepy-panda-srl/portulan/pull/181) after both landed on the same file.
 
 ## The collision, and why this branch was rebuilt rather than rebased
 

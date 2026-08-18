@@ -1,6 +1,6 @@
 # One repository, one governing workspace
 
-**Date:** 2026-07-30 · **Pull request:** [#135](https://github.com/sleepy-panda-works/portulan/pull/135) ·
+**Date:** 2026-07-30 · **Pull request:** [#135](https://github.com/sleepy-panda-srl/portulan/pull/135) ·
 **Milestone:** none — a ruling recorded and railed; M6 and M7 amendments are drafted, not applied.
 
 ## What this session was for
@@ -52,7 +52,7 @@ Both are worth carrying, because both were invisible from the design and obvious
 `doctor` enforces **nine** conditional constraints the schema cannot express. `spec/README.md` said
 seven — the 2.6 `personas` pair was never added. `spec/slots.md` said five, stale by two bumps. **Nothing
 was wrong in the mechanism**; the prose about it was wrong in two places, which is
-[#133](https://github.com/sleepy-panda-works/portulan/issues/133)'s class, and the sibling ruling of
+[#133](https://github.com/sleepy-panda-srl/portulan/issues/133)'s class, and the sibling ruling of
 2026-07-27 is why both were fixed in one stroke. `spec/README.md` now also records that 2.7 adds nothing
 to that list, and why.
 

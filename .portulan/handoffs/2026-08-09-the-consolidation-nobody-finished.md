@@ -1,7 +1,7 @@
 # Handoff — the consolidation nobody finished
 
 **Off the milestone row. Full lane** — a doctrine record, and the one this repository's review process
-runs on. Pull request [#202](https://github.com/sleepy-panda-works/portulan/pull/202), taken over from an
+runs on. Pull request [#202](https://github.com/sleepy-panda-srl/portulan/pull/202), taken over from an
 abandoned branch on the maintainer's instruction to complete or discard it.
 
 ## What was found
@@ -80,7 +80,7 @@ diff shows only as absence — so the whole review is *where did this go*, not *
 **The notes that proved the amendment came through the amended channel.** Findings 3, 4 and 5 all arrived
 as notes Copilot suppressed as low confidence, promoted to gating threads by the shape-1 machinery. Under
 rule 3 as it read until 2026-08-07 each would have been a non-blocking line in a review body — and
-[#201](https://github.com/sleepy-panda-works/portulan/pull/201), merged an hour earlier the same day, is
+[#201](https://github.com/sleepy-panda-srl/portulan/pull/201), merged an hour earlier the same day, is
 the change that stopped [`../gate-map.md`](../gate-map.md) denying that promotion. **The channel the gate
 map had been calling non-blocking produced every finding in this pull request that touched meaning**, and
 the inline channel produced one citation-style fix. That is one pull request and not a rate; it is

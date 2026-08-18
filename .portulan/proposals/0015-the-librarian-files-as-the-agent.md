@@ -109,7 +109,7 @@ checkpoints. What this change *can* do, and does:
 
 ## Provenance
 
-`form=link` `href=https://github.com/sleepy-panda-works/portulan/pull/81` — the change that builds the
+`form=link` `href=https://github.com/sleepy-panda-srl/portulan/pull/81` — the change that builds the
 scheduled librarian, read against `.portulan/tools/README.md`'s 2026-07-26 measurement and GitHub's
 documented recursion guard. Written once the pull request existed, and the reason it was not written
 earlier is worth keeping: the first draft **guessed** the number as `#80` and the guess was wrong —
@@ -121,4 +121,4 @@ existed, nothing had filed this.
 **Decision.** Marius Cetanas — **accepted, 2026-07-28**, choosing route (a) over (b) and (c) at this
 session's opening checkpoint.
 
-**Pull request:** [#81](https://github.com/sleepy-panda-works/portulan/pull/81) — the change that filed this.
+**Pull request:** [#81](https://github.com/sleepy-panda-srl/portulan/pull/81) — the change that filed this.

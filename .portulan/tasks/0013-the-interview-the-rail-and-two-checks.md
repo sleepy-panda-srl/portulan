@@ -1,7 +1,7 @@
 # Task 0013 — the interview, the records rail, and the two checks `doctor` never made
 
 **Lane:** full · **Opened:** 2026-08-11, milestone 7 session 7, at the session-open checkpoint
-**Verify recipe:** `tests` · **Status:** DELIVERED, 2026-08-11, milestone 7 session 7 — [#227](https://github.com/sleepy-panda-works/portulan/pull/227), awaiting review
+**Verify recipe:** `tests` · **Status:** DELIVERED, 2026-08-11, milestone 7 session 7 — [#227](https://github.com/sleepy-panda-srl/portulan/pull/227), awaiting review
 
 > Four of row 7's remaining items — **the four the maintainer chose at session open, over closing the
 > row on a narrowed criterion** — taken together because none of them touches another's files.
@@ -16,7 +16,7 @@ Row 7 of [`../../docs/plan.md`](../../docs/plan.md) carries all four:
 
 - **`doctor` validates what `new` scaffolds** — "a skill's frontmatter, a persona against its
   five-part contract, a pack against its schema, and **the persona↔agent binding nothing checks
-  today**." Three of the four landed at session 2 ([#150](https://github.com/sleepy-panda-works/portulan/pull/150)); the binding is the one left.
+  today**." Three of the four landed at session 2 ([#150](https://github.com/sleepy-panda-srl/portulan/pull/150)); the binding is the one left.
 - **`doctor` scores agent legibility** — the 2026-07-28 amendment, "the audit
   [`vision.md`](../../docs/vision.md)'s influence map calls the **unclaimed niche**, reading the
   `affordances` slot that is its input."
@@ -238,7 +238,7 @@ that distinction is doctrine here.
 ## What M7 still owes after this
 
 `upgrade` · clause (b) parity's adopter half
-([#184](https://github.com/sleepy-panda-works/portulan/issues/184)) · and **three of six**
+([#184](https://github.com/sleepy-panda-srl/portulan/issues/184)) · and **three of six**
 demonstrations — D1, D2 and D5, none of them blocked on anyone but a session.
 
 ## Context

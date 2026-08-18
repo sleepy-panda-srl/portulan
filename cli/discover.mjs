@@ -11,7 +11,7 @@
 //
 // ## What this closes, and what it deliberately leaves open
 //
-// [#134](https://github.com/sleepy-panda-works/portulan/issues/134)'s boot half: a workspace
+// [#134](https://github.com/sleepy-panda-srl/portulan/issues/134)'s boot half: a workspace
 // delivered by a private feed was invisible to `/portulan`, because the boot looked at exactly one
 // path and nothing anywhere resolved `governed_by`. The pointer kind landed at Workspace Definition
 // 2.7 with proposal `0017` and named the governing workspace; nothing dereferenced the name.
@@ -19,7 +19,7 @@
 // **`--pack-root` IS wired to this file**, and this paragraph said the opposite until 2026-08-12. It
 // read *"`--pack-root` is NOT wired to this file … nothing here adds a root at all"*, which was true
 // when written and stopped being true at milestone 7 session 4, when
-// [#123](https://github.com/sleepy-panda-works/portulan/issues/123)'s half landed `resolutionRoots`
+// [#123](https://github.com/sleepy-panda-srl/portulan/issues/123)'s half landed `resolutionRoots`
 // here — a stale sentence that survived a session because the change that falsified it added a
 // function below rather than editing the header above it. Corrected in the same stroke as the union,
 // whose whole subject is a rule with more carriers than its author remembered.

@@ -70,7 +70,7 @@ Written at the same level of detail, because a legibility report that lists only
   all — that one stands, and has already cost this repository two dead pointers that survived several
   reviews. The wrong-case one **closed 2026-07-30**: resolution moved from the filesystem to
   `git ls-files --cached`, so a link now resolves if the repository carries it and not if this disk does
-  ([#121](https://github.com/sleepy-panda-works/portulan/issues/121)). What an agent may now rely on is
+  ([#121](https://github.com/sleepy-panda-srl/portulan/issues/121)). What an agent may now rely on is
   narrower than "every target is tracked", and the difference is the kind that matters: a green `links`
   means every relative target resolves to **something the repository carries** — a tracked file, or a
   directory holding at least one tracked file, since git records no directory of its own. So it holds in

@@ -27,7 +27,7 @@ remembered at open time — a branch that was in sync when it was reviewed is be
 else lands. One command answers it, from the remote and without a fetch:
 
 ```
-gh api repos/sleepy-panda-works/portulan/compare/main...<head> --jq .behind_by
+gh api repos/sleepy-panda-srl/portulan/compare/main...<head> --jq .behind_by
 ```
 
 Zero is the only acceptable value. Locally the same question is `git fetch origin main && git merge-base

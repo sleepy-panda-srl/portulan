@@ -6,7 +6,7 @@ ships now is a doctrine carrier for a convention the record layer already practi
 
 ## Incident
 
-On [#222](https://github.com/sleepy-panda-works/portulan/pull/222) the change's own records — the handoff
+On [#222](https://github.com/sleepy-panda-srl/portulan/pull/222) the change's own records — the handoff
 and the Session-log entry — were **factually wrong four times, while all ten verify recipes stayed
 green**:
 
@@ -72,7 +72,7 @@ so the cheapest repair is reached for first:
 1. **Delete the figure** and point at the live output. `.portulan/verify/README.md` removed its recipe
    count because *"`tests.sh` prints the live one on every run and that carrier cannot be wrong"*. This
    is the best repair and it is free.
-2. **Generate it** — [#187](https://github.com/sleepy-panda-works/portulan/issues/187), *Derive numbers
+2. **Generate it** — [#187](https://github.com/sleepy-panda-srl/portulan/issues/187), *Derive numbers
    in prose from the code that holds them*, already open and already scored against real defects.
    **This proposal does not re-propose it**; a second design carrier of #187 would be the two-carrier
    defect committed on the deliverable itself.
@@ -151,7 +151,7 @@ caught all four defects — at a demonstrated price of three REQUEST-CHANGES rou
 ## Provenance
 
 `form=link`
-`href=`[`https://github.com/sleepy-panda-works/portulan/pull/222`](https://github.com/sleepy-panda-works/portulan/pull/222)
+`href=`[`https://github.com/sleepy-panda-srl/portulan/pull/222`](https://github.com/sleepy-panda-srl/portulan/pull/222)
 — the change whose own records were wrong four times while every recipe stayed green, and whose
 pre-commit passes caught all four. In-repo and resolvable by anyone who can read this rule; no client
 material, so no seal is needed.
@@ -159,4 +159,4 @@ material, so no seal is needed.
 **Decision.** PROPOSED — awaiting the maintainer, and **Q1 gates the rail**. The doctrine carrier and the
 control-case clause stand or fall on their own.
 
-**Pull request:** [#223](https://github.com/sleepy-panda-works/portulan/pull/223) — the change that filed this.
+**Pull request:** [#223](https://github.com/sleepy-panda-srl/portulan/pull/223) — the change that filed this.

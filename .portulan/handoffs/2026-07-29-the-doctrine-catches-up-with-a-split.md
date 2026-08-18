@@ -1,7 +1,7 @@
 # Handoff — the doctrine catches up with a split it did not see coming
 
 **Date:** 2026-07-29 · **post-M6-session-0, no milestone row touched** · Branch
-`per-agent-memory-lands-in-row-7` · closes [#98](https://github.com/sleepy-panda-works/portulan/issues/98)
+`per-agent-memory-lands-in-row-7` · closes [#98](https://github.com/sleepy-panda-srl/portulan/issues/98)
 
 **State.** `main` at `c6b6a25`, all eight recipes green, seam clean. **No criterion moves.** This is the
 doctrine half of a ruling whose row halves were already in the tree.
@@ -10,9 +10,9 @@ doctrine half of a ruling whose row halves were already in the tree.
 
 **Two sessions put the same question to the maintainer within the hour, neither knowing of the other.**
 The milestone-6 session asked and was told to **expand row 6**; that amendment was graded by a fresh
-Fable 5 context and merged in [#105](https://github.com/sleepy-panda-works/portulan/pull/105). This
+Fable 5 context and merged in [#105](https://github.com/sleepy-panda-srl/portulan/pull/105). This
 session asked and was told **milestone 7**, recorded the ruling on #98, and opened
-[#109](https://github.com/sleepy-panda-works/portulan/pull/109) against that row.
+[#109](https://github.com/sleepy-panda-srl/portulan/pull/109) against that row.
 
 Neither session was wrong about what it had been told. **Both were wrong to believe they had the whole
 answer.** When the collision surfaced it went back to him rather than being resolved by either, and he
@@ -42,7 +42,7 @@ should start resolving to something. Both were half-answers.
 question removed rather than left reading as open. `0016`'s status note records the same. That is all —
 the record of the split itself lives in
 [`docs/milestones/m06.md`](../../docs/milestones/m06.md) via
-[#112](https://github.com/sleepy-panda-works/portulan/pull/112), which is the milestone-6 session's to
+[#112](https://github.com/sleepy-panda-srl/portulan/pull/112), which is the milestone-6 session's to
 own and deliberately not reached into from here.
 
 ## Corrections this branch made to itself, before and after the ruling

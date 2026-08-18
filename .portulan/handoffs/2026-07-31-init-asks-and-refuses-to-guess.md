@@ -126,7 +126,7 @@ what it found, in one sentence.
 the guarantee reachable only when the read path happened not to fire first — and *a guarantee that
 depends on which check runs first is not a guarantee*. `residenceAt` now walks `.portulan` and
 `workspace.json` with `lstatSync` before it reads anything, and reports `symlink` as its own state.
-**This is the sibling class this repository already has a rule for** ([#91](https://github.com/sleepy-panda-works/portulan/issues/91)'s
+**This is the sibling class this repository already has a rule for** ([#91](https://github.com/sleepy-panda-srl/portulan/issues/91)'s
 shape: a fix that misses its siblings), and the sibling here was one function away.
 
 **Round 7, a thread and a note that are one defect in two places: both walkers read *any* `lstat`
@@ -177,8 +177,8 @@ All to the maintainer, before a file was written, and all answered.
 - **The interview: decide at close.** What ships is the substrate — flags and `--answers` — because a
   prompt loop cannot be run by CI, by a test, or by a headless host. Whether that satisfies
   `docs/vision.md`'s *interview + codebase scan* is his call when the demonstration is actually run.
-- **[#150](https://github.com/sleepy-panda-works/portulan/issues/150) and
-  [#151](https://github.com/sleepy-panda-works/portulan/issues/151): both stay open.** Neither moves
+- **[#150](https://github.com/sleepy-panda-srl/portulan/issues/150) and
+  [#151](https://github.com/sleepy-panda-srl/portulan/issues/151): both stay open.** Neither moves
   this session — see the correction below.
 
 ## The stale referent, corrected rather than repeated
@@ -223,7 +223,7 @@ what it says; run it, and you check what it does.* Same lesson as session 0's sy
 - **Absent and invalid are different answers.** `--governed-by ""` was *given*, so telling the adopter
   to pass the flag they just passed sends them to the wrong place. It takes the slug refusal, which
   also keeps `init` from ever emitting the shape
-  [#141](https://github.com/sleepy-panda-works/portulan/issues/141) still mis-reports.
+  [#141](https://github.com/sleepy-panda-srl/portulan/issues/141) still mis-reports.
 - **An unreadable manifest is could-not-run, never a licence to overwrite.** Reading a parse failure as
   "no workspace here" would make a corrupt policy layer the one case this tool overwrites — the case
   where it knows least and overwriting costs most.
@@ -244,7 +244,7 @@ that catches this class; fixed here, with what it said recorded in place.
 ## The default draft is RED under a plain `doctor` — put to the maintainer, and ruled
 
 Clause (a) says the checkpoint binding is **opt-out**, so `init` composes a pack by default. Nothing
-resolves a pack ([#123](https://github.com/sleepy-panda-works/portulan/issues/123)), and `doctor`
+resolves a pack ([#123](https://github.com/sleepy-panda-srl/portulan/issues/123)), and `doctor`
 **fails** a declared pack it cannot resolve rather than reporting it unverifiable — so the adopter's
 literal next command after `init` is red, on a workspace the tool just wrote.
 
@@ -260,7 +260,7 @@ framed around: clause (a) says *out of the box, opt-out*, and both alternatives 
 the box when you can point at the pack*, which is a criterion change. **So the red stays and the tool's
 job is to predict it rather than to avoid it.** The cost is named rather than designed away: an adopter
 who ignores three lines of output gets a red first run. It closes when discovery does
-([#123](https://github.com/sleepy-panda-works/portulan/issues/123)) — at which point this becomes an
+([#123](https://github.com/sleepy-panda-srl/portulan/issues/123)) — at which point this becomes an
 ordinary green and no criterion moved to get there.
 
 **Ruled the same day: a `.portulan/` with files and no manifest is NOT a residence, and is still never
@@ -278,20 +278,20 @@ and re-runs; nothing is destroyed to save them a step.
 - **The handoff-index freshness rail.** The manifest declares where the index goes; no index is written,
   and no recipe compares it. The obstacle is not the session-end gate's — `cli/index.mjs` ships and
   generates it — it is that a drafted recipe has no stable spelling for invoking the CLI before the
-  package publishes ([#148](https://github.com/sleepy-panda-works/portulan/issues/148)). The drafted
+  package publishes ([#148](https://github.com/sleepy-panda-srl/portulan/issues/148)). The drafted
   README now says the index **does not exist yet**; the first cut described it in the present tense.
 - **Row 7's four demonstrations are unrun.** In particular *a never-seen repo onboards to a validated
   workspace in one afternoon* — what is shown here is that a scratch directory onboards to a workspace
   `doctor` calls green, which is the floor beneath that demonstration and not the demonstration.
 - **Nothing resolves the composed pack.** `init` names one and, given `--pack-root`, refuses to bind one
-  that is not there. Discovery is still [#123](https://github.com/sleepy-panda-works/portulan/issues/123).
+  that is not there. Discovery is still [#123](https://github.com/sleepy-panda-srl/portulan/issues/123).
 - **The scan is shallow by choice.** `package.json` scripts, Makefile targets, and presence-only for
   four other ecosystems. Everything else is written down as *not determined*, because an invented build
   command is a workspace that disagrees with its repository on the day it was created.
 
 ## What the compose-default ruling costs elsewhere, named rather than absorbed
 
-**It raises [#123](https://github.com/sleepy-panda-works/portulan/issues/123)'s practical priority.**
+**It raises [#123](https://github.com/sleepy-panda-srl/portulan/issues/123)'s practical priority.**
 Discovery was a convenience while nothing composed a pack by default; now every workspace `init` writes
 is red until someone names a root, so the issue that closes it is on the critical path of the row's own
 first demonstration — *a never-seen repo onboards to a validated workspace in one afternoon*. Nothing
@@ -305,7 +305,7 @@ being affordable the moment an adopter meets it without the line.
 
 ## What session 2 picks up
 
-`doctor`'s validation half — **read [#150](https://github.com/sleepy-panda-works/portulan/issues/150)
+`doctor`'s validation half — **read [#150](https://github.com/sleepy-panda-srl/portulan/issues/150)
 first, it is that session's scope question and it is still open** — plus `new` and the legibility score.
 `vendor`, the residence switch, `upgrade`, `feedback` and the demonstrations follow. The switch still
 owes a verb, on the same decide-when-real footing, and so does the Stop-gate runner's residence.
@@ -317,7 +317,7 @@ in one afternoon*, which is a claim about a person's experience rather than abou
 the prompt loop as session-2 work contingent on that reading** rather than discovering the obligation at
 the close. The substrate is built and an interview drives it; what is missing is the loop, not the answers.
 
-**Also on a clock: [#151](https://github.com/sleepy-panda-works/portulan/issues/151).**
+**Also on a clock: [#151](https://github.com/sleepy-panda-srl/portulan/issues/151).**
 `core/operating/verification.md:47-48` names milestone 7 for the Stop-gate's repo-card and task
 resolution steps, and no row carries them — so if M7 closes with the steps unbuilt **and** the sentence
 unreworded, the close reds it under dod condition 4, in the file whose own subject is condition 4. It

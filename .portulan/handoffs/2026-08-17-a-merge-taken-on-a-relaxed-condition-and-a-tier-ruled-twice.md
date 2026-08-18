@@ -9,14 +9,14 @@ Opus 5 implemented. Every ruling below is the maintainer's except where it says 
 
 ## What landed
 
-**PR [#274](https://github.com/sleepy-panda-works/portulan/pull/274) merged — `main` = `fc00e21`,
-[#265](https://github.com/sleepy-panda-works/portulan/issues/265) closed COMPLETED.** The `pack-version`
+**PR [#274](https://github.com/sleepy-panda-srl/portulan/pull/274) merged — `main` = `fc00e21`,
+[#265](https://github.com/sleepy-panda-srl/portulan/issues/265) closed COMPLETED.** The `pack-version`
 rail: a change to a pack's `contributes` must move that pack's `portulan.version`. Twelfth yielded recipe.
 Suite **1645**, twelve recipes exit 0 re-measured **on the merged tree** — a rebase is a new tree.
 
-Filed out of it and still open: **[#273](https://github.com/sleepy-panda-works/portulan/issues/273)**
+Filed out of it and still open: **[#273](https://github.com/sleepy-panda-srl/portulan/issues/273)**
 (arm 4 — the bundle version and the pack versions cannot stay equal by hand) and
-**[#276](https://github.com/sleepy-panda-works/portulan/issues/276)** (must a pack declare a version at
+**[#276](https://github.com/sleepy-panda-srl/portulan/issues/276)** (must a pack declare a version at
 all — the Pack Definition question the rail declined to annex).
 
 ## The merge was taken on a condition the maintainer relaxed, knowingly
@@ -29,7 +29,7 @@ close-and-reopen all drew nothing. `reopened` fired a run; Copilot simply did no
 So the maintainer relaxed the condition explicitly rather than the agent interpreting it away. **That
 distinction is the point** — the grant was not satisfied and was not pretended to be.
 
-**[#253](https://github.com/sleepy-panda-works/portulan/issues/253) widened, captured three times on one
+**[#253](https://github.com/sleepy-panda-srl/portulan/issues/253) widened, captured three times on one
 pull request.** `copilot-reviewed` went **green on heads Copilot had never reviewed**, from three trigger
 paths, **with no force-push involved** — just ordinary pushes in quick succession. The issue was filed on
 `commit_id` following a force-push; the class is larger: *the check's verdict and the reviewer's round can

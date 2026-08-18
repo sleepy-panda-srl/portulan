@@ -1,8 +1,8 @@
 # Handoff — every jq filter a workflow runs is exercised
 
 **State.** Branch `every-jq-filter-a-workflow-runs-is-exercised`,
-[#64](https://github.com/sleepy-panda-works/portulan/pull/64), **based on `main`**. It opened stacked
-on [#63](https://github.com/sleepy-panda-works/portulan/pull/63), because the four `--jq` filters it
+[#64](https://github.com/sleepy-panda-srl/portulan/pull/64), **based on `main`**. It opened stacked
+on [#63](https://github.com/sleepy-panda-srl/portulan/pull/63), because the four `--jq` filters it
 covers existed only there; #63 merged at 11:22:03Z and GitHub **retargeted this one to `main` by
 itself** — the benign half of the stacked-PR trap, which bites only when the base *branch* is deleted
 before the base *merges* (#10). Rebased onto `origin/main` afterwards, since `main` had moved two

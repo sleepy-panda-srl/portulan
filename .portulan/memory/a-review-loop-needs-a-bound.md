@@ -23,7 +23,7 @@ re-counted**, never re-derived in fix-rounds._
 
 **A round is a Copilot review the working session answers with a push, and rule 4's bound counts those
 pushes and nothing else** — the maintainer's ruling. Its *unit* clause was an implementer's derivation,
-quantified both ways on [#119](https://github.com/sleepy-panda-works/portulan/pull/119) and put to him
+quantified both ways on [#119](https://github.com/sleepy-panda-srl/portulan/pull/119) and put to him
 rather than merged under his name, and **he ratified it verbatim**. The two are recorded apart because
 blurring a clause an implementer inferred with one he ruled is the defect this rule guards against. A
 records-only push still counts.
@@ -69,7 +69,7 @@ full: [`2026-07-30-a-round-gets-its-definition.md`](../handoffs/2026-07-30-a-rou
    The exemption exists because this class *generates its own next round*: a sibling of round
    N's fix cannot surface before round N+1, so a bound that counts pushes retires the loop exactly where
    the class is still producing. Measured on
-   [#164](https://github.com/sleepy-panda-works/portulan/pull/164) under the narrow test: **eight of its
+   [#164](https://github.com/sleepy-panda-srl/portulan/pull/164) under the narrow test: **eight of its
    thirteen rounds** were siblings, six of them after the bound. The exemption **buys rounds and does not
    remove the gate** — every extension past two is still the maintainer's to grant and never the
    session's to assume, as it was granted on #160, #163 and #164 one at a time.

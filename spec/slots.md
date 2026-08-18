@@ -653,7 +653,7 @@ adopter's workspace in a key nobody typed — the rule every memory budget here 
 subdirectory of the store, for two reasons that point the same way: doctrine holds per-agent memory apart
 precisely so a reviewer's recall does not spend the implementer's budget, and a store nested inside the
 store would be counted by the `kilobytes` rail while being invisible to the flat walk that counts it —
-[issue #76](https://github.com/sleepy-panda-works/portulan/issues/76). Siting the layer outside leaves that
+[issue #76](https://github.com/sleepy-panda-srl/portulan/issues/76). Siting the layer outside leaves that
 issue open to be decided on its own merits instead of settled as a side effect of this one.
 
 **A location is literally empty, and that is a ruling rather than a reading.** *"Present and empty"* could

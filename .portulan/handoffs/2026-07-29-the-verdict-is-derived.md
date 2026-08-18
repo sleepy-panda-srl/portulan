@@ -1,7 +1,7 @@
 # Handoff — the verdict is derived, and the field that cannot take the name
 
 **Date:** 2026-07-29 · **post-M5, no milestone row touched** · Branch
-`copilot-verdict-and-pr-ownership` · [#95](https://github.com/sleepy-panda-works/portulan/pull/95)
+`copilot-verdict-and-pr-ownership` · [#95](https://github.com/sleepy-panda-srl/portulan/pull/95)
 
 **State.** The maintainer asked for two things in one sentence: Copilot approving / approving with
 suggestions, and `portulan-agent` owning pull requests as the assignee. Both are platform-refused as
@@ -47,7 +47,7 @@ section so the 404 is a fact on file rather than a per-session rediscovery.
 
 This branch first shipped both repairs the close session recorded as owed — the librarian requesting
 Copilot by name after filing, and the timeout message naming the bot-author cause. While it was in
-review, [#96](https://github.com/sleepy-panda-works/portulan/pull/96) shipped the same two repairs as
+review, [#96](https://github.com/sleepy-panda-srl/portulan/pull/96) shipped the same two repairs as
 issues #88 and #89, and better: the re-request lives in `copilot-review.yml` itself, fired once at the
 600-second point — the one place every pull request passes through, and the only timing the #86
 measurement actually establishes — and the timeout message branches on the `requested_reviewers` read

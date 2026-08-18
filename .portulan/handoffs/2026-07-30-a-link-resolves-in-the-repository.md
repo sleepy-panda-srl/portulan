@@ -1,11 +1,11 @@
 # Handoff — a link resolves in the repository, and the loop runs from the feed
 
 **Date:** 2026-07-30 · **M6, session 2** · Branch `m6-a-link-resolves-in-the-repository`, opened as
-[#129](https://github.com/sleepy-panda-works/portulan/pull/129) against `main`
+[#129](https://github.com/sleepy-panda-srl/portulan/pull/129) against `main`
 
 **State.** Milestone 6's fourth clause — *a Sleepy Panda product task runs the full loop from a
 private-feed install* — is **demonstrated** for Portulan. The task was
-[#121](https://github.com/sleepy-panda-works/portulan/issues/121), and every one of the five phases was
+[#121](https://github.com/sleepy-panda-srl/portulan/issues/121), and every one of the five phases was
 governed by an artifact the private feed delivered, against session 1's one phase. **The row still does
 not close:** the maintainer ruled the same day that *both* products must run, so a Tipar API task is owed
 and its repos card, affordances and gate deltas are owed to whoever runs it. **Milestone-close therefore
@@ -51,8 +51,8 @@ here rather than inherited**: six of six files identical to `git show 5a707e3:pa
   sat three days. That is the session's most generalizable finding and is now
   [`a-recorded-limit-is-not-a-managed-limit`](../memory/a-recorded-limit-is-not-a-managed-limit.md): a
   limit in prose is documented, not queued. Its own rule was applied to itself — the two limits this review
-  surfaced were **filed** ([#130](https://github.com/sleepy-panda-works/portulan/issues/130)) rather than
-  only written down, and so was the `doctor` sibling ([#131](https://github.com/sleepy-panda-works/portulan/issues/131)).
+  surfaced were **filed** ([#130](https://github.com/sleepy-panda-srl/portulan/issues/130)) rather than
+  only written down, and so was the `doctor` sibling ([#131](https://github.com/sleepy-panda-srl/portulan/issues/131)).
 
 - **The memory record is NARROWED, not retired, although its retirement condition was literally met.**
   Retiring a rule because its *detector* improved would leave the doctrine claiming the incident cannot
@@ -87,7 +87,7 @@ regenerated … and the equality re-derived on both carriers", which is true of 
 file. **The reason it went unseen is worth more than the file:** `.portulan/verify/index.sh` names
 `WORKSPACES=(.portulan examples)`, the feed's workspace is not in this repository to be named, and the
 feed's own recipe ran `doctor`, which never reads a generated file's contents. So the split that makes the
-feed private put its one generated artifact outside every rail — [#122](https://github.com/sleepy-panda-works/portulan/issues/122)'s
+feed private put its one generated artifact outside every rail — [#122](https://github.com/sleepy-panda-srl/portulan/issues/122)'s
 stated cost arriving in the one adopter with no rail to report it. Errata appended to the merged record
 with the original sentence left standing; feed repaired and railed under the maintainer's gate approval.
 
@@ -114,9 +114,9 @@ hole by trying to get past a mechanism rather than reviewing it.**
 Copilot's round-2 **suppressed notes** carried two findings, both correct. Under
 [`a-review-loop-needs-a-bound`](../memory/a-review-loop-needs-a-bound.md) rule 3 a note in a review *body*
 is never a reason to push, and rule 4 sends the post-two-round remainder to an issue, so both were triaged
-to [#132](https://github.com/sleepy-panda-works/portulan/issues/132) and **not** fixed — with the residue
+to [#132](https://github.com/sleepy-panda-srl/portulan/issues/132) and **not** fixed — with the residue
 named out loud, because one of them was a `dod.md` condition 4 breach being merged knowingly on
-[#110](https://github.com/sleepy-panda-works/portulan/pull/110)'s precedent. **The maintainer then said to
+[#110](https://github.com/sleepy-panda-srl/portulan/pull/110)'s precedent. **The maintainer then said to
 fold both in**, which is the right way round: the bound is his to lift and the decision was put to him
 rather than taken. Both are now fixed and #132 closes on this merge.
 
@@ -137,7 +137,7 @@ The cheap generalisation — a claim about what a mechanism does is worth re-der
 exactly like a figure — and the reason it is worth writing down is that two fresh-context checkpoints and
 a drill all passed over sentences whose adjacent code they had just verified.
 
-**The rebase, which is precedent rather than judgement.** [#119](https://github.com/sleepy-panda-works/portulan/pull/119)
+**The rebase, which is precedent rather than judgement.** [#119](https://github.com/sleepy-panda-srl/portulan/pull/119)
 merged under this branch, so it went `DIRTY` on exactly the two files that always conflict:
 `docs/plan.md`'s log tail took **both** entries with this branch's last, and `handoffs-index.md` was
 **regenerated**. Worth noting from the merged entry rather than from memory: #105's count settled at

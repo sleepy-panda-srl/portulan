@@ -199,7 +199,7 @@ answer to a different question.
 `force-push-without-a-lease` compiles to `Bash(git push --force:*)` while `git push --force-with-lease`
 is **Auto**. Those two look like they must collide: one string is a prefix of the other, and this
 runner's own matcher has to enforce a word boundary explicitly. A review on
-[#31](https://github.com/sleepy-panda-works/portulan/pull/31) raised exactly that — if the permission
+[#31](https://github.com/sleepy-panda-srl/portulan/pull/31) raised exactly that — if the permission
 layer matched naively, the load-bearing layer would be **stricter than the policy**, re-gating an action
 the maintainer had just ungated.
 

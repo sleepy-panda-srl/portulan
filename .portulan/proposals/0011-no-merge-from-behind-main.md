@@ -79,7 +79,7 @@ per-action instruction rather than on inference.
 **Applied, and read back rather than assumed.**
 
 ```
-$ gh api -X PATCH repos/sleepy-panda-works/portulan/branches/main/protection/required_status_checks \
+$ gh api -X PATCH repos/sleepy-panda-srl/portulan/branches/main/protection/required_status_checks \
     --input - <<'JSON'
 {"strict":true,"checks":[{"context":"workspace-verify","app_id":15368}]}
 JSON
@@ -123,4 +123,4 @@ could be run because a rejected push changes nothing; a merge attempt that is *n
 the change, so it is deliberately not run — the same reasoning that leaves the ruleset-bypass interaction
 untested in [`../gate-map.md`](../gate-map.md).
 
-**Pull request:** [#46](https://github.com/sleepy-panda-works/portulan/pull/46) — the change that filed this.
+**Pull request:** [#46](https://github.com/sleepy-panda-srl/portulan/pull/46) — the change that filed this.

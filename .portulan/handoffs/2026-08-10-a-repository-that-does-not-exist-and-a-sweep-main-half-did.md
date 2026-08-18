@@ -1,7 +1,7 @@
 # Handoff — a repository that does not exist, and a sweep `main` half-did underneath this branch
 
 2026-08-10, off the milestone row. Both defects were found in passing during
-[#214](https://github.com/sleepy-panda-works/portulan/pull/214) and deliberately left out of it as
+[#214](https://github.com/sleepy-panda-srl/portulan/pull/214) and deliberately left out of it as
 different classes; both are named in that pull request's body under *What this PR does not touch*.
 **No criterion moves. No milestone row changes status.**
 
@@ -16,7 +16,7 @@ class rather than another sentence about it.)_
 
 ## The repository that does not exist — this branch's, start to finish
 
-`gh repo view sleepy-panda-works/portulan-workspace-template` → **404**, and an org listing that
+`gh repo view sleepy-panda-srl/portulan-workspace-template` → **404**, and an org listing that
 returns private repositories carries five — `portulan`, `portulan-internal`, `tipar`, `.github`,
 `sleepypanda-site` — so the absence is absence rather than a visibility artefact. Two live carriers,
 both in `docs/plan.md`: locked decision 1, and the Repo topology block. _(A third mention exists at
@@ -38,7 +38,7 @@ manifest declares **nine** (`control-chars` missing), **CI runs ten** (`recipe-s
 nine plus `tools/github:actions-pinned`), and the *because* clause was the wording milestone 7's
 composition amendment retired.
 
-**[#206](https://github.com/sleepy-panda-works/portulan/pull/206) merged at 08:50:17Z and repaired it
+**[#206](https://github.com/sleepy-panda-srl/portulan/pull/206) merged at 08:50:17Z and repaired it
 independently** — commit `387bef5` — along with `verify/README.md`'s *five of the nine invoke `grep`
 zero times*, in `9ffd2f4`. This session had re-measured and corrected both before learning that. Both
 of this branch's **defect repairs** to those two files were **dropped rather than merged**; `main`'s
@@ -130,8 +130,8 @@ Rebased onto `27705ae`. Ten recipes green, run individually. Seam scan clean ove
 branch, against the explicit list including both artifact URLs. Suite untouched: this is prose, and
 no test covers any of these sentences.
 
-**Both pull requests this handoff once listed as open have merged** — [#221](https://github.com/sleepy-panda-works/portulan/pull/221)
-at 11:57:39Z and [#215](https://github.com/sleepy-panda-works/portulan/pull/215) at 12:22:02Z, the
+**Both pull requests this handoff once listed as open have merged** — [#221](https://github.com/sleepy-panda-srl/portulan/pull/221)
+at 11:57:39Z and [#215](https://github.com/sleepy-panda-srl/portulan/pull/215) at 12:22:02Z, the
 latter bringing `0025` and eight commits. #215's only real collision was the Session-log tail, resolved
 by **keeping both entries**, its own first: a log is append-only and both sessions happened.
 

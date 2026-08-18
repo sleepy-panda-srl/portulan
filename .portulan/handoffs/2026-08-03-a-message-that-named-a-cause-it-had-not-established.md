@@ -2,10 +2,10 @@
 
 **Session of 2026-08-03**, outside the milestone track: it began as *resolve #157's conflicts and merge it*
 and became three pull requests, because the check that gates every merge was misdiagnosing its own failure.
-[#157](https://github.com/sleepy-panda-works/portulan/pull/157) ·
-[#160](https://github.com/sleepy-panda-works/portulan/pull/160) ·
-[#162](https://github.com/sleepy-panda-works/portulan/pull/162) ·
-[#161](https://github.com/sleepy-panda-works/portulan/issues/161) open.
+[#157](https://github.com/sleepy-panda-srl/portulan/pull/157) ·
+[#160](https://github.com/sleepy-panda-srl/portulan/pull/160) ·
+[#162](https://github.com/sleepy-panda-srl/portulan/pull/162) ·
+[#161](https://github.com/sleepy-panda-srl/portulan/issues/161) open.
 
 ## State
 

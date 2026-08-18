@@ -21,7 +21,7 @@ rather than leaving you to infer it from a closed pull request.
   currently agree. Everything here — the engine,
   the workspace, the plan, the record of how each decision was reached — is yours to read and to learn
   from.
-- **Report a bug.** [Open an issue](https://github.com/sleepy-panda-works/portulan/issues/new/choose) using the **Bug report** form.
+- **Report a bug.** [Open an issue](https://github.com/sleepy-panda-srl/portulan/issues/new/choose) using the **Bug report** form.
 - **Suggest an improvement.** Use the **Improvement** form. Proposals are genuinely wanted, including
   ones that argue the current design is wrong.
 - **Send feedback.** Use the **Feedback** form for anything that is neither a defect nor a concrete
@@ -42,7 +42,7 @@ in the same breath as the bytes, rather than letting silence read as a clean sca
 
 ## What only team members may do
 
-**Commit and push.** Code lands only through members of the `sleepy-panda-works` organisation with write
+**Commit and push.** Code lands only through members of the `sleepy-panda-srl` organisation with write
 access to this repository. Pull requests from outside that group are not accepted and will be closed with
 a pointer back to this file — not because the change was bad, but because this is not the way changes
 enter this repository.

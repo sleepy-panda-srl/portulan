@@ -116,10 +116,10 @@ a note and exit 0, because a plugin that ships no agents is legitimate. What bin
 
 ## The two feeds point one way only
 
-This repository is the **public** marketplace. `sleepy-panda-works/portulan-internal` is the **private**
+This repository is the **public** marketplace. `sleepy-panda-srl/portulan-internal` is the **private**
 one, and it delivers a pack whose bytes live here — sourced `git-subdir` at this repository's `packs/`,
 pinned to a commit. That is the maintainer's ruling of 2026-07-30 on
-[#113](https://github.com/sleepy-panda-works/portulan/issues/113), and it is the answer *storage follows
+[#113](https://github.com/sleepy-panda-srl/portulan/issues/113), and it is the answer *storage follows
 ownership* forces: universal content belongs in the layer that authored it, and hiding the two-tier
 checkpoint ritual behind a private pointer would paywall the one artifact adopters were owed.
 

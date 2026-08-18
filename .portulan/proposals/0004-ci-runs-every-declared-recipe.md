@@ -76,7 +76,7 @@ green it did not earn. That is the same rule as
 up: enumerating the *recipes* is a precondition exactly as enumerating the *tree* is.
 
 **Provenance.** `form=link`
-`href=`[`https://github.com/sleepy-panda-works/portulan/pull/8`](https://github.com/sleepy-panda-works/portulan/pull/8)
+`href=`[`https://github.com/sleepy-panda-srl/portulan/pull/8`](https://github.com/sleepy-panda-srl/portulan/pull/8)
 — the milestone-2 pull request whose second recipe forced the choice. The maintainer's question that
 prompted the proposal is not *at* that link; the link is to the change that created the situation. In-repo
 and resolvable by anyone who can read this rule, and it carries no client material, so no seal is needed —
@@ -100,7 +100,7 @@ should.
   due.** The repository is public again, so the third of the three bounds — *a private repository* — no
   longer holds, and a public repository is forkable. **The bullet said the flip is when this needs
   deciding properly, and it is recorded here as arrived rather than answered:** the threat model, the
-  fork-PR question it names, and [#67](https://github.com/sleepy-panda-works/portulan/issues/67)'s
+  fork-PR question it names, and [#67](https://github.com/sleepy-panda-srl/portulan/issues/67)'s
   fork/required-check half are the maintainer's to rule on. Nothing here decides any of them, and the
   first two bounds are unchanged — measured at the flip, only the third fell, because a fork's
   read-only token and withheld secrets are platform behaviour rather than this repository's private
@@ -140,4 +140,4 @@ no longer the place to read the set off. See [`../../spec/README.md`](../../spec
 same correction and keeps its own superseded text for the same reason. This note exists because this file
 is the **minting carrier** of the retired wording and a grep for it lands here first.
 
-**Pull request:** [#13](https://github.com/sleepy-panda-works/portulan/pull/13) — the change that filed this.
+**Pull request:** [#13](https://github.com/sleepy-panda-srl/portulan/pull/13) — the change that filed this.

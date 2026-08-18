@@ -3,7 +3,7 @@
 **provenance:** [`../../docs/plan.md`](../../docs/plan.md), locked decision 2 and the milestone-0 exit
 criterion; verified against the live remote at the milestone-0 close and again in milestone 1, session 3.
 
-`sleepy-panda-works/portulan` went **public on 2026-07-27**, on the maintainer's explicit direction —
+`sleepy-panda-srl/portulan` went **public on 2026-07-27**, on the maintainer's explicit direction —
 the flip was always an authorization, not work, and the authorization was his to give. *(Amended
 2026-07-27: the retire-when below fired and the rule inverted per its own clause — the successor rule
 is what this entry now carries.)* **It was flipped back to private on 2026-08-03**, again on his
@@ -36,7 +36,7 @@ default is the recoverable direction.
 a public organisation, publishing a package that embeds its contents, or pasting its files anywhere
 public. **And never assume which way this repository points — it was public on 2026-08-17, and the
 setting has moved three times.** Measure rather than recall:
-`gh repo view sleepy-panda-works/portulan --json isPrivate,visibility,forkCount`, plus an
+`gh repo view sleepy-panda-srl/portulan --json isPrivate,visibility,forkCount`, plus an
 unauthenticated `GET`, which is the negative control.
 
 **RULED — 2026-08-10. This block replaces the 2026-08-08 surfacing.** That consolidation pass measured

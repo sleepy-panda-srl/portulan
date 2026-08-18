@@ -106,9 +106,9 @@ checklist step**, and calling it a checklist step rather than a rail is the whol
    and for the same reason: leaving them preserves the defect this document exists to name.
 
 **Provenance.** `form=link`
-`href=`[`https://github.com/sleepy-panda-works/portulan/pull/28`](https://github.com/sleepy-panda-works/portulan/pull/28)
+`href=`[`https://github.com/sleepy-panda-srl/portulan/pull/28`](https://github.com/sleepy-panda-srl/portulan/pull/28)
 — the pull request that raised the question. The instances behind both directions are the 2026-07-27
-session log and the [#24](https://github.com/sleepy-panda-works/portulan/pull/24)–[#29](https://github.com/sleepy-panda-works/portulan/pull/29)
+session log and the [#24](https://github.com/sleepy-panda-srl/portulan/pull/24)–[#29](https://github.com/sleepy-panda-srl/portulan/pull/29)
 cluster, all in this repository and carrying no client material, so no seal is needed.
 
 ## Honest limits
@@ -130,4 +130,4 @@ cluster, all in this repository and carrying no client material, so no seal is n
 **Decision.** _Pending — Marius Cetanas._ The first draft was decided **revise, not accept**; this is that
 revision. Written by an implementer agent (Claude Opus 5).
 
-**Pull request:** [#30](https://github.com/sleepy-panda-works/portulan/pull/30) — the change that filed this.
+**Pull request:** [#30](https://github.com/sleepy-panda-srl/portulan/pull/30) — the change that filed this.

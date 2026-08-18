@@ -1,15 +1,15 @@
 # Handoff — the librarian mines and consolidates, and the checkpoint found the work it would have lost
 
 **Date:** 2026-07-29 · **Milestone 5 (Memory lifecycle & librarian), session 2 of 1–2** · Branch
-`m5-the-librarian-mines-and-consolidates` · [#85](https://github.com/sleepy-panda-works/portulan/pull/85)
+`m5-the-librarian-mines-and-consolidates` · [#85](https://github.com/sleepy-panda-srl/portulan/pull/85)
 
 **State.** The row's three remaining clauses, in one pull request: the handoff-series index
-([#82](https://github.com/sleepy-panda-works/portulan/issues/82)), mining over both corpora, and
+([#82](https://github.com/sleepy-panda-srl/portulan/issues/82)), mining over both corpora, and
 scheduled consolidation. Spec 2.4 → **2.5**, additive: a top-level `handoffs` object with `index.path`
 and nothing else. Suite 584 → **635**; all eight recipes green, each exit code read. Folded in on the
-maintainer's rulings and the PR #43 sibling rule: [#84](https://github.com/sleepy-panda-works/portulan/issues/84),
-[#83](https://github.com/sleepy-panda-works/portulan/issues/83), and
-[#77](https://github.com/sleepy-panda-works/portulan/issues/77)'s class in two files.
+maintainer's rulings and the PR #43 sibling rule: [#84](https://github.com/sleepy-panda-srl/portulan/issues/84),
+[#83](https://github.com/sleepy-panda-srl/portulan/issues/83), and
+[#77](https://github.com/sleepy-panda-srl/portulan/issues/77)'s class in two files.
 
 ## The prescribed grep found nothing, and that is the finding
 
@@ -143,7 +143,7 @@ secret existed, and the maintainer's one-click fallback is not needed.
 **Three rounds, nine findings, all nine real** — and **six came through the suppressed channel**, which
 `copilot-reviewed` passes regardless of and which has no Resolve control. Third consecutive pull request
 where that half carried the majority, and on this one it twice carried the evidence that a finding
-**generalised to a second site**. Standing argument for [#66](https://github.com/sleepy-panda-works/portulan/issues/66).
+**generalised to a second site**. Standing argument for [#66](https://github.com/sleepy-panda-srl/portulan/issues/66).
 
 **Round one — four threads and one note, and two of them were one defect.** `index.declared` means
 *some* index is declared, and both report sites branched on it, so a workspace declaring only one of the
@@ -191,7 +191,7 @@ were spent, so [`../memory/a-review-loop-needs-a-bound.md`](../memory/a-review-l
 rule 4 applied and they were triaged in a comment rather than pushed. The maintainer then ruled that one
 of them rides the records push: `indexLines`'s comment claimed returning zero *understates* the
 headroom when it overstates it — **a sentence this change itself wrote**, and the same class as
-[`c479b0a`](https://github.com/sleepy-panda-works/portulan/commit/c479b0a), in the same file, one
+[`c479b0a`](https://github.com/sleepy-panda-srl/portulan/commit/c479b0a), in the same file, one
 milestone apart. The transferable half is smaller than the fix: **a comment asserting a *direction* —
 over or under, more or less — is the kind that is easy to write backwards and that no check here can
 catch.** The other note is pre-existing and stays an issue: `compareOrWrite` reads every failure to
@@ -210,7 +210,7 @@ nothing could read.
 - **Mining reads the smaller review channel.** These are *inline* comments; the low-confidence notes
   collapsed into review bodies carry no path and cannot be seen from here — and on #81 that channel
   produced nine of eleven findings, eight real, while on this pull request it produced six of nine.
-  [#66](https://github.com/sleepy-panda-works/portulan/issues/66) is now also an argument about what a
+  [#66](https://github.com/sleepy-panda-srl/portulan/issues/66) is now also an argument about what a
   scheduled pass can measure at all.
 - **Two issues are owed and are the maintainer's to open**, triaged in #85 rather than pushed: the
   `EACCES`-reads-as-absent refusal in `compareOrWrite`, and — recorded even though its fix rode this
@@ -218,8 +218,8 @@ nothing could read.
 
 ## The demonstration ran, and milestone 5 closed
 
-[#85](https://github.com/sleepy-panda-works/portulan/pull/85) merged as `4ccb672`. `librarian.yml` was
-then dispatched against `main` and **filed [#86](https://github.com/sleepy-panda-works/portulan/pull/86)
+[#85](https://github.com/sleepy-panda-srl/portulan/pull/85) merged as `4ccb672`. `librarian.yml` was
+then dispatched against `main` and **filed [#86](https://github.com/sleepy-panda-srl/portulan/pull/86)
 end to end**: authored by `app/portulan-agent`, branch `librarian/2026-07-29`, labelled `workspace` by
 the App, and — the platform fact the whole session-1 design turns on — **`workspace-verify` and
 `pr-labeled` both *ran* and reported** on its head, which a pull request opened by `GITHUB_TOKEN` never
@@ -241,14 +241,14 @@ consolidation's steps 3 and 4 stay human. **#86 is filed, not merged** — that 
 ## And a platform fact the demonstration itself turned up: Copilot is requested on the App's pull request and does not answer
 
 Found after the close checkpoint had signed, by reading #86's own checks rather than by looking for it.
-**`copilot-reviewed` is RED on [#86](https://github.com/sleepy-panda-works/portulan/pull/86), and the
+**`copilot-reviewed` is RED on [#86](https://github.com/sleepy-panda-srl/portulan/pull/86), and the
 cause is that the pull request has no reviews at all** — not one, forty minutes after filing, against
 two to five on a maintainer-opened one.
 
 **The first reading of this was wrong in the direction that mattered, and the correction is the
 finding.** The comparison drawn first was review *counts* — eight on
-[#85](https://github.com/sleepy-panda-works/portulan/pull/85), one on
-[#87](https://github.com/sleepy-panda-works/portulan/pull/87), zero here — which reads as *Copilot was
+[#85](https://github.com/sleepy-panda-srl/portulan/pull/85), one on
+[#87](https://github.com/sleepy-panda-srl/portulan/pull/87), zero here — which reads as *Copilot was
 never engaged on the App's pull request*. It was. `requested_reviewers` on #86 holds **`Copilot`**,
 while #85 and #87 hold **nothing** — precisely because their reviews had already landed and GitHub
 clears the request on delivery. So the counts were measuring the wrong end: the two maintainer pull
@@ -285,7 +285,7 @@ never arrives on an App-opened pull request, the librarian's weekly filing can n
 own terms — so either the doctrine gains an explicit carve-out for a scheduled pass, or the pass's work
 is reviewed by the human who merges it and the doctrine says so. **That is a maintainer's question, not
 an implementer's**, and it is the same shape as the one
-[#67](https://github.com/sleepy-panda-works/portulan/issues/67) already asks about fork pull requests —
+[#67](https://github.com/sleepy-panda-srl/portulan/issues/67) already asks about fork pull requests —
 *does the reviewer arrive for this actor?* — now answered for one actor and still open for the other.
 
 One measurement, one actor, one repository: this is not established as a general rule about GitHub

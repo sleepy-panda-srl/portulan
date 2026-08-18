@@ -83,7 +83,7 @@ the budget demonstrated with the shipped counter rather than by hand.
 
 ## The review round, under the bound
 
-One Copilot round on [#73](https://github.com/sleepy-panda-works/portulan/pull/73), one thread, **no
+One Copilot round on [#73](https://github.com/sleepy-panda-srl/portulan/pull/73), one thread, **no
 suppressed-notes block at all** — checked for its absence rather than inferred from an empty list, since
 that block is the channel with no Resolve control and no effect on any gate.
 
@@ -123,7 +123,7 @@ false sentence into the file every session boots from. That is fix-round **two**
 allows; anything further becomes an issue and the pull request merges.
 
 **Round three carried one suppressed note, and it went to an issue — the bound working rather than
-failing.** [#78](https://github.com/sleepy-panda-works/portulan/issues/78): the handoffs precondition
+failing.** [#78](https://github.com/sleepy-panda-srl/portulan/issues/78): the handoffs precondition
 fires *before* the stray-file audit, so a directory holding only undated Markdown exits `2` — *could
 not run* — for a defect the audit had already collected the evidence for. Reproduced before filing. It
 is the mirror of the rule that minted `verify-preconditions-fail-closed`: there, *could not look* must
@@ -158,7 +158,7 @@ finds, and this is said here so the next reader can hold this session to it.
 **Four of the five findings on this pull request came through the suppressed low-confidence channel** —
 no thread, no Resolve control, no effect on any gate, and `copilot-reviewed` green throughout. On this
 change it was the higher-yield half of the review by a wide margin, which is the strongest evidence yet
-for [#66](https://github.com/sleepy-panda-works/portulan/issues/66), the open issue proposing those
+for [#66](https://github.com/sleepy-panda-srl/portulan/issues/66), the open issue proposing those
 notes be promoted into real threads.
 
 ## A third false green — or rather, the first false RED
@@ -179,7 +179,7 @@ counting weakness.
 
 ## State
 
-**Rebased onto `c383d58` after [#72](https://github.com/sleepy-panda-works/portulan/pull/72) merged**,
+**Rebased onto `c383d58` after [#72](https://github.com/sleepy-panda-srl/portulan/pull/72) merged**,
 which is why the figures below are not the ones this branch was written against. Two textual conflicts,
 both in the files the collision note predicted: the Session log tail, resolved by date so the four
 reconstructions (11:40–15:35) sit before #72's entry (merged 18:39) and this session's entry sits last;
@@ -199,7 +199,7 @@ The correspondence rail absorbed the merge without an edit: 2026-07-28 now carri
 the rail meeting a case nobody arranged for it, which is the same property #64's fixture table was
 built to have.
 
-**Collision to expect:** [#72](https://github.com/sleepy-panda-works/portulan/pull/72)
+**Collision to expect:** [#72](https://github.com/sleepy-panda-srl/portulan/pull/72)
 (`m5-the-index-is-the-rail`) opened while this was in flight and touches `docs/plan.md`,
 `.portulan/dod.md` and `.portulan/verify/README.md` — three of this change's five files. Whichever lands
 second rebases, and `main` refuses a merge from behind it. The Session log is the likely textual

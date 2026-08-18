@@ -2,8 +2,8 @@
 
 Fifth handoff of 2026-08-07, and the second of three from one working thread — the maintainer asked for
 the top three `Now` items one by one, one pull request each, and ruled that each carries its own handoff
-and Session log entry. This one is [#177](https://github.com/sleepy-panda-works/portulan/pull/177), for
-[#148](https://github.com/sleepy-panda-works/portulan/issues/148).
+and Session log entry. This one is [#177](https://github.com/sleepy-panda-srl/portulan/pull/177), for
+[#148](https://github.com/sleepy-panda-srl/portulan/issues/148).
 
 **State.** `package.json` reads `0.2.0`. Two version edges that nothing checked now have a test. Nine
 recipes green, suite **1057** — 1055 on `main` plus the two this branch adds. _(This line said 1056,

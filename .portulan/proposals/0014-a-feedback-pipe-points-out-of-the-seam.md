@@ -3,7 +3,7 @@
 **Status. ACCEPTED 2026-08-10, with Q5 ruled (a).** The channel, named rather than left to be inferred:
 the maintainer's **close-out instruction on milestone 7 session 6's maintainer items**, given once the
 CLI half was built and D3 demonstrated, and **ratified by his merge of
-[#206](https://github.com/sleepy-panda-works/portulan/pull/206)** — the pull request that carries this
+[#206](https://github.com/sleepy-panda-srl/portulan/pull/206)** — the pull request that carries this
 record. That is the `0020` pattern: the drafting is the implementer's, the ratification is the merge,
 and the merge is also where he corrects a record that read more into the instruction than it held.
 
@@ -167,7 +167,7 @@ read against the maintainer's directive and the no-external-pull-requests ruling
 
 **Decision.** Marius Cetanas — **accepted 2026-08-10, on option (a)**; (b) not taken up and unbuilt.
 Given as the close-out instruction on milestone 7 session 6's maintainer items and ratified by his merge
-of [#206](https://github.com/sleepy-panda-works/portulan/pull/206); the argument is in *The ruling on Q5*
+of [#206](https://github.com/sleepy-panda-srl/portulan/pull/206); the argument is in *The ruling on Q5*
 above, including the one question this deliberately leaves open.
 
-**Pull request:** [#52](https://github.com/sleepy-panda-works/portulan/pull/52) — the change that filed this.
+**Pull request:** [#52](https://github.com/sleepy-panda-srl/portulan/pull/52) — the change that filed this.

@@ -93,8 +93,8 @@ under, and the checkpoint section of that project's own gate map.
 
 **The evidence is that project's build record**, cited as provenance rather than as procedure: the
 fresh-context checkpoints changed *designs* rather than wording at two consecutive milestones — the
-story is in [milestone 4's record](https://github.com/sleepy-panda-works/portulan/blob/main/docs/milestones/m04.md),
-beside [the protocol itself](https://github.com/sleepy-panda-works/portulan/blob/main/docs/plan.md) —
+story is in [milestone 4's record](https://github.com/sleepy-panda-srl/portulan/blob/main/docs/milestones/m04.md),
+beside [the protocol itself](https://github.com/sleepy-panda-srl/portulan/blob/main/docs/plan.md) —
 while adopters received no artifact for the ritual that produced them. This pack is that artifact.
 
 Those two are **absolute URLs on purpose**, unlike this pack's links into `core/`, which ships beside

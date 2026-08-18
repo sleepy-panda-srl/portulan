@@ -3,7 +3,7 @@
 **Milestone 7, session 9. Full lane.** Task
 [`0015`](../tasks/0015-upgrade-and-the-migration-chain.md). `upgrade` — the eighth and last
 subcommand — and the migration mechanics under it.
-[#231](https://github.com/sleepy-panda-works/portulan/pull/231).
+[#231](https://github.com/sleepy-panda-srl/portulan/pull/231).
 
 ## What this session was handed
 

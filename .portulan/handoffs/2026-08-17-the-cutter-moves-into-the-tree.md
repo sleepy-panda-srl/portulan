@@ -1,6 +1,6 @@
 # Handoff — the cutter moves into the tree, and the tree starts checking it
 
-**Session:** 2026-08-17, distribution machinery (off-row). **PR:** [#280](https://github.com/sleepy-panda-works/portulan/pull/280). **Ruling implemented:** the maintainer's, mid-session, verbatim — *"This tool should live in the public tree as a reviewable product machinery."*
+**Session:** 2026-08-17, distribution machinery (off-row). **PR:** [#280](https://github.com/sleepy-panda-srl/portulan/pull/280). **Ruling implemented:** the maintainer's, mid-session, verbatim — *"This tool should live in the public tree as a reviewable product machinery."*
 
 ## What existed before, and what was wrong with it
 
@@ -54,8 +54,8 @@ sweep found beside it), and `patchReadmeLicense` holding two definitions of wher
 (a heading at byte 0 would have been sliced silently, not refused). Round 5 raised one class at
 two sites — `startsWith(base + sep)` false-refuses a filesystem-root base — real, fail-closed,
 unreachable on the tool's own paths, and triaged to
-[#281](https://github.com/sleepy-panda-works/portulan/issues/281) at the bound on
-[#211](https://github.com/sleepy-panda-works/portulan/pull/211)'s precedent rather than spending
+[#281](https://github.com/sleepy-panda-srl/portulan/issues/281) at the bound on
+[#211](https://github.com/sleepy-panda-srl/portulan/pull/211)'s precedent rather than spending
 a fifth fix-push. One unpromoted note (the entry's hand-maintained test count) was answered by
 deleting the figure, #77's repair. Every thread and note carries a reply.
 A third fresh-context pass ran over these records themselves and returned A-W-A ×2 — the recipe

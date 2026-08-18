@@ -1146,7 +1146,7 @@ export async function run(argv, options = {}) {
         //
         // **Ruled by the maintainer on 2026-08-12** — *vendor copies; upgrade repairs; vendor's
         // comment names the remedy. One tool, one job* — and closed as
-        // https://github.com/sleepy-panda-works/portulan/issues/230. So this is a decision rather
+        // https://github.com/sleepy-panda-srl/portulan/issues/230. So this is a decision rather
         // than a deferral, and the argument is worth keeping where the code is: a repair fixes a
         // value that *is not true where the workspace now is*, and after a same-machine switch — the
         // only kind this performs — **the baked path is still true**. This loop cannot observe the

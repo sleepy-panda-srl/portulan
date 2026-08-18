@@ -1,7 +1,7 @@
 # Handoff — the instrument had the blindness it was built against
 
-2026-08-10, off the milestone row. [#196](https://github.com/sleepy-panda-works/portulan/issues/196)
-closed by [#211](https://github.com/sleepy-panda-works/portulan/pull/211): three carriers asserted that
+2026-08-10, off the milestone row. [#196](https://github.com/sleepy-panda-srl/portulan/issues/196)
+closed by [#211](https://github.com/sleepy-panda-srl/portulan/pull/211): three carriers asserted that
 #91 *names* the missing-sibling class, and `0020` names it.
 
 ## What was wrong, and what was not
@@ -19,7 +19,7 @@ is a citation asserting the wrong carrier, which is the very
 class this handoff is about, committed in its own opening paragraph. His actual words: **"Citing it as
 the incident whose repair taught a class is correct. Citing it as the carrier that names the class is
 false; `0020` names it."** Found by the fresh-context pre-commit supervisor on
-[#217](https://github.com/sleepy-panda-works/portulan/issues/217), which was about to seal the
+[#217](https://github.com/sleepy-panda-srl/portulan/issues/217), which was about to seal the
 misattribution into living doctrine.]_
 
 Three sites, all in `cli/`, all repaired in one commit:

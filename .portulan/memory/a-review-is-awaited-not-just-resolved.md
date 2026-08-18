@@ -53,7 +53,7 @@ re-ran the check mid-round.
 **Three limits, stated because the rule is weaker than it sounds.** The reviewer's login is a platform fact
 the workflow hard-codes; a rename surfaces as a permanent red rather than a silent pass, which is the
 right failure direction and still a fragility. *Resolved* is not *adjudicated*: a reviewer can
-resolve its own thread — measured on [#44](https://github.com/sleepy-panda-works/portulan/pull/44) — so
+resolve its own thread — measured on [#44](https://github.com/sleepy-panda-srl/portulan/pull/44) — so
 this rule guarantees the round **happened before the merge**, not that anyone agreed with it. And the wait
 has a budget: 20 minutes, five times the slowest round measured. Past it the check reds and **nothing
 re-triggers it**, so a maintainer re-runs the job — the old click, surviving only in the case that is
@@ -66,8 +66,8 @@ refuses. That composition is the reason the rule is worth more under a loose mod
 
 **One state cannot clear, and its exit is doctrine rather than machinery — added 2026-08-09.** A head
 can wait out the whole budget with the re-request accepted and no round arriving — measured twice on
-[#157](https://github.com/sleepy-panda-works/portulan/pull/157)'s rebased heads, cause unexplained,
-authorship the surviving lead ([#161](https://github.com/sleepy-panda-works/portulan/issues/161)). The
+[#157](https://github.com/sleepy-panda-srl/portulan/pull/157)'s rebased heads, cause unexplained,
+authorship the surviving lead ([#161](https://github.com/sleepy-panda-srl/portulan/issues/161)). The
 ruling on [`../proposals/0023-a-head-that-never-draws-a-round-needs-an-answer.md`](../proposals/0023-a-head-that-never-draws-a-round-needs-an-answer.md),
 exit (2): the check stays red, and merging past it is the maintainer's explicit per-occurrence act,
 recorded on the pull request before the merge. **Not a weakening** — `copilot-reviewed` is not a required
@@ -75,14 +75,14 @@ context, so the platform never held this door; what the record buys is that rout
 being invisible.
 
 **A review OBJECT is not a round — amended 2026-08-18,
-[#286](https://github.com/sleepy-panda-works/portulan/issues/286).** The paragraph above says a checker
+[#286](https://github.com/sleepy-panda-srl/portulan/issues/286).** The paragraph above says a checker
 matching on *"a Copilot review exists"* would have reported green on every case this rule was written
 for. It said that of the HEAD; the checker written from it made the same error one notch lower, asking
 whether a review object existed — right login, right commit, not dismissed — and never whether a
 judgement had happened. Copilot returned a review reading only *"encountered an error and was unable to
 review this pull request"*, `copilot-reviewed` went **green**, and the derived verdict asserted that
 round *"raised no inline comment and no suppressed low-confidence note"* — submitted **4m36s before** the
-only genuine round arrived on [#283](https://github.com/sleepy-panda-works/portulan/pull/283), so it
+only genuine round arrived on [#283](https://github.com/sleepy-panda-srl/portulan/pull/283), so it
 cannot have come from it.
 
 **The durable half is where a rule got weaker, not Copilot.** A rule stated at the right altitude was

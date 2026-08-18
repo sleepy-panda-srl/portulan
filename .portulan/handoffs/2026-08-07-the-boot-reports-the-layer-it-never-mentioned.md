@@ -2,8 +2,8 @@
 
 Sixth handoff of 2026-08-07, and the third of three from one working thread — the maintainer asked for
 the top three `Now` items one by one, one pull request each, and ruled that each carries its own handoff
-and Session log entry. This one is [#178](https://github.com/sleepy-panda-works/portulan/pull/178), for
-[#134](https://github.com/sleepy-panda-works/portulan/issues/134).
+and Session log entry. This one is [#178](https://github.com/sleepy-panda-srl/portulan/pull/178), for
+[#134](https://github.com/sleepy-panda-srl/portulan/issues/134).
 
 **State.** The boot skill reads and reports `packs`. Three claims that denied or overstated a capability
 are corrected. Nine recipes green, `claude plugin validate --strict` passes.
@@ -73,7 +73,7 @@ workspace both report `Skills (0), Agents (0)`. The issue measured 2.1.220. The 
 | The **depth defect** behind #134's pack measurements | **Closed here**, demonstrated below |
 | Row 7's clause **(b)** — a *composed* pack's skills invocable in an *adopting* workspace | **NOT closed.** See the correction below |
 | The boot reports discovery's answer honestly | **Closed here** — section 3a |
-| `/portulan` **resolving** a feed-installed workspace | **NOT closed.** That is plugin-cache discovery, which row 7 assigns to [#123](https://github.com/sleepy-panda-works/portulan/issues/123) |
+| `/portulan` **resolving** a feed-installed workspace | **NOT closed.** That is plugin-cache discovery, which row 7 assigns to [#123](https://github.com/sleepy-panda-srl/portulan/issues/123) |
 
 **The pull request carried `Closes #134` and no longer does.** A fresh-context supervisor was asked for
 the judgement and returned **KEEP OPEN**, on three grounds this session verified rather than accepted:

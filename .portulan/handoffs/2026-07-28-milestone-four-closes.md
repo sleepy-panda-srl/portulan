@@ -3,7 +3,7 @@
 **Date:** 2026-07-28 · **Milestone 4 (Enforcement compiler), close** · Branch
 `m4-closes-on-what-was-demonstrated`
 
-[#57](https://github.com/sleepy-panda-works/portulan/pull/57) merged as `6b6f591` — the floor backend,
+[#57](https://github.com/sleepy-panda-srl/portulan/pull/57) merged as `6b6f591` — the floor backend,
 the per-host matrix, `doctor`'s degradation report, and task `0007`. This change closes the row on a
 fresh-context verdict, and carries the two non-gating fixes that verdict named.
 

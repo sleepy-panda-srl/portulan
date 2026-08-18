@@ -2,7 +2,7 @@
 
 **Status. OPEN — drafted 2026-08-17, on the maintainer's instruction to handle
 [`0004`](0004-ci-runs-every-declared-recipe.md)'s deferred fork decision together with
-[#67](https://github.com/sleepy-panda-works/portulan/issues/67).** Two questions come due at the same
+[#67](https://github.com/sleepy-panda-srl/portulan/issues/67).** Two questions come due at the same
 event and are answered here together, because one is the other's premise.
 
 `0004` deferred the fork threat model with an explicit trigger: *"The exposure is bounded today by
@@ -77,4 +77,4 @@ the workflow. An exemption would be machinery bought for a case the contribution
 
 _Undecided. The maintainer's, as both a doctrine question and a Gated settings act._
 
-**Pull request:** [#282](https://github.com/sleepy-panda-works/portulan/pull/282) — the change that filed this.
+**Pull request:** [#282](https://github.com/sleepy-panda-srl/portulan/pull/282) — the change that filed this.

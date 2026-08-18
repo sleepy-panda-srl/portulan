@@ -1,7 +1,7 @@
 # Handoff — the clause misquoted the ruling it ratified
 
-2026-08-10, off the milestone row. [#217](https://github.com/sleepy-panda-works/portulan/issues/217):
-[#196](https://github.com/sleepy-panda-works/portulan/issues/196)'s residual question — whether the
+2026-08-10, off the milestone row. [#217](https://github.com/sleepy-panda-srl/portulan/issues/217):
+[#196](https://github.com/sleepy-panda-srl/portulan/issues/196)'s residual question — whether the
 **incident citation form** is worth ratifying in writing — answered in one clause, in one carrier.
 
 ## What landed

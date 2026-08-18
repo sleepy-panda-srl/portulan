@@ -96,7 +96,7 @@ jobs:
     runs-on: ubuntu-latest
     # A fork running this on its own schedule would push to itself and fail at the App token, which is
     # noise rather than a finding. Named so the skip is legible in the run list.
-    if: github.repository == 'sleepy-panda-works/portulan'
+    if: github.repository == 'sleepy-panda-srl/portulan'
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:

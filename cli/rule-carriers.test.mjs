@@ -14,7 +14,7 @@ import path from "node:path";
 import { parseRegistry, RegistryError, inDomain, scan, auditCarriers, normalise, run } from "./rule-carriers.mjs";
 
 // This suite created no temp directory until the `run` case below, which makes it a NEW scratch site —
-// the 24th, and the one [#244](https://github.com/sleepy-panda-works/portulan/issues/244) records that
+// the 24th, and the one [#244](https://github.com/sleepy-panda-srl/portulan/issues/244) records that
 // nothing rails. Registered here rather than trusted to memory, in the shape session 14 settled: one
 // exit handler for the whole list, because the per-directory form exceeds node's default ten-listener
 // limit.

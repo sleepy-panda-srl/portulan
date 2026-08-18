@@ -13,7 +13,7 @@ body:
         Proposals are wanted, **including ones arguing the current design is wrong** — that is the most
         useful kind. Note that Portulan does not accept outside pull requests: the proposal is the
         contribution, and a team member implements what is accepted. See
-        [`CONTRIBUTING.md`](https://github.com/sleepy-panda-works/portulan/blob/main/CONTRIBUTING.md).
+        [`CONTRIBUTING.md`](https://github.com/sleepy-panda-srl/portulan/blob/main/CONTRIBUTING.md).
 
   - type: textarea
     id: problem

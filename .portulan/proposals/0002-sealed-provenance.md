@@ -112,4 +112,4 @@ Both living notices are now swept — this block, and the honest-limits bullet i
 [`../../spec/slots.md`](../../spec/slots.md). The handoff and session-log mentions are dated records and
 stay as history.
 
-**Pull request:** [#6](https://github.com/sleepy-panda-works/portulan/pull/6) — the change that filed this.
+**Pull request:** [#6](https://github.com/sleepy-panda-srl/portulan/pull/6) — the change that filed this.

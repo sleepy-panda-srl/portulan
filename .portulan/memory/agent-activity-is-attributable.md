@@ -1,6 +1,6 @@
 **type:** rule
 **scope:** workspace — every agent acting on this repository's GitHub surface
-**provenance:** `form=link` `href=https://github.com/sleepy-panda-works/portulan/pull/8#issuecomment-5077446174`
+**provenance:** `form=link` `href=https://github.com/sleepy-panda-srl/portulan/pull/8#issuecomment-5077446174`
 — the milestone-2 pull request, where four review replies written by an implementer agent were posted
 through the maintainer's credentials and therefore appeared under his name. Noticed by the agent that
 wrote them, while answering a review about claims that are false against the tree.

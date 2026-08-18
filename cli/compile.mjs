@@ -1000,7 +1000,7 @@ export function claudeCode(parsed, options = {}) {
     // each of the three contexts this must survive:
     //
     //   1. this checkout            — `<project>/cli/`
-    //   2. a project-local install  — `<project>/node_modules/@sleepy-panda-works/portulan/cli/`
+    //   2. a project-local install  — `<project>/node_modules/@sleepy-panda-srl/portulan/cli/`
     //   3. a global or npx-only install — NOT under the project at all
     //
     // So the path is derived from where THIS file actually is at compile time and expressed relative to

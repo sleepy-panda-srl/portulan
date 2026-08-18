@@ -52,7 +52,7 @@ One sentence: **cockpit products sell the dashboard; Portulan sells the doctrine
 
 ## Product identity
 
-- **Open-core.** Engine + spec + CLI + demo workspace at `github.com/sleepy-panda-works/portulan` —
+- **Open-core.** Engine + spec + CLI + demo workspace at `github.com/sleepy-panda-srl/portulan` —
   open-core **by design, and public** (public 27 Jul–3 Aug 2026, private while the build hardened,
   public again since 17 Aug 2026; it doubles as the Claude Code plugin marketplace, so installing
   needs no access grant). **Visibility is a deliberate release decision and has moved three times;

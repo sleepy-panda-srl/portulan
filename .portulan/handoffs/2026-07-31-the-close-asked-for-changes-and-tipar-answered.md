@@ -6,7 +6,7 @@
 **State.** **Milestone 6 is still open, and for one reason only: `tipar#46` is not merged.** The
 milestone-close checkpoint ran against the merged tree and returned **REQUEST-CHANGES** — clauses 1–4
 demonstrated, clause 5 half. Both repairs it asked for are merged. The Tipar half it refused now
-exists as [`tipar#46`](https://github.com/sleepy-panda-works/tipar/pull/46), carrying the artifacts
+exists as [`tipar#46`](https://github.com/sleepy-panda-srl/tipar/pull/46), carrying the artifacts
 whose absence was the refusal.
 
 ## Why the close refused, because the reason is not what it looks like
@@ -28,7 +28,7 @@ clause is about the **loop**, and the loop's output includes its own record.
 because a workspace lives at `workspaces/<name>/` here and **is** the root there. Links red, 1 of 21.
 The merge-time green had been run against the clone.
 
-**That is [#121](https://github.com/sleepy-panda-works/portulan/issues/121)'s class one level up**, and
+**That is [#121](https://github.com/sleepy-panda-srl/portulan/issues/121)'s class one level up**, and
 it arrived one merge after that class was closed in the public engine. There the lesson was *a check
 must ask the repository, not the disk it runs on*. Here it is **a check must run in the layout the
 consumer gets** — and for a feed-delivered workspace the consumer's layout is the install, never the
@@ -61,7 +61,7 @@ the true argument discounted with it.
 installed", a comment the diff falsified, and one overstatement repeated at four sites. Every one is a
 *claim about a mechanism* that was wrong while the mechanism was right. Checkpoints and drills attack
 mechanisms; nobody attacks the sentences about them.
-[#133](https://github.com/sleepy-panda-works/portulan/issues/133) holds the argument. The cheapest
+[#133](https://github.com/sleepy-panda-srl/portulan/issues/133) holds the argument. The cheapest
 remedy is still one line in the pre-commit skill: re-derive the diff's claims about the diff's own code.
 
 ## For the next session

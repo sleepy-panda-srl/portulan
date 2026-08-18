@@ -188,7 +188,7 @@ that the deferred harness get a task file rather than a third forward-reference.
 refused with `not all refs are readable` — creating a pull request needs repository-**contents** read,
 which this App is deliberately denied. That denial is the load-bearing part of the whole mechanism, so
 the answer is not to widen it: buying nicer attribution on one artifact by granting the token the
-ability to write code trades the guarantee for the cosmetic. [#18](https://github.com/sleepy-panda-works/portulan/pull/18)
+ability to write code trades the guarantee for the cosmetic. [#18](https://github.com/sleepy-panda-srl/portulan/pull/18)
 was opened with the maintainer's credentials and its first line says an agent wrote it — the fallback
 this repository used before the App existed, which serves the rule's real purpose: a reader can tell.
 Conversation on the pull request comes from the bot as usual. Recorded in
@@ -243,7 +243,7 @@ change is unreviewed until it is reviewed.
 ## Also landed after the pull request opened
 
 **Ownership moved from a person to a team.** `CODEOWNERS` names
-`@sleepy-panda-works/maintainers` rather than a personal handle, on the maintainer's instruction. One
+`@sleepy-panda-srl/maintainers` rather than a personal handle, on the maintainer's instruction. One
 member today and one human on the repository, so nothing about *who reviews* changes; what changes is
 what the day of the second reviewer costs — a membership change instead of an edit to eleven lines — and
 that the file most likely to accumulate personal handles carries none, which matters once this history

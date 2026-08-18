@@ -1,6 +1,6 @@
 # Handoff — the wire reaches an artifact adopters receive, and the constitution catches up
 
-**Milestone 7, session 2, second batch** — [#158](https://github.com/sleepy-panda-works/portulan/pull/158).
+**Milestone 7, session 2, second batch** — [#158](https://github.com/sleepy-panda-srl/portulan/pull/158).
 **M7 still open.** `vendor` itself is not in this batch; what is in it is the thing `vendor` was waiting on.
 
 ## What landed
@@ -14,9 +14,9 @@ cover both switch directions, which finally gives the residence switch its verb.
 ## The file move was never the fix, and that is the finding
 
 **Both runners derived the adopter's workspace from their own file position** — `HERE/..`, `HERE/../..`.
-That is true in exactly one layout: the author's. From `node_modules/@sleepy-panda-works/portulan/cli/` a
+That is true in exactly one layout: the author's. From `node_modules/@sleepy-panda-srl/portulan/cli/` a
 runner has no idea where the workspace is, and inferring one would be
-[#131](https://github.com/sleepy-panda-works/portulan/issues/131)'s class in the two tools with the most
+[#131](https://github.com/sleepy-panda-srl/portulan/issues/131)'s class in the two tools with the most
 to lose from it. The project root is **told** now — `CLAUDE_PROJECT_DIR || cwd`, `||` rather than `??` so
 an empty env var falls through instead of resolving every path against `""`.
 
@@ -48,7 +48,7 @@ checkpoint ruled `||` correct, for the empty-string reason above.
 Context 3 — an absolute-path hook exercised by a **live host** — has never happened; the emission and the
 note are demonstrated, the run is not. `init` still drafts the binding and does not run `compile`, so an
 adopter's workspace has no compiled hooks until their human runs it. The handoff-index rail still has no
-spelling, deferred to [#148](https://github.com/sleepy-panda-works/portulan/issues/148) by ruling.
+spelling, deferred to [#148](https://github.com/sleepy-panda-srl/portulan/issues/148) by ruling.
 
 ## What comes next
 

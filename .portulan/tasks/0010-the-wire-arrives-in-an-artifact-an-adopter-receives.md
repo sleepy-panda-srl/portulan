@@ -1,6 +1,6 @@
 # Task 0010 — clause (a)'s wire arrives in an artifact an adopter receives
 
-**Lane:** full · **Opened:** 2026-08-03, milestone 7 session 2, after [#156](https://github.com/sleepy-panda-works/portulan/pull/156) merged
+**Lane:** full · **Opened:** 2026-08-03, milestone 7 session 2, after [#156](https://github.com/sleepy-panda-srl/portulan/pull/156) merged
 **Verify recipe:** `tests` · **Status:** DONE — all eight recipes green, and the wire demonstrated live
 
 > Scoped and left unstarted **deliberately**, with the measurements already taken, because the session
@@ -24,7 +24,7 @@ Row 7 clause (a) requires the session-end gate **wired** through the compiled po
 `gate.mjs` is `stop.mjs`'s sibling and sits in the same unshipped directory. There is a defensible
 asymmetry — a missing `PreToolUse` hook still leaves the permission rule beneath it, while a missing
 `Stop` hook has no layer below — but shipping one and reasoning about the other is
-[#91](https://github.com/sleepy-panda-works/portulan/issues/91)'s class, which session 1 hit twice in one
+[#91](https://github.com/sleepy-panda-srl/portulan/issues/91)'s class, which session 1 hit twice in one
 pull request. Move both, or record why one stays, in the change itself.
 
 ## The spelling is the real work, not the file move
@@ -33,7 +33,7 @@ The hook must resolve in three contexts, and the maintainer's ruling of 2026-08-
 for the close) means it cannot lean on a published package:
 
 1. **This repository** — the runner in the checkout's own `cli/`.
-2. **A project-local install** — `node_modules/@sleepy-panda-works/portulan/cli/…`, which is under
+2. **A project-local install** — `node_modules/@sleepy-panda-srl/portulan/cli/…`, which is under
    `${CLAUDE_PROJECT_DIR}` and therefore reachable.
 3. **Global / npx-only** — *not* reachable by a project-relative path at all.
 
@@ -67,7 +67,7 @@ customer zero's session-end gate and gate policy pointing at files that are gone
       the checkpoint with a planted dead link and observed to block, then restored and observed to allow.
 - [x] Carriers swept, including the four this task named and did not touch on the first pass.
 - [ ] **Deferred by ruling:** the handoff-index freshness rail's spelling. Its obstacle is
-      [#148](https://github.com/sleepy-panda-works/portulan/issues/148), which stays open by the
+      [#148](https://github.com/sleepy-panda-srl/portulan/issues/148), which stays open by the
       maintainer's no-publish ruling of 2026-08-03, so this is not startable here.
 - [ ] **Undemonstrated, named:** context 3 exercised by a live session. The emission is demonstrated and
       the note is demonstrated; an absolute-path hook has never actually been run by a host.
@@ -84,8 +84,8 @@ stop.mjs:  WORKSPACE = resolve(HERE, "..");  REPO = resolve(WORKSPACE, "..")
 ```
 
 That works for exactly one layout — the author's, with the file at `.portulan/compile/`. From `cli/`,
-and far more so from `node_modules/@sleepy-panda-works/portulan/cli/`, a runner has **no idea** where the
-adopter's workspace is, and inferring one would be [#131](https://github.com/sleepy-panda-works/portulan/issues/131)'s
+and far more so from `node_modules/@sleepy-panda-srl/portulan/cli/`, a runner has **no idea** where the
+adopter's workspace is, and inferring one would be [#131](https://github.com/sleepy-panda-srl/portulan/issues/131)'s
 class (paths resolved against the author's layout) in the two tools with the most to lose from it.
 
 **The fix shape, implemented and passing:** the project root is **told**, never derived —

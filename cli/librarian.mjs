@@ -730,9 +730,9 @@ export function mineIncidents(series, curated) {
  *
  * **What this cannot see, stated because it is the larger half.** These are *inline* comments. The
  * low-confidence notes GitHub collapses into a review body carry no path and never appear here — and
- * on [#81](https://github.com/sleepy-panda-works/portulan/pull/81) that channel produced nine of
+ * on [#81](https://github.com/sleepy-panda-srl/portulan/pull/81) that channel produced nine of
  * eleven findings, eight of them real. So this mines the smaller channel, and the standing argument
- * for [#66](https://github.com/sleepy-panda-works/portulan/issues/66) — promoting those notes into
+ * for [#66](https://github.com/sleepy-panda-srl/portulan/issues/66) — promoting those notes into
  * real threads — is now also an argument about what a scheduled pass can measure at all.
  */
 export function mineReviews(reviews, { treeRoot }) {

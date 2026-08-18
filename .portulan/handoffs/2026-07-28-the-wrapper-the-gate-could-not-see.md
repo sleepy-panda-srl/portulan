@@ -71,7 +71,7 @@ neighbouring paragraph. It was found by making a request, not by reading.
 ## Incidental, and recorded because the record is the product
 
 A probe run while testing the guard used `-f body=hi`, which makes `gh api` **POST** — it posted a `hi`
-comment as `portulan-agent[bot]` on [#8](https://github.com/sleepy-panda-works/portulan/issues/8). Deleted
+comment as `portulan-agent[bot]` on [#8](https://github.com/sleepy-panda-srl/portulan/issues/8). Deleted
 on the maintainer's instruction the same minute. The lesson is small and general: a read-only probe of a
 write-capable tool is only read-only if you check the verb.
 

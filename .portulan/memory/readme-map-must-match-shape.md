@@ -1,6 +1,6 @@
 **type:** rule
 **scope:** workspace — the `portulan` repository
-**provenance:** `form=link` `href=https://github.com/sleepy-panda-works/portulan/pull/3`
+**provenance:** `form=link` `href=https://github.com/sleepy-panda-srl/portulan/pull/3`
 — milestone 1, session 3, where a fresh-context supervisor found `.claude-plugin/` absent from the root
 README's layout table, missing since the repository was created at milestone 0.
 

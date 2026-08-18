@@ -25,7 +25,7 @@ thing?*
 
 They differ, and the difference is **not** in what the workspace contains. Compared at source — customer
 zero's [`../workspace.json`](../workspace.json) here, and the `sleepy-panda` portfolio workspace in the
-private feed, the two held side by side the way [#129](https://github.com/sleepy-panda-works/portulan/pull/129)
+private feed, the two held side by side the way [#129](https://github.com/sleepy-panda-srl/portulan/pull/129)
 held a feed install and a checkout at once — **no content-kind differs**. Both carry slots, verify
 recipes, a memory store, a gate map, a position in the cascade. Neither carries a key the other cannot.
 _(That comparison is not reproducible from this public tree: the portfolio workspace lives in
@@ -70,7 +70,7 @@ _The rule says "the workspace", not "the portfolio workspace", and the narrowing
 `governed_by` nor the cross-repository check constrains the governing workspace's `kind`, and the
 maintainer's ruling does not legislate it either — writing "portfolio" here would be a rule claiming more
 than its own rail, which is the defect class
-[#133](https://github.com/sleepy-panda-works/portulan/issues/133) is filed about. As it happens the only
+[#133](https://github.com/sleepy-panda-srl/portulan/issues/133) is filed about. As it happens the only
 feed-side instance today is `portfolio`-kind._
 
 ## Parity, and where it is keyed
@@ -195,7 +195,7 @@ refusable. It was refused, and fixed, in the change that built the switch._
 _**The cross-repo claims-lint gap has a tracker and no owner, appended 2026-08-13** — appended rather
 than folded into the limits bullet above, for the reason this file's other notes give. The gap the
 bullet prices is tracked as
-[#138](https://github.com/sleepy-panda-works/portulan/issues/138), filed 2026-07-30 at the maintainer's
+[#138](https://github.com/sleepy-panda-srl/portulan/issues/138), filed 2026-07-30 at the maintainer's
 instruction, which names the two design questions (per-card tree resolution; a CI job holding both
 checkouts) and the seam question beneath them — whether a private feed's CI may check out a customer's
 repository at all. **What it still lacks is an owning milestone.** Milestone 9 has been proposed on the
@@ -218,7 +218,7 @@ milestone 7's close pass reading it as current._
 
 ## Provenance
 
-`form=link` `href=`[`https://github.com/sleepy-panda-works/portulan/pull/135`](https://github.com/sleepy-panda-works/portulan/pull/135)
+`form=link` `href=`[`https://github.com/sleepy-panda-srl/portulan/pull/135`](https://github.com/sleepy-panda-srl/portulan/pull/135)
 — the maintainer's ruling of 2026-07-30, carried verbatim in the pull request that files this proposal,
 together with the `portulan-internal` → Tipar arrangement that raised it. Public, in-repo and resolvable,
 carrying no client material, so no seal is needed. Behind it: thesis 6 of
@@ -234,7 +234,7 @@ moves into that mechanism rather than being deleted.
 _Accepted — Marius Cetanas, 2026-07-30_, by the ruling quoted above, recorded in the session that drafted
 this. Written by an implementer agent (Claude Opus 5) under two fresh-context Fable 5 checkpoints.
 
-**Pull request:** [#135](https://github.com/sleepy-panda-works/portulan/pull/135) — the change that filed this.
+**Pull request:** [#135](https://github.com/sleepy-panda-srl/portulan/pull/135) — the change that filed this.
 
 **Follow-through, 2026-08-09 — the one asymmetry this proposal named is closed.** *Parity, and where it is
 keyed* recorded a residence asymmetry that was "discovery rather than function", and *The honest limits*
@@ -243,5 +243,5 @@ recorded *"Nothing resolves a pointer"*. Both are now false in the direction thi
 `governed_by`, and the boot loads the workspace it names. **The body above is left as written** — it is the
 record of a ruling taken on the state of that day, and rewriting it to suit a later change would destroy the
 record to flatter the rule. What is *not* closed is the pack-root half, which is
-[#123](https://github.com/sleepy-panda-works/portulan/issues/123) and is a workspace's limit in **either**
+[#123](https://github.com/sleepy-panda-srl/portulan/issues/123) and is a workspace's limit in **either**
 residence, so it is not the asymmetry this section was about.

@@ -2,12 +2,12 @@
 
 **Status.** Accepted — landed with the post-M5 reconciliation.
 
-**Pull request:** https://github.com/sleepy-panda-works/portulan/pull/96
+**Pull request:** https://github.com/sleepy-panda-srl/portulan/pull/96
 
 **Superseded in part, 2026-07-29.** This proposal's *claim* stands and its verification is unchanged;
 what has moved is the answer to the question it deliberately left open. It named **milestone 6** as
 where the first instance was owed, and declined to promise the milestone-6 row would build it. On
-[#98](https://github.com/sleepy-panda-works/portulan/issues/98) the maintainer settled it as a **split**
+[#98](https://github.com/sleepy-panda-srl/portulan/issues/98) the maintainer settled it as a **split**
 — verbatim, *"row 6 declares, row 7 validates"*. **Milestone 6 declares**: the resolving pack's persona
 declares its memory scope, and the resolution demonstration shows that scope landing in the adopting
 workspace's own layer. **Milestone 7 validates**: `doctor` already owes a check of a persona against its

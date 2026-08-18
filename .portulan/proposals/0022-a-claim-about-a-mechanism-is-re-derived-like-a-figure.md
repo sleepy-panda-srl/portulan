@@ -2,32 +2,32 @@
 
 **Status.** Accepted with amended wording, 2026-08-09 — see **Decision.**
 
-**Pull request:** https://github.com/sleepy-panda-works/portulan/pull/185
+**Pull request:** https://github.com/sleepy-panda-srl/portulan/pull/185
 
 _This field said `/184` until the pull request was opened and turned out to be **185** — issues and
 pull requests share one number space, so a prediction is only ever a guess. `docs.sh` check 5c asserts
 the URL's SHAPE and never that the pull request exists, so it ran green over the wrong number and
-always would. [#143](https://github.com/sleepy-panda-works/portulan/issues/143) is the chicken-and-egg
+always would. [#143](https://github.com/sleepy-panda-srl/portulan/issues/143) is the chicken-and-egg
 that forces the guess; this is what it costs, measured once._
 
 ## Incident
 
 Three arcs. The third happened while this proposal was being written, which is the reason it is worth
-filing rather than closing [#133](https://github.com/sleepy-panda-works/portulan/issues/133) as a
+filing rather than closing [#133](https://github.com/sleepy-panda-srl/portulan/issues/133) as a
 one-off.
 
-**[#129](https://github.com/sleepy-panda-works/portulan/pull/129) — six prose defects, zero wrong
+**[#129](https://github.com/sleepy-panda-srl/portulan/pull/129) — six prose defects, zero wrong
 counts.** Every figure the code emitted was right, in every drill, on every run. Six *sentences about*
 those mechanisms were wrong. **Copilot found five of the six.** Two fresh-context checkpoints, a
 twenty-five-shape forced-red drill and eight green recipes found none of them — they attacked
 mechanisms, and nobody attacked the claims.
 
-**[#167](https://github.com/sleepy-panda-works/portulan/pull/167) — six more.** Eight rounds, each
+**[#167](https://github.com/sleepy-panda-srl/portulan/pull/167) — six more.** Eight rounds, each
 authorised past the two-round bound individually. Rounds 1–5 found code; 6, 7 and 8 found a
 documentation row, prose, and a test name. Among them *"seventeen `grep` invocations"* — a wrong number
 **inside the sentence correcting a wrong universal**, in a pull request whose subject is claims that
 outrun their measurement — and *"a 660-line instrument"*, true when
-[#68](https://github.com/sleepy-panda-works/portulan/issues/68) was filed and carried in the present
+[#68](https://github.com/sleepy-panda-srl/portulan/issues/68) was filed and carried in the present
 tense ever since, against a file that is **1337 lines** — measured on `.portulan/verify/workflow-filters.mjs`
 at `origin/main` on 2026-08-09, not copied.
 
@@ -41,7 +41,7 @@ against itself than for itself, and that is left standing._
 **The pattern held without exception across both: every claim written from memory or copied from an
 issue was wrong, and every claim measured was right.**
 
-**[#183](https://github.com/sleepy-panda-works/portulan/pull/183) — the third, and it is the one that
+**[#183](https://github.com/sleepy-panda-srl/portulan/pull/183) — the third, and it is the one that
 decides between the options.** That change shipped a header reading *"The substrate is measured, not
 invented."* It was true of the record's **schema** and inverted for the install **layout**: the code
 probed `<installPath>/packs` and `<installPath>/.portulan/workspace.json`, which is one of the two
@@ -149,7 +149,7 @@ a defect found in old text after this lands is **arrears, not a regression**
 
 ## Provenance
 
-`form=link href=https://github.com/sleepy-panda-works/portulan/issues/133` — with the two arcs the issue
+`form=link href=https://github.com/sleepy-panda-srl/portulan/issues/133` — with the two arcs the issue
 names, the 2026-08-07 re-scoring comment on it — posted under the maintainer's account and
 self-signed as an agent's backlog-refinement pass, attributed here as it describes itself — and the
 #183 instance above.
@@ -175,8 +175,8 @@ negative; and *"prefer the rail to the reminder"* presupposes a rail on offer, w
 there is not. Vision thesis 3's third arm — *"earns its place in the context window"* — is the arm this
 rule stands on, and its retirement condition is what keeps that standing honest. **(a) is split out to
 its own issue** as the generalisation of
-[#93](https://github.com/sleepy-panda-works/portulan/issues/93) — filed as
-[#187](https://github.com/sleepy-panda-works/portulan/issues/187) — per this proposal's own argument that
+[#93](https://github.com/sleepy-panda-srl/portulan/issues/93) — filed as
+[#187](https://github.com/sleepy-panda-srl/portulan/issues/187) — per this proposal's own argument that
 a mechanical rail must be costed as a build rather than smuggled into a doctrine ruling. **The two errata
 stand as written**: a record that demonstrated its thesis against its own author is evidence, and
 scrubbing it would replace a demonstrated claim with an asserted one — the precedent is

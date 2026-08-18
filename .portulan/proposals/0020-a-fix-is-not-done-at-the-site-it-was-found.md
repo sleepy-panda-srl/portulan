@@ -4,7 +4,7 @@
 rather than staying in thirteen commit messages, and ruled on its content the same day; his merge of the
 pull request below ratifies the drafting.
 
-**Pull request:** https://github.com/sleepy-panda-works/portulan/pull/168
+**Pull request:** https://github.com/sleepy-panda-srl/portulan/pull/168
 
 **Companion:** [`0018`](0018-a-verdict-from-the-context-that-did-the-work-is-not-a-verdict.md) establishes
 that the grader must not be the context that did the work. This proposal is about a defect that survives
@@ -13,7 +13,7 @@ that found it needed eleven rounds past a bound designed to stop at two.
 
 ## The incident
 
-[#164](https://github.com/sleepy-panda-works/portulan/pull/164) drew **thirteen Copilot rounds**, and
+[#164](https://github.com/sleepy-panda-srl/portulan/pull/164) drew **thirteen Copilot rounds**, and
 every round found at least one defect that pull request had introduced. Rounds 1→2 registered an undo
 before the first write at the destination and left the retire step one function down. Round 4 found a
 directory sitting where a file was planned, in a `collisions()` copied from `cli/new.mjs`, so the fix had
@@ -32,13 +32,13 @@ rules out of — the collision walk, the `chain` boundary, and the only-`ENOENT`
 and not the lesson.
 
 **And the class is older than this pull request.** The maintainer ruled on it on **2026-07-27**, on
-[#43](https://github.com/sleepy-panda-works/portulan/pull/43): *"never ship a change that corrects one
-wrong claim while knowingly leaving its neighbours."* Since then: [#60](https://github.com/sleepy-panda-works/portulan/pull/60),
-between two branches of one function five commits apart; [#117](https://github.com/sleepy-panda-works/portulan/pull/117),
+[#43](https://github.com/sleepy-panda-srl/portulan/pull/43): *"never ship a change that corrects one
+wrong claim while knowingly leaving its neighbours."* Since then: [#60](https://github.com/sleepy-panda-srl/portulan/pull/60),
+between two branches of one function five commits apart; [#117](https://github.com/sleepy-panda-srl/portulan/pull/117),
 where `--pack-root`'s check landed in one tool of three and the persona-scope hardening left
 `compareOrWrite` with the same hole six hundred lines up the same file;
-[#91](https://github.com/sleepy-panda-works/portulan/issues/91) and
-[#92](https://github.com/sleepy-panda-works/portulan/issues/92), two arms of one function disagreeing
+[#91](https://github.com/sleepy-panda-srl/portulan/issues/91) and
+[#92](https://github.com/sleepy-panda-srl/portulan/issues/92), two arms of one function disagreeing
 about whether a filesystem fact is a verdict.
 
 ## The claim
@@ -114,7 +114,7 @@ replaced it is better evidence than it was. Until 2026-08-07T15:07Z, `cli/index.
 and `cli/index.mjs:781`, **525 lines below it in the same file**, was `} catch { /* absent … */ }`. That
 was #91, filed 2026-07-29 and live for **nine days in the file that argues against it**.
 
-[#166](https://github.com/sleepy-panda-works/portulan/pull/166) closed it about an hour after #164
+[#166](https://github.com/sleepy-panda-srl/portulan/pull/166) closed it about an hour after #164
 merged, and **three things in that pull request are this proposal's argument arriving independently**,
 from a session that had not seen it:
 
@@ -259,7 +259,7 @@ three agree, full stop; that was false, and it was **found by the pre-commit che
 sibling-sweep step this very change ships**, which is the only evidence here that the step catches
 anything. It is deliberately not a contract row: adding it would land the suite red, and which reading of
 *at or below the named path* is right is a behaviour question for the maintainer. It is the first
-measured exhibit on [#169](https://github.com/sleepy-panda-works/portulan/issues/169). **An agreement is a
+measured exhibit on [#169](https://github.com/sleepy-panda-srl/portulan/issues/169). **An agreement is a
 property of the states somebody checked** — this proposal's own subject, turned on its own rail.
 
 So it lands **green and establishes nothing new about the tree**. What it converts is an agreement held
@@ -294,7 +294,7 @@ Fable 5 supervisor caught two wordings of it in the tree at the same time.
 **The two precedents are named rather than smoothed**, because they contradict. #85 read the bound
 strictly, triaged the same finding through rounds three to seven, and the product of that triage is #91 —
 which then stayed open **nine days**, and was closed by
-[#166](https://github.com/sleepy-panda-works/portulan/pull/166) an hour after #164 merged, in a change
+[#166](https://github.com/sleepy-panda-srl/portulan/pull/166) an hour after #164 merged, in a change
 that promptly recurred the class inside its own fix. #164 ran eleven rounds past on
 the maintainer's grant, and every round found a real defect. Triage is not a free disposal; it is a
 deferral whose measured half-life here is indefinite. The grant stays his, the taper stays judgement, and
@@ -306,7 +306,7 @@ The one sub-rule with a mechanical shape is *never `existsSync`*. A check requir
 stated waiver is buildable and would have caught **round 10 — one of the eight**, at a cost of seventeen
 annotations. **And the price sheet owes a second figure the refusal would otherwise flatter itself by
 omitting:** annotating those seventeen calls at adoption *is* the sibling sweep for this sub-rule, and
-its yield is demonstrably nonzero — [#166](https://github.com/sleepy-panda-works/portulan/pull/166) found
+its yield is demonstrably nonzero — [#166](https://github.com/sleepy-panda-srl/portulan/pull/166) found
 a live #91 sibling in exactly one of them, `judgeScopes`' `if (!fs.existsSync(location)) continue`. So
 the honest price is **one catch per eight rounds and one per seventeen annotated calls**, and the
 refusal below rests on maintenance cost rather than on the audit being worthless. Refused on the ground that a grep finds a **primitive** while the rule is about a
@@ -404,7 +404,7 @@ form check and the reason it is not offered as a solution to the class.
   recorded, which is what
   [`../memory/a-recorded-limit-is-not-a-managed-limit.md`](../memory/a-recorded-limit-is-not-a-managed-limit.md)
   asks. He authorised it on 2026-08-07 and it is filed as
-  [#169](https://github.com/sleepy-panda-works/portulan/issues/169), carrying the eighth-state divergence
+  [#169](https://github.com/sleepy-panda-srl/portulan/issues/169), carrying the eighth-state divergence
   above as its first measured exhibit.
 - **A finding this proposal reports and does not fix.** The superlative *"the defect this repository names
   most often"* appears **at least 37 times across 31 files** and attaches to at least **three different
@@ -424,7 +424,7 @@ question produced four further instances of the class *inside the change general
 
 He decided the three things this asked him: the rule stands; the reflexive `core/templates/persona.md`
 re-point is **kept**; the `collisions()` unification is **filed** as
-[#169](https://github.com/sleepy-panda-works/portulan/issues/169). He granted the extension past the
+[#169](https://github.com/sleepy-panda-srl/portulan/issues/169). He granted the extension past the
 review-loop bound after round 2 — asked for and given, in the form the amended rule 4 requires. And he
 ruled the checkpoints pack bump twice: **PATCH first, then MINOR on the argument**, so `0.2.0` is what
 ships. _(This sentence recorded only the first ruling for one round, while the manifest carried the

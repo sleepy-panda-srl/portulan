@@ -49,7 +49,7 @@ agent retiring the human-owned curated layer on its own authority is the failure
 duplication is much cheaper than that precedent.
 
 **Decision.** Marius Cetanas — **accepted, 2026-07-25**, on a recommendation he commissioned from a
-fresh-context Fable 5 and posted as [`portulan-agent[bot]` on pull request 15](https://github.com/sleepy-panda-works/portulan/pull/15#issuecomment-5078534991).
+fresh-context Fable 5 and posted as [`portulan-agent[bot]` on pull request 15](https://github.com/sleepy-panda-srl/portulan/pull/15#issuecomment-5078534991).
 The recommendation's argument, kept because it is stronger than this proposal's own: the cost of leaving
 it pending is a **live, unguarded duplication** — the memory entry against `spec/README.md`, with nothing
 holding the two in agreement — and this milestone's own new entry
@@ -69,4 +69,4 @@ This is the first retirement condition in this workspace to have fired and been 
 strongest argument for doing it by hand rather than waiting for the librarian: milestone 5's demotion pass
 now has one real instance to learn its shape from instead of a specification of one.
 
-**Pull request:** [#8](https://github.com/sleepy-panda-works/portulan/pull/8) — the change that filed this.
+**Pull request:** [#8](https://github.com/sleepy-panda-srl/portulan/pull/8) — the change that filed this.

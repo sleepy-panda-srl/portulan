@@ -22,7 +22,7 @@ at all. The host had nothing to read, registered nothing, and said so only as a 
 watching: **`claude plugin details portulan-checkpoints@portulan-internal` → `Skills (0)`**, for the
 whole of milestone 6 and after.
 
-That is [#134](https://github.com/sleepy-panda-works/portulan/issues/134)'s `Skills (0)` bullet, and the
+That is [#134](https://github.com/sleepy-panda-srl/portulan/issues/134)'s `Skills (0)` bullet, and the
 issue's own diagnosis of it was wrong: it attributed the zero to a declared path pointing one level too
 high, which is a real trap and a different one. Measured on Claude Code 2.1.226 by installing this
 directory both ways — **`Skills (0)` without the manifest, `Skills (3)` with it**, the same three

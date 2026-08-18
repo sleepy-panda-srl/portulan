@@ -46,7 +46,7 @@ the marker.
 ## D3, run against the real API
 
 - **The send whose exact payload the user saw first.**
-  [#205](https://github.com/sleepy-panda-works/portulan/issues/205), filed from a workspace that is not
+  [#205](https://github.com/sleepy-panda-srl/portulan/issues/205), filed from a workspace that is not
   this repository's. Filed body fetched back and compared with the previewed body: **2,046 bytes each,
   sha256 `31c0a8d4…2477472`, byte-identical**, zero CRLF and zero lone CR, zero labels.
 - **The send a seam hit refused.** A report naming an **invented** company and an invented ticket
@@ -58,7 +58,7 @@ the marker.
   (2, with the URL), and a fresh report inside the 60-second cooldown (2).
 
 **Two real issues were filed by this session's own tool, and both stand as reports.**
-[#204](https://github.com/sleepy-panda-works/portulan/issues/204) was the first run, under the build
+[#204](https://github.com/sleepy-panda-srl/portulan/issues/204) was the first run, under the build
 that had not yet bound the approval to a digest; when the mechanism changed the demonstration was
 **re-run rather than re-labelled**, because a demonstration of a superseded build is an assertion about
 the shipped one. Both are genuine — #204 reports the roster drift this change repairs, #205 the
@@ -117,7 +117,7 @@ implementer's own sweep had missed.
   m07.md is now cited from the cell. At **496 bytes** it has four bytes of headroom: **session 7 cannot
   add a clause without cutting one.**
 - **`cli/README.md`'s table is seven files short**, not the eleven this session first measured — four
-  of the eleven are its own and got rows. [#203](https://github.com/sleepy-panda-works/portulan/issues/203)
+  of the eleven are its own and got rows. [#203](https://github.com/sleepy-panda-srl/portulan/issues/203)
   owns the rest.
 - **A sibling in the repo card:** *seven more recipes, all eight run in CI* — wrong since
   `control-chars` landed on 2026-08-07 and wrong again since composition. Now eight more and ten.

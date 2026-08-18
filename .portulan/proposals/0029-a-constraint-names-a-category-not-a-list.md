@@ -20,7 +20,7 @@ change that deserves its own review._
 **1. A gated action nobody approved.** Milestone 7's close brief forbade a *list* of outward actions —
 modify tracked files, commit, push, merge, open a pull request. Exercising row 7's `feedback` clause, the
 verifying context **filed a real GitHub issue**,
-[#239](https://github.com/sleepy-panda-works/portulan/issues/239), under the maintainer's login. Filing an
+[#239](https://github.com/sleepy-panda-srl/portulan/issues/239), under the maintainer's login. Filing an
 issue was not on the list and was squarely inside the task set.
 
 The tool was right and the brief was wrong. `feedback`'s preview digest covers the *rendered payload*, and
@@ -175,7 +175,7 @@ at which point a recipe can read the template, and this becomes a rail instead o
 ## Provenance
 
 `form=link`
-`href=`[`https://github.com/sleepy-panda-works/portulan/issues/239`](https://github.com/sleepy-panda-works/portulan/issues/239)
+`href=`[`https://github.com/sleepy-panda-srl/portulan/issues/239`](https://github.com/sleepy-panda-srl/portulan/issues/239)
 — the gated outward action taken under a brief that enumerated where it needed a category, closed with that
 explanation on the maintainer's decision. In-repo and resolvable by anyone who can read this rule; no client
 material, so no seal is needed.
@@ -214,4 +214,4 @@ matches — so the pack is the only carrier the tree admits, and Q3's edit is to
 and form would be unchanged by where they land; the widened radius is that every workspace composing that
 pack would get the change, which is that review's to weigh._
 
-**Pull request:** [#246](https://github.com/sleepy-panda-works/portulan/pull/246) — the change that filed this.
+**Pull request:** [#246](https://github.com/sleepy-panda-srl/portulan/pull/246) — the change that filed this.

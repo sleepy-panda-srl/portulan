@@ -102,7 +102,7 @@ fi
 # the one that matters, because CI checks out tracked files and nothing else. The two diverged in
 # milestone 6 inside a *generated* file — a link to a deliberately empty directory, green in front
 # of the author who had just created it, red on the clean checkout — which is
-# [#121](https://github.com/sleepy-panda-works/portulan/issues/121) and the retirement condition
+# [#121](https://github.com/sleepy-panda-srl/portulan/issues/121) and the retirement condition
 # in ../memory/a-generated-file-must-not-point-at-what-git-cannot-carry.md.
 #
 # **Seven shapes passed under the old test, and they are one defect, not seven.** Measured on this
@@ -631,7 +631,7 @@ fi
 # severity split `doctor` takes with retirement conditions: report what is legible, fail only on shape.
 PROPOSALS=.portulan/proposals
 PROPOSALS_RE=${PROPOSALS//./\\.}
-PR_URL='https://github\.com/sleepy-panda-works/portulan/pull/[0-9][0-9]*'
+PR_URL='https://github\.com/sleepy-panda-srl/portulan/pull/[0-9][0-9]*'
 
 # Enumerated from the tree, `[ -f ]` guarded — the manifest is the git index plus untracked files, and
 # a proposal git knows about that the tree does not is not a proposal. 4b' learned that the expensive

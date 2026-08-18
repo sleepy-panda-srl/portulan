@@ -1,9 +1,9 @@
 # Task 0014 — the registrable set: a composed pack's skills reach a host by derivation
 
 **Lane:** full · **Opened:** 2026-08-12, milestone 7 session 8, at the session-open checkpoint
-**Verify recipe:** `tests` · **Status:** DONE — merged as [#227](https://github.com/sleepy-panda-works/portulan/pull/227) (`f30ab2d`), 2026-08-12
+**Verify recipe:** `tests` · **Status:** DONE — merged as [#227](https://github.com/sleepy-panda-srl/portulan/pull/227) (`f30ab2d`), 2026-08-12
 
-> Row 7 clause (b)'s **adopter half** — [#184](https://github.com/sleepy-panda-works/portulan/issues/184),
+> Row 7 clause (b)'s **adopter half** — [#184](https://github.com/sleepy-panda-srl/portulan/issues/184),
 > *the generator that derives a plugin's `skills` from a workspace's `packs`* — chosen by the
 > maintainer at session open over `upgrade` and over the three outstanding demonstrations.
 > **M7 does not close this session**, and it has been open by his ruling of 2026-08-11 since he was
@@ -127,7 +127,7 @@ mark blocking.
 2. **#228 item 1 is DROPPED.** The maintainer's condition was *fold in if the files are already
    open*. Nothing in this task opens `cli/doctor.mjs` — only #228 item 1 itself would, which
    satisfies the condition circularly. The `legibility()` affordances dedup and the `unreadable`
-   unit fix stay in [#228](https://github.com/sleepy-panda-works/portulan/issues/228). **Item 2 is
+   unit fix stay in [#228](https://github.com/sleepy-panda-srl/portulan/issues/228). **Item 2 is
    taken**: `personaFiles.includes(name)` inside the loop over `bound`
    ([`../../cli/plugin-lint.mjs`](../../cli/plugin-lint.mjs), the persona↔binding correspondence) is
    O(P·B) and becomes a `Set`. Behaviour-preserving, and this task opens that file.

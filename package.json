@@ -1,5 +1,5 @@
 {
-  "name": "@sleepy-panda-works/portulan",
+  "name": "@sleepy-panda-srl/portulan",
   "version": "0.2.0",
   "description": "Portulan — an agentic-engineering framework whose product is its files. The CLI wraps the file-based mechanics for hosts beyond Claude Code.",
   "license": "Apache-2.0",
@@ -21,11 +21,11 @@
   ],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/sleepy-panda-works/portulan.git"
+    "url": "git+https://github.com/sleepy-panda-srl/portulan.git"
   },
-  "homepage": "https://github.com/sleepy-panda-works/portulan",
+  "homepage": "https://github.com/sleepy-panda-srl/portulan",
   "bugs": {
-    "url": "https://github.com/sleepy-panda-works/portulan/issues"
+    "url": "https://github.com/sleepy-panda-srl/portulan/issues"
   },
   "keywords": [
     "agents",

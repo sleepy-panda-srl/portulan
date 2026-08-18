@@ -2,13 +2,13 @@
 
 **Date:** 2026-07-29 · **post-M6-session-0, no milestone row touched** · Branch
 `rule-3-said-placement-holds-the-gate` · closes
-[#114](https://github.com/sleepy-panda-works/portulan/issues/114)
+[#114](https://github.com/sleepy-panda-srl/portulan/issues/114)
 
 **State.** `main` at `56d34e7`, eight recipes green, YAML re-parsed, seam clean. Two sentences.
 
 ## What was wrong
 
-[#110](https://github.com/sleepy-panda-works/portulan/pull/110) fixed rule 1 of
+[#110](https://github.com/sleepy-panda-srl/portulan/pull/110) fixed rule 1 of
 `a-review-loop-needs-a-bound.md`, which had claimed a reply *"is the only thing that clears the gate"*.
 It is not: `required_conversation_resolution` clears on **resolution**, which
 [`../gate-map.md`](../gate-map.md) makes the maintainer's judgement, travelling with his merge approval.
@@ -65,9 +65,9 @@ than mechanisms, and the mechanism sentence points at rule 1 instead of restatin
 ## Still open, and still the maintainer's
 
 **Rule 3 says suppressed notes are "never a reason to push again".** In one session this build pushed for
-them twice ([#107](https://github.com/sleepy-panda-works/portulan/pull/107) and #110 round two, both
+them twice ([#107](https://github.com/sleepy-panda-srl/portulan/pull/107) and #110 round two, both
 demonstrating false statements), refused one on preference grounds
-([#109](https://github.com/sleepy-panda-works/portulan/pull/109)), and triaged two at the bound (#114).
+([#109](https://github.com/sleepy-panda-srl/portulan/pull/109)), and triaged two at the bound (#114).
 **Three dispositions in four hours, none of them written down.** The working distinction — *a note
 demonstrating a false statement gets fixed; a note expressing a preference gets a reply* — is not in the
 rule, and adding it is a doctrine change rather than an implementer's call. #114's body carries the

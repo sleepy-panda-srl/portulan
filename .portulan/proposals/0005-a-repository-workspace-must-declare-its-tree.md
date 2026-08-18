@@ -58,7 +58,7 @@ Session log. The supervisor's exact demonstration: one line removed, drift intro
   decision, and it is the maintainer's.
 
 **Decision.** Marius Cetanas — **accepted, 2026-07-25**, on a recommendation he commissioned from a
-fresh-context Fable 5 and posted as [`portulan-agent[bot]` on pull request 15](https://github.com/sleepy-panda-works/portulan/pull/15#issuecomment-5078534991).
+fresh-context Fable 5 and posted as [`portulan-agent[bot]` on pull request 15](https://github.com/sleepy-panda-srl/portulan/pull/15#issuecomment-5078534991).
 **Apply before the milestone-3 public flip, not riding milestone 4's bump** — which reverses this
 proposal's own recommendation, and the reasoning is better than the one it replaces:
 
@@ -89,4 +89,4 @@ schema does not carry, because the subset has no `dependentRequired`; spec 1.0 �
 migration written up in [`../../spec/README.md`](../../spec/README.md); and every manifest moved to 2.0,
 which was fourteen files and **zero content edits**, exactly as the acceptance argument predicted.
 
-**Pull request:** [#15](https://github.com/sleepy-panda-works/portulan/pull/15) — the change that filed this.
+**Pull request:** [#15](https://github.com/sleepy-panda-srl/portulan/pull/15) — the change that filed this.

@@ -82,7 +82,7 @@ const SLUG = /^[a-z0-9]+(-[a-z0-9]+)*$/;
 // public repository that happened to share it, which is a false red in a rail, and a false red is how a
 // whole rail gets switched off. A feed added to the topology and not added here is the drift this comment
 // exists to make findable; the list is short enough to keep by hand.
-const PRIVATE_FEEDS = ["sleepy-panda-works/portulan-internal"];
+const PRIVATE_FEEDS = ["sleepy-panda-srl/portulan-internal"];
 // Deliberately permissive about pre-release and build metadata, strict about the three numbers:
 // the platform compares version strings, and this repository's own convention is SemVer from
 // v0.1.0 (../docs/plan.md, Protocol → Versioning).
@@ -489,7 +489,7 @@ export function inspect(rawRoot, { payload = false } = {}) {
                 .filter((v) => typeof v === "string")
                 .join(" ");
             // **Lowercased on both sides.** GitHub repository names are case-insensitive, so
-            // `Sleepy-Panda-Works/Portulan-Internal` resolves to the same repository and walked straight
+            // `Sleepy-Panda-Srl/Portulan-Internal` resolves to the same repository and walked straight
             // through a case-sensitive membership test. Found by Copilot one round after the rail landed —
             // a rail a different capitalisation gets past is not a rail, which is why this went past the
             // review loop's two-fix-round bound rather than to triage (the precedent is #105).
@@ -668,7 +668,7 @@ export function inspect(rawRoot, { payload = false } = {}) {
     // `.portulan/workspace.json` outright and reinstalling, which changed the host's inventory not at
     // all: the same `Skills (7)`, the checkpoints pack's three among them. So a composed pack's skill
     // is invocable here by coincidence of a hand-written path, which is exactly what row 7 clause (b)
-    // refuses ([#184](https://github.com/sleepy-panda-works/portulan/issues/184)): the demonstration
+    // refuses ([#184](https://github.com/sleepy-panda-srl/portulan/issues/184)): the demonstration
     // it asks for is **parity** — invoked because the workspace composed it — not files present at a
     // path a human knows.
     //
@@ -1220,7 +1220,7 @@ export function inspect(rawRoot, { payload = false } = {}) {
         // A Set rather than `personaFiles.includes(name)` inside the loop, which re-scanned the persona
         // list once per bound agent — O(P·B). This bundle ships three of each, so the cost today is
         // nothing and the SHAPE is an adopter's larger bundle: triaged out of #227 as
-        // [#228](https://github.com/sleepy-panda-works/portulan/issues/228) and taken here because this
+        // [#228](https://github.com/sleepy-panda-srl/portulan/issues/228) and taken here because this
         // session already had the file open. Behaviour-preserving, and the suite is what says so.
         const personaNames = new Set(personaFiles);
         for (const [name, binding] of bound) {

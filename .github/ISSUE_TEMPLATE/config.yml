@@ -12,7 +12,7 @@
 blank_issues_enabled: false
 contact_links:
   - name: How contribution works here
-    url: https://github.com/sleepy-panda-works/portulan/blob/main/CONTRIBUTING.md
+    url: https://github.com/sleepy-panda-srl/portulan/blob/main/CONTRIBUTING.md
     about: >
       Read, clone and fork freely. Bugs, proposals and feedback go through the forms above — they are
       the contribution channel. Code lands only through team members, and outside pull requests are

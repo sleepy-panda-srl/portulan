@@ -8,7 +8,7 @@ instruction, so the live "Portulan Milestone 7, Session 6" carries none of it.
 and had not moved since the finding was measured; the cell was **not** already trued, so this is an edit
 rather than a no-op record.
 
-**Amended 2026-08-10, after [#206](https://github.com/sleepy-panda-works/portulan/pull/206) merged and
+**Amended 2026-08-10, after [#206](https://github.com/sleepy-panda-srl/portulan/pull/206) merged and
 this branch rebased — see "The reconciliation" for how many times and onto what.** The findings below stand exactly as measured — they are what the
 cell said at `159df14`. What changed is **which of them this pull request still lands**: #206 restructured
 the same cell and trued findings 1 and 2 independently, and landing D3 moved the count past this branch's
@@ -20,7 +20,7 @@ the difference. See "The reconciliation" at the end.
 
 The brief named two disagreements. Both reproduce, and a **third** was found while measuring.
 
-1. **`verify composition` sat in `Left`** although [#197](https://github.com/sleepy-panda-works/portulan/pull/197)
+1. **`verify composition` sat in `Left`** although [#197](https://github.com/sleepy-panda-srl/portulan/pull/197)
    merged it on 2026-08-09 at 16:00:44Z. Verified in the tree, not from the log: `cli/recipe-set.mjs`
    exists and is imported by all four readers — `.github/workflows/verify.yml`, `cli/doctor.mjs`,
    `cli/vendor.mjs`, `cli/stop-gate.mjs` — and `packs/tools/github/` ships the demonstrating recipe.
@@ -30,13 +30,13 @@ The brief named two disagreements. Both reproduce, and a **third** was found whi
    **four**.
 3. **`s4: discovery`** — discovery is **s5** work. `cli/discover.mjs` first landed 2026-08-09 in
    `c36c2c4`; M7 session 4 is dated **2026-08-07** and delivered `0020` doctrine
-   ([#168](https://github.com/sleepy-panda-works/portulan/pull/168)), which moved no row 7 clause. The
+   ([#168](https://github.com/sleepy-panda-srl/portulan/pull/168)), which moved no row 7 clause. The
    cell's `s0`–`s3` match the Session log's session numbers exactly, so `sN` does track the log and the
    cell was off by one from `s4` on. Found by reading the log's own session labels against the cell.
 
 ## The mechanism — a conflict resolution, and a round that saw it and said nothing
 
-**[#195](https://github.com/sleepy-panda-works/portulan/pull/195) overwrote #197's correction of the same
+**[#195](https://github.com/sleepy-panda-srl/portulan/pull/195) overwrote #197's correction of the same
 cell.** #197 merged at **16:00:44Z**; #195 at **16:40:23Z**. `git show 3cf47e9 -- docs/plan.md` shows #197
 adding `s5: verify composition … **D6 done**`, striking `verify composition` from `Left` and setting
 `**four of six**`. `git show 47bc92b -- docs/plan.md` shows #195 putting all three back.
@@ -74,11 +74,11 @@ caught this one, and one did read it.
 - **Re-derived every `Left` item against the tree, not the log** — because the log is one of the two
   carriers in dispute. **As measured at `159df14`:** `upgrade` and `feedback` — `cli/portulan.mjs:34`
   said both "has not landed", and neither `cli/upgrade.mjs` nor `cli/feedback.mjs` existed, with
-  [#206](https://github.com/sleepy-panda-works/portulan/pull/206) then open. `legibility`:
+  [#206](https://github.com/sleepy-panda-srl/portulan/pull/206) then open. `legibility`:
   `cli/doctor.mjs:21` — "never scores agent-legibility". `persona↔agent`: no binding check in `doctor`.
   `interview`: `cli/init.mjs:51` — "There is no interactive interview yet." `index rail`:
   `cli/init.mjs:675` leaves the freshness rail to the adopter's own recipe. `(b) parity's adopter half`:
-  [#184](https://github.com/sleepy-panda-works/portulan/issues/184) **open**. All seven stood; only
+  [#184](https://github.com/sleepy-panda-srl/portulan/issues/184) **open**. All seven stood; only
   `verify composition` came out.
   **Re-measured on `d8f6821` at round 2 — and re-confirmed unchanged on the final base `dd7e372`,
   whose only commit is the librarian's pass, records-only — because a promoted note caught this bullet reading present

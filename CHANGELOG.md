@@ -12,15 +12,15 @@ _The rule this replaces said only that the file "is written in the change that c
 makes a heading named `Unreleased` one that must always be empty. **The ground for changing it is not
 that accumulation was already the practice — it was not.** The record is one accumulating write, at
 milestone 4 session 0, and then two sessions that saw the sentence go false and **deliberately declined
-to fix it**, citing this header: [#85](https://github.com/sleepy-panda-works/portulan/pull/85) and
-[#87](https://github.com/sleepy-panda-works/portulan/pull/87) cut no release, so under the old rule
+to fix it**, citing this header: [#85](https://github.com/sleepy-panda-srl/portulan/pull/85) and
+[#87](https://github.com/sleepy-panda-srl/portulan/pull/87) cut no release, so under the old rule
 editing the file would have contradicted it. That is the actual refutation, and it is worse than mere
 drift: the rule made a **known-false sentence unfixable**, and it stayed false for a day, across the
 close of a second milestone. A rule whose only compliant response to a falsehood is to leave it standing
 is the shape
 [`.portulan/memory/a-mandate-nothing-checks-is-already-broken.md`](.portulan/memory/a-mandate-nothing-checks-is-already-broken.md)
 names. The maintainer's ruling, 2026-07-29 — recorded verbatim, with the two alternatives he declined,
-in a comment on [#94](https://github.com/sleepy-panda-works/portulan/issues/94) and again in the pull
+in a comment on [#94](https://github.com/sleepy-panda-srl/portulan/issues/94) and again in the pull
 request that closes it. It settles the half that issue routed to him, not merely the stale sentence that
 prompted it._
 
@@ -261,7 +261,7 @@ records how things were found. This is per *release* and records what a reader g
   otherwise would have printed `Store: no budget declared` over a store that is fully railed;
   `core/skills/consolidate/SKILL.md` learned **split** as a move — the inverse of merge, asked as one
   question about granularity, and **before** compressing, because a record holding two facts reads as
-  an incompressible one. Proposal `0025`, ruled on [#199](https://github.com/sleepy-panda-works/portulan/issues/199).
+  an incompressible one. Proposal `0025`, ruled on [#199](https://github.com/sleepy-panda-srl/portulan/issues/199).
 
 ### Fixed
 
@@ -308,7 +308,7 @@ sentence is amended rather than left standing because it states a **current prop
 replacement sit under the same unreleased heading: a reader of one release would otherwise be given both
 answers with nothing to choose between them.)_ And **`--repo-root` stays named-only**: a
 repository checkout is not something a plugin record lists. Closes
-[#123](https://github.com/sleepy-panda-works/portulan/issues/123).
+[#123](https://github.com/sleepy-panda-srl/portulan/issues/123).
 
 **A repository governed from a feed now boots to its workspace instead of to a note saying where it
 is.** A `.portulan/workspace.json` of `kind: pointer` names the workspace that governs the repository;
@@ -325,9 +325,9 @@ file that merely shares it is not a workspace — constrained by the pointer's `
 and the candidate locations inside a payload are a named pair rather than a walk. It is **reported and never graded**: a
 pointer whose governor is not installed is a correct pointer, so no host's install state moves
 `doctor`'s verdict. What this does **not** do is default `--pack-root` from the same record — that is
-[#123](https://github.com/sleepy-panda-works/portulan/issues/123), and a discovered pack root that
+[#123](https://github.com/sleepy-panda-srl/portulan/issues/123), and a discovered pack root that
 silently joined the search would end the property that a named root **replaces** the derived one.
-Answers the open half of [#134](https://github.com/sleepy-panda-works/portulan/issues/134) — which the
+Answers the open half of [#134](https://github.com/sleepy-panda-srl/portulan/issues/134) — which the
 maintainer closes, not a keyword, after that issue was already closed once by a retracted one.
 
 **Copilot's findings become threads, and a thread blocks.** A suppressed low-confidence note
@@ -338,7 +338,7 @@ the text so a re-raised note does not become a second thread, and gated by
 `required_conversation_resolution`. That is the maintainer's ruling of 2026-08-07, shape 1 of
 [`.portulan/proposals/0021-the-suppressed-channel-needs-a-state.md`](.portulan/proposals/0021-the-suppressed-channel-needs-a-state.md),
 taken over an aggregate thread per round with the price stated first: on
-[#167](https://github.com/sleepy-panda-works/portulan/pull/167) it would have been 26 threads on one
+[#167](https://github.com/sleepy-panda-srl/portulan/pull/167) it would have been 26 threads on one
 pull request. Rule 3 of `a-review-loop-needs-a-bound.md` is amended in the same change, and the
 reasoning it replaces is kept rather than tidied away. A note the diff cannot carry falls back to a
 file-level comment and then to a batched pull-request comment, which is **surfaced but not gated** — so
@@ -366,7 +366,7 @@ no scaffolder, written one screen after naming `init` and `new` as built, and th
 generated index, which milestone 5 built on 2026-07-28.
 
 **And a pack's skills now register with the host — the depth defect behind
-[#134](https://github.com/sleepy-panda-works/portulan/issues/134)'s pack measurements, which is one
+[#134](https://github.com/sleepy-panda-srl/portulan/issues/134)'s pack measurements, which is one
 part of that issue and not the whole of it.** A host expands a declared skills root **one level**, so `./packs/rituals/` — with
 skills at `<pack>/skills/<skill>/` — registered none of them while `plugin-lint` counted them all.
 Measured on Claude Code 2.1.224 in both directions: `Skills (4)` before, **`Skills (7)`** after the
@@ -659,7 +659,7 @@ a change in the other.
 _Grouped by what a reader gets, not by the session that shipped it. What this replaces led with
 `Milestone 4, session 0 … the milestone is open` — a lead pinned to a session, stale the moment the next
 one landed, which is what happened twice and is
-[#94](https://github.com/sleepy-panda-works/portulan/issues/94). **This cut is also that issue's
+[#94](https://github.com/sleepy-panda-srl/portulan/issues/94). **This cut is also that issue's
 resolution:** rather than repair the section in place and leave two milestones sitting untagged against
 Protocol → Versioning's "changelog per release", the maintainer ruled the release be cut. The accumulate
 rule above governs the interval that starts here._

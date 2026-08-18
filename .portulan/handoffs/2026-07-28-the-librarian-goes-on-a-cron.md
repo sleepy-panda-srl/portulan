@@ -6,7 +6,7 @@
 **State.** Clauses 4 and 5 of the row, in one pull request: `cli/librarian.mjs` and its suite,
 `.github/workflows/librarian.yml`, spec 2.3 → 2.4, `docs.sh`'s new `proposal` check, pull-request
 pointers on all fourteen existing proposals, and proposal `0015`. Suite 499 → **584**; all eight
-recipes green, each exit code read — `proposal` only after [#81](https://github.com/sleepy-panda-works/portulan/pull/81)
+recipes green, each exit code read — `proposal` only after [#81](https://github.com/sleepy-panda-srl/portulan/pull/81)
 existed to be named, which is the one red this change ships with and clears itself. **The first real pull request has not been filed yet** — it needs
 the merge plus the two repository secrets, which are the maintainer's. Two clauses the row gained this
 session are session 2's: mining, and scheduled consolidation.
@@ -116,7 +116,7 @@ recipe gets switched off. Two of the fourteen record their outcome under `**Stat
 
 ## The review round, under the bound
 
-One Copilot round on [#81](https://github.com/sleepy-panda-works/portulan/pull/81), **one thread, no
+One Copilot round on [#81](https://github.com/sleepy-panda-srl/portulan/pull/81), **one thread, no
 suppressed-notes block** — checked for its absence rather than inferred from an empty list, since that
 block populates late and is the channel with no Resolve control.
 
@@ -152,7 +152,7 @@ open and unlabelled with a required context red.
 
 **Four of the six findings on this pull request came through the suppressed channel**, which
 `copilot-reviewed` passes regardless of and which has no Resolve control — the same pattern as #72 and
-#73, and the standing argument for [#66](https://github.com/sleepy-panda-works/portulan/issues/66).
+#73, and the standing argument for [#66](https://github.com/sleepy-panda-srl/portulan/issues/66).
 That is fix-round **two**, the last the bound allows.
 
 **Round three was the maintainer's instruction, not the loop escaping.** He asked for a rebase onto
@@ -199,7 +199,7 @@ for two reasons is one a later reader cannot trust at a glance. Both fixed.
 **Every unresolved thread was answered inline**, on the maintainer's instruction, rather than in the
 pull-request body where earlier rounds' replies went.
 
-**Everything after round five becomes an issue**, and [#82](https://github.com/sleepy-panda-works/portulan/issues/82)
+**Everything after round five becomes an issue**, and [#82](https://github.com/sleepy-panda-srl/portulan/issues/82)
 is the one that remains: the handoff-series index the row gained mid-flight.
 
 ## Open questions
@@ -258,7 +258,7 @@ tree. The checkpoint accepted the mechanism and rejected the compression, which 
 ## The rebase, and a clause that arrived while this was in flight
 
 Rebased onto `3e01a87` on the maintainer's instruction. Two conflicts, both in the files the collision
-note predicted: the milestone rows, where [#80](https://github.com/sleepy-panda-works/portulan/pull/80)
+note predicted: the milestone rows, where [#80](https://github.com/sleepy-panda-srl/portulan/pull/80)
 had rewritten rows 5–8 — resolved by taking its rows 6–8 whole and grafting this session's two
 insertions onto **its** row 5, so nothing of #80's was lost — and the Session log tail, resolved by
 date with #80's entry keeping its position and this one going last, which is the ordering #73's rebase

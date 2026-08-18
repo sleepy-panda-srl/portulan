@@ -38,7 +38,7 @@ identity may take which action is in [`../gate-map.md`](../gate-map.md).
 **These are not steps an agent can take.** Creating accounts and handling credentials is outside what an
 agent does here, and this section is written to be followed by a human once.
 
-1. **Create the App.** `github.com/organizations/sleepy-panda-works/settings/apps` → **New GitHub App**.
+1. **Create the App.** `github.com/organizations/sleepy-panda-srl/settings/apps` → **New GitHub App**.
    - *Name:* `portulan-agent` — it must be globally unique on GitHub, so expect to need a suffix. Whatever
      it becomes is what appears on every comment, so pick something that reads as a bot at a glance.
    - *Homepage URL:* required. Use `https://sleepypanda.ro` — **not** the repository URL, which is
@@ -90,13 +90,13 @@ agent does here, and this section is written to be followed by a human once.
 
    `*.pem` is git-ignored as a second line of defence, but the file belongs outside the working copy
    regardless: an ignore rule protects against `git add`, not against a future change to the ignore rule.
-5. **Install the App** on `sleepy-panda-works` → *Only select repositories* → `portulan`.
+5. **Install the App** on `sleepy-panda-srl` → *Only select repositories* → `portulan`.
 6. **Export the configuration** from your shell profile:
 
    Find the App's numeric id — from the App's settings page, or by asking GitHub:
 
    ```
-   gh api /orgs/sleepy-panda-works/installations \
+   gh api /orgs/sleepy-panda-srl/installations \
      --jq '.installations[] | select(.app_slug=="portulan-agent") | .app_id'
    ```
 
@@ -140,7 +140,7 @@ agent does here, and this section is written to be followed by a human once.
    ./.portulan/tools/gh-bot api /installation/repositories --jq '.repositories[].full_name'
    ```
 
-   Expect `sleepy-panda-works/portulan`. Note `gh api user` will *not* work: an installation token has no
+   Expect `sleepy-panda-srl/portulan`. Note `gh api user` will *not* work: an installation token has no
    user, which is the point.
 
 **Where am I?** The steps are click-heavy and easy to half-finish, so each has a way to check itself
@@ -148,7 +148,7 @@ without guessing:
 
 | Question | Command |
 |---|---|
-| Does the App exist and is it installed? | `gh api /orgs/sleepy-panda-works/installations --jq '.installations[].app_slug'` |
+| Does the App exist and is it installed? | `gh api /orgs/sleepy-panda-srl/installations --jq '.installations[].app_slug'` |
 | Did the key download? | `ls ~/Downloads/*.private-key.pem` |
 | Is the key in place? | `ls -l "$PORTULAN_BOT_PRIVATE_KEY"` |
 | Is the shell configured? | `echo "$PORTULAN_BOT_APP_ID"` |
@@ -169,17 +169,17 @@ this time as repository secrets, because a workflow has no `~/.zshenv`.
    in between still gets the 422. Read it back with:
 
    ```
-   gh api /orgs/sleepy-panda-works/installations --jq '.installations[] | select(.app_id==4390104) | .permissions'
+   gh api /orgs/sleepy-panda-srl/installations --jq '.installations[] | select(.app_id==4390104) | .permissions'
    ```
 
 2. **Add the two secrets**, from the values already in your environment, so nothing is retyped:
 
    ```
-   gh secret set PORTULAN_BOT_APP_ID -R sleepy-panda-works/portulan --body "$PORTULAN_BOT_APP_ID"
+   gh secret set PORTULAN_BOT_APP_ID -R sleepy-panda-srl/portulan --body "$PORTULAN_BOT_APP_ID"
    ```
 
    ```
-   gh secret set PORTULAN_BOT_PRIVATE_KEY -R sleepy-panda-works/portulan < "$PORTULAN_BOT_PRIVATE_KEY"
+   gh secret set PORTULAN_BOT_PRIVATE_KEY -R sleepy-panda-srl/portulan < "$PORTULAN_BOT_PRIVATE_KEY"
    ```
 
    The second reads the `.pem` from the path your shell already exports, so the key is never pasted into
@@ -197,7 +197,7 @@ job with the reason, leaving its branch pushed and waiting, rather than opening 
 Only for pull-request conversation:
 
 ```
-./.portulan/tools/gh-bot api repos/sleepy-panda-works/portulan/issues/8/comments -f body='…'
+./.portulan/tools/gh-bot api repos/sleepy-panda-srl/portulan/issues/8/comments -f body='…'
 ```
 
 The wrapper mints a token, passes it to `gh` through the environment for that one command, and never
@@ -288,7 +288,7 @@ silently re-attributes everything typed afterwards, which is the failure this me
   [`../gate-map.md`](../gate-map.md) records for branch protection. Read it back at the supervised
   checkpoints; change it only alongside the gate map.
 - ~~**The end-to-end path is unverified until the App exists.**~~ **Verified 2026-07-25.** The App is
-  installed on `sleepy-panda-works/portulan` only, with `pull_requests: write` and `metadata: read`; a
+  installed on `sleepy-panda-srl/portulan` only, with `pull_requests: write` and `metadata: read`; a
   token minted through this path listed exactly that one repository, was **refused** repository contents,
   and posted the first `portulan-agent[bot]` comment. The contents refusal is the load-bearing one: it is
   what makes "the permission set is the enforcement, not the wrapper" a fact rather than an intention.
