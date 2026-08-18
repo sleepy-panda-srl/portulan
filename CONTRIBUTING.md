@@ -86,7 +86,7 @@ resolved, and administrators have no exemption. Every pull request carries at le
 ## Security
 
 **Please do not report a security issue in an issue.** An issue is a permanent record that everyone
-with access reads, and this repository is public.
+with access reads, and who that is depends on a setting this file does not control.
 
 [`SECURITY.md`](SECURITY.md) is the policy and the only place the procedure is written: the reporting
 channels in the order to try them, what is in scope, and what response to expect. It is not restated

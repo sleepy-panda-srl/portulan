@@ -13,7 +13,8 @@ release branches, and a `0.x` minor bump may carry a breaking change.
 ## Reporting a vulnerability
 
 **Please do not report a security issue in a GitHub issue.** An issue is a permanent record that
-everyone with access to this repository reads, and this repository is public.
+everyone with access to this repository reads, and who that is depends on a setting this file does not
+control.
 
 Use the first of these that is available to you:
 
