@@ -237,7 +237,10 @@ function defaultRecipe() {
  * Found by review on the pull request.
  */
 function didWork() {
-    const git = (args) => execFileSync("git", args, { cwd: REPO, encoding: "utf8", timeout: 10_000 });
+    // `maxBuffer` raised from node's 1 MiB default for the same reason the probe below is bounded:
+    // `git cherry` prints one line per compared commit, and an overflow here would throw into the outer
+    // catch and read as *cannot tell* on precisely the branches that carry the most commits.
+    const git = (args) => execFileSync("git", args, { cwd: REPO, encoding: "utf8", timeout: 10_000, maxBuffer: 64 * 1024 * 1024 });
 
     // 1. Uncommitted changes. Portable, and the strongest signal there is.
     try {
@@ -275,7 +278,15 @@ function didWork() {
         // The coarse reading first, because it is cheap and it BOUNDS the expensive one: nothing on
         // no remote by reachability means nothing on no remote by patch either, since a rewritten
         // commit is still a commit that reachability would have found.
-        if (git(["log", "--oneline", "HEAD", "--not", "--remotes"]).trim() === "") return false;
+        //
+        // **`rev-list --max-count=1`, not `log --oneline`, and the difference is a fail-open.** This
+        // asks only whether the set is EMPTY, but `log --oneline` answers by printing one line per
+        // commit — and a long-lived checkout on a rebase-merged branch is exactly where that set gets
+        // large, which is the situation this whole signal exists for. Past node's default `maxBuffer`
+        // that throws `ENOBUFS` (measured), the outer catch below turns it into `return false`, and the
+        // handoff check disables itself on the repositories most likely to need it. Bounded to one hash,
+        // the question is the same and the output cannot grow. Copilot, round 3.
+        if (git(["rev-list", "--max-count=1", "HEAD", "--not", "--remotes"]).trim() === "") return false;
 
         // No remote at all: every commit qualifies, which is the correct reading there and is what
         // this signal has always said. Documented rather than degraded, so it reports nothing.
