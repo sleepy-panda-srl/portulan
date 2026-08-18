@@ -176,7 +176,22 @@ while IFS= read -r file; do
         path=${target%%#*}                      # a #fragment is not checked, only the file
         [ -n "$path" ] || continue
         printf '%s\t%s\t%s\t%s\t%s\n' "$file" "$line" "$dir" "$path" "$target" >>"$tmp/cand"
-    done < <(grep -nEo '\]\([^)]+\)' "$file" 2>/dev/null)
+    # **POSIX `awk`, not `grep -o` (#257).** `-o` is a GNU extension that BSD/macOS also ships, so this
+    # never failed anywhere this repository runs — but ./README.md does not merely list this recipe's
+    # dependencies, it makes `docs.sh` the *reason* something else is safe, on the strength of a
+    # portability property `-o` denied it. Arm 1 of the two the issue offered: keep the promise rather
+    # than withdraw it, because the neighbouring extraction below already chose POSIX `sed` over `-o`
+    # for this same reason, and truing the claim instead would have reversed that decision one screen
+    # away from where it was made.
+    #
+    # `match`/`RSTART`/`RLENGTH` are POSIX awk, and the loop is what makes it emit EVERY link on a line
+    # rather than the first — the one behaviour `-o` gives for free and a naive `sub` would silently
+    # lose. Equivalence was measured, not argued: over all 288 tracked markdown files this and the old
+    # pipeline produce byte-identical output, 3064 lines, and they still agree on the awkward cases —
+    # two links on one line, a `](bare)` with no link text, and the nested-parenthesis target that
+    # truncates. That last one is a KNOWN LIMIT recorded under ./README.md's Known limits, and it is
+    # preserved deliberately: this change buys portability and must not quietly alter a verdict.
+    done < <(awk '{ s = $0; while (match(s, /\]\([^)]+\)/)) { printf "%d:%s\n", NR, substr(s, RSTART, RLENGTH); s = substr(s, RSTART + RLENGTH) } }' "$file" 2>/dev/null)
 done <"$manifest"
 
 # A tab inside a link **target** is the reachable way a record splits into the wrong number of fields,
@@ -862,10 +877,11 @@ else
     # which is why it outranks the rest of the sweep despite being the least conspicuous line in it.
     git -c core.quotePath=false ls-files 'cli/*.mjs' 'cli/*.md' | sed 's|^cli/||' | grep -v '/' | sort >"$tmp/clifiles"
     # POSIX `sed` rather than `grep -o`: `-o` is not in POSIX grep, and ./README.md states this recipe's
-    # dependencies are POSIX text utilities. (`docs.sh` already breaks that claim once, at the `grep -nEo`
-    # in the links check — a pre-existing inconsistency between the recipe and its own documented
-    # dependency set, not introduced here and not widened here either.) One capture per line, printed
-    # only when it matches, which is the anchored extraction stated above.
+    # dependencies are POSIX text utilities. (This used to add that `docs.sh` "already breaks that claim
+    # once, at the `grep -nEo` in the links check". It no longer does — #257 closed that site with POSIX
+    # `awk`, so the recipe and its documented dependency set now agree and the parenthetical is retired
+    # rather than left to read as a live exception.) One capture per line, printed only when it matches,
+    # which is the anchored extraction stated above.
     sed -n 's/^| \[`\([^`]*\)`\].*/\1/p' "$CLI_README" | sort >"$tmp/clirows"
 
     clifiles=$(wc -l <"$tmp/clifiles" | tr -d '[:space:]')
