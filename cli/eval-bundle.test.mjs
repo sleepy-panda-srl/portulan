@@ -220,6 +220,12 @@ describe("a full issuance cut of this repository", () => {
         assert.equal(stamp.source_commit, probeSha);
         assert.ok(!("term_days" in stamp), "the stamp asserts a term nothing tracks or enforces");
         assert.equal(stamp.license, "Apache-2.0");
+        // license_file must point at the TERMS, which the bundle now ships; the issuance record is
+        // its own field so neither is mistaken for the other by a consumer following the metadata.
+        assert.equal(stamp.license_file, "LICENSE");
+        assert.equal(stamp.issuance_record, "EVAL-LICENSE.md");
+        assert.ok(fs.existsSync(path.join(cutDir, stamp.license_file)), "license_file names a file the bundle does not contain");
+        assert.ok(fs.existsSync(path.join(cutDir, stamp.issuance_record)), "issuance_record names a file the bundle does not contain");
         assert.equal(stamp.content_digest, `sha256:${bundleDigest(cutDir)}`, "the digest in the stamp does not recompute from the cut");
     });
 
