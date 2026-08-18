@@ -191,10 +191,16 @@ describe("a full issuance cut of this repository", () => {
     test("every declaring manifest still reads Apache-2.0 after the cut — nothing rewrites licence metadata", () => {
         for (const rel of APACHE_MANIFESTS) {
             const manifest = JSON.parse(fs.readFileSync(path.join(cutDir, rel), "utf8"));
-            if (manifest.license) assert.equal(manifest.license, "Apache-2.0", rel);
-            for (const plugin of manifest.plugins ?? []) {
-                if (plugin.license) assert.equal(plugin.license, "Apache-2.0", `${rel} plugins[]`);
+            // `if (manifest.license)` made this vacuous: a manifest that stopped declaring a licence
+            // at all passed, which is the regression the roster exists to catch. Count the fields and
+            // require at least one, then require every one of them to read Apache-2.0.
+            const declared = [];
+            if ("license" in manifest) declared.push([manifest.license, rel]);
+            for (const [i, plugin] of (manifest.plugins ?? []).entries()) {
+                if ("license" in plugin) declared.push([plugin.license, `${rel} plugins[${i}]`]);
             }
+            assert.ok(declared.length > 0, `${rel} is in APACHE_MANIFESTS and declares no license field at all`);
+            for (const [value, where] of declared) assert.equal(value, "Apache-2.0", where);
         }
     });
 
