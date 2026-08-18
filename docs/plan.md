@@ -2352,4 +2352,4 @@ _The seam applies here too: no client-identifying references._
   real conflict markers since `56da8f0`, nine days with thirteen recipes green over them. Thirteen green; seam scan clean
   across diff, message, branch, and 177 pull requests, 104 issues and every comment surface — zero hits. · Fidelity:
   session-open A-W-A ×14 all folded — four missed carriers, all in `proposals/`, the directory the sweep skipped. Routed
-  untaken: `docs/vision.md` alone (his hand, the one blocker left); he ruled the other four in-session. Handoff: [`2026-08-17`](../.portulan/handoffs/2026-08-17-the-tree-says-public-before-the-setting-does.md) · PR [#282](https://github.com/sleepy-panda-works/portulan/pull/282).
+  and then all taken, `docs/vision.md` included — his edit, then his grant to repair what it dropped. Handoff: [`2026-08-17`](../.portulan/handoffs/2026-08-17-the-tree-says-public-before-the-setting-does.md) · PR [#282](https://github.com/sleepy-panda-works/portulan/pull/282).
