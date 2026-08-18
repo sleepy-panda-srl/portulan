@@ -82,6 +82,25 @@ describe("pack-identity", () => {
         assert.deepEqual(compare(root).differing, ["lib/-n.mjs"], "a leading-dash filename was not compared");
     });
 
+    // Containment, raised on #297. `rel` arrives from npm's JSON and is not this tool's to trust: an
+    // escape would send both the `git show` and the read outside the repository, and the rail would
+    // then compare the wrong bytes and report GREEN — the worst available failure for a rail.
+    test("npm excludes a symlink from the pack, so the symlink guard is unreachable through this input", () => {
+        const root = fixture();
+        fs.symlinkSync("/etc/hosts", path.join(root, "lib", "linked.mjs"));
+        git(root, "add", "-A");
+        git(root, "commit", "-qm", "link");
+        // MEASURED, not assumed: `npm pack --dry-run` omits the symlink entirely — it is not in the
+        // roster, so `containedPath` never sees it. The guard in the module stays as defence in depth
+        // against npm changing, and this test records WHY it cannot be exercised positively rather than
+        // asserting a throw that cannot happen. A test written to the guard's intent instead of npm's
+        // behaviour failed here first, which is the reason this comment exists.
+        const { packed, untracked, differing } = compare(root);
+        assert.ok(!packed.includes("lib/linked.mjs"), "npm packed a symlink; the guard is now reachable and needs a positive test");
+        assert.deepEqual(untracked, []);
+        assert.deepEqual(differing, []);
+    });
+
     test("a directory that is not a repository is could-not-run, never a finding", () => {
         assert.throws(() => compare(scratch()), (error) => {
             assert.match(error.message, /not a git repository|HEAD does not resolve/);

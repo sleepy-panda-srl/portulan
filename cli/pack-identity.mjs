@@ -77,6 +77,36 @@ function blobAt(root, rel) {
     }
 }
 
+// Every path npm reports is checked for CONTAINMENT before it is used, by RESOLUTION rather than by
+// pattern — the shape `cli/eval-bundle.mjs` was hardened to on #280, for the same reason: a pattern
+// test answers a question about a string, and what matters is where the filesystem actually goes.
+// `rel` arrives from `npm pack`'s JSON, so it is not this tool's to trust: an absolute path, a `..`
+// escape or an embedded NUL would send both `git show` and the read outside the repository, and the
+// rail would then compare the wrong bytes and report GREEN. Refused as could-not-run, never as a
+// finding — a path this tool will not resolve supports no verdict about the package.
+//
+// Symlinks are refused for the same reason and separately from containment: `readFileSync` follows
+// them, so a link whose target sits outside the tree reads bytes git never carried while `git show`
+// reads the link itself. `lstat` is what distinguishes them, and `realpath` alone would not.
+function containedPath(root, rel) {
+    if (rel.includes("\0")) throw new CannotRun(`npm reported a path containing NUL — refusing to resolve it`);
+    if (path.isAbsolute(rel)) throw new CannotRun(`npm reported an absolute path (${rel}); packed paths are repo-relative`);
+    const resolved = path.resolve(root, rel);
+    const base = path.resolve(root);
+    if (resolved !== base && !resolved.startsWith(base + path.sep)) {
+        throw new CannotRun(`npm reported a path that resolves outside the repository: ${rel}`);
+    }
+    let stat;
+    try {
+        stat = fs.lstatSync(resolved);
+    } catch (error) {
+        throw new CannotRun(`packed path ${rel} could not be stat'd: ${error.message.split("\n")[0]}`);
+    }
+    if (stat.isSymbolicLink()) throw new CannotRun(`packed path ${rel} is a symlink; its target is not what git carries`);
+    if (!stat.isFile()) throw new CannotRun(`packed path ${rel} is not a regular file`);
+    return resolved;
+}
+
 export function compare(root) {
     try {
         run("git", ["rev-parse", "--verify", "HEAD"], { cwd: root, stdio: ["ignore", "pipe", "ignore"] });
@@ -91,12 +121,13 @@ export function compare(root) {
         // every other file rather than exempted: the 2026-08-13 measurement asserted all 114 identical
         // "package.json included, with no exemption", and an exemption added here would quietly retire
         // that claim.
+        const abs = containedPath(root, rel);
         const blob = blobAt(root, rel);
         if (blob === null) untracked.push(rel);
         // Read with `fs`, not by shelling out. `cat` would be an undeclared dependency this recipe's
         // `requires` does not list, and it takes its argument as an OPTION when a filename begins with
         // `-` — so a file named `-n` would silently be read as a flag rather than compared.
-        else if (!blob.equals(fs.readFileSync(path.join(root, rel)))) differing.push(rel);
+        else if (!blob.equals(fs.readFileSync(abs))) differing.push(rel);
     }
     return { packed, untracked, differing };
 }
