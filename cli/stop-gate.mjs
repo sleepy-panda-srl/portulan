@@ -385,9 +385,16 @@ function handoffToday() {
  */
 function treeIdentity() {
     try {
-        const branch = execFileSync("git", ["rev-parse", "--abbrev-ref", "HEAD"], {
+        const run = (args) => execFileSync("git", args, {
             cwd: REPO, encoding: "utf8", timeout: 10_000, stdio: ["ignore", "pipe", "pipe"],
         }).trim();
+        const branch = run(["rev-parse", "--abbrev-ref", "HEAD"]);
+        // **A DETACHED HEAD is the common case here, not the exotic one.** `--abbrev-ref` answers the
+        // literal string `HEAD` when no branch is checked out, and this repository routinely has several
+        // detached worktrees at once — measured: four, on the machine this was written on. Printing
+        // *"on `HEAD`"* would name a branch that does not exist, in the very sentence added so a reader
+        // could identify the tree. The commit is what identifies a detached one. Copilot, round 3.
+        if (branch === "HEAD") return `${REPO} (detached at \`${run(["rev-parse", "--short", "HEAD"])}\`)`;
         return `${REPO} (on \`${branch}\`)`;
     } catch {
         return REPO;

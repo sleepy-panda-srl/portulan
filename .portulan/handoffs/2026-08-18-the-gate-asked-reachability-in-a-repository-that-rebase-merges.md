@@ -26,8 +26,10 @@ ancestor of nothing"*), and the sanctioned instrument named there is `git cherry
 
 ## Demonstrated red before the fix, with the real binary
 
-A fixture whose branch was rebase-merged and whose remote branch was then deleted, driven through
-`node cli/stop-gate.mjs` with a payload on stdin:
+A hand-built fixture whose branch was rebase-merged (**two** commits) and whose remote branch was
+then deleted, driven through `node cli/stop-gate.mjs` with a payload on stdin. _(The suite's own
+`rebaseMerged()` is the same shape with **one** commit, and asserts non-emptiness rather than a
+count — the numbers below are this demonstration's, not that fixture's.)_
 
 | signal | result |
 |---|---|
