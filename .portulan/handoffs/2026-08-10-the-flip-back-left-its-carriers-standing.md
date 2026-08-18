@@ -21,7 +21,7 @@ cannot be recalled.
 
 The contradiction was already on the books twice — [`../../docs/plan.md`](../../docs/plan.md)'s Session
 log for 2026-08-08 and the *SURFACED, NOT RESOLVED* block in
-[`../memory/repo-is-private-until-flip-clearance.md`](../memory/repo-is-private-until-flip-clearance.md).
+[`../memory/a-published-window-cannot-be-unpublished.md`](../memory/a-published-window-cannot-be-unpublished.md).
 Both refused to pick a winner, correctly: a consolidation pass resolving it *"would have made a policy
 decision wearing the clothes of housekeeping."* **The refusal is what carried the question to the
 maintainer, and he commissioned this session.** So the memory record's edit is written as the ruling

@@ -16,7 +16,7 @@ mind because they are unusual: [`../../docs/vision.md`](../../docs/vision.md) is
 at all, and repository **visibility** is Gated — **public**, after a first public window of
 2026-07-27 → 2026-08-03 and a private one from 2026-08-03. The setting has now moved **three** times,
 each time by the maintainer's decision; further visibility changes stay Gated, by decision, not by accident
-([`../memory/repo-is-private-until-flip-clearance.md`](../memory/repo-is-private-until-flip-clearance.md)).
+([`../memory/a-published-window-cannot-be-unpublished.md`](../memory/a-published-window-cannot-be-unpublished.md)).
 
 **Layout.** [`../../core/`](../../core/) the engine · [`../../spec/`](../../spec/) the Workspace
 Definition · [`../../cli/`](../../cli/) the `portulan` entry point, `doctor`, `plugin-lint`, `compile`,

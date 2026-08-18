@@ -1,4 +1,4 @@
-# Portulan Evaluation Issue
+# Portulan Evaluation Issue (`EVAL-LICENSE.md`)
 
 Copyright © 2026 Sleepy Panda SRL.
 
@@ -6,8 +6,8 @@ Copyright © 2026 Sleepy Panda SRL.
 same terms as the public Portulan repository this copy was cut from. Nothing in this
 document narrows that grant, and nothing in it could: the grant is irrevocable and this
 copy is that same material. What this file is, is the **record of an evaluation issue** —
-who received it, when, and from which commit — together with the terms of the evaluation
-itself.
+who received it, when, and from which commit. It grants nothing, because the licence above
+already did, and it withholds nothing, because it cannot.
 
 - **Issued to:** {{name}} (github.com/{{login}})
 - **Issued on:** {{date}}, from commit `{{shortSha}}`

@@ -26,7 +26,7 @@
    it went public on 2026-07-27 by the maintainer's directive, ahead of the predecessor-IP
    clearance completing — a decision on record in the Session log; the clearance track continues
    in the private context, not here. **It was flipped back to private on 2026-08-03, and public again
-   on 2026-08-17 by his direction.**
+   on 2026-08-17, both by the maintainer's direction.**
    *(Amended 2026-07-27; original: "The repo starts **private** and flips public at milestone 3
    only after the predecessor-IP clearance completes". Amended again 2026-08-10 to record the second
    flip, on the maintainer's commissioning of that date, and 2026-08-17 to record the third. The seam

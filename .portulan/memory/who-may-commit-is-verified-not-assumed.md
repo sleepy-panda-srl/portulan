@@ -93,10 +93,14 @@ feature, so on a private repository the gap is harder to close rather than one s
 per-commit human scan ([`../dod.md`](../dod.md), condition 5) is carrying more than it was, which is why
 condition 5 now says in as many words that no move of the setting relaxes it.
 
-_(2026-08-17, at the second flip to public: those three are **available again**, so the gap is back to
-being one setting away — and all three are Gated repository settings, the maintainer's alone. **Named
-here, applied nowhere:** this record's job is to say what is switched off, not to switch anything on.
-Whether to enable them is his call, and until he takes it the per-commit scan is still the backstop.)_
+_(2026-08-17 — **and two of the three are now ON**, on the maintainer's explicit instruction. Measured
+after the PATCH, not assumed from it: `secret_scanning: enabled`, `secret_scanning_push_protection:
+enabled`. **Both took while the repository was still private**, which refutes this record's own reading
+that they were public-only and *"one setting away"* — they were one setting away the whole time.
+**Private vulnerability reporting did not:** `PUT /repos/{owner}/{repo}/private-vulnerability-reporting`
+answers **404** on a private repository, so it is genuinely public-only and is owed at the flip. The
+per-commit scan is unchanged either way — push protection catches credentials, never client material,
+and the seam is the second thing.)_
 
 **Retire when:** a second person gains push access, or the external-contribution posture changes. Both
 falsify the table above rather than merely dating it, and the table is the part that must not be

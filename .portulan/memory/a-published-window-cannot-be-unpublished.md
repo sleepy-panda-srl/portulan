@@ -57,3 +57,13 @@ produced this successor per its own clause. The successor states a permanence no
 un-fire, and the 2026-08-03 flip-back **tested exactly that**: the setting reverted and the successor
 did not, because what it asserts is about the published window rather than the current visibility.
 Retire only by written supersession.
+
+**SUPERSEDED IN NAME, 2026-08-17, on the maintainer's instruction — and a rename is exactly the act the
+clause above reserves to him.** This record was `repo-is-private-until-flip-clearance.md`. That filename
+was a present-tense claim about the setting *and* about a clearance, and it outlived both: the clearance
+condition fired on 2026-07-27, and the visibility half has now been wrong twice — false through the first
+public window, and false again from 2026-08-17. **A filename cannot
+carry state**, because nothing re-derives it and every inbound link pins it. The new name states what the
+record actually holds and what no setting can un-fire. The content is unchanged by the rename; the two
+present-tense clauses inside it were trued separately in the same change, and their original words stand
+with dated notes.
