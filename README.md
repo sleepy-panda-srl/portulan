@@ -15,8 +15,9 @@ delivered as private-marketplace plugins.
 ## Status
 
 Pre-release, and **public** — reading, cloning, forking and the marketplace install path all need no
-account of ours. _(Visibility is Gated and has moved three times: public 27 July – 3 August 2026,
-private until 17 August, public since. It is a live setting, so trust a fresh check over this line.)_
+account of ours. _(Visibility is Gated and has moved three times: public 27 July – 3 August 2026, private
+3 August – 17 August 2026, public since 17 August 2026. It is a live setting, so trust a fresh check
+over this line.)_
 The newest release entry
 is **`0.2.0`**; what it contains — and, just as usefully, what it does not — is
 [`CHANGELOG.md`](CHANGELOG.md). The engine in `core/`, the Workspace Definition in `spec/`, two
@@ -28,7 +29,7 @@ milestone by milestone, and the `0.` major means nothing here is stable yet. The
 ## Try it
 
 This repository **is** a Claude Code plugin marketplace, so installing it needs nothing but the two
-lines below — no account, no token, no clone:
+lines below — no GitHub account, no token, no clone. (You need Claude Code itself, of course.)
 
 ```bash
 claude plugin marketplace add sleepy-panda-works/portulan
