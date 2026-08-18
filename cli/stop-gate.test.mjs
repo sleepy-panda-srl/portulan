@@ -461,6 +461,12 @@ function gate(project, sessionId) {
         env: { ...process.env, CLAUDE_PROJECT_DIR: project },
         encoding: "utf8",
     });
+    // **A crash must never read as an allow.** This runner reports a refusal in stdout and exits 0
+    // either way, so "no JSON" means allow — but it ALSO means "node could not start" and "the runner
+    // threw". Without this assertion the one case that expects `allow` would pass on a broken runner,
+    // which is a fail-open in the harness that tests a gate for fail-opens. Copilot, round 1.
+    assert.equal(run.error, undefined, `the runner could not be spawned: ${run.error?.message}`);
+    assert.equal(run.status, 0, `the runner exited ${run.status} — stderr: ${run.stderr}`);
     const out = run.stdout.trim() ? JSON.parse(run.stdout) : null;
     return { decision: out?.decision ?? "allow", reason: out?.reason ?? "", stderr: run.stderr ?? "" };
 }
