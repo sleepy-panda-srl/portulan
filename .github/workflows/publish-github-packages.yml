@@ -25,6 +25,32 @@
 #
 # Ruled by the maintainer on 2026-08-18, with both costs above put to him first.
 #
+# ## A third cost, learned by running this and not predicted by anything above
+#
+# **GitHub Packages creates an npm package PRIVATE, and `--access public` does not change that.**
+# Measured on this workflow's first fire, 2026-08-18: npm sent the flag and said so — *"Publishing to
+# https://npm.pkg.github.com with tag latest and public access"* — the publish succeeded, and the
+# package's `visibility` came back **`private`** anyway. The repository was already public. So on this
+# registry the flag is accepted and does not govern.
+#
+# Making it public took two manual steps, and **neither has an API**:
+#
+#   1. An ORGANISATION policy change. Until it was made, the package's own settings page showed
+#      *"Public — Setting is disabled by organization administrators"* It is under the org's
+#      Settings → Packages, and it applies to every package the organisation will ever publish, which
+#      is why it is a wider decision than one package.
+#   2. A per-package visibility flip, in that package's settings page.
+#
+# There is no endpoint for either: `PATCH /orgs/{org}/packages/npm/{name}` answers **404**, the
+# GraphQL schema's only package mutation is `deletePackageVersion`, and `/orgs/{org}/settings/packages`
+# does not exist. Both steps are UI-only and the maintainer's.
+#
+# **`--access public` is kept regardless.** It costs nothing, it is required on npmjs where the same
+# tree also publishes, and a flag that is correct on one registry and inert on another is better than
+# one that is absent on both. What it is NOT is the thing that makes the package public here — which
+# is exactly why the visibility report below exists, and why it prints what the registry SAYS rather
+# than what this file asked for.
+#
 # Triggered by a published release so the registry entry and the release cannot drift, plus a manual
 # dispatch for a tag whose release predates this workflow.
 name: publish-github-packages
@@ -109,9 +135,10 @@ jobs:
 
           # Idempotent by design: a re-run of a published release must not fail the workflow. npm
           # refuses to overwrite a version, and that refusal is correct rather than an error here.
+          published=no
           if npm view "$TARGET@$VERSION" version --registry=https://npm.pkg.github.com >/dev/null 2>&1; then
             echo "$TARGET@$VERSION is already on GitHub Packages — nothing to do."
-            exit 0
+            published=already
           fi
 
           # `--access public` is REQUIRED, not decorative. npm defaults a scoped package to
@@ -123,15 +150,24 @@ jobs:
           # README says the route is open to anyone holding a read:packages token — the documentation
           # and the artifact disagreeing, which is worse than either being wrong alone.
           #
-          # Belt and braces rather than certainty: GitHub Packages also ties a package's visibility to
-          # the repository's, so the flag may be a no-op there. It is a no-op that costs nothing and
-          # covers the case where it is not one. **Which of the two actually governs is UNVERIFIED
-          # until this workflow first fires** — it cannot be measured from a checkout.
-          npm publish --access public --registry=https://npm.pkg.github.com
-          echo "published $TARGET@$VERSION to GitHub Packages"
+          # This was written as "may be a no-op ... UNVERIFIED until this workflow first fires". It
+          # has now fired, so the answer is recorded instead of the hedge: the flag IS a no-op here.
+          # npm sent it, said "with public access", and the package was created PRIVATE on a PUBLIC
+          # repository. Visibility on this registry is an org policy plus a per-package setting, both
+          # UI-only. See the third cost in this file's header. The flag stays because it is required
+          # on npmjs and free here.
+          if [ "$published" = "no" ]; then
+            npm publish --access public --registry=https://npm.pkg.github.com
+            echo "published $TARGET@$VERSION to GitHub Packages"
+          fi
 
           # Report what the registry says the visibility IS, rather than what we asked for. A publish
           # that succeeded and left the package restricted would otherwise look identical to success.
+          #
+          # This runs on BOTH paths. It used to sit below the idempotent early `exit 0`, so a re-run
+          # printed no visibility line — measured on dispatch run 32171959326, which printed none.
+          # The path somebody takes to CHECK ON a package was the one path with the check switched
+          # off, which is the shape this report exists to refuse.
           # Read with node rather than `--jq`: `workflow-filters` executes every jq and awk program
           # a workflow runs, so an uncovered `--jq` here would make that recipe's green mean less
           # than it says — it went red on exactly this line and was right to.

@@ -41,8 +41,48 @@ records how things were found. This is per *release* and records what a reader g
 
 ## Unreleased
 
-_Nothing yet. This heading is the accumulator the header above describes: an entry lands here as it
-merges, and the cut renames it to the version._
+### Changed
+
+- **The GitHub Packages workflow now records what it actually did, in place of what it expected to
+  do.** `0.1.1` shipped it with an honest hedge — *"which of the two actually governs is UNVERIFIED
+  until this workflow first fires"* — and it has now fired twice, so the hedge is replaced by the
+  measurement rather than left standing.
+
+  **`npm publish --access public` does not make a package public on GitHub Packages.** Measured
+  2026-08-18 on the first fire: npm sent the flag and reported *"Publishing to
+  https://npm.pkg.github.com with tag latest and public access"*, the publish succeeded, and the
+  package's `visibility` came back `private` — on a repository that was already public. Two manual
+  steps made it public, and **neither has an API**: an organisation-level policy change (until then
+  the package settings page read *"Public — Setting is disabled by organization administrators"*),
+  and then a per-package visibility flip. `PATCH /orgs/{org}/packages/npm/{name}` answers 404, the
+  GraphQL schema's only package mutation is `deletePackageVersion`, and `/orgs/{org}/settings/packages`
+  does not exist.
+
+  The flag is **kept**: it is required on npmjs, where the same tree also publishes, and it costs
+  nothing here. What changed is the claim about it. This is also the vindication of the post-publish
+  visibility report added in the same release — it printed `visibility: private` on a run that was
+  otherwise indistinguishable from success, which is the only reason any of the above was noticed.
+
+  _Recorded because nothing this project ships predicted it, and the next release would otherwise
+  rediscover it._
+
+- **A public package on a public repository is still absent from that repository's Packages sidebar,
+  for a logged-out visitor.** This entry first said the question was unmeasured; it was measured at
+  the checkpoint and again on 2026-08-19, roughly fifteen hours after the package was made public, so
+  the hedge is replaced by the answer on the same rule the rest of this entry follows. In a signed-out
+  browser that runs the page's JavaScript, the sidebar renders About, Topics, Resources, Releases (2),
+  Contributors (3) and Languages, and **no Packages block at all** — zero package links, and not the
+  empty state either. Meanwhile the package's own page serves full content anonymously at HTTP 200,
+  and the API reports it `public` and repository-linked.
+
+  **The instrument matters more than the observation here.** No `curl`-and-grep check could ever have
+  answered this: the server sends the Packages heading as a **loading skeleton** which hydration then
+  removes, so the raw HTML contains the word and the rendered page contains no block. Both halves were
+  measured. A check reading the served bytes would have reported the heading present and concluded the
+  opposite of the truth.
+
+  What is NOT established is why — cache, deliberate suppression for anonymous visitors, or a
+  linkage-rendering rule. Only the observable is recorded._
 
 ## 0.1.1 — 2026-08-18
 
