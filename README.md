@@ -14,12 +14,9 @@ delivered as private-marketplace plugins.
 
 ## Status
 
-Pre-release, and **public** — by the maintainer's decision, after a private window that began on
-3 August 2026 and followed the first public window of 27 July – 3 August 2026. Two consequences worth
-stating plainly: the marketplace install path **needs no authentication**, and "public" in the paragraph
-above now names both the open-core **layer** this repository holds and who can reach it — through the
-private window those two answers differed, which is why this paragraph used to be longer. Visibility
-stays Gated and the maintainer's; it has moved three times, so trust a fresh check over this line.
+Pre-release, and **public** — reading, cloning, forking and the marketplace install path all need no
+account of ours. _(Visibility is Gated and has moved three times: public 27 July – 3 August 2026,
+private until 17 August, public since. It is a live setting, so trust a fresh check over this line.)_
 The newest release entry
 is **`0.2.0`**; what it contains — and, just as usefully, what it does not — is
 [`CHANGELOG.md`](CHANGELOG.md). The engine in `core/`, the Workspace Definition in `spec/`, two
@@ -28,8 +25,26 @@ plugin packaging in `plugin/` and `.claude-plugin/` are authored; the remaining 
 milestone by milestone, and the `0.` major means nothing here is stable yet. The living map is
 [`docs/plan.md`](docs/plan.md).
 
-The quickest way to see what this is: read [`examples/`](examples/), a complete fictional workspace, then
-run `node cli/doctor.mjs examples` to watch it validate.
+## Try it
+
+This repository **is** a Claude Code plugin marketplace, so installing it needs nothing but the two
+lines below — no account, no token, no clone:
+
+```bash
+claude plugin marketplace add sleepy-panda-works/portulan
+```
+
+```bash
+claude plugin install portulan@portulan
+```
+
+Then `/portulan` boots the engine. _(Measured on 2026-08-18 into an isolated `CLAUDE_CONFIG_DIR`: the
+marketplace resolved, the plugin installed, and the payload landed in the cache with `core/engine.md`
+present. What that gives you is the **engine** — a workspace is still yours to draft, which is what
+[`cli/init.mjs`](cli/init.mjs) is for.)_
+
+Or read before you install anything: [`examples/`](examples/) is a complete fictional workspace, and
+`node cli/doctor.mjs examples` from a clone watches it validate.
 
 ## Layout
 
