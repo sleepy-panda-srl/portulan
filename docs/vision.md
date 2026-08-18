@@ -16,8 +16,9 @@ in real production engineering practice.
 from the accumulated observations of real voyages: hard-won local knowledge, closely guarded,
 more valuable with every trip. That is the product thesis in one object, in Sleepy Panda's own
 language: **the engine is the chartmaking method; your workspace is your portulan.** (Decided
-trademark sweep in classes 9/42 cleared before the repository's first public window (27 Jul–3 Aug 
-2026; private 3–17 Aug 2026, public again since). The name proceeds on that sweep; no formal 
+final 24 Jul 2026; **portulan.dev registered by Sleepy Panda SRL the same day.** A knockout
+trademark sweep in classes 9/42 cleared before the repository's first public window (27 Jul–3 Aug
+2026; private 3–17 Aug 2026, public again since). The name proceeds on that sweep; no formal
 clearance opinion is sought, by the maintainer's ruling of 17 Aug 2026.)
 
 One sentence: **cockpit products sell the dashboard; Portulan sells the doctrine.**
@@ -52,11 +53,12 @@ One sentence: **cockpit products sell the dashboard; Portulan sells the doctrine
 ## Product identity
 
 - **Open-core.** Engine + spec + CLI + demo workspace at `github.com/sleepy-panda-works/portulan` —
-  open-core **by design, and public** (public 27 Jul–3 Aug 2026, private while the build hardened, 
-  public again since 17 Aug 2026; it doubles as the Claude Code plugin marketplace, so installing 
-  needs no access grant). **Visibility is a deliberate release decision and has moved three times; 
-  milestone 10's "a stranger can discover, evaluate, install" now rests on it rather than 
-  presupposing it.**
+  open-core **by design, and public** (public 27 Jul–3 Aug 2026, private while the build hardened,
+  public again since 17 Aug 2026; it doubles as the Claude Code plugin marketplace, so installing
+  needs no access grant). **Visibility is a deliberate release decision and has moved three times;
+  milestone 10's "a stranger can discover, evaluate, install" now rests on it rather than
+  presupposing it.** Commercial value in **private feeds**: customer workspaces and premium packs
+  delivered as private-marketplace plugins, plus support/onboarding.
 - **Delivery tiers:** (1) Claude Code plugin — primary; (2) `npx` CLI: `init` (interview + codebase
   scan → drafted workspace, human curates) · `doctor` (schema validation + per-host capability
   report + agent-legibility score) · `compile` (gates/verify → host enforcement) · `vendor`
