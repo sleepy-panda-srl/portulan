@@ -70,14 +70,17 @@ than alluded to. In an `.npmrc`:
 
 ```
 @sleepy-panda-srl:registry=https://npm.pkg.github.com
-//npm.pkg.github.com/:_authToken=${GITHUB_TOKEN}
+//npm.pkg.github.com/:_authToken=${NPM_GITHUB_PACKAGES_TOKEN}
 ```
 
 ```bash
-npm install @sleepy-panda-srl/portulan
+NPM_GITHUB_PACKAGES_TOKEN=<your token> npm install @sleepy-panda-srl/portulan
 ```
 
-The token needs only the `read:packages` scope.
+The token is a **personal access token of your own** — not the `GITHUB_TOKEN` that GitHub Actions
+provides, which exists only inside a workflow run — and it needs only the `read:packages` scope. npm
+expands the `${...}` reference from the environment, so the token itself never has to be written into
+the file.
 
 The npmjs path above needs no account of ours and remains the documented one; this is an additional
 route for people already inside GitHub's authentication. The two registries serve the same tree under

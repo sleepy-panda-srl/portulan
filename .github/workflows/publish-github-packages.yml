@@ -16,9 +16,12 @@
 #      TREE and is unaffected; what would be false is any sentence saying the two registries serve the
 #      same bytes. They serve the same tree under two names.
 #   2. **GitHub Packages requires a token to install, even for a public package.** So this path does
-#      NOT have the property the npmjs path has and that `README.md` and `CONTRIBUTING.md` both make a
-#      point of — that installing needs no account of ours. It is an additional route for people who
-#      are already inside GitHub's auth, never the documented one.
+#      NOT have the property the npmjs path has and that `README.md` makes a point of — that
+#      installing needs no account of ours. It is an additional route for people who are already
+#      inside GitHub's auth, never the documented one. _(`CONTRIBUTING.md` was named here and in the
+#      CHANGELOG too, and does not carry that claim: its "no account of ours" is about the
+#      contribution paths and about filing feedback, never about installing. Copilot round 2 caught
+#      the CHANGELOG site; this one is its sibling.)_
 #
 # Ruled by the maintainer on 2026-08-18, with both costs above put to him first.
 #
@@ -67,7 +70,7 @@ jobs:
       # can be read, rather than produced by an action whose output nobody sees.
       - name: Publish under the owner-scoped name GitHub Packages requires
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
 
