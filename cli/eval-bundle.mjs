@@ -566,7 +566,7 @@ export function writeStamp(cutDir, { name, login, date, fullSha }) {
         issued_by: "Sleepy Panda SRL",
         source_commit: fullSha,
         license: "Apache-2.0",
-        // Points at the LICENCE, which the bundle now ships — a consumer following this field wants
+        // Points at LICENSE, the file the bundle now ships — a consumer following this field wants
         // the terms, not the paperwork. The issuance record is a separate field so both are
         // findable and neither is mistaken for the other (#288).
         license_file: "LICENSE",
