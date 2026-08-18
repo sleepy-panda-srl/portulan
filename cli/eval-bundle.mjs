@@ -599,7 +599,9 @@ export function nonApacheAssertions(dir) {
             if (key === "license") {
                 if (inner !== "Apache-2.0") {
                     const kind = Array.isArray(inner) ? "array" : inner === null ? "null" : typeof inner;
-                    const saw = typeof inner === "string" ? inner : `${JSON.stringify(inner)} — a ${kind}, not a string`;
+                    // No article: "a object"/"a array" are wrong, and "a/an" by first letter is a rule this
+                    // message does not need. `42 — number, not a string` reads correctly for every kind.
+                    const saw = typeof inner === "string" ? inner : `${JSON.stringify(inner)} — ${kind}, not a string`;
                     found.push({ rel, saw });
                 }
                 // Descend anyway: a nested `license` inside this value is still a declaration.
