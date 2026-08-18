@@ -50,9 +50,10 @@ session's own #208 fix, three commits earlier**. A change closing one issue adde
 narrowing already sitting on the roster it was working from. Called out rather than folded in.
 
 **[#257](https://github.com/sleepy-panda-works/portulan/issues/257)** was the one whose brief held, and
-it left the arm choice open. **Arm 1**, and the reason is the neighbouring line: `README.md:204` does
-not merely list dependencies, it makes `docs.sh` the REASON something else is safe; and #255 hit this
-same choice on the cli-table extraction *in this same file* and chose POSIX `sed`. Arm 2 would have
+it left the arm choice open. **Arm 1**, and the reason is the neighbouring line:
+`.portulan/verify/README.md:204` does not merely list dependencies, it makes `docs.sh` the REASON
+something else is safe; and #255 hit this same choice on the cli-table extraction *in that recipe* and
+chose POSIX `sed`. Arm 2 would have
 reversed that decision one screen from where it was made. Equivalence of the POSIX `awk` replacement
 was **measured, not argued**: byte-identical output over all 288 tracked markdown files, 3064 lines,
 plus the awkward cases by hand — including the nested-parenthesis truncation, a documented Known limit
