@@ -492,8 +492,12 @@ describe("the draft claims no capability it does not have", () => {
     test("init still drafts a workspace once the npx prohibition is gone", async () => {
         const dir = scratch();
         await run(["--residence", "in-repo", dir], harness().options);
-        // The draft still validates, which is the property the retired test was protecting from the
-        // other side: whatever it says about invocation, it must remain a workspace `doctor` accepts.
+        // This asserts only that a draft is produced — NOT that `doctor` accepts it. That property is
+        // real and is graded, but by "an in-repo draft validates, with the pack root named" in the
+        // last group of this file, which runs the real `doctor` against a real directory. Saying so
+        // here rather than implying it: an earlier draft of this comment claimed the validation and
+        // this assertion would have passed with `doctor` red, which is the vacuous shape the retired
+        // rail was itself replaced for.
         assert.ok(fs.existsSync(path.join(dir, ".portulan", "workspace.json")), "init drafted no workspace");
     });
 });
