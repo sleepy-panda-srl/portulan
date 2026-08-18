@@ -986,8 +986,9 @@ exit 2
  *
  * Unlike `workspace.sh` this one is **finished** — it checks a real thing on the day it is written,
  * because the index it holds current is written beside it. What it cannot promise is that the tool is
- * reachable: this package is not published, so on an adopter's CI none of the three locations may
- * answer and the recipe's expected first state there is **exit 2**. That is the honest code and it is
+ * reachable: the package is published, but a drafted workspace does not install it, so on an adopter's
+ * CI none of the three locations may answer and the recipe's expected first state there is **exit 2**.
+ * Publication widened the ways it CAN be reachable; it did not make it reachable by default. That is the honest code and it is
  * said in `verify/README.md` as well, rather than discovered when a pipeline goes amber.
  *
  * The third location is the bundle this workspace was drafted from, and it is written in as a

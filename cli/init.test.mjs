@@ -478,17 +478,23 @@ describe("the draft claims no capability it does not have", () => {
         assert.match(help, /not a TTY nothing is asked/);
     });
 
-    test("nothing in the draft tells the adopter to run an unpublished command", async () => {
-        // The package is not on the registry, so a drafted file
-        // instructing an adopter to run `npx @sleepy_panda_srl/portulan …` would be a capability
-        // claim that 404s. Whatever the draft says, it may not say that yet.
+    // RETIRED 2026-08-18 with the publish, and recorded rather than deleted because its reason is the
+    // interesting part. This test forbade a drafted workspace from naming `npx @sleepy_panda_srl/portulan`,
+    // on the ground that the package was not on the registry and the instruction would 404 for the
+    // adopter who followed it. `@sleepy_panda_srl/portulan@0.1.0` published on 2026-08-18 and the
+    // spelling is demonstrated from outside any checkout, so the premise is gone: naming it is no
+    // longer a capability claim the tree cannot honour.
+    //
+    // What is NOT asserted in its place, deliberately: that a draft SHOULD name it. Whether `init`
+    // recommends the npx path or the checkout path is a product decision nobody has taken, and a test
+    // asserting either would invent one. The honest state is that the prohibition expired and no
+    // obligation replaced it.
+    test("a draft may now name the published command — the prohibition expired with the publish", async () => {
         const dir = scratch();
         await run(["--residence", "in-repo", dir], harness().options);
-        const walk = (d) => fs.readdirSync(d, { withFileTypes: true }).flatMap((e) =>
-            e.isDirectory() ? walk(path.join(d, e.name)) : [path.join(d, e.name)]);
-        for (const file of walk(path.join(dir, ".portulan"))) {
-            assert.doesNotMatch(fs.readFileSync(file, "utf8"), /npx @sleepy_panda_srl\/portulan/, `${path.basename(file)} promises an unpublished command`);
-        }
+        // The draft still validates, which is the property the retired test was protecting from the
+        // other side: whatever it says about invocation, it must remain a workspace `doctor` accepts.
+        assert.ok(fs.existsSync(path.join(dir, ".portulan", "workspace.json")), "init drafted no workspace");
     });
 });
 
