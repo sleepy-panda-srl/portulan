@@ -1,35 +1,45 @@
 # Portulan
 
-**An operating framework for agentic engineering** — the tailored context, standards, gates, and
-institutional memory a team needs so any coding agent works *their* way.
+**An operating framework for agentic engineering** — the tailored context, standards, gates and
+institutional memory a team needs so that any coding agent works *their* way.
 
-Portulan is an open-core product by [Sleepy Panda SRL](https://sleepypanda.ro). The public engine,
-spec, CLI, and a demo workspace live here, and the repository doubles as a public Claude Code plugin
-marketplace. Commercial value lives in private feeds — customer workspaces and premium packs
-delivered as private-marketplace plugins.
+[![npm](https://img.shields.io/npm/v/%40sleepy_panda_srl%2Fportulan?logo=npm&label=npm)](https://www.npmjs.com/package/@sleepy_panda_srl/portulan)
+[![License](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE)
+[![Node](https://img.shields.io/badge/node-%3E%3D20-brightgreen?logo=node.js)](package.json)
+
+Portulan is an open-core product by [Sleepy Panda SRL](https://sleepypanda.ro). The engine, the
+Workspace Definition, the CLI and a complete demo workspace are public and live in this repository,
+which doubles as a Claude Code plugin marketplace. Commercial value lives in private feeds — customer
+workspaces and premium packs delivered as private-marketplace plugins.
 
 > **The name.** *Portulan* is the Romanian word for a portolan chart — a mariner's map compiled from
 > the accumulated observations of real voyages: hard-won local knowledge, more valuable with every
 > trip. The engine is the chartmaking method; your workspace is your portulan.
 
+---
+
 ## Status
 
-Pre-release, and **public** — reading, cloning, forking and the marketplace install path all need no
-account of ours. _(Visibility is Gated and has moved three times: public 27 July – 3 August 2026, private
-3 August – 17 August 2026, public since 17 August 2026. It is a live setting, so trust a fresh check
-over this line.)_
-The newest release entry
-is **`0.2.0`**; what it contains — and, just as usefully, what it does not — is
-[`CHANGELOG.md`](CHANGELOG.md). The engine in `core/`, the Workspace Definition in `spec/`, two
-workspaces, the validators that check them, the enforcement compiler and the memory lifecycle, and the
-plugin packaging in `plugin/` and `.claude-plugin/` are authored; the remaining directories below fill in
-milestone by milestone, and the `0.` major means nothing here is stable yet. The living map is
-[`docs/plan.md`](docs/plan.md).
+**Current release: `0.1.0`** — published to npm on 2026-08-18 and recorded in
+[`CHANGELOG.md`](CHANGELOG.md), which is also the honest account of what the release does *not*
+contain.
 
-## Try it
+This is pre-release software. The leading `0.` is meant literally: nothing here is stable yet, and
+the surface may change between minor versions. What is authored today is the engine in [`core/`](core/),
+the Workspace Definition in [`spec/`](spec/), two complete workspaces, the validators that check them,
+the enforcement compiler, the memory lifecycle and the plugin packaging. The remaining directories
+fill in milestone by milestone; [`docs/plan.md`](docs/plan.md) is the living map of that work.
 
-This repository **is** a Claude Code plugin marketplace, so installing it needs nothing but the two
-lines below — no GitHub account, no token, no clone. (You need Claude Code itself, of course.)
+The repository is **public** — reading, cloning, forking and installing the plugin need no account of
+ours. Visibility is a live repository setting, so trust a fresh look at the repository page over this
+sentence.
+
+## Install
+
+### As a Claude Code plugin
+
+This repository *is* a plugin marketplace, so installing it takes two commands — no clone, no token,
+no GitHub account.
 
 ```bash
 claude plugin marketplace add sleepy-panda-srl/portulan
@@ -39,49 +49,101 @@ claude plugin marketplace add sleepy-panda-srl/portulan
 claude plugin install portulan@portulan
 ```
 
-Then, inside Claude Code, run the `/portulan` slash command to boot the engine. _(Measured on 2026-08-18 into an isolated `CLAUDE_CONFIG_DIR`: the
-marketplace resolved, the plugin installed, and the payload landed in the cache with `core/engine.md`
-present. What that gives you is the **engine** — a workspace is still yours to draft, which is what
-[`cli/init.mjs`](cli/init.mjs) is for.)_
+Then run `/portulan` inside Claude Code to boot the engine. That gives you the **engine**; your
+workspace is still yours to draft, which is what `portulan init` is for.
 
-Or read before you install anything: [`examples/`](examples/) is a complete fictional workspace, and
-`node cli/doctor.mjs examples` from a clone watches it validate.
+### As a command-line tool
 
-## Layout
+```bash
+npx @sleepy_panda_srl/portulan doctor examples
+```
+
+Requires Node.js 20 or newer. The package has zero runtime dependencies.
+
+## Quick start
+
+Read before you install anything. [`examples/`](examples/) is a complete fictional workspace — two
+products, read end to end — and validating it from a clone is one command:
+
+```bash
+node cli/doctor.mjs examples
+```
+
+To adopt Portulan in your own repository, `portulan init` interviews you, scans the codebase and
+drafts a workspace; `portulan doctor` validates it; `portulan compile` turns your gate policy into
+host enforcement.
+
+## Command-line interface
+
+`npx @sleepy_panda_srl/portulan` is a live path as of 2026-08-18 — published at `0.1.0` and
+demonstrated from outside any checkout, which closes
+[#242](https://github.com/sleepy-panda-srl/portulan/issues/242). At the publish, the registry's tarball
+and a fresh `npm pack` of that tree hashed identically and every file compared byte-for-byte; that is a
+hand measurement recorded on [#149](https://github.com/sleepy-panda-srl/portulan/issues/149), and it is
+a fact about `d6498f0` rather than a standing property of `main`, which has since moved. What *is*
+railed on every commit is the tree-side half: the `pack-identity` recipe refuses any packed file that
+differs from its staged blob. Running `node cli/<tool>.mjs` from a clone is still how this repository
+measures everything, and still works.
+
+The [`portulan`](cli/portulan.mjs) entry point arrived at milestone 7 and has dispatched every name
+[`docs/vision.md`](docs/vision.md) gives it since session 9. The table below is the enumeration, and
+`portulan --help` is the tree's own answer — a count written here in words would be one more
+hand-maintained figure, which is the defect this cell has already shipped twice:
+
+| Command | What it does |
+|---|---|
+| [`init`](cli/init.mjs) | Interview plus codebase scan, producing a drafted workspace |
+| [`doctor`](cli/doctor.mjs) | Validate a workspace against the Workspace Definition |
+| [`compile`](cli/compile.mjs) | Turn gates and verify recipes into host enforcement |
+| [`vendor`](cli/vendor.mjs) | Materialise a workspace where it is needed, in either direction |
+| [`index`](cli/index.mjs) | Rebuild the declared indexes over memory, handoffs and personas |
+| [`upgrade`](cli/upgrade.mjs) | Migrate a workspace across Workspace Definition versions |
+| [`new`](cli/new.mjs) | Scaffold a skill, persona, pack, workspace, gate policy or repo card |
+| [`feedback`](cli/feedback.mjs) | File a bug, improvement or feedback issue you previewed first |
+
+Beside the eight sit tools that are deliberately not subcommands, and the compiled-hook runners, which
+are not subcommands at all. [`cli/README.md`](cli/) is the single carrier of that wider roster.
+
+## Repository layout
 
 | Path | What lives here |
 |---|---|
-| `core/` | The engine: operating docs, personas, universal skills, templates |
-| `packs/` | Composable packs — `stacks/`, `tools/`, `rituals/` |
-| `spec/` | The Workspace Definition: schema, docs, migrations |
-| `plugin/` | [The Claude Code adapter](plugin/): the `/portulan` boot skill, and why the agent bindings below sit at the root rather than here |
-| `agents/` | [The three personas bound to this host's tools](agents/) — `implementer`, `reviewer`, `librarian`. A platform-fixed location: the default agents directory of a plugin whose root is this repository. The doctrine they bind stays in [`core/personas/`](core/personas/) |
-| `.claude-plugin/` | The [plugin](.claude-plugin/plugin.json) and [marketplace](.claude-plugin/marketplace.json) manifests that make this repository an installable plugin feed |
-| `cli/` | The `npx` CLI: the eight `docs/vision.md` names. **`npx @sleepy_panda_srl/portulan` is a live path as of 2026-08-18 — published at `0.1.0`, demonstrated from outside any checkout, and byte-identical to a fresh `npm pack` ([#149](https://github.com/sleepy-panda-srl/portulan/issues/149)); [#242](https://github.com/sleepy-panda-srl/portulan/issues/242) is closed by it.** `node cli/<tool>.mjs` from a clone is still how this repository measures everything, and still works. The [`portulan`](cli/portulan.mjs) entry point exists as of milestone 7 and dispatches **all eight** since session 9 — [`init`](cli/init.mjs), [`doctor`](cli/doctor.mjs), [`compile`](cli/compile.mjs), [`vendor`](cli/vendor.mjs), [`index`](cli/index.mjs), [`upgrade`](cli/upgrade.mjs), [`new`](cli/new.mjs), [`feedback`](cli/feedback.mjs). _(This cell said "five" and then listed four, and later "seven" while `upgrade` was unbuilt — the kind of arithmetic a reader checks and a rail cannot.)_ Beside them sit tools that are off the eight by the maintainer's call, and the compiled-hook runners, which are not subcommands at all — [`cli/README.md`](cli/) is the one carrier of that roster, and this cell named a different three from the one `portulan.mjs` named while four were on disk |
-| `.claude/` | [The compiled enforcement](.claude/settings.json) — permissions and hooks generated from [`.portulan/gates.json`](.portulan/gates.json). Generated, committed so it is reviewable, and held to its source by the `compile` verify recipe, which holds the compiled platform floor in [`.portulan/compile/`](.portulan/compile/) the same way. Nothing else in this directory is tracked |
+| `core/` | [The engine](core/): operating doctrine, personas, universal skills, templates |
+| `spec/` | [The Workspace Definition](spec/) — schema, documentation, migrations |
+| `cli/` | [The Node CLI](cli/) described above, plus its tests and the compiled-hook runners |
+| `packs/` | [Composable packs](packs/) — `stacks/`, `tools/`, `rituals/` |
+| `plugin/` | [The Claude Code adapter](plugin/): the `/portulan` boot skill |
+| `agents/` | [The three personas bound to this host's tools](agents/) — `implementer`, `reviewer`, `librarian`. A platform-fixed location; the doctrine they bind stays in [`core/personas/`](core/personas/) |
 | `examples/` | [A fictional, public demo workspace](examples/) — two products, read end to end |
+| `docs/` | [`vision.md`](docs/vision.md) (the constitution), [`plan.md`](docs/plan.md) (the milestone map) and [`milestones/`](docs/milestones/) — one file per milestone, holding amendment arguments, session notes and close evidence |
+| `evals/` | [A README today](evals/), and nothing else. The golden tasks, the A/B harness and the CI eval gate arrive at milestone 8 |
 | `.portulan/` | [This repository's own workspace](.portulan/) — Portulan applied to building Portulan |
-| `evals/` | Golden tasks, the A/B harness, the CI eval gate |
-| `.github/` | CI workflows — runs every verify recipe the workspace **yields** — its own, plus those its composed packs contribute — on every pull request — and the [Dependabot config](.github/dependabot.yml) that watches the Actions pins those workflows are held to |
-| `docs/` | [`vision.md`](docs/vision.md) (the constitution), [`plan.md`](docs/plan.md) (the milestone map), and [`milestones/`](docs/milestones/) — **one file per milestone**, zero-padded so they sort, holding the amendment arguments, session notes and close evidence that used to live inside the table's rows. The row is the law; the file is the legislative history |
+| `.claude-plugin/` | The [plugin](.claude-plugin/plugin.json) and [marketplace](.claude-plugin/marketplace.json) manifests that make this repository an installable feed |
+| `.claude/` | [The compiled enforcement](.claude/settings.json) — permissions and hooks generated from [`.portulan/gates.json`](.portulan/gates.json), committed so it stays reviewable and held to its source by the `compile` verify recipe |
+| `.github/` | [CI workflows](.github/), which run every verify recipe the workspace yields, and the [Dependabot config](.github/dependabot.yml) that watches their Action pins |
 
-## Read next
+## Documentation
 
-- [`docs/vision.md`](docs/vision.md) — the constitution: what Portulan is, the thesis, the non-goals.
-- [`docs/plan.md`](docs/plan.md) — the living milestone map and build protocol.
+- [`docs/vision.md`](docs/vision.md) — the constitution: what Portulan is, the theses, the non-goals.
+- [`docs/plan.md`](docs/plan.md) — the living milestone map and the build protocol.
+- [`spec/`](spec/) — the Workspace Definition your own policy layer is validated against.
+- [`CHANGELOG.md`](CHANGELOG.md) — every release and what changed in it.
 
 ## Contributing
 
-Portulan is built as an open-core product and is **not** open to outside code contributions. Reading,
-cloning and forking are what the licence allows; bugs, proposals and feedback go through the
-[issue forms](https://github.com/sleepy-panda-srl/portulan/issues/new/choose); and code lands only
-through team members.
+Portulan is **not open to outside code contributions**, and that is a deliberate posture rather than a
+temporary state. Reading, cloning and forking are what the licence allows; bugs, proposals and feedback
+go through the [issue forms](https://github.com/sleepy-panda-srl/portulan/issues/new/choose); code lands
+only through team members.
 
-**Those paths are open to anyone, and the closed one is closed by choice rather than by reach** — the
-tree and the issue forms need no account of ours and no permission from us, and code still lands only
-through team members. That distinction is the whole posture, and it reads the same whichever way
-visibility points. [`CONTRIBUTING.md`](CONTRIBUTING.md) has the whole of it, including why.
+Those open paths are open to anyone and need no permission from us; the closed one is closed by choice
+rather than by reach. [`CONTRIBUTING.md`](CONTRIBUTING.md) has the whole of it, including why.
+
+## Security
+
+Please do not report a security issue in an issue. [`SECURITY.md`](SECURITY.md) is the policy: the
+channels in the order to try them, what is in scope, and what response you can actually expect.
 
 ## License
 
-[Apache-2.0](LICENSE) © 2026 Sleepy Panda SRL.
+[Apache-2.0](LICENSE) © 2026 Sleepy Panda SRL. See [`NOTICE`](NOTICE).

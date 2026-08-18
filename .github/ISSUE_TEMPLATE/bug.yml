@@ -9,8 +9,9 @@ body:
     attributes:
       value: |
         Thanks for taking the time. **Do not report a security issue here** — an issue is a permanent
-        record that everyone who can read this repository sees. See the
-        Security section of [`CONTRIBUTING.md`](https://github.com/sleepy-panda-srl/portulan/blob/main/CONTRIBUTING.md).
+        record that everyone who can read this repository sees. Use
+        [`SECURITY.md`](https://github.com/sleepy-panda-srl/portulan/blob/main/SECURITY.md), which
+        carries the reporting channels in the order to try them.
 
   - type: textarea
     id: what
