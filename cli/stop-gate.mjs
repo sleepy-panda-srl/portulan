@@ -453,7 +453,15 @@ function handoffInHistory() {
         const git = (args) => execFileSync("git", args, { cwd: REPO, encoding: "utf8", timeout: 10_000, stdio: ["ignore", "pipe", "pipe"] });
         // `--all` is every ref already on disk, local and remote-tracking. `-1` because existence is
         // the whole question — this is the doctrine's checkable form, not a census.
-        const commit = git(["log", "--all", "-1", "--format=%H", "--", `${dir}/${stamp}*`]).trim();
+        // **`:(glob)` magic, because a bare `*` is not reliably a glob.** With `GIT_NOGLOB_PATHSPECS`
+        // set, git reads `*` literally, this matches nothing, and the function returns null — silently
+        // reintroducing the exact "a handoff exists elsewhere and the gate does not say so" gap this
+        // arm exists to close. Measured on git 2.50.1: bare pattern matches 1 normally and **0** under
+        // `GIT_NOGLOB_PATHSPECS=1`; with `:(glob)` it matches 1 under both. _(The neighbouring lever
+        // `core.globPathspec=false` does NOT reproduce it — measured — so the magic is what makes this
+        // deterministic, not a config default.)_ Explicit pathspec magic is the same discipline
+        // `../.portulan/verify/plugin.sh` documents. Copilot, round 3.
+        const commit = git(["log", "--all", "-1", "--format=%H", "--", `:(glob)${dir}/${stamp}*`]).trim();
         if (!commit) return null;
         const refs = git(["branch", "--all", "--contains", commit, "--format=%(refname:short)"])
             .split("\n").map((r) => r.trim()).filter(Boolean);

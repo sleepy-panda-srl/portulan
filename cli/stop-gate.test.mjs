@@ -455,10 +455,10 @@ function git(cwd, args) {
  * refusal in its stdout JSON, not in its status — so the stderr this suite asserts on would be
  * unreachable through the throw path `./gate.test.mjs` reads it from.
  */
-function gate(project, sessionId) {
+function gate(project, sessionId, env = {}) {
     const run = spawnSync("node", [RUNNER], {
         input: JSON.stringify({ session_id: sessionId }),
-        env: { ...process.env, CLAUDE_PROJECT_DIR: project },
+        env: { ...process.env, CLAUDE_PROJECT_DIR: project, ...env },
         encoding: "utf8",
     });
     // **A crash must never read as an allow.** This runner reports a refusal in stdout and exits 0
@@ -631,6 +631,25 @@ describe("the handoff question names the tree it answered about (#220, second ha
         assert.equal(decision, "block");
         assert.ok(reason.includes(repo), `the refusal must name the tree it read (${repo}) — got: ${reason}`);
         assert.match(reason, /feat/, "and the branch that tree is on");
+    });
+
+    test("the history lookup survives a host that reads `*` literally", () => {
+        // `GIT_NOGLOB_PATHSPECS` makes a bare `*` literal, which would match nothing and return null —
+        // silently reinstating the gap this arm closes, on a host that looks fine. Measured on git
+        // 2.50.1: the bare pattern matches 1 normally and 0 under this variable. The pathspec carries
+        // `:(glob)` magic so the answer does not depend on the host's pathspec defaults.
+        const repo = rebaseMerged({ genuinelyUnmerged: true });
+        const stamp = today();
+        git(repo, ["checkout", "-q", "-b", "carries-the-handoff"]);
+        fs.writeFileSync(path.join(repo, ".portulan", "handoffs", `${stamp}-merged-already.md`), "why\n");
+        git(repo, ["add", "-A"]);
+        git(repo, ["commit", "-m", "the handoff"]);
+        git(repo, ["checkout", "-q", "feat"]);
+
+        const { decision, reason } = gate(repo, "noglob-pathspecs", { GIT_NOGLOB_PATHSPECS: "1" });
+        assert.equal(decision, "block");
+        assert.match(reason, /carries-the-handoff|elsewhere/i,
+            "the elsewhere-report must survive a host that disables glob pathspecs");
     });
 
     test("a DETACHED tree is named by its commit, never as a branch called HEAD", () => {
