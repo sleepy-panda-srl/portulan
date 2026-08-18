@@ -11,7 +11,7 @@ import os from "node:os";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
 
-import { compare } from "./pack-identity.mjs";
+import { compare, main } from "./pack-identity.mjs";
 
 const scratch = () => fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), "portulan-pack-identity-"));
 const git = (cwd, ...args) => execFileSync("git", args, { cwd, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
@@ -99,6 +99,19 @@ describe("pack-identity", () => {
         assert.ok(!packed.includes("lib/linked.mjs"), "npm packed a symlink; the guard is now reachable and needs a positive test");
         assert.deepEqual(untracked, []);
         assert.deepEqual(differing, []);
+    });
+
+    // The 0/1/2 contract, raised on #297: an unexpected throw must not exit as 1, which the runner
+    // reads as a finding about the package. Exercised through `main` rather than `compare`, because
+    // the translation is what is being tested and only `main` performs it.
+    test("an unexpected failure exits 2 with a diagnostic, not 1 — a crash is not a verdict", () => {
+        const out = [];
+        const err = [];
+        const code = main(["node", "pack-identity", path.join(scratch(), "does-not-exist")],
+            { write: (t) => out.push(t) }, { write: (t) => err.push(t) });
+        assert.equal(code, 2, "a failure that is not a finding exited as one");
+        assert.match(err.join(""), /pack-identity: could not run/);
+        assert.equal(out.join(""), "", "a could-not-run printed an ok line");
     });
 
     test("a directory that is not a repository is could-not-run, never a finding", () => {
