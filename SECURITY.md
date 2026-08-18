@@ -37,7 +37,7 @@ the release notes, say so — the default is to credit you by the name you repor
 ## Scope
 
 In scope: the engine, the Workspace Definition, the CLI in [`cli/`](cli/), the compiled enforcement in
-[`.claude/`](.claude/settings.json), and the plugin manifests.
+[`.claude/settings.json`](.claude/settings.json), and the plugin manifests.
 
 Two properties are worth naming because they are the ones a reader is most likely to over-read:
 

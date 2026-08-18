@@ -102,7 +102,7 @@ hand-maintained figure, which is the defect this cell has already shipped twice:
 | [`feedback`](cli/feedback.mjs) | File a bug, improvement or feedback issue you previewed first |
 
 Beside the eight sit tools that are deliberately not subcommands, and the compiled-hook runners, which
-are not subcommands at all. [`cli/README.md`](cli/) is the single carrier of that wider roster.
+are not subcommands at all. [`cli/README.md`](cli/README.md) is the single carrier of that wider roster.
 
 ## Repository layout
 
