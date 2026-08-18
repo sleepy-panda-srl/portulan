@@ -9,7 +9,8 @@
 // tracker's history is permanent and its visibility is the *repository's* to change — this one was
 // public from 2026-07-27 to 2026-08-03, private after that, and is public again, which is exactly why
 // "it is public" is the wrong thing to reason from in either direction: what a sender may safely
-// include cannot depend on a setting somebody else can flip, and this one has been flipped three times. The workspace it sends *from* may be a company's — repo names, paths,
+// include cannot depend on a setting somebody else can flip, and this one has been flipped three
+// times. The workspace it sends *from* may be a company's — repo names, paths,
 // product identifiers, gate maps, memory. `docs/plan.md` → Protocol → The seam exists because this
 // project treats that leakage as unacceptable in the other direction, and this tool points at the same
 // wall pointing out.

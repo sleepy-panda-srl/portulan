@@ -1452,7 +1452,8 @@ _The seam applies here too: no client-identifying references._
   check to report on. #67 is **still open**, and the blocker rationale recorded here is now the
   maintainer's to re-derive against a private repository that also declines external pull requests. The
   entry's own words are left standing, per this log's forward-only rule)* *(noted 2026-08-17: the third
-  flip restores this entry's original premise — the repository is public, forks are possible again, and
+  flip restores this entry's original premise — the repository is public, so forking is available to
+  enable (`allow_forking` is a separate setting, re-measured rather than inferred from visibility), and
   the question #67 was opened to measure is live rather than moot. Both notes stand; the entry was right
   on its date, the 2026-08-10 note was right on its own, and #67 is still open)*. · **A declaration
   that had been false since #54 was repaired:** `labels.json` declared an intake vocabulary of which
@@ -2351,4 +2352,4 @@ _The seam applies here too: no client-identifying references._
   real conflict markers since `56da8f0`, nine days with thirteen recipes green over them. Thirteen green; seam scan clean
   across diff, message, branch, and 177 pull requests, 104 issues and every comment surface — zero hits. · Fidelity:
   session-open A-W-A ×14 all folded — four missed carriers, all in `proposals/`, the directory the sweep skipped. Routed
-  untaken: `docs/vision.md` (his hand, hard blocker), the eval-license wording, three settings, `0004`'s fork model. Handoff: [`2026-08-17`](../.portulan/handoffs/2026-08-17-the-tree-says-public-before-the-setting-does.md) · PR [#282](https://github.com/sleepy-panda-works/portulan/pull/282).
+  untaken: `docs/vision.md` alone (his hand, the one blocker left); he ruled the other four in-session. Handoff: [`2026-08-17`](../.portulan/handoffs/2026-08-17-the-tree-says-public-before-the-setting-does.md) · PR [#282](https://github.com/sleepy-panda-works/portulan/pull/282).
