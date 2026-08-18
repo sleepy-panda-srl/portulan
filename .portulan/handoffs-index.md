@@ -2,9 +2,10 @@
 
 > Generated from `handoffs/` by `node cli/index.mjs`. Do not edit by hand: it is regenerated
 > and byte-compared, so a hand-edit survives exactly until the next run.
-> 113 handoff(s), newest first. No budget: the series is append-only, so
+> 114 handoff(s), newest first. No budget: the series is append-only, so
 > the only remedy a budget could ask for is one this project rules out.
 
+- 2026-08-18 · [Handoff — the guard I deleted was the one that caught me](handoffs/2026-08-18-the-guard-i-deleted-was-the-one-that-caught-me.md)
 - 2026-08-18 · [Handoff — the gate asked reachability in a repository that rebase-merges](handoffs/2026-08-18-the-gate-asked-reachability-in-a-repository-that-rebase-merges.md)
 - 2026-08-18 · [Handoff — the flip, the publish, and what each measurement cost](handoffs/2026-08-18-the-flip-the-publish-and-what-each-measurement-cost.md)
 - 2026-08-18 · [Handoff — the brief was wrong about its own mechanism](handoffs/2026-08-18-the-brief-was-wrong-about-its-own-mechanism.md)
