@@ -20,9 +20,8 @@ workspaces and premium packs delivered as private-marketplace plugins.
 
 ## Status
 
-**Current release: `0.1.0`** — published to npm on 2026-08-18 and recorded in
-[`CHANGELOG.md`](CHANGELOG.md), which is also the honest account of what the release does *not*
-contain.
+**Current release: `0.1.1`** — recorded in [`CHANGELOG.md`](CHANGELOG.md), which is also the honest
+account of what the release does *not* contain.
 
 This is pre-release software. The leading `0.` is meant literally: nothing here is stable yet, and
 the surface may change between minor versions. What is authored today is the engine in [`core/`](core/),
@@ -59,6 +58,31 @@ npx @sleepy_panda_srl/portulan doctor examples
 ```
 
 Requires Node.js 20 or newer. The package has zero runtime dependencies.
+
+### From GitHub Packages
+
+The same tree is also published to GitHub Packages, where the registry requires the scope to match the
+repository owner — so there it is named **`@sleepy-panda-srl/portulan`**, with hyphens.
+
+**This route needs a GitHub token even though the package is public**, which is GitHub Packages' rule
+rather than ours — so the registry line alone is not enough, and the authentication is shown rather
+than alluded to. In an `.npmrc`:
+
+```
+@sleepy-panda-srl:registry=https://npm.pkg.github.com
+//npm.pkg.github.com/:_authToken=${GITHUB_TOKEN}
+```
+
+```bash
+npm install @sleepy-panda-srl/portulan
+```
+
+The token needs only the `read:packages` scope.
+
+The npmjs path above needs no account of ours and remains the documented one; this is an additional
+route for people already inside GitHub's authentication. The two registries serve the same tree under
+two names, so the tarballs are *not* byte-identical: packed both ways they differ in exactly one line
+of one file — `package.json`'s `name` — at 74 files each side.
 
 ## Quick start
 

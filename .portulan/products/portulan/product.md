@@ -27,7 +27,7 @@ its author can adopt in an afternoon.
 **Stage, honestly.** Pre-release, and **publicly reachable** — the repository was public
 27 July → 3 August 2026, private after that, and is public again, so the marketplace install path
 needs no authentication. Reach has moved three times and is Gated; measure it rather than reading it
-here. The newest release entry is `0.1.0`, published to npm on 2026-08-18. The
+here. The newest release entry is `0.1.1`. The
 engine, this workspace, the enforcement compiler and the memory lifecycle are authored; the CLI
 milestone 7 describes is **complete on the subcommand list** — all eight dispatch, the last (`upgrade`)
 at session 9, with `init`, `new` and `vendor` at sessions 1, 2 and 3 and `feedback` at session 6. The

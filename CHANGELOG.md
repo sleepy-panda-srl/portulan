@@ -41,6 +41,36 @@ records how things were found. This is per *release* and records what a reader g
 
 ## Unreleased
 
+_Nothing yet. This heading is the accumulator the header above describes: an entry lands here as it
+merges, and the cut renames it to the version._
+
+## 0.1.1 — 2026-08-18
+
+**A release cut to correct the registry's own front page.** `0.1.0` shipped with a `README.md` saying
+*"The newest release entry is `0.2.0`"* — a sentence this file had already retired hours earlier, in the
+same day's work. npm freezes a README per published version, so the registry served a wrong version
+number about itself and no edit to `main` could change it. That is the whole reason this version exists,
+and it is the second-order cost of the defect `0.1.0` recorded rather than a new one.
+
+### Added
+
+- **The package is published to GitHub Packages as well, as `@sleepy-panda-srl/portulan`.** That
+  registry requires the npm scope to equal the repository owner, and the owner is `sleepy-panda-srl`
+  with hyphens while the npm organisation is `sleepy_panda_srl` with underscores — no single name
+  satisfies both, so the same tree ships under two names.
+  [`.github/workflows/publish-github-packages.yml`](.github/workflows/publish-github-packages.yml)
+  rewrites `name` in the working copy at publish time, verifies the rewrite took before publishing
+  anything, and is idempotent: a re-run of an already-published version reports and exits 0, because
+  npm's refusal to overwrite a version is correct rather than an error.
+
+  **Two costs, ruled on with both put to the maintainer first.** The tarballs are **not** byte-identical
+  across the two registries — they differ in the `name` field by construction, so no sentence anywhere
+  may claim otherwise; `pack-identity` compares a pack against the *tree* and is unaffected. And
+  **GitHub Packages requires a token to install even a public package**, so that route does not carry
+  the property the npmjs route does and that `README.md` and `CONTRIBUTING.md` both make a point of.
+  npmjs stays the documented path; this is an additional route for people already inside GitHub's
+  authentication.
+
 ### Changed
 
 - **`README.md` and `CONTRIBUTING.md` are rewritten for a first-time reader.** Both carried the
