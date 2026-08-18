@@ -70,7 +70,11 @@ jobs:
       # can be read, rather than produced by an action whose output nobody sees.
       - name: Publish under the owner-scoped name GitHub Packages requires
         env:
+          # Both here, in ONE block. A second `env:` mapping on the same step is a duplicate key and
+          # YAML keeps the last one — which silently deleted NODE_AUTH_TOKEN when this was first
+          # written, leaving a publish with no npm credential and no parse error to show for it.
           NODE_AUTH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
 
@@ -110,5 +114,30 @@ jobs:
             exit 0
           fi
 
-          npm publish --registry=https://npm.pkg.github.com
+          # `--access public` is REQUIRED, not decorative. npm defaults a scoped package to
+          # `restricted` on first publish — `package.json` carries no `publishConfig`, and
+          # `npm config get access` is null, so the built-in default applies. The 0.1.0 npmjs publish
+          # needed this same flag; the record of it is in
+          # `.portulan/handoffs/2026-08-18-the-flip-the-publish-and-what-each-measurement-cost.md`.
+          # Without it this either fails on first publish or lands a RESTRICTED package while the
+          # README says the route is open to anyone holding a read:packages token — the documentation
+          # and the artifact disagreeing, which is worse than either being wrong alone.
+          #
+          # Belt and braces rather than certainty: GitHub Packages also ties a package's visibility to
+          # the repository's, so the flag may be a no-op there. It is a no-op that costs nothing and
+          # covers the case where it is not one. **Which of the two actually governs is UNVERIFIED
+          # until this workflow first fires** — it cannot be measured from a checkout.
+          npm publish --access public --registry=https://npm.pkg.github.com
           echo "published $TARGET@$VERSION to GitHub Packages"
+
+          # Report what the registry says the visibility IS, rather than what we asked for. A publish
+          # that succeeded and left the package restricted would otherwise look identical to success.
+          # Read with node rather than `--jq`: `workflow-filters` executes every jq and awk program
+          # a workflow runs, so an uncovered `--jq` here would make that recipe's green mean less
+          # than it says — it went red on exactly this line and was right to.
+          if gh api "/orgs/sleepy-panda-srl/packages/npm/portulan" > package-visibility.json 2>/dev/null; then
+            node -e 'const p=require("./package-visibility.json"); console.log("visibility:", p.visibility)'
+          else
+            echo "visibility: could not be read — check the Packages page by hand"
+          fi
+          rm -f package-visibility.json
