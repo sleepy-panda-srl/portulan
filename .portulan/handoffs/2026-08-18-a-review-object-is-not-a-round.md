@@ -152,8 +152,10 @@ Every figure here was re-measured by the pre-commit checkpoint in its own contex
 this record — thirteen recipes, the census, the byte-identity of the two matcher copies, every fixture
 degradation, and both replays.
 
-Thirteen recipes green and suite 1706 on the branch; both to be re-measured on the rebased tree before
-merge, since the concurrent flip session holds #288 and #289 and `main` will move. #286 is answered on
+Thirteen recipes green and suite **1706**, measured on the tree rebased onto `f1a8c11` — the base this
+merged from, after the concurrent flip session took `main` fifteen commits further while this was in
+review. Not the branch's own earlier figures: the rebase happened first and every number here was
+taken again after it. #286 is answered on
 all three clauses of its retire-when: the error notice no longer satisfies the check, the verdict no
 longer describes a round it has not established, and both are demonstrated by a case that forces them.
 
