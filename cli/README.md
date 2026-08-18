@@ -9,8 +9,8 @@ entry point exists:
 repository's `package.json`.
 
 **`npx` names a path that is not open yet, and this file states that once rather than hedging every
-mention below.** Publishing is a Gated act and has not happened, so `@sleepy-panda-srl/portulan` **is
-not on the registry today** — `npx @sleepy-panda-srl/portulan` resolves nothing. `package.json`
+mention below.** Publishing is a Gated act and has not happened, so `@sleepy_panda_srl/portulan` **is
+not on the registry today** — `npx @sleepy_panda_srl/portulan` resolves nothing. `package.json`
 declares the `bin` that path would use, and that `bin` is reachable now from a working copy; what every
 measurement in this repository has actually been taken through is `node cli/<tool>.mjs` from a clone.
 [`../.portulan/identity.md`](../.portulan/identity.md) is the carrier of that fact and of what the

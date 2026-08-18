@@ -14,7 +14,7 @@ cover both switch directions, which finally gives the residence switch its verb.
 ## The file move was never the fix, and that is the finding
 
 **Both runners derived the adopter's workspace from their own file position** — `HERE/..`, `HERE/../..`.
-That is true in exactly one layout: the author's. From `node_modules/@sleepy-panda-srl/portulan/cli/` a
+That is true in exactly one layout: the author's. From `node_modules/@sleepy_panda_srl/portulan/cli/` a
 runner has no idea where the workspace is, and inferring one would be
 [#131](https://github.com/sleepy-panda-srl/portulan/issues/131)'s class in the two tools with the most
 to lose from it. The project root is **told** now — `CLAUDE_PROJECT_DIR || cwd`, `||` rather than `??` so

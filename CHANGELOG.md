@@ -39,7 +39,21 @@ non-authoritative. It is human-owned prose on purpose, and it is not a candidate
 The Session log in [`docs/plan.md`](docs/plan.md) is the fuller record — it is per *session* and it
 records how things were found. This is per *release* and records what a reader gets.
 
-## Unreleased
+## 0.1.0 — 2026-08-18
+
+**The first release, and the first version — corrected on the maintainer's ruling of 2026-08-18.**
+This file previously carried two release headings, `0.2.0 — 2026-07-29` and `0.1.0 — 2026-07-26`.
+**Neither was ever released.** Measured at the correction: `git ls-remote --tags origin` returns
+nothing and `gh release list` is empty, so no tag, no GitHub release and no registry entry ever
+carried those numbers. They recorded cuts that were prepared and never shipped.
+
+Publishing `@sleepy_panda_srl/portulan` to npm is the first time any Portulan artifact leaves this
+repository under a version, so it is **0.1.0**, and the two earlier headings are folded in below as
+the development they actually were. Their content is unchanged and none of it is discarded — what
+moved is the claim that they shipped. _(The package also changes scope here: the npm organisation is
+`sleepy_panda_srl`, while the GitHub organisation remains `sleepy-panda-srl`. The repository URL is
+unaffected.)_
+
 ### Changed
 
 - **`doctor`'s enforcement report now counts the gate policy a workspace *yields* — declared plus
@@ -650,7 +664,7 @@ stopped** rather than going green over what it did not reach.
 stays at 2.5 and is byte-unchanged: one number governing both contracts would make a bump in either mean
 a change in the other.
 
-## 0.2.0 — 2026-07-29
+### Development cut as 0.2.0 on 2026-07-29 — prepared, never published
 
 **Two milestones and the reconciliation that followed them** — milestone 4 closed 2026-07-28, milestone
 5 closed 2026-07-29. [`docs/plan.md`](docs/plan.md) carries the signed close verdicts and
@@ -785,7 +799,7 @@ is refused outright.
 - **Per-agent memory is still unbuilt.** `core/operating/memory.md` scopes memory per agent or persona;
   nothing implements it, and the doctrine names milestone 6 as where the first instance is *owed*.
 
-## 0.1.0 — 2026-07-26
+### Development cut as 0.1.0 on 2026-07-26 — prepared, never published
 
 The first tagged release. Pre-release in the SemVer sense — the `0.` major says the interfaces below
 may still move, and the Workspace Definition has already had one breaking revision (1.0 → 2.0) before

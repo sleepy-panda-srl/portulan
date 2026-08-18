@@ -13,7 +13,7 @@
 
 Row 7 of [`../../docs/plan.md`](../../docs/plan.md), in two places. The base clause:
 
-> `npx @sleepy-panda-srl/portulan` ships init/doctor/compile/vendor/index/**upgrade** …
+> `npx @sleepy_panda_srl/portulan` ships init/doctor/compile/vendor/index/**upgrade** …
 
 and the 2026-07-30 residence amendment, ratified 2026-07-31:
 

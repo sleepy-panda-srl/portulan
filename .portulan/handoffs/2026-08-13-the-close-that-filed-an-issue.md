@@ -32,7 +32,7 @@ it.
 ## What the close found, beyond the verdict
 
 **An ambiguity the pass refused to resolve, correctly.** Row 7's opening clause — *`npx
-@sleepy-panda-srl/portulan` ships …* — reads as *the bundle declares the bin and all eight subcommands
+@sleepy_panda_srl/portulan` ships …* — reads as *the bundle declares the bin and all eight subcommands
 dispatch* (demonstrated) or as *an adopter can `npx` it* (not demonstrated: the package is **404** on the
 registry and publishing is Gated). `identity.md` already states the gap, so the settled reading is the
 first; the row's words are the second. **A criterion that reads two ways is the ritual's finding to

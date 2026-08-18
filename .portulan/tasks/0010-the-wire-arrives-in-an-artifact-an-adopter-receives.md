@@ -33,7 +33,7 @@ The hook must resolve in three contexts, and the maintainer's ruling of 2026-08-
 for the close) means it cannot lean on a published package:
 
 1. **This repository** — the runner in the checkout's own `cli/`.
-2. **A project-local install** — `node_modules/@sleepy-panda-srl/portulan/cli/…`, which is under
+2. **A project-local install** — `node_modules/@sleepy_panda_srl/portulan/cli/…`, which is under
    `${CLAUDE_PROJECT_DIR}` and therefore reachable.
 3. **Global / npx-only** — *not* reachable by a project-relative path at all.
 
@@ -84,7 +84,7 @@ stop.mjs:  WORKSPACE = resolve(HERE, "..");  REPO = resolve(WORKSPACE, "..")
 ```
 
 That works for exactly one layout — the author's, with the file at `.portulan/compile/`. From `cli/`,
-and far more so from `node_modules/@sleepy-panda-srl/portulan/cli/`, a runner has **no idea** where the
+and far more so from `node_modules/@sleepy_panda_srl/portulan/cli/`, a runner has **no idea** where the
 adopter's workspace is, and inferring one would be [#131](https://github.com/sleepy-panda-srl/portulan/issues/131)'s
 class (paths resolved against the author's layout) in the two tools with the most to lose from it.
 
