@@ -8,10 +8,15 @@ to obtain.
 ## The two irreversible acts, and the words that authorised them
 
 Both were reserved to the maintainer at the act, and both were given in session rather than assumed from
-the commission. The flip: `gh repo edit sleepy-panda-srl/portulan --visibility public
---accept-visibility-change-consequences` — the consent flag is **required** by `gh` 2.97.0 when
-`--visibility` is used, measured from its own help rather than recalled. The publish: `npm publish
---access public`, run by **him**, because it needs a one-time password no agent can supply.
+the commission. The flip:
+
+```
+gh repo edit sleepy-panda-srl/portulan --visibility public --accept-visibility-change-consequences
+```
+
+The consent flag is **required** by `gh` 2.97.0 when `--visibility` is used, measured from its own help
+rather than recalled. The publish was `npm publish --access public`, run by **him**, because it needs a
+one-time password no agent can supply.
 
 ## The flip, measured either side
 
@@ -25,8 +30,8 @@ the commission. The flip: `gh repo edit sleepy-panda-srl/portulan --visibility p
 **The negative control earned its place twice.** `curl` against github.com returned **404 after the
 flip** — not a failed flip, but GitHub refusing a request with no `User-Agent`; with one it is 200. A
 naive re-measure reads that as the act not having landed. And the *authenticated* clone proves nothing
-about reachability on a machine holding the maintainer's credentials, which is why the credential-helper-
-disabled clone is the one this record cites.
+about reachability on a machine holding the maintainer's credentials, which is why the clone cited here
+is the one run with the credential helper disabled.
 
 ## The publish
 
