@@ -411,11 +411,13 @@ export function apacheAssertions(dir) {
 }
 
 /**
- * The pre-patch census: inside the freshly materialised cut, the files carrying the machine-read
- * assertion must be exactly PATCHED_MANIFESTS. Anything extra is a manifest this tool does not
- * know about — refused with the menu, so the next bundle cannot quietly mislicense it. Anything
- * missing is a patch target that stopped asserting Apache — stale, and refused too, because a
- * patch list that patches nothing reads as coverage.
+ * The census, run on the freshly materialised cut: the files carrying the machine-read assertion
+ * must be exactly APACHE_MANIFESTS. Anything extra is a declaring manifest this tool does not know
+ * about — refused with the menu, so the next bundle cannot quietly ship an unreviewed licence
+ * claim. Anything missing is a rostered file that stopped asserting Apache — refused too, because
+ * a roster naming files that declare nothing reads as coverage it does not have. It runs before
+ * the stamp is written, which is why EVAL-STAMP.json is not in the roster despite declaring
+ * Apache-2.0 itself; the guard is what reads the finished cut.
  */
 export function assertCensus(cutDir) {
     const carrying = apacheAssertions(cutDir).map((o) => o.rel);

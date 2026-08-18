@@ -142,10 +142,10 @@ describe("the pinned rosters, measured with this suite's own instruments", () =>
         );
     });
 
-    test("every patched manifest and self-excluded path is inside the payload roster", () => {
+    test("every declaring manifest and self-excluded path is inside the payload roster", () => {
         for (const rel of [...APACHE_MANIFESTS, ...SELF_EXCLUDED]) {
             const top = rel.split("/")[0];
-            assert.ok(PAYLOAD.includes(top), `${rel} is rostered under ${top}, which is not a payload entry — a patch or exclusion outside the payload is dead configuration`);
+            assert.ok(PAYLOAD.includes(top), `${rel} is rostered under ${top}, which is not a payload entry — a declaration or exclusion outside the payload is dead configuration`);
         }
     });
 });
