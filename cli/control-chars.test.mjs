@@ -637,7 +637,7 @@ describe("the entry block, spawned", () => {
 // ---------------------------------------------------------------- this repository
 
 describe("the live tree", () => {
-    test("every tracked file is free of control characters outside TAB and LF", () => {
+    test("every tracked file, plus every new and not-ignored one, is free of control characters outside TAB and LF", () => {
         // Customer zero held to its own rail, the way ./index.test.mjs binds the live indexes. The
         // recipe checks this too; the suite checks it as well so a byte smuggled in by an edit is red
         // in both places rather than only in CI.
@@ -653,7 +653,7 @@ describe("the live tree", () => {
             { maxBuffer: 32 * 1024 * 1024 },
         );
         const { paths, undecodable } = splitList(listing);
-        assert.deepEqual(undecodable, [], "a tracked pathname did not survive decoding — the scan would have skipped it");
+        assert.deepEqual(undecodable, [], "a scanned pathname — tracked, or new and not ignored — did not survive decoding; the scan would have skipped it");
         const files = paths.map((rel) => path.join(REPO, rel));
         // A KNOWN PATH rather than a count. `files.length > 100` was a magic number that would fail on
         // an unrelated change to the repository's size, and a hard-coded figure is a claim that rots —
