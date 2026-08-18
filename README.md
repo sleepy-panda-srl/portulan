@@ -61,8 +61,9 @@ Requires Node.js 20 or newer. The package has zero runtime dependencies.
 
 ### From GitHub Packages
 
-The same tree is also published to GitHub Packages, where the registry requires the scope to match the
-repository owner — so there it is named **`@sleepy-panda-srl/portulan`**, with hyphens.
+Every release from **`v0.1.1`** onward also publishes the same tree to GitHub Packages, where the
+registry requires the scope to match the repository owner — so there it is named
+**`@sleepy-panda-srl/portulan`**, with hyphens. Releases before that one are on npmjs only.
 
 **This route needs a GitHub token even though the package is public**, which is GitHub Packages' rule
 rather than ours — so the registry line alone is not enough, and the authentication is shown rather
