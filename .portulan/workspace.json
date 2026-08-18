@@ -5,11 +5,8 @@
   "name": "portulan",
   "summary": "Sleepy Panda SRL building Portulan: one maintainer, coding agents under a supervised-build protocol, a docs-first repository whose product is its files.",
   "kind": "repository",
-
   "tree": "../",
-
   "gates": "gates.json",
-
   "slots": {
     "identity": "identity.md",
     "principles": "principles.md",
@@ -23,85 +20,140 @@
     "proposals": "proposals/",
     "personas": "personas/"
   },
-
   "verify": {
     "default": "docs",
     "recipes": [
       {
         "id": "docs",
         "run": "./.portulan/verify/docs.sh",
-        "requires": ["bash", "git"],
+        "requires": [
+          "bash",
+          "git"
+        ],
         "doc": "verify/README.md"
       },
       {
         "id": "json",
         "run": "./.portulan/verify/json.sh",
-        "requires": ["bash", "git", "node"],
+        "requires": [
+          "bash",
+          "git",
+          "node"
+        ],
         "doc": "verify/README.md"
       },
       {
         "id": "doctor",
         "run": "./.portulan/verify/doctor.sh",
-        "requires": ["bash", "git", "node"],
+        "requires": [
+          "bash",
+          "git",
+          "node"
+        ],
         "doc": "verify/README.md"
       },
       {
         "id": "tests",
         "run": "./.portulan/verify/tests.sh",
-        "requires": ["bash", "node"],
+        "requires": [
+          "bash",
+          "node"
+        ],
         "doc": "verify/README.md"
       },
       {
         "id": "plugin",
         "run": "./.portulan/verify/plugin.sh",
-        "requires": ["bash", "git", "node"],
+        "requires": [
+          "bash",
+          "git",
+          "node"
+        ],
         "doc": "verify/README.md"
       },
       {
         "id": "compile",
         "run": "./.portulan/verify/compile.sh",
-        "requires": ["bash", "node"],
+        "requires": [
+          "bash",
+          "node"
+        ],
         "doc": "verify/README.md"
       },
       {
         "id": "workflow-filters",
         "run": "./.portulan/verify/workflow-filters.sh",
-        "requires": ["awk", "bash", "jq", "node"],
+        "requires": [
+          "awk",
+          "bash",
+          "jq",
+          "node"
+        ],
         "doc": "verify/README.md"
       },
       {
         "id": "index",
         "run": "./.portulan/verify/index.sh",
-        "requires": ["bash", "git", "node"],
+        "requires": [
+          "bash",
+          "git",
+          "node"
+        ],
         "doc": "verify/README.md"
       },
       {
         "id": "control-chars",
         "run": "./.portulan/verify/control-chars.sh",
-        "requires": ["bash", "git", "node"],
+        "requires": [
+          "bash",
+          "git",
+          "node"
+        ],
         "doc": "verify/README.md"
       },
       {
         "id": "rule-carriers",
         "run": "./.portulan/verify/rule-carriers.sh",
-        "requires": ["bash", "git", "node"],
+        "requires": [
+          "bash",
+          "git",
+          "node"
+        ],
         "doc": "verify/README.md"
       },
       {
         "id": "pack-version",
         "run": "./.portulan/verify/pack-version.sh",
-        "requires": ["bash", "git", "node"],
+        "requires": [
+          "bash",
+          "git",
+          "node"
+        ],
+        "doc": "verify/README.md"
+      },
+      {
+        "id": "pack-identity",
+        "run": "./.portulan/verify/pack-identity.sh",
+        "requires": [
+          "bash",
+          "git",
+          "node",
+          "npm"
+        ],
         "doc": "verify/README.md"
       },
       {
         "id": "eval-bundle",
         "run": "./.portulan/verify/eval-bundle.sh",
-        "requires": ["bash", "git", "node"],
+        "requires": [
+          "bash",
+          "git",
+          "node"
+        ],
         "doc": "verify/README.md"
       }
     ]
   },
-
   "memory": {
     "index": {
       "path": "memory-index.md",
@@ -116,19 +168,16 @@
       }
     }
   },
-
   "handoffs": {
     "index": {
       "path": "handoffs-index.md"
     }
   },
-
   "personas": {
     "index": {
       "path": "personas-index.md"
     }
   },
-
   "librarian": {
     "staleness": {
       "record_days": 90,
@@ -136,16 +185,19 @@
       "proposal_days": 30
     }
   },
-
   "products": [
     {
       "id": "portulan",
       "name": "Portulan",
       "product": "products/portulan/product.md",
       "affordances": "products/portulan/affordances.md",
-      "repos": ["portulan"]
+      "repos": [
+        "portulan"
+      ]
     }
   ],
-
-  "packs": ["rituals/checkpoints", "tools/github"]
+  "packs": [
+    "rituals/checkpoints",
+    "tools/github"
+  ]
 }
