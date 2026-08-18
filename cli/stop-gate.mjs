@@ -306,15 +306,25 @@ function didWork() {
         // wrong block is capped at MAX_BLOCKS and speaks, a wrong pass is unbounded and silent.
         // `../.portulan/memory/verify-preconditions-fail-closed.md` is cited in this file's header
         // for exactly this direction.
-        const degraded = (why) => {
+        // The advice NAMES A COMMAND THE READER CAN RUN. The first draft always said
+        // `git cherry <remote>/HEAD HEAD` — but the commonest way into this branch is that
+        // `<remote>/HEAD` does not resolve, so the suggested check failed for the very reason the
+        // refinement did. Telling someone to re-run the thing that just broke is a diagnosis-shaped
+        // sentence carrying no diagnosis. Copilot, round 1.
+        const degraded = (why, check) => {
             process.stderr.write(
                 `portulan stop-gate: could not compare by patch-id (${why}), so commits on no remote are ` +
                     "being read as work. If this branch was rebase-merged the handoff demand may be spurious — " +
-                    "check with `git cherry <remote>/HEAD HEAD` and say so rather than working around the gate.\n",
+                    `${check} and say so rather than working around the gate.\n`,
             );
             return true;
         };
-        if (!base) return degraded("no remote records a default head");
+        if (!base) {
+            return degraded(
+                "no remote records a default head",
+                "record one with `git remote set-head <remote> -a`, then check with `git cherry <remote>/HEAD HEAD`",
+            );
+        }
 
         // **Exit 0 AND zero `+` lines, both required.** `git cherry` against an unknown ref exits 128
         // and prints NOTHING, so counting `+` alone reads a failed command as *nothing unmerged* —
@@ -325,7 +335,7 @@ function didWork() {
         try {
             cherry = git(["cherry", base, "HEAD"]);
         } catch {
-            return degraded(`\`git cherry ${base} HEAD\` could not run`);
+            return degraded(`\`git cherry ${base} HEAD\` could not run`, `check with \`git cherry ${base} HEAD\``);
         }
         return cherry.split("\n").some((line) => line.startsWith("+"));
     } catch {
@@ -459,7 +469,11 @@ function collectProblems() {
     }
 
     const handoffPresent = handoffToday();
-    if (didWork() && !handoffPresent) {
+    // **`!handoffPresent` first, and the order is load-bearing rather than stylistic.** `didWork()`
+    // shells out to git several times and can print the could-not-compare sentence; ordered the other
+    // way, a session that HAS written its handoff still paid that cost on every Stop event and could
+    // be handed a degradation warning about an obligation it does not owe. Copilot, round 1.
+    if (!handoffPresent && didWork()) {
         // The tree is NAMED, because the sentence was once true about a tree the reader was not
         // thinking of and read as a verdict about their session (#220).
         const elsewhere = handoffInHistory();
