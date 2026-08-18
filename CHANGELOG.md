@@ -39,6 +39,11 @@ non-authoritative. It is human-owned prose on purpose, and it is not a candidate
 The Session log in [`docs/plan.md`](docs/plan.md) is the fuller record — it is per *session* and it
 records how things were found. This is per *release* and records what a reader gets.
 
+## Unreleased
+
+_Nothing yet. This heading is the accumulator the header above describes: an entry lands here as it
+merges, and the cut renames it to the version._
+
 ## 0.1.0 — 2026-08-18
 
 **The first release, and the first version — corrected on the maintainer's ruling of 2026-08-18.**
