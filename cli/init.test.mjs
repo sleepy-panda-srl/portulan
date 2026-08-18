@@ -480,7 +480,7 @@ describe("the draft claims no capability it does not have", () => {
 
     test("nothing in the draft tells the adopter to run an unpublished command", async () => {
         // The package is not on the registry (#148 is open on its version), so a drafted file
-        // instructing an adopter to run `npx @sleepy-panda-srl/portulan …` would be a capability
+        // instructing an adopter to run `npx @sleepy_panda_srl/portulan …` would be a capability
         // claim that 404s. Whatever the draft says, it may not say that yet.
         const dir = scratch();
         await run(["--residence", "in-repo", dir], harness().options);
