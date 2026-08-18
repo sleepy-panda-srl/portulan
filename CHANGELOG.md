@@ -67,7 +67,7 @@ and it is the second-order cost of the defect `0.1.0` recorded rather than a new
   across the two registries — they differ in the `name` field by construction, so no sentence anywhere
   may claim otherwise; `pack-identity` compares a pack against the *tree* and is unaffected. And
   **GitHub Packages requires a token to install even a public package**, so that route does not carry
-  the property the npmjs route does and that `README.md` and `CONTRIBUTING.md` both make a point of.
+  the property the npmjs route does and that `README.md` makes a point of.
   npmjs stays the documented path; this is an additional route for people already inside GitHub's
   authentication.
 
