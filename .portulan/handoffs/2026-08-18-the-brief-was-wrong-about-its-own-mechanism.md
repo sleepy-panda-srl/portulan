@@ -121,9 +121,18 @@ check that only sees committed state has to be run against committed state.**
 
 ## Where this leaves things
 
-`main` = `4f9fa4d`. No pull request open. **#286 is the one thing filed and unanswered** — two repair
-arms, the choice left to the maintainer because the trade is how much vendor-prose coupling the gate
-should carry. The merge condition it undermines is unchanged in doctrine and now known to be
+The code work took `main` from `e43d3c5` to **`4f9fa4d`** and left no pull request behind it. By the
+time this record was rebased for merge the concurrent flip-day session had advanced `main` twelve
+commits further, to `b23dd4b`, so `4f9fa4d` is this session's contribution rather than the current tip
+— it remains an ancestor, checked with `git merge-base --is-ancestor` rather than assumed. Both figures
+in this handoff were re-measured on the rebased tree: suite **1706**, thirteen recipes green.
+
+An earlier draft of this paragraph said *"No pull request open"*, which was false at the moment it was
+written and self-refuting besides — the record making the claim was itself sitting in an open pull
+request, #287. What is true is narrower: **the two code pull requests left nothing open.**
+
+**#286 is the one thing filed and unanswered** — two repair arms, the choice left to the maintainer
+because the trade is how much vendor-prose coupling the gate should carry. The merge condition it undermines is unchanged in doctrine and now known to be
 satisfiable by an artifact that judged nothing.
 
 Both rails added here — `cli/list-quoting.live.test.mjs` and `cli/test-isolation.live.test.mjs` — were
