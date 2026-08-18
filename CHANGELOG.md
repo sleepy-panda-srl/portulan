@@ -92,7 +92,10 @@ unaffected.)_
   a failed command as *nothing unmerged*, and that direction would have turned a case that blocks into
   a pass. A refusal now also **names the working tree and branch it read**, and reports a handoff dated
   today carried by some other ref already on disk, because the sentence was once true about a tree the reader was
-  not thinking of. ([#220](https://github.com/sleepy-panda-srl/portulan/issues/220))
+  not thinking of. (first arm of [#220](https://github.com/sleepy-panda-srl/portulan/issues/220), which stays open: the
+  gate still scopes both questions to the told-or-cwd root, and where that tree is clean while the
+  session's work sits in a divergent live tree it allows silently — the naming arms fire only on the
+  block path)
 
 - **`doctor`'s enforcement report now counts the gate policy a workspace *yields* — declared plus
   composed — rather than the rules its own `gates.json` declares.** Measured before the change on
