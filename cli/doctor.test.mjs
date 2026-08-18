@@ -3236,18 +3236,13 @@ describe("every legibility dimension can actually vary", () => {
 // instead was the no-arguments usage line on stderr at exit 2: the could-not-run fallback, not an
 // answer. Milestone 7's close handoff called this "the only two of eight"; measuring found three.
 describe("--help is a request that succeeded", () => {
-    test("`--help` exits 0, prints to stdout, and names only flags this tool takes", async () => {
+    test("`--help` exits 0, prints to stdout, and names only flags this tool takes", async (t) => {
         // `run` writes to stdout directly rather than through an injected sink, so the sink is stdout —
         // the idiom ./compile.test.mjs already uses for the same shape.
         const out = [];
-        const write = process.stdout.write.bind(process.stdout);
-        process.stdout.write = (chunk) => (out.push(String(chunk)), true);
-        let code;
-        try {
-            code = await run(["--help"]);
-        } finally {
-            process.stdout.write = write;
-        }
+        t.mock.method(process.stdout, "write", (chunk) => (out.push(String(chunk)), true));
+        const code = await run(["--help"]);
+        t.mock.restoreAll();
         assert.equal(code, 0, "asking for help succeeded");
         const said = out.join("");
         assert.match(said, /^portulan doctor — validate a workspace/, "the identity line agrees with `portulan --help`'s summary");
@@ -3260,6 +3255,12 @@ describe("--help is a request that succeeded", () => {
         // finding.) So the parser is ASKED instead: a flag this tool takes is one it does not refuse as
         // unknown. That cannot be satisfied by prose, because prose is not what answers.
         for (const flag of said.match(/^\s+(--[a-z-]+)/gm)?.map((s) => s.trim()) ?? []) {
+            // **Hand-restored, and `t.mock.method` would be wrong here rather than merely unnecessary**
+            // (#254). The runner scopes a mock to the TEST; this substitution is scoped to one ITERATION,
+            // and there is one per flag on the help screen. Converting it would leave every iteration's
+            // mock installed under the next and restore them all at the end, which is a different
+            // lifetime than the code means. Where the two scopes agree — the `--help` capture above —
+            // this file now uses the runner.
             const err = [];
             const w = process.stderr.write.bind(process.stderr);
             process.stderr.write = (chunk) => (err.push(String(chunk)), true);
@@ -3283,18 +3284,13 @@ describe("--help is a request that succeeded", () => {
     // The hazard this closes is not cosmetic. Measured before the fix: `doctor --repo-rot /nonexistent`
     // silently DISCARDED the misspelled flag and graded `/nonexistent` as a workspace — red, for a
     // reason that had nothing to do with what was asked. A typo in a flag is could-not-run.
-    test("an unknown flag is refused loudly rather than swallowed and graded", async () => {
+    test("an unknown flag is refused loudly rather than swallowed and graded", async (t) => {
         // A refusal is could-not-run, so it lands on STDERR beside every other `doctor:` refusal —
         // stdout carries verdicts, and this run reached none.
         const out = [];
-        const write = process.stderr.write.bind(process.stderr);
-        process.stderr.write = (chunk) => (out.push(String(chunk)), true);
-        let code;
-        try {
-            code = await run(["--repo-rot", "/nonexistent"]);
-        } finally {
-            process.stderr.write = write;
-        }
+        t.mock.method(process.stderr, "write", (chunk) => (out.push(String(chunk)), true));
+        const code = await run(["--repo-rot", "/nonexistent"]);
+        t.mock.restoreAll();
         assert.equal(code, 2, "a flag this tool does not take is could-not-run, never a verdict");
         const said = out.join("");
         assert.match(said, /unknown argument/);
@@ -3326,19 +3322,15 @@ describe("the enforcement report counts composed gates", () => {
         return text(checks(findings, "enforcement"));
     };
 
-    test("`doctor` and `compile --matrix` agree on how many gates no backend compiles", async () => {
+    test("`doctor` and `compile --matrix` agree on how many gates no backend compiles", async (t) => {
         const said = await enforcement();
         const mine = said.match(/(\d+) gate\(s\) no backend compiles/)?.[1];
         assert.ok(mine, "the uncovered-gate line is printed");
 
         const out = [];
-        const write = process.stdout.write.bind(process.stdout);
-        process.stdout.write = (chunk) => (out.push(String(chunk)), true);
-        try {
-            compileRun(["--matrix", "--pack-root", path.join(REPO, "packs")]);
-        } finally {
-            process.stdout.write = write;
-        }
+        t.mock.method(process.stdout, "write", (chunk) => (out.push(String(chunk)), true));
+        compileRun(["--matrix", "--pack-root", path.join(REPO, "packs")]);
+        t.mock.restoreAll();
         const theirs = out.join("").match(/(\d+) GATE\(S\) no backend compiles/)?.[1];
         assert.equal(mine, theirs, "two readers of one policy must not answer the same question differently");
     });
