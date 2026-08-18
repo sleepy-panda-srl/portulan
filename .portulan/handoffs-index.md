@@ -2,7 +2,7 @@
 
 > Generated from `handoffs/` by `node cli/index.mjs`. Do not edit by hand: it is regenerated
 > and byte-compared, so a hand-edit survives exactly until the next run.
-> 114 handoff(s), newest first. No budget: the series is append-only, so
+> 115 handoff(s), newest first. No budget: the series is append-only, so
 > the only remedy a budget could ask for is one this project rules out.
 
 - 2026-08-18 · [Handoff — the guard I deleted was the one that caught me](handoffs/2026-08-18-the-guard-i-deleted-was-the-one-that-caught-me.md)
@@ -10,6 +10,7 @@
 - 2026-08-18 · [Handoff — the flip, the publish, and what each measurement cost](handoffs/2026-08-18-the-flip-the-publish-and-what-each-measurement-cost.md)
 - 2026-08-18 · [Handoff — the brief was wrong about its own mechanism](handoffs/2026-08-18-the-brief-was-wrong-about-its-own-mechanism.md)
 - 2026-08-18 · [Handoff — a review object is not a round](handoffs/2026-08-18-a-review-object-is-not-a-round.md)
+- 2026-08-18 · [Handoff — a release that nearly re-shipped its own reason for existing](handoffs/2026-08-18-a-release-that-nearly-reshipped-its-own-reason.md)
 - 2026-08-17 · [Handoff — the tree says public before the setting does](handoffs/2026-08-17-the-tree-says-public-before-the-setting-does.md)
 - 2026-08-17 · [Handoff — the cutter moves into the tree, and the tree starts checking it](handoffs/2026-08-17-the-cutter-moves-into-the-tree.md)
 - 2026-08-17 · [Handoff — the librarian's scheduled pass](handoffs/2026-08-17-librarian-pass.md)
