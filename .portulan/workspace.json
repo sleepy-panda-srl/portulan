@@ -66,7 +66,7 @@
       {
         "id": "workflow-filters",
         "run": "./.portulan/verify/workflow-filters.sh",
-        "requires": ["bash", "jq", "node"],
+        "requires": ["awk", "bash", "jq", "node"],
         "doc": "verify/README.md"
       },
       {
