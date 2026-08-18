@@ -41,8 +41,16 @@ permissions:
   contents: read
   packages: write
 
+# Both expressions below read `github.event.inputs.ref` rather than `inputs.ref`. The two are
+# equivalent for this input — no default, string type — and the spelling was changed on Copilot's
+# round 1. Its stated reason is not the reason: the `inputs` context IS recognised here, because this
+# workflow declares `workflow_dispatch.inputs`, and a missing property in a GitHub expression yields
+# empty rather than raising. The real reason is that this workflow HAS NEVER FIRED and its expressions
+# cannot be evaluated from a checkout — GitHub registers a workflow only once it is on the default
+# branch — so between two spellings that behave identically, the one with no dispute attached is the
+# one to ship on an unexercised path where the failure mode is checking out the wrong ref.
 concurrency:
-  group: publish-github-packages-${{ github.event.release.tag_name || inputs.ref }}
+  group: publish-github-packages-${{ github.event.release.tag_name || github.event.inputs.ref }}
   cancel-in-progress: false
 
 jobs:
@@ -51,7 +59,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: ${{ github.event.release.tag_name || inputs.ref }}
+          ref: ${{ github.event.release.tag_name || github.event.inputs.ref }}
           persist-credentials: false
 
       # No `actions/setup-node`: the runner's node is preinstalled and every other workflow here
