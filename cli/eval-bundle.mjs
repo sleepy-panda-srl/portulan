@@ -583,8 +583,19 @@ export function nonApacheAssertions(dir) {
         if (Array.isArray(value)) return value.forEach((v) => scan(rel, v));
         if (value === null || typeof value !== "object") return;
         for (const [key, inner] of Object.entries(value)) {
-            if (key === "license" && typeof inner === "string" && inner !== "Apache-2.0") found.push({ rel, saw: inner });
-            else scan(rel, inner);
+            // A `license` key is judged whatever its TYPE. Reading only strings was a fail-open:
+            // npm's own historic form is `"license": {"type": …, "url": …}`, so an object, array,
+            // number or null is a shape a real manifest can take — and one that slipped past the
+            // guard while still being a licence declaration. Raised by Copilot on #288.
+            if (key === "license") {
+                if (inner !== "Apache-2.0") {
+                    const kind = Array.isArray(inner) ? "array" : inner === null ? "null" : typeof inner;
+                    const saw = typeof inner === "string" ? inner : `${JSON.stringify(inner)} — a ${kind}, not a string`;
+                    found.push({ rel, saw });
+                }
+                // Descend anyway: a nested `license` inside this value is still a declaration.
+                scan(rel, inner);
+            } else scan(rel, inner);
         }
     };
     const walk = (sub) => {

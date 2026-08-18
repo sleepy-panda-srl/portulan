@@ -363,6 +363,22 @@ describe("the guard, fed cuts built to deserve refusal", () => {
         assert.throws(() => auditCut(dir), /spec\/worded\.json — declares `Apache License 2\.0`/);
     });
 
+    // The fail-open Copilot found on #288: the walk read only STRING values, so a licence field of
+    // any other JSON type was a declaration the guard never judged. npm's own historic form is an
+    // object, so this is a shape real manifests take rather than a contrived one.
+    test("a non-string license value is refused too — the key is judged whatever its type", () => {
+        for (const [name, literal] of [
+            ["obj", '{"license": {"type": "MIT", "url": "https://example.invalid"}}'],
+            ["arr", '{"license": ["MIT"]}'],
+            ["num", '{"license": 42}'],
+            ["nul", '{"license": null}'],
+        ]) {
+            const dir = freshCut();
+            fs.writeFileSync(path.join(dir, "spec", `${name}.json`), `${literal}\n`);
+            assert.throws(() => auditCut(dir), new RegExp(`spec/${name}\\.json — declares .*not a string`), `${name} slipped past the guard`);
+        }
+    });
+
     test("a clean cut passes the inverted guard", () => {
         const dir = freshCut();
         auditCut(dir);
