@@ -1,12 +1,14 @@
 # Handoff — the gate asked reachability in a repository that rebase-merges
 
 **Post-M7 hardening, session 23. Full lane.** No milestone row moves. Closes
-[#220](https://github.com/sleepy-panda-srl/portulan/issues/220). Suite **1706 → 1713**, twelve
+[#220](https://github.com/sleepy-panda-srl/portulan/issues/220). Suite **1706 → 1715**, twelve
 workspace recipes plus the pack-composed `tools/github:actions-pinned` green — **re-measured on the
-final head after rebasing onto `d6498f0`**, which is the tree these figures belong to. `main` moved
-twice under this session: [#291](https://github.com/sleepy-panda-srl/portulan/pull/291) merged at
-13:04Z and the organisation was renamed `sleepy-panda-works` → `sleepy-panda-srl`, so every issue URL
-written earlier in this change was dead on arrival and was corrected before the rebase. Implementer Opus 5,
+final head after rebasing onto `4ce7b04`**, which is the tree these figures belong to, with `4ce7b04`
+itself measured at 1706 rather than assumed. `main` moved **three times** under this session:
+[#291](https://github.com/sleepy-panda-srl/portulan/pull/291) merged at 13:04Z, the organisation was
+renamed `sleepy-panda-works` → `sleepy-panda-srl` (which killed every issue URL written earlier in
+this change, corrected before the first rebase), and then the repository went public and the package
+shipped. Two of the nine commits here are Copilot's rounds, which added the last two cases. Implementer Opus 5,
 identity line checked at boot before any file was written. **[#264](https://github.com/sleepy-panda-srl/portulan/issues/264)
 was demonstrated and deliberately not built** — see *What is parked, and how far it got*.
 
