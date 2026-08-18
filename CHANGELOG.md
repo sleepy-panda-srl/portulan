@@ -41,6 +41,24 @@ records how things were found. This is per *release* and records what a reader g
 
 ## Unreleased
 
+_Nothing yet. This heading is the accumulator the header above describes: an entry lands here as it
+merges, and the cut renames it to the version._
+
+## 0.1.0 — 2026-08-18
+
+**The first release, and the first version — corrected on the maintainer's ruling of 2026-08-18.**
+This file previously carried two release headings, `0.2.0 — 2026-07-29` and `0.1.0 — 2026-07-26`.
+**Neither was ever released.** Measured at the correction: `git ls-remote --tags origin` returns
+nothing and `gh release list` is empty, so no tag, no GitHub release and no registry entry ever
+carried those numbers. They recorded cuts that were prepared and never shipped.
+
+Publishing `@sleepy_panda_srl/portulan` to npm is the first time any Portulan artifact leaves this
+repository under a version, so it is **0.1.0**, and the two earlier headings are folded in below as
+the development they actually were. Their content is unchanged and none of it is discarded — what
+moved is the claim that they shipped. _(The package also changes scope here: the npm organisation is
+`sleepy_panda_srl`, while the GitHub organisation remains `sleepy-panda-srl`. The repository URL is
+unaffected.)_
+
 ### Added
 
 - **`@sleepy_panda_srl/portulan` is on the npm registry**, published `0.1.0` on 2026-08-18. `npx
@@ -59,21 +77,6 @@ records how things were found. This is per *release* and records what a reader g
   What the package contains is narrower than what the repository holds: no test suite, no fixtures,
   and none of the evaluation-bundle issuer machinery — an npm consumer receives the eight
   subcommands, not the stamp press.
-
-## 0.1.0 — 2026-08-18
-
-**The first release, and the first version — corrected on the maintainer's ruling of 2026-08-18.**
-This file previously carried two release headings, `0.2.0 — 2026-07-29` and `0.1.0 — 2026-07-26`.
-**Neither was ever released.** Measured at the correction: `git ls-remote --tags origin` returns
-nothing and `gh release list` is empty, so no tag, no GitHub release and no registry entry ever
-carried those numbers. They recorded cuts that were prepared and never shipped.
-
-Publishing `@sleepy_panda_srl/portulan` to npm is the first time any Portulan artifact leaves this
-repository under a version, so it is **0.1.0**, and the two earlier headings are folded in below as
-the development they actually were. Their content is unchanged and none of it is discarded — what
-moved is the claim that they shipped. _(The package also changes scope here: the npm organisation is
-`sleepy_panda_srl`, while the GitHub organisation remains `sleepy-panda-srl`. The repository URL is
-unaffected.)_
 
 ### Changed
 
