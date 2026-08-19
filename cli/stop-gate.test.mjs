@@ -889,7 +889,7 @@ describe("which tree the gate answers about (#220, second arm)", () => {
         // allow. The shape being recorded is *nothing is said*, so that is what is checked; if a future
         // change makes this path speak, this case should go red, because the shape will have changed —
         // which is the closure contract above doing its job rather than a nuisance. Copilot.
-        assert.equal(stderr.trim(), "", `the hole is that nothing is said — got: ${stderr}`);
+        assert.equal(stderr, "", `the hole is that nothing is said — got: ${JSON.stringify(stderr)}`);
         assert.equal(reason, "", "no refusal text at all");
     });
 
