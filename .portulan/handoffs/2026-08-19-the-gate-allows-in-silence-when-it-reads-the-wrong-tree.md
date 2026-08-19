@@ -2,7 +2,7 @@
 
 **Post-M7 hardening, session 24. Full lane, in progress.** No milestone row moves. Continues
 [#220](https://github.com/sleepy-panda-srl/portulan/issues/220), whose first arm merged as
-[#295](https://github.com/sleepy-panda-srl/portulan/pull/295). Baseline `a2c0f91`, suite **1725 → 1733**, **fourteen** recipes green (thirteen declared plus the pack-composed `tools/github:actions-pinned`).
+[#295](https://github.com/sleepy-panda-srl/portulan/pull/295). Baseline `3973705` (re-measured at 1725 there), suite **1725 → 1733**, **fourteen** recipes green (thirteen declared plus the pack-composed `tools/github:actions-pinned`).
 Implementer Opus 5, identity line checked at boot before any file was written.
 
 ## What landed today before this arm started
