@@ -107,9 +107,10 @@ host enforcement.
 Two invocations, and they run the same code. `npx @sleepy_panda_srl/portulan <command>` needs no
 checkout; `node cli/<tool>.mjs` runs from a clone, and is how this repository measures itself.
 
-**There is no build step, so the package is not a compiled artifact.** Every file it ships is
-byte-identical to its tracked source at the commit it was cut from — a property you can check rather
-than take on trust, and one a compiled artifact could not offer. A verify recipe holds it on every
+**There is no build step, so the package is not a compiled artifact.** Every file the npmjs package
+ships is byte-identical to its tracked source at the commit it was cut from — a property you can check
+rather than take on trust, and one a compiled artifact could not offer. The GitHub Packages copy is
+the one documented exception, and differs in exactly the one line named above. A verify recipe holds it on every
 commit, refusing any packed file that differs from its source.
 
 `portulan --help` is the tree's own answer, and the table below is the enumeration:
