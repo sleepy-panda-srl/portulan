@@ -97,15 +97,38 @@ function rosterNames(markdown) {
     return names;
 }
 
+// Read LAZILY, not at `describe` evaluation. Both of these reach outside the process — one shells
+// to git, one reads a file — and at module-load time a failure in either takes the whole file down
+// before a single case runs, surfacing as an opaque load error instead of the named refusal this
+// suite is built to give. That is the same shape as a precondition that cannot report: the check
+// does not fail closed, it fails *illegibly*. Inside a case, the identical failure is attributed to
+// a test with a message that says what could not be done.
+let cached = null;
+function inputs() {
+    if (cached) return cached;
+    let onDisk, markdown;
+    try {
+        onDisk = trackedNonTestModules();
+    } catch (err) {
+        assert.fail(`could not enumerate cli/*.mjs with git — this check could not run: ${err.message}`);
+    }
+    try {
+        markdown = fs.readFileSync(README, "utf8");
+    } catch (err) {
+        assert.fail(`could not read ${README} — this check could not run: ${err.message}`);
+    }
+    cached = { onDisk, markdown };
+    return cached;
+}
+
 describe("the roster beside the eight is a partition of cli/, and nothing here is hand-counted", () => {
-    const onDisk = trackedNonTestModules();
-    const markdown = fs.readFileSync(README, "utf8");
 
     // The precondition, for the reason every recipe in this repository states it: an empty
     // enumeration would make both comparisons below vacuously true, and a check that passes over
     // nothing is worse than no check. Either side coming back empty is a broken harness, never a
     // clean result.
     test("the enumeration ran and the markers parse", () => {
+        const { onDisk, markdown } = inputs();
         assert.ok(onDisk.length > 0, "git listed no cli/*.mjs modules — refusing to compare nothing");
         // `rosterNames` asserts both markers are present and ordered; calling it is the check.
         // Deliberately NOT asserting it found a name: a directory holding only subcommands and the
@@ -115,6 +138,7 @@ describe("the roster beside the eight is a partition of cli/, and nothing here i
     });
 
     test("every module in cli/ is classified exactly once", () => {
+        const { onDisk, markdown } = inputs();
         const subcommands = subcommandModules();
         const roster = rosterNames(markdown);
 
@@ -130,6 +154,7 @@ describe("the roster beside the eight is a partition of cli/, and nothing here i
     });
 
     test("every name in the roster names a file that exists", () => {
+        const { onDisk, markdown } = inputs();
         const roster = [...rosterNames(markdown)].sort();
         const present = new Set(onDisk);
 
@@ -146,6 +171,7 @@ describe("the roster beside the eight is a partition of cli/, and nothing here i
     // maintainer's call, never an implementer's — this is the assertion that requires the sentence
     // to be updated in the same change rather than a release later.
     test("the entry point is not also claimed by the roster", () => {
+        const { markdown } = inputs();
         const roster = rosterNames(markdown);
         assert.ok(
             !roster.has(ENTRY_POINT),
@@ -155,6 +181,7 @@ describe("the roster beside the eight is a partition of cli/, and nothing here i
     });
 
     test("no tool is both a subcommand and a roster member", () => {
+        const { markdown } = inputs();
         const subcommands = subcommandModules();
         const both = [...rosterNames(markdown)].filter((f) => subcommands.has(f)).sort();
         assert.deepEqual(both, [], `${both.join(", ")} is named as a subcommand and as beside the eight`);
