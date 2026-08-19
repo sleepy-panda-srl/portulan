@@ -2,12 +2,13 @@
 
 > Generated from `handoffs/` by `node cli/index.mjs`. Do not edit by hand: it is regenerated
 > and byte-compared, so a hand-edit survives exactly until the next run.
-> 120 handoff(s), newest first. No budget: the series is append-only, so
+> 121 handoff(s), newest first. No budget: the series is append-only, so
 > the only remedy a budget could ask for is one this project rules out.
 
 - 2026-08-19 · [Handoff — the work was already on `main`, and the verification was the part worth keeping](handoffs/2026-08-19-the-work-was-already-on-main.md)
 - 2026-08-19 · [Handoff — the instrument that could not see the thing it was asked about](handoffs/2026-08-19-the-instrument-that-could-not-see-the-thing-it-was-asked-about.md)
 - 2026-08-19 · [Handoff — the gate allows in silence when it reads the wrong tree](handoffs/2026-08-19-the-gate-allows-in-silence-when-it-reads-the-wrong-tree.md)
+- 2026-08-19 · [Handoff — the customer-facing surface was written at build-log altitude](handoffs/2026-08-19-c-the-customer-facing-surface-was-a-build-log.md)
 - 2026-08-19 · [Handoff — the artifact says which world compiled it](handoffs/2026-08-19-b-the-artifact-says-which-world-compiled-it.md)
 - 2026-08-19 · [Handoff — a client name reached a public repository, and the rail that closed the session](handoffs/2026-08-19-b-a-client-name-reached-a-public-repository.md)
 - 2026-08-18 · [Handoff — the guard I deleted was the one that caught me](handoffs/2026-08-18-the-guard-i-deleted-was-the-one-that-caught-me.md)

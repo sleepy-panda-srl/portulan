@@ -27,8 +27,7 @@ carry copies, and two copies of the engine's skills is precisely the drift class
 milestone building a lint against. Rooting at the repository lets `plugin.json` name `./core/skills/`
 directly, so the skills the engine documents and the skills the plugin ships are the same files.
 
-**The alternative was considered and rejected — and the reason recorded here at milestone 3, session 0
-was false.** It said the platform dereferences symlinks resolving within a marketplace, so
+**The alternative was considered and rejected, and the reason first recorded for it was false.** It said the platform dereferences symlinks resolving within a marketplace, so
 `plugin/skills/clarify → ../../core/skills/clarify` would ship an engine-only payload, but that this
 *"breaks local-directory installs — where symlinks resolving outside the plugin's own directory are
 skipped rather than followed."* That second half was read from documentation and never measured.
@@ -48,7 +47,7 @@ one measurement standing in for two claims is how the false sentence above got w
 **The decision stands, on a reason the old record did not give.**
 [`../cli/plugin-lint.mjs`](../cli/plugin-lint.mjs) refuses a declared component path that is a link out
 of the plugin root — `FAIL paths  plugin.json skills declares "./skills/", which is a link out of the
-plugin root`, exit 1 — a check hardened in session 0 after a review found lexical containment satisfiable
+plugin root`, exit 1 — a check hardened after a review found lexical containment satisfiable
 by precisely this shape. Taking the engine-only payload now means **relaxing that check**, which the gate
 map singles out as the change to scrutinise hardest, because it is the one that makes every future green
 mean less. The remaining cost from the original record survives untouched and unmeasured: symlinks are
@@ -68,9 +67,7 @@ A boot skill that looked for "a `.portulan/` nearby" would find one of them insi
 directory and boot green on another team's identity, gate map, and definition of done. So the boot skill
 searches `${CLAUDE_PROJECT_DIR}` and says so explicitly, and never `${CLAUDE_PLUGIN_ROOT}`.
 
-_(Counted rather than remembered, at milestone 3 session 1. Session 0 wrote "two", which was true of the
-valid ones and wrong about the bundle — the drifted fixture ships too, and had been in the tree since
-milestone 2.)_
+
 
 ## Why the agent bindings sit at the repository root
 
@@ -79,7 +76,7 @@ key at all** — because declaring one does not point the loader at the files, i
 that finds them. The full measurement, with the positive control that makes it a measurement, is
 [`../.portulan/memory/a-manifest-field-can-validate-and-load-nothing.md`](../.portulan/memory/a-manifest-field-can-validate-and-load-nothing.md).
 This repository shipped the declared form, passed both validators, and its personas were inert on every
-install until session 1's install demonstration counted them and got `Agents (0)`.
+install until an install demonstration counted them and got `Agents (0)`.
 
 Since the plugin root **is** the repository root, the platform's default agents directory is the
 repository's root — so the location is not a preference and cannot be moved into `plugin/` without
@@ -118,7 +115,7 @@ a note and exit 0, because a plugin that ships no agents is legitimate. What bin
 
 This repository is the **public** marketplace. `sleepy-panda-srl/portulan-internal` is the **private**
 one, and it delivers a pack whose bytes live here — sourced `git-subdir` at this repository's `packs/`,
-pinned to a commit. That is the maintainer's ruling of 2026-07-30 on
+pinned to a commit. That is the maintainer's ruling on
 [#113](https://github.com/sleepy-panda-srl/portulan/issues/113), and it is the answer *storage follows
 ownership* forces: universal content belongs in the layer that authored it, and hiding the two-tier
 checkpoint ritual behind a private pointer would paywall the one artifact adopters were owed.
@@ -164,7 +161,7 @@ no local copy of this repository adds the marketplace by GitHub shorthand, insta
 figures are that install's output and stay as measured, because the paragraph below is an argument about
 what that particular run reported and re-measuring them would falsify it.
 
-That second count is the whole of milestone 3, session 1: the same install once reported **`Agents (0)`**
+That second count is the point: the same install once reported **`Agents (0)`**
 — every file shipped, both validators green — and it is what produced the `agents/` arrangement above.
 It was re-measured through a clone rather than inferred from the `--plugin-dir` reading, because a green
 from one install path had already been read as a green from another once.
@@ -180,7 +177,7 @@ refuses it. The boot handled the workspace half correctly regardless — which i
 it looks like a boot with no engine in context. Step 1 of
 [`skills/portulan/SKILL.md`](skills/portulan/SKILL.md) now says so.
 
-**Settings ship in the payload as of milestone 4, and they are inert for you.**
+**Settings ship in the payload, and they are inert for you.**
 [`../.claude/settings.json`](../.claude/settings.json) is this repository's own compiled enforcement —
 its push gates, its Stop-gate. It is a file in the tree, so an install copies it; measured, a plugin's
 `.claude/settings.json` has **no effect on the installer** and activates only when this repository is
@@ -194,7 +191,7 @@ See [`../.portulan/memory/a-plugin-payload-can-enforce-on-strangers.md`](../.por
 When Portulan ships gate enforcement *for* an adopter, it will be by compiling **their** policy into
 **their** workspace — never by shipping ours inside the payload.
 
-**A fourth skill ships as of milestone 5.** [`consolidate`](../core/skills/consolidate/SKILL.md) joined
+**A fourth skill ships.** [`consolidate`](../core/skills/consolidate/SKILL.md) joined
 `clarify` and `codify` in [`../core/skills/`](../core/skills/); together with the boot skill in
 [`skills/`](skills/) here, the payload now carries **four** — so the milestone-3 measurement above is a
 record of an older tree rather than a current inventory. **The live count is not restated here as a

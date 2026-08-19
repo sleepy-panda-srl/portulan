@@ -125,14 +125,13 @@ memory and an implementer's memory answer different questions; merging them spen
 on the other's concerns. _(Provenance: Letta; see `../personas/`.)_
 
 **The first instance is declared at milestone 6 and validated at milestone 7**, and it takes two rows
-because the scoping has two halves. **Milestone 6 declares:** the resolving pack's persona declares its
+because the scoping has two halves. **The declaring half:** the resolving pack's persona declares its
 memory scope, and the resolution demonstration shows that scope landing in the **adopting workspace's
 own layer** — declared by the pack, owned and populated only by the adopter, empty until earned. The
-deliverable there is the scoping *demonstrated*, never a populated store. **Milestone 7 validates:** that
-row already has `doctor` checking a persona against its five-part contract, and the memory scope is one
-of those parts, so it is where a declaration stops being prose a checker can read but not honour.
+deliverable there is the scoping *demonstrated*, never a populated store. **The validating half:** `doctor` checks a persona against its five-part contract, and the memory
+scope is one of those parts — where a declaration stops being prose a checker can read but not honour.
 
-**The declaration exists as of milestone 6, session 1**, and what it is *not* is the load-bearing half.
+**The declaration exists**, and what it is *not* is the load-bearing half.
 The `rituals/checkpoints` pack's supervisor persona declares its scope; a composed workspace lands one
 directory per declared scope in its own layer, generated into an index that is byte-compared, and the
 location is **empty**. Nothing reads it, nothing recalls from it, nothing consolidates it, and no budget
@@ -142,9 +141,8 @@ condition 4 exists to catch. This is the **doctrine's** carrier of that limit; t
 for the slot and the generated index prints it on its own face, deliberately, because a limit stated only
 where a reader already knows to look is stated at the narrowest carrier.
 
-**Settled by the maintainer on 2026-07-29** — verbatim, *"row 6 declares, row 7 validates"* — after two
-sessions put the same question to him within the hour without knowing of each other and were given
-different answers. The record of both, and of the third option that reconciles them, is
+**Settled by the maintainer** — verbatim, *"row 6 declares, row 7 validates"*. The record, and the
+third option that reconciles the two answers first given, is
 [#98](https://github.com/sleepy-panda-srl/portulan/issues/98) and
 [`docs/milestones/m06.md`](../../docs/milestones/m06.md). Neither row needed a criterion edit to carry
 this: both already demanded their half. Said plainly because the

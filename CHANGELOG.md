@@ -69,9 +69,7 @@ records how things were found. This is per *release* and records what a reader g
   ([#220](https://github.com/sleepy-panda-srl/portulan/issues/220), second arm)
 
 - **The GitHub Packages workflow now records what it actually did, in place of what it expected to
-  do.** `0.1.1` shipped it with an honest hedge — *"which of the two actually governs is UNVERIFIED
-  until this workflow first fires"* — and it has now fired twice, so the hedge is replaced by the
-  measurement rather than left standing.
+  do.** The workflow has now fired twice, and this records what it did rather than what it was expected to do.
 
   **`npm publish --access public` does not make a package public on GitHub Packages.** Measured
   2026-08-18 on the first fire: npm sent the flag and reported *"Publishing to
@@ -92,9 +90,7 @@ records how things were found. This is per *release* and records what a reader g
   rediscover it._
 
 - **A public package on a public repository is still absent from that repository's Packages sidebar,
-  for a logged-out visitor.** This entry first said the question was unmeasured; it was measured at
-  the checkpoint and again on 2026-08-19, roughly fifteen hours after the package was made public, so
-  the hedge is replaced by the answer on the same rule the rest of this entry follows. In a signed-out
+  for a logged-out visitor.** In a signed-out
   browser that runs the page's JavaScript, the sidebar renders About, Topics, Resources, Releases (2),
   Contributors (3) and Languages, and **no Packages block at all** — zero package links, and not the
   empty state either. Meanwhile the package's own page serves full content anonymously at HTTP 200,
@@ -106,7 +102,7 @@ records how things were found. This is per *release* and records what a reader g
   measured. A check reading the served bytes would have reported the heading present and concluded the
   opposite of the truth.
 
-  **The mechanism, measured after that paragraph was written and replacing its "not established".**
+  **The mechanism, measured.**
   The anonymous repository page is served with **no package data at all** — its embedded payload
   carries no package key, so there is nothing for the block to render from. This is not a cache, not a
   hydration failure, and nothing about this package: it is public, repository-linked, and its own page
@@ -116,16 +112,13 @@ records how things were found. This is per *release* and records what a reader g
   sidebar has nothing.
 
   **The block DOES render for a signed-in viewer, and that settles what this is.** The maintainer
-  confirmed on 2026-08-19 that the Packages block appears in his sidebar while signed in, which is
-  what the mechanism above predicts: the anonymous page carries no package data, an authenticated one
+  confirmed that the Packages block appears in his sidebar while signed in, which is what the
+  mechanism above predicts: the anonymous page carries no package data, an authenticated one
   does. **So this is normal GitHub Packages behaviour rather than a defect, and nothing about this
   repository's configuration causes it or can change it.** The package is public, publishes on every
   release, and appears wherever GitHub renders package listings at all.
 
-  _**The population was the error, and it is worth keeping after the alarm it raised is gone.** What
-  had been measured was **logged out entirely** — no GitHub session — and it was described as absent
-  to "strangers", which takes in signed-in non-members. One population measured, three described. The
-  honest statement is **"absent for anonymous visitors"**. One case does remain untested and is named
+  _The precise claim is **"absent for anonymous visitors"**. One case remains untested and is named
   rather than folded in: a signed-in visitor who is **not** an organisation member. Between the
   anonymous case (absent, measured) and the member case (present, measured), that is the only cell of
   the table still empty._

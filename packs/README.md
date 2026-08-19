@@ -15,18 +15,14 @@ array, in the canonical `category/name` form.
 
 ## Why there is a `.claude-plugin/plugin.json` in *this* directory
 
-Because **this directory is itself a plugin payload**, and it had been shipping as one while declaring
-nothing. The private feed's `portulan-checkpoints` entry is a `git-subdir` source rooted here, so what a
-host installs is the contents of `packs/` — and until 2026-08-09 that payload carried no plugin manifest
-at all. The host had nothing to read, registered nothing, and said so only as a count nobody was
-watching: **`claude plugin details portulan-checkpoints@portulan-internal` → `Skills (0)`**, for the
-whole of milestone 6 and after.
+Because **this directory is itself a plugin payload**. The private feed's
+`portulan-checkpoints` entry is a `git-subdir` source rooted here, so what a host installs is the
+contents of `packs/` — and a payload with no plugin manifest registers nothing, silently, reporting
+it only as a count nobody is watching: `claude plugin details` → `Skills (0)`.
 
-That is [#134](https://github.com/sleepy-panda-srl/portulan/issues/134)'s `Skills (0)` bullet, and the
-issue's own diagnosis of it was wrong: it attributed the zero to a declared path pointing one level too
-high, which is a real trap and a different one. Measured on Claude Code 2.1.226 by installing this
-directory both ways — **`Skills (0)` without the manifest, `Skills (3)` with it**, the same three
-`SKILL.md` files either way.
+**Registration is a property of the plugin manifest and of nothing else.** Measured on Claude Code
+2.1.226 by installing this directory both ways — **`Skills (0)` without the manifest, `Skills (3)`
+with it**, the same three `SKILL.md` files either way.
 
 The manifest declares `./rituals/checkpoints/skills/` — the directory that actually holds them — because
 **a host expands a declared skills path exactly one level and no further**. Declaring `./rituals/`
@@ -50,12 +46,6 @@ exists and the feed's pin moves to it. Until then the green is demonstrated on t
 for the feed — a distinction this repository would rather write down than round off.
 
 > **Two packs exist.** [`rituals/checkpoints`](rituals/checkpoints/README.md), the supervised-build
-> ritual, as of milestone 6; and [`tools/github`](tools/github/README.md), one verify recipe, authored
-> at milestone 7 session 5 because a demonstration needed a real subject. `stacks/` is still empty and
-> says why. _(This said "One pack exists … `stacks/` and `tools/` are still empty" from milestone 6
-> until 2026-08-13, and the second half went false the day `tools/github` landed beside it.)_
->
-> This file read "Nothing here yet" for four milestones, and the pack it predicted — a cross-artifact
-> consistency check — is not the one that arrived. Recorded rather than quietly replaced: the first
-> pack was chosen by which ritual this project could show working evidence for, not by which was named
-> first.
+> ritual; and [`tools/github`](tools/github/README.md), one verify recipe. `stacks/` is still empty and
+> says why.
+

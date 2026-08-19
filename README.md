@@ -25,8 +25,8 @@ account of what the release does *not* contain.
 
 This is pre-release software. The leading `0.` is meant literally: nothing here is stable yet, and
 the surface may change between minor versions. What is authored today is the engine in [`core/`](core/),
-the Workspace Definition in [`spec/`](spec/), two complete workspaces, the validators that check them,
-the enforcement compiler, the memory lifecycle and the plugin packaging. The remaining directories
+the Workspace Definition in [`spec/`](spec/), two complete workspaces, the CLI in [`cli/`](cli/) with
+all eight subcommands, the enforcement compiler, the memory lifecycle and the plugin packaging. The remaining directories
 fill in milestone by milestone; [`docs/plan.md`](docs/plan.md) is the living map of that work.
 
 The repository is **public** — reading, cloning, forking and installing the plugin need no account of
@@ -86,7 +86,8 @@ the file.
 The npmjs path above needs no account of ours and remains the documented one; this is an additional
 route for people already inside GitHub's authentication. The two registries serve the same tree under
 two names, so the tarballs are *not* byte-identical: packed both ways they differ in exactly one line
-of one file — `package.json`'s `name` — at 74 files each side.
+of one file — `package.json`'s `name`. The roster is the same on both sides; `npm pack --dry-run`
+derives it, which is why no count is written here.
 
 ## Quick start
 
@@ -103,20 +104,15 @@ host enforcement.
 
 ## Command-line interface
 
-`npx @sleepy_panda_srl/portulan` is a live path as of 2026-08-18 — published at `0.1.0` and
-demonstrated from outside any checkout, which closes
-[#242](https://github.com/sleepy-panda-srl/portulan/issues/242). At the publish, the registry's tarball
-and a fresh `npm pack` of that tree hashed identically and every file compared byte-for-byte; that is a
-hand measurement recorded on [#149](https://github.com/sleepy-panda-srl/portulan/issues/149), and it is
-a fact about `d6498f0` rather than a standing property of `main`, which has since moved. What *is*
-railed on every commit is the tree-side half: the `pack-identity` recipe refuses any packed file that
-differs from its staged blob. Running `node cli/<tool>.mjs` from a clone is still how this repository
-measures everything, and still works.
+Two invocations, and they run the same code. `npx @sleepy_panda_srl/portulan <command>` needs no
+checkout; `node cli/<tool>.mjs` runs from a clone, and is how this repository measures itself.
 
-The [`portulan`](cli/portulan.mjs) entry point arrived at milestone 7 and has dispatched every name
-[`docs/vision.md`](docs/vision.md) gives it since session 9. The table below is the enumeration, and
-`portulan --help` is the tree's own answer — a count written here in words would be one more
-hand-maintained figure, which is the defect this cell has already shipped twice:
+**The `npx` path installs the bytes this repository carries.** There is no build step, so every file
+in the published package is byte-identical to its tracked source — a property you can check rather
+than take on trust, and one a compiled artifact could not offer. A verify recipe holds it on every
+commit, refusing any packed file that differs from its source.
+
+`portulan --help` is the tree's own answer, and the table below is the enumeration:
 
 | Command | What it does |
 |---|---|
