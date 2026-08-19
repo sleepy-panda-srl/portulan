@@ -43,6 +43,18 @@ records how things were found. This is per *release* and records what a reader g
 
 ### Changed
 
+- **The Stop-gate asks its questions about the tree the session actually worked in.** Its root came
+  from `CLAUDE_PROJECT_DIR`, which names the repository the hook governs — not always the working tree
+  the session used, since a session in a git worktree has both. Where the told tree was clean and the
+  session's own tree carried unrecorded work, the gate **allowed in silence**: a false green, and one
+  the previous change could not reach, because its naming sentences fire only when the gate blocks.
+  The tree is now resolved from the Stop payload's `cwd`, and the did-work and handoff questions follow
+  it. **Only within the same repository** — `cwd` is the one input a gated agent can steer, so any tree
+  it named would otherwise excuse work in the governed one; a foreign path degrades to the told root
+  and says so. A payload with no `cwd` behaves exactly as before, silently. The refusal counter and the
+  verify recipe deliberately keep the told root, the recipe because the gate runs it through `bash -c`.
+  ([#220](https://github.com/sleepy-panda-srl/portulan/issues/220), second arm)
+
 - **The GitHub Packages workflow now records what it actually did, in place of what it expected to
   do.** `0.1.1` shipped it with an honest hedge — *"which of the two actually governs is UNVERIFIED
   until this workflow first fires"* — and it has now fired twice, so the hedge is replaced by the

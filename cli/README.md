@@ -336,6 +336,8 @@ package at all (before milestone 7 they resolved `HERE/..`, which is true in exa
 | `CLAUDE_PROJECT_DIR` | the repository the policy governs; the host sets it, and the emitted hook interpolates it | falls back to the process's working directory, which is where a hook runs |
 | `PORTULAN_WORKSPACE` | the workspace directory's **name** inside that repository | `.portulan` |
 
+**`stop-gate` reads one thing the table cannot show: the Stop payload's `cwd`.** `CLAUDE_PROJECT_DIR` names the repository the hook governs, which is not always the working tree the session used — a session in a git worktree has both. Since [#220](https://github.com/sleepy-panda-srl/portulan/issues/220) the gate asks its did-work and handoff questions about the session's own tree when `cwd` resolves inside the **same** repository, and falls back to `CLAUDE_PROJECT_DIR` — saying so — when it does not. The same-repository condition is the difference between a fix and a bypass: `cwd` is the one input a gated agent can steer, and any tree it named would otherwise excuse work in the governed one. The refusal counter and the verify recipe deliberately do not follow the session's tree.
+
 **Two honest limits.** `PORTULAN_WORKSPACE` is read and nothing sets it — it exists so a workspace under
 another name is not unreachable, not because anything ships that way. And the two runners **differ** when
 no workspace is found: `stop-gate.mjs` blocks loudly, because a Stop-gate that cannot read the workspace
