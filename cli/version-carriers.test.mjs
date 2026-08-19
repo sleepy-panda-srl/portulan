@@ -7,8 +7,9 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join, dirname, resolve } from "node:path";
+import { join, dirname } from "node:path";
 import { execFileSync, spawnSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
 import { inspect, claimsIn, isRecord, MUST_CARRY, CouldNotRun } from "./version-carriers.mjs";
 
 function fixture(files, version = "1.2.3") {
@@ -112,7 +113,10 @@ test("MUST_CARRY names the three files the defect actually occurred in", () => {
 // So these assert on OUTPUT, not only on the exit code: rc=0-with-silence is the failure shape, and
 // a test that checks rc alone passes against a tool that never started.
 
-const CLI = resolve(import.meta.dirname, "version-carriers.mjs");
+// `fileURLToPath(new URL(...))`, which three other suites here already use.
+// `import.meta.dirname` is Node 20.11+, while `package.json` declares `engines.node >=20` — so on a
+// 20.0–20.10 runner the first cut would have failed to resolve the CLI at all.
+const CLI = fileURLToPath(new URL("./version-carriers.mjs", import.meta.url));
 
 function runCli(cwd) {
     const r = spawnSync(process.execPath, [CLI, "."], { cwd, encoding: "utf8" });
@@ -184,5 +188,24 @@ test("the CLI reads the INDEX, so a staged drift with a clean worktree is still 
         const { rc, err } = runCli(root);
         assert.equal(rc, 1, "reading the worktree here would report green over a commit that ships drift");
         assert.match(err, /8\.8\.8/);
+    } finally { rmSync(base, { recursive: true, force: true }); }
+});
+
+test("a tracked path whose blob cannot be read is could-not-run, NOT a silent skip", () => {
+    // The first cut `continue`d here, so a file `git ls-files` had just named could go unexamined
+    // while the rail reported green — a check that did not look, reporting as though it had. That is
+    // the defect class this whole rail exists for, and it was inside the rail.
+    //
+    // A gitlink entry reproduces it honestly: `ls-files` lists the path, and `git show :<path>`
+    // cannot resolve it to a blob because the index holds a commit object.
+    const { base, root } = spacedFixture(carriers("1.2.3"));
+    try {
+        execFileSync("git", ["-C", root, "update-index", "--add", "--cacheinfo",
+            `160000,${"0".repeat(39)}1,vendored.md`]);
+        assert.throws(() => inspect(root), CouldNotRun,
+            "an unreadable tracked path must refuse, never be skipped past into a green");
+        const { rc, out } = runCli(root);
+        assert.equal(rc, 2, "and the CLI must map that refusal to 2, never 0 or 1");
+        assert.equal(out, "", "no green line may be printed over a scan that could not complete");
     } finally { rmSync(base, { recursive: true, force: true }); }
 });
