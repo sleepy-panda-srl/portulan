@@ -166,7 +166,8 @@ many as it is given, and named roots **replace** the derived one rather than bei
 that is what lets *"this pack resolved from the feed"* mean something a copy lying in the local tree
 cannot satisfy. Where a pack resolves, its gate-policy fragments reach the compiled policy,
 add-restriction-only. Nothing here is pinned — a `packs` entry is a name, and the version is whatever
-the root holds. Four things do not follow, and each is stated in full rather than counted — a bare figure beside a
+the root holds. **Four things need stating about that layer — two limits that still bind, and two that
+once did and no longer do.** Each is given in full rather than counted, because a bare figure beside a
 mechanism goes stale the moment one of them moves:
 
 - **Discovering the root happens in the CLI only.** The CLI reads the host's

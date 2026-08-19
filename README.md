@@ -107,8 +107,8 @@ host enforcement.
 Two invocations, and they run the same code. `npx @sleepy_panda_srl/portulan <command>` needs no
 checkout; `node cli/<tool>.mjs` runs from a clone, and is how this repository measures itself.
 
-**The `npx` path installs the bytes this repository carries.** There is no build step, so every file
-in the published package is byte-identical to its tracked source — a property you can check rather
+**There is no build step, so the package is not a compiled artifact.** Every file it ships is
+byte-identical to its tracked source at the commit it was cut from — a property you can check rather
 than take on trust, and one a compiled artifact could not offer. A verify recipe holds it on every
 commit, refusing any packed file that differs from its source.
 
