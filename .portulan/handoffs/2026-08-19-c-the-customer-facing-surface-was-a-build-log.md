@@ -4,7 +4,8 @@
 (`cli-roster-rail`) corrects and rails `cli/README.md`'s roster, closing
 [#204](https://github.com/sleepy-panda-srl/portulan/issues/204). [#314](https://github.com/sleepy-panda-srl/portulan/pull/314) (`docs-at-reader-altitude`) sweeps
 fourteen customer-facing files. Both green on fifteen recipes and
-the full suite; neither merged.
+the full suite. **#313 is merged**; #314 retargeted to `main` on that merge, as the stacking
+contract predicts, and is rebased onto it.
 
 **Decisions + why.**
 
