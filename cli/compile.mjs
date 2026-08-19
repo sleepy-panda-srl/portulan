@@ -45,6 +45,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 // Host plugin-cache discovery (#123). The record reader, the config directory and the version refusal
 // all live there, once — see that file's pack-root section for why this half arrived separately.
 import { AUTO, discoverPackRoots, namedWithAuto, resolutionRoots } from "./discover.mjs";
+import { isInside } from "./index.mjs";
 
 /** Raised when `compile` cannot run, or cannot compile honestly. Always exit 2, never 1. */
 export class CompileError extends Error {
@@ -1688,8 +1689,12 @@ export function recordedOrigin(root, plan, workspaceRoot) {
             return path.resolve(dir);
         }
     };
-    const rel = path.relative(real(workspaceRoot), real(root));
-    return !rel.startsWith("..") && !path.isAbsolute(rel) ? "tree" : "outside-tree";
+    // **`isInside`, not a fourth hand-rolled spelling.** `!rel.startsWith("..")` calls a directory
+    // literally named `..foo` outside the tree — and this repository has already paid for that exact
+    // reasoning once: `./index.mjs`'s docblock records it as the ninth fail-open found in this
+    // scaffolding, and *the first one written by the change that cites the class*. This was the second.
+    // The helper is exported precisely so a third copy cannot drift into it. Copilot.
+    return isInside(real(workspaceRoot), real(root)) ? "tree" : "outside-tree";
 }
 
 export function packContributions(workspaceRoot, workspaceDir = ".portulan", options = {}) {
