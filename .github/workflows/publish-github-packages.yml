@@ -36,7 +36,7 @@
 # Making it public took two manual steps, and **neither has an API**:
 #
 #   1. An ORGANISATION policy change. Until it was made, the package's own settings page showed
-#      *"Public — Setting is disabled by organization administrators"* It is under the org's
+#      *"Public — Setting is disabled by organization administrators"*. It is under the org's
 #      Settings → Packages, and it applies to every package the organisation will ever publish, which
 #      is why it is a wider decision than one package.
 #   2. A per-package visibility flip, in that package's settings page.

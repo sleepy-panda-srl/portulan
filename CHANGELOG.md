@@ -81,7 +81,7 @@ records how things were found. This is per *release* and records what a reader g
   measured. A check reading the served bytes would have reported the heading present and concluded the
   opposite of the truth.
 
-  What is NOT established is why — cache, deliberate suppression for anonymous visitors, or a
+  _What is NOT established is why — cache, deliberate suppression for anonymous visitors, or a
   linkage-rendering rule. Only the observable is recorded._
 
 ## 0.1.1 — 2026-08-18
