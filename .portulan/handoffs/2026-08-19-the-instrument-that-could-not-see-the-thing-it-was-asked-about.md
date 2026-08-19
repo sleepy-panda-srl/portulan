@@ -53,8 +53,8 @@ check could not see its subject and said so in the language of success.**
 - **The report earned its keep on the path it was missing from.** Finding 2: the visibility report sat
   below the idempotent early `exit 0`, so a re-run printed no visibility line. **The path somebody
   takes to CHECK ON a package was the one path with the check switched off.** It now runs on both.
-- **Copilot: two rounds, two findings, round two empty.** Both findings were mine and one was created
-  by the checkpoint's own punctuation fix: moving a period out of a quoted string to make two carriers
+- **Copilot: two rounds, two findings, round two empty.** Both were mine, and one was created by the
+  checkpoint's own punctuation fix: moving a period out of a quoted string to make two carriers
   agree left no period between the quote and the next sentence. **A punctuation repair producing the
   next punctuation defect, twice in one arc, found by a reader both times.**
 - Rounds landed on branch heads `53a8693` and `df324ba`; the rebase-merge renamed those to `27b22e9`
