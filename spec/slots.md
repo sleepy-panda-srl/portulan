@@ -630,7 +630,7 @@ recipe.
 per-agent rather than global, and until milestone 6 nothing in this project had a per-agent store: every
 store shipped was a *workspace's*, shared by whatever agent read it. A **pack** is the first artifact this
 framework distributes that carries per-persona material its adopter does not own, which is the first point
-at which *whose* memory this is has an answer that matters — the maintainer's ruling,
+at which *whose* memory this is has an answer that matters — the maintainer's ruling of 2026-07-29,
 verbatim, *"row 6 declares, row 7 validates"*.
 
 **This series' source is the cascade, not the tree — the only one of the three.** The memory store and the

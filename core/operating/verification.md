@@ -49,12 +49,10 @@ default only**. The repo-card and task steps are **not built, and no milestone o
 that form deliberately, because it is the honest one and this file is where the rule lives. Named here
 because a sentence describing resolution a runner does not perform is a capability claim, and this file
 is the one that legislates against those. A promise naming a milestone that never took the obligation on is carrier-less, which is why this
-sentence names no milestone at all rather than an unowned one. _(It ships now — milestone 7 moved both runners into the
-packaged CLI — which changes the premise and not the ruling: the two resolution steps are still unbuilt
-and still unowned.)_ The precedent for the wording is `spec/pack.schema.json`'s `verify` note, which held
+sentence names no milestone at all rather than an unowned one. The precedent for the wording is `spec/pack.schema.json`'s `verify` note, which held
 exactly this form until a ruling gave it an owner.)_
 
-The runner arrived in milestone 4, and two of its properties are contract rather than detail. A recipe
+Two of the runner's properties are contract rather than detail. A recipe
 that **could not run** blocks exactly as a red one does: "nothing looked" must never be read as "nothing
 wrong". And the gate carries an **iteration cap** — a host's end-of-turn event is not the same event as
 *the task is finished*, so a gate that blocked indefinitely would make a red working copy undriveable,

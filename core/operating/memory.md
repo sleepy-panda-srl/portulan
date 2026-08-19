@@ -141,8 +141,9 @@ condition 4 exists to catch. This is the **doctrine's** carrier of that limit; t
 for the slot and the generated index prints it on its own face, deliberately, because a limit stated only
 where a reader already knows to look is stated at the narrowest carrier.
 
-**Settled by the maintainer** — verbatim, *"row 6 declares, row 7 validates"*. The record, and the
-third option that reconciles the two answers first given, is
+**Settled by the maintainer** — verbatim, *"row 6 declares, row 7 validates"* — after the same question
+was put to him twice and answered two different ways. The record of both, and of the third option that
+reconciles them, is
 [#98](https://github.com/sleepy-panda-srl/portulan/issues/98) and
 [`docs/milestones/m06.md`](../../docs/milestones/m06.md). Neither row needed a criterion edit to carry
 this: both already demanded their half. Said plainly because the

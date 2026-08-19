@@ -15,7 +15,7 @@ exporting a single `step` object, and each of exactly one kind:
 | `version` | A Workspace Definition MAJOR migration. `spec/README.md`'s rule stands: **MINORs are additive and owe no migration**, so there is no such thing as a MINOR step and nothing here restamps one. | `from` → `to` |
 | `repair` | Something a rewriter owes a workspace it touches, independent of any version — a value that was true where it was written and is not true where the workspace now is. | the workspace's own state |
 
-The second kind exists by the maintainer's ruling. Without it this directory would hold
+The second kind exists by the maintainer's ruling of 2026-08-12. Without it this directory would hold
 one step (`1.0 → 2.0`) with **no subject in this repository and none in any tree we have seen** —
 machinery demonstrable only on a fixture. What actually bites an adopter is a workspace that travelled.
 
