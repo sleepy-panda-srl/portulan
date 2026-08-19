@@ -119,10 +119,18 @@ function runCli(cwd) {
     return { rc: r.status, out: r.stdout ?? "", err: r.stderr ?? "" };
 }
 
-/** A fixture whose absolute path contains a space — the layout this repository actually uses. */
+/**
+ * A fixture whose absolute path contains a SPACE, which is the only property under test here.
+ *
+ * The first cut of this helper hardcoded the maintainer's own working-copy directory name. It named
+ * nothing client-side and leaked nothing, but it put a detail of one machine's layout into a public
+ * repository for no reason — the test needs *a* spaced path, not *his*. It also tripped the seam
+ * scan on a word-collision with a real client term, which is a false positive that costs a live
+ * re-measurement every time it fires.
+ */
 function spacedFixture(files, version = "1.2.3") {
     const base = mkdtempSync(join(tmpdir(), "portulan-vc-"));
-    const root = join(base, "Sleepy Panda Projects");
+    const root = join(base, "a spaced directory");
     mkdirSync(root, { recursive: true });
     execFileSync("git", ["-C", root, "init", "-q"]);
     writeFileSync(join(root, "package.json"), JSON.stringify({ name: "x", version }, null, 2));
