@@ -59,6 +59,13 @@ check could not see its subject and said so in the language of success.**
   next punctuation defect, twice in one arc, found by a reader both times.**
 - Rounds landed on branch heads `53a8693` and `df324ba`; the rebase-merge renamed those to `27b22e9`
   and `a2c0f91` on `main`.
+- **A fifth instance, caught by the maintainer AFTER the merge, in `bfd75cf`.** Removing the
+  idempotent `exit 0` so the report would run on both paths left the line above it still saying
+  *"nothing to do."* — true while the exit stood, false in the same commit that made the step
+  continue, and now announcing "nothing to do" immediately before doing the one thing a re-run is
+  fired to do. **A neighbour's claim invalidated by a change that did not touch it**, which is the
+  sibling shape of the four instruments above: nothing looks at the sentence next to the line you
+  edited, and no rail here compares prose to the code beside it.
 
 ## Open questions
 
