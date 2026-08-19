@@ -2,7 +2,7 @@
 
 > Generated from `handoffs/` by `node cli/index.mjs`. Do not edit by hand: it is regenerated
 > and byte-compared, so a hand-edit survives exactly until the next run.
-> 117 handoff(s), newest first. No budget: the series is append-only, so
+> 118 handoff(s), newest first. No budget: the series is append-only, so
 > the only remedy a budget could ask for is one this project rules out.
 
 - 2026-08-19 · [Handoff — the work was already on `main`, and the verification was the part worth keeping](handoffs/2026-08-19-the-work-was-already-on-main.md)
