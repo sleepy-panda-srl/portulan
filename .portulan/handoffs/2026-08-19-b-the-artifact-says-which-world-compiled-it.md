@@ -44,7 +44,7 @@ tree" would be this field's first lie. Demonstrated: pinned emit and bare emit o
 produce byte-identical provenance; the shadowed host produces `discovered 0.2.0` against `tree 0.2.1`.
 
 **Arm 2 — `doctor` reports the shadow, and says what differs.** Both halves: the version difference and
-whether the gate fragments are byte-identical. Reporting only *that* a shadow exists would not retire
+whether the gate fragments differ once parsed. Reporting only *that* a shadow exists would not retire
 this issue — silence about the shadowed copy is the part that makes the drift unreproducible. An
 unreadable shadowed copy is reported as **could-not-compare in so many words**, never as silence. A
 report, never a verdict: an installed pack shadowing a tree copy is a fact about the machine, which is
@@ -71,10 +71,13 @@ standing rather than turning a drift report into a crash.
   trusted the `derived` TAG instead of testing the path, so a manifest whose `tree` points outward
   (`tree: "../../elsewhere"` → `/elsewhere/packs`, measured) recorded `outside-tree` work as `tree`;
   a tag says where a root came from, and only the path answers the question this field exists to ask.
-  And the shadow report promised *byte-identical* fragments while comparing a projection of
-  `[id, tier, action]` — so two copies differing in `reason`, or in any field a later Pack Definition
-  adds, would have been reported as agreeing. The comparison now matches the sentence rather than the
-  sentence being weakened to match the comparison.
+  And the shadow report's fragment clause claimed more than it compared, **twice**: first projecting
+  `[id, tier, action]` while promising byte-identity — so two copies differing in `reason`, or in any
+  field a later Pack Definition adds, read as agreeing — and then, once the whole fragment was
+  compared, still saying *byte-identical*, which `JSON.stringify` of a parsed value cannot promise
+  because it normalises the manifest's whitespace away. The comparison was widened where widening was
+  right, and the CLAIM narrowed where it was not: reformatting a `pack.json` changes nothing about
+  what the pack contributes, so the clause now reads *differ once parsed*.
 
 ## Instrument
 
