@@ -45,7 +45,8 @@ which document names it.
 
 <!-- roster:begin -->
 <!-- THE PARTITION BELOW IS RAILED. `cli-roster.live.test.mjs` reads the bare backticked names
-     between these two markers and holds them against `cli/*.mjs` on disk, in both directions: a
+     between these two markers and holds them against the tracked NON-TEST `cli/*.mjs` modules, in
+     both directions — a test file belongs in the table below, never in this block: a
      file classified by none of the three — this prose, `portulan.mjs`'s `SUBCOMMANDS`, or
      `portulan.mjs` itself as the entry point — fails, and a name here matching no file fails. Rewrite the prose freely — the markers are the anchor, not the
      sentences. A name may leave only when the file does. **No count is written here**, for the
