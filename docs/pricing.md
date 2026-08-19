@@ -6,7 +6,7 @@
 > maintainer disposes. It is written for the
 > milestone-10 docs surface and holds nothing that surface would need to retract: every capability
 > named here was demonstrated on this repository's own tree — the verify set green, the suite
-> passing, and the onboarding path run end to end on a repository Portulan had never seen. What is not built is not sold, and this page says so where a reader
+> passing, and the onboarding path running end to end on a repository Portulan had never seen. What is not built is not sold, and this page says so where a reader
 > would otherwise wonder.
 
 Portulan is an operating framework for agentic engineering: the tailored context, standards,
