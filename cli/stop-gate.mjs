@@ -43,9 +43,111 @@ import { recipeSet } from "./recipe-set.mjs";
 // The project root is TOLD to this runner rather than derived from where this file sits — see the same
 // paragraph in ./gate.mjs for why. In short: this file used to live inside the workspace it was reading,
 // which is the one layout it could ever work in, and is why it shipped in no artifact an adopter received.
+//
+// **These stay the TOLD values, and since #220's second arm they are no longer the whole answer.** The
+// tree a stop is ABOUT is resolved per invocation by `resolveSessionTree` from the payload's `cwd`,
+// because the told root is the repository this hook governs and not necessarily the working tree the
+// session used. Three things deliberately keep reading the told values whatever the session's cwd is:
+// the refusal COUNTER (a resolution that flips mid-session would rename its file and reset spent
+// counts — a cap weakening nobody chose), and both halves of the recipe — `defaultRecipe()` and the
+// `cwd` its command runs in. That last one is not a nicety: the gate executes the manifest's `run`
+// through `bash -c`, so a recipe read from a workspace found under a payload-supplied path would be
+// arbitrary command execution seeded by stdin. The recipe's jurisdiction is the workspace this hook
+// was wired into.
 const PROJECT = process.env.CLAUDE_PROJECT_DIR || process.cwd();
 const WORKSPACE = path.resolve(PROJECT, process.env.PORTULAN_WORKSPACE || ".portulan");
 const REPO = PROJECT;
+
+/**
+ * WHICH TREE this stop is about — the session's own, or the one the hook was told.
+ *
+ * The told root is what the hook is wired with (`${CLAUDE_PROJECT_DIR}` in `.claude/settings.json`).
+ * It is not always the tree the session worked in: a session running in a git worktree, or simply
+ * `cd`-ed elsewhere, has both, and #220's second arm is that the gate answered about the told one.
+ * **The failure that arm exists for is a SILENT ALLOW** — told tree clean, session tree carrying
+ * unrecorded work — because `didWork()` reads the clean tree, returns false, and nothing is printed.
+ * The first arm's naming sentences cannot reach it: they live inside the block path.
+ *
+ * `payload.cwd` is the datum. Measured on this host, a real Stop payload carries
+ * `session_id, transcript_path, cwd, prompt_id, permission_mode, effort, hook_event_name,
+ * stop_hook_active, last_assistant_message, background_tasks, session_crons` — recorded because the
+ * record held no measurement of this payload's shape at all, and the whole arm rests on one field.
+ *
+ * **THE SAME-REPOSITORY GUARD, which is the difference between a fix and a bypass.** `cwd` is the one
+ * input the gated agent can steer, so a naive rescope would let a session point the gate at a clean
+ * unrelated clone and be allowed in silence — the very defect, one remove away. A foreign tree's
+ * obligations are also unsatisfiable, which is the shape that gets a rail switched off rather than
+ * fixed. So the session tree answers only when it is the SAME repository, compared by
+ * `--git-common-dir` and through `realpathSync`: worktrees share their common dir with the origin
+ * repository, which is exactly the class this arm exists for, while a foreign clone does not.
+ * Compared resolved, because macOS symlinks `/tmp` to `/private/tmp` and raw strings would disagree
+ * about identical directories.
+ *
+ * **What the same-repository condition does NOT close, said plainly because the sentences around it
+ * could be read as claiming otherwise.** It stops a foreign tree answering; it does not stop steering
+ * *within* this repository. A session whose told root is dirty and unrecorded can name a clean,
+ * recorded sibling worktree in `cwd` and be allowed — measured. That is narrower than the hole this
+ * arm closes and is not closable from here: the gate is told where the session ENDED, never where it
+ * worked, and a `cwd` inside this repository is exactly the datum this arm exists to trust.
+ *
+ * Returns `{ root, workspace, origin, note }`. `note` is a sentence to print when the datum was
+ * offered and could not be used; it is **null when `cwd` is simply absent**, because a host that
+ * never offered the field has degraded nothing and deserves today's behaviour byte for byte.
+ */
+function resolveSessionTree(cwd, told = { root: REPO, workspace: WORKSPACE }) {
+    const fell = (note) => ({ ...told, origin: "told", note });
+    if (typeof cwd !== "string" || cwd.trim() === "") return { ...told, origin: "told", note: null };
+
+    const git = (dir, args) => execFileSync("git", ["-C", dir, ...args], {
+        encoding: "utf8", timeout: 10_000, stdio: ["ignore", "pipe", "pipe"],
+    }).trim();
+
+    let root;
+    try {
+        root = git(cwd, ["rev-parse", "--show-toplevel"]);
+    } catch {
+        // Gone, or not a repository. Both exit 128; neither is a tree this gate can ask about.
+        return fell(`the session's directory (${cwd}) is not inside a git repository`);
+    }
+    if (!root) return fell(`the session's directory (${cwd}) yielded no repository root`);
+
+    // Same repository? Worktrees share a common dir with their origin; a foreign clone does not.
+    const commonDir = (dir) => {
+        const raw = git(dir, ["rev-parse", "--path-format=absolute", "--git-common-dir"]);
+        try {
+            return fs.realpathSync(raw);
+        } catch {
+            return raw;
+        }
+    };
+    let mine, theirs;
+    try {
+        mine = commonDir(told.root);
+        theirs = commonDir(root);
+    } catch {
+        return fell("this repository's identity could not be compared with the session's");
+    }
+    if (mine !== theirs) {
+        return fell(
+            `the session's directory (${cwd}) is in a different repository from the one this hook governs — ` +
+                "its obligations are not this repository's to enforce",
+        );
+    }
+
+    let resolved = root;
+    try {
+        resolved = fs.realpathSync(root);
+    } catch { /* the toplevel git just printed; keep it */ }
+    return {
+        root: resolved,
+        // Recomputed against the session tree, never reused from the told root, or the handoff
+        // question is asked correctly in the wrong directory. `path.resolve` leaves an ABSOLUTE
+        // `PORTULAN_WORKSPACE` absolute, so a workspace named absolutely deliberately does not travel.
+        workspace: path.resolve(resolved, process.env.PORTULAN_WORKSPACE || ".portulan"),
+        origin: "session",
+        note: null,
+    };
+}
 
 // The independent reasons this gate refuses a stop for. Each keeps its own consecutive count.
 //
@@ -236,14 +338,14 @@ function defaultRecipe() {
  * handoff gate while local commits sat there unrecorded.** A fail-open in the gate, and a quiet one.
  * Found by review on the pull request.
  */
-function didWork() {
+function didWork(root = REPO) {
     // `maxBuffer` raised from node's 1 MiB default **for `git cherry`, which cannot be bounded the way
     // the emptiness probe below can**: it must print a line per compared commit to be read at all,
     // where the probe only has to answer yes-or-no and so is asked with `--max-count=1`. An overflow
     // here throws into the outer catch and reads as *cannot tell* on precisely the branches that carry
     // the most commits. This raise moves that cliff rather than removing it — every buffer is finite —
     // which is why the probe is bounded instead of merely given more room.
-    const git = (args) => execFileSync("git", args, { cwd: REPO, encoding: "utf8", timeout: 10_000, maxBuffer: 64 * 1024 * 1024 });
+    const git = (args) => execFileSync("git", args, { cwd: root, encoding: "utf8", timeout: 10_000, maxBuffer: 64 * 1024 * 1024 });
 
     // 1. Uncommitted changes. Portable, and the strongest signal there is.
     try {
@@ -387,9 +489,9 @@ function didWork() {
 }
 
 /** Is there a handoff dated today? The doctrine's checkable form: existence and a date, never length. */
-function handoffToday(stamp) {
+function handoffToday(stamp, workspace = WORKSPACE) {
     try {
-        return fs.readdirSync(path.join(WORKSPACE, "handoffs")).some((f) => f.startsWith(stamp) && f.endsWith(".md"));
+        return fs.readdirSync(path.join(workspace, "handoffs")).some((f) => f.startsWith(stamp) && f.endsWith(".md"));
     } catch {
         return false;
     }
@@ -405,16 +507,19 @@ function handoffToday(stamp) {
  * worktree had been removed had its cwd fall back to the origin repository, parked on an unrelated
  * branch 84 commits behind, and was told *"no handoff dated 2026-08-10"* while five sat on `main`.
  *
- * **This names the tree rather than rescoping the gate to it, and that is a choice with a cost.**
- * #220 offers rescoping as the alternative and it is the more thorough repair — but the tree a
- * removed worktree wrote to no longer exists to be read, so rescoping cannot answer the very
- * incident that produced the issue. What a reader needed, and did not get, was to see that the
- * sentence was true about a tree they were not thinking of.
+ * **Since #220's second arm the gate DOES rescope, and this names whichever tree answered.** An
+ * earlier version of this paragraph argued that naming was sufficient because a removed worktree
+ * cannot be read. That held for the one stop after the removal and failed as an argument about the
+ * arm: for the whole of that session's working phase both trees existed and differed, so every stop
+ * before the removal was already answering about the wrong one. The removal exposed the divergence
+ * rather than creating it. `resolveSessionTree` above now picks the session's tree from the Stop
+ * payload's `cwd` when it belongs to this repository, and falls back here — told root, named — only
+ * where it cannot.
  */
-function treeIdentity() {
+function treeIdentity(root = REPO) {
     try {
         const run = (args) => execFileSync("git", args, {
-            cwd: REPO, encoding: "utf8", timeout: 10_000, stdio: ["ignore", "pipe", "pipe"],
+            cwd: root, encoding: "utf8", timeout: 10_000, stdio: ["ignore", "pipe", "pipe"],
         }).trim();
         const branch = run(["rev-parse", "--abbrev-ref", "HEAD"]);
         // **A DETACHED HEAD is the common case here, not the exotic one.** `--abbrev-ref` answers the
@@ -422,10 +527,10 @@ function treeIdentity() {
         // detached worktrees at once — measured: four, on the machine this was written on. Printing
         // *"on `HEAD`"* would name a branch that does not exist, in the very sentence added so a reader
         // could identify the tree. The commit is what identifies a detached one. Copilot, round 3.
-        if (branch === "HEAD") return `${REPO} (detached at \`${run(["rev-parse", "--short", "HEAD"])}\`)`;
-        return `${REPO} (on \`${branch}\`)`;
+        if (branch === "HEAD") return `${root} (detached at \`${run(["rev-parse", "--short", "HEAD"])}\`)`;
+        return `${root} (on \`${branch}\`)`;
     } catch {
-        return REPO;
+        return root;
     }
 }
 
@@ -438,17 +543,20 @@ function treeIdentity() {
  * remote-tracking ones. The sentence it feeds must not overclaim: *absent from this working tree* is
  * always true when it fires; *present at `<ref>`* is claimed only where some ref on disk shows one.
  */
-function handoffInHistory(stamp) {
+function handoffInHistory(stamp, tree = { root: REPO, workspace: WORKSPACE }) {
+    // **Root and workspace arrive as ONE pair, never mixed.** A told root beside a session workspace
+    // makes the relative path below start with `..`, the guard returns null, and the elsewhere arm
+    // dies in silence — the same both-must-move-together rule the caller obeys, inside this function.
     try {
         // **Separators normalised to `/`, because this becomes a git PATHSPEC.** `path.relative` yields
         // `\` on Windows and git would match nothing — and the failure is silent: this returns null,
         // the refusal loses the half that tells a reader their handoff is already recorded, and nothing
         // says why. The same spelling is used wherever this repository hands git a derived path
         // (`./librarian.mjs`, `./compile.mjs`). Copilot, round 3.
-        const dir = path.relative(REPO, path.join(WORKSPACE, "handoffs")).split(path.sep).join("/");
+        const dir = path.relative(tree.root, path.join(tree.workspace, "handoffs")).split(path.sep).join("/");
         // A workspace outside the repository is not a question git can answer about this history.
         if (dir === "" || dir.startsWith("..") || path.isAbsolute(dir)) return null;
-        const git = (args) => execFileSync("git", args, { cwd: REPO, encoding: "utf8", timeout: 10_000, stdio: ["ignore", "pipe", "pipe"] });
+        const git = (args) => execFileSync("git", args, { cwd: tree.root, encoding: "utf8", timeout: 10_000, stdio: ["ignore", "pipe", "pipe"] });
         // `--all` is every ref already on disk, local and remote-tracking. `-1` because existence is
         // the whole question — this is the doctrine's checkable form, not a census.
         // **`:(glob)` magic, because a bare `*` is not reliably a glob.** With `GIT_NOGLOB_PATHSPECS`
@@ -477,7 +585,7 @@ function handoffInHistory(stamp) {
  * The two are reported separately because the consecutive-cap reset keys off the recipe alone, while
  * whether to block keys off the whole set.
  */
-function collectProblems() {
+function collectProblems(tree = { root: REPO, workspace: WORKSPACE, origin: "told", note: null }) {
     /** Every problem carries the REASON it belongs to — the key its own counter is kept under. */
     const problems = [];
     let recipeGreen = false;
@@ -522,7 +630,14 @@ function collectProblems() {
             const outcome = CANNOT_RUN.has(code) || code === undefined || code === null
                 ? `could not run (exit ${code ?? "no status"}) — the gate could not judge`
                 : `RED (exit ${code})`;
-            problems.push({ reason: "recipe", text: `verify recipe \`${recipe.id}\` — ${outcome}\n${output}` });
+            // The tree is named here too, now that one verdict can span two: the recipe is always run
+            // in the TOLD root (see the header) while the handoff question may have been answered
+            // about the session's. Without this, two problems in one refusal would read as though
+            // both concerned the same tree. Raised as optional at the session-open checkpoint; taken.
+            problems.push({
+                reason: "recipe",
+                text: `verify recipe \`${recipe.id}\` in ${REPO} — ${outcome}\n${output}`,
+            });
         }
     }
 
@@ -533,15 +648,38 @@ function collectProblems() {
     // `today()`'s own header records that this file has already produced one false red from a date
     // disagreement; two dates inside a single verdict is the same class. Copilot, round 3.
     const stamp = today();
-    const handoffPresent = handoffToday(stamp);
+    const handoffPresent = handoffToday(stamp, tree.workspace);
     // **`!handoffPresent` first, and the order is load-bearing rather than stylistic.** `didWork()`
     // shells out to git several times and can print the could-not-compare sentence; ordered the other
     // way, a session that HAS written its handoff still paid that cost on every Stop event and could
     // be handed a degradation warning about an obligation it does not owe. Copilot, round 1.
-    if (!handoffPresent && didWork()) {
+    if (!handoffPresent && didWork(tree.root)) {
         // The tree is NAMED, because the sentence was once true about a tree the reader was not
         // thinking of and read as a verdict about their session (#220).
-        const elsewhere = handoffInHistory(stamp);
+        //
+        // **A REFUSAL names both trees where they differ**, because a reader looking at the hook's
+        // configured root would otherwise not find the tree this verdict came from. Only on a refusal:
+        // told ≠ session is the routine worktree case here, so a divergence line on every green stop
+        // would be a metronome, and this gate's sentences are worth reading precisely because they are
+        // rare (#220 second arm).
+        // **Both sides resolved through `realpathSync`, or this sentence invents a divergence.**
+        // `resolveSessionTree` returns a realpathed root, so comparing it against a merely
+        // `path.resolve`d `REPO` makes a symlinked told root — `/tmp` on macOS, or any convenience
+        // link — read as a second tree, and the refusal then names one directory twice as though the
+        // session had worked somewhere else. Measured. It is the same trap the same-repository guard
+        // above already defends against, left unapplied one comparison away, which is why the guard's
+        // own reasoning is repeated here rather than assumed to carry.
+        const real = (dir) => {
+            try {
+                return fs.realpathSync(dir);
+            } catch {
+                return path.resolve(dir);
+            }
+        };
+        const answeredElsewhere = tree.origin === "session" && real(tree.root) !== real(REPO)
+            ? ` — the tree this session worked in, not the one this hook was told (${REPO})`
+            : "";
+        const elsewhere = handoffInHistory(stamp, tree);
         const found = elsewhere
             ? ` One dated ${stamp} does exist elsewhere in this repository's refs, at ` +
               `${elsewhere.commit}${elsewhere.ref ? ` on \`${elsewhere.ref}\`` : ""} — so this working tree may not be ` +
@@ -551,7 +689,8 @@ function collectProblems() {
         problems.push({
             reason: "handoff",
             text:
-                `no handoff dated ${stamp} in ${path.join(WORKSPACE, "handoffs")}, read from ${treeIdentity()}. ` +
+                `no handoff dated ${stamp} in ${path.join(tree.workspace, "handoffs")}, read from ` +
+                `${treeIdentity(tree.root)}${answeredElsewhere}. ` +
                 "Every session ends with a dated handoff — five lines is enough, absent is not. The Session log " +
                 "records what landed; the handoff records why, and the why is the part the next session cannot " +
                 `reconstruct from the diff.${found}`,
@@ -622,7 +761,24 @@ function main() {
     }
 
     const sessionId = payload.session_id ?? "unknown";
-    const { problems, recipeGreen, handoffPresent } = collectProblems();
+
+    // **Resolved ONCE, here, and threaded down** — so every question this stop asks is about the same
+    // tree, and the sentence that reports the answer names that tree rather than another one.
+    const tree = resolveSessionTree(payload.cwd);
+
+    // **Degradation is spoken when the datum was offered and could not be used, and silent when it was
+    // never offered.** A host that sends no `cwd` has degraded nothing: it gets today's behaviour byte
+    // for byte, which is also what makes every pre-existing case a control for this change. A host that
+    // sent one this gate could not use is a different fact, and one a reader needs — printed whatever
+    // the verdict turns out to be, because it explains an allow just as much as a refusal.
+    //
+    // **The honest residue: on this path the silent-allow gap of #220 REMAINS, by construction.** The
+    // told root answers, and if the session's real tree carries unrecorded work this gate cannot see
+    // it. Forcing a block instead would manufacture an obligation from no evidence and leave the
+    // removed-worktree case permanently blocking — the false red the first arm was built to remove.
+    if (tree.note) process.stderr.write(`portulan stop-gate: ${tree.note}; answering about ${REPO} instead.\n`);
+
+    const { problems, recipeGreen, handoffPresent } = collectProblems(tree);
 
     // A reason's condition clearing ends THAT reason's futile-retry episode, whether or not the stop
     // is allowed, and never any other reason's. Done before the bump so a cleared reason cannot be

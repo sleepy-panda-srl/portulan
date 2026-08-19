@@ -455,9 +455,9 @@ function git(cwd, args) {
  * refusal in its stdout JSON, not in its status — so the stderr this suite asserts on would be
  * unreachable through the throw path `./gate.test.mjs` reads it from.
  */
-function gate(project, sessionId, env = {}) {
+function gate(project, sessionId, env = {}, payload = {}) {
     const run = spawnSync("node", [RUNNER], {
-        input: JSON.stringify({ session_id: sessionId }),
+        input: JSON.stringify({ session_id: sessionId, ...payload }),
         env: { ...process.env, CLAUDE_PROJECT_DIR: project, ...env },
         encoding: "utf8",
     });
@@ -706,5 +706,155 @@ describe("the handoff question names the tree it answered about (#220, second ha
         const { decision, reason } = gate(repo, "handoff-lives-elsewhere");
         assert.equal(decision, "block", "still blocks: the gate cannot know this session wrote it");
         assert.match(reason, /carries-the-handoff|history|another/i, "but it must SAY the record exists elsewhere rather than only that this tree lacks it");
+    });
+});
+
+// ---------------------------------------------------------------------------------------------
+// WHICH TREE the gate answers about — #220's second arm.
+//
+// The first arm made the refusal NAME the tree it read. That is invisible on the path that matters:
+// both naming sentences live inside `!handoffPresent && didWork()`, so they fire only when the gate
+// BLOCKS. Where the told root is clean and the session's own tree carries unrecorded work, the gate
+// allowed **in silence** — a false green, which this runner's doctrine ranks worse than the false red
+// the first arm removed. These cases lead with that shape deliberately: a suite exercising only the
+// block path would pass without touching the defect.
+
+/** ONE repository, TWO working trees — the 2026-08-10 incident's actual shape. */
+function twoTrees({ toldCarriesHandoff = true, sessionDirty = true } = {}) {
+    const root = scratch();
+    const origin = path.join(root, "origin.git");
+    const told = path.join(root, "told");
+    const session = path.join(root, "wt");
+    execFileSync("git", ["init", "-q", "--bare", origin]);
+    execFileSync("git", ["--git-dir", origin, "symbolic-ref", "HEAD", "refs/heads/main"]);
+    execFileSync("git", ["clone", "-q", origin, told], { stdio: ["ignore", "pipe", "pipe"] });
+    fs.mkdirSync(path.join(told, ".portulan", "handoffs"), { recursive: true });
+    fs.writeFileSync(path.join(told, ".portulan", "workspace.json"), MANIFEST);
+    fs.writeFileSync(path.join(told, "f.txt"), "base\n");
+    // COMMITTED, so the told tree is genuinely clean — an untracked handoff would make
+    // `git status --porcelain` non-empty and `didWork()` true, which is not the shape under test.
+    if (toldCarriesHandoff) fs.writeFileSync(path.join(told, ".portulan", "handoffs", `${today()}-told.md`), "why\n");
+    git(told, ["add", "-A"]);
+    git(told, ["commit", "-m", "base"]);
+    git(told, ["branch", "-M", "main"]);
+    git(told, ["push", "-q", "-u", "origin", "main"]);
+
+    // The session's tree: the SAME repository, a second working tree on its own branch. The handoff
+    // is removed **and the removal committed**, so this tree lacks one without being dirty for that
+    // reason — the dirt below is the unrecorded work, which is the thing under test.
+    git(told, ["worktree", "add", "-q", session, "-b", "session-branch"]);
+    if (toldCarriesHandoff) {
+        git(session, ["rm", "-q", path.join(".portulan", "handoffs", `${today()}-told.md`)]);
+        git(session, ["commit", "-m", "this tree carries no handoff for today"]);
+    }
+    fs.mkdirSync(path.join(session, ".portulan", "handoffs"), { recursive: true });
+    if (sessionDirty) fs.appendFileSync(path.join(session, "f.txt"), "work nobody has recorded\n");
+    return { told, session };
+}
+
+describe("which tree the gate answers about (#220, second arm)", () => {
+    test("THE CRITERION — work in the session's tree is not allowed to pass in silence", () => {
+        const { told, session } = twoTrees();
+        // Premises, measured: the told tree is clean and fully recorded, so the OLD gate saw nothing.
+        assert.equal(git(told, ["status", "--porcelain"]).trim(), "", "premise: told tree clean");
+        assert.notEqual(git(session, ["status", "--porcelain"]).trim(), "", "premise: session tree dirty");
+        assert.ok(fs.existsSync(path.join(told, ".portulan", "handoffs", `${today()}-told.md`)), "premise: told carries today's handoff");
+
+        const { decision, reason } = gate(told, "criterion", {}, { cwd: session });
+        assert.equal(decision, "block", "a session with unrecorded work in its own tree owes a handoff");
+        assert.ok(reason.includes(session), "and the refusal must name the tree that answered");
+        assert.ok(reason.includes(told), "and the tree the hook was told, since they differ");
+    });
+
+    test("a session tree that is clean and recorded still allows", () => {
+        const { told, session } = twoTrees({ sessionDirty: false });
+        fs.writeFileSync(path.join(session, ".portulan", "handoffs", `${today()}-session.md`), "why\n");
+        git(session, ["add", "-A"]);
+        git(session, ["commit", "-m", "its own handoff"]);
+        assert.equal(git(session, ["status", "--porcelain"]).trim(), "", "premise: the session tree is clean");
+        assert.equal(gate(told, "session-clean", {}, { cwd: session }).decision, "allow");
+    });
+
+    test("a cwd INSIDE the told tree is the told tree — sessions cd, and that is not divergence", () => {
+        const { told } = twoTrees({ sessionDirty: false });
+        const sub = path.join(told, "cli");
+        fs.mkdirSync(sub, { recursive: true });
+        const bare = gate(told, "subdir-a", {});
+        const viaSub = gate(told, "subdir-b", {}, { cwd: sub });
+        assert.equal(viaSub.decision, bare.decision, "a subdirectory must not change the verdict");
+        assert.doesNotMatch(viaSub.reason, /not the one this hook was told/, "nor read as a divergence");
+    });
+
+    test("a SYMLINKED told root is one tree, not two — the sentence must not invent a divergence", () => {
+        // `resolveSessionTree` realpaths; a divergence check that merely `path.resolve`s the told root
+        // then reads one directory under two spellings as two trees, and the refusal says the session
+        // worked somewhere it did not. The fixture makes its own symlink so this runs on CI too, and
+        // the verdict must be a BLOCK — an allow would make the assertion on `reason` vacuous, which
+        // is why the subdirectory case above cannot catch this.
+        const { told } = twoTrees({ toldCarriesHandoff: false });
+        fs.appendFileSync(path.join(told, "f.txt"), "unrecorded\n");
+        const link = path.join(path.dirname(told), "told-by-another-name");
+        fs.symlinkSync(told, link);
+        const sub = path.join(link, "cli");
+        fs.mkdirSync(path.join(told, "cli"), { recursive: true });
+
+        const { decision, reason } = gate(link, "symlinked-told", {}, { cwd: sub });
+        assert.equal(decision, "block", "premise: there is unrecorded work, so a refusal carries the sentence");
+        assert.doesNotMatch(reason, /not the one this hook was told/,
+            "one directory under two spellings is one tree");
+    });
+
+    test("the degraded path SPEAKS on an allow too — and still cannot see the session's tree", () => {
+        // Two halves, and the second is the honest residue rather than a feature: the note is printed
+        // whatever the verdict, because it explains an allow as much as a refusal; and on this path
+        // #220's silent-allow gap REMAINS by construction — the told root answers, so unrecorded work
+        // in the session's real tree is invisible here. Forcing a block instead would manufacture an
+        // obligation from no evidence and leave the removed-worktree case permanently blocking.
+        const { told } = twoTrees();
+        const nowhere = path.join(scratch(), "not-a-repository");
+        fs.mkdirSync(nowhere, { recursive: true });
+
+        const { decision, stderr } = gate(told, "degraded-allow", {}, { cwd: nowhere });
+        assert.equal(decision, "allow", "the told tree is clean and recorded, so this stop is allowed");
+        assert.match(stderr, /not inside a git repository/, "and the degradation is spoken anyway");
+    });
+
+    test("THE BYPASS CONTROL — a foreign repository cannot answer for this one", () => {
+        // `cwd` is the one input a gated agent can steer. Preferring any tree it names would let a
+        // session point the gate at a clean unrelated clone and be allowed in silence — the defect,
+        // one remove away. The told tree answers, and the degradation is spoken.
+        const { told } = twoTrees({ toldCarriesHandoff: false });
+        fs.appendFileSync(path.join(told, "f.txt"), "unrecorded work in the governed tree\n");
+        const foreign = path.join(scratch(), "elsewhere");
+        fs.mkdirSync(foreign, { recursive: true });
+        execFileSync("git", ["init", "-q", foreign]);
+        fs.writeFileSync(path.join(foreign, "f.txt"), "clean\n");
+        git(foreign, ["add", "-A"]);
+        git(foreign, ["commit", "-m", "clean"]);
+
+        const { decision, stderr } = gate(told, "bypass", {}, { cwd: foreign });
+        assert.equal(decision, "block", "a foreign clean tree must not excuse work in the governed one");
+        assert.match(stderr, /different repository/, "and the gate must say why it ignored the cwd");
+    });
+
+    test("a cwd that is not a repository degrades to the told tree and SAYS so", () => {
+        const { told } = twoTrees({ toldCarriesHandoff: false });
+        fs.appendFileSync(path.join(told, "f.txt"), "unrecorded\n");
+        const nowhere = path.join(scratch(), "plain-directory");
+        fs.mkdirSync(nowhere, { recursive: true });
+        const { decision, stderr } = gate(told, "not-a-repo", {}, { cwd: nowhere });
+        assert.equal(decision, "block");
+        assert.match(stderr, /not inside a git repository/);
+    });
+
+    test("a payload with NO cwd behaves exactly as before, and says nothing", () => {
+        // The control that keeps every pre-existing case meaningful: a host that never offered the
+        // datum has degraded nothing, so it must not be handed a degradation sentence.
+        const { told } = twoTrees({ toldCarriesHandoff: false });
+        fs.appendFileSync(path.join(told, "f.txt"), "unrecorded\n");
+        const { decision, stderr, reason } = gate(told, "no-cwd", {});
+        assert.equal(decision, "block");
+        assert.doesNotMatch(stderr, /different repository|not inside a git repository/, "silence, not degradation");
+        assert.doesNotMatch(reason, /not the one this hook was told/, "and no divergence clause");
     });
 });
