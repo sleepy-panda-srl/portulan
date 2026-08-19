@@ -2005,7 +2005,8 @@ describe("`--pack-root auto` unions the discovered roots with the tree-derived o
         const found = await inspect(dir, { schema: SCHEMA, ...host });
         const packs = text(checks(found.findings, "packs"));
         assert.match(packs, /is SHADOWED/, "the shadow itself");
-        assert.match(packs, /the tree also carries it at/, "and where the shadowed copy lives");
+        assert.match(packs, /the tree-derived root also carries it at/,
+            "and where the shadowed copy lives — the tree-DERIVED root, since `workspace.tree` can point outside the repository");
         assert.match(packs, /version .* against the tree's 9\.9\.9/, "the version half of the difference");
         assert.match(packs, /gate fragments that are not byte-identical/, "and the FRAGMENT half — the clause the default fixture cannot reach");
         assert.doesNotMatch(packs, /could not be compared/, "both copies were readable");
@@ -2014,14 +2015,40 @@ describe("`--pack-root auto` unions the discovered roots with the tree-derived o
             "a report about the machine, never a verdict about the repository");
     });
 
-    test("fragments differing OUTSIDE id/tier/action still count as differing", () => {
-        // The message promises byte-identity, so a projection would make it false: two copies whose
-        // `reason` differs would be reported as agreeing. `composeFragments` carries the whole
-        // fragment, so the difference is one the compiled policy can express.
-        const a = { contributes: { gates: [{ id: "x", tier: "gated", action: { shell: "s" }, reason: "one" }] } };
-        const b = { contributes: { gates: [{ id: "x", tier: "gated", action: { shell: "s" }, reason: "another" }] } };
-        assert.notEqual(JSON.stringify(a.contributes.gates), JSON.stringify(b.contributes.gates),
-            "the comparison the report uses must see this");
+    test("fragments differing OUTSIDE id/tier/action still count as differing", async () => {
+        // **This must drive `inspect`, not compare two literals.** The first version asserted only that
+        // two JSON strings differ, which is true of the strings whatever the implementation does — it
+        // would have passed against the very projection it was written to forbid. A test that cannot
+        // fail is worse than no test, because it reads as coverage. Copilot.
+        //
+        // The two copies differ ONLY in `reason`: identical id, tier and action. A projection of
+        // `[id, tier, action]` sees them as equal and reports "the two agree today"; the whole-fragment
+        // comparison the message promises sees the difference.
+        const gates = (reason) => ({ gates: [{ id: "x", tier: "gated", action: { shell: "git push --mirror" }, reason }] });
+        const repo = scratch();
+        packAt(path.join(repo, "packs"), "rituals/checkpoints", "the tree's own copy");
+        const treeManifest = path.join(repo, "packs", "rituals", "checkpoints", "pack.json");
+        const t = JSON.parse(fs.readFileSync(treeManifest, "utf8"));
+        t.contributes = gates("the tree's reason");
+        fs.writeFileSync(treeManifest, JSON.stringify(t, null, 2));
+
+        const host = hostCarrying((packs) => {
+            packAt(packs, "rituals/checkpoints", "the installed copy");
+            const cached = path.join(packs, "rituals", "checkpoints", "pack.json");
+            const c = JSON.parse(fs.readFileSync(cached, "utf8"));
+            c.portulan.version = t.portulan.version;      // versions AGREE, so only fragments can differ
+            c.contributes = gates("the cache's reason");
+            fs.writeFileSync(cached, JSON.stringify(c, null, 2));
+        });
+        const m = wellFormed();
+        m.packs = ["rituals/checkpoints"];
+        m.tree = "../";
+        const dir = tree(path.join(repo, ".portulan"), { ...minimalFiles, "workspace.json": JSON.stringify(m) });
+
+        const packs = text(checks((await inspect(dir, { schema: SCHEMA, ...host })).findings, "packs"));
+        assert.match(packs, /gate fragments that are not byte-identical/,
+            "a difference outside id/tier/action must still be reported — the message promises byte-identity");
+        assert.doesNotMatch(packs, /the two agree today/, "and must not claim they agree");
     });
 
     test("a shadowed copy that cannot be read is reported as could-not-compare, not as silence", async () => {
