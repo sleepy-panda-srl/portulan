@@ -135,9 +135,14 @@ jobs:
 
           # Idempotent by design: a re-run of a published release must not fail the workflow. npm
           # refuses to overwrite a version, and that refusal is correct rather than an error here.
+          #
+          # It says nothing to PUBLISH rather than nothing to do, because the step no longer stops
+          # here. `27b22e9` dropped the `exit 0` that used to follow this line, so the visibility
+          # report below now runs on this path too — and that report is the one thing a re-run is
+          # fired to see. "Nothing to do" was true while the exit stood and went false beneath it.
           published=no
           if npm view "$TARGET@$VERSION" version --registry=https://npm.pkg.github.com >/dev/null 2>&1; then
-            echo "$TARGET@$VERSION is already on GitHub Packages — nothing to do."
+            echo "$TARGET@$VERSION is already on GitHub Packages — nothing to publish."
             published=already
           fi
 
