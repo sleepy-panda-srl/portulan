@@ -2478,6 +2478,17 @@ describe("the artifact records what compiled it (#264)", () => {
             "two correct spellings of one world must emit one artifact — otherwise the rail reds on a clean tree");
     });
 
+    test("a directory literally named `..foo` is inside the tree, not outside it", () => {
+        // `!rel.startsWith("..")` calls it outside. This repository names that trap in
+        // `./index.mjs`'s `isInside` docblock — the ninth fail-open in its scaffolding, and the first
+        // written by the change that cited the class. This was the second; the helper is now used
+        // rather than a fourth spelling written. Copilot.
+        const plan = { origins: [{ root: "/repo/..foo/packs", origin: "named" }] };
+        assert.equal(recordedOrigin("/repo/..foo/packs", plan, "/repo"), "tree");
+        const escape = { origins: [{ root: "/elsewhere", origin: "named" }] };
+        assert.equal(recordedOrigin("/elsewhere", escape, "/repo"), "outside-tree", "a real escape is still outside");
+    });
+
     test("a named root that IS the repository root is the tree, not outside it", () => {
         const plan = { origins: [{ root: "/repo", origin: "named" }] };
         assert.equal(recordedOrigin("/repo", plan, "/repo"), "tree",
