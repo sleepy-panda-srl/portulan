@@ -12,14 +12,9 @@ deliberately unlike [customer zero](../.portulan/): two products instead of one,
 alongside a static site, affordances that resolve down the cascade, and a rule whose incident it is not
 allowed to publish.
 
-_This list said **"packs it composes"** until 2026-08-13, and it was true twice over when written: this
-workspace declared `stacks/python`, and customer zero composed nothing at all. Both halves have since
-gone — the pack it named **never existed**, and customer zero now composes the same two this does. A
-differentiator that has stopped differentiating is removed rather than left standing, and the packs
-array earns its place here for a different reason: it is the one field of this demo that is **not**
-fiction, because `doctor` resolves those names against this repository's own `packs/` — **under a
-named or discovered root**, which the bare `doctor examples` further down this page does not pass, and
-so resolves neither._
+_One field of this demo is **not** fiction: the `packs` array. `doctor` resolves those names
+against this repository's own `packs/` — **under a named or discovered root**, which the bare
+`doctor examples` further down this page does not pass, and so resolves neither._
 
 ## Read it in this order
 

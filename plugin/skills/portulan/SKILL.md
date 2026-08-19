@@ -109,7 +109,7 @@ Four things stay true whatever the answer is:
   *indistinguishable from one*. Name the residence.
 - **Resolving the workspace does not resolve its packs.** A governing workspace found this way may
   declare `packs`, and nothing here looks those up in the cache — that is the separate half of
-  milestone 7's discovery, and step 3a's four limits apply to a resolved workspace exactly as they
+  the CLI's pack-cache discovery, and step 3a's four limits apply to a resolved workspace exactly as they
   apply to an in-repo one. Where the resolved manifest declares a spec MINOR older than this bundle's,
   say so as well: slots added since are simply absent, which is the contract working rather than a
   fault.
@@ -119,12 +119,7 @@ repository — that is the thing to ask for. Booting on a pointer and proceeding
 policy layer is the same failure shape as booting on another team's workspace: it looks like a boot and
 it is not.
 
-_(This section read **"Do not fetch it. Resolving `governed_by` to an installed plugin needs a host's
-plugin cache, and nothing here discovers one"** until milestone 7 built the discovery. Both halves of
-that sentence were true when written and one of them stopped being: nothing is still fetched, and a
-cache is now read. The instruction it produced — *report it and stop* — was the whole open half of
-[#134](https://github.com/sleepy-panda-srl/portulan/issues/134), where a workspace installed on the
-machine was invisible to the thing booting beside it.)_
+
 
 ## 3. Read the slots the manifest names
 
@@ -154,7 +149,7 @@ Then read the recipe set. `verify.recipes` in the manifest is the workspace's **
 executable checks that decide "done" are the set
 [`../../../cli/recipe-set.mjs`](../../../cli/recipe-set.mjs) **yields** — those recipes plus the ones
 the workspace's composed packs contribute, namespaced by pack — and the manifest names which one is
-the default. *Declared* and *runnable* stopped being the same list at milestone 7 session 5; the
+the default. *Declared* and *runnable* are not the same list; the
 `packs` note below carries the rest.
 
 ### 3a. Read `packs` too — no slot points at it, and what it delivers is partial
@@ -171,16 +166,11 @@ many as it is given, and named roots **replace** the derived one rather than bei
 that is what lets *"this pack resolved from the feed"* mean something a copy lying in the local tree
 cannot satisfy. Where a pack resolves, its gate-policy fragments reach the compiled policy,
 add-restriction-only. Nothing here is pinned — a `packs` entry is a name, and the version is whatever
-the root holds. Four things do not follow. **The first and the last have since been LIFTED, and two still
-stand — owed rather than broken** — the split is stated because a bare count beside a mechanism is the class
-[#133](https://github.com/sleepy-panda-srl/portulan/issues/133) names, and "four" alone goes stale the
-moment one of them ships:
+the root holds. Four things do not follow, and each is stated in full rather than counted — a bare figure beside a
+mechanism goes stale the moment one of them moves:
 
-- **Discovering the root — LANDED at milestone 7** (#123), and in the CLI only. The CLI reads the host's
-  installed-plugin record, in both shapes a plugin lands in. It read it **only when asked** until
-  2026-08-13; since then it reads it **by default**, because row 7's clause is that `--pack-root` and its
-  siblings are *optional where discovery finds a root* and they were not — on the workspace `init` drafts
-  by default plus one pack of the adopter's own, `doctor` exited **1** bare and **0** under `auto`.
+- **Discovering the root happens in the CLI only.** The CLI reads the host's
+  installed-plugin record, in both shapes a plugin lands in. It reads that record **by default**, because `--pack-root` and its siblings are *optional where discovery finds a root*.
   `--pack-root auto` now selects the strict degrade (asked-and-could-not-look is exit 2) rather than
   unlocking discovery, and a **named** root still **replaces** the derived one, which is the property that
   never moved.
@@ -199,7 +189,7 @@ moment one of them ships:
   **miss** into a failure. A discovered copy that resolves and is *invalid* still fails, with its origin
   named — so report the host's answer as the host's, and never as the repository's.
 - **A pack's skills register only where the plugin declares the directory that actually holds them.**
-  Since 2026-08-09 a *validator* also refuses a bundle where that declaration and the workspace's `packs`
+  A *validator* also refuses a bundle where that declaration and the workspace's `packs`
   array disagree — a rail on the packaging, never a change to how the host decides. A host expands a declared skills
   path **one level** and no further, so a root pointing at a family of packs — `packs/rituals/`, with
   skills at `<pack>/skills/<skill>/` — registers **nothing**, silently, while a validator walking
@@ -207,7 +197,7 @@ moment one of them ships:
   Claude Code 2.1.224.
 
   Depth alone was never parity, and saying so is the point: **registration is a property of
-  `.claude-plugin/plugin.json` and of nothing else** — measured on 2026-08-09, Claude Code 2.1.226, by
+  `.claude-plugin/plugin.json` and of nothing else** — measured on Claude Code 2.1.226, by
   deleting the `packs` key from the governing workspace outright and reinstalling, which changed the
   host's inventory not at all. So a composed pack's ritual was invocable by coincidence of a
   hand-written path. `plugin-lint`'s `compose` check pins the two together in both directions — a
@@ -215,9 +205,7 @@ moment one of them ships:
   belonging to no composed pack is red — so *composed* and *registered* can no longer drift apart in
   a bundle this validator runs over.
 
-  **The adopter's half landed at milestone 7 session 8** ([#184](https://github.com/sleepy-panda-srl/portulan/issues/184)),
-  and this bullet said the opposite until then — *"nothing here writes an adopter's plugin manifest"*,
-  true when written. `cli/skills-set.mjs` is the one carrier of the **registrable set**: it reads each
+  **The adopter's half is built** ([#184](https://github.com/sleepy-panda-srl/portulan/issues/184)). `cli/skills-set.mjs` is the one carrier of the **registrable set**: it reads each
   composed pack's own `contributes.skills` and derives the paths a plugin manifest must declare, with
   `--check` reporting drift and `--write` deriving the key. So the path is computed rather than typed.
   **What that is demonstrated on is two layouts** — this bundle's, where packs sit at `./packs/`, and a
@@ -231,9 +219,7 @@ moment one of them ships:
 - **A pack's personas reach the workspace's own layer, and not the host.** A composing workspace lands
   the scope a pack's persona declares, and an index over it can be generated — so this one is not
   simply absent, and reporting it as absent would be as wrong as reporting it as loaded.
-- **A pack's verify recipes reach the runnable set — LANDED at milestone 7, session 5.** This bullet
-  said the opposite and cited the Pack Definition for it; that key now carries the correction rather
-  than the old state, and keeps both, because it has been wrong in each direction in turn.
+- **A pack's verify recipes reach the runnable set.**
   [`../../../cli/recipe-set.mjs`](../../../cli/recipe-set.mjs) is the composing consumer and the
   **one carrier** of the runnable set — CI calls it instead of enumerating a manifest, so *what the
   workspace declares* and *what decides "done"* are no longer the same list. Composition is
@@ -263,8 +249,7 @@ What is available to read, in this bundle:
 
 Authoring a workspace ends with a human: `node ${CLAUDE_PLUGIN_ROOT}/cli/init.mjs` drafts one — see
 step 5 — and what it emits is a **draft**, so read the demo, compare, and curate before trusting a line
-of it. _(This paragraph read "there is no scaffolder yet" until milestone 7 shipped `init` and `new` —
-which step 5 of this same file already said, so the file contradicted itself one screen later.)_
+of it.
 
 ## 5. Report what is enforced, and what is not
 
@@ -288,12 +273,9 @@ what it *enforces* is the thing an agent must not paper over:
   a workspace carrying it gets an index written by `index`, and a workspace that also declares a recipe
   comparing that file byte for byte gets it held current by a rail rather than by anyone's diligence —
   two separate opt-ins, and the budget is a third. Where none is declared, recall means reading the
-  directory. Say which of them you are looking at rather than assuming any. _(This line read "Memory has
-  no generated index" from 2026-07-26 until now, and milestone 5 built one on 2026-07-28 — a sentence
-  denying a capability that exists, which is condition 4 of a definition of done pointing the other
-  way.)_
+  directory. Say which of them you are looking at rather than assuming any.
 - **The CLI is published, so all eight are one `npx` away.**
-  `npx @sleepy_panda_srl/portulan <subcommand>`, first published 2026-08-18.
+  `npx @sleepy_panda_srl/portulan <subcommand>`.
   `npx @sleepy_panda_srl/portulan doctor --help` is the cheapest thing to run first. They also run
   from a checkout, which is how this repository measures them — `init`, which drafts a workspace for
   a team that has none; `new`, which
@@ -303,11 +285,7 @@ what it *enforces* is the thing an agent must not paper over:
   the migrations and repairs a workspace owes, in either residence; plus `doctor`, `compile`
   and `index`. What `init`
   and `new` emit is a **draft**: a human curates it, and `init`'s verify recipe exits 2 until they say
-  what green means for their repository. _(This bullet said "there is no CLI" and listed `compile` and
-  `index` as arriving later; both had shipped at milestones 4 and 5, and the entry point at milestone 7.
-  Corrected at milestone 7 session 1, then session 2, then session 3, and at session 9 when `upgrade`
-  — the last unbuilt one — landed. The count went stale **four** times, which is the argument for
-  deriving such a figure rather than writing it down, in a file where nothing can.)_
+  what green means for their repository. 
 
 - **Where the workspace came from is part of the report.** In the repository, or resolved from a
   pointer — and where it was resolved, name the plugin and the **version**, because that install is

@@ -44,18 +44,12 @@ is the machine check that fires when an agent tries to end a task: it runs the t
 blocks "done" if the recipe is not green. The engine defines the contract — a task declares its verify
 recipe; the gate runs it on Stop. The recipe resolves down the cascade — the **workspace** sets the
 default, a **repo card** overrides it, a **task** may specialize — and the **compiler** wires the gate
-to the host. _(The cascade is the contract; the runner shipped in milestone 4 reads the **workspace
+to the host. _(The cascade is the contract; the runner reads the **workspace
 default only**. The repo-card and task steps are **not built, and no milestone owns them yet** — said in
 that form deliberately, because it is the honest one and this file is where the rule lives. Named here
 because a sentence describing resolution a runner does not perform is a capability claim, and this file
-is the one that legislates against those. Found at the milestone-4 close.
-**Re-pointed 2026-08-03, on the maintainer's ruling.** This sentence previously said the two steps
-"arrive with the CLI in milestone 7", which satisfied the rule in letter — it named a milestone — and
-failed it in fact: the milestone named never took the obligation on, and no later one carries it either,
-so the promise was carrier-less across the whole map. The two resolutions were to expand that row or to
-re-point this sentence; the maintainer took the second, on
-the ground that the runner shipped, at the time of that ruling, in no artifact an adopter received, so
-building more of it bought an adopter nothing. _(It ships now — milestone 7 moved both runners into the
+is the one that legislates against those. A promise naming a milestone that never took the obligation on is carrier-less, which is why this
+sentence names no milestone at all rather than an unowned one. _(It ships now — milestone 7 moved both runners into the
 packaged CLI — which changes the premise and not the ruling: the two resolution steps are still unbuilt
 and still unowned.)_ The precedent for the wording is `spec/pack.schema.json`'s `verify` note, which held
 exactly this form until a ruling gave it an owner.)_

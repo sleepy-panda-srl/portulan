@@ -5,9 +5,8 @@
 > is a commercial decision and commercial decisions are human-owned — this page proposes, the
 > maintainer disposes. It is written for the
 > milestone-10 docs surface and holds nothing that surface would need to retract: every capability
-> named here was demonstrated on this repository's tree (session of 2026-08-14 on `c93a819` — all
-> eleven verify recipes then yielded ran green, the suite passed 1608 of 1608, and the onboarding
-> path ran end to end on a repository Portulan had never seen). What is not built is not sold, and this page says so where a reader
+> named here was demonstrated on this repository's own tree — the verify set green, the suite
+> passing, and the onboarding path run end to end on a repository Portulan had never seen. What is not built is not sold, and this page says so where a reader
 > would otherwise wonder.
 
 Portulan is an operating framework for agentic engineering: the tailored context, standards,

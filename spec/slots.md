@@ -345,9 +345,7 @@ has a product-layer slot, which is what the criterion requires; *instances* may 
 **What `doctor` checks:** each `product` path resolves; each `affordances` path **that is present**
 resolves; each `repos` entry names a card in the `repos` slot. Per-product `affordances` is optional
 because a product may inherit the workspace-level default — so the check is conditional, and `doctor`
-*reports* a product that has neither its own nor an inherited one rather than failing it. (An earlier
-draft of this line said `doctor` checks `affordances` unconditionally, which would have made the spec
-demand something the schema declares optional; caught in review of the change that introduced it.) The
+*reports* a product that has neither its own nor an inherited one rather than failing it. The
 claim it cannot check is whether the mission written there is still true.
 
 ## `affordances` — what the product offers an agent
@@ -465,12 +463,9 @@ workspace that cannot say which packs it composes leaves an agent to infer the m
 resolution order. The portfolio workspace at milestone 6 ships as a private-feed plugin composing a pack
 delivered by that feed — a manifest that cannot express that forces a MAJOR bump one milestone after v1.
 
-_(This sentence said **premium** packs until milestone 6, session 1, and no shipped pack is premium: the
-one the portfolio workspace composes is the universal checkpoint ritual, delivered by the private feed and
-authored in the public engine. The prediction was reasonable and turned out not to be what milestone 6
-built, so it is corrected to what the tree shows rather than left as a promise about a pack nobody wrote.
-Whether a premium pack should exist at all is a commercial question for the maintainer, not a gap this
-file may quietly keep open.)_
+_(No shipped pack is premium: the one the portfolio workspace composes is the universal checkpoint
+ritual, delivered by the private feed and authored in the public engine. Whether a premium pack should
+exist at all is a commercial question for the maintainer, not a gap this file may quietly keep open.)_
 
 An array of names in cascade order, empty by default. Each name is the canonical `category/name` form
 the Pack Definition owns ([`pack.schema.json`](pack.schema.json)) — but the items stay **free strings**
@@ -635,7 +630,7 @@ recipe.
 per-agent rather than global, and until milestone 6 nothing in this project had a per-agent store: every
 store shipped was a *workspace's*, shared by whatever agent read it. A **pack** is the first artifact this
 framework distributes that carries per-persona material its adopter does not own, which is the first point
-at which *whose* memory this is has an answer that matters — the maintainer's ruling of 2026-07-29,
+at which *whose* memory this is has an answer that matters — the maintainer's ruling,
 verbatim, *"row 6 declares, row 7 validates"*.
 
 **This series' source is the cascade, not the tree — the only one of the three.** The memory store and the
