@@ -17,8 +17,8 @@
 // directions, because both have failed here: a file arrived with no classification, and prose has
 // outlived what it named.
 //
-// **Why the numerals are gone rather than corrected.** A fifth hand-correction would have been the
-// fifth. This file's own convention already rules the other way three times over — the packaged-file
+// **Why the numerals are gone rather than corrected.** A sixth hand-correction would have been the
+// sixth. This file's own convention already rules the other way three times over — the packaged-file
 // count is "not restated here as a number", the table's arrears figure "is not stated here any more,
 // because a number maintained by hand is the thing that kept going wrong", and the root README's CLI
 // cell refuses "one more hand-maintained figure". The roster now carries membership and no count; a
@@ -105,9 +105,13 @@ describe("the roster beside the eight is a partition of cli/, and nothing here i
     // enumeration would make both comparisons below vacuously true, and a check that passes over
     // nothing is worse than no check. Either side coming back empty is a broken harness, never a
     // clean result.
-    test("neither side of the comparison is empty", () => {
+    test("the enumeration ran and the markers parse", () => {
         assert.ok(onDisk.length > 0, "git listed no cli/*.mjs modules — refusing to compare nothing");
-        assert.ok(rosterNames(markdown).size > 0, "the roster markers contain no names — refusing to compare nothing");
+        // `rosterNames` asserts both markers are present and ordered; calling it is the check.
+        // Deliberately NOT asserting it found a name: a directory holding only subcommands and the
+        // entry point is a legitimate state with an empty roster, and an emptied block is caught by
+        // the partition below anyway, since its files stop being classified.
+        rosterNames(markdown);
     });
 
     test("every module in cli/ is classified exactly once", () => {
