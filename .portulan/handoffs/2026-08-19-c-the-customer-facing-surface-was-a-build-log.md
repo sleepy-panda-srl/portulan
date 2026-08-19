@@ -38,6 +38,21 @@ the full suite; neither merged.
   stale. **A fourth was mine** — a first draft of the new README stated registry-vs-pack hash identity
   as a standing property, which it is not; only the tree-side half is railed.
 
+- **One removal had no carrier, and the record layer gains it here rather than losing it.** The
+  CHANGELOG's Unreleased entry recorded its own overclaim: a GitHub Packages sidebar measurement taken
+  **logged out entirely** was described as absent to *"strangers"*, which takes in signed-in
+  non-members — **one population measured, three described**. The corrected claim and the untested cell
+  survive in the entry; the record that the overclaim happened, and its shape, existed nowhere else, so
+  it is written down here. The class is worth keeping: a population is part of a measurement, and a
+  measurement described wider than its population is wrong even when its number is right.
+- **The artifact moved under its own supervisor, and that is a process breach worth recording.** The
+  pre-commit pass was reading a staged, never-committed diff when this session reset the tree to
+  separate two pull requests that had become entangled — a branch checkout had carried one PR's staged
+  work onto the other's branch, and committing there would have folded fourteen files of documentation
+  rewrite into a pull request titled as a roster fix. The separation was right and the work was
+  recovered whole; doing it **while a fresh context was grading the thing being moved** was not. Stage
+  or commit before a checkpoint reads, and never restructure the artifact under review.
+
 **Open questions.** Whether `packs/rituals/checkpoints` should be pinned in this repository is the
 maintainer's: `doctor` reports the installed copy at 0.2.0 shadowing the tree's 0.2.1, with gate
 fragments that differ once parsed. Not touched here — it predates this session and is not a docs defect.

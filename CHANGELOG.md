@@ -90,7 +90,7 @@ records how things were found. This is per *release* and records what a reader g
   rediscover it._
 
 - **A public package on a public repository is still absent from that repository's Packages sidebar,
-  for a logged-out visitor.** In a signed-out
+  for a logged-out visitor.** Measured 2026-08-19: in a signed-out
   browser that runs the page's JavaScript, the sidebar renders About, Topics, Resources, Releases (2),
   Contributors (3) and Languages, and **no Packages block at all** — zero package links, and not the
   empty state either. Meanwhile the package's own page serves full content anonymously at HTTP 200,
