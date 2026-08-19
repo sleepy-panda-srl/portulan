@@ -102,13 +102,20 @@ records how things were found. This is per *release* and records what a reader g
   a package's own page is a separately servable public route, which is why that one is 200 while the
   sidebar has nothing.
 
-  _**The population is narrower than "strangers", and the correction is the point.** What was measured
-  is **logged out entirely** — no GitHub session. Two populations remain unmeasured and are named
-  rather than assumed: a signed-in visitor who is not an organisation member, and a member. If the
-  block is populated from an authenticated source, both may see it, in which case the honest statement
-  is "absent for anonymous visitors" rather than "absent for strangers" — a normal property of GitHub
-  Packages, not a defect. The earlier wording claimed the wider population on evidence that only
-  covered the narrower one._
+  **The block DOES render for a signed-in viewer, and that settles what this is.** The maintainer
+  confirmed on 2026-08-19 that the Packages block appears in his sidebar while signed in, which is
+  what the mechanism above predicts: the anonymous page carries no package data, an authenticated one
+  does. **So this is normal GitHub Packages behaviour rather than a defect, and nothing about this
+  repository's configuration causes it or can change it.** The package is public, publishes on every
+  release, and appears wherever GitHub renders package listings at all.
+
+  _**The population was the error, and it is worth keeping after the alarm it raised is gone.** What
+  had been measured was **logged out entirely** — no GitHub session — and it was described as absent
+  to "strangers", which takes in signed-in non-members. One population measured, three described. The
+  honest statement is **"absent for anonymous visitors"**. One case does remain untested and is named
+  rather than folded in: a signed-in visitor who is **not** an organisation member. Between the
+  anonymous case (absent, measured) and the member case (present, measured), that is the only cell of
+  the table still empty._
 
 ## 0.1.1 — 2026-08-18
 
