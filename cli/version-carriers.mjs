@@ -96,9 +96,14 @@ export function liveProseFiles(root) {
 export function declaredVersion(root) {
     let raw;
     try {
-        raw = readFileSync(join(root, "package.json"), "utf8");
+        // From the INDEX, like the prose it is compared against. Reading the version from the
+        // worktree while reading carriers from the index compares two different trees: a staged
+        // version bump with an unchanged worktree would grade staged prose against the OLD version,
+        // reporting drift that is not there — or, reversed, greening drift that is. Half a fix is
+        // how this rail's own index change first shipped.
+        raw = execFileSync("git", ["-C", root, "show", ":package.json"], { encoding: "utf8" });
     } catch (e) {
-        throw new CouldNotRun(`could not read package.json: ${e.message}`);
+        throw new CouldNotRun(`could not read package.json from the index: ${e.message}`);
     }
     let v;
     try {
