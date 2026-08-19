@@ -883,8 +883,13 @@ describe("which tree the gate answers about (#220, second arm)", () => {
 
         const { decision, reason, stderr } = gate(told, "known-hole", {}, { cwd: session });
         assert.equal(decision, "allow", "naming the clean sibling silences it — this is the hole, recorded");
-        // The SILENCE is half the measured shape: no degradation is spoken, because nothing degraded.
-        assert.doesNotMatch(stderr, /different repository|not inside a git repository/, "and it says nothing");
+        // **The SILENCE is asserted as silence, not as the absence of two phrases.** Forbidding only
+        // the degradation sentences would let any OTHER stderr — "cannot determine whether this session
+        // did work", or a message not yet written — pass while the test still claimed to pin a silent
+        // allow. The shape being recorded is *nothing is said*, so that is what is checked; if a future
+        // change makes this path speak, this case should red, because the shape will have changed.
+        // Copilot.
+        assert.equal(stderr.trim(), "", `the hole is that nothing is said — got: ${stderr}`);
         assert.equal(reason, "", "no refusal text at all");
     });
 
