@@ -2,8 +2,8 @@
 
 **State.** Two pull requests, stacked. [#313](https://github.com/sleepy-panda-srl/portulan/pull/313)
 (`cli-roster-rail`) corrects and rails `cli/README.md`'s roster, closing
-[#204](https://github.com/sleepy-panda-srl/portulan/issues/204). The second
-(`docs-at-reader-altitude`) sweeps fourteen customer-facing files. Both green on fifteen recipes and
+[#204](https://github.com/sleepy-panda-srl/portulan/issues/204). [#314](https://github.com/sleepy-panda-srl/portulan/pull/314) (`docs-at-reader-altitude`) sweeps
+fourteen customer-facing files. Both green on fifteen recipes and
 the full suite; neither merged.
 
 **Decisions + why.**
