@@ -138,8 +138,12 @@ export function inspect(root) {
             // reason. Enumerating from the index and then reading the worktree lets a staged drift
             // with a reverted worktree copy report green while the commit ships the drift.
             text = execFileSync("git", ["-C", root, "show", `:${rel}`], { encoding: "utf8", maxBuffer: 64 * 1024 * 1024 });
-        } catch {
-            continue; // in the index but unreadable as a blob: not this rail's question
+        } catch (e) {
+            // NOT `continue`. `git ls-files` just named this path, so failing to read its blob means
+            // the rail could not examine live prose it is responsible for — and skipping it would
+            // report GREEN over a file never looked at. That is this session's defect class exactly,
+            // and it was sitting inside the rail built against it. Could-not-run, never a green.
+            throw new CouldNotRun(`could not read ${rel} from the index: ${e.message}`);
         }
         for (const c of claimsIn(text)) {
             claimCount++;
