@@ -1843,16 +1843,23 @@ export async function inspect(workspaceDir, options = {}) {
                     if (other) {
                         const mineV = manifest?.portulan?.version ?? "no version";
                         const treeV = other?.portulan?.version ?? "no version";
-                        // **The WHOLE fragment, not a projection of it** — the message says the
-                        // fragments are not byte-identical, so that is what must be compared. The first
-                        // draft compared `[id, tier, action]` and claimed byte-identity, which would
-                        // read "the two agree today" over a copy differing in `reason` or any field a
-                        // later Pack Definition adds. `composeFragments` pushes the whole fragment, so
-                        // any difference is one the compiled policy can carry. Copilot.
+                        // **The WHOLE fragment, compared once PARSED — and the sentence says so.**
+                        // Two earlier spellings each claimed more than they compared. The first
+                        // projected `[id, tier, action]`, so a copy differing in `reason`, or in any
+                        // field a later Pack Definition adds, read as agreeing — and `composeFragments`
+                        // pushes the whole fragment, so those differences do reach the compiled policy.
+                        // The second compared the whole fragment but still said *byte-identical*, which
+                        // `JSON.stringify` of a parsed value cannot promise: it normalises the
+                        // manifest's whitespace and indentation away.
+                        //
+                        // Parsed is the RIGHT comparison — reformatting a `pack.json` changes nothing
+                        // about what the pack contributes, and reporting it would be noise — so the
+                        // claim is narrowed to what is measured rather than the measurement widened to
+                        // fit the claim. Copilot, two rounds.
                         const frag = (m) => JSON.stringify(m?.contributes?.gates ?? []);
                         const differs = [];
                         if (mineV !== treeV) differs.push(`version ${mineV} against the tree's ${treeV}`);
-                        if (frag(manifest) !== frag(other)) differs.push("gate fragments that are not byte-identical");
+                        if (frag(manifest) !== frag(other)) differs.push("gate fragments that differ once parsed");
                         report(
                             "packs",
                             `\`${name}\` is SHADOWED — the installed copy answered and the tree-derived root also carries it at ` +

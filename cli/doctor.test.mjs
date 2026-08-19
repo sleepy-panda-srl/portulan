@@ -2008,7 +2008,7 @@ describe("`--pack-root auto` unions the discovered roots with the tree-derived o
         assert.match(packs, /the tree-derived root also carries it at/,
             "and where the shadowed copy lives — the tree-DERIVED root, since `workspace.tree` can point outside the repository");
         assert.match(packs, /version .* against the tree's 9\.9\.9/, "the version half of the difference");
-        assert.match(packs, /gate fragments that are not byte-identical/, "and the FRAGMENT half — the clause the default fixture cannot reach");
+        assert.match(packs, /gate fragments that differ once parsed/, "and the FRAGMENT half — the clause the default fixture cannot reach");
         assert.doesNotMatch(packs, /could not be compared/, "both copies were readable");
         assert.match(packs, /pin with `--pack-root packs`/, "and what to do about it");
         assert.equal(severities(checks(found.findings, "packs"), "fail").length, 0,
@@ -2046,8 +2046,8 @@ describe("`--pack-root auto` unions the discovered roots with the tree-derived o
         const dir = tree(path.join(repo, ".portulan"), { ...minimalFiles, "workspace.json": JSON.stringify(m) });
 
         const packs = text(checks((await inspect(dir, { schema: SCHEMA, ...host })).findings, "packs"));
-        assert.match(packs, /gate fragments that are not byte-identical/,
-            "a difference outside id/tier/action must still be reported — the message promises byte-identity");
+        assert.match(packs, /gate fragments that differ once parsed/,
+            "a difference outside id/tier/action must still be reported");
         assert.doesNotMatch(packs, /the two agree today/, "and must not claim they agree");
     });
 
