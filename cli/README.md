@@ -43,34 +43,41 @@ lasted one pull request. Worth one sentence rather than none, because the *shape
 may be licensed by the row before the constitution catches up, and while that holds, the tool has to say
 which document names it.
 
-Beside those eight sit **eight** runnable tools that are on none of the lists — `plugin-lint`,
-`librarian`, `control-chars`, `discover`, `rule-carriers`, `pack-version`, `eval-bundle` and
-`pack-identity` — because
+<!-- roster:begin -->
+<!-- THE PARTITION BELOW IS RAILED. `cli-roster.live.test.mjs` reads the bare backticked names
+     between these two markers and holds them against `cli/*.mjs` on disk, in both directions: a
+     file classified by neither this prose nor `portulan.mjs`'s `SUBCOMMANDS` fails, and a name
+     here matching no file fails. Rewrite the prose freely — the markers are the anchor, not the
+     sentences. A name may leave only when the file does. **No count is written here**, for the
+     reason this file gives about every other hand-maintained figure. -->
+Beside those eight sit the runnable tools that are on none of the lists — `plugin-lint`,
+`librarian`, `control-chars`, `discover`, `rule-carriers`, `pack-version`, `eval-bundle`,
+`pack-identity` and `version-carriers` — because
 milestone 3, milestone 5, issue
 [#68](https://github.com/sleepy-panda-srl/portulan/issues/68), milestone 7's plugin-cache discovery,
 [`../.portulan/verify/rule-carriers.sh`](../.portulan/verify/rule-carriers.sh), the
-[#265](https://github.com/sleepy-panda-srl/portulan/issues/265) rail, and the maintainer's 2026-08-17
-ruling that the evaluation-bundle cutter lives in the public tree needed them.
-**Five** more files in this directory are neither subcommands nor tools: `gate` and `stop-gate` are the
-**compiled-hook runners**, invoked by generated host configuration rather than by a person, and
-`recipe-set`, `skills-set` and `manifest` are modules other tools import — the first two runnable in
-their own right, each printing the set it carries.
+[#265](https://github.com/sleepy-panda-srl/portulan/issues/265) rail, the maintainer's 2026-08-17
+ruling that the evaluation-bundle cutter lives in the public tree, and the rail that holds this
+repository's prose to the version `package.json` declares, needed them.
+The remaining files in this directory are neither subcommands nor tools: `gate` and `stop-gate` are
+the **compiled-hook runners**, invoked by generated host configuration rather than by a person, and
+`recipe-set`, `skills-set`, `manifest` and `inside` are modules other tools import — the first two
+runnable in their own right, each printing the set it carries, and `inside` a single predicate that
+lives alone so two large modules can both use it without importing each other.
+<!-- roster:end -->
 
-_(Two counts moved at milestone 7 session 8 and both were wrong before it. The runnable tools read
-**four** while `rule-carriers` had been one since 2026-08-10 and appeared in this file **zero** times;
-the line below it read **two** while naming four. Corrected in the change that added a sibling rather
-than left to the next reader — the rule this repository applies to
-[`../.portulan/identity.md`](../.portulan/identity.md)'s rosters, and the one a first draft of this very
-parenthetical broke by invoking it while leaving `rule-carriers` uncounted. Found at the pre-commit
-checkpoint. A count is a claim, which is [#187](https://github.com/sleepy-panda-srl/portulan/issues/187)'s
-subject; the missing table rows are [#203](https://github.com/sleepy-panda-srl/portulan/issues/203)'s.
-**And it happened again**: the sentence above read **five** while `pack-version` had been runnable since
-2026-08-14 and appeared in it zero times — the session-open checkpoint for the change that added
-`eval-bundle` found the arrear, and the count moved six-then-seven in that one change rather than
-leaving the five for the next reader.)_
+_(Those sentences carried counts until [#204](https://github.com/sleepy-panda-srl/portulan/issues/204)
+retired them. The counts were wrong five times: the runnable tools read **four** and then **five**
+while `rule-carriers` and later `pack-version` had been runnable for days and named here zero
+times, the line below read **two** while naming four, and both were wrong again — `version-carriers`
+and `inside` on disk, in the table, and in neither sentence — when the rail was written. Each
+correction was made in the change that added the sibling, and each was right on the day it landed.
+That is the argument for deriving the membership rather than for correcting it a sixth time, which is
+[#187](https://github.com/sleepy-panda-srl/portulan/issues/187)'s subject; the missing table rows were
+[#203](https://github.com/sleepy-panda-srl/portulan/issues/203)'s.)_
 
 Being off the list is a fact about `docs/vision.md`, which names these eight subcommands and is
-human-owned: whether any of the seven ever joins them is the maintainer's call and not an implementer's,
+human-owned: whether any of the others ever joins them is the maintainer's call and not an implementer's,
 so none is described here as *coming to the CLI* — and none is wired behind the entry point, which is
 the same rule expressed in code rather than in a sentence.
 
@@ -171,6 +178,7 @@ check on it.)_
 | [`pinned-roots.live.test.mjs`](pinned-roots.live.test.mjs) | **The required checks name their resolution root, and this is what makes that a rail.** A pre-commit checkpoint stripped all six `--pack-root packs` from the tree at once and everything stayed green: eleven recipes, 1535 tests, nothing red. The pins were shell prose. Removing the one in `doctor.sh` silently reverts `examples/` to green-by-not-looking, which is the exact fail-open the pins were added to close — **a containment nothing enforces is a comment**. |
 | [`list-quoting.live.test.mjs`](list-quoting.live.test.mjs) | **Every recipe that enumerates the tree reads the pathname git carries, not a quoted spelling of it** — the rail from [#209](https://github.com/sleepy-panda-srl/portulan/issues/209), which reported the wrong mechanism. Without `-z`, git C-quotes a control character *regardless of `core.quotePath`*, so a newline never mis-splits a list; it arrives as one line, `"we\nird.md"`. What the line-based form loses is the **spelling**, and that reaches `café.mjs` and not only exotic names. Both directions were live: three recipes turned a quoted path into a **false red**, and `docs.sh`'s cli-table enumeration silently dropped the file and passed — **the only false green of the class**. It accepts `-z` *or* `core.quotePath=false` because the two fail differently, and `docs.sh` cannot take `-z` without arming the `\001` sentinel collision its links `awk` depends on. |
 | [`test-isolation.live.test.mjs`](test-isolation.live.test.mjs) | **A test that substitutes a shared object hands the restore to the runner** — the rail from [#254](https://github.com/sleepy-panda-srl/portulan/issues/254), whose own instrument swept for the NAME `fs.*Sync =` and so could not see the same shape wearing another. Sweeping by SHAPE found fourteen sites, not six: `process.stdout.write` and `process.stderr.write` too. Eleven converted to `t.mock.method`; **three deliberately not**, because the runner scopes a mock to the TEST and those mean a helper call, a loop iteration, or a `process.env` restore — and `t.mock.property` *cannot* take that last one, throwing `ERR_INVALID_OBJECT_DEFINE_PROPERTY` on `process.env` because it installs an accessor pair. It binds the uniform half using the issue's own retire-when as its matcher, so the rule and the rail cannot drift. |
+| [`cli-roster.live.test.mjs`](cli-roster.live.test.mjs) | **The roster beside the eight is a partition of this directory, and no part of it is counted by hand** — the rail from [#204](https://github.com/sleepy-panda-srl/portulan/issues/204), whose reporter had read three carriers that disagreed and concluded a tool had been removed. Two of the three now cite the third; what stayed unrailed was the surviving sentence, and it drifted again — `version-carriers.mjs` and `inside.mjs` reached the table and neither roster sentence. The eight come from a real import of `SUBCOMMANDS`, never a copied list; everything else must be named between the roster markers. Both directions, because both have failed. The **numerals are gone rather than corrected**, on this file’s own convention about hand-maintained figures — a count nobody writes cannot go stale. |
 | [`gh-bot.test.mjs`](gh-bot.test.mjs) | The agent identity's wrapper refuses the endpoints it is not for. Its subject, [`../.portulan/tools/gh-bot`](../.portulan/tools/gh-bot), is customer-zero operator tooling and not part of the product — but the suite lives here anyway, because [`../.portulan/verify/tests.sh`](../.portulan/verify/tests.sh) runs exactly `cli/**/*.test.mjs` and that recipe's stated design is that **a new suite joins by existing rather than by being named**. |
 | [`fixtures/`](fixtures/) | Known-bad manifests, and a workspace whose repo card has drifted from its tree. |
 
