@@ -84,6 +84,14 @@ been changed and not yet run.
 ## Recoverability
 
 Nothing partial. Both tags, both releases and both registries are live and verified. A background task
-the maintainer started, `task_0dd5e85f`, duplicates work already merged in `27b22e9` and could open a
-competing pull request against the same workflow file; it could not be withdrawn because it had
-already begun.
+the maintainer started, `task_0dd5e85f`, duplicated work already merged in `27b22e9`; it could not be
+withdrawn because it had already begun.
+
+_**And it did what this paragraph predicted, so the prediction is replaced by what happened.** That
+session landed `0eca786`: it found the work already on `main` **at `git push`** — after reading the
+file, designing the change, writing it, and running fourteen recipes and 1725 tests against a tree
+that no longer existed — and its own record names the guard as `git fetch` before READING, not before
+pushing. It also carried a handoff and a Session-log entry of its own for this same date, which is why
+this branch rebased through three conflicts in `docs/plan.md`: two sessions appending to one append-only
+log. **Both records are kept**; neither was chosen over the other, and 2026-08-19 now carries two
+handoffs and two log entries, which is what the correspondence rail asks for._
