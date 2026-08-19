@@ -1856,7 +1856,17 @@ export async function inspect(workspaceDir, options = {}) {
                         // about what the pack contributes, and reporting it would be noise — so the
                         // claim is narrowed to what is measured rather than the measurement widened to
                         // fit the claim. Copilot, two rounds.
-                        const frag = (m) => JSON.stringify(m?.contributes?.gates ?? []);
+                        // Key order is normalised too, or the rationale above contradicts itself: a
+                        // formatter that reorders keys changes nothing about what the pack contributes,
+                        // yet `JSON.stringify` is order-sensitive and would report a difference. Sorted
+                        // recursively so `action: {shell}` and its siblings compare by content. Copilot.
+                        const canonical = (v) =>
+                            Array.isArray(v)
+                                ? v.map(canonical)
+                                : v && typeof v === "object"
+                                  ? Object.fromEntries(Object.keys(v).sort().map((k) => [k, canonical(v[k])]))
+                                  : v;
+                        const frag = (m) => JSON.stringify(canonical(m?.contributes?.gates ?? []));
                         const differs = [];
                         if (mineV !== treeV) differs.push(`version ${mineV} against the tree's ${treeV}`);
                         if (frag(manifest) !== frag(other)) differs.push("gate fragments that differ once parsed");
