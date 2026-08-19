@@ -5,7 +5,7 @@
 
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from "node:fs";
+import { mkdtempSync, mkdirSync, writeFileSync, rmSync, copyFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, dirname } from "node:path";
 import { execFileSync, spawnSync } from "node:child_process";
@@ -118,8 +118,23 @@ test("MUST_CARRY names the three files the defect actually occurred in", () => {
 // 20.0–20.10 runner the first cut would have failed to resolve the CLI at all.
 const CLI = fileURLToPath(new URL("./version-carriers.mjs", import.meta.url));
 
+/**
+ * Run the CLI with a SCRIPT PATH that contains a space.
+ *
+ * The guard these cases exist for compares `import.meta.url` against `process.argv[1]` — the script
+ * path, NOT the working directory. The first cut of this helper spaced only the cwd and executed the
+ * CLI straight out of the checkout, so `argv[1]` inherited whatever the checkout path was. On this
+ * maintainer's machine that path happens to contain a space and the cases passed; **in CI it does
+ * not, so restoring the broken guard would have failed nothing there.** A regression test whose
+ * outcome depends on where the repository was cloned is not a regression test.
+ *
+ * So the CLI is copied INTO the spaced fixture and run from there. It imports only `node:` builtins,
+ * which is what makes the copy sound — checked, not assumed.
+ */
 function runCli(cwd) {
-    const r = spawnSync(process.execPath, [CLI, "."], { cwd, encoding: "utf8" });
+    const spacedCli = join(cwd, "a spaced tool.mjs");
+    copyFileSync(CLI, spacedCli);
+    const r = spawnSync(process.execPath, [spacedCli, "."], { cwd, encoding: "utf8" });
     return { rc: r.status, out: r.stdout ?? "", err: r.stderr ?? "" };
 }
 
@@ -171,11 +186,30 @@ test("the CLI exits 1 and names the drift, from a spaced path", () => {
 test("the CLI exits 2 on could-not-run, from a spaced path", () => {
     const { base, root } = spacedFixture(carriers("1.2.3"));
     try {
-        rmSync(join(root, "package.json"));
+        // From the INDEX, because that is where the version is read from now. Deleting the worktree
+        // copy is deliberately NOT could-not-run any more: the rail grades what would be committed.
+        execFileSync("git", ["-C", root, "rm", "--cached", "-q", "package.json"]);
         const { rc, out, err } = runCli(root);
         assert.equal(rc, 2, "a precondition failure is could-not-run, never a finding");
         assert.match(err, /could not run/);
         assert.equal(out, "");
+    } finally { rmSync(base, { recursive: true, force: true }); }
+});
+
+test("a STAGED version bump is graded against the staged prose, not the worktree's", () => {
+    // The half this rail first shipped open: carriers read from the index, the version read from the
+    // working tree. A staged bump with an unchanged worktree then graded new prose against the old
+    // version. Both sides now come from the index.
+    const { base, root } = spacedFixture(carriers("2.0.0"), "1.2.3");
+    try {
+        // Stage the bump AND the prose together — the shape of a real release commit.
+        writeFileSync(join(root, "package.json"), JSON.stringify({ name: "x", version: "2.0.0" }, null, 2));
+        execFileSync("git", ["-C", root, "add", "package.json"]);
+        // Now revert the worktree copy only. A worktree read would compare `2.0.0` prose to `1.2.3`.
+        writeFileSync(join(root, "package.json"), JSON.stringify({ name: "x", version: "1.2.3" }, null, 2));
+        const { rc, out } = runCli(root);
+        assert.equal(rc, 0, "staged prose and a staged version agree; the worktree is not what ships");
+        assert.match(out, /all read `2\.0\.0`/);
     } finally { rmSync(base, { recursive: true, force: true }); }
 });
 
