@@ -93,8 +93,22 @@ records how things were found. This is per *release* and records what a reader g
   measured. A check reading the served bytes would have reported the heading present and concluded the
   opposite of the truth.
 
-  _What is NOT established is why — cache, deliberate suppression for anonymous visitors, or a
-  linkage-rendering rule. Only the observable is recorded._
+  **The mechanism, measured after that paragraph was written and replacing its "not established".**
+  The anonymous repository page is served with **no package data at all** — its embedded payload
+  carries no package key, so there is nothing for the block to render from. This is not a cache, not a
+  hydration failure, and nothing about this package: it is public, repository-linked, and its own page
+  serves 200 anonymously. GitHub's package *listing* surfaces require authentication even for a public
+  package — `GET /orgs/{org}/packages?package_type=npm` answers **401 "Requires authentication"** — and
+  a package's own page is a separately servable public route, which is why that one is 200 while the
+  sidebar has nothing.
+
+  _**The population is narrower than "strangers", and the correction is the point.** What was measured
+  is **logged out entirely** — no GitHub session. Two populations remain unmeasured and are named
+  rather than assumed: a signed-in visitor who is not an organisation member, and a member. If the
+  block is populated from an authenticated source, both may see it, in which case the honest statement
+  is "absent for anonymous visitors" rather than "absent for strangers" — a normal property of GitHub
+  Packages, not a defect. The earlier wording claimed the wider population on evidence that only
+  covered the narrower one._
 
 ## 0.1.1 — 2026-08-18
 
