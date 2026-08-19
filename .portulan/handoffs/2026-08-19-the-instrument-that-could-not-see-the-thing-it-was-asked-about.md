@@ -1,7 +1,8 @@
 # Handoff — the instrument that could not see the thing it was asked about
 
-**Session:** 2026-08-19, closing the release arc that began the previous day. Verbatim scope: *"do the
-follow-up PR"*, then *"run the loop to empty then merge it"*. **No milestone row moves.**
+**Session:** 2026-08-19, closing the release arc that began the previous day.
+Verbatim scope: *"do the follow-up PR"*, then *"run the loop to empty then merge it"*.
+**No milestone row moves.**
 [#300](https://github.com/sleepy-panda-srl/portulan/pull/300), merged as `27b22e9` + `a2c0f91`.
 
 ## State
