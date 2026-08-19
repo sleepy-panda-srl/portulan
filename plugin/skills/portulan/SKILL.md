@@ -286,7 +286,7 @@ what it *enforces* is the thing an agent must not paper over:
   the migrations and repairs a workspace owes, in either residence; plus `doctor`, `compile`
   and `index`. What `init`
   and `new` emit is a **draft**: a human curates it, and `init`'s verify recipe exits 2 until they say
-  what green means for their repository. 
+  what green means for their repository.
 
 - **Where the workspace came from is part of the report.** In the repository, or resolved from a
   pointer — and where it was resolved, name the plugin and the **version**, because that install is
