@@ -887,8 +887,8 @@ describe("which tree the gate answers about (#220, second arm)", () => {
         // the degradation sentences would let any OTHER stderr — "cannot determine whether this session
         // did work", or a message not yet written — pass while the test still claimed to pin a silent
         // allow. The shape being recorded is *nothing is said*, so that is what is checked; if a future
-        // change makes this path speak, this case should go red, because the shape will have changed.
-        // Copilot.
+        // change makes this path speak, this case should go red, because the shape will have changed —
+        // which is the closure contract above doing its job rather than a nuisance. Copilot.
         assert.equal(stderr.trim(), "", `the hole is that nothing is said — got: ${stderr}`);
         assert.equal(reason, "", "no refusal text at all");
     });
