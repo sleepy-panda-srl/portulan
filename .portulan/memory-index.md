@@ -2,12 +2,13 @@
 
 > Generated from `memory/` by `node cli/index.mjs`. Do not edit by hand: it is regenerated
 > and byte-compared, so a hand-edit survives exactly until the next run.
-> 29 record(s) · budget 40 lines.
+> 30 record(s) · budget 40 lines.
 
 - [A branch syncs with main before it merges](memory/a-branch-syncs-with-main-before-it-merges.md) — rule
 - [A checker must refuse what it cannot check](memory/a-checker-must-refuse-what-it-cannot-check.md) — rule
 - [A checkers coverage is measured not named](memory/a-checkers-coverage-is-measured-not-named.md) — rule
 - [A doctrine promise belongs in the row it names](memory/a-doctrine-promise-belongs-in-the-row-it-names.md) — rule
+- [A gate that cannot reach the act is a report](memory/a-gate-that-cannot-reach-the-act-is-a-report.md) — rule
 - [A generated file must not point at what git cannot carry](memory/a-generated-file-must-not-point-at-what-git-cannot-carry.md) — rule
 - [A mandate nothing checks is already broken](memory/a-mandate-nothing-checks-is-already-broken.md) — rule
 - [A manifest field can validate and load nothing](memory/a-manifest-field-can-validate-and-load-nothing.md) — rule
