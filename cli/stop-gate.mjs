@@ -112,8 +112,20 @@ function resolveSessionTree(cwd, told = { root: REPO, workspace: WORKSPACE }) {
     if (!root) return fell(`the session's directory (${cwd}) yielded no repository root`);
 
     // Same repository? Worktrees share a common dir with their origin; a foreign clone does not.
+    // **`--path-format` needs git 2.31, so it is TRIED, not required.** Where it is missing the flag
+    // is fatal, and without a fallback this comparison would throw on every stop — sending a correct
+    // worktree down the degraded path with a stderr sentence, on an old git, forever. The arm would
+    // read as shipped and do nothing, which is the shape this repository has been bitten by before.
+    // The bare spelling answers too, but RELATIVELY at a repository root (measured on git 2.50.1:
+    // `.git` there, absolute from a subdirectory or a linked worktree), so it is resolved against the
+    // directory that was asked. Copilot, round 2.
     const commonDir = (dir) => {
-        const raw = git(dir, ["rev-parse", "--path-format=absolute", "--git-common-dir"]);
+        let raw;
+        try {
+            raw = git(dir, ["rev-parse", "--path-format=absolute", "--git-common-dir"]);
+        } catch {
+            raw = path.resolve(dir, git(dir, ["rev-parse", "--git-common-dir"]));
+        }
         try {
             return fs.realpathSync(raw);
         } catch {
