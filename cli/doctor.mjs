@@ -1837,7 +1837,7 @@ export async function inspect(workspaceDir, options = {}) {
                         // report exists to end.
                         report(
                             "packs",
-                            `\`${name}\` is SHADOWED — the tree also carries it at ${path.relative(dir, shadowed.dir)}, and that copy could not be read (${cause.message}), so what differs could not be compared`,
+                            `\`${name}\` is SHADOWED — the tree-derived root also carries it at ${path.relative(dir, shadowed.dir)}, and that copy could not be read (${cause.message}), so what differs could not be compared`,
                         );
                     }
                     if (other) {
@@ -1855,7 +1855,7 @@ export async function inspect(workspaceDir, options = {}) {
                         if (frag(manifest) !== frag(other)) differs.push("gate fragments that are not byte-identical");
                         report(
                             "packs",
-                            `\`${name}\` is SHADOWED — the installed copy answered and the tree also carries it at ` +
+                            `\`${name}\` is SHADOWED — the installed copy answered and the tree-derived root also carries it at ` +
                                 `${path.relative(dir, shadowed.dir)}; ${differs.length ? `they differ by ${differs.join(" and ")}` : "the two agree today"}. ` +
                                 "An unpinned `compile` reads the installed one while `verify/compile.sh` reads the tree — pin with `--pack-root packs` to emit what the rail checks",
                         );
