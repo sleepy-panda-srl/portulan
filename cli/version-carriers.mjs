@@ -195,4 +195,8 @@ function isMain() {
     }
 }
 
-if (isMain()) process.exit(main(process.argv.slice(2)));
+// `process.exitCode` rather than `process.exit`, which `cli/control-chars.mjs:540` settled for this
+// repository: exiting outright can truncate a pipe that has not drained. It matters more here than
+// stylistically — a truncated `ok` line IS exit 0 with no output, which is the precise shape of the
+// false green this file's entry guard was fixed for. The same defect, one door along.
+if (isMain()) process.exitCode = main(process.argv.slice(2));
