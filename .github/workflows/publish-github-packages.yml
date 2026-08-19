@@ -140,10 +140,15 @@ jobs:
           # here. `27b22e9` dropped the `exit 0` that used to follow this line, so the visibility
           # report below now runs on this path too — and that report is the one thing a re-run is
           # fired to see. "Nothing to do" was true while the exit stood and went false beneath it.
-          published=no
+          #
+          # The answer is carried in a flag rather than asked twice: `npm view` is a network round
+          # trip and it cannot change inside one run. `no`/`yes`, symmetric on purpose — the test
+          # below reads one of the two, so an asymmetric pair leaves a reader hunting for the
+          # comparison against the other word, and there is never going to be one.
+          already_published=no
           if npm view "$TARGET@$VERSION" version --registry=https://npm.pkg.github.com >/dev/null 2>&1; then
             echo "$TARGET@$VERSION is already on GitHub Packages — nothing to publish."
-            published=already
+            already_published=yes
           fi
 
           # `--access public` is REQUIRED, not decorative. npm defaults a scoped package to
@@ -161,7 +166,7 @@ jobs:
           # repository. Visibility on this registry is an org policy plus a per-package setting, both
           # UI-only. See the third cost in this file's header. The flag stays because it is required
           # on npmjs and free here.
-          if [ "$published" = "no" ]; then
+          if [ "$already_published" = "no" ]; then
             npm publish --access public --registry=https://npm.pkg.github.com
             echo "published $TARGET@$VERSION to GitHub Packages"
           fi
