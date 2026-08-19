@@ -846,6 +846,48 @@ describe("which tree the gate answers about (#220, second arm)", () => {
         assert.match(stderr, /different repository/, "and the gate must say why it ignored the cwd");
     });
 
+    test("THE KNOWN HOLE (#307) — a clean recorded sibling named in cwd silences a dirty told root; pinned, not endorsed", () => {
+        // **This records a gap. It does not bless one.**
+        //
+        // It is the DUAL of THE CRITERION above. Under an honest `cwd` this allow is exactly the
+        // per-session scoping #220 asked for: the session working in the sibling owes nothing, and the
+        // session that dirtied the told root still blocks on its own stops. The defect is only that
+        // `cwd` reports where a session ENDED, never where it worked — stated at `./stop-gate.mjs`'s
+        // `resolveSessionTree` docblock — and `cwd` is the one payload field a gated agent can move.
+        // The same-repository guard stops a FOREIGN tree answering; it does not stop steering within
+        // this repository, and the failure direction here is a SILENT allow.
+        //
+        // Pinned the way the degraded-path residue above is pinned: a recorded, guarded shape rather
+        // than an undocumented one, so it cannot drift in either direction unnoticed.
+        //
+        // **The closure contract, so a later reader does not mistake this for a wanted property:** when
+        // a mechanism closes #307, this case must be FLIPPED to expect a block — deliberately, citing
+        // #307 — never deleted, and never loosened into passing both ways.
+        const { told, session, stamp } = twoTrees({ toldCarriesHandoff: false, sessionDirty: false });
+        fs.appendFileSync(path.join(told, "f.txt"), "unrecorded work in the tree this hook governs\n");
+        fs.writeFileSync(path.join(session, ".portulan", "handoffs", `${stamp}-session.md`), "why\n");
+        git(session, ["add", "-A"]);
+        git(session, ["commit", "-m", "the sibling records its own day"]);
+
+        // Premises, measured — a rotten fixture would let this pass for the wrong reason.
+        assert.notEqual(git(told, ["status", "--porcelain"]).trim(), "", "premise: the told tree is dirty");
+        assert.ok(!fs.existsSync(path.join(told, ".portulan", "handoffs", `${stamp}-told.md`)), "premise: the told tree has no handoff today");
+        assert.equal(git(session, ["status", "--porcelain"]).trim(), "", "premise: the sibling is clean");
+        assert.ok(fs.existsSync(path.join(session, ".portulan", "handoffs", `${stamp}-session.md`)), "premise: the sibling carries today's handoff");
+
+        // **The control comes first, and it is what makes this pin the FLIP rather than an endpoint.**
+        // Without it the allow below could come from a broken fixture and the case could never fail for
+        // the right reason.
+        assert.equal(gate(told, "known-hole-control", {}).decision, "block",
+            "with no cwd the told tree answers and its unrecorded work is caught");
+
+        const { decision, reason, stderr } = gate(told, "known-hole", {}, { cwd: session });
+        assert.equal(decision, "allow", "naming the clean sibling silences it — this is the hole, recorded");
+        // The SILENCE is half the measured shape: no degradation is spoken, because nothing degraded.
+        assert.doesNotMatch(stderr, /different repository|not inside a git repository/, "and it says nothing");
+        assert.equal(reason, "", "no refusal text at all");
+    });
+
     test("a cwd that is not a repository degrades to the told tree and SAYS so", () => {
         const { told } = twoTrees({ toldCarriesHandoff: false });
         fs.appendFileSync(path.join(told, "f.txt"), "unrecorded\n");

@@ -89,6 +89,8 @@ const REPO = PROJECT;
  * recorded sibling worktree in `cwd` and be allowed — measured. That is narrower than the hole this
  * arm closes and is not closable from here: the gate is told where the session ENDED, never where it
  * worked, and a `cwd` inside this repository is exactly the datum this arm exists to trust.
+ * **Pinned** — as a recorded gap, not a wanted property — by *THE KNOWN HOLE (#307)* in
+ * `./stop-gate.test.mjs`, whose comment carries the contract for closing it.
  *
  * Returns `{ root, workspace, origin, note }`. `note` is a sentence to print when the datum was
  * offered and could not be used; it is **null when `cwd` is simply absent**, because a host that
