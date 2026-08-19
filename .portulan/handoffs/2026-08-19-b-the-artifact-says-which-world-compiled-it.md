@@ -79,6 +79,16 @@ standing rather than turning a drift report into a crash.
   right, and the CLAIM narrowed where it was not: reformatting a `pack.json` changes nothing about
   what the pack contributes, so the clause now reads *differ once parsed*.
 
+- **The containment test, and a cycle reached for while fixing it.** `recordedOrigin` first spelled
+  *inside the repository* as `!rel.startsWith("..")`, which calls a directory literally named `..foo`
+  outside — the class `cli/index.mjs`'s `isInside` docblock records as the **ninth fail-open** in this
+  scaffolding *and the first written by the change that cites the class*. This was the second. Reaching
+  for that export then closed an **import cycle** (`index.mjs` already imports from `compile.mjs`), and
+  this repository has had a cycle exit **13 in silence** before. So the predicate moved to a leaf
+  module, `cli/inside.mjs`, re-exported from `index.mjs` — one implementation, no new edges. The first
+  attempt used a bare `export … from`, which re-exports without binding the name locally; 104 tests
+  said so immediately, which is the suite doing its job.
+
 ## Instrument
 
 Sibling sweep, as it ran (BRE alternation — a `-E`-less bare-pipe grep returns 0):

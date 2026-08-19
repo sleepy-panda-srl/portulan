@@ -45,7 +45,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 // Host plugin-cache discovery (#123). The record reader, the config directory and the version refusal
 // all live there, once — see that file's pack-root section for why this half arrived separately.
 import { AUTO, discoverPackRoots, namedWithAuto, resolutionRoots } from "./discover.mjs";
-import { isInside } from "./index.mjs";
+import { isInside } from "./inside.mjs";
 
 /** Raised when `compile` cannot run, or cannot compile honestly. Always exit 2, never 1. */
 export class CompileError extends Error {
