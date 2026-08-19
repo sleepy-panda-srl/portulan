@@ -12,9 +12,13 @@ deliberately unlike [customer zero](../.portulan/): two products instead of one,
 alongside a static site, affordances that resolve down the cascade, and a rule whose incident it is not
 allowed to publish.
 
-_One field of this demo is **not** fiction: the `packs` array. `doctor` resolves those names
-against this repository's own `packs/` — **under a named or discovered root**, which the bare
-`doctor examples` further down this page does not pass, and so resolves neither._
+_One field of this demo is **not** fiction: the `packs` array — those names resolve against real
+packs, and `doctor` needs a **root** to look in. `node cli/doctor.mjs examples --pack-root packs`
+resolves both from this repository's own `packs/`. The bare `doctor examples` further down this page
+names no root, so what it resolves depends on what the host has installed: it reads the plugin cache
+unasked, and on a machine carrying the checkpoints pack it resolves that one and reports the other as
+not there. **That difference is the lesson** — a resolution is a fact about a root, so the root is
+part of the claim._
 
 ## Read it in this order
 
