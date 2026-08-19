@@ -1843,7 +1843,13 @@ export async function inspect(workspaceDir, options = {}) {
                     if (other) {
                         const mineV = manifest?.portulan?.version ?? "no version";
                         const treeV = other?.portulan?.version ?? "no version";
-                        const frag = (m) => JSON.stringify((m?.contributes?.gates ?? []).map((g) => [g.id, g.tier, g.action]));
+                        // **The WHOLE fragment, not a projection of it** — the message says the
+                        // fragments are not byte-identical, so that is what must be compared. The first
+                        // draft compared `[id, tier, action]` and claimed byte-identity, which would
+                        // read "the two agree today" over a copy differing in `reason` or any field a
+                        // later Pack Definition adds. `composeFragments` pushes the whole fragment, so
+                        // any difference is one the compiled policy can carry. Copilot.
+                        const frag = (m) => JSON.stringify(m?.contributes?.gates ?? []);
                         const differs = [];
                         if (mineV !== treeV) differs.push(`version ${mineV} against the tree's ${treeV}`);
                         if (frag(manifest) !== frag(other)) differs.push("gate fragments that are not byte-identical");

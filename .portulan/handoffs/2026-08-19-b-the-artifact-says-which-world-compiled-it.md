@@ -67,6 +67,14 @@ standing rather than turning a drift report into a crash.
   one. The pin remains a habit, now with a rail that names it when the habit lapses.
 - The shadow report fires where discovery answered. A pack present only in the tree, or only in the
   cache, is not a shadow and is not reported as one.
+- **Two sentences that were false when first written, both caught in review.** `recordedOrigin`
+  trusted the `derived` TAG instead of testing the path, so a manifest whose `tree` points outward
+  (`tree: "../../elsewhere"` → `/elsewhere/packs`, measured) recorded `outside-tree` work as `tree`;
+  a tag says where a root came from, and only the path answers the question this field exists to ask.
+  And the shadow report promised *byte-identical* fragments while comparing a projection of
+  `[id, tier, action]` — so two copies differing in `reason`, or in any field a later Pack Definition
+  adds, would have been reported as agreeing. The comparison now matches the sentence rather than the
+  sentence being weakened to match the comparison.
 
 ## Instrument
 

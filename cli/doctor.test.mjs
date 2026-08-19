@@ -2008,9 +2008,20 @@ describe("`--pack-root auto` unions the discovered roots with the tree-derived o
         assert.match(packs, /the tree also carries it at/, "and where the shadowed copy lives");
         assert.match(packs, /version .* against the tree's 9\.9\.9/, "the version half of the difference");
         assert.match(packs, /gate fragments that are not byte-identical/, "and the FRAGMENT half — the clause the default fixture cannot reach");
+        assert.doesNotMatch(packs, /could not be compared/, "both copies were readable");
         assert.match(packs, /pin with `--pack-root packs`/, "and what to do about it");
         assert.equal(severities(checks(found.findings, "packs"), "fail").length, 0,
             "a report about the machine, never a verdict about the repository");
+    });
+
+    test("fragments differing OUTSIDE id/tier/action still count as differing", () => {
+        // The message promises byte-identity, so a projection would make it false: two copies whose
+        // `reason` differs would be reported as agreeing. `composeFragments` carries the whole
+        // fragment, so the difference is one the compiled policy can express.
+        const a = { contributes: { gates: [{ id: "x", tier: "gated", action: { shell: "s" }, reason: "one" }] } };
+        const b = { contributes: { gates: [{ id: "x", tier: "gated", action: { shell: "s" }, reason: "another" }] } };
+        assert.notEqual(JSON.stringify(a.contributes.gates), JSON.stringify(b.contributes.gates),
+            "the comparison the report uses must see this");
     });
 
     test("a shadowed copy that cannot be read is reported as could-not-compare, not as silence", async () => {

@@ -1666,10 +1666,14 @@ export function recordedOrigin(root, plan, workspaceRoot) {
     const same = (a, b) => path.resolve(a) === path.resolve(b);
     const tagged = (plan?.origins ?? []).find((o) => same(o.root, root));
     if (tagged?.origin === "discovered") return "discovered";
-    if (tagged?.origin === "derived") return "tree";
-    // `named`: the tree only if it points inside the repository this workspace belongs to — INCLUDING
-    // when it IS that repository, which the first draft called `outside-tree` on a `rel` of `""`. By
-    // this function's own standard that was the field's first lie.
+    // **`derived` and `named` take the SAME inside-the-repository test**, and the first draft trusted
+    // `derived` on its tag alone. It is derived from the manifest's `tree`, which is a string a human
+    // edits: `tree: "../../elsewhere"` resolves a derived root of `/elsewhere/packs` — measured — and
+    // that would have been recorded as `tree`. A tag says where a root CAME FROM; only the path says
+    // whether it is in this repository, and this field's whole job is the second question. Copilot.
+    //
+    // Inside INCLUDES being the repository itself, which the first draft called `outside-tree` on a
+    // `rel` of `""`. By this function's own standard that was the field's first lie.
     //
     // **Both sides resolved through `realpathSync`**, because a lexical comparison makes two spellings
     // of one directory disagree: `--workspace <alias> --pack-root <realpath>` recorded `outside-tree`
