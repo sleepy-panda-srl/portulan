@@ -66,6 +66,12 @@ printf 'compile: checking .claude/settings.json and .portulan/compile/github-rul
 #
 # It is the same argument this file already makes one noun over — the workspaces below are NAMED
 # rather than discovered, so adding one is a visible edit here rather than a silent omission.
+#
+# **The EMIT side must be pinned the same way, and nothing here can force that** — this recipe checks,
+# it never writes. Since #264 the artifact records which world compiled it (`$portulan.packs`), so an
+# unpinned regeneration shows up in the diff and the RED below names the origin difference rather than
+# saying only "Recompile" — which, typed bare on a machine with the plugin installed, is the act that
+# produced the drift. The spelling to emit with is in `../compile/README.md`.
 # ---------------------------------------------------------------------------------------------
 node cli/compile.mjs --workspace . --pack-root packs --check
 status=$?

@@ -1815,6 +1815,47 @@ export async function inspect(workspaceDir, options = {}) {
                 "packs",
                 `\`${name}\` resolves${from} to ${path.relative(dir, found.dir)} and validates against Pack Definition ${manifest.portulan.pack} — contributes ${parts.length ? parts.join(", ") : "nothing"}`,
             );
+
+            // **A SHADOWED pack is reported, and the report says WHAT DIFFERS** (#264). Resolution is
+            // first-match-wins and discovered roots come first, so where the host carries a copy of a
+            // pack the tree also carries, the installed one answers and nothing said so. Silence about
+            // the shadowed copy is the part that makes the failure unreproducible: the compiled artifact
+            // moves, the rail reds, and the deciding input is a directory outside the repository.
+            //
+            // A REPORT, never a verdict — an installed pack shadowing a tree copy is a fact about the
+            // machine, and this tool must not turn a fact about the machine into a verdict about the
+            // repository (the boundary this file already states for discovered roots).
+            if (origin === "discovered") {
+                const shadowed = resolvePack(name, roots.filter((r) => originOf.get(r) !== "discovered"));
+                if (shadowed.dir) {
+                    let other = null;
+                    try {
+                        other = JSON.parse(fs.readFileSync(shadowed.manifest, "utf8"));
+                    } catch (cause) {
+                        // Could-not-compare, in so many words. A shadow we cannot read is not a shadow
+                        // we can call harmless, and saying nothing here would be the silence this whole
+                        // report exists to end.
+                        report(
+                            "packs",
+                            `\`${name}\` is SHADOWED — the tree also carries it at ${path.relative(dir, shadowed.dir)}, and that copy could not be read (${cause.message}), so what differs could not be compared`,
+                        );
+                    }
+                    if (other) {
+                        const mineV = manifest?.portulan?.version ?? "no version";
+                        const treeV = other?.portulan?.version ?? "no version";
+                        const frag = (m) => JSON.stringify((m?.contributes?.gates ?? []).map((g) => [g.id, g.tier, g.action]));
+                        const differs = [];
+                        if (mineV !== treeV) differs.push(`version ${mineV} against the tree's ${treeV}`);
+                        if (frag(manifest) !== frag(other)) differs.push("gate fragments that are not byte-identical");
+                        report(
+                            "packs",
+                            `\`${name}\` is SHADOWED — the installed copy answered and the tree also carries it at ` +
+                                `${path.relative(dir, shadowed.dir)}; ${differs.length ? `they differ by ${differs.join(" and ")}` : "the two agree today"}. ` +
+                                "An unpinned `compile` reads the installed one while `verify/compile.sh` reads the tree — pin with `--pack-root packs` to emit what the rail checks",
+                        );
+                    }
+                }
+            }
         }
     }
 

@@ -43,6 +43,19 @@ records how things were found. This is per *release* and records what a reader g
 
 ### Changed
 
+- **The compiled artifact records which world compiled it.** Pack resolution is discovered-first and
+  first-match-wins, so an unpinned `compile` on a machine with the plugin installed reads the host's
+  plugin cache while `verify/compile.sh` reads the tree — and the drift RED named a difference no
+  reader could find in the repository, because the deciding input was a directory outside it. On this
+  repository's own host the two had already diverged in substance: the cached pack carried a
+  `git commit --no-verify` matcher the tree had deliberately removed. `$portulan.packs` now records,
+  per declared pack, the **origin** it resolved from (`tree`, `discovered`, `outside-tree`) and the
+  version its manifest declares — origins, never root paths, since an absolute path under somebody's
+  home directory would make a tracked artifact machine-dependent and red the recipe everywhere. The
+  drift RED names the origin difference and gives the pinned spelling, so its remedy no longer prescribes
+  the act that caused it, and `doctor` reports a shadowed pack together with **what differs**.
+  ([#264](https://github.com/sleepy-panda-srl/portulan/issues/264))
+
 - **The Stop-gate asks its questions about the tree the session actually worked in.** Its root came
   from `CLAUDE_PROJECT_DIR`, which names the repository the hook governs — not always the working tree
   the session used, since a session in a git worktree has both. Where the told tree was clean and the
