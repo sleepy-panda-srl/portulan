@@ -457,7 +457,11 @@ function git(cwd, args) {
  */
 function gate(project, sessionId, env = {}, payload = {}) {
     const run = spawnSync("node", [RUNNER], {
-        input: JSON.stringify({ session_id: sessionId, ...payload }),
+        // `...payload` FIRST, so the explicit `sessionId` argument always wins. Spread last, a caller
+        // passing `{ session_id }` in the payload would silently override it, and these tests key
+        // their counters off that id — a future case would run under someone else's counter and the
+        // cap arithmetic it was written to check would be measuring the wrong file. Copilot.
+        input: JSON.stringify({ ...payload, session_id: sessionId }),
         env: { ...process.env, CLAUDE_PROJECT_DIR: project, ...env },
         encoding: "utf8",
     });
@@ -721,6 +725,11 @@ describe("the handoff question names the tree it answered about (#220, second ha
 
 /** ONE repository, TWO working trees — the 2026-08-10 incident's actual shape. */
 function twoTrees({ toldCarriesHandoff = true, sessionDirty = true } = {}) {
+    // **ONE stamp for the whole fixture**, for the reason the runner itself was corrected on: four
+    // `today()` calls across a build that spans local midnight create one dated filename and then
+    // remove — or assert — another, and the case fails for a reason that has nothing to do with the
+    // property under test. Returned, so a test naming the same day names this one. Copilot.
+    const stamp = today();
     const root = scratch();
     const origin = path.join(root, "origin.git");
     const told = path.join(root, "told");
@@ -733,7 +742,7 @@ function twoTrees({ toldCarriesHandoff = true, sessionDirty = true } = {}) {
     fs.writeFileSync(path.join(told, "f.txt"), "base\n");
     // COMMITTED, so the told tree is genuinely clean — an untracked handoff would make
     // `git status --porcelain` non-empty and `didWork()` true, which is not the shape under test.
-    if (toldCarriesHandoff) fs.writeFileSync(path.join(told, ".portulan", "handoffs", `${today()}-told.md`), "why\n");
+    if (toldCarriesHandoff) fs.writeFileSync(path.join(told, ".portulan", "handoffs", `${stamp}-told.md`), "why\n");
     git(told, ["add", "-A"]);
     git(told, ["commit", "-m", "base"]);
     git(told, ["branch", "-M", "main"]);
@@ -744,21 +753,21 @@ function twoTrees({ toldCarriesHandoff = true, sessionDirty = true } = {}) {
     // reason — the dirt below is the unrecorded work, which is the thing under test.
     git(told, ["worktree", "add", "-q", session, "-b", "session-branch"]);
     if (toldCarriesHandoff) {
-        git(session, ["rm", "-q", path.join(".portulan", "handoffs", `${today()}-told.md`)]);
+        git(session, ["rm", "-q", path.join(".portulan", "handoffs", `${stamp}-told.md`)]);
         git(session, ["commit", "-m", "this tree carries no handoff for today"]);
     }
     fs.mkdirSync(path.join(session, ".portulan", "handoffs"), { recursive: true });
     if (sessionDirty) fs.appendFileSync(path.join(session, "f.txt"), "work nobody has recorded\n");
-    return { told, session };
+    return { told, session, stamp };
 }
 
 describe("which tree the gate answers about (#220, second arm)", () => {
     test("THE CRITERION — work in the session's tree is not allowed to pass in silence", () => {
-        const { told, session } = twoTrees();
+        const { told, session, stamp } = twoTrees();
         // Premises, measured: the told tree is clean and fully recorded, so the OLD gate saw nothing.
         assert.equal(git(told, ["status", "--porcelain"]).trim(), "", "premise: told tree clean");
         assert.notEqual(git(session, ["status", "--porcelain"]).trim(), "", "premise: session tree dirty");
-        assert.ok(fs.existsSync(path.join(told, ".portulan", "handoffs", `${today()}-told.md`)), "premise: told carries today's handoff");
+        assert.ok(fs.existsSync(path.join(told, ".portulan", "handoffs", `${stamp}-told.md`)), "premise: told carries today's handoff");
 
         const { decision, reason } = gate(told, "criterion", {}, { cwd: session });
         assert.equal(decision, "block", "a session with unrecorded work in its own tree owes a handoff");
@@ -767,8 +776,8 @@ describe("which tree the gate answers about (#220, second arm)", () => {
     });
 
     test("a session tree that is clean and recorded still allows", () => {
-        const { told, session } = twoTrees({ sessionDirty: false });
-        fs.writeFileSync(path.join(session, ".portulan", "handoffs", `${today()}-session.md`), "why\n");
+        const { told, session, stamp } = twoTrees({ sessionDirty: false });
+        fs.writeFileSync(path.join(session, ".portulan", "handoffs", `${stamp}-session.md`), "why\n");
         git(session, ["add", "-A"]);
         git(session, ["commit", "-m", "its own handoff"]);
         assert.equal(git(session, ["status", "--porcelain"]).trim(), "", "premise: the session tree is clean");
