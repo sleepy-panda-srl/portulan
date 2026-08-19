@@ -7,7 +7,7 @@ Verbatim scope: *"do the follow-up PR"*, then *"run the loop to empty then merge
 
 ## State
 
-`main` = `a2c0f91`. Suite **1725**, fourteen recipes green on the merged tree. The release arc is
+`main` = `a2c0f91`. Suite **1725/1725**, fourteen recipes green on the merged tree. The release arc is
 closed: `v0.1.0` and `v0.1.1` tagged and released, npmjs at **0.1.1**, GitHub Packages carrying
 `@sleepy-panda-srl/portulan@0.1.1` and now **public**.
 
