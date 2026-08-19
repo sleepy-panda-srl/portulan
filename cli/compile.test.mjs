@@ -2444,16 +2444,38 @@ describe("the artifact records what compiled it (#264)", () => {
     });
 
     test("pinned and bare emit BYTE-IDENTICAL artifacts on a cache-less host", () => {
-        // The control the session-open checkpoint named, at the level that actually protects the rail:
-        // not `recordedOrigin` in isolation, but the emitted BYTES. A later field recorded outside that
-        // function — `plan.source`, a root path — would break byte-identity for two correct spellings of
-        // one world and this unit-level pair would not notice.
-        const parsed = parse(policy());
-        const pinnedProv = [{ pack: "a/b", origin: "tree", version: "1.0.0" }];
-        const [pinned] = backends(parsed, { source: ".portulan/gates.json", packProvenance: pinnedProv });
-        const [bare] = backends(parsed, { source: ".portulan/gates.json", packProvenance: pinnedProv });
-        assert.equal(pinned.artifact.text, bare.artifact.text,
-            "a pinned run and a bare run on a cache-less host describe the same world and must emit the same bytes");
+        // **The two runs must actually DIFFER in how they resolve**, or this catches nondeterminism
+        // and nothing else. A first version passed identical options to both calls and claimed to be
+        // the pinned-vs-bare control — the same shape as a test that cannot fail. Copilot.
+        //
+        // Pinned names the root (`--pack-root packs`, tagged `named`); bare derives it from the
+        // manifest's `tree` (tagged `derived`). Same directory, two documented-correct spellings. On a
+        // cache-less host they describe one world and must emit one artifact, byte for byte — if they
+        // do not, `verify/compile.sh` reds on a tree nothing is wrong with.
+        const dir = workspace();
+        const manifestPath = path.join(dir, ".portulan", "workspace.json");
+        const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
+        manifest.packs = ["rituals/checkpoints"];
+        fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2));
+        packAt(path.join(dir, "packs"), "rituals", "checkpoints", null);
+
+        const emit = (options) => {
+            const { contributions, plan } = packContributions(dir, ".portulan", options);
+            assert.equal(contributions.length, 1, "the pack must resolve, or this compares two empty sets");
+            const [claude] = backends(parse(policy()), {
+                source: ".portulan/gates.json",
+                root: dir,
+                packProvenance: contributions,
+            });
+            return { text: claude.artifact.text, tag: plan.origins[0].origin };
+        };
+        const pinned = emit({ named: [path.join(dir, "packs")] });
+        const bare = emit({ discovery: () => ({ ok: true, roots: [], why: "nothing installed" }) });
+
+        assert.equal(pinned.tag, "named", "premise: the pinned run resolves via a NAMED root");
+        assert.equal(bare.tag, "derived", "premise: the bare run resolves via a DERIVED root");
+        assert.equal(pinned.text, bare.text,
+            "two correct spellings of one world must emit one artifact — otherwise the rail reds on a clean tree");
     });
 
     test("a named root that IS the repository root is the tree, not outside it", () => {
