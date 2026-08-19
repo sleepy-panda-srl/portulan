@@ -24,6 +24,38 @@
 | [`stop.mjs`](../../cli/stop-gate.mjs) | `Stop` runner. Runs the workspace's default verify recipe and the session-end handoff check, and blocks the ending if either is unmet. |
 | [`github-ruleset.json`](github-ruleset.json) | **Generated.** An importable GitHub repository ruleset — the platform floor as data. Nothing here applies it; see below. |
 
+## Regenerating this: pin the root, or the artifact is about another world
+
+**Emit with the root the rail checks:**
+
+```
+node cli/compile.mjs --workspace . --pack-root packs
+```
+
+Pack resolution is discovered-first and first-match-wins, so on a machine with the plugin installed a
+**bare** `compile` reads the host's plugin cache while [`../verify/compile.sh`](../verify/compile.sh)
+reads the tree. Nothing forces the command that *emits* the artifact to use the root the command that
+*checks* it uses; the pin is that force, applied by hand.
+
+Since [#264](https://github.com/sleepy-panda-srl/portulan/issues/264) the artifact says which world
+compiled it. `$portulan.packs` records, per declared pack, the **origin** it resolved from (`tree`,
+`discovered`, or `outside-tree`) and the version its manifest declares. So an emit from a shadowed
+cache differs from a pinned one **in the diff** rather than only in an exit code, and the drift RED
+names the difference instead of prescribing "Recompile" — which, typed bare, is the act that caused it.
+
+**Origins are recorded, root PATHS are not, and that is deliberate.** A discovered root is an absolute
+path under somebody's home directory; recording it would make this tracked artifact machine-dependent
+and red the recipe for every developer and CI — trading a silent hazard for a permanent false one. The
+resolver's three tags are collapsed to two for the same reason: the pinned rail spells its root
+(`named`) while a bare run derives the same directory (`derived`), and two correct spellings of one
+world must emit identical bytes.
+
+**One honest limit: only the Claude Code artifact carries this.** `github-ruleset.json` emits to a
+fixed external schema with nowhere to put a `$portulan` block — its provenance is the single line it
+can carry, in `name`. Both backends compile from one root plan per run, so the recorded origins
+describe the ruleset's inputs too; they are simply not readable in its file. `doctor` reports a
+shadowed pack for the workspace as a whole, which is the surface that covers both.
+
 ## Two layers, and only one of them is the gate
 
 Every gate is emitted twice — as a `permissions` rule and as a hook. That is not redundancy for its

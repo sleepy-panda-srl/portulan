@@ -2,6 +2,18 @@
   "$portulan": {
     "generated": "cli/compile.mjs",
     "source": ".portulan/gates.json",
+    "packs": [
+      {
+        "pack": "rituals/checkpoints",
+        "origin": "tree",
+        "version": "0.2.1"
+      },
+      {
+        "pack": "tools/github",
+        "origin": "tree",
+        "version": "0.1.0"
+      }
+    ],
     "warning": "Generated file. Edit .portulan/gates.json and recompile; `verify/compile.sh` fails on drift."
   },
   "permissions": {

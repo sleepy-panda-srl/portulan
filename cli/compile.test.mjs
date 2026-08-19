@@ -46,6 +46,7 @@ import {
     FILE_WRITERS,
     IN_PLACE_EDITORS,
     resolvePack,
+    recordedOrigin,
     packRoots,
     packContributions,
     composeFragments,
@@ -2374,5 +2375,157 @@ describe("--help", () => {
         assert.equal(code, 0);
         assert.match(out.join(""), /^portulan compile — compile a workspace's gate policy into host enforcement/);
         assert.match(out.join(""), /Exit codes: 0 succeeded/);
+    });
+});
+
+
+// ===========================================================================================
+// What compiled this — the artifact records the world it was compiled from (#264)
+// ===========================================================================================
+//
+// Pack resolution is discovered-first and first-match-wins, so an UNPINNED `compile` on a machine
+// with the plugin installed reads the host cache while `verify/compile.sh` reads the tree. Until
+// this, a drift RED named a difference no reader could find in the repository, because the deciding
+// input was a directory outside it — and the remedy it prescribed, "Recompile", is the very unpinned
+// act that caused it.
+
+describe("the artifact records what compiled it (#264)", () => {
+    const PLAN = (origins) => ({ origins });
+
+    test("the resolver's THREE tags collapse to two, or two correct spellings disagree", () => {
+        // This is the control that stops the feature becoming worse than the hole. The pinned rail
+        // spells its root (`named`); a bare run derives the same directory (`derived`). Recorded raw,
+        // those emit different bytes for an identical world and `verify/compile.sh` reds on a tree
+        // nothing is wrong with — a per-machine false red.
+        const named = PLAN([{ root: "/repo/packs", origin: "named" }]);
+        const derived = PLAN([{ root: "/repo/packs", origin: "derived" }]);
+        assert.equal(recordedOrigin("/repo/packs", named, "/repo"), "tree");
+        assert.equal(recordedOrigin("/repo/packs", derived, "/repo"), "tree",
+            "the pinned rail and a bare run must record the same world identically");
+    });
+
+    test("a discovered root is recorded as discovered — that is the fact worth keeping", () => {
+        const plan = PLAN([{ root: "/cache/p", origin: "discovered" }, { root: "/repo/packs", origin: "derived" }]);
+        assert.equal(recordedOrigin("/cache/p", plan, "/repo"), "discovered");
+    });
+
+    test("a NAMED root outside the repository is not called `tree`", () => {
+        // Flattening it would be this field's first lie: `--pack-root /elsewhere` is not the tree.
+        const plan = PLAN([{ root: "/elsewhere/x", origin: "named" }]);
+        assert.equal(recordedOrigin("/elsewhere/x", plan, "/repo"), "outside-tree");
+    });
+
+    test("the artifact carries origin and version, and NEVER a root path", () => {
+        // A discovered root is an absolute path under somebody's home directory. Recording it would
+        // make a tracked artifact machine-dependent and red the recipe everywhere — trading a silent
+        // hazard for a permanent false one.
+        const [claude] = backends(parse(policy()), {
+            source: ".portulan/gates.json",
+            packProvenance: [
+                { pack: "rituals/checkpoints", origin: "discovered", version: "0.2.0" },
+                { pack: "tools/github", origin: "tree", version: "0.1.0" },
+            ],
+        });
+        const header = JSON.parse(claude.artifact.text).$portulan;
+        assert.deepEqual(header.packs, [
+            { pack: "rituals/checkpoints", origin: "discovered", version: "0.2.0" },
+            { pack: "tools/github", origin: "tree", version: "0.1.0" },
+        ]);
+        assert.doesNotMatch(claude.artifact.text, /\/Users\/|\/home\/|plugins\/cache/,
+            "no absolute root path may reach the artifact");
+    });
+
+    test("a pack that declares no version records that, rather than a blank", () => {
+        const [claude] = backends(parse(policy()), {
+            source: ".portulan/gates.json",
+            packProvenance: [{ pack: "a/b", origin: "tree", version: null }],
+        });
+        assert.deepEqual(JSON.parse(claude.artifact.text).$portulan.packs, [{ pack: "a/b", origin: "tree", version: null }]);
+    });
+
+    test("pinned and bare emit BYTE-IDENTICAL artifacts on a cache-less host", () => {
+        // The control the session-open checkpoint named, at the level that actually protects the rail:
+        // not `recordedOrigin` in isolation, but the emitted BYTES. A later field recorded outside that
+        // function — `plan.source`, a root path — would break byte-identity for two correct spellings of
+        // one world and this unit-level pair would not notice.
+        const parsed = parse(policy());
+        const pinnedProv = [{ pack: "a/b", origin: "tree", version: "1.0.0" }];
+        const [pinned] = backends(parsed, { source: ".portulan/gates.json", packProvenance: pinnedProv });
+        const [bare] = backends(parsed, { source: ".portulan/gates.json", packProvenance: pinnedProv });
+        assert.equal(pinned.artifact.text, bare.artifact.text,
+            "a pinned run and a bare run on a cache-less host describe the same world and must emit the same bytes");
+    });
+
+    test("a named root that IS the repository root is the tree, not outside it", () => {
+        const plan = { origins: [{ root: "/repo", origin: "named" }] };
+        assert.equal(recordedOrigin("/repo", plan, "/repo"), "tree",
+            "`rel === \"\"` is the repository itself; calling it outside-tree was this field's first lie");
+    });
+
+    test("a workspace with no packs emits the header it always emitted", () => {
+        // Byte-identity for the commonest case: nothing to record must add nothing.
+        const [withNone] = backends(parse(policy()), { source: ".portulan/gates.json" });
+        assert.equal("packs" in JSON.parse(withNone.artifact.text).$portulan, false);
+    });
+});
+
+
+describe("the drift RED names the origin difference (#264)", () => {
+    const artifactWith = (packs) => JSON.stringify({
+        $portulan: { generated: "cli/compile.mjs", source: ".portulan/gates.json", packs, warning: "w" },
+        permissions: { deny: [], ask: [], allow: [] },
+    }, null, 2);
+
+    /** A workspace that DECLARES a pack, so the recompiled side records provenance to compare against. */
+    const withAPack = () => {
+        const dir = workspace();
+        const manifestPath = path.join(dir, ".portulan", "workspace.json");
+        const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
+        manifest.packs = ["rituals/checkpoints"];
+        fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2));
+        packAt(path.join(dir, "packs"), "rituals", "checkpoints", null);
+        return dir;
+    };
+
+    /** Runs `--check` against an artifact planted on disk, and returns everything it said. */
+    const checkAgainst = (onDisk, dir = workspace()) => {
+        fs.mkdirSync(path.join(dir, ".claude"), { recursive: true });
+        fs.writeFileSync(path.join(dir, ".claude", "settings.json"), onDisk);
+        // `run` writes to `process.stdout` directly — there is no injectable sink — so this captures
+        // it the only way available, and restores it even when the call throws.
+        let out = "";
+        const real = process.stdout.write.bind(process.stdout);
+        process.stdout.write = (chunk) => { out += chunk; return true; };
+        let code;
+        try {
+            code = run(["--check", "--workspace", dir]);
+        } finally {
+            process.stdout.write = real;
+        }
+        return { code, out };
+    };
+
+    test("a drift whose origins differ SAYS so, and gives the pinned spelling", () => {
+        // Without this the sentence can regress to the pre-#264 "Recompile." — the remedy that, typed
+        // bare, is the act that caused the drift — with every other test still green. The workspace must
+        // DECLARE a pack: the why-block compares two worlds, and a pack present in only one of them
+        // falls back to the plain RED by design.
+        const { code, out } = checkAgainst(
+            artifactWith([{ pack: "rituals/checkpoints", origin: "discovered", version: "0.2.0" }]),
+            withAPack(),
+        );
+        assert.equal(code, 1, "it is still a drift");
+        assert.match(out, /compiled from the discovered 0\.2\.0 copy/, "the world it was compiled from");
+        assert.match(out, /--pack-root packs/, "and the spelling that does not reproduce the drift");
+    });
+
+    test("an artifact this compiler cannot parse leaves the plain RED standing", () => {
+        // The artifact on disk is a file a human may have edited. A drift report that crashes on one is
+        // worse than a drift report that says less.
+        for (const hostile of ["{ not json", JSON.stringify({ no: "header" }), JSON.stringify({ $portulan: "a string" }), JSON.stringify({ $portulan: { packs: "not an array" } })]) {
+            const { code, out } = checkAgainst(hostile);
+            assert.equal(code, 1, `still a drift: ${hostile.slice(0, 24)}`);
+            assert.match(out, /has drifted from/, "and still says so");
+        }
     });
 });

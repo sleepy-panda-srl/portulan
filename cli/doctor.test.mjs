@@ -1981,6 +1981,53 @@ describe("`--pack-root auto` unions the discovered roots with the tree-derived o
         return dir;
     };
 
+    test("a SHADOWED pack is reported, and the report says what differs (#264)", async () => {
+        // The cache and the tree both carry `rituals/checkpoints`; discovered wins. Reporting only
+        // *that* a shadow exists would not retire #264 — silence about the shadowed COPY is the part
+        // that makes the drift unreproducible, so both halves of the difference must be named.
+        const repo = scratch();
+        packAt(path.join(repo, "packs"), "rituals/checkpoints", "the tree's own copy");
+        const treeManifest = path.join(repo, "packs", "rituals", "checkpoints", "pack.json");
+        const t = JSON.parse(fs.readFileSync(treeManifest, "utf8"));
+        t.portulan.version = "9.9.9";
+        // The fragments must DIFFER too, or the second half of the report has nothing to find and the
+        // assertion below passes on a fixture that cannot exercise it. `packAt` writes `contributes: {}`
+        // into both copies by default, which is exactly that trap.
+        t.contributes = { gates: [{ id: "only-in-the-tree", tier: "prohibited", action: { shell: "git push --mirror" }, reason: "tree only" }] };
+        fs.writeFileSync(treeManifest, JSON.stringify(t, null, 2));
+
+        const host = hostCarrying((packs) => packAt(packs, "rituals/checkpoints", "the installed copy"));
+        const m = wellFormed();
+        m.packs = ["rituals/checkpoints"];
+        m.tree = "../";
+        const dir = tree(path.join(repo, ".portulan"), { ...minimalFiles, "workspace.json": JSON.stringify(m) });
+
+        const found = await inspect(dir, { schema: SCHEMA, ...host });
+        const packs = text(checks(found.findings, "packs"));
+        assert.match(packs, /is SHADOWED/, "the shadow itself");
+        assert.match(packs, /the tree also carries it at/, "and where the shadowed copy lives");
+        assert.match(packs, /version .* against the tree's 9\.9\.9/, "the version half of the difference");
+        assert.match(packs, /gate fragments that are not byte-identical/, "and the FRAGMENT half — the clause the default fixture cannot reach");
+        assert.match(packs, /pin with `--pack-root packs`/, "and what to do about it");
+        assert.equal(severities(checks(found.findings, "packs"), "fail").length, 0,
+            "a report about the machine, never a verdict about the repository");
+    });
+
+    test("a shadowed copy that cannot be read is reported as could-not-compare, not as silence", async () => {
+        const repo = scratch();
+        packAt(path.join(repo, "packs"), "rituals/checkpoints", "the tree's own copy");
+        fs.writeFileSync(path.join(repo, "packs", "rituals", "checkpoints", "pack.json"), "{ not json");
+        const host = hostCarrying((packs) => packAt(packs, "rituals/checkpoints", "the installed copy"));
+        const m = wellFormed();
+        m.packs = ["rituals/checkpoints"];
+        m.tree = "../";
+        const dir = tree(path.join(repo, ".portulan"), { ...minimalFiles, "workspace.json": JSON.stringify(m) });
+
+        const found = await inspect(dir, { schema: SCHEMA, ...host });
+        assert.match(text(checks(found.findings, "packs")), /could not be read .*so what differs could not be compared/,
+            "a shadow we cannot read is not a shadow we may call harmless");
+    });
+
     test("the arrangements, and BOTH resolve with no flag at all since the disposal", async () => {
         const host = hostCarrying((packs) => packAt(packs, "rituals/checkpoints", "from the cache"));
         const dir = both();

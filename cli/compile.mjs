@@ -1107,10 +1107,24 @@ export function claudeCode(parsed, options = {}) {
     // The generation header. An emitted artifact that does not say what generated it invites the
     // one edit this whole rail exists to catch — a hand-fix that survives until the next compile
     // silently reverts it.
+    // **What compiled this, recorded beside what generated it** (#264). An unpinned run reads the
+    // host's plugin cache while the rail reads the tree, and until now the artifact said nothing about
+    // which — so a drift RED named a difference no reader could find in the repository, because the
+    // deciding input was a directory outside it.
+    //
+    // **Origin and version, never the ROOT PATH.** The discovered root is an absolute path under
+    // somebody's home directory; recording it would make a tracked artifact machine-dependent and red
+    // `verify/compile.sh` for every developer and CI — trading a silent hazard for a permanent false
+    // one. `recordedOrigin` collapses the resolver's three tags to two for the same reason: the pinned
+    // rail and a bare run must agree byte for byte about an identical world.
+    const packs = (options.packProvenance ?? [])
+        .map((c) => ({ pack: c.pack, origin: c.origin, version: c.version ?? null }))
+        .sort((a, b) => a.pack.localeCompare(b.pack));
     const value = {
         $portulan: {
             generated: "cli/compile.mjs",
             source,
+            ...(packs.length ? { packs } : {}),
             warning: `Generated file. Edit ${source} and recompile; \`verify/compile.sh\` fails on drift.`,
         },
         permissions: { deny, ask, allow: [] },
@@ -1438,6 +1452,11 @@ function artifactPaths(workspaceDir) {
 
 /** Every backend, run against one parsed policy. The order is the order the matrix prints in. */
 export function backends(parsed, options = {}) {
+    // **Provenance rides in the Claude Code artifact only, and that is an honest limit rather than an
+    // oversight.** `githubRuleset` emits to a fixed external schema that has nowhere to carry a
+    // `$portulan` block; its provenance is the one line it can carry, in `name`. Both backends compile
+    // from ONE root plan per run, so the recorded origins describe the ruleset's inputs too — they are
+    // simply not readable in its file. Stated here and in `../.portulan/compile/README.md` (#264).
     return [claudeCode(parsed, options), githubRuleset(parsed, options)];
 }
 
@@ -1626,6 +1645,49 @@ export function rootPlan(workspaceDir, manifest, { named = [], namedGiven = null
  * them. What it depends on instead is `parse`, which validates every composed rule exactly as it
  * validates a hand-written one, so a malformed fragment is refused by the same code either way.
  */
+/**
+ * How a resolved pack's ORIGIN is recorded in an emitted artifact — a deliberate collapse of the
+ * resolver's three tags into two, and the collapse is the load-bearing part.
+ *
+ * `resolutionRoots` tags roots `named | derived | discovered`. Recording that raw would be wrong in a
+ * way that turns this whole feature into a liability: the PINNED rail spells its root
+ * (`--pack-root packs`, tagged `named`) while a bare run derives the same directory (tagged
+ * `derived`). Two documented-correct spellings of the same world would emit different bytes, and
+ * `verify/compile.sh` would go red on a tree nothing was wrong with — a per-machine false red, which
+ * is worse than the silent hazard #264 is about.
+ *
+ * So: `discovered` iff the answering root came from discovery — a directory outside this repository,
+ * which is the fact worth recording. Otherwise `tree`, when the root is one the repository itself
+ * yields. A NAMED root that is not under the workspace root is neither, and is recorded as
+ * `outside-tree` rather than flattened into `tree`, because calling somebody's `--pack-root /elsewhere`
+ * "the tree" would be this field's first lie.
+ */
+export function recordedOrigin(root, plan, workspaceRoot) {
+    const same = (a, b) => path.resolve(a) === path.resolve(b);
+    const tagged = (plan?.origins ?? []).find((o) => same(o.root, root));
+    if (tagged?.origin === "discovered") return "discovered";
+    if (tagged?.origin === "derived") return "tree";
+    // `named`: the tree only if it points inside the repository this workspace belongs to — INCLUDING
+    // when it IS that repository, which the first draft called `outside-tree` on a `rel` of `""`. By
+    // this function's own standard that was the field's first lie.
+    //
+    // **Both sides resolved through `realpathSync`**, because a lexical comparison makes two spellings
+    // of one directory disagree: `--workspace <alias> --pack-root <realpath>` recorded `outside-tree`
+    // for a root plainly inside the tree, which would emit a different artifact for an identical world
+    // — the per-machine false red this whole design refuses. Measured. It is the same trap #220's
+    // second arm repaired in the Stop-gate's divergence sentence, and it is worth stating twice
+    // because the two sites were written a day apart and neither inherits the other's guard.
+    const real = (dir) => {
+        try {
+            return fs.realpathSync(path.resolve(dir));
+        } catch {
+            return path.resolve(dir);
+        }
+    };
+    const rel = path.relative(real(workspaceRoot), real(root));
+    return !rel.startsWith("..") && !path.isAbsolute(rel) ? "tree" : "outside-tree";
+}
+
 export function packContributions(workspaceRoot, workspaceDir = ".portulan", options = {}) {
     const base = path.join(workspaceRoot, workspaceDir);
     let manifest;
@@ -1678,7 +1740,18 @@ export function packContributions(workspaceRoot, workspaceDir = ".portulan", opt
                     `Refusing to compose it — run \`doctor\` to validate the pack against the Pack Definition.`,
             );
         }
-        contributions.push({ pack: found.name, dir: found.dir, fragments: fragments ?? [] });
+        contributions.push({
+            pack: found.name,
+            dir: found.dir,
+            fragments: fragments ?? [],
+            // **Provenance, recorded per pack**, so the artifact this compiles into can say what
+            // compiled it (#264). `version` comes from `portulan.version` — the pack manifest's own
+            // location for it, not a top-level `version` — and its ABSENCE is recorded as such rather
+            // than as a blank, because "this pack declares no version" and "I did not look" are
+            // different facts and only one of them is the pack's.
+            origin: recordedOrigin(found.root, plan, workspaceRoot),
+            version: typeof packManifest?.portulan?.version === "string" ? packManifest.portulan.version : null,
+        });
     }
     // `plan` travels with the result because every consumer prints it: which source won, and the path
     // it won with, is what tells a feed resolution from a local one.
@@ -2106,7 +2179,14 @@ export function run(argv, options = {}) {
         // fails open, silently. That is the exact defect class this whole change exists to close,
         // reintroduced through the cross-compile path. Found by the pre-commit checkpoint, which
         // demonstrated it rather than reasoning about it.
-        const columns = backends(parsed, { source, root: path.resolve(workspaceRoot), workspaceDir });
+        const columns = backends(parsed, {
+            source,
+            root: path.resolve(workspaceRoot),
+            workspaceDir,
+            // What resolved each pack, carried to the artifact so the file the rail compares says
+            // which world compiled it (#264).
+            packProvenance: contributions,
+        });
 
         // Printed before the backends, because a rule's provenance changes how its compiled line reads
         // — and an unresolvable pack is a declaration the workspace believes it composed.
@@ -2162,7 +2242,34 @@ export function run(argv, options = {}) {
                     continue;
                 }
                 if (current !== column.artifact.text) {
-                    say(`RED — ${file} has drifted from ${policyFile}. Recompile.`);
+                    // **Name the origin difference AT THE MOMENT OF FAILURE** (#264). A drift caused by
+                    // a shadowed pack was previously reported as a diff nobody could reproduce from the
+                    // files in front of them, because the deciding input was a directory outside the
+                    // repository — and the remedy the sentence prescribed, "Recompile", is the very
+                    // unpinned act that caused it. Read DEFENSIVELY: the artifact on disk is a file a
+                    // human may have edited, so anything unparseable leaves the plain sentence standing
+                    // rather than turning a drift report into a crash.
+                    let why = "";
+                    try {
+                        const onDisk = JSON.parse(current)?.$portulan?.packs;
+                        const mine = JSON.parse(column.artifact.text)?.$portulan?.packs;
+                        if (Array.isArray(onDisk) && Array.isArray(mine)) {
+                            const key = (p) => `${p.origin ?? "?"} ${p.version ?? "no version"}`;
+                            const byName = new Map(mine.map((p) => [p.pack, p]));
+                            const moved = onDisk
+                                .filter((p) => byName.has(p.pack) && key(byName.get(p.pack)) !== key(p))
+                                .map((p) => `\`${p.pack}\` was compiled from the ${key(p)} copy; this check reads the ${key(byName.get(p.pack))} one`);
+                            if (moved.length) {
+                                why =
+                                    `\n      ${moved.join("\n      ")}` +
+                                    "\n      That is a different world, not a stale file: recompile with the root this check uses" +
+                                    `\n      — \`node cli/compile.mjs --workspace . --pack-root packs\` — rather than bare, or the drift returns.`;
+                            }
+                        }
+                    } catch {
+                        // Unparseable or hand-edited. The plain sentence below is still true.
+                    }
+                    say(`RED — ${file} has drifted from ${policyFile}. Recompile.${why}`);
                     drifted += 1;
                 }
             }
