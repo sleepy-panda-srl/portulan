@@ -5,8 +5,9 @@ implement the work. Verbatim scope: *"verify that issue #284's ruling has fully 
 close #284 with the evidence"*, then *"get the gotchas file down to 60 lines, if it can't be helped then
 let's consider increasing the budget"*, then *"update the lessons artifact with today's ledger entry"*,
 *"open the artifact and check the render"*, *"fix the §XII overflow too"*.
-**No milestone row moves. No repository change was made and nothing was merged** — the only commit this
-session produced is this record: the handoff, the regenerated index, and the Session log entry.
+**No milestone row moves and no mechanism change** — nothing was merged and `main` was never pushed to.
+The one commit this session produced is this record: the handoff, the regenerated index, and the Session
+log entry.
 
 ## State
 
