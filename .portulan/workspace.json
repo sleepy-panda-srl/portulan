@@ -151,6 +151,16 @@
           "node"
         ],
         "doc": "verify/README.md"
+      },
+      {
+        "id": "version-carriers",
+        "run": "./.portulan/verify/version-carriers.sh",
+        "requires": [
+          "bash",
+          "git",
+          "node"
+        ],
+        "doc": "verify/README.md"
       }
     ]
   },
