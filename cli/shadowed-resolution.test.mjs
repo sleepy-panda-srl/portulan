@@ -115,9 +115,13 @@ describe("the divergence #318 was filed on, demonstrated", () => {
     // The fact that forecloses a manifest-comparison predicate for this tool: the manifests here are
     // byte-identical apart from the run suffix, and it is the ROOT spliced into `run` that diverges.
     test("recipe-set composes run lines pointing into whichever root answered", () => {
-        const { wsDir, tree, cache } = world();
+        const { root, wsDir, tree, cache } = world();
         const runsUnder = (named) => {
-            const resolve = resolverFor({ workspaceDir: wsDir, manifest: manifestOf(wsDir), repoRoot: wsDir, named });
+            // **`repoRoot` is the REPOSITORY root, not the workspace directory.** `${PACK_ROOT}`
+            // composes relative to the repository, so passing `wsDir` yielded `../packs/...` — a shape
+            // the real emitter never produces when run from a repository root, which made this case
+            // pin an artefact of its own wiring rather than the contract. Caught in review.
+            const resolve = resolverFor({ workspaceDir: wsDir, manifest: manifestOf(wsDir), repoRoot: root, named });
             const set = recipeSet(manifestOf(wsDir), { resolve });
             assert.ok(set.ok, set.reason);
             return set.recipes.map((r) => r.run).join("\n");
@@ -128,12 +132,12 @@ describe("the divergence #318 was filed on, demonstrated", () => {
         // what pin the root-splicing this case exists for. Measured: neutralising the splice reds the
         // matches and leaves `notEqual` green.
         assert.notEqual(fromTree, fromCache);
-        // Measured rather than assumed: the token expands to the answering pack directory **relative
-        // to the repository root**, not to an absolute root — `../packs/rituals/checkpoints` against
-        // `../elsewhere/rituals/checkpoints`. A first draft asserted the absolute form and failed
-        // while the divergence it was written to catch was plainly there.
-        assert.match(fromTree, /\.\.\/packs\/rituals\/checkpoints\/verify\/tree\.sh/, "the tree world's run");
-        assert.match(fromCache, /\.\.\/elsewhere\/rituals\/checkpoints\/verify\/installed\.sh/, "the installed world's run");
+        // Measured rather than assumed, and measured TWICE. The token expands to the answering pack
+        // directory relative to the **repository** root: `packs/rituals/checkpoints` against
+        // `elsewhere/rituals/checkpoints`. A first draft asserted an absolute form; a second passed
+        // `repoRoot: wsDir` and so asserted `../packs/...`, which the real emitter never produces.
+        assert.match(fromTree, /^bash packs\/rituals\/checkpoints\/verify\/tree\.sh$/m, "the tree world's run");
+        assert.match(fromCache, /^bash elsewhere\/rituals\/checkpoints\/verify\/installed\.sh$/m, "the installed world's run");
         assert.ok(!fromTree.includes("elsewhere"), "and neither names the other's files");
     });
 });
