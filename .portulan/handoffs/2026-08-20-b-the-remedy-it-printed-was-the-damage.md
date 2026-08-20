@@ -79,7 +79,25 @@ commits by patch-id and replayed this one with no conflict.
   unquoted parameter expansion**, so every run was in fact unpinned and the flags never arrived. The
   table only became true when each invocation was written out in full. Add it to the standing list.
 
-**Graded.** Copilot: two findings, **both in the first round**, both folded; every round after it empty on both channels — inline and the suppressed-note channel, which carries findings the inline round does not. _(Phrased by round POSITION rather than round COUNT deliberately: a record naming a total goes stale on the next push, and the push that carries this record is itself one.)_ Pre-commit (Fable 5, fresh
+**A second fix-round came entirely through the PROMOTED SUPPRESSED-NOTE channel, and my own guard
+could not see it.** Both arms hard-coded `--pack-root packs` as the tree spelling, but the derived root
+is `resolve(workspaceDir, tree, "packs")` — a workspace whose `tree` is `../nested/` derives
+`nested/packs`, so the refusal prescribed a directory that does not carry the pack. **The sentence
+whose whole job is to hand back an accurate choice was handing back an unchecked one**, which is this
+branch's defect class for the fourth time. Both arms now interpolate the root they just named, and the
+`verify/plugin.sh` equivalence is gated with it, since that rail pins the literal `packs` and claiming
+it for `nested/packs` swaps one false sentence for another. Conventional output is byte-identical.
+**The fixture is why it survived this long**: `world()` only ever built `tree: "../"`, the one layout
+in which the hard-coded spelling is right. It takes `tree` now.
+
+**The instrument that missed it is worth more than the fix.** My merge guard counted inline comments
+authored by Copilot and swept `issues/<n>/comments` for notes. Promoted notes are authored by
+**`portulan-agent`** and land as **review threads**, so both instruments reported clean while two
+gating threads were open. What caught it was the unresolved-thread count — a property of the PR, not
+of who wrote what. *An author-keyed sweep measures the author, not the phenomenon.*
+
+**Graded.** Copilot: two findings in the first round through the inline channel and two more through
+the note channel later, both folded; every round after it empty on both channels — inline and the suppressed-note channel, which carries findings the inline round does not. _(Phrased by round POSITION rather than round COUNT deliberately: a record naming a total goes stale on the next push, and the push that carries this record is itself one.)_ Pre-commit (Fable 5, fresh
 context) **A-W-A** — five binding, one optional, **all folded**. The two it caught that I had missed
 are recorded above; the other three were a CHANGELOG comparative claiming a firing-condition
 difference from `compile` that does not exist, a stale suite figure in two carriers, and a Session log

@@ -783,14 +783,18 @@ describe("a shadowed pack is refused, not picked (#317)", () => {
      * in for an installed copy — and a plugin manifest that correctly declares the tree's skills path.
      * That declaration is the artifact `--write` was destroying, so it has to be real here.
      */
-    function world({ treeGates = NONE, cacheGates = SHELL, treeVersion = "0.2.1", cacheVersion = "0.2.0" } = {}) {
+    function world({ treeGates = NONE, cacheGates = SHELL, treeVersion = "0.2.1", cacheVersion = "0.2.0", tree = "../" } = {}) {
         const root = scratch("repo");
         fs.mkdirSync(path.join(root, ".portulan"), { recursive: true });
         fs.writeFileSync(
             path.join(root, ".portulan", "workspace.json"),
-            JSON.stringify({ portulan: { spec: "2.8" }, name: "w", kind: "repository", tree: "../", packs: ["rituals/checkpoints"] }),
+            JSON.stringify({ portulan: { spec: "2.8" }, name: "w", kind: "repository", tree, packs: ["rituals/checkpoints"] }),
         );
-        carrier(path.join(root, "packs"), treeVersion, treeGates);
+        // `tree` is a parameter because the derived root is `resolve(workspaceDir, tree, "packs")` and
+        // the conventional `../` makes it `<root>/packs` — the one layout in which a message that
+        // hard-codes `packs` happens to be right. A fixture that only ever builds that layout cannot
+        // see the defect, which is why it went unseen here until the note channel raised it.
+        carrier(path.resolve(path.join(root, ".portulan"), tree, "packs"), treeVersion, treeGates);
         const cache = scratch("cache");
         carrier(cache, cacheVersion, cacheGates);
         fs.mkdirSync(path.join(root, ".claude-plugin"), { recursive: true });
@@ -928,6 +932,27 @@ describe("a shadowed pack is refused, not picked (#317)", () => {
         const missing = invoke(gone.root, gone.cache, ["--check"]);
         assert.equal(missing.code, 0, missing.said);
         assert.doesNotMatch(missing.said, /does not parse as JSON/);
+    });
+
+    test("the tree spelling it hands back is the root it named, not the conventional guess", () => {
+        // The refusal's whole job is to hand back an accurate choice. Both arms hard-coded
+        // `--pack-root packs`, so a workspace whose `tree` derives `nested/packs` was told to pass a
+        // directory that does not carry the pack — a remedy the message had never checked, in this
+        // branch's own defect class. Raised through the PROMOTED SUPPRESSED-NOTE channel, which carries
+        // findings the inline round does not, and which an author-and-count sweep does not see.
+        const { root, cache } = world({ tree: "../nested/" });
+        const { code, said } = invoke(root, cache, ["--check"]);
+        assert.equal(code, 2, said);
+        assert.match(said, /`--pack-root nested\/packs` derives from the tree/, said);
+        assert.doesNotMatch(said, /`--pack-root packs`/, said);
+        // And the rail equivalence is dropped with it: `verify/plugin.sh` pins the literal
+        // `--pack-root packs`, so claiming it for `nested/packs` swaps one false sentence for another.
+        assert.doesNotMatch(said, /verify\/plugin\.sh/, said);
+
+        // The conventional layout is unchanged, which is what makes this safe to land.
+        const conv = world();
+        const c = invoke(conv.root, conv.cache, ["--check"]);
+        assert.match(c.said, /`--pack-root packs` derives from the tree, which is what `verify\/plugin\.sh` checks/, c.said);
     });
 
     test("no second copy, no refusal — the control that keeps the rest from passing for the wrong reason", () => {

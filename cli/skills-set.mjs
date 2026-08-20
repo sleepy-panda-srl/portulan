@@ -476,6 +476,19 @@ export function shadowRefusal({ packs, roots, plan, repoRoot, pluginRoot }) {
         if (!behind) continue;
 
         const there = path.relative(repoRoot, behind.root) || behind.root;
+        // **The tree spelling is the root we just named, not the conventional guess.** Both arms below
+        // hard-coded `--pack-root packs`, and the derived root is `path.resolve(workspaceDir, tree,
+        // "packs")` — so a workspace whose `tree` is `../nested/` derives `nested/packs` and was being
+        // told to pass a directory that does not carry the pack. That is this branch's own defect class
+        // one more time: a message prescribing a remedy it had not checked, in the sentence whose whole
+        // job is to hand back an accurate choice. `there` is already the relative spelling of that root,
+        // and for the conventional layout it is exactly `packs`, so the common output is unchanged.
+        //
+        // The `verify/plugin.sh` clause is gated with it, because that rail pins the literal
+        // `--pack-root packs`: claiming the equivalence for `nested/packs` would replace one false
+        // sentence with another. Raised through the promoted suppressed-note channel, which carries
+        // findings the inline round does not.
+        const rail = there === "packs" ? ", which is what `verify/plugin.sh` checks" : "";
 
         // **Read and parse are two failures with two repairs**, and one sentence for both misdiagnoses
         // the commoner one — the defect Copilot raised against `run`'s workspace arm on #229, whose
@@ -508,7 +521,7 @@ export function shadowRefusal({ packs, roots, plan, repoRoot, pluginRoot }) {
             return (
                 `the pack \`${found.name}\` resolved under the root ${found.root} while the root ${there} also ` +
                 `carries it, and the copy under ${broken.at} ${broken.why} — so which one this would derive ` +
-                "from could not be established. Name the root: `--pack-root packs` derives from the tree, " +
+                `from could not be established. Name the root: \`--pack-root ${there}\` derives from the tree${rail}, ` +
                 "`--pack-root auto` from the installed copy"
             );
         }
@@ -540,8 +553,8 @@ export function shadowRefusal({ packs, roots, plan, repoRoot, pluginRoot }) {
                 ? "the two sit on opposite sides of this plugin root, so one of them derives a `skills` path for " +
                   "this pack and the other derives none — `--write` would act on whichever answered. "
                 : "the two roots derive different `skills` paths, and `--write` would act on whichever answered. ") +
-            "Refusing to pick: name the root instead — `--pack-root packs` derives from the tree, which is what " +
-            "`verify/plugin.sh` checks, and `--pack-root auto` from the installed copy"
+            `Refusing to pick: name the root instead — \`--pack-root ${there}\` derives from the tree${rail}, ` +
+            "and `--pack-root auto` from the installed copy"
         );
     }
     return null;
