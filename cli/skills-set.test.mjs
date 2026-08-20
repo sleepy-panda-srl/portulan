@@ -891,8 +891,31 @@ describe("a shadowed pack is refused, not picked (#317)", () => {
         assert.equal(bad.code, 2, bad.said);
         assert.match(bad.said, /does not parse as JSON/);
         assert.doesNotMatch(bad.said, /could not be read/);
-        // And it names WHICH copy, which "one of the two could not be read" could not.
-        assert.ok(bad.said.includes(cache), `the broken copy's root must be named — ${bad.said}`);
+        // **The PHRASE, not the path.** `includes(cache)` cannot fail on the regression it claims to
+        // guard: the opening clause already prints `found.root`, which IS the cache, so the assertion
+        // passes whether or not the which-copy clause survives. Found by the pre-commit checkpoint —
+        // the THIRD instance of this class in this branch, and the one I wrote while correcting the
+        // second. My own mutation missed it by being too coarse: dropping the naming AND the reason
+        // together reds the `does not parse as JSON` assertion, which I read as this line binding.
+        // Mutating only the naming is what tells them apart.
+        assert.ok(
+            bad.said.includes(`the copy under ${cache} `),
+            `the message must name WHICH copy is broken — ${bad.said}`,
+        );
+
+        // **The other side of the same arm.** Breaking the TREE copy instead exercises `beneath.why`,
+        // which no case reached until the checkpoint neutered it and the whole suite stayed green.
+        // It also discriminates the which-copy clause from the opposite direction: here the named
+        // root is `packs`, which the opening clause does NOT print as the answering root.
+        const t = world();
+        fs.writeFileSync(path.join(t.root, "packs", "rituals", "checkpoints", "pack.json"), "{ not json\n");
+        const treeBroken = invoke(t.root, t.cache, ["--check"]);
+        assert.equal(treeBroken.code, 2, treeBroken.said);
+        assert.match(treeBroken.said, /does not parse as JSON/);
+        assert.ok(
+            treeBroken.said.includes("the copy under packs "),
+            `the tree copy must be named as the broken one — ${treeBroken.said}`,
+        );
 
         // **A manifest that is GONE is a different world, and the first draft of this assertion got it
         // backwards.** `resolvePack` matches on `existsSync`, so a removed `pack.json` means that root

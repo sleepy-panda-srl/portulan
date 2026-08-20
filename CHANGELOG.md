@@ -50,9 +50,11 @@ records how things were found. This is per *release* and records what a reader g
   `--write` is the act that deletes it. Measured on a copy rather than argued: unpinned `--write`
   exited **0**, reported success, and dropped `./packs/rituals/checkpoints/skills/` from
   `.claude-plugin/plugin.json`. It now refuses at resolution — **exit 2**, the artifact untouched —
-  naming both roots and both spellings that proceed. Unlike `compile`'s, this refusal fires **even
-  where the two copies agree on version and fragments**, because the deciding fact is which side of
-  the plugin root answered, not what the manifests say; the message distinguishes the two.
+  naming both roots and both spellings that proceed. Like `compile`'s, it fires **even where the two
+  copies agree** — what differs is the REASON, and the message says which case it is. There, agreeing
+  manifests still compile to different bytes because the artifact records the answering root; here the
+  deciding fact is which side of the plugin root answered, so agreement cannot save it even in
+  principle.
   ([#317](https://github.com/sleepy-panda-srl/portulan/issues/317))
 
 - **`compile` refuses a shadowed pack instead of picking one.** Where a declared pack resolves from a
