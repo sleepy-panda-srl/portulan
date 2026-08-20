@@ -3,7 +3,7 @@
 **State.** One branch, `skills-set-refuses-a-shadowed-pack`, closing
 [#317](https://github.com/sleepy-panda-srl/portulan/issues/317), on
 [#320](https://github.com/sleepy-panda-srl/portulan/pull/320). Fifteen recipes green, suite
-**1780/1780** against `main`'s 1774. Not merged.
+**1781/1781** against `main`'s 1774. Not merged.
 [#318](https://github.com/sleepy-panda-srl/portulan/issues/318) is untouched and still the family's
 remainder.
 
@@ -57,8 +57,18 @@ commits by patch-id and replayed this one with no conflict.
   carries `0.2.1`: unpinned `--check` **1 → 2**; `--pack-root packs --check` **0 → 0**, so
   `verify/plugin.sh` is untouched; `--pack-root auto --check` **1 → 1**, discovery elected; unpinned
   `--write` **0-and-destructive → 2-and-inert**.
-- **Every branch was forced red.** Guard disabled reds three cases; over-applied reds one. Each message
-  branch was inverted and reds exactly the case that claims it.
+- **Every branch was forced red — after the checkpoint found two that were not.** Guard disabled reds
+  three cases; over-applied reds one; each message branch inverted reds exactly the case that claims
+  it. **The sentence above was false when first written**, twice over: the diagnostic arm's tree-copy
+  half had no case at all (neutering it left the whole suite green), and the which-copy assertion
+  could not fail on the regression it named, because the opening clause already prints that path. Both
+  now have cases and both were forced red.
+- **My own mutation is what hid the second, and the way it hid it is worth keeping.** Dropping the
+  which-copy naming *and* the reason together reds the `does not parse as JSON` assertion — so the
+  suite went red, and I read that as the naming being bound. **A mutation that changes two things
+  cannot tell you which one a test noticed.** This is the third instance in this branch of an
+  assertion that cannot fail on the regression it guards, and the one I wrote while correcting the
+  second.
 - **The `named` half of the guard binds nothing, and that is recorded rather than papered over.**
   Forcing the condition to `true` leaves the named-root case passing — a named root replaces the
   derived one, so no discovered root remains to shadow. The protection is structural. `compile` found
@@ -68,6 +78,21 @@ commits by patch-id and replayed this one with no conflict.
   refusing — which would have meant the guard was over-applying badly. **zsh does not word-split an
   unquoted parameter expansion**, so every run was in fact unpinned and the flags never arrived. The
   table only became true when each invocation was written out in full. Add it to the standing list.
+
+**Graded.** Copilot one round, two findings, both folded, round two empty. Pre-commit (Fable 5, fresh
+context) **A-W-A** — five binding, one optional, **all folded**. The two it caught that I had missed
+are recorded above; the other three were a CHANGELOG comparative claiming a firing-condition
+difference from `compile` that does not exist, a stale suite figure in two carriers, and a Session log
+entry missing its fidelity note and pull-request link. Its optional finding is filed as
+[#322](https://github.com/sleepy-panda-srl/portulan/issues/322).
+
+**Session-open did NOT run, and that is a gap rather than a judgement.** This session's harness is
+configured not to dispatch subagents, which is the protocol's supervision mechanism. The conflict was
+flagged in the pull-request body instead of being put to the maintainer as a question, and the
+`portulan-checkpoints` skills were never tried to see whether they route around the constraint —
+a blocker inferred rather than measured, which is this branch's own subject. The maintainer then
+instructed it directly and the pre-commit pass ran. Session-open is not recoverable: it grades a plan
+before any file is written.
 
 **Open / next.** [#318](https://github.com/sleepy-panda-srl/portulan/issues/318) — `index` and
 `recipe-set` — is the family's remainder and is deliberately not folded here: both write different
