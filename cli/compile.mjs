@@ -1108,9 +1108,9 @@ export function claudeCode(parsed, options = {}) {
     // The generation header. An emitted artifact that does not say what generated it invites the
     // one edit this whole rail exists to catch — a hand-fix that survives until the next compile
     // silently reverts it.
-    // **What compiled this, recorded beside what generated it** (#264). An unpinned run reads the
-    // host's plugin cache while the rail reads the tree, and until now the artifact said nothing about
-    // which — so a drift RED named a difference no reader could find in the repository, because the
+    // **What compiled this, recorded beside what generated it** (#264). An unpinned run WOULD read
+    // the host's plugin cache while the rail reads the tree — it now refuses that arrangement outright
+    // (#316) — and until this field the artifact said nothing about which answered, so so a drift RED named a difference no reader could find in the repository, because the
     // deciding input was a directory outside it.
     //
     // **Origin and version, never the ROOT PATH.** The discovered root is an absolute path under
@@ -1697,6 +1697,49 @@ export function recordedOrigin(root, plan, workspaceRoot) {
     return isInside(real(workspaceRoot), real(root)) ? "tree" : "outside-tree";
 }
 
+/**
+ * Two copies of one pack answered, and this says what differs between them.
+ *
+ * **One carrier, because the comparison has already been wrong twice.** `doctor` grew this first and
+ * its history is the argument for not writing a fourth: a first spelling projected `[id, tier, action]`
+ * and so read a copy differing in `reason` as agreeing — while `composeFragments` pushes the WHOLE
+ * fragment, so those differences do reach the compiled policy; a second compared the whole fragment
+ * but claimed *byte-identical*, which `JSON.stringify` of a parsed value cannot promise. This is that
+ * third, correct version, moved here so `doctor` and `compile` cannot drift apart about what a shadow
+ * IS — proposal `0020`'s rule, applied to a function rather than to a sentence.
+ *
+ * Parsed and key-order-normalised is the RIGHT comparison: reformatting a `pack.json` changes nothing
+ * about what the pack contributes, so reporting it would be noise.
+ */
+export function packDifferences(mine, other) {
+    const canonical = (v) =>
+        Array.isArray(v)
+            ? v.map(canonical)
+            : v && typeof v === "object"
+              ? Object.fromEntries(Object.keys(v).sort().map((k) => [k, canonical(v[k])]))
+              : v;
+    const frag = (m) => JSON.stringify(canonical(m?.contributes?.gates ?? []));
+    const mineV = mine?.portulan?.version ?? "no version";
+    const otherV = other?.portulan?.version ?? "no version";
+    const differs = [];
+    if (mineV !== otherV) differs.push(`version ${mineV} against the tree's ${otherV}`);
+    if (frag(mine) !== frag(other)) differs.push("gate fragments that differ once parsed");
+    return differs;
+}
+
+/**
+ * The non-discovered copy of a pack that a discovered root answered for — or `null` when there is no
+ * shadow. `originOf` maps a root to its tag; pass `plan.origins`' lookup.
+ *
+ * Only a **discovered** answer can be shadowed in the sense that matters: a named root replaces the
+ * derived one, so nothing is behind it, and a derived answer is the tree's own copy already.
+ */
+export function shadowedCopy(name, answeringOrigin, roots, originOf) {
+    if (answeringOrigin !== "discovered") return null;
+    const behind = resolvePack(name, roots.filter((r) => originOf(r) !== "discovered"));
+    return behind.dir ? behind : null;
+}
+
 export function packContributions(workspaceRoot, workspaceDir = ".portulan", options = {}) {
     const base = path.join(workspaceRoot, workspaceDir);
     let manifest;
@@ -1737,6 +1780,72 @@ export function packContributions(workspaceRoot, workspaceDir = ".portulan", opt
             continue;
         }
         const packManifest = readJson(found.manifest, `the pack manifest for \`${found.name}\``);
+        // **A shadowed pack is a could-not-run, not a resolution** (#316). Two roots answered for one
+        // declared name and the invocation does not say which the caller meant, so this compiler has
+        // no honest way to pick — and unlike `doctor`, which reports and never grades because an
+        // install state is a fact about a machine rather than a verdict about the repository, this one
+        // does not report: it EMITS. Picking silently wrote the discovered copy's fragments into the
+        // artifact while `verify/compile.sh` read the tree's, which on this project's own host meant a
+        // `git commit --no-verify` matcher that the tree had deliberately removed as false coverage.
+        //
+        // **Refused at RESOLUTION, so `--check` and the write path inherit one rule.** Refusing only
+        // on write would make one tool answer one ambiguity two ways: the check would go on adopting
+        // the discovered world and exit 1 — asserting that the *repository* drifted when it had not.
+        // An exit code is the machine-read API, and a false 1 is a false verdict about the tree.
+        //
+        // **Every unasked shadow refuses, including one whose manifests agree**, which reads as
+        // over-strict until you follow the bytes: `recordedOrigin` tags the answering root into
+        // `$portulan.packs[].origin`, so a discovered answer emits `discovered` where the rail's
+        // artifact says `tree`. Agreement in the manifests is therefore not agreement in the artifact,
+        // and a carve-out for it would ship a compile that still reds the recipe it was meant to
+        // reconcile with. The message distinguishes the two cases; the refusal does not.
+        //
+        // **Only where the caller did not choose.** `--pack-root auto` is discovery ELECTED, and
+        // electing it is the choice this refusal exists to ask for. Both spellings are offered in the
+        // message, because naming only the tree would make the refusal decide the question it claims
+        // to be handing back.
+        //
+        // **The `named` half of this guard is defence in depth, and that was measured rather than
+        // assumed.** Forcing the condition to `true` — refuse unconditionally — leaves the named-root
+        // case still passing: a named root REPLACES the derived one, so the plan carries no discovered
+        // root, `shadowedCopy` finds nothing behind, and there is no shadow to refuse. The protection
+        // is structural. The clause stays because it states the intent at the site where a future
+        // change to `resolutionRoots` could quietly make it load-bearing.
+        if (!(options.forced ?? false) && plan.source !== "named") {
+            const behind = shadowedCopy(found.name, recordedOrigin(found.root, plan, workspaceRoot), roots, (r) =>
+                (plan.origins ?? []).find((o) => path.resolve(o.root) === path.resolve(r))?.origin,
+            );
+            if (behind) {
+                let other = null;
+                try {
+                    other = JSON.parse(fs.readFileSync(behind.manifest, "utf8"));
+                } catch (cause) {
+                    throw new CompileError(
+                        `\`${found.name}\` resolved from ${found.dir} while ${path.relative(workspaceRoot, behind.dir)} also carries it, ` +
+                            `and that second copy could not be read (${cause.message}) — so which one this would compile from could not be established. ` +
+                            "Name the root: `--pack-root packs` compiles from the tree, `--pack-root auto` from the installed copy.",
+                    );
+                }
+                const differs = packDifferences(packManifest, other);
+                // **Both roots by PATH.** A refusal that says only "a discovered root outside this
+                // repository" hands back a choice while withholding half of what it is between — and
+                // the reader cannot see the other root from inside the repository, which is the whole
+                // difficulty this refusal exists for. Printing the absolute path is safe here in a way
+                // it is not in `$portulan.packs`: this is stderr, read once by a human, never a tracked
+                // artifact, so #264's origins-never-paths rule (which exists to stop a machine-dependent
+                // path being committed) does not reach it. `doctor` already prints it in its
+                // resolves-from note, so the two tools now name the same two directories.
+                throw new CompileError(
+                    `\`${found.name}\` is SHADOWED — it resolved from ${found.dir}, a discovered root outside this ` +
+                        `repository, while ${path.relative(workspaceRoot, behind.dir)} also carries it. ` +
+                        (differs.length
+                            ? `They differ by ${differs.join(" and ")}, so the two roots compile to different policies. `
+                            : "Their manifests agree, but the emitted artifact still records which root answered, so the two roots compile to different bytes. ") +
+                        "Refusing to pick: name the root instead — `--pack-root packs` compiles from the tree, which is what " +
+                        "`verify/compile.sh` checks, and `--pack-root auto` compiles from the installed copy.",
+                );
+            }
+        }
         const fragments = packManifest?.contributes?.gates;
         // Checked here rather than left to `composeFragments` iterating it: a manifest is a file a
         // human edits, `doctor` may not have run (the two tools have no ordering between them), and a

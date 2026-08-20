@@ -43,8 +43,26 @@ records how things were found. This is per *release* and records what a reader g
 
 ### Changed
 
+- **`compile` refuses a shadowed pack instead of picking one.** Where a declared pack resolves from a
+  root discovered on the host *and* the repository also carries it, `compile` now exits **2** naming
+  both directories by path, what differs, and the two spellings that proceed — `--pack-root packs` for
+  the tree, which is what `verify/compile.sh` checks, and `--pack-root auto` for the installed copy.
+
+  **This changes a command that used to succeed.** A bare `compile` on such a host previously wrote the
+  discovered copy's policy and reported success; on this repository's own host that re-introduced a
+  `git commit --no-verify` matcher the tree had deliberately removed as false coverage — a rule reading
+  as protection and providing none. `--check` had explained the situation since the entry below; the
+  **write** path had no warning at all, and it is the one that changes the world.
+
+  The refusal fires at resolution, so `--check` and the write path answer the ambiguity the same way:
+  refusing only on write would have left the check adopting the discovered world and exiting 1,
+  asserting that the *repository* had drifted when it had not. It fires even where the two copies
+  agree, because the artifact records which root answered — so agreeing manifests still compile to
+  different bytes. A named root is unaffected: it replaces the derived one, leaving nothing to shadow.
+  ([#316](https://github.com/sleepy-panda-srl/portulan/issues/316))
+
 - **The compiled artifact records which world compiled it.** Pack resolution is discovered-first and
-  first-match-wins, so an unpinned `compile` on a machine with the plugin installed reads the host's
+  first-match-wins, so an unpinned `compile` on a machine with the plugin installed **read** the host's
   plugin cache while `verify/compile.sh` reads the tree — and the drift RED named a difference no
   reader could find in the repository, because the deciding input was a directory outside it. On this
   repository's own host the two had already diverged in substance: the cached pack carried a

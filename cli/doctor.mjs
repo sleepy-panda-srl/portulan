@@ -43,7 +43,16 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 // it looks like enforcement that quietly stopped covering something. Same reasoning that has
 // ./gate.mjs import the matcher instead of writing a second one. Zero
 // dependencies on both sides, so nothing is added to what this tool needs to run.
-import { parse, backends, resolvePack, rootPlan, packContributions, composeFragments } from "./compile.mjs";
+import {
+    parse,
+    backends,
+    resolvePack,
+    rootPlan,
+    packContributions,
+    composeFragments,
+    packDifferences,
+    shadowedCopy,
+} from "./compile.mjs";
 // The containment test the memory-index siting rule turns on, imported for the reason directly
 // above: the copy that used to live here drifted into the identical fail-open as the original.
 import { isInside, recordType } from "./index.mjs";
@@ -1825,8 +1834,8 @@ export async function inspect(workspaceDir, options = {}) {
             // A REPORT, never a verdict — an installed pack shadowing a tree copy is a fact about the
             // machine, and this tool must not turn a fact about the machine into a verdict about the
             // repository (the boundary this file already states for discovered roots).
-            if (origin === "discovered") {
-                const shadowed = resolvePack(name, roots.filter((r) => originOf.get(r) !== "discovered"));
+            {
+                const shadowed = shadowedCopy(name, origin, roots, (r) => originOf.get(r)) ?? { dir: null };
                 if (shadowed.dir) {
                     let other = null;
                     try {
@@ -1841,40 +1850,20 @@ export async function inspect(workspaceDir, options = {}) {
                         );
                     }
                     if (other) {
-                        const mineV = manifest?.portulan?.version ?? "no version";
-                        const treeV = other?.portulan?.version ?? "no version";
-                        // **The WHOLE fragment, compared once PARSED — and the sentence says so.**
-                        // Two earlier spellings each claimed more than they compared. The first
-                        // projected `[id, tier, action]`, so a copy differing in `reason`, or in any
-                        // field a later Pack Definition adds, read as agreeing — and `composeFragments`
-                        // pushes the whole fragment, so those differences do reach the compiled policy.
-                        // The second compared the whole fragment but still said *byte-identical*, which
-                        // `JSON.stringify` of a parsed value cannot promise: it normalises the
-                        // manifest's whitespace and indentation away.
-                        //
-                        // Parsed is the RIGHT comparison — reformatting a `pack.json` changes nothing
-                        // about what the pack contributes, and reporting it would be noise — so the
-                        // claim is narrowed to what is measured rather than the measurement widened to
-                        // fit the claim. Copilot, two rounds.
-                        // Key order is normalised too, or the rationale above contradicts itself: a
-                        // formatter that reorders keys changes nothing about what the pack contributes,
-                        // yet `JSON.stringify` is order-sensitive and would report a difference. Sorted
-                        // recursively so `action: {shell}` and its siblings compare by content. Copilot.
-                        const canonical = (v) =>
-                            Array.isArray(v)
-                                ? v.map(canonical)
-                                : v && typeof v === "object"
-                                  ? Object.fromEntries(Object.keys(v).sort().map((k) => [k, canonical(v[k])]))
-                                  : v;
-                        const frag = (m) => JSON.stringify(canonical(m?.contributes?.gates ?? []));
-                        const differs = [];
-                        if (mineV !== treeV) differs.push(`version ${mineV} against the tree's ${treeV}`);
-                        if (frag(manifest) !== frag(other)) differs.push("gate fragments that differ once parsed");
+                        // **The comparison lives in `compile.mjs`, and this calls it.** It grew here,
+                        // and its two earlier spellings each claimed more than they compared — a
+                        // projection over `[id, tier, action]` that read a copy differing in `reason`
+                        // as agreeing, and a *byte-identical* claim `JSON.stringify` of a parsed value
+                        // cannot make. `compile` now has to answer the same question in order to refuse
+                        // a shadow it cannot honestly pick between (#316), and a second copy of a
+                        // comparison already corrected twice is exactly proposal `0020`'s defect. The
+                        // rationale for parsed-and-key-sorted moved with the code.
+                        const differs = packDifferences(manifest, other);
                         report(
                             "packs",
                             `\`${name}\` is SHADOWED — the installed copy answered and the tree-derived root also carries it at ` +
                                 `${path.relative(dir, shadowed.dir)}; ${differs.length ? `they differ by ${differs.join(" and ")}` : "the two agree today"}. ` +
-                                "An unpinned `compile` reads the installed one while `verify/compile.sh` reads the tree — pin with `--pack-root packs` to emit what the rail checks",
+                                "An unpinned `compile` REFUSES this rather than picking — name the root: `--pack-root packs` for the tree, which is what `verify/compile.sh` checks",
                         );
                     }
                 }

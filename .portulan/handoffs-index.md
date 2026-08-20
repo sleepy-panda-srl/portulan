@@ -2,9 +2,10 @@
 
 > Generated from `handoffs/` by `node cli/index.mjs`. Do not edit by hand: it is regenerated
 > and byte-compared, so a hand-edit survives exactly until the next run.
-> 122 handoff(s), newest first. No budget: the series is append-only, so
+> 123 handoff(s), newest first. No budget: the series is append-only, so
 > the only remedy a budget could ask for is one this project rules out.
 
+- 2026-08-20 · [Handoff — the compiler had no honest way to pick, so it stopped picking](handoffs/2026-08-20-the-compiler-had-no-honest-way-to-pick.md)
 - 2026-08-19 · [Handoff — the work was already on `main`, and the verification was the part worth keeping](handoffs/2026-08-19-the-work-was-already-on-main.md)
 - 2026-08-19 · [Handoff — the instrument that could not see the thing it was asked about](handoffs/2026-08-19-the-instrument-that-could-not-see-the-thing-it-was-asked-about.md)
 - 2026-08-19 · [Handoff — the gate allows in silence when it reads the wrong tree](handoffs/2026-08-19-the-gate-allows-in-silence-when-it-reads-the-wrong-tree.md)

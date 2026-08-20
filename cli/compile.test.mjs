@@ -2384,8 +2384,10 @@ describe("--help", () => {
 // ===========================================================================================
 //
 // Pack resolution is discovered-first and first-match-wins, so an UNPINNED `compile` on a machine
-// with the plugin installed reads the host cache while `verify/compile.sh` reads the tree. Until
-// this, a drift RED named a difference no reader could find in the repository, because the deciding
+// with the plugin installed WOULD read the host cache while `verify/compile.sh` reads the tree —
+// it now refuses that arrangement outright (#316), and these cases cover the artifact's own record of
+// which world answered, which is what still catches an artifact emitted before that refusal existed.
+// Until this, a drift RED named a difference no reader could find in the repository, because the deciding
 // input was a directory outside it — and the remedy it prescribed, "Recompile", is the very unpinned
 // act that caused it.
 

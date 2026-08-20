@@ -2010,7 +2010,14 @@ describe("`--pack-root auto` unions the discovered roots with the tree-derived o
         assert.match(packs, /version .* against the tree's 9\.9\.9/, "the version half of the difference");
         assert.match(packs, /gate fragments that differ once parsed/, "and the FRAGMENT half — the clause the default fixture cannot reach");
         assert.doesNotMatch(packs, /could not be compared/, "both copies were readable");
-        assert.match(packs, /pin with `--pack-root packs`/, "and what to do about it");
+        // **The remedy clause changed with #316, deliberately, and this expectation moves with it.**
+        // It read `pin with \`--pack-root packs\`` while an unpinned `compile` would silently pick the
+        // discovered copy; that compile now REFUSES, so telling a reader to pin *as a precaution* would
+        // describe a world that no longer exists. What must NOT move — and is asserted above, unchanged
+        // — is the shadow sentence itself and both halves of the difference. Naming the split here
+        // because a test edited alongside the code it guards is the shape that hides a regression.
+        assert.match(packs, /REFUSES this rather than picking/, "what compile now does about it");
+        assert.match(packs, /--pack-root packs/, "and the root to name to proceed");
         assert.equal(severities(checks(found.findings, "packs"), "fail").length, 0,
             "a report about the machine, never a verdict about the repository");
     });
