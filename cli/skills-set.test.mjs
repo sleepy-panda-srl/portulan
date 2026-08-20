@@ -734,3 +734,153 @@ test("skills-set: `auto` against an unreadable record is exit 2", () => {
     // mutating the mapping away and reading what the other path actually says.
     assert.match(said.join(""), /Discovery could not look/);
 });
+
+// ------------------------------------------------ a pack two roots answer for
+
+describe("a shadowed pack is refused, not picked (#317)", () => {
+    // **Why this lives in the existing suite rather than a file of its own.** The hermetic host and
+    // the scratch sweeper above are exactly what a new file would have had to re-establish, and the
+    // sibling change for #316 was caught by Copilot for leaking scratch directories from a fresh one.
+    // Reusing the harness is the same rule the fix itself follows.
+    //
+    // **Discovery is INJECTED, not faked through a host record.** `run` takes a `discovery` thunk for
+    // the suite, so a discovered root can be constructed directly. Building a plugin cache instead
+    // would re-test `discover.mjs`'s record reader — which has its own cases a screen above — and tie
+    // these assertions to a record schema that has nothing to do with what they claim.
+
+    const TMP = fs.realpathSync(os.tmpdir());
+    const scratch = (tag) => {
+        const dir = fs.mkdtempSync(path.join(TMP, `skills-set-shadow-${tag}-`));
+        SCRATCH.push(dir);
+        return dir;
+    };
+
+    /** One pack under `<base>/rituals/checkpoints`, declaring one skills root. */
+    function carrier(base, version, gates) {
+        const at = path.join(base, "rituals", "checkpoints");
+        fs.mkdirSync(path.join(at, "skills", "a-skill"), { recursive: true });
+        fs.writeFileSync(
+            path.join(at, "pack.json"),
+            JSON.stringify({
+                portulan: { pack: "1.0", version },
+                name: "rituals/checkpoints",
+                category: "rituals",
+                summary: "x",
+                doc: "README.md",
+                contributes: { skills: ["skills/"], gates },
+            }),
+        );
+        fs.writeFileSync(path.join(at, "README.md"), "# x\n");
+        fs.writeFileSync(path.join(at, "skills", "a-skill", "SKILL.md"), "---\nname: a-skill\ndescription: x\n---\n");
+        return at;
+    }
+
+    const SHELL = [{ id: "commit-without-the-hooks", tier: "gated", action: { shell: "git commit --no-verify" }, reason: "x" }];
+    const NONE = [{ id: "commit-without-the-hooks", tier: "gated", action: { none: "No honest matcher." }, reason: "x" }];
+
+    /**
+     * A repository whose `tree` derives a root carrying the pack, plus a separate directory standing
+     * in for an installed copy — and a plugin manifest that correctly declares the tree's skills path.
+     * That declaration is the artifact `--write` was destroying, so it has to be real here.
+     */
+    function world({ treeGates = NONE, cacheGates = SHELL, treeVersion = "0.2.1", cacheVersion = "0.2.0" } = {}) {
+        const root = scratch("repo");
+        fs.mkdirSync(path.join(root, ".portulan"), { recursive: true });
+        fs.writeFileSync(
+            path.join(root, ".portulan", "workspace.json"),
+            JSON.stringify({ portulan: { spec: "2.8" }, name: "w", kind: "repository", tree: "../", packs: ["rituals/checkpoints"] }),
+        );
+        carrier(path.join(root, "packs"), treeVersion, treeGates);
+        const cache = scratch("cache");
+        carrier(cache, cacheVersion, cacheGates);
+        fs.mkdirSync(path.join(root, ".claude-plugin"), { recursive: true });
+        fs.writeFileSync(
+            path.join(root, ".claude-plugin", "plugin.json"),
+            `${JSON.stringify({ name: "x", skills: ["./packs/rituals/checkpoints/skills/"] }, null, 2)}\n`,
+        );
+        return { root, cache, manifest: path.join(root, ".claude-plugin", "plugin.json") };
+    }
+
+    const invoke = (root, cache, argv) => {
+        let said = "";
+        const code = run(
+            ["--workspace", path.join(root, ".portulan"), "--repo-root", root, "--plugin-root", root, ...argv],
+            {
+                stdout: { write(s) { said += s; } },
+                stderr: { write(s) { said += s; } },
+                discovery: () => ({ ok: true, roots: [cache], why: null }),
+            },
+        );
+        return { code, said };
+    };
+
+    test("unpinned --check REFUSES, and the message names both roots and both spellings", () => {
+        const { root, cache } = world();
+        const { code, said } = invoke(root, cache, ["--check"]);
+        assert.equal(code, 2, said);
+        assert.match(said, /SHADOWED/);
+        // **Both ROOTS by path, and the pack directory under neither.** `includes(cache)` alone cannot
+        // fail on the defect it was written for: `dir` is `<root>/<category>/<pack>` and so CONTAINS
+        // the root as a prefix, so printing `dir` and calling it a root passes a containment check
+        // either way. The sibling branch found that by drilling its own assertion; this pair is the
+        // corrected shape — the root present AND the pack directory absent — and each half was forced
+        // red on its own.
+        assert.ok(said.includes(cache), `the discovered root must be named — ${said}`);
+        assert.ok(
+            !said.includes(path.join(cache, "rituals", "checkpoints")),
+            `the discovered PACK DIRECTORY must not be printed as the root — ${said}`,
+        );
+        assert.match(said, /the root packs /, `the tree root must be named as \`packs\` — ${said}`);
+        assert.doesNotMatch(said, /packs\/rituals\/checkpoints/);
+        assert.match(said, /--pack-root packs/);
+        assert.match(said, /--pack-root auto/);
+        assert.match(said, /gate fragments that differ once parsed/);
+    });
+
+    test("an AGREEING shadow still refuses, and gives this tool's own reason for it", () => {
+        // The half `compile`'s difference-driven message could not carry. Same version, same
+        // fragments: nothing `packDifferences` can report — and the derived set still differs, because
+        // only one of the two copies sits inside the plugin root. Version parity does not save it.
+        const { root, cache } = world({ treeGates: NONE, cacheGates: NONE, treeVersion: "0.2.1", cacheVersion: "0.2.1" });
+        const { code, said } = invoke(root, cache, ["--check"]);
+        assert.equal(code, 2, said);
+        assert.match(said, /Their manifests agree/);
+        assert.match(said, /opposite sides of this plugin root/);
+        assert.doesNotMatch(said, /They differ by/);
+    });
+
+    test("--write REFUSES, and the tracked manifest is byte-identical afterwards", () => {
+        // The sharp half of #317: the tool's printed remedy WAS `--write`, and taking it deleted a
+        // correct declaration from a committed artifact on the strength of what was installed on the
+        // machine. A test on the exit code alone would pass over the thing that matters.
+        const { root, cache, manifest } = world();
+        const before = fs.readFileSync(manifest, "utf8");
+        const { code, said } = invoke(root, cache, ["--write"]);
+        assert.equal(code, 2, said);
+        assert.equal(fs.readFileSync(manifest, "utf8"), before, "the artifact must not be touched");
+    });
+
+    test("a NAMED root does not refuse — it answered the question the refusal asks", () => {
+        const { root, cache } = world();
+        const { code, said } = invoke(root, cache, ["--pack-root", path.join(root, "packs"), "--check"]);
+        assert.equal(code, 0, said);
+    });
+
+    test("`--pack-root auto` does not refuse either — discovery ELECTED is a choice, not an ambiguity", () => {
+        const { root, cache } = world();
+        const { code, said } = invoke(root, cache, ["--pack-root", "auto", "--check"]);
+        assert.notEqual(code, 2, said);
+        assert.doesNotMatch(said, /SHADOWED/);
+    });
+
+    test("no second copy, no refusal — the control that keeps the rest from passing for the wrong reason", () => {
+        // Discovery answers with a root that carries NOTHING. Every case above would still refuse if
+        // the guard were keyed on "discovery contributed a root" rather than on a pack two roots
+        // answer for, and this is what tells the two apart.
+        const { root } = world();
+        const empty = scratch("empty");
+        const { code, said } = invoke(root, empty, ["--check"]);
+        assert.equal(code, 0, said);
+        assert.doesNotMatch(said, /SHADOWED/);
+    });
+});

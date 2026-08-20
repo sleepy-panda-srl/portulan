@@ -75,6 +75,33 @@
  *   every manifest in this repository already has. A manifest formatted otherwise is reformatted, and
  *   that is a real cost rather than a hidden one.
  *
+ * ## A pack two roots answer for is refused, not picked
+ *
+ * On a host carrying an installed copy of a composed pack **and** the tree's own, resolution is
+ * discovered-first and first-match-wins, so the installed copy answers. That copy lives outside the
+ * plugin root, containment fails, and this tool concluded the tree's declared skills path belonged to
+ * no composed pack — printing `--write` as the remedy, where `--write` is the mutation that strips a
+ * correct declaration out of a tracked manifest
+ * ([#317](https://github.com/sleepy-panda-srl/portulan/issues/317)).
+ *
+ * So this refuses at RESOLUTION — exit 2 — where `compile` refuses for the same family
+ * ([#316](https://github.com/sleepy-panda-srl/portulan/issues/316)), and for the same reason: the
+ * printer, `--check` and `--write` inherit ONE rule rather than three. Refusing on `--write` alone
+ * would leave `--check` exiting **1**, asserting the *repository* had drifted when it had not — and an
+ * exit code is the machine-read API, so a false 1 is a false verdict about the tree.
+ *
+ * **The predicate is imported, not re-spelled.** `shadowedCopy` and `packDifferences` live in
+ * `./compile.mjs`. That comparison had already been wrong twice in `doctor` before it became one
+ * carrier, and a third copy written inside a fix for its own family is precisely the defect
+ * `../.portulan/proposals/0020-a-fix-is-not-done-at-the-site-it-was-found.md` names.
+ *
+ * **Where this tool's reason is SHARPER than `compile`'s, and the message says so.** `compile` refuses
+ * a shadow whose manifests agree because `recordedOrigin` writes the answering root into the artifact,
+ * so agreement in the manifests is not agreement in the bytes. Here agreement is beside the point in a
+ * more direct way: the two copies sit on opposite sides of the plugin root, so which one answers
+ * decides whether this pack contributes a `skills` path **at all**. Version parity does not save it,
+ * which is why this fires on hosts where `compile`'s difference-driven half would have nothing to say.
+ *
  * Zero dependencies, no network, no install step — the same constraints as every tool here.
  */
 
@@ -93,7 +120,7 @@ import { pathToFileURL } from "node:url";
 // root wins outright; otherwise discovery is unioned with the derived root, discovered first** — asking
 // only selects the strict degrade. This tool exited **2** on the ordinary drafted workspace until then,
 // which is what the row's "optional where discovery finds a root" was not.)_
-import { resolvePack, rootPlan } from "./compile.mjs";
+import { packDifferences, recordedOrigin, resolvePack, rootPlan, shadowedCopy } from "./compile.mjs";
 import { AUTO, discoverPackRoots, namedWithAuto } from "./discover.mjs";
 
 /**
@@ -426,6 +453,80 @@ export function declaredFor(set, pluginManifest, pluginRoot) {
 }
 
 /**
+ * The refusal a shadowed pack earns, or `null` when no declared pack is shadowed.
+ *
+ * Separated from `run` so the sentence a reader gets is testable without a command line, and kept in
+ * this file rather than pushed into `compile.mjs` because the CONSEQUENCE clause is this tool's own:
+ * `compile` talks about emitted policy, and this one talks about whether a `skills` path is derived.
+ * What is shared — *is there a second copy behind the one that answered, and do the two differ* — is
+ * imported, and that split is the point.
+ *
+ * Only the **unasked** path reaches here. `--pack-root <dir>` names a root, which replaces the derived
+ * one and leaves nothing behind it to shadow; `--pack-root auto` is discovery ELECTED, and refusing
+ * somebody for answering the question the refusal asks would be incoherent. Both spellings are offered
+ * in the message for that reason — naming only the tree would make the refusal decide the question it
+ * claims to hand back.
+ */
+export function shadowRefusal({ packs, roots, plan, repoRoot, pluginRoot }) {
+    const originOf = (r) => (plan?.origins ?? []).find((o) => path.resolve(o.root) === path.resolve(r))?.origin;
+    for (const ref of Array.isArray(packs) ? packs : []) {
+        const found = resolvePack(ref, roots);
+        if (!found?.dir || !found.manifest) continue;
+        const behind = shadowedCopy(found.name, recordedOrigin(found.root, plan, repoRoot), roots, originOf);
+        if (!behind) continue;
+
+        const there = path.relative(repoRoot, behind.root) || behind.root;
+        let mine = null;
+        let other = null;
+        try {
+            mine = JSON.parse(fs.readFileSync(found.manifest, "utf8"));
+            other = JSON.parse(fs.readFileSync(behind.manifest, "utf8"));
+        } catch (cause) {
+            // Could-not-run wearing its own sentence rather than the SHADOWED one: with a manifest
+            // unreadable, *what differs* is unanswerable, and a refusal that guessed would be claiming
+            // to have compared two things it could not read. The remedy is the same either way.
+            return (
+                `the pack \`${found.name}\` resolved under the root ${found.root} while the root ${there} also ` +
+                `carries it, and one of ` +
+                `the two could not be read (${cause.message}) — so which one this would derive from could not be ` +
+                "established. Name the root: `--pack-root packs` derives from the tree, `--pack-root auto` from the " +
+                "installed copy"
+            );
+        }
+
+        // **Containment, computed rather than assumed.** The sharp case — one copy inside the plugin
+        // root and one outside — is what makes `--write` destructive, but it is not a law: a
+        // `--plugin-root` pointing elsewhere puts both outside, and the refusal still stands because
+        // the derived path is relative to whichever root answered. Asserting the sharp case
+        // unconditionally would be this message's first lie, in the sentence that exists to be exact.
+        //
+        // Tested against the ROOTS, which is also what `packPortion` partitions on — `resolvePack`
+        // builds `dir` as `<root>/<category>/<pack>`, so the two can never disagree here, and using the
+        // root keeps this predicate spelled the same way as the derivation it is predicting.
+        const differs = packDifferences(mine, other);
+        const split = escapes(pluginRoot, path.resolve(found.root)) !== escapes(pluginRoot, path.resolve(behind.root));
+        // **Both ROOTS by path — the roots, not the pack directories.** The sibling refusal in
+        // `compile` shipped `dir` while calling it a root, which mislabels the thing it names in a
+        // message whose own claim is to name both; the root is also the half a reader types back into
+        // `--pack-root`. Corrected here in the same stroke rather than left to be found twice.
+        return (
+            `the pack \`${found.name}\` is SHADOWED — it resolved under ${found.root}, a root discovered on this ` +
+            `host, while the root ${there} also carries it. ` +
+            (differs.length
+                ? `They differ by ${differs.join(" and ")}, and which root answers decides the derived set anyway: `
+                : "Their manifests agree, and here that changes nothing: ") +
+            (split
+                ? "the two sit on opposite sides of this plugin root, so one of them derives a `skills` path for " +
+                  "this pack and the other derives none — `--write` would act on whichever answered. "
+                : "the two roots derive different `skills` paths, and `--write` would act on whichever answered. ") +
+            "Refusing to pick: name the root instead — `--pack-root packs` derives from the tree, which is what " +
+            "`verify/plugin.sh` checks, and `--pack-root auto` from the installed copy"
+        );
+    }
+    return null;
+}
+
+/**
  * A resolver over a workspace's declared pack roots.
  *
  * Reaches `compile.mjs`'s `rootPlan` and `resolvePack` rather than re-deriving where a pack lives.
@@ -545,8 +646,11 @@ function readManifest(file, pluginRoot) {
  * The runnable surface: the printer CI and an adopter's own pipeline call, plus `--check` and
  * `--write`.
  *
- * `options.manifest` and `options.resolve` are injection points for the suite, the way `init` injects
- * its reader. No production caller passes either; every flag below is the real surface.
+ * `options.manifest`, `options.resolve` and `options.discovery` are injection points for the suite, the
+ * way `init` injects its reader. No production caller passes any of them; every flag below is the real
+ * surface. `discovery` is injected as a THUNK like the production one, because the guarantee that a
+ * branch which cannot use the answer never touches the host is a property of the ARGUMENT — a suite
+ * handed a pre-computed value would be testing a shape production never takes.
  */
 export function run(argv = [], options = {}) {
     const { stdout = process.stdout, stderr = process.stderr } = options;
@@ -623,7 +727,7 @@ export function run(argv = [], options = {}) {
         // caller wiring no thunk stays hermetic on every arm.)_
         const plan = rootPlan(workspaceDir, manifest, {
             named: namedRoots,
-            discovery: () => discoverPackRoots(),
+            discovery: options.discovery ?? (() => discoverPackRoots()),
             forced: wantsDiscovery,
         });
         if (plan.refusal || plan.couldNotRun) {
@@ -631,6 +735,30 @@ export function run(argv = [], options = {}) {
             return 2;
         }
         const roots = plan.roots ?? [];
+        // **Refused here, above the mode branches, so the printer, `--check` and `--write` inherit one
+        // rule** (#317). The damage this prevents is specific to the write path — the tool printed
+        // `run with --write` while `--write` would have stripped a correct, tracked `skills` entry on
+        // the strength of what happens to be installed on the machine — but guarding only `--write`
+        // would leave `--check` exiting 1 about a repository that had not drifted, which is a false
+        // verdict handed to a machine. `compile` settled the same question the same way for #316.
+        //
+        // A caller that injected its own `resolve` never reaches this, and that is deliberate rather
+        // than a hole: it chose its own roots, which is the same election `--pack-root` makes.
+        //
+        // **The `named` half of this condition is defence in depth, and it was measured HERE rather
+        // than inherited from `compile`'s note.** Forcing the whole condition to `true` reds exactly
+        // one case — the `--pack-root auto` exemption — while the named-root case goes on passing: a
+        // named root REPLACES the derived one, so the plan carries no discovered root, `shadowedCopy`
+        // finds nothing behind it, and there is no shadow to refuse. The protection is structural, and
+        // no test in this suite binds the clause. It stays because it states the intent at the site
+        // where a future change to `resolutionRoots` could quietly make it load-bearing.
+        if (!wantsDiscovery && plan.source !== "named") {
+            const shadowed = shadowRefusal({ packs: manifest?.packs, roots, plan, repoRoot, pluginRoot });
+            if (shadowed) {
+                stderr.write(`skills-set: ${shadowed}\n`);
+                return 2;
+            }
+        }
         resolve = resolverFor({ workspaceDir, manifest, roots });
         // The same roots stand in as the owned set when nothing resolves — so a workspace that has
         // stopped composing gets its stale entries cleaned wherever its packs WOULD have been, not
