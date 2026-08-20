@@ -45,6 +45,21 @@
 # GraphQL schema's only package mutation is `deletePackageVersion`, and `/orgs/{org}/settings/packages`
 # does not exist. Both steps are UI-only and the maintainer's.
 #
+# **Those two steps are per PACKAGE, not per RELEASE — measured on the third fire, 2026-08-20.**
+# Publishing `0.1.2` of the same package reported `visibility: public` with no manual step in between
+# (run 32337456931), and the API agrees: `/orgs/sleepy-panda-srl/packages/npm/portulan` returns
+# `public` with both `0.1.1` and `0.1.2` under it. So a visibility flip is paid once for a package's
+# lifetime and every later version inherits it. That is the practical answer a reader of the block
+# above needs and could not get from it: the cost is real and it is NOT recurring.
+#
+# **What this fire did NOT establish, stated because the block above reads as if it had.** The package
+# was ALREADY public when this ran, so nothing here tests a FIRST publish under a NEW package name now
+# that the organisation policy has been changed — whether such a package is created public, or is
+# created private and still needs its own flip, is untested and is the half that would matter to
+# anyone adding a second package. And for the same reason this fire cannot re-test `--access public`:
+# a flag cannot be shown to govern nothing on a package that was already public. The inertness recorded
+# above stands on the 2026-08-18 measurement alone and is neither confirmed nor refuted here.
+#
 # **`--access public` is kept regardless.** It costs nothing, it is required on npmjs where the same
 # tree also publishes, and a flag that is correct on one registry and inert on another is better than
 # one that is absent on both. What it is NOT is the thing that makes the package public here — which
