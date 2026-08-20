@@ -41,8 +41,31 @@ records how things were found. This is per *release* and records what a reader g
 
 ## Unreleased
 
-_Nothing yet. This heading is the accumulator the header above describes: an entry lands here as it
-merges, and the cut renames it to the version._
+### Changed
+
+- **A GitHub Packages visibility flip is paid once per package, not once per release.** `0.1.2`
+  recorded that `npm publish --access public` does not govern on that registry and that making the
+  package public took two manual UI steps with no API behind either. What it left open — because the
+  question had not arisen yet — is whether that cost recurs on every publish.
+
+  It does not. Measured 2026-08-20 on the workflow's **third** fire, the release of `v0.1.2`: the
+  publish reported `visibility: public` with no manual step in between (run
+  [32337456931](https://github.com/sleepy-panda-srl/portulan/actions/runs/32337456931)), and the API
+  agrees — `/orgs/sleepy-panda-srl/packages/npm/portulan` returns `public`, carrying both `0.1.1` and
+  `0.1.2`. The per-package setting is a property of the package and every later version inherits it.
+
+  **Two things this fire did not establish, stated because the entry it corrects reads as though it
+  had.** The package was **already public** when this ran. So nothing here tests a *first* publish
+  under a *new* package name now that the organisation policy has been changed — whether such a
+  package is created public, or created private and still needing its own flip, is untested, and it is
+  the half that would matter to anyone adding a second package. And for the same reason this cannot
+  re-test `--access public`: a flag cannot be shown to govern nothing on a package that was already
+  public, so `0.1.2`'s finding about it stands on the 2026-08-18 measurement alone, neither confirmed
+  nor refuted here.
+
+  _Recorded rather than left as a happy surprise, and the limits recorded with it, because the shape
+  this repository keeps getting wrong is a measurement true of one case written down as though it were
+  true of the class._ The workflow header carries the same correction beside the claim it qualifies.
 
 ## 0.1.2 — 2026-08-20
 
