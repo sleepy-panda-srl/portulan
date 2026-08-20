@@ -41,6 +41,26 @@ records how things were found. This is per *release* and records what a reader g
 
 ## Unreleased
 
+_Nothing yet. This heading is the accumulator the header above describes: an entry lands here as it
+merges, and the cut renames it to the version._
+
+## 0.1.2 — 2026-08-20
+
+**A release about refusing to guess.** Where a declared pack resolves both from a root discovered on
+the host *and* from the repository's own tree, four tools — `compile`, `index`, `recipe-set` and
+`skills-set` — now exit **2**, naming both roots and the two spellings that proceed, instead of
+silently picking one. The silence was the defect rather than the ambiguity: on this repository's own
+host it re-compiled a `git commit --no-verify` matcher the tree had deliberately removed, and
+`skills-set` printed as its *remedy* the `--write` that deletes a tracked declaration. **This changes
+commands that used to succeed**, and only on a host carrying both copies — a pack developer's machine,
+which is where the hazard lives. Elsewhere nothing moves.
+
+Beside that: the compiled artifact records which world compiled it, so a drift RED names a difference
+its reader can find; the Stop-gate asks its questions about the tree the session actually worked in
+rather than the one it was told about, closing a silent allow; and two entries replace expectations
+about the second registry with what it was measured doing — a flag that is accepted and does not
+govern, and a Packages sidebar that is empty for a reason no `curl` could have seen.
+
 ### Changed
 
 - **`skills-set` refuses a shadowed pack too, and its printed remedy no longer strips a declaration.**

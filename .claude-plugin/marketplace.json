@@ -1,7 +1,7 @@
 {
   "name": "portulan",
   "description": "Portulan — an operating framework for agentic engineering. Public engine, spec, and packs, distributed as Claude Code plugins.",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "owner": {
     "name": "Sleepy Panda SRL",
     "url": "https://sleepypanda.ro"
@@ -11,7 +11,7 @@
       "name": "portulan",
       "source": "./",
       "displayName": "Portulan",
-      "version": "0.1.1",
+      "version": "0.1.2",
       "description": "The engine: the always-loaded kernel, the operating doctrine, the universal skills, and the personas as agents — shipped with the Workspace Definition and a complete demo workspace to read.",
       "category": "engineering",
       "license": "Apache-2.0",

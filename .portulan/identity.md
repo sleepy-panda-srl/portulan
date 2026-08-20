@@ -60,7 +60,12 @@ a fresh `npm pack` of the same tree hash to the same value.** _(**Re-measured at
 count is restated here rather than left standing, per this file's own convention, and the property is
 unchanged: every one of the 74 is byte-identical to its staged blob, which is now railed on every
 commit by the `pack-identity` recipe rather than measured by hand. The 73 above remains the correct
-figure for the tree `0.1.0` was published from, which is `d6498f0` and is what `v0.1.0` tags.)_ _(First measured 2026-07-31 at 72 files, all 72 identical — recorded then against `0f49868`, **an object that does not resolve in this repository today**, the branch having been squashed at merge; the date is the durable half and the sha is kept only as the original record. The property
+figure for the tree `0.1.0` was published from, which is `d6498f0` and is what `v0.1.0` tags.)_ _(**Re-measured at the 0.1.2 cut: 76.** `cli/inside.mjs` and
+`cli/version-carriers.mjs` joined the payload after the `0.1.1` publish, so the roster grew by two.
+Measured on a clean `git clone` fixture at each tag rather than in a working tree, because
+re-measuring amid uncommitted edits reports the measurer's own edits as drift — the trap this file
+already records below. The 74 above remains the correct figure for the tree `v0.1.1` tags, and the
+property is unchanged at 76.)_ _(First measured 2026-07-31 at 72 files, all 72 identical — recorded then against `0f49868`, **an object that does not resolve in this repository today**, the branch having been squashed at merge; the date is the durable half and the sha is kept only as the original record. The property
 strengthened as the package grew; only the count moved, and it is restated rather than left standing,
 because a count is the half of this claim that goes stale silently. **Measure it on a clean checkout:**
 re-measuring inside a working tree with uncommitted edits reports those edits as drift — it did here,
