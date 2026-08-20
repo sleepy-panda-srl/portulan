@@ -20,7 +20,7 @@ workspaces and premium packs delivered as private-marketplace plugins.
 
 ## Status
 
-**Current release: `0.1.1`** — recorded in [`CHANGELOG.md`](CHANGELOG.md), which is also the honest
+**Current release: `0.1.2`** — recorded in [`CHANGELOG.md`](CHANGELOG.md), which is also the honest
 account of what the release does *not* contain.
 
 This is pre-release software. The leading `0.` is meant literally: nothing here is stable yet, and
