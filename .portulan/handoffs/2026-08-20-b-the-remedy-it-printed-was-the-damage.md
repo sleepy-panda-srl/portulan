@@ -79,7 +79,7 @@ commits by patch-id and replayed this one with no conflict.
   unquoted parameter expansion**, so every run was in fact unpinned and the flags never arrived. The
   table only became true when each invocation was written out in full. Add it to the standing list.
 
-**Graded.** Copilot one round, two findings, both folded, round two empty. Pre-commit (Fable 5, fresh
+**Graded.** Copilot: two findings, **both in the first round**, both folded; every round after it empty on both channels — inline and the suppressed-note channel, which carries findings the inline round does not. _(Phrased by round POSITION rather than round COUNT deliberately: a record naming a total goes stale on the next push, and the push that carries this record is itself one.)_ Pre-commit (Fable 5, fresh
 context) **A-W-A** — five binding, one optional, **all folded**. The two it caught that I had missed
 are recorded above; the other three were a CHANGELOG comparative claiming a firing-condition
 difference from `compile` that does not exist, a stale suite figure in two carriers, and a Session log
