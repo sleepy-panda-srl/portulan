@@ -1824,14 +1824,19 @@ export function packContributions(workspaceRoot, workspaceDir = ".portulan", opt
                     other = JSON.parse(fs.readFileSync(behind.manifest, "utf8"));
                 } catch (cause) {
                     throw new CompileError(
-                        `\`${found.name}\` resolved from ${found.dir} while ${path.relative(workspaceRoot, behind.dir)} also carries it, ` +
+                        `\`${found.name}\` resolved under the root ${found.root} while the root ` +
+                            `${path.relative(workspaceRoot, behind.root)} also carries it, ` +
                             `and that second copy could not be read (${cause.message}) — so which one this would compile from could not be established. ` +
                             "Name the root: `--pack-root packs` compiles from the tree, `--pack-root auto` from the installed copy.",
                     );
                 }
                 const differs = packDifferences(packManifest, other);
-                // **Both roots by PATH.** A refusal naming only one of them hands back a choice while
-                // withholding half of what it is between. Printing the absolute path is safe here in a
+                // **Both ROOTS by path — the roots, not the pack directories.** `resolvePack` returns
+                // both, and a first cut printed `dir` (`<root>/<category>/<pack>`) while calling it a
+                // root: a diagnostic that mislabels the thing it names, in a message whose own claim is
+                // to name both roots. The root is also the more useful of the two, because it is what a
+                // reader types back into `--pack-root`. A refusal naming only one hands back a choice
+                // while withholding half of what it is between. Printing the absolute path is safe in a
                 // way it is not in `$portulan.packs`: this is stderr, read once by a human, never a
                 // tracked artifact, so #264's origins-never-paths rule (which exists to stop a
                 // machine-dependent path being committed) does not reach it. `doctor` already prints it
@@ -1845,8 +1850,8 @@ export function packContributions(workspaceRoot, workspaceDir = ".portulan", opt
                 // are different questions, and the path is printed right there for a reader who wants
                 // the second one. Caught by review after the first cut conflated them.
                 throw new CompileError(
-                    `\`${found.name}\` is SHADOWED — it resolved from ${found.dir}, a root discovered on this ` +
-                        `host, while ${path.relative(workspaceRoot, behind.dir)} also carries it. ` +
+                    `\`${found.name}\` is SHADOWED — it resolved under ${found.root}, a root discovered on this ` +
+                        `host, while the root ${path.relative(workspaceRoot, behind.root)} also carries it. ` +
                         (differs.length
                             ? `They differ by ${differs.join(" and ")}, so the two roots compile to different policies. `
                             : "Their manifests agree, but the emitted artifact still records which root answered, so the two roots compile to different bytes. ") +
