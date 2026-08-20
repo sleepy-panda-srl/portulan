@@ -867,10 +867,44 @@ describe("a shadowed pack is refused, not picked (#317)", () => {
     });
 
     test("`--pack-root auto` does not refuse either — discovery ELECTED is a choice, not an ambiguity", () => {
+        // **Pinned to 1, not to `!== 2`.** `notEqual(code, 2)` passes on a regression to 0 as happily
+        // as on the intended drift — the same shape as the `includes(cache)` assertion this branch
+        // already corrected, and Copilot caught it in the same file. Electing discovery makes the
+        // cache copy answer; it is outside the plugin root, so nothing derives a path and the tracked
+        // declaration reads as unowned. **That is drift, and drift is 1** — the verdict the caller
+        // asked for by naming the root, which is exactly what refusing would have withheld.
         const { root, cache } = world();
         const { code, said } = invoke(root, cache, ["--pack-root", "auto", "--check"]);
-        assert.notEqual(code, 2, said);
+        assert.equal(code, 1, said);
         assert.doesNotMatch(said, /SHADOWED/);
+    });
+
+    test("an unreadable copy and an unparseable one are two sentences, not one", () => {
+        // Read and parse are two failures with two repairs. `JSON.parse`'s `SyntaxError` carries no
+        // `.code`, so a collapsed arm reports it under *could not be read* and sends a reader with a
+        // malformed manifest to look at permissions — the #229 finding against this file's workspace
+        // arm, reintroduced in this block's first cut and caught by Copilot here.
+        const { root, cache } = world();
+        const broken = path.join(cache, "rituals", "checkpoints", "pack.json");
+        fs.writeFileSync(broken, "{ not json\n");
+        const bad = invoke(root, cache, ["--check"]);
+        assert.equal(bad.code, 2, bad.said);
+        assert.match(bad.said, /does not parse as JSON/);
+        assert.doesNotMatch(bad.said, /could not be read/);
+        // And it names WHICH copy, which "one of the two could not be read" could not.
+        assert.ok(bad.said.includes(cache), `the broken copy's root must be named — ${bad.said}`);
+
+        // **A manifest that is GONE is a different world, and the first draft of this assertion got it
+        // backwards.** `resolvePack` matches on `existsSync`, so a removed `pack.json` means that root
+        // never answers at all: the tree resolves alone, there is no shadow, and the honest verdict is
+        // agreement — **0**, not could-not-run. I asserted 2 here while the comment beside it said the
+        // opposite, and the suite caught the contradiction. It stays as the control that shows the
+        // refusal is keyed on a second copy EXISTING, not on discovery having contributed a root.
+        const gone = world();
+        fs.rmSync(path.join(gone.cache, "rituals", "checkpoints", "pack.json"));
+        const missing = invoke(gone.root, gone.cache, ["--check"]);
+        assert.equal(missing.code, 0, missing.said);
+        assert.doesNotMatch(missing.said, /does not parse as JSON/);
     });
 
     test("no second copy, no refusal — the control that keeps the rest from passing for the wrong reason", () => {
