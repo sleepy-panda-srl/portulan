@@ -52,6 +52,7 @@ function pack(dir, { version, action }) {
 // standing in for an installed copy. Returns both so a case can make them agree or differ.
 function world({ treeAction, cacheAction, treeVersion = "0.2.1", cacheVersion = "0.2.0" }) {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "portulan-shadow-"));
+    SCRATCH.push(root);
     const wsDir = path.join(root, ".portulan");
     fs.mkdirSync(wsDir, { recursive: true });
     fs.writeFileSync(
@@ -63,6 +64,15 @@ function world({ treeAction, cacheAction, treeVersion = "0.2.1", cacheVersion = 
     pack(cache, { version: cacheVersion, action: cacheAction });
     return { root, cache };
 }
+
+// Every root `world()` mints is registered and removed at the end of the file, the same shape
+// `discover.test.mjs` and `collisions.test.mjs` use. Without it each run left a `portulan-shadow-*`
+// directory behind, and a suite that litters the temp directory is one nobody can measure the
+// footprint of — which is the subject of an open issue against `tests.sh` itself.
+const SCRATCH = [];
+test.after(() => {
+    for (const dir of SCRATCH) fs.rmSync(dir, { recursive: true, force: true });
+});
 
 const SHELL = { shell: "git commit --no-verify" };
 const NONE = { none: "No honest matcher. The category is unbounded shell." };

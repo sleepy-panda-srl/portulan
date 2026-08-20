@@ -1110,7 +1110,7 @@ export function claudeCode(parsed, options = {}) {
     // silently reverts it.
     // **What compiled this, recorded beside what generated it** (#264). An unpinned run WOULD read
     // the host's plugin cache while the rail reads the tree — it now refuses that arrangement outright
-    // (#316) — and until this field the artifact said nothing about which answered, so so a drift RED named a difference no reader could find in the repository, because the
+    // (#316) — and until this field the artifact said nothing about which answered, so a drift RED named a difference no reader could find in the repository, because the
     // deciding input was a directory outside it.
     //
     // **Origin and version, never the ROOT PATH.** The discovered root is an absolute path under
