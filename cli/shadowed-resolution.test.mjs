@@ -15,9 +15,11 @@
 // Three construction requirements, each because the obvious fixture would show nothing:
 //   1. the personas must differ in their **scope section** — `index` digests `memoryScopeOf`, so a
 //      difference in body text reaches no committed byte;
-//   2. the recipe pack must use **`${PACK_ROOT}`** — that token expands to the answering root, which is
-//      repo-relative, which is why agreeing manifests still diverge here and why a manifest
-//      comparison would be the wrong predicate for this tool;
+//   2. the recipe pack must use **`${PACK_ROOT}`** — it expands to the answering pack DIRECTORY,
+//      relative to the REPOSITORY root, which is why agreeing manifests still diverge here and why a
+//      manifest comparison would be the wrong predicate for this tool. Every `resolverFor` call in
+//      this file therefore passes the repository root: two review rounds turned on that distinction,
+//      the second because the first fix corrected one call site and left four;
 //   3. both roots must be **named** to elect a world, since discovery-unasked now refuses.
 
 import { test, describe } from "node:test";
@@ -135,7 +137,7 @@ describe("the divergence #318 was filed on, demonstrated", () => {
         // Measured rather than assumed, and measured TWICE. The token expands to the answering pack
         // directory relative to the **repository** root: `packs/rituals/checkpoints` against
         // `elsewhere/rituals/checkpoints`. A first draft asserted an absolute form; a second passed
-        // `repoRoot: wsDir` and so asserted `../packs/...`, which the real emitter never produces.
+        // `repoRoot: root` and so asserted `../packs/...`, which the real emitter never produces.
         assert.match(fromTree, /^bash packs\/rituals\/checkpoints\/verify\/tree\.sh$/m, "the tree world's run");
         assert.match(fromCache, /^bash elsewhere\/rituals\/checkpoints\/verify\/installed\.sh$/m, "the installed world's run");
         assert.ok(!fromTree.includes("elsewhere"), "and neither names the other's files");
@@ -159,13 +161,13 @@ describe("and the refusal that now stands between them", () => {
     });
 
     test("recipe-set REFUSES an unasked shadow, at construction so the caller can catch it", () => {
-        const { wsDir, cache } = world();
+        const { root, wsDir, cache } = world();
         assert.throws(
             () =>
                 resolverFor({
                     workspaceDir: wsDir,
                     manifest: manifestOf(wsDir),
-                    repoRoot: wsDir,
+                    repoRoot: root,
                     discovery: discovered(cache),
                 }),
             (err) => {
@@ -204,20 +206,20 @@ describe("and the refusal that now stands between them", () => {
         );
         const b = agreeing();
         assert.throws(
-            () => resolverFor({ workspaceDir: b.wsDir, manifest: manifestOf(b.wsDir), repoRoot: b.wsDir, discovery: discovered(b.cache) }),
+            () => resolverFor({ workspaceDir: b.wsDir, manifest: manifestOf(b.wsDir), repoRoot: b.root, discovery: discovered(b.cache) }),
             /SHADOWED/,
             "recipe-set refuses an agreeing shadow",
         );
     });
 
     test("a NAMED root never refuses, in either tool", () => {
-        const { wsDir, tree, cache } = world();
+        const { root, wsDir, tree, cache } = world();
         assert.ok(readScopes(wsDir, manifestOf(wsDir), { packRoots: [tree], discovery: discovered(cache) }));
         assert.ok(
             resolverFor({
                 workspaceDir: wsDir,
                 manifest: manifestOf(wsDir),
-                repoRoot: wsDir,
+                repoRoot: root,
                 named: [tree],
                 discovery: discovered(cache),
             }),
@@ -225,13 +227,13 @@ describe("and the refusal that now stands between them", () => {
     });
 
     test("ELECTED discovery never refuses, in either tool", () => {
-        const { wsDir, cache } = world();
+        const { root, wsDir, cache } = world();
         assert.ok(readScopes(wsDir, manifestOf(wsDir), { discoverPacks: true, discovery: discovered(cache) }));
         assert.ok(
             resolverFor({
                 workspaceDir: wsDir,
                 manifest: manifestOf(wsDir),
-                repoRoot: wsDir,
+                repoRoot: root,
                 discovery: discovered(cache),
                 forced: true,
             }),
