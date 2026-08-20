@@ -1657,9 +1657,12 @@ export function rootPlan(workspaceDir, manifest, { named = [], namedGiven = null
  * `verify/compile.sh` would go red on a tree nothing was wrong with — a per-machine false red, which
  * is worse than the silent hazard #264 is about.
  *
- * So: `discovered` iff the answering root came from discovery — a directory outside this repository,
- * which is the fact worth recording. Otherwise `tree`, when the root is one the repository itself
- * yields. A NAMED root that is not under the workspace root is neither, and is recorded as
+ * So: `discovered` iff the answering root came from discovery — **which is a statement about where the
+ * root was FOUND, not about where it sits.** Discovery reads a record under `CLAUDE_CONFIG_DIR`, and a
+ * hermetic run can point that inside the tree, so a discovered root is not necessarily an external one;
+ * the docblock said "a directory outside this repository" until review caught the conflation, and the
+ * distinction is this field's whole subject rather than a quibble — it is why `outside-tree` exists as
+ * a separate answer below. Otherwise `tree`, when the root is one the repository itself yields. A NAMED root that is not under the workspace root is neither, and is recorded as
  * `outside-tree` rather than flattened into `tree`, because calling somebody's `--pack-root /elsewhere`
  * "the tree" would be this field's first lie.
  */
@@ -1827,17 +1830,23 @@ export function packContributions(workspaceRoot, workspaceDir = ".portulan", opt
                     );
                 }
                 const differs = packDifferences(packManifest, other);
-                // **Both roots by PATH.** A refusal that says only "a discovered root outside this
-                // repository" hands back a choice while withholding half of what it is between — and
-                // the reader cannot see the other root from inside the repository, which is the whole
-                // difficulty this refusal exists for. Printing the absolute path is safe here in a way
-                // it is not in `$portulan.packs`: this is stderr, read once by a human, never a tracked
-                // artifact, so #264's origins-never-paths rule (which exists to stop a machine-dependent
-                // path being committed) does not reach it. `doctor` already prints it in its
-                // resolves-from note, so the two tools now name the same two directories.
+                // **Both roots by PATH.** A refusal naming only one of them hands back a choice while
+                // withholding half of what it is between. Printing the absolute path is safe here in a
+                // way it is not in `$portulan.packs`: this is stderr, read once by a human, never a
+                // tracked artifact, so #264's origins-never-paths rule (which exists to stop a
+                // machine-dependent path being committed) does not reach it. `doctor` already prints it
+                // in its resolves-from note, so the two tools now name the same two directories.
+                //
+                // **"Discovered on this host", never "outside this repository".** Discovery reads a
+                // record under `CLAUDE_CONFIG_DIR`, which a hermetic run can point INSIDE the tree — so
+                // a discovered root is not necessarily an external one, and the message must not assert
+                // a location it has not tested. `recordedOrigin` keeps `discovered` and `outside-tree`
+                // as separate answers for exactly this reason: where a root came from and where it sits
+                // are different questions, and the path is printed right there for a reader who wants
+                // the second one. Caught by review after the first cut conflated them.
                 throw new CompileError(
-                    `\`${found.name}\` is SHADOWED — it resolved from ${found.dir}, a discovered root outside this ` +
-                        `repository, while ${path.relative(workspaceRoot, behind.dir)} also carries it. ` +
+                    `\`${found.name}\` is SHADOWED — it resolved from ${found.dir}, a root discovered on this ` +
+                        `host, while ${path.relative(workspaceRoot, behind.dir)} also carries it. ` +
                         (differs.length
                             ? `They differ by ${differs.join(" and ")}, so the two roots compile to different policies. `
                             : "Their manifests agree, but the emitted artifact still records which root answered, so the two roots compile to different bytes. ") +
