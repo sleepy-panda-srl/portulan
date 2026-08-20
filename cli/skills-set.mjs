@@ -476,23 +476,44 @@ export function shadowRefusal({ packs, roots, plan, repoRoot, pluginRoot }) {
         if (!behind) continue;
 
         const there = path.relative(repoRoot, behind.root) || behind.root;
-        let mine = null;
-        let other = null;
-        try {
-            mine = JSON.parse(fs.readFileSync(found.manifest, "utf8"));
-            other = JSON.parse(fs.readFileSync(behind.manifest, "utf8"));
-        } catch (cause) {
+
+        // **Read and parse are two failures with two repairs**, and one sentence for both misdiagnoses
+        // the commoner one — the defect Copilot raised against `run`'s workspace arm on #229, whose
+        // comment sits one screen below this and which the first cut of this block reintroduced
+        // anyway. A `SyntaxError` from `JSON.parse` carries no `.code`, so a collapsed arm reporting
+        // `error.code ?? error.message` under *could not be read* sends somebody with a malformed
+        // manifest to look at permissions. `readManifest` and `resolverFor` both keep the two apart;
+        // so does this. It also names WHICH of the two copies is the broken one, which the collapsed
+        // form could not — with two manifests in play, "one of the two" is half a diagnosis.
+        const load = (file) => {
+            let text;
+            try {
+                text = fs.readFileSync(file, "utf8");
+            } catch (error) {
+                return { why: `could not be read — ${error.code ?? error.message}` };
+            }
+            try {
+                return { value: JSON.parse(text) };
+            } catch (error) {
+                return { why: `does not parse as JSON — ${error.message}` };
+            }
+        };
+        const here = load(found.manifest);
+        const beneath = load(behind.manifest);
+        const broken = here.why ? { at: found.root, why: here.why } : beneath.why ? { at: there, why: beneath.why } : null;
+        if (broken) {
             // Could-not-run wearing its own sentence rather than the SHADOWED one: with a manifest
             // unreadable, *what differs* is unanswerable, and a refusal that guessed would be claiming
             // to have compared two things it could not read. The remedy is the same either way.
             return (
                 `the pack \`${found.name}\` resolved under the root ${found.root} while the root ${there} also ` +
-                `carries it, and one of ` +
-                `the two could not be read (${cause.message}) — so which one this would derive from could not be ` +
-                "established. Name the root: `--pack-root packs` derives from the tree, `--pack-root auto` from the " +
-                "installed copy"
+                `carries it, and the copy under ${broken.at} ${broken.why} — so which one this would derive ` +
+                "from could not be established. Name the root: `--pack-root packs` derives from the tree, " +
+                "`--pack-root auto` from the installed copy"
             );
         }
+        const mine = here.value;
+        const other = beneath.value;
 
         // **Containment, computed rather than assumed.** The sharp case — one copy inside the plugin
         // root and one outside — is what makes `--write` destructive, but it is not a law: a
