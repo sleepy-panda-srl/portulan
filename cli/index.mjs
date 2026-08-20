@@ -74,7 +74,10 @@ import { pathToFileURL } from "node:url";
 // compiler and `doctor` already resolve it. A second resolver here would be a second answer to
 // "which pack is that" — and issue #74 already records what a memory store cost this project when
 // three copies decided what counted as a record.
-import { resolvePack, rootPlan } from "./compile.mjs";
+// `shadowedCopy` rides along with the two this file already imports: the predicate for *is this pack
+// shadowed* is one carrier by #316's own argument, and a second spelling here would be the defect that
+// change was filed against, committed one tool over.
+import { resolvePack, rootPlan, shadowedCopy } from "./compile.mjs";
 // Host plugin-cache discovery (#123) — imported, never re-implemented, for the reason above.
 import { AUTO, discoverPackRoots, namedWithAuto } from "./discover.mjs";
 
@@ -435,7 +438,12 @@ export function readScopes(dir, workspace, options = {}) {
     const plan = rootPlan(dir, workspace, {
         named: options.packRoots ?? [],
         namedGiven: options.packRoots !== undefined && options.packRoots !== null,
-        discovery: () => discoverPackRoots(),
+        // **Injectable, defaulting to the real reader.** It was hardcoded to `discoverPackRoots()`,
+        // which meant no case could exercise this tool's discovery path without the machine's own
+        // plugin cache deciding the outcome — so the shadow refusal below would have been testable
+        // only by arranging a real install. `recipe-set`'s `resolverFor` already takes the thunk;
+        // this is the same seam, and the default keeps every existing caller byte-identical.
+        discovery: options.discovery ?? (() => discoverPackRoots()),
         forced: options.discoverPacks === true,
     });
     if (plan.refusal) throw new IndexError(plan.refusal);
@@ -457,6 +465,43 @@ export function readScopes(dir, workspace, options = {}) {
         if (!found.dir) {
             unresolved.push(found);
             continue;
+        }
+        // **A shadowed pack is refused here too** (#318), on the same ground `compile` refuses it and
+        // NOT on the same argument — the difference matters enough to write down, because copying
+        // compile's sentence here would state something this file spends four lines denying.
+        //
+        // The ground is the ambiguity: two roots answered for one declared name, the invocation does
+        // not say which the caller meant, and this tool goes on to digest the answering copy's memory
+        // scope into a **committed** index. Picking silently makes a tracked artifact a function of
+        // what happens to be installed.
+        //
+        // What does NOT transfer is compile's bytes argument. Compile refuses even an agreeing shadow
+        // because `recordedOrigin` tags the answering root into its artifact; this index records no
+        // such thing, by the design stated above and in this tool's own help. So an agreeing shadow
+        // here really would produce identical bytes — and the refusal is still unconditional, because
+        // the alternative is a per-tool predicate for *which* differences reach the digest. That
+        // predicate is narrower than "the manifests differ" and would silently widen with every key a
+        // later Pack Definition adds: fail-open by construction, and a third carrier of a comparison
+        // this repository has already had wrong twice.
+        //
+        // **Only where the caller did not choose**, exactly as in `compile`: a named root replaces the
+        // derived one, and `auto` is discovery elected.
+        if (!(options.discoverPacks === true) && plan.source !== "named") {
+            // Path-resolved, matching `compile`. `resolutionRoots` builds `origins` and `roots` from
+            // the same strings today, so an exact-string lookup is equal — but two resolve-equal
+            // spellings of one directory would make `compile` refuse where this passed, and three
+            // tools answering one question two ways is the shape this whole family is about.
+            const originAt = (r) => (plan.origins ?? []).find((o) => path.resolve(o.root) === path.resolve(r))?.origin;
+            const behind = shadowedCopy(name, originAt(found.root), roots, originAt);
+            if (behind) {
+                throw new IndexError(
+                    `\`${name}\` is SHADOWED — it resolved under ${found.root}, a root discovered on this host, ` +
+                        `while the root ${path.relative(dir, behind.root)} also carries it. This index digests the ` +
+                        `answering copy's memory scope, so which root answered decides what a committed file says. ` +
+                        "Refusing to pick: name the root — `--pack-root packs` for the tree, which is what " +
+                        "`verify/index.sh` checks, or `--pack-root auto` for the installed copy.",
+                );
+            }
         }
 
         let manifest;
@@ -739,9 +784,24 @@ export function inspect(dir, { write = false, packRoots: extraRoots, discoverPac
     const findings = [];
     const fail = (series, check, message) => findings.push({ severity: "fail", series, check, message });
 
-    const memory = judgeMemory(dir, workspace, { write, fail });
-    const handoffs = judgeHandoffs(dir, workspace, { write, fail });
-    const scopes = judgeScopes(dir, workspace, { write, fail, packRoots: extraRoots, discoverPacks });
+    // **The remedy a finding prints must be runnable on the machine that printed it** (#318). These
+    // findings surface through the PINNED `verify/index.sh` run — so on a pack developer’s host, where
+    // a declared pack is both installed and in the tree, a bare `node cli/index.mjs <dir>` now exits 2
+    // with the SHADOWED refusal instead of regenerating. That is the same defect this change repaired
+    // in `verify/index.sh`’s own comment, left standing one layer down: one rule, two sites, repaired
+    // at one — which is proposal `0020`’s shape and what the pre-commit sweep exists to catch.
+    //
+    // Echoing the caller’s flags is provably runnable: a finding only prints under an invocation that
+    // reached judgment, so that invocation’s own spelling resolved. A hardcoded `--pack-root packs`
+    // would be wrong for an adopter whose packs sit elsewhere.
+    const remedyFlags = [
+        ...(Array.isArray(extraRoots) ? extraRoots.map((r) => ` --pack-root ${r}`) : []),
+        ...(discoverPacks ? [" --pack-root auto"] : []),
+    ].join("");
+
+    const memory = judgeMemory(dir, workspace, { write, fail, remedyFlags });
+    const handoffs = judgeHandoffs(dir, workspace, { write, fail, remedyFlags });
+    const scopes = judgeScopes(dir, workspace, { write, fail, packRoots: extraRoots, discoverPacks, remedyFlags });
 
     return {
         dir,
@@ -794,7 +854,7 @@ function siteOutside(dir, declaredPath, slot, word) {
  * in `./doctor.mjs`, `./new.mjs`, `./init.mjs`, `./plugin-lint.mjs` and `./compile.mjs` — this was the
  * one read in the repository that did not carry it.
  */
-function compareOrWrite({ dir, declaredPath, indexPath, expected, write, series, source, fail }) {
+function compareOrWrite({ dir, declaredPath, indexPath, expected, write, series, source, fail, remedyFlags = "" }) {
     if (write) {
         try {
             fs.mkdirSync(path.dirname(indexPath), { recursive: true });
@@ -826,14 +886,14 @@ function compareOrWrite({ dir, declaredPath, indexPath, expected, write, series,
     }
 
     if (actual === null) {
-        fail(series, "index", `${declaredPath} is declared and absent — run \`node cli/index.mjs ${dir}\` to generate it`);
+        fail(series, "index", `${declaredPath} is declared and absent — run \`node cli/index.mjs${remedyFlags} ${dir}\` to generate it`);
     } else if (!actual.equals(Buffer.from(expected, "utf8"))) {
-        fail(series, "index", `${declaredPath} is out of date against the ${source} — run \`node cli/index.mjs ${dir}\` to regenerate it`);
+        fail(series, "index", `${declaredPath} is out of date against the ${source} — run \`node cli/index.mjs${remedyFlags} ${dir}\` to regenerate it`);
     }
 }
 
 /** The memory store's index and its budgets. */
-function judgeMemory(dir, workspace, { write, fail }) {
+function judgeMemory(dir, workspace, { write, fail, remedyFlags = "" }) {
     const memory = workspace.memory;
     if (!memory) return { declared: false, path: null, expected: null, budgets: 0 };
 
@@ -870,7 +930,7 @@ function judgeMemory(dir, workspace, { write, fail }) {
     if (broken) return { declared: true, path: indexPath, expected: null, budgets: 0 };
 
     const expected = render(workspace, store);
-    compareOrWrite({ dir, declaredPath, indexPath, expected, write, series: "memory", source: "store", fail });
+    compareOrWrite({ dir, declaredPath, indexPath, expected, write, series: "memory", source: "store", fail, remedyFlags });
     const budgets = budgetFindings(memory, store, expected, fail);
 
     return { declared: true, path: indexPath, expected, budgets };
@@ -880,7 +940,7 @@ function judgeMemory(dir, workspace, { write, fail }) {
  * The handoff series' index. No budget — see spec/slots.md: every remedy a budget could ask for on an
  * append-only series is barred, so a rail here is one built to be broken.
  */
-function judgeHandoffs(dir, workspace, { write, fail }) {
+function judgeHandoffs(dir, workspace, { write, fail, remedyFlags = "" }) {
     const declaredPath = workspace.handoffs?.index?.path;
     if (!declaredPath) return { declared: false, path: null, expected: null };
 
@@ -915,7 +975,7 @@ function judgeHandoffs(dir, workspace, { write, fail }) {
     if (broken) return { declared: true, path: indexPath, expected: null };
 
     const expected = renderHandoffIndex(workspace, series);
-    compareOrWrite({ dir, declaredPath, indexPath, expected, write, series: "handoffs", source: "series", fail });
+    compareOrWrite({ dir, declaredPath, indexPath, expected, write, series: "handoffs", source: "series", fail, remedyFlags });
 
     return { declared: true, path: indexPath, expected };
 }
@@ -934,7 +994,7 @@ function judgeHandoffs(dir, workspace, { write, fail }) {
  * that sweep the layer would accept anything at all and the positive control would only ever examine the
  * ones it already expected.
  */
-function judgeScopes(dir, workspace, { write, fail, packRoots: extraRoots, discoverPacks }) {
+function judgeScopes(dir, workspace, { write, fail, packRoots: extraRoots, discoverPacks, remedyFlags = "" }) {
     const declaredPath = workspace.personas?.index?.path;
     if (!declaredPath) return { declared: false, path: null, expected: null };
 
@@ -1044,7 +1104,7 @@ function judgeScopes(dir, workspace, { write, fail, packRoots: extraRoots, disco
     }
 
     const expected = renderScopeIndex(workspace, series);
-    compareOrWrite({ dir, declaredPath, indexPath, expected, write, series: "scopes", source: "packs this workspace composes", fail });
+    compareOrWrite({ dir, declaredPath, indexPath, expected, write, series: "scopes", source: "packs this workspace composes", fail, remedyFlags });
 
     // The landing itself, and it happens after the index is written rather than before: if the render
     // could not be derived there is nothing to land, and a directory created for a scope no index

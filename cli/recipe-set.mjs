@@ -61,7 +61,8 @@ import fs from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 
-import { resolvePack, rootPlan } from "./compile.mjs";
+// `shadowedCopy` rides along: one carrier for *is this pack shadowed*, per #316.
+import { resolvePack, rootPlan, shadowedCopy } from "./compile.mjs";
 import { AUTO, discoverPackRoots, namedWithAuto } from "./discover.mjs";
 
 /**
@@ -288,6 +289,46 @@ export function resolverFor({ workspaceDir, manifest, repoRoot = ".", named = []
     if (plan.refusal) throw new Error(`recipe-set: ${plan.refusal}`);
     if (plan.couldNotRun) throw new Error(`recipe-set: ${plan.couldNotRun}`);
     const roots = plan.roots ?? [];
+    const originAt = (r) => (plan.origins ?? []).find((o) => path.resolve(o.root) === path.resolve(r))?.origin;
+
+    // **A shadowed pack is refused here too** (#318), and this tool's ground is the strongest of the
+    // three. `compile` refuses even an agreeing shadow because its artifact records which root
+    // answered; `index` refuses one although its artifact deliberately does not. Here the answering
+    // root is not merely recorded — **it is spliced into the output**: `${PACK_ROOT}` expands to the
+    // root that answered, so two copies whose manifests are byte-identical still yield different `run`
+    // lines pointing at different files. What CI runs and what a bare local run runs would diverge,
+    // with nothing in either output to say so.
+    //
+    // So the agreeing case is not a carve-out anyone could argue for here, and the honest predicate was
+    // never manifest comparison: it is output equality, computable only by resolving both worlds.
+    // Refusing the ambiguity is what remains.
+    //
+    // **Checked HERE rather than inside the returned closure**, which is where a first cut put it. The
+    // closure runs during `recipeSet`, outside the `try` that wraps this constructor — so the refusal
+    // escaped as an uncaught throw, exit 1 with a stack trace, in a tool whose whole contract is exit 2
+    // for could-not-run. Measured, not reasoned about. Throwing from the constructor puts it on the
+    // path `plan.refusal` already uses and the caller already catches.
+    //
+    // **Only where the caller did not choose** — a named root replaces the derived one, `auto` is
+    // discovery elected — which is `compile`'s guard shape, bound to it deliberately.
+    if (!forced && plan.source !== "named") {
+        const declared = Array.isArray(manifest?.packs) ? manifest.packs : [];
+        for (const ref of declared) {
+            const found = resolvePack(String(ref), roots);
+            if (!found?.dir) continue;
+            // Path-resolved, matching `compile` — see the sibling note in `index.mjs`.
+            const behind = shadowedCopy(String(ref), originAt(found.root), roots, originAt);
+            if (!behind) continue;
+            throw new Error(
+                `recipe-set: \`${ref}\` is SHADOWED — it resolved under ${found.root}, a root discovered on ` +
+                    `this host, while the root ${path.relative(path.resolve(repoRoot), behind.root)} also carries it. ` +
+                    "A composed recipe's ${PACK_ROOT} expands to whichever root answered, so the two compose to " +
+                    "run lines pointing at different files. Refusing to pick: name the root — `--pack-root packs` " +
+                    "for the tree, which is what CI runs, or `--pack-root auto` for the installed copy.",
+            );
+        }
+    }
+
     return (ref) => {
         const found = resolvePack(ref, roots);
         // `resolvePack` returns `manifest` as the PATH to `pack.json`, not as the parsed object —

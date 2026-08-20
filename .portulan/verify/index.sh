@@ -26,7 +26,10 @@
 # the flag is not passed here.
 #
 # **The reds are different defects with different repairs**, and the tool keeps them apart:
-#   out of date  →  run `node cli/index.mjs .portulan examples`
+#   out of date  →  run `node cli/index.mjs --pack-root packs .portulan examples`. The pin is not
+#                   decoration: bare, that command REFUSES on a host where a declared pack is both
+#                   installed and in the tree (#318), so an unpinned remedy would fail exactly where
+#                   this red is most likely to be seen — on a pack developer's machine.
 #   over budget  →  consolidate the store (../../core/skills/consolidate/SKILL.md) — merge,
 #                   compress, split, retire — and never by raising the budget in the change that
 #                   broke it. WHICH of the four applies is decided by which budget went over, and
