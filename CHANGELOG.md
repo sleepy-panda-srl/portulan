@@ -62,8 +62,9 @@ records how things were found. This is per *release* and records what a reader g
   ([#316](https://github.com/sleepy-panda-srl/portulan/issues/316))
 
 - **The compiled artifact records which world compiled it.** Pack resolution is discovered-first and
-  first-match-wins, so an unpinned `compile` on a machine with the plugin installed **read** the host's
-  plugin cache while `verify/compile.sh` reads the tree — and the drift RED named a difference no
+  first-match-wins, so an unpinned `compile` on a machine with the plugin installed **would read** the
+  host's plugin cache while `verify/compile.sh` reads the tree — an arrangement the entry above now
+  refuses outright — and the drift RED named a difference no
   reader could find in the repository, because the deciding input was a directory outside it. On this
   repository's own host the two had already diverged in substance: the cached pack carried a
   `git commit --no-verify` matcher the tree had deliberately removed. `$portulan.packs` now records,
