@@ -67,11 +67,13 @@ printf 'compile: checking .claude/settings.json and .portulan/compile/github-rul
 # It is the same argument this file already makes one noun over — the workspaces below are NAMED
 # rather than discovered, so adding one is a visible edit here rather than a silent omission.
 #
-# **The EMIT side must be pinned the same way, and nothing here can force that** — this recipe checks,
-# it never writes. Since #264 the artifact records which world compiled it (`$portulan.packs`), so an
-# unpinned regeneration shows up in the diff and the RED below names the origin difference rather than
-# saying only "Recompile" — which, typed bare on a machine with the plugin installed, is the act that
-# produced the drift. The spelling to emit with is in `../compile/README.md`.
+# **The EMIT side is now pinned by the compiler itself, and this recipe no longer carries that gap.**
+# It said "nothing here can force that" until #316, and it was true: this recipe checks, it never
+# writes, and an unpinned regeneration on a machine with the plugin installed silently emitted the
+# discovered copy's policy. `compile` now REFUSES a shadowed pack outright — exit 2, naming both roots
+# — on the emit path and the check path alike, so the pin is a rule rather than a habit. Since #264 the
+# artifact also records which world compiled it (`$portulan.packs`), which is what still catches an
+# artifact emitted before the refusal existed. The spelling to emit with is in `../compile/README.md`.
 # ---------------------------------------------------------------------------------------------
 node cli/compile.mjs --workspace . --pack-root packs --check
 status=$?

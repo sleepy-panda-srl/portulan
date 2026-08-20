@@ -33,9 +33,14 @@ node cli/compile.mjs --workspace . --pack-root packs
 ```
 
 Pack resolution is discovered-first and first-match-wins, so on a machine with the plugin installed a
-**bare** `compile` reads the host's plugin cache while [`../verify/compile.sh`](../verify/compile.sh)
-reads the tree. Nothing forces the command that *emits* the artifact to use the root the command that
-*checks* it uses; the pin is that force, applied by hand.
+**bare** `compile` would read the host's plugin cache while [`../verify/compile.sh`](../verify/compile.sh)
+reads the tree. It no longer may: since [#316](https://github.com/sleepy-panda-srl/portulan/issues/316)
+a bare `compile` **refuses** a pack that resolved from a discovered root while the tree also carries it
+— exit 2, naming both roots and both proceed spellings — rather than picking one silently. So the pin
+above is what you type to proceed, not a habit that stands between a correct artifact and a wrong one.
+
+_This section read "the pin is that force, applied by hand" until then, and the hand was the problem:
+the emit path had no warning at all, while the check path had explained itself since #264._
 
 Since [#264](https://github.com/sleepy-panda-srl/portulan/issues/264) the artifact says which world
 compiled it. `$portulan.packs` records, per declared pack, the **origin** it resolved from (`tree`,
