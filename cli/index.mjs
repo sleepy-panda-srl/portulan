@@ -494,9 +494,19 @@ export function readScopes(dir, workspace, options = {}) {
             const originAt = (r) => (plan.origins ?? []).find((o) => path.resolve(o.root) === path.resolve(r))?.origin;
             const behind = shadowedCopy(name, originAt(found.root), roots, originAt);
             if (behind) {
+                // **Relative to the REPOSITORY, so the path matches the flag the reader will type.**
+                // `dir` is the WORKSPACE directory, so relativising against it printed `../packs`
+                // beside a remedy reading `--pack-root packs` — one sentence disagreeing with itself.
+                // A first fix printed the absolute root, which made the sentence self-consistent and
+                // still showed a path nobody would type. `compile` and `recipe-set` relativise against
+                // the repository root; this derives the same root from the manifest's own `tree`, and
+                // falls back to the absolute path where a workspace declares none, since a workspace
+                // with no `tree` has no repository for a relative path to be relative to.
+                const repoRoot = typeof workspace?.tree === "string" && workspace.tree.trim() ? path.resolve(dir, workspace.tree) : null;
+                const behindShown = repoRoot ? path.relative(repoRoot, behind.root) : behind.root;
                 throw new IndexError(
                     `\`${name}\` is SHADOWED — it resolved under ${found.root}, a root discovered on this host, ` +
-                        `while the root ${path.relative(dir, behind.root)} also carries it. This index digests the ` +
+                        `while the root ${behindShown} also carries it. This index digests the ` +
                         `answering copy's memory scope, so which root answered decides what a committed file says. ` +
                         "Refusing to pick: name the root — `--pack-root packs` for the tree, which is what " +
                         "`verify/index.sh` checks, or `--pack-root auto` for the installed copy.",

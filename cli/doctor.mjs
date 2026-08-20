@@ -1863,7 +1863,7 @@ export async function inspect(workspaceDir, options = {}) {
                             "packs",
                             `\`${name}\` is SHADOWED — the installed copy answered and the tree-derived root also carries it at ` +
                                 `${path.relative(dir, shadowed.dir)}; ${differs.length ? `they differ by ${differs.join(" and ")}` : "the two agree today"}. ` +
-                                "An unpinned `compile`, `index` or `recipe-set` REFUSES this rather than picking — name the root: `--pack-root packs` for the tree, which is what the recipes check",
+                                "An unpinned `compile` or `recipe-set` REFUSES this rather than picking, and so does `index` for a workspace declaring a scope index — name the root: `--pack-root packs` for the tree, which is what the recipes check",
                         );
                     }
                 }
