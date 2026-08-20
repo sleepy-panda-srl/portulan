@@ -56,6 +56,21 @@ records how things were found. This is per *release* and records what a reader g
   deciding fact is which side of the plugin root answered, so agreement cannot save it even in
   principle.
   ([#317](https://github.com/sleepy-panda-srl/portulan/issues/317))
+- **`index` and `recipe-set` refuse a shadowed pack too.** The refusal below reached only
+  `compile`, because neither of these resolves through `packContributions`. Both now exit **2** on the
+  same terms — a declared pack answering from a root discovered on this host while the repository also
+  carries it — naming both roots and the two spellings that proceed.
+
+  **Their grounds differ, and the messages say so rather than repeating `compile`'s.** `index` digests
+  the answering copy's memory scope into a **committed** index; it does *not* record which root
+  answered, deliberately, so that the index regenerates identically on two machines. `recipe-set` is
+  the sharper case: a composed recipe's `${PACK_ROOT}` expands to the answering pack directory, so two
+  copies whose manifests are byte-identical still compose **run lines pointing at different files** —
+  what CI runs and what a bare local run runs would diverge with nothing in either output to say so.
+
+  **This changes commands that used to succeed** on a host where a declared pack is both installed and
+  in the tree — a pack developer's machine, which is where the hazard lives. Elsewhere nothing moves.
+  ([#318](https://github.com/sleepy-panda-srl/portulan/issues/318))
 
 - **`compile` refuses a shadowed pack instead of picking one.** Where a declared pack resolves from a
   root discovered on the host *and* the repository also carries it, `compile` now exits **2** naming
