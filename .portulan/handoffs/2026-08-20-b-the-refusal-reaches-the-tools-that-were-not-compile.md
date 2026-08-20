@@ -2,7 +2,7 @@
 
 **State.** One branch, `resolution-refuses-a-shadow-everywhere`, closing
 [#318](https://github.com/sleepy-panda-srl/portulan/issues/318). `index` and `recipe-set` now refuse a
-shadowed pack on the unasked path, exit 2, both roots named. Fifteen recipes green, suite 1781. Not merged.
+shadowed pack on the unasked path, exit 2, both roots named. Fifteen recipes green, suite 1789 — rebased onto the merged #317 work, which brought its own cases (1781 before it). Not merged.
 [#321](https://github.com/sleepy-panda-srl/portulan/issues/321) filed for the corner the census found.
 
 **Decisions + why.**
