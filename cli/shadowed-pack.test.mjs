@@ -92,8 +92,16 @@ describe("a pack that two roots answer for is refused, not picked", () => {
                 // withholding half of what it is between, and the withheld half is the one the reader
                 // cannot see from inside the repository. Caught at the pre-commit checkpoint against
                 // the message's own claim to be "naming both roots".
-                assert.ok(err.message.includes(cache), "the discovered root, by path");
-                assert.match(err.message, /packs\/rituals\/checkpoints/, "and the tree copy, by path");
+                // The ROOTS, not the pack directories inside them — a first cut printed
+                // `<root>/<category>/<pack>` while calling it a root, and the root is also what a
+                // reader types back into `--pack-root`.
+                assert.ok(err.message.includes(cache), "the discovered root itself, by path");
+                assert.ok(
+                    !err.message.includes(path.join(cache, "rituals", "checkpoints")),
+                    "the ROOT, not the pack directory under it — `dir` contains `root` as a prefix, so a" +
+                        " containment check alone cannot tell them apart",
+                );
+                assert.match(err.message, /the root packs /, "and the tree-derived root, relative and bare");
                 assert.match(err.message, /--pack-root packs/);
                 assert.match(err.message, /--pack-root auto/);
                 return true;
@@ -146,8 +154,12 @@ describe("a pack that two roots answer for is refused, not picked", () => {
                 assert.match(err.message, /could not be read/);
                 // The same both-roots obligation as the arm above: an unreadable shadow is still a
                 // choice between two directories, and the reader needs both to make it.
-                assert.ok(err.message.includes(cache), "the discovered root, by path");
-                assert.match(err.message, /packs\/rituals\/checkpoints/, "and the tree copy, by path");
+                assert.ok(err.message.includes(cache), "the discovered root itself, by path");
+                assert.ok(
+                    !err.message.includes(path.join(cache, "rituals", "checkpoints")),
+                    "the ROOT, not the pack directory under it",
+                );
+                assert.match(err.message, /the root packs /, "and the tree-derived root, relative and bare");
                 assert.match(err.message, /--pack-root/);
                 return true;
             },
