@@ -24,6 +24,11 @@
 // real and wrong.
 
 import { test, describe } from "node:test";
+
+// The gate-policy spec at which `floor` became part of the shape — `../spec/slots.md`, `### floor`:
+// "Added in 2.2, optional". Named here rather than inlined so the assertion below reads as the
+// invariant it is, and so the next reader is sent to the document that decides it.
+const FLOOR_MIN_SPEC = "2.2";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import os from "node:os";
@@ -469,6 +474,15 @@ describe("what `new` scaffolds validates — the real tools, against real direct
             GATE_POLICY_SPEC,
             "the two policy-generating carriers must declare the same gate-policy spec",
         );
+        // **Agreement is not enough, and the round-2 reasoning that stopped here was wrong.** Pinning
+        // the two carriers to each other prevents them DIVERGING and permits them regressing TOGETHER
+        // — to `2.1`, which is in the compiler's set and is the no-floor shape, while this skeleton
+        // emits a floor and `parseFloor` is not version-gated. `floor` arrived at 2.2
+        // (`../spec/slots.md`, "Added in 2.2, optional"), so a floor-bearing skeleton needs at least
+        // that. The objection to a literal was that it would be a third place SPELLING the version;
+        // this is a rail ASSERTING an invariant, which is a different thing and is what a rail is for.
+        // Copilot, round 3, having been right about it in round 2 as well.
+        assert.equal(policy.portulan.spec, FLOOR_MIN_SPEC, "a skeleton that emits a `floor` must declare a spec that has one");
     });
 
     test("the scaffolded floor declares exactly the four keys the compiler reads", async () => {

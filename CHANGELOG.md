@@ -107,8 +107,12 @@ records how things were found. This is per *release* and records what a reader g
 
   `cli/init.mjs`, `spec/slots.md` and this repository's own `gates.json` carried the correct shape
   throughout. The scaffold was the one carrier nothing ran the compiler against: its test was named
-  *"a scaffolded gate policy parses AND compiles"* and asserted two object keys. It now compiles what
-  it scaffolds.
+  *"a scaffolded gate policy parses AND compiles"* and asserted two object keys.
+
+  **What the scaffold is now, stated precisely:** a draft that compiles **once the adopter fills the
+  `{braces}`**, which is the step `new` already tells them to take. It is not a policy that compiles
+  unfilled, and it was never meant to be — `compile` still refuses a `{rule-id}`. The defect was that
+  filling it in *faithfully* still produced a refusal; that is what is fixed.
 
 ## 0.1.2 — 2026-08-20
 

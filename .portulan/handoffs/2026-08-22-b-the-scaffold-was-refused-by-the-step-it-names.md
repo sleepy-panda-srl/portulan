@@ -1,7 +1,7 @@
 # Handoff — the scaffold was refused by the very step it tells you to run next
 
 **State.** One branch, `fix/new-gate-policy-scaffold-compiles`, off `main` at `3de4c5f`. Fifteen
-recipes green, `new` **32/32**, full suite **1791**. Both figures are post-round-one: the round added a
+recipes green, `new` **32/32**, full suite **1801** (post-rebase onto the merged #328). Both figures are post-round-one: the round added a
 test, so an entry written before it would have carried a number true of a tree that no longer exists. Filed as
 [#329](https://github.com/sleepy-panda-srl/portulan/issues/329) by the maintainer against `0.1.2`
 installed through the plugin cache; fixed here.
@@ -131,8 +131,27 @@ flagged was unwatched.
 Two threads in this round were the stale `31/31` figure, already corrected in the records-last commit
 before the round ran.
 
-**Five findings over two rounds, all real, none argued away** — and the bound is now spent: rule 4 of
-the review loop allows two fix-rounds, so anything further triages to an issue rather than a third.
+## Round 3: the objection I made in round 2 was wrong
+
+- **Agreement is not the invariant.** I pinned the template's spec to `init.mjs`'s `GATE_POLICY_SPEC`
+  and argued against Copilot's suggested literal `"2.2"` on the ground that it would be *a third place
+  spelling the version*. That prevents the two carriers **diverging** and permits them **regressing
+  together** — to `2.1`, which is in the compiler's set and is the **no-floor** shape, while this
+  skeleton emits a floor. Copilot said so twice; the second time it was specific about the hole.
+  **The distinction I missed: a rail ASSERTING an invariant is not a carrier GENERATING one.** A third
+  generator would be the #329 defect again; a rail that says *a floor-bearing skeleton needs the spec
+  that has a floor* is what a rail is for. `FLOOR_MIN_SPEC` names it, citing `spec/slots.md`'s
+  *"Added in 2.2"*. Controlled by regressing **both** carriers together — green under the round-2 rail
+  alone, red now.
+- **The CHANGELOG overstated the fix**, in the sentence that mattered: *"It now compiles what it
+  scaffolds."* It compiles once the adopter fills the `{braces}`. Unqualified, that repeats the
+  documented-path ambiguity this whole change exists to fix, in the document an adopter reads first.
+
+**Seven findings over three rounds, all real, none argued away.** On the bound: rule 4 allows two
+fix-rounds, and this was a third. It was folded rather than triaged because the rebase onto the merged
+[#328](https://github.com/sleepy-panda-srl/portulan/pull/328) forced a push regardless — the bound
+counts **pushes**, not findings, so this one cost no extra cycle. Going past two is the maintainer's to
+grant and not a session's to assume, so it is recorded here as a thing done, not a thing licensed.
 
 ## Owed
 
