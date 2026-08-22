@@ -67,6 +67,32 @@ records how things were found. This is per *release* and records what a reader g
   this repository keeps getting wrong is a measurement true of one case written down as though it were
   true of the class._ The workflow header carries the same correction beside the claim it qualifies.
 
+### Fixed
+
+- **`compile` reported a workspace that declares no gate policy as an unreadable file.** A workspace
+  with no top-level `gates` key falls back to the conventional `gates.json` path — a shape
+  `policyPath`'s own note calls *"a legitimate shape, and refusing it would make the key required,
+  which is a spec change nobody decided"*. The next line handed that path to the reader, which refused
+  it with `ENOENT`, so a documented-legitimate state was reported as a corrupt or deleted file and sent
+  the reader hunting for one that was never supposed to exist. The refusal also happened before packs
+  were composed, so it could not say what the absence costs: pack-contributed gate fragments reach
+  nothing, because a fragment tightens a policy and there is none to tighten.
+
+  The diagnostic now names the state, counts the stranded pack rules and names the pack. It remains
+  exit 2 and still writes nothing — nothing was compiled, and a compiler reporting success having
+  emitted nothing is the failure this repository keeps writing checks against.
+
+- **A declared `gates` path inside a directory whose name begins with `..` was refused as an escape.**
+  The containment test was a hand-rolled `!path.relative(base, resolved).startsWith("..")` — the
+  spelling `cli/inside.mjs` exists to replace — in a module that already imports `isInside`. A policy
+  at `..policy/rules.json` is inside the workspace; it fell back, and was then told the manifest had no
+  `gates` key. Two wrong answers in series. Pre-existing; found by review.
+
+- **The undeclared-policy diagnostic asserted one cause for four.** *No manifest*, *no `gates` key*, and
+  *a `gates` value the compiler refused* are three different situations, and all three were reported as
+  *"`workspace.json` has no top-level `gates` key"* — telling the author of a manifest that did name a
+  policy to add a key already there. Each arm now names itself, with its own remedy.
+
 ## 0.1.2 — 2026-08-20
 
 **A release about refusing to guess.** Where a declared pack resolves both from a root discovered on

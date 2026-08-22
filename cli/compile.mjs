@@ -1487,21 +1487,8 @@ export function matrix(parsed, options = {}) {
 // ===========================================================================================
 
 /**
- * Where a workspace's gate policy lives.
- *
- * Read from the manifest's top-level `gates` key, because that is what the key MEANS —
- * `../spec/slots.md` calls it "a path to a JSON file the enforcement compiler reads", and `doctor`
- * resolves it. This compiler hard-coded `.portulan/gates.json` for one round, so a workspace naming a
- * different file would have had `doctor` validate one policy and `compile` compile another, with both
- * reporting green. A manifest key that validates and is never consumed is this repository's most
- * expensive recurring defect, and here it was in the very key this milestone added. Found by review on
- * the pull request.
- *
- * The default survives for a workspace with no manifest or no key — that is a legitimate shape, and
- * refusing it would make the key required, which is a spec change nobody decided.
- */
-/**
- * The same answer, plus WHICH ARM produced it.
+ * The same answer as `policyPath`, plus WHICH ARM produced it — and, where the manifest named
+ * something unusable, WHY.
  *
  * `policyPath` returns a path either way, which is all a reader of the policy needs and is exactly
  * what made the caller unable to tell two different situations apart: a workspace that NAMES a policy
@@ -1514,28 +1501,54 @@ export function matrix(parsed, options = {}) {
  * Found 2026-08-22 while booting the `sleepy-panda` workspace, which declares no `gates` key and
  * composes a pack contributing two gate rules: the compiler refused with an ENOENT that mentioned
  * neither fact. Reporting declaredness is what lets the caller say which of the two it is.
+ *
+ * **`declared: false` is four situations, not one, so it carries a `reason`.** The first cut reported
+ * every one of them as "`workspace.json` has no top-level `gates` key", which is false for a manifest
+ * that is absent and false for a `gates` value this function refused — the same two-situations-one-
+ * sentence defect this change exists to fix, reproduced one level down. `reason` is `no-key`,
+ * `no-manifest`, `refused`, or `declared`. Found by Copilot on this pull request.
  */
 export function policyDeclaration(workspaceRoot, workspaceDir = ".portulan") {
     const base = path.join(workspaceRoot, workspaceDir);
     const manifest = path.join(base, "workspace.json");
+    const fallback = (reason) => ({ file: path.join(workspaceRoot, workspaceDir, "gates.json"), declared: false, reason });
+    let declared;
     try {
-        const declared = JSON.parse(fs.readFileSync(manifest, "utf8")).gates;
-        // Validated against the schema's `filePath` shape before it is used, and containment is
-        // checked after resolution rather than by pattern alone — a `../` chain passes any regex and
-        // still escapes. Without this, a malformed or hand-edited manifest turns a hook that runs on
-        // EVERY tool call into an arbitrary file read outside the workspace. `doctor` would refuse such
-        // a manifest, but this runner must not depend on `doctor` having been run: the two tools have
-        // no ordering between them, and the schema is the contract, not the sequence. Found by review.
-        if (typeof declared === "string" && declared.trim() && FILE_PATH.test(declared)) {
-            const resolved = path.resolve(base, declared);
-            const inside = path.relative(base, resolved);
-            if (inside && !inside.startsWith("..") && !path.isAbsolute(inside)) return { file: resolved, declared: true };
-        }
+        declared = JSON.parse(fs.readFileSync(manifest, "utf8")).gates;
     } catch {
         // No manifest, or unreadable. `doctor` is the tool that judges a manifest; this one only needs
         // to know where the policy is, and the default is where it is when nothing says otherwise.
+        return fallback("no-manifest");
     }
-    return { file: path.join(workspaceRoot, workspaceDir, "gates.json"), declared: false };
+    if (declared === undefined) return fallback("no-key");
+    // Validated against the schema's `filePath` shape before it is used, and containment is
+    // checked after resolution rather than by pattern alone — a `../` chain passes any regex and
+    // still escapes. Without this, a malformed or hand-edited manifest turns a hook that runs on
+    // EVERY tool call into an arbitrary file read outside the workspace. `doctor` would refuse such
+    // a manifest, but this runner must not depend on `doctor` having been run: the two tools have
+    // no ordering between them, and the schema is the contract, not the sequence. Found by review.
+    //
+    // **`isInside`, not another hand-rolled spelling.** The containment test read
+    // `!path.relative(base, resolved).startsWith("..")` until 2026-08-22 — the spelling
+    // `./inside.mjs` exists to replace, which calls an ordinary directory named `..foo` an escape and
+    // falls back for a policy that was inside all along. This module already imports `isInside` and
+    // already carries the same warning at `recordedOrigin`, so the rule was in scope and unread.
+    // Pre-existing, and surfaced by Copilot on the pull request that touched this line.
+    //
+    // **No count is asserted here.** A first draft called this "the fifth copy"; the pre-commit
+    // checkpoint could not reproduce that figure and a census then found more, including one in THIS
+    // module at `resolveWorkspace`. The census is #331 rather than this commit, because the remaining
+    // sites do not share semantics — they disagree on the empty relative path and on absolute paths —
+    // so each needs its own red and green. An unreproducible number is worse than none.
+    if (typeof declared === "string" && declared.trim() && FILE_PATH.test(declared)) {
+        const resolved = path.resolve(base, declared);
+        if (resolved !== base && isInside(base, resolved)) return { file: resolved, declared: true, reason: "declared" };
+    }
+    // The manifest named something, and nothing it named is usable — a wrong type, an empty string, a
+    // shape the schema refuses, or a path that escapes the workspace. The compiler is on the
+    // conventional path, so the fallback owns the diagnostic; but this is NOT the state of a manifest
+    // that named nothing, and a message conflating the two is the defect this change is about.
+    return fallback("refused");
 }
 
 /**
@@ -1543,7 +1556,18 @@ export function policyDeclaration(workspaceRoot, workspaceDir = ".portulan") {
  *
  * Kept as the narrow answer because most callers want exactly that, and because every existing caller
  * and test was written against a string. `policyDeclaration` is the one that also says whether the
- * workspace named it.
+ * workspace named it, and why when it did not.
+ *
+ * Read from the manifest's top-level `gates` key, because that is what the key MEANS —
+ * `../spec/slots.md` calls it "a path to a JSON file the enforcement compiler reads", and `doctor`
+ * resolves it. This compiler hard-coded `.portulan/gates.json` for one round, so a workspace naming a
+ * different file would have had `doctor` validate one policy and `compile` compile another, with both
+ * reporting green. A manifest key that validates and is never consumed is this repository's most
+ * expensive recurring defect, and here it was in the very key this milestone added. Found by review on
+ * the pull request.
+ *
+ * The default survives for a workspace with no manifest or no key — that is a legitimate shape, and
+ * refusing it would make the key required, which is a spec change nobody decided.
  */
 export function policyPath(workspaceRoot, workspaceDir = ".portulan") {
     return policyDeclaration(workspaceRoot, workspaceDir).file;
@@ -1567,11 +1591,23 @@ export function policyPath(workspaceRoot, workspaceDir = ".portulan") {
  * tighten. That is the fact a reader needs and the one the old message could not carry: it threw
  * before `packContributions` was ever called.
  */
-function undeclaredPolicyMessage(policyFile, workspaceRoot, workspaceDir, packOptions) {
-    const lines = [
-        `this workspace declares no gate policy — \`workspace.json\` has no top-level \`gates\` key, ` +
-            `and there is no \`gates.json\` at ${policyFile}. Nothing was compiled and nothing was written.`,
-    ];
+function undeclaredPolicyMessage(policyFile, workspaceRoot, workspaceDir, packOptions, reason = "no-key") {
+    const manifest = path.join(workspaceRoot, workspaceDir, "workspace.json");
+    // **One opening per arm, because the arm is the reader's first question.** `no-key` is the shape
+    // this whole change defends as legitimate; `no-manifest` is a workspace that has not been
+    // authored yet; `refused` is a manifest that DID name a policy and named one this compiler will
+    // not read, which is neither of the other two and must not be told it has no `gates` key.
+    const opening =
+        reason === "refused"
+            ? `\`workspace.json\` names a gate policy this compiler will not read — its top-level ` +
+              `\`gates\` key is not a relative path to a file inside the workspace — and there is no ` +
+              `\`gates.json\` at ${policyFile} either.`
+            : reason === "no-manifest"
+              ? `this workspace declares no gate policy — there is no readable \`workspace.json\` at ` +
+                `${manifest}, and there is no \`gates.json\` at ${policyFile}.`
+              : `this workspace declares no gate policy — \`workspace.json\` has no top-level \`gates\` key, ` +
+                `and there is no \`gates.json\` at ${policyFile}.`;
+    const lines = [`${opening} Nothing was compiled and nothing was written.`];
     let composed = null;
     try {
         composed = packContributions(workspaceRoot, workspaceDir, packOptions);
@@ -1594,8 +1630,11 @@ function undeclaredPolicyMessage(policyFile, workspaceRoot, workspaceDir, packOp
         );
     }
     lines.push(
-        "Declare one with `portulan new gate-policy`, or leave it undeclared deliberately — " +
-            "a workspace with no gate policy is a legitimate shape, and this is a state rather than a fault.",
+        reason === "refused"
+            ? "Give `gates` a relative path to a file inside the workspace directory, or remove the key " +
+                  "and let `gates.json` be found by convention."
+            : "Declare one with `portulan new gate-policy`, or leave it undeclared deliberately — " +
+                  "a workspace with no gate policy is a legitimate shape, and this is a state rather than a fault.",
     );
     return lines.join("\n  ");
 }
@@ -2350,19 +2389,23 @@ export function run(argv, options = {}) {
         // The workspace may be named as a repository root or as the workspace directory itself, and the
         // second is how a feed-side workspace is reachable at all — see `resolveWorkspace`.
         const { workspaceRoot, workspaceDir } = resolveWorkspace(named);
-        const { file: policyFile, declared: policyDeclared } = policyDeclaration(workspaceRoot, workspaceDir);
-        // **Declared-and-missing and never-declared are two different answers.** Only the first is a
+        const { file: policyFile, declared: policyDeclared, reason: policyReason } = policyDeclaration(workspaceRoot, workspaceDir);
+        // **Declared-and-missing and never-declared are different answers.** Only the first is a
         // failure to read something this workspace claimed to have; the second is a shape `policyPath`
         // documents as legitimate, and reporting it as `ENOENT` sent readers hunting for a deleted
         // file. Checked here rather than inside the reader because only the caller knows to name what
-        // the absence costs — see `undeclaredPolicyMessage`.
+        // the absence costs — see `undeclaredPolicyMessage`. The fallback arm is itself FOUR states,
+        // and `policyReason` is what lets the message name the one it is in rather than assert the
+        // commonest: this comment read "two different answers" while the code below had four.
         if (!policyDeclared && !fs.existsSync(policyFile)) {
             throw new CompileError(
-                undeclaredPolicyMessage(policyFile, workspaceRoot, workspaceDir, {
-                    named: namedRoots,
-                    discovery: () => discoverPackRoots(),
-                    forced,
-                }),
+                undeclaredPolicyMessage(
+                    policyFile,
+                    workspaceRoot,
+                    workspaceDir,
+                    { named: namedRoots, discovery: () => discoverPackRoots(), forced },
+                    policyReason,
+                ),
             );
         }
         const policy = readJson(policyFile, "the gate policy");

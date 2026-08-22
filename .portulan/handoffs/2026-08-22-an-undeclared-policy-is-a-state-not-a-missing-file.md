@@ -1,8 +1,11 @@
 # Handoff — an undeclared policy is a state, and the compiler reported it as a missing file
 
-**State.** One branch, `fix/compile-names-an-undeclared-policy`. Fifteen recipes green, `compile` suite
-**285/285** (six new). Not committed, not pushed, no PR. Two conditions of `dod.md` are **owed** and
-named at the end — they are the reason this is not further along, rather than an oversight.
+**State.** One branch, `fix/compile-names-an-undeclared-policy`, open as
+[#328](https://github.com/sleepy-panda-srl/portulan/pull/328). Fifteen recipes green, `compile` suite
+**289/289** (ten new), full suite **1799**. Both conditions this handoff first recorded as **owed** are
+now discharged, by a later session on the same day that had what the first one lacked — the term list on
+its machine, and permission to open a fresh context. What that session also brought back is Copilot's
+first round: **three findings, all real**, one of them a defect older than this branch.
 
 ## What was wrong
 
@@ -67,15 +70,63 @@ guard asserting a DECLARED-and-missing policy still reports `cannot read the gat
 is supposed to be green in both worlds.** It pins the half that must not change, and a control where
 everything reds would have told me nothing about it.
 
-## Owed, and why it is owed rather than skipped
+## What the review round changed, and the one that was not ours
 
-- **`dod.md` condition 7 — the supervisor checkpoint.** Not run. This is full-lane work by the gate
-  map's own boundary (it changes the enforcement compiler), so it needs a verdict from a fresh context
-  that has not seen the implementation. This session was instructed not to delegate to subagents, so
-  there was no fresh context to be had. It is owed before commit, not waived.
-- **`dod.md` condition 5 — the pre-commit seam scan.** Not run. The term list lives outside this
-  repository and this session does not have it.
-- **`docs/plan.md`'s Session log** carries this session's entry with both gaps stated, rather than a
-  fidelity note it cannot support.
+Copilot's round 1 returned three findings on the inline channel. All three were confirmed against the
+code before anything was touched; none was argued away.
 
-Nothing here is blocked on the code. Both are blocked on a person.
+- **The containment test was another hand-rolled `startsWith("..")`.** `path.relative(base, resolved)`
+  of a directory named `..policy` is `..policy/rules.json`, which that spelling calls an escape — so a
+  policy that was declared, present and inside fell back, and was then told it had no `gates` key. Two
+  defects in series. `./inside.mjs` exists precisely to carry this rule, `compile.mjs` **already
+  imports it** at line 48 and **already carries the warning** at `recordedOrigin`. **This one is older
+  than the branch**: `policyPath` shipped with it and the change merely moved the line, which is how it
+  came into a diff Copilot reads. Fixed here under the sibling rule, and demonstrated both ways — under
+  the old spelling the workspace refuses, under `isInside` it compiles.
+  **A count was asserted here and is withdrawn.** The first draft called it *"the fifth copy"*. The
+  pre-commit checkpoint could not reproduce that figure; a census then found **four other behavioural
+  copies — including one in this same module, at `resolveWorkspace` — and three display-path uses**.
+  They disagree on the empty relative path and on absolute paths, so a blanket substitution would change
+  behaviour at two of them: that is [#331](https://github.com/sleepy-panda-srl/portulan/issues/331), not
+  this commit. **An unreproducible number is worse than no number**, and it was written in the entry
+  whose whole subject is a message asserting more than it knew.
+- **`declared: false` was four states reported as one sentence.** No manifest · no `gates` key · a
+  refused value · and the declared arm. The message asserted the second for all of them, so a manifest
+  that *did* name a policy was told the key was absent, and advised to "leave it undeclared
+  deliberately". **That is this change's own thesis failing one level down** — the reason it is worth
+  recording rather than just fixing. `policyDeclaration` now returns a `reason` and the diagnostic
+  names the arm it is in, with its own closing advice for the refused case.
+- **An orphaned JSDoc.** `policyPath`'s docblock stayed above `policyDeclaration` when the function
+  moved down, so one function carried two blocks and the other none. Moved.
+
+## Both owed conditions, now discharged
+
+- **`dod.md` condition 5 — the pre-commit seam scan. CLEAN.** Nine explicit terms from the private
+  context's own list, over the six changed files, the commit message and the branch name. **Run with a
+  control**: a term drawn from the list itself was planted into a copy of `compile.mjs` and the scanner
+  reddened on it, so the clean result is an answer rather than a scanner that cannot see. The explicit
+  list was used and nouns were **not** harvested from the context file — that instrument is on record
+  here as the one that yields false reds.
+  **The shape sweep, at its real scope.** 404 added lines — 279 in `cli/`, 125 in the record layer.
+  Zero hosts, addresses, connection strings or personal names anywhere. **One URL, and saying "zero"
+  would have been false**: this pull request's own, in the record layer, which is this repository's and
+  not the seam's. An earlier draft of this line claimed zero URLs in "289 added lines" — a figure that
+  reproduces from no scope of this diff, and which the pre-commit checkpoint traced to the `compile`
+  suite count sitting nearby.
+- **`dod.md` condition 7 — the supervisor checkpoint.** Run, in a fresh Fable 5 context, on the
+  maintainer's explicit grant lifting this session's no-subagent instruction. Verdict and its findings
+  are recorded in `docs/plan.md`'s Session log entry for this date.
+
+## Undemonstrated, and named rather than left for the next reader to find
+
+**A `gates` value the compiler refuses, in a workspace that also has a conventional `gates.json`,
+compiles silently from the conventional file.** The new `refused` diagnostic surfaces only when the
+conventional file is *also* absent, so an author whose declared key was ignored is never told. This is
+pre-existing and unchanged here — and it is consistent with the documented division of labour, since
+`doctor` is the tool that judges a manifest — but no test pins that shape and nobody has demonstrated
+it. Found by the pre-commit checkpoint.
+
+**The lesson worth keeping is the first session's, not the second's.** It was right to stop. Both gaps
+were blocked on a person and it said so instead of typing an attestation the rail would have accepted —
+the rail checks that the entry *contains* `seam scan … clean`, so a false one is green. What unblocked
+them was not more effort; it was a different machine and a lifted instruction.

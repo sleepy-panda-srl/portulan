@@ -1381,12 +1381,56 @@ describe("an undeclared gate policy is a state, not an unreadable file", () => {
         assert.deepEqual(policyDeclaration(named), {
             file: path.resolve(named, ".portulan", "policy", "rules.json"),
             declared: true,
+            reason: "declared",
         });
         const none = bare();
         assert.deepEqual(policyDeclaration(none), {
             file: path.join(none, ".portulan", "gates.json"),
             declared: false,
+            reason: "no-key",
         });
+    });
+
+    test("a directory named `..something` is inside the workspace, not an escape", () => {
+        // The containment test read `!path.relative(base, resolved).startsWith("..")`, which is the
+        // spelling `../cli/inside.mjs` exists to replace — it calls an ordinary directory whose name
+        // begins with `..` an escape. The workspace declared a policy, it is inside, and the compiler
+        // fell back anyway and then told the reader there was no `gates` key. Two defects in series.
+        const dir = bare({ gates: "..policy/rules.json" });
+        const got = policyDeclaration(dir);
+        assert.equal(got.declared, true, "`..policy` is a directory name, not a traversal");
+        assert.equal(got.file, path.resolve(dir, ".portulan", "..policy", "rules.json"));
+    });
+
+    test("`declared: false` carries WHY — the arm is four situations, not one", () => {
+        // The first cut reported all of them as "no top-level `gates` key". Two of the four are not
+        // that, which is the same two-situations-one-sentence defect this block exists to fix.
+        assert.equal(policyDeclaration(bare()).reason, "no-key");
+        assert.equal(policyDeclaration(bare({ gates: "/etc/passwd" })).reason, "refused");
+        assert.equal(policyDeclaration(bare({ gates: 7 })).reason, "refused", "a wrong type named something");
+        const empty = scratch();
+        fs.mkdirSync(path.join(empty, ".portulan"), { recursive: true });
+        assert.equal(policyDeclaration(empty).reason, "no-manifest");
+    });
+
+    test("a REFUSED value is not reported as a manifest with no `gates` key", (t) => {
+        // The manifest DID name a policy. Telling its author the key is absent sends them to add a key
+        // that is already there, and the advice to "leave it undeclared deliberately" is advice for a
+        // different workspace.
+        const { code, said } = stderrOf(t, ["--workspace", bare({ gates: "../../../etc/passwd" })]);
+        assert.equal(code, 2);
+        assert.match(said, /will not read/);
+        assert.doesNotMatch(said, /has no top-level `gates` key/, "it has one; it is the value that was refused");
+        assert.doesNotMatch(said, /leave it undeclared deliberately/, "wrong advice for a declared-but-bad value");
+    });
+
+    test("an unauthored workspace is not reported as a manifest with no `gates` key", (t) => {
+        const dir = scratch();
+        fs.mkdirSync(path.join(dir, ".portulan"), { recursive: true });
+        const { code, said } = stderrOf(t, ["--workspace", dir]);
+        assert.equal(code, 2);
+        assert.match(said, /no readable `workspace.json`/);
+        assert.doesNotMatch(said, /has no top-level `gates` key/, "there is no manifest to have a key");
     });
 
     test("a REFUSED path is `declared: false` — it fell back, so the fallback owns the diagnostic", () => {
