@@ -445,8 +445,13 @@ describe("what `new` scaffolds validates — the real tools, against real direct
         // test checked `typeof spec === "string"` under a comment claiming it checked membership —
         // which `"1.0"`, the exact root cause, satisfies. That is the defect this whole change is
         // about, written into the rail meant to catch it; the pre-commit checkpoint caught it by
-        // reading the body against its own comment. Importing the set means a spec added to the
-        // compiler cannot make this pass while the skeleton stays behind.
+        // reading the body against its own comment.
+        //
+        // **What this assertion does and does not do**, stated because the first correction of it
+        // overstated in the other direction: it rejects a value the compiler does not know. It does
+        // NOT keep the scaffold level with the compiler — adding `2.3` to the set leaves `2.2` in it,
+        // so the scaffold could stay behind and this would still pass. The two assertions below carry
+        // that: equality with `init.mjs`'s constant, and the floor-bearing minimum.
         const dir = scratch();
         assert.equal(run(["gate-policy", "gates", "--into", dir], harness().options), 0);
         const policy = JSON.parse(fs.readFileSync(path.join(dir, "gates.json"), "utf8"));
