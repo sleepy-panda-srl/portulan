@@ -70,7 +70,11 @@ export class CompileError extends Error {
 // Workspace Definition. A fresh reviewer at milestone 6 session 1 sight-read this as a carrier left
 // stale by the 2.5 → 2.6 bump and had to measure to clear it. It is correctly untouched by any
 // Workspace Definition bump; renamed to say so, because the next reader may not measure.
-const KNOWN_GATE_POLICY_SPECS = new Set(["2.1", "2.2"]);
+// Exported so a test can assert MEMBERSHIP against it rather than restate the literal. The
+// scaffold `new gate-policy` emits must declare a spec THIS set contains (#329), and a rail
+// spelling `"2.2"` on its own side would pass while the two drifted apart — which is the
+// shape #329 was.
+export const KNOWN_GATE_POLICY_SPECS = new Set(["2.1", "2.2"]);
 
 const TIERS = new Set(["auto", "propose", "gated", "prohibited"]);
 

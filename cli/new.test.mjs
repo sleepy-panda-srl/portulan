@@ -381,15 +381,65 @@ describe("what `new` scaffolds validates — the real tools, against real direct
         assert.doesNotMatch(reach, /\bProhibited\b/);
     });
 
-    test("a scaffolded gate policy parses AND compiles — parsing is not the bar", () => {
+    test("a scaffolded gate policy parses AND compiles — parsing is not the bar", async () => {
         // Session 1's sharpest lesson: the drafted policy parsed cleanly and compiled to a floor no rule
         // reached, so `doctor` failed the adopter's very first run. The test that missed it asserted
         // `parse()`. This one reaches the backend.
+        //
+        // **And for a year it did not.** This test's NAME said "AND compiles" while its body asserted
+        // two object keys and never called the compiler — so the skeleton drifted to a `portulan.gates`
+        // version key `compile` does not read, a `floor` block of two keys it has never read, and no
+        // rule the floor backend could reach, and every run of this suite was green.
+        // [#329](https://github.com/sleepy-panda-srl/portulan/issues/329) found it by hand. A test whose
+        // name claims the bar its body skips is worse than an absent one: it occupies the slot where
+        // the missing check would have been noticed.
         const dir = scratch();
         assert.equal(run(["gate-policy", "gates", "--into", dir], harness().options), 0);
         const policy = JSON.parse(fs.readFileSync(path.join(dir, "gates.json"), "utf8"));
         assert.ok(Array.isArray(policy.rules) && policy.rules.length > 0, "a policy with no rules gates nothing");
         assert.ok(policy.why, "a policy with no rationale is taste — dod.md condition 3");
+
+        // Now actually compile it. The scaffold is a DRAFT, so filling the `{braces}` is the step `new`
+        // itself tells the human to take — this fills them and nothing else, so what is graded is the
+        // skeleton rather than a policy the test wrote.
+        const ws = scratch();
+        fs.mkdirSync(path.join(ws, ".portulan"), { recursive: true });
+        fs.writeFileSync(
+            path.join(ws, ".portulan", "workspace.json"),
+            JSON.stringify({ portulan: { spec: "2.7" }, name: "w", kind: "repository", tree: "../", gates: "gates.json" }),
+        );
+        let filled = fs.readFileSync(path.join(dir, "gates.json"), "utf8").replace('"{default branch}"', '"main"');
+        let n = 0;
+        filled = filled
+            .replace(/"\{rule-id\}"/g, () => `"scaffold-placeholder-${++n}"`)
+            .replace(/"\{[^"]*\}"/g, '"Filled by the adopter — a placeholder is a sentence they write."');
+        assert.doesNotMatch(filled, /\{[a-z]/i, "every placeholder was filled, so a refusal below is the skeleton's");
+        fs.writeFileSync(path.join(ws, ".portulan", "gates.json"), filled);
+
+        const { run: compile } = await import("./compile.mjs");
+        assert.equal(compile(["--workspace", ws], { quiet: true }), 0, "the next step `new` names must succeed on what `new` just wrote");
+    });
+
+    test("the scaffolded policy declares a gate-policy spec the compiler implements", async () => {
+        // The narrow rail under the broad one above. #329's root cause was one string: the skeleton
+        // said `"portulan": { "gates": "1.0" }` — the wrong KEY and a value no compiler has known — so
+        // `compile` read `undefined`.
+        //
+        // **Asserted against the compiler's own exported set, not a literal.** A first draft of this
+        // test checked `typeof spec === "string"` under a comment claiming it checked membership —
+        // which `"1.0"`, the exact root cause, satisfies. That is the defect this whole change is
+        // about, written into the rail meant to catch it; the pre-commit checkpoint caught it by
+        // reading the body against its own comment. Importing the set means a spec added to the
+        // compiler cannot make this pass while the skeleton stays behind.
+        const dir = scratch();
+        assert.equal(run(["gate-policy", "gates", "--into", dir], harness().options), 0);
+        const policy = JSON.parse(fs.readFileSync(path.join(dir, "gates.json"), "utf8"));
+        const { KNOWN_GATE_POLICY_SPECS } = await import("./compile.mjs");
+        assert.ok(
+            KNOWN_GATE_POLICY_SPECS.has(String(policy.portulan?.spec)),
+            `the skeleton declares spec ${JSON.stringify(policy.portulan?.spec)}, which compile does not implement`,
+        );
+        assert.equal(policy.portulan.gates, undefined, "`portulan.gates` is not a key anything reads");
     });
 
     test("a scaffolded workspace is green under the real `doctor`", async () => {
