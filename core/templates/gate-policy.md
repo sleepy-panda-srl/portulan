@@ -88,6 +88,8 @@
 > print every rule against both rather than reasoning about it — the refusals are printed, never silent.
 >
 > **Start with the rules that destroy rather than create.** A ref deletion and a force-push are the two
-> the floor backend can express, they are the two whose damage is hardest to undo, and they are a policy's
+> **destructive ref spellings** the floor backend can express — it also emits `pull_request` and
+> `required_status_checks` for a `propose` rule once `floor.checks` is non-empty, which is the paragraph
+> above — and they are the two whose damage is hardest to undo, so they are a policy's
 > honest first pair — so the skeleton above ships them filled in rather than as placeholders, which is
 > also what keeps the `floor` block reachable. Their `reason` is still yours to write.

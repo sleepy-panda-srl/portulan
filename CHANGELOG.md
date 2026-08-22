@@ -102,12 +102,17 @@ records how things were found. This is per *release* and records what a reader g
 
   A third fault sat under those two: no rule in the skeleton reached the `floor` it declared, so even a
   faithfully filled-in draft was refused. The skeleton now ships the force-push and ref-deletion pair
-  filled in — the two the floor backend can express, and the pair the template's own closing paragraph
-  already recommended starting from.
+  filled in — the two destructive **ref** spellings the floor backend can express, and the pair the
+  template's own closing paragraph already recommended starting from. (That backend also emits
+  `pull_request` and `required_status_checks` for a `propose` rule once `floor.checks` is non-empty, so
+  "the two it can express" would be too broad; the template's own wording said that and is corrected in
+  the same change.)
 
   `cli/init.mjs`, `spec/slots.md` and this repository's own `gates.json` carried the correct shape
-  throughout. The scaffold was the one carrier nothing ran the compiler against: its test was named
-  *"a scaffolded gate policy parses AND compiles"* and asserted two object keys.
+  throughout. Of the two carriers that *generate* a gate policy, the one with a compiling test
+  (`cli/init.mjs`) was right and the one without was wrong; `spec/slots.md` is prose, and nothing runs
+  prose either, so it is not evidence in this comparison. The scaffold's test was named *"a scaffolded
+  gate policy parses AND compiles"* and asserted two object keys.
 
   **What the scaffold is now, stated precisely:** a draft that compiles **once the adopter fills the
   `{braces}`**, which is the step `new` already tells them to take. It is not a policy that compiles
