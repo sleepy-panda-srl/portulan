@@ -155,7 +155,8 @@ grant and not a session's to assume, so it is recorded here as a thing done, not
 
 ## Owed
 
-Nothing. Seam scan clean — nine explicit terms over all seven changed files and the branch name, with a
+Nothing. Seam scan clean — nine explicit terms over **every path the diff touches**, eight of them, the
+generated `handoffs-index.md` included because a generated file is still a pushed byte, and the branch name, with a
 planted listed term as a control that reddened; the commit message scanned when it was written. The
 supervisor checkpoint above ran in a fresh Fable 5 context, on the maintainer's explicit grant lifting
 this session's no-subagent instruction, and its verdict is recorded in the Session log entry for this
