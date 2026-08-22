@@ -1500,7 +1500,22 @@ export function matrix(parsed, options = {}) {
  * The default survives for a workspace with no manifest or no key — that is a legitimate shape, and
  * refusing it would make the key required, which is a spec change nobody decided.
  */
-export function policyPath(workspaceRoot, workspaceDir = ".portulan") {
+/**
+ * The same answer, plus WHICH ARM produced it.
+ *
+ * `policyPath` returns a path either way, which is all a reader of the policy needs and is exactly
+ * what made the caller unable to tell two different situations apart: a workspace that NAMES a policy
+ * file which is missing (a genuine error — something is declared and absent), and a workspace that
+ * names none at all (a legitimate shape, per this function's own note below). Both arrived at
+ * `readJson` as `ENOENT` and were reported identically, so the second — documented here as legitimate
+ * — surfaced as `cannot read the gate policy at …/gates.json`, which reads like a corrupt or deleted
+ * file and sends the reader to look for one that was never supposed to exist.
+ *
+ * Found 2026-08-22 while booting the `sleepy-panda` workspace, which declares no `gates` key and
+ * composes a pack contributing two gate rules: the compiler refused with an ENOENT that mentioned
+ * neither fact. Reporting declaredness is what lets the caller say which of the two it is.
+ */
+export function policyDeclaration(workspaceRoot, workspaceDir = ".portulan") {
     const base = path.join(workspaceRoot, workspaceDir);
     const manifest = path.join(base, "workspace.json");
     try {
@@ -1514,13 +1529,75 @@ export function policyPath(workspaceRoot, workspaceDir = ".portulan") {
         if (typeof declared === "string" && declared.trim() && FILE_PATH.test(declared)) {
             const resolved = path.resolve(base, declared);
             const inside = path.relative(base, resolved);
-            if (inside && !inside.startsWith("..") && !path.isAbsolute(inside)) return resolved;
+            if (inside && !inside.startsWith("..") && !path.isAbsolute(inside)) return { file: resolved, declared: true };
         }
     } catch {
         // No manifest, or unreadable. `doctor` is the tool that judges a manifest; this one only needs
         // to know where the policy is, and the default is where it is when nothing says otherwise.
     }
-    return path.join(workspaceRoot, workspaceDir, "gates.json");
+    return { file: path.join(workspaceRoot, workspaceDir, "gates.json"), declared: false };
+}
+
+/**
+ * Where a workspace's gate policy lives — the path alone.
+ *
+ * Kept as the narrow answer because most callers want exactly that, and because every existing caller
+ * and test was written against a string. `policyDeclaration` is the one that also says whether the
+ * workspace named it.
+ */
+export function policyPath(workspaceRoot, workspaceDir = ".portulan") {
+    return policyDeclaration(workspaceRoot, workspaceDir).file;
+}
+
+/**
+ * What to say when a workspace declares no gate policy and none is there by convention.
+ *
+ * This is a STATE, not a failure to read a file, and the difference is the whole point: `policyPath`'s
+ * note calls an absent `gates` key "a legitimate shape, and refusing it would make the key required,
+ * which is a spec change nobody decided" — and then the reader refused it anyway, with `ENOENT` on a
+ * file the workspace never claimed to have.
+ *
+ * It stays a refusal (exit 2, nothing written), because nothing was compiled and a compiler that
+ * reports success having emitted nothing is the failure this repository keeps writing checks against.
+ * What changes is that the refusal names the actual state and what it costs.
+ *
+ * **The pack count is the load-bearing half.** A workspace in this shape may still compose packs
+ * contributing gate fragments — `sleepy-panda` composes `rituals/checkpoints`, which contributes two
+ * — and those rules silently reach nothing, because a fragment tightens a policy and there is none to
+ * tighten. That is the fact a reader needs and the one the old message could not carry: it threw
+ * before `packContributions` was ever called.
+ */
+function undeclaredPolicyMessage(policyFile, workspaceRoot, workspaceDir, packOptions) {
+    const lines = [
+        `this workspace declares no gate policy — \`workspace.json\` has no top-level \`gates\` key, ` +
+            `and there is no \`gates.json\` at ${policyFile}. Nothing was compiled and nothing was written.`,
+    ];
+    let composed = null;
+    try {
+        composed = packContributions(workspaceRoot, workspaceDir, packOptions);
+    } catch {
+        // The pack layer has refusals of its own — a shadowed pack, a malformed pack manifest, an
+        // unresolvable root. Swallowed HERE and nowhere else: this message is about the missing policy,
+        // and a pack refusal raised from inside a diagnostic would replace the answer with a different
+        // question. Declare a policy and the very next run surfaces it on its own terms.
+    }
+    const contributions = composed?.contributions ?? [];
+    const rules = contributions.reduce((n, c) => n + (c.fragments?.length ?? 0), 0);
+    if (rules > 0) {
+        const packs = contributions
+            .filter((c) => (c.fragments?.length ?? 0) > 0)
+            .map((c) => `\`${c.pack}\``)
+            .join(", ");
+        lines.push(
+            `${rules} pack-contributed gate rule(s) from ${packs} are therefore NOT compiled: ` +
+                `a fragment tightens a policy, and there is none here to tighten.`,
+        );
+    }
+    lines.push(
+        "Declare one with `portulan new gate-policy`, or leave it undeclared deliberately — " +
+            "a workspace with no gate policy is a legitimate shape, and this is a state rather than a fault.",
+    );
+    return lines.join("\n  ");
 }
 
 // ===========================================================================================
@@ -2273,7 +2350,21 @@ export function run(argv, options = {}) {
         // The workspace may be named as a repository root or as the workspace directory itself, and the
         // second is how a feed-side workspace is reachable at all — see `resolveWorkspace`.
         const { workspaceRoot, workspaceDir } = resolveWorkspace(named);
-        const policyFile = policyPath(workspaceRoot, workspaceDir);
+        const { file: policyFile, declared: policyDeclared } = policyDeclaration(workspaceRoot, workspaceDir);
+        // **Declared-and-missing and never-declared are two different answers.** Only the first is a
+        // failure to read something this workspace claimed to have; the second is a shape `policyPath`
+        // documents as legitimate, and reporting it as `ENOENT` sent readers hunting for a deleted
+        // file. Checked here rather than inside the reader because only the caller knows to name what
+        // the absence costs — see `undeclaredPolicyMessage`.
+        if (!policyDeclared && !fs.existsSync(policyFile)) {
+            throw new CompileError(
+                undeclaredPolicyMessage(policyFile, workspaceRoot, workspaceDir, {
+                    named: namedRoots,
+                    discovery: () => discoverPackRoots(),
+                    forced,
+                }),
+            );
+        }
         const policy = readJson(policyFile, "the gate policy");
         // The cascade's middle layer, composed before the policy is parsed so that a pack's fragment
         // is validated by exactly the code that validates a hand-written rule.

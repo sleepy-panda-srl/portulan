@@ -42,6 +42,7 @@ import {
     matchesRule,
     matchesPath,
     policyPath,
+    policyDeclaration,
     resolveWorkspace,
     FILE_WRITERS,
     IN_PLACE_EDITORS,
@@ -1346,6 +1347,100 @@ describe("the policy location", () => {
 
     test("customer zero's manifest and the default agree — so this repo exercises both paths identically", () => {
         assert.equal(policyPath(REPO), path.resolve(REPO, ".portulan", "gates.json"));
+    });
+});
+
+// An absent gate policy has TWO shapes, and they are not the same answer.
+//
+// `policyPath`'s own note calls a workspace with no `gates` key "a legitimate shape, and refusing it
+// would make the key required, which is a spec change nobody decided" — and then the reader refused it
+// anyway, with `ENOENT` on a file the workspace never claimed to have. Found 2026-08-22 booting the
+// `sleepy-panda` workspace, which declares no key AND composes a pack contributing two gate rules: the
+// refusal mentioned neither fact, so the one consequence worth knowing — two Prohibited rules reaching
+// nothing — was invisible at exactly the moment someone was looking.
+describe("an undeclared gate policy is a state, not an unreadable file", () => {
+    const bare = (extra = {}) => {
+        const dir = scratch();
+        fs.mkdirSync(path.join(dir, ".portulan"), { recursive: true });
+        fs.writeFileSync(
+            path.join(dir, ".portulan", "workspace.json"),
+            JSON.stringify({ portulan: { spec: "2.8" }, name: "w", kind: "repository", tree: "../", ...extra }),
+        );
+        return dir;
+    };
+    const stderrOf = (t, argv) => {
+        const said = [];
+        t.mock.method(process.stderr, "write", (chunk) => (said.push(String(chunk)), true));
+        const code = run(argv);
+        t.mock.restoreAll();
+        return { code, said: said.join("") };
+    };
+
+    test("`policyDeclaration` reports which arm produced the path", () => {
+        const named = bare({ gates: "policy/rules.json" });
+        assert.deepEqual(policyDeclaration(named), {
+            file: path.resolve(named, ".portulan", "policy", "rules.json"),
+            declared: true,
+        });
+        const none = bare();
+        assert.deepEqual(policyDeclaration(none), {
+            file: path.join(none, ".portulan", "gates.json"),
+            declared: false,
+        });
+    });
+
+    test("a REFUSED path is `declared: false` — it fell back, so the fallback owns the diagnostic", () => {
+        // An absolute path or a `../` escape is refused and falls back. The manifest named something,
+        // but nothing it named is usable, so the compiler is on the conventional path and must say so
+        // rather than claim the workspace declared the file it is about to not find.
+        assert.equal(policyDeclaration(bare({ gates: "/etc/passwd" })).declared, false);
+        assert.equal(policyDeclaration(bare({ gates: "../../../etc/passwd" })).declared, false);
+    });
+
+    test("run() names the state instead of reporting ENOENT, and still writes nothing", (t) => {
+        const dir = bare();
+        const { code, said } = stderrOf(t, ["--workspace", dir]);
+        assert.equal(code, 2, "nothing was compiled, so this stays a refusal rather than becoming a pass");
+        assert.match(said, /declares no gate policy/);
+        assert.doesNotMatch(said, /ENOENT/, "the old message sent readers hunting for a file never claimed");
+        assert.ok(!fs.existsSync(path.join(dir, ".claude", "settings.json")), "and it emits no artifact");
+    });
+
+    test("a DECLARED policy that is missing still reports the read failure", (t) => {
+        // The regression guard. Something WAS declared and is absent — that is a genuine failure to
+        // read, and collapsing it into the new sentence would trade one indistinguishable pair for
+        // another in the opposite direction.
+        const { code, said } = stderrOf(t, ["--workspace", bare({ gates: "policy/rules.json" })]);
+        assert.equal(code, 2);
+        assert.match(said, /cannot read the gate policy/);
+    });
+
+    test("the message counts the pack rules the absence strands, and names the pack", (t) => {
+        // The load-bearing half. The old refusal threw before `packContributions` was ever called, so
+        // it could not carry this even in principle.
+        const dir = bare({ packs: ["rituals/checkpoints"] });
+        const root = path.join(dir, "packs");
+        packAt(root, "rituals", "checkpoints", [fragment("a", "prohibited"), fragment("b", "prohibited")]);
+        const { code, said } = stderrOf(t, ["--workspace", dir, "--pack-root", root]);
+        assert.equal(code, 2);
+        assert.match(said, /2 pack-contributed gate rule\(s\)/);
+        assert.match(said, /checkpoints/, "naming the dependency is what the merge step is for");
+    });
+
+    test("a pack refusal does not replace the answer with a different question", (t) => {
+        // `packContributions` has refusals of its own. Raised from inside this diagnostic they would
+        // report a pack problem to someone whose actual problem is a missing policy, so they are
+        // swallowed HERE and nowhere else — the next run, with a policy declared, surfaces them.
+        const dir = bare({ packs: ["rituals/checkpoints"] });
+        const root = path.join(dir, "packs");
+        const packDir = path.join(root, "rituals", "checkpoints");
+        fs.mkdirSync(packDir, { recursive: true });
+        // A malformed pack manifest, which `packContributions` refuses by throwing. An UNRESOLVED pack
+        // would not exercise this: it is collected rather than raised, so it never reaches the catch.
+        fs.writeFileSync(path.join(packDir, "pack.json"), "{ not json");
+        const { code, said } = stderrOf(t, ["--workspace", dir, "--pack-root", root]);
+        assert.equal(code, 2);
+        assert.match(said, /declares no gate policy/, "the missing policy is still the answer");
     });
 });
 
