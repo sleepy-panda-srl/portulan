@@ -118,7 +118,10 @@ export const SLUG = (() => {
 const SPEC = "2.7";
 
 /** The gate-policy spec `cli/compile.mjs` reads. Checked by its own suite, not guessed at here. */
-const GATE_POLICY_SPEC = "2.2";
+// Exported so `cli/new.test.mjs` can assert that the OTHER policy-generating carrier —
+// `core/templates/gate-policy.md`, which `new gate-policy` emits — declares the same version.
+// #329 was precisely these two disagreeing, with only this one exercised.
+export const GATE_POLICY_SPEC = "2.2";
 
 const RESIDENCES = new Set(["in-repo", "pointer"]);
 

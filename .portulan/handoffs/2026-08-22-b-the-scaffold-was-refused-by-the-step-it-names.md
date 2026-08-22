@@ -110,6 +110,30 @@ inline round was empty.
   it. Narrowed to the claim that is true: of the two carriers that *generate* a policy, the one with a
   compiling test was right.
 
+## Copilot round 2: two more, and both name what a rail does not reach
+
+The same class as round one's best finding, which is now the pattern of this branch: **every Copilot
+finding here has been about coverage, not correctness.** Nothing it flagged was wrong; everything it
+flagged was unwatched.
+
+- **Exit 0 is not the promise.** The broad rail asserted `compile(...) === 0`. The floor backend
+  refuses only when NO rule reaches it, so dropping either scaffold ref rule leaves the other reaching
+  the floor and the rail stays green — measured. The skeleton promises the **pair**, so the pair is now
+  pinned in the emitted `github-ruleset.json`: both `non_fast_forward` and `deletion`.
+- **Membership is necessary and not sufficient.** `"2.1"` is in `KNOWN_GATE_POLICY_SPECS` and is the
+  **no-floor** shape — `floor` arrived at 2.2 — and `parseFloor` is not version-gated, so a skeleton
+  regressing to `2.1` while still emitting a floor compiles green. Measured. Now pinned to
+  `cli/init.mjs`'s **exported** `GATE_POLICY_SPEC` rather than to a literal `"2.2"`: those two are the
+  only carriers that *generate* a gate policy, **#329 was exactly them disagreeing**, and a literal on
+  each side would let them drift apart again while both files read `"2.2"`. The rail now fails if they
+  differ, whatever they differ to.
+
+Two threads in this round were the stale `31/31` figure, already corrected in the records-last commit
+before the round ran.
+
+**Five findings over two rounds, all real, none argued away** — and the bound is now spent: rule 4 of
+the review loop allows two fix-rounds, so anything further triages to an issue rather than a third.
+
 ## Owed
 
 Nothing. Seam scan clean — nine explicit terms over all seven changed files and the branch name, with a
