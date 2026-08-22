@@ -26,15 +26,15 @@
 
 ```json
 {
-  "portulan": { "gates": "1.0" },
+  "portulan": { "spec": "2.2" },
 
   "why": "{Why this team gates what it gates — the sentence a new agent reads first. Name the blast radius you are protecting, not the tools you are restricting.}",
 
   "floor": {
     "branch": "{default branch}",
-    "require_pull_request": true,
-    "block_force_push": true,
-    "checks": []
+    "checks": [],
+    "reviews": 0,
+    "resolve_conversations": true
   },
 
   "rules": [
@@ -45,10 +45,16 @@
       "reason": "{Why, and what to do instead. Prohibited means no yes makes this acceptable — if a human could approve it, it is Gated, not Prohibited.}"
     },
     {
-      "id": "{rule-id}",
+      "id": "force-push-without-a-lease",
       "tier": "gated",
-      "action": { "shell": "{command prefix}" },
+      "action": { "shell": "git push --force" },
       "reason": "{Why a human must approve each time. Prefer the undoability test: what does it cost if this was wrong and nobody noticed for a week?}"
+    },
+    {
+      "id": "delete-a-ref",
+      "tier": "gated",
+      "action": { "shell": "git push --delete" },
+      "reason": "{Why a deletion waits for a person. These two ids and actions are filled in already — they are the pair the floor backend can express, and a `floor` block with no rule reaching it refuses to compile.}"
     },
     {
       "id": "{rule-id}",
@@ -60,6 +66,16 @@
 }
 ```
 
+> **`floor` is exactly four keys, and they are the four `compile` reads** — `branch`, `checks`,
+> `reviews`, `resolve_conversations`. It is not a free-form block: `reviews` is a non-negative integer
+> and `resolve_conversations` a boolean, both required, because a floor that omitted them would export
+> one weaker than the one already in force. _(Until 2026-08-22 this skeleton emitted
+> `require_pull_request` and `block_force_push` instead — two keys no version of the compiler has ever
+> read — beside a `portulan.gates` version key it does not read either. A scaffold the next documented
+> step refuses is the defect this template's own closing paragraph warns about, one layer up;
+> [#329](https://github.com/sleepy-panda-srl/portulan/issues/329) reported it, and `new`'s test now
+> scaffolds this file and compiles it rather than only checking that it was written.)_
+>
 > **`checks: []` is deliberate and you should probably leave it that way at first.** A floor requiring a
 > status check that no workflow job reports is a red nobody caused — a fresh repository reports no checks,
 > and a real one reports something else, so any name guessed here fails on the first run. Add the check
@@ -73,4 +89,5 @@
 >
 > **Start with the rules that destroy rather than create.** A ref deletion and a force-push are the two
 > the floor backend can express, they are the two whose damage is hardest to undo, and they are a policy's
-> honest first pair.
+> honest first pair — so the skeleton above ships them filled in rather than as placeholders, which is
+> also what keeps the `floor` block reachable. Their `reason` is still yours to write.

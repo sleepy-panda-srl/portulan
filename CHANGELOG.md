@@ -93,6 +93,23 @@ records how things were found. This is per *release* and records what a reader g
   *"`workspace.json` has no top-level `gates` key"* — telling the author of a manifest that did name a
   policy to add a key already there. Each arm now names itself, with its own remedy.
 
+- **`portulan new gate-policy` emitted a scaffold that `portulan compile` refuses**, so the two halves
+  of the documented path did not join up — and `new`'s own success message names `compile` as the next
+  step. The skeleton declared `"portulan": { "gates": "1.0" }`, where the compiler reads
+  `portulan.spec` and knows `2.1` and `2.2`; and a `floor` of `require_pull_request` /
+  `block_force_push`, where the compiler reads `branch`, `checks`, `reviews`,
+  `resolve_conversations`. Neither key was marked as a placeholder, so both read as already correct.
+
+  A third fault sat under those two: no rule in the skeleton reached the `floor` it declared, so even a
+  faithfully filled-in draft was refused. The skeleton now ships the force-push and ref-deletion pair
+  filled in — the two the floor backend can express, and the pair the template's own closing paragraph
+  already recommended starting from.
+
+  `cli/init.mjs`, `spec/slots.md` and this repository's own `gates.json` carried the correct shape
+  throughout. The scaffold was the one carrier nothing ran the compiler against: its test was named
+  *"a scaffolded gate policy parses AND compiles"* and asserted two object keys. It now compiles what
+  it scaffolds.
+
 ## 0.1.2 — 2026-08-20
 
 **A release about refusing to guess.** Where a declared pack resolves both from a root discovered on
