@@ -44,7 +44,8 @@ compiled.
 `portulan: { spec: GATE_POLICY_SPEC }`, the correct four floor keys, and — with a comment saying so —
 the two ref rules, *"Found by running the real validator against a real draft rather than by reading the
 compiler."* `spec/slots.md`'s floor table documents the same four keys, and `.portulan/gates.json` uses
-them. **Three carriers correct, and the wrong one was the only one nothing exercised.** Precisely: two
+them. **Of the two carriers that GENERATE a gate policy, the one with a compiling test was right and
+the one without was wrong.** Precisely: two
 of the three are exercised — `init`'s draft is compiled by `cli/init.test.mjs`, and the workspace's own
 `gates.json` by the `compile` recipe — and `spec/slots.md` is prose, which nothing runs either. So the
 claim is not *"the unexercised carrier was wrong"* in general; it is that of the two carriers that
@@ -84,6 +85,29 @@ reds, as does the template exactly as #329 found it.
 The other three: the records claimed this checkpoint as already run while `docs/plan.md` still carried
 a placeholder; the seam attestation stated a coverage of two files when the diff changes seven; and the
 "nothing ran" sentence above was loose about a prose carrier. All corrected here rather than argued.
+
+## Copilot round 1: three notes, all promoted, all real
+
+None was an inline comment — all three arrived as **suppressed low-confidence notes**, and the
+promotion step attached a thread to each, so all three gate. That channel earned its keep here: the
+inline round was empty.
+
+- **`parseFloor` ignores unknown keys.** It validates `branch`, `checks`, `reviews`,
+  `resolve_conversations` and returns only those; anything else is accepted and dropped. So a template
+  reintroducing `require_pull_request` / `block_force_push` **beside** the four valid keys, with the ref
+  pair present, **compiles exit 0** — measured. Half of #329 could come back with the broad rail green.
+  This is the finding of the round: it names what the new rail does *not* cover, which is the harder
+  thing to see than what it does. Pinned by asserting `Object.keys(policy.floor)` exactly, and the
+  control confirms the compile rail stays green while the new one reds.
+- **`String(spec)` membership passes a numeric spec**, and worse than reported: a future `2.10` written
+  as a JSON number is `2.1` before either side sees it — a *different* spec that happens to be known.
+  The raw type is now asserted alongside membership.
+- **A headline that contradicted its own next sentence.** *"The wrong one was the only one nothing
+  exercised"*, immediately followed by the admission that `spec/slots.md` is prose nothing runs either.
+  The pre-commit pass had asked for this to be tightened and I added the qualifier while leaving the
+  false headline standing — a correction that explained the error underneath the sentence still making
+  it. Narrowed to the claim that is true: of the two carriers that *generate* a policy, the one with a
+  compiling test was right.
 
 ## Owed
 

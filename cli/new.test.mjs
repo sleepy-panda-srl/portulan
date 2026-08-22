@@ -435,11 +435,33 @@ describe("what `new` scaffolds validates — the real tools, against real direct
         assert.equal(run(["gate-policy", "gates", "--into", dir], harness().options), 0);
         const policy = JSON.parse(fs.readFileSync(path.join(dir, "gates.json"), "utf8"));
         const { KNOWN_GATE_POLICY_SPECS } = await import("./compile.mjs");
+        // The RAW type as well as the coerced membership. `compile` compares `String(spec)`, so a
+        // numeric `2.2` in the skeleton would pass a membership check alone — and the trap is sharper
+        // than it looks: a future `2.10` written as a JSON number is `2.1` by the time either side
+        // sees it, which is a DIFFERENT spec that happens to be known. Copilot, round 1.
+        assert.equal(typeof policy.portulan?.spec, "string", "`portulan.spec` is a string-valued contract");
         assert.ok(
-            KNOWN_GATE_POLICY_SPECS.has(String(policy.portulan?.spec)),
+            KNOWN_GATE_POLICY_SPECS.has(policy.portulan.spec),
             `the skeleton declares spec ${JSON.stringify(policy.portulan?.spec)}, which compile does not implement`,
         );
         assert.equal(policy.portulan.gates, undefined, "`portulan.gates` is not a key anything reads");
+    });
+
+    test("the scaffolded floor declares exactly the four keys the compiler reads", async () => {
+        // **The compile rail cannot catch this half, and that is the point.** `parseFloor` validates
+        // the four keys it reads and IGNORES unknown ones — measured: a floor carrying `branch`,
+        // `checks`, `reviews`, `resolve_conversations` AND the dead `require_pull_request` /
+        // `block_force_push` compiles exit 0. So half of #329 could return, in the same file, and the
+        // broad rail above would stay green. An exact-key assertion is the only thing that sees it.
+        // Copilot, round 1 — it read what the broad rail does NOT cover rather than what it does.
+        const dir = scratch();
+        assert.equal(run(["gate-policy", "gates", "--into", dir], harness().options), 0);
+        const policy = JSON.parse(fs.readFileSync(path.join(dir, "gates.json"), "utf8"));
+        assert.deepEqual(
+            Object.keys(policy.floor).sort(),
+            ["branch", "checks", "resolve_conversations", "reviews"],
+            "a key the compiler does not read is a key that silently does nothing",
+        );
     });
 
     test("a scaffolded workspace is green under the real `doctor`", async () => {
