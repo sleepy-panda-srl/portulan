@@ -54,7 +54,7 @@
       "id": "delete-a-ref",
       "tier": "gated",
       "action": { "shell": "git push --delete" },
-      "reason": "{Why a deletion waits for a person. These two ids and actions are filled in already — they are the pair the floor backend can express, and a `floor` block with no rule reaching it refuses to compile.}"
+      "reason": "{Why a deletion waits for a person. These two ids and actions are filled in already — they are the two destructive ref spellings the floor backend can express, and a `floor` block with no rule reaching it refuses to compile.}"
     },
     {
       "id": "{rule-id}",
