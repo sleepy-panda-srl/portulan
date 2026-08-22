@@ -1,6 +1,8 @@
 # Handoff — the scaffold was refused by the very step it tells you to run next
 
-**State.** One branch, `fix/new-gate-policy-scaffold-compiles`, off `main` at `3de4c5f`. Fifteen
+**State.** One branch, `fix/new-gate-policy-scaffold-compiles`, **rebased onto merged `main` at
+`75dac6e`** — it was cut from `3de4c5f`, which stopped being the fork point when
+[#328](https://github.com/sleepy-panda-srl/portulan/pull/328) merged. Fifteen
 recipes green, `new` **32/32**, full suite **1801** (post-rebase onto the merged #328). Both figures are post-round-one: the round added a
 test, so an entry written before it would have carried a number true of a tree that no longer exists. Filed as
 [#329](https://github.com/sleepy-panda-srl/portulan/issues/329) by the maintainer against `0.1.2`
@@ -147,7 +149,25 @@ before the round ran.
   scaffolds."* It compiles once the adopter fills the `{braces}`. Unqualified, that repeats the
   documented-path ambiguity this whole change exists to fix, in the document an adopter reads first.
 
-**Seven findings over three rounds, all real, none argued away.** On the bound: rule 4 allows two
+**Counting scope, stated because two totals disagreed.** A *finding* is one distinct claim; a *thread*
+is where it was raised, and two findings were each raised on two threads at once. Through round three:
+**nine findings across ten threads** — seven arriving as suppressed notes, two as inline comments. The
+PR description said nine and this handoff said seven, which was the note count read as the total.
+
+**Round four added seven more, all suppressed notes: sixteen over four rounds, all real, none argued
+away.** Six were folded — the floor-backend overclaim in **both** its carriers (the template's own prose
+said "the two the floor backend can express", and it also emits `pull_request` /
+`required_status_checks` for a `propose` rule once `floor.checks` is non-empty, measured); the
+"one carrier nothing ran" sentence in `CHANGELOG.md`, which is the sibling of the one narrowed in this
+handoff a round earlier **and was left standing** — [`0020`](../proposals/0020-a-fix-is-not-done-at-the-site-it-was-found.md)'s
+class, in a change that had already met it; the stale fork point above; and these totals.
+
+**One was triaged out: [#333](https://github.com/sleepy-panda-srl/portulan/issues/333).** The broad rail
+scaffolds into one directory and compiles a **copy** in another, so the documented shape — manifest and
+generated policy in the same `.portulan/`, at the target `--into` names — is still untested, and a
+destination regression would keep this rail green. Real, and not a defect in what this branch fixes.
+
+On the bound: rule 4 allows two
 fix-rounds, and this was a third. It was folded rather than triaged because the rebase onto the merged
 [#328](https://github.com/sleepy-panda-srl/portulan/pull/328) forced a push regardless — the bound
 counts **pushes**, not findings, so this one cost no extra cycle. Going past two is the maintainer's to
