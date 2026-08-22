@@ -1,7 +1,8 @@
 # Handoff — the scaffold was refused by the very step it tells you to run next
 
 **State.** One branch, `fix/new-gate-policy-scaffold-compiles`, off `main` at `3de4c5f`. Fifteen
-recipes green, `new` **31/31**, full suite green. Filed as
+recipes green, `new` **32/32**, full suite **1791**. Both figures are post-round-one: the round added a
+test, so an entry written before it would have carried a number true of a tree that no longer exists. Filed as
 [#329](https://github.com/sleepy-panda-srl/portulan/issues/329) by the maintainer against `0.1.2`
 installed through the plugin cache; fixed here.
 
