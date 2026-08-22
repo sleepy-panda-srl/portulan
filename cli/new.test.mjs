@@ -418,6 +418,17 @@ describe("what `new` scaffolds validates — the real tools, against real direct
 
         const { run: compile } = await import("./compile.mjs");
         assert.equal(compile(["--workspace", ws], { quiet: true }), 0, "the next step `new` names must succeed on what `new` just wrote");
+
+        // **Exit 0 is not the whole promise.** The floor backend refuses only when NO rule reaches it,
+        // so dropping either scaffold rule leaves the other reaching the floor and this stays green —
+        // measured. The skeleton promises the force-push/deletion PAIR, so the pair is what gets
+        // pinned, in the emitted artifact rather than in the exit code. Copilot, round 2.
+        const ruleset = JSON.parse(fs.readFileSync(path.join(ws, ".portulan", "compile", "github-ruleset.json"), "utf8"));
+        assert.deepEqual(
+            ruleset.rules.map((r) => r.type).sort(),
+            ["deletion", "non_fast_forward"],
+            "both scaffold ref rules must reach the floor, not just whichever one survives",
+        );
     });
 
     test("the scaffolded policy declares a gate-policy spec the compiler implements", async () => {
@@ -445,6 +456,19 @@ describe("what `new` scaffolds validates — the real tools, against real direct
             `the skeleton declares spec ${JSON.stringify(policy.portulan?.spec)}, which compile does not implement`,
         );
         assert.equal(policy.portulan.gates, undefined, "`portulan.gates` is not a key anything reads");
+
+        // **Membership is necessary and not sufficient.** `2.1` is in the set and is the NO-FLOOR
+        // shape; `floor` arrived at 2.2, and `parseFloor` is not version-gated, so a skeleton
+        // regressing to `"2.1"` while still emitting a floor compiles green — measured. Pinned to
+        // `init.mjs`'s constant rather than to a literal: those two are the only carriers that
+        // GENERATE a gate policy, #329 was them disagreeing, and a literal here would let them
+        // disagree again while both sides read `"2.2"`. Copilot, round 2.
+        const { GATE_POLICY_SPEC } = await import("./init.mjs");
+        assert.equal(
+            policy.portulan.spec,
+            GATE_POLICY_SPEC,
+            "the two policy-generating carriers must declare the same gate-policy spec",
+        );
     });
 
     test("the scaffolded floor declares exactly the four keys the compiler reads", async () => {
