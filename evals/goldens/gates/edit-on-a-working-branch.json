@@ -1,0 +1,94 @@
+{
+  "rule": "edit-on-a-working-branch",
+  "why": "The rule whose target is the WHOLE REPOSITORY (`write: \"./\"`), and the file that found gate-map hole 8 on this corpus's first run. `matchesPath` reduces `\"./\"` to the empty string and then refuses the empty string, so this rule answers false for every input. Nothing is mis-enforced — the rule is `auto`, the compiler refuses `auto` wholesale and gate.mjs reads only gated and prohibited — but the divergence is real and is waiting for the first gated rule written in this shape. Every case below therefore expects FALSE and says which fact it is pinning.",
+  "cases": [
+    {
+      "id": "the-plain-write",
+      "class": "documented-hole",
+      "tool": "Write",
+      "input": {
+        "file_path": "/repo/cli/compile.mjs"
+      },
+      "expect": false,
+      "why": "The control. Answered through the Write tool, which is the half a permission rule also covers. — but this rule's target is `./`, which the matcher reduces to the empty string and refuses, so the answer is false. Repairing that makes this case go red until hole 8 is updated.",
+      "hole": ".portulan/gate-map.md honest holes, entry 8 — a `./` target matches nothing at runtime"
+    },
+    {
+      "id": "the-Edit-tool",
+      "class": "documented-hole",
+      "tool": "Edit",
+      "input": {
+        "file_path": "/repo/cli/compile.mjs"
+      },
+      "expect": false,
+      "why": "The same target through Edit — three write tools carry a `file_path` and all three must reach the rule. — but this rule's target is `./`, which the matcher reduces to the empty string and refuses, so the answer is false. Repairing that makes this case go red until hole 8 is updated.",
+      "hole": ".portulan/gate-map.md honest holes, entry 8 — a `./` target matches nothing at runtime"
+    },
+    {
+      "id": "a-shell-redirection",
+      "class": "documented-hole",
+      "tool": "Bash",
+      "input": {
+        "command": "echo x >> cli/compile.mjs"
+      },
+      "expect": false,
+      "why": "The shell half. For one milestone a `write:` rule reached only the tools carrying a `file_path`, so this was gated by NEITHER layer: the permission rule rejects the tool and the matcher fell through to false. — but this rule's target is `./`, which the matcher reduces to the empty string and refuses, so the answer is false. Repairing that makes this case go red until hole 8 is updated.",
+      "hole": ".portulan/gate-map.md honest holes, entry 8 — a `./` target matches nothing at runtime"
+    },
+    {
+      "id": "a-writer-from-the-table",
+      "class": "documented-hole",
+      "tool": "Bash",
+      "input": {
+        "command": "cp /tmp/x cli/compile.mjs"
+      },
+      "expect": false,
+      "why": "The writer-table half, which reads arguments rather than redirections. — but this rule's target is `./`, which the matcher reduces to the empty string and refuses, so the answer is false. Repairing that makes this case go red until hole 8 is updated.",
+      "hole": ".portulan/gate-map.md honest holes, entry 8 — a `./` target matches nothing at runtime"
+    },
+    {
+      "id": "a-messy-path-spelling",
+      "class": "documented-hole",
+      "tool": "Bash",
+      "input": {
+        "command": "cp /tmp/x ./cli/compile.mjs"
+      },
+      "expect": false,
+      "why": "Tails are compared literally, which is right for the host's clean absolute paths and wrong for anything a person types. — but this rule's target is `./`, which the matcher reduces to the empty string and refuses, so the answer is false. Repairing that makes this case go red until hole 8 is updated.",
+      "hole": ".portulan/gate-map.md honest holes, entry 8 — a `./` target matches nothing at runtime"
+    },
+    {
+      "id": "not-first-on-the-line",
+      "class": "documented-hole",
+      "tool": "Bash",
+      "input": {
+        "command": "git status; echo x >> cli/compile.mjs"
+      },
+      "expect": false,
+      "why": "The separator escape, in the write matcher. — but this rule's target is `./`, which the matcher reduces to the empty string and refuses, so the answer is false. Repairing that makes this case go red until hole 8 is updated.",
+      "hole": ".portulan/gate-map.md honest holes, entry 8 — a `./` target matches nothing at runtime"
+    },
+    {
+      "id": "a-wrapper-not-first-on-the-line",
+      "class": "documented-hole",
+      "tool": "Bash",
+      "input": {
+        "command": "git status; bash -c \"echo x >> cli/compile.mjs\""
+      },
+      "expect": false,
+      "why": "The worse half of the segment-composition defect — the shell branch grew per-segment unwrapping and this branch did not. — but this rule's target is `./`, which the matcher reduces to the empty string and refuses, so the answer is false. Repairing that makes this case go red until hole 8 is updated.",
+      "hole": ".portulan/gate-map.md honest holes, entry 8 — a `./` target matches nothing at runtime"
+    },
+    {
+      "id": "an-interpolated-target-escapes",
+      "class": "documented-hole",
+      "tool": "Bash",
+      "input": {
+        "command": "T=cli/compile.mjs; echo x > $T"
+      },
+      "expect": false,
+      "why": "The matcher reads words as typed and expands nothing. Expanding them means running the shell.",
+      "hole": ".portulan/gate-map.md honest holes, entry 1 — spellings neither layer sees"
+    }
+  ]
+}

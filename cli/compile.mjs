@@ -722,6 +722,8 @@ function commandSegments(raw) {
     const out = [];
     let start = 0;
     let quote = null;
+    // The index of the character a backslash most recently turned into data. See the `\\` branch.
+    let escaped = -1;
     for (let i = 0; i < command.length; i += 1) {
         const c = command[i];
         if (quote) {
@@ -752,6 +754,14 @@ function commandSegments(raw) {
             // failing case: one carrier corrected and its sibling left is how the last three defects
             // on this branch happened.
             i += command[i + 1] === "\r" && command[i + 2] === "\n" ? 2 : 1;
+            // **Remember WHICH character this backslash turned into data.** The redirection-operator
+            // check below reads one raw neighbour, and a raw read cannot tell `>` the operator from
+            // `\>` the literal. Without this, `echo \>| git push --force origin main` — a REAL pipe,
+            // measured in bash delivering bytes downstream — stopped splitting at the `|`, and the
+            // force-push after it went invisible to every matcher. `\>&` did the same across a real
+            // background separator. Both were caught at HEAD and were narrowed by the #71 fix itself;
+            // found by the pre-commit checkpoint, which attacked the change rather than reading it.
+            escaped = i;
             continue;
         }
         // `#` is NOT treated as starting a comment, and that is a decision rather than an oversight.
@@ -768,13 +778,57 @@ function commandSegments(raw) {
         //
         // Both spellings are asserted in the suite so this stays a choice rather than drift.
         // Reported by Copilot review on #60 and declined on those grounds.
+        // An `&` or `|` bound into a redirection OPERATOR is not a separator, and splitting there is
+        // what made the strip below unreachable for three of the four spellings. `2>&1 git push
+        // --force …` split at the `&` into `2>` and `1 git push --force …`, whose head is `1` — the
+        // redirection was already in pieces by the time anything could strip it, and `>| f git push
+        // --force …` broke the same way at the `|`. Both operators are closed forms: `&` preceded by
+        // `>`/`<` or followed by `>`, and `|` preceded by `>`. `a && b`, `a & b` and `a | b` are
+        // untouched — none of them puts a redirection character next to the separator.
+        // `i - 1 !== escaped` on both arms: a `>` or `<` that a backslash turned into DATA is not an
+        // operator, and treating it as one un-splits a real separator. The `command[i + 1]` arm needs
+        // no such guard — an escaped character is always preceded by its own backslash, so the
+        // character after `&` can never be an escaped `>`.
+        const opBefore = i - 1 !== escaped && (command[i - 1] === ">" || command[i - 1] === "<");
+        if (c === "&" && (opBefore || command[i + 1] === ">")) continue;
+        if (c === "|" && i - 1 !== escaped && command[i - 1] === ">") continue;
         if (";|&()\n\r".includes(c)) {
             out.push(command.slice(start, i));
             start = i + 1;
         }
     }
     out.push(command.slice(start));
-    return out.map((s) => s.trim()).filter(Boolean);
+    return out.map((s) => stripLeadingRedirections(s.trim())).filter(Boolean);
+}
+
+/**
+ * A redirection sitting where the command goes: an optional file descriptor, one of the operators
+ * below, and a word.
+ *
+ * **This is the one leader that is stripped, and the asymmetry is the point** (#71). The other
+ * leaders `commandSegments` leaves alone — `env`, `sudo`, `FOO=bar`, `then`, `do`, a brace group —
+ * are refused for a reason that does not apply here: a table of command prefixes has no natural edge
+ * (`nice`, `time`, `nohup`, `timeout`, `command`, `stdbuf`, `doas`), and one missing entry buys
+ * exactly the false confidence a hole list exists to deny. A redirection's grammar is CLOSED, so it
+ * can be stripped completely with an edge a reader can check. #60 left it open deliberately, because
+ * closing it would have been a matcher change on the same commit that stopped hole 2 overclaiming.
+ *
+ * **Do not extend this to a named table of command prefixes.** That is the change the paragraph
+ * above refuses, and the two look similar enough to be proposed together.
+ *
+ * Applied repeatedly, because redirections stack: `> /tmp/out 2>&1 git push --force …` carries two.
+ */
+const LEADING_REDIRECTION = /^\d*(?:&>>|&>|>>|>&|>\||<&|<>|<|>)\s*[^\s]+\s*/;
+
+function stripLeadingRedirections(segment) {
+    let text = segment;
+    for (;;) {
+        const shorter = text.replace(LEADING_REDIRECTION, "");
+        // A segment that is ONLY a redirection strips to the empty string and is dropped by the
+        // caller's `filter(Boolean)`, which is correct: a redirection is not a command.
+        if (shorter === text) return text;
+        text = shorter;
+    }
 }
 
 /**

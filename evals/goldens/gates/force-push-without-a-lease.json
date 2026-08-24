@@ -1,0 +1,330 @@
+{
+  "rule": "force-push-without-a-lease",
+  "why": "The richest SHELL-matcher rule, and the one whose ungated sibling makes it a false-positive trap: `--force-with-lease` is Auto by the maintainer's ruling of 2026-07-27, so every widening of this gate has a control here. This file also carries the leader table — the five spellings that still escape and the one that stopped escaping at #71.",
+  "cases": [
+    {
+      "id": "the-bare-spelling",
+      "class": "holds",
+      "tool": "Bash",
+      "input": {
+        "command": "git push --force origin main"
+      },
+      "expect": true,
+      "why": "The control every other case in this file is measured against."
+    },
+    {
+      "id": "the-lease-is-not-this-gate",
+      "class": "holds",
+      "tool": "Bash",
+      "input": {
+        "command": "git push --force-with-lease origin main"
+      },
+      "expect": false,
+      "why": "The load-bearing control. A segment matcher that re-gated the lease would be the compiler taking back an ungating, which is worse than the hole it closes."
+    },
+    {
+      "id": "the-lease-mid-line",
+      "class": "holds",
+      "tool": "Bash",
+      "input": {
+        "command": "ls && git push --force-with-lease origin main"
+      },
+      "expect": false,
+      "why": "The same control after the segment fix, because that fix is exactly what could have widened it."
+    },
+    {
+      "id": "the-word-boundary-holds",
+      "class": "holds",
+      "tool": "Bash",
+      "input": {
+        "command": "git pushall --force"
+      },
+      "expect": false,
+      "why": "A prefix match without a whitespace boundary would gate `git pushall`. The boundary is what keeps a prefix rule from becoming a substring rule."
+    },
+    {
+      "id": "quoted-text-is-not-a-command",
+      "class": "holds",
+      "tool": "Bash",
+      "input": {
+        "command": "echo \"git push --force\""
+      },
+      "expect": false,
+      "why": "Quoting is respected, so a line that merely NAMES the command is not the command. Without this the gate would block you from describing an attack."
+    },
+    {
+      "id": "not-first-on-the-line",
+      "class": "holds",
+      "tool": "Bash",
+      "input": {
+        "command": "ls && git push --force origin main"
+      },
+      "expect": true,
+      "why": "Until 2026-07-28 this matched no gate at all: the matcher prefix-matched the whole command string, so EVERY Gated outward action in this policy was defeated by putting anything in front of it."
+    },
+    {
+      "id": "after-a-semicolon",
+      "class": "holds",
+      "tool": "Bash",
+      "input": {
+        "command": "git status; git push --force origin main"
+      },
+      "expect": true,
+      "why": "The same defect in its other spelling."
+    },
+    {
+      "id": "after-a-newline",
+      "class": "holds",
+      "tool": "Bash",
+      "input": {
+        "command": "git status\ngit push --force origin main"
+      },
+      "expect": true,
+      "why": "A newline is a command separator, and the Bash tool receives multi-line scripts constantly."
+    },
+    {
+      "id": "inside-one-wrapper",
+      "class": "holds",
+      "tool": "Bash",
+      "input": {
+        "command": "bash -c \"git push --force origin main\""
+      },
+      "expect": true,
+      "why": "The hook peels exactly one shell wrapper."
+    },
+    {
+      "id": "a-wrapper-not-first-on-the-line",
+      "class": "holds",
+      "tool": "Bash",
+      "input": {
+        "command": "ls && bash -c \"git push --force origin main\""
+      },
+      "expect": true,
+      "why": "Two claims that each held and did not compose: unwrapping was anchored at the start of the command, so a wrapper that was not first was never unwrapped. That is how a gap survives a reader checking either claim alone."
+    },
+    {
+      "id": "an-ANSI-C-quoted-wrapper-payload",
+      "class": "holds",
+      "tool": "Bash",
+      "input": {
+        "command": "bash -c $'git push --force origin main'"
+      },
+      "expect": true,
+      "why": "The `$'…'` form, reported by Copilot on #60. The plain-quote spelling turned out to escape the same way, so the fix was wider than the report."
+    },
+    {
+      "id": "a-leading-redirection-fd-dup",
+      "class": "holds",
+      "tool": "Bash",
+      "input": {
+        "command": "2>&1 git push --force origin main"
+      },
+      "expect": true,
+      "why": "CLOSED at #71, 2026-08-24. Asserted as ESCAPING until that day. A redirection's grammar is closed — an optional fd, one operator, a word — so unlike the leaders below it could be stripped with an edge a reader can check."
+    },
+    {
+      "id": "a-leading-redirection-to-a-file",
+      "class": "holds",
+      "tool": "Bash",
+      "input": {
+        "command": "> /tmp/log git push --force origin main"
+      },
+      "expect": true,
+      "why": "The second spelling #71 named."
+    },
+    {
+      "id": "a-leading-redirection-no-space",
+      "class": "holds",
+      "tool": "Bash",
+      "input": {
+        "command": "2>/dev/null git push --force origin main"
+      },
+      "expect": true,
+      "why": "The third. #71 predicted the fix would flip exactly one assertion; the suite had grown to four, which is why a prediction about a count is checked rather than quoted."
+    },
+    {
+      "id": "a-leading-input-redirection",
+      "class": "holds",
+      "tool": "Bash",
+      "input": {
+        "command": "< /dev/null git push --force origin main"
+      },
+      "expect": true,
+      "why": "The fourth."
+    },
+    {
+      "id": "a-leading-clobber-redirection",
+      "class": "holds",
+      "tool": "Bash",
+      "input": {
+        "command": ">| /tmp/log git push --force origin main"
+      },
+      "expect": true,
+      "why": "A spelling #71's own table never named. It escaped for a second reason: the segmenter split on the `|`, so the redirection was already in pieces before any strip could see it."
+    },
+    {
+      "id": "a-leading-both-streams-redirection",
+      "class": "holds",
+      "tool": "Bash",
+      "input": {
+        "command": "&> /tmp/log git push --force origin main"
+      },
+      "expect": true,
+      "why": "The other unnamed sibling, escaping via the `&` for the same reason. Closing the four named spellings closed these two in the same stroke rather than leaving siblings for someone to come back for."
+    },
+    {
+      "id": "two-stacked-redirections",
+      "class": "holds",
+      "tool": "Bash",
+      "input": {
+        "command": "> /tmp/out 2>&1 git push --force origin main"
+      },
+      "expect": true,
+      "why": "Redirections stack, so the strip is applied repeatedly rather than once."
+    },
+    {
+      "id": "a-bare-redirection-is-not-a-command",
+      "class": "holds",
+      "tool": "Bash",
+      "input": {
+        "command": "> /tmp/log"
+      },
+      "expect": false,
+      "why": "The control on the strip: a segment that is only a redirection strips to empty and is dropped, rather than becoming a head."
+    },
+    {
+      "id": "an-escaped-redirection-before-a-real-pipe",
+      "class": "holds",
+      "tool": "Bash",
+      "input": {
+        "command": "echo \\>| git push --force origin main"
+      },
+      "expect": true,
+      "why": "The regression the #71 fix introduced. A `>` a BACKSLASH turned into data is not an operator, and the non-split read one raw neighbour and could not tell — so it un-split a REAL pipe and the force-push after it went invisible. Measured in live bash: `echo \\>| tr a-z A-Z` delivers bytes downstream. Caught at HEAD, missed after #71, caught again once the segmenter became escape-aware. Found by the pre-commit checkpoint, which attacked the change rather than reading it."
+    },
+    {
+      "id": "an-escaped-redirection-before-a-real-background-separator",
+      "class": "holds",
+      "tool": "Bash",
+      "input": {
+        "command": "echo \\>& git push --force origin main"
+      },
+      "expect": true,
+      "why": "The sibling of the case above, across `&` rather than `|` — and it is a sibling rather than a duplicate because the two arms of the non-split are separate conditions. Measured in bash: the command after `echo \\>&` runs."
+    },
+    {
+      "id": "an-escaped-input-redirection-before-a-real-separator",
+      "class": "holds",
+      "tool": "Bash",
+      "input": {
+        "command": "echo \\<& git push --force origin main"
+      },
+      "expect": true,
+      "why": "The third arm — `<` as well as `>` — added in the same stroke rather than left for whoever meets it, since one carrier fixed and its sibling left is the class this repository names most often."
+    },
+    {
+      "id": "the-lease-survives-the-escaped-form",
+      "class": "holds",
+      "tool": "Bash",
+      "input": {
+        "command": "echo \\>| git push --force-with-lease origin main"
+      },
+      "expect": false,
+      "why": "The control on the repair: making the segmenter escape-aware must not re-gate the Auto spelling on the newly-split path."
+    },
+    {
+      "id": "a-leading-assignment-still-escapes",
+      "class": "documented-hole",
+      "hole": ".portulan/gate-map.md honest holes, entry 2 — leaders",
+      "tool": "Bash",
+      "input": {
+        "command": "FOO=bar git push --force origin main"
+      },
+      "expect": false,
+      "why": "Open by decision. Closing the leaders means a named table of command prefixes, and that table has no natural edge — one missing entry buys exactly the false confidence a hole list exists to deny."
+    },
+    {
+      "id": "env-still-escapes",
+      "class": "documented-hole",
+      "hole": ".portulan/gate-map.md honest holes, entry 2 — leaders",
+      "tool": "Bash",
+      "input": {
+        "command": "env git push --force origin main"
+      },
+      "expect": false,
+      "why": "`env`, `sudo`, `nice`, `time`, `nohup`, `timeout`, `command`, `stdbuf`, `doas` — the list that has no edge."
+    },
+    {
+      "id": "sudo-still-escapes",
+      "class": "documented-hole",
+      "hole": ".portulan/gate-map.md honest holes, entry 2 — leaders",
+      "tool": "Bash",
+      "input": {
+        "command": "sudo git push --force origin main"
+      },
+      "expect": false,
+      "why": "The same class."
+    },
+    {
+      "id": "a-then-branch-still-escapes",
+      "class": "documented-hole",
+      "hole": ".portulan/gate-map.md honest holes, entry 2 — leaders",
+      "tool": "Bash",
+      "input": {
+        "command": "if true; then git push --force origin main; fi"
+      },
+      "expect": false,
+      "why": "Note the asymmetry with edit-the-constitution.json, where the same leader is CAUGHT: the write half reads segments through `shellSegments`, which knows SEGMENT_LEADERS, and the shell half reads them through `commandSegments`, which does not. Two segmenters, one rule, different answers."
+    },
+    {
+      "id": "a-do-body-still-escapes",
+      "class": "documented-hole",
+      "hole": ".portulan/gate-map.md honest holes, entry 2 — leaders",
+      "tool": "Bash",
+      "input": {
+        "command": "for x in 1; do git push --force origin main; done"
+      },
+      "expect": false,
+      "why": "The same asymmetry."
+    },
+    {
+      "id": "a-brace-group-still-escapes",
+      "class": "documented-hole",
+      "hole": ".portulan/gate-map.md honest holes, entry 2 — leaders",
+      "tool": "Bash",
+      "input": {
+        "command": "{ git push --force origin main; }"
+      },
+      "expect": false,
+      "why": "Five leaders remain, down from six. The sixth was the redirection, closed above."
+    },
+    {
+      "id": "a-comment-is-read-as-code",
+      "class": "holds",
+      "tool": "Bash",
+      "input": {
+        "command": "echo ok #; git push --force origin main"
+      },
+      "expect": true,
+      "why": "A real shell ignores this; the matcher does not, and asks. A false RED, taken deliberately: deciding where a comment begins gets you a false GREEN when you get it wrong, and a false green costs the laundering the rule exists to prevent."
+    },
+    {
+      "id": "a-hash-inside-quotes-hides-nothing",
+      "class": "holds",
+      "tool": "Bash",
+      "input": {
+        "command": "echo \"a#b\"; git push --force origin main"
+      },
+      "expect": true,
+      "why": "The case a comment-skipping reader would break. If this ever answers false, the matcher has started treating quoted text as a comment and a gated command has gone invisible."
+    },
+    {
+      "id": "a-payload-with-no-command-matches-nothing",
+      "class": "holds",
+      "tool": "Bash",
+      "input": {},
+      "expect": false,
+      "why": "`matchesRule` promises never to throw, and the promise is load-bearing rather than tidy: gate.mjs catches and steps aside, so an exception silently REMOVES whatever gate was being evaluated. A throw here is a fail-open wearing a stack trace."
+    }
+  ]
+}

@@ -65,6 +65,12 @@ const PINNED = Object.freeze([
     { file: ".portulan/verify/compile.sh", tool: "cli/compile.mjs" },
     { file: ".portulan/verify/index.sh", tool: "cli/index.mjs" },
     { file: ".portulan/verify/plugin.sh", tool: "cli/skills-set.mjs" },
+    // Added 2026-08-24 with the recipe. `goldens.mjs` refuses discovery internally — it passes
+    // `discovery: null` whatever the command line says — so this pin is the SECOND of two carriers
+    // rather than the only one. Rostered anyway: the internal refusal is one edit from being relaxed,
+    // and a roster that skips a check because its tool is currently well-behaved is a roster that
+    // records today's implementation rather than the requirement.
+    { file: ".portulan/verify/goldens.sh", tool: "cli/goldens.mjs" },
     { file: ".github/workflows/verify.yml", tool: "cli/recipe-set.mjs" },
     { file: ".portulan/dod.md", tool: "cli/recipe-set.mjs" },
 ]);

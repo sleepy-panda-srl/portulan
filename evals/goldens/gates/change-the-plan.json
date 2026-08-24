@@ -1,0 +1,96 @@
+{
+  "rule": "change-the-plan",
+  "cases": [
+    {
+      "id": "the-plain-write",
+      "class": "holds",
+      "tool": "Write",
+      "input": {
+        "file_path": "/repo/docs/plan.md"
+      },
+      "expect": true,
+      "why": "The control. Answered through the Write tool, which is the half a permission rule also covers."
+    },
+    {
+      "id": "the-Edit-tool",
+      "class": "holds",
+      "tool": "Edit",
+      "input": {
+        "file_path": "/repo/docs/plan.md"
+      },
+      "expect": true,
+      "why": "The same target through Edit — three write tools carry a `file_path` and all three must reach the rule."
+    },
+    {
+      "id": "a-shell-redirection",
+      "class": "holds",
+      "tool": "Bash",
+      "input": {
+        "command": "echo x >> docs/plan.md"
+      },
+      "expect": true,
+      "why": "The shell half. For one milestone a `write:` rule reached only the tools carrying a `file_path`, so this was gated by NEITHER layer: the permission rule rejects the tool and the matcher fell through to false."
+    },
+    {
+      "id": "a-writer-from-the-table",
+      "class": "holds",
+      "tool": "Bash",
+      "input": {
+        "command": "cp /tmp/x docs/plan.md"
+      },
+      "expect": true,
+      "why": "The writer-table half, which reads arguments rather than redirections."
+    },
+    {
+      "id": "a-messy-path-spelling",
+      "class": "holds",
+      "tool": "Bash",
+      "input": {
+        "command": "cp /tmp/x ./docs/plan.md"
+      },
+      "expect": true,
+      "why": "Tails are compared literally, which is right for the host's clean absolute paths and wrong for anything a person types."
+    },
+    {
+      "id": "not-first-on-the-line",
+      "class": "holds",
+      "tool": "Bash",
+      "input": {
+        "command": "git status; echo x >> docs/plan.md"
+      },
+      "expect": true,
+      "why": "The separator escape, in the write matcher."
+    },
+    {
+      "id": "a-wrapper-not-first-on-the-line",
+      "class": "holds",
+      "tool": "Bash",
+      "input": {
+        "command": "git status; bash -c \"echo x >> docs/plan.md\""
+      },
+      "expect": true,
+      "why": "The worse half of the segment-composition defect — the shell branch grew per-segment unwrapping and this branch did not."
+    },
+    {
+      "id": "a-path-outside-the-target",
+      "class": "holds",
+      "tool": "Bash",
+      "input": {
+        "command": "cp /tmp/x docs/vision.md"
+      },
+      "expect": false,
+      "why": "The false-RED control. Without it a matcher that had started treating the target as a subtree pattern would still look green."
+    },
+    {
+      "id": "an-interpolated-target-escapes",
+      "class": "documented-hole",
+      "tool": "Bash",
+      "input": {
+        "command": "T=docs/plan.md; echo x > $T"
+      },
+      "expect": false,
+      "why": "The matcher reads words as typed and expands nothing. Expanding them means running the shell.",
+      "hole": ".portulan/gate-map.md honest holes, entry 1 — spellings neither layer sees"
+    }
+  ]
+}

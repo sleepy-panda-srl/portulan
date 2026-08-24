@@ -52,7 +52,17 @@ Run any of the recipes declared here from anywhere in the tree:
 ./.portulan/verify/pack-version.sh
 ./.portulan/verify/eval-bundle.sh
 ./.portulan/verify/pack-identity.sh
+./.portulan/verify/version-carriers.sh
+./.portulan/verify/goldens.sh
 ```
+
+_(**It happened again, and the second time was worse.** The block listed **thirteen** while the manifest
+declared **fourteen** — `version-carriers.sh` had been in the table below and not here since it landed —
+and milestone 8 session 0 arrived to add a fifteenth. Both were swept in that change rather than one,
+because the class sets a fix's scope and not the task's literal boundary. That this list drifts every
+time somebody adds a recipe, twice now in the same shape, is the argument for deriving it:
+`node cli/recipe-set.mjs --workspace .portulan --repo-root . --pack-root packs` prints it, and this
+block is a hand-maintained copy. Filed as the standing case for a rail, not repaired here.)_
 
 _(The block above listed ten while the manifest declared eleven — `pack-version.sh` was in the table
 below and not here. Swept in the change that added `eval-bundle.sh` rather than left for the next
@@ -75,6 +85,7 @@ names.)_
 | [`pack-version.sh`](pack-version.sh) | a pack whose `contributes` differs from the **merge-base** also moved its `portulan.version` — [#265](https://github.com/sleepy-panda-srl/portulan/issues/265), arm 3, and a **prose-only** edit to a fragment's `reason` counts. **The only recipe here that reads a *diff* rather than the tree**, so it refuses at **2** where the base ref or merge-base is unreachable, and [`../../.github/workflows/verify.yml`](../../.github/workflows/verify.yml) sets `fetch-depth: 0` for it | `bash`, `git`, `node` |
 | [`pack-identity.sh`](pack-identity.sh) | every file `npm pack` would emit is byte-identical to its **staged** blob (`git show :<path>`), and every one is tracked at all — the rail [#149](https://github.com/sleepy-panda-srl/portulan/issues/149) asked for, built after the first publish measured the property by hand. Compares against the **tree, not the registry**: that form needs the network and a published version, so it could not run before a first publish or offline. Reads the **index** rather than `HEAD` so it is green BEFORE a commit, as [`../dod.md`](../dod.md) requires; in CI the two coincide. Refuses at **2** when `npm` is unusable — npm not running is not a finding about the bytes | `bash`, `git`, `node`, `npm` |
 | [`version-carriers.sh`](version-carriers.sh) | every current-version claim in **live prose** equals `package.json`'s version, and every file that must carry one still does — the rail for a sentence this repository got wrong **twice**, with the sibling pairing recorded both times. `README.md` ships inside the npm package and npm **freezes a README per version**, so a wrong claim that reaches a publish costs a release to fix. The **record layer is excluded by path**, deliberately: dated records quote retired versions, and a rail forbidding that would forbid the record. Refuses at **2** when `git` or `package.json` cannot be read | `bash`, `git`, `node` |
+| [`goldens.sh`](goldens.sh) | every gate in the policy this workspace **yields** carries adversarial fixtures in [`../../evals/goldens/gates/`](../../evals/goldens/gates/), and each case still answers as recorded — graded through the compiler's own exported `matchesRule`, the function the hook calls at tool time, never a re-implementation. Milestone 8 clause (a). **Two rails:** a rule that compiles to a matcher and carries no fixture is red, so coverage is measured rather than named; and a `documented-hole` case that starts being CAUGHT is red too, so a hole record cannot go stale in either direction. **A case is data and is never executed** — the corpus holds `git push --force` and constitution-write spellings by design, and the suite asserts the runner imports no process-spawning API. **What it does not establish is adequacy:** it is a presence floor, one trivial fixture per rule satisfies it, and the runner prints that limit on every green. Rules with `action.none` are exempt and **named on every run**, because writing the next gate `none`-shaped is the way to dodge this rail. It went red on its first run and found gate-map hole 8 | `bash`, `node` |
 | [`eval-bundle.sh`](eval-bundle.sh) | a clean evaluation bundle cuts from the **index** (wrapped as an unreferenced probe commit, so the pre-commit gate judges what is about to ship) — [`../../cli/eval-bundle.mjs`](../../cli/eval-bundle.mjs) `--check` materialises the payload for a fixture recipient into scratch it always deletes, renders the evaluation terms from the template **at that same commit**, and refuses when the **top-level payload partition** stops matching the tree, when the **machine-read license census** stops equalling the patch list, or when a machine-read Apache assertion survives the transforms. Day to day it is the roster-drift rail: a new top-level path, or a new manifest asserting Apache in the payload, goes red here with a repair menu instead of silently thinning or mislicensing the next bundle. A payload entry that is neither a plain nor an executable blob (a symlink, a gitlink) is **could-not-run — 2, named** — no licensing verdict can be formed from a payload the tool will not materialise | `bash`, `git`, `node` |
 
 Exit `0` green · `1` red · `2` could not run — and that third code is why each recipe declares its needs
@@ -275,28 +286,40 @@ is filed about exactly that: a paragraph claiming to be self-maintaining and the
 number that makes it not. It was stale when filed and stale again twice since. The figure is gone
 rather than corrected, because `tests.sh` prints the live one on every run and that carrier cannot be
 wrong. `spec/README.md` carried a sibling of this defect and lost its count in the same change.)_
-**Nothing tests the recipes themselves** — `docs.sh`, `json.sh`, `doctor.sh`, `tests.sh`, `plugin.sh`,
-`compile.sh`, `workflow-filters.sh`, `index.sh`, `control-chars.sh`, `rule-carriers.sh`,
-`pack-version.sh` and `eval-bundle.sh` are verified by being run, which
+**Nothing tests the recipes themselves** — every recipe in this directory is verified by being run, which
 is a weaker claim than it sounds, and it is weakest on `workflow-filters.sh`: its reader of the workflow
 files is code that can be subtly wrong, and what stands behind that reader is a second, independent
-reading of the same file that has to agree with it — not a suite. _(That enumeration had quietly stopped
-covering the directory — it named nine while twelve recipes sat beside it, `rule-carriers.sh` and
-`pack-version.sh` having joined the tree without joining the sentence about what tests them. Swept when
-`eval-bundle.sh` was added, on the same [`0020`](../proposals/0020-a-fix-is-not-done-at-the-site-it-was-found.md)
-ground as the run-list above.)_ **`index.sh` and `control-chars.sh`
+reading of the same file that has to agree with it — not a suite. _(**That sentence used to enumerate the recipes, and the enumeration went stale twice.** It named
+nine while twelve sat beside it — `rule-carriers.sh` and `pack-version.sh` having joined the tree
+without joining the sentence — swept when `eval-bundle.sh` was added; then it named **twelve while
+fifteen sat beside it**, `pack-identity.sh` and `version-carriers.sh` having done the same, with
+`goldens.sh` about to make a third. **The enumeration is deleted rather than corrected a second time**,
+2026-08-24: a roster that goes stale on the schedule of *somebody adds a recipe* is a worse carrier
+than the sentence's own subject, which is the directory. The claim is about every recipe here, so it
+now says every recipe here. Same repair, same day, as the recipe counts in
+[`../repos/portulan.md`](../repos/portulan.md) and the enumeration in
+[`../identity.md`](../identity.md), on the [`0020`](../proposals/0020-a-fix-is-not-done-at-the-site-it-was-found.md)
+ground the run-list above cites — and found by the pre-commit checkpoint, which noticed that this
+change repaired the run-list block in this very file and walked past the enumeration below it.)_ **`index.sh` and `control-chars.sh`
 are not in that position**: everything in either that could be subtly wrong lives in
 [`../../cli/index.mjs`](../../cli/index.mjs) and
 [`../../cli/control-chars.mjs`](../../cli/control-chars.mjs), which the suite does cover, and each
 wrapper itself does dependency guarding, a named-list audit, and exit-code passthrough — the three
 things every recipe here has had a defect in, and the three the paragraphs above exist to explain.
 Neither is the *smallest*, which their shape might suggest; both sit near the top of this directory by
-size, because the audit and the guard are what take the room. `rule-carriers.sh`, `pack-version.sh`
-and `eval-bundle.sh` are in that same position: each wrapper is a dependency guard, a precondition
-and an exit-code passthrough, and the judgement lives in
+size, because the audit and the guard are what take the room. `rule-carriers.sh`, `pack-version.sh`,
+`eval-bundle.sh`, `pack-identity.sh`, `version-carriers.sh` and `goldens.sh` are in that same
+position: each wrapper is a dependency guard, a precondition and an exit-code passthrough, and the
+judgement lives in
 [`../../cli/rule-carriers.mjs`](../../cli/rule-carriers.mjs),
-[`../../cli/pack-version.mjs`](../../cli/pack-version.mjs) and
-[`../../cli/eval-bundle.mjs`](../../cli/eval-bundle.mjs), which the suite covers. _(The
+[`../../cli/pack-version.mjs`](../../cli/pack-version.mjs),
+[`../../cli/eval-bundle.mjs`](../../cli/eval-bundle.mjs),
+[`../../cli/pack-identity.mjs`](../../cli/pack-identity.mjs),
+[`../../cli/version-carriers.mjs`](../../cli/version-carriers.mjs) and
+[`../../cli/goldens.mjs`](../../cli/goldens.mjs), which the suite covers. _(Three of the six joined
+this sentence on 2026-08-24. `pack-identity.sh` and `version-carriers.sh` had been suite-backed
+wrappers sitting outside it since they landed; `goldens.sh` would have been the third omission had the
+pre-commit checkpoint not counted the list against the directory.)_ _(The
 missing-module precondition was real in two of the three only after the pre-commit checkpoint: a
 deleted module made `pack-version.sh` and `eval-bundle.sh` print RED about work nothing had judged —
 node's module-not-found exits 1 — where `control-chars.sh` and `rule-carriers.sh` already refused at
