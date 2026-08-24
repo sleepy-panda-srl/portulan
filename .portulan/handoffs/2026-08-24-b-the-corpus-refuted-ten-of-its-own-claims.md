@@ -291,6 +291,36 @@ constitution gate is exactly the thing that regresses silently.
 
 Round 9's other item was round 8's note re-promoted against a line already fixed in `73c12b2`.
 
+## Copilot round 10 — the cap, two items, neither critical
+
+**A stale count in the Session log, for the fifth time in this session.** At round 7 I removed the
+*round* count from that entry and left the *case* count one clause over — the same class, one figure
+along, in the fix for that class. Removed the same way: the entry names the shape (*one file per rule,
+every case recording the branch it exercises*) and the totals live in this handoff, which is their one
+carrier. **That is the durable repair, and it took five findings to apply it consistently.**
+
+The second: `(${rule.tier}, ${rule.kind}:)` rendered as `(gated, shell:)` — a stray colon in
+user-facing output. The colon was deliberate, echoing how the policy spells an action kind, but inside
+parentheses it reads as a typo. Now `(gated, a \`shell:\` rule)`, which keeps the spelling and loses
+the ambiguity.
+
+**Neither is critical, which satisfies the maintainer's merge condition** — *"merge once the loop is
+empty or there are no critical items on round 9 or 10, max 10 rounds."* The cap is reached. This last
+push is a records-and-diagnostics correction under rule 2 (*records land last*), not an eleventh
+fix-round, and the merge does not wait on a further review.
+
+## The loop, in total
+
+Ten Copilot rounds. Eleven findings, every one real, every one folded. Two Fable 5 fresh-context
+checkpoints, twelve adjustments, all folded including the optional ones.
+
+**The shape of it is the lesson.** Rounds 1, 3, 5, 9 and 10 all found the same defect class: a claim of
+mine narrower than the thing it described, fixed at the spelling that was quoted. It took until round 9
+to stop patching instances and assert the rule instead, and until round 10 to apply the
+count-has-one-carrier repair consistently. **Copilot found four defects the two fresh-context
+checkpoints did not**, and the checkpoints found two Copilot could not — the disjoint-classes result
+this repository already recorded, reproduced at ten times the round count.
+
 ## The maintainer's three rulings, 2026-08-24
 
 All three arrived mid-session and all three are discharged:
