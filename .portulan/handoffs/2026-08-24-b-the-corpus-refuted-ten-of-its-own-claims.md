@@ -209,6 +209,23 @@ recover the missing *"that"*. Spelled out.
 **Round 5, and the bound is long past.** Both are siblings of code this branch added, and the first is
 a live unchecked mandate rather than a preference. Flagged, not assumed, for the third time.
 
+## Copilot round 6 — one finding, and it is round 5's fix
+
+`composed packs fragments` — a possessive with no apostrophe, in user-facing CI output. **The
+apostrophe was dropped on purpose and for the wrong reason:** that `printf` is single-quoted, a
+literal `'` would close the string, and avoiding it silently cost the grammar rather than prompting a
+rewrite.
+
+Repaired by neither escaping nor changing the quoting, but by using the wording this recipe's own
+header already carries — *"the fragments its composed packs contribute"*. No apostrophe needed, and
+the two carriers of one clause now read the same. `bash -n` clean.
+
+**Six rounds, and this one is round 5's own fix.** That is the honest characterisation: the last two
+findings have been in text I wrote answering the previous finding, and their severity is falling —
+round 5 found an unchecked mandate, round 6 found a missing apostrophe. **Rule 4's remainder clause
+now applies rather than the sibling exemption**, and the recommendation to the maintainer is that the
+next round is triaged to an issue rather than answered, unless it names a defect in the mechanism.
+
 ## The maintainer's three rulings, 2026-08-24
 
 All three arrived mid-session and all three are discharged:

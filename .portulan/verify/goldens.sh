@@ -65,7 +65,14 @@ fi
 # Spelled out rather than elided. This read "against the gate policy .portulan/ yields" — a reduced
 # relative clause that scans as a TRUNCATED line in a CI log, where a reader has no context to
 # recover the missing "that" from. Reported as a suppressed note by Copilot, round 5 on #336.
-printf 'goldens: grading evals/goldens/gates/ against the gate policy that .portulan/ yields — its own rules plus its composed packs fragments\n'
+#
+# **The rewrite then shipped `composed packs fragments`, a possessive with no apostrophe** — Copilot
+# round 6. The apostrophe was dropped on purpose and for the wrong reason: this `printf` is
+# SINGLE-QUOTED, so a literal `'` would close the string, and avoiding it silently cost the grammar.
+# The repair is neither an escape nor a quote change but the wording the header of this file already
+# uses — "the fragments its composed packs contribute" — which needs no apostrophe and matches the
+# sentence a reader meets six lines up. Two carriers of one clause, now spelled the same way.
+printf 'goldens: grading evals/goldens/gates/ against the gate policy that .portulan/ yields — its own rules plus the fragments its composed packs contribute\n'
 
 # ---------------------------------------------------------------------------------------------
 # **The resolution root is PINNED, for the reason ./compile.sh states at length.** A required check
