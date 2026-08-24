@@ -74,7 +74,7 @@ Four, all mine, all found by existing rails rather than by me:
 
 ## State
 
-`main` @ `f82fa2e`. **Suite 1914** (from 1801, +113). **All 16 recipes green** in this working copy.
+`main` @ `f82fa2e`. **Suite 1915** (from 1801, +114). **All 16 recipes green** in this working copy.
 Seam scan clean over **every path the diff touches**, generated files included, plus the commit message
 and the branch name; planted-term control reddened. _(This sentence read "all 35 staged paths" until the
 final re-measure, when the count was 39 — a figure written before the diff stopped growing, which is a
@@ -245,6 +245,24 @@ in the scoreboard every session boots from.
 **Round tally, stated once, here.** Seven Copilot rounds; eight findings; all real, all folded. Two
 arrived only through the suppressed-note channel. Two Fable 5 fresh-context checkpoints, twelve
 adjustments, all folded including the optional ones.
+
+## Copilot round 8 — a MECHANISM defect, so it was answered rather than triaged
+
+`yieldedRules` printed *"`.portulan/workspace.json` declares none"* for **all three** fallback states
+`policyDeclaration` distinguishes, and that sentence is false for two of them: a manifest that does not
+exist declared nothing, and a manifest whose named policy was refused declared one and was overruled.
+Both send a reader to audit the one file that is not at fault.
+
+**`compile.mjs` had already learned this**, at `undeclaredPolicyMessage`, whose own comment says *"only
+the caller knows to name what the absence costs"*. I copied that call site's **shape** and not its
+**discipline** — which is this session's dominant defect one more time, in a module I wrote citing the
+lesson. Three sentences now, one per state, asserted with a control that the missing-manifest case must
+NOT print the no-`gates`-key sentence.
+
+**This is the round my own recommendation said to answer.** The rule I set at round 6 was *triage a
+finding in the prose about the mechanism, answer one in the mechanism* — a wrong diagnostic is the
+mechanism. The other item in round 8 was the round-7 note re-promoted against a line already fixed in
+`9adc2bf`; that one needed a reply, not a change.
 
 ## The maintainer's three rulings, 2026-08-24
 
