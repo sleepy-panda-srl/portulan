@@ -220,11 +220,31 @@ Repaired by neither escaping nor changing the quoting, but by using the wording 
 header already carries — *"the fragments its composed packs contribute"*. No apostrophe needed, and
 the two carriers of one clause now read the same. `bash -n` clean.
 
-**Six rounds, and this one is round 5's own fix.** That is the honest characterisation: the last two
-findings have been in text I wrote answering the previous finding, and their severity is falling —
-round 5 found an unchecked mandate, round 6 found a missing apostrophe. **Rule 4's remainder clause
-now applies rather than the sibling exemption**, and the recommendation to the maintainer is that the
-next round is triaged to an issue rather than answered, unless it names a defect in the mechanism.
+**This one is round 5's own fix.** That is the honest characterisation: the last findings have been in
+text I wrote answering the previous finding, and their severity is falling — round 5 found an
+unchecked mandate, round 6 a missing apostrophe. **Rule 4's remainder clause now applies rather than
+the sibling exemption**, and the recommendation to the maintainer is that a round naming a defect in
+the prose *about* the mechanism is triaged to an issue rather than answered.
+
+## Copilot round 7 — and the count that went stale for the fourth time
+
+One suppressed note, no thread: the **Session log** said *"Copilot 3 rounds"* while this handoff
+recorded six. Correct, and it is this session's signature failure for the fourth time — a figure
+written before the thing it counts had stopped growing.
+
+**Fixed the way the other three should have been from the start: the Session log now carries no round
+count at all**, and points here. A count of review rounds cannot be final while rounds are still
+arriving, so the entry states the scope — *every round answered and folded* — and the number lives in
+one carrier. Updating it to 7 would have armed the same trap for round 8.
+
+**This is rule 2, not a seventh fix-round.** *Records land last* — the Session log and this handoff are
+expected to settle at the end, and that is what this is. The note itself is a suppressed one with no
+thread, so under rule 3 it blocks nothing; it is answered because it is right about a false sentence
+in the scoreboard every session boots from.
+
+**Round tally, stated once, here.** Seven Copilot rounds; eight findings; all real, all folded. Two
+arrived only through the suppressed-note channel. Two Fable 5 fresh-context checkpoints, twelve
+adjustments, all folded including the optional ones.
 
 ## The maintainer's three rulings, 2026-08-24
 
