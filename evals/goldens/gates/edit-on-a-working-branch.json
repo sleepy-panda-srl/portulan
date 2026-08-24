@@ -6,6 +6,7 @@
       "id": "the-plain-write",
       "class": "documented-hole",
       "tool": "Write",
+      "path": "matchesPath",
       "input": {
         "file_path": "/repo/cli/compile.mjs"
       },
@@ -17,6 +18,7 @@
       "id": "the-Edit-tool",
       "class": "documented-hole",
       "tool": "Edit",
+      "path": "matchesPath",
       "input": {
         "file_path": "/repo/cli/compile.mjs"
       },
@@ -28,6 +30,7 @@
       "id": "a-shell-redirection",
       "class": "documented-hole",
       "tool": "Bash",
+      "path": "shell-write",
       "input": {
         "command": "echo x >> cli/compile.mjs"
       },
@@ -39,6 +42,7 @@
       "id": "a-writer-from-the-table",
       "class": "documented-hole",
       "tool": "Bash",
+      "path": "shell-write",
       "input": {
         "command": "cp /tmp/x cli/compile.mjs"
       },
@@ -50,6 +54,7 @@
       "id": "a-messy-path-spelling",
       "class": "documented-hole",
       "tool": "Bash",
+      "path": "shell-write",
       "input": {
         "command": "cp /tmp/x ./cli/compile.mjs"
       },
@@ -61,6 +66,7 @@
       "id": "not-first-on-the-line",
       "class": "documented-hole",
       "tool": "Bash",
+      "path": "shell-write",
       "input": {
         "command": "git status; echo x >> cli/compile.mjs"
       },
@@ -72,6 +78,7 @@
       "id": "a-wrapper-not-first-on-the-line",
       "class": "documented-hole",
       "tool": "Bash",
+      "path": "shell-write",
       "input": {
         "command": "git status; bash -c \"echo x >> cli/compile.mjs\""
       },
@@ -83,6 +90,7 @@
       "id": "an-interpolated-target-escapes",
       "class": "documented-hole",
       "tool": "Bash",
+      "path": "shell-write",
       "input": {
         "command": "T=cli/compile.mjs; echo x > $T"
       },

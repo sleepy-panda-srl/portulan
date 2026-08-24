@@ -5,6 +5,7 @@
       "id": "the-bare-spelling",
       "class": "holds",
       "tool": "Bash",
+      "path": "shell-prefix",
       "input": {
         "command": "gh repo delete foo --yes"
       },
@@ -15,6 +16,7 @@
       "id": "a-near-miss-is-not-this-gate",
       "class": "holds",
       "tool": "Bash",
+      "path": "shell-prefix",
       "input": {
         "command": "gh repo clone foo"
       },
@@ -25,6 +27,7 @@
       "id": "not-first-on-the-line",
       "class": "holds",
       "tool": "Bash",
+      "path": "shell-prefix",
       "input": {
         "command": "ls && gh repo delete foo --yes"
       },
@@ -35,6 +38,7 @@
       "id": "after-a-newline",
       "class": "holds",
       "tool": "Bash",
+      "path": "shell-prefix",
       "input": {
         "command": "git status\ngh repo delete foo --yes"
       },
@@ -45,6 +49,7 @@
       "id": "inside-one-wrapper",
       "class": "holds",
       "tool": "Bash",
+      "path": "shell-prefix",
       "input": {
         "command": "bash -c \"gh repo delete foo --yes\""
       },
@@ -55,6 +60,7 @@
       "id": "a-wrapper-not-first-on-the-line",
       "class": "holds",
       "tool": "Bash",
+      "path": "shell-prefix",
       "input": {
         "command": "ls && bash -c \"gh repo delete foo --yes\""
       },
@@ -65,6 +71,7 @@
       "id": "a-leading-redirection",
       "class": "holds",
       "tool": "Bash",
+      "path": "shell-prefix",
       "input": {
         "command": "2>&1 gh repo delete foo --yes"
       },
@@ -75,6 +82,7 @@
       "id": "a-leading-sudo-still-escapes",
       "class": "documented-hole",
       "tool": "Bash",
+      "path": "shell-prefix",
       "input": {
         "command": "sudo gh repo delete foo --yes"
       },
@@ -86,6 +94,7 @@
       "id": "a-brace-group-still-escapes",
       "class": "documented-hole",
       "tool": "Bash",
+      "path": "shell-prefix",
       "input": {
         "command": "{ gh repo delete foo --yes; }"
       },

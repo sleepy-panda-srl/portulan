@@ -85,8 +85,12 @@ const SLUG = /^[a-z0-9]+(-[a-z0-9]+)*$/;
 const FILE_PATH = /^[^#?:/]([^#?:]*[^#?:/])?$/;
 
 /** The tools that can write a path, and the tools that can read one. */
-const WRITE_TOOLS = ["Edit", "Write", "NotebookEdit"];
-const READ_TOOLS = ["Read"];
+// Exported since 2026-08-24 so `./goldens.mjs` can DERIVE which branch of `matchesRule` a fixture
+// exercises instead of a corpus author declaring it from memory. A hand-declared path would be a
+// second carrier of what these two tables already decide, and the fixture format asks for the path on
+// every case — which is exactly the volume at which a hand-copied answer goes wrong.
+export const WRITE_TOOLS = ["Edit", "Write", "NotebookEdit"];
+export const READ_TOOLS = ["Read"];
 
 // ===========================================================================================
 // 1. Parse: policy -> validated, normalised rules. NO backend opinion lives here.
@@ -818,7 +822,28 @@ function commandSegments(raw) {
  *
  * Applied repeatedly, because redirections stack: `> /tmp/out 2>&1 git push --force …` carries two.
  */
-const LEADING_REDIRECTION = /^\d*(?:&>>|&>|>>|>&|>\||<&|<>|<|>)\s*[^\s]+\s*/;
+/**
+ * The redirection TARGET, as one word.
+ *
+ * `[^\s]+` was wrong and shipped for exactly one review round: a redirection target may contain
+ * spaces when it is quoted or escaped, and `> "foo bar" git push --force …` then stripped only
+ * `> "foo`, leaving `bar" git push --force …` — head `bar"`, no gate, and the segment text corrupted
+ * into the bargain. Measured escaping on five spellings (both quote styles, an escaped space, `2>` and
+ * `>|`), and bash confirmed to run the command after each. **A fix that closes a hole by a width its
+ * own test never probed**, found by Copilot round 1 — which named the double-quoted case; the other
+ * four are its siblings and are closed in the same stroke rather than left for the next round.
+ *
+ * A word is therefore a run of quoted spans, backslash-escaped characters, and ordinary non-space
+ * characters — the same three things `shellWords` recognises, kept to a regex here because this reader
+ * needs the target's EXTENT and never its value.
+ *
+ * Linear rather than backtracking-prone despite the alternation: the pattern is anchored, the trailing
+ * `\s*` matches empty, and the `+` is greedy over a match that always succeeds once an operator has
+ * been seen — so there is no failure to backtrack into. Probed to 200KB.
+ */
+const REDIRECTION_TARGET = String.raw`(?:"[^"]*"|'[^']*'|\\[\s\S]|[^\s])+`;
+
+const LEADING_REDIRECTION = new RegExp(String.raw`^\d*(?:&>>|&>|>>|>&|>\||<&|<>|<|>)\s*${REDIRECTION_TARGET}\s*`);
 
 function stripLeadingRedirections(segment) {
     let text = segment;

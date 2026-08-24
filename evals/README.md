@@ -60,6 +60,18 @@ Two case classes, and exactly two:
   until the record is updated. A hole list that still lists a closed hole is as wrong as one that
   hides an open one.
 
+**Every case records which branch of `matchesRule` it exercises**, and the field is **derived, never
+declared**: `matcherPath(kind, tool)` computes it from the rule's action kind and the case's tool, and
+the runner refuses a case whose stored value disagrees. Four values — `matchesPath`, `shell-write`,
+`shell-prefix`, and `no-branch` for a combination the matcher has no code for. The green prints the
+per-path census, including the zeroes, because a corpus can carry two hundred cases and exercise one
+branch of four.
+
+It earns its place on one asymmetry: a `then`/`do`/brace-group leader is **caught** on the write path
+— `shellSegments` knows `SEGMENT_LEADERS` — and **escapes** on the shell path, where `commandSegments`
+does not. One rule id, two segmenters, two answers. Without the field those two cases read as a
+contradiction rather than as the asymmetry they are.
+
 Byte-level attacks are stored **escaped** (JSON `\r`, `\u0000`) and decoded by `JSON.parse`.
 [`../cli/control-chars.mjs`](../cli/control-chars.mjs) refuses a raw CR anywhere in this tree by
 decision, and exempting a growing adversarial-content directory is the allow-list defect that same file

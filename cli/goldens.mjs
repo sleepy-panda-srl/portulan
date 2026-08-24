@@ -66,7 +66,17 @@ import fs from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 
-import { CompileError, composeFragments, matchesRule, packContributions, parse, policyDeclaration, resolveWorkspace } from "./compile.mjs";
+import {
+    CompileError,
+    READ_TOOLS,
+    WRITE_TOOLS,
+    composeFragments,
+    matchesRule,
+    packContributions,
+    parse,
+    policyDeclaration,
+    resolveWorkspace,
+} from "./compile.mjs";
 
 /** Where the corpus lives, relative to the repository root. */
 export const CORPUS_DIR = "evals/goldens/gates";
@@ -87,6 +97,44 @@ export const MATCHABLE = ["shell", "write", "read"];
  * indistinguishable from a hole that closed without its record being updated.
  */
 export const CLASSES = ["holds", "documented-hole"];
+
+/**
+ * Which branch of `matchesRule` a case exercises — the session-open checkpoint's adjustment 3.
+ *
+ * **Why a case must say this.** One rule id can be answered by two different segmenters with two
+ * different answers, and the corpus contains a live example: a `then`/`do`/brace-group leader is
+ * CAUGHT on the write path (`shellSegments` knows `SEGMENT_LEADERS`) and ESCAPES on the shell path
+ * (`commandSegments` does not). A reader meeting those two cases without this field would take the
+ * pair for a contradiction rather than for the asymmetry it is.
+ *
+ * **And why it is DERIVED rather than declared.** `matcherPath` computes it from the rule's action
+ * kind and the case's tool, and `grade` refuses a case whose declared path disagrees. A field written
+ * from memory on 212 cases is a second carrier of what `WRITE_TOOLS`, `READ_TOOLS` and the action kind
+ * already decide — and this repository's standing finding is that the second carrier is the one that
+ * goes wrong. Writing it down keeps it readable; deriving it keeps it true.
+ */
+export const PATHS = ["matchesPath", "shell-write", "shell-prefix", "no-branch"];
+
+/**
+ * The branch `matchesRule` will take for this rule kind and tool.
+ *
+ * `no-branch` is a real answer and not a gap: it names a combination the matcher has no code for, and
+ * a case declaring it is asserting exactly that — `Bash` against a `read:` rule, or a write tool
+ * against a `shell:` one. Those cases matter because the asymmetry between action kinds is the sort of
+ * thing a reader assumes away.
+ */
+export function matcherPath(kind, tool) {
+    if (kind === "shell") return tool === "Bash" ? "shell-prefix" : "no-branch";
+    if (kind === "write") {
+        if (WRITE_TOOLS.includes(tool)) return "matchesPath";
+        // Bash reaches a `write:` rule through `commandSegments` × `spellings` and then `shellWrites`,
+        // which segments AGAIN with `shellSegments`. Named for the entry, since that is what a reader
+        // needs to find the code; the docblock above carries the two-segmenter consequence.
+        return tool === "Bash" ? "shell-write" : "no-branch";
+    }
+    if (kind === "read") return READ_TOOLS.includes(tool) ? "matchesPath" : "no-branch";
+    return "no-branch";
+}
 
 export class CouldNotRun extends Error {}
 
@@ -183,6 +231,9 @@ export function readCorpus(repoRoot, dir = CORPUS_DIR) {
                 throw new CouldNotRun(`${at} declares class ${JSON.stringify(c?.class)} — one of ${CLASSES.join(" / ")}`);
             }
             if (typeof c?.tool !== "string" || c.tool === "") throw new CouldNotRun(`${at} names no \`tool\``);
+            if (!PATHS.includes(c?.path)) {
+                throw new CouldNotRun(`${at} declares path ${JSON.stringify(c?.path)} — one of ${PATHS.join(" / ")}`);
+            }
             if (typeof c?.expect !== "boolean") throw new CouldNotRun(`${at} declares no boolean \`expect\``);
             if (typeof c?.why !== "string" || c.why.trim() === "") {
                 throw new CouldNotRun(`${at} carries no \`why\` — an attack case nobody can read is not reviewable`);
@@ -210,6 +261,7 @@ export function grade(rules, corpus) {
     const byId = new Map(matchable.map((r) => [r.id, r]));
     const covered = new Set();
     const findings = [];
+    const byPath = new Map();
     let cases = 0;
 
     for (const { where, doc } of corpus) {
@@ -227,6 +279,21 @@ export function grade(rules, corpus) {
         covered.add(rule.id);
         for (const c of doc.cases) {
             cases += 1;
+            // The declared path is checked against the DERIVED one before the case is graded. A case
+            // that mislabels its own branch is a case a reader will draw the wrong conclusion from,
+            // and the label is the half no green would otherwise test.
+            const derived = matcherPath(rule.kind, c.tool);
+            byPath.set(derived, (byPath.get(derived) ?? 0) + 1);
+            if (c.path !== derived) {
+                findings.push({
+                    where: `${where} → ${c.id}`,
+                    what:
+                        `declares path \`${c.path}\` and \`matchesRule\` takes \`${derived}\` for a ` +
+                        `${rule.kind}: rule reached through ${c.tool}. The path is derived from the action kind and the ` +
+                        `tool, so this is a mislabel rather than a disagreement — correct the case`,
+                });
+                continue;
+            }
             // The one call that matters, and it is the compiler's own. Never re-implemented here.
             const actual = matchesRule(rule, c.tool, c.input);
             if (actual === c.expect) continue;
@@ -252,7 +319,7 @@ export function grade(rules, corpus) {
         });
     }
 
-    return { findings, cases, matchable, exempt, covered };
+    return { findings, cases, matchable, exempt, covered, byPath };
 }
 
 function usage() {
@@ -304,7 +371,7 @@ export function run(argv = [], { stdout = process.stdout, stderr = process.stder
 
         const { workspaceRoot, rules, unresolved } = yieldedRules(named, { packRoots });
         const corpus = readCorpus(workspaceRoot);
-        const { findings, cases, matchable, exempt } = grade(rules, corpus);
+        const { findings, cases, matchable, exempt, byPath } = grade(rules, corpus);
 
         // An unresolved pack is a declaration the workspace believes it composed, so its fragments are
         // absent from the denominator and this run's coverage claim is narrower than it looks. Printed
@@ -312,6 +379,9 @@ export function run(argv = [], { stdout = process.stdout, stderr = process.stder
         for (const u of unresolved) say(`pack    ${u.name} UNRESOLVED — ${u.why}; its gate fragments are not in this census`);
 
         say(`goldens: ${cases} case(s) over ${matchable.length} matchable rule(s) in ${corpus.length} fixture file(s)`);
+        // Per matcher branch, and printed even at zero. A corpus can carry 200 cases and exercise one
+        // branch of three; the total says nothing about that and this line says it plainly.
+        say(`goldens: by matcher path — ${PATHS.map((p) => `${p} ${byPath.get(p) ?? 0}`).join(" · ")}`);
         // The exemption, named on every run — see `partition`.
         if (exempt.length) {
             say(`goldens: ${exempt.length} rule(s) declare no matchable action and are exempt from fixtures:`);
@@ -333,7 +403,15 @@ export function run(argv = [], { stdout = process.stdout, stderr = process.stder
             stderr.write(`goldens: ${error.message}\n`);
             return 2;
         }
-        throw error;
+        // **An unexpected throw is COULD-NOT-RUN, never a red**, and this arm exists because the first
+        // draft rethrew: a `ReferenceError` from a typo crashed the process, node exited 1, and
+        // `../.portulan/verify/goldens.sh` faithfully translated that into "RED — verify recipe failed"
+        // about a corpus nothing had finished grading. A crash that reads as a verdict is the shape
+        // this repository has now met in three tools — it is why `pack-version.sh` and
+        // `eval-bundle.sh` grew `[ -f ]` preconditions. The stack rides along, because a
+        // could-not-run nobody can debug is only half an answer.
+        stderr.write(`goldens: could not finish grading — ${error?.stack ?? error}\n`);
+        return 2;
     }
 }
 

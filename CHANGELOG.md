@@ -75,6 +75,12 @@ records how things were found. This is per *release* and records what a reader g
   a named table of command prefixes has no natural edge, and one omission buys exactly the false
   confidence a hole list exists to deny.
 
+  **The grammar says "and a word", and the first cut read that as *non-whitespace*.** A quoted or
+  escaped target holds spaces, so `> "foo bar" git push --force …` stripped `> "foo` and left
+  `bar" git push --force …` — no gate. Five spellings escaped, and bash was measured running the command
+  after each. The target reader recognises quoted spans and escaped characters now, and the *unquoted*
+  two-word spelling stays ungated, because there the shell really does run the second word.
+
 - **Three writer-table entries were covered by the matcher and exercised by nothing**
   ([#70](https://github.com/sleepy-panda-srl/portulan/issues/70)). `shred`, `gsed` and `ruby` now have
   admit cases, **generated from the declaring tables** rather than hand-listed, so a fifteenth entry

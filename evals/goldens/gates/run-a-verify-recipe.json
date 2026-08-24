@@ -6,6 +6,7 @@
       "id": "the-bare-spelling",
       "class": "holds",
       "tool": "Bash",
+      "path": "shell-prefix",
       "input": {
         "command": "./.portulan/verify/docs.sh"
       },
@@ -16,6 +17,7 @@
       "id": "a-near-miss-is-not-this-gate",
       "class": "holds",
       "tool": "Bash",
+      "path": "shell-prefix",
       "input": {
         "command": "cat ./.portulan/verify/docs.sh"
       },
@@ -26,6 +28,7 @@
       "id": "not-first-on-the-line",
       "class": "holds",
       "tool": "Bash",
+      "path": "shell-prefix",
       "input": {
         "command": "ls && ./.portulan/verify/docs.sh"
       },
@@ -36,6 +39,7 @@
       "id": "after-a-newline",
       "class": "holds",
       "tool": "Bash",
+      "path": "shell-prefix",
       "input": {
         "command": "git status\n./.portulan/verify/docs.sh"
       },
@@ -46,6 +50,7 @@
       "id": "inside-one-wrapper",
       "class": "holds",
       "tool": "Bash",
+      "path": "shell-prefix",
       "input": {
         "command": "bash -c \"./.portulan/verify/docs.sh\""
       },
@@ -56,6 +61,7 @@
       "id": "a-wrapper-not-first-on-the-line",
       "class": "holds",
       "tool": "Bash",
+      "path": "shell-prefix",
       "input": {
         "command": "ls && bash -c \"./.portulan/verify/docs.sh\""
       },
@@ -66,6 +72,7 @@
       "id": "a-leading-redirection",
       "class": "holds",
       "tool": "Bash",
+      "path": "shell-prefix",
       "input": {
         "command": "2>&1 ./.portulan/verify/docs.sh"
       },
@@ -76,6 +83,7 @@
       "id": "a-leading-sudo-still-escapes",
       "class": "documented-hole",
       "tool": "Bash",
+      "path": "shell-prefix",
       "input": {
         "command": "sudo ./.portulan/verify/docs.sh"
       },
@@ -87,6 +95,7 @@
       "id": "a-brace-group-still-escapes",
       "class": "documented-hole",
       "tool": "Bash",
+      "path": "shell-prefix",
       "input": {
         "command": "{ ./.portulan/verify/docs.sh; }"
       },
