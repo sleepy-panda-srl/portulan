@@ -627,6 +627,15 @@ Corrected here rather than left, because a gate map that overstates a hole is as
    `shellWords` recognises — and the unquoted two-word spelling `> foo bar git push …` stays UNGATED,
    because there bash really does run `bar`.
 
+   **It took a third round, and the third one is the reason the suite changed shape.** Round 3 found
+   the same class one level in: `"[^"]*"` could not hold a backslash-escaped quote *inside* a
+   double-quoted span, so `> "foo \"bar baz\"" git push --force …` ended the span early and escaped.
+   Measured, with bash measured creating the file and running the command behind it. **Two rounds, one
+   class, both fixed at the spelling that was quoted** — so `cli/compile.test.mjs` now asserts the
+   RULE rather than the spellings: whatever `shellWords` calls one word, the strip consumes whole, with
+   an unquoted two-word counterexample stopping that from degenerating into *consume everything*. A
+   fourth sibling reds in the suite instead of arriving in a review.
+
    **What must not follow from it.** This does not license a named table of command prefixes. That
    table is refused for a reason the redirection grammar does not share, stated one paragraph up, and
    the two changes look similar enough to be proposed together.

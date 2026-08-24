@@ -482,7 +482,10 @@ function stripHeredocs(command) {
 }
 
 /** A shell command split into words, with unquoted operators kept as words of their own. */
-function shellWords(command) {
+// Exported since 2026-08-24 so the suite can hold `REDIRECTION_TARGET` to THIS definition of a word
+// rather than to a reviewer's patience. Three review findings in a row were the same class — the
+// target reader narrower than a shell word — and each was fixed at the instance quoted.
+export function shellWords(command) {
     const words = [];
     let text = "";
     let open = false; // a word has begun — so an empty `""` argument survives as a word
@@ -837,11 +840,24 @@ function commandSegments(raw) {
  * characters — the same three things `shellWords` recognises, kept to a regex here because this reader
  * needs the target's EXTENT and never its value.
  *
+ * **Inside a double-quoted span a backslash escapes the next character, and inside a single-quoted one
+ * it does not.** POSIX gives `'…'` no escapes at all, so honouring one there would invent a hole —
+ * which is the same asymmetry `commandSegments`'s own quote loop already carries, and the same one
+ * `shellWords` carries at its quoted-run branch.
+ *
+ * **This is the THIRD review finding of one class, and the class is what the suite now pins.** Round 1
+ * found `[^\s]+` too narrow for a quoted target; round 3 found `"[^"]*"` too narrow for an escaped
+ * quote *inside* one — `> "foo \"bar baz\"" git push --force …`, measured escaping while bash was
+ * measured creating the file and running the command. Both times the fix landed at the spelling that
+ * was quoted. So `compile.test.mjs` now asserts this pattern against `shellWords` itself: every
+ * spelling that reader calls ONE word must be consumed whole here. A fourth sibling cannot be found by
+ * a reviewer first.
+ *
  * Linear rather than backtracking-prone despite the alternation: the pattern is anchored, the trailing
  * `\s*` matches empty, and the `+` is greedy over a match that always succeeds once an operator has
  * been seen — so there is no failure to backtrack into. Probed to 200KB.
  */
-const REDIRECTION_TARGET = String.raw`(?:"[^"]*"|'[^']*'|\\[\s\S]|[^\s])+`;
+const REDIRECTION_TARGET = String.raw`(?:"(?:\\[\s\S]|[^"\\])*"|'[^']*'|\\[\s\S]|[^\s])+`;
 
 const LEADING_REDIRECTION = new RegExp(String.raw`^\d*(?:&>>|&>|>>|>&|>\||<&|<>|<|>)\s*${REDIRECTION_TARGET}\s*`);
 

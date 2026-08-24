@@ -245,6 +245,28 @@
       "why": "The ordinary spelling of the whole family: redirecting stderr to a path with a space is not exotic."
     },
     {
+      "id": "an-escaped-quote-inside-a-quoted-target",
+      "class": "holds",
+      "tool": "Bash",
+      "path": "shell-prefix",
+      "input": {
+        "command": "> \"foo \\\"bar baz\\\"\" git push --force origin main"
+      },
+      "expect": true,
+      "why": "Copilot round 3, and the THIRD finding of one class: the target reader narrower than a shell word. `\"[^\"]*\"` treated the escaped quote as the closing one, so the span ended early and `bar`/`baz\"` became the segment head. Measured escaping, and bash measured creating the file and running the command behind it. Inside a double-quoted span a backslash escapes the next character — the same rule `shellWords` and `commandSegments`'s own quote loop already carried, and the reader did not."
+    },
+    {
+      "id": "a-backslash-in-a-single-quoted-target-is-literal",
+      "class": "holds",
+      "tool": "Bash",
+      "path": "shell-prefix",
+      "input": {
+        "command": "> 'a\\' git push --force origin main"
+      },
+      "expect": true,
+      "why": "The asymmetry that keeps the fix above from over-reaching. POSIX gives `'…'` no escapes at all, so a backslash there is a literal backslash and the quote after it closes the span. Honouring an escape there would invent a hole rather than close one."
+    },
+    {
       "id": "an-unquoted-two-word-target-is-a-target-and-a-command",
       "class": "holds",
       "tool": "Bash",

@@ -7,7 +7,7 @@
 **Milestone 8 clause (a) — adversarial fixtures per compiled gate — end to end.** Not the row: one
 clause of eight, and the change says so in every carrier rather than in one.
 
-- `cli/goldens.mjs` + `evals/goldens/gates/` (20 files, **217 cases**), declared as the `goldens`
+- `cli/goldens.mjs` + `evals/goldens/gates/` (20 files, **219 cases**), declared as the `goldens`
   verify recipe. Graded through `compile.mjs`'s own exported `matchesRule` — never a second
   implementation — against the policy the workspace **yields**, at a **pinned** root, with host
   discovery refused internally as well as pinned in the recipe.
@@ -74,7 +74,7 @@ Four, all mine, all found by existing rails rather than by me:
 
 ## State
 
-`main` @ `f82fa2e`. **Suite 1897** (from 1801, +96). **All 16 recipes green** in this working copy.
+`main` @ `f82fa2e`. **Suite 1912** (from 1801, +111). **All 16 recipes green** in this working copy.
 Seam scan clean over **every path the diff touches**, generated files included, plus the commit message
 and the branch name; planted-term control reddened. _(This sentence read "all 35 staged paths" until the
 final re-measure, when the count was 39 — a figure written before the diff stopped growing, which is a
@@ -142,6 +142,30 @@ was a defect in exactly the sentence that could least afford one.
 is why the reply was posted before that happened rather than relying on it.
 
 **Two fix-rounds spent. The bound is met**, and going past it is the maintainer's to grant.
+
+## Copilot round 3 — the same class, a third time, and the fix finally changed shape
+
+`REDIRECTION_TARGET`'s `"[^"]*"` could not hold a **backslash-escaped quote inside** a double-quoted
+span, so `> "foo \"bar baz\"" git push --force …` ended the span early and the command behind it
+escaped. Measured; bash measured creating the file and running the command.
+
+**Three findings, one class: the target reader narrower than a shell word.** Round 1 was a quoted
+target with a space; round 3 was an escape inside the quotes. **Both times I fixed the spelling that
+was quoted** — which is `0020` exactly, met twice inside one pull request, in code I wrote *while*
+citing `0020` in the commit message.
+
+So the suite stopped asserting spellings and now asserts the **rule**: `shellWords` is exported, and
+for every spelling it calls one word, the strip must consume it whole — with an unquoted two-word
+counterexample (`> foo bar git push …` stays ungated, because bash really runs `bar`) keeping the rail
+from degenerating into *consume everything*, and a single-quoted case pinning that POSIX gives `'…'`
+no escapes. Thirteen targets, both directions. A fourth sibling reds in the suite rather than in a
+review.
+
+**On the bound.** This is round 3 against a two-fix-round rule. It is taken under the **sibling
+exemption** — a round spent fixing a sibling of a defect *this change introduced* does not count, and
+`REDIRECTION_TARGET` is code this branch added. Flagged rather than assumed, and the maintainer can
+overrule it; what would have been wrong is triaging a live gate bypass out to an issue to protect a
+round count.
 
 ## The maintainer's three rulings, 2026-08-24
 
