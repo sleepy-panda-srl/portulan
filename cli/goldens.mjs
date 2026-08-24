@@ -162,11 +162,24 @@ function readJson(file, what) {
  */
 export function yieldedRules(named, { packRoots = null } = {}) {
     const { workspaceRoot, workspaceDir } = resolveWorkspace(named);
-    const { file: policyFile, declared } = policyDeclaration(workspaceRoot, workspaceDir);
+    const { file: policyFile, declared, reason } = policyDeclaration(workspaceRoot, workspaceDir);
     if (!declared && !fs.existsSync(policyFile)) {
-        throw new CouldNotRun(
-            `no gate policy at ${policyFile}, and ${workspaceDir}/workspace.json declares none — there is nothing to grade fixtures against`,
-        );
+        // **The fallback is THREE states and the message names which one.** This said
+        // `${workspaceDir}/workspace.json declares none` for all of them, which is a sentence that is
+        // false twice over: when the manifest does not exist there is nothing to have declared
+        // anything, and when it named a policy this compiler refused, it declared one and was
+        // overruled. Both send a reader to audit the one file that is not at fault — the failure
+        // `../.portulan/memory/verify-preconditions-fail-closed.md` names, and the failure
+        // `compile.mjs` had already learned at `undeclaredPolicyMessage`, whose own comment says
+        // "only the caller knows to name what the absence costs". I copied that call site's SHAPE
+        // and not its discipline. Reported as a suppressed note by Copilot, round 8 on #336.
+        const why =
+            reason === "no-manifest"
+                ? `there is no ${workspaceDir}/workspace.json, so nothing here has been authored as a workspace yet`
+                : reason === "refused"
+                  ? `${workspaceDir}/workspace.json DOES name a gate policy, and it was refused — the manifest is not at fault, the path it names is`
+                  : `${workspaceDir}/workspace.json declares no \`gates\` key, which is a legitimate shape and means the policy is expected at the default path`;
+        throw new CouldNotRun(`no gate policy at ${policyFile}: ${why}. There is nothing to grade fixtures against`);
     }
     const policy = readJson(policyFile, "the gate policy");
     // `discovery: null` and `forced: false`, always. See the header: a rail that consults the host

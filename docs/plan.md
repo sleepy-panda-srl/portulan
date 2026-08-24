@@ -2424,5 +2424,5 @@ _The seam applies here too: no client-identifying references._
   expectations**, one a real defect — a `./` target matches nothing at runtime, now gate-map hole 8 and
   [#337](https://github.com/sleepy-panda-srl/portulan/issues/337). #71 and #70 closed riding this PR.
   **Three review findings were ONE class — my target reader narrower than a shell word — and I fixed
-  the quoted spelling twice before the suite asserted the rule against `shellWords`.** Suite 1914,
+  the quoted spelling twice before the suite asserted the rule against `shellWords`.** Suite 1915,
   sixteen recipes green, seam scan clean over every path the diff touches · **Fable 5 fresh: session-open (9) + pre-commit (3); every Copilot round answered and folded — the count is in the handoff, which is its one carrier** · [#336](https://github.com/sleepy-panda-srl/portulan/pull/336) · Handoff: [`2026-08-24-b`](../.portulan/handoffs/2026-08-24-b-the-corpus-refuted-ten-of-its-own-claims.md).

@@ -390,15 +390,41 @@ test("--pack-root pointing at a FILE is could-not-run, never a misleading green"
     assert.match(r.stderr, /is not a directory/);
 });
 
-test("a workspace with no gate policy is could-not-run", () => {
-    const root = mkdtempSync(join(tmpdir(), "portulan-goldens-"));
-    try {
-        mkdirSync(join(root, ".portulan"), { recursive: true });
-        const r = cli(["--workspace", root]);
-        assert.equal(r.status, 2);
-        assert.match(r.stderr, /no gate policy/);
-    } finally { cleanup(root); }
-});
+// Three fallback states, three sentences — because "workspace.json declares none" was printed for all
+// three and is FALSE for two of them: a manifest that does not exist declared nothing, and a manifest
+// whose named policy was refused declared one and was overruled. Both send a reader to audit the one
+// file that is not at fault. `compile.mjs` had already learned this at `undeclaredPolicyMessage`; this
+// module copied that call site's shape and not its discipline. Copilot, round 8 on #336.
+for (const [label, build, expected] of [
+    [
+        "no workspace.json at all",
+        (root) => mkdirSync(join(root, ".portulan"), { recursive: true }),
+        /there is no \.portulan\/workspace\.json, so nothing here has been authored as a workspace yet/,
+    ],
+    [
+        "a manifest with no `gates` key",
+        (root) => {
+            mkdirSync(join(root, ".portulan"), { recursive: true });
+            writeFileSync(join(root, ".portulan/workspace.json"), JSON.stringify({ name: "x" }, null, 2));
+        },
+        /declares no `gates` key, which is a legitimate shape/,
+    ],
+]) {
+    test(`a workspace with no gate policy is could-not-run, and the message names WHICH — ${label}`, () => {
+        const root = mkdtempSync(join(tmpdir(), "portulan-goldens-"));
+        try {
+            build(root);
+            const r = cli(["--workspace", root]);
+            assert.equal(r.status, 2, r.stderr);
+            assert.match(r.stderr, /no gate policy/);
+            assert.match(r.stderr, expected);
+            // The control: the one sentence that must NOT be printed for a missing manifest.
+            if (label.startsWith("no workspace.json")) {
+                assert.doesNotMatch(r.stderr, /declares no `gates` key/, "a file that does not exist declared nothing");
+            }
+        } finally { cleanup(root); }
+    });
+}
 
 test("a red exits 1 and prints every finding on stderr", () => {
     const root = mkdtempSync(join(tmpdir(), "portulan-goldens-"));
