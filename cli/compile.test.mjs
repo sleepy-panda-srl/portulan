@@ -1153,6 +1153,37 @@ describe("the shared matcher", () => {
         assert.ok(matchesRule(rule, "Bash", { command: "> 'a\\' git push --force origin main" }));
     });
 
+    // **The strip runs inside `commandSegments`, which BOTH matchers use — and it widened the write
+    // gate rather than narrowing it.** Copilot round 9 on #336 read the shared use and predicted a
+    // bypass: `> docs/vision.md echo ok` would have its redirection stripped and `shellWrites` would
+    // no longer see it. Measured, and it does not happen, because `matchesRule`'s write branch is an
+    // OR whose FIRST arm reads the RAW command through `shellWrites` — which segments with
+    // `shellSegments`, a different reader that keeps redirects. `commandSegments` is only the second
+    // arm, so a strip there cannot remove coverage the first arm already gives.
+    //
+    // What the strip DID do is close four write-gate holes that `origin/main` still has, all of the
+    // same shape: a redirection leading a segment whose wrapper hides the write, reachable only
+    // through the second arm. Measured against `origin/main`'s matcher, which answers false for the
+    // first three below and true for none of them.
+    for (const [label, command, gated] of [
+        ["a leading redirect before a wrapper", '> /tmp/log bash -c "echo x >> ./docs/vision.md"', true],
+        ["the same, after a separator", 'git status; > /tmp/log bash -c "echo x >> ./docs/vision.md"', true],
+        ["an fd-dup leader before a wrapper", '2>&1 bash -c "echo x >> ./docs/vision.md"', true],
+        ["after `&&` too", 'ls && > /tmp/log bash -c "echo x >> ./docs/vision.md"', true],
+        ["the reported shape — the redirect IS the write", "> ./docs/vision.md echo ok", true],
+        ["the reported shape inside a wrapper", 'bash -c "> ./docs/vision.md echo ok"', true],
+        ["a leading redirect before a writer", "> /tmp/log cp /tmp/x ./docs/vision.md", true],
+        ["a leading redirect before a container removal", "> /tmp/log rm -rf docs", true],
+        // The false-red controls. A strip that swallowed the command behind it would gate these.
+        ["an unrelated file through the same path", '> /tmp/log bash -c "echo x >> docs/plan.md"', false],
+        ["a leading redirect and no write at all", "> /tmp/log echo ok", false],
+    ]) {
+        test(`the redirection strip does not weaken the WRITE gate — ${label}`, () => {
+            const rule = { tier: "prohibited", action: { write: "docs/vision.md" } };
+            assert.equal(matchesRule(rule, "Bash", { command }), gated, command);
+        });
+    }
+
     // #70, first half: an ADMIT case per writer-table entry, GENERATED from the tables rather than
     // hand-listed. The audit that filed the issue found `shred`, `gsed` and `ruby` exercised by
     // nothing — the matcher covers all fourteen (both tables are `Set` lookups, so there is no path

@@ -600,6 +600,18 @@ Corrected here rather than left, because a gate map that overstates a hole is as
    `command`, `stdbuf`, `doas` — and one missing entry buys exactly the false confidence this list
    exists to deny. Asserted as tests rather than only written down.
 
+   **Closing it also WIDENED the write half, which nobody predicted and one reviewer predicted the
+   opposite of.** The strip lives in `commandSegments`, which both matchers use, and Copilot round 9
+   of [#336](https://github.com/sleepy-panda-srl/portulan/pull/336) read that shared use as a write-gate
+   bypass: `> docs/vision.md echo ok` would have its redirection stripped and `shellWrites` would stop
+   seeing it. **Measured across 24 spellings, it does not happen** — `matchesRule`'s write branch is an
+   OR whose *first* arm reads the RAW command through `shellWrites`, which segments with
+   `shellSegments`, a different reader that keeps redirects; `commandSegments` is only the second arm,
+   so a strip there cannot remove coverage the first arm already gives. What the same probe found
+   instead is **four write-gate holes this change closed**, each a redirection leading a segment whose
+   wrapper hides the write — reachable only through that second arm, and answered `false` by the
+   matcher on `main`. All four are asserted now, with a false-red control.
+
    **The redirection row was not like the others, and naming that difference is what let it close.**
    A leading redirection has a *closed* grammar — an optional file descriptor, one of `<` `>` `>>`
    `<>` `>&` `&>` `>|`, and a word — so unlike the leader table it could be stripped completely, with
