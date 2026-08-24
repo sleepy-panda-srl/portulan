@@ -1,0 +1,108 @@
+{
+  "rule": "push-a-working-branch",
+  "why": "Auto, and the rule whose fixtures document a precedence this matcher does NOT decide: `git push --force` matches this rule too. Which tier wins is the compiler's ordering, not `matchesRule`'s — so the case below asserts the overlap rather than pretending it is absent.",
+  "cases": [
+    {
+      "id": "the-bare-spelling",
+      "class": "holds",
+      "tool": "Bash",
+      "input": {
+        "command": "git push -u origin topic"
+      },
+      "expect": true,
+      "why": "The control every other case here is measured against."
+    },
+    {
+      "id": "a-near-miss-is-not-this-gate",
+      "class": "holds",
+      "tool": "Bash",
+      "input": {
+        "command": "git fetch origin"
+      },
+      "expect": false,
+      "why": "Auto since 2026-07-27. A working branch is visible but is not yet a claim on the repository."
+    },
+    {
+      "id": "not-first-on-the-line",
+      "class": "holds",
+      "tool": "Bash",
+      "input": {
+        "command": "ls && git push -u origin topic"
+      },
+      "expect": true,
+      "why": "Until 2026-07-28 this matched no gate at all — the matcher prefix-matched the whole command string, so every Gated outward action here was defeated by typing anything in front of it."
+    },
+    {
+      "id": "after-a-newline",
+      "class": "holds",
+      "tool": "Bash",
+      "input": {
+        "command": "git status\ngit push -u origin topic"
+      },
+      "expect": true,
+      "why": "A newline is a command separator. The Bash tool receives multi-line scripts constantly, and this was the plainest escape of the eight."
+    },
+    {
+      "id": "inside-one-wrapper",
+      "class": "holds",
+      "tool": "Bash",
+      "input": {
+        "command": "bash -c \"git push -u origin topic\""
+      },
+      "expect": true,
+      "why": "The hook peels exactly one shell wrapper."
+    },
+    {
+      "id": "a-wrapper-not-first-on-the-line",
+      "class": "holds",
+      "tool": "Bash",
+      "input": {
+        "command": "ls && bash -c \"git push -u origin topic\""
+      },
+      "expect": true,
+      "why": "Two claims that each held and did not compose: unwrapping was anchored at the start of the command, so a wrapper that was not first was never unwrapped."
+    },
+    {
+      "id": "a-leading-redirection",
+      "class": "holds",
+      "tool": "Bash",
+      "input": {
+        "command": "2>&1 git push -u origin topic"
+      },
+      "expect": true,
+      "why": "Closed at #71, 2026-08-24. Every shell rule inherited the fix at once, which is why it is asserted on every one of them rather than only on the rule the issue quoted."
+    },
+    {
+      "id": "a-leading-sudo-still-escapes",
+      "class": "documented-hole",
+      "tool": "Bash",
+      "input": {
+        "command": "sudo git push -u origin topic"
+      },
+      "expect": false,
+      "why": "Open by decision, and shared by every shell rule. A named table of command prefixes has no natural edge — `nice`, `time`, `nohup`, `timeout`, `command`, `stdbuf`, `doas` — and one omission buys the false confidence a hole list exists to deny.",
+      "hole": ".portulan/gate-map.md honest holes, entry 2 — leaders"
+    },
+    {
+      "id": "a-brace-group-still-escapes",
+      "class": "documented-hole",
+      "tool": "Bash",
+      "input": {
+        "command": "{ git push -u origin topic; }"
+      },
+      "expect": false,
+      "why": "The other half of the leader hole: `commandSegments` reads a list of separators, not a grammar, so a word occupying the head position hides the command behind it.",
+      "hole": ".portulan/gate-map.md honest holes, entry 2 — leaders"
+    },
+    {
+      "id": "the-gated-sibling-matches-this-rule-too",
+      "class": "holds",
+      "tool": "Bash",
+      "input": {
+        "command": "git push --force origin main"
+      },
+      "expect": true,
+      "why": "Deliberate and asserted rather than hidden: `git push --force` IS a `git push`, so both rules match it. Precedence — the narrower Gated prefix winning — belongs to the compiler's ordering and to gate.mjs, not to `matchesRule`. A fixture that expected false here would be asserting a guarantee this layer does not give."
+    }
+  ]
+}

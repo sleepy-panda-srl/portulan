@@ -209,9 +209,16 @@ as a sibling nobody returns for, which is this repository's standing ruling on d
 splits a line on its SEPARATORS and matches each command.
 
 **Separators, and not leaders.** A word sitting in front of a command inside a segment still escapes —
-`env`, `sudo`, a leading `FOO=bar`, a `then` or `do` branch, a brace group, a leading redirection. That
-qualification was missing here and from the gate map until 2026-07-28, where it read "closed" flat; the
-spellings are tabled and asserted there now.
+`env`, `sudo`, a leading `FOO=bar`, a `then` or `do` branch, a brace group. That qualification was
+missing here and from the gate map until 2026-07-28, where it read "closed" flat; the spellings are
+tabled and asserted there now.
+
+**A leading REDIRECTION was on that list until 2026-08-24 and is not any more**
+([#71](https://github.com/sleepy-panda-srl/portulan/issues/71)). Its grammar is closed — an optional
+file descriptor, one of `<` `>` `>>` `<>` `>&` `&>` `>|`, and a word — so it could be stripped with an
+edge a reader can check, which is exactly what the remaining five leaders cannot offer. The gate map
+carries the argument and the cost; the one line that belongs here is that this list is now five rows,
+not six, and that the closure licenses no table of command prefixes.
 
 **The permission layer still cannot do any of it**, which the gate map's honest-holes list carries — by
 description rather than by ordinal, since two changes landed holes in that list on the same day and every

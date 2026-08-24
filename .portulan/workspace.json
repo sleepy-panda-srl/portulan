@@ -153,6 +153,15 @@
         "doc": "verify/README.md"
       },
       {
+        "id": "goldens",
+        "run": "./.portulan/verify/goldens.sh",
+        "requires": [
+          "bash",
+          "node"
+        ],
+        "doc": "verify/README.md"
+      },
+      {
         "id": "version-carriers",
         "run": "./.portulan/verify/version-carriers.sh",
         "requires": [

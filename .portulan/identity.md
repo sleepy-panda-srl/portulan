@@ -76,18 +76,26 @@ so far — the rail is routed, not built (see the handoff).
 
 **Where the line sits now, precisely.** [`verify/docs.sh`](verify/docs.sh) needs `git`, `bash`, and the
 POSIX text utilities and nothing else, and among the recipes this workspace **declares** it is the only
-one that stops there: every other — [`verify/json.sh`](verify/json.sh),
-[`verify/doctor.sh`](verify/doctor.sh), [`verify/tests.sh`](verify/tests.sh),
-[`verify/plugin.sh`](verify/plugin.sh), [`verify/compile.sh`](verify/compile.sh),
-[`verify/index.sh`](verify/index.sh), [`verify/workflow-filters.sh`](verify/workflow-filters.sh) and
-[`verify/control-chars.sh`](verify/control-chars.sh) — also needs `node`. **Declared is no longer the
-whole runnable set**, and this paragraph is not the floor: since milestone 7's composition amendment the
-set CI runs also carries `tools/github:actions-pinned`, which needs neither `node` nor `git` and so stops
-*short* of `docs.sh`. Each recipe declares its own needs — in [`workspace.json`](workspace.json) for
-these, in its own pack's manifest for a composed one — which is the authority on this line rather than
-the paragraph you are reading, and is what keeps *could not run* distinguishable from *ran and failed*.
+one that stops there: **every other one needs `node` as well.** _(That sentence used to enumerate the
+others by name, and the enumeration went stale without anyone noticing: it listed eight while the
+manifest declared thirteen non-`docs` recipes, missing `rule-carriers`, `pack-version`, `pack-identity`,
+`eval-bundle` and `version-carriers`. Deleted rather than extended on 2026-08-24 — a hand-copied roster
+in prose is a second carrier of what [`workspace.json`](workspace.json) already declares, and the
+declaration is the authority. The same repair, on the same day, as the recipe **counts** in
+[`repos/portulan.md`](repos/portulan.md).)_ **Declared is no longer the whole runnable set**, and this
+paragraph is not the floor: since milestone 7's composition amendment the set CI runs also carries
+`tools/github:actions-pinned`, which needs neither `node` nor `git` and so stops *short* of `docs.sh`.
+Each recipe declares its own needs — in [`workspace.json`](workspace.json) for these, in its own pack's
+manifest for a composed one — which is the authority on this line rather than the paragraph you are
+reading, and is what keeps *could not run* distinguishable from *ran and failed*.
 
-**One recipe needs a third thing, and it is the first since milestone 2 to move this line.**
+**Two recipes need a third thing beyond `bash` and `node`**, and the pair is worth naming because each
+moved this line once: [`verify/workflow-filters.sh`](verify/workflow-filters.sh) needs **`jq`**, argued
+below, and [`verify/pack-identity.sh`](verify/pack-identity.sh) needs **`npm`** — which the paragraph
+below omitted from the day it was written until 2026-08-24, having been drafted when `jq` was the only
+such case and never re-read when it stopped being.
+
+**The first of them since milestone 2 to move this line.**
 [`verify/workflow-filters.sh`](verify/workflow-filters.sh) needs **`jq`**, because what it checks is
 jq's own behaviour: two merge-gate workflows branch on what a jq program prints for null input, and no
 other tool can answer for that. Same test as milestone 2 applied to a different binary — the property

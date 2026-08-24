@@ -41,6 +41,45 @@ records how things were found. This is per *release* and records what a reader g
 
 ## Unreleased
 
+### Added
+
+- **Compiled gates now ship with the attack cases that prove their coverage** — milestone 8 clause (a).
+  `cli/goldens.mjs` grades a corpus at `evals/goldens/gates/` against the gate policy a workspace
+  **yields**, through the compiler's own exported `matchesRule` rather than a second implementation, and
+  runs as the `goldens` verify recipe. Two rails: a rule that compiles to a matcher and carries no
+  fixture is red, so coverage is measured rather than named; and a case marked `documented-hole` that
+  starts being *caught* is red too, so a hole record cannot go stale in either direction.
+
+  **What it is not** is stated in the tool, the recipe and `evals/README.md` alike: a **presence floor**.
+  One trivial fixture per rule satisfies it while proving nothing adversarial, and no check can tell the
+  difference — the runner prints that limit on every green rather than letting an exit code imply more.
+
+  It went red on its first run and found a hole nobody had recorded: **a rule whose target is `./`
+  matches nothing at runtime**, because `matchesPath` reduces `"./"` to the empty string and refuses it.
+  Nothing is mis-enforced today — the two rules shaped that way are `auto`, which no layer asks about —
+  but a *gated* rule written that way would compile to a permission rule covering the tree and a matcher
+  covering nothing. Now entry 8 of the gate map's honest-holes list, and asserted in the corpus.
+
+### Fixed
+
+- **A leading redirection no longer defeats a shell gate**
+  ([#71](https://github.com/sleepy-panda-srl/portulan/issues/71)). `2>&1 git push --force …`,
+  `> /tmp/log git push --force …` and their kin reached no gate: a word in front of a command inside a
+  segment escapes the matcher, and this was the one such word whose grammar is *closed* — an optional
+  file descriptor, one operator, a word — so it could be stripped with an edge a reader can check.
+
+  Closing it also required `commandSegments` to stop reading the `&` of `>&`/`&>` and the `|` of `>|`
+  as separators, since those spellings were already in pieces before any strip could see them — which
+  closed `>|` and `&>` as well, two spellings the issue never named. **The five remaining leaders —
+  `env`, `sudo`, a leading assignment, a `then`/`do` branch, a brace group — are untouched by decision:**
+  a named table of command prefixes has no natural edge, and one omission buys exactly the false
+  confidence a hole list exists to deny.
+
+- **Three writer-table entries were covered by the matcher and exercised by nothing**
+  ([#70](https://github.com/sleepy-panda-srl/portulan/issues/70)). `shred`, `gsed` and `ruby` now have
+  admit cases, **generated from the declaring tables** rather than hand-listed, so a fifteenth entry
+  cannot ship unasserted. `&>` gained the regression test it never had, alongside `2>`, `>|` and `>>`.
+
 ### Changed
 
 - **A GitHub Packages visibility flip is paid once per package, not once per release.** `0.1.2`

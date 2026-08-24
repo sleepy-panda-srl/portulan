@@ -1,0 +1,56 @@
+{
+  "rule": "read-anything-in-the-repository",
+  "why": "The rule whose target is the WHOLE REPOSITORY (`read: \"./\"`), and the file that found gate-map hole 8 on this corpus's first run. `matchesPath` reduces `\"./\"` to the empty string and then refuses the empty string, so this rule answers false for every input. Nothing is mis-enforced — the rule is `auto`, the compiler refuses `auto` wholesale and gate.mjs reads only gated and prohibited — but the divergence is real and is waiting for the first gated rule written in this shape. Every case below therefore expects FALSE and says which fact it is pinning.",
+  "cases": [
+    {
+      "id": "a-read-tool-on-a-repository-path",
+      "class": "documented-hole",
+      "tool": "Read",
+      "input": {
+        "file_path": "/repo/docs/plan.md"
+      },
+      "expect": false,
+      "why": "The control. `./` is a subtree target, so every path under the repository falls under it. — but this rule's target is `./`, which the matcher reduces to the empty string and refuses, so the answer is false. Repairing that makes this case go red until hole 8 is updated.",
+      "hole": ".portulan/gate-map.md honest holes, entry 8 — a `./` target matches nothing at runtime"
+    },
+    {
+      "id": "the-constitution-is-readable",
+      "class": "documented-hole",
+      "tool": "Read",
+      "input": {
+        "file_path": "/repo/docs/vision.md"
+      },
+      "expect": false,
+      "why": "Reading the constitution is Auto; only writing it is Prohibited. Two rules name the same file at opposite tiers, and this pins that they are answering about different actions rather than contradicting each other. — but this rule's target is `./`, which the matcher reduces to the empty string and refuses, so the answer is false. Repairing that makes this case go red until hole 8 is updated.",
+      "hole": ".portulan/gate-map.md honest holes, entry 8 — a `./` target matches nothing at runtime"
+    },
+    {
+      "id": "a-write-tool-is-not-a-read",
+      "class": "holds",
+      "tool": "Write",
+      "input": {
+        "file_path": "/repo/docs/plan.md"
+      },
+      "expect": false,
+      "why": "READ_TOOLS gates the branch. If a write tool ever answered true here, an Auto rule would be granting a tier to an action it never named — the one direction this policy's compiler is built to make impossible."
+    },
+    {
+      "id": "a-bash-command-is-not-a-read",
+      "class": "holds",
+      "tool": "Bash",
+      "input": {
+        "command": "cat docs/plan.md"
+      },
+      "expect": false,
+      "why": "A `read:` rule has no shell half, unlike `write:`. Stated as a case because the asymmetry between the two action kinds is exactly the sort of thing a reader assumes away."
+    },
+    {
+      "id": "a-payload-with-no-path-matches-nothing",
+      "class": "holds",
+      "tool": "Read",
+      "input": {},
+      "expect": false,
+      "why": "The never-throws contract, on the read branch. `matchesPath` answers false for a non-string candidate rather than raising, because gate.mjs catches and steps aside — an exception silently removes the gate being evaluated."
+    }
+  ]
+}

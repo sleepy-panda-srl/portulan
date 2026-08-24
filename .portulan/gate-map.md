@@ -540,7 +540,8 @@ is healthy. A permission rule does not fail open. So [`cli/gate.mjs`](../cli/gat
 step aside silently on any internal error, handing the decision back to the layer that cannot be removed by
 a syntax error.
 
-**The honest holes, named because they are the ones to know.** Seven of them, and the first is smaller than
+**The honest holes, named because they are the ones to know.** Eight of them — seven until 2026-08-24,
+when the gate corpus found the eighth on its first run — and the first is smaller than
 an earlier draft of this paragraph claimed — that draft said the wrapper spelling "falls through to the
 host's default mode", which was true *before* the hook existed and false of the shipped configuration. A
 pre-commit supervisor measured it and found the hook's `ask` governing and its sentence reaching the agent.
@@ -589,21 +590,35 @@ Corrected here rather than left, because a gate map that overstates a hole is as
    | a compound-statement keyword | `if true; then git push --force …; fi` |
    | a loop body | `for x in 1; do git push --force …; done` |
    | a brace group | `{ git push --force …; }` |
-   | a leading redirection | `2>&1 git push --force …`, `> /tmp/log git push --force …` |
+
+   **A leading redirection was the sixth row of this table until 2026-08-24, and is now closed** —
+   `2>&1 git push --force …`, `> /tmp/log git push --force …`, and the `>|` and `&>` spellings the
+   row never named. See below for why that one row could close while these five cannot.
 
    Stripping a **named table** of leaders would close the common ones the way the writer table does,
    and is deliberately not done: that table has no natural edge — `nice`, `time`, `nohup`, `timeout`,
    `command`, `stdbuf`, `doas` — and one missing entry buys exactly the false confidence this list
    exists to deny. Asserted as tests rather than only written down.
 
-   **The last row is not like the others, and the difference is worth stating rather than hiding
-   inside a shared refusal.** A leading redirection has a *closed* grammar — an optional file
-   descriptor, one of `<` `>` `>>` `<>` `>&` `&>`, and a word — so unlike the leader table it could be
-   stripped completely, with an edge a reader could check. It is left open here only because the same
-   change would be a matcher change on the same day this entry stopped overclaiming, and one of those
-   at a time is the honest order. Named as a decision rather than a limit, so the next reader knows
-   which of these two rows is waiting on judgement and which is waiting on a parser nobody should
-   write.
+   **The redirection row was not like the others, and naming that difference is what let it close.**
+   A leading redirection has a *closed* grammar — an optional file descriptor, one of `<` `>` `>>`
+   `<>` `>&` `&>` `>|`, and a word — so unlike the leader table it could be stripped completely, with
+   an edge a reader can check. It was left open in #60 only because the same change would have been a
+   matcher change on the same day this entry stopped overclaiming, and one of those at a time is the
+   honest order. Filed as [#71](https://github.com/sleepy-panda-srl/portulan/issues/71) on that basis
+   — **a decision rather than a limit** — and closed 2026-08-24.
+
+   **Closing it cost more than the issue predicted, and the difference is the part worth keeping.**
+   #71 forecast that the fix would "flip exactly one assertion"; it flipped **four**, because the
+   suite had grown two redirection spellings since the issue was written. And a strip alone would not
+   have worked: `commandSegments` splits on `&` and `|`, so `2>&1 git push …` had already broken into
+   `2>` and `1 git push …` before anything could strip a whole redirection, and `>|` broke the same
+   way. The operators had to stop being read as separators first — which closed `>|` and `&>` in the
+   same stroke, two spellings this table never named.
+
+   **What must not follow from it.** This does not license a named table of command prefixes. That
+   table is refused for a reason the redirection grammar does not share, stated one paragraph up, and
+   the two changes look similar enough to be proposed together.
 
    **This entry said "now closed at the hook" without qualification until 2026-07-28**, which was a
    sentence broader than its matcher — hole 5, one entry down, in the paragraph claiming to have
@@ -689,6 +704,27 @@ Corrected here rather than left, because a gate map that overstates a hole is as
    and the first draft of that test was **inert**, a poisoned plugin record shaped so that no reader
    could have picked it up, green against a runner that went looking. Found by the pre-commit
    supervisor, which wired discovery in and watched the rail stay green.
+8. **A rule whose target is the whole repository matches nothing at runtime.** Added 2026-08-24, and
+   found by the gate corpus on its first run rather than by a reader. `matchesPath` strips a leading
+   `./` and any leading `/` from the target, which reduces `"./"` to the empty string — and the empty
+   string is then refused explicitly, because a target that matches everything is far likelier to be a
+   malformed manifest than an intended rule. So `edit-on-a-working-branch` (`write: "./"`) and
+   `read-anything-in-the-repository` (`read: "./"`) answer **false for every input**.
+
+   **Nothing is mis-enforced today, and the reason is the whole shape of this entry.** Both rules are
+   `auto`; the compiler refuses the `auto` tier wholesale, and [`cli/gate.mjs`](../cli/gate.mjs) reads
+   only `gated` and `prohibited`, so neither layer ever asks. What exists is a divergence waiting for
+   its first author: a **gated** or **prohibited** rule written `./` would compile to a permission rule
+   that covers the tree and a runtime matcher that covers nothing — a partial gate that looks from the
+   outside exactly like a whole one, which is hole 3's failure mode reached by a different road.
+
+   This is the same class as the path-prefix divergence [`cli/compile.mjs`](../cli/compile.mjs) records
+   at `matchesRule`, and it was found the same way that one's cost was: by attacking the matcher rather
+   than reading it. Recorded here and asserted in
+   [`evals/goldens/gates/`](../evals/goldens/gates/) as `documented-hole` cases, so if someone repairs
+   `matchesPath` the corpus goes red until this entry is updated. **Not repaired in the change that
+   found it** — deciding what `./` should mean at the write matcher is a policy question about the
+   widest possible target, and one of those at a time is the honest order.
 
 All of which is the same point: **this layer is a convenience above a rail, not the rail.** The rail is the
 platform floor below, which refuses the push at the server regardless of what any local file says, and is

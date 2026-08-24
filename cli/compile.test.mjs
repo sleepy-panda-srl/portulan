@@ -962,14 +962,9 @@ describe("the shared matcher", () => {
         ["a `then` branch", "if true; then git push --force origin main; fi"],
         ["a `do` body", "for x in 1; do git push --force origin main; done"],
         ["a brace group", "{ git push --force origin main; }"],
-        // A leading redirection is the one row of this table with a CLOSED grammar — an optional fd,
-        // one of `< > >> <> >& &>`, and a word — so unlike the leader names it could be stripped with
-        // an edge a reader could check. Left open deliberately, and asserted here so the choice is
-        // visible rather than looking like an oversight. Found by Copilot review on #60.
-        ["a leading `2>&1`", "2>&1 git push --force origin main"],
-        ["a leading `>` to a file", "> /tmp/log git push --force origin main"],
-        ["a leading `2>/dev/null`", "2>/dev/null git push --force origin main"],
-        ["a leading `<`", "< /dev/null git push --force origin main"],
+        // A leading REDIRECTION used to be the fifth row of this table, asserted as escaping. It is
+        // closed as of #71 and its spellings moved to the test below — the one row here whose grammar
+        // was closed rather than open-ended, which is why it could be closed while these six cannot.
     ]) {
         test(`the limit is asserted, not just documented: a leader still escapes — ${label}`, () => {
             const rule = { tier: "gated", action: { shell: "git push --force" } };
@@ -977,6 +972,59 @@ describe("the shared matcher", () => {
             // The control: strip the leader and the same line is gated, so this is the leader
             // escaping rather than the target being wrong.
             assert.ok(matchesRule(rule, "Bash", { command: "git push --force origin main" }));
+        });
+    }
+
+    // #71: a leading redirection no longer escapes. The four spellings below were asserted as
+    // ESCAPING until this change — the issue predicted the fix would flip "exactly one assertion",
+    // and it flipped four, because the table above had grown two more redirection rows since the
+    // issue was written. Measured rather than trusted, which is the only reason the figure is right.
+    //
+    // The last two are spellings the issue's own table never named. They reach this test because the
+    // fix had to stop `commandSegments` splitting on the `&` of `>&`/`&>` and the `|` of `>|` before
+    // any strip could see a whole redirection — so closing the four named spellings closed these two
+    // in the same stroke rather than leaving siblings for someone to come back for.
+    for (const [label, command] of [
+        ["a leading `2>&1`", "2>&1 git push --force origin main"],
+        ["a leading `>` to a file", "> /tmp/log git push --force origin main"],
+        ["a leading `2>/dev/null`", "2>/dev/null git push --force origin main"],
+        ["a leading `<`", "< /dev/null git push --force origin main"],
+        ["a leading `>|`", ">| /tmp/log git push --force origin main"],
+        ["a leading `&>`", "&> /tmp/log git push --force origin main"],
+        ["two stacked redirections", "> /tmp/out 2>&1 git push --force origin main"],
+    ]) {
+        test(`a leading redirection is CLOSED, not documented — ${label}`, () => {
+            const rule = { tier: "gated", action: { shell: "git push --force" } };
+            assert.ok(matchesRule(rule, "Bash", { command }), command);
+        });
+    }
+
+    // The controls on that fix, and they are the load-bearing half: stripping a leader must not widen
+    // a gate, must not re-gate an ungated spelling, and must not turn an ordinary separator into a
+    // redirection. `--force-with-lease` is Auto by the maintainer's ruling of 2026-07-27.
+    for (const [label, command, gated] of [
+        ["a bare redirection is not a command", "> /tmp/log", false],
+        ["the lease survives a leading redirection", "2>&1 git push --force-with-lease origin main", false],
+        ["`&&` still separates", "ls && git push --force origin main", true],
+        ["a background `&` still separates", "ls & git push --force origin main", true],
+        ["a pipe still separates", "ls | git push --force origin main", true],
+        ["`&>` beside `&&` splits at the `&&` only", "ls &>/dev/null && git push --force origin main", true],
+        ["quoted text is still not a command", 'echo "2>&1 git push --force"', false],
+        // **The regression the #71 fix introduced and the pre-commit checkpoint caught.** A `>` that a
+        // BACKSLASH turned into data is not a redirection operator, and reading one raw neighbour
+        // cannot tell the two apart — so the non-split un-split a REAL separator and the gated command
+        // after it went invisible. Measured in live bash: `echo \>| tr a-z A-Z` pipes bytes downstream,
+        // and the command after `echo \>&` runs. Both answered `true` before #71 and `false` after it,
+        // until the segmenter was made escape-aware. A narrowing shipped inside the change whose whole
+        // subject is honest hole accounting.
+        ["an escaped `>` before a REAL pipe", "echo \\>| git push --force origin main", true],
+        ["an escaped `>` before a REAL background separator", "echo \\>& git push --force origin main", true],
+        ["an escaped `<` before a real separator", "echo \\<& git push --force origin main", true],
+        ["the lease survives the escaped form too", "echo \\>| git push --force-with-lease origin main", false],
+    ]) {
+        test(`closing the redirection leader widens nothing — ${label}`, () => {
+            const rule = { tier: "gated", action: { shell: "git push --force" } };
+            assert.equal(matchesRule(rule, "Bash", { command }), gated, command);
         });
     }
 
@@ -1013,6 +1061,56 @@ describe("the shared matcher", () => {
         test(`the never-throws contract holds for a Bash payload of ${JSON.stringify(input)}`, () => {
             const rule = { tier: "gated", action: { shell: "git push --force" } };
             assert.equal(matchesRule(rule, "Bash", input), false, "a payload with no readable command matches nothing");
+        });
+    }
+
+    // #70, first half: an ADMIT case per writer-table entry, GENERATED from the tables rather than
+    // hand-listed. The audit that filed the issue found `shred`, `gsed` and `ruby` exercised by
+    // nothing — the matcher covers all fourteen (both tables are `Set` lookups, so there is no path
+    // by which `shred` behaves differently from `rm`), and the gap was in the assertions alone.
+    //
+    // Generated is the whole repair, and it is the same shape #60's round-5 finding took one table
+    // over: a hand-listed subset passes while a new entry ships unasserted, so the assertion is
+    // derived from the declaring table and a fifteenth entry cannot arrive uncovered.
+    for (const writer of FILE_WRITERS) {
+        test(`every FILE_WRITERS entry is exercised, not just tabled — ${writer}`, () => {
+            const rule = { tier: "prohibited", action: { write: "docs/vision.md" } };
+            assert.ok(
+                matchesRule(rule, "Bash", { command: `${writer} /tmp/x docs/vision.md` }),
+                `${writer} names the constitution and writes what it names`,
+            );
+        });
+    }
+
+    for (const editor of IN_PLACE_EDITORS) {
+        test(`every IN_PLACE_EDITORS entry is exercised, not just tabled — ${editor}`, () => {
+            const rule = { tier: "prohibited", action: { write: "docs/vision.md" } };
+            assert.ok(
+                matchesRule(rule, "Bash", { command: `${editor} -i s/a/b/ docs/vision.md` }),
+                `${editor} under an in-place flag writes what it names`,
+            );
+            // The control that keeps this table separate from FILE_WRITERS: WITHOUT the in-place
+            // flag these commands READ, and the policy declares reading Auto. A matcher that
+            // contradicts a declared tier is worse than one that admits a gap.
+            assert.ok(
+                !matchesRule(rule, "Bash", { command: `${editor} -n 1,5p docs/vision.md` }),
+                `${editor} without an in-place flag is a read`,
+            );
+        });
+    }
+
+    // #70, second half: `&>` had no regression test. It already gated — `shellSegments` has always
+    // read it as a write redirection — so this pins working behaviour rather than closing a hole.
+    // Filed because `&>` is a common spelling and the compiled matrix names the others.
+    for (const [label, command] of [
+        ["`&>`", "echo x &> docs/vision.md"],
+        ["`2>`", "echo x 2> docs/vision.md"],
+        ["`>|`", "echo x >| docs/vision.md"],
+        ["`>>`", "echo x >> docs/vision.md"],
+    ]) {
+        test(`a write redirection reaches the constitution — ${label}`, () => {
+            const rule = { tier: "prohibited", action: { write: "docs/vision.md" } };
+            assert.ok(matchesRule(rule, "Bash", { command }), command);
         });
     }
 

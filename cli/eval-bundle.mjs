@@ -169,7 +169,7 @@ export const EXCLUDED_TOP_LEVEL = {
     "CONTRIBUTING.md": "describes contribution to THIS repository; an evaluation copy is not a contribution surface",
     "SECURITY.md": "names the reporting channels for THIS repository — its Security tab and its maintainer; an evaluation copy has neither",
     docs: "vision, plan, milestones and pricing drafts — the company's record, not the product",
-    evals: "milestone-8 scaffolding; one README today, and the bundle should not imply more",
+    evals: "this repository's own measurement of itself — the gate corpus attacks THIS workspace's gate policy, which no bundle ships, so the fixtures would arrive with nothing to grade. The reason changed 2026-08-24: it read `milestone-8 scaffolding; one README today, and the bundle should not imply more`, which stopped being true the moment the corpus landed. Same exclusion, and it is now a decision rather than an absence. `cli/goldens.mjs` DOES ship, the way `cli/compile.mjs` ships without `.portulan/gates.json`: the tool is product, the policy it reads is this team's",
     "package.json": "the npm publish surface — a copy is not published from, and its scripts and metadata describe this repository's release, not the bundle",
 };
 
