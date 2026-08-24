@@ -7,7 +7,7 @@
 **Milestone 8 clause (a) — adversarial fixtures per compiled gate — end to end.** Not the row: one
 clause of eight, and the change says so in every carrier rather than in one.
 
-- `cli/goldens.mjs` + `evals/goldens/gates/` (20 files, **219 cases**), declared as the `goldens`
+- `cli/goldens.mjs` + `evals/goldens/gates/` (20 files, **224 cases**), declared as the `goldens`
   verify recipe. Graded through `compile.mjs`'s own exported `matchesRule` — never a second
   implementation — against the policy the workspace **yields**, at a **pinned** root, with host
   discovery refused internally as well as pinned in the recipe.
@@ -74,7 +74,7 @@ Four, all mine, all found by existing rails rather than by me:
 
 ## State
 
-`main` @ `f82fa2e`. **Suite 1915** (from 1801, +114). **All 16 recipes green** in this working copy.
+`main` @ `f82fa2e`. **Suite 1925** (from 1801, +124). **All 16 recipes green** in this working copy.
 Seam scan clean over **every path the diff touches**, generated files included, plus the commit message
 and the branch name; planted-term control reddened. _(This sentence read "all 35 staged paths" until the
 final re-measure, when the count was 39 — a figure written before the diff stopped growing, which is a
@@ -263,6 +263,33 @@ NOT print the no-`gates`-key sentence.
 finding in the prose about the mechanism, answer one in the mechanism* — a wrong diagnostic is the
 mechanism. The other item in round 8 was the round-7 note re-promoted against a line already fixed in
 `9adc2bf`; that one needed a reply, not a change.
+
+## Copilot round 9 — a critical claim, refuted, and the probe found the opposite
+
+Round 9 predicted a **constitution write-gate bypass**: the #71 strip lives in `commandSegments`, both
+matchers use it, so `> docs/vision.md echo ok` would have its redirection stripped and `shellWrites`
+would stop seeing it. That is the most serious thing anyone has alleged on this branch, so it was
+measured before it was answered.
+
+**It does not happen.** `matchesRule`'s write branch is an **OR** whose *first* arm reads the RAW
+command through `shellWrites`, which segments with `shellSegments` — a **different** reader that keeps
+redirects. `commandSegments` is only the second arm, so a strip there cannot remove coverage the first
+arm already gives. 24 spellings, no bypass.
+
+**And the live gate demonstrated it before the probe did:** my first attempt to write the probe was
+BLOCKED by the running hook, because the file contained the real spelling. A deployed refusal is
+better evidence than a unit test, and it arrived by accident. _(The probe was rewritten against a
+neutral target — the same code path, without a gated string on the command line. That is the "a
+matcher that blocks you from describing an attack" problem this repository already records for
+heredocs, met from the other side.)_
+
+**The same probe found the opposite of the finding: this change CLOSED four write-gate holes.** Each
+is a redirection leading a segment whose wrapper hides the write — reachable only through the second
+arm, and answered `false` by `origin/main`'s matcher. Nobody predicted that either. All four are now
+asserted in the suite and the corpus with a false-red control, because an unasserted widening of the
+constitution gate is exactly the thing that regresses silently.
+
+Round 9's other item was round 8's note re-promoted against a line already fixed in `73c12b2`.
 
 ## The maintainer's three rulings, 2026-08-24
 

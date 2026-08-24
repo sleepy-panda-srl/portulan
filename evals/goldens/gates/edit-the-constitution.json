@@ -91,6 +91,61 @@
       "why": "The worse half of the segment-composition defect: the shell branch grew per-segment unwrapping and this branch did not, so the constitution was reachable behind any separator plus one wrapper. A fix landing in one carrier and not its sibling."
     },
     {
+      "id": "a-leading-redirection-before-a-wrapper",
+      "class": "holds",
+      "tool": "Bash",
+      "path": "shell-write",
+      "input": {
+        "command": "> /tmp/log bash -c \"echo x >> ./docs/vision.md\""
+      },
+      "expect": true,
+      "why": "Reachable only through the write branch's SECOND arm — per-segment plus one unwrap — and `origin/main` answers false for it. The #71 redirection strip closed it as a side effect: without the strip the segment head is the redirection and the wrapper behind it is never unwrapped. Copilot round 9 predicted the strip would OPEN a write bypass here; measured, it closed four."
+    },
+    {
+      "id": "a-leading-redirection-before-a-wrapper-mid-line",
+      "class": "holds",
+      "tool": "Bash",
+      "path": "shell-write",
+      "input": {
+        "command": "git status; > /tmp/log bash -c \"echo x >> ./docs/vision.md\""
+      },
+      "expect": true,
+      "why": "The same shape after a separator, and the second of the four `origin/main` lets through."
+    },
+    {
+      "id": "an-fd-dup-leader-before-a-wrapper",
+      "class": "holds",
+      "tool": "Bash",
+      "path": "shell-write",
+      "input": {
+        "command": "2>&1 bash -c \"echo x >> ./docs/vision.md\""
+      },
+      "expect": true,
+      "why": "The third. `2>&1` had to stop being read as a separator before any strip could see a whole redirection, which is why closing #71 reached this."
+    },
+    {
+      "id": "the-redirection-IS-the-write",
+      "class": "holds",
+      "tool": "Bash",
+      "path": "shell-write",
+      "input": {
+        "command": "> ./docs/vision.md echo ok"
+      },
+      "expect": true,
+      "why": "The exact spelling Copilot round 9 predicted would bypass the gate. It does not: `matchesRule`'s write branch is an OR whose FIRST arm reads the RAW command through `shellWrites`, which segments with `shellSegments` — a different reader that keeps redirects. `commandSegments` is only the second arm, so a strip there cannot remove coverage the first arm already gives."
+    },
+    {
+      "id": "an-unrelated-file-behind-a-leading-redirection",
+      "class": "holds",
+      "tool": "Bash",
+      "path": "shell-write",
+      "input": {
+        "command": "> /tmp/log bash -c \"echo x >> docs/plan.md\""
+      },
+      "expect": false,
+      "why": "The false-RED control on all four. A strip that swallowed the command behind it, or a matcher that treated the ancestor as a subtree, would gate an ordinary edit to an unrelated file."
+    },
+    {
       "id": "a-dot-segment-path-spelling",
       "class": "holds",
       "tool": "Bash",
