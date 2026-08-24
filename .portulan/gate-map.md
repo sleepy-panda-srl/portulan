@@ -616,6 +616,17 @@ Corrected here rather than left, because a gate map that overstates a hole is as
    way. The operators had to stop being read as separators first — which closed `>|` and `&>` in the
    same stroke, two spellings this table never named.
 
+   **The grammar above says "and a word", and the first cut of the fix read that as "non-whitespace".**
+   A shell word may hold spaces when it is quoted or escaped, so `> "foo bar" git push --force …`
+   stripped `> "foo` and left `bar" git push --force …` — no gate, and the segment corrupted. Five
+   spellings escaped that way, and bash was measured running the command after each. Two review passes
+   also missed it, and the reason is worth recording beside the hole: **the fix's own tests probed the
+   grammar at exactly the width the fix implemented**, so they could not see the width the sentence
+   claimed. Found by Copilot on the double-quoted case alone; the other four were closed with it. The
+   target reader now recognises quoted spans and escaped characters — the same three things
+   `shellWords` recognises — and the unquoted two-word spelling `> foo bar git push …` stays UNGATED,
+   because there bash really does run `bar`.
+
    **What must not follow from it.** This does not license a named table of command prefixes. That
    table is refused for a reason the redirection grammar does not share, stated one paragraph up, and
    the two changes look similar enough to be proposed together.

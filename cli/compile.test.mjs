@@ -992,6 +992,18 @@ describe("the shared matcher", () => {
         ["a leading `>|`", ">| /tmp/log git push --force origin main"],
         ["a leading `&>`", "&> /tmp/log git push --force origin main"],
         ["two stacked redirections", "> /tmp/out 2>&1 git push --force origin main"],
+        // **A redirection TARGET may contain spaces**, and the first cut of the strip consumed only
+        // `[^\s]+` — so `> "foo bar" git push --force …` stripped `> "foo` and left `bar" git push …`,
+        // head `bar"`, no gate. Five spellings escaped; bash was measured running the command after
+        // each. Reported by Copilot round 1 on the double-quoted case alone; the other four are its
+        // siblings and were closed in the same stroke rather than left for a later round.
+        ["a double-quoted target with a space", '> "foo bar" git push --force origin main'],
+        ["a single-quoted target with a space", "> 'foo bar' git push --force origin main"],
+        ["a backslash-escaped space in the target", "> foo\\ bar git push --force origin main"],
+        ["a quoted target after a numbered fd", '2> "my log.txt" git push --force origin main'],
+        ["a quoted target after `>|`", '>| "foo bar" git push --force origin main'],
+        ["a quoted target after `&>`", '&> "foo bar" git push --force origin main'],
+        ["two stacked redirections, one quoted", '> "a" 2> "b c" git push --force origin main'],
     ]) {
         test(`a leading redirection is CLOSED, not documented — ${label}`, () => {
             const rule = { tier: "gated", action: { shell: "git push --force" } };
@@ -1010,6 +1022,12 @@ describe("the shared matcher", () => {
         ["a pipe still separates", "ls | git push --force origin main", true],
         ["`&>` beside `&&` splits at the `&&` only", "ls &>/dev/null && git push --force origin main", true],
         ["quoted text is still not a command", 'echo "2>&1 git push --force"', false],
+        // The control that keeps the quote-aware target from becoming a false RED. UNQUOTED, `foo` and
+        // `bar` are two words: bash redirects to `foo` and runs `bar`, so `git push --force` is not the
+        // command and must not gate. If this ever answers true the target reader has started swallowing
+        // the command after it.
+        ["an unquoted two-word target is a target and a COMMAND", "> foo bar git push --force origin main", false],
+        ["the lease survives a quoted target", '> "foo bar" git push --force-with-lease origin main', false],
         // **The regression the #71 fix introduced and the pre-commit checkpoint caught.** A `>` that a
         // BACKSLASH turned into data is not a redirection operator, and reading one raw neighbour
         // cannot tell the two apart — so the non-split un-split a REAL separator and the gated command

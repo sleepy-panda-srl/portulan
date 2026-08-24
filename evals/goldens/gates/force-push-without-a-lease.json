@@ -6,6 +6,7 @@
       "id": "the-bare-spelling",
       "class": "holds",
       "tool": "Bash",
+      "path": "shell-prefix",
       "input": {
         "command": "git push --force origin main"
       },
@@ -16,6 +17,7 @@
       "id": "the-lease-is-not-this-gate",
       "class": "holds",
       "tool": "Bash",
+      "path": "shell-prefix",
       "input": {
         "command": "git push --force-with-lease origin main"
       },
@@ -26,6 +28,7 @@
       "id": "the-lease-mid-line",
       "class": "holds",
       "tool": "Bash",
+      "path": "shell-prefix",
       "input": {
         "command": "ls && git push --force-with-lease origin main"
       },
@@ -36,6 +39,7 @@
       "id": "the-word-boundary-holds",
       "class": "holds",
       "tool": "Bash",
+      "path": "shell-prefix",
       "input": {
         "command": "git pushall --force"
       },
@@ -46,6 +50,7 @@
       "id": "quoted-text-is-not-a-command",
       "class": "holds",
       "tool": "Bash",
+      "path": "shell-prefix",
       "input": {
         "command": "echo \"git push --force\""
       },
@@ -56,6 +61,7 @@
       "id": "not-first-on-the-line",
       "class": "holds",
       "tool": "Bash",
+      "path": "shell-prefix",
       "input": {
         "command": "ls && git push --force origin main"
       },
@@ -66,6 +72,7 @@
       "id": "after-a-semicolon",
       "class": "holds",
       "tool": "Bash",
+      "path": "shell-prefix",
       "input": {
         "command": "git status; git push --force origin main"
       },
@@ -76,6 +83,7 @@
       "id": "after-a-newline",
       "class": "holds",
       "tool": "Bash",
+      "path": "shell-prefix",
       "input": {
         "command": "git status\ngit push --force origin main"
       },
@@ -86,6 +94,7 @@
       "id": "inside-one-wrapper",
       "class": "holds",
       "tool": "Bash",
+      "path": "shell-prefix",
       "input": {
         "command": "bash -c \"git push --force origin main\""
       },
@@ -96,6 +105,7 @@
       "id": "a-wrapper-not-first-on-the-line",
       "class": "holds",
       "tool": "Bash",
+      "path": "shell-prefix",
       "input": {
         "command": "ls && bash -c \"git push --force origin main\""
       },
@@ -106,6 +116,7 @@
       "id": "an-ANSI-C-quoted-wrapper-payload",
       "class": "holds",
       "tool": "Bash",
+      "path": "shell-prefix",
       "input": {
         "command": "bash -c $'git push --force origin main'"
       },
@@ -116,6 +127,7 @@
       "id": "a-leading-redirection-fd-dup",
       "class": "holds",
       "tool": "Bash",
+      "path": "shell-prefix",
       "input": {
         "command": "2>&1 git push --force origin main"
       },
@@ -126,6 +138,7 @@
       "id": "a-leading-redirection-to-a-file",
       "class": "holds",
       "tool": "Bash",
+      "path": "shell-prefix",
       "input": {
         "command": "> /tmp/log git push --force origin main"
       },
@@ -136,6 +149,7 @@
       "id": "a-leading-redirection-no-space",
       "class": "holds",
       "tool": "Bash",
+      "path": "shell-prefix",
       "input": {
         "command": "2>/dev/null git push --force origin main"
       },
@@ -146,6 +160,7 @@
       "id": "a-leading-input-redirection",
       "class": "holds",
       "tool": "Bash",
+      "path": "shell-prefix",
       "input": {
         "command": "< /dev/null git push --force origin main"
       },
@@ -156,6 +171,7 @@
       "id": "a-leading-clobber-redirection",
       "class": "holds",
       "tool": "Bash",
+      "path": "shell-prefix",
       "input": {
         "command": ">| /tmp/log git push --force origin main"
       },
@@ -166,6 +182,7 @@
       "id": "a-leading-both-streams-redirection",
       "class": "holds",
       "tool": "Bash",
+      "path": "shell-prefix",
       "input": {
         "command": "&> /tmp/log git push --force origin main"
       },
@@ -176,6 +193,7 @@
       "id": "two-stacked-redirections",
       "class": "holds",
       "tool": "Bash",
+      "path": "shell-prefix",
       "input": {
         "command": "> /tmp/out 2>&1 git push --force origin main"
       },
@@ -183,9 +201,65 @@
       "why": "Redirections stack, so the strip is applied repeatedly rather than once."
     },
     {
+      "id": "a-quoted-target-with-a-space",
+      "class": "holds",
+      "tool": "Bash",
+      "path": "shell-prefix",
+      "input": {
+        "command": "> \"foo bar\" git push --force origin main"
+      },
+      "expect": true,
+      "why": "The strip's first cut consumed only a non-whitespace word, so this stripped `> \"foo` and left `bar\" git push --force …` — head `bar\"`, no gate, and the segment text corrupted. A fix that closed a hole by a width its own tests never probed. Reported by Copilot round 1; bash was measured running the command after a quoted redirect."
+    },
+    {
+      "id": "a-single-quoted-target-with-a-space",
+      "class": "holds",
+      "tool": "Bash",
+      "path": "shell-prefix",
+      "input": {
+        "command": "> 'foo bar' git push --force origin main"
+      },
+      "expect": true,
+      "why": "The sibling Copilot's report did not name. Both quote styles, an escaped space, `2>` and `>|` all escaped the same way — the class, not the instance."
+    },
+    {
+      "id": "a-backslash-escaped-space-in-the-target",
+      "class": "holds",
+      "tool": "Bash",
+      "path": "shell-prefix",
+      "input": {
+        "command": "> foo\\ bar git push --force origin main"
+      },
+      "expect": true,
+      "why": "The third form a shell word can take. A target reader that handles quotes and not escapes closes two thirds of one hole."
+    },
+    {
+      "id": "a-quoted-target-after-a-numbered-fd",
+      "class": "holds",
+      "tool": "Bash",
+      "path": "shell-prefix",
+      "input": {
+        "command": "2> \"my log.txt\" git push --force origin main"
+      },
+      "expect": true,
+      "why": "The ordinary spelling of the whole family: redirecting stderr to a path with a space is not exotic."
+    },
+    {
+      "id": "an-unquoted-two-word-target-is-a-target-and-a-command",
+      "class": "holds",
+      "tool": "Bash",
+      "path": "shell-prefix",
+      "input": {
+        "command": "> foo bar git push --force origin main"
+      },
+      "expect": false,
+      "why": "The false-RED control on the quote-aware target. UNQUOTED, `foo` and `bar` are two words: bash redirects to `foo` and runs `bar`, so `git push --force` is not the command and must not gate. If this ever answers true, the target reader has started swallowing the command behind it."
+    },
+    {
       "id": "a-bare-redirection-is-not-a-command",
       "class": "holds",
       "tool": "Bash",
+      "path": "shell-prefix",
       "input": {
         "command": "> /tmp/log"
       },
@@ -196,6 +270,7 @@
       "id": "an-escaped-redirection-before-a-real-pipe",
       "class": "holds",
       "tool": "Bash",
+      "path": "shell-prefix",
       "input": {
         "command": "echo \\>| git push --force origin main"
       },
@@ -206,6 +281,7 @@
       "id": "an-escaped-redirection-before-a-real-background-separator",
       "class": "holds",
       "tool": "Bash",
+      "path": "shell-prefix",
       "input": {
         "command": "echo \\>& git push --force origin main"
       },
@@ -216,6 +292,7 @@
       "id": "an-escaped-input-redirection-before-a-real-separator",
       "class": "holds",
       "tool": "Bash",
+      "path": "shell-prefix",
       "input": {
         "command": "echo \\<& git push --force origin main"
       },
@@ -226,6 +303,7 @@
       "id": "the-lease-survives-the-escaped-form",
       "class": "holds",
       "tool": "Bash",
+      "path": "shell-prefix",
       "input": {
         "command": "echo \\>| git push --force-with-lease origin main"
       },
@@ -237,6 +315,7 @@
       "class": "documented-hole",
       "hole": ".portulan/gate-map.md honest holes, entry 2 — leaders",
       "tool": "Bash",
+      "path": "shell-prefix",
       "input": {
         "command": "FOO=bar git push --force origin main"
       },
@@ -248,6 +327,7 @@
       "class": "documented-hole",
       "hole": ".portulan/gate-map.md honest holes, entry 2 — leaders",
       "tool": "Bash",
+      "path": "shell-prefix",
       "input": {
         "command": "env git push --force origin main"
       },
@@ -259,6 +339,7 @@
       "class": "documented-hole",
       "hole": ".portulan/gate-map.md honest holes, entry 2 — leaders",
       "tool": "Bash",
+      "path": "shell-prefix",
       "input": {
         "command": "sudo git push --force origin main"
       },
@@ -270,6 +351,7 @@
       "class": "documented-hole",
       "hole": ".portulan/gate-map.md honest holes, entry 2 — leaders",
       "tool": "Bash",
+      "path": "shell-prefix",
       "input": {
         "command": "if true; then git push --force origin main; fi"
       },
@@ -281,6 +363,7 @@
       "class": "documented-hole",
       "hole": ".portulan/gate-map.md honest holes, entry 2 — leaders",
       "tool": "Bash",
+      "path": "shell-prefix",
       "input": {
         "command": "for x in 1; do git push --force origin main; done"
       },
@@ -292,6 +375,7 @@
       "class": "documented-hole",
       "hole": ".portulan/gate-map.md honest holes, entry 2 — leaders",
       "tool": "Bash",
+      "path": "shell-prefix",
       "input": {
         "command": "{ git push --force origin main; }"
       },
@@ -302,6 +386,7 @@
       "id": "a-comment-is-read-as-code",
       "class": "holds",
       "tool": "Bash",
+      "path": "shell-prefix",
       "input": {
         "command": "echo ok #; git push --force origin main"
       },
@@ -312,6 +397,7 @@
       "id": "a-hash-inside-quotes-hides-nothing",
       "class": "holds",
       "tool": "Bash",
+      "path": "shell-prefix",
       "input": {
         "command": "echo \"a#b\"; git push --force origin main"
       },
@@ -322,6 +408,7 @@
       "id": "a-payload-with-no-command-matches-nothing",
       "class": "holds",
       "tool": "Bash",
+      "path": "shell-prefix",
       "input": {},
       "expect": false,
       "why": "`matchesRule` promises never to throw, and the promise is load-bearing rather than tidy: gate.mjs catches and steps aside, so an exception silently REMOVES whatever gate was being evaluated. A throw here is a fail-open wearing a stack trace."

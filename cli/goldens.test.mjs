@@ -35,7 +35,7 @@ const HERMETIC_HOST = fs.mkdtempSync(path.join(os.tmpdir(), "portulan-hermetic-"
 process.env.CLAUDE_CONFIG_DIR = HERMETIC_HOST;
 process.on("exit", () => fs.rmSync(HERMETIC_HOST, { recursive: true, force: true }));
 
-import { CLASSES, CORPUS_DIR, MATCHABLE, CouldNotRun, grade, partition, readCorpus, yieldedRules } from "./goldens.mjs";
+import { CLASSES, CORPUS_DIR, MATCHABLE, PATHS, CouldNotRun, grade, matcherPath, partition, readCorpus, yieldedRules } from "./goldens.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const REPO = join(HERE, "..");
@@ -50,11 +50,17 @@ const CASE = (over = {}) => ({
     id: "c",
     class: "holds",
     tool: "Bash",
+    // `shell-prefix` is the default because the default rule is `gate-a`, a `shell:` rule reached
+    // through Bash. A case overriding the rule or the tool overrides this too — and if it forgets,
+    // the mislabel rail below catches it, which is the rail testing itself.
+    path: "shell-prefix",
     input: { command: "git push --force origin main" },
     expect: true,
     why: "a reason a reviewer can read",
     ...over,
 });
+const WRITE_CASE = (over = {}) =>
+    CASE({ path: "shell-write", input: { command: "cp /tmp/x docs/vision.md" }, ...over });
 
 function corpus(files) {
     const root = mkdtempSync(join(tmpdir(), "portulan-goldens-"));
@@ -96,7 +102,7 @@ test("every action kind matchesRule can answer for is in MATCHABLE", () => {
 test("green when every matchable rule carries fixtures and every case answers as recorded", () => {
     const root = corpus({
         "gate-a": { rule: "gate-a", cases: [CASE()] },
-        "gate-b": { rule: "gate-b", cases: [CASE({ input: { command: "cp /tmp/x docs/vision.md" } })] },
+        "gate-b": { rule: "gate-b", cases: [WRITE_CASE()] },
     });
     try {
         const r = grade(RULES, readCorpus(root));
@@ -124,7 +130,7 @@ test("an EMPTY corpus reds once per matchable rule rather than passing vacuously
 });
 
 test("RED on a `holds` regression, naming both answers", () => {
-    const root = corpus({ "gate-a": { rule: "gate-a", cases: [CASE({ expect: false })] }, "gate-b": { rule: "gate-b", cases: [CASE({ input: { command: "cp /tmp/x docs/vision.md" } })] } });
+    const root = corpus({ "gate-a": { rule: "gate-a", cases: [CASE({ expect: false })] }, "gate-b": { rule: "gate-b", cases: [WRITE_CASE()] } });
     try {
         const r = grade(RULES, readCorpus(root));
         assert.equal(r.findings.length, 1);
@@ -144,7 +150,7 @@ test("RED when a DOCUMENTED HOLE has closed — the staleness rail runs in both 
                 CASE({ id: "stale", class: "documented-hole", hole: "gate-map entry 2", input: { command: "ls && git push --force origin main" }, expect: false }),
             ],
         },
-        "gate-b": { rule: "gate-b", cases: [CASE({ input: { command: "cp /tmp/x docs/vision.md" } })] },
+        "gate-b": { rule: "gate-b", cases: [WRITE_CASE()] },
     });
     try {
         const r = grade(RULES, readCorpus(root));
@@ -158,7 +164,7 @@ test("RED when a DOCUMENTED HOLE has closed — the staleness rail runs in both 
 test("RED when a fixture attacks a rule the yielded policy does not declare", () => {
     const root = corpus({
         "gate-a": { rule: "gate-a", cases: [CASE()] },
-        "gate-b": { rule: "gate-b", cases: [CASE({ input: { command: "cp /tmp/x docs/vision.md" } })] },
+        "gate-b": { rule: "gate-b", cases: [WRITE_CASE()] },
         ghost: { rule: "renamed-away", cases: [CASE()] },
     });
     try {
@@ -173,7 +179,7 @@ test("a fixture attacking a none-shaped rule is refused with the RIGHT sentence"
     // fixture for a rule with no tool-level surface is a category error, and the repairs differ.
     const root = corpus({
         "gate-a": { rule: "gate-a", cases: [CASE()] },
-        "gate-b": { rule: "gate-b", cases: [CASE({ input: { command: "cp /tmp/x docs/vision.md" } })] },
+        "gate-b": { rule: "gate-b", cases: [WRITE_CASE()] },
         shapeless: { rule: "shapeless", cases: [CASE()] },
     });
     try {
@@ -367,6 +373,136 @@ test("a red exits 1 and prints every finding on stderr", () => {
         assert.match(r.stderr, /RED — \d+ finding\(s\)/);
         assert.match(r.stderr, /no fixture attacks it/);
     } finally { cleanup(root); }
+});
+
+
+// ---------------------------------------------------------------------------------------------
+// The matcher-path field — session-open adjustment 3, derived rather than declared
+// ---------------------------------------------------------------------------------------------
+
+for (const [kind, tool, expected] of [
+    ["shell", "Bash", "shell-prefix"],
+    ["shell", "Write", "no-branch"],
+    ["write", "Write", "matchesPath"],
+    ["write", "Edit", "matchesPath"],
+    ["write", "NotebookEdit", "matchesPath"],
+    ["write", "Bash", "shell-write"],
+    ["write", "Read", "no-branch"],
+    ["read", "Read", "matchesPath"],
+    ["read", "Bash", "no-branch"],
+    ["read", "Write", "no-branch"],
+]) {
+    test(`the matcher path is derived: a ${kind}: rule through ${tool} takes ${expected}`, () => {
+        assert.equal(matcherPath(kind, tool), expected);
+        assert.ok(PATHS.includes(expected), "every derived value is in the declared vocabulary");
+    });
+}
+
+test("`no-branch` is a real answer, not a fallthrough for anything unrecognised", () => {
+    // It names a combination the matcher has no code for. If an unknown kind quietly answered
+    // `no-branch` too, a rule of a NEW action kind would look deliberately unreachable rather than
+    // uncovered — which is the same silence the exemption census exists to break.
+    assert.equal(matcherPath("read", "Bash"), "no-branch", "a real combination with no branch");
+    for (const kind of MATCHABLE) {
+        assert.notEqual(matcherPath(kind, "Bash"), undefined);
+    }
+});
+
+test("a MISLABELLED path is a finding, and the message says it is a mislabel", () => {
+    // The field would be decoration if nothing checked it, and a decoration on 212 cases is a
+    // second carrier that goes wrong. This is what makes it a record rather than a comment.
+    const root = corpus({
+        "gate-a": { rule: "gate-a", cases: [CASE({ path: "shell-write" })] },
+        "gate-b": { rule: "gate-b", cases: [WRITE_CASE()] },
+    });
+    try {
+        const r = grade(RULES, readCorpus(root));
+        assert.equal(r.findings.length, 1);
+        assert.match(r.findings[0].what, /declares path `shell-write`.*takes `shell-prefix`/s);
+        assert.match(r.findings[0].what, /mislabel rather than a disagreement/);
+    } finally { cleanup(root); }
+});
+
+test("a mislabelled case is NOT also graded — one defect, one finding", () => {
+    // A mislabel plus a wrong `expect` would otherwise print two findings for one broken case, and
+    // the second would send a reader to debug a matcher that is behaving.
+    const root = corpus({
+        "gate-a": { rule: "gate-a", cases: [CASE({ path: "no-branch", expect: false })] },
+        "gate-b": { rule: "gate-b", cases: [WRITE_CASE()] },
+    });
+    try {
+        const r = grade(RULES, readCorpus(root));
+        assert.equal(r.findings.length, 1, "the mislabel is reported and the grading is skipped");
+        assert.doesNotMatch(r.findings[0].what, /REGRESSION/);
+    } finally { cleanup(root); }
+});
+
+test("the per-path census counts every case, and prints a path at ZERO", () => {
+    // A corpus can carry 200 cases and exercise one branch of four. The total says nothing about
+    // that; this line is the one that does, which is why it prints the zeroes too.
+    const root = corpus({
+        "gate-a": { rule: "gate-a", cases: [CASE()] },
+        "gate-b": { rule: "gate-b", cases: [WRITE_CASE()] },
+    });
+    try {
+        const r = grade(RULES, readCorpus(root));
+        assert.equal(r.byPath.get("shell-prefix"), 1);
+        assert.equal(r.byPath.get("shell-write"), 1);
+        assert.equal(r.byPath.get("matchesPath"), undefined, "absent here, printed as 0 by the CLI");
+    } finally { cleanup(root); }
+});
+
+test("this repository's corpus exercises EVERY matcher path, not just the cheap one", () => {
+    const { rules } = yieldedRules(REPO, { packRoots: [join(REPO, "packs")] });
+    const r = grade(rules, readCorpus(REPO));
+    for (const p of PATHS) {
+        assert.ok((r.byPath.get(p) ?? 0) > 0, `no case exercises ${p} — the corpus has a blind branch`);
+    }
+});
+
+test("the two segmenters disagree about one leader, and the corpus records BOTH answers", () => {
+    // The asymmetry the path field exists for. A `then` leader is CAUGHT on the write path, because
+    // `shellSegments` knows SEGMENT_LEADERS, and ESCAPES on the shell path, because `commandSegments`
+    // does not. Without the field a reader meets two cases that look like a contradiction.
+    const constitution = JSON.parse(readFileSync(join(REPO, CORPUS_DIR, "edit-the-constitution.json"), "utf8"));
+    const force = JSON.parse(readFileSync(join(REPO, CORPUS_DIR, "force-push-without-a-lease.json"), "utf8"));
+    const caught = constitution.cases.find((c) => c.id === "a-then-branch-leader");
+    const escapes = force.cases.find((c) => c.id === "a-then-branch-still-escapes");
+    assert.equal(caught.path, "shell-write");
+    assert.equal(caught.expect, true);
+    assert.equal(escapes.path, "shell-prefix");
+    assert.equal(escapes.expect, false);
+    assert.equal(escapes.class, "documented-hole", "the escaping half is a hole and must name one");
+});
+
+test("an UNEXPECTED throw is could-not-run, never a red", () => {
+    // The first draft rethrew, so a ReferenceError from a typo crashed the process, node exited 1,
+    // and the recipe faithfully printed "RED — verify recipe failed" about a corpus nothing had
+    // finished grading. Measured on this module, not reasoned about.
+    const root = mkdtempSync(join(tmpdir(), "portulan-goldens-"));
+    try {
+        // A directory where a fixture file must be: readdirSync lists it, readFileSync raises EISDIR,
+        // which is neither of the two errors `run` translates.
+        cpSync(join(REPO, ".portulan"), join(root, ".portulan"), { recursive: true });
+        cpSync(join(REPO, "packs"), join(root, "packs"), { recursive: true });
+        mkdirSync(join(root, CORPUS_DIR, "not-a-file.json"), { recursive: true });
+        const r = spawnSync(process.execPath, [join(HERE, "goldens.mjs"), "--workspace", root, "--pack-root", join(root, "packs")], { encoding: "utf8" });
+        assert.equal(r.status, 2, `exit 1 would read as a corpus finding — got ${r.status}: ${r.stderr}`);
+        assert.match(r.stderr, /goldens: /);
+    } finally { cleanup(root); }
+});
+
+test("a case with no path, or an unknown one, is could-not-run", () => {
+    for (const bad of [undefined, "", "matchesrule", "shell"]) {
+        const root = corpus({ "gate-a": { rule: "gate-a", cases: [CASE({ path: bad })] } });
+        try {
+            assert.throws(
+                () => readCorpus(root),
+                (e) => e instanceof CouldNotRun && /declares path/.test(e.message),
+                `path ${JSON.stringify(bad)} must be refused`,
+            );
+        } finally { cleanup(root); }
+    }
 });
 
 test("the classes are exactly two, and a third would need its own argument", () => {

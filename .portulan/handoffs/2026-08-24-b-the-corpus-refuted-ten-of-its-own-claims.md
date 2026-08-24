@@ -7,7 +7,7 @@
 **Milestone 8 clause (a) — adversarial fixtures per compiled gate — end to end.** Not the row: one
 clause of eight, and the change says so in every carrier rather than in one.
 
-- `cli/goldens.mjs` + `evals/goldens/gates/` (20 files, **212 cases**), declared as the `goldens`
+- `cli/goldens.mjs` + `evals/goldens/gates/` (20 files, **217 cases**), declared as the `goldens`
   verify recipe. Graded through `compile.mjs`'s own exported `matchesRule` — never a second
   implementation — against the policy the workspace **yields**, at a **pinned** root, with host
   discovery refused internally as well as pinned in the recipe.
@@ -74,7 +74,7 @@ Four, all mine, all found by existing rails rather than by me:
 
 ## State
 
-`main` @ `f82fa2e`. **Suite 1870** (from 1801, +69). **All 16 recipes green** in this working copy.
+`main` @ `f82fa2e`. **Suite 1897** (from 1801, +96). **All 16 recipes green** in this working copy.
 Seam scan clean over **every path the diff touches**, generated files included, plus the commit message
 and the branch name; planted-term control reddened. _(This sentence read "all 35 staged paths" until the
 final re-measure, when the count was 39 — a figure written before the diff stopped growing, which is a
@@ -97,6 +97,38 @@ whole subject is honest hole accounting.** The segmenter is escape-aware now, th
 It found this by running a 192-probe differential of the staged matcher against HEAD's, and by probing
 `LEADING_REDIRECTION` to 200KB for backtracking. Neither is something reading the diff would produce —
 which is the argument for the checkpoint, again, in the same session that already made it once.
+
+## Copilot round 1 — one finding, and it was right
+
+**One inline thread, one real defect, and it is the same shape as the pre-commit finding.** The
+redirection strip consumed only `[^\s]+` as the target, so `> "foo bar" git push --force …` stripped
+`> "foo` and left `bar" git push …` — no gate, and the segment text corrupted. **Five** spellings
+escaped, not the one reported: both quote styles, a backslash-escaped space, and the `2>` and `>|`
+forms. Bash confirmed running the command after each.
+
+**Why two review passes missed it.** The gate map's grammar has said *"and a word"* throughout, and the
+fix's own tests probed the grammar at exactly the width the fix implemented — so they could not see the
+width the sentence claimed. That is the third time in this session that a check written alongside a
+change inherited the change's blind spot, and it is the only one an outside reader caught.
+
+Closed with the sibling four, plus a false-red control: `> foo bar git push --force …` **unquoted**
+stays ungated, because there bash really does run `bar`. Prose swept in `gate-map.md` and
+`compile/README.md` — the grammar sentence was right and the code was narrower than it.
+
+## Supervisor items folded after the fact
+
+Two were outstanding when the PR opened, and both are in now on the maintainer's instruction that
+optional feedback binds too:
+
+- **Session-open A3, second half** — each case now records **which branch of `matchesRule` it
+  exercises**, and the field is *derived* by `matcherPath(kind, tool)` rather than declared, with the
+  runner refusing a case whose stored value disagrees. It earns its place on one asymmetry: a `then`
+  leader is **caught** on the write path and **escapes** on the shell path, because the two branches
+  use different segmenters. Without the field those two cases read as a contradiction. Adding it also
+  exposed that an unexpected throw exited **1** — a crash arriving at the recipe as a red about a
+  corpus nothing finished grading; it is could-not-run now.
+- **Pre-commit finding 4** — the Session log entry now links the pull request, which it could not do
+  before the pull request existed.
 
 ## Open for the maintainer
 

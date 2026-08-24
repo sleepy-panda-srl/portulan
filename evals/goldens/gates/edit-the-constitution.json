@@ -6,7 +6,10 @@
       "id": "the-plain-write",
       "class": "holds",
       "tool": "Write",
-      "input": { "file_path": "/repo/docs/vision.md" },
+      "path": "matchesPath",
+      "input": {
+        "file_path": "/repo/docs/vision.md"
+      },
       "expect": true,
       "why": "The control. If this ever answers false the rule is not wired at all and every case below is meaningless."
     },
@@ -14,7 +17,10 @@
       "id": "a-newline-separates-commands",
       "class": "holds",
       "tool": "Bash",
-      "input": { "command": "git status\ncp /tmp/x docs/vision.md" },
+      "path": "shell-write",
+      "input": {
+        "command": "git status\ncp /tmp/x docs/vision.md"
+      },
       "expect": true,
       "why": "The plainest spelling there is, and it defeated the gate: the line folded into ONE segment whose head was `git`, not a writer, so the whole writer-table half fell through to false while the redirection half kept working and the coverage looked alive."
     },
@@ -22,7 +28,10 @@
       "id": "a-CRLF-continuation",
       "class": "holds",
       "tool": "Bash",
-      "input": { "command": "cp /tmp/x \\\r\ndocs/vision.md" },
+      "path": "shell-write",
+      "input": {
+        "command": "cp /tmp/x \\\r\ndocs/vision.md"
+      },
       "expect": true,
       "why": "A backslash-CRLF line continuation. Stored as escaped bytes rather than raw ones: control-chars.mjs refuses a raw CR anywhere in this tree by decision, so an attack corpus that carried real CRs could not exist here."
     },
@@ -30,7 +39,10 @@
       "id": "an-escaped-quote-swallows-the-separator",
       "class": "holds",
       "tool": "Bash",
-      "input": { "command": "echo \"x\\\"\"; cp /tmp/x docs/vision.md" },
+      "path": "shell-write",
+      "input": {
+        "command": "echo \"x\\\"\"; cp /tmp/x docs/vision.md"
+      },
       "expect": true,
       "why": "Inside a double-quoted run a backslash escapes the next character, so a reader that did not honour it closed the quote early, opened a new run on the real closing quote, and swallowed the `;` inside it — no split, no segment, no gate."
     },
@@ -38,7 +50,10 @@
       "id": "a-brace-group-leader",
       "class": "holds",
       "tool": "Bash",
-      "input": { "command": "{ cp /tmp/x docs/vision.md; }" },
+      "path": "shell-write",
+      "input": {
+        "command": "{ cp /tmp/x docs/vision.md; }"
+      },
       "expect": true,
       "why": "`{` sits where the head goes and hid the writer behind it. Reached by SEGMENT_LEADERS, which is a list of leaders rather than a grammar."
     },
@@ -46,7 +61,10 @@
       "id": "a-then-branch-leader",
       "class": "holds",
       "tool": "Bash",
-      "input": { "command": "if true; then cp /tmp/x docs/vision.md; fi" },
+      "path": "shell-write",
+      "input": {
+        "command": "if true; then cp /tmp/x docs/vision.md; fi"
+      },
       "expect": true,
       "why": "Same class as the brace group: `then` occupies the head position. Note this is the WRITE matcher — a `then` leader still escapes the SHELL matcher, which is a different segmenter and is asserted as an open hole in force-push-without-a-lease.json."
     },
@@ -54,7 +72,10 @@
       "id": "a-do-body-leader",
       "class": "holds",
       "tool": "Bash",
-      "input": { "command": "for x in 1; do cp /tmp/x docs/vision.md; done" },
+      "path": "shell-write",
+      "input": {
+        "command": "for x in 1; do cp /tmp/x docs/vision.md; done"
+      },
       "expect": true,
       "why": "The third leader of the same family."
     },
@@ -62,7 +83,10 @@
       "id": "a-wrapper-that-is-not-first-on-the-line",
       "class": "holds",
       "tool": "Bash",
-      "input": { "command": "git status; bash -c \"echo x >> docs/vision.md\"" },
+      "path": "shell-write",
+      "input": {
+        "command": "git status; bash -c \"echo x >> docs/vision.md\""
+      },
       "expect": true,
       "why": "The worse half of the segment-composition defect: the shell branch grew per-segment unwrapping and this branch did not, so the constitution was reachable behind any separator plus one wrapper. A fix landing in one carrier and not its sibling."
     },
@@ -70,7 +94,10 @@
       "id": "a-dot-segment-path-spelling",
       "class": "holds",
       "tool": "Bash",
-      "input": { "command": "cp /tmp/x docs/./vision.md" },
+      "path": "shell-write",
+      "input": {
+        "command": "cp /tmp/x docs/./vision.md"
+      },
       "expect": true,
       "why": "`matchesPath` compares tails literally, which is right for the host's clean absolute paths and wrong for anything a person types. This is the constitution and does not end with `/docs/vision.md`."
     },
@@ -78,7 +105,10 @@
       "id": "a-doubled-separator-path-spelling",
       "class": "holds",
       "tool": "Bash",
-      "input": { "command": "cp /tmp/x docs//vision.md" },
+      "path": "shell-write",
+      "input": {
+        "command": "cp /tmp/x docs//vision.md"
+      },
       "expect": true,
       "why": "The sibling of the case above, and the reason `normalisePath` exists rather than a second comparison."
     },
@@ -86,7 +116,10 @@
       "id": "an-ANSI-C-quoted-target",
       "class": "holds",
       "tool": "Bash",
-      "input": { "command": "cp /tmp/x $'docs/vision.md'" },
+      "path": "shell-write",
+      "input": {
+        "command": "cp /tmp/x $'docs/vision.md'"
+      },
       "expect": true,
       "why": "`$'…'` is a quoting form whose `$` is not part of the word. Without that recognition the token was `$docs/vision.md` and no target matched — a live bypass sitting inside the claim that quoting is honoured."
     },
@@ -94,7 +127,10 @@
       "id": "removing-the-container-removes-the-file",
       "class": "holds",
       "tool": "Bash",
-      "input": { "command": "rm -rf docs" },
+      "path": "shell-write",
+      "input": {
+        "command": "rm -rf docs"
+      },
       "expect": true,
       "why": "The eighth bypass, and the one a grammar fuzzer does not reach — it is an equivalence-oracle catch. A gate that reads `rm -rf docs/` and misses `rm -rf docs` is decided by a trailing slash."
     },
@@ -102,7 +138,10 @@
       "id": "a-heredoc-opener-that-opens-nothing",
       "class": "holds",
       "tool": "Bash",
-      "input": { "command": "echo \"not a heredoc <<EOF\"\ncp /tmp/x docs/vision.md" },
+      "path": "shell-write",
+      "input": {
+        "command": "echo \"not a heredoc <<EOF\"\ncp /tmp/x docs/vision.md"
+      },
       "expect": true,
       "why": "A fail-open manufactured by a defensive step: openers are found on the raw line, so `<<EOF` inside a quoted string set a delimiter on text that opened nothing and every later line was swallowed looking for a terminator that never came. Worse than the gap it closed, because it hid a gated command on ANY later line."
     },
@@ -110,7 +149,10 @@
       "id": "a-heredoc-body-is-data-not-commands",
       "class": "holds",
       "tool": "Bash",
-      "input": { "command": "cat <<EOF\ncp /tmp/x docs/vision.md\nEOF" },
+      "path": "shell-write",
+      "input": {
+        "command": "cat <<EOF\ncp /tmp/x docs/vision.md\nEOF"
+      },
       "expect": false,
       "why": "The control that stops the fix above degenerating into keep-everything. A heredoc body is data being written, not commands being run — and the commit that quoted this very attack in its message was refused by the gate it was adding. A matcher that blocks you from describing an attack is not being cautious."
     },
@@ -118,7 +160,10 @@
       "id": "a-heredoc-opener-writing-the-target",
       "class": "holds",
       "tool": "Bash",
-      "input": { "command": "cat > docs/vision.md <<'EOF'\nanything\nEOF" },
+      "path": "shell-write",
+      "input": {
+        "command": "cat > docs/vision.md <<'EOF'\nanything\nEOF"
+      },
       "expect": true,
       "why": "The other control: the opening LINE survives the body strip, so its redirection still gates."
     },
@@ -127,7 +172,10 @@
       "class": "documented-hole",
       "hole": ".portulan/gate-map.md honest holes, entry 1 — spellings neither layer sees",
       "tool": "Bash",
-      "input": { "command": "VISION=docs/vision.md; echo x > $VISION" },
+      "path": "shell-write",
+      "input": {
+        "command": "VISION=docs/vision.md; echo x > $VISION"
+      },
       "expect": false,
       "why": "The matcher reads words as typed and does not expand variables. Open by decision — expanding them means running the shell, which is the parser this file refuses to become."
     },
@@ -136,7 +184,10 @@
       "class": "documented-hole",
       "hole": ".portulan/gate-map.md honest holes, entry 1 — spellings neither layer sees",
       "tool": "Bash",
-      "input": { "command": "python3 -c \"open('docs/vision.md','w').write('x')\"" },
+      "path": "shell-write",
+      "input": {
+        "command": "python3 -c \"open('docs/vision.md','w').write('x')\""
+      },
       "expect": false,
       "why": "A runtime that writes the file itself names no writer from the table. Named in the hole list rather than chased."
     },
@@ -145,7 +196,10 @@
       "class": "documented-hole",
       "hole": ".portulan/gate-map.md honest holes, entry 1 — spellings neither layer sees",
       "tool": "Bash",
-      "input": { "command": "find . -name vision.md -exec cp /tmp/x {} ;" },
+      "path": "shell-write",
+      "input": {
+        "command": "find . -name vision.md -exec cp /tmp/x {} ;"
+      },
       "expect": false,
       "why": "Parsing `find`'s or `xargs`'s flags to find the real command is the ambitious parser this repository keeps refusing."
     },
@@ -154,7 +208,10 @@
       "class": "documented-hole",
       "hole": ".portulan/gate-map.md honest holes, entry 1 — the hook peels ONE wrapper",
       "tool": "Bash",
-      "input": { "command": "bash -c \"bash -c 'cp /tmp/x docs/vision.md'\"" },
+      "path": "shell-write",
+      "input": {
+        "command": "bash -c \"bash -c 'cp /tmp/x docs/vision.md'\""
+      },
       "expect": false,
       "why": "The unwrap budget is exactly one level, deliberately: a draft that segmented each spelling and unwrapped again peeled two and contradicted this documented limit. The suite's counterexample test exists for that."
     },
@@ -162,7 +219,10 @@
       "id": "an-unrelated-file-under-the-same-directory",
       "class": "holds",
       "tool": "Bash",
-      "input": { "command": "cp /tmp/x docs/plan.md" },
+      "path": "shell-write",
+      "input": {
+        "command": "cp /tmp/x docs/plan.md"
+      },
       "expect": false,
       "why": "The false-RED control. Ancestors are matched as EXACT directory names, not as subtree patterns — spelled `docs/` they would report every file under docs/ as a hit, which is a false red on an ordinary edit."
     },
@@ -170,7 +230,10 @@
       "id": "reading-the-constitution-is-not-writing-it",
       "class": "holds",
       "tool": "Bash",
-      "input": { "command": "sed -n '1,5p' docs/vision.md" },
+      "path": "shell-write",
+      "input": {
+        "command": "sed -n '1,5p' docs/vision.md"
+      },
       "expect": false,
       "why": "`sed` without an in-place flag READS, and this policy declares reading Auto. A matcher that contradicts a declared tier is worse than one that admits a gap — which is why IN_PLACE_EDITORS is a separate table from FILE_WRITERS."
     },
@@ -178,7 +241,10 @@
       "id": "the-same-editor-in-place-does-write-it",
       "class": "holds",
       "tool": "Bash",
-      "input": { "command": "sed -i 's/a/b/' docs/vision.md" },
+      "path": "shell-write",
+      "input": {
+        "command": "sed -i 's/a/b/' docs/vision.md"
+      },
       "expect": true,
       "why": "The other half of the pair above. Without it the read control alone would pass a matcher that had stopped covering sed entirely."
     }

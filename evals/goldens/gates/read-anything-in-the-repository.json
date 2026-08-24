@@ -6,6 +6,7 @@
       "id": "a-read-tool-on-a-repository-path",
       "class": "documented-hole",
       "tool": "Read",
+      "path": "matchesPath",
       "input": {
         "file_path": "/repo/docs/plan.md"
       },
@@ -17,6 +18,7 @@
       "id": "the-constitution-is-readable",
       "class": "documented-hole",
       "tool": "Read",
+      "path": "matchesPath",
       "input": {
         "file_path": "/repo/docs/vision.md"
       },
@@ -28,6 +30,7 @@
       "id": "a-write-tool-is-not-a-read",
       "class": "holds",
       "tool": "Write",
+      "path": "no-branch",
       "input": {
         "file_path": "/repo/docs/plan.md"
       },
@@ -38,6 +41,7 @@
       "id": "a-bash-command-is-not-a-read",
       "class": "holds",
       "tool": "Bash",
+      "path": "no-branch",
       "input": {
         "command": "cat docs/plan.md"
       },
@@ -48,6 +52,7 @@
       "id": "a-payload-with-no-path-matches-nothing",
       "class": "holds",
       "tool": "Read",
+      "path": "matchesPath",
       "input": {},
       "expect": false,
       "why": "The never-throws contract, on the read branch. `matchesPath` answers false for a non-string candidate rather than raising, because gate.mjs catches and steps aside — an exception silently removes the gate being evaluated."

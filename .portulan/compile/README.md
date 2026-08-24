@@ -216,7 +216,10 @@ tabled and asserted there now.
 **A leading REDIRECTION was on that list until 2026-08-24 and is not any more**
 ([#71](https://github.com/sleepy-panda-srl/portulan/issues/71)). Its grammar is closed — an optional
 file descriptor, one of `<` `>` `>>` `<>` `>&` `&>` `>|`, and a word — so it could be stripped with an
-edge a reader can check, which is exactly what the remaining five leaders cannot offer. The gate map
+edge a reader can check, which is exactly what the remaining five leaders cannot offer. **"A word" is
+the load-bearing half and the first cut got it wrong**, reading it as *non-whitespace*: a quoted or
+escaped target holds spaces, and five spellings escaped until the reader learned quotes and escapes.
+The gate map carries that measurement. The gate map
 carries the argument and the cost; the one line that belongs here is that this list is now five rows,
 not six, and that the closure licenses no table of command prefixes.
 
