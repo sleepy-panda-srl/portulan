@@ -735,7 +735,8 @@ Corrected here rather than left, because a gate map that overstates a hole is as
    [`evals/goldens/gates/`](../evals/goldens/gates/) as `documented-hole` cases, so if someone repairs
    `matchesPath` the corpus goes red until this entry is updated. **Not repaired in the change that
    found it** — deciding what `./` should mean at the write matcher is a policy question about the
-   widest possible target, and one of those at a time is the honest order.
+   widest possible target, and one of those at a time is the honest order. Tracked as [#337](https://github.com/sleepy-panda-srl/portulan/issues/337), which
+   sets out the three defensible answers rather than presuming one.
 
 All of which is the same point: **this layer is a convenience above a rail, not the rail.** The rail is the
 platform floor below, which refuses the push at the server regardless of what any local file says, and is

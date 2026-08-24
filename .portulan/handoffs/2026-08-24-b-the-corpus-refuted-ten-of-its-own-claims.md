@@ -92,7 +92,7 @@ reads one raw neighbour and cannot tell `>` the operator from `\>` the literal, 
 delivering bytes downstream — stopped splitting, and the force-push after it went invisible. `\>&` did
 the same across a real background separator. **Both were caught at HEAD and lost by the change whose
 whole subject is honest hole accounting.** The segmenter is escape-aware now, the two spellings plus a
-`<` sibling and a lease control are in the suite and the corpus, and 212 cases replace 208.
+`<` sibling and a lease control are in the suite and the corpus, taking the count from 208 to 212 — and then to **217** when Copilot round 1 found the quoted-target sibling below. Both figures are steps in one sequence rather than a disagreement; 217 is where it stands.
 
 It found this by running a 192-probe differential of the staged matcher against HEAD's, and by probing
 `LEADING_REDIRECTION` to 200KB for backtracking. Neither is something reading the diff would produce —
@@ -130,12 +130,41 @@ optional feedback binds too:
 - **Pre-commit finding 4** — the Session log entry now links the pull request, which it could not do
   before the pull request existed.
 
-## Open for the maintainer
+## Copilot round 2 — one finding, a real ambiguity
 
-1. **Gate-map hole 8 has no issue.** Filing one is outward and Gated; it is recorded in the tree and
-   awaits your word on whether it also becomes a tracker item.
-2. **Row 8 has seven clauses left** against a 1–2 session budget. Your ruling stands — *"M7 was closed
-   properly at any cost; M8 should follow"* — and is why nothing here was trimmed to fit.
-3. **"From milestone 8, releases carry an eval result"** (plan.md → Protocol → Versioning) is a
-   milestone-8 carrier that is not one of row 8's eight clauses. Unassigned; named in `evals/README.md`
-   so it cannot go missing.
+`evals/README.md`'s *"What this rail does NOT establish"* read **"Adequacy. It is a presence floor"**,
+which is two sentences that look like a contradiction until you have read both twice. Reworded as an
+explicit two-column contrast — what the rail answers against what it cannot. No mechanism changed;
+this is the section whose whole job is stopping a reader over-reading a green, so its being ambiguous
+was a defect in exactly the sentence that could least afford one.
+
+**Round 1's thread shows resolved, and Copilot resolved it itself** — *resolved* is not *judged*, which
+is why the reply was posted before that happened rather than relying on it.
+
+**Two fix-rounds spent. The bound is met**, and going past it is the maintainer's to grant.
+
+## The maintainer's three rulings, 2026-08-24
+
+All three arrived mid-session and all three are discharged:
+
+1. **"Fill it."** Hole 8 is now
+   [#337](https://github.com/sleepy-panda-srl/portulan/issues/337) — the mechanism, all three legs of
+   *nothing is mis-enforced today* verified rather than asserted, and **three defensible answers set
+   out rather than one presumed**, since what `./` should mean is a policy call. On the board at
+   **Next**. Linked from the gate map, the README and nine corpus cases, so a reader of any of them
+   finds the tracker. _(`gh project item-add` reported success and added nothing — the measured trap;
+   the item went on via the GraphQL mutation, and its id came back usable.)_
+2. **"The session budget will increase."** Recorded as a session note in
+   [`docs/milestones/m08.md`](../../docs/milestones/m08.md). **The Sessions cell is left at 1–2 pending
+   his number** — a budget the implementer picks for itself is not a budget.
+3. **"M8 can't be closed without addressing this item."** *A release carries an eval result* is now
+   **row 8's ninth clause**, amended into the row with the argument in `m08.md`, checked as an
+   expansion the way M1–M7's amendments established. Until today the Protocol carried that obligation
+   and **no row owned it**, so a close re-deriving the criterion clause by clause would have re-derived
+   eight and left it unbuilt — a mandate with no owner, one altitude up from a mandate with no checker.
+   The Status cell now reads **eight of nine remain**, and `evals/README.md`'s entry is truthed from
+   *unassigned* to *a close condition*.
+
+**One figure went stale inside this session and my own sweep caught it**: `cli/README.md` said *"212
+cases"*, written before round 1 took the corpus to 217. Replaced with the scope rather than a new
+number — the fix the last three of these have needed.

@@ -80,11 +80,18 @@ names — so the corpus carries no raw control bytes, and a test asserts both ha
 
 ### What this rail does NOT establish
 
-**Adequacy.** It is a **presence floor**: a rule that compiles to a matcher and carries no fixture is
-red, so a gate cannot reach the compiled policy with no adversarial thought recorded against it. But
-one trivial happy-path fixture per rule satisfies that while proving nothing, and no check can tell the
-difference — whether a corpus is a real attack is a reviewer's judgement. The runner prints this limit
-on every green rather than letting the exit code imply more than it means.
+**Adequacy — whether the cases are a real attack.** What the rail checks is **presence**, and the two
+are worth separating out loud, because a green looks the same either way:
+
+| The rail answers | The rail cannot answer |
+|---|---|
+| Does every compiled gate have fixtures at all? | Are those fixtures any good? |
+| Does every case still answer as recorded? | Is the case worth answering? |
+
+So a gate cannot reach the compiled policy with **no** adversarial thought recorded against it — and
+one trivial happy-path fixture per rule satisfies the floor while proving nothing. No check can tell
+those apart; whether a corpus is a real attack is a reviewer's judgement, and it stays one. The runner
+prints this limit on every green rather than letting the exit code imply more than it means.
 
 The **exemption** is the obvious way to dodge the rail: write the next gate `none`-shaped and it needs
 no fixtures. So every exempt rule is named in the output on every run, the way `compile --matrix` prints
@@ -97,7 +104,7 @@ runtime.** `matchesPath` reduces `"./"` to the empty string and then refuses the
 `edit-on-a-working-branch` and `read-anything-in-the-repository` answer false for every input. Nothing
 is mis-enforced today — both are `auto`, and neither layer ever asks — but a **gated** rule written
 that way would compile to a permission rule covering the tree and a matcher covering nothing. Now
-entry 8 of [`../.portulan/gate-map.md`](../.portulan/gate-map.md)'s honest-holes list, and asserted here.
+entry 8 of [`../.portulan/gate-map.md`](../.portulan/gate-map.md)'s honest-holes list, tracked as [#337](https://github.com/sleepy-panda-srl/portulan/issues/337), and asserted here.
 
 Ten of the corpus's own hand-written expectations were refuted by the rail on the same run, which is
 the argument for the rail in one sentence.
@@ -124,6 +131,10 @@ here claims a capability that does not exist:
   Arrives in milestone 8, a later session. The three drills run against this recipe on 2026-08-24 were
   run by hand, in a session, and recorded in that session's handoff — which is the state (d) exists to
   replace.
-- **"From milestone 8, releases carry an eval result"** ([`../docs/plan.md`](../docs/plan.md), Protocol
-  → Versioning) — a milestone-8 carrier that is not one of row 8's eight clauses. Unassigned as of
-  2026-08-24; it belongs to a later session or to the maintainer's release procedure.
+- **A release carries an eval result** ([`../docs/plan.md`](../docs/plan.md), Protocol → Versioning).
+  Arrives in milestone 8, a later session. **This was the row's ninth clause as of 2026-08-24 and was
+  nobody's until that day**: the Protocol had carried the obligation since the plan was locked while
+  row 8's criterion listed eight deliverables and did not include it, so a close re-deriving the
+  criterion clause by clause would have re-derived eight and left it unbuilt. Named here first as
+  *unassigned*; the maintainer then ruled it a close condition and it is now in the row itself. What
+  an eval result consists of, and where a release carries it, is still open.
