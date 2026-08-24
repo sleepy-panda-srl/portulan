@@ -341,7 +341,7 @@ export function grade(rules, corpus) {
         findings.push({
             where: `${CORPUS_DIR}/`,
             what:
-                `\`${rule.id}\` (${rule.tier}, ${rule.kind}:) compiles to a matcher and no fixture attacks it. ` +
+                `\`${rule.id}\` (${rule.tier}, a \`${rule.kind}:\` rule) compiles to a matcher and no fixture attacks it. ` +
                 `Coverage is measured, not named — add ${CORPUS_DIR}/${rule.id}.json with at least one case`,
         });
     }
