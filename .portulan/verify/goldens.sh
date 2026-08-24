@@ -62,7 +62,10 @@ if [ ! -d evals/goldens/gates ]; then
     exit 2
 fi
 
-printf 'goldens: grading evals/goldens/gates/ against the gate policy .portulan/ yields\n'
+# Spelled out rather than elided. This read "against the gate policy .portulan/ yields" — a reduced
+# relative clause that scans as a TRUNCATED line in a CI log, where a reader has no context to
+# recover the missing "that" from. Reported as a suppressed note by Copilot, round 5 on #336.
+printf 'goldens: grading evals/goldens/gates/ against the gate policy that .portulan/ yields — its own rules plus its composed packs fragments\n'
 
 # ---------------------------------------------------------------------------------------------
 # **The resolution root is PINNED, for the reason ./compile.sh states at length.** A required check
