@@ -2,9 +2,10 @@
 
 > Generated from `handoffs/` by `node cli/index.mjs`. Do not edit by hand: it is regenerated
 > and byte-compared, so a hand-edit survives exactly until the next run.
-> 129 handoff(s), newest first. No budget: the series is append-only, so
+> 130 handoff(s), newest first. No budget: the series is append-only, so
 > the only remedy a budget could ask for is one this project rules out.
 
+- 2026-08-24 · [Handoff — the librarian's scheduled pass](handoffs/2026-08-24-librarian-pass.md)
 - 2026-08-22 · [Handoff — the scaffold was refused by the very step it tells you to run next](handoffs/2026-08-22-b-the-scaffold-was-refused-by-the-step-it-names.md)
 - 2026-08-22 · [Handoff — an undeclared policy is a state, and the compiler reported it as a missing file](handoffs/2026-08-22-an-undeclared-policy-is-a-state-not-a-missing-file.md)
 - 2026-08-20 · [Handoff — the cut the prose rail finally graded, and a green that answered a different question](handoffs/2026-08-20-the-cut-the-prose-rail-finally-graded.md)
