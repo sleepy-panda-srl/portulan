@@ -92,7 +92,7 @@ reads one raw neighbour and cannot tell `>` the operator from `\>` the literal, 
 delivering bytes downstream — stopped splitting, and the force-push after it went invisible. `\>&` did
 the same across a real background separator. **Both were caught at HEAD and lost by the change whose
 whole subject is honest hole accounting.** The segmenter is escape-aware now, the two spellings plus a
-`<` sibling and a lease control are in the suite and the corpus, taking the count from 208 to 212 — and then to **217** when Copilot round 1 found the quoted-target sibling below. Both figures are steps in one sequence rather than a disagreement; 217 is where it stands.
+`<` sibling and a lease control are in the suite and the corpus. _(This sentence carried a running count and went stale at it — inside the paragraph **explaining that counts go stale**. Copilot round 4 caught it as a suppressed note, after my own figure sweep walked past it: I grepped for `N cases` and the number here was bare. The total is now stated **once**, at the top of this handoff; the sequence was the interesting half and the running figure was never load-bearing.)_
 
 It found this by running a 192-probe differential of the staged matcher against HEAD's, and by probing
 `LEADING_REDIRECTION` to 200KB for backtracking. Neither is something reading the diff would produce —
@@ -167,6 +167,25 @@ exemption** — a round spent fixing a sibling of a defect *this change introduc
 overrule it; what would have been wrong is triaging a live gate bypass out to an issue to protect a
 round count.
 
+## Copilot round 4 — no threads, one suppressed note, and it was right
+
+**A notes-only round carries findings the inline channel does not**, which is why both are read every
+time. This one: the paragraph above stated a running corpus count and went stale at it, inside the
+sentence explaining that running counts go stale.
+
+Fixed by **removing** the terminal count rather than correcting it — the total has one carrier now, at
+the top of this handoff. Correcting it would have left the same trap armed for the next push.
+
+**Rule 3 says a suppressed note is never a reason to push again, and this push breaks that.** Taken
+deliberately: the note is *correct*, the defect is a false sentence in the session's own record, and
+the standing instruction for this milestone is correctness at any cost. Flagged rather than assumed.
+
+**And the push that fixed it truncated this file to zero bytes** — `open(p,"w").write(open(p).read()…)`
+truncates before the argument that reads it is evaluated. Caught by `tests` and `index` going red, not
+by me; recovered from the commit. Worth recording because the near-miss is the interesting part: a
+record that documents its own defects is exactly the file whose loss would be silent, and two rails
+stood between that and a green.
+
 ## The maintainer's three rulings, 2026-08-24
 
 All three arrived mid-session and all three are discharged:
@@ -189,6 +208,12 @@ All three arrived mid-session and all three are discharged:
    The Status cell now reads **eight of nine remain**, and `evals/README.md`'s entry is truthed from
    *unassigned* to *a close condition*.
 
-**One figure went stale inside this session and my own sweep caught it**: `cli/README.md` said *"212
-cases"*, written before round 1 took the corpus to 217. Replaced with the scope rather than a new
-number — the fix the last three of these have needed.
+**Two figures went stale inside this session. My sweep caught one and missed the other.**
+`cli/README.md` said *"212 cases"*, written before round 1 grew the corpus — caught by my sweep and
+replaced with the **scope** rather than a newer number. Then the paragraph above, whose whole subject
+is that counts go stale, carried its own stale count and the sweep walked past it, because I had
+grepped for `N cases` and that number was bare. **Copilot round 4 found it, as a suppressed note.**
+
+That is the honest tally; an earlier draft of this paragraph claimed only the catch. A record that
+reports its author's wins and not the misses in the same class is the shape this session met three
+times in the code.
