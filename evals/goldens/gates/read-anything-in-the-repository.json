@@ -12,7 +12,7 @@
       },
       "expect": false,
       "why": "The control. `./` is a subtree target, so every path under the repository falls under it. — but this rule's target is `./`, which the matcher reduces to the empty string and refuses, so the answer is false. Repairing that makes this case go red until hole 8 is updated.",
-      "hole": ".portulan/gate-map.md honest holes, entry 8 — a `./` target matches nothing at runtime"
+      "hole": ".portulan/gate-map.md honest holes, entry 8 — a `./` target matches nothing at runtime (tracked as #337)"
     },
     {
       "id": "the-constitution-is-readable",
@@ -24,7 +24,7 @@
       },
       "expect": false,
       "why": "Reading the constitution is Auto; only writing it is Prohibited. Two rules name the same file at opposite tiers, and this pins that they are answering about different actions rather than contradicting each other. — but this rule's target is `./`, which the matcher reduces to the empty string and refuses, so the answer is false. Repairing that makes this case go red until hole 8 is updated.",
-      "hole": ".portulan/gate-map.md honest holes, entry 8 — a `./` target matches nothing at runtime"
+      "hole": ".portulan/gate-map.md honest holes, entry 8 — a `./` target matches nothing at runtime (tracked as #337)"
     },
     {
       "id": "a-write-tool-is-not-a-read",

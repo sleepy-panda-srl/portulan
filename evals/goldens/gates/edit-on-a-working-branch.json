@@ -12,7 +12,7 @@
       },
       "expect": false,
       "why": "The control. Answered through the Write tool, which is the half a permission rule also covers. — but this rule's target is `./`, which the matcher reduces to the empty string and refuses, so the answer is false. Repairing that makes this case go red until hole 8 is updated.",
-      "hole": ".portulan/gate-map.md honest holes, entry 8 — a `./` target matches nothing at runtime"
+      "hole": ".portulan/gate-map.md honest holes, entry 8 — a `./` target matches nothing at runtime (tracked as #337)"
     },
     {
       "id": "the-Edit-tool",
@@ -24,7 +24,7 @@
       },
       "expect": false,
       "why": "The same target through Edit — three write tools carry a `file_path` and all three must reach the rule. — but this rule's target is `./`, which the matcher reduces to the empty string and refuses, so the answer is false. Repairing that makes this case go red until hole 8 is updated.",
-      "hole": ".portulan/gate-map.md honest holes, entry 8 — a `./` target matches nothing at runtime"
+      "hole": ".portulan/gate-map.md honest holes, entry 8 — a `./` target matches nothing at runtime (tracked as #337)"
     },
     {
       "id": "a-shell-redirection",
@@ -36,7 +36,7 @@
       },
       "expect": false,
       "why": "The shell half. For one milestone a `write:` rule reached only the tools carrying a `file_path`, so this was gated by NEITHER layer: the permission rule rejects the tool and the matcher fell through to false. — but this rule's target is `./`, which the matcher reduces to the empty string and refuses, so the answer is false. Repairing that makes this case go red until hole 8 is updated.",
-      "hole": ".portulan/gate-map.md honest holes, entry 8 — a `./` target matches nothing at runtime"
+      "hole": ".portulan/gate-map.md honest holes, entry 8 — a `./` target matches nothing at runtime (tracked as #337)"
     },
     {
       "id": "a-writer-from-the-table",
@@ -48,7 +48,7 @@
       },
       "expect": false,
       "why": "The writer-table half, which reads arguments rather than redirections. — but this rule's target is `./`, which the matcher reduces to the empty string and refuses, so the answer is false. Repairing that makes this case go red until hole 8 is updated.",
-      "hole": ".portulan/gate-map.md honest holes, entry 8 — a `./` target matches nothing at runtime"
+      "hole": ".portulan/gate-map.md honest holes, entry 8 — a `./` target matches nothing at runtime (tracked as #337)"
     },
     {
       "id": "a-messy-path-spelling",
@@ -60,7 +60,7 @@
       },
       "expect": false,
       "why": "Tails are compared literally, which is right for the host's clean absolute paths and wrong for anything a person types. — but this rule's target is `./`, which the matcher reduces to the empty string and refuses, so the answer is false. Repairing that makes this case go red until hole 8 is updated.",
-      "hole": ".portulan/gate-map.md honest holes, entry 8 — a `./` target matches nothing at runtime"
+      "hole": ".portulan/gate-map.md honest holes, entry 8 — a `./` target matches nothing at runtime (tracked as #337)"
     },
     {
       "id": "not-first-on-the-line",
@@ -72,7 +72,7 @@
       },
       "expect": false,
       "why": "The separator escape, in the write matcher. — but this rule's target is `./`, which the matcher reduces to the empty string and refuses, so the answer is false. Repairing that makes this case go red until hole 8 is updated.",
-      "hole": ".portulan/gate-map.md honest holes, entry 8 — a `./` target matches nothing at runtime"
+      "hole": ".portulan/gate-map.md honest holes, entry 8 — a `./` target matches nothing at runtime (tracked as #337)"
     },
     {
       "id": "a-wrapper-not-first-on-the-line",
@@ -84,7 +84,7 @@
       },
       "expect": false,
       "why": "The worse half of the segment-composition defect — the shell branch grew per-segment unwrapping and this branch did not. — but this rule's target is `./`, which the matcher reduces to the empty string and refuses, so the answer is false. Repairing that makes this case go red until hole 8 is updated.",
-      "hole": ".portulan/gate-map.md honest holes, entry 8 — a `./` target matches nothing at runtime"
+      "hole": ".portulan/gate-map.md honest holes, entry 8 — a `./` target matches nothing at runtime (tracked as #337)"
     },
     {
       "id": "an-interpolated-target-escapes",
