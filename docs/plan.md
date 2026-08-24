@@ -2417,12 +2417,12 @@ _The seam applies here too: no client-identifying references._
   Handoff: [`2026-08-24`](../.portulan/handoffs/2026-08-24-librarian-pass.md).
 
 - 2026-08-24 · M8 (Evals & telemetry), session 0 · **Clause (a): gates now ship with the attack cases
-  that prove their coverage.** `cli/goldens.mjs` + `evals/goldens/gates/` — 20 files, 217 cases, each
+  that prove their coverage.** `cli/goldens.mjs` + `evals/goldens/gates/` — 20 files, 219 cases, each
   recording the `matchesRule` branch it exercises — as the `goldens` recipe, graded against the policy
-  the workspace **yields** at a pinned root. A compiled rule with no fixture is red; a
-  `documented-hole` that starts being CAUGHT is red too. **It reddened on its first run and refuted ten
-  of my own expectations**, one a real defect — a `./` target matches nothing at runtime, now gate-map
-  hole 8 and [#337](https://github.com/sleepy-panda-srl/portulan/issues/337). #71 and #70 closed riding
-  this PR; #71's fix narrowed two gates and read "a word" as non-whitespace, caught by pre-commit and
-  Copilot. **His ruling: a release carrying an eval result is this row's ninth clause.** Suite 1897,
-  sixteen recipes green, seam scan clean over every path the diff touches · **Fable 5, fresh: session-open (9) + pre-commit (3); Copilot 2 rounds, all folded** · [#336](https://github.com/sleepy-panda-srl/portulan/pull/336) · Handoff: [`2026-08-24-b`](../.portulan/handoffs/2026-08-24-b-the-corpus-refuted-ten-of-its-own-claims.md).
+  the workspace **yields** at a pinned root. A rule with no fixture is red; a `documented-hole` that
+  starts being CAUGHT is red too. **It reddened on its first run and refuted ten of my own
+  expectations**, one a real defect — a `./` target matches nothing at runtime, now gate-map hole 8 and
+  [#337](https://github.com/sleepy-panda-srl/portulan/issues/337). #71 and #70 closed riding this PR.
+  **Three review findings were ONE class — my target reader narrower than a shell word — and I fixed
+  the quoted spelling twice before the suite asserted the rule against `shellWords`.** Suite 1912,
+  sixteen recipes green, seam scan clean over every path the diff touches · **Fable 5 fresh: session-open (9) + pre-commit (3); Copilot 3 rounds, all folded** · [#336](https://github.com/sleepy-panda-srl/portulan/pull/336) · Handoff: [`2026-08-24-b`](../.portulan/handoffs/2026-08-24-b-the-corpus-refuted-ten-of-its-own-claims.md).

@@ -81,6 +81,13 @@ records how things were found. This is per *release* and records what a reader g
   after each. The target reader recognises quoted spans and escaped characters now, and the *unquoted*
   two-word spelling stays ungated, because there the shell really does run the second word.
 
+  **A third round found the same class one level in** — `"[^"]*"` could not hold a backslash-escaped
+  quote *inside* a double-quoted span. Two rounds, one class, each fixed at the spelling that was
+  quoted; so the suite stopped asserting spellings and now asserts the **rule**: whatever `shellWords`
+  calls one word, the strip consumes whole, with an unquoted two-word counterexample keeping that from
+  becoming *consume everything*. `shellWords` is exported for it. A fourth sibling reds in the suite
+  rather than arriving in a review.
+
 - **Three writer-table entries were covered by the matcher and exercised by nothing**
   ([#70](https://github.com/sleepy-panda-srl/portulan/issues/70)). `shred`, `gsed` and `ruby` now have
   admit cases, **generated from the declaring tables** rather than hand-listed, so a fifteenth entry

@@ -52,6 +52,7 @@ import {
     packContributions,
     composeFragments,
     tierRank,
+    shellWords,
 } from "./compile.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -1081,6 +1082,76 @@ describe("the shared matcher", () => {
             assert.equal(matchesRule(rule, "Bash", input), false, "a payload with no readable command matches nothing");
         });
     }
+
+
+    // ---------------------------------------------------------------------------------------------
+    // The CLASS rail: the redirection-target reader agrees with `shellWords` about what a word is
+    // ---------------------------------------------------------------------------------------------
+    //
+    // **Three review findings in a row were one class**, and each was fixed at the spelling that was
+    // quoted. Round 1 of #336: `[^\s]+` could not hold a quoted target with a space. Round 3: `"[^"]*"`
+    // could not hold a backslash-escaped quote INSIDE a double-quoted span — measured escaping while bash
+    // was measured creating the file and running the command behind it. Two patches, same defect, and the
+    // second was found by a reviewer rather than by this suite.
+    //
+    // So the suite stops asserting spellings and asserts the RULE: whatever `shellWords` calls one word,
+    // the strip consumes whole. `shellWords` is the authority — it is the reader the matcher already uses
+    // for the write half — so a fourth sibling now reds here instead of arriving in a review.
+    //
+    // **What it does not do**, said rather than implied: it cannot invent the spellings. A form neither
+    // this table nor `shellWords` handles is still out of reach of both, and that is a gap a fuzzer
+    // closes (milestone 8 clause (b)) rather than a table.
+    const ONE_WORD_TARGETS = [
+        "/dev/null",
+        "/tmp/log",
+        '"foo bar"',
+        "'foo bar'",
+        "foo\\ bar",
+        '"foo \\"bar baz\\""',
+        '"a\\"b"',
+        "'a b'",
+        '"a;b"',
+        '"a|b"',
+        '"a&&b"',
+        "''",
+        '""',
+    ];
+    
+    for (const target of ONE_WORD_TARGETS) {
+        test(`the target reader agrees with shellWords that this is ONE word — ${target}`, () => {
+            // Half one: `shellWords`, the authority, reads it as a single non-operator word.
+            const words = shellWords(target).filter((w) => !w.op);
+            assert.equal(words.length, 1, `shellWords does not call ${target} one word — the table is wrong, not the matcher`);
+    
+            // Half two: the strip consumes it whole, so the command behind it reaches the gate. If the
+            // reader stops short, the leftover becomes the segment head and the gated command escapes —
+            // which is exactly what both findings were.
+            const rule = { tier: "gated", action: { shell: "git push --force" } };
+            assert.ok(
+                matchesRule(rule, "Bash", { command: `> ${target} git push --force origin main` }),
+                `a leading redirection to ${target} hid the command behind it`,
+            );
+    
+            // The control, per target: the Auto sibling must not be re-gated by a wider reader.
+            assert.ok(!matchesRule(rule, "Bash", { command: `> ${target} git push --force-with-lease origin main` }));
+        });
+    }
+    
+    test("an UNQUOTED two-word target is two words to shellWords, and the matcher agrees", () => {
+        // The counterexample that stops the rail above degenerating into "consume everything". Here bash
+        // redirects to `foo` and runs `bar`, so `git push --force` is NOT the command and must not gate.
+        assert.equal(shellWords("foo bar").filter((w) => !w.op).length, 2);
+        const rule = { tier: "gated", action: { shell: "git push --force" } };
+        assert.ok(!matchesRule(rule, "Bash", { command: "> foo bar git push --force origin main" }));
+    });
+    
+    test("a single-quoted span has NO escapes, and the reader must not invent them", () => {
+        // POSIX gives `'…'` no escapes at all, so honouring a backslash there would invent a hole rather
+        // than close one — the same asymmetry `commandSegments`'s quote loop and `shellWords` both carry.
+        const rule = { tier: "gated", action: { shell: "git push --force" } };
+        // The backslash ENDS nothing here; the quote after it closes the span.
+        assert.ok(matchesRule(rule, "Bash", { command: "> 'a\\' git push --force origin main" }));
+    });
 
     // #70, first half: an ADMIT case per writer-table entry, GENERATED from the tables rather than
     // hand-listed. The audit that filed the issue found `shred`, `gsed` and `ruby` exercised by
