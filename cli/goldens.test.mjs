@@ -62,13 +62,27 @@ const CASE = (over = {}) => ({
 const WRITE_CASE = (over = {}) =>
     CASE({ path: "shell-write", input: { command: "cp /tmp/x docs/vision.md" }, ...over });
 
+// The filename is derived from the doc's own `rule`, because the corpus reader enforces that they
+// match — so a helper naming files by object key would trip the convention check on every fixture and
+// hide the shape refusal each case is actually about. The key is the fallback for a doc that declares
+// no rule, which is the one case that must still reach the missing-`rule` refusal.
 function corpus(files) {
     const root = mkdtempSync(join(tmpdir(), "portulan-goldens-"));
     const dir = join(root, CORPUS_DIR);
     mkdirSync(dir, { recursive: true });
     for (const [name, doc] of Object.entries(files)) {
-        writeFileSync(join(dir, `${name}.json`), `${JSON.stringify(doc, null, 2)}\n`);
+        const file = typeof doc.rule === "string" && doc.rule !== "" ? doc.rule : name;
+        writeFileSync(join(dir, `${file}.json`), `${JSON.stringify(doc, null, 2)}\n`);
     }
+    return root;
+}
+
+/** A corpus whose file deliberately does NOT match its `rule` — the convention check's own fixture. */
+function misfiledCorpus(name, doc) {
+    const root = mkdtempSync(join(tmpdir(), "portulan-goldens-"));
+    const dir = join(root, CORPUS_DIR);
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(join(dir, `${name}.json`), `${JSON.stringify(doc, null, 2)}\n`);
     return root;
 }
 const cleanup = (root) => rmSync(root, { recursive: true, force: true });
@@ -212,6 +226,31 @@ for (const [label, doc, expected] of [
         } finally { cleanup(root); }
     });
 }
+
+test("a MISFILED fixture is could-not-run — one file per rule, named for it", () => {
+    // The convention was documented in three places and enforced in none: the missing-fixture red
+    // prints `add evals/goldens/gates/<rule-id>.json`, evals/README.md gives the layout, and a
+    // renamed file validated cleanly and graded anyway. A mandate nothing checks is already broken,
+    // and this module was carrying one while its whole subject is mandates that need checkers.
+    // Reported as a suppressed note by Copilot, round 5 on #336.
+    const root = misfiledCorpus("not-the-rule-name", { rule: "gate-a", cases: [CASE()] });
+    try {
+        assert.throws(
+            () => readCorpus(root),
+            (e) => e instanceof CouldNotRun && /one fixture file per rule, named for it/.test(e.message),
+        );
+    } finally { cleanup(root); }
+});
+
+test("the repository's own corpus obeys the convention it documents", () => {
+    // The other direction, and the one that would have caught the gap earlier: assert the tree, not
+    // just the refusal. Every file here is named for the rule it declares.
+    const dir = join(REPO, CORPUS_DIR);
+    for (const name of readdirSync(dir)) {
+        const doc = JSON.parse(readFileSync(join(dir, name), "utf8"));
+        assert.equal(name, `${doc.rule}.json`, `${name} declares rule ${doc.rule}`);
+    }
+});
 
 test("a corpus directory that is not there is could-not-run, never a silent green", () => {
     const root = mkdtempSync(join(tmpdir(), "portulan-goldens-"));
@@ -367,7 +406,9 @@ test("a red exits 1 and prints every finding on stderr", () => {
         cpSync(join(REPO, ".portulan"), join(root, ".portulan"), { recursive: true });
         cpSync(join(REPO, "packs"), join(root, "packs"), { recursive: true });
         mkdirSync(join(root, CORPUS_DIR), { recursive: true });
-        writeFileSync(join(root, CORPUS_DIR, "gate-a.json"), `${JSON.stringify({ rule: "tag-a-release", cases: [CASE({ input: { command: "git tag v1" } })] }, null, 2)}\n`);
+        // Named for the rule it declares, because the reader now enforces that — the fixture for a RED
+        // must not accidentally be a fixture for a could-not-run.
+        writeFileSync(join(root, CORPUS_DIR, "tag-a-release.json"), `${JSON.stringify({ rule: "tag-a-release", cases: [CASE({ input: { command: "git tag v1" } })] }, null, 2)}\n`);
         const r = spawnSync(process.execPath, [join(HERE, "goldens.mjs"), "--workspace", root, "--pack-root", join(root, "packs")], { encoding: "utf8" });
         assert.equal(r.status, 1, r.stderr);
         assert.match(r.stderr, /RED — \d+ finding\(s\)/);

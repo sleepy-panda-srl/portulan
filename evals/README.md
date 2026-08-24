@@ -28,6 +28,12 @@ keeps the row's own word; the tools take a narrower one.
 evals/goldens/gates/<rule-id>.json      one fixture file per rule in the yielded gate policy
 ```
 
+**The filename is checked against the file's own `rule` field**, since 2026-08-24. It was documented
+here, printed in the missing-fixture red (*"add `evals/goldens/gates/<rule-id>.json`"*), and enforced
+nowhere — so a renamed or misfiled fixture validated cleanly and graded anyway. A mandate nothing
+checks is already broken, and this directory was carrying one of its own. Found as a suppressed note
+in Copilot round 5 of [#336](https://github.com/sleepy-panda-srl/portulan/pull/336).
+
 Graded by [`../cli/goldens.mjs`](../cli/goldens.mjs), run as the `goldens` verify recipe, on every
 pull request. Run it by hand with:
 

@@ -221,6 +221,20 @@ export function readCorpus(repoRoot, dir = CORPUS_DIR) {
         if (typeof doc.rule !== "string" || doc.rule === "") {
             throw new CouldNotRun(`${where} names no \`rule\` — a fixture file attacks exactly one rule and must say which`);
         }
+        // **One fixture file per rule, named for it — checked, because this file already SAYS it.**
+        // The red for a missing fixture prints `add evals/goldens/gates/<rule-id>.json`, `evals/README.md`
+        // documents the layout, and nothing enforced either: a renamed or misfiled file validated
+        // cleanly and still graded, so the convention held by everyone remembering it. That is the
+        // shape `../.portulan/memory/a-mandate-nothing-checks-is-already-broken.md` names, and this
+        // module was carrying one of its own while its whole subject is mandates that need checkers.
+        // Reported as a suppressed note by Copilot, round 5 on #336.
+        if (name !== `${doc.rule}.json`) {
+            throw new CouldNotRun(
+                `${where} declares rule \`${doc.rule}\` — one fixture file per rule, named for it, so rename it to ` +
+                    `${dir}/${doc.rule}.json or correct the \`rule\` field. A misfiled corpus grades correctly and ` +
+                    `reviews badly, which is the worse of the two`,
+            );
+        }
         if (!Array.isArray(doc.cases) || doc.cases.length === 0) {
             throw new CouldNotRun(`${where} carries no \`cases\` — an empty fixture file is coverage that is not there`);
         }

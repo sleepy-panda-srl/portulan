@@ -74,7 +74,7 @@ Four, all mine, all found by existing rails rather than by me:
 
 ## State
 
-`main` @ `f82fa2e`. **Suite 1912** (from 1801, +111). **All 16 recipes green** in this working copy.
+`main` @ `f82fa2e`. **Suite 1914** (from 1801, +113). **All 16 recipes green** in this working copy.
 Seam scan clean over **every path the diff touches**, generated files included, plus the commit message
 and the branch name; planted-term control reddened. _(This sentence read "all 35 staged paths" until the
 final re-measure, when the count was 39 — a figure written before the diff stopped growing, which is a
@@ -185,6 +185,29 @@ truncates before the argument that reads it is evaluated. Caught by `tests` and 
 by me; recovered from the commit. Worth recording because the near-miss is the interesting part: a
 record that documents its own defects is exactly the file whose loss would be silent, and two rails
 stood between that and a green.
+
+## Copilot round 5 — two notes, both promoted, both real
+
+**The stronger one is the one I should be least comfortable with.** `readCorpus` validated a fixture's
+`rule` field and never checked that the FILENAME matched it — while the convention was documented in
+`evals/README.md`, printed in this runner's own missing-fixture red (*"add
+`evals/goldens/gates/<rule-id>.json`"*), and enforced nowhere. A renamed or misfiled fixture validated
+cleanly and graded anyway. **A mandate nothing checks is already broken** — and the module carrying it
+is the one whose entire subject is mandates that need checkers. Now refused with the rename in the
+message, and asserted in both directions: the refusal fires, and the repository's own twenty files are
+checked against the convention rather than assumed to obey it.
+
+Fixing it broke eleven of my own tests, which is the second interesting part: the test helper named
+fixture files by object key rather than by the rule they declare, so every shape-refusal case became a
+filename-refusal case and stopped testing what it was named for. The helper derives the filename now,
+with a separate one for the misfile fixture.
+
+The second note: the recipe banner read *"against the gate policy `.portulan/` yields"* — a reduced
+relative clause that scans as a **truncated line** in a CI log, where a reader has no context to
+recover the missing *"that"*. Spelled out.
+
+**Round 5, and the bound is long past.** Both are siblings of code this branch added, and the first is
+a live unchecked mandate rather than a preference. Flagged, not assumed, for the third time.
 
 ## The maintainer's three rulings, 2026-08-24
 
