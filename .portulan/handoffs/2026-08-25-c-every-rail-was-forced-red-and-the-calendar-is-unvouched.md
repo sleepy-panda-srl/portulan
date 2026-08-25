@@ -427,3 +427,33 @@ The other five are mechanism, and three are could-not-run inversions:
   because it calls `recipeSet()`. So the roster went stale in the one way the pair was arranged not to
   allow. Added, and the test's own name — *"the four readers this change re-pointed"* — lost its count in
   the same stroke, that being the same class one altitude up.
+
+## Copilot round 2 — two findings, and the second is this repository's own rule turned on me
+
+**The isolation guarantee was a promise, not a check.** `perturb` formed its target with `path.join`
+and wrote it, so a `..` in a declaration — or a symlinked parent in the checkout — could have reached
+outside the throwaway worktree and into the caller's own repository, which is the one tree this harness
+promises never to touch. The whole argument for a drill being safe to run at all rests on that
+containment and nothing asserted it. Refused now **before anything is written**, resolving the nearest
+existing ancestor for a path that does not exist yet, since that is what a write actually follows. Both
+shapes are asserted, and the case checks that no file appeared.
+
+**And my containment predicate was a third copy of a rule this repository keeps in exactly one file.**
+I wrote `!path.relative(a, b).startsWith("..")` with a `rel !== ""` guard — which is precisely the
+spelling [`cli/inside.mjs`](../../cli/inside.mjs) exists to hold, whose docblock records that two copies
+of it drifted into the identical defect before either shipped. Mine had **both** of its defects: a
+directory legitimately named `..packs` reads as outside, and a root *equal* to the repository root was
+rejected outright, so `--pack-root .` refused a tree that is trivially inside itself. `isInside` is
+imported now, with `realpathSync` on both sides for the reason `compile.mjs` had to add it — and which
+this session had already met once, in the `/var` symlink that made a test pass on macOS and fail on
+Linux.
+
+`0020` again: a rule with one carrier, and I wrote a second one, in the change whose own subject is
+carriers that drift.
+
+_The first cut of the containment check then threw a bare `ENOENT` when handed a worktree that does not
+exist, and **its own new test caught it** — a raw throw arriving as *could not finish the sweep* with a
+stack trace instead of a sentence. Guarded, with a case._
+
+**Two fix-rounds spent. The bound is met**, and going past it is the maintainer's to grant rather than
+mine to assume.

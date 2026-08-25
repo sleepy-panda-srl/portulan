@@ -32,6 +32,7 @@ process.on("exit", () => fs.rmSync(HERMETIC_HOST, { recursive: true, force: true
 
 import { DRILLS, DRILL_SESSION_PREFIX, NON_RECIPE_RAILS, NOT_DRILLED, check, drillOne, perturb, run, treeToDrill, yieldedRecipes } from "./drills.mjs";
 import { CouldNotRun } from "./goldens.mjs";
+import { isInside } from "./inside.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const REPO = join(HERE, "..");
@@ -443,6 +444,43 @@ test("a roster finding stays a finding in sweep mode, never a could-not-run", as
     // The sweep path's own reporting is asserted through `check`'s findings reaching stderr with the
     // roster wording rather than the guard's throw.
     assert.match(SOURCE, /RED — \$\{findings\.length\} finding\(s\) in the drill roster; no rail was drilled/);
+});
+
+test("a perturbation that resolves outside the worktree is refused before anything is written", () =>
+    fixtureRepo(({ dir }) => {
+        // The isolation guarantee, asserted rather than promised. Both shapes: a `..` traversal, and a
+        // creation through one. Nothing is written in either case — the caller's own tree is what the
+        // refusal protects.
+        const outside = path.join(dir, "escaped.txt");
+        const worktree = path.join(dir, "sub");
+        fs.mkdirSync(worktree);
+        for (const bad of [
+            { file: "../escaped.txt", find: "x", replace: "y" },
+            { create: "../escaped.txt", content: "x" },
+        ]) {
+            assert.throws(
+                () => perturb(worktree, { rail: "fake", perturb: bad }),
+                (e) => e instanceof CouldNotRun && /resolves outside the drill worktree/.test(e.message),
+                JSON.stringify(bad),
+            );
+        }
+        assert.ok(!fs.existsSync(outside), "the refusal wrote a file it was refusing");
+    }));
+
+test("a worktree that is not there is could-not-run, not a stack trace", () =>
+    fixtureRepo(({ dir }) => {
+        assert.throws(
+            () => perturb(path.join(dir, "never-created"), { rail: "fake", perturb: { file: "marker.txt", find: "x", replace: "y" } }),
+            (e) => e instanceof CouldNotRun && /cannot be resolved/.test(e.message),
+        );
+    }));
+
+test("containment uses the one carrier, so a name beginning with `..` is not a traversal", () => {
+    // `./inside.mjs`'s own subject: `path.relative` of `sub/..packs` against `sub` is `..packs`, which
+    // the naive `startsWith("..")` calls outside. Asserted here because this module had that spelling.
+    assert.ok(isInside("/a/b", "/a/b/..packs"));
+    assert.ok(isInside("/a/b", "/a/b"), "a path is inside itself");
+    assert.ok(!isInside("/a/b", "/a/c"));
 });
 
 // ------------------------------------------------------------------------------- which tree is drilled

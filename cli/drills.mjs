@@ -98,6 +98,7 @@ import { spawnSync } from "node:child_process";
 import { pathToFileURL } from "node:url";
 
 import { CouldNotRun } from "./goldens.mjs";
+import { isInside } from "./inside.mjs";
 import { recipeSet, resolverFor } from "./recipe-set.mjs";
 
 /** How long any one rail may take before the drill calls it a could-not-run rather than a verdict. */
@@ -515,8 +516,55 @@ const digest = (buffer) => crypto.createHash("sha256").update(buffer).digest("he
 export function perturb(worktree, drill) {
     if (!drill.perturb) return null;
 
+    /**
+     * Refuse a target that does not stay inside the worktree, **before anything is written**.
+     *
+     * The isolation guarantee is the whole reason a drill runs in a throwaway tree, and nothing checked
+     * it: a `..` in a declaration, or a symlinked parent in the checkout, would have let `writeFileSync`
+     * reach the caller's own repository — the tree this harness promises never to perturb. `isInside` is
+     * the one carrier of the predicate and `realpathSync` is what makes it answer about the tree rather
+     * than about two spellings of it; for a path that does not exist yet the nearest existing ancestor
+     * is resolved instead, since that is what a write would actually follow. Copilot round 2.
+     */
+    const contained = (rel) => {
+        // The worktree side is resolved tolerantly too. `realpathSync` on a directory that is not there
+        // throws a bare ENOENT, and an unguarded throw here would arrive as *could not finish the sweep*
+        // with a stack trace instead of a sentence — the first version did exactly that, and its own test
+        // caught it.
+        let root;
+        try {
+            root = fs.realpathSync(worktree);
+        } catch (cause) {
+            throw new CouldNotRun(
+                `the drill worktree ${worktree} cannot be resolved — ${cause.code ?? cause.message}. ` +
+                    "Nothing is perturbed against a tree that is not there",
+            );
+        }
+        const target = path.resolve(worktree, rel);
+        let probe = target;
+        for (;;) {
+            try {
+                probe = fs.realpathSync(probe);
+                break;
+            } catch {
+                const parent = path.dirname(probe);
+                if (parent === probe) break;
+                probe = parent;
+            }
+        }
+        // The resolved ancestor must be inside, and so must the unresolved remainder — the first stops a
+        // symlink hop, the second stops a `..` that never touches an existing directory.
+        if (!isInside(root, probe) || !isInside(path.resolve(worktree), target)) {
+            throw new CouldNotRun(
+                `drill \`${drill.rail}\` names ${JSON.stringify(rel)}, which resolves outside the drill worktree. ` +
+                    "A perturbation may only touch the throwaway tree — the isolation is the reason a drill is safe to run at all",
+            );
+        }
+        return target;
+    };
+
     if (drill.perturb.create !== undefined) {
-        const target = path.join(worktree, drill.perturb.create);
+        const target = contained(drill.perturb.create);
         if (fs.existsSync(target)) {
             throw new CouldNotRun(
                 `drill \`${drill.rail}\` would create ${drill.perturb.create}, which already exists in the tree — ` +
@@ -529,7 +577,7 @@ export function perturb(worktree, drill) {
     }
 
     const rel = drill.perturb.file;
-    const target = path.join(worktree, rel);
+    const target = contained(rel);
     let source;
     try {
         source = fs.readFileSync(target, "utf8");
@@ -1087,12 +1135,27 @@ export async function run(argv = [], { stdout = process.stdout, stderr = process
         //
         // Both are could-not-run rather than a best effort: a rail run against files the sweep cannot
         // name is a verdict about neither tree. Copilot round 1.
-        const inside = (dir) => {
-            const rel = path.relative(repoRoot, dir);
-            return rel !== "" && !rel.startsWith("..") && !path.isAbsolute(rel);
+        // **`isInside` is imported, not re-spelled.** The predicate this replaced was
+        // `!path.relative(a, b).startsWith("..")` plus `rel !== ""` — the exact spelling
+        // `./inside.mjs` exists to hold, and its docblock records that two copies of this rule drifted
+        // into the identical defect before either shipped. Mine had both halves of it: a directory
+        // legitimately named `..packs` reads as outside, and a root *equal* to the repository root was
+        // rejected outright, so `--pack-root .` refused a tree that is trivially inside itself. A third
+        // copy of a rule twice-corrected elsewhere is `0020` exactly. Copilot round 2.
+        //
+        // `fs.realpathSync` on both sides, for the reason `./compile.mjs` had to add it: a symlinked
+        // checkout — `/var` against `/private/var` on macOS is the one this session already met — makes
+        // two names for one directory compare as different trees.
+        const real = (dir) => {
+            try {
+                return fs.realpathSync(dir);
+            } catch {
+                return path.resolve(dir);
+            }
         };
+        const repoReal = real(repoRoot);
         for (const root of packRoots) {
-            if (!inside(root)) {
+            if (!isInside(repoReal, real(root))) {
                 throw new CouldNotRun(
                     `--pack-root ${root} is outside ${repoRoot}, and the sweep runs each rail from a throwaway worktree. ` +
                         "A composed recipe's `${PACK_ROOT}` is relativised against the repository, so from a worktree it " +
@@ -1100,7 +1163,7 @@ export async function run(argv = [], { stdout = process.stdout, stderr = process
                 );
             }
         }
-        if (!inside(workspaceDir)) {
+        if (!isInside(repoReal, real(workspaceDir))) {
             throw new CouldNotRun(
                 `--workspace ${workspaceDir} is outside ${repoRoot}, and the hook rails are handed their workspace as a ` +
                     "path inside the tree being drilled. Pass a workspace inside the repository, or use --check",
