@@ -1291,9 +1291,13 @@ describe("the shared matcher", () => {
         // wrapper, while the same wrapper alone answered `deny`. Measured stepping aside before the
         // fix. Found by Copilot review on #60, five commits after the sibling was fixed.
         ["a wrapper after a `;`", 'git status; bash -c "echo x >> docs/vision.md"'],
-        // A CRLF line continuation. `\r\n` was consumed one character at a time, so the `\n` survived
-        // as an operator and flushed the word instead of continuing it — the LF spelling denied and
-        // the CRLF spelling stepped aside. Both are asserted so the pair cannot drift apart again.
+        // A CRLF line continuation. **Present tense, because an earlier draft of this comment described
+        // a mechanism the matcher no longer has:** `shellWords` and `commandSegments` both consume the
+        // backslash+CRLF **pair**, so the word is joined and both spellings below answer `true`. What
+        // was fixed in 2026-07-28 is what that sentence described — the pair consumed one character at
+        // a time, leaving the `\n` as an operator that flushed the word — and it is history, not
+        // behaviour. Both are asserted so the pair cannot drift apart again. Reported by Copilot,
+        // round 2 on #342.
         // **The reachability this comment used to claim — "which made the constitution reachable by
         // editing the file on Windows" — is retired.** Measured 2026-08-25 on bash 3.2.57, 5.2.15 and
         // 5.2.37, plus zsh 5.9 and sh: none of them joins the pair, so **both** assertions below pin a

@@ -587,9 +587,18 @@ export function shellWords(command) {
             // **An earlier draft of this comment said "those two and nothing else" and had counted only
             // the first two** — an exhaustive claim that had not run the suite it was exhaustive about,
             // in the comment repairing an unmeasured claim. Reported by Copilot, round 1 on #342.
-            // What does NOT move: the redirection is recognised off the raw segment text rather than off
-            // a joined word, so the true positive survives removal, and so does a real LF continuation.
-            // Asked at
+            // What does NOT move, **and the reason an earlier draft gave for it was false.** That draft
+            // said "the redirection is recognised off the raw segment text rather than off a joined
+            // word". There is no raw-text path: `shellWrites` iterates `shellSegments`, which is built
+            // from `shellWords`. The real reason is narrower and is a property of WHERE the pair sits.
+            // With the branch gone the newline splits, and for the fuzzer's shape — pair after the head,
+            // `echo \<CRLF>ok > docs/vision.md` — the `> docs/vision.md` lands in a LATER segment whose
+            // `redirects` still name the target, so that cell stays `true`. Put the pair AFTER the `>`
+            // and the opposite happens: the operator takes the escaped `\r` as its target and the path
+            // becomes an ordinary word in the next segment — which is precisely why surface 3's second
+            // assertion fails. **So the true positive survives for this production and NOT for every
+            // redirect spelling**, and generalising it was the overclaim. Reported by Copilot, rounds 2
+            // and 3 on #342. A real LF continuation is untouched either way. Asked at
             // `../.portulan/proposals/0031-a-continuation-no-shell-joins.md`; until that is ruled, the
             // branch stays and this comment states what was measured rather than what was argued.
             //
@@ -814,12 +823,14 @@ function commandSegments(raw) {
             // **The pair's two carriers are this line and `shellWords`, and the measurement retiring
             // the reachability claim is written up there once.** No shell measured joins the pair, so
             // consuming it here is unfaithful to a shell in the same direction — **but this carrier
-            // records no false red, and an earlier draft of this comment said it did.** This reader
-            // supplies the SHELL matcher, whose `crlf-continuation-in-the-payload|shell` cell answers
-            // `false`, which is the correct negative: nothing gated runs there. The one recorded false
-            // red is `write-named`, and it is reached through `shellWords`. Removing the pair would
-            // still have to remove both — a carrier corrected while its sibling stands is how the last
-            // several defects on this line happened — which is why
+            // records no false red of its own, and an earlier draft of this comment said it did.** On
+            // the shell path its `crlf-continuation-in-the-payload|shell` cell answers `false`, the
+            // correct negative: nothing gated runs there. On the write path it is an UNWRAPPER feeding
+            // `shellWrites`, reached through a short-circuiting `||` after the un-peeled spellings, so
+            // the recorded false red — `write-named` — is produced by `shellWords` and not here. **The
+            // reason to keep the two readers in step is synchronisation, not a shared verdict**: a
+            // carrier corrected while its sibling stands is how the last several defects on this line
+            // happened. Reported by Copilot, round 2 on #342. That is why
             // `../.portulan/proposals/0031-a-continuation-no-shell-joins.md` names both carriers rather
             // than the one whose comment argued for it. Reported by Copilot, round 1 on #342.
             i += command[i + 1] === "\r" && command[i + 2] === "\n" ? 2 : 1;

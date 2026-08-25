@@ -28,8 +28,11 @@ maintainer rather than repaired, on two grounds — the repair direction is fail
 **2026-08-25, five shells, with a neutral target path — never `docs/vision.md`, which no agent may
 write to.** The probe built the exact strings the fuzzer's production builds — its `build` **keeps**
 the payload's first space and inserts a backslash and the pair immediately after it — ran each through
-`<shell> -c` in a scratch directory, and read back the target's size. The target was pre-seeded with
-six bytes.
+`<shell> -c` in a scratch directory, and compared the target's **SHA-256 before and after**. The target
+was pre-seeded with six bytes and the copy source made **the same six bytes**, so a same-size overwrite
+cannot pass as *unchanged*; the hasher self-tests before any case runs. _(The first probe read the
+target's **size** only, and Copilot was right that equal size cannot rule out a same-length overwrite.
+The claim was not narrowed — the instrument was strengthened, and it says the same thing.)_
 
 | shell | build |
 |---|---|
@@ -72,9 +75,15 @@ workspace yields:
 | shell — a gated force-push | `false` | `false` — unchanged |
 | LF controls — named and redirect | `true` | `true` — unchanged |
 
-**The true positive survives the removal**, because the redirection is recognised off the segment's raw
-text rather than off a joined word. **A real LF continuation still joins**, so the branch above this one
-is untouched.
+**The true positive survives the removal for THIS production**, and the reason an earlier draft gave was
+false. That draft said the redirection is recognised off raw segment text; there is no raw-text path —
+`shellWrites` iterates `shellSegments`, built from `shellWords`. The real reason is **where the pair
+sits**: this production puts it after the head, so the split leaves `> docs/vision.md` in a later
+segment whose `redirects` still name the target. **Put the pair after the `>` and the opposite happens**
+— the operator takes the escaped `\r`, the path becomes an ordinary word, and the match is lost, which
+is exactly why surface 3's second assertion fails. So this does **not** generalise to every redirect
+spelling, and saying it did was the overclaim. **A real LF continuation still joins**, so the branch
+above this one is untouched. _(Copilot, rounds 2 and 3 on #342.)_
 
 The table's three moving rows are three probe **shapes**, not three recorded cells, and the difference
 matters to whoever carries the removal out. **Measured by deleting both carriers in a scratch clone and
@@ -177,6 +186,6 @@ proposal; no client material, so no seal is needed.
 
 ## Decision
 
-_Undecided. The maintainer's, as a change to a compiled gate matcher in the fail-open direction._
+_Undecided. **The decision is the maintainer's**, this being a change to a compiled gate matcher in the fail-open direction._
 
 **Pull request:** [#342](https://github.com/sleepy-panda-srl/portulan/pull/342) — the change that filed this.
