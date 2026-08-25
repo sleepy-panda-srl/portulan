@@ -9,7 +9,7 @@ now reading `1 per clause` this entry must not be read as spending clause budget
 ## What this is, and what it is not
 
 A librarian consolidation pass on the **agent memory store** —
-`~/.claude/projects/-Users-mariuscetanas-Sleepy-Panda-Projects-portulan/memory/` — which holds the
+`~/.claude/projects/…/memory/` — which holds the
 assistant's operating facts. **Not** the repository's `.portulan/memory/`, which holds minted rules with
 provenance and retirement conditions. Nothing crossed between them, in either direction.
 
