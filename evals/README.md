@@ -231,7 +231,7 @@ weekly — is a watcher, so it owes its own observation under
 `workflow_dispatch` is answerable only once the file is on the default branch, and the schedule is
 answered by its first run and nothing earlier. **Until then the calendar is unvouched and its silence is
 not evidence.** And a *missing* run stays undetectable — that is `0007`'s silence problem one altitude up,
-**to be filed with this change's pull request** rather than built.
+tracked as [#344](https://github.com/sleepy-panda-srl/portulan/issues/344) rather than built.
 
 _This paragraph said the gap was already **filed** — the fifth carrier of that sentence, and the one a
 first repair of the other four walked past. A claim in the past tense about an issue that did not exist is

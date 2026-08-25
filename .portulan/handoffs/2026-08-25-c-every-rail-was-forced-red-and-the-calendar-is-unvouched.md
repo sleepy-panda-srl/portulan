@@ -185,8 +185,11 @@ value this shipped with — not a policy an implementer settled, and it says so 
 them after 60 days of inactivity, so *no sweep* and *no failure* look identical — `0007`'s silence
 problem one altitude up, in the change that is `0007` generalised. Closing it needs a second
 mechanism: a committed dated register with a staleness rail over it, or a librarian threshold reading
-one. That is a clause's worth of work inside a one-clause budget, so it is **filed with this session's
-pull request rather than built**, and named in the artifact rather than left to be discovered.
+one. That is a clause's worth of work inside a one-clause budget, so it is **filed rather than built**:
+[#344](https://github.com/sleepy-panda-srl/portulan/issues/344), on the board at *Next*, carrying the
+three candidate repairs with the reason none is presumed — one of them changes what the calendar is
+allowed to write, and one is a decision to live with the gap, so the choice is a policy question. It
+also carries the leaked-temp-file siblings the pre-commit checkpoint found beside #340.
 
 _The first draft of all four carriers of that sentence said the gap **was** filed, while no such issue
 existed — a capability claimed in the past tense inside the change whose subject is claims broader than

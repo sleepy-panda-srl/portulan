@@ -894,9 +894,9 @@ half a prose register was worst at keeping honest.
 
 **Where the per-run results live, said plainly.** In the Actions job summary of each `drills` run —
 platform-retained, not committed to this tree. The committed dated register that would let a *missing*
-sweep be noticed is **not built**: that is `0007`'s silence problem one altitude up, **to be filed with
-the pull request that lands this**, and until it exists a quiet week and a disabled schedule look the
-same.
+sweep be noticed is **not built**: that is `0007`'s silence problem one altitude up, tracked as
+[#344](https://github.com/sleepy-panda-srl/portulan/issues/344), and until it exists a quiet week and a
+disabled schedule look the same.
 
 **The sweep is demonstrated and the calendar is not, and the two must not be read as one.** All
 twenty-one rails were forced red **by hand** on 2026-08-25, on a synthesized commit from the session's own

@@ -33,9 +33,9 @@
 # it is stated here rather than left to be discovered: nothing in this repository yet notices that the
 # last drill sweep is older than it should be. Closing it needs a second mechanism — a dated register
 # in the tree with a staleness rail over it, or the librarian's own threshold pass reading one — and
-# that is **to be filed with this change's pull request** rather than built, so the gap is named here
-# and tracked there instead of implied. It is not filed as this line is written, and saying otherwise
-# would be the capability claim `.portulan/dod.md` condition 4 forbids.
+# that is tracked as issue #344 rather than built, so the gap is named here and tracked there instead of
+# implied. This line said the gap *was* filed before any issue existed, which is the capability claim
+# `.portulan/dod.md` condition 4 forbids; it now says what is true.
 #
 # ## This workflow's own observation procedure, written before the answer is known
 #

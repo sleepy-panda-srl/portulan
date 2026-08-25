@@ -2468,4 +2468,4 @@ _The seam applies here too: no client-identifying references._
   sweep: a worktree is a commit. **Sweep demonstrated; calendar unvouched until its first run.** Six
   of nine remain. Every yielded recipe green; seam scan clean over every path the diff touches ·
   **Fable 5 fresh ×2, session-open (7) + pre-commit (7, +3 on the fold), all folded** ·
-  Handoff: [`2026-08-25-c`](../.portulan/handoffs/2026-08-25-c-every-rail-was-forced-red-and-the-calendar-is-unvouched.md).
+  [#343](https://github.com/sleepy-panda-srl/portulan/pull/343) · Handoff: [`2026-08-25-c`](../.portulan/handoffs/2026-08-25-c-every-rail-was-forced-red-and-the-calendar-is-unvouched.md).
