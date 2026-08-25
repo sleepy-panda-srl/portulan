@@ -2488,6 +2488,6 @@ _The seam applies here too: no client-identifying references._
   is a false red on every shell measured, while the write-redirect true positive and the `>>` refusal reproduce on
   both bash 5.2 builds. Removal is **fail-open on a gate matcher** — asked at
   [`0031`](../.portulan/proposals/0031-a-continuation-no-shell-joins.md), **not taken**; the retired sentence is
-  replaced by the measurement in all three carriers, the third found by the supervisor. Row 8 unmoved. 17/18 green
-  here — `docs` 5c reds until the follow-up commit gives `0031` its PR URL; seam scan clean over every path the
-  diff touches, planted control reddened · **Fable 5 fresh ×2, both APPROVE-WITH-ADJUSTMENTS, all folded including the optional** · PENDING-PR · Handoff: [`2026-08-25-c`](../.portulan/handoffs/2026-08-25-c-the-reachability-was-retired-and-the-removal-was-not-taken.md).
+  replaced by the measurement in all three carriers, the third found by the supervisor. Row 8 unmoved. All eighteen
+  green — `docs` 5c red until this branch's second commit gave `0031` its PR URL; seam scan clean over every
+  path the diff touches, planted control reddened · **Fable 5 fresh ×2, both APPROVE-WITH-ADJUSTMENTS, all folded including the optional** · [#342](https://github.com/sleepy-panda-srl/portulan/pull/342) · Handoff: [`2026-08-25-c`](../.portulan/handoffs/2026-08-25-c-the-reachability-was-retired-and-the-removal-was-not-taken.md).
