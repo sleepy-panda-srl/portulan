@@ -2472,11 +2472,11 @@ _The seam applies here too: no client-identifying references._
 
 - 2026-08-25 · M8 (Evals & telemetry) — **no row moves; this serves the memory mandate, not a clause** ·
   **Librarian consolidation on the AGENT memory store** (`~/.claude/projects/…/memory/`, not the repo's
-  `.portulan/memory/`). `portulan-gotchas` **794 → 754**, `portulan-supervised-build` 763 → 596, every file
-  under its 800-word budget with headroom, `MEMORY.md` one line per memory. **The first rewrite came out at
-  845 — fifty-one words WORSE** — and the arc ran 794→845→783→713→754, the last step restoring two facts a
-  pointer had over-promised. Every cut names a carrier verified line by line beforehand; **four passages
-  were searched, found carrierless, and kept.** Three things were measurably wrong: CURRENT stale in six
-  figures (replaced, each re-measured from its instrument), the CLI stamp 13 versions behind (stated, **not**
-  re-stamped), a superseded reply note (deleted, surviving half merged). No budget raised; the store is not a
-  git repo, so the PR carries its before→after verbatim. Every yielded recipe green; seam scan clean over every path the diff touches **and over the store diff**, planted control reddened · **Fable 5 fresh ×2: session-open APPROVE-WITH-ADJUSTMENTS (7), pre-commit (8) — every one folded, optional included; two of the pre-commit's were my own carrier claims refuted** · [#345](https://github.com/sleepy-panda-srl/portulan/pull/345) · Handoff: [`2026-08-25-d`](../.portulan/handoffs/2026-08-25-d-the-consolidation-that-first-made-the-file-bigger.md).
+  `.portulan/memory/`). `portulan-gotchas` **794 → 754**, `portulan-supervised-build` 763 → 596, every
+  file under its 800-word budget, `MEMORY.md` one line per memory. **The first rewrite came out at 845 —
+  WORSE** — the arc ran 794→845→783→713→754. Every cut names a carrier verified line by line beforehand;
+  four passages were searched, found carrierless, and kept. Measurably wrong and repaired: CURRENT stale
+  in six figures, the CLI stamp 13 versions behind (stated, **not** re-stamped), a superseded reply note.
+  No budget raised. The store is not a git repo, so the PR carries its before→after verbatim. Every
+  yielded recipe green; seam scan clean over every path the diff touches **and the store diff**, planted
+  control reddened · **Fable 5 fresh ×2, both APPROVE-WITH-ADJUSTMENTS (7+8), all folded** · [#345](https://github.com/sleepy-panda-srl/portulan/pull/345) · Handoff: [`2026-08-25-d`](../.portulan/handoffs/2026-08-25-d-the-consolidation-that-first-made-the-file-bigger.md).
