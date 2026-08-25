@@ -116,8 +116,8 @@ const pick = (rand, xs) => xs[Math.floor(rand() * xs.length) % xs.length];
  * FNV-1a over a string, for deriving one cell's seed from its full identity.
  *
  * **The first cut mixed in `position.id.length` and `kind.length` instead**, which made every cell
- * whose id happened to be the same length share one stream — nineteen of thirty-two positions did,
- * measured — while the comment beside it claimed each cell had its own. A claim broader than the code
+ * whose id happened to be the same length share one stream — most of the grammar did, measured on
+ * 2026-08-25 — while the comment beside it claimed each cell had its own. A claim broader than the code
  * it describes is this repository's signature defect and this session had already met it three times
  * in other people's code before writing one of its own. The cells stayed correct (each still drew its
  * full budget) and the spelling space collapsed onto far fewer distinct streams than the budget

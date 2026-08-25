@@ -55,6 +55,20 @@ function ran(script, cwd) {
     // A bash that could not start at all is could-not-measure, and saying so beats reporting `false`
     // — which is a real answer here and would be the wrong one.
     assert.equal(result.error, undefined, `bash did not run: ${result.error?.message}`);
+    // **And a bash that RAN and FAILED is could-not-measure too.** This checked only `error`, so a
+    // script with a syntax error exited non-zero, dropped no marker, and came back `false` — which
+    // for a `ground: "data"` production reads as CONFIRMATION. The position would have been certified
+    // as data because the script was broken, not because bash declined to run the payload: a
+    // measurement harness fooled by its own failure, in the file whose subject is that exact class
+    // and which already records catching one instance of it. Measured before asserting: every
+    // production the suite runs exits 0 today. Reported as a suppressed note by Copilot, round 2 on
+    // #338 — the channel that carries what the inline one does not.
+    assert.equal(
+        result.status,
+        0,
+        `bash exited ${result.status} running ${JSON.stringify(script)} — a failed script measures nothing about ` +
+            `where the payload sat: ${result.stderr}`,
+    );
     const fired = fs.existsSync(marker);
     fs.rmSync(marker, { force: true });
     return fired;

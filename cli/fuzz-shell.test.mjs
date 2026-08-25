@@ -48,9 +48,9 @@ test("the generator is deterministic for a fixed seed, and different for a diffe
 
 test("no two cells share a random stream, and the rule is asserted rather than the instance", () => {
     // **The defect this replaces was a claim broader than its code**: the seed mixed in
-    // `position.id.length` and `kind.length`, so nineteen of thirty-two positions shared a stream
-    // with another while the comment beside it promised each cell its own. Reported by Copilot,
-    // round 1 on #338.
+    // `position.id.length` and `kind.length`, so most of the grammar shared a stream with another
+    // position while the comment beside it promised each cell its own. Reported by Copilot, round 1
+    // on #338; the figures for that measurement are dated in the session's handoff.
     //
     // Asserted as the RULE — every cell's derived seed is distinct — rather than as the two ids that
     // happened to collide. Patching the spelling that was quoted is the class this repository met

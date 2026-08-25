@@ -107,11 +107,21 @@ mutant is killable by one. A `survives` record is admissible only as a **proof**
 equivalence, or equivalence under the yielded policy — never as a standing note that a gap exists,
 which would rebuild the prose hole list clause (a) exists to have replaced.
 
-**It went red on its first run and the corpus lost.** Eleven of forty-eight breakages went unnoticed
-by 224 adversarial cases — among them removing `sudo` from the command-prefix table, dropping `..`
-resolution from path normalisation, and disabling quote tracking in the segmenter. Every one is a
-fixture now, and each was derived by measuring which input distinguishes the mutant rather than by
-reasoning about it: two of the eleven were not killed by the spelling that seemed obvious.
+**It went red on its first run and the corpus lost.** Among the breakages that went unnoticed:
+removing `sudo` from the command-prefix table, dropping `..` resolution from path normalisation, and
+disabling quote tracking in the segmenter. Every one is a fixture now, and each was derived by
+measuring which input distinguishes the mutant rather than by reasoning about it — two were *not*
+killed by the spelling that seemed obvious.
+
+_The figures for that first run are dated in
+[the session's handoff](../.portulan/handoffs/2026-08-25-the-corpus-lost-and-the-fuzzer-found-a-live-bypass.md),
+and the SHIPPED totals are printed by `node cli/mutants.mjs` and `node cli/goldens.mjs`, which are
+their one carrier. This paragraph carried "eleven of forty-eight" against a table that had since grown
+to fifty-three — a count written before the thing it counted stopped growing, which is this
+repository's most-repeated defect and was this session's third instance of it. The pre-commit
+checkpoint caught the same figure in the handoff and the repair stopped at the site that was quoted;
+Copilot round 2 found the one it missed. Deleted rather than corrected, so the trap is not re-armed
+for whoever adds the next operator._
 
 **`fuzz-shell` asks whether the SEGMENTERS answer one grammar.** It composes a command from a grammar
 instead of mutating a string, so it knows by construction whether the payload sits where bash would
@@ -153,8 +163,8 @@ is now three ways rather than two — **presence** (the `goldens` rail), **discr
 `mutants` rail: does the kill-set catch a matcher that has been broken?), and **realism** (whether the
 attacks resemble anything an adversary would type), which is still a reviewer's judgement and stays
 one. The census is what forced the correction rather than a reader noticing: it went red on its first
-run against a corpus of 224 cases that failed to notice **eleven** separate breakages, every one of
-which is a fixture now.
+run, on 2026-08-25, against the corpus as it then stood — which failed to notice a whole class of
+breakages, every one of which is a fixture now.
 
 The **exemption** is the obvious way to dodge the rail: write the next gate `none`-shaped and it needs
 no fixtures. So every exempt rule is named in the output on every run, the way `compile --matrix` prints

@@ -1,4 +1,4 @@
-# Handoff — the corpus lost eleven of forty-eight, and the fuzzer found a live bypass
+# Handoff — the corpus lost, and the fuzzer found a live bypass
 
 **Date:** 2026-08-25 · **M8 (Evals & telemetry), session 1** · Implementer: Opus 5.
 

@@ -17,8 +17,10 @@
 # tell a working matcher from a broken one is a corpus whose green means nothing, and until this
 # recipe existed nothing in this repository could tell those two apart.
 #
-# It went red on its first run and found that the corpus — 224 adversarial cases at the time — failed
-# to notice eleven separate breakages of the matchers it covers. Every one of them is now a fixture.
+# It went red on its first run, on 2026-08-25, and found that the corpus of the day failed to notice a
+# whole class of breakages of the matchers it covers. Every one of them is now a fixture. No count is
+# written here: the runner prints its own totals, and a figure copied into prose beside a table that
+# grows is the carrier this repository has watched go stale more often than any other.
 #
 # **What this recipe CANNOT establish**, said here rather than left to be assumed from a green: that
 # the corpus's attacks are REALISTIC. Mutation adequacy measures whether the kill-set discriminates,
