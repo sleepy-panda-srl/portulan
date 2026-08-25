@@ -683,11 +683,25 @@ export function check({ recipes, repoRoot, drills = DRILLS }) {
         }
         // A drill whose control and fire are the same run proves nothing at all. One of the two must
         // differ: the tree, or the input.
-        const inputDiffers = drill.stdinControl !== undefined;
-        if (!drill.perturb && !inputDiffers) {
+        //
+        // **The input half is only available to a non-recipe rail, and the test for it was three kinds of
+        // weak.** `stdinControl !== undefined` did not ask whether it *differs*; `stdinControl: null`
+        // falls back to `stdin` through `drillOne`'s `??`, so it is the same run wearing a different
+        // declaration; and `runRail` passes stdin to `rail.argv` only — a **recipe** rail ignores it
+        // entirely, so a recipe drill with no perturbation could satisfy this and never change a thing.
+        // Raised as a suppressed note by Copilot, round 1.
+        const inputCanDiffer =
+            nonRecipeIds.has(drill.rail) &&
+            drill.stdinControl !== undefined &&
+            drill.stdinControl !== null &&
+            JSON.stringify(drill.stdinControl) !== JSON.stringify(drill.stdin);
+        if (!drill.perturb && !inputCanDiffer) {
             findings.push({
                 where,
-                what: "has neither a perturbation nor a differing control input, so its control and its fire are the same run",
+                what:
+                    nonRecipeIds.has(drill.rail)
+                        ? "has no perturbation and no control input that differs from its fire input, so its control and its fire are the same run"
+                        : "has no perturbation, and a recipe rail is handed no stdin at all — so its control and its fire are the same run",
             });
         }
 
@@ -904,6 +918,23 @@ export function drillOne({ drill, rail, repoRoot, sha, say, workspaceRel = ".por
 
         const fire = runRail({ rail, worktree, stdin: drill.stdin, workspaceRel });
         const text = tellText(rail, fire);
+        // **A status that is not a verdict is could-not-run, never a rail that failed to fire.**
+        // `spawnSync` reports `status: null` for a signal-killed child — a timeout, an OOM — and 2 is
+        // could-not-run everywhere here. Both mean no verdict was formed, and reporting either as *this
+        // rail did not fire* is a could-not-measure read as a measurement: session 1's round 3, in the
+        // guard added to stop exactly that. Raised as a suppressed note by Copilot, round 1.
+        if (fire.status === null) {
+            throw new CouldNotRun(
+                `rail \`${drill.rail}\` was killed by a signal rather than exiting, so no verdict was formed` +
+                    `${moved ? ` after ${moved.path} was perturbed` : ""}. Output:\n${salient(`${fire.stdout}${fire.stderr}`)}`,
+            );
+        }
+        if (fire.status === 2 && drill.exit !== 2) {
+            throw new CouldNotRun(
+                `rail \`${drill.rail}\` exited 2 — could not run — so it formed no verdict about the perturbation` +
+                    `${moved ? ` in ${moved.path}` : ""}. Output:\n${salient(`${fire.stdout}${fire.stderr}`)}`,
+            );
+        }
         if (fire.status !== drill.exit) {
             return {
                 where: `rail \`${drill.rail}\``,
@@ -1076,6 +1107,17 @@ export async function run(argv = [], { stdout = process.stdout, stderr = process
             );
         }
         const workspaceRel = path.relative(repoRoot, workspaceDir);
+
+        // **A malformed roster is reported here, not met as a throw inside the loop.** `check` had already
+        // recorded a drill naming an undeclared rail as a finding, and the sweep then walked into the
+        // guard below and turned that documented exit-1 roster failure into an exit-2 could-not-run,
+        // abandoning the rest of the transcript. A roster failure is a finding in both modes. Raised as a
+        // suppressed note by Copilot, round 1.
+        if (findings.length) {
+            for (const f of findings) stderr.write(`drills: ${f.where}\n           ${f.what}\n`);
+            stderr.write(`RED — ${findings.length} finding(s) in the drill roster; no rail was drilled\n`);
+            return 1;
+        }
 
         const tree = treeToDrill({ repoRoot, workingCopy });
         const byId = new Map([

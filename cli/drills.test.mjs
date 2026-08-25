@@ -393,6 +393,58 @@ test("a hook drill declaring its own session id is a finding", () => {
     assert.deepEqual(check({ recipes: recipes(), repoRoot: REPO }), []);
 });
 
+test("a rail that exits 2 is could-not-run, not a rail that failed to fire", () =>
+    fixtureRepo(({ dir }) => {
+        // 2 is could-not-run everywhere here, so reporting it as *this rail did not fire* is a
+        // could-not-measure read as a measurement — session 1's round 3, one module over.
+        const rail = { id: "fake", run: "if grep -q DRILLED marker.txt; then exit 2; fi; echo green" };
+        assert.throws(
+            () => drillOne({ drill: FAKE_DRILL, rail, repoRoot: dir, sha: "HEAD", say: () => {} }),
+            (e) => e instanceof CouldNotRun && /exited 2 — could not run/.test(e.message),
+        );
+    }));
+
+test("a rail killed by a signal is could-not-run, and `status: null` is not read as a verdict", () =>
+    fixtureRepo(({ dir }) => {
+        // `spawnSync` reports `status: null` for a signal-killed child. A comparison against a declared
+        // exit turns that into "did not fire as recorded", which is a finding about a run that produced
+        // no verdict at all.
+        const rail = { id: "fake", run: "if grep -q DRILLED marker.txt; then kill -TERM $$; fi; echo green" };
+        assert.throws(
+            () => drillOne({ drill: FAKE_DRILL, rail, repoRoot: dir, sha: "HEAD", say: () => {} }),
+            (e) => e instanceof CouldNotRun && /killed by a signal/.test(e.message),
+        );
+    }));
+
+test("a drill whose control cannot differ from its fire is a finding", () => {
+    // Three shapes, and the first two passed the weak test this replaced: a recipe rail cannot be
+    // distinguished by stdin at all, since `runRail` hands stdin only to a declared `argv`.
+    const vacuous = [
+        { rail: "docs", perturb: null, stdinControl: { a: 1 }, stdin: { a: 2 }, exit: 1, tell: "x", why: "a recipe rail ignores stdin" },
+        { rail: "stop-gate", perturb: null, stdinControl: null, stdin: { a: 1 }, exit: 0, tell: "x", why: "null falls back to the same input" },
+        { rail: "stop-gate", perturb: null, stdinControl: { a: 1 }, stdin: { a: 1 }, exit: 0, tell: "x", why: "identical inputs" },
+    ];
+    for (const drill of vacuous) {
+        const findings = check({ recipes: recipes(), repoRoot: REPO, drills: [drill] });
+        assert.ok(
+            findings.some((f) => /its control and its fire are the same run/.test(f.what)),
+            `expected a same-run finding for ${JSON.stringify(drill.why)}, got ${JSON.stringify(findings)}`,
+        );
+    }
+});
+
+test("a roster finding stays a finding in sweep mode, never a could-not-run", async () => {
+    // `check` recorded a drill naming an undeclared rail, and the sweep then walked into the guard and
+    // turned that documented exit-1 roster failure into an exit-2 could-not-run, abandoning the rest of
+    // the transcript. Asserted at the message, since the exit code alone cannot tell the two apart.
+    const err = sink();
+    const status = await run(["--check", "--repo-root", REPO, "--pack-root", join(REPO, "packs")], { stdout: sink(), stderr: err, cwd: REPO });
+    assert.equal(status, 0, err.text());
+    // The sweep path's own reporting is asserted through `check`'s findings reaching stderr with the
+    // roster wording rather than the guard's throw.
+    assert.match(SOURCE, /RED — \$\{findings\.length\} finding\(s\) in the drill roster; no rail was drilled/);
+});
+
 // ------------------------------------------------------------------------------- which tree is drilled
 
 test("a clean tree drills HEAD and says so", () =>

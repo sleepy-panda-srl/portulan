@@ -355,10 +355,14 @@ describe("the roster — every reader of the recipe set reaches this carrier", (
     // and it is blind to a fifth reader that never declares itself — which is exactly how the four
     // came to disagree in the first place. The sweep that is not blind to that lives in
     // `cli/recipe-set.live.test.mjs`, because it has to read the tree rather than a constant.
-    test("the declared roster is the four readers this change re-pointed", () => {
+    // _The name said "the four readers this change re-pointed" and the roster grew to five when
+    // `cli/drills.mjs` joined it at milestone 8 clause (d) — a count in a test name, which is the same
+    // stale-carrier class the roster itself is pinned against. Stated as scope instead._
+    test("the declared roster is every reader, and the assertion is the roster", () => {
         assert.deepEqual([...RECIPE_SET_READERS].sort(), [
             ".github/workflows/verify.yml",
             "cli/doctor.mjs",
+            "cli/drills.mjs",
             "cli/stop-gate.mjs",
             "cli/vendor.mjs",
         ]);

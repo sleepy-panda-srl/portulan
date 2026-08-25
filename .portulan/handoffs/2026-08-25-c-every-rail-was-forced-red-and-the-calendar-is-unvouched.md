@@ -302,8 +302,9 @@ capture-then-print shape without the line that makes it work. Reproduced indepen
 invocation before it was fixed, for rc 0, 1, 2 and an undocumented code.
 
 Its other six: four carriers claimed the staleness gap **was filed** when no such issue existed; three
-claimed a transcript this handoff did not carry; the State line named a branch that did not exist (the
-branch is renamed, not the record); `verify/README.md` still said *"like the thirty-four beside it"*
+claimed a transcript this handoff did not carry; the State line named a branch that did not exist —
+**repaired by renaming the branch to the name the record already carried, so the State line above is true
+rather than corrected downwards**; `verify/README.md` still said *"like the thirty-four beside it"*
 against a store of 134; and the stop-gate drill's `session_id` was a constant, whose counter file each
 sweep left behind in the OS temp directory — the leak #340 names in a sibling module, caught here
 before it could become the same issue.
@@ -385,3 +386,44 @@ _A first rewrite of that case then invoked the real sweep and asserted its statu
 a working tree is dirty while a session is in progress. **A test whose verdict moves with whether
 somebody has uncommitted work is testing the desk**, which is this module's own subject and the second
 time in this change that a check inherited an assumption about where it was run._
+
+### The suppressed channel carried five more, and it carried the sharper ones
+
+Eight notes, two of them already fixed by the time the review arrived (the `#344` wording, at both its
+carriers) and one a prose contradiction of mine — the State line naming a branch the checkpoint section
+said did not exist. That one is repaired by **renaming the branch to the name the record already
+carried**, so the State line is true rather than corrected downwards.
+
+The other five are mechanism, and three are could-not-run inversions:
+
+- **A rail exiting 2, or killed by a signal, was reported as *did not fire as recorded*.** `spawnSync`
+  gives `status: null` for a signal-killed child and 2 is could-not-run everywhere here; both mean no
+  verdict was formed. Session 1's round 3 found this exact shape in the guard added to prevent it, one
+  module over. Both are could-not-run now, each with its own sentence.
+- **A malformed roster became a could-not-run in sweep mode.** `check` had recorded the finding, and
+  the loop then threw on the same condition — turning a documented exit-1 roster failure into an exit 2
+  and abandoning the transcript. Roster findings are reported before any rail is drilled.
+- **The recipe's preflight covered the runner and not its imports.** `drills.mjs` reaches `goldens.mjs`,
+  `compile.mjs`, `discover.mjs` and `inside.mjs`; with any missing, node exits 1 and the passthrough
+  called that a red about a roster nothing had read. **Repaired by loading the module rather than listing
+  its dependencies** — a hand-written import roster is one more carrier that goes stale, and loading
+  cannot be wrong about its own graph.
+
+  _And the first cut of that check ran the whole sweep._ Passing the path as an argument set
+  `process.argv[1]` to the module, so the entry guard fired, the sweep refused the dirty tree, and the
+  preflight reported *could not be loaded*. The path arrives in the environment now, where `argv[1]` is
+  unset and `isMain()` is false by construction. **A check written alongside a change inheriting that
+  change's blind spot — inside the check added to stop a could-not-run reading as a red.** Drilled by
+  hiding `cli/inside.mjs`: exit 2, naming the module.
+
+- **`inputDiffers` was three kinds of weak.** It asked whether `stdinControl` was *present*, not whether
+  it *differs*; `stdinControl: null` falls back to the fire's input through `??`; and a **recipe** rail is
+  handed no stdin at all, so a recipe drill with no perturbation satisfied it and could never change a
+  thing. Now: a perturbation, or — for a hook rail only — a control input that is structurally different.
+  Three shapes asserted, two of which the old test admitted.
+- **`cli/drills.mjs` was a new reader of the recipe set and was not on that set's reader roster.** The
+  roster is pinned two ways and neither could see it: the exact assertion reads a constant, and the live
+  sweep looks for an undeclared *enumeration* of `verify.recipes` — which this module does not do,
+  because it calls `recipeSet()`. So the roster went stale in the one way the pair was arranged not to
+  allow. Added, and the test's own name — *"the four readers this change re-pointed"* — lost its count in
+  the same stroke, that being the same class one altitude up.

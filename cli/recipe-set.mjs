@@ -83,6 +83,12 @@ import { AUTO, discoverPackRoots, namedWithAuto } from "./discover.mjs";
 export const RECIPE_SET_READERS = Object.freeze([
     ".github/workflows/verify.yml",
     "cli/doctor.mjs",
+    // Added 2026-08-25 with milestone 8 clause (d). `cli/drills.mjs` reads the set to know which rails
+    // it must drill — and it is the reader that shows the live sweep's own boundary: it calls
+    // `recipeSet()` rather than enumerating `verify.recipes`, so the sweep for an undeclared
+    // *enumeration* could not see it and this roster went stale in the one way the pair above was
+    // arranged not to allow. Raised as a suppressed note by Copilot, round 1 on #343.
+    "cli/drills.mjs",
     "cli/stop-gate.mjs",
     "cli/vendor.mjs",
 ]);

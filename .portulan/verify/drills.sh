@@ -65,6 +65,29 @@ for required in cli/drills.mjs cli/recipe-set.mjs .portulan/workspace.json; do
     fi
 done
 
+# **And the runner's IMPORTS are a precondition too, checked by loading rather than by listing them.**
+# `cli/drills.mjs` imports `goldens.mjs`, which reaches `compile.mjs`, `discover.mjs` and `inside.mjs`;
+# with any of those missing, node exits 1 before `--check` runs and the passthrough below would call that
+# a red finding about a roster nothing read. A hand-written dependency roster here would be one more
+# carrier that goes stale the next time an import moves — the defect this whole directory keeps deleting —
+# so the module is *loaded* instead, which cannot be wrong about its own import graph. Raised as a
+# suppressed note by Copilot, round 1 on #343.
+# **The path arrives in the ENVIRONMENT, not as an argument, and that is a finding rather than a
+# preference.** The first cut passed it as `node -e '…' "$root/cli/drills.mjs"`, which sets
+# `process.argv[1]` to the module — so the module's entry guard fired and the *loadability check ran the
+# whole sweep*, which then refused a dirty working tree and reported that as "could not be loaded". A
+# check written alongside a change inheriting that change's blind spot, in the check added to stop a
+# could-not-run being read as a red. With the path in the environment `argv[1]` is unset, `isMain()` is
+# false by construction, and importing is only importing.
+probe=$(mktemp) || exit 2
+if ! PORTULAN_DRILLS_MODULE="$root/cli/drills.mjs" \
+    node --input-type=module -e 'await import(process.env.PORTULAN_DRILLS_MODULE);' 2>"$probe"; then
+    printf 'verify: cli/drills.mjs could not be loaded — %s\n' "$(tr '\n' ' ' <"$probe" | cut -c1-300)" >&2
+    rm -f -- "$probe"
+    exit 2
+fi
+rm -f -- "$probe"
+
 printf 'drills: checking that every rail this workspace yields has a forced-red drill, and that every drill still places\n'
 
 node cli/drills.mjs --check --repo-root . --workspace .portulan --pack-root packs
