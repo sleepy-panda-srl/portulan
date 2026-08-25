@@ -2452,10 +2452,10 @@ _The seam applies here too: no client-identifying references._
 - 2026-08-25 · Proposal session (no milestone row moves) · **The seam scan guards the client and not the
   host.** [#345](https://github.com/sleepy-panda-srl/portulan/pull/345) shipped a personal username into a
   public handoff while the Session log entry two files away already carried the redacted form; `dod.md`
-  condition 5's list holds client terms only, and Copilot caught it. **The obvious repair scores zero:**
-  the leaked spelling mangles separators to dashes, so no `/Users/`, `$HOME` or absolute-path matcher
-  touches it — only the username as a substring does. Filed as
+  condition 5's list holds client terms only, and Copilot caught it. **The obvious repair scores zero:** the
+  leaked spelling mangles separators to dashes, so no `/Users/`, `$HOME` or absolute-path matcher touches
+  it — only the username as a substring does. Filed as
   [`0032`](../.portulan/proposals/0032-the-seam-guards-the-client-and-not-the-host.md), **OPEN** — three
-  carriers argued, none taken; `feedback`'s own term list measured **absent**. Every yielded recipe green;
-  seam scan clean over every path the diff touches · **No supervisor checkpoint: fresh-context delegation
-  unavailable, so the maintainer reviews the diff** · [#346](https://github.com/sleepy-panda-srl/portulan/pull/346) · Handoff: [`2026-08-25-e`](../.portulan/handoffs/2026-08-25-e-the-seam-guards-the-client-and-not-the-host.md).
+  carriers argued, none taken; `feedback`'s own list measured **absent**. Every yielded recipe green; seam
+  scan clean over every path the diff touches · **Fable 5 fresh, late on the maintainer's instruction:
+  APPROVE-WITH-ADJUSTMENTS, three clauses folded, one finding refused with evidence** · [#346](https://github.com/sleepy-panda-srl/portulan/pull/346) · Handoff: [`2026-08-25-e`](../.portulan/handoffs/2026-08-25-e-the-seam-guards-the-client-and-not-the-host.md).

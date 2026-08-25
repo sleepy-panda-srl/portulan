@@ -15,9 +15,14 @@ gave `0032` its pull-request URL, which is [#346](https://github.com/sleepy-pand
 
 **The obvious repair does not work.** The leaked string was the Claude Code project-directory spelling, in
 which the path separators are **dashes, not slashes** — the checkout path flattened into one directory
-name. A pattern check for `/Users/`, `/home/`, `$HOME`, a leading slash, or a tilde **matches none of it**
-and would have run green on that diff. The only thing that catches it is the **username as a plain
-substring**.
+name. A pattern check for `/Users/`, `/home/`, `$HOME`, a leading slash or an absolute-path shape
+**matches none of it** and would have run green on that diff. The only thing that catches it is the
+**username as a plain substring**.
+
+**A tilde is the exception and it fails the other way.** The leaked line began `~/`, so a tilde matcher
+does fire — and fires just as hard on the redacted form the proposed rule prescribes. It cannot tell the
+leak from the fix, so it is not a candidate. This handoff and the proposal both listed the tilde among the
+non-matches until the checkpoint measured it.
 
 That inverts the intuition a reader arrives with — *a path is a pattern, a pattern belongs in a verify
 recipe* — and it is why the proposal refuses to recommend a path-pattern recipe on its own: shipping one
@@ -57,11 +62,23 @@ and **whether `feedback`'s absent list is a second defect** to fix in its own re
 
 ## Supervision
 
-**No fresh-context checkpoint ran** — subagent delegation was not available to this session.
-[`gate-map.md`](../gate-map.md) → *Supervised-build checkpoints* provides for exactly this: *"If supervision
-is unavailable in a session, that is stated plainly and the maintainer reviews the diff."* Stated plainly
-here and in the Session log entry rather than left to be noticed. No milestone is being self-certified;
-the pull request is the gate.
+**Amended 2026-08-25, before merge: a fresh-context checkpoint DID run, late, on the maintainer's
+instruction.** Fable 5, in a context that had not seen this session — the house line, and the one his
+standing 2026-07-24 rule requires for a change touching `docs/plan.md`. Verdict
+**APPROVE-WITH-ADJUSTMENTS** on head `3c85ca4`: all eighteen recipes re-run by the supervisor itself,
+`docs` 5c forced red at `704fa17` in a scratch worktree to prove the rail bites, and **three factual
+clauses sent back**, all folded — the tilde above, the evidence for *the username is not confidential*,
+and an "entirely" the librarian refutes. One finding was **refused with evidence**: the `portulan-agent`
+APPROVED review on #346 is the derived verdict `copilot-review.yml` computes from a Copilot round, which
+[`gate-map.md`](../gate-map.md)'s *Submitting or dismissing the round's derived verdict* row assigns to
+that identity, and its own body says *derived, never judged*. It is not a self-certified checkpoint.
+
+_What the original entry said, kept because the record is the point: no checkpoint had run at commit
+time, subagent delegation not being available to the session, and both carriers said so under
+[`gate-map.md`](../gate-map.md)'s provision for it — *"If supervision is unavailable in a session, that is
+stated plainly and the maintainer reviews the diff."* That was true when written and is stale now; dod
+condition 7 wants the checkpoint **recorded**, so it is recorded here and in the Session log entry
+together rather than in one of them._
 
 ## Next action
 
@@ -70,4 +87,6 @@ decides which review lands the change.
 
 ## Recoverability
 
-Nothing partial. Three files added or appended, no mechanism touched, no term list edited.
+Nothing partial. **Four** files added or appended — the proposal, this handoff, the `docs/plan.md` entry,
+and the regenerated `.portulan/handoffs-index.md`, which the first draft of this line forgot. No mechanism
+touched, no term list edited.

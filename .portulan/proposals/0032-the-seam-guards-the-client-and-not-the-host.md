@@ -50,9 +50,17 @@ This is the load-bearing measurement, and it is the reason this is a proposal ra
 
 The leaked string was the **Claude Code project-directory spelling**, in which the path separators are
 **dashes, not slashes** — the checkout path flattened into a single directory name. A pattern check for
-`/Users/`, for `/home/`, or for `$HOME` **does not match it**. Nor does a check for a leading slash, an
-absolute-path shape, or a tilde. Every path-shaped matcher a reader reaches for first would have run
+`/Users/`, for `/home/`, or for `$HOME` **does not match it**, and neither does a check for a leading
+slash or an absolute-path shape. Every path-shaped matcher a reader reaches for first would have run
 **green on this diff**.
+
+**A tilde check is the exception, and it fails the other way, which is worse.** The leaked line *did*
+begin `~/`, so a tilde matcher fires on it — and fires equally on `~/.claude/projects/…/memory/`, the
+redacted form **this proposal's own rule prescribes**, and on every innocent home-relative path in the
+tree. It does not discriminate the leak from the fix, so it is not a candidate matcher; it is a matcher
+that reds on the correct spelling. _(The first draft of this section listed the tilde among the things
+that do not match, which is false of the bytes. Caught at the fresh-context checkpoint — in the one
+clause of a proposal about measuring coverage that had not been measured.)_
 
 **What would have caught it is the username as a term** — a plain substring, matching inside the mangled
 segment exactly as it matches inside a normal path. So the intuitive split, *"a path is a pattern and a
@@ -85,8 +93,13 @@ seems obvious.
 
 **(a) The out-of-repo term list.** The mechanism already fits — it is a list of substrings, and a username
 is a substring. But the reason that list lives outside this repository is that **its contents are
-confidential**, and the maintainer's username is not: it is on the org, on every commit, on the pull
-requests this file links to. Putting a public string in the private file to borrow its machinery makes the
+confidential**, and the maintainer's username is not: it is trivially derivable from identifiers that are
+already public — the login on the org and on these pull requests, the author name on every commit.
+**Stated that way on purpose:** the *exact* string appears on none of those surfaces, which carry a
+hyphenated login, a spaced author name and a dotted email local-part. This proposal's own load-bearing
+measurement is that one separator character defeats a substring match, so it cannot claim identity across
+spellings here while denying it two sections earlier. What survives is the conclusion — the string is not
+confidential — and not the evidence the first draft gave for it. Putting a public string in the private file to borrow its machinery makes the
 private file's location a **precondition for catching a public mistake**, and a contributor without that
 directory then has a scan that silently covers less than the one the maintainer runs — with nothing in the
 repository saying so.
@@ -112,8 +125,11 @@ document.
 ## Q2 — does anything ship to adopters?
 
 **Measured, because it changes the answer: `core/` contains no occurrence of the word "seam" at all** — the
-seam is entirely this workspace's (`.portulan/`) plus `cli/feedback.mjs`'s plumbing. Anything shipped in
-`core/` would be the seam's **first** appearance there.
+seam lives in this workspace (`.portulan/`) and in the CLI that serves it — `cli/feedback.mjs`'s term-list
+plumbing, and `cli/librarian.mjs`, which knows it **cannot** run the scan and says so where it writes an
+attestation. Anything shipped in `core/` would be the seam's **first** appearance there. _(The `core/`
+count is the half Q2 leans on and it is exact; an earlier draft wrote "entirely this workspace's plus
+`feedback`", which the librarian refutes.)_
 
 The two halves generalise differently, and this is the whole of Q2:
 
