@@ -273,6 +273,28 @@ and was triaged; this one is a false green in the tool whose only output is a co
 triaging it to protect a round count would be protecting the count with the thing the count exists to
 buy. Flagged to the maintainer rather than assumed, the way session 0 flagged its rounds 3, 5 and 9.
 
+**Round 6 — one new note filed, one re-promotion already answered.** The new one: `load` in
+`cli/mutants.test.mjs` creates a temp directory and imports from it with no `try`/`finally`, so a
+future operator whose substitution produces a syntax error leaks a directory on the failing run. The
+sharp form is that **the module under test gets this right and the test does not** — `importMutant`
+removes the directory in a `catch` before rethrowing. Filed as
+[#340](https://github.com/sleepy-panda-srl/portulan/issues/340), board *When-open*.
+
+**Not fixed here, and the consistency is the reason.** Round 5 went past the bound on **severity**; a
+temp directory that leaks when a test fails is not that, and the fix is three lines — which is exactly
+when the temptation to spend an exemption is strongest. Applying it the moment a fix is cheap is how a
+bound stops being one.
+
+The re-promotion is #339's finding arriving a third time; answered on its thread, nothing to change.
+
+**The severity curve is the honest summary of the loop.** Round 1: a claim broader than its code, and a
+guard that skipped its own mode. Round 5: a census that could thin its own kill-set and still report
+green. Round 6: a temp directory. That is a loop converging, and the recommendation from here is
+session 0's — further rounds at this level are triaged rather than answered.
+
+**Six rounds. Every finding real.** Two answered inside the bound, one answered past it on severity and
+flagged, one records correction under rule 2, two triaged to issues.
+
 **The count class, tallied once, here.** Four instances in one session: the handoff (caught by the
 pre-commit checkpoint), `evals/README.md` (round 2), `.portulan/verify/README.md` (round 4), and the
 `nineteen of thirty-two` code comments (swept with round 4's re-sweep). The first repair stopped at
@@ -310,8 +332,10 @@ author of a review reply. Whether that deserves one is the maintainer's call rat
 - **#337** is untouched. What `./` should mean is a policy question with three defensible answers and
   the maintainer has not ruled. The fuzzer meets it as recorded hole 8 and two new corpus cases pin
   the discrimination between its candidate repairs.
-- **#339** — the double segmentation this change introduced. Filed, not fixed; see the review loop
-  above for why, and the issue for the repair.
+- **#339** — the double segmentation this change introduced. Filed at *Next*, not fixed; see the review
+  loop above for why, and the issue for the repair.
+- **#340** — the test helper's leaked temp directory. Filed at *When-open*, on the same reasoning one
+  severity band down.
 - **No gate rule, no tier, no `gates.json` change.**
 - **Row 8's Sessions cell is untouched at 1–2** against nine clauses. The maintainer said the budget
   will increase and gave no number; a budget an implementer picks for itself is not a budget.
