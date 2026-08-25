@@ -1293,8 +1293,14 @@ describe("the shared matcher", () => {
         ["a wrapper after a `;`", 'git status; bash -c "echo x >> docs/vision.md"'],
         // A CRLF line continuation. `\r\n` was consumed one character at a time, so the `\n` survived
         // as an operator and flushed the word instead of continuing it — the LF spelling denied and
-        // the CRLF spelling stepped aside, which made the constitution reachable by editing the file
-        // on Windows. Both are asserted so the pair cannot drift apart again.
+        // the CRLF spelling stepped aside. Both are asserted so the pair cannot drift apart again.
+        // **The reachability this comment used to claim — "which made the constitution reachable by
+        // editing the file on Windows" — is retired.** Measured 2026-08-25 on bash 3.2.57, 5.2.15 and
+        // 5.2.37, plus zsh 5.9 and sh: none of them joins the pair, so for this `cp` shape the target
+        // is left byte-for-byte unchanged and these two assertions pin a FALSE RED rather than a
+        // closed hole. They stay asserted because the matcher still answers that way and a change to
+        // it is `../.portulan/proposals/0031-a-continuation-no-shell-joins.md`'s to rule; the argument
+        // and its limits are written once, at `shellWords` in ./compile.mjs.
         // An escaped quote inside `"…"`. The run closed at the `\"`, the real closing quote opened a
         // new one, and the `;` was swallowed inside it — so the line never split and the write was
         // never evaluated. A false GREEN on the constitution, from a spelling that appears whenever a

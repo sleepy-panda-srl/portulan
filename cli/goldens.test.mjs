@@ -310,6 +310,13 @@ test("the escaped bytes really do decode — the corpus carries a CR and a NUL",
     // byte-level attacks at all would prove nothing.
     const doc = JSON.parse(readFileSync(join(REPO, CORPUS_DIR, "edit-the-constitution.json"), "utf8"));
     const crlf = doc.cases.find((c) => c.id === "a-CRLF-continuation");
+    // **"one of the eight bypasses" is a HISTORICAL membership, and it stays worded that way on
+    // purpose.** The set is the one `../docs/milestones/m08.md` fixed; what has since changed is the
+    // reason this member was ever in it. Its `cp`-shaped payload was called a bypass on the strength of
+    // a reachability claim that no shell measured reproduces — see `shellWords` in ./compile.mjs, and
+    // `../.portulan/proposals/0031-a-continuation-no-shell-joins.md`, which asks whether the branch
+    // catching it should go. The fixture is a live assertion either way; the pointer is here so the
+    // next reader does not inherit the retired framing from a line of running code.
     assert.ok(crlf, "the CRLF continuation is one of the eight bypasses and must be in the corpus");
     assert.ok(crlf.input.command.includes("\r\n"), "it must decode to real CRLF, or it is testing a different string");
 });

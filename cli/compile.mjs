@@ -546,11 +546,53 @@ export function shellWords(command) {
             // A backslash-newline is a line continuation: both characters vanish, and the word
             // continues on the next line. Appending the newline instead would have glued it into the
             // middle of a path, which no target matches.
-            // `\r\n` is consumed as a PAIR. Skipping one character left the `\n` behind, and a
-            // newline is an operator here, so a CRLF continuation flushed the word instead of
-            // continuing it: `cp /tmp/x \\<CRLF>docs/vision.md` stepped aside where the LF spelling
-            // answers `deny` — the constitution, reachable by editing the file on Windows. Measured
-            // both ways, 2026-07-28. Found by Copilot review on #60.
+            // `\r\n` is consumed as a PAIR, and **the reachability that argued for it has been
+            // retired.** What stood here from 2026-07-28 until 2026-08-25 was: skipping one character
+            // left the `\n` behind, a newline is an operator here, so `cp /tmp/x \\<CRLF>docs/vision.md`
+            // stepped aside where the LF spelling answers `deny` — "the constitution, reachable by
+            // editing the file on Windows". The first half is a true statement about THIS reader. The
+            // second is a claim about a shell, and it did not reproduce on any shell measured.
+            //
+            // **Measured 2026-08-25 on five shells, with a neutral target path — never the
+            // constitution.** `bash 3.2.57(1)` (arm64-apple-darwin25, the maintainer's machine),
+            // `bash 5.2.15(1)` (aarch64-unknown-linux-gnu) and `bash 5.2.37(1)` (x86_64-pc-linux-gnu),
+            // both in containers; `zsh 5.9`; and `/bin/sh`, which is bash 3.2.57 in POSIX mode. **All
+            // five agree, and none of them joins the pair:** the backslash escapes the `\r`, the
+            // newline then ends the command, and the fragment after it is run as its own command. The
+            // LF spelling in the same harness DID join and DID write the target, so the harness fires
+            // rather than reporting nothing everywhere. For the `cp`-shaped payload the retired
+            // sentence names, the target is left byte-for-byte unchanged on all five — so this branch
+            // is a **false red** there, fail-closed, and worth one prompt.
+            //
+            // **It is not a false red everywhere, which is why the branch is still here.** A shell
+            // applies a redirection BEFORE it looks the command up, so a clobbering `>` or `1>` on the
+            // fragment left by the split still fires and truncates its target to zero bytes — measured
+            // on all three bash builds. `>>` appends and does not. The carriers of that split verdict
+            // are `./fuzz-shell.mjs`'s `crlf-continuation-in-the-payload` EXPECT cells and
+            // `./compile.test.mjs`'s paired CRLF assertions. **Not `../.portulan/gate-map.md`**, which
+            // an earlier draft of this sentence named and which carries no CRLF entry at all — a
+            // citation to a record that does not exist, in the comment repairing exactly that.
+            //
+            // **Removing the branch is fail-OPEN on a gate matcher, so it is the maintainer's and not
+            // this comment's.** A differential against a copy with the branch deleted moves **one
+            // recorded fuzz cell** — `crlf-continuation-in-the-payload|write-named`, `true` → `false`,
+            // in the good-news direction, which is still a red until the record absorbs it — and
+            // regresses **one gate-corpus fixture**, `a-CRLF-continuation` in
+            // `../evals/goldens/gates/edit-the-constitution.json`. Those two and nothing else: the
+            // redirection is recognised off the raw segment text rather than off a joined word, so the
+            // true positive survives its removal, and so does a real LF continuation. Asked at
+            // `../.portulan/proposals/0031-a-continuation-no-shell-joins.md`; until that is ruled, the
+            // branch stays and this comment states what was measured rather than what was argued.
+            //
+            // **The honest limit, and it is the platform the retired sentence named: no Windows-side
+            // bash was measured** — not git-bash, MSYS2, Cygwin (whose `igncr` exists precisely for
+            // this) or WSL. Nor was any bash 4.x. The standing rail is `./fuzz-shell.ground.test.mjs`,
+            // which runs this production under **whatever bash the host running the `tests` recipe
+            // has** and reds if that bash joins the pair — so a joining shell is caught wherever the
+            // recipe runs, CI included, and is caught nowhere the recipe does not run. That boundary is
+            // stated because it is the whole of the enforcement: the container measurements above are a
+            // record, not a recipe, since a recipe that pulled an image would be a network call in CI.
+            // Found by Copilot review on #60; the claim retired by measurement 2026-08-25.
             if (command[i + 1] === "\r" && command[i + 2] === "\n") {
                 i += 2;
                 continue;
@@ -760,6 +802,12 @@ function commandSegments(raw) {
             // of one — so this is fixed for the reason the session kept re-learning rather than for a
             // failing case: one carrier corrected and its sibling left is how the last three defects
             // on this branch happened.
+            // **The pair's two carriers are this line and `shellWords`, and the measurement retiring
+            // the reachability claim is written up there once.** It reads on this line too: no shell
+            // measured joins the pair, so consuming it here is the same false red in the same
+            // direction. Removing it would have to remove both — which is why
+            // `../.portulan/proposals/0031-a-continuation-no-shell-joins.md` names both carriers
+            // rather than the one whose comment argued for it.
             i += command[i + 1] === "\r" && command[i + 2] === "\n" ? 2 : 1;
             // **Remember WHICH character this backslash turned into data.** The redirection-operator
             // check below reads one raw neighbour, and a raw read cannot tell `>` the operator from
