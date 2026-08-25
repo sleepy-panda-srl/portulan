@@ -130,6 +130,47 @@ test("runCorpus reports the first disagreement, and a throw counts as one", () =
     assert.match(threw.how, /threw TypeError/);
 });
 
+test("a fixture the census cannot grade is refused, never skipped", async () => {
+    // **The silent-thinning defect, asserted in both places it could return.** `runCorpus` skipped an
+    // unknown rule outright, so a renamed or misfiled fixture sat ungraded while the census reported
+    // green on a kill-set smaller than the one it names. Reported as a suppressed note by Copilot,
+    // round 5 on #338.
+    const rules = new Map([["known", { id: "known", tier: "gated", action: { shell: "git push --force" }, reason: "x" }]]);
+    const corpus = [{ where: "stale.json", doc: { rule: "renamed-away", cases: [{ id: "c", tool: "Bash", input: { command: "x" }, expect: false }] } }];
+    assert.throws(
+        () => runCorpus(() => false, rules, corpus),
+        (e) => e instanceof CouldNotRun && /does not declare/.test(e.message),
+        "runCorpus skipped a rule it could not find",
+    );
+
+    // And end to end: a corpus file naming an unknown rule refuses the whole run at 2, before any
+    // mutant is written, with the file named.
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "portulan-stalefixture-"));
+    try {
+        fs.cpSync(REPO, path.join(dir, "repo"), {
+            recursive: true,
+            filter: (src) => !src.includes(`${path.sep}.git${path.sep}`) && !src.endsWith(`${path.sep}.git`) && !src.includes("node_modules"),
+        });
+        const root = path.join(dir, "repo");
+        fs.writeFileSync(
+            path.join(root, "evals", "goldens", "gates", "renamed-away.json"),
+            JSON.stringify({
+                rule: "renamed-away",
+                why: "a fixture that outlived its gate",
+                cases: [{ id: "c", class: "holds", tool: "Bash", path: "shell-prefix", input: { command: "git push --force x" }, expect: true, why: "a reason a reviewer can read" }],
+            }),
+            "utf8",
+        );
+        const err = sink();
+        const code = await run(["--workspace", root, "--pack-root", path.join(root, "packs"), "--check"], { stdout: sink(), stderr: err, cwd: root });
+        assert.equal(code, 2, "an ungradable fixture did not refuse the census");
+        assert.match(err.text(), /renamed-away/);
+        assert.match(err.text(), /kill-set is smaller than it looks/);
+    } finally {
+        fs.rmSync(dir, { recursive: true, force: true });
+    }
+});
+
 test("the census runs green against this repository, and prints every region member", async () => {
     const out = sink();
     const err = sink();

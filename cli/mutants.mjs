@@ -69,7 +69,7 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 
 import { CompileError } from "./compile.mjs";
-import { CouldNotRun, readCorpus, yieldedRules } from "./goldens.mjs";
+import { CouldNotRun, partition, readCorpus, yieldedRules } from "./goldens.mjs";
 
 /** The module under mutation, relative to the repository root. */
 export const SUBJECT = "cli/compile.mjs";
@@ -622,7 +622,21 @@ export function absolutiseImports(source, cliDir) {
 export function runCorpus(matchesRule, byId, corpus) {
     for (const { where, doc } of corpus) {
         const rule = byId.get(doc.rule);
-        if (!rule) continue;
+        // **Never a skip.** This read `if (!rule) continue;`, which let a fixture file whose rule the
+        // policy does not declare — renamed, misfiled, outlived its gate — sit ungraded while the
+        // census reported green. A coverage tool that silently thins its own kill-set and then reports
+        // on it is the loudest false green available here, and it is the failure
+        // `../.portulan/memory/a-checker-must-refuse-what-it-cannot-check.md` names, in the module
+        // whose whole subject is that class. `run` refuses the whole census before the baseline for
+        // exactly this, so this arm is unreachable from there and is kept because a direct caller of
+        // an exported function must not get the silent behaviour back. Reported as a suppressed note
+        // by Copilot, round 5 on #338.
+        if (!rule) {
+            throw new CouldNotRun(
+                `${where} attacks \`${doc.rule}\`, which the yielded policy does not declare — its cases cannot be ` +
+                    `graded, and a census that skipped them would report on a kill-set smaller than the one it names`,
+            );
+        }
         for (const c of doc.cases) {
             let actual;
             try {
@@ -772,7 +786,31 @@ export async function run(argv = [], { stdout = process.stdout, stderr = process
             throw new CouldNotRun(`${SUBJECT} cannot be read at ${subject} — ${cause.code ?? cause.message}`);
         }
 
-        const byId = new Map(rules.filter((r) => r.action).map((r) => [r.id, r]));
+        const { matchable, exempt } = partition(rules);
+        const byId = new Map(matchable.map((r) => [r.id, r]));
+
+        // **The corpus and the policy must correspond before a single mutant is written.** A fixture
+        // naming a rule this census cannot grade is not a case that happens to pass — it is a piece of
+        // the kill-set that never runs, and the census's whole output is a claim about how much the
+        // kill-set catches. Refused here rather than at the first mutant so the message names the
+        // repair once instead of forty-nine times, and refused at all because the alternative measured
+        // green. `goldens` reds on the same condition; this does not lean on that recipe having run,
+        // since a rail that depends on a sibling rail is a rail with a precondition nobody states.
+        const ungradable = corpus
+            .filter(({ doc }) => !byId.has(doc.rule))
+            .map(({ where, doc }) => {
+                const why = exempt.some((e) => e.id === doc.rule)
+                    ? "declares no matchable action, so there is nothing for a mutant to change"
+                    : "is not declared by the yielded policy at all";
+                return `${where} attacks \`${doc.rule}\`, which ${why}`;
+            });
+        if (ungradable.length) {
+            throw new CouldNotRun(
+                `${ungradable.length} fixture file(s) cannot be graded, so the kill-set is smaller than it looks:\n           ` +
+                    `${ungradable.join("\n           ")}\n           ` +
+                    `Fix the corpus (the \`goldens\` recipe grades that) before reading a census over it`,
+            );
+        }
 
         // **The baseline, before any mutant.** A mutation census over a corpus that is already red
         // measures nothing — every mutant would "survive" against a kill-set that cannot even agree

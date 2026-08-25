@@ -255,6 +255,24 @@ adjustments, neither of which can grow. The number is deleted rather than correc
 and 4 were a triage and a records correction under rule 2 — neither is a fix-round, and both are
 flagged as such rather than counted quietly.
 
+**Round 5 — a mechanism defect, and past the bound deliberately.** `runCorpus` read
+`if (!rule) continue;`, so a fixture file whose rule the policy does not declare — renamed, misfiled,
+outlived its gate — sat **ungraded while the census reported green**. A coverage tool that silently
+thins its own kill-set and then reports on it is the loudest false green available here, and it is
+`a-checker-must-refuse-what-it-cannot-check` in the module whose entire subject is that class.
+
+Refused now in **both** places: `run` checks the corpus-to-policy correspondence once, before the
+baseline, naming every offending file and its reason; and the exported `runCorpus` throws rather than
+skipping, so a direct caller cannot get the silent behaviour back. Drilled by renaming a fixture out
+from under its gate — exit 2, the file named. It does **not** lean on `goldens` reding on the same
+condition: a rail that depends on a sibling rail is a rail with a precondition nobody states.
+
+**Taken past the two-round bound under the sibling exemption, and the asymmetry with #339 is the
+point.** Both are defects this branch introduced. #339 is a repeated scan with correctness unaffected
+and was triaged; this one is a false green in the tool whose only output is a coverage claim, and
+triaging it to protect a round count would be protecting the count with the thing the count exists to
+buy. Flagged to the maintainer rather than assumed, the way session 0 flagged its rounds 3, 5 and 9.
+
 **The count class, tallied once, here.** Four instances in one session: the handoff (caught by the
 pre-commit checkpoint), `evals/README.md` (round 2), `.portulan/verify/README.md` (round 4), and the
 `nineteen of thirty-two` code comments (swept with round 4's re-sweep). The first repair stopped at
