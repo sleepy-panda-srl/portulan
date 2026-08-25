@@ -148,6 +148,38 @@ test("--only narrows to one operator, and an unknown id is could-not-run", async
     assert.match(err2.text(), /no operator with id/);
 });
 
+test("--only still validates the WHOLE operator table", async () => {
+    // `--only` narrows what runs; it does not narrow what must be well formed. This validation was
+    // skipped entirely in `--only` mode, so a malformed operator slipped through in exactly the mode
+    // a person reaches for when something is already wrong. Reported by Copilot, round 1 on #338.
+    //
+    // Exercised by mutating the table in a copy of the module rather than by reading the source, so
+    // the test measures the behaviour rather than the spelling of the guard.
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "portulan-onlyvalid-"));
+    try {
+        const copy = path.join(dir, "mutants.mjs");
+        const src = fs
+            .readFileSync(join(REPO, "cli", "mutants.mjs"), "utf8")
+            .replace(/from "\.\/([A-Za-z0-9._-]+\.mjs)"/g, (_, name) => `from "${pathToFileURL(join(REPO, "cli", name)).href}"`)
+            // One operator's `outcome` made invalid — the shape the guard exists to refuse. Chosen
+            // over emptying a `why` because the first attempt at that left the REST of the sentence
+            // behind and the field stayed non-empty, so the test passed while asserting nothing.
+            .replace('outcome: "killed",', 'outcome: "maybe",', 1);
+        fs.writeFileSync(copy, src, "utf8");
+        const mod = await import(pathToFileURL(copy).href);
+        const err = sink();
+        const code = await mod.run(["--workspace", REPO, "--pack-root", join(REPO, "packs"), "--only", "matchesPath-tail-becomes-substring"], {
+            stdout: sink(),
+            stderr: err,
+            cwd: REPO,
+        });
+        assert.equal(code, 2, "a malformed operator passed unnoticed in --only mode");
+        assert.match(err.text(), /records outcome "maybe"/);
+    } finally {
+        fs.rmSync(dir, { recursive: true, force: true });
+    }
+});
+
 test("a bad argument is could-not-run, and --help is answered before it", async () => {
     const err = sink();
     assert.equal(await run(["--nonsense"], { stdout: sink(), stderr: err, cwd: REPO }), 2);

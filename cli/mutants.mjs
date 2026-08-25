@@ -744,7 +744,13 @@ export async function run(argv = [], { stdout = process.stdout, stderr = process
                     `Add the member to REGION or correct the operator — an operator outside the census is coverage nobody counts`,
             );
         }
-        for (const op of only === null ? OPERATORS : []) {
+        // **The WHOLE table, in both modes.** This read `only === null ? OPERATORS : []`, so `--only`
+        // — the mode a person reaches for precisely when something is wrong — validated nothing, and a
+        // malformed operator slipped through exactly where somebody was looking closely. `--only`
+        // narrows what RUNS; it does not narrow what must be well formed, because the table is the
+        // artifact under review and a reviewer reading it in `--only` mode is reading the same table.
+        // Reported by Copilot, round 1 on #338.
+        for (const op of OPERATORS) {
             if (!OUTCOMES.includes(op.outcome)) {
                 throw new CouldNotRun(`operator \`${op.id}\` records outcome ${JSON.stringify(op.outcome)} — one of ${OUTCOMES.join(" / ")}`);
             }

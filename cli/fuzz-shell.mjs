@@ -112,6 +112,27 @@ export function prng(seed) {
 
 const pick = (rand, xs) => xs[Math.floor(rand() * xs.length) % xs.length];
 
+/**
+ * FNV-1a over a string, for deriving one cell's seed from its full identity.
+ *
+ * **The first cut mixed in `position.id.length` and `kind.length` instead**, which made every cell
+ * whose id happened to be the same length share one stream — nineteen of thirty-two positions did,
+ * measured — while the comment beside it claimed each cell had its own. A claim broader than the code
+ * it describes is this repository's signature defect and this session had already met it three times
+ * in other people's code before writing one of its own. The cells stayed correct (each still drew its
+ * full budget) and the spelling space collapsed onto far fewer distinct streams than the budget
+ * implies, which is a quiet loss of exactly the diversity this axis exists for. Reported by Copilot,
+ * round 1 on #338.
+ */
+export function hash(text) {
+    let h = 0x811c9dc5;
+    for (let i = 0; i < text.length; i += 1) {
+        h ^= text.charCodeAt(i);
+        h = Math.imul(h, 0x01000193);
+    }
+    return h >>> 0;
+}
+
 // =============================================================================================
 // The spelling axis — many ways to write one command
 // =============================================================================================
@@ -655,9 +676,12 @@ export function run(argv = [], { stdout = process.stdout, stderr = process.stder
             for (const [kind, p] of Object.entries(PAYLOADS)) {
                 const expected = EXPECT[`${position.id}|${kind}`];
                 const rule = byId.get(p.rule);
-                // Per cell, so one cell's budget cannot shift another cell's stream — a case count
-                // change would otherwise re-roll every later cell and turn one edit into a new corpus.
-                const rand = prng((seed ^ (position.id.length * 2654435761)) + kind.length);
+                // Per cell, and derived from the cell's FULL identity. Two properties, both wanted:
+                // one cell's budget cannot shift another cell's stream — a case-count change would
+                // otherwise re-roll every later cell and turn one edit into a new corpus — and no two
+                // cells share a stream, so the spelling space is explored once per cell rather than
+                // once per id length. See `hash` for what the first cut got wrong.
+                const rand = prng(seed ^ hash(`${position.id}|${kind}`));
                 for (let i = 0; i < cases; i += 1) {
                     const { command } = generate(position, kind, rand);
                     generated += 1;

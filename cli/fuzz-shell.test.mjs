@@ -26,7 +26,7 @@ const HERMETIC_HOST = fs.mkdtempSync(path.join(os.tmpdir(), "portulan-hermetic-"
 process.env.CLAUDE_CONFIG_DIR = HERMETIC_HOST;
 process.on("exit", () => fs.rmSync(HERMETIC_HOST, { recursive: true, force: true }));
 
-import { DEFAULT_CASES, DEFAULT_SEED, EXPECT, PAYLOADS, POSITIONS, WRITERS, asCase, correctFor, generate, pathSpellings, prng, run, writePayload } from "./fuzz-shell.mjs";
+import { DEFAULT_CASES, DEFAULT_SEED, EXPECT, PAYLOADS, POSITIONS, WRITERS, asCase, correctFor, generate, hash, pathSpellings, prng, run, writePayload } from "./fuzz-shell.mjs";
 import { CLASSES, PATHS } from "./goldens.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -44,6 +44,34 @@ test("the generator is deterministic for a fixed seed, and different for a diffe
     };
     assert.deepEqual(draw(7), draw(7));
     assert.notDeepEqual(draw(7), draw(8));
+});
+
+test("no two cells share a random stream, and the rule is asserted rather than the instance", () => {
+    // **The defect this replaces was a claim broader than its code**: the seed mixed in
+    // `position.id.length` and `kind.length`, so nineteen of thirty-two positions shared a stream
+    // with another while the comment beside it promised each cell its own. Reported by Copilot,
+    // round 1 on #338.
+    //
+    // Asserted as the RULE — every cell's derived seed is distinct — rather than as the two ids that
+    // happened to collide. Patching the spelling that was quoted is the class this repository met
+    // five times on #336 and twice more in this session's own code.
+    const seeds = new Map();
+    for (const position of POSITIONS) {
+        for (const kind of Object.keys(PAYLOADS)) {
+            const key = `${position.id}|${kind}`;
+            const derived = DEFAULT_SEED ^ hash(key);
+            assert.ok(!seeds.has(derived), `${key} and ${seeds.get(derived)} derive the same stream`);
+            seeds.set(derived, key);
+        }
+    }
+    // And the streams really differ, not just their seeds: two cells drawing from the same position
+    // must not produce the same spellings.
+    const draw = (key) => {
+        const rand = prng(DEFAULT_SEED ^ hash(key));
+        return Array.from({ length: 8 }, () => generate(POSITIONS[0], "shell", rand).command);
+    };
+    assert.notDeepEqual(draw("a|shell"), draw("b|shell"));
+    assert.deepEqual(draw("a|shell"), draw("a|shell"), "the same cell must still be reproducible");
 });
 
 test("the recorded table is total over the grammar, in both directions", () => {
