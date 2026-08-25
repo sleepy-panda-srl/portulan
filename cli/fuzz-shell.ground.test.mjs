@@ -174,6 +174,10 @@ test("every path spelling names one file, measured by writing to it", () => {
             fs.rmSync(target, { force: true });
             const script = `printf ok > ${spelling}`;
             const result = spawnSync("bash", ["-c", script], { cwd: dir, encoding: "utf8", timeout: 10_000, env: { PATH: process.env.PATH ?? "" } });
+            // Signal first — see `ran`. This site had NO signal guard: the sweep meant to give every
+            // spawn one matched a differently-indented sibling twice and this one not at all, so a
+            // duplicate stood where coverage was missing. Found because the duplicate was reported.
+            assert.equal(result.signal, null, `bash was killed by ${result.signal} running ${JSON.stringify(script)} — nothing was measured`);
             assert.equal(result.status, 0, `bash refused ${JSON.stringify(spelling)}: ${result.stderr}`);
             assert.ok(
                 fs.existsSync(target),
@@ -231,9 +235,7 @@ test("a respelt word survives a wrapper, so a composed spelling still means what
                 // Signal first, for the reason `ran` gives: `status` is `null` on a killed child and
                 // every comparison against it then reads as something other than what happened.
                 assert.equal(result.signal, null, `bash was killed by ${result.signal} running ${JSON.stringify(script)} — nothing was measured`);
-                // Signal first — see `ran`.
-            assert.equal(result.signal, null, `bash was killed by ${result.signal} running ${JSON.stringify(script)} — nothing was measured`);
-            assert.equal(result.status, 0, `bash refused ${JSON.stringify(script)}: ${result.stderr}`);
+                assert.equal(result.status, 0, `bash refused ${JSON.stringify(script)}: ${result.stderr}`);
                 assert.ok(
                     fs.existsSync(marker) && fs.readFileSync(marker, "utf8") === "ok",
                     `the respelling ${JSON.stringify(word)} stopped naming the marker inside \`${position.id}\` — ` +
