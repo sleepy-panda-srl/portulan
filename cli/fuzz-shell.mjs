@@ -301,7 +301,9 @@ export const POSITIONS = [
     // **A CRLF continuation, which is NOT a continuation.** `shellWords` consumes `\r\n` after a
     // backslash as a pair and joins the word; **five shells do not, and split the command instead** —
     // `bash 3.2.57(1)` (arm64-apple-darwin25), `bash 5.2.15(1)` (aarch64-unknown-linux-gnu) and
-    // `bash 5.2.37(1)` (x86_64-pc-linux-gnu), plus `zsh 5.9` and `/bin/sh`. The three bash builds are
+    // `bash 5.2.37(1)` (x86_64-pc-linux-gnu), plus `zsh 5.9` and **the measured host's `/bin/sh`**, which
+    // on that macOS host is bash 3.2.57 in POSIX mode — `dash` and `busybox`, the common `/bin/sh` on
+    // Linux, were NOT measured. The three bash builds are
     // named in full rather than as "bash 5", which would be a claim about a series from two 5.2
     // patchlevels; no bash 4.x was measured, and neither was any Windows-side bash — git-bash, MSYS2,
     // Cygwin or WSL — which is the platform the retired reachability claim named. Widened 2026-08-25
