@@ -467,6 +467,35 @@ test("a perturbation that resolves outside the worktree is refused before anythi
         assert.ok(!fs.existsSync(outside), "the refusal wrote a file it was refusing");
     }));
 
+test("a symlink at the target is refused, dangling or live — the sibling the first fix left open", () =>
+    fixtureRepo(({ dir }) => {
+        // Measured at the final checkpoint before this landed: a `create` whose target is a **broken**
+        // symlink pointing outside passed both containment checks — the resolve loop skips a dangling
+        // leaf up to its parent, and `path.resolve` does not follow links — and `writeFileSync` then
+        // followed it and wrote outside the worktree. The file it produced held `PWNED`.
+        const worktree = path.join(dir, "wt");
+        const outside = path.join(dir, "outside");
+        fs.mkdirSync(worktree);
+        fs.mkdirSync(outside);
+        const ghost = path.join(outside, "ghost.txt");
+        fs.symlinkSync(ghost, path.join(worktree, "dangling"));
+        fs.writeFileSync(path.join(outside, "live.txt"), "real\n");
+        fs.symlinkSync(path.join(outside, "live.txt"), path.join(worktree, "live"));
+
+        for (const bad of [
+            { create: "dangling", content: "PWNED" },
+            { file: "live", find: "real", replace: "PWNED" },
+        ]) {
+            assert.throws(
+                () => perturb(worktree, { rail: "fake", perturb: bad }),
+                (e) => e instanceof CouldNotRun && /is a symlink/.test(e.message),
+                JSON.stringify(bad),
+            );
+        }
+        assert.ok(!fs.existsSync(ghost), "the write followed a dangling symlink out of the worktree");
+        assert.equal(fs.readFileSync(path.join(outside, "live.txt"), "utf8").trim(), "real", "the write followed a live symlink out");
+    }));
+
 test("a worktree that is not there is could-not-run, not a stack trace", () =>
     fixtureRepo(({ dir }) => {
         assert.throws(

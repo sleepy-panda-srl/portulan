@@ -909,9 +909,10 @@ message — that transcript is in
 | Run | Head | Result |
 |---|---|---|
 | [`32868326592`](https://github.com/sleepy-panda-srl/portulan/actions/runs/32868326592) | `a444025` | **failure** — 20 of 21 fired and `tests` came back UNJUDGED, its control red on the runner |
+| [`32868624501`](https://github.com/sleepy-panda-srl/portulan/actions/runs/32868624501) | `82c2f28` | **failure** — the same cause one commit later, before the repair landed |
 | [`32869280031`](https://github.com/sleepy-panda-srl/portulan/actions/runs/32869280031) | `967e056` | **success** — 21 of 21, after the premise behind that control was repaired |
 
-The first of those is the more useful entry. A case in `cli/compile.test.mjs` had encoded *this
+The two failures are the more useful entries, and the second was missing from the first draft of this table — naming one failure and the success reads as though one run found the defect and the next fixed it, when two runs failed for that cause. A case in `cli/compile.test.mjs` had encoded *this
 repository is not checked out inside the OS temp directory* as a premise, which a drill worktree
 falsifies — and it passed on macOS **by accident of `/var` being a symlink to `/private/var`**, so only a
 Linux runner could find it. That is what the `pull_request` trigger buys, on its first run.

@@ -544,6 +544,34 @@ export function perturb(worktree, drill) {
             );
         }
         const target = path.resolve(worktree, rel);
+
+        // **A symlink AT THE TARGET is refused outright, and this is the sibling the first containment
+        // fix left open.** `writeFileSync` follows a link, and the resolve loop below skips a *broken*
+        // leaf up to its parent — so a target that is itself a dangling symlink pointing outside passed
+        // both checks and the write landed outside the worktree. Measured at the final checkpoint, which
+        // produced a file called `outside/ghost.txt` holding `PWNED`.
+        //
+        // `lstat`, not `stat`, because the question is whether *this name* is a link rather than what it
+        // points at — and it catches a live link and a dangling one with the same test. A drill has no
+        // business perturbing through a link in either case: the tree it is given is a fresh `git
+        // worktree` of this repository, which commits none.
+        //
+        // The enumerated vectors — `..`, an absolute path, a symlinked *parent* — were all closed by the
+        // first fix, and this was not one of them. That is `0020` at its most literal: the repair held
+        // for the spellings its own docblock listed.
+        let leaf = null;
+        try {
+            leaf = fs.lstatSync(target);
+        } catch {
+            /* Not there at all, which is the ordinary case for a `create`. */
+        }
+        if (leaf?.isSymbolicLink()) {
+            throw new CouldNotRun(
+                `drill \`${drill.rail}\` names ${JSON.stringify(rel)}, which is a symlink. A write follows it, so it can ` +
+                    "leave the drill worktree even when the link is dangling — refused whatever it points at",
+            );
+        }
+
         let probe = target;
         for (;;) {
             try {

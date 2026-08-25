@@ -186,17 +186,28 @@ layout**; on `ubuntu-latest` the paths agree and it fails. A test whose verdict 
 testing the host. So the local sweep could not have found this, and the run that did is the one the
 `pull_request` trigger exists for.
 
-****And the repaired sweep then ran green on `ubuntu-latest`: 21 of 21, run
-[`32869280031`](https://github.com/sleepy-panda-srl/portulan/actions/runs/32869280031) at `967e056`, after
-[`32868326592`](https://github.com/sleepy-panda-srl/portulan/actions/runs/32868326592) failed at `a444025`.**
-So the sweep is demonstrated on a runner as well as at a desk. The **schedule** is still answered by
-nothing: a pull-request run says the sweep works on `ubuntu-latest` and says nothing about Thursdays.
-
-Repaired at the intent rather than routed around.** Moving the drill worktree out of the temp directory
+**Repaired at the intent rather than routed around.** Moving the drill worktree out of the temp directory
 would have hidden it; naming the root directly — a subdirectory of the temp directory, which cannot
 contain a sibling of itself — makes the case hold wherever the checkout sits. Both sites in that describe
 block are swept, not the one that failed. Verified by running that suite inside a drill-shaped worktree
 under `os.tmpdir()`, where it now passes.
+
+**And the repaired sweep then ran green on `ubuntu-latest`.** Three runs, and the two that failed are the
+more useful entries:
+
+| Run | Head | Result |
+|---|---|---|
+| [`32868326592`](https://github.com/sleepy-panda-srl/portulan/actions/runs/32868326592) | `a444025` | failure — 20 of 21 fired, `tests` UNJUDGED, its control red on the runner |
+| [`32868624501`](https://github.com/sleepy-panda-srl/portulan/actions/runs/32868624501) | `82c2f28` | failure — the same cause, one commit later, before the repair landed |
+| [`32869280031`](https://github.com/sleepy-panda-srl/portulan/actions/runs/32869280031) | `967e056` | success — 21 of 21 |
+
+_The second row was missing from the first draft of this paragraph and from the register: I named the
+first failing run and the success and skipped the failure between them, which reads as though one run
+found it and the next fixed it. Two runs failed for that cause. Added at the final checkpoint's
+prompting, which caught the omission while re-deriving the table against `gh`._
+
+So the sweep is demonstrated on a runner as well as at a desk. The **schedule** is still answered by
+nothing: a pull-request run says the sweep works on `ubuntu-latest` and says nothing about Thursdays.
 
 ## What is demonstrated, and what is unvouched
 
@@ -481,3 +492,36 @@ had not read: the path filter, the workspace threading, the roster findings befo
 unaddressed half of a finding I had answered, which is the ground session 0 took its rounds 3, 5 and 9
 on: a sibling of a defect this change introduced. The maintainer can overrule either; what would have
 been wrong is triaging a silent wrong-workspace drill out to an issue to protect a round count.
+
+## The last checkpoint before the merge, and it found a live escape
+
+**Fable 5, fresh context, APPROVE-WITH-ADJUSTMENTS — two adjustments, neither blocking, both folded.**
+The maintainer granted one more review round and the merge; this pass exists because **four commits had
+landed since the last checkpoint and no fresh context had graded any of them**, which this file recorded
+as a gap rather than hiding it. It re-ran all nineteen recipes and the whole sweep itself, and it
+confirmed the printed sha was the tree under review by diffing it against the working copy.
+
+**Its first adjustment is a containment escape it produced rather than argued.** A `create` whose target
+is a **dangling** symlink pointing outside the worktree passed both of my checks — the resolve loop skips
+a broken leaf up to its parent, and `path.resolve` does not follow links — and `writeFileSync` then
+followed it. It measured a file at `outside/ghost.txt` holding `PWNED`.
+
+**The enumerated vectors were closed and this was not one of them.** My docblock named `..`, an absolute
+path, and a symlinked *parent*, and the supervisor verified all three refuse. The one spelling it did not
+name is the one that escaped — `0020` at its most literal, and the third time in this change that a fix
+held exactly as wide as the list beside it. Refused now by `lstat` at the target, which catches a live
+link and a dangling one with the same test, because the question is whether *this name* is a link rather
+than what it points at. Both shapes are asserted, and the case checks that neither file outside the
+worktree was created or modified.
+
+**Its exposure was nil and that is not why it is fixed.** The harness only ever runs the author-controlled
+`DRILLS` table against a `git worktree` of this repository, which commits no symlinks. It is fixed
+because deferring a containment escape to an issue in order to protect a round count would be protecting
+the count with the thing the count exists to buy.
+
+**Its second adjustment was two malformed bold spans in this file** — `****And` and a dangling
+`around.**`, produced when an earlier append split a bolded sentence in half. Repaired, and the file
+swept: no `***` sequence anywhere and the `**` markers balance. It also caught an omission at two
+carriers: the CI table named the first failing run and the success and skipped **the second failure**,
+which reads as though one run found the defect and the next fixed it. Two runs failed for that cause, and
+both tables now say so.
