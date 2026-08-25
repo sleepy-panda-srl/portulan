@@ -312,7 +312,10 @@ export const POSITIONS = [
     // and wrong for another:
     //
     //   - `shell` — nothing gated runs. The matcher answers `false`. Correct.
-    //   - `write-named` — `cp` never runs and the target is untouched. The matcher answers `true`.
+    //   - `write-named` — the intended write never runs and the target is untouched. The matcher
+    //     answers `true`. (`cp` ITSELF does run, on the fragment before the split, and fails on a
+    //     malformed `\r` argument — the sibling of the cell below, corrected in the same pass after
+    //     shipping the fix to one carrier and not the other. Copilot, round 3 on #342.)
     //     A false red, fail-closed, and the only one of the three.
     //   - `write-redirect` — a shell applies a redirection BEFORE it looks the command up, so the
     //     clobbering redirection on the surviving fragment still fires and TRUNCATES the target to
@@ -328,7 +331,7 @@ export const POSITIONS = [
         id: "crlf-continuation-in-the-payload",
         ground: "data",
         // **The one production whose ground truth is not a property of the position.** bash splits at
-        // the CRLF, so a writer command never runs and a gated command never runs — data. But a
+        // the CRLF, so the intended write never runs and a gated command never runs — data. But a
         // CLOBBERING redirection is applied before the command is looked up, so it fires anyway and
         // truncates its target to zero bytes. That is the gated effect occurring, and calling it data
         // would record a destroyed file as an untouched one — which an earlier draft of this entry did,
