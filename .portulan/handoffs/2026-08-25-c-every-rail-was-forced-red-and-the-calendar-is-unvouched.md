@@ -163,6 +163,35 @@ the commit, and committing first is the breach the last session recorded. `--wor
 hold at once — the checkpoint can re-run the sweep on the exact state under review, and the printed
 sha says which state that was.
 
+## CI found what the local sweep could not, on the first run
+
+**The `pull_request` trigger earned its place immediately: 20 of 21 rails fired on `ubuntu-latest` and
+`tests` came back UNJUDGED, because its CONTROL was red there.** Two cases in `cli/compile.test.mjs`
+failed inside a drill worktree and pass in an ordinary checkout —
+
+```
+not ok 2 - a runner OUTSIDE the project falls back to absolute AND says so
+```
+
+— and the control refused to report a fire it could not attribute, which is the guard doing exactly its
+job on the first occasion it mattered.
+
+**The cause is a premise, not a flake.** That case compiled with `root: os.tmpdir()` as a stand-in for
+*a root the runner is not under*. A drill worktree lives under `os.tmpdir()`, so for that caller the
+runner **is** under the root and the emission is project-relative — the assertion's opposite.
+
+**And it failed in CI while passing locally, which is the sharper half.** On macOS `/var` is a symlink to
+`/private/var`, so the containment test misses and the case passes **by accident of the platform's
+layout**; on `ubuntu-latest` the paths agree and it fails. A test whose verdict turns on a symlink is
+testing the host. So the local sweep could not have found this, and the run that did is the one the
+`pull_request` trigger exists for.
+
+**Repaired at the intent rather than routed around.** Moving the drill worktree out of the temp directory
+would have hidden it; naming the root directly — a subdirectory of the temp directory, which cannot
+contain a sibling of itself — makes the case hold wherever the checkout sits. Both sites in that describe
+block are swept, not the one that failed. Verified by running that suite inside a drill-shaped worktree
+under `os.tmpdir()`, where it now passes.
+
 ## What is demonstrated, and what is unvouched
 
 **The sweep is demonstrated.** Twenty-one rails, by hand, on a synthesized commit from this session's
