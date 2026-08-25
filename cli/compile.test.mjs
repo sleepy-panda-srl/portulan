@@ -1302,9 +1302,9 @@ describe("the shared matcher", () => {
         // editing the file on Windows" — is retired.** Measured 2026-08-25 on bash 3.2.57, 5.2.15 and
         // 5.2.37, plus zsh 5.9 and sh: none of them joins the pair, so **both** assertions below pin a
         // FALSE RED rather than a closed hole. They stay asserted because the matcher still answers
-        // that way and a change to it is
-        // `../.portulan/proposals/0031-a-continuation-no-shell-joins.md`'s to rule; the argument and
-        // its limits are written once, at `shellWords` in ./compile.mjs.
+        // that way, and whether to change it is the question
+        // `../.portulan/proposals/0031-a-continuation-no-shell-joins.md` puts to the maintainer; the
+        // argument and its limits are written once, at `shellWords` in ./compile.mjs.
         //
         // **BOTH, including the redirect one — and the near-miss is worth naming, because a reviewer
         // has already made it.** Copilot read `echo x > \<CRLF>docs/vision.md` as the write-redirect
