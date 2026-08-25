@@ -1336,14 +1336,18 @@ that blurs those two has mislaid the distinction it exists to record.
 
 **What it buys today is one watched dependency**, and the count belongs in the record rather than rounded
 up: the workflows under [`../.github/workflows/`](../.github/workflows/) are the tree's only manifests,
-`actions/checkout` — one SHA, pinned in each of the four — their only entry. **Corrected at milestone 7:**
+`actions/checkout` — one SHA, pinned in every one of them — their only entry. **Corrected at milestone 7:**
 this said there is no `package.json`. There is one now, at the root, carrying the CLI's `bin` — but it
 declares **no dependencies** and there is still **no lockfile**, so it adds nothing for a scanner to
-watch and the count above is unchanged. The mechanism is the point and not the count — but a floor described as
+watch and what is watched is unchanged. The mechanism is the point and not the count — but a floor described as
 broader than it is would be the same drift this rule was added to catch. _(Until 2026-07-29 this sentence
 named `verify.yml` as the only manifest, which had been false since the label and librarian workflows
 arrived carrying the same pin — the stale-count class again, corrected in the change that made
-`copilot-review.yml` the fourth.)_
+`copilot-review.yml` the fourth. **It then read "each of the four" and went stale a second time**, when
+`publish-github-packages.yml` landed on 2026-08-20 and again when `drills.yml` landed on 2026-08-25 —
+so the figure is **deleted** rather than corrected a third time, which is this milestone's standing
+repair: state the scope, and let [`../packs/tools/github/verify/actions-pinned.sh`](../packs/tools/github/verify/actions-pinned.sh)
+be the one carrier of how many there are, since it is the thing that cannot be wrong about it.)_
 
 **A watcher earns its place by being watched**, as of 2026-07-27, per
 [`proposals/0007-every-watcher-ships-with-its-observation-procedure.md`](proposals/0007-every-watcher-ships-with-its-observation-procedure.md):
@@ -1370,6 +1374,7 @@ worked examples of what the rule asks for:
 | Dependabot version updates | the pin was deliberately regressed one patch to v7.0.0; Dependabot opened the bump back to v7.0.1, and merging that was simultaneously the proof and the revert |
 | Dependency graph, alerts, security updates | the SBOM went `404` → `200`, and then tracked a pin *through a change* — which the first reading alone could not have shown |
 | Copilot auto-review ruleset | recorded as unvouched-for with its test stated in advance — the first pull request opened after `09:30:38Z` — and Copilot was then requested on that pull request at open, unasked |
+| The forced-red drill calendar — [`../.github/workflows/drills.yml`](../.github/workflows/drills.yml), 2026-08-25 | **Split, because its two halves are answerable at different times, and the procedure is written before either answer exists.** The **sweep** is demonstrated: `node cli/drills.mjs` forced all twenty-one rails red by hand on 2026-08-25 and every one fired, transcript in that session's handoff. The **`workflow_dispatch`** half becomes answerable the moment the file is on the default branch and not before, so its procedure is a manual dispatch straight after merge, with the run id recorded in [`verify/README.md`](verify/README.md)'s register. The **`schedule`** half is answered by the first Thursday run and by nothing earlier: until then this calendar is **unvouched, and its silence is not evidence** |
 
 **The honest limits, because the rule is weaker than it sounds.** Nothing here checks it: whether a watcher
 works is a fact about live services, and `doctor` already reports live settings as something it does not

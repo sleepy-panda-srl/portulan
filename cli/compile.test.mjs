@@ -2389,6 +2389,23 @@ describe("--pack-root fails closed in compile too — the third carrier of one r
 
 // ---------------------------------------------------------------- where the emitted hook points (M7)
 
+/**
+ * A root the runner provably cannot live under, on any platform.
+ *
+ * **`os.tmpdir()` itself was the spelling here, and it encoded a premise that is not always true: that
+ * this repository is not checked out inside the OS temp directory.** Milestone 8 clause (d)'s drill
+ * harness makes a legitimate caller that violates it — a `git worktree` under `os.tmpdir()` — and the
+ * two cases below then failed **in CI and not locally**, which is the sharper half: on macOS `/var` is a
+ * symlink to `/private/var`, so the containment test misses and the case passes by accident of the
+ * platform's layout; on `ubuntu-latest` the paths agree and it fails. A test whose verdict turns on a
+ * symlink is testing the host.
+ *
+ * The intent was never `os.tmpdir()` — it was *a root the runner is not under*. Named directly, it
+ * holds wherever the checkout sits: a subdirectory of the temp directory cannot contain a sibling of
+ * itself.
+ */
+const OUTSIDE_ANY_PROJECT = path.join(os.tmpdir(), "portulan-no-project-lives-here");
+
 describe("the emitted runner path — nothing asserted this until the checkpoint said so", () => {
     test("a runner under the project is spelled relative to CLAUDE_PROJECT_DIR", () => {
         const here = path.resolve(fileURLToPath(new URL(".", import.meta.url)));
@@ -2403,7 +2420,7 @@ describe("the emitted runner path — nothing asserted this until the checkpoint
         // pinning and nothing did. Compiling with a root the runner does not live under is exactly the
         // global/npx install, and it must not be silent — a hook pinned to one machine stops working
         // when the package moves, and a missing hook fails open.
-        const out = claudeCode(parse(policy()), { root: os.tmpdir() });
+        const out = claudeCode(parse(policy()), { root: OUTSIDE_ANY_PROJECT });
         const emitted = JSON.stringify(out.artifact.value);
         assert.doesNotMatch(emitted, /CLAUDE_PROJECT_DIR/, "a runner outside the project cannot have a project-relative spelling");
         assert.match(emitted, /cli\/gate\.mjs/);
@@ -2417,7 +2434,7 @@ describe("the emitted runner path — nothing asserted this until the checkpoint
         // Required adjustment 2: `compile --workspace <other>` wrote that project's settings naming this
         // project's runner — a hook the target does not have, failing open silently. The plumbing
         // existed; the caller never used it.
-        const a = JSON.stringify(claudeCode(parse(policy()), { root: os.tmpdir() }));
+        const a = JSON.stringify(claudeCode(parse(policy()), { root: OUTSIDE_ANY_PROJECT }));
         const b = JSON.stringify(claudeCode(parse(policy()), { root: path.resolve(fileURLToPath(new URL("..", import.meta.url))) }));
         assert.notEqual(a, b, "the emitted path did not change with `root`, so `root` is being ignored");
     });

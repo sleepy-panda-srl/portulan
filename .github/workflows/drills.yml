@@ -1,0 +1,182 @@
+# The calendar: every rail this repository has is forced red and required to fire.
+#
+# Milestone 8, clause (d) — *scheduled forced-red drills: every rail forced red on a calendar and
+# required to fire.* The sweep itself is `cli/drills.mjs`; this file is only the scheduler, the same
+# split as `.portulan/gates.json` and `cli/compile.mjs`, or `.portulan/workspace.json` and
+# `verify.yml`. A team adopting Portulan on another host writes their own scheduler; the sweep is what
+# ships.
+#
+# ## Why a calendar rather than a session
+#
+# `.portulan/proposals/0007-every-watcher-ships-with-its-observation-procedure.md` asks that anything
+# whose job is to notice something ships with the procedure that demonstrates it works, *"run once and
+# its result recorded"*. Milestone 8's amendment generalises that along both axes — from one
+# demonstration at adoption to a calendar, and from watchers to every rail — for one reason: **a rail
+# that has quietly stopped firing is otherwise found by the incident rather than by the drill.**
+# Sessions 0 and 1 of this milestone ran eleven drills by hand and wrote them into their handoffs,
+# which is exactly the state this file replaces. Two sessions doing it by hand is evidence for the
+# clause, not a substitute for it.
+#
+# ## There is nothing to file, and that is the difference from `librarian.yml`
+#
+# The librarian's pass produces work for a human, so it opens a pull request. A drill sweep produces a
+# verdict, so what it produces is a **run**: green when every rail fired, red when one did not, with
+# the per-rail transcript in the job summary. Nothing here writes to the repository, which is why the
+# permissions below are the read floor and no App credential is needed — a scheduled job that cannot
+# write cannot go wrong in the expensive direction.
+#
+# ## The honest limit: a MISSING run is not detectable from here
+#
+# GitHub delays scheduled runs under load and disables schedules in a repository with no activity for
+# 60 days. So a **failed** run is loud — a red run and a notification — while a run that never
+# happened looks exactly like a quiet week. That is `0007`'s own silence problem one altitude up, and
+# it is stated here rather than left to be discovered: nothing in this repository yet notices that the
+# last drill sweep is older than it should be. Closing it needs a second mechanism — a dated register
+# in the tree with a staleness rail over it, or the librarian's own threshold pass reading one — and
+# that is tracked as issue #344 rather than built, so the gap is named here and tracked there instead of
+# implied. This line said the gap *was* filed before any issue existed, which is the capability claim
+# `.portulan/dod.md` condition 4 forbids; it now says what is true.
+#
+# ## This workflow's own observation procedure, written before the answer is known
+#
+# `0007` asks for the procedure in the order that makes it a procedure. Two triggers, two answers:
+#
+#   * **`workflow_dispatch`** becomes available the moment this file is on the default branch, and not
+#     before — GitHub offers no dispatch for a workflow that exists only on a branch. So the first
+#     observation is a manual dispatch immediately after merge, and its run id belongs in
+#     `.portulan/verify/README.md`'s register beside drill 1's.
+#   * **`schedule`** is answered by the first Thursday run and by nothing earlier. Until that run
+#     exists this calendar is **unvouched**, and its silence is not evidence — `0007`'s words.
+#
+# What is already demonstrated, and needs no CI to be true, is the sweep: all 21 rails were forced red
+# by hand on 2026-08-25 and every one fired. That transcript is in this session's handoff.
+#
+# ## No `jq`, and no `awk`
+#
+# Deliberate. `.portulan/verify/workflow-filters.sh` requires every jq and awk program a workflow runs
+# to be executed against fixtures by that recipe, and it exits 2 the moment a workflow it does not
+# cover contains one. This file has no shaping to do — `cli/drills.mjs` prints what a reader needs —
+# so it introduces no program that would owe a fixture.
+
+name: drills
+
+on:
+  schedule:
+    # Thursdays, 06:00 UTC. Weekly matches `librarian.yml`'s cadence and a different day keeps two
+    # scheduled jobs off one morning. **The cadence is the maintainer's**, exactly as the librarian's
+    # Monday is his (2026-07-28): this is the value the clause shipped with, not a policy an
+    # implementer settled. It lives here rather than in `.portulan/workspace.json` for the reason that
+    # file's sibling states — how often a host runs a job is the host's scheduler, and a cron
+    # expression in a manifest nothing reads would be configuration pretending to be policy.
+    - cron: "0 6 * * 4"
+  workflow_dispatch:
+  # And on **every** pull request. **This is not a required check** — the required contexts are
+  # `workspace-verify` and `pr-labeled` (`.portulan/compile/github-ruleset.json`), and making this one
+  # required is the maintainer's call rather than a side effect of adding a file. What it buys is timing:
+  # the commit that changes a rail is the commit that learns whether that rail still fires, instead of
+  # the next Thursday finding out. The `drills` verify recipe runs on every pull request too, and it
+  # checks the roster and the anchors rather than running any rail.
+  #
+  # **This carried a `paths:` filter and the filter was wrong.** It listed the harness and the recipes and
+  # missed most of what the drill table actually perturbs — `.claude/settings.json`, `.portulan/labels.json`,
+  # `.claude-plugin/plugin.json`, `evals/`, `README.md`, `CONTRIBUTING.md`, `.portulan/memory-index.md`,
+  # `.github/workflows/pr-labels.yml`, `verify.yml`, and the three sibling runners a drill reds. Raised by
+  # Copilot, round 1 on #343.
+  #
+  # **Replaced with a catch-all rather than completed**, which is this repository's standing repair: a
+  # hand-maintained roster whose subject grows is a carrier that fails silently, and the roster this one
+  # would need is precisely the perturbation set — derivable from `cli/drills.mjs` and from nowhere a
+  # YAML `paths:` list can read. The cost is stated rather than hidden: about ninety seconds on every
+  # pull request, against a filter that was already missing two thirds of its subject.
+  pull_request:
+
+# The read floor, declared. **Declaring `permissions` at all sets every unnamed scope to `none`** — it
+# replaces the default rather than adding to it — which is what makes this one line the whole
+# statement: this job reads the repository and can do nothing else. `librarian.yml` needed
+# `contents: write` and said so; this one needs nothing, and says that.
+permissions:
+  contents: read
+
+concurrency:
+  # Two sweeps at once would each create their own worktrees, which is safe — but a scheduled run
+  # racing a dispatched one produces two transcripts for one question. Never cancel the one already
+  # running: a cancelled sweep leaves the worktrees it had open registered until something prunes them.
+  group: drills-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  forced-red:
+    runs-on: ubuntu-latest
+    # A fork running this on its own schedule would drill its own tree, which is not wrong — but the
+    # verdict would arrive in a run list nobody here reads. Named so the skip is legible.
+    if: github.repository == 'sleepy-panda-srl/portulan'
+    steps:
+      # `fetch-depth: 0`, for two reasons that are both load-bearing here rather than cautious.
+      # `git worktree add` needs the object store to hold the commit it checks out, and the sweep
+      # creates one per rail. And the `pack-version` rail it drills asks a question about a **diff**
+      # against the merge-base with `origin/main`: the default checkout is shallow, so that rail exits
+      # 2 — could not run — and a could-not-run rail makes this whole sweep exit 2 rather than report a
+      # verdict it did not earn. `verify.yml` sets this for the second reason and says so in its own
+      # header; here the first reason applies too.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Force every rail red and require it to fire
+        shell: bash
+        run: |
+          set -uo pipefail
+          # **`set +e`, and it is load-bearing rather than tidy.** GitHub runs `shell: bash` as
+          # `bash --noprofile --norc -eo pipefail`, and `set -uo pipefail` does NOT clear the `-e` that
+          # invocation already carries — so without this line a non-zero sweep aborts the step at the
+          # `node` call itself: `rc=$?` never runs, the transcript is never printed, the summary is
+          # never written, and the 1-versus-2 translation below never happens. The job still fails, so
+          # the rail still fires; what is lost is the whole diagnostic, exactly on a red. `verify.yml`
+          # carries this same line with the same comment, and the capture-then-print shape here was
+          # copied from it without it. Measured at the pre-commit checkpoint by reproducing the step's
+          # exact invocation: the failing shape printed zero lines.
+          set +e
+
+          # No `--working-copy`. A checkout is clean, so the sweep drills `HEAD` — which on a pull
+          # request is the merge commit GitHub prepared, and that is the right tree to ask about. The
+          # sweep prints the sha it drilled on every run, green included, because a verdict about a
+          # commit that does not name the commit is not auditable.
+          #
+          # `--pack-root packs` is the pin every required check here carries, for the reason
+          # `.portulan/verify/compile.sh` states at length: a rail answers *does this tree hold its own
+          # claims*, so its answer may not move with what happens to be installed on the runner.
+          #
+          # The output is captured and then written to BOTH the log and the summary rather than piped,
+          # because a status read through a pipe is the pipe's
+          # (`.portulan/memory/an-exit-code-read-through-a-pipe-is-the-pipes.md`).
+          out="$RUNNER_TEMP/drills.txt"
+          node cli/drills.mjs --pack-root packs >"$out" 2>&1
+          rc=$?
+          cat "$out"
+          {
+            printf '### The forced-red drill sweep\n\n```\n'
+            cat "$out"
+            printf '```\n'
+          } >>"$GITHUB_STEP_SUMMARY"
+
+          # Three outcomes, kept distinguishable, the same way every recipe here keeps them: 0 every
+          # rail fired, 1 a rail did not, 2 a rail could not be judged. GitHub treats every non-zero
+          # the same, so the split buys nothing from the platform — it is for whoever reads the log,
+          # and one convention with an exception in it is not a convention.
+          case "$rc" in
+            0)
+              printf '::notice::every drilled rail was forced red and fired\n'
+              ;;
+            1)
+              printf '::error::a rail did not fire when it was forced red. It has stopped being a rail — read the transcript above\n'
+              exit 1
+              ;;
+            2)
+              printf '::error::the sweep could not judge every rail. A set that was not fully judged has not been judged — this is a failure to look, not a finding\n'
+              exit 2
+              ;;
+            *)
+              printf '::error::the sweep exited %s, which is not a verdict it documents — refusing to translate it into one\n' "$rc"
+              exit 2
+              ;;
+          esac
