@@ -95,12 +95,21 @@ test("every recorded divergence from ground truth names a record", () => {
     // The rail that stops the table absorbing a new hole silently: an entry may disagree with what
     // its position's ground truth demands only by citing where that disagreement is written down.
     for (const [key, e] of Object.entries(EXPECT)) {
-        const position = POSITIONS.find((p) => p.id === key.split("|")[0]);
+        const [positionId, kind] = key.split("|");
+        const position = POSITIONS.find((p) => p.id === positionId);
+        // **Asserted here rather than left to the totality test.** `node:test` may run tests
+        // concurrently, so leaning on a sibling case to have failed first is leaning on an ordering
+        // nothing guarantees — and the symptom would be a TypeError inside `groundFor` rather than the
+        // sentence a reader needs. The runner has the ordering (its totality check throws before this
+        // one runs); a test file does not, and copying the runner's shape without its ordering is how
+        // this survived. Reported by Copilot, round 1 on #341.
+        assert.ok(position, `EXPECT records ${key}, and POSITIONS declares no position \`${positionId}\``);
+        assert.ok(Object.keys(PAYLOADS).includes(kind), `EXPECT records ${key}, and PAYLOADS declares no kind \`${kind}\``);
         // Through `groundFor`, not `position.ground` — one production's truth is per payload kind, and
         // reading the position's field alone reported a TRUE POSITIVE as an undocumented divergence.
         // The runner was routed through `groundFor` and this test was not: one carrier corrected and
         // its sibling left, which is the class this pull request keeps meeting. Caught by the rail.
-        const ground = groundFor(position, key.split("|")[1]);
+        const ground = groundFor(position, kind);
         if (e.answer === correctFor(ground)) {
             assert.equal(e.record, undefined, `${key} agrees with ground truth and cites a record anyway`);
             continue;
@@ -158,6 +167,7 @@ test("every payload kind emits a case goldens' OWN reader accepts, not just the 
         const byRule = new Map();
         for (const kind of Object.keys(PAYLOADS)) {
             const position = POSITIONS.find((p) => p.id === "bare");
+            assert.ok(position, "the `bare` position is gone — this case is measuring nothing");
             const rand = prng(5);
             const { command } = generate(position, kind, rand);
             const { _rule, ...body } = asCase(position, kind, PAYLOADS[kind].rule, command, true, 0);
@@ -181,6 +191,7 @@ test("every payload kind emits a case goldens' OWN reader accepts, not just the 
 
 test("a finding renders as a corpus case the goldens runner would accept", () => {
     const position = POSITIONS.find((p) => p.id === "bare");
+    assert.ok(position, "the `bare` position is gone — this case is measuring nothing");
     const body = asCase(position, "shell", PAYLOADS.shell.rule, "git push --force origin main", true, 3);
     assert.ok(CLASSES.includes(body.class));
     assert.ok(PATHS.includes(body.path));

@@ -47,7 +47,14 @@ import { EFFECT, POSITIONS, groundFor, pathSpellings, prng, respell } from "./fu
 const NEUTRAL = "printf ok > portulan.marker";
 const MARKER = "portulan.marker";
 
-/** Run a script under bash in a scratch directory, and say whether the neutral payload ran. */
+/**
+ * Run a script under bash in a scratch directory and report BOTH readings of what happened:
+ * `{ ran, touched }` — see the block inside for what each one means and why one is not enough.
+ *
+ * _This said "say whether the neutral payload ran" and returned a boolean, and was left behind when
+ * the function grew its second reading — a docblock narrower than the code it describes, in the file
+ * whose subject is that class. Reported by Copilot, round 1 on #341._
+ */
 function ran(script, cwd, { exitsNonZero = false } = {}) {
     const marker = path.join(cwd, MARKER);
     fs.rmSync(marker, { force: true });
