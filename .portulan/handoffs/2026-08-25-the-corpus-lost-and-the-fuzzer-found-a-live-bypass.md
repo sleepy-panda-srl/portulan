@@ -233,7 +233,36 @@ introduced, which is the ground session 0 took its own round 3 on — but sessio
 bypass and this is a repeated scan with correctness unaffected. Flagged to the maintainer with the fix
 offered if he wants the round spent, never assumed.
 
-**So the bound held at two fix-rounds**, which is the first time in this milestone it has.
+**Round 4 — the same finding promoted to an inline thread, and one suppressed note that is the
+session's fourth instance of one class.**
+
+The thread is #339's finding, arriving on the inline channel after arriving as a note. Answered
+*there* rather than only in the pull-request comment, because *an answer lands on the thread that
+raised it*.
+
+The note: `.portulan/verify/README.md` still hard-coded *"eleven separate breakages"*. **Round 2's
+repair was supposed to BE the class-wide sweep**, and the reason it missed this site is worth more
+than the fix — my grep searched for census SIZES (`48`, `53`, `224`, `forty-eight`), and this sentence
+carries a bare *eleven* with no denominator near it. **So the sweep for the class was itself scoped to
+the spelling that had been quoted**, which is the same defect one altitude up, inside the repair for
+it. Fourth instance this session; second incomplete sweep.
+
+Re-swept by **word form** over every file this branch touches rather than by digit. Nothing else is
+live: what remains is the handoff's explicitly dated first-run figures and a fixed count of checkpoint
+adjustments, neither of which can grow. The number is deleted rather than corrected.
+
+**So the bound held at two fix-rounds**, which is the first time in this milestone it has. Rounds 3
+and 4 were a triage and a records correction under rule 2 — neither is a fix-round, and both are
+flagged as such rather than counted quietly.
+
+**The count class, tallied once, here.** Four instances in one session: the handoff (caught by the
+pre-commit checkpoint), `evals/README.md` (round 2), `.portulan/verify/README.md` (round 4), and the
+`nineteen of thirty-two` code comments (swept with round 4's re-sweep). The first repair stopped at
+the site; the second claimed to be the class and was scoped by its own grep; the third is by word form
+and deletes rather than corrects. **Session 0 recorded this class five times and I read that record
+before starting.** Reading it was not enough, which is the honest finding: what would have worked is a
+rail, and there is none — `docs.sh` checks that the Session log entry fits its budget and carries a
+seam attestation, and nothing anywhere checks whether a number in prose is still true.
 
 _Board note, since the memory record says to verify an add by re-listing: the GraphQL mutation returned
 a usable item id, and the **first** re-list did not show the item while a second one moments later did,
