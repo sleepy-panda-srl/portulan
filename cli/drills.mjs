@@ -208,7 +208,10 @@ export const NOT_DRILLED = [
  * visible and says so.
  */
 export const DRILLS = [
-    // ------------------------------------------------------------------ the eighteen yielded recipes
+    // ------------------------------------------------------------------------- the yielded recipes
+    // (Including the composed one at the end of this section. This read *the eighteen yielded recipes*,
+    // which was both a count in prose and wrong — the section holds the workspace's own plus the pack's.
+    // The number has one carrier and it is the runner. Copilot, round 2's notes.)
     {
         rail: "docs",
         perturb: {
@@ -1169,7 +1172,13 @@ export async function run(argv = [], { stdout = process.stdout, stderr = process
                     "path inside the tree being drilled. Pass a workspace inside the repository, or use --check",
             );
         }
-        const workspaceRel = path.relative(repoRoot, workspaceDir);
+        // **An empty relative path means *the repository root itself*, and the hooks read it as absent.**
+        // `PORTULAN_WORKSPACE=""` falls through `process.env.PORTULAN_WORKSPACE || ".portulan"` in both
+        // runners, so a workspace at the repo root would have silently drilled `.portulan` instead — a
+        // rail graded against a policy the run did not choose, which is the defect the threading was
+        // added to close, surviving in its own edge case. `.` is the spelling that says *here*. Copilot,
+        // round 2's notes.
+        const workspaceRel = path.relative(repoRoot, workspaceDir) || ".";
 
         // **A malformed roster is reported here, not met as a throw inside the loop.** `check` had already
         // recorded a drill naming an undeclared rail as a finding, and the sweep then walked into the

@@ -457,3 +457,27 @@ stack trace instead of a sentence. Guarded, with a case._
 
 **Two fix-rounds spent. The bound is met**, and going past it is the maintainer's to grant rather than
 mine to assume.
+
+## Round 2's notes — nine re-promotions and two live items, both taken
+
+Eleven notes across three review objects, and **nine were findings already fixed** at a head the review
+had not read: the path filter, the workspace threading, the roster findings before the sweep, and the
+`gate`/`stop-gate` collision. Two were live and both are correctness:
+
+- **A count in a comment, in the file whose own subject is carriers that go stale.** My section header
+  read *"the eighteen yielded recipes"* over a section that includes the composed pack's rail — so it was
+  both a count in prose and wrong. Deleted rather than corrected: the number has one carrier and it is
+  the runner. **Fifth instance of this class across the three sessions of this milestone**, and the first
+  one I wrote inside the change that deletes four others.
+- **An empty relative path is the repository root, and the hooks read it as absent.** `workspaceRel` was
+  `path.relative(repoRoot, workspaceDir)`, which is `""` when the workspace *is* the root — and
+  `PORTULAN_WORKSPACE=""` falls through `process.env.PORTULAN_WORKSPACE || ".portulan"` in both runners.
+  So a workspace at the repository root would have silently drilled `.portulan` instead: a rail graded
+  against a policy the run did not choose, which is the exact defect the threading was added to close,
+  surviving in its own edge case. `.` is the spelling that says *here*.
+
+**Both are past the two-round bound and both are flagged rather than assumed.** The first is rule 2 —
+*records land last*, a false sentence in this change's own file. The second is a mechanism defect and the
+unaddressed half of a finding I had answered, which is the ground session 0 took its rounds 3, 5 and 9
+on: a sibling of a defect this change introduced. The maintainer can overrule either; what would have
+been wrong is triaging a silent wrong-workspace drill out to an issue to protect a round count.

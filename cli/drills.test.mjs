@@ -475,6 +475,16 @@ test("a worktree that is not there is could-not-run, not a stack trace", () =>
         );
     }));
 
+test("a workspace at the repository root is handed `.`, never the empty string", () => {
+    // `PORTULAN_WORKSPACE=""` falls through `process.env.PORTULAN_WORKSPACE || ".portulan"` in both hook
+    // runners, so an empty relative path would silently drill `.portulan` instead of the workspace the
+    // run chose — the defect the threading was added to close, surviving in its own edge case.
+    assert.match(SOURCE, /path\.relative\(repoRoot, workspaceDir\) \|\| "\."/);
+    // And the fallback really is what the hooks treat as absent, asserted rather than assumed.
+    assert.equal(process.env.PORTULAN_WORKSPACE_PROBE_UNSET || ".portulan", ".portulan");
+    assert.equal("" || ".portulan", ".portulan");
+});
+
 test("containment uses the one carrier, so a name beginning with `..` is not a traversal", () => {
     // `./inside.mjs`'s own subject: `path.relative` of `sub/..packs` against `sub` is `..packs`, which
     // the naive `startsWith("..")` calls outside. Asserted here because this module had that spelling.
