@@ -215,8 +215,31 @@ exact figure in this handoff, I fixed it *there*, and the repair stopped at the 
 prose carrier of a census, corpus or grammar figure is now deleted in favour of the runner that prints
 it, or explicitly dated as a first-run measurement.
 
-**The bound is met at two rounds.** Both were mechanism or a false sentence rather than preference, so
-both were answered. A third is the maintainer's to grant, flagged and not assumed.
+**Round 3 — one suppressed note, real, and triaged rather than answered.** `matchesRule`'s shell branch
+segments the raw command **twice**: `reach` is applied to every spelling, the raw command is always the
+first spelling, so `commandSegments(input.command)` runs inside `reach` and again in the second arm.
+Before this change the second arm reused a hoisted `segments`. A regression this change introduced, in
+a function that runs on every Bash tool call.
+
+Filed as [#339](https://github.com/sleepy-panda-srl/portulan/issues/339), on the board at **Next**,
+carrying the worked repair — a **memoisation** rather than a hoist, because `reach` also runs on the
+unwrapped spelling and `spellings()` trims, so an `s === input.command` identity check would silently
+miss the raw arm — and the verification the fix must carry, including that the
+`matchesRule-shell-stops-segmenting-a-spelling` operator must stay killed or the optimisation has
+reverted the repair it is optimising.
+
+**The sibling exemption would have applied and was declined on severity.** It is a defect this change
+introduced, which is the ground session 0 took its own round 3 on — but session 0's was a live gate
+bypass and this is a repeated scan with correctness unaffected. Flagged to the maintainer with the fix
+offered if he wants the round spent, never assumed.
+
+**So the bound held at two fix-rounds**, which is the first time in this milestone it has.
+
+_Board note, since the memory record says to verify an add by re-listing: the GraphQL mutation returned
+a usable item id, and the **first** re-list did not show the item while a second one moments later did,
+with `Priority: Next` and `Status: Todo` confirmed through the item's own node. The re-list is briefly
+stale, so a single negative re-list is not evidence either — which is one more turn of the same screw
+that record already describes about `item-add`'s exit code._
 
 ## One process defect of my own
 
@@ -240,6 +263,8 @@ author of a review reply. Whether that deserves one is the maintainer's call rat
 - **#337** is untouched. What `./` should mean is a policy question with three defensible answers and
   the maintainer has not ruled. The fuzzer meets it as recorded hole 8 and two new corpus cases pin
   the discrimination between its candidate repairs.
+- **#339** — the double segmentation this change introduced. Filed, not fixed; see the review loop
+  above for why, and the issue for the repair.
 - **No gate rule, no tier, no `gates.json` change.**
 - **Row 8's Sessions cell is untouched at 1–2** against nine clauses. The maintainer said the budget
   will increase and gave no number; a budget an implementer picks for itself is not a budget.
