@@ -1300,7 +1300,9 @@ describe("the shared matcher", () => {
         // round 2 on #342.
         // **The reachability this comment used to claim — "which made the constitution reachable by
         // editing the file on Windows" — is retired.** Measured 2026-08-25 on bash 3.2.57, 5.2.15 and
-        // 5.2.37, plus zsh 5.9 and sh: none of them joins the pair, so **both** assertions below pin a
+        // 5.2.37, plus zsh 5.9 and the measured host's `/bin/sh` — bash 3.2.57 in POSIX mode there, and
+        // NOT the `dash`/`busybox` families, which were not measured. None joins the pair, so **both**
+        // assertions below pin a
         // FALSE RED rather than a closed hole. They stay asserted because the matcher still answers
         // that way, and whether to change it is the question
         // `../.portulan/proposals/0031-a-continuation-no-shell-joins.md` puts to the maintainer; the
