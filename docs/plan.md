@@ -2484,9 +2484,9 @@ _The seam applies here too: no client-identifying references._
 - 2026-08-25 · M8 (Evals & telemetry) — **a leftover from sessions 0–1; no clause, no row move** ·
   **The CRLF reachability claim is settled by measurement; the matcher is untouched.** `shellWords` joins `\`+CRLF on a 2026-07-28 sentence calling `cp /tmp/x
   \<CRLF>docs/vision.md` *"the constitution, reachable by editing the file on Windows"*. **Measured on bash
-  3.2.57, 5.2.15 and 5.2.37, plus zsh 5.9 and sh — none joins the pair**, always on a neutral target: write-named
-  is a false red on every shell measured, while the write-redirect true positive and the `>>` refusal reproduce on
-  both bash 5.2 builds. Removal is **fail-open on a gate matcher** — asked at
+  3.2.57, 5.2.15 and 5.2.37, plus zsh 5.9 and the host's `/bin/sh` — bash there, not `dash`/`busybox` — none joins
+  the pair**, always on a neutral target: write-named is a false red on every shell measured, while the
+  write-redirect true positive and the `>>` refusal reproduce on both bash 5.2 builds. Removal is **fail-open on a gate matcher** — asked at
   [`0031`](../.portulan/proposals/0031-a-continuation-no-shell-joins.md), **not taken**; the retired sentence is
   replaced by the measurement in all three carriers, the third found by the supervisor. Row 8 unmoved. All nineteen
   green — `docs` 5c red until this branch's second commit gave `0031` its PR URL; seam scan clean over every
