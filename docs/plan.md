@@ -2447,4 +2447,4 @@ _The seam applies here too: no client-identifying references._
   lookup, so the clobber shapes **truncate the target to zero bytes** and the matcher denying them is a
   TRUE POSITIVE. Ground truth is per payload kind now, and the harness reads *touched* as well as *ran*.
   **Row 8's Sessions cell reads `1 per clause`.** Every yielded recipe green; seam scan clean over every
-  path the diff touches · Handoff: [`2026-08-25-b`](../.portulan/handoffs/2026-08-25-b-bash-does-not-join-a-crlf-and-the-budget-became-a-rule.md).
+  path the diff touches · [#341](https://github.com/sleepy-panda-srl/portulan/pull/341) · Handoff: [`2026-08-25-b`](../.portulan/handoffs/2026-08-25-b-bash-does-not-join-a-crlf-and-the-budget-became-a-rule.md).
