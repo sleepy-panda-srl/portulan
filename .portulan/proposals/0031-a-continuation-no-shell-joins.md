@@ -96,8 +96,9 @@ spelling, and saying it did was the overclaim. **A real LF continuation still jo
 above this one is untouched. _(Copilot, rounds 2 and 3 on #342.)_
 
 The table's moving rows carry probe **shapes**, not recorded cells, and the difference matters to
-whoever carries the removal out — the write-named row alone stands for three shapes. **Measured by deleting both carriers in a scratch clone and
-running the recipes, the removal moves four surfaces:**
+whoever carries the removal out — the write-named row alone stands for three shapes.
+
+**Measured by deleting both carriers in a scratch clone and running the recipes, the removal moves four surfaces:**
 
 1. `fuzz-shell` — the `crlf-continuation-in-the-payload|write-named` cell's recorded divergence
    **closes**. Good news, and a red until `EXPECT` and the record it cites are updated.
