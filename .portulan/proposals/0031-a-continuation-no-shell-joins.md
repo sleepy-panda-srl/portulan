@@ -168,4 +168,4 @@ proposal; no client material, so no seal is needed.
 
 _Undecided. The maintainer's, as a change to a compiled gate matcher in the fail-open direction._
 
-**Pull request:** PENDING — filled in from `gh pr create` before this branch merges.
+**Pull request:** [#342](https://github.com/sleepy-panda-srl/portulan/pull/342) — the change that filed this.
