@@ -127,6 +127,28 @@ outward: the branch is Auto-tier, the pull request opened after the verdict was 
 checkpoint graded the correction. But the tier says who must attend an action and the table says what
 is owed before it, and I acted on the first while owing the second.
 
+## The review loop on #341, and a habit I have now met three times
+
+**Round 1 — two findings, both real, both this change's own class.**
+
+The EXPECT-record test looked a position up and used it unguarded, so a key naming a position that
+does not exist would throw a `TypeError` inside `groundFor` rather than saying so. It leaned on the
+totality test having failed first, and `node:test` may run cases concurrently. **The runner genuinely
+has that ordering and the test copied its shape without it** — which is how it survived. Guarded, with
+both other position lookups in the file swept alongside rather than only the one reported.
+
+`ran()`'s docblock still described the boolean it used to return, one commit after it grew a second
+reading. A docblock narrower than the code, in the file whose subject is that class.
+
+**And I wrote a commit sha into both replies before the commit existed** — quoted `bfd88f8`, landed
+`ad4eb5d`. **Third time in two sessions**, after doing exactly this on #338 and correcting it there.
+Both comments corrected in place with the retired sha named.
+
+The durable repair is not vigilance, which has now failed three times. It is an ordering: **commit
+first, read the sha back, then write the message.** Recorded here because it is a habit rather than an
+accident, and because a wrong sha in a review record sends the next reader to an object that does not
+resolve.
+
 ## The budget stopped being a number
 
 The Sessions cell read `1–2` against nine clauses since before four of them existed. The maintainer's
