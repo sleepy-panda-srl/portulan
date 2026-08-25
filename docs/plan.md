@@ -2435,4 +2435,5 @@ _The seam applies here too: no client-identifying references._
   and every breakage it missed is a fixture now. **The fuzzer also found a live bypass of every Gated
   shell action** — one wrapper plus one separator — closed at the class; hole 2 amended, unwrap budget
   still one level. Seven of nine clauses remain. Every yielded recipe green; seam scan clean over every
-  path the diff touches · **Fable 5 fresh ×2, both APPROVE-WITH-ADJUSTMENTS, all folded** · Handoff: [`2026-08-25`](../.portulan/handoffs/2026-08-25-the-corpus-lost-and-the-fuzzer-found-a-live-bypass.md).
+  path the diff touches · **Fable 5 fresh ×2, both APPROVE-WITH-ADJUSTMENTS, all folded** ·
+  [#338](https://github.com/sleepy-panda-srl/portulan/pull/338) · Handoff: [`2026-08-25`](../.portulan/handoffs/2026-08-25-the-corpus-lost-and-the-fuzzer-found-a-live-bypass.md).
