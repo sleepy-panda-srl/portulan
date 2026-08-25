@@ -75,6 +75,14 @@ function ran(script, cwd, { exitsNonZero = false } = {}) {
     // a command and is not found. There the non-zero exit IS the measurement rather than a failure of
     // it. Everywhere else a failed script measures nothing about where the payload sat, and letting
     // that pass would certify a data position because the script was broken.
+    // **A run with no exit STATUS is could-not-measure, whichever branch follows.** `spawnSync` reports
+    // `status: null` when the child is killed by a signal — a timeout, an OOM — and `null !== 0`, so the
+    // `exitsNonZero` branch below accepted a killed run as a deliberate non-zero exit. That is a
+    // could-not-measure read as a measurement, which is this file's own subject arriving in the guard
+    // that was added to stop it. Checked before either branch so neither can inherit it. Reported as a
+    // suppressed note by Copilot, round 3 on #341.
+    assert.equal(result.signal, null, `bash was killed by ${result.signal} running ${JSON.stringify(script)} — nothing was measured`);
+    assert.equal(typeof result.status, "number", `bash produced no exit status running ${JSON.stringify(script)} — nothing was measured`);
     if (!exitsNonZero) {
         assert.equal(
             result.status,
@@ -220,7 +228,12 @@ test("a respelt word survives a wrapper, so a composed spelling still means what
                 fs.rmSync(marker, { force: true });
                 const script = position.build(`printf ok > ${word}`);
                 const result = spawnSync("bash", ["-c", script], { cwd: dir, encoding: "utf8", timeout: 10_000, env: { PATH: process.env.PATH ?? "" } });
-                assert.equal(result.status, 0, `bash refused ${JSON.stringify(script)}: ${result.stderr}`);
+                // Signal first, for the reason `ran` gives: `status` is `null` on a killed child and
+                // every comparison against it then reads as something other than what happened.
+                assert.equal(result.signal, null, `bash was killed by ${result.signal} running ${JSON.stringify(script)} — nothing was measured`);
+                // Signal first — see `ran`.
+            assert.equal(result.signal, null, `bash was killed by ${result.signal} running ${JSON.stringify(script)} — nothing was measured`);
+            assert.equal(result.status, 0, `bash refused ${JSON.stringify(script)}: ${result.stderr}`);
                 assert.ok(
                     fs.existsSync(marker) && fs.readFileSync(marker, "utf8") === "ok",
                     `the respelling ${JSON.stringify(word)} stopped naming the marker inside \`${position.id}\` — ` +
