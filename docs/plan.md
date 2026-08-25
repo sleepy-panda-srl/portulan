@@ -2509,5 +2509,5 @@ _The seam applies here too: no client-identifying references._
   `commit_id` **drifts** onto a later head, `original_commit_id` being the sha judged. No gate changed;
   `copilot-review.yml` already paginates. #298–#300 re-measured **n=11, 94–422s** (upper bounds),
   superseding what [`2026-08-25-d`](../.portulan/handoffs/2026-08-25-d-the-consolidation-that-first-made-the-file-bigger.md) retired. Every yielded recipe green; seam scan clean over every path the diff
-  touches · **Fable 5 fresh: APPROVE-WITH-ADJUSTMENTS, its Defect 1 withdrawn on evidence** · Handoff:
+  touches · **Fable 5 fresh: APPROVE-WITH-ADJUSTMENTS, its Defect 1 withdrawn on evidence** · [#351](https://github.com/sleepy-panda-srl/portulan/pull/351) · Handoff:
   [`2026-08-25-g`](../.portulan/handoffs/2026-08-25-g-the-round-was-never-missing-the-page-was.md).
