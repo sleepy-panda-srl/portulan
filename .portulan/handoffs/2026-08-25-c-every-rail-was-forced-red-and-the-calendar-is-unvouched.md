@@ -186,7 +186,13 @@ layout**; on `ubuntu-latest` the paths agree and it fails. A test whose verdict 
 testing the host. So the local sweep could not have found this, and the run that did is the one the
 `pull_request` trigger exists for.
 
-**Repaired at the intent rather than routed around.** Moving the drill worktree out of the temp directory
+****And the repaired sweep then ran green on `ubuntu-latest`: 21 of 21, run
+[`32869280031`](https://github.com/sleepy-panda-srl/portulan/actions/runs/32869280031) at `967e056`, after
+[`32868326592`](https://github.com/sleepy-panda-srl/portulan/actions/runs/32868326592) failed at `a444025`.**
+So the sweep is demonstrated on a runner as well as at a desk. The **schedule** is still answered by
+nothing: a pull-request run says the sweep works on `ubuntu-latest` and says nothing about Thursdays.
+
+Repaired at the intent rather than routed around.** Moving the drill worktree out of the temp directory
 would have hidden it; naming the root directly — a subdirectory of the temp directory, which cannot
 contain a sibling of itself — makes the case hold wherever the checkout sits. Both sites in that describe
 block are swept, not the one that failed. Verified by running that suite inside a drill-shaped worktree

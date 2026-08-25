@@ -898,13 +898,27 @@ sweep be noticed is **not built**: that is `0007`'s silence problem one altitude
 [#344](https://github.com/sleepy-panda-srl/portulan/issues/344), and until it exists a quiet week and a
 disabled schedule look the same.
 
-**The sweep is demonstrated and the calendar is not, and the two must not be read as one.** All
-twenty-one rails were forced red **by hand** on 2026-08-25, on a synthesized commit from the session's own
-working copy, and every one fired with its recorded exit and its own message — that transcript is in
+**The sweep is demonstrated — locally and now in CI — and the calendar is still not, and the three must
+not be read as one.** All twenty-one rails were forced red **by hand** on 2026-08-25, on a synthesized
+commit from the session's own working copy, and every one fired with its recorded exit and its own
+message — that transcript is in
 [the session's handoff](../handoffs/2026-08-25-c-every-rail-was-forced-red-and-the-calendar-is-unvouched.md).
-What that does **not** establish is anything about CI conditions: a clean checkout on `ubuntu-latest`
-differs from a working copy on a maintainer's machine in exactly the three ways this page already
-documents below. The per-recipe CI half begins when the calendar first fires, not when it merges.
+
+**And it then ran on `ubuntu-latest`, which is the half the hand run could not establish:**
+
+| Run | Head | Result |
+|---|---|---|
+| [`32868326592`](https://github.com/sleepy-panda-srl/portulan/actions/runs/32868326592) | `a444025` | **failure** — 20 of 21 fired and `tests` came back UNJUDGED, its control red on the runner |
+| [`32869280031`](https://github.com/sleepy-panda-srl/portulan/actions/runs/32869280031) | `967e056` | **success** — 21 of 21, after the premise behind that control was repaired |
+
+The first of those is the more useful entry. A case in `cli/compile.test.mjs` had encoded *this
+repository is not checked out inside the OS temp directory* as a premise, which a drill worktree
+falsifies — and it passed on macOS **by accident of `/var` being a symlink to `/private/var`**, so only a
+Linux runner could find it. That is what the `pull_request` trigger buys, on its first run.
+
+**What none of it establishes is the SCHEDULE.** A dispatched or pull-request run says the sweep works on
+a runner; it says nothing about whether the calendar fires on a Thursday, which is answered by the first
+Thursday and by nothing earlier.
 
 **Two entries of the old register are worth keeping, because they are evidence the exclusions lean on.**
 `docs` fired incidentally in CI on 2026-07-28 and `tests` was drilled in CI on 2026-07-30 — drill 1 above,
