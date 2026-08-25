@@ -43,15 +43,19 @@ The constraint itself needs no incident: the constitution is never written by an
 Removing it is **fail-open on the matcher guarding the constitution**, which the gate map names as the
 case to scrutinise hardest — so it is the maintainer's, and `0031` asks it rather than taking it.
 
-The proposal carries the cost measured rather than argued. A differential against a **copy** of
-`compile.mjs` with the branch deleted moves **one recorded fuzz cell** —
-`crlf-continuation-in-the-payload|write-named`, `true` → `false` — and regresses **one gate-corpus
-fixture**, `a-CRLF-continuation` in
-[`edit-the-constitution.json`](../../evals/goldens/gates/edit-the-constitution.json). Those two and
-nothing else. **An earlier draft of this paragraph said "three cells and nothing else"**: three was the
-probe table's row count borrowed into the file's own cell vocabulary, and the fixture was left out of a
-sentence that also claimed to be exhaustive — the pre-commit checkpoint measured both. The **true
-positive survives the removal**, because a redirection is
+The proposal carries the cost measured rather than argued — **at the third attempt, and the first two
+are the lesson.** Deleting both carriers in a scratch clone and running the recipes moves **four**
+surfaces: the `crlf-continuation-in-the-payload|write-named` fuzz cell (divergence closes), the
+`a-CRLF-continuation` goldens fixture (regresses), **two direct assertions in `cli/compile.test.mjs`**,
+and `mutants` refusing with exit 2 over the corpus the second reddened.
+
+**I wrote an exhaustive claim three times and measured it once.** The first draft said "three cells and
+nothing else" — three was the probe table's row count borrowed into the file's own cell vocabulary, and
+the goldens fixture was missing; the pre-commit checkpoint caught that and I corrected it to "those two
+and nothing else", which was still a sentence I had reasoned to rather than run. Copilot's first round
+on #342 named the test surface, and running the deletion found the fourth as well. **A claim of
+exhaustiveness is the one kind that cannot be reviewed by reading** — in a change whose whole subject is
+a claim nobody measured. The **true positive survives the removal**, because a redirection is
 recognised off the segment's raw text rather than off a joined word, and a real LF continuation still
 joins. So the honest statement is that removal costs nothing measurable *on the shells measured*, and
 the gap sits precisely where the retired claim pointed: **no Windows-side bash** — git-bash, MSYS2,
@@ -80,14 +84,37 @@ what the comments now say: the rail measures **one host's bash per run**, and **
 runs anywhere in this repository's CI**. The containers are a record, not a recipe — a recipe that
 pulled an image would be a network call in CI.
 
+## Copilot round 1 on #342 — five findings, four real, one refused by measurement
+
+Seven gating threads, six distinct findings; the repository's own promotion step turned all five
+suppressed notes into threads, so the notes-only channel gated here rather than being a batched reply.
+
+- **The exhaustive-cost claim missed the test surface** — raised on three threads. Real, and it made
+  me run the deletion instead of reasoning about it, which found a fourth surface Copilot had not
+  named. Above.
+- **The `commandSegments` sibling comment said "the same false red"** and that carrier records none:
+  it supplies the SHELL matcher, whose CRLF cell answers `false`, the correct negative. Real; the
+  comment now says which cell is which.
+- **"bash splits, `cp` never runs"** — inaccurate. The pair is inserted after the head, so `cp` DOES
+  run on the first fragment and fails on a malformed `\r` argument; what never runs is the intended
+  write. Real; reworded at the cell.
+- **The PR-URL placeholder** — already fixed by this branch's second commit before the round landed.
+- **REFUSED, on measurement: "the two assertions are not both false reds".** Copilot read
+  `echo x > \<CRLF>docs/vision.md` as the write-redirect shape the fuzzer records as a true positive.
+  It is not, and **where the pair sits decides it**: after the operator the escaped `\r` becomes the
+  redirect's target, so bash writes a file named `\r` and the constitution is untouched — exit 126,
+  target byte-for-byte unchanged on bash 3.2.57 and 5.2.15. The truncating shape puts the pair
+  *before* the operator. Two different strings. The refusal is folded as a clarification rather than
+  only argued, because a reviewer making that reading once means the next one can.
+
 ## What the next session should know
 
 - **`0031` is open and blocks nothing.** The matcher behaves today exactly as it did at `2054740`.
-- **If it is accepted, the removal is its own review and carries two records with it**: the
-  `write-named` EXPECT `answer` flips to `false` and its `record` dies with the divergence it
-  licensed, and the `a-CRLF-continuation` fixture in
-  [`edit-the-constitution.json`](../../evals/goldens/gates/edit-the-constitution.json) regresses.
-  Moving either in the good-news direction is still a red until the record is updated — by design.
+- **If it is accepted, the removal is its own review and carries all four surfaces with it** — the
+  `write-named` EXPECT cell, the `a-CRLF-continuation` goldens fixture, the two `compile.test.mjs`
+  assertions, and `mutants`, which is unblocked by the fixture rather than by an edit of its own.
+  Moving a recorded cell in the good-news direction is still a red until the record is updated — by
+  design.
 - **If it is kept, the Windows gap needs managing rather than noting.**
   [`a-recorded-limit-is-not-a-managed-limit`](../memory/a-recorded-limit-is-not-a-managed-limit.md)
   says a record is not management: an issue, a rail, or an explicit permanent-by-design ruling.
