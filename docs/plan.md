@@ -2500,3 +2500,14 @@ _The seam applies here too: no client-identifying references._
   `requested_reviewers` establishes nothing** — a nonexistent login is accepted too — so `copilot-review.yml`'s
   `sent` arm names a cause it has not established ([#348](https://github.com/sleepy-panda-srl/portulan/issues/348)); `--pack-root`'s cwd relativity spans eight tools ([#347](https://github.com/sleepy-panda-srl/portulan/issues/347)).
   Six of nine remain. Every yielded recipe green; seam scan clean over every path the diff touches · Handoff: [`2026-08-25-f`](../.portulan/handoffs/2026-08-25-f-the-dispatch-half-is-observed-and-a-200-is-not-a-request.md).
+
+- 2026-08-25 · Memory-store session (no milestone row moves) · **The round was never missing, the page
+  was.** A dictated fact — *a round arrived with no review object; poll `/comments` instead* — was
+  **refuted and recorded corrected**: review `5021974869` existed on head `ddae9fa7`, and the cause is
+  **pagination** — 74 of #342's 81 reviews are our own replies-as-reviews, so an unpaginated `/reviews`
+  never reaches the round, and the remedy was wrong too (`/comments` ran 88 long). New: a comment's
+  `commit_id` **drifts** onto a later head, `original_commit_id` being the sha judged. No gate changed;
+  `copilot-review.yml` already paginates. #298–#300 re-measured **n=11, 94–422s** (upper bounds),
+  superseding what [`2026-08-25-d`](../.portulan/handoffs/2026-08-25-d-the-consolidation-that-first-made-the-file-bigger.md) retired. Every yielded recipe green; seam scan clean over every path the diff
+  touches · **Fable 5 fresh: APPROVE-WITH-ADJUSTMENTS, its Defect 1 withdrawn on evidence** · [#351](https://github.com/sleepy-panda-srl/portulan/pull/351) · Handoff:
+  [`2026-08-25-g`](../.portulan/handoffs/2026-08-25-g-the-round-was-never-missing-the-page-was.md).
