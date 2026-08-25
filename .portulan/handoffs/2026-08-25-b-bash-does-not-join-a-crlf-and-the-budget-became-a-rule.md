@@ -111,6 +111,13 @@ Both are folded. Routing the runner through `groundFor` and leaving the *suite* 
 `position.ground` then reddened `tests` — one carrier corrected and its sibling left, inside the fix
 for a finding about exactly that. Caught by the rail rather than by me.
 
+**Second pass: APPROVE-WITH-ADJUSTMENTS, two adjustments, and both were the same residual.** Two
+`position.ground` reads survived the routing — one in the finding-reporter's own CLOSED headline, one
+line below a sibling I had just corrected, and one in the ground test's wrapper filter. Neither could
+produce a wrong answer under today's grammar, which is exactly why they survived: **the class this
+change is about is a claim that is right by accident, and a reader who copies either line inherits the
+accident.** Both routed now, and the file has no direct read of the position-level field left.
+
 **And I committed before the verdict arrived.** I dispatched the checkpoint, kept working, and
 committed `a51aa03` while it was still running — out of order under the gate map's checkpoint table,
 which is the breach [`proposals/0024`](../proposals/0024-a-tier-says-who-attends-a-checkpoint-says-what-is-owed.md)

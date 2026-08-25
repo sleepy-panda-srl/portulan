@@ -812,7 +812,7 @@ export function run(argv = [], { stdout = process.stdout, stderr = process.stder
                 const groundWanted = correctFor(groundFor(f.position, f.kind));
                 const headline =
                     f.actual === groundWanted
-                        ? `the recorded divergence at \`${f.position.id}\` (${f.kind}) has CLOSED — the matcher now answers ${f.actual}, which is what a ${f.position.ground} position demands. That is good news and the record must absorb it: update EXPECT, and update the record it cites`
+                        ? `the recorded divergence at \`${f.position.id}\` (${f.kind}) has CLOSED — the matcher now answers ${f.actual}, which is what a ${groundFor(f.position, f.kind)} position demands for this payload. That is good news and the record must absorb it: update EXPECT, and update the record it cites`
                         : f.actual
                           ? `FALSE RED: a spelling in the \`${f.position.id}\` (${f.kind}) cell answers true where the cell records ${f.expected}. Bash does not run the payload here`
                           : `GATE BYPASS: a spelling in the \`${f.position.id}\` (${f.kind}) cell answers false where the cell records ${f.expected}. Bash DOES run the payload here`;

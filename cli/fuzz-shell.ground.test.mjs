@@ -183,7 +183,11 @@ test("a respelt word survives a wrapper, so a composed spelling still means what
     // production, by checking that the marker file still lands under its unquoted name.
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), "portulan-wrapquote-"));
     try {
-        const wrappers = POSITIONS.filter((p) => p.id.includes("wrapper") && p.ground === "command");
+        // Through `groundFor`, not `p.ground`. No wrapper carries a per-kind override today and this
+        // filter only selects which positions to respell rather than grading an answer — but a second
+        // literal read of the position-level field is how the first one survived, and one that would
+        // silently misclassify a future wrapper is not worth keeping for a shorter line.
+        const wrappers = POSITIONS.filter((p) => p.id.includes("wrapper") && Object.keys(EFFECT).every((k) => groundFor(p, k) === "command"));
         assert.ok(wrappers.length >= 3, `expected several wrapper productions, found ${wrappers.length}`);
         // **Drawn from `respell` itself, not hand-picked.** The hand-picked five were a sample of the
         // generator's space and a reviewer asked the sharper question: `respell` can introduce `"`,
