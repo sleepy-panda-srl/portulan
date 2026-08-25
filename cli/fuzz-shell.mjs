@@ -300,13 +300,25 @@ export const POSITIONS = [
     // ------------------------------------------------------------------------------------------
     // **A CRLF continuation, which is NOT a continuation.** `shellWords` consumes `\r\n` after a
     // backslash as a pair and joins the word; three shells on this machine — bash 3.2.57, zsh and
-    // sh — do not, and split the command instead. So the payload as written never takes effect and
-    // the matcher answers `true` anyway: a FALSE RED, fail-closed, and a divergence that had no
-    // recorded cell until this production existed.
+    // sh — do not, and split the command instead.
     //
-    // It is `ground: "data"` in the operational sense this axis means — the payload, as written, does
-    // not take effect. Something else runs in its place and fails, which is why the production
-    // declares `exitsNonZero`.
+    // **What follows from that is NOT one answer, and an earlier draft of this very comment said it
+    // was.** It read "the matcher answers `true` anyway: a FALSE RED", which is right for one payload
+    // and wrong for another:
+    //
+    //   - `shell` — nothing gated runs. The matcher answers `false`. Correct.
+    //   - `write-named` — `cp` never runs and the target is untouched. The matcher answers `true`.
+    //     A false red, fail-closed, and the only one of the three.
+    //   - `write-redirect` — a shell applies a redirection BEFORE it looks the command up, so the
+    //     clobbering redirection on the surviving fragment still fires and TRUNCATES the target to
+    //     zero bytes. The matcher answering `true` is a **true positive**. Measured.
+    //
+    // So the ground truth here is a property of the payload rather than of the position, which is why
+    // `groundByKind` exists and why this is the only production that uses it. `exitsNonZero` is
+    // declared because the fragment left over by the split is run as a command and is not found.
+    //
+    // _The stale sentence survived the correction of the three cells below it — one carrier fixed and
+    // its sibling left, in the block whose subject is that class. Reported by Copilot, round 2 on #341._
     {
         id: "crlf-continuation-in-the-payload",
         ground: "data",
