@@ -23,8 +23,10 @@ by measurement, and the matcher is unchanged.**
 
 Five shells, a neutral target path, and the exact strings the fuzzer's production builds: **bash
 3.2.57** (arm64-apple-darwin25), **bash 5.2.15** (aarch64-unknown-linux-gnu, `debian:bookworm-slim`),
-**bash 5.2.37** (x86_64-pc-linux-gnu, `node:26`), **zsh 5.9**, and **`/bin/sh`**. Images were already
-present locally; nothing was pulled.
+**bash 5.2.37** (x86_64-pc-linux-gnu, `node:26`), **zsh 5.9**, and **the measured host's `/bin/sh`** —
+which on that macOS host is bash 3.2.57 in POSIX mode, so it is a fifth reading of bash rather than
+coverage of `/bin/sh` as a family: `dash` and `busybox`, the common `/bin/sh` on Linux, were **not**
+measured. Images were already present locally; nothing was pulled.
 
 **All five agree and none joins the pair.** The write-named shapes leave the target byte-for-byte
 unchanged; the clobbering redirect shapes truncate it to zero bytes; `>>` does not. The LF controls in
