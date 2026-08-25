@@ -32,7 +32,7 @@ const HERMETIC_HOST = fs.mkdtempSync(path.join(os.tmpdir(), "portulan-hermetic-"
 process.env.CLAUDE_CONFIG_DIR = HERMETIC_HOST;
 process.on("exit", () => fs.rmSync(HERMETIC_HOST, { recursive: true, force: true }));
 
-import { POSITIONS, pathSpellings, prng, respell } from "./fuzz-shell.mjs";
+import { EFFECT, POSITIONS, groundFor, pathSpellings, prng, respell } from "./fuzz-shell.mjs";
 
 /**
  * The neutral payload: it drops a marker file in the scratch directory and touches nothing else.
@@ -47,8 +47,15 @@ import { POSITIONS, pathSpellings, prng, respell } from "./fuzz-shell.mjs";
 const NEUTRAL = "printf ok > portulan.marker";
 const MARKER = "portulan.marker";
 
-/** Run a script under bash in a scratch directory, and say whether the neutral payload ran. */
-function ran(script, cwd) {
+/**
+ * Run a script under bash in a scratch directory and report BOTH readings of what happened:
+ * `{ ran, touched }` — see the block inside for what each one means and why one is not enough.
+ *
+ * _This said "say whether the neutral payload ran" and returned a boolean, and was left behind when
+ * the function grew its second reading — a docblock narrower than the code it describes, in the file
+ * whose subject is that class. Reported by Copilot, round 1 on #341._
+ */
+function ran(script, cwd, { exitsNonZero = false } = {}) {
     const marker = path.join(cwd, MARKER);
     fs.rmSync(marker, { force: true });
     const result = spawnSync("bash", ["-c", script], { cwd, encoding: "utf8", timeout: 10_000, env: { PATH: process.env.PATH ?? "" } });
@@ -63,15 +70,48 @@ function ran(script, cwd) {
     // and which already records catching one instance of it. Measured before asserting: every
     // production the suite runs exits 0 today. Reported as a suppressed note by Copilot, round 2 on
     // #338 — the channel that carries what the inline one does not.
-    assert.equal(
-        result.status,
-        0,
-        `bash exited ${result.status} running ${JSON.stringify(script)} — a failed script measures nothing about ` +
-            `where the payload sat: ${result.stderr}`,
-    );
-    const fired = fs.existsSync(marker);
+    // **`exitsNonZero` is declared per production, with a reason, and never inferred.** One production
+    // measures a spelling bash SPLITS — a CRLF after a backslash — so the fragment left over is run as
+    // a command and is not found. There the non-zero exit IS the measurement rather than a failure of
+    // it. Everywhere else a failed script measures nothing about where the payload sat, and letting
+    // that pass would certify a data position because the script was broken.
+    // **A run with no exit STATUS is could-not-measure, whichever branch follows.** `spawnSync` reports
+    // `status: null` when the child is killed by a signal — a timeout, an OOM — and `null !== 0`, so the
+    // `exitsNonZero` branch below accepted a killed run as a deliberate non-zero exit. That is a
+    // could-not-measure read as a measurement, which is this file's own subject arriving in the guard
+    // that was added to stop it. Checked before either branch so neither can inherit it. Reported as a
+    // suppressed note by Copilot, round 3 on #341.
+    assert.equal(result.signal, null, `bash was killed by ${result.signal} running ${JSON.stringify(script)} — nothing was measured`);
+    assert.equal(typeof result.status, "number", `bash produced no exit status running ${JSON.stringify(script)} — nothing was measured`);
+    if (!exitsNonZero) {
+        assert.equal(
+            result.status,
+            0,
+            `bash exited ${result.status} running ${JSON.stringify(script)} — a failed script measures nothing about ` +
+                `where the payload sat: ${result.stderr}`,
+        );
+    } else {
+        assert.notEqual(result.status, 0, `${JSON.stringify(script)} declares exitsNonZero and bash exited 0 — the production's own claim is stale`);
+    }
+    // **TWO readings, because "the payload took effect" means two different things.**
+    //
+    // `ran` — the marker holds `ok`, so `printf ok` actually executed. That is the gated effect for a
+    // command payload and for a writer that names its target.
+    //
+    // `touched` — the marker exists at all, whatever it holds. A shell applies a redirection BEFORE
+    // it looks the command up, so a fragment left over by a split creates or TRUNCATES the file and
+    // then fails. For a redirection payload that IS the gated effect: the target is destroyed whether
+    // or not the command ran.
+    //
+    // **Collapsing the two hid a true positive as a false red.** This returned `ran` alone, and the
+    // CRLF production came back "did not run" while bash had just truncated the target to zero bytes —
+    // so the fuzzer recorded a matcher that correctly denies a destructive command as over-eager.
+    // Fourth time this harness has been fooled by the thing it measures, and the fourth caught by
+    // extending the measurement rather than by reading it. Found by the pre-commit checkpoint.
+    const exists = fs.existsSync(marker);
+    const reading = { ran: exists && fs.readFileSync(marker, "utf8") === "ok", touched: exists };
     fs.rmSync(marker, { force: true });
-    return fired;
+    return reading;
 }
 
 test("every production's declared position is what bash actually does", () => {
@@ -91,13 +131,26 @@ test("every production's declared position is what bash actually does", () => {
                 skipped.push(position.id);
                 continue;
             }
-            const actual = ran(position.build(NEUTRAL), dir);
-            assert.equal(
-                actual,
-                position.ground === "command",
-                `production \`${position.id}\` declares ground=${position.ground}, and bash ${actual ? "RAN" : "did not run"} the payload. ` +
-                    `The fuzzer's oracle is this declaration, so a wrong one produces a green about the wrong thing`,
-            );
+            if (position.exitsNonZero === true) {
+                // A production claiming a non-zero exit must argue it, the same way an unmeasured one
+                // must. An escape hatch nobody has to justify is an escape hatch that widens.
+                assert.ok(typeof position.why === "string" && position.why.trim().length > 20, `${position.id} declares exitsNonZero and argues nothing`);
+            }
+            const reading = ran(position.build(NEUTRAL), dir, { exitsNonZero: position.exitsNonZero === true });
+            // Per PAYLOAD KIND, because a production's ground truth need not be one answer — see
+            // `groundFor`. The probe runs once; each kind reads it through the effect that kind's
+            // gated action actually has.
+            for (const [kind, effect] of Object.entries(EFFECT)) {
+                const actual = reading[effect];
+                const ground = groundFor(position, kind);
+                assert.equal(
+                    actual,
+                    ground === "command",
+                    `production \`${position.id}\` declares ground=${ground} for a ${kind} payload, and bash ` +
+                        `${actual ? "DID" : "did not"} ${effect === "ran" ? "run the payload" : "touch the target"}. ` +
+                        `The fuzzer's oracle is this declaration, so a wrong one produces a green about the wrong thing`,
+                );
+            }
         }
         console.log(`ground: measured ${POSITIONS.length - skipped.length} position(s) under bash; unmeasured: ${skipped.join(", ") || "none"}`);
         assert.deepEqual(skipped, ["sudo-prefix"], "the unmeasured set changed — re-read why each member is in it");
@@ -121,6 +174,10 @@ test("every path spelling names one file, measured by writing to it", () => {
             fs.rmSync(target, { force: true });
             const script = `printf ok > ${spelling}`;
             const result = spawnSync("bash", ["-c", script], { cwd: dir, encoding: "utf8", timeout: 10_000, env: { PATH: process.env.PATH ?? "" } });
+            // Signal first — see `ran`. This site had NO signal guard: the sweep meant to give every
+            // spawn one matched a differently-indented sibling twice and this one not at all, so a
+            // duplicate stood where coverage was missing. Found because the duplicate was reported.
+            assert.equal(result.signal, null, `bash was killed by ${result.signal} running ${JSON.stringify(script)} — nothing was measured`);
             assert.equal(result.status, 0, `bash refused ${JSON.stringify(spelling)}: ${result.stderr}`);
             assert.ok(
                 fs.existsSync(target),
@@ -145,7 +202,11 @@ test("a respelt word survives a wrapper, so a composed spelling still means what
     // production, by checking that the marker file still lands under its unquoted name.
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), "portulan-wrapquote-"));
     try {
-        const wrappers = POSITIONS.filter((p) => p.id.includes("wrapper") && p.ground === "command");
+        // Through `groundFor`, not `p.ground`. No wrapper carries a per-kind override today and this
+        // filter only selects which positions to respell rather than grading an answer — but a second
+        // literal read of the position-level field is how the first one survived, and one that would
+        // silently misclassify a future wrapper is not worth keeping for a shorter line.
+        const wrappers = POSITIONS.filter((p) => p.id.includes("wrapper") && Object.keys(EFFECT).every((k) => groundFor(p, k) === "command"));
         assert.ok(wrappers.length >= 3, `expected several wrapper productions, found ${wrappers.length}`);
         // **Drawn from `respell` itself, not hand-picked.** The hand-picked five were a sample of the
         // generator's space and a reviewer asked the sharper question: `respell` can introduce `"`,
@@ -171,9 +232,12 @@ test("a respelt word survives a wrapper, so a composed spelling still means what
                 fs.rmSync(marker, { force: true });
                 const script = position.build(`printf ok > ${word}`);
                 const result = spawnSync("bash", ["-c", script], { cwd: dir, encoding: "utf8", timeout: 10_000, env: { PATH: process.env.PATH ?? "" } });
+                // Signal first, for the reason `ran` gives: `status` is `null` on a killed child and
+                // every comparison against it then reads as something other than what happened.
+                assert.equal(result.signal, null, `bash was killed by ${result.signal} running ${JSON.stringify(script)} — nothing was measured`);
                 assert.equal(result.status, 0, `bash refused ${JSON.stringify(script)}: ${result.stderr}`);
                 assert.ok(
-                    fs.existsSync(marker),
+                    fs.existsSync(marker) && fs.readFileSync(marker, "utf8") === "ok",
                     `the respelling ${JSON.stringify(word)} stopped naming the marker inside \`${position.id}\` — ` +
                         `a composed spelling that does not mean what it spells is a generator without ground truth`,
                 );

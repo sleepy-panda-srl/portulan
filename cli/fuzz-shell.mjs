@@ -284,6 +284,60 @@ export const POSITIONS = [
         build: (p) => `sudo ${p}`,
     },
     { id: "leading-redirection", ground: "command", build: (p) => `2> /dev/null ${p}` },
+    // ------------------------------------------------------------------------------------------
+    // **The redirection-TARGET family — session-open adjustment 4, and the class #336 met three
+    // times.** A shell word may hold spaces when it is quoted or escaped, and `LEADING_REDIRECTION`
+    // must consume the whole word or the command behind it escapes ungated. That defect shipped
+    // twice on #336 and was fixed twice at the spelling that was quoted, until the suite stopped
+    // asserting spellings and asserted the rule against `shellWords`. These productions put the same
+    // rule in front of the generator, so a fourth sibling reds here rather than in a review.
+    //
+    // Every one is a COMMAND position: bash redirects stderr to a file and then runs the payload.
+    { id: "leading-redirection-quoted-target", ground: "command", build: (p) => `2> "log file.txt" ${p}` },
+    { id: "leading-redirection-single-quoted-target", ground: "command", build: (p) => `2> 'log file.txt' ${p}` },
+    { id: "leading-redirection-escaped-space-target", ground: "command", build: (p) => `2> log\\ file.txt ${p}` },
+    { id: "leading-redirection-escaped-quote-target", ground: "command", build: (p) => `2> "log \\"q\\" file.txt" ${p}` },
+    // ------------------------------------------------------------------------------------------
+    // **A CRLF continuation, which is NOT a continuation.** `shellWords` consumes `\r\n` after a
+    // backslash as a pair and joins the word; three shells on this machine — bash 3.2.57, zsh and
+    // sh — do not, and split the command instead.
+    //
+    // **What follows from that is NOT one answer, and an earlier draft of this very comment said it
+    // was.** It read "the matcher answers `true` anyway: a FALSE RED", which is right for one payload
+    // and wrong for another:
+    //
+    //   - `shell` — nothing gated runs. The matcher answers `false`. Correct.
+    //   - `write-named` — `cp` never runs and the target is untouched. The matcher answers `true`.
+    //     A false red, fail-closed, and the only one of the three.
+    //   - `write-redirect` — a shell applies a redirection BEFORE it looks the command up, so the
+    //     clobbering redirection on the surviving fragment still fires and TRUNCATES the target to
+    //     zero bytes. The matcher answering `true` is a **true positive**. Measured.
+    //
+    // So the ground truth here is a property of the payload rather than of the position, which is why
+    // `groundByKind` exists and why this is the only production that uses it. `exitsNonZero` is
+    // declared because the fragment left over by the split is run as a command and is not found.
+    //
+    // _The stale sentence survived the correction of the three cells below it — one carrier fixed and
+    // its sibling left, in the block whose subject is that class. Reported by Copilot, round 2 on #341._
+    {
+        id: "crlf-continuation-in-the-payload",
+        ground: "data",
+        // **The one production whose ground truth is not a property of the position.** bash splits at
+        // the CRLF, so a writer command never runs and a gated command never runs — data. But a
+        // CLOBBERING redirection is applied before the command is looked up, so it fires anyway and
+        // truncates its target to zero bytes. That is the gated effect occurring, and calling it data
+        // would record a destroyed file as an untouched one — which an earlier draft of this entry did,
+        // in all three of its carriers, until the pre-commit checkpoint measured it.
+        groundByKind: { "write-redirect": "command" },
+        // `>>` appends and therefore does NOT truncate, so it is the one redirect shape whose ground
+        // truth differs from its siblings'. Refused rather than folded in: a cell whose ground truth
+        // varies with the spelling is a cell whose invariant cannot hold. Measured — `echo \<CRLF>ok >> t`
+        // leaves `t` byte-for-byte unchanged while `> t` and `1> t` leave it empty.
+        carries: (p, kind) => kind !== "write-redirect" || !p.includes(">>"),
+        exitsNonZero: true,
+        why: "bash splits at the CRLF, so the fragment after it is run as a command and is not found — a non-zero exit is the measurement rather than a failure of it. A clobbering redirection on that fragment still fires, which is why `write-redirect` overrides the ground.",
+        build: (p) => p.replace(" ", " \\\r\n"),
+    },
     { id: "after-heredoc", ground: "command", build: (p) => `cat <<'EOF'\nbody\nEOF\n${p}` },
     { id: "after-comment-line", ground: "command", build: (p) => `# a note\n${p}` },
     { id: "command-substitution", ground: "command", build: (p) => `echo $(${p})` },
@@ -342,6 +396,31 @@ export const POSITIONS = [
  * it is a choice rather than a gap.
  */
 export const EXPECT = {
+    "leading-redirection-quoted-target|shell": { answer: true },
+    "leading-redirection-quoted-target|write-redirect": { answer: true },
+    "leading-redirection-quoted-target|write-named": { answer: true },
+    "leading-redirection-single-quoted-target|shell": { answer: true },
+    "leading-redirection-single-quoted-target|write-redirect": { answer: true },
+    "leading-redirection-single-quoted-target|write-named": { answer: true },
+    "leading-redirection-escaped-space-target|shell": { answer: true },
+    "leading-redirection-escaped-space-target|write-redirect": { answer: true },
+    "leading-redirection-escaped-space-target|write-named": { answer: true },
+    "leading-redirection-escaped-quote-target|shell": { answer: true },
+    "leading-redirection-escaped-quote-target|write-redirect": { answer: true },
+    "leading-redirection-escaped-quote-target|write-named": { answer: true },
+    "crlf-continuation-in-the-payload|shell": {
+        answer: false,
+        why: "Correct, and NOT by the mechanism an earlier draft of this entry claimed. That draft said `commandSegments` \"splits at the newline, which is what bash does too\" — measured false: `commandSegments` consumes the pair exactly as `shellWords` does (compile.mjs, `The same CRLF pair, in the other reader`) and does not split. What actually happens is that the segment keeps its RAW source text, so the literal prefix compare meets `git \\\\<CRLF>push --force …` and fails. Right answer, wrong reason, which `a-stated-enforcer-must-be-the-real-one` counts as the same defect one size down. Found by the pre-commit checkpoint.",
+    },
+    "crlf-continuation-in-the-payload|write-redirect": {
+        answer: true,
+        why: "A TRUE POSITIVE, and an earlier draft of this entry recorded it as a false red in all three of its carriers. A shell applies a redirection BEFORE it looks the command up, so although bash splits at the CRLF and the command never runs, the clobbering redirection on the surviving fragment still fires and truncates the target to ZERO BYTES. Measured on bash 3.2.57: a file holding content before is 0 bytes after. So the gated effect occurs, the matcher denying it is right, and `groundByKind` says so. The append shape is refused by `carries`, since `>>` does not truncate.",
+    },
+    "crlf-continuation-in-the-payload|write-named": {
+        answer: true,
+        record: "cli/compile.mjs, `shellWords` — a `\\r\\n` after a backslash is consumed as a PAIR, a decision taken 2026-07-28",
+        why: "A FALSE RED, and the only one of the three. `shellWrites` reaches `shellSegments`, which reaches `shellWords`, which joins the pair — so the matcher sees a clean `cp /tmp/x docs/vision.md` and denies. bash splits, `cp` never runs, and the target is left byte-for-byte unchanged (measured). Fail-closed and worth one prompt. **`compile.mjs`'s comment claims this spelling made the constitution 'reachable by editing the file on Windows', and that reachability did not reproduce here for this payload shape** — flagged for the maintainer rather than repaired, since the repair direction is fail-OPEN and only bash 3.2.57 was available to measure on.",
+    },
     // ============================== shell
     "bare|shell": { answer: true },
     "after-semicolon|shell": { answer: true },
@@ -527,6 +606,29 @@ export const EXPECT = {
 export const correctFor = (ground) => ground === "command";
 
 /**
+ * What "the payload took effect" MEANS, per payload kind.
+ *
+ * **A redirection is not a command, and conflating the two hid a true positive as a false red.** A
+ * shell applies a redirection BEFORE it looks the command up, so a `>` whose command never runs still
+ * truncates its target to zero bytes. For a `write-redirect` payload the gated effect is therefore
+ * *the target was written*, not *the command ran* — and measuring it as the latter reports a
+ * destroyed file as an untouched one. Measured on bash 3.2.57: a split `printf … 1> target` leaves
+ * the target at **0 bytes** where it held content before.
+ */
+export const EFFECT = { shell: "ran", "write-redirect": "touched", "write-named": "ran" };
+
+/**
+ * The ground truth for one cell, which is not always a property of the position alone.
+ *
+ * Most productions put the payload somewhere bash either runs or does not, whatever the payload is.
+ * One does not: a CRLF splits the command, and what survives depends on the payload's SHAPE — a
+ * clobbering redirection still fires and destroys the target, while a writer command simply never
+ * runs. A single `ground` field cannot say that, so a production may override it per kind. The
+ * override is rare by design and every use of it is argued in the production's own `why`.
+ */
+export const groundFor = (position, kind) => position.groundByKind?.[kind] ?? position.ground;
+
+/**
  * The ACTION kind a payload kind reaches.
  *
  * Three payload kinds, two action kinds: the write matcher's two recognitions are separate payloads
@@ -549,7 +651,7 @@ export function generate(position, kind, rand) {
     const carries = position.carries ?? (() => true);
     for (let attempt = 0; attempt < 64; attempt += 1) {
         const payload = kind === "shell" ? shellPayload(rand) : writePayload(rand, kind);
-        if (carries(payload)) return { command: position.build(payload), payload };
+        if (carries(payload, kind)) return { command: position.build(payload), payload };
     }
     throw new CouldNotRun(
         `position \`${position.id}\` refused 64 consecutive ${kind} payloads. Its \`carries\` predicate and the ` +
@@ -569,7 +671,7 @@ export function generate(position, kind, rand) {
 export function asCase(position, kind, ruleId, command, actual, index) {
     return {
         id: `fuzz-${position.id}-${kind}-${index}`,
-        class: correctFor(position.ground) === actual ? "holds" : "documented-hole",
+        class: correctFor(groundFor(position, kind)) === actual ? "holds" : "documented-hole",
         tool: PAYLOADS[kind].tool,
         // **The RULE kind, not the payload kind.** `matcherPath` reads an action kind — `shell` /
         // `write` / `read` — and this passed it `write-redirect` and `write-named`, which it knows
@@ -582,8 +684,8 @@ export function asCase(position, kind, ruleId, command, actual, index) {
         // in two sessions.
         path: matcherPath(ruleKind(kind), PAYLOADS[kind].tool),
         expect: actual,
-        why: `Generated by cli/fuzz-shell.mjs: ${PAYLOADS[kind].what} in the \`${position.id}\` position, which is a ${position.ground} position. REVIEW THIS BEFORE COMMITTING IT — a generated case records what the matcher did, not what it should do.`,
-        ...(correctFor(position.ground) === actual ? {} : { hole: "UNRECORDED — name the record this belongs to, or repair the matcher" }),
+        why: `Generated by cli/fuzz-shell.mjs: ${PAYLOADS[kind].what} in the \`${position.id}\` position, which is a ${groundFor(position, kind)} position for this payload. REVIEW THIS BEFORE COMMITTING IT — a generated case records what the matcher did, not what it should do.`,
+        ...(correctFor(groundFor(position, kind)) === actual ? {} : { hole: "UNRECORDED — name the record this belongs to, or repair the matcher" }),
         input: { command },
         _rule: ruleId,
     };
@@ -677,9 +779,11 @@ export function run(argv = [], { stdout = process.stdout, stderr = process.stder
         if (keys.size) throw new CouldNotRun(`EXPECT records ${[...keys].join(", ")}, which POSITIONS does not generate — a recorded answer for a cell nobody produces is a claim about nothing`);
         for (const [key, e] of Object.entries(EXPECT)) {
             const position = POSITIONS.find((p) => p.id === key.split("|")[0]);
-            if (e.answer !== correctFor(position.ground) && (typeof e.record !== "string" || e.record.trim() === "")) {
+            const kind = key.split("|")[1];
+            const ground = groundFor(position, kind);
+            if (e.answer !== correctFor(ground) && (typeof e.record !== "string" || e.record.trim() === "")) {
                 throw new CouldNotRun(
-                    `EXPECT[${key}] records ${e.answer} where a ${position.ground} position demands ${correctFor(position.ground)}, ` +
+                    `EXPECT[${key}] records ${e.answer} where a ${ground} position demands ${correctFor(ground)} for this payload, ` +
                         `and names no \`record\`. A divergence nobody documented is a hole nobody knows about`,
                 );
             }
@@ -717,10 +821,10 @@ export function run(argv = [], { stdout = process.stdout, stderr = process.stder
 
         if (findings.length) {
             for (const f of findings) {
-                const groundWanted = correctFor(f.position.ground);
+                const groundWanted = correctFor(groundFor(f.position, f.kind));
                 const headline =
                     f.actual === groundWanted
-                        ? `the recorded divergence at \`${f.position.id}\` (${f.kind}) has CLOSED — the matcher now answers ${f.actual}, which is what a ${f.position.ground} position demands. That is good news and the record must absorb it: update EXPECT, and update the record it cites`
+                        ? `the recorded divergence at \`${f.position.id}\` (${f.kind}) has CLOSED — the matcher now answers ${f.actual}, which is what a ${groundFor(f.position, f.kind)} position demands for this payload. That is good news and the record must absorb it: update EXPECT, and update the record it cites`
                         : f.actual
                           ? `FALSE RED: a spelling in the \`${f.position.id}\` (${f.kind}) cell answers true where the cell records ${f.expected}. Bash does not run the payload here`
                           : `GATE BYPASS: a spelling in the \`${f.position.id}\` (${f.kind}) cell answers false where the cell records ${f.expected}. Bash DOES run the payload here`;
