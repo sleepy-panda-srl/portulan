@@ -14,7 +14,12 @@ assistant's operating facts. **Not** the repository's `.portulan/memory/`, which
 provenance and retirement conditions. Nothing crossed between them, in either direction.
 
 **That store is not a git repository** (measured: `git rev-parse` → *not a git repository*), so this
-pull request cannot carry its edits as a diff of its own. It carries them **verbatim in the PR body**
+pull request cannot carry its edits as a diff of its own. **It is also shared mutable state with no
+locking**, so a snapshot of it is true as of its timestamp and not after — which is not hypothetical:
+`portulan-build.md`'s CURRENT block was replaced by a *concurrent* session working milestone 8 clause
+(d) before this branch could merge, taking the file from 519 words to 605. That is the block's own rule
+(*replace CURRENT at session close*) working, not a race lost, and this pass's edits to that file sit
+outside CURRENT and stand. It carries them **verbatim in the PR body**
 instead, as the full before→after, and the fresh-context pre-commit pass read that diff alongside this
 one. Without it, *drafts through the human gate* would be a claim with no mechanism: rejection would be
 unrestorable and the file's own header prices every lost line at a live re-measurement.
@@ -56,16 +61,16 @@ pointer, so each was verified line by line **before** the cut, not after.
 | cut from the store | verified carrier |
 |---|---|
 | GitHub Packages: scope=owner · `--access public` does not govern · greyed per-package org flip · neither flip has an API · token needed even when public | `.github/workflows/publish-github-packages.yml` header, L7 · L30 · L39 · L44–45 · L18 |
-| …no Packages sidebar when logged out | handoff `2026-08-19-c-the-customer-facing-surface-was-a-build-log` |
-| …curl reports the opposite, the heading being a hydration-removed skeleton | handoff `2026-08-19-the-instrument-that-could-not-see-the-thing-it-was-asked-about` |
+| …no Packages sidebar when logged out | `.portulan/handoffs/2026-08-19-c-the-customer-facing-surface-was-a-build-log.md` |
+| …curl reports the opposite, the heading being a hydration-removed skeleton | `.portulan/handoffs/2026-08-19-the-instrument-that-could-not-see-the-thing-it-was-asked-about.md` |
 | App `FORBIDDEN` on thread resolution; `resolvedBy` telling resolved from judged | `.portulan/gate-map.md` L824, L1187 · `.portulan/tools/gh-bot` docblock |
 | `git cherry` over `git branch --merged`; the `128`-on-unknown-ref trap; `--rebase` | `.portulan/gate-map.md` L223–253 |
 | **NOT cut, on the pre-commit pass's finding:** `git remote prune origin` for the stale `git branch -r` entry, and fetch-`main`-FIRST before any merged-check | **no carrier anywhere in the tree** — the first draft pointed both at gate-map, which does not hold them. A pointer at a carrier that does not have the passage is the deletion this table exists to prevent, and I wrote one. |
 | `BEHIND` and the `strict: true` behind it | `.portulan/gate-map.md` platform-floor table, L1159 |
-| the three checkpoints, *demonstrated not asserted*, `vision.md` human-owned, the dated-handoff mandate | `gate-map.md` *Supervised-build checkpoints* · `dod.md` 7–8 · `core/engine.md` · `memory/constitution-is-human-owned` · `memory/every-session-ends-with-a-handoff` |
-| the `/model` command's false success narrative | handoff `2026-08-18-the-brief-was-wrong-about-its-own-mechanism` L8–9, L13 |
-| the #43 defect-class ruling's argument | `.portulan/proposals/0020` |
-| *"lines were gameable"* in the index line | `memory-stays-small.md`'s own 2026-08-18 measurement |
+| the three checkpoints, *demonstrated not asserted*, `vision.md` human-owned, the dated-handoff mandate | `.portulan/gate-map.md` *Supervised-build checkpoints* · `.portulan/dod.md` 7–8 · `core/engine.md` · `.portulan/memory/constitution-is-human-owned.md` · `.portulan/memory/every-session-ends-with-a-handoff.md` |
+| the `/model` command's false success narrative | `.portulan/handoffs/2026-08-18-the-brief-was-wrong-about-its-own-mechanism.md` L8–9, L13 |
+| the #43 defect-class ruling's argument | `.portulan/proposals/0020-a-fix-is-not-done-at-the-site-it-was-found.md` |
+| *"lines were gameable"* in the index line | the store's own `memory-stays-small.md`, 2026-08-18 measurement (outside the repo) |
 | **COMPRESSED AWAY, not demoted — no carrier:** Copilot's ~626s silent-case figure and the 150–390s range over 9 rounds on #298–#300 | none. The distribution's *extremes* survive in the bullet — ~90s typical, 3m17s fastest, 10h32m silent — and those are what the rule turns on, so the interior of the range was judged cost rather than shape. Named here because a compression nobody records is indistinguishable from a loss. |
 
 **Four passages were searched for a carrier and KEPT because none holds them**: the roles-split ruling
