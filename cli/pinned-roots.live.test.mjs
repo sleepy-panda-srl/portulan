@@ -76,6 +76,12 @@ const PINNED = Object.freeze([
     // entry above gives: an internal refusal is one edit from being relaxed.
     { file: ".portulan/verify/mutants.sh", tool: "cli/mutants.mjs" },
     { file: ".portulan/verify/fuzz-shell.sh", tool: "cli/fuzz-shell.mjs" },
+    // Added 2026-08-25 with milestone 8 clause (d). `drills.mjs` reaches the yielded recipe SET rather
+    // than the policy, and refuses host discovery internally the same way — it passes `discovery: null`
+    // and `forced: false` whatever the command line says. Rostered for the reason the two entries above
+    // give: an internal refusal is one edit from being relaxed, and this rail's whole subject is a check
+    // that has quietly stopped checking.
+    { file: ".portulan/verify/drills.sh", tool: "cli/drills.mjs" },
     { file: ".github/workflows/verify.yml", tool: "cli/recipe-set.mjs" },
     { file: ".portulan/dod.md", tool: "cli/recipe-set.mjs" },
 ]);

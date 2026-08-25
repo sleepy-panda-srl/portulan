@@ -188,6 +188,15 @@
           "node"
         ],
         "doc": "verify/README.md"
+      },
+      {
+        "id": "drills",
+        "run": "./.portulan/verify/drills.sh",
+        "requires": [
+          "bash",
+          "node"
+        ],
+        "doc": "verify/README.md"
       }
     ]
   },

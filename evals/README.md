@@ -22,12 +22,12 @@ keeps the row's own word; the tools take a narrower one.
 
 ## What is built today
 
-**Two clauses of row 8, of nine.** (a), adversarial fixtures per compiled gate, landed 2026-08-24;
+**Three clauses of row 8, of nine.** (a), adversarial fixtures per compiled gate, landed 2026-08-24;
 **(b)**, mutation testing over both matchers and grammar-aware fuzzing over the shell segmenter,
-landed 2026-08-25. **Seven remain** — golden tasks per core skill, the A/B baseline, OTel opt-in
-config, a rule change merged or rejected on eval evidence, (c) review-loop metering, (d) scheduled
-forced-red drills, and a release carrying an eval result. Each is listed below with the sentence
-[`../.portulan/dod.md`](../.portulan/dod.md) condition 4 requires.
+landed 2026-08-25; **(d)**, scheduled forced-red drills, landed 2026-08-25. **Six remain** — golden
+tasks per core skill, the A/B baseline, OTel opt-in config, a rule change merged or rejected on eval
+evidence, (c) review-loop metering, and a release carrying an eval result. Each is listed below with
+the sentence [`../.portulan/dod.md`](../.portulan/dod.md) condition 4 requires.
 
 ```
 evals/goldens/gates/<rule-id>.json      one fixture file per rule in the yielded gate policy
@@ -182,6 +182,64 @@ entry 8 of [`../.portulan/gate-map.md`](../.portulan/gate-map.md)'s honest-holes
 Ten of the corpus's own hand-written expectations were refuted by the rail on the same run, which is
 the argument for the rail in one sentence.
 
+## Clause (d) — every rail is forced red on a calendar, and required to fire
+
+```
+node cli/drills.mjs --pack-root packs                       the sweep: force every rail red
+node cli/drills.mjs --check --pack-root packs                the roster: every rail has a drill
+```
+
+Landed 2026-08-25. `goldens` asks whether a gate has fixtures; `mutants` asks whether those fixtures
+discriminate; **this asks whether the rail still fires at all.** A recipe whose precondition quietly
+started exiting 0 over an empty file list, a hook that fails open on a crash, a check whose enumeration
+went empty — each reports green and each has stopped being a rail, and until this landed the way that
+was found here was an incident.
+
+**Its own provenance is two sessions doing it by hand.** The drills run against `goldens` on 2026-08-24
+and against `mutants` and `fuzz-shell` on 2026-08-25 were all run by hand, in a session, and recorded in
+those sessions' handoffs — which is precisely the state this clause exists to replace. Both of those
+sessions also had **a drill that did not fire**: one anchored substitution missed by four spaces of
+indentation, one patch script's quoting broke, and both times the recipe ran green against an unmodified
+file. Every guard in [`../cli/drills.mjs`](../cli/drills.mjs) traces to one of those two.
+
+**A drill is a pair, and the pair is the oracle.** A control on a pristine tree, then the perturbation —
+because *a rail that only ever reds proves nothing about its green*, and because a control that is
+already red makes the drill **could-not-run** rather than a fire the perturbation did not cause. Each
+drill declares a **tell** its rail's own output must carry when it fires and must not carry before, so a
+red for the wrong reason is not counted as a fire; each perturbation must place **exactly once** and must
+move bytes on disk. Isolation is one throwaway `git worktree` per drill, so nothing perturbs a working
+tree.
+
+**The sweep reports on a COMMIT and prints which one.** A dirty tree is refused outright; `--working-copy`
+synthesizes one with `git stash create` and refuses while untracked-and-unstaged files exist, since a
+synthesized tree missing the file under review would be a green about the wrong tree. That is also why
+the **verify recipe runs `--check` and not the sweep**: a recipe that answered about `HEAD` would not be
+answering [`../.portulan/dod.md`](../.portulan/dod.md) condition 1's question.
+
+**What the word *every* covers, and what it does not.** The sweep drills every recipe the workspace
+yields, plus the Stop-gate and the PreToolUse gate runner — the amendment's *"from watchers to every
+rail"*. The rails it cannot force are **named in the output on every run** with the reason: the platform
+floor, the host's own permission layer, the CI seam, the pre-commit seam scan, `claude plugin validate
+--strict`, the platform watchers, and the librarian's pass. A scope claim with no carrier is what the
+prose register in [`../.portulan/verify/README.md`](../.portulan/verify/README.md) was, and that table is
+deleted in favour of this.
+
+**What is demonstrated, and what is unvouched.** All twenty-one rails were forced red by hand on
+2026-08-25 and every one fired. The **calendar** — [`../.github/workflows/drills.yml`](../.github/workflows/drills.yml),
+weekly — is a watcher, so it owes its own observation under
+[`../.portulan/proposals/0007-every-watcher-ships-with-its-observation-procedure.md`](../.portulan/proposals/0007-every-watcher-ships-with-its-observation-procedure.md):
+`workflow_dispatch` is answerable only once the file is on the default branch, and the schedule is
+answered by its first run and nothing earlier. **Until then the calendar is unvouched and its silence is
+not evidence.** And a *missing* run stays undetectable — that is `0007`'s silence problem one altitude up,
+**to be filed with this change's pull request** rather than built.
+
+_This paragraph said the gap was already **filed** — the fifth carrier of that sentence, and the one a
+first repair of the other four walked past. A claim in the past tense about an issue that did not exist is
+`../.portulan/dod.md` condition 4's own case, and a fix that stops at the sites somebody quoted is
+[`0020`](../.portulan/proposals/0020-a-fix-is-not-done-at-the-site-it-was-found.md). Both found at the
+pre-commit checkpoint's second pass, which re-derived the carrier set instead of reading the list it had
+been handed._
+
 ## What is NOT built yet
 
 Each names where it arrives, per [`../.portulan/dod.md`](../.portulan/dod.md) condition 4 — nothing
@@ -198,11 +256,6 @@ here claims a capability that does not exist:
 - **(c) Review-loop metering** — rounds per pull request, pushes per round, empty-round rate. Arrives
   in milestone 8, a later session. The *110 rounds over 30 pull requests* figure that bounds the review
   loop was measured by hand and nothing checks it.
-- **(d) Scheduled forced-red drills** — every rail forced red on a calendar and required to fire.
-  Arrives in milestone 8, a later session. The drills run against the `goldens` recipe on 2026-08-24
-  and against `mutants` and `fuzz-shell` on 2026-08-25 were all run **by hand, in a session**, and
-  recorded in those sessions' handoffs — which is precisely the state (d) exists to replace. Two
-  sessions running them by hand is evidence for the clause rather than a substitute for it.
 - **A release carries an eval result** ([`../docs/plan.md`](../docs/plan.md), Protocol → Versioning).
   Arrives in milestone 8, a later session. **This was the row's ninth clause as of 2026-08-24 and was
   nobody's until that day**: the Protocol had carried the obligation since the plan was locked while

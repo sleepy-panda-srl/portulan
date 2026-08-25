@@ -56,6 +56,7 @@ Run any of the recipes declared here from anywhere in the tree:
 ./.portulan/verify/goldens.sh
 ./.portulan/verify/mutants.sh
 ./.portulan/verify/fuzz-shell.sh
+./.portulan/verify/drills.sh
 ```
 
 _(**It happened again, and the second time was worse.** The block listed **thirteen** while the manifest
@@ -90,6 +91,7 @@ names.)_
 | [`goldens.sh`](goldens.sh) | every gate in the policy this workspace **yields** carries adversarial fixtures in [`../../evals/goldens/gates/`](../../evals/goldens/gates/), and each case still answers as recorded — graded through the compiler's own exported `matchesRule`, the function the hook calls at tool time, never a re-implementation. Milestone 8 clause (a). **Two rails:** a rule that compiles to a matcher and carries no fixture is red, so coverage is measured rather than named; and a `documented-hole` case that starts being CAUGHT is red too, so a hole record cannot go stale in either direction. **A case is data and is never executed** — the corpus holds `git push --force` and constitution-write spellings by design, and the suite asserts the runner imports no process-spawning API. **What it does not establish is adequacy:** it is a presence floor, one trivial fixture per rule satisfies it, and the runner prints that limit on every green. Rules with `action.none` are exempt and **named on every run**, because writing the next gate `none`-shaped is the way to dodge this rail. Every case also records **which branch of `matchesRule` it exercises**, derived from the action kind and the tool rather than declared, so the one asymmetry that matters — a `then` leader is caught on the write path and escapes on the shell path — reads as an asymmetry instead of a contradiction; the green prints the per-path census including the zeroes. An **unexpected throw is could-not-run, not a red**, because a crash that exits 1 arrives here as a verdict about a corpus nothing finished grading. It went red on its first run and found gate-map hole 8 | `bash`, `node` |
 | [`mutants.sh`](mutants.sh) | the gate corpus can tell a **working** matcher from a **broken** one — [`../../cli/compile.mjs`](../../cli/compile.mjs)'s matcher region is broken on purpose, one declared and anchored operator at a time, and each mutant is graded against [`../../evals/goldens/gates/`](../../evals/goldens/gates/). Milestone 8 clause (b), first half. **It stands in the gap `goldens.sh` states out loud:** that recipe is a presence floor and cannot judge whether a corpus is adversarial; this one does not ask whether a fixture exists, it asks whether the corpus NOTICES. **Two directions, as `documented-hole` has:** an operator recorded `killed` that survives means the kill-set weakened; one recorded `survives` that is killed is good news the record must absorb. A `survives` record admits only a **proof** — semantic equivalence, or equivalence under the yielded policy — never an unfilled gap, because `matchesRule` is a pure function of (rule, tool, input) and a fixture is exactly that triple, so any non-equivalent mutant is killable by one. **A missing or ambiguous anchor is could-not-run, never a skip**, and so is a mutant that will not import. Every member of the matcher region carries an operator and the green prints the per-member census **including the zeroes**, or the clause would be satisfiable by three operators in one function. It went red on its first run, on 2026-08-25, and found a whole class of breakages the corpus did not notice — **no figure is written here**, because the runner prints its own totals and a count copied into prose beside a table that grows is the carrier this repository has watched go stale more often than any other | `bash`, `node` |
 | [`fuzz-shell.sh`](fuzz-shell.sh) | both shell segmenters answer one grammar, one way. Milestone 8 clause (b), second half. [`../../cli/fuzz-shell.mjs`](../../cli/fuzz-shell.mjs) **composes** commands from a grammar rather than mutating strings, so it knows by construction whether the payload sits where bash would execute it or only print it — an exact oracle, not a difference somebody must adjudicate. **The segmenter is two functions and they differ:** `shellSegments` knows a leader table, `commandSegments` does not, so a `then` leader is caught on the write matcher and escapes on the shell one; here that is a recorded cell rather than a surprise. **Positions are enumerated and recorded; spellings are fuzzed** — the invariant is that every spelling of one command in one position gets the same answer, which is the exact shape three of #336's review rounds had. **The grammar's own ground truth is measured**, not argued: [`../../cli/fuzz-shell.ground.test.mjs`](../../cli/fuzz-shell.ground.test.mjs) runs every position under real bash with a NEUTRAL payload and writes every path spelling to a throwaway file. **Deterministic and seeded**, with the seed printed on every run including the green, because a green nobody can reproduce is a green nobody can audit. It found a live bypass of every Gated shell action on its first full run | `bash`, `node` |
+| [`drills.sh`](drills.sh) | every rail this workspace **yields** has a forced-red drill, and every drill's anchor still places exactly once in the file it names. Milestone 8 clause (d). **This recipe runs the correspondence half and not the sweep**, and the split is the point: a drill runs its rail in a throwaway `git worktree`, and a worktree is a **commit**, so a sweep-shaped recipe would report on `HEAD` while [`../dod.md`](../dod.md) condition 1 asks about *this working copy* — the wrong-tree green [`../gate-map.md`](../gate-map.md) records. What is left for a pull request is the half that drifts silently on any commit: **a drill whose anchor has moved**, which is exactly how both hand-run sessions produced a drill that placed and changed nothing. So the commit that moves an anchored line is the commit that learns it, rather than the next scheduled sweep. It runs **no rail**, and it prints that limit on every green rather than letting the exit code imply more. The rails deliberately **not** drilled are named on every run with the reason, because the clause's subject is the honesty of the word *every*. The sweep itself lives on [`../../.github/workflows/drills.yml`](../../.github/workflows/drills.yml) | `bash`, `node` |
 | [`eval-bundle.sh`](eval-bundle.sh) | a clean evaluation bundle cuts from the **index** (wrapped as an unreferenced probe commit, so the pre-commit gate judges what is about to ship) — [`../../cli/eval-bundle.mjs`](../../cli/eval-bundle.mjs) `--check` materialises the payload for a fixture recipient into scratch it always deletes, renders the evaluation terms from the template **at that same commit**, and refuses when the **top-level payload partition** stops matching the tree, when the **machine-read license census** stops equalling the patch list, or when a machine-read Apache assertion survives the transforms. Day to day it is the roster-drift rail: a new top-level path, or a new manifest asserting Apache in the payload, goes red here with a repair menu instead of silently thinning or mislicensing the next bundle. A payload entry that is neither a plain nor an executable blob (a symlink, a gitlink) is **could-not-run — 2, named** — no licensing verdict can be formed from a payload the tool will not materialise | `bash`, `git`, `node` |
 
 Exit `0` green · `1` red · `2` could not run — and that third code is why each recipe declares its needs
@@ -791,10 +793,11 @@ pass and the recipes exists to prevent. Found by running the pass, not by readin
 Everything above this line was gathered **locally** — recipes forced red at a desk, which is where a
 check earns its design, and one watcher's observation procedure beside them. This subsection is the
 other seam: which rails have been observed red **in CI, on a pull request**, where the block actually
-happens. Milestone 8's amendment asks for *scheduled forced-red drills — every
-rail forced red on a calendar and required to fire*; the calendar is that milestone's, and this is the
-register it writes into, opened with one drill run ahead of it because the survey below found it nearly
-empty.
+happens. Milestone 8's amendment asks for *scheduled forced-red drills — every rail forced red on a
+calendar and required to fire*, and **that calendar landed on 2026-08-25**: this subsection said it was
+*"the register the calendar writes into"* while the calendar did not exist, and what it is now is the
+argument for the calendar plus the two entries that argument leans on. The register itself is a run —
+see below.
 
 **The survey, 2026-07-30.** [`../../.github/workflows/verify.yml`](../../.github/workflows/verify.yml)
 is the only workflow that has ever run a recipe, and it has failed **5 times in 416 runs**. Read from
@@ -873,22 +876,47 @@ available, not a refusal provoked at the API. Attempting one is barred anyway �
 ([`../gate-map.md`](../gate-map.md)) — and what stands behind that last inch is `enforce_admins: true`
 on the live protection, which no pull request can demonstrate about itself.
 
-**The register, after drill 1.** **Eight** rails have still never been observed red in CI — the count
-moved because this repository declared a tenth recipe, and a register that did not move with it would be
-the stale-carrier defect inside the page that keeps the register:
+**The register stopped being a table on 2026-08-25, and the deletion is the repair rather than a loss.**
+It read *"Eight rails have still never been observed red in CI"* beside a two-column
+seen-to-fire / not-yet list, hand-maintained, and it had already been corrected once for drifting when a
+tenth recipe was declared. A figure whose subject grows is a carrier that fails silently — the defect this
+milestone has now repaired at recipe counts, corpus sizes, operator totals, workflow counts and the plan's
+own budget column — and a register of which rails have been watched is exactly that kind of subject.
 
-| Seen to fire in CI | Not yet |
-|---|---|
-| `docs` (2026-07-28, incidental) · `tests` (2026-07-30, drill) | `json` · `doctor` · `plugin` · `compile` · `workflow-filters` · `index` · `control-chars` · `rule-carriers` |
+**What replaces it is the thing that cannot be wrong about it.** Milestone 8 clause (d) landed
+[`../../cli/drills.mjs`](../../cli/drills.mjs) and the calendar at
+[`../../.github/workflows/drills.yml`](../../.github/workflows/drills.yml): every rail this workspace
+yields is forced red and required to fire, per-rail, with the roster derived from
+[`../../cli/recipe-set.mjs`](../../cli/recipe-set.mjs) rather than typed here. So *which rails have been
+watched* is answered by a run and never by a paragraph, and `node cli/drills.mjs --pack-root packs`
+prints it. The rails deliberately **not** drilled are printed on every run with the reason, which is the
+half a prose register was worst at keeping honest.
 
-**`rule-carriers` joins the right-hand column on the day it lands too**, and like `control-chars` it has
-been forced red locally rather than in CI — exit 1 on a planted restatement, and exit 2 three ways on a
-dead tell, an absent carrier and an unparseable registry.
+**Where the per-run results live, said plainly.** In the Actions job summary of each `drills` run —
+platform-retained, not committed to this tree. The committed dated register that would let a *missing*
+sweep be noticed is **not built**: that is `0007`'s silence problem one altitude up, **to be filed with
+the pull request that lands this**, and until it exists a quiet week and a disabled schedule look the
+same.
 
-`control-chars` joins the right-hand column on the day it lands, and it is worth saying that it has been
-forced red **locally**, four ways — a NUL reproducing the original incident, a CRLF, a dead exemption and
-a stale one — with `grep` and `file` observed missing the first of them on the same file in the same
-run. Local is not CI, which is the distinction this whole register exists to keep.
+**The sweep is demonstrated and the calendar is not, and the two must not be read as one.** All
+twenty-one rails were forced red **by hand** on 2026-08-25, on a synthesized commit from the session's own
+working copy, and every one fired with its recorded exit and its own message — that transcript is in
+[the session's handoff](../handoffs/2026-08-25-c-every-rail-was-forced-red-and-the-calendar-is-unvouched.md).
+What that does **not** establish is anything about CI conditions: a clean checkout on `ubuntu-latest`
+differs from a working copy on a maintainer's machine in exactly the three ways this page already
+documents below. The per-recipe CI half begins when the calendar first fires, not when it merges.
+
+**Two entries of the old register are worth keeping, because they are evidence the exclusions lean on.**
+`docs` fired incidentally in CI on 2026-07-28 and `tests` was drilled in CI on 2026-07-30 — drill 1 above,
+in both directions. Those two are why the **CI seam** — a non-zero recipe becoming a failed check becoming
+`BLOCKED` — is listed as covered-once rather than drilled recurrently: every recipe runs through the same
+loop in the same job, so the shared half of that seam does not need covering once per rail.
+
+`control-chars` and `rule-carriers` were each forced red **locally** on the day they landed —
+`control-chars` four ways, a NUL reproducing the original incident, a CRLF, a dead exemption and a stale
+one, with `grep` and `file` observed missing the NUL on the same file in the same run; `rule-carriers`
+exit 1 on a planted restatement and exit 2 three ways. Both are now drilled by the harness on every sweep
+instead, which is the difference between a fact recorded once and a fact re-established on a calendar.
 
 That gap is narrower than it looks in one respect and not in another, and both halves matter to
 whoever sets the calendar. Every recipe this workspace declares runs through the **same** loop in the
@@ -923,7 +951,7 @@ than left as a symmetry a reader has to notice, on the rule the same change mint
   writes and no rail verifies, and the reason is not shallow checkouts: its content is **time**
   dependent, so a record crossing a threshold changes it with no change to the tree, and a
   byte-compare would go red on a store nobody touched. What stands in for a rail is that it is a
-  *dated* record rather than a current-state claim — a handoff, like the thirty-four beside it, true
+  *dated* record rather than a current-state claim — a handoff, like every one beside it, true
   as of the date in its own filename and never re-derived. One consequence worth knowing: because
   `docs.sh` walks every tracked `.md`, a later change that deletes a record the pass's handoff links
   goes red on `links` until the handoff is edited. That is a partial accidental rail and a small churn
