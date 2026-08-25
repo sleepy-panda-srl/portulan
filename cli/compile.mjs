@@ -574,13 +574,22 @@ export function shellWords(command) {
             // citation to a record that does not exist, in the comment repairing exactly that.
             //
             // **Removing the branch is fail-OPEN on a gate matcher, so it is the maintainer's and not
-            // this comment's.** A differential against a copy with the branch deleted moves **one
-            // recorded fuzz cell** — `crlf-continuation-in-the-payload|write-named`, `true` → `false`,
-            // in the good-news direction, which is still a red until the record absorbs it — and
-            // regresses **one gate-corpus fixture**, `a-CRLF-continuation` in
-            // `../evals/goldens/gates/edit-the-constitution.json`. Those two and nothing else: the
-            // redirection is recognised off the raw segment text rather than off a joined word, so the
-            // true positive survives its removal, and so does a real LF continuation. Asked at
+            // this comment's.** Deleting BOTH carriers in a scratch clone and running the recipes moves
+            // **four** surfaces, which is the count an accepting change has to carry:
+            //   1. `fuzz-shell` — the `crlf-continuation-in-the-payload|write-named` EXPECT cell, whose
+            //      recorded divergence CLOSES. Good news, and a red until the record absorbs it.
+            //   2. `goldens` — the `a-CRLF-continuation` fixture in
+            //      `../evals/goldens/gates/edit-the-constitution.json` regresses.
+            //   3. `./compile.test.mjs` — **two** direct assertions fail, *a CRLF continuation before
+            //      the path* and *a CRLF continuation after `>`*.
+            //   4. `mutants` — exit **2, could-not-run**, downstream of 2: a census over a red corpus
+            //      measures nothing, so it refuses until the fixture is repaired.
+            // **An earlier draft of this comment said "those two and nothing else" and had counted only
+            // the first two** — an exhaustive claim that had not run the suite it was exhaustive about,
+            // in the comment repairing an unmeasured claim. Reported by Copilot, round 1 on #342.
+            // What does NOT move: the redirection is recognised off the raw segment text rather than off
+            // a joined word, so the true positive survives removal, and so does a real LF continuation.
+            // Asked at
             // `../.portulan/proposals/0031-a-continuation-no-shell-joins.md`; until that is ruled, the
             // branch stays and this comment states what was measured rather than what was argued.
             //
@@ -803,11 +812,16 @@ function commandSegments(raw) {
             // failing case: one carrier corrected and its sibling left is how the last three defects
             // on this branch happened.
             // **The pair's two carriers are this line and `shellWords`, and the measurement retiring
-            // the reachability claim is written up there once.** It reads on this line too: no shell
-            // measured joins the pair, so consuming it here is the same false red in the same
-            // direction. Removing it would have to remove both — which is why
-            // `../.portulan/proposals/0031-a-continuation-no-shell-joins.md` names both carriers
-            // rather than the one whose comment argued for it.
+            // the reachability claim is written up there once.** No shell measured joins the pair, so
+            // consuming it here is unfaithful to a shell in the same direction — **but this carrier
+            // records no false red, and an earlier draft of this comment said it did.** This reader
+            // supplies the SHELL matcher, whose `crlf-continuation-in-the-payload|shell` cell answers
+            // `false`, which is the correct negative: nothing gated runs there. The one recorded false
+            // red is `write-named`, and it is reached through `shellWords`. Removing the pair would
+            // still have to remove both — a carrier corrected while its sibling stands is how the last
+            // several defects on this line happened — which is why
+            // `../.portulan/proposals/0031-a-continuation-no-shell-joins.md` names both carriers rather
+            // than the one whose comment argued for it. Reported by Copilot, round 1 on #342.
             i += command[i + 1] === "\r" && command[i + 2] === "\n" ? 2 : 1;
             // **Remember WHICH character this backslash turned into data.** The redirection-operator
             // check below reads one raw neighbour, and a raw read cannot tell `>` the operator from

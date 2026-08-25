@@ -1296,11 +1296,23 @@ describe("the shared matcher", () => {
         // the CRLF spelling stepped aside. Both are asserted so the pair cannot drift apart again.
         // **The reachability this comment used to claim — "which made the constitution reachable by
         // editing the file on Windows" — is retired.** Measured 2026-08-25 on bash 3.2.57, 5.2.15 and
-        // 5.2.37, plus zsh 5.9 and sh: none of them joins the pair, so for this `cp` shape the target
-        // is left byte-for-byte unchanged and these two assertions pin a FALSE RED rather than a
-        // closed hole. They stay asserted because the matcher still answers that way and a change to
-        // it is `../.portulan/proposals/0031-a-continuation-no-shell-joins.md`'s to rule; the argument
-        // and its limits are written once, at `shellWords` in ./compile.mjs.
+        // 5.2.37, plus zsh 5.9 and sh: none of them joins the pair, so **both** assertions below pin a
+        // FALSE RED rather than a closed hole. They stay asserted because the matcher still answers
+        // that way and a change to it is
+        // `../.portulan/proposals/0031-a-continuation-no-shell-joins.md`'s to rule; the argument and
+        // its limits are written once, at `shellWords` in ./compile.mjs.
+        //
+        // **BOTH, including the redirect one — and the near-miss is worth naming, because a reviewer
+        // has already made it.** Copilot read `echo x > \<CRLF>docs/vision.md` as the write-redirect
+        // shape the fuzzer records as a TRUE POSITIVE, and it is not. **Where the pair sits decides
+        // it.** After the operator, as here, the escaped `\r` becomes the redirect's TARGET — bash
+        // writes a file named `\r` and the constitution is untouched: measured, exit 126, target
+        // byte-for-byte unchanged on bash 3.2.57 and 5.2.15. The truncating shape puts the pair
+        // BEFORE the operator, `echo \<CRLF>x > docs/vision.md`, where the surviving fragment carries
+        // a clobbering `>` that a shell applies before it looks the command up — exit 127, target
+        // zero bytes. Two different strings; only the second destroys anything. Refused on that
+        // measurement, Copilot round 1 on #342, and the distinction written down so the reading is
+        // not made a second time.
         // An escaped quote inside `"…"`. The run closed at the `\"`, the real closing quote opened a
         // new one, and the `;` was swallowed inside it — so the line never split and the write was
         // never evaluated. A false GREEN on the constitution, from a spelling that appears whenever a

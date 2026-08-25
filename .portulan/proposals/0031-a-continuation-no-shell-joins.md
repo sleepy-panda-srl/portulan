@@ -77,11 +77,22 @@ text rather than off a joined word. **A real LF continuation still joins**, so t
 is untouched.
 
 The table's three moving rows are three probe **shapes**, not three recorded cells, and the difference
-matters to whoever carries the removal out. In this repository's own vocabulary the removal moves **one
-recorded fuzz cell** — `crlf-continuation-in-the-payload|write-named` — and regresses **one gate-corpus
-fixture**, `a-CRLF-continuation` in
-[`edit-the-constitution.json`](../../evals/goldens/gates/edit-the-constitution.json). Those two, and
-nothing else: measured by deleting both carriers in a scratch clone and running the recipes.
+matters to whoever carries the removal out. **Measured by deleting both carriers in a scratch clone and
+running the recipes, the removal moves four surfaces:**
+
+1. `fuzz-shell` — the `crlf-continuation-in-the-payload|write-named` cell's recorded divergence
+   **closes**. Good news, and a red until `EXPECT` and the record it cites are updated.
+2. `goldens` — the `a-CRLF-continuation` fixture in
+   [`edit-the-constitution.json`](../../evals/goldens/gates/edit-the-constitution.json) **regresses**.
+3. [`../../cli/compile.test.mjs`](../../cli/compile.test.mjs) — **two** direct assertions fail,
+   *a CRLF continuation before the path* and *a CRLF continuation after `>`*.
+4. `mutants` — exit **2, could-not-run**: it refuses a census over the corpus 2 reddened, so it is
+   unblocked by fixing that rather than by an edit of its own.
+
+**An earlier draft of this section said "those two, and nothing else", having counted the first two
+only** — an exhaustive claim in a proposal whose subject is a claim nobody measured. Reported by
+Copilot on [#342](https://github.com/sleepy-panda-srl/portulan/pull/342) and corrected by running the
+deletion rather than by re-reading the sentence.
 
 ## The question
 
@@ -145,11 +156,11 @@ image would be a network call in CI, which is a standing rule here, and it would
 
 **Retire when:** ruled, in either direction, and the ruling carried out —
 
-- **Accepted** → the removal lands as its own review, and it carries **both** records with it: the
-  `crlf-continuation-in-the-payload|write-named` EXPECT `answer` flips to `false` and its `record` dies
-  with the divergence it licensed, and the `a-CRLF-continuation` fixture in
-  [`edit-the-constitution.json`](../../evals/goldens/gates/edit-the-constitution.json) regresses.
-  Moving either in the good-news direction is still a red until the record is updated, which is by
+- **Accepted** → the removal lands as its own review, and it carries **all four surfaces above** with
+  it: the `write-named` EXPECT `answer` flips to `false` and its `record` dies with the divergence it
+  licensed, the goldens fixture is re-recorded, the two `compile.test.mjs` assertions are re-pointed,
+  and `mutants` is unblocked by the second of those rather than by an edit of its own. Moving a
+  recorded cell in the good-news direction is still a red until the record is updated, which is by
   design and is what the accepting change must absorb.
 - **Kept** → the Windows gap stops being a note and becomes managed, by one of the three routes above,
   and this file records which.
