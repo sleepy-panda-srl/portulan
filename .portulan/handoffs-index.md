@@ -6,9 +6,9 @@
 > the only remedy a budget could ask for is one this project rules out.
 
 - 2026-08-25 · [Handoff — the corpus lost, and the fuzzer found a live bypass](handoffs/2026-08-25-the-corpus-lost-and-the-fuzzer-found-a-live-bypass.md)
+- 2026-08-25 · [Handoff — the reachability was retired, and the removal was not taken](handoffs/2026-08-25-f-the-reachability-was-retired-and-the-removal-was-not-taken.md)
 - 2026-08-25 · [Handoff — the seam guards the client and not the host, and the obvious fix scores zero](handoffs/2026-08-25-e-the-seam-guards-the-client-and-not-the-host.md)
 - 2026-08-25 · [Handoff — the consolidation that first made the file bigger](handoffs/2026-08-25-d-the-consolidation-that-first-made-the-file-bigger.md)
-- 2026-08-25 · [Handoff — the reachability was retired, and the removal was not taken](handoffs/2026-08-25-c-the-reachability-was-retired-and-the-removal-was-not-taken.md)
 - 2026-08-25 · [Handoff — every rail was forced red and fired, and the calendar that does it next week is unvouched](handoffs/2026-08-25-c-every-rail-was-forced-red-and-the-calendar-is-unvouched.md)
 - 2026-08-25 · [Handoff — bash does not join a CRLF, and the session budget stopped being a number](handoffs/2026-08-25-b-bash-does-not-join-a-crlf-and-the-budget-became-a-rule.md)
 - 2026-08-24 · [Handoff — the librarian's scheduled pass](handoffs/2026-08-24-librarian-pass.md)
