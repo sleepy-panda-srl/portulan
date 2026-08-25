@@ -187,12 +187,31 @@ test("a yielded rail with no drill is a finding", () => {
     assert.ok(findings.some((f) => /has no drill/.test(f.what) && /a-rail-nothing-drills/.test(f.where)));
 });
 
-test("`check` cannot be narrowed — the whole table is validated in every mode", () => {
+test("`--only` narrows what runs and not what must be well formed", async () => {
     // Session 1's round 1 on `mutants.mjs`: `--only` skipped validation in exactly the mode a person
-    // reaches for when something is already wrong. Structural rather than behavioural, and deliberately
-    // so: the guarantee is that `check` has no notion of a selection at all.
-    assert.ok(!check.toString().includes("only"), "`check` mentions a selection, so it can be narrowed");
+    // reaches for when something is already wrong.
+    //
+    // **This was a source-text assertion — `!check.toString().includes("only")` — and Copilot round 1
+    // reported it as already false, since `toString()` carries the body's comments.** Measured: it was
+    // still true, so the claim was wrong about this tree. The finding underneath it was not: an
+    // assertion over source text passes or fails on a comment somebody writes later, and it tests the
+    // spelling instead of the behaviour. Asserted behaviourally now — a malformed drill for a rail
+    // `--only` did NOT select still refuses the run.
+    const bad = [...DRILLS, { rail: "not-a-rail-at-all", perturb: null, exit: 1, tell: "x", why: "malformed on purpose" }];
+    assert.ok(
+        check({ recipes: recipes(), repoRoot: REPO, drills: bad }).some((f) => /neither a recipe/.test(f.what)),
+        "the seam must surface a malformed drill",
+    );
+    // And the real table stays clean, so the case above is exercising the seam rather than a tree defect.
+    assert.deepEqual(check({ recipes: recipes(), repoRoot: REPO }), []);
 });
+
+// _A first draft of the case above also invoked `run(["--only", "json", …])` against this repository and
+// asserted the status was not 2. It failed for a reason that had nothing to do with the property: the
+// working tree is dirty while a session is in progress, so the sweep refused the tree. **A test whose
+// verdict moves with whether somebody has uncommitted work is testing the desk**, which is the class this
+// whole module is about, and it is the second time in this change that a check inherited an assumption
+// about where it was run. The property that is decidable without an environment is the one above._
 
 // ------------------------------------------------------------------------------------- the pair oracle
 

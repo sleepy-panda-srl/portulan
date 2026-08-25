@@ -70,24 +70,25 @@ on:
     # expression in a manifest nothing reads would be configuration pretending to be policy.
     - cron: "0 6 * * 4"
   workflow_dispatch:
-  # And on a pull request that touches a rail or the harness. **This is not a required check** — the
-  # required contexts are `workspace-verify` and `pr-labeled` (`.portulan/compile/github-ruleset.json`),
-  # and making this one required is the maintainer's call rather than a side effect of adding a file.
-  # What it buys is timing: the commit that changes a recipe is the commit that learns whether that
-  # recipe still fires, instead of the next Thursday finding out. The `drills` verify recipe already
-  # runs on every pull request, and it checks the roster and the anchors rather than running any rail.
+  # And on **every** pull request. **This is not a required check** — the required contexts are
+  # `workspace-verify` and `pr-labeled` (`.portulan/compile/github-ruleset.json`), and making this one
+  # required is the maintainer's call rather than a side effect of adding a file. What it buys is timing:
+  # the commit that changes a rail is the commit that learns whether that rail still fires, instead of
+  # the next Thursday finding out. The `drills` verify recipe runs on every pull request too, and it
+  # checks the roster and the anchors rather than running any rail.
+  #
+  # **This carried a `paths:` filter and the filter was wrong.** It listed the harness and the recipes and
+  # missed most of what the drill table actually perturbs — `.claude/settings.json`, `.portulan/labels.json`,
+  # `.claude-plugin/plugin.json`, `evals/`, `README.md`, `CONTRIBUTING.md`, `.portulan/memory-index.md`,
+  # `.github/workflows/pr-labels.yml`, `verify.yml`, and the three sibling runners a drill reds. Raised by
+  # Copilot, round 1 on #343.
+  #
+  # **Replaced with a catch-all rather than completed**, which is this repository's standing repair: a
+  # hand-maintained roster whose subject grows is a carrier that fails silently, and the roster this one
+  # would need is precisely the perturbation set — derivable from `cli/drills.mjs` and from nowhere a
+  # YAML `paths:` list can read. The cost is stated rather than hidden: about ninety seconds on every
+  # pull request, against a filter that was already missing two thirds of its subject.
   pull_request:
-    paths:
-      - "cli/drills.mjs"
-      - "cli/compile.mjs"
-      - "cli/gate.mjs"
-      - "cli/stop-gate.mjs"
-      - "cli/recipe-set.mjs"
-      - ".portulan/verify/**"
-      - ".portulan/workspace.json"
-      - "packs/**/verify/**"
-      - "packs/**/pack.json"
-      - ".github/workflows/drills.yml"
 
 # The read floor, declared. **Declaring `permissions` at all sets every unnamed scope to `none`** — it
 # replaces the default rather than adding to it — which is what makes this one line the whole

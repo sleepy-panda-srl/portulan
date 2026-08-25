@@ -613,6 +613,22 @@ export function check({ recipes, repoRoot, drills = DRILLS }) {
     const nonRecipeIds = new Set(NON_RECIPE_RAILS.map((r) => r.id));
     const drilled = new Set();
 
+    // **A yielded recipe sharing an id with a non-recipe rail is refused**, because the sweep's lookup
+    // map spreads the hooks after the recipes: a workspace recipe called `gate` would be silently
+    // shadowed by the hook, `check` would count that id as drilled, and the real recipe would never run
+    // while the sweep reported green. Nothing in `spec/workspace.schema.json` reserves these two slugs,
+    // so the refusal belongs here. Copilot round 1.
+    for (const rail of NON_RECIPE_RAILS) {
+        if (recipeIds.has(rail.id)) {
+            findings.push({
+                where: `rail \`${rail.id}\``,
+                what:
+                    "is both a recipe this workspace yields and a declared non-recipe rail. One id cannot be two rails: " +
+                    "the hook would shadow the recipe, and the recipe would go undrilled behind a green",
+            });
+        }
+    }
+
     // `drills` is a seam for the suite and never a selection: the CLI never passes it, so the whole
     // declared table is always what gets validated. It exists because a guard nothing can exercise
     // positively is a guard nobody has seen work — this module's own subject, one altitude up.
@@ -650,8 +666,20 @@ export function check({ recipes, repoRoot, drills = DRILLS }) {
         if (typeof drill.why !== "string" || drill.why.length === 0) {
             findings.push({ where, what: "declares no `why`. A drill with no stated claim is a perturbation nobody can review" });
         }
-        if (!Number.isInteger(drill.exit)) {
-            findings.push({ where, what: "declares no integer `exit`, so nothing pins what firing looks like" });
+        // **0 or 1, never 2.** Exit 2 is reserved throughout this repository for *could not run*, so a
+        // drill declaring it would count a rail that could not be judged as a rail that fired — the exact
+        // inversion `../.portulan/memory/verify-preconditions-fail-closed.md` exists to prevent, inside
+        // the harness built to detect it. A rail whose only non-green arm IS a refusal needs an argument
+        // and a different mechanism, not a declaration that quietly reads a refusal as a fire; the
+        // `workflow-filters` drill was drafted that way and was rewritten to force the exit-1 arm
+        // instead. Copilot round 1.
+        if (drill.exit !== 0 && drill.exit !== 1) {
+            findings.push({
+                where,
+                what:
+                    `declares \`exit: ${JSON.stringify(drill.exit)}\`. A fire is 0 (a hook, which answers in its stdout) or ` +
+                    "1 (a red); 2 is could-not-run everywhere here, and counting it as a fire would read a refusal as a verdict",
+            });
         }
         // A drill whose control and fire are the same run proves nothing at all. One of the two must
         // differ: the tree, or the input.
@@ -778,8 +806,8 @@ export function treeToDrill({ repoRoot, workingCopy }) {
     return { sha: synthesized, kind: "a commit synthesized from the working copy" };
 }
 
-/** Run one rail in one tree. Returns `{status, stdout, stderr, tellIn}`. */
-function runRail({ rail, worktree, stdin }) {
+/** Run one rail in one tree. Returns `{status, stdout, stderr}`. */
+function runRail({ rail, worktree, stdin, workspaceRel }) {
     if (rail.argv) {
         // The id is completed here rather than in the declaration, so it is distinct per worktree and
         // still carries the prefix this harness cleans up under.
@@ -790,11 +818,24 @@ function runRail({ rail, worktree, stdin }) {
         const result = spawnSync(process.execPath, rail.argv, {
             cwd: worktree,
             encoding: "utf8",
-            input: `${JSON.stringify({ cwd: worktree, ...payload })}\n`,
+            // **The enforced fields come LAST**, and the order is a finding rather than a style: spread
+            // first, a drill's own `cwd` silently overrode it, and `./stop-gate.mjs` resolves the session
+            // tree from that field — so drill data could have pointed a control or a fire at another
+            // repository entirely while the transcript said the worktree. The harness owns the execution
+            // tree, never the declaration. Copilot round 1.
+            input: `${JSON.stringify({ ...payload, cwd: worktree })}\n`,
             timeout: RAIL_TIMEOUT_MS,
             // The hooks are TOLD their project root rather than deriving it, so a drill that did not set
             // this would grade the repository this session is in and not the throwaway worktree.
-            env: { ...process.env, CLAUDE_PROJECT_DIR: worktree },
+            //
+            // **And `PORTULAN_WORKSPACE` is set rather than inherited.** Both hooks read
+            // `process.env.PORTULAN_WORKSPACE || ".portulan"`, so with `--workspace` naming anything else
+            // — or with that variable merely present in the ambient environment — the sweep enumerated one
+            // workspace's recipes while the hooks read another workspace's policy. A rail graded against a
+            // policy the run did not choose is a verdict about the machine. `run` refuses a workspace that
+            // is not inside the repository, so this relative spelling always resolves in the worktree.
+            // Copilot round 1.
+            env: { ...process.env, CLAUDE_PROJECT_DIR: worktree, PORTULAN_WORKSPACE: workspaceRel },
         });
         if (result.error) throw new CouldNotRun(`rail \`${rail.id}\` could not run — ${result.error.message}`);
         return { status: result.status, stdout: result.stdout ?? "", stderr: result.stderr ?? "" };
@@ -835,7 +876,7 @@ const salient = (text, lines = 12) => {
  * Returns a finding or `null`. Throws `CouldNotRun` when no verdict can be formed — a control that is
  * already red, a tell already present before the perturbation, an anchor that will not place.
  */
-export function drillOne({ drill, rail, repoRoot, sha, say }) {
+export function drillOne({ drill, rail, repoRoot, sha, say, workspaceRel = ".portulan" }) {
     const worktree = fs.mkdtempSync(path.join(os.tmpdir(), "portulan-drill-"));
     // `mkdtemp` creates the directory and `git worktree add` insists on creating it itself, so the
     // reservation is made and then handed back — which is still the right order: it is what guarantees
@@ -844,7 +885,7 @@ export function drillOne({ drill, rail, repoRoot, sha, say }) {
     try {
         git(["worktree", "add", "--detach", worktree, sha], { cwd: repoRoot });
 
-        const control = runRail({ rail, worktree, stdin: drill.stdinControl ?? drill.stdin });
+        const control = runRail({ rail, worktree, stdin: drill.stdinControl ?? drill.stdin, workspaceRel });
         if (control.status !== 0) {
             throw new CouldNotRun(
                 `rail \`${drill.rail}\` is not green on the drilled tree, so nothing it does next is attributable to the ` +
@@ -861,7 +902,7 @@ export function drillOne({ drill, rail, repoRoot, sha, say }) {
         const moved = perturb(worktree, drill);
         if (drill.stage) git(["add", "-A"], { cwd: worktree });
 
-        const fire = runRail({ rail, worktree, stdin: drill.stdin });
+        const fire = runRail({ rail, worktree, stdin: drill.stdin, workspaceRel });
         const text = tellText(rail, fire);
         if (fire.status !== drill.exit) {
             return {
@@ -1003,6 +1044,39 @@ export async function run(argv = [], { stdout = process.stdout, stderr = process
             );
         }
 
+        // **The sweep runs every command from a throwaway worktree, so every path in one must resolve
+        // there.** Two refusals, both measured rather than reasoned:
+        //
+        //   * a **pack root outside the repository** makes `recipe-set` relativise `${PACK_ROOT}` against
+        //     the repo root, which produced `bash ../../../../../../../private/tmp/…/actions-pinned.sh`
+        //     — a path with `..` hops, executed from a different directory, landing somewhere nobody
+        //     chose. `--check` stays permissive because it runs no rail.
+        //   * a **workspace outside the repository** cannot be handed to the hooks, which read
+        //     `PORTULAN_WORKSPACE` as a path inside their project root.
+        //
+        // Both are could-not-run rather than a best effort: a rail run against files the sweep cannot
+        // name is a verdict about neither tree. Copilot round 1.
+        const inside = (dir) => {
+            const rel = path.relative(repoRoot, dir);
+            return rel !== "" && !rel.startsWith("..") && !path.isAbsolute(rel);
+        };
+        for (const root of packRoots) {
+            if (!inside(root)) {
+                throw new CouldNotRun(
+                    `--pack-root ${root} is outside ${repoRoot}, and the sweep runs each rail from a throwaway worktree. ` +
+                        "A composed recipe's `${PACK_ROOT}` is relativised against the repository, so from a worktree it " +
+                        "would point at neither copy. Pass a root inside the repository, or use --check, which runs no rail",
+                );
+            }
+        }
+        if (!inside(workspaceDir)) {
+            throw new CouldNotRun(
+                `--workspace ${workspaceDir} is outside ${repoRoot}, and the hook rails are handed their workspace as a ` +
+                    "path inside the tree being drilled. Pass a workspace inside the repository, or use --check",
+            );
+        }
+        const workspaceRel = path.relative(repoRoot, workspaceDir);
+
         const tree = treeToDrill({ repoRoot, workingCopy });
         const byId = new Map([
             ...recipes.map((r) => [r.id, { id: r.id, run: r.run }]),
@@ -1031,7 +1105,7 @@ export async function run(argv = [], { stdout = process.stdout, stderr = process
             // through the CLI — it is the guard that keeps that true if the two ever drift.
             if (!rail) throw new CouldNotRun(`rail \`${drill.rail}\` is not in the yielded set nor declared`);
             try {
-                const finding = drillOne({ drill, rail, repoRoot, sha: tree.sha, say });
+                const finding = drillOne({ drill, rail, repoRoot, sha: tree.sha, say, workspaceRel });
                 if (finding) findings.push(finding);
             } catch (error) {
                 if (!(error instanceof CouldNotRun)) throw error;

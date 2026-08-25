@@ -337,3 +337,51 @@ triggers — a pre-existing leak this change neither caused nor fixes. **The fig
 than the sentence I wrapped it in**, which is this repository's signature defect arriving in my own
 report of a fix for a leak. It reached no tracked file; it is recorded here because the near-miss is
 the interesting half.
+
+## Copilot round 1 — seven findings, six real, and the seventh was wrong about this tree
+
+Two of the six are **fail-opens in the harness itself**, which is the round earning its keep:
+
+1. **A drill's own `cwd` overrode the enforced one.** The payload was spread as
+   `{ cwd: worktree, ...payload }`, and `stop-gate` resolves the session tree from that field — so drill
+   data could have pointed a control or a fire at another repository while the transcript said the
+   worktree. The enforced fields come last now: the harness owns the execution tree, never the
+   declaration.
+2. **A recipe named `gate` or `stop-gate` would be silently shadowed.** The sweep's lookup map spreads
+   the hooks after the recipes and `check` counted the id as drilled, so the real yielded recipe would
+   never run behind a green. Nothing in the schema reserves those slugs, so the collision is refused
+   here.
+
+Two are **paths that would not resolve where the sweep runs**, and one of them measured worse than
+reported: with a pack root **outside** the repository, `recipe-set` relativises `${PACK_ROOT}` against
+the repo root and produced `bash ../../../../../../../private/tmp/…/actions-pinned.sh` — a path with
+`..` hops, executed from a throwaway worktree, landing somewhere nobody chose. Refused now, with
+`--check` left permissive because it runs no rail. The sibling: `PORTULAN_WORKSPACE` was **inherited**
+rather than set, so `--workspace` — or that variable merely sitting in the environment — enumerated one
+workspace's recipes while the hooks read another workspace's policy.
+
+One is a **reserved exit code admitted as a fire.** A drill could declare `exit: 2`, which is
+could-not-run everywhere here, and the harness would have counted a rail that could not be judged as a
+rail that fired. Restricted to 0 and 1 — and the `workflow-filters` drill was drafted with exactly that
+mistake earlier in this session, which is why the refusal carries the argument rather than just the
+check.
+
+One is the **`pull_request` path filter, which was wrong rather than incomplete.** It named the harness
+and the recipes and missed most of what the table actually perturbs — settings, labels, the plugin
+manifest, `evals/`, two READMEs, the memory index, two workflows, and the three sibling runners.
+**Replaced with a catch-all rather than completed**: the roster it would need is the perturbation set,
+derivable from `cli/drills.mjs` and from nowhere a YAML `paths:` list can read, and a hand-maintained
+roster whose subject grows is the carrier this milestone keeps deleting. The cost is about ninety
+seconds per pull request, stated rather than hidden.
+
+**And the seventh was wrong about this tree, which is worth recording as carefully as the six.** It
+reported that `check.toString().includes("only")` was already true — the body's comments being part of
+`toString()` — so the assertion was false and the suite failed. Measured: `includes("only")` is
+**false**, and the suite was passing. But the finding underneath it holds: an assertion over source
+*text* passes or fails on a comment somebody writes later, and it tests a spelling rather than a
+behaviour. It is behavioural now, through the `drills` seam.
+
+_A first rewrite of that case then invoked the real sweep and asserted its status — and failed, because
+a working tree is dirty while a session is in progress. **A test whose verdict moves with whether
+somebody has uncommitted work is testing the desk**, which is this module's own subject and the second
+time in this change that a check inherited an assumption about where it was run._
