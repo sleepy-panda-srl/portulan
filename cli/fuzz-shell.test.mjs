@@ -32,7 +32,7 @@ const HERMETIC_HOST = fs.mkdtempSync(path.join(os.tmpdir(), "portulan-hermetic-"
 process.env.CLAUDE_CONFIG_DIR = HERMETIC_HOST;
 process.on("exit", () => fs.rmSync(HERMETIC_HOST, { recursive: true, force: true }));
 
-import { DEFAULT_CASES, DEFAULT_SEED, EXPECT, PAYLOADS, POSITIONS, WRITERS, asCase, correctFor, generate, hash, pathSpellings, prng, run, writePayload } from "./fuzz-shell.mjs";
+import { DEFAULT_CASES, DEFAULT_SEED, EXPECT, PAYLOADS, POSITIONS, WRITERS, asCase, correctFor, generate, groundFor, hash, pathSpellings, prng, run, writePayload } from "./fuzz-shell.mjs";
 import { CLASSES, PATHS, grade, readCorpus, yieldedRules } from "./goldens.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -96,7 +96,12 @@ test("every recorded divergence from ground truth names a record", () => {
     // its position's ground truth demands only by citing where that disagreement is written down.
     for (const [key, e] of Object.entries(EXPECT)) {
         const position = POSITIONS.find((p) => p.id === key.split("|")[0]);
-        if (e.answer === correctFor(position.ground)) {
+        // Through `groundFor`, not `position.ground` — one production's truth is per payload kind, and
+        // reading the position's field alone reported a TRUE POSITIVE as an undocumented divergence.
+        // The runner was routed through `groundFor` and this test was not: one carrier corrected and
+        // its sibling left, which is the class this pull request keeps meeting. Caught by the rail.
+        const ground = groundFor(position, key.split("|")[1]);
+        if (e.answer === correctFor(ground)) {
             assert.equal(e.record, undefined, `${key} agrees with ground truth and cites a record anyway`);
             continue;
         }

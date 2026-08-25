@@ -2442,9 +2442,9 @@ _The seam applies here too: no client-identifying references._
   supervisor adjustment finished; the session budget ruled.** Session-open adjustment 4 had shipped two
   of its four spelling groups — four redirection-**target** productions now carry the escaped-space and
   escaped-quote-in-a-quoted-span class #336 met three times, all caught. **The CRLF group produced a
-  measured finding instead: bash 3.2.57, zsh and sh none of them join `\` + CRLF, while `shellWords`
-  does** — a false red, fail-closed, now a recorded cell; `compile.mjs`'s claim that the spelling
-  reached the constitution did not reproduce, flagged not repaired, the repair being fail-open. The
-  ground harness was fooled a third time and now requires marker content. **Row 8's Sessions cell reads
-  `1 per clause`**, the rule rather than a tally. Every yielded recipe green; seam scan clean over every
+  measured finding and a wrong first record of it:** bash splits at `\`+CRLF where `shellWords` joins,
+  and I wrote *false red* for all three payloads — but a shell applies a redirection **before** command
+  lookup, so the clobber shapes **truncate the target to zero bytes** and the matcher denying them is a
+  TRUE POSITIVE. Ground truth is per payload kind now, and the harness reads *touched* as well as *ran*.
+  **Row 8's Sessions cell reads `1 per clause`.** Every yielded recipe green; seam scan clean over every
   path the diff touches · Handoff: [`2026-08-25-b`](../.portulan/handoffs/2026-08-25-b-bash-does-not-join-a-crlf-and-the-budget-became-a-rule.md).

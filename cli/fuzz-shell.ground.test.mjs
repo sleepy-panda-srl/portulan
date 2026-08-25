@@ -32,7 +32,7 @@ const HERMETIC_HOST = fs.mkdtempSync(path.join(os.tmpdir(), "portulan-hermetic-"
 process.env.CLAUDE_CONFIG_DIR = HERMETIC_HOST;
 process.on("exit", () => fs.rmSync(HERMETIC_HOST, { recursive: true, force: true }));
 
-import { POSITIONS, pathSpellings, prng, respell } from "./fuzz-shell.mjs";
+import { EFFECT, POSITIONS, groundFor, pathSpellings, prng, respell } from "./fuzz-shell.mjs";
 
 /**
  * The neutral payload: it drops a marker file in the scratch directory and touches nothing else.
@@ -78,15 +78,25 @@ function ran(script, cwd, { exitsNonZero = false } = {}) {
     } else {
         assert.notEqual(result.status, 0, `${JSON.stringify(script)} declares exitsNonZero and bash exited 0 — the production's own claim is stale`);
     }
-    // **The marker must have CONTENT, not merely exist** — the third time this harness has been fooled
-    // by the thing it measures, and each catch has come from extending the measurement rather than
-    // from reading it. A shell applies a redirection BEFORE it looks the command up, so a fragment
-    // like `ok > portulan.marker` left over by a split creates the file and then fails: the file is
-    // there and empty, and an existence check reads that as *the payload ran*. `printf ok` writes
-    // `ok`, and nothing else here does.
-    const fired = fs.existsSync(marker) && fs.readFileSync(marker, "utf8") === "ok";
+    // **TWO readings, because "the payload took effect" means two different things.**
+    //
+    // `ran` — the marker holds `ok`, so `printf ok` actually executed. That is the gated effect for a
+    // command payload and for a writer that names its target.
+    //
+    // `touched` — the marker exists at all, whatever it holds. A shell applies a redirection BEFORE
+    // it looks the command up, so a fragment left over by a split creates or TRUNCATES the file and
+    // then fails. For a redirection payload that IS the gated effect: the target is destroyed whether
+    // or not the command ran.
+    //
+    // **Collapsing the two hid a true positive as a false red.** This returned `ran` alone, and the
+    // CRLF production came back "did not run" while bash had just truncated the target to zero bytes —
+    // so the fuzzer recorded a matcher that correctly denies a destructive command as over-eager.
+    // Fourth time this harness has been fooled by the thing it measures, and the fourth caught by
+    // extending the measurement rather than by reading it. Found by the pre-commit checkpoint.
+    const exists = fs.existsSync(marker);
+    const reading = { ran: exists && fs.readFileSync(marker, "utf8") === "ok", touched: exists };
     fs.rmSync(marker, { force: true });
-    return fired;
+    return reading;
 }
 
 test("every production's declared position is what bash actually does", () => {
@@ -111,13 +121,21 @@ test("every production's declared position is what bash actually does", () => {
                 // must. An escape hatch nobody has to justify is an escape hatch that widens.
                 assert.ok(typeof position.why === "string" && position.why.trim().length > 20, `${position.id} declares exitsNonZero and argues nothing`);
             }
-            const actual = ran(position.build(NEUTRAL), dir, { exitsNonZero: position.exitsNonZero === true });
-            assert.equal(
-                actual,
-                position.ground === "command",
-                `production \`${position.id}\` declares ground=${position.ground}, and bash ${actual ? "RAN" : "did not run"} the payload. ` +
-                    `The fuzzer's oracle is this declaration, so a wrong one produces a green about the wrong thing`,
-            );
+            const reading = ran(position.build(NEUTRAL), dir, { exitsNonZero: position.exitsNonZero === true });
+            // Per PAYLOAD KIND, because a production's ground truth need not be one answer — see
+            // `groundFor`. The probe runs once; each kind reads it through the effect that kind's
+            // gated action actually has.
+            for (const [kind, effect] of Object.entries(EFFECT)) {
+                const actual = reading[effect];
+                const ground = groundFor(position, kind);
+                assert.equal(
+                    actual,
+                    ground === "command",
+                    `production \`${position.id}\` declares ground=${ground} for a ${kind} payload, and bash ` +
+                        `${actual ? "DID" : "did not"} ${effect === "ran" ? "run the payload" : "touch the target"}. ` +
+                        `The fuzzer's oracle is this declaration, so a wrong one produces a green about the wrong thing`,
+                );
+            }
         }
         console.log(`ground: measured ${POSITIONS.length - skipped.length} position(s) under bash; unmeasured: ${skipped.join(", ") || "none"}`);
         assert.deepEqual(skipped, ["sudo-prefix"], "the unmeasured set changed — re-read why each member is in it");
@@ -193,7 +211,7 @@ test("a respelt word survives a wrapper, so a composed spelling still means what
                 const result = spawnSync("bash", ["-c", script], { cwd: dir, encoding: "utf8", timeout: 10_000, env: { PATH: process.env.PATH ?? "" } });
                 assert.equal(result.status, 0, `bash refused ${JSON.stringify(script)}: ${result.stderr}`);
                 assert.ok(
-                    fs.existsSync(marker),
+                    fs.existsSync(marker) && fs.readFileSync(marker, "utf8") === "ok",
                     `the respelling ${JSON.stringify(word)} stopped naming the marker inside \`${position.id}\` — ` +
                         `a composed spelling that does not mean what it spells is a generator without ground truth`,
                 );

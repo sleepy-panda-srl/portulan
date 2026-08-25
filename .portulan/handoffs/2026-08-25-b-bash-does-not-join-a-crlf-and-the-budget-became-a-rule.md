@@ -33,49 +33,92 @@ when it is quoted or escaped. `2> "log file.txt"`, `2> 'log file.txt'`, `2> log\
 `2> "log \"q\" file.txt"`, each in front of every payload. **All twelve cells are caught** — the class
 holds under generation, not only under the spellings a reviewer happened to quote.
 
-## bash does not join a CRLF continuation, and `shellWords` does
+## bash does not join a CRLF continuation — and the first record I wrote of that was wrong
 
-The CRLF group did not fit the grammar, and finding out why is the substantive result.
+The CRLF group did not fit the grammar, and finding out why is the substantive result. **So is getting
+it wrong twice before the checkpoint caught me.**
 
-`shellWords` consumes `\` + `\r\n` as a **pair** and joins the word — added 2026-07-28 with the
-comment that `cp /tmp/x \<CRLF>docs/vision.md` was *"the constitution, reachable by editing the file
-on Windows."*
+`shellWords` consumes `\` + `\r\n` as a **pair** and joins the word — added 2026-07-28 with the comment
+that `cp /tmp/x \<CRLF>docs/vision.md` was *"the constitution, reachable by editing the file on
+Windows."* **Measured here on bash 3.2.57, zsh and sh: none of them joins it.** The `\` escapes the
+`\r`, the `\n` ends the command, and a second command runs in place of the rest.
 
-**Measured here on three shells — bash 3.2.57, zsh and sh — and none of them joins it.** `\` escapes
-the `\r`, the `\n` then ends the command, and what runs is `cp /tmp/x docs/` followed by a second
-command `vision.md`, which is not found. The constitution is never written.
+**From that I concluded the spelling was a false red on every payload, wrote "the constitution is never
+written" into three carriers, and was wrong.** The pre-commit checkpoint measured what I had not:
 
-So the matcher answers `true` where bash writes nothing: **a false red, fail-closed**, costing one
-prompt on a rare spelling. Nothing is mis-enforced and no gate is weakened.
+**A shell applies a redirection BEFORE it looks the command up.** So although bash splits and the
+command never runs, a *clobbering* redirection on the surviving fragment still fires. Measured: a file
+holding content before is **zero bytes** after. `>` and `1>` truncate; `>>` appends and does not;
+`cp` never runs and leaves the file untouched.
 
-**Two things follow and only one of them is mine to settle.**
+So the three payloads have three different answers, and only one of them is the false red I claimed:
 
-The fuzzer now carries the spelling as a recorded cell in all three payload kinds, and the asymmetry
-between the two readers shows up again: the **shell** matcher answers `false` — correct, because
-`commandSegments` knows nothing of a CRLF continuation and splits where bash splits — while both
-**write** matchers answer `true`, because they reach `shellWords`, which joins. One spelling, two
-readers, opposite answers, and only one of them agrees with bash.
+| payload | bash | matcher | verdict |
+|---|---|---|---|
+| `shell` | splits; nothing gated runs | `false` | correct |
+| `write-redirect` | **truncates the target to 0 bytes** | `true` | **a TRUE POSITIVE** — the matcher prevents the destruction |
+| `write-named` | `cp` never runs; file untouched | `true` | a false red, fail-closed |
 
-**The other is flagged rather than repaired: `compile.mjs`'s claim that this spelling made the
-constitution reachable did not reproduce.** It is left alone deliberately on two grounds — the repair
-direction is fail-**open**, which is the wrong way to be wrong about a gate; and only bash 3.2.57 was
-available on this machine, so a bash 5 that joins the pair would vindicate the original measurement
-and I cannot rule it out. What is in the tree now is the measurement and its width, not a verdict.
+**A production's ground truth is therefore not always a property of the position**, which the grammar
+had assumed throughout. It carries a per-kind override now, argued where it is used, and the append
+shape is refused by `carries` because `>>` does not truncate and a cell whose ground truth varies with
+the spelling has no invariant to hold.
 
-## The measurement harness was fooled a third time
+**And the mechanism I gave for the `shell` answer was also false.** I wrote that `commandSegments`
+"splits where bash splits". It does not — it consumes the pair exactly as `shellWords` does, and says
+so in its own comment. The answer is `false` because the segment keeps its **raw source text**, so the
+literal prefix compare meets `git \<CRLF>push --force …` and fails. Right answer, wrong reason, which
+`a-stated-enforcer-must-be-the-real-one` counts as the same defect one size down.
+
+**What survives of the original flag, at its real width.** `compile.mjs`'s claim that this spelling
+made the constitution *reachable* is still unreproduced **for the `cp`-shaped payload it names** — and
+is now beside the point for the redirect shapes, where the target is destroyed regardless of whether
+anything joins a continuation. Left unrepaired on the same two grounds: the repair direction is
+fail-**open**, and only bash 3.2.57 was available here.
+
+## The measurement harness was fooled a third time, then a fourth
 
 The neutral payload is `printf ok > portulan.marker` and `ran()` checked that the marker **existed**.
 For the CRLF production that was wrong: a shell applies a redirection **before** it looks the command
 up, so the leftover fragment `ok > portulan.marker` creates the file and *then* fails. An empty marker
 appeared and the harness read it as *the payload ran* — certifying a data position as a command one.
 
-`ran()` now requires the marker to contain `ok`, which only `printf ok` writes.
+`ran()` was changed to require the marker to contain `ok`, which only `printf ok` writes.
 
-**Third instance, and the pattern is worth more than the fix.** First the payload was detectable by
-its own text (`echo` printing `printf PORTULAN_RAN`); then a failed script was read as a measurement;
-now a redirection fired without its command. **Every one was caught by extending the measurement, and
-none by reading the code** — which is the argument for the ground-truth file existing at all, made
-three times by the file itself.
+**And that fix is what hid the true positive above.** Requiring content made the harness report *the
+payload did not run* for exactly the case where bash had just truncated the target — so the correction
+to one blindness manufactured another, one measurement later. The probe returns **two** readings now:
+`ran`, the marker holds `ok`; and `touched`, the marker exists at all. Each payload kind is graded
+through the effect its gated action actually has — a redirection's effect is that the target is
+written, whether or not the command ran.
+
+**Four instances, and the pattern is worth more than any of the fixes.** The payload was detectable by
+its own text; a failed script was read as a measurement; a redirection fired without its command; and
+the repair for that read a truncated file as an untouched one. **Every one was caught by extending the
+measurement, and none by reading the code** — which is the argument for this file existing at all,
+made four times by the file itself.
+
+## The checkpoint, and the order I got wrong
+
+**Pre-commit: Fable 5, fresh context, REQUEST-CHANGES.** It confirmed the retroactive sweep — all
+eighteen adjustments from the two #338 checkpoints, plus the one item that verdict had left
+*undemonstrated*, discharged and evidenced line by line. Then it refused the diff on the two findings
+above, which is the checkpoint earning its place for the third time in two sessions: **the headline
+result of this change was recorded backwards, in three carriers, and no rail could have caught it
+because the harness that would have was blind in the same direction.**
+
+Both are folded. Routing the runner through `groundFor` and leaving the *suite* reading
+`position.ground` then reddened `tests` — one carrier corrected and its sibling left, inside the fix
+for a finding about exactly that. Caught by the rail rather than by me.
+
+**And I committed before the verdict arrived.** I dispatched the checkpoint, kept working, and
+committed `a51aa03` while it was still running — out of order under the gate map's checkpoint table,
+which is the breach [`proposals/0024`](../proposals/0024-a-tier-says-who-attends-a-checkpoint-says-what-is-owed.md)
+retires and the one the Session log already records on
+[#137](https://github.com/sleepy-panda-srl/portulan/pull/137). Nothing merged and nothing went
+outward: the branch is Auto-tier, the pull request opened after the verdict was folded, and a second
+checkpoint graded the correction. But the tier says who must attend an action and the table says what
+is owed before it, and I acted on the first while owing the second.
 
 ## The budget stopped being a number
 
