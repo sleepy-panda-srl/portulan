@@ -71,6 +71,11 @@ const PINNED = Object.freeze([
     // and a roster that skips a check because its tool is currently well-behaved is a roster that
     // records today's implementation rather than the requirement.
     { file: ".portulan/verify/goldens.sh", tool: "cli/goldens.mjs" },
+    // Added 2026-08-25 with milestone 8 clause (b). Both reach the policy through `goldens.mjs` and
+    // so inherit its internal refusal of host discovery, and both are rostered for the reason the
+    // entry above gives: an internal refusal is one edit from being relaxed.
+    { file: ".portulan/verify/mutants.sh", tool: "cli/mutants.mjs" },
+    { file: ".portulan/verify/fuzz-shell.sh", tool: "cli/fuzz-shell.mjs" },
     { file: ".github/workflows/verify.yml", tool: "cli/recipe-set.mjs" },
     { file: ".portulan/dod.md", tool: "cli/recipe-set.mjs" },
 ]);

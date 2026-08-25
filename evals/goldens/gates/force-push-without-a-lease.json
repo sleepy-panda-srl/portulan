@@ -434,6 +434,73 @@
       "input": {},
       "expect": false,
       "why": "`matchesRule` promises never to throw, and the promise is load-bearing rather than tidy: gate.mjs catches and steps aside, so an exception silently REMOVES whatever gate was being evaluated. A throw here is a fail-open wearing a stack trace."
+    },
+    {
+      "id": "the-exact-spelling-with-no-arguments",
+      "class": "holds",
+      "tool": "Bash",
+      "path": "shell-prefix",
+      "input": {
+        "command": "git push --force"
+      },
+      "expect": true,
+      "why": "The target spelled EXACTLY, with nothing after it. Every other case here carries arguments and so is caught by the whitespace-boundary arm alone; this one is the only case in the corpus that exercises the equality arm. Added because a mutation removing that arm survived all 224 cases."
+    },
+    {
+      "id": "a-separator-inside-a-wrapper",
+      "class": "holds",
+      "tool": "Bash",
+      "path": "shell-prefix",
+      "input": {
+        "command": "bash -c \"ls; git push --force origin main\""
+      },
+      "expect": true,
+      "why": "A LIVE BYPASS until 2026-08-25, and of every Gated shell action rather than this one: one wrapper plus one separator. The composition tested the raw command's segments and each segment's spellings, and never a SPELLING's segments — so `ls && bash -c \"…\"` was closed while `bash -c \"ls; …\"` was open. The write matcher never had the gap, because `shellWrites` segments again internally. Found by cli/fuzz-shell.mjs."
+    },
+    {
+      "id": "a-separator-inside-a-wrapper-not-first-on-the-line",
+      "class": "holds",
+      "tool": "Bash",
+      "path": "shell-prefix",
+      "input": {
+        "command": "ls && bash -c \"x; git push --force origin main\""
+      },
+      "expect": true,
+      "why": "The sibling of the case above, and the reason the repair reads a spelling's segments on BOTH arms rather than one. Fixing only the spelling that was quoted is the class this repository met five times on #336."
+    },
+    {
+      "id": "the-lease-survives-a-separator-inside-a-wrapper",
+      "class": "holds",
+      "tool": "Bash",
+      "path": "shell-prefix",
+      "input": {
+        "command": "bash -c \"ls; git push --force-with-lease origin main\""
+      },
+      "expect": false,
+      "why": "The load-bearing control on the 2026-08-25 widening. A repair that re-gated the lease would be the compiler taking back an ungating the maintainer ruled on, which is worse than the hole it closes."
+    },
+    {
+      "id": "a-quoted-separator-is-not-a-separator",
+      "class": "holds",
+      "tool": "Bash",
+      "path": "shell-prefix",
+      "input": {
+        "command": "echo \"ok; git push --force origin main\""
+      },
+      "expect": false,
+      "why": "A separator INSIDE a quoted string is data — bash prints it and runs nothing. Added because a mutation disabling quote tracking in `commandSegments` survived the whole corpus: every existing quoted case held a bare command, so none of them would split even if quoting were ignored."
+    },
+    {
+      "id": "two-wrappers-still-escape",
+      "class": "documented-hole",
+      "tool": "Bash",
+      "path": "shell-prefix",
+      "hole": ".portulan/gate-map.md honest holes, entry 1 — the hook peels ONE wrapper",
+      "input": {
+        "command": "bash -c \"sh -c 'git push --force origin main'\""
+      },
+      "expect": false,
+      "why": "The unwrap budget is one level and this is the counterexample that keeps it there. Asserted here as well as in the suite because the 2026-08-25 segment-composition repair is exactly the kind of change that peels a second level by accident — an earlier draft of the first composition did."
     }
   ]
 }

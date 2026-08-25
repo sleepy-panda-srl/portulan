@@ -22,7 +22,12 @@ keeps the row's own word; the tools take a narrower one.
 
 ## What is built today
 
-**One clause of row 8: (a), adversarial fixtures per compiled gate.** Landed 2026-08-24.
+**Two clauses of row 8, of nine.** (a), adversarial fixtures per compiled gate, landed 2026-08-24;
+**(b)**, mutation testing over both matchers and grammar-aware fuzzing over the shell segmenter,
+landed 2026-08-25. **Seven remain** — golden tasks per core skill, the A/B baseline, OTel opt-in
+config, a rule change merged or rejected on eval evidence, (c) review-loop metering, (d) scheduled
+forced-red drills, and a release carrying an eval result. Each is listed below with the sentence
+[`../.portulan/dod.md`](../.portulan/dod.md) condition 4 requires.
 
 ```
 evals/goldens/gates/<rule-id>.json      one fixture file per rule in the yielded gate policy
@@ -84,6 +89,59 @@ decision, and exempting a growing adversarial-content directory is the allow-lis
 names — so the corpus carries no raw control bytes, and a test asserts both halves: the bytes are clean
 *and* the escapes really decode.
 
+## Clause (b) — the corpus is measured against a broken matcher, and the grammar against bash
+
+Two rails, landed 2026-08-25, and they answer two different questions:
+
+```
+node cli/mutants.mjs    --workspace . --pack-root packs     the mutation census
+node cli/fuzz-shell.mjs --workspace . --pack-root packs     the grammar fuzzer
+```
+
+**`mutants` asks whether the corpus DISCRIMINATES.** It breaks
+[`../cli/compile.mjs`](../cli/compile.mjs)'s matcher region on purpose — one declared, anchored,
+place-exactly-once substitution at a time — and grades each mutant against this corpus. An operator
+that the corpus fails to notice is a hole in the kill-set, and the repair is a new fixture: `matchesRule`
+is a pure function of `(rule, tool, input)` and a fixture is exactly that triple, so any non-equivalent
+mutant is killable by one. A `survives` record is admissible only as a **proof** — semantic
+equivalence, or equivalence under the yielded policy — never as a standing note that a gap exists,
+which would rebuild the prose hole list clause (a) exists to have replaced.
+
+**It went red on its first run and the corpus lost.** Among the breakages that went unnoticed:
+removing `sudo` from the command-prefix table, dropping `..` resolution from path normalisation, and
+disabling quote tracking in the segmenter. Every one is a fixture now, and each was derived by
+measuring which input distinguishes the mutant rather than by reasoning about it — two were *not*
+killed by the spelling that seemed obvious.
+
+_The figures for that first run are dated in
+[the session's handoff](../.portulan/handoffs/2026-08-25-the-corpus-lost-and-the-fuzzer-found-a-live-bypass.md),
+and the SHIPPED totals are printed by `node cli/mutants.mjs` and `node cli/goldens.mjs`, which are
+their one carrier. This paragraph carried "eleven of forty-eight" against a table that had since grown
+to fifty-three — a count written before the thing it counted stopped growing, which is this
+repository's most-repeated defect and was this session's third instance of it. The pre-commit
+checkpoint caught the same figure in the handoff and the repair stopped at the site that was quoted;
+Copilot round 2 found the one it missed. Deleted rather than corrected, so the trap is not re-armed
+for whoever adds the next operator._
+
+**`fuzz-shell` asks whether the SEGMENTERS answer one grammar.** It composes a command from a grammar
+instead of mutating a string, so it knows by construction whether the payload sits where bash would
+execute it or where bash would only print it. Positions are enumerated and recorded; **spellings are
+fuzzed**, and the invariant is that every spelling of one command in one position gets the same
+answer. Every recorded divergence from ground truth cites the record that licenses it.
+
+**The grammar's own ground truth is measured, not argued.**
+[`../cli/fuzz-shell.ground.test.mjs`](../cli/fuzz-shell.ground.test.mjs) runs every position under
+real bash with a **neutral** payload — never a gated command — and writes every path spelling to a
+throwaway file. A grammar that lies about itself produces not a red but a green about the wrong thing,
+which is the one failure a fuzzer cannot detect in itself. It caught two.
+
+**It found a live bypass of every Gated shell action.** `bash -c "ls; git push --force origin main"`
+answered **false**: the composition tested the raw command's segments and each segment's spellings,
+and never a spelling's segments. The write matcher never had the gap, because `shellWrites` segments
+again internally — one fix landing in one carrier and not its sibling, between two branches of one
+function. Closed the same day, at the class rather than the spelling, with the two-wrapper
+counterexample asserted so the unwrap budget stays at one level.
+
 ### What this rail does NOT establish
 
 **Adequacy — whether the cases are a real attack.** What the rail checks is **presence**, and the two
@@ -95,9 +153,18 @@ are worth separating out loud, because a green looks the same either way:
 | Does every case still answer as recorded? | Is the case worth answering? |
 
 So a gate cannot reach the compiled policy with **no** adversarial thought recorded against it — and
-one trivial happy-path fixture per rule satisfies the floor while proving nothing. No check can tell
-those apart; whether a corpus is a real attack is a reviewer's judgement, and it stays one. The runner
-prints this limit on every green rather than letting the exit code imply more than it means.
+one trivial happy-path fixture per rule satisfies the floor while proving nothing. The runner prints
+this limit on every green rather than letting the exit code imply more than it means.
+
+**Half of that gap closed on 2026-08-25, and the sentence has to move with it.** This section used to
+end *"no check can tell those apart"*, and clause (b)'s mutation census is a check that tells part of
+them apart: it breaks the matchers on purpose and asks whether the corpus notices. So the right split
+is now three ways rather than two — **presence** (the `goldens` rail), **discrimination** (the
+`mutants` rail: does the kill-set catch a matcher that has been broken?), and **realism** (whether the
+attacks resemble anything an adversary would type), which is still a reviewer's judgement and stays
+one. The census is what forced the correction rather than a reader noticing: it went red on its first
+run, on 2026-08-25, against the corpus as it then stood — which failed to notice a whole class of
+breakages, every one of which is a fixture now.
 
 The **exemption** is the obvious way to dodge the rail: write the next gate `none`-shaped and it needs
 no fixtures. So every exempt rule is named in the output on every run, the way `compile --matrix` prints
@@ -128,15 +195,14 @@ here claims a capability that does not exist:
   telemetry.
 - **A rule change merged or rejected on eval evidence** — arrives in milestone 8, a later session.
   Every rule in [`../.portulan/memory/`](../.portulan/memory/) to date was merged on review alone.
-- **(b) Mutation testing over both matchers, and grammar-aware fuzzing over the shell segmenter** —
-  arrives in milestone 8, a later session. This corpus is its kill-set and is the reason (a) came first.
 - **(c) Review-loop metering** — rounds per pull request, pushes per round, empty-round rate. Arrives
   in milestone 8, a later session. The *110 rounds over 30 pull requests* figure that bounds the review
   loop was measured by hand and nothing checks it.
 - **(d) Scheduled forced-red drills** — every rail forced red on a calendar and required to fire.
-  Arrives in milestone 8, a later session. The three drills run against this recipe on 2026-08-24 were
-  run by hand, in a session, and recorded in that session's handoff — which is the state (d) exists to
-  replace.
+  Arrives in milestone 8, a later session. The drills run against the `goldens` recipe on 2026-08-24
+  and against `mutants` and `fuzz-shell` on 2026-08-25 were all run **by hand, in a session**, and
+  recorded in those sessions' handoffs — which is precisely the state (d) exists to replace. Two
+  sessions running them by hand is evidence for the clause rather than a substitute for it.
 - **A release carries an eval result** ([`../docs/plan.md`](../docs/plan.md), Protocol → Versioning).
   Arrives in milestone 8, a later session. **This was the row's ninth clause as of 2026-08-24 and was
   nobody's until that day**: the Protocol had carried the obligation since the plan was locked while

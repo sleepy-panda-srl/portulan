@@ -972,8 +972,32 @@ export function matchesRule(rule, tool, input = {}) {
         // wrapper and made `bash -c "bash -c 'git push origin HEAD'"` match, contradicting hole 1's
         // documented and asserted limit. The suite caught it, which is what that counterexample test
         // is for. Reading the raw command in both branches keeps the budget at exactly one unwrap.
-        const segments = commandSegments(input.command);
-        return spellings(input.command).some(hit) || segments.some((seg) => spellings(seg).some(hit));
+        //
+        // **A spelling is SEGMENTED as well as tested whole, and that half was missing until
+        // 2026-08-25.** The two calls above unwrap the raw command and unwrap each of its segments,
+        // which closes a wrapper before a separator — `ls && bash -c "git push --force origin main"`
+        // — and leaves a separator inside a wrapper wide open: `bash -c "ls; git push --force origin
+        // main"` answered **false**, and so did every other Gated shell action behind one wrapper and
+        // one separator. Bash runs it; the gate did not see it.
+        //
+        // **The write branch below never had this gap, and the reason is why the fix is shaped like
+        // this.** Its `writes` callback is `shellWrites`, which segments AGAIN internally with
+        // `shellSegments` — so the write half got a third segmentation for free while the shell half,
+        // whose `hit` is a plain prefix test, got none. One fix landing in one carrier and not its
+        // sibling, between two branches of one function, for the second time
+        // (`proposals/0020`). Found by ./fuzz-shell.mjs, which
+        // generates the grammar rather than reading it.
+        //
+        // `reach` is used on BOTH arms deliberately: without it on the second,
+        // `ls && bash -c "x; git push --force …"` — a separator outside AND inside — still escaped.
+        // Fixing only the spelling that was quoted is the class this repository keeps meeting.
+        //
+        // **The unwrap budget is still exactly one level**, which is hole 1's documented and asserted
+        // limit. `spellings` is called once on each path here and `commandSegments` peels nothing, so
+        // `bash -c "sh -c 'git push origin HEAD'"` stays false — asserted, because an earlier draft of
+        // the segment composition did peel twice and the suite is what caught it.
+        const reach = (s) => hit(s) || commandSegments(s).some(hit);
+        return spellings(input.command).some(reach) || commandSegments(input.command).some((seg) => spellings(seg).some(reach));
     }
     if (typeof action.write === "string") {
         if (WRITE_TOOLS.includes(tool)) return matchesPath(input.file_path ?? input.notebook_path, action.write);

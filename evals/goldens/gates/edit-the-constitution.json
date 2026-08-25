@@ -302,6 +302,105 @@
       },
       "expect": true,
       "why": "The other half of the pair above. Without it the read control alone would pass a matcher that had stopped covering sed entirely."
+    },
+    {
+      "id": "a-read-redirection-before-the-target",
+      "class": "holds",
+      "tool": "Bash",
+      "path": "shell-write",
+      "input": {
+        "command": "tee < /tmp/in docs/vision.md"
+      },
+      "expect": true,
+      "why": "`<` introduces something READ, so the word after it is skipped rather than closing the segment — which keeps `tee` as the head and the constitution as its argument. `shellSegments`' own docblock names this as the case that goes red if the branch is removed, and nothing asserted it until a mutation removing that branch survived the corpus."
+    },
+    {
+      "id": "a-sudo-prefix-is-skipped",
+      "class": "holds",
+      "tool": "Bash",
+      "path": "shell-write",
+      "input": {
+        "command": "sudo cp /tmp/x docs/vision.md"
+      },
+      "expect": true,
+      "why": "A command prefix occupies the head position and `shellSegments` skips it. This is the WRITE half of the leader asymmetry: the same prefix escapes on the shell matcher, which has no prefix table, and both halves are now asserted rather than one."
+    },
+    {
+      "id": "an-assignment-prefix-is-skipped",
+      "class": "holds",
+      "tool": "Bash",
+      "path": "shell-write",
+      "input": {
+        "command": "FOO=bar cp /tmp/x docs/vision.md"
+      },
+      "expect": true,
+      "why": "An assignment in front of the command, skipped by ASSIGNMENT. Untested until a mutation removing that skip survived the corpus."
+    },
+    {
+      "id": "a-single-letter-assignment-prefix-is-skipped",
+      "class": "holds",
+      "tool": "Bash",
+      "path": "shell-write",
+      "input": {
+        "command": "A=1 cp /tmp/x docs/vision.md"
+      },
+      "expect": true,
+      "why": "The shortest assignment there is. ASSIGNMENT reads `[A-Za-z_][A-Za-z0-9_]*=`, and a `+` in place of that `*` — one character in a regex — would drop exactly this spelling and nothing else."
+    },
+    {
+      "id": "a-destination-after-an-equals-sign",
+      "class": "holds",
+      "tool": "Bash",
+      "path": "shell-write",
+      "input": {
+        "command": "dd if=/tmp/x of=docs/vision.md"
+      },
+      "expect": true,
+      "why": "`dd` names its destination as `of=<path>`, so the word is not the path — `namesTarget` splits at the `=` and tests both halves. Untested until a mutation removing the split survived."
+    },
+    {
+      "id": "a-dotdot-hop-through-a-sibling-directory",
+      "class": "holds",
+      "tool": "Bash",
+      "path": "shell-write",
+      "input": {
+        "command": "cp /tmp/x docs/milestones/../vision.md"
+      },
+      "expect": true,
+      "why": "The spelling that actually needs `..` RESOLVED. `foo/../docs/vision.md` does not: it still ends with `/docs/vision.md`, so the tail comparison matches whether or not `..` is resolved — which is why a mutation removing that resolution survived a corpus that already carried a `..` case. Measured, after the armchair spelling failed to kill it. `docs/milestones/` is a real directory here, so bash resolves this to the constitution too; `normalisePath` resolves `..` lexically and would answer the same for a hop through a directory that does not exist, which is fail-closed and deliberate."
+    },
+    {
+      "id": "a-two-line-script-inside-a-wrapper",
+      "class": "holds",
+      "tool": "Bash",
+      "path": "shell-write",
+      "input": {
+        "command": "bash -c \"git status\ncp /tmp/x docs/vision.md\""
+      },
+      "expect": true,
+      "why": "The newline in OPERATOR is what splits the UNWRAPPED script; the plain two-line spelling does not test it, because `commandSegments` splits on newlines of its own and reaches the write through the second arm. Measured: only the wrapped form distinguishes them."
+    },
+    {
+      "id": "a-quoted-separator-is-not-a-separator",
+      "class": "holds",
+      "tool": "Bash",
+      "path": "shell-write",
+      "input": {
+        "command": "echo \"x; cp /tmp/y docs/vision.md\""
+      },
+      "expect": false,
+      "why": "The write-side twin of the same control: a separator inside quotes is data, and a segmenter that ignored quoting would turn this into a denial on a command that writes nothing."
+    },
+    {
+      "id": "the-NotebookEdit-tool-and-its-own-path-field",
+      "class": "holds",
+      "tool": "NotebookEdit",
+      "path": "matchesPath",
+      "input": {
+        "notebook_path": "/repo/docs/vision.md"
+      },
+      "expect": true,
+      "why": "The third write tool, and the only one that carries `notebook_path` instead of `file_path`. The corpus had twenty-one write-rule cases across five files and not one of them was this tool, so BOTH the table entry and the `?? input.notebook_path` fallback were unexercised — a gate whole in the code and untested in the corpus. Found by widening the mutation census's region at the pre-commit checkpoint rather than by a reader."
     }
   ]
 }
