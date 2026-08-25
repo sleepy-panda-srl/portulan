@@ -149,6 +149,26 @@ first, read the sha back, then write the message.** Recorded here because it is 
 accident, and because a wrong sha in a review record sends the next reader to an object that does not
 resolve.
 
+**Rounds 2, 3 and 4 — the maintainer granted two beyond the bound and all three were one class.**
+
+Round 2: the comment **heading** the CRLF production still read *"a FALSE RED"*, surviving the
+correction of the three cells directly beneath it.
+
+Round 3: the `exitsNonZero` branch asserted `status !== 0`, and `spawnSync` reports `status: null` for
+a signal-killed child — so a timeout or an OOM passed as the deliberate non-zero exit the branch
+exists to permit. **A could-not-measure read as a measurement, inside the guard added one round
+earlier to stop exactly that.**
+
+Round 4 is the one worth keeping. The report was a duplicated, mis-indented assertion; **the reason it
+existed is the finding.** My sweep to guard "both sibling spawn sites" matched one of them **twice**,
+at two indentations, and the other **not at all** — so the file carried a redundant assertion where I
+had claimed coverage and none where coverage was missing. **And the `grep -c` I read back as
+confirmation counted the duplicate as a third site.** A count is not coverage; the instrument made the
+same mistake as the sweep.
+
+Coverage is **derived per spawn site** now rather than counted — walk to the next spawn, assert one
+signal check and one status check in between — because a fixed window had already missed one.
+
 ## The budget stopped being a number
 
 The Sessions cell read `1–2` against nine clauses since before four of them existed. The maintainer's
