@@ -29,8 +29,13 @@ maintainer rather than repaired, on two grounds — the repair direction is fail
 write to.** The probe built the exact strings the fuzzer's production builds — its `build` **keeps**
 the payload's first space and inserts a backslash and the pair immediately after it — ran each through
 `<shell> -c` in a scratch directory, and compared the target's **SHA-256 before and after**. The target
-was pre-seeded with six bytes and the copy source made **the same six bytes**, so a same-size overwrite
-cannot pass as *unchanged*; the hasher self-tests before any case runs. _(The first probe read the
+was pre-seeded with `BEFORE` and the copy source holds `SRCSRC` — **the same length, deliberately
+different bytes** — so neither an equal size nor a same-length overwrite can pass as *unchanged*; the
+hasher self-tests before any case runs. _(An earlier draft of this sentence said the source was "the
+same six bytes as the seed", which would have made a successful overwrite byte-identical to the seed
+and the instrument blind in exactly the cell it was built for. The design was right and its description
+was not; the LF control writing `SRCSRC` is what proves the two differ. Found at the pre-merge
+supervisor pass.)_ _(The first probe read the
 target's **size** only, and Copilot was right that equal size cannot rule out a same-length overwrite.
 The claim was not narrowed — the instrument was strengthened, and it says the same thing.)_
 
@@ -42,7 +47,7 @@ The claim was not narrowed — the instrument was strengthened, and it says the 
 | zsh | `5.9 (arm64-apple-darwin25.0)` |
 | sh | `/bin/sh`, which is bash 3.2.57 in POSIX mode |
 
-**All five behave identically. None of them joins the pair.** The backslash escapes the `\r`, the
+**None of the five joins the pair** — which is the commonality the table establishes, and the whole of it. Their **exit statuses differ** (126 or 127, depending on whether the surviving fragment contains a `/` and so is exec'd as a path rather than looked up on `PATH`), so *identical behaviour* would be a wider claim than anything here measured. The backslash escapes the `\r`, the
 newline then ends the command, and the fragment after it is run as its own command:
 
 | payload shape | exit | target afterwards |
@@ -54,7 +59,11 @@ newline then ends the command, and the fragment after it is run as its own comma
 | `cp SRC \<LF>T` and `echo \<LF>ok > T` — the **LF controls** | 0 | **written** — the continuation joined |
 
 The LF controls are the half that makes the rest a measurement rather than a silence: the same harness
-that reports *nothing happened* for every CRLF spelling reports *the file was written* for the LF one.
+that reports *the target is untouched* for the CRLF **named-writer** spellings reports *the file was
+written* for the LF one — and, in the same run, *truncated to zero bytes* for the CRLF **clobbering
+redirects**. Three distinct outcomes from one instrument is what makes any of them credible. _(An
+earlier draft said the harness reported "nothing happened" for **every** CRLF spelling, which its own
+table two paragraphs up refutes. Copilot, round 4.)_
 
 **So the branch is a false red for the `cp`-shaped payload the retired sentence names — on every shell
 measured, fail-closed, and worth one prompt.** It is **not** a false red everywhere, which is the part
@@ -71,7 +80,8 @@ workspace yields:
 | case | today | branch removed |
 |---|---|---|
 | write-named — `cp` before target, `cp` after head, `tee` | `true` | **`false` — moves** |
-| write-redirect — `>`, `1>`, `>>` | `true` | `true` — unchanged |
+| write-redirect — `>`, `1>`, `>>`, **as the fuzzer's production spells them** (pair after the head) | `true` | `true` — unchanged |
+| write-redirect **with the pair after the `>`** — `compile.test.mjs`'s spelling | `true` | **`false` — moves** |
 | shell — a gated force-push | `false` | `false` — unchanged |
 | LF controls — named and redirect | `true` | `true` — unchanged |
 
@@ -85,8 +95,8 @@ is exactly why surface 3's second assertion fails. So this does **not** generali
 spelling, and saying it did was the overclaim. **A real LF continuation still joins**, so the branch
 above this one is untouched. _(Copilot, rounds 2 and 3 on #342.)_
 
-The table's three moving rows are three probe **shapes**, not three recorded cells, and the difference
-matters to whoever carries the removal out. **Measured by deleting both carriers in a scratch clone and
+The table's moving rows carry probe **shapes**, not recorded cells, and the difference matters to
+whoever carries the removal out — the write-named row alone stands for three shapes. **Measured by deleting both carriers in a scratch clone and
 running the recipes, the removal moves four surfaces:**
 
 1. `fuzz-shell` — the `crlf-continuation-in-the-payload|write-named` cell's recorded divergence
@@ -95,8 +105,11 @@ running the recipes, the removal moves four surfaces:**
    [`edit-the-constitution.json`](../../evals/goldens/gates/edit-the-constitution.json) **regresses**.
 3. [`../../cli/compile.test.mjs`](../../cli/compile.test.mjs) — **two** direct assertions fail,
    *a CRLF continuation before the path* and *a CRLF continuation after `>`*.
-4. `mutants` — exit **2, could-not-run**: it refuses a census over the corpus 2 reddened, so it is
-   unblocked by fixing that rather than by an edit of its own.
+4. `mutants` — exit **2, could-not-run**: it refuses a census over the corpus **that surface 2 has
+   reddened**, so it is unblocked by repairing that surface rather than by an edit of its own.
+   _(Copilot asked for this to say "the corpus has two red cases". Refused on measurement: the deletion
+   reddens **one** case — `goldens` reports `1 finding(s)` and `mutants` names that one. The missing
+   word was a connector, not a count.)_
 
 **An earlier draft of this section said "those two, and nothing else", having counted the first two
 only** — an exhaustive claim in a proposal whose subject is a claim nobody measured. Reported by

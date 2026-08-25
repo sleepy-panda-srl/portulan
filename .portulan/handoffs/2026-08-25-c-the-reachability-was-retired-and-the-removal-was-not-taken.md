@@ -90,10 +90,17 @@ pulled an image would be a network call in CI.
 
 ## Copilot on #342 — three rounds, seven findings real, one refused by measurement
 
-Seven gating threads and **five distinct findings** — one was raised on three of them. The repository's
-own promotion step turned all five suppressed notes into threads, so the notes-only channel gated here
-rather than being a batched reply. _(This said "six"; the section's own five bullets were the check that
-caught it. Copilot, round 3.)_
+**Four rounds, 38 gating threads — 30 across rounds 1–3 and 8 in round 4** — counted from the thread
+record rather than from any round's summary. The repository's promotion step turns Copilot's suppressed
+notes into threads, so the notes-only channel gates here rather than getting a batched reply, and one
+finding is routinely raised on several threads at once.
+
+**No global finding count is given, and that is deliberate.** I wrote one three times — "six distinct",
+"five distinct", "eight distinct" — and each disagreed with the bullets beneath it or with a sibling
+summary. A tally I keep restating and keep getting wrong is not a fact about the review; it is a claim
+I have no instrument for. The classes below are enumerated instead, which is checkable against the
+threads. _(Copilot, round 3, and the pre-merge supervisor, which found the three summaries still
+disagreeing.)_
 
 - **The exhaustive-cost claim missed the test surface** — raised on three threads. Real, and it made
   me run the deletion instead of reasoning about it, which found a fourth surface Copilot had not
@@ -107,8 +114,11 @@ caught it. Copilot, round 3.)_
 - **The PR-URL placeholder** — already fixed by this branch's second commit before the round landed.
 - **The probe read SIZE, not bytes** — right, and equal size cannot rule out a same-length overwrite.
   Answered by strengthening the instrument rather than narrowing the claim: it now compares SHA-256
-  before and after, with the copy source made the same six bytes as the seed and the hasher self-tested
-  before any case runs. **All three bash builds: `IDENTICAL`, content `BEFORE`.** The container's first
+  before and after, with the copy source holding `SRCSRC` against the seed's `BEFORE` — **the same
+  length, deliberately different bytes** — and the hasher self-tested before any case runs. _(I first
+  wrote that the source was "the same six bytes as the seed", which would have made a successful
+  overwrite byte-identical to the seed and blinded the instrument in the one cell it was built for. The
+  design was right and the sentence describing it was not; caught at the pre-merge supervisor pass.)_ **All three bash builds: `IDENTICAL`, content `BEFORE`.** The container's first
   attempt had no `shasum`, produced empty hashes and reported everything identical — a harness fooled by
   its own failure, caught by the self-test that now runs first.
 - **The mechanism I gave for the surviving true positive was false**, in five carriers. There is no
