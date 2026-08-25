@@ -2483,6 +2483,9 @@ _The seam applies here too: no client-identifying references._
 
 - 2026-08-25 · M8 (Evals & telemetry), session 2 · **The CRLF reachability claim is settled by measurement; the
   matcher is untouched.** `shellWords` joins `\`+CRLF on a 2026-07-28 sentence calling `cp /tmp/x
+
+- 2026-08-25 · M8 (Evals & telemetry), session 2 ·
+  **The CRLF reachability claim is settled by measurement; the matcher is untouched.** `shellWords` joins `\`+CRLF on a 2026-07-28 sentence calling `cp /tmp/x
   \<CRLF>docs/vision.md` *"the constitution, reachable by editing the file on Windows"*. **Measured on bash
   3.2.57, 5.2.15 and 5.2.37, plus zsh 5.9 and sh — none joins the pair**, always on a neutral target: write-named
   is a false red on every shell measured, while the write-redirect true positive and the `>>` refusal reproduce on

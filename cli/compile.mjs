@@ -559,8 +559,8 @@ export function shellWords(command) {
             // both in containers; `zsh 5.9`; and **the measured host's `/bin/sh`**, which on that macOS host
             // resolves to bash 3.2.57 in POSIX mode — elsewhere `/bin/sh` is commonly `dash` or `busybox`
             // and NEITHER was measured, so this row is a fifth reading of bash and zsh rather than a claim
-            // about `/bin/sh` as such. **All
-            // five agree, and none of them joins the pair:** the backslash escapes the `\r`, the
+            // about `/bin/sh` as such.
+            // **All five agree, and none of them joins the pair:** the backslash escapes the `\r`, the
             // newline then ends the command, and the fragment after it is run as its own command. The
             // LF spelling in the same harness DID join and DID write the target, so the harness fires
             // rather than reporting nothing everywhere. For the `cp`-shaped payload the retired
