@@ -47,7 +47,7 @@ The proposal carries the cost measured rather than argued — **at the third att
 are the lesson.** Deleting both carriers in a scratch clone and running the recipes moves **four**
 surfaces: the `crlf-continuation-in-the-payload|write-named` fuzz cell (divergence closes), the
 `a-CRLF-continuation` goldens fixture (regresses), **two direct assertions in `cli/compile.test.mjs`**,
-and `mutants` refusing with exit 2 over the corpus the second reddened.
+and `mutants` refusing with exit 2 over the corpus that the second has now reddened.
 
 **I wrote an exhaustive claim three times and measured it once.** The first draft said "three cells and
 nothing else" — three was the probe table's row count borrowed into the file's own cell vocabulary, and
@@ -55,9 +55,13 @@ the goldens fixture was missing; the pre-commit checkpoint caught that and I cor
 and nothing else", which was still a sentence I had reasoned to rather than run. Copilot's first round
 on #342 named the test surface, and running the deletion found the fourth as well. **A claim of
 exhaustiveness is the one kind that cannot be reviewed by reading** — in a change whose whole subject is
-a claim nobody measured. The **true positive survives the removal**, because a redirection is
-recognised off the segment's raw text rather than off a joined word, and a real LF continuation still
-joins. So the honest statement is that removal costs nothing measurable *on the shells measured*, and
+a claim nobody measured. The **true positive survives the removal for the fuzzer's
+production**, and the reason I first gave was false: I wrote that redirections are recognised off raw
+segment text, and there is no raw-text path — `shellWrites` iterates `shellSegments`, built from
+`shellWords`. What saves that cell is **where the pair sits**: after the head, so the split leaves
+`> docs/vision.md` in a later segment that still names the target. After the `>`, the operator takes the
+escaped `\r` instead and the match is lost — which is why one of the two test assertions fails. It does
+not generalise to every redirect spelling. A real LF continuation still joins. So the honest statement is that removal costs nothing measurable *on the shells measured*, and
 the gap sits precisely where the retired claim pointed: **no Windows-side bash** — git-bash, MSYS2,
 Cygwin, WSL — **and no bash 4.x**. That is why this is a question and not an obvious cleanup.
 
@@ -84,10 +88,12 @@ what the comments now say: the rail measures **one host's bash per run**, and **
 runs anywhere in this repository's CI**. The containers are a record, not a recipe — a recipe that
 pulled an image would be a network call in CI.
 
-## Copilot round 1 on #342 — five findings, four real, one refused by measurement
+## Copilot on #342 — three rounds, seven findings real, one refused by measurement
 
-Seven gating threads, six distinct findings; the repository's own promotion step turned all five
-suppressed notes into threads, so the notes-only channel gated here rather than being a batched reply.
+Seven gating threads and **five distinct findings** — one was raised on three of them. The repository's
+own promotion step turned all five suppressed notes into threads, so the notes-only channel gated here
+rather than being a batched reply. _(This said "six"; the section's own five bullets were the check that
+caught it. Copilot, round 3.)_
 
 - **The exhaustive-cost claim missed the test surface** — raised on three threads. Real, and it made
   me run the deletion instead of reasoning about it, which found a fourth surface Copilot had not
@@ -99,6 +105,14 @@ suppressed notes into threads, so the notes-only channel gated here rather than 
   run on the first fragment and fails on a malformed `\r` argument; what never runs is the intended
   write. Real; reworded at the cell.
 - **The PR-URL placeholder** — already fixed by this branch's second commit before the round landed.
+- **The probe read SIZE, not bytes** — right, and equal size cannot rule out a same-length overwrite.
+  Answered by strengthening the instrument rather than narrowing the claim: it now compares SHA-256
+  before and after, with the copy source made the same six bytes as the seed and the hasher self-tested
+  before any case runs. **All three bash builds: `IDENTICAL`, content `BEFORE`.** The container's first
+  attempt had no `shasum`, produced empty hashes and reported everything identical — a harness fooled by
+  its own failure, caught by the self-test that now runs first.
+- **The mechanism I gave for the surviving true positive was false**, in five carriers. There is no
+  raw-segment-text path. Corrected above and everywhere it appeared.
 - **REFUSED, on measurement: "the two assertions are not both false reds".** Copilot read
   `echo x > \<CRLF>docs/vision.md` as the write-redirect shape the fuzzer records as a true positive.
   It is not, and **where the pair sits decides it**: after the operator the escaped `\r` becomes the
