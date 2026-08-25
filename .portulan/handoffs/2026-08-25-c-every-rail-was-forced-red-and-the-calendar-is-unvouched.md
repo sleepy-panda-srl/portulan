@@ -525,3 +525,31 @@ swept: no `***` sequence anywhere and the `**` markers balance. It also caught a
 carriers: the CI table named the first failing run and the success and skipped **the second failure**,
 which reads as though one run found the defect and the next fixed it. Two runs failed for that cause, and
 both tables now say so.
+
+## The granted round — one note, and it was right
+
+The maintainer granted one more round and the merge. **The re-request could not fetch it:**
+`POST /pulls/343/requested_reviewers -f reviewers[]=Copilot` exits 0 and leaves `requested_reviewers`
+empty, and the control proves the endpoint is silent rather than the reviewer unavailable — the same call
+with a nonexistent login also exits 0 and changes nothing. So the round arrived the way this repository's
+own machinery fetches one, on the `synchronize` of the push that carried the checkpoint's fixes.
+
+**One suppressed note, no inline threads, and it is a rule I broke while writing a check.**
+`.portulan/verify/drills.sh`'s dependency guard read `for need in dirname node` while the loadability
+probe I had just added uses `mktemp`, `tr`, `cut` and `rm`. Without them in the guard the recipe dies with
+`command not found` instead of translating that into the exit 2 it documents — **a could-not-run wearing
+no diagnosis, in the check added to stop a could-not-run reading as a red.** `./tests.sh` states the rule
+this violated in its own header: *a recipe that lists what it runs and then runs something else is the
+drift this loop exists to stop.* Guard completed and drilled — with `mktemp` replaced by a stub that
+exits 127, the recipe exits **2**.
+
+**Round tally, stated once.** Three Copilot rounds. Nine inline findings and twenty notes across them,
+every one answered on the channel that raised it; nine real mechanism defects fixed, nine notes stale
+re-promotions of findings already landed, and one refuted by measurement. Three Fable 5 fresh-context
+checkpoints — session-open, pre-commit (with a second pass over its own fold), and a final pass on the
+delta no checkpoint had seen — twenty adjustments in total, every one folded including the ones marked
+optional.
+
+**Two fix-rounds were the bound; four items were taken past it and every one was flagged rather than
+assumed** — two records corrections under rule 2, and two mechanism defects this change had introduced,
+which is the ground session 0 took its own rounds on. The maintainer granted the last round explicitly.

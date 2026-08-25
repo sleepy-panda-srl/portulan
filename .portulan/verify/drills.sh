@@ -45,7 +45,15 @@
 set -uo pipefail
 
 # Every external command this recipe runs — see ./docs.sh for the measurement behind the shape.
-for need in dirname node; do
+#
+# **`mktemp`, `tr`, `cut` and `rm` joined this list when the loadability probe below did, and they were
+# missing from it for one commit.** The probe needs `mktemp` for its scratch file and `tr`/`cut` to make
+# the failure readable, and without them here the recipe would die with `command not found` instead of
+# translating that into the exit 2 it documents — a could-not-run wearing no diagnosis, which is the one
+# thing this whole file is arranged against. `./tests.sh` states the rule this violated: *a recipe that
+# lists what it runs and then runs something else is the drift this loop exists to stop.* Raised as a
+# suppressed note by Copilot on #343, in the round the maintainer granted.
+for need in cut dirname mktemp node rm tr; do
     command -v "$need" >/dev/null 2>&1 || {
         printf 'verify: %s not found — this recipe needs it; see .portulan/verify/README.md\n' "$need" >&2
         exit 2
