@@ -8,8 +8,8 @@ his own host paths and username.* **Drafted, not taken. No milestone row moves.*
 
 [`0032`](../proposals/0032-the-seam-guards-the-client-and-not-the-host.md) is filed and **OPEN**. No rule
 changed, no matcher changed, no term list touched — the private context file was **read** for the draft
-and not edited. All eighteen yielded recipes green except `docs` 5c, which reds until this branch's second
-commit gives `0032` its pull-request URL.
+and not edited. All eighteen yielded recipes green — `docs` 5c reddened until this branch's second commit
+gave `0032` its pull-request URL, which is [#346](https://github.com/sleepy-panda-srl/portulan/pull/346).
 
 ## The measurement that turned this from a patch into a proposal
 

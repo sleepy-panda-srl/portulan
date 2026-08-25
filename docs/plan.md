@@ -2458,4 +2458,4 @@ _The seam applies here too: no client-identifying references._
   [`0032`](../.portulan/proposals/0032-the-seam-guards-the-client-and-not-the-host.md), **OPEN** — three
   carriers argued, none taken; `feedback`'s own term list measured **absent**. Every yielded recipe green;
   seam scan clean over every path the diff touches · **No supervisor checkpoint: fresh-context delegation
-  unavailable, so the maintainer reviews the diff** · PENDING-PR · Handoff: [`2026-08-25-e`](../.portulan/handoffs/2026-08-25-e-the-seam-guards-the-client-and-not-the-host.md).
+  unavailable, so the maintainer reviews the diff** · [#346](https://github.com/sleepy-panda-srl/portulan/pull/346) · Handoff: [`2026-08-25-e`](../.portulan/handoffs/2026-08-25-e-the-seam-guards-the-client-and-not-the-host.md).

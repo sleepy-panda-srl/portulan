@@ -187,4 +187,4 @@ proposal is about.
 _Undecided. **The decision is the maintainer's**: it is his own identity being scanned for, one candidate
 carrier is a file only he holds, and Q2 would put the seam into `core/` for the first time._
 
-**Pull request:** PENDING — filled in from `gh pr create` before this branch merges.
+**Pull request:** [#346](https://github.com/sleepy-panda-srl/portulan/pull/346) — the change that filed this.
