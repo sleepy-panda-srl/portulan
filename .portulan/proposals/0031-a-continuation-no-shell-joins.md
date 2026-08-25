@@ -45,7 +45,7 @@ The claim was not narrowed — the instrument was strengthened, and it says the 
 | bash | `5.2.15(1)-release (aarch64-unknown-linux-gnu)` — `debian:bookworm-slim`, container |
 | bash | `5.2.37(1)-release (x86_64-pc-linux-gnu)` — `node:26`, container |
 | zsh | `5.9 (arm64-apple-darwin25.0)` |
-| sh | `/bin/sh`, which is bash 3.2.57 in POSIX mode |
+| sh | **the measured host's** `/bin/sh` — bash 3.2.57 in POSIX mode on that macOS host. `/bin/sh` is platform-dependent and is commonly `dash` or `busybox` elsewhere; **neither was measured**, so this row reads bash again under a different name rather than covering `/bin/sh` as a family |
 
 **None of the five joins the pair** — which is the commonality the table establishes, and the whole of it. Their **exit statuses differ** (126 or 127, depending on whether the surviving fragment contains a `/` and so is exec'd as a path rather than looked up on `PATH`), so *identical behaviour* would be a wider claim than anything here measured. The backslash escapes the `\r`, the
 newline then ends the command, and the fragment after it is run as its own command:

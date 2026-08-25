@@ -88,7 +88,7 @@ what the comments now say: the rail measures **one host's bash per run**, and **
 runs anywhere in this repository's CI**. The containers are a record, not a recipe — a recipe that
 pulled an image would be a network call in CI.
 
-## Copilot on #342 — three rounds, seven findings real, one refused by measurement
+## Copilot on #342 — four rounds, 38 gating threads, one finding refused by measurement
 
 **Four rounds, 38 gating threads — 30 across rounds 1–3 and 8 in round 4** — counted from the thread
 record rather than from any round's summary. The repository's promotion step turns Copilot's suppressed
