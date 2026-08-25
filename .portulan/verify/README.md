@@ -917,9 +917,19 @@ repository is not checked out inside the OS temp directory* as a premise, which 
 falsifies — and it passed on macOS **by accident of `/var` being a symlink to `/private/var`**, so only a
 Linux runner could find it. That is what the `pull_request` trigger buys, on its first run.
 
+**The `workflow_dispatch` half is now observed, and its run belongs here rather than in a paragraph.**
+`0007` asks that a watcher's procedure be *run once and its result recorded*; the dispatch became possible
+the moment `drills.yml` reached the default branch, and it was run immediately:
+
+| Run | Trigger | Head | Result |
+|---|---|---|---|
+| [`32883413709`](https://github.com/sleepy-panda-srl/portulan/actions/runs/32883413709) | `workflow_dispatch` | `da9c06e` | **success** — 21 of 21 forced red and fired, on `main` after the merge |
+
 **What none of it establishes is the SCHEDULE.** A dispatched or pull-request run says the sweep works on
 a runner; it says nothing about whether the calendar fires on a Thursday, which is answered by the first
-Thursday and by nothing earlier.
+Thursday and by nothing earlier. So one of this watcher's two halves is vouched and the other is not, and
+they are listed separately for exactly that reason — collapsing them into *"the calendar works"* is the
+over-reading this section exists to prevent.
 
 **Two entries of the old register are worth keeping, because they are evidence the exclusions lean on.**
 `docs` fired incidentally in CI on 2026-07-28 and `tests` was drilled in CI on 2026-07-30 — drill 1 above,

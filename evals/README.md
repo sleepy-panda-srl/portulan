@@ -228,9 +228,10 @@ deleted in favour of this.
 2026-08-25 and every one fired. The **calendar** — [`../.github/workflows/drills.yml`](../.github/workflows/drills.yml),
 weekly — is a watcher, so it owes its own observation under
 [`../.portulan/proposals/0007-every-watcher-ships-with-its-observation-procedure.md`](../.portulan/proposals/0007-every-watcher-ships-with-its-observation-procedure.md):
-`workflow_dispatch` is answerable only once the file is on the default branch, and the schedule is
-answered by its first run and nothing earlier. **Until then the calendar is unvouched and its silence is
-not evidence.** And a *missing* run stays undetectable — that is `0007`'s silence problem one altitude up,
+`workflow_dispatch` is **answered** — run
+[`32883413709`](https://github.com/sleepy-panda-srl/portulan/actions/runs/32883413709) on `da9c06e`, 21 of
+21 — and the **schedule** is answered by its first run and nothing earlier. **Until that run the calendar
+is half-vouched, and the unvouched half's silence is not evidence.** And a *missing* run stays undetectable — that is `0007`'s silence problem one altitude up,
 tracked as [#344](https://github.com/sleepy-panda-srl/portulan/issues/344) rather than built.
 
 _This paragraph said the gap was already **filed** — the fifth carrier of that sentence, and the one a
