@@ -2,9 +2,10 @@
 
 > Generated from `handoffs/` by `node cli/index.mjs`. Do not edit by hand: it is regenerated
 > and byte-compared, so a hand-edit survives exactly until the next run.
-> 131 handoff(s), newest first. No budget: the series is append-only, so
+> 132 handoff(s), newest first. No budget: the series is append-only, so
 > the only remedy a budget could ask for is one this project rules out.
 
+- 2026-08-25 · [Handoff — the corpus lost eleven of forty-eight, and the fuzzer found a live bypass](handoffs/2026-08-25-the-corpus-lost-and-the-fuzzer-found-a-live-bypass.md)
 - 2026-08-24 · [Handoff — the librarian's scheduled pass](handoffs/2026-08-24-librarian-pass.md)
 - 2026-08-24 · [Handoff — the corpus refuted ten of its own claims, and found a hole nobody had recorded](handoffs/2026-08-24-b-the-corpus-refuted-ten-of-its-own-claims.md)
 - 2026-08-22 · [Handoff — the scaffold was refused by the very step it tells you to run next](handoffs/2026-08-22-b-the-scaffold-was-refused-by-the-step-it-names.md)

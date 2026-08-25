@@ -56,6 +56,18 @@
       "input": {},
       "expect": false,
       "why": "The never-throws contract, on the read branch. `matchesPath` answers false for a non-string candidate rather than raising, because gate.mjs catches and steps aside — an exception silently removes the gate being evaluated."
+    },
+    {
+      "id": "a-dot-segment-in-the-CANDIDATE-matches-nothing-either",
+      "class": "documented-hole",
+      "tool": "Read",
+      "path": "matchesPath",
+      "hole": ".portulan/gate-map.md honest holes, entry 8 — a `./` target matches nothing at runtime (tracked as #337)",
+      "input": {
+        "file_path": "/repo/docs/./notes.md"
+      },
+      "expect": false,
+      "why": "The same discrimination on the read branch, which shares `matchesPath` with the write branch and so shares both the hole and the two candidate repairs."
     }
   ]
 }

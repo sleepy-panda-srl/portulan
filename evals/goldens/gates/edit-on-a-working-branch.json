@@ -97,6 +97,18 @@
       "expect": false,
       "why": "The matcher reads words as typed and expands nothing. Expanding them means running the shell.",
       "hole": ".portulan/gate-map.md honest holes, entry 1 — spellings neither layer sees"
+    },
+    {
+      "id": "a-dot-segment-in-the-CANDIDATE-matches-nothing-either",
+      "class": "documented-hole",
+      "tool": "Write",
+      "path": "matchesPath",
+      "hole": ".portulan/gate-map.md honest holes, entry 8 — a `./` target matches nothing at runtime (tracked as #337)",
+      "input": {
+        "file_path": "/repo/docs/./notes.md"
+      },
+      "expect": false,
+      "why": "Hole 8 from the other side. The target `./` reduces to the empty string and is refused, so this answers false like every other input — but it is the one input that would answer TRUE if the leading-`./` strip were removed instead, because `./` would then read as a subtree pattern and this candidate contains `/./`. The corpus had no case that could tell those two repairs apart."
     }
   ]
 }

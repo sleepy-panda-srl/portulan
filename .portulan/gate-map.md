@@ -569,10 +569,19 @@ Corrected here rather than left, because a gate map that overstates a hole is as
    refuses to grow. Found by Copilot review, against a matcher three rounds of review had already
    improved.
 
+   One more, added 2026-08-25 and found by [`../cli/fuzz-shell.mjs`](../cli/fuzz-shell.mjs) rather
+   than by a reader: **a QUOTED command substitution.** `echo "$(git push --force origin main)"` is a
+   command bash runs, and it reaches nothing — the segmenter's quote loop steps over the parentheses,
+   so no split happens. The **bare** form `echo $(git push --force origin main)` is CAUGHT, because
+   `(` and `)` are in the operator class. One concept, two spellings, opposite answers, which is why
+   the fuzzer's table is keyed on the spelling and never on the idea, and why this entry names the
+   spelling rather than saying "command substitution". Asserted on both matchers.
+
    _This list was wrong when first published — four items, five missing, the plainest of them a
    newline. It was corrected by a fresh-context supervisor that tried to defeat the matcher instead of
    reading it. A hole list is a claim like any other, and the only thing that checks it is somebody
-   attacking it._
+   attacking it. **It was still short one spelling on 2026-08-25**, a year of reviews later, and the
+   thing that found that one was a generator._
 2. **A gated command that was not the first word on the line reached nothing — now closed for
    SEPARATORS, still open for leaders, and still open at the permission layer.** `ls && git push
    --force origin main` matched no gate at all until 2026-07-28: the matcher prefix-matched the whole
@@ -651,6 +660,32 @@ Corrected here rather than left, because a gate map that overstates a hole is as
    **What must not follow from it.** This does not license a named table of command prefixes. That
    table is refused for a reason the redirection grammar does not share, stated one paragraph up, and
    the two changes look similar enough to be proposed together.
+
+   **A third spelling was open until 2026-08-25, and it was the widest of them: a separator INSIDE a
+   wrapper.** `bash -c "ls; git push --force origin main"` answered **false**, and so did every other
+   Gated shell action written that way — the same total defeat this entry opens by describing, reached
+   by putting the separator on the other side of the quote. The composition closed above tests the raw
+   command's segments and each segment's spellings; it never tested a **spelling's** segments, so one
+   wrapper plus one separator walked through. `ls && bash -c "…"` was closed and `bash -c "ls; …"` was
+   not, which is why reading either claim on its own left the gap invisible — the same *"two claims
+   that each held and did not compose"* shape recorded one paragraph up, met again in the change that
+   recorded it.
+
+   **The write matcher never had this gap, and that asymmetry is the lesson rather than a footnote.**
+   Its callback is `shellWrites`, which segments AGAIN internally with `shellSegments`, so the write
+   half received a third segmentation for free while the shell half — whose test is a plain prefix
+   compare — received none. *A fix landing in one carrier and not its sibling*
+   ([`proposals/0020`](proposals/0020-a-fix-is-not-done-at-the-site-it-was-found.md)) between two
+   branches of one function, for the second time in this file's history.
+
+   Repaired at the **class**: a spelling is now segmented on both arms, so
+   `ls && bash -c "x; git push --force …"` — a separator outside *and* inside — closed in the same
+   stroke rather than becoming the next round's finding. The unwrap budget is unchanged at one level
+   and `bash -c "sh -c '…'"` still escapes, asserted in the corpus as well as the suite because a
+   composition change is exactly what peels a second level by accident. **Found by
+   [`../cli/fuzz-shell.mjs`](../cli/fuzz-shell.mjs)**, milestone 8 clause (b), which generates the
+   grammar rather than reading it — the first live bypass here found by a machine rather than by a
+   supervisor or a reviewer.
 
    **This entry said "now closed at the hook" without qualification until 2026-07-28**, which was a
    sentence broader than its matcher — hole 5, one entry down, in the paragraph claiming to have

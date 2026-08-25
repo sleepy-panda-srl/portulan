@@ -162,6 +162,24 @@
         "doc": "verify/README.md"
       },
       {
+        "id": "mutants",
+        "run": "./.portulan/verify/mutants.sh",
+        "requires": [
+          "bash",
+          "node"
+        ],
+        "doc": "verify/README.md"
+      },
+      {
+        "id": "fuzz-shell",
+        "run": "./.portulan/verify/fuzz-shell.sh",
+        "requires": [
+          "bash",
+          "node"
+        ],
+        "doc": "verify/README.md"
+      },
+      {
         "id": "version-carriers",
         "run": "./.portulan/verify/version-carriers.sh",
         "requires": [
