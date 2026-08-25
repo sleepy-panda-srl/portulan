@@ -41,12 +41,22 @@
 #
 # `0007` asks for the procedure in the order that makes it a procedure. Two triggers, two answers:
 #
-#   * **`workflow_dispatch`** becomes available the moment this file is on the default branch, and not
-#     before — GitHub offers no dispatch for a workflow that exists only on a branch. So the first
-#     observation is a manual dispatch immediately after merge, and its run id belongs in
-#     `.portulan/verify/README.md`'s register beside drill 1's.
+#   * **`workflow_dispatch`** is **answered**: run `32883413709`, dispatched on `da9c06e` the moment the
+#     merge put this file on the default branch, 21 of 21 forced red and fired. Recorded in
+#     `.portulan/verify/README.md`'s register — which is where **the version of this bullet that shipped
+#     with the workflow** said it would go, before any answer existed. This wording is the update, so it
+#     claims no such thing about itself; the prediction is in the merged history of #343, which is the
+#     only place it can be checked. _(It did claim that for one commit — "written before the answer
+#     existed" survived into the very rewrite that came after it. Copilot, round 1 on #349.)_
 #   * **`schedule`** is answered by the first Thursday run and by nothing earlier. Until that run
-#     exists this calendar is **unvouched**, and its silence is not evidence — `0007`'s words.
+#     exists this calendar is **half-vouched** — dispatch answered, schedule not — and **the unvouched
+#     half's silence is not evidence**, in `0007`'s words.
+#
+#     _Fourth carrier of that sentence, and the reason it survived is the finding: my sweep grepped for
+#     `calendar is unvouched` line by line, and here the phrase wraps across two comment lines, so a
+#     line-scoped matcher could not see it. **A sweep scoped by its own grep** — the class this
+#     repository has now met at a census size, a word form, and a line break. Copilot, round 2 on #349;
+#     the re-sweep below is whole-file rather than per-line._
 #
 # What is already demonstrated, and needs no CI to be true, is the sweep: all 21 rails were forced red
 # by hand on 2026-08-25 and every one fired. That transcript is in this session's handoff.
