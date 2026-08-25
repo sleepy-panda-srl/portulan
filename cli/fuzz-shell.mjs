@@ -299,8 +299,13 @@ export const POSITIONS = [
     { id: "leading-redirection-escaped-quote-target", ground: "command", build: (p) => `2> "log \\"q\\" file.txt" ${p}` },
     // ------------------------------------------------------------------------------------------
     // **A CRLF continuation, which is NOT a continuation.** `shellWords` consumes `\r\n` after a
-    // backslash as a pair and joins the word; three shells on this machine — bash 3.2.57, zsh and
-    // sh — do not, and split the command instead.
+    // backslash as a pair and joins the word; **five shells do not, and split the command instead** —
+    // `bash 3.2.57(1)` (arm64-apple-darwin25), `bash 5.2.15(1)` (aarch64-unknown-linux-gnu) and
+    // `bash 5.2.37(1)` (x86_64-pc-linux-gnu), plus `zsh 5.9` and `/bin/sh`. The three bash builds are
+    // named in full rather than as "bash 5", which would be a claim about a series from two 5.2
+    // patchlevels; no bash 4.x was measured, and neither was any Windows-side bash — git-bash, MSYS2,
+    // Cygwin or WSL — which is the platform the retired reachability claim named. Widened 2026-08-25
+    // from "three shells on this machine", which was the true width until two containers were run.
     //
     // **What follows from that is NOT one answer, and an earlier draft of this very comment said it
     // was.** It read "the matcher answers `true` anyway: a FALSE RED", which is right for one payload
@@ -332,7 +337,11 @@ export const POSITIONS = [
         // `>>` appends and therefore does NOT truncate, so it is the one redirect shape whose ground
         // truth differs from its siblings'. Refused rather than folded in: a cell whose ground truth
         // varies with the spelling is a cell whose invariant cannot hold. Measured — `echo \<CRLF>ok >> t`
-        // leaves `t` byte-for-byte unchanged while `> t` and `1> t` leave it empty.
+        // leaves `t` byte-for-byte unchanged while `> t` and `1> t` leave it empty. Re-measured
+        // 2026-08-25 on bash 5.2.15 and 5.2.37 as well as 3.2.57: identical on all three, so the
+        // refusal is right on **both bash 5.2 builds measured** and not only on the shell it was
+        // written against. Named as builds rather than as "bash 5", which would be the series
+        // inference this production's own comment refuses eight lines up.
         carries: (p, kind) => kind !== "write-redirect" || !p.includes(">>"),
         exitsNonZero: true,
         why: "bash splits at the CRLF, so the fragment after it is run as a command and is not found — a non-zero exit is the measurement rather than a failure of it. A clobbering redirection on that fragment still fires, which is why `write-redirect` overrides the ground.",
@@ -414,12 +423,12 @@ export const EXPECT = {
     },
     "crlf-continuation-in-the-payload|write-redirect": {
         answer: true,
-        why: "A TRUE POSITIVE, and an earlier draft of this entry recorded it as a false red in all three of its carriers. A shell applies a redirection BEFORE it looks the command up, so although bash splits at the CRLF and the command never runs, the clobbering redirection on the surviving fragment still fires and truncates the target to ZERO BYTES. Measured on bash 3.2.57: a file holding content before is 0 bytes after. So the gated effect occurs, the matcher denying it is right, and `groundByKind` says so. The append shape is refused by `carries`, since `>>` does not truncate.",
+        why: "A TRUE POSITIVE, and an earlier draft of this entry recorded it as a false red in all three of its carriers. A shell applies a redirection BEFORE it looks the command up, so although bash splits at the CRLF and the command never runs, the clobbering redirection on the surviving fragment still fires and truncates the target to ZERO BYTES. First measured on bash 3.2.57 and **re-measured 2026-08-25 on bash 5.2.15 and 5.2.37 as well**: a file holding 6 bytes before is 0 bytes after, on all three, for `echo \\<CRLF>ok > t`, `printf \\<CRLF>ok 1> t` and `cat \\<CRLF>src > t` alike. Widened here in the same pass as its `write-named` sibling, because one cell widened beside a narrow sibling is the class this production's own comment records. So the gated effect occurs, the matcher denying it is right, and `groundByKind` says so. The append shape is refused by `carries`, since `>>` does not truncate. Unlike its sibling this cell is NOT affected by `0031`: removing the pair branch leaves this answer `true`, because the redirection is read off the raw segment text rather than off a joined word — measured as a differential against a copy with the branch deleted.",
     },
     "crlf-continuation-in-the-payload|write-named": {
         answer: true,
         record: "cli/compile.mjs, `shellWords` — a `\\r\\n` after a backslash is consumed as a PAIR, a decision taken 2026-07-28",
-        why: "A FALSE RED, and the only one of the three. `shellWrites` reaches `shellSegments`, which reaches `shellWords`, which joins the pair — so the matcher sees a clean `cp /tmp/x docs/vision.md` and denies. bash splits, `cp` never runs, and the target is left byte-for-byte unchanged (measured). Fail-closed and worth one prompt. **`compile.mjs`'s comment claims this spelling made the constitution 'reachable by editing the file on Windows', and that reachability did not reproduce here for this payload shape** — flagged for the maintainer rather than repaired, since the repair direction is fail-OPEN and only bash 3.2.57 was available to measure on.",
+        why: "A FALSE RED, and the only one of the three. `shellWrites` reaches `shellSegments`, which reaches `shellWords`, which joins the pair — so the matcher sees a clean `cp /tmp/x docs/vision.md` and denies. bash splits, `cp` never runs, and the target is left byte-for-byte unchanged. Fail-closed and worth one prompt. **The reachability `compile.mjs`'s comment used to claim for this spelling — the constitution 'reachable by editing the file on Windows' — is RETIRED**, and that comment now carries the measurement instead. Re-measured 2026-08-25 on bash 3.2.57, 5.2.15 and 5.2.37, plus zsh 5.9 and sh, with a neutral target: none joins the pair, and the `cp` shape leaves its target byte-for-byte unchanged on all five. Two things bound that: no Windows-side bash was measured — git-bash, MSYS2, Cygwin, WSL — and no bash 4.x. **Still not repaired here, and for a narrower reason than the earlier draft gave.** That draft said only bash 3.2.57 was available, which stopped being true; what stands is that the repair direction is fail-OPEN on a gate matcher, so it is asked at `../.portulan/proposals/0031-a-continuation-no-shell-joins.md` and not taken.",
     },
     // ============================== shell
     "bare|shell": { answer: true },
