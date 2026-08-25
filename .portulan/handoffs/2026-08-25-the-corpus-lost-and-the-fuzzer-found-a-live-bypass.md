@@ -292,8 +292,41 @@ guard that skipped its own mode. Round 5: a census that could thin its own kill-
 green. Round 6: a temp directory. That is a loop converging, and the recommendation from here is
 session 0's — further rounds at this level are triaged rather than answered.
 
-**Six rounds. Every finding real.** Two answered inside the bound, one answered past it on severity and
-flagged, one records correction under rule 2, two triaged to issues.
+**Seven rounds. Every finding real.** Two answered inside the bound, one past it on severity and
+flagged, one records correction under rule 2, two triaged to issues (#339, #340), and three answered in
+the final round on the maintainer's instruction that it was the last.
+
+**Round 7 — the last round, on the maintainer's word, and three findings I had not answered.** Two of
+them were in threads the review workflow had surfaced and I had answered only in pull-request comments;
+one I had never seen. All three are real and all three are fixed, because *"last round"* means the
+remainder ships rather than waits.
+
+**`asCase` handed `matcherPath` a PAYLOAD kind.** `matcherPath` reads an *action* kind — `shell` /
+`write` / `read` — and knows nothing of `write-redirect` or `write-named`, so it fell through to
+`no-branch` and **two of the three payloads emitted a case `goldens` would refuse as a mislabel**. The
+paste-ready promise this module and `evals/README.md` both make was therefore false for the write
+matcher: `dod.md` condition 4, not a preference. **The drill that printed a finding used the shell
+payload**, which is the one that worked — a check written alongside a change inheriting the change's
+blind spot, fifth time across the two sessions. Fixed with an explicit `ruleKind`, and the suite now
+grades an emitted case for **every** payload kind through `goldens`' own `readCorpus` and `grade`
+rather than through a re-implementation of what they accept.
+
+**The wrapper productions interpolate the payload verbatim into `bash -c "…"`.** The reviewer's
+question was sharper than the one I had answered: `respell` can introduce `"`, `$` and split quotes,
+so the outer shell could retokenise the inner script into something the generator does not believe it
+wrote — which would make the oracle exact about the wrong string. My `carries` predicate covered the
+single-quoted wrappers only, and the ground test sampled five hand-picked spellings.
+
+**Refused after measuring rather than on argument.** 4,200 generated wrapper commands parse under
+`bash -n`, and the ground test now draws its respellings **from `respell` itself** instead of from my
+list — every drawn spelling, in every wrapper it is allowed into, still names the marker under real
+bash. The hand-picked five stay in front so a reader sees the shapes without running anything, and the
+`refused` assertion became a floor rather than a fixed number, since the drawn set can grow.
+
+**The test header claimed the file "must never execute anything"** while the entry-guard case runs a
+copy of the module under `execFileSync`. A comment describing a stricter rule than the file keeps, in
+the header of a file in the pull request whose whole subject is that class. Reworded to what is
+actually true and enforced: never a generated payload, never bash.
 
 **The count class, tallied once, here.** Four instances in one session: the handoff (caught by the
 pre-commit checkpoint), `evals/README.md` (round 2), `.portulan/verify/README.md` (round 4), and the
