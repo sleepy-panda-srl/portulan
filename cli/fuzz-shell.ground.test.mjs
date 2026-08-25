@@ -48,7 +48,7 @@ const NEUTRAL = "printf ok > portulan.marker";
 const MARKER = "portulan.marker";
 
 /** Run a script under bash in a scratch directory, and say whether the neutral payload ran. */
-function ran(script, cwd) {
+function ran(script, cwd, { exitsNonZero = false } = {}) {
     const marker = path.join(cwd, MARKER);
     fs.rmSync(marker, { force: true });
     const result = spawnSync("bash", ["-c", script], { cwd, encoding: "utf8", timeout: 10_000, env: { PATH: process.env.PATH ?? "" } });
@@ -63,13 +63,28 @@ function ran(script, cwd) {
     // and which already records catching one instance of it. Measured before asserting: every
     // production the suite runs exits 0 today. Reported as a suppressed note by Copilot, round 2 on
     // #338 — the channel that carries what the inline one does not.
-    assert.equal(
-        result.status,
-        0,
-        `bash exited ${result.status} running ${JSON.stringify(script)} — a failed script measures nothing about ` +
-            `where the payload sat: ${result.stderr}`,
-    );
-    const fired = fs.existsSync(marker);
+    // **`exitsNonZero` is declared per production, with a reason, and never inferred.** One production
+    // measures a spelling bash SPLITS — a CRLF after a backslash — so the fragment left over is run as
+    // a command and is not found. There the non-zero exit IS the measurement rather than a failure of
+    // it. Everywhere else a failed script measures nothing about where the payload sat, and letting
+    // that pass would certify a data position because the script was broken.
+    if (!exitsNonZero) {
+        assert.equal(
+            result.status,
+            0,
+            `bash exited ${result.status} running ${JSON.stringify(script)} — a failed script measures nothing about ` +
+                `where the payload sat: ${result.stderr}`,
+        );
+    } else {
+        assert.notEqual(result.status, 0, `${JSON.stringify(script)} declares exitsNonZero and bash exited 0 — the production's own claim is stale`);
+    }
+    // **The marker must have CONTENT, not merely exist** — the third time this harness has been fooled
+    // by the thing it measures, and each catch has come from extending the measurement rather than
+    // from reading it. A shell applies a redirection BEFORE it looks the command up, so a fragment
+    // like `ok > portulan.marker` left over by a split creates the file and then fails: the file is
+    // there and empty, and an existence check reads that as *the payload ran*. `printf ok` writes
+    // `ok`, and nothing else here does.
+    const fired = fs.existsSync(marker) && fs.readFileSync(marker, "utf8") === "ok";
     fs.rmSync(marker, { force: true });
     return fired;
 }
@@ -91,7 +106,12 @@ test("every production's declared position is what bash actually does", () => {
                 skipped.push(position.id);
                 continue;
             }
-            const actual = ran(position.build(NEUTRAL), dir);
+            if (position.exitsNonZero === true) {
+                // A production claiming a non-zero exit must argue it, the same way an unmeasured one
+                // must. An escape hatch nobody has to justify is an escape hatch that widens.
+                assert.ok(typeof position.why === "string" && position.why.trim().length > 20, `${position.id} declares exitsNonZero and argues nothing`);
+            }
+            const actual = ran(position.build(NEUTRAL), dir, { exitsNonZero: position.exitsNonZero === true });
             assert.equal(
                 actual,
                 position.ground === "command",

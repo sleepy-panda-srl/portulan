@@ -284,6 +284,36 @@ export const POSITIONS = [
         build: (p) => `sudo ${p}`,
     },
     { id: "leading-redirection", ground: "command", build: (p) => `2> /dev/null ${p}` },
+    // ------------------------------------------------------------------------------------------
+    // **The redirection-TARGET family — session-open adjustment 4, and the class #336 met three
+    // times.** A shell word may hold spaces when it is quoted or escaped, and `LEADING_REDIRECTION`
+    // must consume the whole word or the command behind it escapes ungated. That defect shipped
+    // twice on #336 and was fixed twice at the spelling that was quoted, until the suite stopped
+    // asserting spellings and asserted the rule against `shellWords`. These productions put the same
+    // rule in front of the generator, so a fourth sibling reds here rather than in a review.
+    //
+    // Every one is a COMMAND position: bash redirects stderr to a file and then runs the payload.
+    { id: "leading-redirection-quoted-target", ground: "command", build: (p) => `2> "log file.txt" ${p}` },
+    { id: "leading-redirection-single-quoted-target", ground: "command", build: (p) => `2> 'log file.txt' ${p}` },
+    { id: "leading-redirection-escaped-space-target", ground: "command", build: (p) => `2> log\\ file.txt ${p}` },
+    { id: "leading-redirection-escaped-quote-target", ground: "command", build: (p) => `2> "log \\"q\\" file.txt" ${p}` },
+    // ------------------------------------------------------------------------------------------
+    // **A CRLF continuation, which is NOT a continuation.** `shellWords` consumes `\r\n` after a
+    // backslash as a pair and joins the word; three shells on this machine — bash 3.2.57, zsh and
+    // sh — do not, and split the command instead. So the payload as written never takes effect and
+    // the matcher answers `true` anyway: a FALSE RED, fail-closed, and a divergence that had no
+    // recorded cell until this production existed.
+    //
+    // It is `ground: "data"` in the operational sense this axis means — the payload, as written, does
+    // not take effect. Something else runs in its place and fails, which is why the production
+    // declares `exitsNonZero`.
+    {
+        id: "crlf-continuation-in-the-payload",
+        ground: "data",
+        exitsNonZero: true,
+        why: "bash splits at the CRLF, so the fragment after it is run as a command and is not found — a non-zero exit is the measurement rather than a failure of it.",
+        build: (p) => p.replace(" ", " \\\r\n"),
+    },
     { id: "after-heredoc", ground: "command", build: (p) => `cat <<'EOF'\nbody\nEOF\n${p}` },
     { id: "after-comment-line", ground: "command", build: (p) => `# a note\n${p}` },
     { id: "command-substitution", ground: "command", build: (p) => `echo $(${p})` },
@@ -342,6 +372,32 @@ export const POSITIONS = [
  * it is a choice rather than a gap.
  */
 export const EXPECT = {
+    "leading-redirection-quoted-target|shell": { answer: true },
+    "leading-redirection-quoted-target|write-redirect": { answer: true },
+    "leading-redirection-quoted-target|write-named": { answer: true },
+    "leading-redirection-single-quoted-target|shell": { answer: true },
+    "leading-redirection-single-quoted-target|write-redirect": { answer: true },
+    "leading-redirection-single-quoted-target|write-named": { answer: true },
+    "leading-redirection-escaped-space-target|shell": { answer: true },
+    "leading-redirection-escaped-space-target|write-redirect": { answer: true },
+    "leading-redirection-escaped-space-target|write-named": { answer: true },
+    "leading-redirection-escaped-quote-target|shell": { answer: true },
+    "leading-redirection-escaped-quote-target|write-redirect": { answer: true },
+    "leading-redirection-escaped-quote-target|write-named": { answer: true },
+    "crlf-continuation-in-the-payload|shell": {
+        answer: false,
+        why: "Correct, and by the OTHER reader. `commandSegments` knows nothing of a CRLF continuation, so it splits at the newline and the fragment after it no longer carries the gated prefix — which is what bash does too. The two segmenters disagree about this spelling and the shell branch happens to land on bash's answer.",
+    },
+    "crlf-continuation-in-the-payload|write-redirect": {
+        answer: true,
+        record: "cli/compile.mjs, `shellWords` — a `\\r\\n` after a backslash is consumed as a PAIR, a decision taken 2026-07-28",
+        why: "A FALSE RED, and fail-closed. `shellWords` joins `\\\\` + CRLF into one word, so the write matcher sees `docs/vision.md` and denies; bash — measured on bash 3.2.57, zsh and sh on this machine — splits there and the constitution is never written. The cost is one prompt on a rare spelling. **`compile.mjs`'s own comment claims this spelling made the constitution 'reachable by editing the file on Windows', and that reachability did not reproduce here** — flagged for the maintainer rather than repaired, since the repair direction is fail-OPEN and the claim may hold on a bash this machine does not have.",
+    },
+    "crlf-continuation-in-the-payload|write-named": {
+        answer: true,
+        record: "cli/compile.mjs, `shellWords` — a `\\r\\n` after a backslash is consumed as a PAIR, a decision taken 2026-07-28",
+        why: "The same false red at the other write recognition, for the same reason: `shellWrites` reaches `shellSegments`, which reaches `shellWords`, which joins.",
+    },
     // ============================== shell
     "bare|shell": { answer: true },
     "after-semicolon|shell": { answer: true },
