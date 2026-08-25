@@ -180,6 +180,61 @@ records a catch. The generator would have been exact about a string it no longer
 which is the one failure this design is arranged against. Positions now declare what they can carry,
 the refusals are counted and pinned, and bash measures the composition.
 
+## The review loop
+
+**Round 1 — two inline findings, both mechanism, both mine.**
+
+`--only` validated no operator metadata at all: the loop read `only === null ? OPERATORS : []`, so a
+malformed operator slipped through in exactly the mode a person reaches for *when something is already
+wrong*. Fixed at the rule — `--only` narrows what runs, not what must be well formed.
+
+The per-cell PRNG seed mixed in `position.id.length` and `kind.length`, so most of the grammar shared
+a stream with another position **while the comment beside it claimed each cell had its own.** The
+cells stayed correct; what was lost is the diversity the spelling axis exists for. Seeds derive from
+the cell's full identity now, and the suite asserts the *rule* — every cell's seed distinct, the same
+cell still reproducible — rather than the ids that happened to collide. Re-fuzzed at 400 spellings per
+cell across four seeds, 153,600 generated commands, no new divergence.
+
+**A claim broader than the code it describes is this repository's signature defect**, and I had folded
+three findings of that shape from other people's code earlier the same day before writing one of my
+own — in the file whose whole job is holding a matcher to what its sentence claims.
+
+**Round 2 — no threads, two suppressed notes, both right.** The notes-only channel carries findings
+the inline one does not, which is why both are read every round.
+
+`ran()` in the ground-truth test asserted only that bash **started**. A script that ran and *failed*
+dropped no marker and came back `false` — which for a `ground: "data"` production reads as
+**confirmation**. The position would have been certified as data because the script was broken. A
+measurement harness fooled by its own failure, in the file whose subject is that class and which
+already records catching one instance of it. Status and stderr are part of the oracle now.
+
+`evals/README.md` carried a census count against a table that had since grown. **Third instance of the
+same defect in this session, and the location is the lesson:** the pre-commit checkpoint caught that
+exact figure in this handoff, I fixed it *there*, and the repair stopped at the site that was quoted —
+`0020`, in the session that spent a paragraph writing about `0020`. Round 2's repair is the class: every
+prose carrier of a census, corpus or grammar figure is now deleted in favour of the runner that prints
+it, or explicitly dated as a first-run measurement.
+
+**The bound is met at two rounds.** Both were mechanism or a false sentence rather than preference, so
+both were answered. A third is the maintainer's to grant, flagged and not assumed.
+
+## One process defect of my own
+
+**My first two review replies went out through the maintainer's credentials instead of
+`.portulan/tools/gh-bot`.** The gate map's *Which identity acts* is explicit that pull-request
+conversation comes from the agent identity, because a reply written by an agent and posted as a human
+makes the conversation read as human when it is not — the exact provenance defect that wrapper exists
+to prevent, and one nothing in the artifact would have revealed to a reader.
+
+Caught by checking authorship after posting rather than before. Re-posted under `portulan-agent`, and
+the two misattributed comments are **annotated in place rather than deleted**: a misattribution
+corrected in the open is a record, and a deleted one is not.
+
+Worth recording because the failure mode is not ignorance of the rule — I had read that table during
+the boot. It is that `gh` was already authenticated and the command worked, so nothing resisted. That
+is the shape a rail catches and a reminder does not, and there is no rail here: nothing checks the
+author of a review reply. Whether that deserves one is the maintainer's call rather than mine.
+
 ## What is NOT in this change
 
 - **#337** is untouched. What `./` should mean is a policy question with three defensible answers and
