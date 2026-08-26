@@ -2499,7 +2499,7 @@ _The seam applies here too: no client-identifying references._
   Thursday**, listed apart so a green dispatch cannot read as *the calendar works*. **A 200 from
   `requested_reviewers` establishes nothing** — a nonexistent login is accepted too — so `copilot-review.yml`'s
   `sent` arm names a cause it has not established ([#348](https://github.com/sleepy-panda-srl/portulan/issues/348)); `--pack-root`'s cwd relativity spans eight tools ([#347](https://github.com/sleepy-panda-srl/portulan/issues/347)).
-  Six of nine remain. Every yielded recipe green; seam scan clean over every path the diff touches · Handoff: [`2026-08-25-f`](../.portulan/handoffs/2026-08-25-f-the-dispatch-half-is-observed-and-a-200-is-not-a-request.md).
+  Six of nine remain. Every yielded recipe green; seam scan clean over every path the diff touches · Handoff: [`2026-08-25-h`](../.portulan/handoffs/2026-08-25-h-the-dispatch-half-is-observed-and-a-200-is-not-a-request.md).
 
 - 2026-08-25 · Memory-store session (no milestone row moves) · **The round was never missing, the page
   was.** A dictated fact — *a round arrived with no review object; poll `/comments` instead* — was
@@ -2520,4 +2520,15 @@ _The seam applies here too: no client-identifying references._
   `1 per clause`. Swept **whole-file, not per line**, the lesson from the fourth carrier that wrapped
   across two comment lines: eighteen cadence mentions read, one live carrier, two dated records left
   standing. Six of nine remain. Every yielded recipe green; seam scan clean over every path the diff
-  touches · Handoff: [`2026-08-25-g`](../.portulan/handoffs/2026-08-25-g-the-thursday-cadence-is-ruled.md).
+  touches · Handoff: [`2026-08-25-i`](../.portulan/handoffs/2026-08-25-i-the-thursday-cadence-is-ruled.md).
+
+- 2026-08-26 · M8 (Evals & telemetry), session 2 follow-up · **Two handoff letters collided; the
+  convention was measured rather than patched.** This session's `2026-08-25-f` and `-g` became `-h` and
+  `-i` — **mine moved because mine landed later**, established from git, since renaming the earlier file
+  rewrites another session's merged record. Only the second was reported and **both are fixed**: the same
+  defect one letter along is the class. **Five collisions on three dates**, and no rail fits the scheme as
+  it stands — a single-character segment after the date is either a series letter or the slug's first
+  word, so a naive check flags 25 of 140. [#353](https://github.com/sleepy-panda-srl/portulan/issues/353),
+  *When-open*, blocked on his ruling. A blind replace also mislabelled another session's link, invisible
+  to `links` (it checks targets, not labels); caught by deriving label↔target agreement over all 82. Every
+  yielded recipe green; seam scan clean over every path the diff touches · Handoff: [`2026-08-26`](../.portulan/handoffs/2026-08-26-the-handoff-letter-collided-twice-more.md).
