@@ -117,10 +117,6 @@ test("a repeated head breaks the coincidence, and the flag goes with it", () => 
     assert.equal(m.pushesCoincideWithSubmissions, false);
 });
 
-// This arm is exercised at the MODULE level on purpose: `validateSnapshot` refuses an empty corpus
-// (`window.merged < 1`), so `run()` cannot reach it — an empty capture is a could-not-judge, not a loop
-// measuring zero. The null-handling still has to be right, because `meter()` is exported and the
-// register renderer calls it.
 test("an empty denominator yields null, never zero — an unmeasured loop is not a quiet one", () => {
     const m = meter(snapshotOf([]));
     assert.equal(m.submissionsPerPullRequest, null);
@@ -358,10 +354,45 @@ test("a submission with no HEAD is refused — pushes are counted from it", () =
     assert.ok(validateSnapshot(bad).some((p) => /no head sha/.test(p)));
 });
 
-test("a pull request with no mergedAt is refused — the window cannot be shown to be by merge date", () => {
-    const bad = snapshotOf([{ number: 1, submissions: [submission()] }]);
-    delete bad.pullRequests[0].mergedAt;
-    assert.ok(validateSnapshot(bad).some((p) => /no mergedAt/.test(p)));
+test("a mergedAt that is not a timestamp is refused, not ordered as text", () => {
+    // It was compared lexicographically, so ANY string ordered against any other and a window stamped
+    // "yesterday" passed while the register claimed it was by merge date. A check that cannot fail on
+    // a malformed input is not checking it. Copilot round 2 on #357.
+    const absent = snapshotOf([{ number: 1, submissions: [submission()] }]);
+    delete absent.pullRequests[0].mergedAt;
+    assert.ok(validateSnapshot(absent).some((p) => /no parsable mergedAt/.test(p)));
+
+    const prose = snapshotOf([{ number: 1, submissions: [submission()] }]);
+    prose.pullRequests[0].mergedAt = "yesterday";
+    assert.ok(validateSnapshot(prose).some((p) => /no parsable mergedAt/.test(p)));
+
+    // And ordering is on the parsed value: these two are in descending order by DATE and ASCENDING
+    // order as text, so a lexicographic check would report a violation that is not there.
+    const ok = snapshotOf([{ number: 2, submissions: [submission()] }, { number: 1, submissions: [submission()] }]);
+    ok.pullRequests[0].mergedAt = "2026-08-26T09:00:00.000Z";
+    ok.pullRequests[1].mergedAt = "2026-08-26T08:00:00Z";
+    assert.deepEqual(validateSnapshot(ok), []);
+});
+
+test("an EMPTY window is metered, not refused — a repository with no merged pull requests is a true zero", () => {
+    // The floor was 1, which made this tool reject a snapshot its own `--fetch` can write. `meter()`
+    // already answers an empty corpus correctly with null ratios, so the refusal was the validator
+    // disagreeing with its own producer. Copilot round 2 on #357.
+    assert.deepEqual(validateSnapshot(snapshotOf([])), []);
+    const text = renderRegister(meter(snapshotOf([])));
+    assert.ok(text.includes("| Pull requests | count | 0 |"));
+    assert.ok(text.includes("unmeasured"), "an empty window is unmeasured, never below the threshold");
+});
+
+test("selectWindow orders on the PARSED stamp, so the producer and the validator agree", () => {
+    const listed = [
+        { number: 1, mergedAt: "2026-08-26T08:00:00Z" },
+        { number: 2, mergedAt: "2026-08-26T09:00:00.000Z" },
+    ];
+    // Text order would put the millisecond form first only by accident of the digit; date order is
+    // what both sides must use, or the fetch writes a window the validator refuses.
+    assert.deepEqual(selectWindow(listed, 2).map((p) => p.number), [2, 1]);
+    assert.deepEqual(validateSnapshot(snapshotOf(selectWindow(listed, 2).map((p) => ({ ...p, submissions: [submission()] })))), []);
 });
 
 // ------------------------------------------------- the shaping, where two measured traps both live

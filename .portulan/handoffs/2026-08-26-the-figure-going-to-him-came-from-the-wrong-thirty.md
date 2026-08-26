@@ -105,8 +105,34 @@ the moment in one line:
 **Neither the plan nor I would have found the window defect.** It is visible only by reading the
 generated data against its own heading, which is the one thing the author of both is least able to do.
 
+## The review loop — two fix-rounds, and every finding was a false green
+
+**Round 1, two inline findings, both real.** `--check` and `--write` without `--register` returned
+**exit 0 having compared nothing** — so a person who typed the flag and forgot the path was told
+everything was fine. And the missing-register test wrote an empty snapshot, which `validateSnapshot`
+had just started refusing, so it exited 2 at the snapshot and asserted nothing about a missing
+register while still passing.
+
+**Round 2, two findings, both through the SUPPRESSED channel** and both promoted to gating threads by
+this repository's own step. `validateSnapshot` refused `window.merged === 0` — making the tool reject a
+snapshot **its own `--fetch` can write** for a repository with no merged pull requests, a validator
+disagreeing with its producer. And `mergedAt` was compared **lexicographically**, so any string ordered
+against any other: a window stamped `"yesterday"` would have passed while the register claimed it was
+by merge date. Both parse the value now, on both sides of the split.
+
+**All four are the same defect class, and it is this change's own subject.** Something reported success
+without doing its job — the flag that compared nothing, the test that asserted nothing, the validator
+that could not fail, and the ordering check that could not fail. That is four instances inside the
+change built to end a hand-count, plus the entry guard that exited 0 having run nothing and the window
+that measured the wrong thirty. **Six false greens in one session**, four of them caught by a reviewer
+rather than by me.
+
+**The bound is spent.** Two fix-rounds under rule 4; anything further becomes an issue.
+
 ## State
 
 `main` @ `420fd66` at branch point. Every recipe the manifest yields ran green in this working copy,
 exit codes read directly; `drills --check` green at 22; the `review-loop` drill forced red and fired.
-Seam scan clean over every changed path, the commit message and the branch name.
+**And both rails ran green on CI** — `workspace-verify` and `forced-red` on `ubuntu-latest`, which is
+the half a local run cannot establish and the pre-commit checkpoint named as owed. Seam scan clean over
+every changed path, the commit message and the branch name, with a planted-term control reddening.

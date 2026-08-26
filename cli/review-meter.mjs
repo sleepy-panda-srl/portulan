@@ -260,7 +260,16 @@ export function validateSnapshot(snapshot) {
     // disagrees with the corpus beneath it is a false heading over true figures. Measured at the
     // pre-commit checkpoint: `{merged: 300}` over thirty pull requests rendered *"300 most recently
     // merged"* above *"| Pull requests | count | 30 |"*, rail green.
-    if (!Number.isInteger(snapshot.window?.merged) || snapshot.window.merged < 1) {
+    //
+    // **Zero is a legal window and the floor here used to be one.** A repository with no merged pull
+    // requests yet has an empty review loop, which is a true measurement rather than a failed one —
+    // and `meter()` already answers it correctly, returning `null` for every ratio and `null` for the
+    // retirement verdict, because *"an unmeasured window is not a window measuring below the
+    // threshold"*. Refusing it made this tool reject a snapshot **its own `--fetch` can write**, which
+    // is a validator disagreeing with its own producer. Copilot round 2 on #357, arriving through the
+    // suppressed channel — the half no gate sees until this repository's own promotion step makes it
+    // a thread.
+    if (!Number.isInteger(snapshot.window?.merged) || snapshot.window.merged < 0) {
         problems.push(
             `window.merged is ${JSON.stringify(snapshot.window?.merged)}; the register prints it as the size of the sample`,
         );
@@ -283,16 +292,26 @@ export function validateSnapshot(snapshot) {
         }
         if (seen.has(pr.number)) problems.push(`pull request ${pr.number} appears twice`);
         seen.add(pr.number);
-        if (typeof pr.mergedAt !== "string" || pr.mergedAt.length === 0) {
-            problems.push(`pull request ${pr.number} has no mergedAt — the window cannot be shown to be by merge date`);
+        // **`mergedAt` is parsed, not compared as text.** It was compared lexicographically, which is
+        // right for ISO-8601 and right for nothing else: any string orders against any other string,
+        // so a snapshot carrying `"yesterday"` or a `DD/MM/YYYY` stamp would have ordered cleanly and
+        // the register would still have claimed the window was *by merge date*. A check that cannot
+        // fail on a malformed input is not checking that input. Copilot round 2 on #357, through the
+        // suppressed channel.
+        const merged = typeof pr.mergedAt === "string" ? Date.parse(pr.mergedAt) : Number.NaN;
+        if (Number.isNaN(merged)) {
+            problems.push(
+                `pull request ${pr.number} has no parsable mergedAt (${JSON.stringify(pr.mergedAt)}) — ` +
+                    "the window cannot be shown to be by merge date",
+            );
         } else {
-            if (previous !== null && pr.mergedAt > previous) {
+            if (previous !== null && merged > previous) {
                 problems.push(
-                    `pull request ${pr.number} merged at ${pr.mergedAt}, after the entry before it (${previous}) — ` +
+                    `pull request ${pr.number} merged at ${pr.mergedAt}, after the entry before it — ` +
                         "the window is not in descending merge order, so it is not the most recently merged N",
                 );
             }
-            previous = pr.mergedAt;
+            previous = merged;
         }
         if (!Array.isArray(pr.submissions)) {
             problems.push(`pull request ${pr.number} has no submissions array`);
@@ -430,8 +449,16 @@ const gh = (args) => {
 // So a POOL is listed and the window is taken from it by merge date. Sorted descending, ties broken by
 // number descending so the order is total and a re-capture of the same data is byte-stable.
 export function selectWindow(listed, limit) {
+    // Parsed rather than compared as text, and for the same reason `validateSnapshot` parses it: the
+    // producer and the validator must order by the same relation, or the fetch can write a window the
+    // validator then refuses. An unparsable stamp sorts last rather than throwing — the validator is
+    // where it is reported, and a fetch that crashed on one bad row would lose the other twenty-nine.
+    const at = (x) => {
+        const t = Date.parse(x?.mergedAt);
+        return Number.isNaN(t) ? -Infinity : t;
+    };
     return [...listed]
-        .sort((a, b) => (a.mergedAt === b.mergedAt ? b.number - a.number : a.mergedAt < b.mergedAt ? 1 : -1))
+        .sort((a, b) => (at(a) === at(b) ? b.number - a.number : at(b) - at(a)))
         .slice(0, limit);
 }
 
