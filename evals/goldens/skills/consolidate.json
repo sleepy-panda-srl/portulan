@@ -1,8 +1,16 @@
 {
   "skill": "consolidate",
   "_comment": [
-    "Golden tasks for core/skills/consolidate/SKILL.md. Six steps, three bound. The routing case is a",
-    "containment check derived from the schema on both sides, so a fifth budget id reddens it."
+    "Golden tasks for core/skills/consolidate/SKILL.md. Six numbered steps plus step 0 — the routing",
+    "sentence under `## When to use it`, numbered 0 so the pass accounting stays a clean 1..6.",
+    "",
+    "TWO cases are bound: step 0 (load-bearing, the schema-budget containment) and step 1 (census, the",
+    "retire-when walk doctor already reports). The other five are adjudicated unbindable.",
+    "",
+    "This _comment read `Six steps, three bound` until Copilot round 1 on #360. It was written when",
+    "step 5 was classed bound, and it did not move when the pre-commit checkpoint reclassified that row",
+    "to `already-carried` — a file's own summary disagreeing with its own cases, which is proposal 0020",
+    "one line up from the thing it describes."
   ],
   "cases": [
     {

@@ -434,11 +434,22 @@ const USAGE = [
 ].join("\n");
 
 export function run(argv = process.argv.slice(2), io = console) {
+  try {
     let repoRoot = ".";
     let workspaceDir = null;
     for (let i = 0; i < argv.length; i += 1) {
-        if (argv[i] === "--repo-root") repoRoot = argv[++i];
-        else if (argv[i] === "--workspace") workspaceDir = argv[++i];
+        // **A missing option value must not swallow the next flag.** `argv[++i]` on a trailing
+        // `--repo-root` yields `undefined` and on `--repo-root --workspace x` yields `"--workspace"`,
+        // so the tool would grade a directory nobody named and say nothing. `./rule-carriers.mjs`
+        // treats a missing value as exit 2 and this now matches it. Copilot round 1 on #360.
+        const value = (flag) => {
+            const v = argv[i + 1];
+            if (v === undefined || v.startsWith("--")) throw new CouldNotRun(`${flag} needs a value`);
+            i += 1;
+            return v;
+        };
+        if (argv[i] === "--repo-root") repoRoot = value("--repo-root");
+        else if (argv[i] === "--workspace") workspaceDir = value("--workspace");
         else if (argv[i] === "--help" || argv[i] === "-h") {
             io.log(USAGE);
             return 0;
@@ -545,6 +556,14 @@ export function run(argv = process.argv.slice(2), io = console) {
     io.log("");
     io.log("GREEN — every core skill's mandates are accounted for and every binding holds.");
     return 0;
+  } catch (e) {
+    if (e instanceof CouldNotRun) {
+        io.error(`skill-goldens: ${e.message}`);
+        io.error(USAGE);
+        return 2;
+    }
+    throw e;
+  }
 }
 
 // The entry guard, in the ONE form `./rule-carriers.mjs` designates: `file://${argv[1]}` percent-encodes

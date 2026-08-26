@@ -49,8 +49,8 @@ unbindable, five of them `judgement-only`.** The ratio is printed as a **finding
 half that matters: one third of a core skill's mandates are agent judgement, which is what the A/B
 clause exists to reach. That is a measurement about the engine, which is what this row is for.
 
-**Two live drifts, accepted rather than repaired** — 12 of 19 task files, 6 of 33 proposals with no
-provenance field in any spelling. `goldens` and `mutants` shipped green with their first-run defects
+**Three live drifts, accepted rather than repaired** — 12 of 19 task files, and 6 and 13 of 33
+proposals missing a provenance and an enforcement field. `goldens` and `mutants` shipped green with their first-run defects
 **fixed**; this ships green with them **accepted**, because they are merged records. Two carriers, as
 the gate side binds its holes: `evals/README.md` and
 [#358](https://github.com/sleepy-panda-srl/portulan/issues/358).

@@ -364,3 +364,14 @@ test("the printed limits say `carrier` is DECLARED, not verified", () => {
     assert.ok(text.includes("Read the SPLIT, not the total"), "the ratio must not read as all-judgement");
     assert.match(text, /adjudicated unbindable — .*judgement-only/);
 });
+
+test("an option with no value is exit 2, never a silently different repo root", () => {
+    // `argv[++i]` on a trailing `--repo-root` yields undefined, and on `--repo-root --workspace x`
+    // yields "--workspace" — so the tool would grade a directory nobody named and say nothing.
+    // `rule-carriers.mjs` treats a missing value as exit 2 and this now matches. Copilot round 1 on #360.
+    for (const argv of [["--repo-root"], ["--workspace"], ["--repo-root", "--workspace", "x"]]) {
+        const c = collect();
+        assert.equal(run(argv, c.io), 2, `${argv.join(" ")} should refuse`);
+        assert.ok(c.err.join("\n").includes("needs a value"), c.err.join(" | "));
+    }
+});

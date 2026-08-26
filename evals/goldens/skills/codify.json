@@ -1,9 +1,14 @@
 {
   "skill": "codify",
   "_comment": [
-    "Golden tasks for core/skills/codify/SKILL.md. Step 1 is bound TWICE — to the skill's own output",
-    "(proposals) and to the store its proposals govern (memory) — because the mandate reaches both and",
-    "they have different carriers. The proposal binding is the load-bearing one: nothing checks it."
+    "Golden tasks for core/skills/codify/SKILL.md. TWO bound cases, both load-bearing and both against",
+    "the skill's OWN OUTPUT — proposals, which its step 4 names: step 1 wants provenance on them and",
+    "step 3 wants an enforcement field. core/templates/proposal.md mandates both and nothing checks",
+    "either, so neither has a carrier.",
+    "",
+    "This _comment claimed step 1 was `bound TWICE`, to proposals and to memory. There is no memory",
+    "binding in this file: the memory-provenance row was dropped when the pre-commit checkpoint bound",
+    "step 3 instead, and the summary did not move with it. Copilot round 1 on #360."
   ],
   "cases": [
     {

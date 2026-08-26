@@ -2547,10 +2547,10 @@ _The seam applies here too: no client-identifying references._
 - 2026-08-26 · M8, session 4 · **Golden tasks per core skill**, the row's original first subject:
   [`cli/skill-goldens.mjs`](../cli/skill-goldens.mjs) binds each numbered step of a core skill's
   `## The pass` to the live artifacts it governs and the rail enforcing it, with a **derived** denominator
-  so a new step reds; a recipe and a drill (roster 23) hold it. **5 of 15 mandates bound — 3 load-bearing,
-  2 census; 10 unbindable**, printed as a finding. Two drifts **accepted, not repaired** (12 of 19 tasks,
-  6 of 33 proposals) → [#358](https://github.com/sleepy-panda-srl/portulan/issues/358); the EARS reduction
-  is impossible to an agent (`docs/vision.md` is `prohibited`) → [#359](https://github.com/sleepy-panda-srl/portulan/issues/359).
-  · **Both checkpoints fresh-context**, session-open over three passes plus an independent second opinion;
-  the criterion's reading went to the maintainer. · Seam scan clean. ·
+  so a new step reds; a recipe and a drill (roster 23) hold it. **5 of 15 mandates bound — 4 load-bearing,
+  1 census; 10 unbindable**, 5 of them judgement-only, printed as a finding. **Three** drifts **accepted,
+  not repaired** (12 of 19 tasks; 6 and 13 of 33 proposals) → [#358](https://github.com/sleepy-panda-srl/portulan/issues/358);
+  the EARS reduction is deferred on budget and a cascade question, not impossibility →
+  [#359](https://github.com/sleepy-panda-srl/portulan/issues/359). · **Both checkpoints fresh-context**,
+  session-open over three passes plus an independent second opinion. · Seam scan clean. ·
   [handoff](../.portulan/handoffs/2026-08-26-b-the-denominator-was-a-set-the-author-drew.md)

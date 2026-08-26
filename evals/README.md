@@ -405,14 +405,16 @@ because a checkpoint found the version without it:
 ### `unbindable` is adjudicated, never asserted
 
 The dodge is obvious — call a mandate unbindable and it needs no case. So the reason takes a **closed
-vocabulary**: `judgement-only`, `no-artifact`, `cross-language`. And a `judgement-only` step **may name
+vocabulary**: `judgement-only`, `no-artifact`, `cross-language`, and `already-carried` — the last added
+at the pre-commit checkpoint, which found a row classed `bound` whose named carrier the runner never
+reads, and no honest term for what it actually was. And a `judgement-only` step **may name
 no artifacts**: if you can name the artifacts a mandate governs, it is not judgement, it is unbuilt.
 That is [`../cli/mutants.mjs`](../cli/mutants.mjs)'s rule that a `survives` record is admissible only as
 a proof and never as a standing note that a gap exists.
 
 ### What the first run measured
 
-**Five of fifteen mandates bind to live artifacts — three load-bearing, two census — and ten are
+**Five of fifteen mandates bind to live artifacts — four load-bearing, one census — and ten are
 adjudicated unbindable.** No figure is written here beyond that shape; the runner prints its own totals.
 
 **The ratio is a finding rather than bookkeeping.** How much of a core skill is artifact discipline and
@@ -424,14 +426,14 @@ this paragraph said "two thirds are judgement", which was the unbindable total w
 label. Corrected at the pre-commit checkpoint, which also found one row classed `bound` whose named
 carrier the runner never reads.)_
 
-**Two of the five rows are `census`, and they are marked as such** in the corpus and in the output. A
-census row re-indexes a figure `doctor` or `docs.sh` already prints, under the mandate that wants it; it
-is not a new check, and presenting five equal rows would read as more evidence than it holds — the
-repair this directory already applied to three columns of which two were one column.
+**One of the five rows is `census`, and it is marked as such** in the corpus and in the output. A census
+row re-indexes a figure `doctor` already prints, under the mandate that wants it; it is not a new check,
+and presenting five equal rows would read as more evidence than it holds — the repair this directory
+already applied to three columns of which two were one column.
 
 ### Accepted drift — the in-tree record
 
-Two live findings, and **both ship green with the defect accepted rather than repaired.** That is the
+Three live findings, and **all three ship green with the defect accepted rather than repaired.** That is the
 distinction to keep: `goldens` and `mutants` each went red on their first run and shipped green with the
 defect **fixed**. These are merged records, not an implementer's to rewrite, and doing so under a
 one-clause budget would be a second clause.
