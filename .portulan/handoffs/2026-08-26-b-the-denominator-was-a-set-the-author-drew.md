@@ -70,9 +70,15 @@ a comparison-table row. Three carriers, all `propose`. The withdrawal survives o
 cascade question; the reason I gave for it did not, and **five carriers repeated it**, issue #359
 included. All corrected.
 
-**"Carriers are proven by import."** Three carriers said so. Nothing links `carrier.symbol` to an
-import: the checkpoint rewrote every carrier to a module that does not exist and the corpus stayed
-green. It is a **declared, reviewed field** now, and the printed limits say so.
+**"Carriers are proven by import."** Nothing links `carrier.symbol` to an import: the checkpoint
+rewrote every carrier to a module that does not exist and the corpus stayed green. It is a **declared,
+reviewed field** now, and the printed limits say so.
+
+**I wrote "three carriers said so" and there were five.** Copilot round 2 found the two the sweep had
+walked past — a corpus `_note` and `cli/README.md`, the latter through the suppressed channel. **A
+sentence correcting an overclaim, itself undercounting the overclaim's carriers**, is the third
+instance of `0020` in this session and the one I would least have predicted: the repair and the defect
+were the same edit.
 
 **"Two thirds are judgement."** Two thirds were *unbindable*; `judgement-only` is five of fifteen. And
 one row I had counted `bound` bound nothing — deleting its named carrier left the corpus green, because

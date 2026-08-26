@@ -26,10 +26,11 @@
 #
 # **Adequacy.** A mandate can be bound and the binding trivial — clause (a)'s presence floor, restated.
 #
-# **That a named carrier RUNS its check.** The binding is proven by import: a carrier that stops
-# exporting the symbol fails the runner at load. That proves the carrier *contains* the check and never
-# that it *calls* it. Closing that needs a per-mandate drill, which is ./drills.sh's shape one grain
-# finer, and is not built here.
+# **Anything about the per-case `carrier` field.** The PREDICATES are pinned by import — the runner
+# takes `RETIRE_WHEN` from ../../cli/doctor.mjs rather than re-spelling it — but `carrier` itself is
+# **declared, reviewed metadata** and nothing links it to a check: a corpus naming a module that does
+# not exist grades green, which the pre-commit checkpoint demonstrated rather than inferred. Closing
+# that needs a per-mandate drill, which is ./drills.sh's shape one grain finer, and is not built here.
 #
 # **An agent's judgement.** Ten of fifteen mandates are adjudicated unbindable, most of them because
 # they are about a decision no artifact witnesses. That ratio is printed as a **finding** — it measures
