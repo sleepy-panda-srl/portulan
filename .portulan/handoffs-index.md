@@ -2,10 +2,11 @@
 
 > Generated from `handoffs/` by `node cli/index.mjs`. Do not edit by hand: it is regenerated
 > and byte-compared, so a hand-edit survives exactly until the next run.
-> 141 handoff(s), newest first. No budget: the series is append-only, so
+> 142 handoff(s), newest first. No budget: the series is append-only, so
 > the only remedy a budget could ask for is one this project rules out.
 
 - 2026-08-26 · [Handoff — the handoff letter collided twice more, and it cannot be checked as it stands](handoffs/2026-08-26-the-handoff-letter-collided-twice-more.md)
+- 2026-08-26 · [Handoff — the figure going to him came from the wrong thirty, and fix-rounds cannot be counted at all](handoffs/2026-08-26-the-figure-going-to-him-came-from-the-wrong-thirty.md)
 - 2026-08-25 · [Handoff — the corpus lost, and the fuzzer found a live bypass](handoffs/2026-08-25-the-corpus-lost-and-the-fuzzer-found-a-live-bypass.md)
 - 2026-08-25 · [Handoff — the Thursday cadence stopped being an implementer's default](handoffs/2026-08-25-i-the-thursday-cadence-is-ruled.md)
 - 2026-08-25 · [Handoff — the dispatch half is observed, and a 200 from GitHub is not a request](handoffs/2026-08-25-h-the-dispatch-half-is-observed-and-a-200-is-not-a-request.md)

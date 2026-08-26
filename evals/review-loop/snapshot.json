@@ -1,0 +1,1314 @@
+{
+  "portulan": {
+    "reviewSnapshot": "1"
+  },
+  "repository": "sleepy-panda-srl/portulan",
+  "captured": "2026-08-26T11:14:20.052Z",
+  "window": {
+    "merged": 30,
+    "pool": 500,
+    "poolSaturated": false
+  },
+  "pullRequests": [
+    {
+      "number": 354,
+      "mergedAt": "2026-08-26T06:36:42Z",
+      "submissions": [
+        {
+          "id": 5027338549,
+          "login": "copilot-pull-request-reviewer[bot]",
+          "state": "COMMENTED",
+          "head": "72cd4d4add776849e1a9094979f2aca0ec7e03c6",
+          "at": "2026-08-26T06:23:01Z",
+          "inline": 0
+        }
+      ]
+    },
+    {
+      "number": 352,
+      "mergedAt": "2026-08-26T06:07:14Z",
+      "submissions": [
+        {
+          "id": 5022879121,
+          "login": "copilot-pull-request-reviewer[bot]",
+          "state": "COMMENTED",
+          "head": "632d16c1a5ddd2ab90a7e6a52991240f17488b41",
+          "at": "2026-08-25T19:07:33Z",
+          "inline": 0
+        },
+        {
+          "id": 5023030511,
+          "login": "copilot-pull-request-reviewer[bot]",
+          "state": "COMMENTED",
+          "head": "8d51b229f164b541acf52d0d11fd6b7450315272",
+          "at": "2026-08-25T19:20:47Z",
+          "inline": 0
+        }
+      ]
+    },
+    {
+      "number": 351,
+      "mergedAt": "2026-08-25T19:04:57Z",
+      "submissions": [
+        {
+          "id": 5022833778,
+          "login": "copilot-pull-request-reviewer[bot]",
+          "state": "COMMENTED",
+          "head": "07de6f8047e875aeafb8fffb2d2e6509a524dba3",
+          "at": "2026-08-25T19:03:26Z",
+          "inline": 0
+        }
+      ]
+    },
+    {
+      "number": 349,
+      "mergedAt": "2026-08-25T18:55:20Z",
+      "submissions": [
+        {
+          "id": 5022572723,
+          "login": "copilot-pull-request-reviewer[bot]",
+          "state": "COMMENTED",
+          "head": "a58f4777dcc2ec3203b16c3884a79185743bc607",
+          "at": "2026-08-25T18:33:38Z",
+          "inline": 2
+        },
+        {
+          "id": 5022642416,
+          "login": "copilot-pull-request-reviewer[bot]",
+          "state": "COMMENTED",
+          "head": "9207d6ef3120933452940bd99de4d3cd0e193acb",
+          "at": "2026-08-25T18:41:50Z",
+          "inline": 1
+        },
+        {
+          "id": 5022707859,
+          "login": "copilot-pull-request-reviewer[bot]",
+          "state": "COMMENTED",
+          "head": "132ab57d99a61ab61de3c09c339b25fae0afcb45",
+          "at": "2026-08-25T18:48:47Z",
+          "inline": 0
+        },
+        {
+          "id": 5022748056,
+          "login": "copilot-pull-request-reviewer[bot]",
+          "state": "COMMENTED",
+          "head": "81a60fab4b29c7e674ebe5c426a3174055d4c7f9",
+          "at": "2026-08-25T18:53:27Z",
+          "inline": 0
+        }
+      ]
+    },
+    {
+      "number": 342,
+      "mergedAt": "2026-08-25T18:49:40Z",
+      "submissions": [
+        {
+          "id": 5020542654,
+          "login": "copilot-pull-request-reviewer[bot]",
+          "state": "COMMENTED",
+          "head": "7460dab5a6f5b2969fa3561433d8f15be9aedc1e",
+          "at": "2026-08-25T15:04:52Z",
+          "inline": 2
+        },
+        {
+          "id": 5020671368,
+          "login": "copilot-pull-request-reviewer[bot]",
+          "state": "COMMENTED",
+          "head": "e48c1314a289daaa9c516003ae8e754715d4da4c",
+          "at": "2026-08-25T15:17:16Z",
+          "inline": 1
+        },
+        {
+          "id": 5020782352,
+          "login": "copilot-pull-request-reviewer[bot]",
+          "state": "COMMENTED",
+          "head": "a999e144c4b07210973f0272b1b5224e64ee2b3b",
+          "at": "2026-08-25T15:28:10Z",
+          "inline": 2
+        },
+        {
+          "id": 5021167500,
+          "login": "copilot-pull-request-reviewer[bot]",
+          "state": "COMMENTED",
+          "head": "b4cf6fd5f30212303c596e432577fdcc172f7460",
+          "at": "2026-08-25T16:06:58Z",
+          "inline": 2
+        },
+        {
+          "id": 5021245831,
+          "login": "copilot-pull-request-reviewer[bot]",
+          "state": "COMMENTED",
+          "head": "4f3d998489f5d7d751c73d06b60508ad48c65258",
+          "at": "2026-08-25T16:14:58Z",
+          "inline": 0
+        },
+        {
+          "id": 5021974869,
+          "login": "copilot-pull-request-reviewer[bot]",
+          "state": "COMMENTED",
+          "head": "ddae9fa7acc5b26fa488adc8f88b75ebc2dfed88",
+          "at": "2026-08-25T17:34:12Z",
+          "inline": 4
+        },
+        {
+          "id": 5022186727,
+          "login": "copilot-pull-request-reviewer[bot]",
+          "state": "COMMENTED",
+          "head": "5da07da13cd673207b83b8737a46dd33ca1b4e12",
+          "at": "2026-08-25T17:58:40Z",
+          "inline": 4
+        },
+        {
+          "id": 5022480683,
+          "login": "copilot-pull-request-reviewer[bot]",
+          "state": "COMMENTED",
+          "head": "8c2fc6fd6c8f96755d8d3f75310b3cdeaaf0f145",
+          "at": "2026-08-25T18:24:34Z",
+          "inline": 1
+        },
+        {
+          "id": 5022504297,
+          "login": "copilot-pull-request-reviewer[bot]",
+          "state": "COMMENTED",
+          "head": "7048ed0a6e5c7d95c578024a5f4b48ae236f6af1",
+          "at": "2026-08-25T18:26:46Z",
+          "inline": 1
+        },
+        {
+          "id": 5022563777,
+          "login": "copilot-pull-request-reviewer[bot]",
+          "state": "COMMENTED",
+          "head": "3af6905bb91be23b642b8ead22ba790efeb56270",
+          "at": "2026-08-25T18:32:33Z",
+          "inline": 2
+        },
+        {
+          "id": 5022632820,
+          "login": "copilot-pull-request-reviewer[bot]",
+          "state": "COMMENTED",
+          "head": "de25a3c4fab615faa12291830de3726c1dcea271",
+          "at": "2026-08-25T18:40:42Z",
+          "inline": 1
+        },
+        {
+          "id": 5022682447,
+          "login": "copilot-pull-request-reviewer[bot]",
+          "state": "COMMENTED",
+          "head": "dbc7e3467187f0428a75acf9aad66460bdc4b371",
+          "at": "2026-08-25T18:46:20Z",
+          "inline": 0
+        }
+      ]
+    },
+    {
+      "number": 345,
+      "mergedAt": "2026-08-25T18:32:10Z",
+      "submissions": [
+        {
+          "id": 5021053548,
+          "login": "copilot-pull-request-reviewer[bot]",
+          "state": "COMMENTED",
+          "head": "7f2d96c1fccbbbec11a39f9106b6c4685af7a23a",
+          "at": "2026-08-25T15:55:18Z",
+          "inline": 1
+        },
+        {
+          "id": 5021174330,
+          "login": "copilot-pull-request-reviewer[bot]",
+          "state": "COMMENTED",
+          "head": "e42f0eb3e6ea4ad483f3df1a082fcefb1a997cb2",
+          "at": "2026-08-25T16:07:40Z",
+          "inline": 1
+        },
+        {
+          "id": 5021936959,
+          "login": "copilot-pull-request-reviewer[bot]",
+          "state": "COMMENTED",
+          "head": "fc26d5cf4727d052ea0bdeedb8aa88f5c47d2717",
+          "at": "2026-08-25T17:29:53Z",
+          "inline": 0
+        },
+        {
+          "id": 5022520661,
+          "login": "copilot-pull-request-reviewer[bot]",
+          "state": "COMMENTED",
+          "head": "68a3b7d8474f87a07537e2175e4aeff9906dd644",
+          "at": "2026-08-25T18:28:13Z",
+          "inline": 0
+        }
+      ]
+    },
+    {
+      "number": 343,
+      "mergedAt": "2026-08-25T18:18:11Z",
+      "submissions": [
+        {
+          "id": 5021181833,
+          "login": "copilot-pull-request-reviewer[bot]",
+          "state": "COMMENTED",
+          "head": "a444025003687bbc2215f9b3debad62410b8c9f9",
+          "at": "2026-08-25T16:08:31Z",
+          "inline": 7
+        },
+        {
+          "id": 5021301878,
+          "login": "copilot-pull-request-reviewer[bot]",
+          "state": "COMMENTED",
+          "head": "d96e10532de2143e533ba925e604859d608193de",
+          "at": "2026-08-25T16:20:51Z",
+          "inline": 1
+        },
+        {
+          "id": 5021344866,
+          "login": "copilot-pull-request-reviewer[bot]",
+          "state": "COMMENTED",
+          "head": "93bd6cb42a1a54f5227326476a8b14858d2b92fd",
+          "at": "2026-08-25T16:25:45Z",
+          "inline": 1
+        },
+        {
+          "id": 5021389421,
+          "login": "copilot-pull-request-reviewer[bot]",
+          "state": "COMMENTED",
+          "head": "2ed4e56f8b011e46fc030c1ee492310ccf9647f5",
+          "at": "2026-08-25T16:30:15Z",
+          "inline": 0
+        },
+        {
+          "id": 5021471777,
+          "login": "copilot-pull-request-reviewer[bot]",
+          "state": "COMMENTED",
+          "head": "962a0f48ae120e95f1570c0271b12137427bc01b",
+          "at": "2026-08-25T16:39:42Z",
+          "inline": 0
+        },
+        {
+          "id": 5021548251,
+          "login": "copilot-pull-request-reviewer[bot]",
+          "state": "COMMENTED",
+          "head": "46951e1a5fb4de47ede10018f47327a3a896a7fb",
+          "at": "2026-08-25T16:48:19Z",
+          "inline": 0
+        },
+        {
+          "id": 5021868515,
+          "login": "copilot-pull-request-reviewer[bot]",
+          "state": "COMMENTED",
+          "head": "3eb3e8940fb0e7b94813a245fd6d18ee79a5257b",
+          "at": "2026-08-25T17:21:42Z",
+          "inline": 0
+        },
+        {
+          "id": 5021981736,
+          "login": "copilot-pull-request-reviewer[bot]",
+          "state": "COMMENTED",
+          "head": "2a24bda6fcae275b16e28e7103e80dbe11eef1e0",
+          "at": "2026-08-25T17:35:00Z",
+          "inline": 0
+        },
+        {
+          "id": 5022342542,
+          "login": "copilot-pull-request-reviewer[bot]",
+          "state": "COMMENTED",
+          "head": "108cc93a6a1d0b2e59c96a91dd8440768579def8",
+          "at": "2026-08-25T18:13:29Z",
+          "inline": 0
+        }
+      ]
+    },
+    {
+      "number": 346,
+      "mergedAt": "2026-08-25T17:56:21Z",
+      "submissions": [
+        {
+          "id": 5021377745,
+          "login": "copilot-pull-request-reviewer[bot]",
+          "state": "COMMENTED",
+          "head": "704fa17c3eabc348010eb6813ec6945929c800bb",
+          "at": "2026-08-25T16:28:56Z",
+          "inline": 2
+        },
+        {
+          "id": 5021392977,
+          "login": "copilot-pull-request-reviewer[bot]",
+          "state": "COMMENTED",
+          "head": "3c85ca4abada7e73f6114d875b22f521cc07185e",
+          "at": "2026-08-25T16:30:40Z",
+          "inline": 0
+        },
+        {
+          "id": 5021857877,
+          "login": "copilot-pull-request-reviewer[bot]",
+          "state": "COMMENTED",
+          "head": "d7b63ea97b6d38f9e5c44a9505fa1ce4f94c79af",
+          "at": "2026-08-25T17:20:24Z",
+          "inline": 0
+        }
+      ]
+    },
+    {
+      "number": 341,
+      "mergedAt": "2026-08-25T13:47:46Z",
+      "submissions": [
+        {
+          "id": 5018348150,
+          "login": "copilot-pull-request-reviewer[bot]",
+          "state": "COMMENTED",
+          "head": "c918739e8972791e7a6a0347c9211182a0d14220",
+          "at": "2026-08-25T11:28:38Z",
+          "inline": 2
+        },
+        {
+          "id": 5018390275,
+          "login": "copilot-pull-request-reviewer[bot]",
+          "state": "COMMENTED",
+          "head": "ad4eb5d38d03a37278edb4db5ef16deef5c817e5",
+          "at": "2026-08-25T11:33:56Z",
+          "inline": 0
+        },
+        {
+          "id": 5018421590,
+          "login": "copilot-pull-request-reviewer[bot]",
+          "state": "COMMENTED",
+          "head": "32bfe2752fe45b1588cb7ec1e7ee18b88c6ff2c8",
+          "at": "2026-08-25T11:37:53Z",
+          "inline": 1
+        },
+        {
+          "id": 5018462254,
+          "login": "copilot-pull-request-reviewer[bot]",
+          "state": "COMMENTED",
+          "head": "f15acfe86a62150ccfea585d1318156e5aa08f94",
+          "at": "2026-08-25T11:43:00Z",
+          "inline": 0
+        },
+        {
+          "id": 5018507918,
+          "login": "copilot-pull-request-reviewer[bot]",
+          "state": "COMMENTED",
+          "head": "afe6508eba66b2f92ad0fd93424b102b30e83ff7",
+          "at": "2026-08-25T11:48:04Z",
+          "inline": 1
+        },
+        {
+          "id": 5018566152,
+          "login": "copilot-pull-request-reviewer[bot]",
+          "state": "COMMENTED",
+          "head": "43d1023862bdb22648924a08d58e957424b4ded8",
+          "at": "2026-08-25T11:54:52Z",
+          "inline": 0
+        }
+      ]
+    },
+    {
+      "number": 338,
+      "mergedAt": "2026-08-25T10:21:53Z",
+      "submissions": [
+        {
+          "id": 5016385929,
+          "login": "copilot-pull-request-reviewer[bot]",
+          "state": "COMMENTED",
+          "head": "5e09cbd32768a2612ad3c0f0f11fa370f05f36d0",
+          "at": "2026-08-25T08:14:15Z",
+          "inline": 2
+        },
+        {
+          "id": 5016468903,
+          "login": "copilot-pull-request-reviewer[bot]",
+          "state": "COMMENTED",
+          "head": "14d7c27e31bb80d59ccd352ae2f4ea0213070441",
+          "at": "2026-08-25T08:23:00Z",
+          "inline": 0
+        },
+        {
+          "id": 5016585719,
+          "login": "copilot-pull-request-reviewer[bot]",
+          "state": "COMMENTED",
+          "head": "f440b458dc90f51d3dc1543c0105ccc225cff6ec",
+          "at": "2026-08-25T08:32:58Z",
+          "inline": 0
+        },
+        {
+          "id": 5016684188,
+          "login": "copilot-pull-request-reviewer[bot]",
+          "state": "COMMENTED",
+          "head": "3fe079a473537c7958b710fd1c66dfad172a5758",
+          "at": "2026-08-25T08:40:59Z",
+          "inline": 0
+        },
+        {
+          "id": 5016730250,
+          "login": "copilot-pull-request-reviewer[bot]",
+          "state": "COMMENTED",
+          "head": "2a89f5f512055bf2343d9ba8fc5a84983cc60dfc",
+          "at": "2026-08-25T08:44:49Z",
+          "inline": 1
+        },
+        {
+          "id": 5016826154,
+          "login": "copilot-pull-request-reviewer[bot]",
+          "state": "COMMENTED",
+          "head": "3a14a83a1624cbad0c4ddb7a70c6486e76bcf94c",
+          "at": "2026-08-25T08:52:23Z",
+          "inline": 0
+        },
+        {
+          "id": 5016895496,
+          "login": "copilot-pull-request-reviewer[bot]",
+          "state": "COMMENTED",
+          "head": "49e6449da53bbad7f1b5a0c64a56b7951213cf4a",
+          "at": "2026-08-25T08:58:11Z",
+          "inline": 1
+        },
+        {
+          "id": 5016982216,
+          "login": "copilot-pull-request-reviewer[bot]",
+          "state": "COMMENTED",
+          "head": "32bc18f31fd0435ab90b5eb787bf10622e73cd60",
+          "at": "2026-08-25T09:05:52Z",
+          "inline": 0
+        },
+        {
+          "id": 5017176416,
+          "login": "copilot-pull-request-reviewer[bot]",
+          "state": "COMMENTED",
+          "head": "43b4a331d3581acbf04a5549bb68d480c9329ef2",
+          "at": "2026-08-25T09:23:05Z",
+          "inline": 1
+        },
+        {
+          "id": 5017373117,
+          "login": "copilot-pull-request-reviewer[bot]",
+          "state": "COMMENTED",
+          "head": "e0d7a39c1f9162139f64fe1afba0fcb7275183bc",
+          "at": "2026-08-25T09:41:33Z",
+          "inline": 0
+        }
+      ]
+    },
+    {
+      "number": 336,
+      "mergedAt": "2026-08-25T06:43:46Z",
+      "submissions": [
+        {
+          "id": 5011364908,
+          "login": "copilot-pull-request-reviewer[bot]",
+          "state": "COMMENTED",
+          "head": "94bc2b7a64cbf3ca542565cfcc45c2eb34c2b03d",
+          "at": "2026-08-24T18:42:35Z",
+          "inline": 1
+        },
+        {
+          "id": 5011438567,
+          "login": "copilot-pull-request-reviewer[bot]",
+          "state": "COMMENTED",
+          "head": "b656cf4abcbbde0aba5e1c9981fc0140db9ce02c",
+          "at": "2026-08-24T18:51:55Z",
+          "inline": 1
+        },
+        {
+          "id": 5011531971,
+          "login": "copilot-pull-request-reviewer[bot]",
+          "state": "COMMENTED",
+          "head": "c945e08d1105ae950162b21dbf92904bb0d66a35",
+          "at": "2026-08-24T19:02:01Z",
+          "inline": 1
+        },
+        {
+          "id": 5011616209,
+          "login": "copilot-pull-request-reviewer[bot]",
+          "state": "COMMENTED",
+          "head": "4cdee7ab0bb89fca27034136459f1ead6d867328",
+          "at": "2026-08-24T19:12:43Z",
+          "inline": 0
+        },
+        {
+          "id": 5011695734,
+          "login": "copilot-pull-request-reviewer[bot]",
+          "state": "COMMENTED",
+          "head": "70e7d23b2dffb9f2e9b5d66fb12b9994ee3cf153",
+          "at": "2026-08-24T19:21:47Z",
+          "inline": 0
+        },
+        {
+          "id": 5011764374,
+          "login": "copilot-pull-request-reviewer[bot]",
+          "state": "COMMENTED",
+          "head": "0bd5244736e6b7b04e9deb0a1f594e4413182669",
+          "at": "2026-08-24T19:30:21Z",
+          "inline": 1
+        },
+        {
+          "id": 5011816211,
+          "login": "copilot-pull-request-reviewer[bot]",
+          "state": "COMMENTED",
+          "head": "b5eb77157a2d1dda964881270fdb964a99cb4da7",
+          "at": "2026-08-24T19:36:58Z",
+          "inline": 0
+        },
+        {
+          "id": 5011861836,
+          "login": "copilot-pull-request-reviewer[bot]",
+          "state": "COMMENTED",
+          "head": "9adc2bf82a13a06064553004233e926355411e73",
+          "at": "2026-08-24T19:42:53Z",
+          "inline": 0
+        },
+        {
+          "id": 5011924759,
+          "login": "copilot-pull-request-reviewer[bot]",
+          "state": "COMMENTED",
+          "head": "73c12b299052f472365203ec9bc185a2fa939378",
+          "at": "2026-08-24T19:50:07Z",
+          "inline": 1
+        },
+        {
+          "id": 5012007244,
+          "login": "copilot-pull-request-reviewer[bot]",
+          "state": "COMMENTED",
+          "head": "035f76c15056ad7a4d00247a64390de43e554e5e",
+          "at": "2026-08-24T19:58:59Z",
+          "inline": 1
+        },
+        {
+          "id": 5012076248,
+          "login": "copilot-pull-request-reviewer[bot]",
+          "state": "COMMENTED",
+          "head": "de8dbc97e4b7afd9db69b15606d2fe044f874c93",
+          "at": "2026-08-24T20:07:16Z",
+          "inline": 0
+        }
+      ]
+    },
+    {
+      "number": 335,
+      "mergedAt": "2026-08-24T17:22:54Z",
+      "submissions": [
+        {
+          "id": 5010609734,
+          "login": "copilot-pull-request-reviewer[bot]",
+          "state": "COMMENTED",
+          "head": "d002466e7ab8c7ae3b5982babdd845a4a500955b",
+          "at": "2026-08-24T17:18:21Z",
+          "inline": 0
+        }
+      ]
+    },
+    {
+      "number": 332,
+      "mergedAt": "2026-08-22T18:01:50Z",
+      "submissions": [
+        {
+          "id": 4999835501,
+          "login": "copilot-pull-request-reviewer[bot]",
+          "state": "COMMENTED",
+          "head": "cc8040ddc4bb9b076269cb7285500df956ddefcf",
+          "at": "2026-08-22T09:19:00Z",
+          "inline": 0
+        },
+        {
+          "id": 4999849500,
+          "login": "copilot-pull-request-reviewer[bot]",
+          "state": "COMMENTED",
+          "head": "ea5c2f2d8afee4342fa6d53271cf9303eb05bc16",
+          "at": "2026-08-22T09:27:57Z",
+          "inline": 2
+        },
+        {
+          "id": 4999858159,
+          "login": "copilot-pull-request-reviewer[bot]",
+          "state": "COMMENTED",
+          "head": "5141ab1f2ceca4193db8160cfd29db318556b494",
+          "at": "2026-08-22T09:32:56Z",
+          "inline": 0
+        },
+        {
+          "id": 4999875235,
+          "login": "copilot-pull-request-reviewer[bot]",
+          "state": "COMMENTED",
+          "head": "ce3a46db7112850d6453fc7bccdd88d443f88d4b",
+          "at": "2026-08-22T09:44:00Z",
+          "inline": 2
+        },
+        {
+          "id": 4999890981,
+          "login": "copilot-pull-request-reviewer[bot]",
+          "state": "COMMENTED",
+          "head": "5c9915904210d46f202c60c63c2241d4ed09644e",
+          "at": "2026-08-22T09:53:05Z",
+          "inline": 1
+        },
+        {
+          "id": 4999898869,
+          "login": "copilot-pull-request-reviewer[bot]",
+          "state": "COMMENTED",
+          "head": "d3579effb2ff10e838f30c7f78d8becf968b5185",
+          "at": "2026-08-22T09:59:00Z",
+          "inline": 0
+        },
+        {
+          "id": 4999912547,
+          "login": "copilot-pull-request-reviewer[bot]",
+          "state": "COMMENTED",
+          "head": "a1a5d6a8556e0e907835c11c5ed595423b4b8007",
+          "at": "2026-08-22T10:09:03Z",
+          "inline": 0
+        },
+        {
+          "id": 5000004818,
+          "login": "copilot-pull-request-reviewer[bot]",
+          "state": "COMMENTED",
+          "head": "2c95475621d5eaae1d926e570553047ffd6013b1",
+          "at": "2026-08-22T11:18:35Z",
+          "inline": 0
+        }
+      ]
+    },
+    {
+      "number": 328,
+      "mergedAt": "2026-08-22T09:36:28Z",
+      "submissions": [
+        {
+          "id": 4999733617,
+          "login": "copilot-pull-request-reviewer[bot]",
+          "state": "COMMENTED",
+          "head": "6a7790cc6e6329c2d4bb561ec109dc9c8dd45df1",
+          "at": "2026-08-22T08:31:01Z",
+          "inline": 3
+        },
+        {
+          "id": 4999821215,
+          "login": "copilot-pull-request-reviewer[bot]",
+          "state": "COMMENTED",
+          "head": "c9d0a0e89a2682d457a74c4c257bd42daa929313",
+          "at": "2026-08-22T09:11:46Z",
+          "inline": 1
+        }
+      ]
+    },
+    {
+      "number": 326,
+      "mergedAt": "2026-08-20T07:03:32Z",
+      "submissions": [
+        {
+          "id": 4979574278,
+          "login": "copilot-pull-request-reviewer[bot]",
+          "state": "COMMENTED",
+          "head": "f74143fe22ea0dfb682f63bb6adb20c4b55c01cf",
+          "at": "2026-08-20T06:06:11Z",
+          "inline": 0
+        },
+        {
+          "id": 4979591521,
+          "login": "copilot-pull-request-reviewer[bot]",
+          "state": "COMMENTED",
+          "head": "d36bb7680f54edba7322f176a1f5c73c64dc39e2",
+          "at": "2026-08-20T06:09:11Z",
+          "inline": 0
+        },
+        {
+          "id": 4979928966,
+          "login": "copilot-pull-request-reviewer[bot]",
+          "state": "COMMENTED",
+          "head": "e61cd610ac26382227929c7fe68c7d97eba575b2",
+          "at": "2026-08-20T07:02:17Z",
+          "inline": 0
+        }
+      ]
+    },
+    {
+      "number": 324,
+      "mergedAt": "2026-08-20T05:51:21Z",
+      "submissions": [
+        {
+          "id": 4979405852,
+          "login": "copilot-pull-request-reviewer[bot]",
+          "state": "COMMENTED",
+          "head": "dc4ebe9991c37e8c8bfc4cb10affcf6471e2b717",
+          "at": "2026-08-20T05:39:18Z",
+          "inline": 0
+        },
+        {
+          "id": 4979443757,
+          "login": "copilot-pull-request-reviewer[bot]",
+          "state": "COMMENTED",
+          "head": "1d41bab037bc21e5ddf67290af885d32cb59c6a5",
+          "at": "2026-08-20T05:47:09Z",
+          "inline": 0
+        }
+      ]
+    },
+    {
+      "number": 323,
+      "mergedAt": "2026-08-20T05:24:26Z",
+      "submissions": [
+        {
+          "id": 4979089435,
+          "login": "copilot-pull-request-reviewer[bot]",
+          "state": "COMMENTED",
+          "head": "10d6cf2cbbf3c9c25b7fc3a8ee98182822b844a6",
+          "at": "2026-08-20T04:36:44Z",
+          "inline": 1
+        },
+        {
+          "id": 4979127681,
+          "login": "copilot-pull-request-reviewer[bot]",
+          "state": "COMMENTED",
+          "head": "67d2f5d32e356423ae218c055b49026c934b5c3e",
+          "at": "2026-08-20T04:43:24Z",
+          "inline": 0
+        },
+        {
+          "id": 4979171053,
+          "login": "copilot-pull-request-reviewer[bot]",
+          "state": "COMMENTED",
+          "head": "641491d87296370a6e9250e21b3dc4caca582c34",
+          "at": "2026-08-20T04:51:23Z",
+          "inline": 0
+        },
+        {
+          "id": 4979193496,
+          "login": "copilot-pull-request-reviewer[bot]",
+          "state": "COMMENTED",
+          "head": "1f38cf3756e24081cf166a45729a52486691f206",
+          "at": "2026-08-20T04:55:55Z",
+          "inline": 0
+        },
+        {
+          "id": 4979227795,
+          "login": "copilot-pull-request-reviewer[bot]",
+          "state": "COMMENTED",
+          "head": "a19e6b6d4ff6ef2578bbe56267bd3314ff11c56a",
+          "at": "2026-08-20T05:02:57Z",
+          "inline": 0
+        }
+      ]
+    },
+    {
+      "number": 320,
+      "mergedAt": "2026-08-20T04:46:39Z",
+      "submissions": [
+        {
+          "id": 4978884927,
+          "login": "copilot-pull-request-reviewer[bot]",
+          "state": "COMMENTED",
+          "head": "83795aab58f08629e060a9d7bddf6363cd38c931",
+          "at": "2026-08-20T03:47:09Z",
+          "inline": 2
+        },
+        {
+          "id": 4978963894,
+          "login": "copilot-pull-request-reviewer[bot]",
+          "state": "COMMENTED",
+          "head": "9da3b5a0e427c7c70e9f6ef749388197e2bede20",
+          "at": "2026-08-20T04:06:39Z",
+          "inline": 0
+        },
+        {
+          "id": 4979042149,
+          "login": "copilot-pull-request-reviewer[bot]",
+          "state": "COMMENTED",
+          "head": "000ebafd646283080dd88ad809280a10e789b2a4",
+          "at": "2026-08-20T04:25:40Z",
+          "inline": 0
+        },
+        {
+          "id": 4979075303,
+          "login": "copilot-pull-request-reviewer[bot]",
+          "state": "COMMENTED",
+          "head": "a88f4f6b02472a19bd659390d6b1468a5dba3364",
+          "at": "2026-08-20T04:33:54Z",
+          "inline": 0
+        },
+        {
+          "id": 4979126094,
+          "login": "copilot-pull-request-reviewer[bot]",
+          "state": "COMMENTED",
+          "head": "b530676b160a76adc51c6f936de08d26474b30b6",
+          "at": "2026-08-20T04:43:01Z",
+          "inline": 0
+        }
+      ]
+    },
+    {
+      "number": 319,
+      "mergedAt": "2026-08-20T03:40:38Z",
+      "submissions": [
+        {
+          "id": 4977974833,
+          "login": "copilot-pull-request-reviewer[bot]",
+          "state": "COMMENTED",
+          "head": "a8459ac0991b3fdb79c95adce0f2c5f21da7bca7",
+          "at": "2026-08-20T00:32:36Z",
+          "inline": 3
+        },
+        {
+          "id": 4978779612,
+          "login": "copilot-pull-request-reviewer[bot]",
+          "state": "COMMENTED",
+          "head": "7b6968bd45bc4ca358f15bf898d623d39f75e7ba",
+          "at": "2026-08-20T03:20:00Z",
+          "inline": 0
+        },
+        {
+          "id": 4978788751,
+          "login": "copilot-pull-request-reviewer[bot]",
+          "state": "COMMENTED",
+          "head": "55dfee7b5a5c8351b3de694df6f6fb671e0feca7",
+          "at": "2026-08-20T03:22:42Z",
+          "inline": 0
+        },
+        {
+          "id": 4978814351,
+          "login": "copilot-pull-request-reviewer[bot]",
+          "state": "COMMENTED",
+          "head": "9e1abd1ff9dfbff642d3b004cedb60f467c96008",
+          "at": "2026-08-20T03:29:06Z",
+          "inline": 0
+        },
+        {
+          "id": 4978841884,
+          "login": "copilot-pull-request-reviewer[bot]",
+          "state": "COMMENTED",
+          "head": "b143b66a10d127ba1b68374f3e247621f83c2957",
+          "at": "2026-08-20T03:36:30Z",
+          "inline": 0
+        }
+      ]
+    },
+    {
+      "number": 315,
+      "mergedAt": "2026-08-20T03:13:36Z",
+      "submissions": [
+        {
+          "id": 4976796208,
+          "login": "copilot-pull-request-reviewer[bot]",
+          "state": "COMMENTED",
+          "head": "c4b7d789602baa7429ad498f4604d76d9f50ae1e",
+          "at": "2026-08-19T21:12:57Z",
+          "inline": 0
+        },
+        {
+          "id": 4976823474,
+          "login": "copilot-pull-request-reviewer[bot]",
+          "state": "COMMENTED",
+          "head": "59ef4dca1830bdfc6d623146a89ed76cfc0b4681",
+          "at": "2026-08-19T21:16:16Z",
+          "inline": 0
+        },
+        {
+          "id": 4976855398,
+          "login": "copilot-pull-request-reviewer[bot]",
+          "state": "COMMENTED",
+          "head": "a74cd7c4d7eeb724326c231b23c640b04765e78a",
+          "at": "2026-08-19T21:20:37Z",
+          "inline": 0
+        }
+      ]
+    },
+    {
+      "number": 314,
+      "mergedAt": "2026-08-19T21:05:41Z",
+      "submissions": [
+        {
+          "id": 4976374213,
+          "login": "copilot-pull-request-reviewer[bot]",
+          "state": "COMMENTED",
+          "head": "4e886643aa2d7b1b448bcd252bce07ad0925c461",
+          "at": "2026-08-19T20:17:06Z",
+          "inline": 1
+        },
+        {
+          "id": 4976613224,
+          "login": "copilot-pull-request-reviewer[bot]",
+          "state": "COMMENTED",
+          "head": "9d9c83553b655ed78e023474bff40cc117ea319c",
+          "at": "2026-08-19T20:48:45Z",
+          "inline": 0
+        },
+        {
+          "id": 4976673024,
+          "login": "copilot-pull-request-reviewer[bot]",
+          "state": "COMMENTED",
+          "head": "ae5035b761682c2515e6a6b0b94df39207394d89",
+          "at": "2026-08-19T20:56:49Z",
+          "inline": 0
+        },
+        {
+          "id": 4976720416,
+          "login": "copilot-pull-request-reviewer[bot]",
+          "state": "COMMENTED",
+          "head": "a7f98f61289034456651fbb595cae3c1ce12fcd0",
+          "at": "2026-08-19T21:03:02Z",
+          "inline": 0
+        }
+      ]
+    },
+    {
+      "number": 313,
+      "mergedAt": "2026-08-19T20:37:08Z",
+      "submissions": [
+        {
+          "id": 4975873756,
+          "login": "copilot-pull-request-reviewer[bot]",
+          "state": "COMMENTED",
+          "head": "f541782748b726f91b9deaad8b090d32b3b56f7d",
+          "at": "2026-08-19T19:14:41Z",
+          "inline": 2
+        },
+        {
+          "id": 4975899209,
+          "login": "copilot-pull-request-reviewer[bot]",
+          "state": "COMMENTED",
+          "head": "8744e98bc7ae333966d356f04a82fb9d8d4fac82",
+          "at": "2026-08-19T19:17:56Z",
+          "inline": 0
+        },
+        {
+          "id": 4976069192,
+          "login": "copilot-pull-request-reviewer[bot]",
+          "state": "COMMENTED",
+          "head": "33be690554f56257631a2a462e3a8671bdc4d937",
+          "at": "2026-08-19T19:39:09Z",
+          "inline": 0
+        },
+        {
+          "id": 4976113632,
+          "login": "copilot-pull-request-reviewer[bot]",
+          "state": "COMMENTED",
+          "head": "31d91d1f4d8a7fa2ee7a3da248247e19da946e5a",
+          "at": "2026-08-19T19:45:09Z",
+          "inline": 0
+        },
+        {
+          "id": 4976163613,
+          "login": "copilot-pull-request-reviewer[bot]",
+          "state": "COMMENTED",
+          "head": "3a9ab241c351f0439f3086339e8eb94379ee84d6",
+          "at": "2026-08-19T19:51:43Z",
+          "inline": 0
+        }
+      ]
+    },
+    {
+      "number": 310,
+      "mergedAt": "2026-08-19T19:05:13Z",
+      "submissions": [
+        {
+          "id": 4972585722,
+          "login": "copilot-pull-request-reviewer[bot]",
+          "state": "COMMENTED",
+          "head": "89392d2b5455e308407922873d8709e2dda4964c",
+          "at": "2026-08-19T13:23:11Z",
+          "inline": 0
+        },
+        {
+          "id": 4974867679,
+          "login": "copilot-pull-request-reviewer[bot]",
+          "state": "COMMENTED",
+          "head": "c8283263c15a345d148e89937538845256def9b3",
+          "at": "2026-08-19T17:16:52Z",
+          "inline": 0
+        },
+        {
+          "id": 4974892144,
+          "login": "copilot-pull-request-reviewer[bot]",
+          "state": "COMMENTED",
+          "head": "cc792173ae3c759377fe4d70b8ea0f43449d2515",
+          "at": "2026-08-19T17:19:56Z",
+          "inline": 0
+        },
+        {
+          "id": 4974936554,
+          "login": "copilot-pull-request-reviewer[bot]",
+          "state": "COMMENTED",
+          "head": "fa9717344d7a6aac588c4ddf140f3440ee1eeefb",
+          "at": "2026-08-19T17:25:33Z",
+          "inline": 0
+        },
+        {
+          "id": 4974958745,
+          "login": "copilot-pull-request-reviewer[bot]",
+          "state": "COMMENTED",
+          "head": "e05758bb2cb70bcf2140471a13624db3f42647fc",
+          "at": "2026-08-19T17:28:24Z",
+          "inline": 0
+        },
+        {
+          "id": 4975003457,
+          "login": "copilot-pull-request-reviewer[bot]",
+          "state": "COMMENTED",
+          "head": "22fefbb5138e523601378a4d4fe7101764f25854",
+          "at": "2026-08-19T17:33:56Z",
+          "inline": 0
+        },
+        {
+          "id": 4975081649,
+          "login": "copilot-pull-request-reviewer[bot]",
+          "state": "COMMENTED",
+          "head": "765d29445f1b3a4a63d4b4e97ee4c2d3de75a67c",
+          "at": "2026-08-19T17:43:33Z",
+          "inline": 0
+        },
+        {
+          "id": 4975220299,
+          "login": "copilot-pull-request-reviewer[bot]",
+          "state": "COMMENTED",
+          "head": "cfac5087fd747ec7e292180df1a6188b43b5e16d",
+          "at": "2026-08-19T17:59:50Z",
+          "inline": 0
+        }
+      ]
+    },
+    {
+      "number": 312,
+      "mergedAt": "2026-08-19T17:26:16Z",
+      "submissions": [
+        {
+          "id": 4974916434,
+          "login": "copilot-pull-request-reviewer[bot]",
+          "state": "COMMENTED",
+          "head": "dc5229c79196eebd8037de9661efa4c597616a68",
+          "at": "2026-08-19T17:23:02Z",
+          "inline": 0
+        }
+      ]
+    },
+    {
+      "number": 309,
+      "mergedAt": "2026-08-19T17:13:06Z",
+      "submissions": [
+        {
+          "id": 4970307577,
+          "login": "copilot-pull-request-reviewer[bot]",
+          "state": "COMMENTED",
+          "head": "dc20756c28dbfb3be00a5d98f9e82eb75b103739",
+          "at": "2026-08-19T08:54:50Z",
+          "inline": 3
+        },
+        {
+          "id": 4972507965,
+          "login": "copilot-pull-request-reviewer[bot]",
+          "state": "COMMENTED",
+          "head": "254f2be8a2623c6b87c19704de472c5601c605c7",
+          "at": "2026-08-19T13:15:09Z",
+          "inline": 0
+        },
+        {
+          "id": 4972555477,
+          "login": "copilot-pull-request-reviewer[bot]",
+          "state": "COMMENTED",
+          "head": "42f6fbabcae05f67b3fef844a8cf50026ffb1833",
+          "at": "2026-08-19T13:20:20Z",
+          "inline": 0
+        },
+        {
+          "id": 4972614539,
+          "login": "copilot-pull-request-reviewer[bot]",
+          "state": "COMMENTED",
+          "head": "90f9d07ac0f1335d1980018e74a011cd73c68afa",
+          "at": "2026-08-19T13:25:25Z",
+          "inline": 0
+        },
+        {
+          "id": 4972695892,
+          "login": "copilot-pull-request-reviewer[bot]",
+          "state": "COMMENTED",
+          "head": "10e3da08456e4a2eaba3138c8a2fd8102e2fc1a2",
+          "at": "2026-08-19T13:33:34Z",
+          "inline": 0
+        },
+        {
+          "id": 4972764818,
+          "login": "copilot-pull-request-reviewer[bot]",
+          "state": "COMMENTED",
+          "head": "e8d0126c760a7300182495013f437e0229ca8d4d",
+          "at": "2026-08-19T13:40:38Z",
+          "inline": 0
+        }
+      ]
+    },
+    {
+      "number": 308,
+      "mergedAt": "2026-08-19T13:07:51Z",
+      "submissions": [
+        {
+          "id": 4970204774,
+          "login": "copilot-pull-request-reviewer[bot]",
+          "state": "COMMENTED",
+          "head": "16f124c5e0df048828074c5adaf97f6e9c78a354",
+          "at": "2026-08-19T08:43:32Z",
+          "inline": 2
+        },
+        {
+          "id": 4970293590,
+          "login": "copilot-pull-request-reviewer[bot]",
+          "state": "COMMENTED",
+          "head": "406e26d2ef7bc3faf827bb6fd7aca73cce283c40",
+          "at": "2026-08-19T08:53:21Z",
+          "inline": 0
+        },
+        {
+          "id": 4970410106,
+          "login": "copilot-pull-request-reviewer[bot]",
+          "state": "COMMENTED",
+          "head": "5733e0892d010fc941c693665a5c28b63fc55eb4",
+          "at": "2026-08-19T09:06:11Z",
+          "inline": 0
+        },
+        {
+          "id": 4970530535,
+          "login": "copilot-pull-request-reviewer[bot]",
+          "state": "COMMENTED",
+          "head": "1ec9cd00b193ffb3af1c65a4eefe7de61ef938a5",
+          "at": "2026-08-19T09:18:01Z",
+          "inline": 0
+        },
+        {
+          "id": 4970616110,
+          "login": "copilot-pull-request-reviewer[bot]",
+          "state": "COMMENTED",
+          "head": "9a6c7b320005537d850563511db15b2bc2f5da1f",
+          "at": "2026-08-19T09:28:54Z",
+          "inline": 0
+        },
+        {
+          "id": 4970712588,
+          "login": "copilot-pull-request-reviewer[bot]",
+          "state": "COMMENTED",
+          "head": "397d2c55586bdaeef5451cbb8d604b1c8f697218",
+          "at": "2026-08-19T09:40:09Z",
+          "inline": 1
+        },
+        {
+          "id": 4970941408,
+          "login": "copilot-pull-request-reviewer[bot]",
+          "state": "COMMENTED",
+          "head": "80d6c4ce48a81bcfedee0590177453caf2ba3011",
+          "at": "2026-08-19T10:06:38Z",
+          "inline": 0
+        }
+      ]
+    },
+    {
+      "number": 306,
+      "mergedAt": "2026-08-19T08:22:40Z",
+      "submissions": [
+        {
+          "id": 4970016110,
+          "login": "copilot-pull-request-reviewer[bot]",
+          "state": "COMMENTED",
+          "head": "b3acf60284f647a09c2369d0887fc3df754de596",
+          "at": "2026-08-19T08:21:36Z",
+          "inline": 0
+        }
+      ]
+    },
+    {
+      "number": 305,
+      "mergedAt": "2026-08-19T08:13:21Z",
+      "submissions": [
+        {
+          "id": 4969891374,
+          "login": "copilot-pull-request-reviewer[bot]",
+          "state": "COMMENTED",
+          "head": "1b9071a1441545612cdc7bf28a590b530652c611",
+          "at": "2026-08-19T08:10:39Z",
+          "inline": 0
+        }
+      ]
+    },
+    {
+      "number": 304,
+      "mergedAt": "2026-08-19T08:07:53Z",
+      "submissions": [
+        {
+          "id": 4969671464,
+          "login": "copilot-pull-request-reviewer[bot]",
+          "state": "COMMENTED",
+          "head": "85bb83ac4ead0ec568942f29e9dcb732ebb059ad",
+          "at": "2026-08-19T07:50:16Z",
+          "inline": 2
+        },
+        {
+          "id": 4969739649,
+          "login": "copilot-pull-request-reviewer[bot]",
+          "state": "COMMENTED",
+          "head": "3aafceb72cd883a9f5e7eddd6141173b7e13d6ce",
+          "at": "2026-08-19T07:56:21Z",
+          "inline": 0
+        },
+        {
+          "id": 4969816988,
+          "login": "copilot-pull-request-reviewer[bot]",
+          "state": "COMMENTED",
+          "head": "ab879ce42edf1dcd17fcb74122cf4f62c0474a42",
+          "at": "2026-08-19T08:03:41Z",
+          "inline": 0
+        }
+      ]
+    },
+    {
+      "number": 301,
+      "mergedAt": "2026-08-19T07:54:38Z",
+      "submissions": [
+        {
+          "id": 4969352294,
+          "login": "copilot-pull-request-reviewer[bot]",
+          "state": "COMMENTED",
+          "head": "0ed3012623accc2464fef143aed5fb0193defb2d",
+          "at": "2026-08-19T07:10:46Z",
+          "inline": 1
+        },
+        {
+          "id": 4969384634,
+          "login": "copilot-pull-request-reviewer[bot]",
+          "state": "COMMENTED",
+          "head": "a4db7e70e2b6c0c21465f84d1c3a3906eada5ce5",
+          "at": "2026-08-19T07:15:08Z",
+          "inline": 0
+        },
+        {
+          "id": 4969414807,
+          "login": "copilot-pull-request-reviewer[bot]",
+          "state": "COMMENTED",
+          "head": "b3f311f165cce276d7db60d9d01e1a9baff96f69",
+          "at": "2026-08-19T07:19:16Z",
+          "inline": 0
+        },
+        {
+          "id": 4969457849,
+          "login": "copilot-pull-request-reviewer[bot]",
+          "state": "COMMENTED",
+          "head": "73cc6e3b38ed204c0efae711e71c61488908cb74",
+          "at": "2026-08-19T07:24:46Z",
+          "inline": 0
+        },
+        {
+          "id": 4969519902,
+          "login": "copilot-pull-request-reviewer[bot]",
+          "state": "COMMENTED",
+          "head": "bfba3d4721bb36c72cf7d4e4040085d8d5280b93",
+          "at": "2026-08-19T07:32:56Z",
+          "inline": 0
+        },
+        {
+          "id": 4969560220,
+          "login": "copilot-pull-request-reviewer[bot]",
+          "state": "COMMENTED",
+          "head": "db4911c9991fbd560ef716182ae861d590616dd3",
+          "at": "2026-08-19T07:38:01Z",
+          "inline": 0
+        },
+        {
+          "id": 4969600237,
+          "login": "copilot-pull-request-reviewer[bot]",
+          "state": "COMMENTED",
+          "head": "57ced5c17245c07311f1fff8c84872355623cea4",
+          "at": "2026-08-19T07:43:19Z",
+          "inline": 0
+        }
+      ]
+    }
+  ]
+}
