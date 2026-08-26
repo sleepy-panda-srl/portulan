@@ -22,12 +22,13 @@ keeps the row's own word; the tools take a narrower one.
 
 ## What is built today
 
-**Three clauses of row 8, of nine.** (a), adversarial fixtures per compiled gate, landed 2026-08-24;
+**Four clauses of row 8, of nine.** (a), adversarial fixtures per compiled gate, landed 2026-08-24;
 **(b)**, mutation testing over both matchers and grammar-aware fuzzing over the shell segmenter,
-landed 2026-08-25; **(d)**, scheduled forced-red drills, landed 2026-08-25. **Six remain** — golden
-tasks per core skill, the A/B baseline, OTel opt-in config, a rule change merged or rejected on eval
-evidence, (c) review-loop metering, and a release carrying an eval result. Each is listed below with
-the sentence [`../.portulan/dod.md`](../.portulan/dod.md) condition 4 requires.
+landed 2026-08-25; **(d)**, scheduled forced-red drills, landed 2026-08-25; **(c)**, review-loop
+metering, landed 2026-08-26. **Five remain** — golden tasks per core skill, the A/B baseline, OTel
+opt-in config, a rule change merged or rejected on eval evidence, and a release carrying an eval
+result. Each is listed below with the sentence
+[`../.portulan/dod.md`](../.portulan/dod.md) condition 4 requires.
 
 ```
 evals/goldens/gates/<rule-id>.json      one fixture file per rule in the yielded gate policy
@@ -241,6 +242,113 @@ first repair of the other four walked past. A claim in the past tense about an i
 pre-commit checkpoint's second pass, which re-derived the carrier set instead of reading the list it had
 been handed._
 
+## Clause (c) — the loop's own figures stop being counted by hand
+
+```
+node cli/review-meter.mjs --snapshot evals/review-loop/snapshot.json      the figures
+node cli/review-meter.mjs --fetch --repo <owner/name> --out <file>        the one mode that fetches
+```
+
+Landed 2026-08-26. `goldens` asks whether a gate has fixtures; `mutants` whether those fixtures
+discriminate; `drills` whether the rail still fires. **This one measures the process wrapped around all
+three** — the review loop every change here goes through.
+
+**Its provenance is a record that indicts itself.**
+[`../.portulan/memory/a-review-loop-needs-a-bound.md`](../.portulan/memory/a-review-loop-needs-a-bound.md)
+bounds the loop on a table — 110 submissions over 30 pull requests, 29% of them finding nothing — every
+figure counted by hand on 2026-07-28, and its own *Why it holds* section says **"Nothing checks it —
+discipline, not a rail"**, citing
+[`../.portulan/memory/a-mandate-nothing-checks-is-already-broken.md`](../.portulan/memory/a-mandate-nothing-checks-is-already-broken.md).
+The 2026-07-28 amendment answered it in as many words: *"the telemetry clause is where that checker's
+home is, and naming the home is what this amendment does rather than claiming the checker exists."*
+
+### The units were the design decision, and the criterion predates the definition it uses
+
+The criterion was written **2026-07-28**; *round* was defined **2026-07-30** as *a Copilot review the
+working session answers with a push*. The rule's table was **re-labelled, not re-counted** — its figures
+always counted **submissions** — and its `Retire when:` settles it, naming the threshold in *"the
+submission units of the table above, **not fix-rounds**"*. So the criterion's *"rounds per pull
+request"* is submissions per pull request, and the tool prints that name and never the bare word.
+
+### What the API answers, and the one thing it does not
+
+**Fix-rounds are not derivable, and that is the finding rather than a gap.** Two demonstrations, both
+from the pull request that produced the definition: on
+[#105](https://github.com/sleepy-panda-srl/portulan/pull/105) the commit `08d7d10` answered an inline
+finding and **was never a reviewed head** — it rode inside the next push — and the push at `cff3e4e0`
+follows a 4,087-byte finding-bearing submission while answering none of it. Any rule keyed on *"a
+finding-bearing submission preceded this push"* calls the second a round; the maintainer's own table
+calls it *no*. The 2026-07-30 ruling states the method that works and it is not one an API has:
+*"Count pushes, then look inside each one."*
+
+So the tool computes no fix-rounds, estimates none, and prints nothing that could be mistaken for one.
+
+**The empty-round rate is an upper bound, and the reason is a layering rule.** Finding nothing has two
+halves — no inline thread, *and* no suppressed low-confidence note in the body. The first is
+structural. The second is decided by the awk in
+[`../.github/workflows/copilot-review.yml`](../.github/workflows/copilot-review.yml), fixtured in
+[`../.portulan/verify/workflow-filters.mjs`](../.portulan/verify/workflow-filters.mjs) — a matcher
+deliberately reduced to **one** carrier, and a **workspace-layer** one, while the tool is engine.
+Copying it would put two spellings of one rule on opposite sides of the boundary where neither could
+see the other drift. So the tool reports `submissions that found nothing ≤ submissions with no inline
+comment` and prints the right-hand side under its own name.
+
+**The boundary forbids a copy; it does not make the exact rate unreachable**, and the first draft of
+this section conflated the two. `../.portulan/verify/workflow-filters.mjs` already **lifts and runs**
+those awk programs out of the workflow's parsed `run:` scalars, and `--fetch` already spawns — so a body
+could be piped through the lifted program at capture time and stored as one integer, no second spelling
+and still no bodies in the snapshot. Left unbuilt for **budget**, one clause per session, and tracked as
+[#355](https://github.com/sleepy-panda-srl/portulan/issues/355).
+
+### What the first run measured
+
+**140 submissions over the 30 most recently merged pull requests — 4.67 each.** The record's
+hand-counted figure is **3.7**, and the two are **not a disagreement**: they measure **disjoint
+corpora**. The ratified window is the thirty most recent as of 2026-07-28 and names #44, #49 and #57;
+this one runs #301–#354. They share no pull request. So the honest sentence is *the loop weighs 4.67 a
+month later*, not *his 30 were re-counted and came out different* — a distinction the first draft of
+this section lost, and the pre-commit checkpoint restored.
+
+That figure is **reported and not acted on**: the record is maintainer-ratified and the curated layer is
+human-owned, so a re-derived number is a finding for him rather than an edit for an implementer.
+
+**And two of the three figures turned out to be one figure.** Pushes and submissions came out exactly
+equal — 140 and 140 — because `review_on_push: true` draws one submission per push. So the criterion's
+*"pushes per round"* is **1.00 by construction** in submission units, which the register now prints
+under that name rather than leaving a reader to infer it; and pushes-per-finding-bearing-submission,
+the informative substitute, is not a second measurement either: it is `1/(1 - the no-inline rate)`, and
+140/46 = 3.04 = 1/(1 - 0.671). The tool **detects the coincidence and says so** on every run and in the
+register, rather than presenting three columns of which two are algebraically the same column.
+
+**The window is by merge date, and getting that wrong was this change's own worst defect.**
+`gh pr list` orders by pull request **number**, and the first capture taken here inherited that order —
+three merge-order inversions, a corpus containing #303 and missing #301, under a register claiming *"the
+30 most recently merged"*. Every published figure was against a corpus its own heading did not name.
+Found at the pre-commit checkpoint from evidence inside the committed snapshot: `mergedAt` was already
+captured and nothing sorted on it. The fetch now lists a **pool** and takes the window from it by merge
+date, records whether the pool saturated — an unsaturated pool makes the window provable rather than
+likely — and `validateSnapshot` refuses a snapshot that is not in descending merge order.
+
+### What this rail does NOT establish
+
+| The rail answers | The rail cannot answer |
+|---|---|
+| Do the published figures come out of the captured data? | Is the captured data current? |
+| How heavy is the loop, in submissions? | How heavy is it in fix-rounds? |
+
+**It is a meter, not a bound.** Rule 4 stops a loop at two fix-rounds and nothing here stops anything;
+the record's own honest-limits section already says the judgement it depends on is the interested
+party's about its own work, and a tool reporting after the merge does not change that. It adjudicates
+no **sibling** exemption either, so *rounds past the bound* is not computable and is not claimed.
+
+**And the snapshot does not refresh itself.** The `review-loop` recipe compares a register to a
+snapshot, never a snapshot to the world, so a stale capture and a current one are the same green.
+Refreshing is `--fetch`, run by a person. That is the same silence
+[#344](https://github.com/sleepy-panda-srl/portulan/issues/344) tracks for the drill calendar, in a
+second place, and it is now **filed** as
+[#356](https://github.com/sleepy-panda-srl/portulan/issues/356) rather than only named — the two want
+one mechanism between them and closing them together is likely cheaper than either alone.
+
 ## What is NOT built yet
 
 Each names where it arrives, per [`../.portulan/dod.md`](../.portulan/dod.md) condition 4 — nothing
@@ -254,9 +362,6 @@ here claims a capability that does not exist:
   telemetry.
 - **A rule change merged or rejected on eval evidence** — arrives in milestone 8, a later session.
   Every rule in [`../.portulan/memory/`](../.portulan/memory/) to date was merged on review alone.
-- **(c) Review-loop metering** — rounds per pull request, pushes per round, empty-round rate. Arrives
-  in milestone 8, a later session. The *110 rounds over 30 pull requests* figure that bounds the review
-  loop was measured by hand and nothing checks it.
 - **A release carries an eval result** ([`../docs/plan.md`](../docs/plan.md), Protocol → Versioning).
   Arrives in milestone 8, a later session. **This was the row's ninth clause as of 2026-08-24 and was
   nobody's until that day**: the Protocol had carried the obligation since the plan was locked while

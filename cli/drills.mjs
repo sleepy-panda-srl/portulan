@@ -424,6 +424,21 @@ export const DRILLS = [
         why: "This repository shipped that exact defect twice, and `README.md` is in `package.json`'s `files` — npm freezes a README per version, so a wrong sentence that reaches a publish needs another release to correct.",
     },
     {
+        rail: "review-loop",
+        perturb: {
+            file: "evals/review-loop/register.md",
+            find: "- **Repository:** `sleepy-panda-srl/portulan`",
+            replace: "- **Repository:** `sleepy-panda-srl/portulan` (edited by hand)",
+        },
+        exit: 1,
+        tell: "is out of date against the snapshot",
+        // The perturbation edits the REGISTER rather than the snapshot, and that is the direction the
+        // rail exists for. Editing the snapshot would make both sides move together in a rerun and
+        // prove nothing; editing the published figures is the failure the recipe is there to catch,
+        // since a committed Markdown table is the one artifact here a person can quietly correct.
+        why: "The register is the review loop's published figures, and this clause exists because the figures it replaces were hand-maintained. A register that could drift from its own snapshot would be that hand-maintained tally wearing a generated file's clothes.",
+    },
+    {
         rail: "tools/github:actions-pinned",
         perturb: {
             file: ".github/workflows/verify.yml",
