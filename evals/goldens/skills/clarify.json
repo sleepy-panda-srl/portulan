@@ -1,0 +1,120 @@
+{
+  "skill": "clarify",
+  "_comment": [
+    "Golden tasks for core/skills/clarify/SKILL.md. Every numbered step of its `## The pass` is here,",
+    "bound to the live artifacts it governs or adjudicated unbindable with a reason from the closed",
+    "vocabulary. The denominator is derived from the skill file, so a fifth step reddens this corpus.",
+    "",
+    "`quote` must place EXACTLY ONCE in the skill's own SKILL.md or the case is could-not-run."
+  ],
+  "cases": [
+    {
+      "step": 1,
+      "state": "unbindable",
+      "reason": "no-artifact",
+      "why": "Drafting the criteria you CAN write is an intermediate state of a planning pass. It leaves no artifact: what reaches the tree is step 4's folded result, which is where the mandate becomes checkable."
+    },
+    {
+      "step": 2,
+      "state": "unbindable",
+      "reason": "judgement-only",
+      "why": "Whether a question's answer would change the diff is the judgement the ritual exists to exercise. No artifact can witness the questions that were correctly NOT asked, which is half of what this step mandates."
+    },
+    {
+      "step": 3,
+      "state": "unbindable",
+      "reason": "judgement-only",
+      "why": "That intent came from the human and not from observed content is a fact about a conversation. The safety doctrine it cites is enforced at the gate layer, not by anything a task file records."
+    },
+    {
+      "step": 4,
+      "state": "bound",
+      "kind": "load-bearing",
+      "mandate": {
+        "quote": "Fold the answers back into the task",
+        "file": "core/skills/clarify/SKILL.md"
+      },
+      "artifacts": {
+        "slot": "tasks"
+      },
+      "predicate": "ears-acceptance-criteria",
+      "carrier": null,
+      "_predicate_note": [
+        "THE PREDICATE IS A REVIEWED FIELD AND IT WAS DECIDED BEFORE ANY FIGURE WAS WRITTEN. Two opening",
+        "passes produced two different numbers for this row — 10 and 12 — because each computed first and",
+        "defined afterwards. Section-presence answers 10 of 19; the mandate's own words are about EARS",
+        "SHAPE, and under that predicate the answer is 12 of 19, with 46 of 48 individual criteria",
+        "EARS-shaped. A third reading claimed 19 of 19 and did not reproduce.",
+        "",
+        "The shape is core/templates/task.md's and is CITED rather than re-spelled here."
+      ],
+      "expect": {
+        "accepted": [
+          {
+            "file": "0001-repo-map-matches-shape.md",
+            "why": "Merged records are not an implementer's to rewrite, and doing so under a one-clause budget would be a second clause. The maintainer ruled 2026-08-26 that core/templates/task.md's shape still binds, so this file is non-compliant by his word rather than by an implementer's inference. Carried by https://github.com/sleepy-panda-srl/portulan/issues/358."
+          },
+          {
+            "file": "0007-per-reason-stop-gate-counters.md",
+            "why": "Merged records are not an implementer's to rewrite, and doing so under a one-clause budget would be a second clause. The maintainer ruled 2026-08-26 that core/templates/task.md's shape still binds, so this file is non-compliant by his word rather than by an implementer's inference. Carried by https://github.com/sleepy-panda-srl/portulan/issues/358."
+          },
+          {
+            "file": "0010-the-wire-arrives-in-an-artifact-an-adopter-receives.md",
+            "why": "Merged records are not an implementer's to rewrite, and doing so under a one-clause budget would be a second clause. The maintainer ruled 2026-08-26 that core/templates/task.md's shape still binds, so this file is non-compliant by his word rather than by an implementer's inference. Carried by https://github.com/sleepy-panda-srl/portulan/issues/358."
+          },
+          {
+            "file": "0011-vendor-carries-the-residence-switch.md",
+            "why": "Merged records are not an implementer's to rewrite, and doing so under a one-clause budget would be a second clause. The maintainer ruled 2026-08-26 that core/templates/task.md's shape still binds, so this file is non-compliant by his word rather than by an implementer's inference. Carried by https://github.com/sleepy-panda-srl/portulan/issues/358."
+          },
+          {
+            "file": "0012-a-feedback-pipe-points-out-of-the-seam.md",
+            "why": "Merged records are not an implementer's to rewrite, and doing so under a one-clause budget would be a second clause. The maintainer ruled 2026-08-26 that core/templates/task.md's shape still binds, so this file is non-compliant by his word rather than by an implementer's inference. Carried by https://github.com/sleepy-panda-srl/portulan/issues/358."
+          },
+          {
+            "file": "0013-the-interview-the-rail-and-two-checks.md",
+            "why": "Merged records are not an implementer's to rewrite, and doing so under a one-clause budget would be a second clause. The maintainer ruled 2026-08-26 that core/templates/task.md's shape still binds, so this file is non-compliant by his word rather than by an implementer's inference. Carried by https://github.com/sleepy-panda-srl/portulan/issues/358."
+          },
+          {
+            "file": "0014-the-registrable-set.md",
+            "why": "Merged records are not an implementer's to rewrite, and doing so under a one-clause budget would be a second clause. The maintainer ruled 2026-08-26 that core/templates/task.md's shape still binds, so this file is non-compliant by his word rather than by an implementer's inference. Carried by https://github.com/sleepy-panda-srl/portulan/issues/358."
+          },
+          {
+            "file": "0015-upgrade-and-the-migration-chain.md",
+            "why": "Merged records are not an implementer's to rewrite, and doing so under a one-clause budget would be a second clause. The maintainer ruled 2026-08-26 that core/templates/task.md's shape still binds, so this file is non-compliant by his word rather than by an implementer's inference. Carried by https://github.com/sleepy-panda-srl/portulan/issues/358."
+          },
+          {
+            "file": "0016-the-three-demonstrations.md",
+            "why": "Merged records are not an implementer's to rewrite, and doing so under a one-clause budget would be a second clause. The maintainer ruled 2026-08-26 that core/templates/task.md's shape still binds, so this file is non-compliant by his word rather than by an implementer's inference. Carried by https://github.com/sleepy-panda-srl/portulan/issues/358."
+          },
+          {
+            "file": "0017-the-demo-composed-a-pack-that-does-not-exist.md",
+            "why": "Merged records are not an implementer's to rewrite, and doing so under a one-clause budget would be a second clause. The maintainer ruled 2026-08-26 that core/templates/task.md's shape still binds, so this file is non-compliant by his word rather than by an implementer's inference. Carried by https://github.com/sleepy-panda-srl/portulan/issues/358."
+          },
+          {
+            "file": "0018-discovery-that-could-not-look-is-not-a-green.md",
+            "why": "Merged records are not an implementer's to rewrite, and doing so under a one-clause budget would be a second clause. The maintainer ruled 2026-08-26 that core/templates/task.md's shape still binds, so this file is non-compliant by his word rather than by an implementer's inference. Carried by https://github.com/sleepy-panda-srl/portulan/issues/358."
+          },
+          {
+            "file": "0019-the-flag-that-was-not-optional.md",
+            "why": "Merged records are not an implementer's to rewrite, and doing so under a one-clause budget would be a second clause. The maintainer ruled 2026-08-26 that core/templates/task.md's shape still binds, so this file is non-compliant by his word rather than by an implementer's inference. Carried by https://github.com/sleepy-panda-srl/portulan/issues/358."
+          }
+        ],
+        "_accepted_note": [
+          "ACCEPTED DRIFT, not a repair. `goldens` and `mutants` each went red on their first run and",
+          "shipped green WITH THE DEFECT FIXED; this ships green with it ACCEPTED.",
+          "",
+          "THE COMPOSITION MATTERS AND THE HEADLINE HIDES IT: of these twelve, TEN carry no",
+          "acceptance-criteria section in any spelling (five of those renamed it `## Done when` —",
+          "0010-0013, 0015) and only TWO fail on EARS shape (0001, 1 of 4 bullets; 0007, 1 of 6). The",
+          "48 criteria live entirely in the nine files that have a section, and 46 of them are shaped.",
+          "So `12 of 19 fail the EARS mandate` is arithmetically right and rhetorically wrong.",
+          "",
+          "Both directions: a file here that starts complying reddens this until it is delisted. That",
+          "caught three filenames written from a number prefix rather than read off disk.",
+          "",
+          "Two carriers: evals/README.md's `Accepted drift` subsection, and issue 358."
+        ]
+      }
+    }
+  ]
+}

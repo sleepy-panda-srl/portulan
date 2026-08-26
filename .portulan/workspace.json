@@ -190,6 +190,15 @@
         "doc": "verify/README.md"
       },
       {
+        "id": "skill-goldens",
+        "run": "./.portulan/verify/skill-goldens.sh",
+        "requires": [
+          "bash",
+          "node"
+        ],
+        "doc": "verify/README.md"
+      },
+      {
         "id": "review-loop",
         "run": "./.portulan/verify/review-loop.sh",
         "requires": [

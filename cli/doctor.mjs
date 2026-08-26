@@ -394,7 +394,11 @@ export function parseProvenance(source) {
 // the line a demotion pass retires by. Anchored to the bolded field at line start, so prose that
 // merely discusses retiring never matches — the same false-red caution parseProvenance takes with
 // backticked tokens, for the same reason: a false red is what gets a whole check switched off.
-const RETIRE_WHEN = /^\s*\*\*retire when:\*\*/im;
+// **Exported for `./skill-goldens.mjs`**, which binds `core/skills/consolidate/SKILL.md` step 1 —
+// *"Every record carries a `Retire when:` line"* — to the live store. Exported rather than re-spelled:
+// a second regex there would be a second carrier of this field's spelling, and the anchoring caution
+// above is the part a re-speller gets wrong first.
+export const RETIRE_WHEN = /^\s*\*\*retire when:\*\*/im;
 
 // ===========================================================================================
 // 3. Claims against the tree

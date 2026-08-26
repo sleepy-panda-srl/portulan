@@ -424,6 +424,26 @@ export const DRILLS = [
         why: "This repository shipped that exact defect twice, and `README.md` is in `package.json`'s `files` — npm freezes a README per version, so a wrong sentence that reaches a publish needs another release to correct.",
     },
     {
+        rail: "skill-goldens",
+        perturb: {
+            file: "core/skills/clarify/SKILL.md",
+            // **The perturbation ADDS A MANDATE**, which puts this rail's central claim under test: the
+            // denominator is derived from the skill's own pass, so a step nobody wrote a case for is a
+            // red rather than a default. A corpus whose author picks which mandates to answer for
+            // reports "5 of 5" of a set it drew, and that is the version this drill exists to refuse.
+            //
+            // **Rewording a mandate was the first spelling and it is the wrong arm.** An anchor that
+            // stops placing is could-not-run, and this harness refuses `exit: 2` as a fire outright —
+            // *"counting it as a fire would read a refusal as a verdict"*. Measured rather than
+            // reasoned about: `--check` rejected the first version of this entry for exactly that.
+            find: "## Why it earns its tokens",
+            replace: "5. **A step the drill added** — bound to nothing, answered by no case.\n\n## Why it earns its tokens",
+        },
+        exit: 1,
+        tell: "is in the skill's pass and in no case",
+        why: "A core skill states its mandates in prose, and prose is what this repository ships. Before this rail a step could be added, reworded or deleted with every check still green. The derived denominator is what makes the corpus a rail rather than a self-graded exam, so it is the half worth drilling.",
+    },
+    {
         rail: "review-loop",
         perturb: {
             file: "evals/review-loop/register.md",
