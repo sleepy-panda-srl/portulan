@@ -117,6 +117,10 @@ test("a repeated head breaks the coincidence, and the flag goes with it", () => 
     assert.equal(m.pushesCoincideWithSubmissions, false);
 });
 
+// This arm is exercised at the MODULE level on purpose: `validateSnapshot` refuses an empty corpus
+// (`window.merged < 1`), so `run()` cannot reach it — an empty capture is a could-not-judge, not a loop
+// measuring zero. The null-handling still has to be right, because `meter()` is exported and the
+// register renderer calls it.
 test("an empty denominator yields null, never zero — an unmeasured loop is not a quiet one", () => {
     const m = meter(snapshotOf([]));
     assert.equal(m.submissionsPerPullRequest, null);
@@ -209,9 +213,28 @@ test("the register is byte-compared, so a hand-edit is a red rather than a survi
 
 test("a MISSING register is could-not-run, not a mismatch", () =>
     withTemp((dir) => {
+        // **The snapshot here must be VALID, or this passes for the wrong reason.** It was
+        // `snapshotOf([])`, which `validateSnapshot` refuses on `window.merged < 1` — so the case
+        // returned 2 before ever reaching the register and asserted nothing about a missing one.
+        // Copilot round 1 on #357, and the finding is the sharper one of the two: an assertion that
+        // holds for a reason other than its subject is a test that will keep passing after the code
+        // it names is deleted.
         const snap = join(dir, "snapshot.json");
-        writeFileSync(snap, JSON.stringify(snapshotOf([])));
-        assert.equal(run(["--snapshot", snap, "--register", join(dir, "absent.md"), "--check"], collect().io), 2);
+        writeFileSync(snap, JSON.stringify(snapshotOf([{ number: 1, submissions: [submission()] }])));
+        const c = collect();
+        assert.equal(run(["--snapshot", snap, "--register", join(dir, "absent.md"), "--check"], c.io), 2);
+        assert.ok(c.err.join("\n").includes("run with --write to create it"), "reached the register, not the snapshot");
+    }));
+
+test("--check or --write without --register is refused, never a quiet exit 0", () =>
+    withTemp((dir) => {
+        const snap = join(dir, "s.json");
+        writeFileSync(snap, JSON.stringify(snapshotOf([{ number: 1, submissions: [submission()] }])));
+        for (const flag of ["--check", "--write"]) {
+            const c = collect();
+            assert.equal(run(["--snapshot", snap, flag], c.io), 2, `${flag} alone must refuse`);
+            assert.ok(c.err.join("\n").includes("needs --register"));
+        }
     }));
 
 test("the rendered register states the units and the bound rather than implying them", () => {

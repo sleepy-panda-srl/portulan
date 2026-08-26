@@ -550,6 +550,17 @@ export function run(argv = process.argv.slice(2), io = console) {
         io.error("review-meter: --check and --write ask for opposite things; pick one");
         return 2;
     }
+    // **`--check` and `--write` are about the REGISTER, so without one they asked for nothing and got
+    // exit 0.** A mistyped invocation — the flag typed, the path forgotten — printed the report and
+    // returned green, so a person believing they had byte-compared the register had run no comparison
+    // at all. That is a false green in the one place this tool exists to remove one, and it is the same
+    // shape as the entry-guard defect further down this file: the command runs, says nothing is wrong,
+    // and did not do the thing. Copilot round 1 on #357.
+    if ((opts.check || opts.write) && !opts.register) {
+        io.error(`review-meter: ${opts.check ? "--check" : "--write"} needs --register <file> — it is the register that is written and compared`);
+        io.error("Without it this flag would do nothing and still exit 0.");
+        return 2;
+    }
 
     if (opts.fetch) {
         if (!opts.repo || !opts.out) {
