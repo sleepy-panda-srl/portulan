@@ -2,10 +2,11 @@
 
 > Generated from `handoffs/` by `node cli/index.mjs`. Do not edit by hand: it is regenerated
 > and byte-compared, so a hand-edit survives exactly until the next run.
-> 139 handoff(s), newest first. No budget: the series is append-only, so
+> 140 handoff(s), newest first. No budget: the series is append-only, so
 > the only remedy a budget could ask for is one this project rules out.
 
 - 2026-08-25 · [Handoff — the corpus lost, and the fuzzer found a live bypass](handoffs/2026-08-25-the-corpus-lost-and-the-fuzzer-found-a-live-bypass.md)
+- 2026-08-25 · [Handoff — the Thursday cadence stopped being an implementer's default](handoffs/2026-08-25-g-the-thursday-cadence-is-ruled.md)
 - 2026-08-25 · [Handoff — the round was never missing, the page was](handoffs/2026-08-25-g-the-round-was-never-missing-the-page-was.md)
 - 2026-08-25 · [Handoff — the reachability was retired, and the removal was not taken](handoffs/2026-08-25-f-the-reachability-was-retired-and-the-removal-was-not-taken.md)
 - 2026-08-25 · [Handoff — the dispatch half is observed, and a 200 from GitHub is not a request](handoffs/2026-08-25-f-the-dispatch-half-is-observed-and-a-200-is-not-a-request.md)

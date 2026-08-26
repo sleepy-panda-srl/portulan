@@ -72,12 +72,20 @@ name: drills
 
 on:
   schedule:
-    # Thursdays, 06:00 UTC. Weekly matches `librarian.yml`'s cadence and a different day keeps two
-    # scheduled jobs off one morning. **The cadence is the maintainer's**, exactly as the librarian's
-    # Monday is his (2026-07-28): this is the value the clause shipped with, not a policy an
-    # implementer settled. It lives here rather than in `.portulan/workspace.json` for the reason that
-    # file's sibling states — how often a host runs a job is the host's scheduler, and a cron
-    # expression in a manifest nothing reads would be configuration pretending to be policy.
+    # Thursdays, 06:00 UTC — **the maintainer's ruling of 2026-08-25**, exactly as the librarian's Monday
+    # is his (2026-07-28). Weekly matches `librarian.yml`'s cadence and a different day keeps two
+    # scheduled jobs off one morning.
+    #
+    # _This line shipped with clause (d) reading "the value the clause shipped with, not a policy an
+    # implementer settled", which was the honest state for one day: a cadence an implementer picks for
+    # itself is not a cadence, the same shape as the session budget this milestone left at `1–2` until he
+    # gave it a rule. He ruled on 2026-08-25 and the value did not move — what moved is whose it is, and
+    # that is worth a line rather than a silent edit, because "unchanged after a ruling" and "never
+    # ruled on" look identical in a diff and mean opposite things._
+    #
+    # It lives here rather than in `.portulan/workspace.json` for the reason that file's sibling states —
+    # how often a host runs a job is the host's scheduler, and a cron expression in a manifest nothing
+    # reads would be configuration pretending to be policy.
     - cron: "0 6 * * 4"
   workflow_dispatch:
   # And on **every** pull request. **This is not a required check** — the required contexts are

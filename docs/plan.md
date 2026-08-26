@@ -2511,3 +2511,13 @@ _The seam applies here too: no client-identifying references._
   superseding what [`2026-08-25-d`](../.portulan/handoffs/2026-08-25-d-the-consolidation-that-first-made-the-file-bigger.md) retired. Every yielded recipe green; seam scan clean over every path the diff
   touches · **Fable 5 fresh: APPROVE-WITH-ADJUSTMENTS, its Defect 1 withdrawn on evidence** · [#351](https://github.com/sleepy-panda-srl/portulan/pull/351) · Handoff:
   [`2026-08-25-g`](../.portulan/handoffs/2026-08-25-g-the-round-was-never-missing-the-page-was.md).
+- 2026-08-25 · M8 (Evals & telemetry), session 2 follow-up · **The drill calendar's cadence is the
+  maintainer's ruling.** Thursdays 06:00 UTC, and **the value did not move — what moved is whose it is**:
+  `drills.yml` shipped saying the cadence was the value the clause shipped with rather than a policy an
+  implementer settled, which was honest for one day. Recorded now the way `librarian.yml`'s Monday is.
+  Worth a commit because *unchanged after a ruling* and *never ruled on* look identical in a diff and mean
+  opposite things — the same shape as this row's session budget sitting at `1–2` until he made it
+  `1 per clause`. Swept **whole-file, not per line**, the lesson from the fourth carrier that wrapped
+  across two comment lines: eighteen cadence mentions read, one live carrier, two dated records left
+  standing. Six of nine remain. Every yielded recipe green; seam scan clean over every path the diff
+  touches · Handoff: [`2026-08-25-g`](../.portulan/handoffs/2026-08-25-g-the-thursday-cadence-is-ruled.md).
