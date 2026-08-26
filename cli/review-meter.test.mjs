@@ -4,7 +4,12 @@
 //
 // The traps, each traceable to a measurement on this repository rather than to a guess:
 //   * one actor, two logins — a filter on either surface returns zero from the other (#154)
-//   * our own reviews sit on the same endpoint and inflate the count (#105: 6 of 15; #342: 74 of 81)
+//   * our own reviews sit on the same endpoint and inflate the count (at merge: #105 is 7 of 15,
+//     #342 is 90 of 102 — and this line carried the MID-LOOP counts, 6 of 15 and 74 of 81, while
+//     `review-meter.mjs` had already been corrected to the at-merge ones. A factual contradiction
+//     between two files of one change, about counts, inside the change built to end hand-counting.
+//     Copilot round 3 on #357, through the suppressed channel; `0020`'s class exactly — the earlier
+//     repair stopped at the site somebody quoted)
 //   * an inline comment belongs to the review that carried it, grouped on `pull_request_review_id`
 //   * the entry guard must survive a path containing a space — this file's subject shipped the broken
 //     spelling and `--fetch` exited 0 having written nothing, the FOURTH time here
@@ -150,9 +155,11 @@ test("the retirement threshold is reported on the side the record states, not ne
 // -------------------------------------------------------------------- the snapshot's own contract
 
 test("a snapshot carrying a NON-REVIEWER review is could-not-judge, not a busy loop", () => {
-    // The trap in one case: our own replies and derived verdicts are submitted as REVIEWS. On #105
-    // six of fifteen review objects were `portulan-agent[bot]`; on #342, seventy-four of eighty-one.
-    // A snapshot that let one through would inflate every figure in the register with our own traffic.
+    // The trap in one case: our own replies and derived verdicts are submitted as REVIEWS. **At
+    // merge, seven of #105's fifteen review objects are `portulan-agent[bot]`, and ninety of #342's
+    // hundred and two.** Both are stamped *at merge*, because this comment carried the counts as they
+    // stood MID-LOOP and they were stale by the time each pull request landed. A snapshot that let one
+    // through would inflate every figure in the register with our own traffic.
     const problems = validateSnapshot(
         snapshotOf([{ number: 1, submissions: [submission({ login: "portulan-agent[bot]" })] }]),
     );
@@ -426,6 +433,19 @@ test("shapeSubmissions reads head from the REVIEW, never from a comment", () => 
     assert.equal(shaped[0].head, "the-review-head");
 });
 
-test("--pool smaller than --limit is refused rather than silently making the window number order", () => {
-    assert.equal(run(["--fetch", "--repo", "o/r", "--out", "x", "--limit", "30", "--pool", "30"], collect().io), 2);
+test("a --pool that cannot exceed the window is refused, and the refusal is REACHED", () => {
+    // **This case used to pass for the wrong reason.** It asserted only the digit 2, and `--pool 30
+    // --limit 30` did not trip the guard — so it fell through into the real `--fetch` path, ran `gh`
+    // against `o/r`, and got its 2 from the fetch failing. Environment-dependent, network-dependent,
+    // and green either way. Copilot round 3 on #357.
+    //
+    // The assertion is now on the message, so it fails if it ever stops reaching the guard.
+    for (const pool of ["30", "29", "0"]) {
+        const c = collect();
+        assert.equal(run(["--fetch", "--repo", "o/r", "--out", "x", "--limit", "30", "--pool", pool], c.io), 2);
+        assert.ok(
+            c.err.join("\n").includes("--pool must be an integer greater than --limit"),
+            `--pool ${pool} reached the fetch instead of the guard: ${c.err.join(" | ")}`,
+        );
+    }
 });

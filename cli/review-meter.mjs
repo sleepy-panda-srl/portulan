@@ -598,10 +598,16 @@ export function run(argv = process.argv.slice(2), io = console) {
             io.error(`review-meter: --limit must be a positive integer, not ${JSON.stringify(opts.limit)}`);
             return 2;
         }
-        if (!Number.isInteger(opts.pool) || opts.pool < opts.limit) {
-            io.error(`review-meter: --pool must be an integer no smaller than --limit (${opts.limit}), not ${JSON.stringify(opts.pool)}`);
-            io.error("The pool is listed by pull request NUMBER and the window is taken from it by merge date;");
-            io.error("a pool the size of the window would just be number order wearing the window's name.");
+        // **Strictly greater, and the check used to say `<` while the prose beneath it argued `<=`.**
+        // A pool the size of the window cannot contain a pull request outside the window, so it is
+        // number order wearing the window's name — which is the defect the pool exists to remove. The
+        // guard permitted it anyway, so the suite's own case for this refusal fell straight through
+        // into the real fetch path and passed on `gh` failing instead. Copilot round 3 on #357: a test
+        // passing for the wrong reason, the same class round 1 found one site over.
+        if (!Number.isInteger(opts.pool) || opts.pool <= opts.limit) {
+            io.error(`review-meter: --pool must be an integer greater than --limit (${opts.limit}), not ${JSON.stringify(opts.pool)}`);
+            io.error("The pool is listed by pull request NUMBER and the window is taken from it by merge date,");
+            io.error("so a pool the size of the window is just number order wearing the window's name.");
             return 2;
         }
         let snapshot;

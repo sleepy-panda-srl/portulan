@@ -120,14 +120,30 @@ disagreeing with its producer. And `mergedAt` was compared **lexicographically**
 against any other: a window stamped `"yesterday"` would have passed while the register claimed it was
 by merge date. Both parse the value now, on both sides of the split.
 
-**All four are the same defect class, and it is this change's own subject.** Something reported success
-without doing its job — the flag that compared nothing, the test that asserted nothing, the validator
-that could not fail, and the ordering check that could not fail. That is four instances inside the
-change built to end a hand-count, plus the entry guard that exited 0 having run nothing and the window
-that measured the wrong thirty. **Six false greens in one session**, four of them caught by a reviewer
-rather than by me.
+**Round 3, three notes, two findings, and both are SIBLINGS** — so under rule 4's 2026-08-07 exemption
+they do not spend the bound, and the judgement that they are siblings is mine and is recorded here to be
+overruled. The suite's header and one case still carried the **mid-loop** counts, 6 of 15 and 74 of 81,
+while `review-meter.mjs` had already been corrected to the at-merge 7 of 15 and 90 of 102 — *a factual
+contradiction between two files of one change, about counts, inside the change built to end
+hand-counting.* The governing rule was enforced at another site of the same operation when the defect
+was written, which is the exemption's own test, and it is `0020` word for word: the earlier repair
+stopped where the checkpoint had quoted it. **A third live carrier in `cli/README.md` was found by
+sweeping rather than by being told**, which is the only part of this worth any credit. The second
+finding is round 1's finding one site over: `--pool 30 --limit 30` did not trip a guard reading `<`,
+so the case fell through into the real `--fetch`, ran `gh`, and took its exit 2 from the fetch failing.
+The guard now reads `<=`, matching the prose beneath it that had argued `<=` all along, and three cases
+assert the **message** rather than the digit.
 
-**The bound is spent.** Two fix-rounds under rule 4; anything further becomes an issue.
+**All six findings are one class, and it is this change's own subject.** Something reported success
+without doing its job: the flag that compared nothing, the test that asserted nothing, the validator
+that could not fail, the ordering check that could not fail, the guard that let its own case through,
+and the counts that contradicted their sibling file. Add the entry guard that exited 0 having run
+nothing and the window that measured the wrong thirty, and this session shipped **eight false greens**,
+six of them caught by a reviewer rather than by me.
+
+**Where the bound stands.** Two fix-rounds spent; round 3 claimed under the sibling exemption. The
+exemption buys rounds and never the gate — a fourth round is the maintainer's to grant and not mine to
+assume, so anything further becomes an issue.
 
 ## State
 
