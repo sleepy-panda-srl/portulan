@@ -771,8 +771,21 @@ Each of these was a candidate; none is an oversight.
 - **A per-host capability matrix.** The vision's `doctor` includes a per-host capability report, but that
   is generated from the host and the compiled gates, not declared by the team. It belongs with the
   enforcement backends in milestone 4.
-- **`evals`.** Milestone 8 owns the eval harness; a slot pointing at golden tasks before any exist would
-  be the emptiest kind of scaffolding.
+- **`evals`.** Milestone 8 owns the eval harness. **The original reason for deferring is spent, and the
+  deferral is re-argued rather than left standing on it.** It read *"a slot pointing at golden tasks
+  before any exist would be the emptiest kind of scaffolding"* — and golden tasks exist: the gate corpus
+  landed at clause (a) and the core-skill corpus at the row's original first subject. The premise
+  expired the day it stopped being true and nothing noticed, which is the shape this file elsewhere
+  calls a claim outliving its measurement.
+
+  **What the deferral now rests on.** A slot is the Workspace Definition's promise that every conforming
+  workspace can be asked one question and answer it. `evals/` today holds **two corpora with two
+  different oracles** — gates answered by the compiler's own `matchesRule`, skills answered by
+  mandate-to-artifact bindings — plus a metering register, and a slot naming that directory would
+  promise adopters a shape this repository has not settled for itself. **Revisit when milestone 8
+  closes**, by which point the row's nine clauses will have decided what an eval artifact is here.
+  Filling it is a schema change, a spec version bump and a migration, so it is not a thing to do in
+  passing.
 
 ## What v2.0 is not
 

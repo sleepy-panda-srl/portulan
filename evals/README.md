@@ -16,19 +16,26 @@ written down rather than left to be inferred from a filename.
 | **Evaluation as measurement** — golden tasks, A/B, the eval gate | **here**, `evals/` | Does the engine make an agent work better? Milestone 8's subject. |
 | **Evaluation as a licensed copy** | [`../cli/eval-bundle.mjs`](../cli/eval-bundle.mjs), [`../.portulan/verify/eval-bundle.sh`](../.portulan/verify/eval-bundle.sh) | A named-recipient bundle cut from a commit under evaluation terms. A commercial artifact, with its issuance ledger kept permanently outside this repository. Nothing to do with this directory. |
 
+**And `goldens` itself now names two runners, so that is disambiguated here too rather than left to a
+prefix.** [`../cli/goldens.mjs`](../cli/goldens.mjs) grades the **compiled gates** against adversarial
+fixtures, through the compiler's own `matchesRule`. [`../cli/skill-goldens.mjs`](../cli/skill-goldens.mjs)
+grades the **core skills'** mandates against the live artifacts they govern. Same clause, two subjects —
+the 2026-07-28 amendment's *"golden tasks reach the gates as well as the skills"* — and two oracles, which
+is why they are two modules and two recipes rather than one with a flag.
+
 The machinery this directory ships is therefore named **`goldens`**, never `evals` — so a reader meeting
 `cli/goldens.mjs` beside `cli/eval-bundle.mjs` is not left to guess which sense is which. The directory
 keeps the row's own word; the tools take a narrower one.
 
 ## What is built today
 
-**Four clauses of row 8, of nine.** (a), adversarial fixtures per compiled gate, landed 2026-08-24;
+**Five clauses of row 8, of nine.** (a), adversarial fixtures per compiled gate, landed 2026-08-24;
 **(b)**, mutation testing over both matchers and grammar-aware fuzzing over the shell segmenter,
 landed 2026-08-25; **(d)**, scheduled forced-red drills, landed 2026-08-25; **(c)**, review-loop
-metering, landed 2026-08-26. **Five remain** — golden tasks per core skill, the A/B baseline, OTel
-opt-in config, a rule change merged or rejected on eval evidence, and a release carrying an eval
-result. Each is listed below with the sentence
-[`../.portulan/dod.md`](../.portulan/dod.md) condition 4 requires.
+metering, landed 2026-08-26; **golden tasks per core skill** — the row's original first subject —
+landed 2026-08-26. **Four remain** — the A/B baseline, OTel opt-in config, a rule change merged or
+rejected on eval evidence, and a release carrying an eval result. Each is listed below with the
+sentence [`../.portulan/dod.md`](../.portulan/dod.md) condition 4 requires.
 
 ```
 evals/goldens/gates/<rule-id>.json      one fixture file per rule in the yielded gate policy
@@ -349,13 +356,138 @@ second place, and it is now **filed** as
 [#356](https://github.com/sleepy-panda-srl/portulan/issues/356) rather than only named — the two want
 one mechanism between them and closing them together is likely cheaper than either alone.
 
+## Golden tasks per core skill — the mandates bound to what they govern
+
+```
+node cli/skill-goldens.mjs --repo-root . --workspace .portulan
+```
+
+Landed 2026-08-26. **The row's original first subject**, untouched by either amendment: the 2026-07-28
+expansion says it *"stands exactly as written"*, and clause (a) *widened its subject* to reach the gates
+*"as well as the skills"* **without narrowing the subject it already had**
+([`../docs/milestones/m08.md`](../docs/milestones/m08.md), the amendment's own words). (a) built the
+gates half. This is the half that sentence always named.
+
+### The reading was ruled, not derived
+
+The criterion reads two ways — a deterministic corpus, or task specifications run against a live model
+and judged. [`../.portulan/gate-map.md`](../.portulan/gate-map.md)'s *"Session-open runs `clarify`
+against the milestone row itself"* exists because milestone 4 guessed at exactly this shape of ambiguity,
+so it went to the maintainer instead of into an argument. **His ruling: a deterministic corpus graded
+against live artifacts in the tree.** The model-run sense is the **A/B clause**, separately named in the
+same row — and under the other reading the two clauses would collapse into one, which no amendment did.
+
+### What a case is
+
+A case binds one numbered step of a skill's `## The pass` to the artifact set it governs, and names the
+rail that enforces it — or `null`, which is the interesting value. Four properties, each of which exists
+because a checkpoint found the version without it:
+
+- **The denominator is derived, not chosen.** The runner enumerates the steps out of the skill file and
+  requires every one to be `bound` or `unbindable`. A fifteenth step is red. The first draft let the
+  author pick which mandates to answer for, and a census over a set its own author drew reports *"5 of
+  5"* and means nothing — the difference [`../cli/goldens.mjs`](../cli/goldens.mjs) already draws by
+  deriving its denominator from the yielded policy.
+- **An empty step list is could-not-run.** Three `## The pass` spellings exist, so an exact match finds
+  one skill of three and the other two satisfy *every step is accounted for* **vacuously**. That is this
+  directory's own sentence about clause (d) — *"a check whose enumeration went empty … reports green and
+  has stopped being a rail"* — and the heading match is anchored besides, because a loose one grabs
+  `consolidate`'s `## The one move this pass may not make`.
+- **A mandate quote must place exactly once**, or the case refuses. A skill whose wording is reworded,
+  softened or deleted reddens instead of drifting, and **nothing in this tree did that before.**
+- **The predicates use the carriers' own exported functions rather than re-spelling them.** The runner
+  imports `RETIRE_WHEN` from [`../cli/doctor.mjs`](../cli/doctor.mjs), so the retire-when check is
+  `doctor`'s regex and not a second one. **What that does not do — and three carriers of this sentence
+  once said it did — is verify the `carrier` field.** Nothing links it to a check: the pre-commit
+  checkpoint rewrote every carrier in a corpus file to a module that does not exist and the corpus
+  stayed green. `carrier` is a **declared, reviewed field**, and a reviewer is what checks it.
+
+### `unbindable` is adjudicated, never asserted
+
+The dodge is obvious — call a mandate unbindable and it needs no case. So the reason takes a **closed
+vocabulary**: `judgement-only`, `no-artifact`, `cross-language`, and `already-carried` — the last added
+at the pre-commit checkpoint, which found a row classed `bound` whose named carrier the runner never
+reads, and no honest term for what it actually was. And a `judgement-only` step **may name
+no artifacts**: if you can name the artifacts a mandate governs, it is not judgement, it is unbuilt.
+That is [`../cli/mutants.mjs`](../cli/mutants.mjs)'s rule that a `survives` record is admissible only as
+a proof and never as a standing note that a gap exists.
+
+### What the first run measured
+
+**Five of fifteen mandates bind to live artifacts — four load-bearing, one census — and ten are
+adjudicated unbindable.** No figure is written here beyond that shape; the runner prints its own totals.
+
+**The ratio is a finding rather than bookkeeping.** How much of a core skill is artifact discipline and
+how much is agent judgement is a measurement *about the engine*, which is what this row exists to
+produce. **Read the split, not the total**: of the ten unbindable, five are `judgement-only` — one third
+of the fifteen — and the rest are `no-artifact`, `cross-language` or `already-carried`, which mean a
+carrier exists somewhere else. Only the judgement rows are the A/B clause's subject. _(Three carriers of
+this paragraph said "two thirds are judgement", which was the unbindable total wearing the judgement
+label. Corrected at the pre-commit checkpoint, which also found one row classed `bound` whose named
+carrier the runner never reads.)_
+
+**One of the five rows is `census`, and it is marked as such** in the corpus and in the output. A census
+row re-indexes a figure `doctor` already prints, under the mandate that wants it; it is not a new check,
+and presenting five equal rows would read as more evidence than it holds — the repair this directory
+already applied to three columns of which two were one column.
+
+### Accepted drift — the in-tree record
+
+Three live findings, and **all three ship green with the defect accepted rather than repaired.** That is the
+distinction to keep: `goldens` and `mutants` each went red on their first run and shipped green with the
+defect **fixed**. These are merged records, not an implementer's to rewrite, and doing so under a
+one-clause budget would be a second clause.
+
+| Mandate | Live artifacts | Drift |
+|---|---|---|
+| `clarify` step 4 — fold answers back as **EARS** acceptance criteria | `.portulan/tasks/` | **12 of 19** — but see the split below |
+| `codify` step 1 — name the incident and link it | `.portulan/proposals/` | **6 of 33** carry no provenance field |
+| `codify` step 3 — attach how it earns its place | `.portulan/proposals/` | **13 of 33** carry no enforcement field |
+
+**The composition of the twelve matters and the headline hides it.** Ten carry **no acceptance-criteria
+section in any spelling** — five of those renamed it `## Done when` (`0010`–`0013`, `0015`) and five are
+retrospective arc records — and only **two** fail on EARS *shape*: `0001` (one bullet of four) and
+`0007` (one of six). The 48 criteria live entirely in the nine files that have a section, and **46 of
+them are shaped**. So *"12 of 19 fail the EARS mandate"* is arithmetically right and rhetorically
+wrong, and the three-cohort breakdown is in
+[#358](https://github.com/sleepy-panda-srl/portulan/issues/358).
+
+**The maintainer ruled on 2026-08-26 that [`../core/templates/task.md`](../core/templates/task.md)'s
+shape still binds**, so the twelve are non-compliant by his word rather than by an implementer's
+inference — which is what makes this an accepted drift and not a divergence pinned before anyone ruled.
+
+**It holds in both directions.** A file here that starts complying reddens the corpus until it is
+delisted, because a drift list that outlives its drift is as wrong as one that hides it. That direction
+is not decoration: it caught **three filenames the author had written from a number prefix rather than
+read off disk**, before any reviewer saw them.
+
+**The figure moved twice before it was written down, and that is the lesson worth carrying.** One
+opening pass said 10 of 19, another said 12, a third said 19 — because each computed before deciding the
+predicate. Section-presence answers 10; the mandate's own words are about EARS **shape**, and under that
+predicate it is 12, with 46 of 48 individual criteria EARS-shaped. **The predicate is now a reviewed
+field on the case**, decided before any figure.
+
+### What this rail does NOT establish
+
+| The rail answers | The rail cannot answer |
+|---|---|
+| Is every mandate accounted for? | Is the binding any good? |
+| Does a named carrier **contain** its check? | Does it **run** it? |
+
+The second row is the one to read twice. An import proves the carrier holds the symbol; a rail could
+keep it, stop calling it, and this corpus would not notice, because the verdict is computed here over
+the artifacts rather than by asking the rail. Closing it needs a per-mandate drill — perturb a record,
+require the named rail to fire with its own tell — which is [`../cli/drills.mjs`](../cli/drills.mjs)'s
+shape one grain finer and is a second clause's work.
+
+And it grades a skill's **mandates** against the tree, never an agent's judgement in following one. No
+golden task here tells you whether an agent given `clarify` asks good questions.
+
 ## What is NOT built yet
 
 Each names where it arrives, per [`../.portulan/dod.md`](../.portulan/dod.md) condition 4 — nothing
 here claims a capability that does not exist:
 
-- **Golden tasks per core skill** — arrives in milestone 8, a later session. The three core skills
-  ([`../core/skills/`](../core/skills/)) have no fixtures of any kind today.
 - **The A/B (Portulan on / off) baseline** — arrives in milestone 8, a later session. No baseline has
   been recorded, and no harness exists to record one.
 - **OTel opt-in config** — arrives in milestone 8, a later session. Nothing in this repository emits

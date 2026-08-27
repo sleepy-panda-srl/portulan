@@ -1,0 +1,169 @@
+{
+  "skill": "codify",
+  "_comment": [
+    "Golden tasks for core/skills/codify/SKILL.md. TWO bound cases, both load-bearing and both against",
+    "the skill's OWN OUTPUT — proposals, which its step 4 names: step 1 wants provenance on them and",
+    "step 3 wants an enforcement field. core/templates/proposal.md mandates both and nothing checks",
+    "either, so neither has a carrier.",
+    "",
+    "This _comment claimed step 1 was `bound TWICE`, to proposals and to memory. There is no memory",
+    "binding in this file: the memory-provenance row was dropped when the pre-commit checkpoint bound",
+    "step 3 instead, and the summary did not move with it. Copilot round 1 on #360."
+  ],
+  "cases": [
+    {
+      "step": 1,
+      "state": "bound",
+      "kind": "load-bearing",
+      "mandate": {
+        "quote": "Name the incident and link it.",
+        "file": "core/skills/codify/SKILL.md"
+      },
+      "artifacts": {
+        "slot": "proposals"
+      },
+      "predicate": "provenance-present",
+      "carrier": null,
+      "_note": [
+        "CODIFY'S OWN OUTPUT IS A PROPOSAL — its step 4 says so — and core/templates/proposal.md mandates",
+        "a Provenance field. `doctor` checks provenance on MEMORY records; docs.sh checks a proposal's",
+        "numbering, its outcome and its pull-request URL. Neither checks a proposal's provenance. So this",
+        "row has no carrier and it is the corpus's second live finding.",
+        "",
+        "THE PREDICATE IS SHAPE-TOLERANT ON PURPOSE. The corpus carries two spellings — `**Provenance.**`",
+        "(14) and `## Provenance` (13) — and a literal predicate would report the thirteen renamed ones as",
+        "absent. That is exactly the false red this session's own first measurement produced against the",
+        "task corpus, caught at a checkpoint. Six files carry neither spelling and those are the finding."
+      ],
+      "expect": {
+        "accepted": [
+          {
+            "file": "0009-a-gate-policy-beside-the-gate-map.md",
+            "why": "Merged records are not an implementer's to rewrite. core/templates/proposal.md mandates the field and nothing checks it, so this is a mandate with no carrier rather than a rule anyone broke knowingly. Carried by https://github.com/sleepy-panda-srl/portulan/issues/358."
+          },
+          {
+            "file": "0010-prohibited-as-a-fourth-universal-tier.md",
+            "why": "Merged records are not an implementer's to rewrite. core/templates/proposal.md mandates the field and nothing checks it, so this is a mandate with no carrier rather than a rule anyone broke knowingly. Carried by https://github.com/sleepy-panda-srl/portulan/issues/358."
+          },
+          {
+            "file": "0019-the-development-cycle-is-doctrine-not-anecdote.md",
+            "why": "Merged records are not an implementer's to rewrite. core/templates/proposal.md mandates the field and nothing checks it, so this is a mandate with no carrier rather than a rule anyone broke knowingly. Carried by https://github.com/sleepy-panda-srl/portulan/issues/358."
+          },
+          {
+            "file": "0020-a-fix-is-not-done-at-the-site-it-was-found.md",
+            "why": "Merged records are not an implementer's to rewrite. core/templates/proposal.md mandates the field and nothing checks it, so this is a mandate with no carrier rather than a rule anyone broke knowingly. Carried by https://github.com/sleepy-panda-srl/portulan/issues/358."
+          },
+          {
+            "file": "0024-a-tier-says-who-attends-a-checkpoint-says-what-is-owed.md",
+            "why": "Merged records are not an implementer's to rewrite. core/templates/proposal.md mandates the field and nothing checks it, so this is a mandate with no carrier rather than a rule anyone broke knowingly. Carried by https://github.com/sleepy-panda-srl/portulan/issues/358."
+          },
+          {
+            "file": "0030-a-declined-contribution-is-not-a-blocked-one.md",
+            "why": "Merged records are not an implementer's to rewrite. core/templates/proposal.md mandates the field and nothing checks it, so this is a mandate with no carrier rather than a rule anyone broke knowingly. Carried by https://github.com/sleepy-panda-srl/portulan/issues/358."
+          }
+        ],
+        "_accepted_note": [
+          "Six merged proposals carry no provenance field in any spelling. THREE OF THESE FILENAMES",
+          "WERE WRONG ON THE FIRST RUN — written from the number prefix rather than read off disk —",
+          "and the both-directions check caught all three before any reviewer did.",
+          "Two carriers: evals/README.md's `Accepted drift` subsection, and issue 358."
+        ]
+      }
+    },
+    {
+      "step": 2,
+      "state": "unbindable",
+      "reason": "judgement-only",
+      "why": "The right altitude — core, a pack, or the workspace — is the judgement this step exists to exercise. A rule's altitude is visible in where the file sits, but whether that was the RIGHT altitude is not a fact any artifact carries."
+    },
+    {
+      "step": 3,
+      "state": "bound",
+      "kind": "load-bearing",
+      "mandate": {
+        "quote": "Attach how it earns its place",
+        "file": "core/skills/codify/SKILL.md"
+      },
+      "artifacts": {
+        "slot": "proposals"
+      },
+      "predicate": "enforcement-present",
+      "carrier": null,
+      "_note": [
+        "BOUND AT THE PRE-COMMIT CHECKPOINT, which refused the judgement-only classification this",
+        "step first carried. The declined argument was that presence-checking would be `the",
+        "presence floor with none of the value` — an argument this module refutes in its own",
+        "printed output, and which equally refutes the provenance binding beside it.",
+        "",
+        "core/templates/proposal.md mandates an **Enforcement.** field and nothing checks it.",
+        "THIRTEEN of thirty-three carry none — a larger finding than the six that shipped first."
+      ],
+      "expect": {
+        "accepted": [
+          {
+            "file": "0008-adopting-a-control-is-not-knowing-what-it-did.md",
+            "why": "Merged records are not an implementer's to rewrite. core/templates/proposal.md mandates the field and nothing checks it, so this is a mandate with no carrier rather than a rule anyone broke knowingly. Carried by https://github.com/sleepy-panda-srl/portulan/issues/358."
+          },
+          {
+            "file": "0009-a-gate-policy-beside-the-gate-map.md",
+            "why": "Merged records are not an implementer's to rewrite. core/templates/proposal.md mandates the field and nothing checks it, so this is a mandate with no carrier rather than a rule anyone broke knowingly. Carried by https://github.com/sleepy-panda-srl/portulan/issues/358."
+          },
+          {
+            "file": "0010-prohibited-as-a-fourth-universal-tier.md",
+            "why": "Merged records are not an implementer's to rewrite. core/templates/proposal.md mandates the field and nothing checks it, so this is a mandate with no carrier rather than a rule anyone broke knowingly. Carried by https://github.com/sleepy-panda-srl/portulan/issues/358."
+          },
+          {
+            "file": "0012-a-desktop-app-is-a-host-not-a-surface.md",
+            "why": "Merged records are not an implementer's to rewrite. core/templates/proposal.md mandates the field and nothing checks it, so this is a mandate with no carrier rather than a rule anyone broke knowingly. Carried by https://github.com/sleepy-panda-srl/portulan/issues/358."
+          },
+          {
+            "file": "0013-the-architecture-is-extensible-the-product-is-not.md",
+            "why": "Merged records are not an implementer's to rewrite. core/templates/proposal.md mandates the field and nothing checks it, so this is a mandate with no carrier rather than a rule anyone broke knowingly. Carried by https://github.com/sleepy-panda-srl/portulan/issues/358."
+          },
+          {
+            "file": "0014-a-feedback-pipe-points-out-of-the-seam.md",
+            "why": "Merged records are not an implementer's to rewrite. core/templates/proposal.md mandates the field and nothing checks it, so this is a mandate with no carrier rather than a rule anyone broke knowingly. Carried by https://github.com/sleepy-panda-srl/portulan/issues/358."
+          },
+          {
+            "file": "0016-per-agent-memory-has-no-first-instance-yet.md",
+            "why": "Merged records are not an implementer's to rewrite. core/templates/proposal.md mandates the field and nothing checks it, so this is a mandate with no carrier rather than a rule anyone broke knowingly. Carried by https://github.com/sleepy-panda-srl/portulan/issues/358."
+          },
+          {
+            "file": "0020-a-fix-is-not-done-at-the-site-it-was-found.md",
+            "why": "Merged records are not an implementer's to rewrite. core/templates/proposal.md mandates the field and nothing checks it, so this is a mandate with no carrier rather than a rule anyone broke knowingly. Carried by https://github.com/sleepy-panda-srl/portulan/issues/358."
+          },
+          {
+            "file": "0024-a-tier-says-who-attends-a-checkpoint-says-what-is-owed.md",
+            "why": "Merged records are not an implementer's to rewrite. core/templates/proposal.md mandates the field and nothing checks it, so this is a mandate with no carrier rather than a rule anyone broke knowingly. Carried by https://github.com/sleepy-panda-srl/portulan/issues/358."
+          },
+          {
+            "file": "0026-a-line-two-branches-edited-needs-a-state.md",
+            "why": "Merged records are not an implementer's to rewrite. core/templates/proposal.md mandates the field and nothing checks it, so this is a mandate with no carrier rather than a rule anyone broke knowingly. Carried by https://github.com/sleepy-panda-srl/portulan/issues/358."
+          },
+          {
+            "file": "0028-a-records-world-claim-carries-its-instrument.md",
+            "why": "Merged records are not an implementer's to rewrite. core/templates/proposal.md mandates the field and nothing checks it, so this is a mandate with no carrier rather than a rule anyone broke knowingly. Carried by https://github.com/sleepy-panda-srl/portulan/issues/358."
+          },
+          {
+            "file": "0030-a-declined-contribution-is-not-a-blocked-one.md",
+            "why": "Merged records are not an implementer's to rewrite. core/templates/proposal.md mandates the field and nothing checks it, so this is a mandate with no carrier rather than a rule anyone broke knowingly. Carried by https://github.com/sleepy-panda-srl/portulan/issues/358."
+          },
+          {
+            "file": "0032-the-seam-guards-the-client-and-not-the-host.md",
+            "why": "Merged records are not an implementer's to rewrite. core/templates/proposal.md mandates the field and nothing checks it, so this is a mandate with no carrier rather than a rule anyone broke knowingly. Carried by https://github.com/sleepy-panda-srl/portulan/issues/358."
+          }
+        ],
+        "_accepted_note": [
+          "Thirteen merged proposals carry no enforcement field in any spelling. Same acceptance",
+          "and the same two carriers as the provenance row above."
+        ]
+      }
+    },
+    {
+      "step": 4,
+      "state": "unbindable",
+      "reason": "cross-language",
+      "why": "A proposal naming the pull request that filed it IS checked — by docs.sh, in bash, with the URL pattern inline. Binding it here would put two spellings of one rule across a LANGUAGE boundary, which is worse than the same-language duplication evals/README.md already refuses for the awk filter. The carrier exists and is not this one."
+    }
+  ]
+}

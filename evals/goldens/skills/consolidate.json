@@ -1,0 +1,109 @@
+{
+  "skill": "consolidate",
+  "_comment": [
+    "Golden tasks for core/skills/consolidate/SKILL.md. Six numbered steps plus step 0 — the routing",
+    "sentence under `## When to use it`, numbered 0 so the pass accounting stays a clean 1..6.",
+    "",
+    "TWO cases are bound: step 0 (load-bearing, the schema-budget containment) and step 1 (census, the",
+    "retire-when walk doctor already reports). The other five are adjudicated unbindable.",
+    "",
+    "This _comment read `Six steps, three bound` until Copilot round 1 on #360. It was written when",
+    "step 5 was classed bound, and it did not move when the pre-commit checkpoint reclassified that row",
+    "to `already-carried` — a file's own summary disagreeing with its own cases, which is proposal 0020",
+    "one line up from the thing it describes."
+  ],
+  "cases": [
+    {
+      "step": 1,
+      "state": "bound",
+      "kind": "census",
+      "mandate": {
+        "quote": "Every record carries a `Retire when:` line",
+        "file": "core/skills/consolidate/SKILL.md"
+      },
+      "artifacts": {
+        "slot": "memory"
+      },
+      "predicate": "retire-when-present",
+      "carrier": {
+        "tool": "doctor",
+        "symbol": "RETIRE_WHEN",
+        "file": "cli/doctor.mjs"
+      },
+      "_note": [
+        "A CENSUS ROW: `doctor` already walks these records and prints `every record states a",
+        "retirement condition`. It REPORTS rather than fails — cli/doctor.mjs says so in as many",
+        "words, `no rule mandates the field, and doctor does not enforce what nobody legislated`.",
+        "This row records that the skill DOES mandate it, and re-indexes the existing figure under",
+        "the mandate that wants it.",
+        "",
+        "THE PREDICATE is pinned by import: the runner imports RETIRE_WHEN from doctor.mjs, so the",
+        "check here is doctor's own regex and not a second spelling of it, and doctor dropping that",
+        "export breaks the runner at load.",
+        "",
+        "THE `carrier` FIELD BELOW IS NOT VERIFIED BY THAT, and this note said it was. Nothing links",
+        "carrier.symbol to any import: the pre-commit checkpoint rewrote every carrier here to a",
+        "module that does not exist and the corpus stayed green. It is DECLARED, REVIEWED metadata —",
+        "a reviewer is what checks it. Copilot round 2 on #360 found this note and cli/README.md",
+        "still carrying the retired claim after the same sweep had corrected three other sites."
+      ],
+      "expect": {
+        "accepted": []
+      }
+    },
+    {
+      "step": 2,
+      "state": "unbindable",
+      "reason": "judgement-only",
+      "why": "Whether a record holds exactly one fact — asked in both directions, merge and split — is the granularity judgement this step exists to exercise. The record_kilobytes budget bounds SIZE, which is a proxy nobody should mistake for the question."
+    },
+    {
+      "step": 3,
+      "state": "unbindable",
+      "reason": "judgement-only",
+      "why": "Surfacing a contradiction rather than overwriting it is a judgement about meaning across two records. No artifact records the contradictions that were correctly surfaced, and a store with none looks identical to one nobody read."
+    },
+    {
+      "step": 4,
+      "state": "unbindable",
+      "reason": "no-artifact",
+      "why": "Compression and demotion leave a smaller record and a changed narrative, and neither carries a mark saying a consolidation pass produced it. The git history holds the act; the tree holds only the outcome."
+    },
+    {
+      "step": 5,
+      "state": "unbindable",
+      "reason": "already-carried",
+      "why": "The index being generated and byte-compared is held by .portulan/verify/index.sh on every run, and that rail is itself drilled. A case here would be a third carrier of a rule two already hold. This row shipped as `bound` with carrier `index` until the pre-commit checkpoint moved index.sh out of the tree and watched the corpus stay green: the runner never reads the carrier field, so the row bound nothing and inflated the headline by one."
+    },
+    {
+      "step": 6,
+      "state": "unbindable",
+      "reason": "cross-language",
+      "why": "Filing a consolidation as a change for review rather than as a fact is the human gate, and what checks it is the platform floor plus docs.sh's proposal rules in bash. Binding it here would be the same language-boundary duplication codify step 4 is unbindable for."
+    },
+    {
+      "step": 0,
+      "state": "bound",
+      "kind": "load-bearing",
+      "mandate": {
+        "quote": "Which budget it was",
+        "file": "core/skills/consolidate/SKILL.md"
+      },
+      "artifacts": null,
+      "predicate": "schema-budget-containment",
+      "carrier": null,
+      "_note": [
+        "STEP 0 IS NOT A PASS STEP — it is the `When to use it` routing sentence, which decides which move",
+        "applies and names every budget by id. It is numbered 0 so the pass-step accounting above stays a",
+        "clean 1..6 and this row cannot be mistaken for one of them.",
+        "",
+        "Both sides are derived: the ids come from spec/workspace.schema.json's memory budget properties,",
+        "and containment is tested against the skill's own text. A fifth budget, or a rename, reddens this",
+        "— which is the staleness nothing in the tree could see before."
+      ],
+      "expect": {
+        "accepted": []
+      }
+    }
+  ]
+}
