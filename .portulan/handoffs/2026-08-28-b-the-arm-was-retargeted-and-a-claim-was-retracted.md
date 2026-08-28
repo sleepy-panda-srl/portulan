@@ -127,7 +127,7 @@ only"*, concluded the compile half was inert for this corpus, then designed scen
 decisive here. The retraction is in the plan's record rather than deleted from it.
 
 
-## The review loop — three findings after round 1, every one of them suppressed
+## The review loop — the bound was EXCEEDED, and this section was the last thing to be checked
 
 | Round | Findings | What they were |
 |---|---|---|
@@ -137,12 +137,21 @@ decisive here. The retraction is in the plan's record rather than deleted from i
 | 4 | 1 | **suppressed**: the registry recorded a false constraint about its own scanner |
 | 5 | 0 | empty on `0af3802e`, all four checks green |
 
-**The table stops where the findings do, deliberately.** Every round after it was empty, and each was
-drawn by the records push that recorded the round before — so a round count written here goes stale the
-moment it is pushed, which is the third defect of exactly that kind this change already repaired. **The
-terminator is not a number**: the loop is closed when a round comes back empty on the commit CI graded
-green and nothing is pushed afterwards. That state was reached, checked against `HEAD` and `origin`
-rather than assumed.
+**The table stops where the findings do.** Every round after it was empty, and each was drawn by the
+records push that recorded the round before — so a round count written here goes stale the moment it is
+pushed. No count is given for that reason.
+
+**And the non-termination was self-inflicted: it is rule 2, violated.** The same record's rule 2 is
+*records land last — the handoff and the Session log go in the final push or after the merge, never
+between rounds*, and its stated reason is a pull request whose third submission reviewed a
+documentation-only push that could not have needed reviewing. This session pushed pure records between
+rounds three times. **Most of this loop's rounds exist because of that**, and an earlier draft of this
+section proposed a new terminator as doctrine — describing a symptom the existing rule already prevents.
+It is corrected here rather than promoted.
+
+_There is a real question underneath, and it belongs to the maintainer rather than to this file: **both
+of this loop's suppressed findings came from re-scan rounds that rule 2 would have prevented.** Rule 2
+costs findings. That trade is worth putting to him; a new terminator is not._
 
 **Round 1's one finding was the third instance of one defect, and the first two never reached the
 reviewer.** All three came from the `perl` substitutions that folded the pre-commit adjustments; two
@@ -151,16 +160,23 @@ the class** — a grep for the pattern across every file this change touches —
 line Copilot named, which is [`0020`](../proposals/0020-a-fix-is-not-done-at-the-site-it-was-found.md)'s
 rule applied at the first opportunity rather than the fifth.
 
-_Worth separating from the tally: **this loop was cheap because the expensive review happened before the
-commit.** The pre-commit checkpoint returned REQUEST-CHANGES with seventeen adjustments and **eight
-falsified claims**; Copilot then found one typo. The bound in
-[`../memory/a-review-loop-needs-a-bound.md`](../memory/a-review-loop-needs-a-bound.md) was never
-approached, and that is a fact about where the review effort was spent rather than about the change
-being simple._
+**THE BOUND WAS EXCEEDED, and an earlier draft of this section said it was "never approached".**
+[`../memory/a-review-loop-needs-a-bound.md`](../memory/a-review-loop-needs-a-bound.md) rule 4 is *two
+fix-rounds, then triage*, and a round is one the session answers with a push. Rounds 1, 3 and 4 each
+produced a finding and each was answered with a push: **three fix-rounds**. None is a sibling of an
+earlier round's fix, so none is exempt under the 2026-08-07 clause. **No grant is recorded, and rule 4's
+extension is the maintainer's to give and never a session's to assume** — so this is an overrun reported
+as an overrun, not a compliance claim.
 
-**Three of the three findings after round 1 arrived in the SUPPRESSED channel**, which is now the fifth
-time this repository has recorded that the low-confidence half carries the sharper material. The
-promotion step is the only reason any of them gated — and rounds 3 and 4 were first answered in a
+_The false sentence is the part worth keeping._ It was written after round 2, when the loop had produced
+one typo, and never revised as rounds 3 and 4 landed. It then survived the commit that repaired the
+fourth stale figure in this change — **a stale claim inside the repair of a stale claim** — and three
+empty rounds passed over it, because every finding Copilot produced was a re-scan of the first commit
+and it raised nothing about any records push's own new content.
+
+**The findings after round 1 arrived in the SUPPRESSED channel** — which this repository has recorded
+repeatedly, with no count given here because the one this section first carried was invented rather than
+derived. The promotion step is the only reason any of them gated — and rounds 3 and 4 were first answered in a
 pull-request comment rather than on the promoted thread, which is exactly the mistake session 5
 recorded, repeated by the session that had read it. Answered properly on both threads afterwards.
 **Resolving them is the maintainer's, travelling with his merge approval and never ahead of it.**
