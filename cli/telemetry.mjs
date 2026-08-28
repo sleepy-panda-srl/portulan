@@ -730,6 +730,37 @@ const USAGE = [
     "       · 2 could not run (config or snapshot missing, unreadable, or malformed)",
 ].join("\n");
 
+/**
+ * Every option whose value is a path, and therefore must be pinned by `--repo-root`.
+ *
+ * **This exists because the same defect was fixed five times, one site at a time.** Across this pull
+ * request's review: `--workspace` resolved against the caller's cwd (round 1), `--pack-root` left
+ * behind by that very fix (round 6), `--config` and its re-read (round 7), `--workspace` resolved but
+ * not contained (round 10), and `--check`/`--write` (round 12). Each repair was correct and each left
+ * a sibling, which is
+ * `../.portulan/proposals/0020-a-fix-is-not-done-at-the-site-it-was-found.md`'s class five times over.
+ *
+ * So the pinning is **one operation over a declared list** rather than a call at each use. A new path
+ * option is pinned by adding it here, and the suite asserts this list against the parser's own keys —
+ * so an option that takes a path and is not named here reddens instead of becoming the sixth instance.
+ */
+export const PATH_OPTIONS = Object.freeze(["config", "check", "write", "workspace"]);
+
+/**
+ * Resolve every path option against the pinned root, once, before anything reads one.
+ *
+ * `path.resolve` leaves an absolute value alone, so naming an absolute path explicitly still wins —
+ * which is the property `--pack-root` needed and the reason this is `resolve` rather than `join`.
+ */
+export function pinPaths(opts) {
+    const root = path.resolve(opts.repoRoot);
+    const pinned = { ...opts, repoRoot: root, packRoots: opts.packRoots.map((r) => path.resolve(root, r)) };
+    for (const key of PATH_OPTIONS) {
+        if (typeof pinned[key] === "string" && pinned[key].length > 0) pinned[key] = path.resolve(root, pinned[key]);
+    }
+    return pinned;
+}
+
 function parseArgs(argv) {
     const opts = { config: null, repoRoot: ".", render: false, check: null, write: null, export: false, audit: false, workspace: ".portulan", packRoots: [], help: false };
     for (let i = 0; i < argv.length; i += 1) {
@@ -770,6 +801,8 @@ export async function run(argv = process.argv.slice(2), io = console, { env = pr
         io.log(USAGE);
         return 0;
     }
+    // Pinned ONCE, here, before anything reads a path. See `PATH_OPTIONS`.
+    opts = pinPaths(opts);
     // The audit is about the RECIPES, not about a payload, so it runs before the config is read and
     // needs no --config. A workspace that has not opted in still owes the property that none of its
     // recipes can reach the network.
@@ -807,7 +840,7 @@ export async function run(argv = process.argv.slice(2), io = console, { env = pr
     // ---- the config. Unreadable and opted-out are DIFFERENT ANSWERS and get different codes.
     // Pinned against `--repo-root`, the same rule `consentIsCommitted` and the signal inputs follow —
     // a relative `--config` must mean the same file wherever the tool is invoked from.
-    const configPath = path.resolve(opts.repoRoot, opts.config);
+    const configPath = opts.config;
     let config;
     try {
         config = readJson(configPath);
@@ -865,7 +898,7 @@ export async function run(argv = process.argv.slice(2), io = console, { env = pr
 
     // ---- --write
     if (opts.write !== null) {
-        fs.mkdirSync(path.dirname(path.resolve(opts.write)), { recursive: true });
+        fs.mkdirSync(path.dirname(opts.write), { recursive: true });
         fs.writeFileSync(opts.write, body);
         io.log(`telemetry: wrote ${opts.write} — ${emitted} metric(s) over ${signals.length} signal(s)`);
         return 0;

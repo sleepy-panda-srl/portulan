@@ -40,6 +40,8 @@ import {
     EMITTED_ATTRIBUTE_KEYS,
     REQUIRED_ATTRIBUTE_KEYS,
     NETWORK_MODES,
+    PATH_OPTIONS,
+    pinPaths,
     PRODUCERS,
     anyValue,
     auditRecipeSource,
@@ -878,6 +880,33 @@ test("--write then --check is green, and the bytes are the serializer's own", as
         assert.equal(await run(["--config", cfg, "--repo-root", REPO, "--check", golden], recorder().io, { env: {} }), 0);
         assert.ok(readFileSync(golden, "utf8").endsWith("}\n"), "the golden is the serializer's exact bytes");
     }));
+
+test("every path option is pinned by --repo-root, in one operation", () => {
+    // Copilot round 12 on #362 — the FIFTH instance of this class in this file across the review:
+    // --workspace (round 1), --pack-root left behind by that fix (round 6), --config and its re-read
+    // (round 7), --workspace containment (round 10), and --check/--write here. Five correct repairs
+    // each leaving a sibling is `0020`'s class five times, so the pinning is now one operation over a
+    // declared list rather than a call at each use.
+    const pinned = pinPaths({ repoRoot: REPO, config: "a.json", check: "b.json", write: "c.json", workspace: ".portulan", packRoots: ["packs"] });
+    for (const key of PATH_OPTIONS) {
+        assert.ok(pinned[key].startsWith(REPO), `${key} was not pinned: ${pinned[key]}`);
+    }
+    assert.ok(pinned.packRoots[0].startsWith(REPO), "pack roots are pinned too");
+    // An absolute value still wins — that is `resolve` rather than `join`, and it is the property
+    // --pack-root needed.
+    assert.equal(pinPaths({ repoRoot: REPO, config: "/abs/x.json", check: null, write: null, workspace: ".portulan", packRoots: [] }).config, "/abs/x.json");
+});
+
+test("no path-taking option escapes PATH_OPTIONS — derived from the parser, not remembered", () => {
+    // The half that stops a sixth instance: the list is asserted against the parser's own flags, so an
+    // option that takes a path and is not pinned reddens instead of being found by round thirteen.
+    const source = readFileSync(TOOL, "utf8");
+    const flags = [...source.matchAll(/a === "--([a-z-]+)"\) opts\.([A-Za-z]+) = next\(\)/g)].map((m) => ({ flag: m[1], key: m[2] }));
+    assert.ok(flags.length >= 4, `expected several value-taking flags, found ${flags.length}`);
+    const pathish = flags.filter((f) => /config|check|write|workspace|root|file|path|out/.test(f.flag));
+    const unpinned = pathish.filter((f) => f.key !== "repoRoot" && !PATH_OPTIONS.includes(f.key));
+    assert.deepEqual(unpinned.map((f) => f.flag), [], `path-taking flag(s) not in PATH_OPTIONS: ${unpinned.map((f) => f.flag).join(", ")}`);
+});
 
 test("two modes at once is refused rather than one silently winning", async () =>
     withTemp(async (dir) => {

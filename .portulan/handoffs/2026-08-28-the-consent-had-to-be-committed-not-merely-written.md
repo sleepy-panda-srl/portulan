@@ -162,8 +162,9 @@ same commit CI graded.
 | 9 | 1 | `path.relative` handed to git unnormalised — `\\` on Windows where git wants `/` |
 | 10 | 4 | `NETWORK_MODES` railed *the class* and listed two of three; `--workspace` un-pinned; both untested |
 | 11 | 2 | `Number.isInteger` where `isSafeInteger` is meant — an exact int64 claimed for a number that cannot be exact |
+| 12 | 2 | `--check` and `--write` unpinned — the **fifth** instance of the root/cwd class in this file |
 
-**Four of the twenty-three were introduced by an earlier round's fix**, and that is the number worth
+**Five of the twenty-five were introduced by an earlier round's fix**, and that is the number worth
 carrying rather than the total. Round 6's `packRoots` is round 1's repair applied at the site it was
 found and not at its sibling one line below. Round 7's is worse: round 4's 128-means-*not a repository*
 made **the one case this gate exists for** — a consent staged and never committed — report a broken
@@ -200,6 +201,22 @@ generic encoder is precisely where an unreachable defect becomes reachable witho
 Reported as unreachable rather than as a live bug caught, because inflating a finding is the same
 dishonesty as hiding one.
 
+**One class of defect accounted for five of the twelve rounds, and the lesson is about how it was
+fixed rather than what it was.** A path resolved against the caller's working directory instead of the
+pinned root: `--workspace` (round 1), `--pack-root` left behind by that same fix (round 6), `--config`
+and its re-read (round 7), `--workspace` resolved but not *contained* (round 10), `--check` and
+`--write` (round 12). Every repair was correct and every one left a sibling —
+[`0020`](../proposals/0020-a-fix-is-not-done-at-the-site-it-was-found.md) five times over, inside a
+change that cites `0020` in its own comments.
+
+**It took five rounds to stop fixing sites.** Path pinning is now one operation over a declared list:
+`PATH_OPTIONS` names every path-bearing option and `pinPaths()` resolves them all once, before anything
+reads one. A suite case **derives** the value-taking flags from the parser's own source and requires
+each path-ish one to be listed, so a sixth instance reddens instead of arriving at round thirteen —
+dropping `write` from the list reddens it, measured. That is the shape the four earlier repairs should
+have taken, and the reviewer's habit of raising these as *pairs* was the standing signal that one rule
+was spread across call sites.
+
 **The bound was exceeded, and it was granted rather than met.**
 [`../memory/a-review-loop-needs-a-bound.md`](../memory/a-review-loop-needs-a-bound.md) rule 4 is *two
 fix-rounds, then triage*: after the second, what remains becomes an issue and does not become another
@@ -215,7 +232,7 @@ anything.
 
 **And the loop's own meter has a data point about itself.** Clause (c) landed two sessions ago
 measuring 4.67 submissions per pull request over the thirty most recently merged. This pull request took
-**eleven**, which the record's own table puts at the level of its worst observed — #49 at nine, #44 and
+**twelve**, which the record's own table puts at the level of its worst observed — #49 at nine, #44 and
 #57 at eight. The change that built the meter for exactly this figure produced one of the heaviest loops
 in the corpus, and the meter cannot see it: `evals/review-loop/snapshot.json` is a committed capture and
 does not refresh itself ([#356](https://github.com/sleepy-panda-srl/portulan/issues/356)). Re-running
