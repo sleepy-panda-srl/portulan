@@ -207,6 +207,29 @@ test("a config that DIFFERS from HEAD is not consent — an edited consent is no
         assert.ok(res.why.includes("differs from HEAD"), res.why);
     }));
 
+test("the path handed to git is POSIX-separated, whatever the platform", () =>
+    withTemp((dir) => {
+        // Copilot round 9 on #362. `path.relative` yields `\\` on Windows and git's pathspec and
+        // `HEAD:<path>` syntax both want `/`, so a committed config would be refused as untracked there.
+        // Asserted by capturing what actually reaches git rather than by branching on the platform —
+        // a case that only runs its assertion on Windows asserts nothing on the machine running it.
+        const seen = [];
+        const spawn = (_c, args) => {
+            seen.push(args);
+            return args.includes("rev-parse") ? { status: 0, stdout: ".git\n", stderr: "" } : { status: 0, stdout: "x\n", stderr: "" };
+        };
+        mkdirSync(join(dir, "evals", "telemetry"), { recursive: true });
+        const cfg = join(dir, "evals", "telemetry", "config.json");
+        writeFileSync(cfg, "x\n");
+        consentIsCommitted(cfg, dir, spawn);
+        const paths = seen.flat().filter((a) => a.includes("config.json"));
+        assert.ok(paths.length >= 2, `git was handed the path fewer times than expected: ${JSON.stringify(seen)}`);
+        for (const p of paths) {
+            assert.ok(!p.includes("\\"), `a backslash reached git: ${JSON.stringify(p)}`);
+            assert.ok(p.includes("evals/telemetry/config.json"), `not POSIX-separated: ${JSON.stringify(p)}`);
+        }
+    }));
+
 test("a config OUTSIDE the repository can never be established as committed", () => {
     const res = consentIsCommitted("/etc/telemetry.json", REPO, () => assert.fail("git must not be consulted about a path outside the tree"));
     assert.equal(res.ok, false);

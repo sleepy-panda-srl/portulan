@@ -622,7 +622,18 @@ export function consentIsCommitted(configPath, repoRoot, spawn = spawnSync) {
     if (!isInside(parent, child)) {
         return { ok: false, why: `${configPath} is outside the repository at ${repoRoot}, so nothing can establish that it is committed` };
     }
-    const rel = path.relative(parent, child);
+    // **Git wants POSIX separators, whatever the platform gives `path.relative`.** On Windows this
+    // returns `evals\\telemetry\\config.json`, and git's pathspecs and `HEAD:<path>` syntax both want
+    // `/` — so a config that IS committed would be refused as untracked, or as missing at HEAD. The
+    // consent gate would fail closed rather than open, but it would fail for every Windows adopter and
+    // the message would name the wrong cause.
+    //
+    // Seven sites in `cli/` already normalise this way, `./librarian.mjs` on exactly this
+    // git-relative case; this was the eighth that needed it and did not have it. Unlike `isInside`,
+    // which was extracted to one carrier, this convention is still copied — filed rather than reduced
+    // here, since collapsing seven call sites is a change of its own shape.
+    // Copilot round 9 on #362.
+    const rel = path.relative(parent, child).split(path.sep).join("/");
     const git = (args) => spawn("git", ["-C", parent, ...args], { encoding: "utf8" });
 
     // **Is this a repository at all? Asked ONCE, up front, and that is the whole design of what

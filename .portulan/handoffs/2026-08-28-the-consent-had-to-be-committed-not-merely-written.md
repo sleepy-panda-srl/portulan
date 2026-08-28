@@ -159,12 +159,24 @@ same commit CI graded.
 | 6 | 3 | `packRoots` left un-pinned by round 1's own fix; `--help` stale after round 5; a gate-map path one level past the root |
 | 7 | 4 | round 4's fix made *staged and never committed* unreachable; `--config` un-pinned, twice over |
 | 8 | 0 | empty |
+| 9 | 1 | `path.relative` handed to git unnormalised — `\\` on Windows where git wants `/` |
 
-**Three of the sixteen were introduced by an earlier round's fix**, and that is the number worth
+**Three of the seventeen were introduced by an earlier round's fix**, and that is the number worth
 carrying rather than the total. Round 6's `packRoots` is round 1's repair applied at the site it was
 found and not at its sibling one line below. Round 7's is worse: round 4's 128-means-*not a repository*
 made **the one case this gate exists for** — a consent staged and never committed — report a broken
 repository instead. `0020`'s class, twice, inside the change that cites `0020`.
+
+**Round 9 came from the records push itself, and its finding is the one no rail here can see.**
+`consentIsCommitted` handed `path.relative()` output straight to `git ls-files` and `git show HEAD:<path>`.
+On Windows that is `\\`-separated and git wants `/`, so a config that **is** committed would be refused
+as untracked — fail-closed, and wrong for every Windows adopter with a message naming the wrong cause.
+**Seven sites in `cli/` already normalise by hand**, `librarian.mjs` on exactly this git-relative case;
+this was the eighth that needed it and did not have it. Fixed here, and the other seven are
+[#363](https://github.com/sleepy-panda-srl/portulan/issues/363) rather than a sweep, because deciding
+whether the three spelling variants are one rule is not an implementation pull request's call. **No
+check in this repository can observe that class**: CI is `ubuntu-latest` and nothing runs on Windows, so
+the only reason the eighth instance was caught is that a reviewer read the code.
 
 **The bound was exceeded, and it was granted rather than met.**
 [`../memory/a-review-loop-needs-a-bound.md`](../memory/a-review-loop-needs-a-bound.md) rule 4 is *two
@@ -181,7 +193,7 @@ anything.
 
 **And the loop's own meter has a data point about itself.** Clause (c) landed two sessions ago
 measuring 4.67 submissions per pull request over the thirty most recently merged. This pull request took
-**eight**, which the record's own table puts at the level of its worst observed — #49 at nine, #44 and
+**nine**, which the record's own table puts at the level of its worst observed — #49 at nine, #44 and
 #57 at eight. The change that built the meter for exactly this figure produced one of the heaviest loops
 in the corpus, and the meter cannot see it: `evals/review-loop/snapshot.json` is a committed capture and
 does not refresh itself ([#356](https://github.com/sleepy-panda-srl/portulan/issues/356)). Re-running
