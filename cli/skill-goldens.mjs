@@ -537,9 +537,15 @@ export function run(argv = process.argv.slice(2), io = console) {
     io.log(`  ${unbindable} adjudicated unbindable — ${Object.entries(reasons).map(([k, v]) => `${v} ${k}`).join(", ")}`);
     io.log("");
     io.log("  THE RATIO IS A FINDING, not bookkeeping: it measures how much of a core skill is artifact");
-    io.log("  discipline and how much is agent judgement. Read the SPLIT, not the total — only the");
-    io.log("  judgement-only rows are the A/B clause's subject; cross-language and already-carried mean");
-    io.log("  a carrier exists and is somewhere else.");
+    io.log("  discipline and how much is agent judgement. Read the SPLIT, not the total — the");
+    io.log("  judgement-only rows are the A/B clause's FIRST subject; cross-language and already-carried");
+    io.log("  mean a carrier exists and is somewhere else.");
+    // **Widened 2026-08-28 on the maintainer's ruling**; this printed "only the judgement-only rows are
+    // the A/B clause's subject" until then. That reading could not stand, and the reason is measured:
+    // `vendor --host` carries `core/skills/` not at all, so all five judgement rows reach
+    // nothing in a vendored arm. The A/B clause's subject is the mandates core SHIPS that an arm
+    // actually receives. Four carriers held the narrower reading and all four moved together —
+    // ../evals/ab/corpus.md, and the claim is registered in ../.portulan/rule-carriers.json.
     io.log("  A `census` row re-indexes a figure an existing recipe already prints; it is not a new check.");
     io.log("  `unbindable` is the dodge, so its reason comes from a closed vocabulary and is adjudicated.");
     io.log("  `carrier` is a DECLARED, reviewed field. Nothing links it to a check: a corpus naming a");

@@ -35,7 +35,17 @@
 # **An agent's judgement.** Ten of fifteen mandates are adjudicated unbindable, most of them because
 # they are about a decision no artifact witnesses. That ratio is printed as a **finding** — it measures
 # how much of a core skill is artifact discipline and how much is judgement — and the judgement half is
-# the A/B clause's subject, not this one's.
+# the A/B clause's FIRST subject, not this one's.
+#
+# **Widened 2026-08-28 on the maintainer's ruling**; this read "the judgement half is the A/B clause's
+# subject" until then. The A/B clause's subject is the mandates core SHIPS that an arm actually
+# receives. The narrower reading could not stand for a measured reason: `vendor --host` carries
+# `core/skills/` not at all, so all five judgement rows reach nothing in a vendored arm and
+# would grade the base model. See ../../evals/ab/corpus.md. Four carriers held the narrower reading and
+# all four moved in one change; the claim is registered in ../rule-carriers.json so a fifth cannot
+# appear IN THE REGISTERED SCOPE unnoticed. That scope is bounded by the registry's own `exclude`
+# list, which is the one carrier of it — and `docs/milestones/`, where the fourth carrier sat, is on
+# that list, so the registration cannot see one appearing where the last one did.
 #
 # Exit 0 green · 1 red · 2 could not run.
 

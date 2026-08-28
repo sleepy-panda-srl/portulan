@@ -2565,3 +2565,14 @@ _The seam applies here too: no client-identifying references._
   pre-commit (7+1); Fable 5 CONCUR-W-A on both rulings. · **Copilot: 16 rounds, 32 findings, all real,
   6 self-inflicted — one inside the derived check built to stop that class. Bound EXCEEDED and
   GRANTED.** · Seam scan clean, control reddening. · [handoff](../.portulan/handoffs/2026-08-28-the-consent-had-to-be-committed-not-merely-written.md)
+
+- 2026-08-28 · M8, session 6a · **The A/B clause's subject**, and no instrument:
+  [`ab/arm.md`](../evals/ab/arm.md) specifies the treatment arm under two rules — a discriminator, and
+  *no move authors a normative sentence* — and [`ab/corpus.md`](../evals/ab/corpus.md) the scenarios.
+  The arm is **retargeted**: row 6's *empty until earned* makes carrying another team's record layer the
+  unfaithful choice, so it is emptied, keeping the kernel and the compiled enforcement. **Three scenarios
+  hold, a fourth on a stated test, four retired** with what would un-retire each. The subject is
+  **widened at four carriers** and registered in `rule-carriers.json`. **A claim is retracted:** the
+  constitution gate's refusal was a *documented* false positive. **No row moves; 22 recipes, 24 drills.**
+  · Session-open REQUEST-CHANGES ×2 then A-W-A (14); two second opinions CONCUR-W-A. · Seam scan clean,
+  control reddening. · [handoff](../.portulan/handoffs/2026-08-28-b-the-arm-was-retargeted-and-a-claim-was-retracted.md)
