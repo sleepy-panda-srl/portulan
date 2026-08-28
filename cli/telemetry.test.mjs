@@ -528,9 +528,37 @@ test("transport comes from the OTel standard environment, and an unset endpoint 
     assert.ok(transportFromEnv({}).why.includes("OTEL_EXPORTER_OTLP_ENDPOINT"));
 });
 
-test("the endpoint gains the OTLP metrics path exactly once, with or without a trailing slash", () => {
+test("the BASE endpoint gains the OTLP metrics path exactly once, with or without a trailing slash", () => {
     assert.equal(transportFromEnv({ OTEL_EXPORTER_OTLP_ENDPOINT: "http://localhost:4318" }).url, "http://localhost:4318/v1/metrics");
     assert.equal(transportFromEnv({ OTEL_EXPORTER_OTLP_ENDPOINT: "http://localhost:4318/" }).url, "http://localhost:4318/v1/metrics");
+});
+
+test("the METRICS-specific endpoint is used as given — no path is appended to it", () => {
+    // Copilot round 5 on #362, through the suppressed channel. The specification distinguishes a BASE
+    // endpoint, to which the signal path is appended, from the signal-specific one, which is the full
+    // URL. Appending to both gave `/v1/metrics/v1/metrics` to anyone configured the standard way, and
+    // left them no escape hatch — while this module's docblock claimed to read the variables "exactly
+    // as the specification defines them". A conformance claim is a claim like any other.
+    assert.equal(transportFromEnv({ OTEL_EXPORTER_OTLP_METRICS_ENDPOINT: "http://c:4318/v1/metrics" }).url, "http://c:4318/v1/metrics");
+    assert.equal(transportFromEnv({ OTEL_EXPORTER_OTLP_METRICS_ENDPOINT: "http://c/custom/sink" }).url, "http://c/custom/sink");
+});
+
+test("the metrics-specific endpoint WINS over the base, and the refusal names both", () => {
+    assert.equal(
+        transportFromEnv({ OTEL_EXPORTER_OTLP_ENDPOINT: "http://base:1", OTEL_EXPORTER_OTLP_METRICS_ENDPOINT: "http://specific:2/m" }).url,
+        "http://specific:2/m",
+    );
+    const none = transportFromEnv({});
+    assert.equal(none.ok, false);
+    assert.ok(none.why.includes("OTEL_EXPORTER_OTLP_METRICS_ENDPOINT") && none.why.includes("OTEL_EXPORTER_OTLP_ENDPOINT"), none.why);
+});
+
+test("metrics-specific headers REPLACE the general ones rather than merging", () => {
+    // The specification's rule, and the behaviour somebody configuring one tenant's credentials for
+    // metrics alone is relying on. Merging would silently send the general list too.
+    const t = transportFromEnv({ OTEL_EXPORTER_OTLP_ENDPOINT: "http://c:4318", OTEL_EXPORTER_OTLP_HEADERS: "authorization=general", OTEL_EXPORTER_OTLP_METRICS_HEADERS: "authorization=specific" });
+    assert.equal(t.headers.authorization, "specific");
+    assert.equal(Object.keys(t.headers).length, 2, "content-type and the one replaced header, nothing carried over");
 });
 
 test("a non-URL endpoint is a refusal rather than a request to nowhere", () => {

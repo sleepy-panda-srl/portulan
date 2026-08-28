@@ -524,12 +524,23 @@ standard environment surface as the *gate* would mean an adopter who already exp
 having decided to. That is an opt-**out**, and the criterion's word is *opt-in*. It would also put a
 team decision in ambient per-machine state, which is the inverse of `core < pack < workspace`.
 
-So the committed file is the only gate, and the environment supplies **transport only** —
-`OTEL_EXPORTER_OTLP_ENDPOINT` and `OTEL_EXPORTER_OTLP_HEADERS`, read exactly as the specification
-defines them, so an adopter's existing collector configuration works unchanged and **a secret never
-enters a committed file** ([`../.portulan/dod.md`](../.portulan/dod.md) condition 5). The validator
-refuses a config carrying `headers`, `endpoint` or a token outright, so that is a rail rather than a
-review note.
+So the committed file is the only gate, and the environment supplies **transport only** — the OTLP
+endpoint and header variables in both their general and metrics-specific forms, so an adopter's
+existing collector configuration works unchanged and **a secret never enters a committed file**
+([`../.portulan/dod.md`](../.portulan/dod.md) condition 5). The validator refuses a config carrying
+`headers`, `endpoint` or a token outright, so that is a rail rather than a review note.
+
+**What of that contract is implemented, at its real width.** Read:
+`OTEL_EXPORTER_OTLP_METRICS_ENDPOINT` — used **as given**, since the specification makes the
+signal-specific variable the full URL — falling back to `OTEL_EXPORTER_OTLP_ENDPOINT` as a base with
+`/v1/metrics` appended; and `OTEL_EXPORTER_OTLP_METRICS_HEADERS` **replacing**
+`OTEL_EXPORTER_OTLP_HEADERS` rather than merging. **Not** read, each a silent no-op for an adopter who
+sets it: `OTEL_EXPORTER_OTLP_PROTOCOL` (this emitter speaks `http/json` only), `_TIMEOUT`,
+`_COMPRESSION`, `_CERTIFICATE` and the client-auth pair. _This paragraph exists because the two carriers
+it replaces said the variables were read **"exactly as the specification defines them"** while the
+metrics-specific endpoint was ignored and appended to — which produced `/v1/metrics/v1/metrics` for
+anyone configured the standard way. A partial implementation of a public contract is fine; describing
+one as complete is the overclaim [`../.portulan/principles.md`](../.portulan/principles.md) opens with._
 
 ### The config was NOT made a Workspace Definition slot, and the cut is the session-open checkpoint's
 

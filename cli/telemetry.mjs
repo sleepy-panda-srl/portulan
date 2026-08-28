@@ -36,10 +36,20 @@
 // policy lives.
 //
 // So: **the committed config file is the only gate**, and the environment supplies transport only —
-// `OTEL_EXPORTER_OTLP_ENDPOINT` and `OTEL_EXPORTER_OTLP_HEADERS`, read exactly as the OTel
-// specification defines them, so an adopter's existing collector configuration works unchanged. A
-// secret never enters the committed file; that is `../.portulan/dod.md` condition 5 holding by
-// construction rather than by a reviewer noticing.
+// the OTLP endpoint and header variables, in both their general and their metrics-specific forms, so
+// an adopter's existing collector configuration works unchanged. A secret never enters the committed
+// file; that is `../.portulan/dod.md` condition 5 holding by construction rather than by a reviewer
+// noticing.
+//
+// **What of that contract is implemented, stated at its real width rather than as *"exactly as the
+// specification defines them"*, which is what this paragraph used to say and was false.** Read:
+// `OTEL_EXPORTER_OTLP_METRICS_ENDPOINT` (used as given) falling back to `OTEL_EXPORTER_OTLP_ENDPOINT`
+// (a base, with `/v1/metrics` appended), and `OTEL_EXPORTER_OTLP_METRICS_HEADERS` **replacing**
+// `OTEL_EXPORTER_OTLP_HEADERS` rather than merging with it. **Not** read, and each would be a silent
+// no-op for an adopter who set it: `OTEL_EXPORTER_OTLP_PROTOCOL` — this emitter speaks
+// `http/json` and nothing else — `_TIMEOUT`, `_COMPRESSION`, `_CERTIFICATE` and the client-auth pair.
+// Naming them is the point: a partial implementation of a standard contract is fine, and a partial
+// implementation described as a complete one is the overclaim `../.portulan/principles.md` opens with.
 //
 // _An earlier draft of this clause put the config in the Workspace Definition as a `telemetry` slot
 // at spec 2.9. The session-open checkpoint cut it: every slot in that train arrived through a **ruled
@@ -530,20 +540,37 @@ export const serialize = (payload) => `${JSON.stringify(payload, null, 2)}\n`;
  * **never printed**, because a header list is where a bearer token lives.
  */
 export function transportFromEnv(env) {
-    const endpoint = env.OTEL_EXPORTER_OTLP_ENDPOINT;
-    if (typeof endpoint !== "string" || endpoint.length === 0) return { ok: false, why: "OTEL_EXPORTER_OTLP_ENDPOINT is not set" };
+    // **The signal-specific variables win, and they are used AS GIVEN.** The OpenTelemetry protocol
+    // specification draws a distinction this function ignored: `OTEL_EXPORTER_OTLP_ENDPOINT` is a BASE
+    // to which the signal's path is appended, while `OTEL_EXPORTER_OTLP_METRICS_ENDPOINT` is the full
+    // URL and must be used untouched. Appending to both produced `…/v1/metrics/v1/metrics` for anyone
+    // configured the signal-specific way, and left them no escape hatch — while this file's own
+    // docblock claimed the variables are read "exactly as the OpenTelemetry specification defines
+    // them". A conformance claim is a claim like any other, and this one was false. Copilot round 5 on
+    // #362, through the suppressed channel.
+    const specific = env.OTEL_EXPORTER_OTLP_METRICS_ENDPOINT;
+    const base = env.OTEL_EXPORTER_OTLP_ENDPOINT;
+    const named = typeof specific === "string" && specific.length > 0 ? "OTEL_EXPORTER_OTLP_METRICS_ENDPOINT" : "OTEL_EXPORTER_OTLP_ENDPOINT";
+    const raw = named === "OTEL_EXPORTER_OTLP_METRICS_ENDPOINT" ? specific : base;
+    if (typeof raw !== "string" || raw.length === 0) {
+        return { ok: false, why: "neither OTEL_EXPORTER_OTLP_METRICS_ENDPOINT nor OTEL_EXPORTER_OTLP_ENDPOINT is set" };
+    }
     let url;
     try {
-        url = new URL(endpoint.endsWith("/") ? `${endpoint}v1/metrics` : `${endpoint}/v1/metrics`);
+        url = new URL(named === "OTEL_EXPORTER_OTLP_METRICS_ENDPOINT" ? raw : raw.endsWith("/") ? `${raw}v1/metrics` : `${raw}/v1/metrics`);
     } catch {
-        return { ok: false, why: `OTEL_EXPORTER_OTLP_ENDPOINT is not a URL (${JSON.stringify(endpoint)})` };
+        return { ok: false, why: `${named} is not a URL (${JSON.stringify(raw)})` };
     }
+    // Headers follow the same rule: the signal-specific list REPLACES the general one rather than
+    // merging with it, which is what the specification says and is the behaviour a reader configuring
+    // one tenant's credentials for metrics alone is relying on.
+    const headerSource = env.OTEL_EXPORTER_OTLP_METRICS_HEADERS ?? env.OTEL_EXPORTER_OTLP_HEADERS ?? "";
     const headers = { "content-type": "application/json" };
-    for (const pair of (env.OTEL_EXPORTER_OTLP_HEADERS ?? "").split(",")) {
+    for (const pair of headerSource.split(",")) {
         const at = pair.indexOf("=");
         if (at > 0) headers[pair.slice(0, at).trim().toLowerCase()] = pair.slice(at + 1).trim();
     }
-    return { ok: true, url: url.href, headers };
+    return { ok: true, url: url.href, headers, from: named };
 }
 
 /**
