@@ -136,6 +136,7 @@ decisive here. The retraction is in the plan's record rather than deleted from i
 | 3 | 1 | **suppressed**: this file said the spec had "five moves" and it enumerates six |
 | 4 | 1 | **suppressed**: the registry recorded a false constraint about its own scanner |
 | 5 | 0 | empty on `0af3802e`, all four checks green |
+| later | 2 | **suppressed both times**: the loop record's own false claims, and `the record layer` naming two paths that are not excluded |
 
 **The table stops where the findings do.** Every round after it was empty, and each was drawn by the
 records push that recorded the round before — so a round count written here goes stale the moment it is
