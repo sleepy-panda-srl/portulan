@@ -43,9 +43,9 @@
 # `core/skills/` not at all, so all five judgement rows reach nothing in a vendored arm and
 # would grade the base model. See ../../evals/ab/corpus.md. Four carriers held the narrower reading and
 # all four moved in one change; the claim is registered in ../rule-carriers.json so a fifth cannot
-# appear IN THE REGISTERED SCOPE unnoticed. That scope excludes `docs/milestones/`, `docs/plan.md`,
-# `CHANGELOG.md` and the record layer globally — which is exactly where the fourth carrier sat, so the
-# registration cannot see one appearing where the last one did.
+# appear IN THE REGISTERED SCOPE unnoticed. That scope is bounded by the registry's own `exclude`
+# list, which is the one carrier of it — and `docs/milestones/`, where the fourth carrier sat, is on
+# that list, so the registration cannot see one appearing where the last one did.
 #
 # Exit 0 green · 1 red · 2 could not run.
 

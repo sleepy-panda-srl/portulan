@@ -136,7 +136,7 @@ decisive here. The retraction is in the plan's record rather than deleted from i
 | 3 | 1 | **suppressed**: this file said the spec had "five moves" and it enumerates six |
 | 4 | 1 | **suppressed**: the registry recorded a false constraint about its own scanner |
 | 5 | 0 | empty on `0af3802e`, all four checks green |
-| later | 2 | **suppressed both times**: the loop record's own false claims, and `the record layer` naming two paths that are not excluded |
+| after | — | **suppressed**: the loop record's own false claims; then `the record layer` naming paths the registry does not exclude, at every site that enumerated it |
 
 **The table stops where the findings do.** Every round after it was empty, and each was drawn by the
 records push that recorded the round before — so a round count written here goes stale the moment it is
@@ -181,6 +181,18 @@ derived. The promotion step is the only reason any of them gated — and rounds 
 pull-request comment rather than on the promoted thread, which is exactly the mistake session 5
 recorded, repeated by the session that had read it. Answered properly on both threads afterwards.
 **Resolving them is the maintainer's, travelling with his merge approval and never ahead of it.**
+
+**The last class cost three rounds, and the third of them is the lesson.** A coverage note said `the
+record layer` is outside every rule in the registry; measured, the registry's `exclude` omits
+`.portulan/tasks/` and `.portulan/memory/`, which `version-carriers.mjs` counts as record layer. I fixed
+**two** carriers. Copilot returned the same defect at **three more**, plus my own correction — which had
+enumerated the list and got *that* wrong too, omitting the registry file and the scanner.
+
+**The repair was structural on the third attempt and should have been on the first: stop enumerating
+the list anywhere, and cite it.** Every prose copy of a list is a carrier that goes stale, which is the
+rule this change applied to four figures already and then failed to apply to a list. Those rounds are
+**siblings** of the first fix under rule 4's 2026-08-07 clause and do not spend the bound — the bound was
+already spent, and is reported above as spent.
 
 **Round 3's finding arrived in the SUPPRESSED channel, and it was a stale count in this file.** The
 summary above said the specification had *five* moves; folding a pre-commit adjustment had split the

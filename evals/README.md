@@ -430,8 +430,8 @@ rows are a part. The reason the narrower reading could not stand is measured rat
 in a vendored arm and would grade the base model. See [`ab/corpus.md`](ab/corpus.md). Four carriers
 stated the narrower reading and all four moved in one change; the claim is registered in
 [`../.portulan/rule-carriers.json`](../.portulan/rule-carriers.json) so a fifth cannot appear **in the
-registered scope** unnoticed — that scope excludes `docs/milestones/` (where the fourth carrier sat),
-`docs/plan.md`, `CHANGELOG.md`, `.portulan/handoffs/` and `.portulan/proposals/`, and nothing else.)_ _(Three carriers of
+registered scope** unnoticed — bounded by that registry's own `exclude` list, which is the one carrier
+of what it holds and which covers `docs/milestones/`, where the fourth carrier sat.)_ _(Three carriers of
 this paragraph said "two thirds are judgement", which was the unbindable total wearing the judgement
 label. Corrected at the pre-commit checkpoint, which also found one row classed `bound` whose named
 carrier the runner never reads.)_

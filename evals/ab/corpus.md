@@ -140,8 +140,8 @@ is **left standing** with a dated note attached, because that file is relocated 
 
 **What the registration does and does not buy, because a first draft of this paragraph overclaimed it.**
 It stops a fifth carrier appearing **in the registered scope**. It cannot see one appearing where the
-fourth actually was: `exclude` is global, so `docs/milestones/`, `docs/plan.md`, `CHANGELOG.md` and the
-record layer are outside every rule in that registry. **And the reduction was not performed** — five
+fourth actually was: the registry's `exclude` list is global and is the one carrier of what it holds —
+`docs/milestones/`, where the fourth carrier sat, is on it. **And the reduction was not performed** — five
 files now state the *widened* reading in full, passing only because each cites this one, and **no tell
 covers the widened wording**. So the next widening repeats this session unless it is registered too.
 

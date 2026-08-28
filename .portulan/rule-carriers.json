@@ -8,8 +8,8 @@
     "unregistered and therefore uncovered, and nothing can audit that — a rule has no token, which is",
     "proposal 0020's theorem. The arrears are named rather than pretended away.",
     "",
-    "`scope` and `exclude` are path PREFIXES, not globs. `exclude` wins. The record layer is excluded",
-    "globally because it legitimately quotes retired sentences forever."
+    "`scope` and `exclude` are path PREFIXES, not globs. `exclude` wins, and the list below is the",
+    "one carrier of what it covers — read it rather than a description of it. Much of the record layer is on it, because a record legitimately quotes retired sentences forever; NOT all of it is, and which paths belong there is #367."
   ],
   "exclude": [
     ".portulan/handoffs/",
