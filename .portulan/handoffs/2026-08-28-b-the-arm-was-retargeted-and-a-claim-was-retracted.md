@@ -127,7 +127,7 @@ only"*, concluded the compile half was inert for this corpus, then designed scen
 decisive here. The retraction is in the plan's record rather than deleted from it.
 
 
-## The review loop — two rounds, and the second was empty on the head it judged
+## The review loop — five rounds, three findings, and all three in the suppressed channel
 
 | Round | Findings | What they were |
 |---|---|---|
@@ -135,6 +135,7 @@ decisive here. The retraction is in the plan's record rather than deleted from i
 | 2 | 0 | empty on `fb92e30d`, the commit CI graded green |
 | 3 | 1 | **suppressed**: this file said the spec had "five moves" and it enumerates six |
 | 4 | 1 | **suppressed**: the registry recorded a false constraint about its own scanner |
+| 5 | 0 | empty on `0af3802e`, all four checks green |
 
 **Round 1's one finding was the third instance of one defect, and the first two never reached the
 reviewer.** All three came from the `perl` substitutions that folded the pre-commit adjustments; two
@@ -149,6 +150,13 @@ falsified claims**; Copilot then found one typo. The bound in
 [`../memory/a-review-loop-needs-a-bound.md`](../memory/a-review-loop-needs-a-bound.md) was never
 approached, and that is a fact about where the review effort was spent rather than about the change
 being simple._
+
+**Three of the three findings after round 1 arrived in the SUPPRESSED channel**, which is now the fifth
+time this repository has recorded that the low-confidence half carries the sharper material. The
+promotion step is the only reason any of them gated — and rounds 3 and 4 were first answered in a
+pull-request comment rather than on the promoted thread, which is exactly the mistake session 5
+recorded, repeated by the session that had read it. Answered properly on both threads afterwards.
+**Resolving them is the maintainer's, travelling with his merge approval and never ahead of it.**
 
 **Round 3's finding arrived in the SUPPRESSED channel, and it was a stale count in this file.** The
 summary above said the specification had *five* moves; folding a pre-commit adjustment had split the
