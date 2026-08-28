@@ -590,6 +590,10 @@ Three things keep it from widening into the thing the tier exists to stop, and e
   tells a reader auditing consent to stop looking._
 - It **neither queues nor retries**, on [`../cli/feedback.mjs`](../cli/feedback.mjs)'s rule that a queue
   flushing itself later is a silent send with extra steps.
+- **Nothing from the transport environment is logged.** Headers never; the endpoint only as origin and
+  path, with userinfo and query stripped, and not at all when it failed to parse. An endpoint legally
+  carries `user:pass@` and tokens ride in query parameters, so printing it in full leaked exactly what
+  withholding the headers protected — into CI logs, which are long-lived and world-readable here.
 
 ### The payload is closed by construction, and was widened exactly once
 

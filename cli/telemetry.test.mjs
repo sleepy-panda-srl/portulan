@@ -48,6 +48,7 @@ import {
     auditRecipes,
     consentIsCommitted,
     renderPayload,
+    safeEndpoint,
     serialize,
     stripShellComments,
     transportFromEnv,
@@ -784,7 +785,7 @@ test("with the consent COMMITTED, --export sends the serializer's exact bytes", 
         assert.equal(seen[0].headers.authorization, "Bearer SECRET");
         assert.equal(seen[0].body, readFileSync(join(REPO, "evals/telemetry/review-loop.otlp.json"), "utf8"), "the wire bytes ARE the golden's bytes");
         assert.ok(!r.stdout().includes("SECRET") && !r.stderr().includes("SECRET"), "a header value must never be printed");
-        assert.ok(r.stdout().includes("http://localhost:4318/v1/metrics"), "the endpoint IS printed — only the headers are withheld");
+        assert.ok(r.stdout().includes("http://localhost:4318/v1/metrics"), "the endpoint's origin and path ARE printed — that is the point of printing it");
     }));
 
 test("an EDITED consent refuses even where the file is tracked", async () =>
@@ -812,6 +813,43 @@ test("an EDITED consent refuses even where the file is tracked", async () =>
         });
         assert.equal(code, 2);
         assert.ok(r.stderr().includes("differs from HEAD"), r.stderr());
+    }));
+
+test("a logged endpoint carries no credentials and no query", () => {
+    // Copilot round 14 on #362. The headers were withheld because "a header list is where a bearer
+    // token lives" — and the URL was printed in full, which is the OTHER place one lives: an endpoint
+    // legally carries `user:pass@`, and tokens are routinely passed as query parameters. Withholding
+    // one and printing the other is the same rule applied at one site and not its sibling, which is
+    // the shape five earlier rounds of this review already found.
+    assert.equal(safeEndpoint("https://u:p@collector.example/v1/metrics?token=abc#frag"), "https://collector.example/v1/metrics");
+    assert.equal(safeEndpoint("http://localhost:4318/v1/metrics"), "http://localhost:4318/v1/metrics");
+    // Unparsable is never echoed: it cannot be redacted with confidence, and it is the value likeliest
+    // to be a mistyped secret.
+    assert.equal(safeEndpoint("not a url"), "<withheld: not a parsable URL>");
+});
+
+test("the not-a-URL refusal names the variable and never the value", () => {
+    const why = transportFromEnv({ OTEL_EXPORTER_OTLP_ENDPOINT: "h ttp://user:hunter2@host?token=SECRET" }).why;
+    assert.ok(why.includes("OTEL_EXPORTER_OTLP_ENDPOINT"), why);
+    for (const secret of ["hunter2", "SECRET", "user"]) {
+        assert.ok(!why.includes(secret), `the refusal echoed part of the endpoint: ${why}`);
+    }
+});
+
+test("a successful export logs no credential from the endpoint", async () =>
+    withTemp(async (dir) => {
+        const repo = await committedConsent(dir, true);
+        const r = recorder();
+        const code = await run(["--config", join(repo, "evals/telemetry/config.json"), "--repo-root", repo, "--export"], r.io, {
+            env: { OTEL_EXPORTER_OTLP_METRICS_ENDPOINT: "https://tenant:hunter2@collector.example/v1/metrics?apikey=SECRET" },
+            post: async () => ({ ok: true, status: 200, text: "" }),
+        });
+        assert.equal(code, 0, r.stderr());
+        const all = `${r.stdout()}\n${r.stderr()}`;
+        for (const secret of ["hunter2", "SECRET", "apikey"]) {
+            assert.ok(!all.includes(secret), `a secret reached the log: ${secret}`);
+        }
+        assert.ok(all.includes("https://collector.example/v1/metrics"), "the origin and path are still reported");
     }));
 
 test("a collector answering non-2xx is a verdict, and the send really happened", async () =>

@@ -164,8 +164,9 @@ same commit CI graded.
 | 11 | 2 | `Number.isInteger` where `isSafeInteger` is meant — an exact int64 claimed for a number that cannot be exact |
 | 12 | 2 | `--check` and `--write` unpinned — the **fifth** instance of the root/cwd class in this file |
 | 13 | 3 | the consent prose named two refusal states of three, omitting *staged and never committed* |
+| 14 | 2 | **a seam finding** — the endpoint logged in full, and echoed raw on a parse failure |
 
-**Five of the twenty-eight were introduced by an earlier round's fix**, and that is the number worth
+**Five of the thirty were introduced by an earlier round's fix**, and that is the number worth
 carrying rather than the total. Round 6's `packRoots` is round 1's repair applied at the site it was
 found and not at its sibling one line below. Round 7's is worse: round 4's 128-means-*not a repository*
 made **the one case this gate exists for** — a consent staged and never committed — report a broken
@@ -232,6 +233,24 @@ refusals to name the staged state, and deleting the clause from
 code outran the code — after *"exactly as the specification defines them"* and *"no workflow runs
 it"* — and the first time the repair was a check rather than a correction.
 
+**Round 14 is a seam finding, and it is the one to read twice.** `--export` logged the collector URL in
+full on success, and `transportFromEnv` echoed the raw endpoint on a parse failure. An endpoint legally
+carries `user:pass@` and tokens ride in query parameters — so both leaked exactly what withholding the
+header list was protecting, into CI logs that are long-lived and world-readable here. **The reasoning
+was written one line above the defect**: *"a header list is where a bearer token lives"*. The rule was
+applied to headers and not to the URL, which is the same one-site-not-its-sibling shape five earlier
+rounds found, arriving this time in the class this repository treats as most serious.
+
+The parse-failure half is worse than the success half: **an unparsable endpoint is the value likeliest
+to be a mistyped secret**, so the one case where redaction is impossible is the one where echoing costs
+most. It names the variable and withholds the value. `safeEndpoint` strips userinfo, query and fragment
+everywhere a URL is printed, and a case exports through a fake transport with a credentialled,
+token-bearing endpoint and asserts no part of either reaches stdout or stderr.
+
+**The suppressed channel carried the sharper half again**, as it did in rounds 1, 5 and 10. Four of this
+review's highest-value findings arrived low-confidence, which is worth more than the tally: the
+promotion step this repository built is the only reason any of them gated.
+
 **The bound was exceeded, and it was granted rather than met.**
 [`../memory/a-review-loop-needs-a-bound.md`](../memory/a-review-loop-needs-a-bound.md) rule 4 is *two
 fix-rounds, then triage*: after the second, what remains becomes an issue and does not become another
@@ -247,7 +266,7 @@ anything.
 
 **And the loop's own meter has a data point about itself.** Clause (c) landed two sessions ago
 measuring 4.67 submissions per pull request over the thirty most recently merged. This pull request took
-**thirteen**, which the record's own table puts at the level of its worst observed — #49 at nine, #44 and
+**fourteen**, which the record's own table puts at the level of its worst observed — #49 at nine, #44 and
 #57 at eight. The change that built the meter for exactly this figure produced one of the heaviest loops
 in the corpus, and the meter cannot see it: `evals/review-loop/snapshot.json` is a committed capture and
 does not refresh itself ([#356](https://github.com/sleepy-panda-srl/portulan/issues/356)). Re-running

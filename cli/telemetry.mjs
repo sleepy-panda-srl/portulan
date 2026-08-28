@@ -569,8 +569,37 @@ export const serialize = (payload) => `${JSON.stringify(payload, null, 2)}\n`;
  * Read transport from the OpenTelemetry standard environment. Nothing here is committed anywhere.
  *
  * `OTEL_EXPORTER_OTLP_HEADERS` is the specification's `key=value,key=value` list; it is parsed but
- * **never printed**, because a header list is where a bearer token lives.
+ * **never printed**, because a header list is where a bearer token lives. Neither is the endpoint,
+ * beyond its origin and path — see `safeEndpoint`, and round 14 of this file's own review for why
+ * withholding one while printing the other was not enough.
  */
+/**
+ * A URL safe to print: no userinfo, no query, no fragment.
+ *
+ * **The headers were withheld and the URL was not, which is the same reasoning applied at one site and
+ * not its sibling.** A collector endpoint legally carries credentials — `https://user:pass@host/…` —
+ * and tokens are routinely passed as query parameters, so printing the endpoint on success leaked
+ * exactly what withholding the header list was protecting. Into CI logs, which are long-lived and, in
+ * this repository, world-readable.
+ *
+ * Origin and path only. Enough for a human to tell *where it went*, which is the whole reason the
+ * endpoint is printed at all. Copilot round 14 on #362.
+ */
+export function safeEndpoint(href) {
+    try {
+        const u = new URL(href);
+        u.username = "";
+        u.password = "";
+        u.search = "";
+        u.hash = "";
+        return u.href;
+    } catch {
+        // Unparsable, so nothing can be redacted from it with any confidence — and an unparsable value
+        // is exactly the one most likely to be a mistyped secret. Never echoed.
+        return "<withheld: not a parsable URL>";
+    }
+}
+
 export function transportFromEnv(env) {
     // **The signal-specific variables win, and they are used AS GIVEN.** The OpenTelemetry protocol
     // specification draws a distinction this function ignored: `OTEL_EXPORTER_OTLP_ENDPOINT` is a BASE
@@ -591,7 +620,10 @@ export function transportFromEnv(env) {
     try {
         url = new URL(named === "OTEL_EXPORTER_OTLP_METRICS_ENDPOINT" ? raw : raw.endsWith("/") ? `${raw}v1/metrics` : `${raw}/v1/metrics`);
     } catch {
-        return { ok: false, why: `${named} is not a URL (${JSON.stringify(raw)})` };
+        // The raw value is NOT echoed. It comes from the environment, it may carry credentials or a
+        // query token, and a value that failed to parse is the likeliest of all to be a mistyped
+        // secret. The variable name is what a reader needs; the value is what they must not be given.
+        return { ok: false, why: `${named} is not a parsable URL — its value is withheld, since an endpoint may carry credentials` };
     }
     // Headers follow the same rule: the signal-specific list REPLACES the general one rather than
     // merging with it, which is what the specification says and is the behaviour a reader configuring
@@ -961,8 +993,10 @@ export async function run(argv = process.argv.slice(2), io = console, { env = pr
             io.error(`telemetry: the collector answered ${res.status}${res.text ? ` — ${res.text.slice(0, 200)}` : ""}`);
             return 1;
         }
-        // The endpoint is printed, the headers never are: a header list is where a bearer token lives.
-        io.log(`telemetry: exported ${emitted} metric(s) to ${t.url} — ${res.status}`);
+        // **Origin and path only, and the headers never.** A header list is where a bearer token lives —
+        // and so is a URL, which may carry `user:pass@` or a query token. Withholding one and printing
+        // the other was the same rule applied at one site and not its sibling.
+        io.log(`telemetry: exported ${emitted} metric(s) to ${safeEndpoint(t.url)} — ${res.status}`);
         return 0;
     }
 
