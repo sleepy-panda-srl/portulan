@@ -143,11 +143,24 @@ synthetic second-producer case, and the one question that went back to him. One 
 other way: it held the transport reading to be derived rather than ruled, and it was ruled — it was the
 third option in the question he answered.
 
-## The review loop — eight rounds, sixteen findings, and the bound was granted rather than met
+## The review loop — the bound was granted rather than met
 
-**Every finding was real. None was disputed, and none was triaged away.** Rounds 1-3 found defects in
-the change as written; rounds 4-7 found defects in the fixes for them; round 8 came back empty on the
-same commit CI graded.
+_This heading carried **"eight rounds, sixteen findings"** for six rounds after both figures stopped
+being true. It is not corrected a seventh time: the figures are **deleted** and the table below is the
+one carrier, which is this repository's own repair for a hand-maintained tally whose subject keeps
+growing — applied to recipe counts, to the CLI roster, and to the operator total before it, and earned
+here by a heading in the session that documents that class five times over._
+
+**Every finding was real. None was disputed, and none was triaged away.** The shape of the descent is
+the part worth reading: rounds 1-3 found defects in the change as written, rounds 4-7 found defects in
+the fixes for those, rounds 10-12 found rails that were incomplete rather than wrong, round 13 found
+only prose, round 14 found the seam, and **round 15 came back empty** — no comments, no suppressed
+notes, no unanswered threads, on the commit CI graded green.
+
+_Round 8 also came back empty and was reported as the close. It was not: the records push that followed
+it drew round 9, which found a real defect. **An empty round is only a close if nothing is pushed
+after it**, and rule 2's "records land last" does not stop the last push from being reviewed like any
+other._
 
 | Round | Findings | What they were |
 |---|---|---|
@@ -165,6 +178,7 @@ same commit CI graded.
 | 12 | 2 | `--check` and `--write` unpinned — the **fifth** instance of the root/cwd class in this file |
 | 13 | 3 | the consent prose named two refusal states of three, omitting *staged and never committed* |
 | 14 | 2 | **a seam finding** — the endpoint logged in full, and echoed raw on a parse failure |
+| 15 | 0 | **empty** — no comments, no suppressed notes, no unanswered threads, on `f0091df8` |
 
 **Five of the thirty were introduced by an earlier round's fix**, and that is the number worth
 carrying rather than the total. Round 6's `packRoots` is round 1's repair applied at the site it was
@@ -266,7 +280,7 @@ anything.
 
 **And the loop's own meter has a data point about itself.** Clause (c) landed two sessions ago
 measuring 4.67 submissions per pull request over the thirty most recently merged. This pull request took
-**fourteen**, which the record's own table puts at the level of its worst observed — #49 at nine, #44 and
+**fifteen**, which the record's own table puts at the level of its worst observed — #49 at nine, #44 and
 #57 at eight. The change that built the meter for exactly this figure produced one of the heaviest loops
 in the corpus, and the meter cannot see it: `evals/review-loop/snapshot.json` is a committed capture and
 does not refresh itself ([#356](https://github.com/sleepy-panda-srl/portulan/issues/356)). Re-running
