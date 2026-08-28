@@ -2558,10 +2558,10 @@ _The seam applies here too: no client-identifying references._
 - 2026-08-28 · M8, session 5 · **OTel opt-in config**: [`cli/telemetry.mjs`](../cli/telemetry.mjs)
   renders the review-loop figures as OTLP/HTTP JSON Gauge points stamped with the instant they are
   *about*; `evals/telemetry/` holds the committed opt-in and a byte-compared golden, a `telemetry`
-  recipe holds that, a drill fired (roster 24). **Transport, signal set and consent all RULED.** The
-  committed config is the only gate — not `OTEL_SDK_DISABLED`, which defaults false. `--export` refuses
-  when it opts out (1) and when it is **untracked or differs from HEAD** (2); the ruling is transcribed
-  into `gates.json` and the gate map. Second rail: **no yielded recipe may reach a network mode**. The
-  `telemetry` **spec slot was CUT** and filed as a proposal. · Session-open APPROVE-WITH-ADJUSTMENTS
-  (8); Fable 5 CONCUR-WITH-ADJUSTMENTS on both rulings, all folded in. · Seam scan clean over the diff,
-  the branch name and the commit message, with a planted-term control reddening. · [handoff](../.portulan/handoffs/2026-08-28-the-consent-had-to-be-committed-not-merely-written.md)
+  recipe holds it, a drill fired (roster 24). **Transport, signal set and consent all RULED.** The
+  committed config is the only gate; `--export` refuses when it opts out (1) and when it is untracked,
+  **staged-but-uncommitted**, or differs from HEAD (2). Second rail: **no yielded recipe may reach a
+  network mode**. Slot CUT → [`0034`](../.portulan/proposals/0034-one-spec-bump-carries-both-evals-and-telemetry.md), accepted. · Session-open A-W-A (8); pre-commit A-W-A (7+1); Fable 5
+  CONCUR-W-A on both rulings. · **Copilot: 8 rounds, 16 findings, all real — 3 introduced by an earlier
+  round's fix. Rule 4's bound EXCEEDED and GRANTED, not met**, on his *"iterate until empty"*. · Seam
+  scan clean, planted control reddening. · [handoff](../.portulan/handoffs/2026-08-28-the-consent-had-to-be-committed-not-merely-written.md)

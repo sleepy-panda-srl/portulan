@@ -143,11 +143,63 @@ synthetic second-producer case, and the one question that went back to him. One 
 other way: it held the transport reading to be derived rather than ruled, and it was ruled — it was the
 third option in the question he answered.
 
+## The review loop — eight rounds, sixteen findings, and the bound was granted rather than met
+
+**Every finding was real. None was disputed, and none was triaged away.** Rounds 1-3 found defects in
+the change as written; rounds 4-7 found defects in the fixes for them; round 8 came back empty on the
+same commit CI graded.
+
+| Round | Findings | What they were |
+|---|---|---|
+| 1 | 3 | the snapshot unvalidated before metering; `startsWith("..")` where `isInside` exists; the workspace manifest resolved against the cwd |
+| 2 | 1 | one attribute list doing two jobs, green by coincidence of one instance |
+| 3 | 2 | the audit's matcher knew one path spelling; a recipe script could resolve outside the tree |
+| 4 | 1 | *git failed* reported as *the file is untracked* |
+| 5 | 1 | `OTEL_EXPORTER_OTLP_METRICS_ENDPOINT` ignored, under a docblock claiming spec conformance |
+| 6 | 3 | `packRoots` left un-pinned by round 1's own fix; `--help` stale after round 5; a gate-map path one level past the root |
+| 7 | 4 | round 4's fix made *staged and never committed* unreachable; `--config` un-pinned, twice over |
+| 8 | 0 | empty |
+
+**Three of the sixteen were introduced by an earlier round's fix**, and that is the number worth
+carrying rather than the total. Round 6's `packRoots` is round 1's repair applied at the site it was
+found and not at its sibling one line below. Round 7's is worse: round 4's 128-means-*not a repository*
+made **the one case this gate exists for** — a consent staged and never committed — report a broken
+repository instead. `0020`'s class, twice, inside the change that cites `0020`.
+
+**The bound was exceeded, and it was granted rather than met.**
+[`../memory/a-review-loop-needs-a-bound.md`](../memory/a-review-loop-needs-a-bound.md) rule 4 is *two
+fix-rounds, then triage*: after the second, what remains becomes an issue and does not become another
+push. This loop ran **seven fix-rounds**. Rounds 6 and 7 are substantially **siblings** of rounds 1, 4
+and 5 and do not spend the bound under the 2026-08-07 clause; rounds 3, 4 and 5 opened new subjects and
+did. So the bound was spent by round 3 and five pushes followed it.
+
+What licenses them is the maintainer's explicit instruction, *"iterate the Copilot rounds until empty"*
+— which is the grant rule 4 requires, and which the 2026-08-26 handoff records as *"the maintainer's to
+grant and not mine to assume"*. It is recorded here as **granted**, not as compliance: a rule obeyed
+because somebody waived it, written down as though it had been met, is how a bound stops meaning
+anything.
+
+**And the loop's own meter has a data point about itself.** Clause (c) landed two sessions ago
+measuring 4.67 submissions per pull request over the thirty most recently merged. This pull request took
+**eight**, which the record's own table puts at the level of its worst observed — #49 at nine, #44 and
+#57 at eight. The change that built the meter for exactly this figure produced one of the heaviest loops
+in the corpus, and the meter cannot see it: `evals/review-loop/snapshot.json` is a committed capture and
+does not refresh itself ([#356](https://github.com/sleepy-panda-srl/portulan/issues/356)). Re-running
+`--fetch` after this merges would fold it in.
+
+**Every thread was answered on the thread.** Three from rounds 4 and 5 were first answered in a
+pull-request comment instead — the promotion step exists to distinguish *answered* from *ignored*, and
+answering elsewhere defeats it — and were replied to properly at round 6. Resolving them is the
+maintainer's, travelling with his merge approval and never ahead of it.
+
 ## State
 
+
 `main` @ `733cea7c` at branch point. Every recipe the manifest yields ran green in this working copy,
-exit codes read directly; suite 2109, 0 failing; `drills --check` green at 24 and the `telemetry` drill
-forced red and fired.
+exit codes read directly, and re-run in full after **every** round; suite 2109 at the first push and
+growing with each round's cases to **64 in this module alone**, 0 failing; `drills --check` green at 24
+and the `telemetry` drill forced red and fired. **All four CI checks green on the final commit**, which
+is the half a local run cannot establish.
 
 **Seam scan clean** over the staged diff, the branch name and the commit message, run against the
 banned-term list in the private context with a **planted-term control reddening** — because a scan that
