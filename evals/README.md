@@ -543,7 +543,7 @@ a migration *"is not a thing to do in passing"* and defers to **when milestone 8
 would have shipped with **zero filled instances**, since this workspace declares telemetry off and
 [`../examples/`](../examples/) stays at 2.4 — which is
 [`../spec/slots.md`](../spec/slots.md)'s *"splitting on speculation is how a schema acquires slots
-nobody fills"* exactly. It is filed as a proposal to ride with `evals` at the close, which makes it one
+nobody fills"* exactly. It is filed as [`0034`](../.portulan/proposals/0034-one-spec-bump-carries-both-evals-and-telemetry.md), to ride with `evals` at the close, which makes it one
 bump instead of two.
 
 ### Consent — ruled, and railed rather than promised

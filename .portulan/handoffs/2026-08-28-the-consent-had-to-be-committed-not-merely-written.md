@@ -54,7 +54,7 @@ was right: **every slot in that train arrived through a ruled proposal** (2.8 ci
 proposal *"never opened as an implementation pull request with tests"*, and `spec/slots.md`'s own
 `evals` deferral says a schema change plus a spec bump plus a migration **"is not a thing to do in
 passing"**. The slot would also have shipped with **zero filled instances**. Filed as a proposal to ride
-with `evals` at the close — one bump instead of two.
+with `evals` at the close as [`0034`](../proposals/0034-one-spec-bump-carries-both-evals-and-telemetry.md) — one bump instead of two.
 
 ## Where the payload's closed list was widened, and by whom
 
