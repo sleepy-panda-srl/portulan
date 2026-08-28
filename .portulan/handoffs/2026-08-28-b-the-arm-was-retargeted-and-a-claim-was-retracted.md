@@ -134,6 +134,7 @@ decisive here. The retraction is in the plan's record rather than deleted from i
 | 1 | 1 | an apostrophe rendered as a backtick in the `m08.md` relocated-history note |
 | 2 | 0 | empty on `fb92e30d`, the commit CI graded green |
 | 3 | 1 | **suppressed**: this file said the spec had "five moves" and it enumerates six |
+| 4 | 1 | **suppressed**: the registry recorded a false constraint about its own scanner |
 
 **Round 1's one finding was the third instance of one defect, and the first two never reached the
 reviewer.** All three came from the `perl` substitutions that folded the pre-commit adjustments; two
@@ -155,6 +156,21 @@ slot-drop row in two, and it enumerates **six**. The count is **deleted rather t
 repair this session applied to the arm's file count and the link figure, and the third time in one
 change that a hand-maintained number went stale. That the sharper of the round's two channels was the
 suppressed one matches what this repository has recorded of the promotion step four times over.
+
+**Round 4 caught a false claim about the mechanism, and correcting it exposed a wrong correction of my
+own.** `rule-carriers.json` said its tells were LINE-LEVEL fragments, "which is the granularity the
+scanner actually reads". It is not: `normalise()` collapses every whitespace run and strips emphasis,
+code markers and link markup, so the real constraint is **contiguity after normalisation** — a tell may
+span a prose wrap freely, and cannot span a `# ` comment prefix or a string-literal boundary, because
+those survive.
+
+_The sequence matters more than the sentence._ The pre-commit checkpoint measured **two** of four
+spellings dead. I re-measured with `git grep -F`, got **three**, and reported the checkpoint as having
+under-counted. **`git grep` is line-based and the scanner is not** — so the wrong instrument produced a
+confident false correction of a correct verdict, and it went into a handoff and a message to the
+maintainer before Copilot's suppressed channel caught the claim it rested on. Measured through
+`normalise` itself: two alive, two dead, exactly as the checkpoint said. **Re-measuring a supervisor's
+figure is right; re-measuring it with a different instrument and not noticing is how that goes wrong.**
 
 **Round 2's body was 127 bytes**, which is close enough to the *"unable to review"* shape this
 repository has met before (117 bytes) that it was **read rather than counted**: it says *"reviewed 10
