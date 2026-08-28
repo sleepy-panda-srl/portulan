@@ -623,9 +623,13 @@ takes, one clause over.
   it first reads: it moves the act from a file edit nobody sees into **a commit that appears in a
   reviewed diff**, on the branch a human merges. It cannot tell whose commit it is, and nothing here
   claims it can. Measured at the pre-commit checkpoint rather than reasoned about.
-- **The offline audit knows only the modes it was given.** A network mode added to `cli/` with no row in
-  `NETWORK_MODES` is uncovered, and nothing can audit that the row was added — the same arrears
-  [`../.portulan/rule-carriers.json`](../.portulan/rule-carriers.json) names about its own registry. It
+- **The offline audit's class is derived, and was not always.** The table claimed to rail the class of
+  network-capable modes in `cli/` and listed **two of three** — `cli/feedback.mjs` files a GitHub issue
+  through `gh issue create` and had been network-capable longer than either of the others. A set drawn
+  by its author and reported as complete is the census shape session 4 named one clause over, committed
+  at this table's birth and found at round 10 of the review. The suite now **derives** the set from the
+  tree, so a new network-capable module reddens. What remains uncovered is narrower: a module reaching
+  the network in a way the derivation does not see, and a mode reached **indirectly**. It
   matches a module as a path **suffix** and a flag as a **token**, so `./` and `--flag=value` spellings
   are covered — the first version knew one literal string, which made `./` a bypass — but a mode reached
   **indirectly**, through another script or a flag built at runtime, is invisible to it and no wider

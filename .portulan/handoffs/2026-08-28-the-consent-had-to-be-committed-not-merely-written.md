@@ -160,8 +160,9 @@ same commit CI graded.
 | 7 | 4 | round 4's fix made *staged and never committed* unreachable; `--config` un-pinned, twice over |
 | 8 | 0 | empty |
 | 9 | 1 | `path.relative` handed to git unnormalised — `\\` on Windows where git wants `/` |
+| 10 | 4 | `NETWORK_MODES` railed *the class* and listed two of three; `--workspace` un-pinned; both untested |
 
-**Three of the seventeen were introduced by an earlier round's fix**, and that is the number worth
+**Four of the twenty-one were introduced by an earlier round's fix**, and that is the number worth
 carrying rather than the total. Round 6's `packRoots` is round 1's repair applied at the site it was
 found and not at its sibling one line below. Round 7's is worse: round 4's 128-means-*not a repository*
 made **the one case this gate exists for** — a consent staged and never committed — report a broken
@@ -178,6 +179,17 @@ whether the three spelling variants are one rule is not an implementation pull r
 check in this repository can observe that class**: CI is `ubuntu-latest` and nothing runs on Windows, so
 the only reason the eighth instance was caught is that a reviewer read the code.
 
+**Round 10 found the rail's own class incomplete, and that is the finding to carry out of this
+session.** `NETWORK_MODES` says it rails *the class* of network-capable modes in `cli/`. It listed two,
+and [`../../cli/feedback.mjs`](../../cli/feedback.mjs) files a GitHub issue through `gh issue create`
+— network-capable longer than either row. A set drawn by its author and reported as complete is the
+census shape session 4 named one clause over, written into the rail built to prevent it. **The residual
+was even stated in three carriers** — *"a network mode with no row here is UNRAILED, and nothing can
+audit that a row was added"* — and treated as an acceptable limit while the table was already
+incomplete. Naming an arrears is not the same as knowing you are inside it. The set is **derived from
+the tree** now: a suite case enumerates every `cli/` module reaching `fetch` or `gh` and requires a row,
+and deleting the new row reddens two cases, measured.
+
 **The bound was exceeded, and it was granted rather than met.**
 [`../memory/a-review-loop-needs-a-bound.md`](../memory/a-review-loop-needs-a-bound.md) rule 4 is *two
 fix-rounds, then triage*: after the second, what remains becomes an issue and does not become another
@@ -193,7 +205,7 @@ anything.
 
 **And the loop's own meter has a data point about itself.** Clause (c) landed two sessions ago
 measuring 4.67 submissions per pull request over the thirty most recently merged. This pull request took
-**nine**, which the record's own table puts at the level of its worst observed — #49 at nine, #44 and
+**ten**, which the record's own table puts at the level of its worst observed — #49 at nine, #44 and
 #57 at eight. The change that built the meter for exactly this figure produced one of the heaviest loops
 in the corpus, and the meter cannot see it: `evals/review-loop/snapshot.json` is a committed capture and
 does not refresh itself ([#356](https://github.com/sleepy-panda-srl/portulan/issues/356)). Re-running

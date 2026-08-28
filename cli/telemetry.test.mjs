@@ -547,6 +547,46 @@ test("stripShellComments removes whole-line comments only, and says nothing abou
     assert.equal(stripShellComments("# gone\nkept\n   # also gone"), "kept");
 });
 
+test("the audit catches feedback's network path too — the class, not this session's two modules", () => {
+    // Copilot round 10 on #362. `cli/feedback.mjs` files a GitHub issue through `gh issue create`,
+    // gated on `--approve`, and was network-capable before either of the other two rows existed. The
+    // table claimed to rail *the class* and enumerated two of three — a set drawn by its author and
+    // reported as complete, which is the census shape this milestone's session 4 named.
+    assert.equal(auditRecipeSource("node cli/feedback.mjs send report.md --approve").length, 1);
+    assert.equal(auditRecipeSource("node ./cli/feedback.mjs send report.md --approve").length, 1);
+    // Preview is the non-network mode and must not be a finding.
+    assert.deepEqual(auditRecipeSource("node cli/feedback.mjs preview report.md"), []);
+});
+
+test("every module in cli/ that can reach the network has a row in NETWORK_MODES", () => {
+    // The half that makes the table a rail rather than a list: derived from the tree, so a new
+    // network-capable module reddens instead of being quietly uncovered. `gh` and `fetch` are the only
+    // two ways out of this process, and both are greppable.
+    const derived = fs
+        .readdirSync(join(REPO, "cli"))
+        .filter((f) => f.endsWith(".mjs") && !f.includes(".test."))
+        .filter((f) => {
+            const src = readFileSync(join(REPO, "cli", f), "utf8");
+            return /\bfetch\(/.test(src) || /spawnSync\(\s*"gh"|exec\(\s*"gh"|\["gh"/.test(src) || /\bgh\(\[/.test(src);
+        })
+        .map((f) => `cli/${f}`);
+    const rostered = new Set(NETWORK_MODES.map((m) => m.module));
+    const missing = derived.filter((m) => !rostered.has(m));
+    assert.deepEqual(missing, [], `network-capable module(s) with no NETWORK_MODES row: ${missing.join(", ")}`);
+});
+
+test("a --workspace resolving OUTSIDE the pinned root is could-not-run", () =>
+    withTemp((dir) => {
+        // Copilot round 10 on #362. Resolving against `repoRoot` does not keep it there: `../../..`, or
+        // an absolute path anywhere, would grade a manifest outside the tree the audit claims to answer
+        // about. Round 3 closed this for a recipe's SCRIPT and left the MANIFEST open — the same fix
+        // owed at two sites and taken at one.
+        mkdirSync(join(dir, "repo"), { recursive: true });
+        const res = auditRecipes({ workspaceDir: "../..", repoRoot: join(dir, "repo") });
+        assert.equal(res.ok, false);
+        assert.ok(res.why.includes("resolves outside the repository"), res.why);
+    }));
+
 test("every network mode in the table names a module that exists", () => {
     for (const m of NETWORK_MODES) {
         assert.ok(readFileSync(join(REPO, m.module), "utf8").includes(m.flag), `${m.module} does not carry ${m.flag} — the table names a mode that is not there`);

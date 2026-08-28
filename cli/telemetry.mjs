@@ -147,6 +147,13 @@ import { isInside } from "./inside.mjs";
 export const NETWORK_MODES = Object.freeze([
     { module: "cli/review-meter.mjs", flag: "--fetch", what: "fetches review data from GitHub" },
     { module: "cli/telemetry.mjs", flag: "--export", what: "posts an OTLP payload to a collector" },
+    // **Added at round 10, and its absence is the defect this table's own docblock warns about,
+    // committed at the table's birth.** `./feedback.mjs` files a GitHub issue through
+    // `gh issue create`, gated on `--approve` exactly as this module's export is gated on a committed
+    // config. It was network-capable before either of the rows above existed, and enumerating two of
+    // three while claiming to rail *the class* is the census-over-its-own-set shape milestone 8's own
+    // session 4 named: a set drawn by its author, reported as complete.
+    { module: "cli/feedback.mjs", flag: "--approve", what: "files a GitHub issue with `gh issue create`" },
 ]);
 
 /**
@@ -229,6 +236,14 @@ export function auditRecipes({ workspaceDir, repoRoot, packRoots = [] }) {
     // `--pack-root`, arriving in a new tool. `path.resolve` leaves an absolute `--workspace` alone, so
     // naming one explicitly still wins. Copilot round 1 on #362.
     const workspace = path.resolve(repoRoot, workspaceDir);
+    // **And it must be INSIDE the pinned root.** Resolving against `repoRoot` does not keep it there:
+    // `--workspace ../../elsewhere`, or an absolute path anywhere, would have this audit grade a
+    // manifest that is not part of the tree it claims to be answering about. Round 3 closed exactly
+    // this for a recipe's *script* and left the *manifest* open — the same fix owed at two sites and
+    // taken at one, which is now the fourth instance of that shape in this file. Copilot round 10.
+    if (!isInside(path.resolve(repoRoot), workspace)) {
+        return { ok: false, why: `the workspace at ${workspace} resolves outside the repository at ${repoRoot}; this audit grades the pinned tree and will not read past it` };
+    }
     // **And the pack roots, which the first repair of this defect left behind.** Round 1 pinned
     // `workspaceDir` against `repoRoot` and passed `packRoots` through untouched, so a run from outside
     // the tree still resolved them against the caller's cwd — and the yielded recipe SET, hence this

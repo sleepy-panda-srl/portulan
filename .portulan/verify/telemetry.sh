@@ -50,9 +50,15 @@
 # is that the snapshot's capture stamp travels INSIDE the payload, so a stale export arrives labelled
 # stale rather than looking fresh.
 #
-# **The offline check knows only the modes it was given.** A network mode added to cli/ with no row in
-# `NETWORK_MODES` is uncovered, and nothing can audit that the row was added — the same arrears
-# ../rule-carriers.json names about its own registry.
+# **The class is DERIVED, not enumerated — since round 10 of this pull request's review.** The table
+# claimed to rail the class of network-capable modes and listed two of three: `cli/feedback.mjs` files a
+# GitHub issue through `gh issue create` and had been network-capable longer than either. A suite case
+# now derives the set from the tree — every `cli/` module reaching `fetch` or `gh` must have a row — so
+# a new network-capable module reddens instead of being quietly uncovered.
+#
+# What is still uncovered, and it is narrower than the sentence this replaces: a module reaching the
+# network some way that derivation does not see, and a mode reached INDIRECTLY through another script
+# or a flag built at runtime.
 #
 # **What it now recognises, and what it still cannot.** A module is matched as a path SUFFIX on a
 # separator boundary, so `cli/x.mjs`, `./cli/x.mjs` and an absolute spelling all name it, and a flag is
