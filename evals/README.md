@@ -577,7 +577,9 @@ narrower.
 
 Three things keep it from widening into the thing the tier exists to stop, and each is a rail:
 
-- `--export` refuses when the config is **untracked or differs from `HEAD`**, so an agent cannot
+- `--export` refuses in **three** states, and the third is the one that matters most: the config is
+  **untracked**, **tracked but absent from `HEAD`** — staged and never committed — or **differs from
+  `HEAD`**. So an agent cannot
   manufacture consent by editing a working copy. Without this the ruling would be a mandate nothing
   checks, arriving inside the change that states it.
 - **`--export` is person-invoked only.** No workflow, hook or schedule runs *that mode*, and wiring one

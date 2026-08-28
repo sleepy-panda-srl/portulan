@@ -928,6 +928,32 @@ test("the committed payload matches the committed snapshot and config", async ()
     );
 });
 
+test("every carrier of the consent refusals names all three states", () => {
+    // Copilot round 13 on #362 raised this at three carriers; a whole-file sweep found SIX. The prose
+    // said "untracked or differs from HEAD" and omitted *tracked but absent from HEAD* — the staged
+    // case, which round 7 had added to the code and which is the state a reader most needs, since
+    // staging is how an agent would manufacture consent one step short of a commit. A reader of the
+    // old sentence could conclude that staging an opt-in was sufficient.
+    //
+    // Asserted rather than swept once, because a prose sweep is a one-time act and this is the third
+    // time in this review that a claim about the code outran the code.
+    const carriers = [
+        "evals/README.md",
+        "docs/milestones/m08.md",
+        "cli/README.md",
+        ".portulan/gate-map.md",
+        ".portulan/gates.json",
+    ];
+    for (const c of carriers) {
+        const text = readFileSync(join(REPO, c), "utf8");
+        assert.ok(/untracked/i.test(text), `${c} does not describe the consent refusals at all`);
+        assert.ok(
+            /absent from `?HEAD`?|staged and never committed/i.test(text),
+            `${c} describes the consent refusals and omits the staged-but-uncommitted state`,
+        );
+    }
+});
+
 test("this workspace ships OPTED OUT", () => {
     // Not a lock on the value — he may opt in, and this case then says so out loud in the diff that
     // does it, which is the point. What it forbids is the flag moving unnoticed.

@@ -30,7 +30,7 @@ carriers is obeyed at the narrower, and the emitter would have shipped out-of-po
 **"The committed config is the consent" is a mandate nothing checks, unless something checks it.** As
 ruled, an agent could write `enabled: true` into a working copy and export on nobody's decision — the
 maintainer's Gated act performed by the very thing it gates. So `--export` now refuses when the config
-is **untracked or differs from `HEAD`**, on `drills.mjs`'s reports-on-a-commit discipline one file wide.
+is **untracked**, **staged and never committed**, or **differs from `HEAD`**, on `drills.mjs`'s reports-on-a-commit discipline one file wide.
 Caught by the supervisor, not by me, and it is the difference between a ruling and a rail.
 
 ## The older network mode was the unrailed one
@@ -163,8 +163,9 @@ same commit CI graded.
 | 10 | 4 | `NETWORK_MODES` railed *the class* and listed two of three; `--workspace` un-pinned; both untested |
 | 11 | 2 | `Number.isInteger` where `isSafeInteger` is meant — an exact int64 claimed for a number that cannot be exact |
 | 12 | 2 | `--check` and `--write` unpinned — the **fifth** instance of the root/cwd class in this file |
+| 13 | 3 | the consent prose named two refusal states of three, omitting *staged and never committed* |
 
-**Five of the twenty-five were introduced by an earlier round's fix**, and that is the number worth
+**Five of the twenty-eight were introduced by an earlier round's fix**, and that is the number worth
 carrying rather than the total. Round 6's `packRoots` is round 1's repair applied at the site it was
 found and not at its sibling one line below. Round 7's is worse: round 4's 128-means-*not a repository*
 made **the one case this gate exists for** — a consent staged and never committed — report a broken
@@ -217,6 +218,20 @@ dropping `write` from the list reddens it, measured. That is the shape the four 
 have taken, and the reviewer's habit of raising these as *pairs* was the standing signal that one rule
 was spread across call sites.
 
+**Round 13 found the prose describing two of the gate's three refusals, and the omitted one inverted
+the meaning.** `consentIsCommitted` refuses when the config is untracked, **tracked but absent from
+`HEAD`**, or differing from `HEAD`; six carriers named only the first and last. A reader of that
+sentence could conclude that **staging** an opt-in was sufficient consent — which is precisely the act
+the gate exists to refuse, and precisely the state round 7 had just made reachable again. Raised at
+three carriers; a whole-file sweep found six, which is round 12's lesson applied one round later
+instead of five.
+
+**The prose is railed now rather than swept.** A suite case requires every carrier describing the
+refusals to name the staged state, and deleting the clause from
+[`../gate-map.md`](../gate-map.md) reddens it. That is the third time in this review a claim about the
+code outran the code — after *"exactly as the specification defines them"* and *"no workflow runs
+it"* — and the first time the repair was a check rather than a correction.
+
 **The bound was exceeded, and it was granted rather than met.**
 [`../memory/a-review-loop-needs-a-bound.md`](../memory/a-review-loop-needs-a-bound.md) rule 4 is *two
 fix-rounds, then triage*: after the second, what remains becomes an issue and does not become another
@@ -232,7 +247,7 @@ anything.
 
 **And the loop's own meter has a data point about itself.** Clause (c) landed two sessions ago
 measuring 4.67 submissions per pull request over the thirty most recently merged. This pull request took
-**twelve**, which the record's own table puts at the level of its worst observed — #49 at nine, #44 and
+**thirteen**, which the record's own table puts at the level of its worst observed — #49 at nine, #44 and
 #57 at eight. The change that built the meter for exactly this figure produced one of the heaviest loops
 in the corpus, and the meter cannot see it: `evals/review-loop/snapshot.json` is a committed capture and
 does not refresh itself ([#356](https://github.com/sleepy-panda-srl/portulan/issues/356)). Re-running
