@@ -348,6 +348,28 @@ reader to notice the absence: neither has a tool-level surface a permission rule
 pretending to cover "send a message outward" would be worse than the honest gap, because it would read
 as enforcement. They stay prompt-level, and the compiler prints them as refusals on every run.
 
+**Telemetry has a standing consent, ruled 2026-08-28, and it is the first reading this tier has been
+given rather than a change to it.** Milestone 8's OTel clause put a second sendable artifact in the
+tree, and `../core/operating/autonomy.md` holds that Gated is **per action** — so an emitter that sent
+on its own after one approval would be outside this tier, while an emitter asking per export would be
+unusable in the loop it measures. His ruling: **a committed opt-in config IS the consent for the
+emission it enables.** What stays Gated and his alone is *committing a config that says
+`enabled: true`*; each export then rides on that commit the way a compiled gate carries a tier without
+asking again.
+
+Three things keep that from widening into the thing the tier exists to stop, and each is a rail rather
+than a sentence — the enforcement is **in the tool**, which is where this rule has always put it:
+`../../cli/telemetry.mjs` refuses to export when the config opts out, **and** when the config is
+untracked or differs from `HEAD`, so an agent cannot manufacture consent by editing a working copy;
+**`--export` is person-invoked only** — CI does run the module on every pull request, through the
+`telemetry` recipe, and never that mode — so wiring the export into a workflow, hook or schedule is a
+new consent question rather than a covered one; and it neither queues nor retries, on
+[`../cli/feedback.mjs`](../cli/feedback.mjs)'s rule that a queue flushing itself later is a silent send
+with extra steps. It answers proposal
+[`0014`](proposals/0014-a-feedback-pipe-points-out-of-the-seam.md)'s reservation of telemetry as *"a
+separate mechanism with separate consent"*, which had been named there and ruled nowhere. **It grants
+no other act standing consent**, and the tier is unchanged for every one of them.
+
 **Reaching repository settings through `gh api` was Gated until 2026-07-28, and a measurement removed
 the rule rather than a change of mind.** (Named by its action here, not by its id: the rule is gone, and
 citing an id no policy declares is the dangling pointer this document's own rail refuses.) It gated
@@ -478,7 +500,11 @@ Three kinds of refusal from the Claude Code backend, all printed on every run:
 `doctor` because a policy stating a gate nothing enforces should never read as configured:
 `rename-or-transfer-a-repository`, `spend-money-or-register-a-domain`,
 `send-something-outside-this-repository`. Each is a prompt-level habit and the Gated tier's header, and
-nothing else, until something reaches it.
+nothing else, until something reaches it. _(The third of them now has one enforced spelling — milestone
+8's emitter refuses its own export without a **committed** opt-in, exactly as `portulan feedback send`
+refuses without `--approve`. That is enforcement in the artifact rather than in a host's permission
+table, so this row is unchanged: the compiled backends still emit nothing for it, and a reader must not
+read either tool's refusal as coverage of the action as a whole.)_
 
 **Composition contributes gates to this policy, and until milestone 7's close nothing here said so.**
 `rituals/checkpoints` adds two: `commit-without-the-hooks` (tier `gated`) and `self-certify-a-checkpoint`

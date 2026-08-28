@@ -2,9 +2,10 @@
 
 > Generated from `handoffs/` by `node cli/index.mjs`. Do not edit by hand: it is regenerated
 > and byte-compared, so a hand-edit survives exactly until the next run.
-> 143 handoff(s), newest first. No budget: the series is append-only, so
+> 144 handoff(s), newest first. No budget: the series is append-only, so
 > the only remedy a budget could ask for is one this project rules out.
 
+- 2026-08-28 · [Handoff — the consent had to be committed, not merely written, and the older network mode was the unrailed one](handoffs/2026-08-28-the-consent-had-to-be-committed-not-merely-written.md)
 - 2026-08-26 · [Handoff — the handoff letter collided twice more, and it cannot be checked as it stands](handoffs/2026-08-26-the-handoff-letter-collided-twice-more.md)
 - 2026-08-26 · [Handoff — the figure going to him came from the wrong thirty, and fix-rounds cannot be counted at all](handoffs/2026-08-26-the-figure-going-to-him-came-from-the-wrong-thirty.md)
 - 2026-08-26 · [Handoff — the denominator was a set the author drew, and three passes were needed to notice](handoffs/2026-08-26-b-the-denominator-was-a-set-the-author-drew.md)

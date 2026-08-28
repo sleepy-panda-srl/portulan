@@ -65,7 +65,7 @@ framework exists to prevent. If retainer work keeps surfacing the same generic p
 re-expressed into a pack (never absorbing any customer's specifics — one-way flow), and priced
 then.
 
-**A hosted anything.** No SaaS, no dashboard, no telemetry. The one doctrine-permitted exception —
+**A hosted anything.** No SaaS, no dashboard, no telemetry collected by us. The one doctrine-permitted exception —
 an approval relay for async gated actions — will ship self-hostable first when its milestone
 arrives; it does not exist today and nothing here depends on it.
 
