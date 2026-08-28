@@ -5,7 +5,7 @@
 ## What landed
 
 **What arm A denotes**, and no instrument. [`../../evals/ab/arm.md`](../../evals/ab/arm.md) specifies the
-treatment arm — five moves, each with its evidence, under two binding rules — and
+treatment arm — every move enumerated with its evidence, under two binding rules — and
 [`../../evals/ab/corpus.md`](../../evals/ab/corpus.md) the scenarios and the grading rules. The A/B
 clause's subject is **widened** at four carriers and registered in
 [`../rule-carriers.json`](../rule-carriers.json). **The row does not move: three of nine remain, one
@@ -133,6 +133,7 @@ decisive here. The retraction is in the plan's record rather than deleted from i
 |---|---|---|
 | 1 | 1 | an apostrophe rendered as a backtick in the `m08.md` relocated-history note |
 | 2 | 0 | empty on `fb92e30d`, the commit CI graded green |
+| 3 | 1 | **suppressed**: this file said the spec had "five moves" and it enumerates six |
 
 **Round 1's one finding was the third instance of one defect, and the first two never reached the
 reviewer.** All three came from the `perl` substitutions that folded the pre-commit adjustments; two
@@ -147,6 +148,13 @@ falsified claims**; Copilot then found one typo. The bound in
 [`../memory/a-review-loop-needs-a-bound.md`](../memory/a-review-loop-needs-a-bound.md) was never
 approached, and that is a fact about where the review effort was spent rather than about the change
 being simple._
+
+**Round 3's finding arrived in the SUPPRESSED channel, and it was a stale count in this file.** The
+summary above said the specification had *five* moves; folding a pre-commit adjustment had split the
+slot-drop row in two, and it enumerates **six**. The count is **deleted rather than bumped** — the same
+repair this session applied to the arm's file count and the link figure, and the third time in one
+change that a hand-maintained number went stale. That the sharper of the round's two channels was the
+suppressed one matches what this repository has recorded of the promotion step four times over.
 
 **Round 2's body was 127 bytes**, which is close enough to the *"unable to review"* shape this
 repository has met before (117 bytes) that it was **read rather than counted**: it says *"reviewed 10
