@@ -421,7 +421,17 @@ adjudicated unbindable.** No figure is written here beyond that shape; the runne
 how much is agent judgement is a measurement *about the engine*, which is what this row exists to
 produce. **Read the split, not the total**: of the ten unbindable, five are `judgement-only` — one third
 of the fifteen — and the rest are `no-artifact`, `cross-language` or `already-carried`, which mean a
-carrier exists somewhere else. Only the judgement rows are the A/B clause's subject. _(Three carriers of
+carrier exists somewhere else. The judgement rows are the A/B clause's **first** subject. _(**Widened
+2026-08-28, on the maintainer's ruling**, and this sentence read "Only the judgement rows are the A/B
+clause's subject" until then. The A/B clause's subject is the mandates `core/` ships that an arm actually
+receives — the kernel's, plus the artifact mandates reachable in a built arm — of which the judgement
+rows are a part. The reason the narrower reading could not stand is measured rather than argued:
+`vendor --host` carries `core/skills/` **not at all**, so all five judgement rows reach nothing
+in a vendored arm and would grade the base model. See [`ab/corpus.md`](ab/corpus.md). Four carriers
+stated the narrower reading and all four moved in one change; the claim is registered in
+[`../.portulan/rule-carriers.json`](../.portulan/rule-carriers.json) so a fifth cannot appear **in the
+registered scope** unnoticed — that scope excludes `docs/milestones/`, `docs/plan.md`, `CHANGELOG.md`
+and the record layer globally, which is where the fourth carrier sat.)_ _(Three carriers of
 this paragraph said "two thirds are judgement", which was the unbindable total wearing the judgement
 label. Corrected at the pre-commit checkpoint, which also found one row classed `bound` whose named
 carrier the runner never reads.)_
@@ -662,8 +672,17 @@ takes, one clause over.
 Each names where it arrives, per [`../.portulan/dod.md`](../.portulan/dod.md) condition 4 — nothing
 here claims a capability that does not exist:
 
-- **The A/B (Portulan on / off) baseline** — arrives in milestone 8, a later session. No baseline has
-  been recorded, and no harness exists to record one.
+- **The A/B (Portulan on / off) baseline** — arrives in milestone 8, a later session. **No baseline has
+  been recorded, and no harness exists to record one.** Both halves of that sentence are still true
+  after session 6a, which settled what the arms **denote** and built no instrument:
+  [`ab/arm.md`](ab/arm.md) specifies the treatment arm and [`ab/corpus.md`](ab/corpus.md) the scenarios
+  and grading rules. **Three scenarios hold, plus a fourth on a stated acceptance test** — not eight;
+  four are retired with the measurement that retired them and the condition that would un-retire each.
+  **Scope, stated before any figure exists:** a baseline recorded over that arm would be scoped to the
+  **vendored-and-compiled tier**, which is one of several configurations *"Portulan on"* could name, and
+  it would close row 8 for no other. The argument is in
+  [`../docs/milestones/m08.md`](../docs/milestones/m08.md); row 8's criterion is deliberately untouched,
+  because narrowing a criterion is a maintainer's amendment rather than an implementer's line.
 - **A rule change merged or rejected on eval evidence** — arrives in milestone 8, a later session.
   Every rule in [`../.portulan/memory/`](../.portulan/memory/) to date was merged on review alone.
 - **A release carries an eval result** ([`../docs/plan.md`](../docs/plan.md), Protocol → Versioning).
