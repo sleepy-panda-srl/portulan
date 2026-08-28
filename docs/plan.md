@@ -2559,9 +2559,9 @@ _The seam applies here too: no client-identifying references._
   renders the review-loop figures as OTLP/HTTP JSON Gauge points stamped with the instant they are
   *about*; `evals/telemetry/` holds the committed opt-in and a byte-compared golden, a `telemetry`
   recipe holds it, a drill fired (roster 24). **Transport, signal set and consent all RULED.** The
-  committed config is the only gate; `--export` refuses when it opts out, and when the config is
-  untracked, staged-but-uncommitted, or differs from HEAD. Second rail: **no yielded recipe may reach
-  a network mode**. Slot CUT → [`0034`](../.portulan/proposals/0034-one-spec-bump-carries-both-evals-and-telemetry.md), accepted. · Session-open A-W-A (8);
-  pre-commit A-W-A (7+1); Fable 5 CONCUR-W-A on both rulings. · **Copilot: 15 rounds, 30 findings, all
-  real, 5 self-inflicted, the 15th empty. Rule 4's bound EXCEEDED and GRANTED**, on *"iterate until
-  empty"*. · Seam scan clean, planted control reddening. · [handoff](../.portulan/handoffs/2026-08-28-the-consent-had-to-be-committed-not-merely-written.md)
+  committed config is the only gate; `--export` refuses on opt-out, and when the config is untracked,
+  staged-but-uncommitted, or differs from HEAD. Second rail: **no yielded recipe may reach a network
+  mode**. Slot CUT → [`0034`](../.portulan/proposals/0034-one-spec-bump-carries-both-evals-and-telemetry.md), accepted. · A-W-A at session-open (8) and
+  pre-commit (7+1); Fable 5 CONCUR-W-A on both rulings. · **Copilot: 16 rounds, 32 findings, all real,
+  6 self-inflicted — one inside the derived check built to stop that class. Bound EXCEEDED and
+  GRANTED.** · Seam scan clean, control reddening. · [handoff](../.portulan/handoffs/2026-08-28-the-consent-had-to-be-committed-not-merely-written.md)

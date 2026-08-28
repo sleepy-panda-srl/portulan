@@ -200,14 +200,25 @@ test("an UNTRACKED config is not consent — could-not-run, with the reason", ()
     assert.ok(res.why.includes("not tracked by git"), res.why);
 });
 
-test("a config that DIFFERS from HEAD is not consent — an edited consent is not a committed one", () =>
-    withTemp((dir) => {
-        const cfg = join(dir, "config.json");
-        writeFileSync(cfg, "on disk\n");
-        const spawn = (_cmd, args) => (args.includes("rev-parse") ? { status: 0, stdout: ".git\n", stderr: "" } : args.includes("ls-files") ? { status: 0, stdout: "", stderr: "" } : { status: 0, stdout: "at HEAD\n", stderr: "" });
-        const res = consentIsCommitted(cfg, dir, spawn);
+test("a config that DIFFERS from HEAD is not consent — against a REAL repository", () =>
+    withTemp(async (dir) => {
+        // **The stub is gone, and its removal is the point.** Since round 16 the comparison is git's
+        // own `git diff --quiet HEAD`, so `core.autocrlf` cannot make a committed file look edited. A
+        // stubbed case would have gone on passing while asserting a mechanism that no longer exists —
+        // the assertion-holding-for-the-wrong-reason class this suite has now met five times, and the
+        // reason this one runs against a repository it actually builds.
+        const repo = await committedConsent(dir, false);
+        const cfg = join(repo, "evals/telemetry/config.json");
+        writeFileSync(cfg, `${readFileSync(cfg, "utf8")}\n`);
+        const res = consentIsCommitted(cfg, repo);
         assert.equal(res.ok, false);
         assert.ok(res.why.includes("differs from HEAD"), res.why);
+    }));
+
+test("a config identical to HEAD in a REAL repository IS consent", () =>
+    withTemp(async (dir) => {
+        const repo = await committedConsent(dir, true);
+        assert.deepEqual(consentIsCommitted(join(repo, "evals/telemetry/config.json"), repo), { ok: true });
     }));
 
 test("the path handed to git is POSIX-separated, whatever the platform", () =>
@@ -299,14 +310,6 @@ test("a genuinely untracked file in a REAL repository still reports `untracked`"
         const res = consentIsCommitted(join(dir, "config.json"), dir);
         assert.equal(res.ok, false);
         assert.ok(res.why.includes("is not tracked by git"), res.why);
-    }));
-
-test("a tracked config byte-identical to HEAD IS consent", () =>
-    withTemp((dir) => {
-        const cfg = join(dir, "config.json");
-        writeFileSync(cfg, "same\n");
-        const spawn = (_cmd, args) => (args.includes("rev-parse") ? { status: 0, stdout: ".git\n", stderr: "" } : args.includes("ls-files") ? { status: 0, stdout: "", stderr: "" } : { status: 0, stdout: "same\n", stderr: "" });
-        assert.deepEqual(consentIsCommitted(cfg, dir, spawn), { ok: true });
     }));
 
 test("a config whose NAME begins with `..` is inside the repository, not outside it", () =>
@@ -939,10 +942,18 @@ test("no path-taking option escapes PATH_OPTIONS — derived from the parser, no
     // The half that stops a sixth instance: the list is asserted against the parser's own flags, so an
     // option that takes a path and is not pinned reddens instead of being found by round thirteen.
     const source = readFileSync(TOOL, "utf8");
-    const flags = [...source.matchAll(/a === "--([a-z-]+)"\) opts\.([A-Za-z]+) = next\(\)/g)].map((m) => ({ flag: m[1], key: m[2] }));
+    // **Both assignment spellings.** The first version matched only `opts.<key> = next()`, so
+    // `--pack-root` — written `opts.packRoots.push(next())` — was invisible to the very test that
+    // claims to derive *all* value-taking flags. A derivation blind to one of its subjects is a census
+    // over a set its author drew, which is the defect this case exists to prevent, inside the case.
+    // Copilot round 16 on #362, through the suppressed channel.
+    const flags = [...source.matchAll(/a === "--([a-z-]+)"\) opts\.([A-Za-z]+)(?:\.push)? ?(?:=|\() ?next\(\)/g)].map((m) => ({ flag: m[1], key: m[2] }));
     assert.ok(flags.length >= 4, `expected several value-taking flags, found ${flags.length}`);
     const pathish = flags.filter((f) => /config|check|write|workspace|root|file|path|out/.test(f.flag));
-    const unpinned = pathish.filter((f) => f.key !== "repoRoot" && !PATH_OPTIONS.includes(f.key));
+    assert.ok(flags.some((f) => f.flag === "pack-root"), "the derivation must see --pack-root, which is written as a .push()");
+    // `packRoots` is pinned by `pinPaths` explicitly rather than through PATH_OPTIONS, since it is an
+    // array; it is exempt from the list and NOT from the pinning, which the case above asserts.
+    const unpinned = pathish.filter((f) => f.key !== "repoRoot" && f.key !== "packRoots" && !PATH_OPTIONS.includes(f.key));
     assert.deepEqual(unpinned.map((f) => f.flag), [], `path-taking flag(s) not in PATH_OPTIONS: ${unpinned.map((f) => f.flag).join(", ")}`);
 });
 

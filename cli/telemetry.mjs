@@ -727,14 +727,20 @@ export function consentIsCommitted(configPath, repoRoot, spawn = spawnSync) {
         return { ok: false, why: `${rel} is tracked but does not exist at HEAD, so the consent it states has been staged and never committed` };
     }
 
-    let onDisk;
-    try {
-        onDisk = fs.readFileSync(child, "utf8");
-    } catch (cause) {
-        return { ok: false, why: `${rel} could not be re-read to compare against HEAD — ${cause.message}` };
-    }
-    if (onDisk !== head.stdout) {
+    // **Git's own notion of "differs", not a byte compare.** Reading the working copy and comparing it
+    // to `git show HEAD:<path>` looks equivalent and is not: with `core.autocrlf=true` — the Windows
+    // default, and this repository ships no `.gitattributes` — a committed file is checked out with
+    // CRLF while the blob at HEAD stays LF. The bytes differ, `git diff` is clean, and the gate would
+    // refuse a consent that IS committed. Fail-closed, and wrong for every Windows adopter: the same
+    // platform class as the separator defect one round earlier, and equally invisible to CI here,
+    // which runs `ubuntu-latest` only. Copilot round 16 on #362.
+    const diff = git(["diff", "--quiet", "HEAD", "--", rel]);
+    if (diff.error) return { ok: false, why: `git could not compare ${rel} against HEAD — ${diff.error.message}` };
+    if (diff.status === 1) {
         return { ok: false, why: `${rel} differs from HEAD — an edited consent is not a committed one. Commit it, or run --render to see what WOULD be sent` };
+    }
+    if (diff.status !== 0) {
+        return { ok: false, why: `git could not compare ${rel} against HEAD — it exited ${diff.status}: ${(diff.stderr || "").trim()}` };
     }
     return { ok: true };
 }

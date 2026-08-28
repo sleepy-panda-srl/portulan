@@ -178,9 +178,10 @@ other._
 | 12 | 2 | `--check` and `--write` unpinned — the **fifth** instance of the root/cwd class in this file |
 | 13 | 3 | the consent prose named two refusal states of three, omitting *staged and never committed* |
 | 14 | 2 | **a seam finding** — the endpoint logged in full, and echoed raw on a parse failure |
-| 15 | 0 | **empty** — no comments, no suppressed notes, no unanswered threads, on `f0091df8` |
+| 15 | 0 | empty on `f0091df8` — and **not a close**, because a records push followed |
+| 16 | 2 | the HEAD comparison broken by `core.autocrlf`; and round 12's derived check blind to `--pack-root` |
 
-**Five of the thirty were introduced by an earlier round's fix**, and that is the number worth
+**Six of the thirty-two were introduced by an earlier round's fix**, and that is the number worth
 carrying rather than the total. Round 6's `packRoots` is round 1's repair applied at the site it was
 found and not at its sibling one line below. Round 7's is worse: round 4's 128-means-*not a repository*
 made **the one case this gate exists for** — a consent staged and never committed — report a broken
@@ -265,6 +266,26 @@ token-bearing endpoint and asserts no part of either reaches stdout or stderr.
 review's highest-value findings arrived low-confidence, which is worth more than the tally: the
 promotion step this repository built is the only reason any of them gated.
 
+**Round 16 put the defect inside the rail built to prevent it, and that is the note this session should
+be remembered by.** Round 12 fixed the fifth path-resolution defect and I called the repair structural:
+a *derived* check, so a sixth instance would redden rather than arrive at round 13. The derivation
+matched `opts.<key> = next()` only — and `--pack-root`, written `opts.packRoots.push(next())`, was the
+one option that had **already** been a finding at round 6. So the case claiming to derive *all*
+value-taking flags could not see the flag whose defect prompted it. A census over a set its author drew,
+reported as complete, inside the case written to stop exactly that — the same shape as round 10's
+`NETWORK_MODES`, one round after this file recorded that shape.
+
+**A derived check is only as wide as its derivation, and nothing derives the derivation.** That is the
+honest generalisation and it is not fixed here: the pattern now matches both assignment spellings and a
+positive assertion requires it to see `--pack-root`, so *this* blind spot reddens. A third spelling
+would be invisible again.
+
+**And the empty round was not a close, twice.** Round 8 was empty and round 9 — drawn by the records
+push after it — found a real defect; round 15 was empty and round 16 did the same. An empty round closes
+nothing if anything is pushed after it, and rule 2's *records land last* guarantees a push after the
+last round rather than preventing one. **The loop as practised here has no natural terminator**, which
+is not a discovery about this pull request but the plainest possible evidence for rule 4's bound.
+
 **The bound was exceeded, and it was granted rather than met.**
 [`../memory/a-review-loop-needs-a-bound.md`](../memory/a-review-loop-needs-a-bound.md) rule 4 is *two
 fix-rounds, then triage*: after the second, what remains becomes an issue and does not become another
@@ -280,7 +301,7 @@ anything.
 
 **And the loop's own meter has a data point about itself.** Clause (c) landed two sessions ago
 measuring 4.67 submissions per pull request over the thirty most recently merged. This pull request took
-**fifteen**, which the record's own table puts at the level of its worst observed — #49 at nine, #44 and
+**sixteen**, which the record's own table puts at the level of its worst observed — #49 at nine, #44 and
 #57 at eight. The change that built the meter for exactly this figure produced one of the heaviest loops
 in the corpus, and the meter cannot see it: `evals/review-loop/snapshot.json` is a committed capture and
 does not refresh itself ([#356](https://github.com/sleepy-panda-srl/portulan/issues/356)). Re-running
