@@ -126,6 +126,34 @@ only"*, concluded the compile half was inert for this corpus, then designed scen
 **side-effects** and did not re-derive the conclusion against the new design. Compiled enforcement is
 decisive here. The retraction is in the plan's record rather than deleted from it.
 
+
+## The review loop — two rounds, and the second was empty on the head it judged
+
+| Round | Findings | What they were |
+|---|---|---|
+| 1 | 1 | an apostrophe rendered as a backtick in the `m08.md` relocated-history note |
+| 2 | 0 | empty on `fb92e30d`, the commit CI graded green |
+
+**Round 1's one finding was the third instance of one defect, and the first two never reached the
+reviewer.** All three came from the `perl` substitutions that folded the pre-commit adjustments; two
+were caught and fixed before the commit, in `corpus.md` and in this file. The repair was a **sweep on
+the class** — a grep for the pattern across every file this change touches — rather than a fix at the
+line Copilot named, which is [`0020`](../proposals/0020-a-fix-is-not-done-at-the-site-it-was-found.md)'s
+rule applied at the first opportunity rather than the fifth.
+
+_Worth separating from the tally: **this loop was cheap because the expensive review happened before the
+commit.** The pre-commit checkpoint returned REQUEST-CHANGES with seventeen adjustments and **eight
+falsified claims**; Copilot then found one typo. The bound in
+[`../memory/a-review-loop-needs-a-bound.md`](../memory/a-review-loop-needs-a-bound.md) was never
+approached, and that is a fact about where the review effort was spent rather than about the change
+being simple._
+
+**Round 2's body was 127 bytes**, which is close enough to the *"unable to review"* shape this
+repository has met before (117 bytes) that it was **read rather than counted**: it says *"reviewed 10
+out of 10 changed files and generated no new comments"*, which is an empty round and not an error. The
+review's `commit_id` was checked against `HEAD` and `origin`, because an empty round closes nothing if
+anything was pushed after it.
+
 ## State
 
 `main` @ `39175b50` at branch point. All **22** yielded recipes green in this working copy, exit codes
