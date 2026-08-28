@@ -190,7 +190,9 @@ test("--config is required — an inferred config would be an emitter deciding i
 // ------------------------------------------------------------------- the consent must be COMMITTED
 
 test("an UNTRACKED config is not consent — could-not-run, with the reason", () => {
-    const res = consentIsCommitted("evals/telemetry/nope.json", REPO, () => ({ status: 1, stdout: "", stderr: "" }));
+    // The stub answers `rev-parse --git-dir` first: repository-ness is established once, up front, so
+    // that a later non-zero status is that command's own domain answer rather than an ambiguity.
+    const res = consentIsCommitted("evals/telemetry/nope.json", REPO, (_c, args) => (args.includes("rev-parse") ? { status: 0, stdout: ".git\n", stderr: "" } : { status: 1, stdout: "", stderr: "" }));
     assert.equal(res.ok, false);
     assert.ok(res.why.includes("not tracked by git"), res.why);
 });
@@ -199,7 +201,7 @@ test("a config that DIFFERS from HEAD is not consent — an edited consent is no
     withTemp((dir) => {
         const cfg = join(dir, "config.json");
         writeFileSync(cfg, "on disk\n");
-        const spawn = (_cmd, args) => (args.includes("ls-files") ? { status: 0, stdout: "", stderr: "" } : { status: 0, stdout: "at HEAD\n", stderr: "" });
+        const spawn = (_cmd, args) => (args.includes("rev-parse") ? { status: 0, stdout: ".git\n", stderr: "" } : args.includes("ls-files") ? { status: 0, stdout: "", stderr: "" } : { status: 0, stdout: "at HEAD\n", stderr: "" });
         const res = consentIsCommitted(cfg, dir, spawn);
         assert.equal(res.ok, false);
         assert.ok(res.why.includes("differs from HEAD"), res.why);
@@ -210,6 +212,43 @@ test("a config OUTSIDE the repository can never be established as committed", ()
     assert.equal(res.ok, false);
     assert.ok(res.why.includes("outside the repository"), res.why);
 });
+
+test("a STAGED but uncommitted consent is refused as staged — not as `not a repository`", () =>
+    withTemp((dir) => {
+        // **Copilot round 7 on #362, and this is a regression the round-4 fix introduced.** That repair
+        // distinguished git-failed from untracked by treating exit 128 as "not a repository" — true of
+        // `ls-files`, FALSE of `show`, which also exits 128 for a path tracked in the index and absent
+        // from HEAD. So the *does not exist at HEAD* branch became unreachable and this case reported
+        // "not a repository": the single case the gate exists for, since staging is how an agent would
+        // manufacture consent one step short of a commit.
+        const g = (...a) => spawnSync("git", ["-C", dir, ...a], { encoding: "utf8" });
+        g("init", "-q");
+        g("config", "user.email", "drill@example.invalid");
+        g("config", "user.name", "Drill");
+        writeFileSync(join(dir, "seed"), "x");
+        g("add", "seed");
+        g("commit", "-qm", "seed");
+        writeFileSync(join(dir, "config.json"), "{}");
+        g("add", "config.json");
+        const res = consentIsCommitted("config.json", dir);
+        assert.equal(res.ok, false);
+        assert.ok(res.why.includes("staged and never committed"), res.why);
+        assert.ok(!/not a git repository/i.test(res.why), `a staged file must not report as a broken repository: ${res.why}`);
+    }));
+
+test("a relative --config is resolved against --repo-root, not the caller's cwd", () =>
+    withTemp((dir) => {
+        // Third instance of the root/cwd split in this one file — workspaceDir (round 1), packRoots
+        // (round 6), and the config path here. An in-repo config was classed "outside the repository"
+        // whenever the tool ran from anywhere else.
+        const g = (...a) => spawnSync("git", ["-C", dir, ...a], { encoding: "utf8" });
+        g("init", "-q");
+        writeFileSync(join(dir, "config.json"), "{}");
+        const res = consentIsCommitted("config.json", dir);
+        assert.equal(res.ok, false);
+        assert.ok(res.why.includes("is not tracked by git"), `the relative path must resolve inside the repo, not outside it: ${res.why}`);
+        assert.ok(!res.why.includes("outside the repository"), res.why);
+    }));
 
 test("a directory that is NOT a repository is could-not-run, not `untracked`", () =>
     withTemp((dir) => {
@@ -240,7 +279,7 @@ test("a tracked config byte-identical to HEAD IS consent", () =>
     withTemp((dir) => {
         const cfg = join(dir, "config.json");
         writeFileSync(cfg, "same\n");
-        const spawn = (_cmd, args) => (args.includes("ls-files") ? { status: 0, stdout: "", stderr: "" } : { status: 0, stdout: "same\n", stderr: "" });
+        const spawn = (_cmd, args) => (args.includes("rev-parse") ? { status: 0, stdout: ".git\n", stderr: "" } : args.includes("ls-files") ? { status: 0, stdout: "", stderr: "" } : { status: 0, stdout: "same\n", stderr: "" });
         assert.deepEqual(consentIsCommitted(cfg, dir, spawn), { ok: true });
     }));
 
@@ -252,7 +291,7 @@ test("a config whose NAME begins with `..` is inside the repository, not outside
         // direction and still the wrong answer.
         const cfg = join(dir, "..telemetry.json");
         writeFileSync(cfg, "same\n");
-        const spawn = (_c, args) => (args.includes("ls-files") ? { status: 0, stdout: "", stderr: "" } : { status: 0, stdout: "same\n", stderr: "" });
+        const spawn = (_c, args) => (args.includes("rev-parse") ? { status: 0, stdout: ".git\n", stderr: "" } : args.includes("ls-files") ? { status: 0, stdout: "", stderr: "" } : { status: 0, stdout: "same\n", stderr: "" });
         assert.deepEqual(consentIsCommitted(cfg, dir, spawn), { ok: true });
     }));
 

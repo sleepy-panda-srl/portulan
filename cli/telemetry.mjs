@@ -611,49 +611,57 @@ export async function postJson(url, headers, body) {
  * subprocess nor a socket.
  */
 export function consentIsCommitted(configPath, repoRoot, spawn = spawnSync) {
-    // **`isInside` rather than a fresh `startsWith("..")`, and the first draft of this line was the
-    // fresh one.** `./inside.mjs` exists because that spelling is wrong: a name beginning with `..` is
-    // an ordinary filename, so `..telemetry.json` inside the repository reads as outside it. Here it
-    // failed CLOSED — refusing a valid config rather than accepting an invalid one — which is the safe
-    // direction and still the wrong answer, and it is the EIGHTH site of a rule that module reduced to
-    // one carrier (https://github.com/sleepy-panda-srl/portulan/issues/331 counts seven it never
-    // reached). Copilot round 1 on #362, and the module's own docblock had already argued it.
     const parent = path.resolve(repoRoot);
-    const child = path.resolve(configPath);
+    // **Pinned by `repoRoot`, like every other path this tool takes.** `path.resolve(configPath)` alone
+    // reads a relative `--config` against the CALLER'S cwd, so an in-repo config was classed *outside
+    // the repository* whenever the tool ran from anywhere else. Third instance of the root/cwd split in
+    // this one file — `workspaceDir` in round 1, `packRoots` in round 6, this in round 7 — which is why
+    // it is fixed here as a rule rather than a site: every path this function touches derives from
+    // `child`, and nothing below calls `path.resolve` on the raw argument again.
+    const child = path.resolve(parent, configPath);
     if (!isInside(parent, child)) {
         return { ok: false, why: `${configPath} is outside the repository at ${repoRoot}, so nothing can establish that it is committed` };
     }
     const rel = path.relative(parent, child);
-    const git = (args) => spawn("git", ["-C", path.resolve(repoRoot), ...args], { encoding: "utf8" });
+    const git = (args) => spawn("git", ["-C", parent, ...args], { encoding: "utf8" });
 
-    // **`git` failing is not the same answer as *the file is untracked*, and this function collapsed
-    // them.** Both refuse, so no export ever escaped — but a run against a directory that is not a
-    // repository reported *"is not tracked by git, so it is one working copy's opinion"*, which sends a
-    // reader to look at the wrong thing entirely. That is could-not-run wearing a verdict's words, in
-    // the module whose own docblock spends a paragraph keeping those two apart, and beside a config
-    // gate that gets it right. Git says which is which: **128** is *not a repository / bad revision*,
-    // and 1 is the honest negative. Copilot round 4 on #362, through the suppressed channel.
-    const gitFailed = (r, what) =>
-        r.error
-            ? `git could not be run to ${what} — ${r.error.message}`
-            : r.status === 128
-              ? `git could not ${what}: ${(r.stderr || "").trim() || `it exited 128, which is how it reports that ${path.resolve(repoRoot)} is not a repository, or has no HEAD`}`
-              : null;
+    // **Is this a repository at all? Asked ONCE, up front, and that is the whole design of what
+    // follows.**
+    //
+    // The first repair of this function distinguished *git failed* from *the file is untracked* by
+    // treating exit **128** as "not a repository". That is true of `ls-files` and **false of `show`**:
+    // `git show HEAD:<path>` also exits 128 for a path that is tracked in the index and not in `HEAD` —
+    // *"fatal: path 'x' exists on disk, but not in 'HEAD'"*, measured. So the repair made the
+    // *does not exist at HEAD* branch unreachable and reported *not a repository* for a file somebody
+    // had **staged and never committed** — which is precisely the case this gate exists to catch, since
+    // staging is how an agent would try to manufacture consent one step short of a commit.
+    //
+    // Establishing repository-ness once removes the ambiguity structurally instead of by matching on
+    // git's prose, which is localised and version-dependent. After this line, a non-zero status is that
+    // command's own domain answer and nothing else. Copilot round 7 on #362.
+    const repo = git(["rev-parse", "--git-dir"]);
+    if (repo.error) return { ok: false, why: `git could not be run to establish whether the consent is committed — ${repo.error.message}` };
+    if (repo.status !== 0) {
+        return { ok: false, why: `${parent} is not a git repository, so nothing there can be committed — ${(repo.stderr || "").trim() || "git rev-parse --git-dir failed"}` };
+    }
 
     const tracked = git(["ls-files", "--error-unmatch", "--", rel]);
-    const trackedFailed = gitFailed(tracked, "establish whether the consent is committed");
-    if (trackedFailed) return { ok: false, why: trackedFailed };
+    if (tracked.error) return { ok: false, why: `git could not be run to establish whether the consent is committed — ${tracked.error.message}` };
     if (tracked.status !== 0) {
         return { ok: false, why: `${rel} is not tracked by git, so it is one working copy's opinion rather than the team's committed consent` };
     }
+
     const head = git(["show", `HEAD:${rel}`]);
-    const headFailed = gitFailed(head, `read ${rel} at HEAD`);
-    if (headFailed) return { ok: false, why: headFailed };
-    if (head.status !== 0) return { ok: false, why: `${rel} does not exist at HEAD, so the consent it states has never been committed` };
+    if (head.error) return { ok: false, why: `git could not read ${rel} at HEAD — ${head.error.message}` };
+    if (head.status !== 0) {
+        // Tracked but not in `HEAD` — staged, or committed on no branch yet. Either way the consent has
+        // never been committed, which is the answer, not a malfunction.
+        return { ok: false, why: `${rel} is tracked but does not exist at HEAD, so the consent it states has been staged and never committed` };
+    }
 
     let onDisk;
     try {
-        onDisk = fs.readFileSync(path.resolve(configPath), "utf8");
+        onDisk = fs.readFileSync(child, "utf8");
     } catch (cause) {
         return { ok: false, why: `${rel} could not be re-read to compare against HEAD — ${cause.message}` };
     }
@@ -761,17 +769,20 @@ export async function run(argv = process.argv.slice(2), io = console, { env = pr
     }
 
     // ---- the config. Unreadable and opted-out are DIFFERENT ANSWERS and get different codes.
+    // Pinned against `--repo-root`, the same rule `consentIsCommitted` and the signal inputs follow —
+    // a relative `--config` must mean the same file wherever the tool is invoked from.
+    const configPath = path.resolve(opts.repoRoot, opts.config);
     let config;
     try {
-        config = readJson(opts.config);
+        config = readJson(configPath);
     } catch (e) {
-        io.error(`telemetry: cannot read ${opts.config} — ${e.message}`);
+        io.error(`telemetry: cannot read ${configPath} — ${e.message}`);
         io.error("This is could-not-run, NOT opted out: a config that will not parse may well say `enabled: true`.");
         return 2;
     }
     const problems = validateConfig(config);
     if (problems.length > 0) {
-        io.error(`telemetry: ${opts.config} is not a usable opt-in config:`);
+        io.error(`telemetry: ${configPath} is not a usable opt-in config:`);
         for (const p of problems) io.error(`  - ${p}`);
         io.error("This is could-not-run, NOT opted out — a malformed config states no decision either way.");
         return 2;
@@ -848,14 +859,14 @@ export async function run(argv = process.argv.slice(2), io = console, { env = pr
         // The gate, spelled ONCE and here. Non-zero and a sentence: for this tool silence is never an
         // answer, because an opted-out emitter and a broken one are both silent.
         if (config.enabled !== true) {
-            io.error(`telemetry: ${opts.config} says enabled: false, so nothing was sent.`);
+            io.error(`telemetry: ${configPath} says enabled: false, so nothing was sent.`);
             io.error("This is a verdict, not a failure: the config was read and it opts out. Emission is");
             io.error("the maintainer's Gated act — the committed config is the standing consent, and this");
             io.error("workspace has not given it. Use --render to see exactly what WOULD be sent.");
             return 1;
         }
         // The consent must be COMMITTED, not merely written. See `consentIsCommitted`.
-        const committed = consentIsCommitted(opts.config, opts.repoRoot);
+        const committed = consentIsCommitted(configPath, opts.repoRoot);
         if (!committed.ok) {
             io.error(`telemetry: --export cannot run — ${committed.why}.`);
             io.error("The ruling of 2026-08-28 is that the COMMITTED config is the standing consent, so a");
