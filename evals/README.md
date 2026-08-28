@@ -543,8 +543,11 @@ a migration *"is not a thing to do in passing"* and defers to **when milestone 8
 would have shipped with **zero filled instances**, since this workspace declares telemetry off and
 [`../examples/`](../examples/) stays at 2.4 — which is
 [`../spec/slots.md`](../spec/slots.md)'s *"splitting on speculation is how a schema acquires slots
-nobody fills"* exactly. It is filed as [`0034`](../.portulan/proposals/0034-one-spec-bump-carries-both-evals-and-telemetry.md), to ride with `evals` at the close, which makes it one
-bump instead of two.
+nobody fills"* exactly. It is filed as [`0034`](../.portulan/proposals/0034-one-spec-bump-carries-both-evals-and-telemetry.md) — **accepted by the maintainer 2026-08-28** — to ride with
+`evals` at the close, which makes it one bump instead of two. The acceptance commissions the drafting
+and settles none of the shape: the key names, either slot's structure, and whether a migration is owed
+are the drafted work, and the close remains the earliest sensible moment because `slots.md`'s deferral
+conditions the `evals` half on row 8 having decided what an eval artifact is here.
 
 ### Consent — ruled, and railed rather than promised
 

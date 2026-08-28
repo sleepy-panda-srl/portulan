@@ -1,6 +1,6 @@
 # Proposal — one spec bump carries both `evals` and `telemetry`
 
-**Status. OPEN — drafted 2026-08-28.** It asks the Workspace Definition to gain **two** slots in a
+**Status. ACCEPTED — drafted and accepted 2026-08-28.** It asks the Workspace Definition to gain **two** slots in a
 single MINOR at the milestone-8 close: `evals`, which [`../../spec/slots.md`](../../spec/slots.md) has
 already deferred to exactly that moment, and `telemetry`, which milestone 8 session 5 needed and did
 **not** take. It proposes no schema text: what a slot promises is the thing to settle first, and the
@@ -55,6 +55,33 @@ as the moment for the first of them.
 either slot, whether `telemetry` should carry a signal list at all, and whether a migration is owed.
 Those are the drafting work this proposal asks to be commissioned, not work it smuggles in.
 
+**Enforcement.** Nothing new, and that is the point of asking rather than building. Both slots are
+**optional**, so no existing manifest becomes invalid and no migration is owed — the property
+[`../../spec/README.md`](../../spec/README.md) requires of a MINOR, and the one 2.7 and 2.8 each
+demonstrated by running `node cli/doctor.mjs .portulan examples` green across the bump with
+[`../../examples/`](../../examples/) untouched. What the bump costs is already known and is small:
+`KNOWN_SPECS` in [`../../cli/index.mjs`](../../cli/index.mjs) and
+[`../../cli/librarian.mjs`](../../cli/librarian.mjs) gains the new version **by addition**, and the four
+constants that *write* a spec version stay where they are, since a writer declares the version its
+output needs. Each slot's own validation would be `doctor`'s hand-check, in the shape the seven keys it
+already hand-checks use — the JSON Schema subset in use cannot say `integer`, which is why those exist.
+**Until this is accepted and drafted, the telemetry config is validated by
+[`../../cli/telemetry.mjs`](../../cli/telemetry.mjs) alone and reaches no adopter**, which is the gap
+this proposal exists to close rather than a claim that it is closed.
+
+**Provenance.** Milestone 8 session 5's session-open checkpoint, 2026-08-28, which cut a `telemetry`
+slot out of that session's plan — recorded in
+[`../../docs/milestones/m08.md`](../../docs/milestones/m08.md)'s session note and in
+[`../../evals/README.md`](../../evals/README.md). The rule it was cut under is
+[`../gate-map.md`](../gate-map.md)'s *"an idea that adds an axis, a mode, or a surface starts as a
+proposal … never opened as an implementation pull request with tests"*, and the precedent that a slot
+arrives argued is every slot in the train: [`0025`](0025-the-byte-rail-moves-from-the-store-to-the-record.md)
+for `memory.store.budget.record_kilobytes`, [`0017`](0017-one-repository-one-governing-workspace.md) for
+`governed_by`, [`0002`](0002-sealed-provenance.md) for `provenance`. The `evals` half carries its own
+provenance: [`../../spec/slots.md`](../../spec/slots.md)'s *Considered and left out* entry, which defers
+it to this exact moment and says why. **Retire when:** both slots are in the Workspace Definition, or the
+maintainer rules that neither belongs there.
+
 ## Why it is a proposal and not an issue
 
 An issue would record the idea; it would not route it through the gate that
@@ -65,6 +92,19 @@ artifact.
 
 ## Outcome
 
-**Pending.** It is the maintainer's to accept, amend or decline, and its earliest sensible moment is the
-milestone-8 close — by which point row 8's remaining three clauses will have decided what an eval
-artifact is here, which is the deferral's own stated condition.
+**ACCEPTED — Marius, 2026-08-28.** His word, in full: *"I accept."*
+
+**What that commissions, and what it does not.** It accepts the *shape* of the ask — one MINOR carrying
+both slots — and commissions the drafting. It settles none of what the proposal explicitly left open:
+the key names, either slot's structure, whether `telemetry` carries a signal list at all, and whether a
+migration is owed. Those are the drafted work, and they come back through review like any other change.
+
+**When.** The milestone-8 close remains the earliest sensible moment and the acceptance does not move it
+earlier: [`../../spec/slots.md`](../../spec/slots.md)'s deferral conditions the `evals` slot on row 8
+having decided what an eval artifact is here, and **three clauses remain**. Drafting the schema before
+that condition holds would be the "splitting on speculation" this proposal was written to avoid, in the
+change accepting the proposal against it.
+
+**Decision.** Marius — accepted, on 2026-08-28 — because the two slots arrive at the same moment and
+cost the same bump, and because a manifest surface is his to grant rather than an implementation
+session's to take.

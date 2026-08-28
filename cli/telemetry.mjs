@@ -109,9 +109,10 @@ import path from "node:path";
 import { spawnSync } from "node:child_process";
 import { pathToFileURL } from "node:url";
 
-import { meter } from "./review-meter.mjs";
+import { meter, validateSnapshot } from "./review-meter.mjs";
 import { VERSION } from "./manifest.mjs";
 import { recipeSet, resolverFor } from "./recipe-set.mjs";
+import { isInside } from "./inside.mjs";
 
 // ---------------------------------------------------------------------------------------------
 // The offline audit — no verify recipe may reach the network, and now something checks
@@ -184,15 +185,22 @@ export function auditRecipeSource(source) {
  *   * **The root is pinned**, so the answer is about this tree rather than about the machine.
  */
 export function auditRecipes({ workspaceDir, repoRoot, packRoots = [] }) {
+    // **The workspace directory is pinned by `--repo-root` like every other path here.** It was
+    // resolved against the CURRENT WORKING DIRECTORY, so a run from outside the tree that named
+    // `--repo-root` correctly would still look for the manifest beside wherever the caller happened to
+    // stand — the same root/cwd split https://github.com/sleepy-panda-srl/portulan/issues/347 names for
+    // `--pack-root`, arriving in a new tool. `path.resolve` leaves an absolute `--workspace` alone, so
+    // naming one explicitly still wins. Copilot round 1 on #362.
+    const workspace = path.resolve(repoRoot, workspaceDir);
     let manifest;
     try {
-        manifest = JSON.parse(fs.readFileSync(path.join(workspaceDir, "workspace.json"), "utf8"));
+        manifest = JSON.parse(fs.readFileSync(path.join(workspace, "workspace.json"), "utf8"));
     } catch (cause) {
-        return { ok: false, why: `the workspace manifest at ${workspaceDir} could not be read — ${cause.message}` };
+        return { ok: false, why: `the workspace manifest at ${workspace} could not be read — ${cause.message}` };
     }
     let set;
     try {
-        set = recipeSet(manifest, { resolve: resolverFor({ workspaceDir, manifest, repoRoot, named: packRoots, discovery: null, forced: false }) });
+        set = recipeSet(manifest, { resolve: resolverFor({ workspaceDir: workspace, manifest, repoRoot, named: packRoots, discovery: null, forced: false }) });
     } catch (cause) {
         return { ok: false, why: cause.message };
     }
@@ -317,6 +325,19 @@ export const PRODUCERS = {
          * render differ from the last.
          */
         capturedAt: (snapshot) => snapshot.captured ?? null,
+        /**
+         * **The input is validated before it is metered, and this was missing.**
+         *
+         * `meter()` treats a non-array `pullRequests` as `[]` and this producer defaults `repository`
+         * and `window.merged`, so a malformed snapshot rendered a payload carrying *wrong* window and
+         * repository metadata rather than refusing — a fail-open in the one direction that matters,
+         * since the payload is the thing that leaves the machine. `./review-meter.mjs` already exports
+         * the validator its own recipe uses; reusing it keeps one carrier of what a snapshot must be,
+         * rather than a second opinion here that could drift from the producer's. Copilot round 1 on
+         * #362, through the suppressed channel and promoted to a gating thread by this repository's own
+         * step.
+         */
+        validate: (snapshot) => validateSnapshot(snapshot),
         rows(snapshot) {
             const m = meter(snapshot);
             return [
@@ -502,10 +523,19 @@ export async function postJson(url, headers, body) {
  * subprocess nor a socket.
  */
 export function consentIsCommitted(configPath, repoRoot, spawn = spawnSync) {
-    const rel = path.relative(path.resolve(repoRoot), path.resolve(configPath));
-    if (rel.startsWith("..") || path.isAbsolute(rel)) {
+    // **`isInside` rather than a fresh `startsWith("..")`, and the first draft of this line was the
+    // fresh one.** `./inside.mjs` exists because that spelling is wrong: a name beginning with `..` is
+    // an ordinary filename, so `..telemetry.json` inside the repository reads as outside it. Here it
+    // failed CLOSED — refusing a valid config rather than accepting an invalid one — which is the safe
+    // direction and still the wrong answer, and it is the EIGHTH site of a rule that module reduced to
+    // one carrier (https://github.com/sleepy-panda-srl/portulan/issues/331 counts seven it never
+    // reached). Copilot round 1 on #362, and the module's own docblock had already argued it.
+    const parent = path.resolve(repoRoot);
+    const child = path.resolve(configPath);
+    if (!isInside(parent, child)) {
         return { ok: false, why: `${configPath} is outside the repository at ${repoRoot}, so nothing can establish that it is committed` };
     }
+    const rel = path.relative(parent, child);
     const git = (args) => spawn("git", ["-C", path.resolve(repoRoot), ...args], { encoding: "utf8" });
 
     const tracked = git(["ls-files", "--error-unmatch", "--", rel]);
@@ -650,6 +680,14 @@ export async function run(argv = process.argv.slice(2), io = console, { env = pr
             snapshot = readJson(input);
         } catch (e) {
             io.error(`telemetry: signal ${JSON.stringify(name)} cannot read its input ${input} — ${e.message}`);
+            return 2;
+        }
+        const problems = producer.validate?.(snapshot) ?? [];
+        if (problems.length > 0) {
+            io.error(`telemetry: signal ${JSON.stringify(name)} cannot be metered from ${input}:`);
+            for (const p of problems) io.error(`  - ${p}`);
+            io.error("A malformed input would render a payload with defaulted metadata rather than none,");
+            io.error("and the payload is the thing that leaves the machine.");
             return 2;
         }
         const capturedAt = producer.capturedAt(snapshot);

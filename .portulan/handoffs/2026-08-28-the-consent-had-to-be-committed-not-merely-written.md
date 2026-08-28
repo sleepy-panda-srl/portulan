@@ -54,7 +54,18 @@ was right: **every slot in that train arrived through a ruled proposal** (2.8 ci
 proposal *"never opened as an implementation pull request with tests"*, and `spec/slots.md`'s own
 `evals` deferral says a schema change plus a spec bump plus a migration **"is not a thing to do in
 passing"**. The slot would also have shipped with **zero filled instances**. Filed as a proposal to ride
-with `evals` at the close as [`0034`](../proposals/0034-one-spec-bump-carries-both-evals-and-telemetry.md) — one bump instead of two.
+with `evals` at the close as [`0034`](../proposals/0034-one-spec-bump-carries-both-evals-and-telemetry.md), **accepted by the maintainer the same day** — one bump
+instead of two.
+
+_It went red twice on first contact, and both were mine._ The `codify` skill mandates a **Provenance**
+and an **Enforcement** field on a proposal and this one carried neither — caught by `skill-goldens` **on
+CI rather than here**, because the sweep after writing it ran `docs` and `telemetry` and not the set,
+which is `dod.md` condition 1 skipped in the change that adds a recipe to that set. It also took
+`skill-goldens`' own drill down with it: the control was already red, which `drills.mjs` correctly
+reports as could-not-run rather than a fire. And the proposal cited `0025` by a filename **written from
+its number prefix rather than read off disk** — the precise defect this milestone's session 4 recorded
+against itself three times, repeated by the session that had just written that sentence down. The
+`links` rail caught it.
 
 ## Where the payload's closed list was widened, and by whom
 

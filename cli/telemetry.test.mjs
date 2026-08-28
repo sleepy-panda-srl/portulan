@@ -218,6 +218,44 @@ test("a tracked config byte-identical to HEAD IS consent", () =>
         assert.deepEqual(consentIsCommitted(cfg, dir, spawn), { ok: true });
     }));
 
+test("a config whose NAME begins with `..` is inside the repository, not outside it", () =>
+    withTemp((dir) => {
+        // Copilot round 1 on #362. The first spelling of this guard was `rel.startsWith("..")`, which
+        // calls `..telemetry.json` a traversal — the exact defect `./inside.mjs` was extracted to end,
+        // and its EIGHTH site. It failed CLOSED here (refusing a valid config), which is the safe
+        // direction and still the wrong answer.
+        const cfg = join(dir, "..telemetry.json");
+        writeFileSync(cfg, "same\n");
+        const spawn = (_c, args) => (args.includes("ls-files") ? { status: 0, stdout: "", stderr: "" } : { status: 0, stdout: "same\n", stderr: "" });
+        assert.deepEqual(consentIsCommitted(cfg, dir, spawn), { ok: true });
+    }));
+
+test("--audit-recipes pins the workspace directory with --repo-root, not the cwd", () => {
+    // Copilot round 1 on #362: the manifest was resolved against the CURRENT WORKING DIRECTORY, so a
+    // run from outside the tree that named --repo-root correctly still looked beside the caller. The
+    // relative form must answer identically from anywhere, which is what pinning means.
+    const res = auditRecipes({ workspaceDir: ".portulan", repoRoot: REPO, packRoots: [join(REPO, "packs")] });
+    assert.equal(res.ok, true, res.why);
+    assert.ok(res.examined.length > 1);
+});
+
+test("a MALFORMED snapshot is refused, never rendered with defaulted metadata", async () =>
+    withTemp(async (dir) => {
+        // Copilot round 1 on #362, through the suppressed channel. `meter()` reads a non-array
+        // `pullRequests` as `[]` and this producer defaults `repository` and `window.merged`, so a
+        // broken input rendered a payload carrying WRONG metadata instead of refusing — a fail-open in
+        // the one direction that matters, since the payload is what leaves the machine.
+        mkdirSync(join(dir, "evals/review-loop"), { recursive: true });
+        writeFileSync(join(dir, "evals/review-loop/snapshot.json"), JSON.stringify({ portulan: { reviewSnapshot: "1" }, repository: "x/y", captured: "2026-08-26T00:00:00Z", window: { merged: 3, pool: 9, poolSaturated: false }, pullRequests: "not an array" }));
+        const cfg = join(dir, "config.json");
+        writeFileSync(cfg, JSON.stringify(configOf()));
+        const r = recorder();
+        const code = await run(["--config", cfg, "--repo-root", dir, "--render"], r.io, { env: {} });
+        assert.equal(code, 2, r.stdout());
+        assert.ok(r.stderr().includes("cannot be metered from"), r.stderr());
+        assert.ok(!r.stdout().includes("resourceMetrics"), "no payload may be rendered from an input that did not validate");
+    }));
+
 // ------------------------------------------------------------------------- the closed payload
 
 test("every attribute key the payload emits is one the pin knows", () => {
