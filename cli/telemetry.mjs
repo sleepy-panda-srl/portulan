@@ -229,6 +229,13 @@ export function auditRecipes({ workspaceDir, repoRoot, packRoots = [] }) {
     // `--pack-root`, arriving in a new tool. `path.resolve` leaves an absolute `--workspace` alone, so
     // naming one explicitly still wins. Copilot round 1 on #362.
     const workspace = path.resolve(repoRoot, workspaceDir);
+    // **And the pack roots, which the first repair of this defect left behind.** Round 1 pinned
+    // `workspaceDir` against `repoRoot` and passed `packRoots` through untouched, so a run from outside
+    // the tree still resolved them against the caller's cwd — and the yielded recipe SET, hence this
+    // audit's whole answer, moved with where the tool was invoked from. That is `0020`'s class exactly:
+    // a fix applied at the site it was found and not at its sibling, inside the change that made it.
+    // Copilot round 6 on #362.
+    const roots = packRoots.map((r) => path.resolve(repoRoot, r));
     let manifest;
     try {
         manifest = JSON.parse(fs.readFileSync(path.join(workspace, "workspace.json"), "utf8"));
@@ -237,7 +244,7 @@ export function auditRecipes({ workspaceDir, repoRoot, packRoots = [] }) {
     }
     let set;
     try {
-        set = recipeSet(manifest, { resolve: resolverFor({ workspaceDir: workspace, manifest, repoRoot, named: packRoots, discovery: null, forced: false }) });
+        set = recipeSet(manifest, { resolve: resolverFor({ workspaceDir: workspace, manifest, repoRoot, named: roots, discovery: null, forced: false }) });
     } catch (cause) {
         return { ok: false, why: cause.message };
     }
@@ -668,7 +675,10 @@ const USAGE = [
     "  --check <file>    byte-compare the payload against a committed golden",
     "  --write <file>    rewrite that golden",
     "  --export          the ONE mode that reaches the network; refuses unless the config opts in",
-    "                    AND is committed, and reads OTEL_EXPORTER_OTLP_ENDPOINT / _HEADERS",
+    "                    AND is committed. Transport comes from the OTLP environment, signal-specific",
+    "                    first: OTEL_EXPORTER_OTLP_METRICS_ENDPOINT (used as given) else",
+    "                    OTEL_EXPORTER_OTLP_ENDPOINT (a base, +/v1/metrics); and",
+    "                    OTEL_EXPORTER_OTLP_METRICS_HEADERS replacing OTEL_EXPORTER_OTLP_HEADERS",
     "  --audit-recipes   assert that no recipe the workspace YIELDS can reach a network mode;",
     "                    takes --workspace and --pack-root, and needs no --config",
     "",

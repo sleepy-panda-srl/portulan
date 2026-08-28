@@ -514,6 +514,36 @@ test("an unreadable workspace manifest is could-not-run, never an audit that fou
         assert.ok(res.why.includes("could not be read"), res.why);
     }));
 
+test("--pack-root is pinned by --repo-root too, so the answer does not move with the cwd", () => {
+    // Copilot round 6 on #362. Round 1 pinned `workspaceDir` and left `packRoots` resolving against the
+    // caller's cwd — so the yielded recipe SET, and therefore this audit's whole answer, depended on
+    // where the tool was invoked from. `0020`'s class: the fix applied at the site it was found and not
+    // at its sibling, inside the change that made it.
+    //
+    // Asserted by comparing the RELATIVE spelling against the absolute one. A case that only ran from
+    // the repository root would pass either way, which is how the defect survived round 1.
+    const relative = auditRecipes({ workspaceDir: ".portulan", repoRoot: REPO, packRoots: ["packs"] });
+    const absolute = auditRecipes({ workspaceDir: join(REPO, ".portulan"), repoRoot: REPO, packRoots: [join(REPO, "packs")] });
+    assert.equal(relative.ok, true, relative.why);
+    assert.deepEqual(relative.examined, absolute.examined, "the relative and absolute spellings must yield the same set");
+    assert.ok(relative.examined.some((id) => id.includes(":")), "the composed pack's recipe must be in it — otherwise the pack root resolved to nothing and this case proves nothing");
+});
+
+test("the --export help text names every transport variable the code actually reads", () => {
+    // Copilot round 6 on #362, and it is the round-5 fix's own loose end: the usage string still said
+    // `_ENDPOINT / _HEADERS` after the code learned the metrics-specific variables and gave them
+    // precedence. A help screen that under-describes the code sends an adopter who configured the
+    // standard way looking for a bug that is not there — dod.md condition 4, in the tool's own output.
+    const usage = (() => {
+        const r = recorder();
+        run(["--help"], r.io, { env: {} });
+        return r.stdout();
+    })();
+    for (const v of ["OTEL_EXPORTER_OTLP_METRICS_ENDPOINT", "OTEL_EXPORTER_OTLP_ENDPOINT", "OTEL_EXPORTER_OTLP_METRICS_HEADERS", "OTEL_EXPORTER_OTLP_HEADERS"]) {
+        assert.ok(usage.includes(v), `--help does not mention ${v}, which transportFromEnv reads`);
+    }
+});
+
 test("this repository's own yielded recipes are all offline, and the set is not empty", () => {
     const res = auditRecipes({ workspaceDir: join(REPO, ".portulan"), repoRoot: REPO, packRoots: [join(REPO, "packs")] });
     assert.equal(res.ok, true, res.why);

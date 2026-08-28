@@ -359,7 +359,7 @@ asking again.
 
 Three things keep that from widening into the thing the tier exists to stop, and each is a rail rather
 than a sentence — the enforcement is **in the tool**, which is where this rule has always put it:
-`../../cli/telemetry.mjs` refuses to export when the config opts out, **and** when the config is
+[`../cli/telemetry.mjs`](../cli/telemetry.mjs) refuses to export when the config opts out, **and** when the config is
 untracked or differs from `HEAD`, so an agent cannot manufacture consent by editing a working copy;
 **`--export` is person-invoked only** — CI does run the module on every pull request, through the
 `telemetry` recipe, and never that mode — so wiring the export into a workflow, hook or schedule is a
