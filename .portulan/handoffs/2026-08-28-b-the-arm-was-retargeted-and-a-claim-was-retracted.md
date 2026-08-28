@@ -127,7 +127,7 @@ only"*, concluded the compile half was inert for this corpus, then designed scen
 decisive here. The retraction is in the plan's record rather than deleted from it.
 
 
-## The review loop — five rounds, three findings, and all three in the suppressed channel
+## The review loop — three findings after round 1, every one of them suppressed
 
 | Round | Findings | What they were |
 |---|---|---|
@@ -136,6 +136,13 @@ decisive here. The retraction is in the plan's record rather than deleted from i
 | 3 | 1 | **suppressed**: this file said the spec had "five moves" and it enumerates six |
 | 4 | 1 | **suppressed**: the registry recorded a false constraint about its own scanner |
 | 5 | 0 | empty on `0af3802e`, all four checks green |
+
+**The table stops where the findings do, deliberately.** Every round after it was empty, and each was
+drawn by the records push that recorded the round before — so a round count written here goes stale the
+moment it is pushed, which is the third defect of exactly that kind this change already repaired. **The
+terminator is not a number**: the loop is closed when a round comes back empty on the commit CI graded
+green and nothing is pushed afterwards. That state was reached, checked against `HEAD` and `origin`
+rather than assumed.
 
 **Round 1's one finding was the third instance of one defect, and the first two never reached the
 reviewer.** All three came from the `perl` substitutions that folded the pre-commit adjustments; two
