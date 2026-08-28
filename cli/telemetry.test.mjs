@@ -211,6 +211,31 @@ test("a config OUTSIDE the repository can never be established as committed", ()
     assert.ok(res.why.includes("outside the repository"), res.why);
 });
 
+test("a directory that is NOT a repository is could-not-run, not `untracked`", () =>
+    withTemp((dir) => {
+        // Copilot round 4 on #362, through the suppressed channel. Both answers refuse, so no export
+        // ever escaped — but reporting *"is not tracked by git, so it is one working copy's opinion"*
+        // for a directory that is not a repository sends a reader to look at the wrong thing. That is
+        // could-not-run wearing a verdict's words, in the module whose own docblock spends a paragraph
+        // keeping those two apart. Git distinguishes them with exit 128; nothing here was reading it.
+        writeFileSync(join(dir, "config.json"), "{}");
+        const res = consentIsCommitted(join(dir, "config.json"), dir);
+        assert.equal(res.ok, false);
+        assert.ok(/not a (git )?repository/i.test(res.why), res.why);
+        assert.ok(!res.why.includes("is not tracked by git"), `git failing must not be reported as untracked: ${res.why}`);
+    }));
+
+test("a genuinely untracked file in a REAL repository still reports `untracked`", () =>
+    withTemp((dir) => {
+        // The other side of the same split, without which the case above could be satisfied by making
+        // every answer say "not a repository".
+        spawnSync("git", ["-C", dir, "init", "-q"], { encoding: "utf8" });
+        writeFileSync(join(dir, "config.json"), "{}");
+        const res = consentIsCommitted(join(dir, "config.json"), dir);
+        assert.equal(res.ok, false);
+        assert.ok(res.why.includes("is not tracked by git"), res.why);
+    }));
+
 test("a tracked config byte-identical to HEAD IS consent", () =>
     withTemp((dir) => {
         const cfg = join(dir, "config.json");

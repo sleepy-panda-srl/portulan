@@ -592,13 +592,29 @@ export function consentIsCommitted(configPath, repoRoot, spawn = spawnSync) {
     const rel = path.relative(parent, child);
     const git = (args) => spawn("git", ["-C", path.resolve(repoRoot), ...args], { encoding: "utf8" });
 
+    // **`git` failing is not the same answer as *the file is untracked*, and this function collapsed
+    // them.** Both refuse, so no export ever escaped — but a run against a directory that is not a
+    // repository reported *"is not tracked by git, so it is one working copy's opinion"*, which sends a
+    // reader to look at the wrong thing entirely. That is could-not-run wearing a verdict's words, in
+    // the module whose own docblock spends a paragraph keeping those two apart, and beside a config
+    // gate that gets it right. Git says which is which: **128** is *not a repository / bad revision*,
+    // and 1 is the honest negative. Copilot round 4 on #362, through the suppressed channel.
+    const gitFailed = (r, what) =>
+        r.error
+            ? `git could not be run to ${what} — ${r.error.message}`
+            : r.status === 128
+              ? `git could not ${what}: ${(r.stderr || "").trim() || `it exited 128, which is how it reports that ${path.resolve(repoRoot)} is not a repository, or has no HEAD`}`
+              : null;
+
     const tracked = git(["ls-files", "--error-unmatch", "--", rel]);
-    if (tracked.error) return { ok: false, why: `git could not be run to establish whether the consent is committed — ${tracked.error.message}` };
+    const trackedFailed = gitFailed(tracked, "establish whether the consent is committed");
+    if (trackedFailed) return { ok: false, why: trackedFailed };
     if (tracked.status !== 0) {
         return { ok: false, why: `${rel} is not tracked by git, so it is one working copy's opinion rather than the team's committed consent` };
     }
     const head = git(["show", `HEAD:${rel}`]);
-    if (head.error) return { ok: false, why: `git could not read ${rel} at HEAD — ${head.error.message}` };
+    const headFailed = gitFailed(head, `read ${rel} at HEAD`);
+    if (headFailed) return { ok: false, why: headFailed };
     if (head.status !== 0) return { ok: false, why: `${rel} does not exist at HEAD, so the consent it states has never been committed` };
 
     let onDisk;
