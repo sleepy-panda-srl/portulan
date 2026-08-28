@@ -411,6 +411,51 @@ test("the module WITHOUT its network flag is not a finding", () => {
     assert.deepEqual(auditRecipeSource("node cli/review-meter.mjs --snapshot s.json --check"), []);
 });
 
+test("a network mode is caught however its PATH is spelled", () => {
+    // Copilot round 3 on #362. The matcher compared the body against the literal `cli/telemetry.mjs`,
+    // so `node ./cli/review-meter.mjs --fetch` — same file, same effect, one prefix different — walked
+    // past an enforcement rail. Seven of the eight bypasses that produced clauses (a) and (b) of this
+    // milestone were exactly this: path and grammar spellings a matcher had not been given.
+    for (const src of [
+        "node ./cli/review-meter.mjs --fetch",
+        "node cli/review-meter.mjs --fetch",
+        "node /somewhere/absolute/cli/review-meter.mjs --fetch",
+        'bash -c "node ./cli/review-meter.mjs --fetch"',
+    ]) {
+        assert.equal(auditRecipeSource(src).length, 1, `not caught: ${src}`);
+    }
+});
+
+test("a network flag is caught in both spellings a shell writes it", () => {
+    assert.equal(auditRecipeSource("node cli/telemetry.mjs --export").length, 1);
+    assert.equal(auditRecipeSource("node cli/telemetry.mjs --export=1").length, 1);
+    // And a flag that merely starts the same is NOT a match — `--exporter` is not `--export`.
+    assert.deepEqual(auditRecipeSource("node cli/telemetry.mjs --exporter foo"), []);
+});
+
+test("a recipe whose script resolves OUTSIDE the tree is could-not-run, never a pass", () =>
+    withTemp((dir) => {
+        // Copilot round 3 on #362. `path.resolve` follows `bash ../../outside.sh` straight out of the
+        // repository, and the audit would then grade a file the pinned root does not cover — which both
+        // ends the property the pin buys and offers a bypass. `isInside` was already imported into the
+        // module for the consent check and this call site did not use it.
+        mkdirSync(join(dir, ".portulan"), { recursive: true });
+        writeFileSync(
+            join(dir, ".portulan", "workspace.json"),
+            JSON.stringify({
+                portulan: { spec: "2.8" },
+                name: "escapee",
+                kind: "repository",
+                tree: "../",
+                slots: {},
+                verify: { default: "out", recipes: [{ id: "out", run: "bash ../../outside.sh", requires: ["bash"] }] },
+            }),
+        );
+        const res = auditRecipes({ workspaceDir: join(dir, ".portulan"), repoRoot: dir });
+        assert.equal(res.ok, false);
+        assert.ok(res.why.includes("outside the repository"), res.why);
+    }));
+
 test("stripShellComments removes whole-line comments only, and says nothing about trailing ones", () => {
     assert.equal(stripShellComments("# gone\nkept\n   # also gone"), "kept");
 });

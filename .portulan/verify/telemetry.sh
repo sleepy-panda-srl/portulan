@@ -54,6 +54,14 @@
 # `NETWORK_MODES` is uncovered, and nothing can audit that the row was added — the same arrears
 # ../rule-carriers.json names about its own registry.
 #
+# **What it now recognises, and what it still cannot.** A module is matched as a path SUFFIX on a
+# separator boundary, so `cli/x.mjs`, `./cli/x.mjs` and an absolute spelling all name it, and a flag is
+# matched as a token in both `--flag` and `--flag=value` forms. The first version compared against one
+# literal string, which made `./` a bypass of an enforcement rail — the class clauses (a) and (b) of
+# this milestone exist for. What it still cannot see is a mode reached INDIRECTLY: a recipe that shells
+# out to another script, or builds the flag at runtime. That is a matcher's standing limit and not a
+# thing a wider pattern fixes.
+#
 # Exit 0 green · 1 red · 2 could not run.
 
 set -uo pipefail

@@ -163,9 +163,36 @@ export const stripShellComments = (source) =>
  * lines (`review-loop.sh` spreads one command over four), so a same-line rule would miss exactly the
  * spelling a real invocation uses.
  */
+/**
+ * Split a shell body into the tokens a command is actually made of, stripping the quoting and
+ * bracketing a path picks up in a script.
+ */
+const shellTokens = (body) => body.split(/\s+/).map((t) => t.replace(/^[("'`]+/, "").replace(/[)"'`;]+$/, "")).filter(Boolean);
+
+/**
+ * Does this token name that module, however it is spelled?
+ *
+ * **A matcher that knew one spelling was a bypass, not a rail.** The first version compared the body
+ * against the literal `cli/telemetry.mjs`, so `node ./cli/telemetry.mjs --export` — the same file, the
+ * same effect, one prefix different — walked straight past an enforcement check. That is precisely the
+ * class milestone 8's clauses (a) and (b) exist for: a matcher's coverage is measured, never described,
+ * and seven of the eight bypasses that produced those clauses were path and grammar spellings.
+ * Copilot round 3 on #362, and https://github.com/sleepy-panda-srl/portulan/issues/337 already names
+ * `./` as a spelling that matches nothing at runtime.
+ *
+ * So the test is a **suffix** on a path-separator boundary: `cli/telemetry.mjs`, `./cli/telemetry.mjs`
+ * and `/abs/where/ever/cli/telemetry.mjs` all name it. The cost is stated rather than hidden — some
+ * *other* tree's `vendor/cli/telemetry.mjs` would match too, which is a **false red**, the safe
+ * direction, and a recipe reaching into another tree is worth a human looking either way.
+ */
+const tokenNamesModule = (token, module) => token === module || token.endsWith(`/${module}`);
+
+/** A flag token, in the two spellings a shell writes it: bare, or `--flag=value`. */
+const tokenIsFlag = (token, flag) => token === flag || token.startsWith(`${flag}=`);
+
 export function auditRecipeSource(source) {
-    const body = stripShellComments(source);
-    return NETWORK_MODES.filter((m) => body.includes(m.module) && body.includes(m.flag));
+    const tokens = shellTokens(stripShellComments(source));
+    return NETWORK_MODES.filter((m) => tokens.some((t) => tokenNamesModule(t, m.module)) && tokens.some((t) => tokenIsFlag(t, m.flag)));
 }
 
 /**
@@ -222,6 +249,15 @@ export function auditRecipes({ workspaceDir, repoRoot, packRoots = [] }) {
             return { ok: false, why: `recipe ${JSON.stringify(r.id)} has no readable script in its run line (${JSON.stringify(r.run ?? null)}); this audit cannot grade what it cannot read` };
         }
         const file = path.resolve(repoRoot, script);
+        // **A script outside the tree is could-not-run, never a pass.** `path.resolve` happily follows
+        // `bash ../../somewhere/outside.sh` or an absolute path out of the repository, and this audit
+        // would then read and grade a file the pinned root does not cover — ending the property the
+        // pinned root exists to buy, and offering a bypass to anyone who wanted one. `isInside` was
+        // already imported into this module for the consent check and this call site did not use it.
+        // Copilot round 3 on #362.
+        if (!isInside(path.resolve(repoRoot), file)) {
+            return { ok: false, why: `recipe ${JSON.stringify(r.id)} names ${script}, which resolves outside the repository at ${repoRoot}; this audit grades the tree and will not read past it` };
+        }
         let source;
         try {
             source = fs.readFileSync(file, "utf8");

@@ -614,7 +614,11 @@ takes, one clause over.
   claims it can. Measured at the pre-commit checkpoint rather than reasoned about.
 - **The offline audit knows only the modes it was given.** A network mode added to `cli/` with no row in
   `NETWORK_MODES` is uncovered, and nothing can audit that the row was added — the same arrears
-  [`../.portulan/rule-carriers.json`](../.portulan/rule-carriers.json) names about its own registry.
+  [`../.portulan/rule-carriers.json`](../.portulan/rule-carriers.json) names about its own registry. It
+  matches a module as a path **suffix** and a flag as a **token**, so `./` and `--flag=value` spellings
+  are covered — the first version knew one literal string, which made `./` a bypass — but a mode reached
+  **indirectly**, through another script or a flag built at runtime, is invisible to it and no wider
+  pattern fixes that.
 - **The opt-in is never demonstrated in the affirmative from a committed artifact.** No workspace in
   this tree declares telemetry on, so every green here is a green about the **off** path. The send is
   proven in the suite against an injected transport and a temporary repository with the consent really
