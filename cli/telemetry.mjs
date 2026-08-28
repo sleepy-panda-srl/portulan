@@ -386,13 +386,21 @@ export const PRODUCERS = {
 };
 
 /**
- * Every attribute key an emission may carry, pinned so the closed payload is a rail and not a
+ * Every attribute key an emission **may** carry, pinned so the closed payload is a rail and not a
  * reminder.
  *
  * **An unfamiliar key in a rendered payload is a red.** Without this the "closed list" is a promise
  * about the code rather than a property of it — and a producer added later could widen the vocabulary
- * silently, which is precisely the widening the maintainer reserved to himself. The suite asserts the
- * rendered payload's keys against this set, in both directions.
+ * silently, which is precisely the widening the maintainer reserved to himself.
+ *
+ * **This is an ALLOW-LIST, and `REQUIRED_ATTRIBUTE_KEYS` below is the floor — one list was doing both
+ * jobs and they are not the same job.** `service.namespace` is optional in the config *and* optional
+ * in OpenTelemetry's own semantic conventions, so a workspace that declares none emits a payload
+ * without it — legitimately. A single list checked "in both directions" made that legal config look
+ * like a broken invariant, and the only reason nothing failed is that THIS workspace happens to
+ * declare a namespace: the pin was green by coincidence of one instance. Requiring the key instead
+ * would have been this repository inventing a constraint the specification does not have. Copilot
+ * round 2 on #362.
  */
 export const EMITTED_ATTRIBUTE_KEYS = Object.freeze([
     "service.name",
@@ -405,6 +413,16 @@ export const EMITTED_ATTRIBUTE_KEYS = Object.freeze([
     "portulan.window.captured",
     "portulan.units",
 ]);
+
+/**
+ * The keys every emission **must** carry, whatever the config says.
+ *
+ * The floor rather than the ceiling: a payload missing one of these is not identifiable at a
+ * collector, which is the thing the maintainer's one widening of the vocabulary was for. Everything in
+ * `EMITTED_ATTRIBUTE_KEYS` and not here is legitimately conditional — today that is `service.namespace`
+ * alone, and it is conditional on the config declaring one.
+ */
+export const REQUIRED_ATTRIBUTE_KEYS = Object.freeze(EMITTED_ATTRIBUTE_KEYS.filter((k) => k !== "service.namespace"));
 
 // ---------------------------------------------------------------------------------------------
 // OTLP/HTTP JSON — the wire shape, written by hand

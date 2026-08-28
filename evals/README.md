@@ -590,7 +590,12 @@ reviewer **login** stays excluded and is the field this deliberately is not — 
 is a bot's, but an adopter's would carry human names.
 
 The attribute vocabulary is **pinned in both directions** by the suite, so an added key *and* a deleted
-carrier are each a red.
+carrier are each a red — against two lists rather than one, because they are two questions. The
+allow-list says what an emission *may* carry; a separate floor says what it *must*. One list checked
+both ways made `service.namespace` — optional in the config and optional in OpenTelemetry's own
+conventions — look mandatory, and was green only because this workspace happens to declare one. A pin
+that is correct by coincidence of a single instance is the shape a census over its author's own set
+takes, one clause over.
 
 ### What this rail does NOT establish
 

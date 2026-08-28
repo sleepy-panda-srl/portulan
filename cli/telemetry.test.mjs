@@ -38,6 +38,7 @@ process.on("exit", () => fs.rmSync(HERMETIC_HOST, { recursive: true, force: true
 import {
     CONFIG_SPEC,
     EMITTED_ATTRIBUTE_KEYS,
+    REQUIRED_ATTRIBUTE_KEYS,
     NETWORK_MODES,
     PRODUCERS,
     anyValue,
@@ -274,8 +275,32 @@ test("every attribute key the payload emits is one the pin knows", () => {
     // The other direction, which is the half that catches a DELETED carrier rather than an added one:
     // a pin listing keys nothing emits would grow stale silently, exactly as a hand-maintained roster
     // does. `version-carriers.mjs` calls this its MUST_CARRY half.
-    const unemitted = EMITTED_ATTRIBUTE_KEYS.filter((k) => !keys.has(k));
-    assert.deepEqual(unemitted, [], `the pin names keys nothing emits: ${unemitted.join(", ")}`);
+    //
+    // **Against the FLOOR, not the allow-list.** This asserted every allow-listed key was present,
+    // which made an optional key indistinguishable from a mandatory one and was green only because
+    // this workspace declares a `service.namespace`. Copilot round 2 on #362.
+    const unemitted = REQUIRED_ATTRIBUTE_KEYS.filter((k) => !keys.has(k));
+    assert.deepEqual(unemitted, [], `the pin names required keys nothing emits: ${unemitted.join(", ")}`);
+});
+
+test("a config with NO service.namespace is valid, and its payload is still within the closed list", () => {
+    // Copilot round 2 on #362. `service.namespace` is optional in the config and optional in
+    // OpenTelemetry's own semantic conventions; the pin treated it as mandatory and passed only because
+    // this workspace declares one. The legal config is the case that was missing.
+    const config = { ...configOf(), service: { name: "portulan" } };
+    assert.deepEqual(validateConfig(config), [], "a namespace-less config is legal");
+    const snapshot = JSON.parse(readFileSync(join(REPO, "evals/review-loop/snapshot.json"), "utf8"));
+    const p = PRODUCERS["review-loop"];
+    const payload = renderPayload({
+        config,
+        signals: [{ name: "review-loop", scope: p.scope, capturedAt: p.capturedAt(snapshot), rows: p.rows(snapshot), attributes: p.attributes(snapshot), resource: p.resource(snapshot) }],
+    });
+    const rm = payload.resourceMetrics[0];
+    const keys = new Set(rm.resource.attributes.map((a) => a.key));
+    for (const sm of rm.scopeMetrics) for (const m of sm.metrics) for (const dp of m.gauge.dataPoints) for (const a of dp.attributes) keys.add(a.key);
+    assert.ok(!keys.has("service.namespace"), "no namespace declared, so none is emitted");
+    assert.deepEqual([...keys].filter((k) => !EMITTED_ATTRIBUTE_KEYS.includes(k)), [], "still inside the allow-list");
+    assert.deepEqual(REQUIRED_ATTRIBUTE_KEYS.filter((k) => !keys.has(k)), [], "and still carries every required key");
 });
 
 test("no reviewer LOGIN reaches the payload — an identifier about a person is outside anything ruled", () => {
