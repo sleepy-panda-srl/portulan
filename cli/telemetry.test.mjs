@@ -417,6 +417,17 @@ test("a null figure is DROPPED, never encoded as zero", () => {
     assert.deepEqual(names, ["b"]);
 });
 
+test("a metric value past the safe-integer range is emitted as a double, not a false intValue", () => {
+    const payload = renderPayload({
+        config: configOf(),
+        signals: [{ name: "x", scope: "s", capturedAt: "2026-01-01T00:00:00Z", rows: [{ name: "big", unit: "1", description: "", value: 2 ** 53 }, { name: "safe", unit: "1", description: "", value: 7 }], attributes: {}, resource: {} }],
+    });
+    const [big, safe] = payload.resourceMetrics[0].scopeMetrics[0].metrics;
+    assert.equal(big.gauge.dataPoints[0].asInt, undefined, "an unsafe integer must not claim an exact int64");
+    assert.equal(big.gauge.dataPoints[0].asDouble, 2 ** 53);
+    assert.equal(safe.gauge.dataPoints[0].asInt, "7");
+});
+
 test("the timestamp is the instant the measurement is ABOUT, not a clock read", () => {
     const capturedAt = "2026-08-26T11:14:20.052Z";
     const payload = renderPayload({
@@ -436,6 +447,12 @@ test("the OTLP AnyValue map encodes each scalar kind, and refuses what it has no
     assert.deepEqual(anyValue(true), { boolValue: true });
     assert.deepEqual(anyValue(3), { intValue: "3" });
     assert.deepEqual(anyValue(1.5), { doubleValue: 1.5 });
+    // Copilot round 11 on #362. OTLP's intValue is an int64 and a JS number stops being an exact
+    // integer past 2^53, so `Number.isInteger` would emit a precise-looking integer that is not the
+    // number anybody meant. Beyond the safe range `asDouble` is the honest encoding — approximate and
+    // labelled approximate. Not reachable with today's producer; fixed because `anyValue` is exported.
+    assert.deepEqual(anyValue(Number.MAX_SAFE_INTEGER), { intValue: "9007199254740991" });
+    assert.deepEqual(anyValue(2 ** 53), { doubleValue: 2 ** 53 });
     assert.throws(() => anyValue(Number.NaN), /no OTLP encoding/);
     assert.throws(() => anyValue({}), /no OTLP encoding/);
 });

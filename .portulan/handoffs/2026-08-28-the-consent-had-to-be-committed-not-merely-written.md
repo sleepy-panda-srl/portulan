@@ -161,8 +161,9 @@ same commit CI graded.
 | 8 | 0 | empty |
 | 9 | 1 | `path.relative` handed to git unnormalised — `\\` on Windows where git wants `/` |
 | 10 | 4 | `NETWORK_MODES` railed *the class* and listed two of three; `--workspace` un-pinned; both untested |
+| 11 | 2 | `Number.isInteger` where `isSafeInteger` is meant — an exact int64 claimed for a number that cannot be exact |
 
-**Four of the twenty-one were introduced by an earlier round's fix**, and that is the number worth
+**Four of the twenty-three were introduced by an earlier round's fix**, and that is the number worth
 carrying rather than the total. Round 6's `packRoots` is round 1's repair applied at the site it was
 found and not at its sibling one line below. Round 7's is worse: round 4's 128-means-*not a repository*
 made **the one case this gate exists for** — a consent staged and never committed — report a broken
@@ -190,6 +191,15 @@ incomplete. Naming an arrears is not the same as knowing you are inside it. The 
 the tree** now: a suite case enumerates every `cli/` module reaching `fetch` or `gh` and requires a row,
 and deleting the new row reddens two cases, measured.
 
+**Round 11's finding is unreachable today and was fixed anyway, which is worth separating from the
+rest.** `anyValue` and `renderPayload` branched on `Number.isInteger`, claiming OTLP's exact int64 for
+numbers past 2^53 that are already the wrong value. No producer here approaches that — the figures are
+pull-request and submission counts — so nothing was shipping bad numbers. It is fixed because
+`anyValue` is **exported** and the producer seam exists to invite rows this module did not write: a
+generic encoder is precisely where an unreachable defect becomes reachable without its author noticing.
+Reported as unreachable rather than as a live bug caught, because inflating a finding is the same
+dishonesty as hiding one.
+
 **The bound was exceeded, and it was granted rather than met.**
 [`../memory/a-review-loop-needs-a-bound.md`](../memory/a-review-loop-needs-a-bound.md) rule 4 is *two
 fix-rounds, then triage*: after the second, what remains becomes an issue and does not become another
@@ -205,7 +215,7 @@ anything.
 
 **And the loop's own meter has a data point about itself.** Clause (c) landed two sessions ago
 measuring 4.67 submissions per pull request over the thirty most recently merged. This pull request took
-**ten**, which the record's own table puts at the level of its worst observed — #49 at nine, #44 and
+**eleven**, which the record's own table puts at the level of its worst observed — #49 at nine, #44 and
 #57 at eight. The change that built the meter for exactly this figure produced one of the heaviest loops
 in the corpus, and the meter cannot see it: `evals/review-loop/snapshot.json` is a committed capture and
 does not refresh itself ([#356](https://github.com/sleepy-panda-srl/portulan/issues/356)). Re-running

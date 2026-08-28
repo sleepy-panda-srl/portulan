@@ -504,7 +504,17 @@ export const REQUIRED_ATTRIBUTE_KEYS = Object.freeze(EMITTED_ATTRIBUTE_KEYS.filt
 export function anyValue(v) {
     if (typeof v === "string") return { stringValue: v };
     if (typeof v === "boolean") return { boolValue: v };
-    if (Number.isInteger(v)) return { intValue: String(v) };
+    // **`isSafeInteger`, not `isInteger`.** OTLP's `intValue` is an int64 and a JS number stops being an
+    // exact integer past 2^53 — `Number.isInteger(2**53 + 1)` is `true` and the value is already the
+    // wrong one, so stringifying it emits a precise-looking integer that is not the number anybody
+    // meant. Beyond that range `asDouble` is the honest encoding: approximate, and *labelled*
+    // approximate, which is the same distinction between could-not-run and a verdict that this module
+    // spends a docblock on. Copilot round 11 on #362, through the suppressed channel.
+    //
+    // **Not reachable with today's producer** — the review-loop figures are pull-request and submission
+    // counts — and it is fixed anyway because `anyValue` is exported, and the producer seam exists to
+    // invite rows this module did not write.
+    if (Number.isSafeInteger(v)) return { intValue: String(v) };
     if (typeof v === "number" && Number.isFinite(v)) return { doubleValue: v };
     throw new Error(`no OTLP encoding for ${JSON.stringify(v)}`);
 }
@@ -541,7 +551,7 @@ export function renderPayload({ config, signals, version = VERSION }) {
                 name: r.name,
                 unit: r.unit,
                 description: r.description,
-                gauge: { dataPoints: [{ timeUnixNano, attributes, ...(Number.isInteger(r.value) ? { asInt: String(r.value) } : { asDouble: r.value }) }] },
+                gauge: { dataPoints: [{ timeUnixNano, attributes, ...(Number.isSafeInteger(r.value) ? { asInt: String(r.value) } : { asDouble: r.value }) }] },
             }));
         scopeMetrics.push({ scope: { name: s.scope, version }, metrics });
     }
