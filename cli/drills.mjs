@@ -459,6 +459,27 @@ export const DRILLS = [
         why: "The register is the review loop's published figures, and this clause exists because the figures it replaces were hand-maintained. A register that could drift from its own snapshot would be that hand-maintained tally wearing a generated file's clothes.",
     },
     {
+        rail: "telemetry",
+        perturb: {
+            file: ".portulan/verify/review-loop.sh",
+            find: "    --snapshot evals/review-loop/snapshot.json \\",
+            replace: "    --fetch \\\n    --snapshot evals/review-loop/snapshot.json \\",
+        },
+        exit: 1,
+        tell: "invokes cli/review-meter.mjs --fetch",
+        // **The perturbation is a network mode reaching a recipe, which is the rail's actual subject —
+        // not a drifted payload, which would have been the cheaper drill.** Byte-drift is already the
+        // shape `review-loop` and `index` drill; what nothing else here watches is the offline
+        // property, so that is what this forces.
+        //
+        // And it forces it through the mode this session did NOT introduce. `--fetch` predates the
+        // telemetry clause by a session, so a drill that fired on `--export` would prove only that the
+        // checker recognises its author's own module — while the whole argument for railing a class
+        // rather than a file is that the OLDER network mode was the unrailed one. A drill on the new
+        // mode would have passed while leaving exactly the gap the class exists to close.
+        why: "A verify recipe that can reach the network goes red about the world rather than about the tree, and this repository prohibits it in three carriers while nothing checked it. The drill proves the checker sees a real invocation — spread across continued lines, the spelling a recipe actually uses — rather than only the literal string a test would hand it.",
+    },
+    {
         rail: "tools/github:actions-pinned",
         perturb: {
             file: ".github/workflows/verify.yml",

@@ -1,0 +1,13 @@
+{
+  "portulan": {
+    "telemetry": "1"
+  },
+  "enabled": false,
+  "service": {
+    "name": "portulan",
+    "namespace": "sleepy-panda-srl"
+  },
+  "signals": [
+    "review-loop"
+  ]
+}

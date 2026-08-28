@@ -1,0 +1,287 @@
+{
+  "resourceMetrics": [
+    {
+      "resource": {
+        "attributes": [
+          {
+            "key": "service.name",
+            "value": {
+              "stringValue": "portulan"
+            }
+          },
+          {
+            "key": "telemetry.sdk.name",
+            "value": {
+              "stringValue": "portulan"
+            }
+          },
+          {
+            "key": "telemetry.sdk.language",
+            "value": {
+              "stringValue": "nodejs"
+            }
+          },
+          {
+            "key": "telemetry.sdk.version",
+            "value": {
+              "stringValue": "0.1.2"
+            }
+          },
+          {
+            "key": "service.namespace",
+            "value": {
+              "stringValue": "sleepy-panda-srl"
+            }
+          },
+          {
+            "key": "portulan.repository",
+            "value": {
+              "stringValue": "sleepy-panda-srl/portulan"
+            }
+          }
+        ]
+      },
+      "scopeMetrics": [
+        {
+          "scope": {
+            "name": "portulan/review-loop",
+            "version": "0.1.2"
+          },
+          "metrics": [
+            {
+              "name": "portulan.review.pull_requests",
+              "unit": "{pull_request}",
+              "description": "Merged pull requests in the metered window.",
+              "gauge": {
+                "dataPoints": [
+                  {
+                    "timeUnixNano": "1787742860052000000",
+                    "attributes": [
+                      {
+                        "key": "portulan.window.merged",
+                        "value": {
+                          "intValue": "30"
+                        }
+                      },
+                      {
+                        "key": "portulan.window.captured",
+                        "value": {
+                          "stringValue": "2026-08-26T11:14:20.052Z"
+                        }
+                      },
+                      {
+                        "key": "portulan.units",
+                        "value": {
+                          "stringValue": "submission"
+                        }
+                      }
+                    ],
+                    "asInt": "30"
+                  }
+                ]
+              }
+            },
+            {
+              "name": "portulan.review.submissions",
+              "unit": "{submission}",
+              "description": "Reviews the reviewer submitted across the window. Submission units, never fix-rounds.",
+              "gauge": {
+                "dataPoints": [
+                  {
+                    "timeUnixNano": "1787742860052000000",
+                    "attributes": [
+                      {
+                        "key": "portulan.window.merged",
+                        "value": {
+                          "intValue": "30"
+                        }
+                      },
+                      {
+                        "key": "portulan.window.captured",
+                        "value": {
+                          "stringValue": "2026-08-26T11:14:20.052Z"
+                        }
+                      },
+                      {
+                        "key": "portulan.units",
+                        "value": {
+                          "stringValue": "submission"
+                        }
+                      }
+                    ],
+                    "asInt": "140"
+                  }
+                ]
+              }
+            },
+            {
+              "name": "portulan.review.submissions_per_pull_request",
+              "unit": "1",
+              "description": "The figure a-review-loop-needs-a-bound.md bounds the loop on.",
+              "gauge": {
+                "dataPoints": [
+                  {
+                    "timeUnixNano": "1787742860052000000",
+                    "attributes": [
+                      {
+                        "key": "portulan.window.merged",
+                        "value": {
+                          "intValue": "30"
+                        }
+                      },
+                      {
+                        "key": "portulan.window.captured",
+                        "value": {
+                          "stringValue": "2026-08-26T11:14:20.052Z"
+                        }
+                      },
+                      {
+                        "key": "portulan.units",
+                        "value": {
+                          "stringValue": "submission"
+                        }
+                      }
+                    ],
+                    "asDouble": 4.666666666666667
+                  }
+                ]
+              }
+            },
+            {
+              "name": "portulan.review.submissions_no_inline",
+              "unit": "{submission}",
+              "description": "Submissions raising no inline comment.",
+              "gauge": {
+                "dataPoints": [
+                  {
+                    "timeUnixNano": "1787742860052000000",
+                    "attributes": [
+                      {
+                        "key": "portulan.window.merged",
+                        "value": {
+                          "intValue": "30"
+                        }
+                      },
+                      {
+                        "key": "portulan.window.captured",
+                        "value": {
+                          "stringValue": "2026-08-26T11:14:20.052Z"
+                        }
+                      },
+                      {
+                        "key": "portulan.units",
+                        "value": {
+                          "stringValue": "submission"
+                        }
+                      }
+                    ],
+                    "asInt": "94"
+                  }
+                ]
+              }
+            },
+            {
+              "name": "portulan.review.no_inline_rate",
+              "unit": "1",
+              "description": "An UPPER BOUND on the found-nothing rate; a submission carrying only suppressed notes counts in it.",
+              "gauge": {
+                "dataPoints": [
+                  {
+                    "timeUnixNano": "1787742860052000000",
+                    "attributes": [
+                      {
+                        "key": "portulan.window.merged",
+                        "value": {
+                          "intValue": "30"
+                        }
+                      },
+                      {
+                        "key": "portulan.window.captured",
+                        "value": {
+                          "stringValue": "2026-08-26T11:14:20.052Z"
+                        }
+                      },
+                      {
+                        "key": "portulan.units",
+                        "value": {
+                          "stringValue": "submission"
+                        }
+                      }
+                    ],
+                    "asDouble": 0.6714285714285714
+                  }
+                ]
+              }
+            },
+            {
+              "name": "portulan.review.pushes",
+              "unit": "{push}",
+              "description": "Distinct heads the reviewer saw — a floor on pushes, not a count of them.",
+              "gauge": {
+                "dataPoints": [
+                  {
+                    "timeUnixNano": "1787742860052000000",
+                    "attributes": [
+                      {
+                        "key": "portulan.window.merged",
+                        "value": {
+                          "intValue": "30"
+                        }
+                      },
+                      {
+                        "key": "portulan.window.captured",
+                        "value": {
+                          "stringValue": "2026-08-26T11:14:20.052Z"
+                        }
+                      },
+                      {
+                        "key": "portulan.units",
+                        "value": {
+                          "stringValue": "submission"
+                        }
+                      }
+                    ],
+                    "asInt": "140"
+                  }
+                ]
+              }
+            },
+            {
+              "name": "portulan.review.pushes_per_submission",
+              "unit": "1",
+              "description": "The criterion's literal pushes-per-round figure, in submission units.",
+              "gauge": {
+                "dataPoints": [
+                  {
+                    "timeUnixNano": "1787742860052000000",
+                    "attributes": [
+                      {
+                        "key": "portulan.window.merged",
+                        "value": {
+                          "intValue": "30"
+                        }
+                      },
+                      {
+                        "key": "portulan.window.captured",
+                        "value": {
+                          "stringValue": "2026-08-26T11:14:20.052Z"
+                        }
+                      },
+                      {
+                        "key": "portulan.units",
+                        "value": {
+                          "stringValue": "submission"
+                        }
+                      }
+                    ],
+                    "asInt": "1"
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

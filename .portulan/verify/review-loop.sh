@@ -16,9 +16,16 @@
 # argued at length while its own preposition was not. It places (c)'s subject under the telemetry
 # heading; it does not make (c) a deliverable OF the OTel clause. ../../evals/README.md has listed the
 # two as separate bullets since milestone 8 session 0, and the row names each separately. So (c) ships
-# whole here, and the still-open **OTel opt-in config** clause owes an emission path for these figures
-# if he reads the phrase the other way — which is why they are written as machine-readable JSON with a
-# rendered register beside them, rather than as prose an exporter could not consume.
+# whole here, and the then-still-open **OTel opt-in config** clause owed an emission path for these
+# figures if he read the phrase the other way — which is why they are written as machine-readable JSON
+# with a rendered register beside them, rather than as prose an exporter could not consume.
+#
+# **That debt is DISCHARGED as of milestone 8 session 5, 2026-08-28**, and this sentence is updated
+# rather than left standing — a carrier describing a clause as still open, on the day it closed, is
+# the stale-figure defect this very recipe exists to end. `../../cli/telemetry.mjs` reads this
+# recipe's snapshot and renders it as OTLP metrics; the emission path exists, and it is off by default.
+# The debt is paid on either reading of the locative phrase: if he reads it the other way, the path is
+# built; if he does not, none was owed.
 #
 # ## What it rails, and why that is not what the suite rails
 #

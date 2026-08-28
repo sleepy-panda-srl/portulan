@@ -29,13 +29,13 @@ keeps the row's own word; the tools take a narrower one.
 
 ## What is built today
 
-**Five clauses of row 8, of nine.** (a), adversarial fixtures per compiled gate, landed 2026-08-24;
+**Six clauses of row 8, of nine.** (a), adversarial fixtures per compiled gate, landed 2026-08-24;
 **(b)**, mutation testing over both matchers and grammar-aware fuzzing over the shell segmenter,
 landed 2026-08-25; **(d)**, scheduled forced-red drills, landed 2026-08-25; **(c)**, review-loop
 metering, landed 2026-08-26; **golden tasks per core skill** — the row's original first subject —
-landed 2026-08-26. **Four remain** — the A/B baseline, OTel opt-in config, a rule change merged or
-rejected on eval evidence, and a release carrying an eval result. Each is listed below with the
-sentence [`../.portulan/dod.md`](../.portulan/dod.md) condition 4 requires.
+landed 2026-08-26; **OTel opt-in config** landed 2026-08-28. **Three remain** — the A/B baseline, a
+rule change merged or rejected on eval evidence, and a release carrying an eval result. Each is listed
+below with the sentence [`../.portulan/dod.md`](../.portulan/dod.md) condition 4 requires.
 
 ```
 evals/goldens/gates/<rule-id>.json      one fixture file per rule in the yielded gate policy
@@ -483,6 +483,180 @@ shape one grain finer and is a second clause's work.
 And it grades a skill's **mandates** against the tree, never an agent's judgement in following one. No
 golden task here tells you whether an agent given `clarify` asks good questions.
 
+## OTel opt-in config — the first thing here that can send anything anywhere
+
+**The reading was ruled, not derived.** *"OTel opt-in config"* reads at least three ways, and
+[`../.portulan/gate-map.md`](../.portulan/gate-map.md)'s *"Session-open runs `clarify` against the
+milestone row itself"* exists because milestone 4 guessed at exactly this shape of ambiguity and cost a
+session-blocking question. Put to the maintainer on 2026-08-28 as three readings — a config surface
+emitting nothing; that surface **plus a real emitter**, hand-written OTLP-over-HTTP JSON, off by
+default and never callable from a verify recipe; or an OTLP-shaped local file sink with no network path
+at all. **He ruled the second.** The same session ruled the signal set (**the review-loop figures
+only**) and the consent model (below), so all three axes of this clause are his rather than an
+implementer's — which is the standard session 4 set for this row and the one milestone 4 paid for.
+
+**Why this clause now.** A written-down dependency pointed at it and nothing pointed anywhere else:
+[`../.portulan/verify/review-loop.sh`](../.portulan/verify/review-loop.sh) said the then-still-open OTel
+clause *"owes an emission path for these figures … which is why they are written as machine-readable
+JSON with a rendered register beside them, rather than as prose an exporter could not consume."*
+Session 3 shaped its output for this session. The debt is discharged **on either reading** of that
+recipe's locative phrase: if he reads *"in the telemetry clause"* the other way, the path is now built;
+if he does not, none was owed.
+
+```
+evals/telemetry/config.json             the committed opt-in — the ONLY gate on emission
+evals/telemetry/review-loop.otlp.json   the golden payload, regenerated and byte-compared
+```
+
+Graded by [`../cli/telemetry.mjs`](../cli/telemetry.mjs), run as the `telemetry` verify recipe, on
+every pull request. See it by hand with:
+
+```
+node cli/telemetry.mjs --config evals/telemetry/config.json --render
+```
+
+### Why the opt-in is a committed file and not `OTEL_SDK_DISABLED`
+
+This is the one place the tool departs from the OpenTelemetry environment contract, and it is stated
+out loud rather than left to be discovered. **`OTEL_SDK_DISABLED` defaults to `false`.** Honouring the
+standard environment surface as the *gate* would mean an adopter who already exports
+`OTEL_EXPORTER_OTLP_ENDPOINT` in CI — for some other service — starts emitting from Portulan without
+having decided to. That is an opt-**out**, and the criterion's word is *opt-in*. It would also put a
+team decision in ambient per-machine state, which is the inverse of `core < pack < workspace`.
+
+So the committed file is the only gate, and the environment supplies **transport only** — the OTLP
+endpoint and header variables in both their general and metrics-specific forms, so an adopter's
+existing collector configuration works unchanged and **a secret never enters a committed file**
+([`../.portulan/dod.md`](../.portulan/dod.md) condition 5). The validator refuses a config carrying
+`headers`, `endpoint` or a token outright, so that is a rail rather than a review note.
+
+**What of that contract is implemented, at its real width.** Read:
+`OTEL_EXPORTER_OTLP_METRICS_ENDPOINT` — used **as given**, since the specification makes the
+signal-specific variable the full URL — falling back to `OTEL_EXPORTER_OTLP_ENDPOINT` as a base with
+`/v1/metrics` appended; and `OTEL_EXPORTER_OTLP_METRICS_HEADERS` **replacing**
+`OTEL_EXPORTER_OTLP_HEADERS` rather than merging. **Not** read, each a silent no-op for an adopter who
+sets it: `OTEL_EXPORTER_OTLP_PROTOCOL` (this emitter speaks `http/json` only), `_TIMEOUT`,
+`_COMPRESSION`, `_CERTIFICATE` and the client-auth pair. _This paragraph exists because the two carriers
+it replaces said the variables were read **"exactly as the specification defines them"** while the
+metrics-specific endpoint was ignored and appended to — which produced `/v1/metrics/v1/metrics` for
+anyone configured the standard way. A partial implementation of a public contract is fine; describing
+one as complete is the overclaim [`../.portulan/principles.md`](../.portulan/principles.md) opens with._
+
+### The config was NOT made a Workspace Definition slot, and the cut is the session-open checkpoint's
+
+The first plan put it in the schema as a `telemetry` slot at spec 2.9. The checkpoint cut it, on
+grounds worth keeping: **every slot in that train arrived through a ruled proposal** —
+[`../spec/README.md`](../spec/README.md)'s 2.8 argument cites proposal `0025`, `governed_by` cites
+`0017`, `provenance` cites `0002` — and [`../.portulan/gate-map.md`](../.portulan/gate-map.md) makes an
+idea that adds a surface a **proposal**, *"never opened as an implementation pull request with tests."*
+[`../spec/slots.md`](../spec/slots.md)'s own `evals` deferral says a schema change plus a spec bump plus
+a migration *"is not a thing to do in passing"* and defers to **when milestone 8 closes**; and the slot
+would have shipped with **zero filled instances**, since this workspace declares telemetry off and
+[`../examples/`](../examples/) stays at 2.4 — which is
+[`../spec/slots.md`](../spec/slots.md)'s *"splitting on speculation is how a schema acquires slots
+nobody fills"* exactly. It is filed as [`0034`](../.portulan/proposals/0034-one-spec-bump-carries-both-evals-and-telemetry.md) — **accepted by the maintainer 2026-08-28** — to ride with
+`evals` at the close, which makes it one bump instead of two. The acceptance commissions the drafting
+and settles none of the shape: the key names, either slot's structure, and whether a migration is owed
+are the drafted work, and the close remains the earliest sensible moment because `slots.md`'s deferral
+conditions the `evals` half on row 8 having decided what an eval artifact is here.
+
+### Consent — ruled, and railed rather than promised
+
+[`../.portulan/gates.json`](../.portulan/gates.json) makes *sending anything outward on the team's
+behalf* Gated, and [`../core/operating/autonomy.md`](../core/operating/autonomy.md) says Gated is **per
+action**. Proposal
+[`0014`](../.portulan/proposals/0014-a-feedback-pipe-points-out-of-the-seam.md) reserved telemetry as
+*"a separate mechanism with separate consent"* — named there, ruled nowhere, until now.
+
+**His ruling: the committed opt-in config IS the standing consent.** Each export rides on it without a
+fresh per-send approval, the way a compiled gate carries a tier without asking again; what stays Gated
+and his alone is **committing a config that says `enabled: true`**. The ruling is transcribed into
+`gates.json`'s own rule and into the gate map in the same change, because a ruling living only in a
+session note while those said otherwise would be one rule with two disagreeing carriers, obeyed at the
+narrower.
+
+Three things keep it from widening into the thing the tier exists to stop, and each is a rail:
+
+- `--export` refuses in **three** states, and the third is the one that matters most: the config is
+  **untracked**, **tracked but absent from `HEAD`** — staged and never committed — or **differs from
+  `HEAD`**. So an agent cannot
+  manufacture consent by editing a working copy. Without this the ruling would be a mandate nothing
+  checks, arriving inside the change that states it.
+- **`--export` is person-invoked only.** No workflow, hook or schedule runs *that mode*, and wiring one
+  in is a new consent question rather than a covered one. _The narrowing matters and the first draft got
+  it wrong in the direction that misleads: CI runs `cli/telemetry.mjs` on **every** pull request, because
+  the `telemetry` recipe is in the yielded set and [`../.github/workflows/verify.yml`](../.github/workflows/verify.yml)
+  runs the set. What CI never runs is `--export`, and a sentence saying the module is person-invoked
+  tells a reader auditing consent to stop looking._
+- It **neither queues nor retries**, on [`../cli/feedback.mjs`](../cli/feedback.mjs)'s rule that a queue
+  flushing itself later is a silent send with extra steps.
+- **Nothing from the transport environment is logged.** Headers never; the endpoint only as origin and
+  path, with userinfo and query stripped, and not at all when it failed to parse. An endpoint legally
+  carries `user:pass@` and tokens ride in query parameters, so printing it in full leaked exactly what
+  withholding the headers protected — into CI logs, which are long-lived and world-readable here.
+
+### The payload is closed by construction, and was widened exactly once
+
+Emission is assembled from an explicit allow-list of aggregate figures; no producer is handed a
+snapshot to spread into a body, so there is no path from a free-text or path-shaped field to the wire.
+The ruled vocabulary was *figures, rule ids, recipe ids* — **no identity at all**, which would have made
+one workspace's export indistinguishable from another's at any collector. Put to him rather than
+widened by an implementer, on `cli/feedback.mjs`'s rule that a closed list is wrong only when somebody
+widens it **on purpose**: he widened it to **one named resource attribute**, the repository slug. A
+reviewer **login** stays excluded and is the field this deliberately is not — this snapshot's only login
+is a bot's, but an adopter's would carry human names.
+
+The attribute vocabulary is **pinned in both directions** by the suite, so an added key *and* a deleted
+carrier are each a red — against two lists rather than one, because they are two questions. The
+allow-list says what an emission *may* carry; a separate floor says what it *must*. One list checked
+both ways made `service.namespace` — optional in the config and optional in OpenTelemetry's own
+conventions — look mandatory, and was green only because this workspace happens to declare one. A pin
+that is correct by coincidence of a single instance is the shape a census over its author's own set
+takes, one clause over.
+
+### What this rail does NOT establish
+
+- **It cannot tell a current snapshot from a stale one.** It checks the payload against the snapshot,
+  never the snapshot against the world — [`review-loop.sh`](../.portulan/verify/review-loop.sh)'s cost
+  inherited one step down, and [#356](https://github.com/sleepy-panda-srl/portulan/issues/356). What
+  this layer adds is that the capture stamp travels **inside** the payload, so a stale export arrives
+  labelled stale rather than looking fresh. A consequence to state rather than assert a threshold for:
+  a stale export carries an aged `timeUnixNano`, and time-series backends commonly drop or reject aged
+  samples — semantically correct and silently discarded is the worst pair.
+- **The consent rail establishes *tracked and byte-identical to `HEAD`* — not *committed by him*.**
+  `commit-to-a-working-branch` is tier **auto**, so an agent commits unattended; a consent committed by a
+  scripted `git commit` clears every gate this rail has. What the rail buys is real and is narrower than
+  it first reads: it moves the act from a file edit nobody sees into **a commit that appears in a
+  reviewed diff**, on the branch a human merges. It cannot tell whose commit it is, and nothing here
+  claims it can. Measured at the pre-commit checkpoint rather than reasoned about.
+- **The offline audit's class is derived, and was not always.** The table claimed to rail the class of
+  network-capable modes in `cli/` and listed **two of three** — `cli/feedback.mjs` files a GitHub issue
+  through `gh issue create` and had been network-capable longer than either of the others. A set drawn
+  by its author and reported as complete is the census shape session 4 named one clause over, committed
+  at this table's birth and found at round 10 of the review. The suite now **derives** the set from the
+  tree, so a new network-capable module reddens. What remains uncovered is narrower: a module reaching
+  the network in a way the derivation does not see, and a mode reached **indirectly**. It
+  matches a module as a path **suffix** and a flag as a **token**, so `./` and `--flag=value` spellings
+  are covered — the first version knew one literal string, which made `./` a bypass — but a mode reached
+  **indirectly**, through another script or a flag built at runtime, is invisible to it and no wider
+  pattern fixes that.
+- **The opt-in is never demonstrated in the affirmative from a committed artifact.** No workspace in
+  this tree declares telemetry on, so every green here is a green about the **off** path. The send is
+  proven in the suite against an injected transport and a temporary repository with the consent really
+  committed — a session-time observation, not a standing one, which is the state clause (d) exists to
+  replace and does not reach here.
+- **`--export`'s network path is covered only by unit tests against a fake**, and by construction no
+  yielded recipe may ever exercise it — this recipe's own `offline` check forbids it. That is a
+  deliberate consequence rather than an oversight, and it is the mode that matters.
+- **Emission is not scheduled**, and nothing fires when nobody runs it —
+  [#344](https://github.com/sleepy-panda-srl/portulan/issues/344)'s silence problem in a third place.
+- **The review-loop bound is still checked by nothing.** The 2026-07-28 amendment says *"the telemetry
+  clause is where that checker's home is"* for
+  [`a-review-loop-needs-a-bound.md`](../.portulan/memory/a-review-loop-needs-a-bound.md). An emitter
+  with no backend reading it does not discharge that, and this clause must not be read as enforcement.
+- **Metrics only.** OTLP's trace payload is a second shape with a second set of semantics; one signal
+  demonstrated beats two asserted.
+
 ## What is NOT built yet
 
 Each names where it arrives, per [`../.portulan/dod.md`](../.portulan/dod.md) condition 4 — nothing
@@ -490,8 +664,6 @@ here claims a capability that does not exist:
 
 - **The A/B (Portulan on / off) baseline** — arrives in milestone 8, a later session. No baseline has
   been recorded, and no harness exists to record one.
-- **OTel opt-in config** — arrives in milestone 8, a later session. Nothing in this repository emits
-  telemetry.
 - **A rule change merged or rejected on eval evidence** — arrives in milestone 8, a later session.
   Every rule in [`../.portulan/memory/`](../.portulan/memory/) to date was merged on review alone.
 - **A release carries an eval result** ([`../docs/plan.md`](../docs/plan.md), Protocol → Versioning).

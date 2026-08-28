@@ -82,6 +82,14 @@ const PINNED = Object.freeze([
     // give: an internal refusal is one edit from being relaxed, and this rail's whole subject is a check
     // that has quietly stopped checking.
     { file: ".portulan/verify/drills.sh", tool: "cli/drills.mjs" },
+    // Added 2026-08-28 with milestone 8's OTel clause. `telemetry.mjs` reaches the yielded recipe set
+    // for its `--audit-recipes` mode, through `recipe-set.mjs` directly rather than through `drills.mjs`,
+    // and passes `discovery: null` and `forced: false` whatever the command line says. Rostered on the
+    // same reasoning as the four entries above — an internal refusal is one edit from being relaxed —
+    // and with the extra weight that this rail's answer is about which recipes can reach the NETWORK: a
+    // recipe set resolved from the host rather than from the tree would grade a different set than the
+    // one CI runs.
+    { file: ".portulan/verify/telemetry.sh", tool: "cli/telemetry.mjs" },
     { file: ".github/workflows/verify.yml", tool: "cli/recipe-set.mjs" },
     { file: ".portulan/dod.md", tool: "cli/recipe-set.mjs" },
 ]);
