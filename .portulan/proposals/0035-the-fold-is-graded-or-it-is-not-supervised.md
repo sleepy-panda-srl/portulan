@@ -55,8 +55,14 @@ derived check built to stop that class.**
 
 And one new sentence, which is what makes the first two checkable rather than remembered:
 
-> **A checkpoint records the tree it graded.** The fold delta is then `git diff <graded-tree>` against
-> what is about to be committed — derived, not reconstructed from memory by the person who folded.
+> **A checkpoint records the tree it graded** — the index it read, as a tree object (`git write-tree`).
+> The fold delta is then **`git diff --cached <graded-tree>`**: the recorded tree against the index, which
+> is what is about to be committed. Derived, not reconstructed from memory by the person who folded.
+
+_The `--cached` is not a detail. `git diff <tree>` compares against the **working tree**, which on a
+full-lane change is a superset of what commits — so the plain spelling would hand the second pass a delta
+containing work nobody proposed to commit, and omit nothing only by luck. A rule whose whole purpose is
+to make the subject derivable cannot be vague about which of the two trees it derives from._
 
 **Why the A-W-A pass is scoped to the delta and not to the diff.** A full re-grade after every A-W-A
 would double the cost of the cheapest verdict and is the ceremony [`../dod.md`](../dod.md) explicitly
