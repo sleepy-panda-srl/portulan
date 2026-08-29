@@ -2576,3 +2576,14 @@ _The seam applies here too: no client-identifying references._
   constitution gate's refusal was a *documented* false positive. **No row moves; 22 recipes, 24 drills.**
   · Session-open REQUEST-CHANGES ×2 then A-W-A (14); two second opinions CONCUR-W-A. · Seam scan clean,
   control reddening. · [handoff](../.portulan/handoffs/2026-08-28-b-the-arm-was-retargeted-and-a-claim-was-retracted.md)
+
+- 2026-08-29 · Off the milestone row · **Rule 2 was asked to relax and the measurement said no.** Session
+  6a closed asking whether *records land last* costs findings, since #366's suppressed findings came
+  from rounds that rule would have prevented. **Two of the three measurements under that framing were
+  mine and were wrong**: a records push *did* introduce a defect — `4c2a496b` wrote *"the bound was never
+  approached"* when it had been **exceeded**, and four later submissions passed over it — and one finding
+  was about already-merged text. **Rule 2 stands unchanged**, with a second and stronger rationale added
+  to [`a-review-loop-needs-a-bound.md`](../.portulan/memory/a-review-loop-needs-a-bound.md): a records
+  push writes the loop's record mid-loop, so it is false the moment another round lands. Deliberately
+  **not** a proposal — nothing changes. · 22 recipes green; no row moves. · Seam scan clean, control
+  reddening. · [handoff](../.portulan/handoffs/2026-08-29-rule-2-was-asked-to-relax-and-the-answer-is-no.md)
