@@ -68,9 +68,14 @@ to make the subject derivable cannot be vague about which of the two trees it de
 
 **Why the A-W-A pass is scoped to the delta and not to the diff.** A full re-grade after every A-W-A
 would double the cost of the cheapest verdict and is the ceremony [`../dod.md`](../dod.md) explicitly
-refuses. The delta is small by construction — it is exactly the adjustments — and it is the only region
-where a fold-injected defect can be. Scoping it there is what makes the rule affordable enough to be
-obeyed, which is the property the skipped REQUEST-CHANGES pass on #366 did not have.
+refuses. The delta is small by construction and it is the only region where a fold-injected defect can
+be. Scoping it there is what makes the rule affordable enough to be obeyed, which is the property the
+skipped REQUEST-CHANGES pass on #366 did not have.
+
+_An invariant this deliberately does **not** claim: that the delta is *exactly* the adjustments. It is
+whatever was staged after the grade, and nothing enforces that those coincide. **That is a reason to
+grade it, not a caveat on grading it** — a post-grade edit nobody proposed is precisely what escapes a
+checkpoint today._
 
 ## Enforcement — and the half that is honestly prose
 

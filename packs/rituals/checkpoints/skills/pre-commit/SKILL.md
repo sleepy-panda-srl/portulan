@@ -81,7 +81,12 @@ summary count stale three sections above, and folding another **re-measured a qu
 answered correctly** — with a line-based tool against a normalising scanner — and wrote the wrong answer
 over the right one. Neither defect was in the graded diff. A full re-grade after every A-W-A would double
 the cost of the cheapest verdict, which is the ceremony a definition of done should refuse; **the delta is
-exactly the adjustments, and it is the only region a fold-injected defect can be in.**
+the only region a fold-injected defect can be in.**
+
+_The delta is **whatever was staged after the grade** — it *should* be the adjustments and nothing else,
+and the mechanism does not guarantee that. **Where it is wider, that is not noise; it is the finding.**
+Post-grade edits nobody proposed are exactly what escapes a checkpoint today, so a pass that sees them is
+worth more than one over a delta that had been trimmed to what the verdict asked for._
 
 _What this does not buy, said plainly: whether a fresh context actually read the delta is not checkable —
 a session can claim a pass it did not run. What changes is that the pass now has a **defined subject**,
