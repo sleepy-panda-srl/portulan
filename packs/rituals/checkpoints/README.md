@@ -38,7 +38,7 @@ Four verdicts, and which are available depends on the checkpoint.
 | Verdict | Means | Available at |
 |---|---|---|
 | **APPROVE** | Proceed as it stands. | session-open · pre-commit |
-| **APPROVE-WITH-ADJUSTMENTS** | Proceed once the numbered adjustments are folded in. Not a soft failure — it is what a working checkpoint usually returns. | session-open · pre-commit |
+| **APPROVE-WITH-ADJUSTMENTS** | Proceed once the numbered adjustments are folded in. Not a soft failure — it is what a working checkpoint usually returns. **At pre-commit the fold itself is then graded** — see that skill. | session-open · pre-commit |
 | **REQUEST-CHANGES** | Does not meet the standard. Name what, and what would meet it. Needs a second pass at the same checkpoint. | all three |
 | **CLOSE** | Every clause of the criterion is demonstrated; the milestone may be marked done. | milestone-close only |
 
@@ -48,6 +48,13 @@ concerns is not a verdict.
 **APPROVE and APPROVE-WITH-ADJUSTMENTS are unavailable at milestone-close on purpose.** Both let work
 proceed on a promise to fold something in, and a close is the one decision with nothing downstream of
 it to catch what was folded in wrongly.
+
+**That argument reaches one moment earlier, which is why pre-commit's A-W-A grades its own fold**
+(proposal `0035`, 2026-08-29). Session-open's fold *does* have something downstream — the plan it folds
+into becomes a diff, and pre-commit grades that. **Pre-commit's fold has only the commit.** So the
+verdict that lets work proceed on a promise is, at that moment, a promise nothing checks; measured on a
+change where two of three later review findings were created by the fold and were absent from the graded
+diff.
 
 ## The fidelity note
 

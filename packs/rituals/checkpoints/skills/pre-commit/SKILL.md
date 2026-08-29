@@ -70,6 +70,11 @@ whether a status column changed.
 - **REQUEST-CHANGES** — the diff does not meet the criterion; it needs work and a second pre-commit pass
   **over the whole diff**.
 
+**Grade a fully staged diff.** The whole procedure below is index-shaped, so anything left unstaged was
+not graded and will not appear in the fold delta either — it would pass through both nets. Stage first,
+then grade; this is what practice here already did, and it is stated because the mechanism now depends
+on it rather than merely benefiting from it.
+
 **A checkpoint records the tree it graded** — the index it read, as a tree object (`git write-tree`). The
 fold delta is then **`git diff --cached <graded-tree>`**: the recorded tree against the index, which is
 what is about to be committed. Derived, not reconstructed from memory by the person who folded.
