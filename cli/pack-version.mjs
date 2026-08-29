@@ -13,6 +13,13 @@
 // for a single field. `portulan.version` is per-pack, so it cannot contend. Tying the bundle to the pack
 // manifests is arm 4 of the issue and is deliberately NOT here.
 //
+// **Re-measured 2026-08-29: the bundle now agrees with NEITHER pack** — `rituals/checkpoints` moved to
+// `0.3.0` when proposal `0035` added an obligation to its pre-commit verdict, while the bundle stayed
+// `0.2.1` and `tools/github` stayed `0.1.0`. The measurement above is stamped to `c93a819` and remains
+// true of that commit; what changed is that the coincidence it names has ended, which STRENGTHENS the
+// argument rather than dating it. A reader finding three different numbers is looking at three
+// independently versioned things, not at drift.
+//
 // ## Why the whole `contributes` block, not only `gates`
 //
 // The issue's title asks about gate fragments; arm 3's own text says *"touching a pack's `contributes`
