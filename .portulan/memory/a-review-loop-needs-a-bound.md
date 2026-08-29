@@ -84,9 +84,9 @@ that observation.
 2026-08-28, which measured it by breaking rule 2 three times.** The first reason is *waste*; this is
 *correctness*. **A records push between rounds writes the loop's record while the loop is still running,
 so it is false the moment another round lands — and the review the push buys does not catch it.**
-#366's first such push claimed the bound was *"never approached"* when it had been **exceeded**; four later submissions passed over it in
-silence. **It caught one stale figure and created one false claim, same commit** — net zero at best,
-in the record a later reader most trusts.
+#366's first such push claimed the bound was *"never approached"* when it had been **exceeded**;
+four later submissions passed over it in silence. **It caught one stale figure and created one
+false claim, same commit** — net zero at best, in the record a later reader most trusts.
 
 _Asked and answered: **relax rule 2 to buy more passes?** — **no**, 2026-08-28. The premise holds — a
 push is the only reliable way to draw one ([#348](https://github.com/sleepy-panda-srl/portulan/issues/348))
