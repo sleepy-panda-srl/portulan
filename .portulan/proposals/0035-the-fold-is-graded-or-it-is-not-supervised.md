@@ -1,10 +1,12 @@
 # Proposal 0035 — the fold is graded, or the change that ships is not the change that was graded
 
-**Status. PROPOSED, 2026-08-29** — drafted on the maintainer's directive of the same day, after a
+**Status. ACCEPTED — drafted and accepted 2026-08-29.** The rule is applied in this change to
+[`../../packs/rituals/checkpoints/skills/pre-commit/SKILL.md`](../../packs/rituals/checkpoints/skills/pre-commit/SKILL.md);
+a rule that lived only in an accepted proposal would be a mandate nothing carries. Drafted on the
+maintainer's directive of the same day, after a
 supervisor pass over [#366](https://github.com/sleepy-panda-srl/portulan/pull/366) found that two of that
-change's three review findings **did not exist when its pre-commit checkpoint ran**. It asks
-[`../../packs/rituals/checkpoints/skills/pre-commit/SKILL.md`](../../packs/rituals/checkpoints/skills/pre-commit/SKILL.md)
-for one changed disposition and one new sentence.
+change's three review findings **did not exist when its pre-commit checkpoint ran**. One changed
+disposition and one new sentence.
 
 **Pull request:** https://github.com/sleepy-panda-srl/portulan/pull/370
 
@@ -109,4 +111,8 @@ six of thirty-two findings introduced by an earlier fix after an A-W-A fold.
 prose, so the fold delta is produced without anyone choosing to produce it — at which point this rule is
 describing a mechanism instead of asking for one.
 
-**Decision.** {maintainer} — accepted | rejected | revised, on {date} — because {…}.
+**Decision.** Marius Cetanas — **accepted**, 2026-08-29 — because the fold is where two of #366's three
+review findings entered, and `APPROVE-WITH-ADJUSTMENTS` was the one remediation path with no second look
+of any kind. Accepted as drafted, including its two refusals: no change to `REQUEST-CHANGES`, whose second
+pass already existed and was **skipped** on #366, and no claim that a fresh context reading the delta can
+be enforced.
