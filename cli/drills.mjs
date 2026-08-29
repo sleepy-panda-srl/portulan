@@ -480,6 +480,36 @@ export const DRILLS = [
         why: "A verify recipe that can reach the network goes red about the world rather than about the tree, and this repository prohibits it in three carriers while nothing checked it. The drill proves the checker sees a real invocation — spread across continued lines, the spelling a recipe actually uses — rather than only the literal string a test would hand it.",
     },
     {
+        rail: "ab",
+        perturb: {
+            create: ".portulan/a-file-the-drill-left-unclassified.md",
+            content: [
+                "A forced-red drill fixture, written by `cli/drills.mjs` into a throwaway worktree and never",
+                "committed. If you are reading this file inside the repository, a drill did not clean up after",
+                "itself and that is the bug.",
+                "",
+                "It is here because `cli/ab.mjs`'s disposition table has to be TOTAL over `.portulan/`: anything",
+                "it does not classify is carried into the A/B treatment arm by `cli/vendor.mjs`, which walks the",
+                "whole workspace directory.",
+                "",
+            ].join("\n"),
+        },
+        exit: 1,
+        // **The perturbation ADDS a file rather than editing the table, and that is the rail's actual
+        // subject.** Deleting a disposition would fire the *stale declaration* arm — a legitimate
+        // refusal, and exit 2, which is the arm this drill is not for. What the rail exists to catch is
+        // the opposite direction: a file arriving in `.portulan/` that nobody classified, which is
+        // precisely how customer zero's `memory-index.md`, `handoffs-index.md`, `rule-carriers.json`
+        // and `labels.json` reached an arm built to `evals/ab/arm.md`'s six rows with `doctor` GREEN
+        // over all of it. The drill reproduces the arrival, not the forgetting.
+        tell: "classified by no disposition",
+        why:
+            "The A/B treatment arm is built by removing things from customer zero's workspace, and `cli/vendor.mjs` carries " +
+            "every ordinary file under it — so a specification that names what to remove leaks whatever it forgot, silently, " +
+            "into the arm an experiment is about to measure. That leak has already happened once and `doctor` was green on it. " +
+            "This is the rail that turns the next one into a red on the commit that adds the file.",
+    },
+    {
         rail: "tools/github:actions-pinned",
         perturb: {
             file: ".github/workflows/verify.yml",
