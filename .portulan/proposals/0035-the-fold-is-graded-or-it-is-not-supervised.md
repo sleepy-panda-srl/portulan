@@ -6,7 +6,7 @@ change's three review findings **did not exist when its pre-commit checkpoint ra
 [`../../packs/rituals/checkpoints/skills/pre-commit/SKILL.md`](../../packs/rituals/checkpoints/skills/pre-commit/SKILL.md)
 for one changed disposition and one new sentence.
 
-**Pull request:** {filed by the pull request that carries this file}
+**Pull request:** https://github.com/sleepy-panda-srl/portulan/pull/370
 
 ## Incident — the remediation manufactured the defects, and one of two rules was already there
 
