@@ -25,8 +25,10 @@
 #
 # It does not bump anything, and it does not judge which version number is right — only that one moved.
 # It says nothing about `packs/.claude-plugin/plugin.json`, the packs *bundle* version: that is arm 4 of
-# #265 and is deliberately a separate question, because the bundle is one field and the packs are many
-# (measured: the bundle and `rituals/checkpoints` agree at `0.2.1` while `tools/github` is at `0.1.0`).
+# #265 and is deliberately a separate question, because the bundle is one field and the packs are many.
+# THE MEASUREMENT BEHIND THAT SENTENCE LIVES IN ../../cli/pack-version.mjs AND NOT HERE — this comment
+# carried its own dated copy of the numbers, and when `rituals/checkpoints` moved to `0.3.0` the copy
+# went stale while the original stayed correct. One rule, two carriers, obeyed at the wrong one.
 #
 # Exit 0 green · 1 red · 2 could not run.
 
