@@ -80,6 +80,20 @@ full: [`2026-07-30-a-round-gets-its-definition.md`](../handoffs/2026-07-30-a-rou
 **handoff correction**, a documentation-only push that could not have needed review. Rule 2 exists for
 that observation.
 
+**Rule 2's second, stronger reason — [#366](https://github.com/sleepy-panda-srl/portulan/pull/366),
+2026-08-28, which measured it by breaking rule 2 three times.** The first reason is *waste*; this is
+*correctness*. **A records push between rounds writes the loop's record while the loop is still running,
+so it is false the moment another round lands — and the review the push buys does not catch it.**
+#366's first such push claimed the bound was *"never approached"* when it had been **exceeded**;
+four later submissions passed over it in silence. **It caught one stale figure and created one
+false claim, same commit** — net zero at best, in the record a later reader most trusts.
+
+_Asked and answered: **relax rule 2 to buy more passes?** — **no**, 2026-08-28. The premise holds — a
+push is the only reliable way to draw one ([#348](https://github.com/sleepy-panda-srl/portulan/issues/348))
+— but the inference never priced the second effect. **Reopen on evidence:** over ≥20 pull requests,
+findings-per-submission for answering versus non-answering pushes, net of the defects the latter
+introduce; #355 and #124 close first._
+
 **The exemption's precedents and stop signal — 2026-08-07**
 ([`0020`](../proposals/0020-a-fix-is-not-done-at-the-site-it-was-found.md)). #85 read the bound strictly —
 one finding recurred verbatim, rounds three to seven, triaged each time; its issue #91 stayed open
