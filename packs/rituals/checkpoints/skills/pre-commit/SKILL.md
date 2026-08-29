@@ -65,8 +65,38 @@ whether a status column changed.
 ## The verdicts this checkpoint may return
 
 - **APPROVE** — commit as it stands.
-- **APPROVE-WITH-ADJUSTMENTS** — commit once the numbered adjustments are folded in.
-- **REQUEST-CHANGES** — the diff does not meet the criterion; it needs work and a second pre-commit pass.
+- **APPROVE-WITH-ADJUSTMENTS** — fold the numbered adjustments, then **grade the fold**: a pass over
+  **the fold delta alone**, in a context that did not perform the fold, before the commit.
+- **REQUEST-CHANGES** — the diff does not meet the criterion; it needs work and a second pre-commit pass
+  **over the whole diff**.
+
+**Grade a fully staged diff.** The whole procedure below is index-shaped, so anything left unstaged was
+not graded and will not appear in the fold delta either — it would pass through both nets. Stage first,
+then grade; this is what practice here already did, and it is stated because the mechanism now depends
+on it rather than merely benefiting from it.
+
+**A checkpoint records the tree it graded** — the index it read, as a tree object (`git write-tree`). The
+fold delta is then **`git diff --cached <graded-tree>`**: the recorded tree against the index, which is
+what is about to be committed. Derived, not reconstructed from memory by the person who folded.
+
+_Why the fold is graded at all, and why the A-W-A pass is scoped to the delta._ **The tree that ships is
+not the tree that was graded**, and the difference is where a remediation can inject what the checkpoint
+just caught elsewhere. Measured: on one change, folding an adjustment split a table row and left a
+summary count stale three sections above, and folding another **re-measured a question the checkpoint had
+answered correctly** — with a line-based tool against a normalising scanner — and wrote the wrong answer
+over the right one. Neither defect was in the graded diff. A full re-grade after every A-W-A would double
+the cost of the cheapest verdict, which is the ceremony a definition of done should refuse; **the delta is
+the only region a fold-injected defect can be in.**
+
+_The delta is **whatever was staged after the grade** — it *should* be the adjustments and nothing else,
+and the mechanism does not guarantee that. **Where it is wider, that is not noise; it is the finding.**
+Post-grade edits nobody proposed are exactly what escapes a checkpoint today, so a pass that sees them is
+worth more than one over a delta that had been trimmed to what the verdict asked for._
+
+_What this does not buy, said plainly: whether a fresh context actually read the delta is not checkable —
+a session can claim a pass it did not run. What changes is that the pass now has a **defined subject**,
+derived from the tree rather than recalled by the one who folded._ Provenance: proposal `0035`,
+accepted 2026-08-29.
 
 ## Why it earns its tokens
 
