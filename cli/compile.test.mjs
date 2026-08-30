@@ -434,9 +434,13 @@ describe("fail-closed", () => {
 // 4. The Claude Code backend — the tier→surface mapping, as measured
 // ===========================================================================================
 //
-// Each assertion below corresponds to a probe run against a live host on 2026-07-27, CLI 2.1.220.
-// They are asserted here so that a later edit to the mapping is loud; they are not evidence that
-// the host still behaves this way. Re-measure on upgrade.
+// Each assertion below corresponds to a probe run against a live host on 2026-07-27, CLI 2.1.220,
+// EXCEPT where a case carries its own stamp. They are asserted here so that a later edit to the
+// mapping is loud; they are not evidence that the host still behaves this way. Re-measure on upgrade.
+//
+// **A case measured at a different version states its own**, because a later assertion landing inside
+// a block dated once inherits a provenance nobody checked — `.portulan/verify/README.md` records the
+// same convention for the compile measurement, version-stamped because it is a fact about one CLI.
 
 describe("the Claude Code backend", () => {
     test("gated compiles to `ask` — per-action approval, which is what Gated means", () => {
@@ -447,9 +451,10 @@ describe("the Claude Code backend", () => {
 
     test("prohibited compiles to `deny` — an action with no approval path", () => {
         const settings = claudeCode(parse(policy())).artifact.value;
-        for (const rule of ["Edit(./docs/vision.md)", "Write(./docs/vision.md)"]) {
-            assert.ok(settings.permissions.deny.includes(rule), `expected ${rule}`);
-        }
+        assert.ok(settings.permissions.deny.includes("Edit(./docs/vision.md)"), "expected Edit(./docs/vision.md)");
+        // `Write(./docs/vision.md)` was asserted here too until 2026-08-30. The host DISCARDS that
+        // pattern — see the tool-generality case below — so asserting it pinned an emission that
+        // enforced nothing.
         assert.ok(!(settings.permissions.ask ?? []).includes("Edit(./docs/vision.md)"));
     });
 
@@ -464,12 +469,61 @@ describe("the Claude Code backend", () => {
         assert.ok(settings.hooks.PreToolUse.length > 0, "the hook is the explanation layer");
     });
 
-    test("a write action covers every tool that can write, not just Edit", () => {
+    test("a write action covers every tool that can write — the CLAIM stands, the instrument moved", () => {
+        // **Measured 2026-08-30, CLI 2.1.240** — its own stamp, per the block header above.
+        //
+        // This case asserted all three tool names in `permissions.deny`. The guarantee it names is
+        // still true and is NOT being weakened; what changed is where the guarantee comes from. The
+        // host discards `Write(path)` and `NotebookEdit(path)` outright — *"only Edit(path) rules are
+        // matched by file permission checks"* — and warns on every start. So the emission was reporting
+        // three rules where one enforced, and the coverage was always `Edit(path)` being tool-general.
+        //
+        // Deleting this case would have removed a guarantee while looking like a cleanup. It is
+        // re-pointed at the two things that actually carry it.
         const settings = claudeCode(parse(policy())).artifact.value;
         const denied = settings.permissions.deny.join(" ");
-        for (const tool of ["Edit", "Write", "NotebookEdit"]) {
-            assert.match(denied, new RegExp(`${tool}\\(`), `${tool} can write and must be covered`);
+        assert.match(denied, /\bEdit\(/, "the one pattern the host matches, and it covers every file-editing tool");
+        for (const tool of ["Write", "NotebookEdit"]) {
+            assert.doesNotMatch(denied, new RegExp(`\\b${tool}\\(`), `${tool}(path) is discarded by the host — emitting it reports a rule that enforces nothing`);
         }
+        // And the hook, which is the consumer that must still see all three.
+        assert.deepEqual(
+            settings.hooks.PreToolUse.map((h) => h.matcher).sort(),
+            ["Bash", "Edit", "NotebookEdit", "Write"],
+            "the hook matchers are a DIFFERENT consumer of WRITE_TOOLS and must not narrow with the permission patterns",
+        );
+    });
+
+    test("a write gate's permission patterns narrow to Edit in the `ask` tier too, not only `deny`", () => {
+        // **Measured 2026-08-30, CLI 2.1.240.** The host prints the same refusal for an `ask` rule as
+        // for a `deny` one, and `cli/compile.mjs` picks the destination array BEFORE the shared
+        // per-tool loop — so a fix scoped to `deny` would have left the defect live for any adopter
+        // with a `gated` + `write` rule. This repository has none, which is exactly why it needs a
+        // fixture rather than an observation.
+        const gatedWrite = policy({
+            rules: [{ id: "gated-write", tier: "gated", action: { write: "docs/vision.md" }, reason: "a gated write" }],
+        });
+        const settings = claudeCode(parse(gatedWrite)).artifact.value;
+        assert.deepEqual(settings.permissions.ask, ["Edit(./docs/vision.md)"]);
+        assert.deepEqual(settings.permissions.deny ?? [], []);
+    });
+
+    test("the hook matcher set is pinned, because narrowing it with the patterns would open a real hole", () => {
+        // **The invariant the repair turns on, and nothing pinned it before 2026-08-30.** A fix that
+        // narrowed `matchers.add(tool)` alongside the emitted patterns would have passed the whole
+        // suite AND the `compile` recipe — the byte-compare is against the artifact the same change
+        // regenerates, so it agrees with the narrowed output. The `mutants` corpus does not stand in
+        // either: it grades `matchesRule`, never the artifact.
+        const onlyAWrite = policy({
+            rules: [{ id: "ban", tier: "prohibited", action: { write: "docs/vision.md" }, reason: "constitution" }],
+        });
+        const settings = claudeCode(parse(onlyAWrite)).artifact.value;
+        assert.deepEqual(settings.permissions.deny, ["Edit(./docs/vision.md)"], "one pattern, the one the host matches");
+        assert.deepEqual(
+            settings.hooks.PreToolUse.map((h) => h.matcher).sort(),
+            ["Bash", "Edit", "NotebookEdit", "Write"],
+            "all three write tools reach the hook, plus Bash for the shell spelling",
+        );
     });
 
     test("a write gate wires the Bash hook, or its shell coverage is a matcher nothing reaches", () => {
