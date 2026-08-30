@@ -567,8 +567,8 @@ is healthy. A permission rule does not fail open. So [`cli/gate.mjs`](../cli/gat
 step aside silently on any internal error, handing the decision back to the layer that cannot be removed by
 a syntax error.
 
-**The honest holes, named because they are the ones to know.** Eight of them — seven until 2026-08-24,
-when the gate corpus found the eighth on its first run — and the first is smaller than
+**The honest holes, named because they are the ones to know.** Nine of them — seven until 2026-08-24,
+when the gate corpus found the eighth on its first run, and nine since 2026-08-31 — and the first is smaller than
 an earlier draft of this paragraph claimed — that draft said the wrapper spelling "falls through to the
 host's default mode", which was true *before* the hook existed and false of the shipped configuration. A
 pre-commit supervisor measured it and found the hook's `ask` governing and its sentence reaching the agent.
@@ -725,7 +725,8 @@ Corrected here rather than left, because a gate map that overstates a hole is as
    half of `edit-the-constitution`, above. Everywhere else the permission rule is the gate and the hook
    adds reach; there, the hook *is* the reach, because no `Bash(prefix:*)` pattern can name a path sitting
    anywhere in a command. A syntax error in [`cli/gate.mjs`](../cli/gate.mjs) removes tool-level
-   coverage of shell writes to the constitution and leaves the `Edit`/`Write` denials standing, which is a
+   coverage of shell writes to the constitution and leaves the `Edit` denial standing — which the host
+   matches for every file-editing tool, `Write` and `NotebookEdit` included, and which is a
    partial gate that looks from the outside exactly like a whole one. `compile` names the affected rules in
    a note on every run for that reason.
 4. **A local `allow` rule beside the compiled gates is unmeasured.** `.claude/settings.local.json` is
@@ -831,6 +832,29 @@ unverified** — the interaction between the organisation ruleset's bypass actor
 undocumented and deliberately untested. So "the rail beneath this" is very probably intact and is not
 certified. This layer being a convenience is unchanged either way; what changes is that neither layer
 should now be described as unconditional.
+
+9. **A write gate's permission layer rests on one host behaviour, and a host that changed it would
+   narrow the gate with nothing going red.** Added 2026-08-31. `compile` emits `Edit(path)` as a write
+   gate's **only** permission pattern, because Claude Code 2.1.240 **discards** `Write(path)` and
+   `NotebookEdit(path)` — *"only `Edit(path)` rules are"* matched by file permission checks, said on
+   every start — and matches `Edit(path)` for every file-editing tool. Measured with controls, both
+   directions: with `Edit(./x)` alone denied, a `Write` and a `NotebookEdit` to that path were both
+   refused, while the same tools writing a **different** path succeeded.
+
+   **The hole is the dependency, not the behaviour.** If a later host stops treating `Edit(path)` as
+   tool-general, this gate silently covers one tool of three at the permission layer — `Write` and
+   `NotebookEdit` would fall to the hook, which [`../core/operating/autonomy.md`](../core/operating/autonomy.md)
+   and hole 3 both record as the layer that fails open. **Nothing here would go red**: the artifact
+   would still byte-compare, the suite would still pass, and the emitted pattern would still be exactly
+   what the compiler intends. It is a fact about one CLI version, and `compile` prints it as a note on
+   every run with a re-measure mandate — the pairing [`compile/README.md`](compile/README.md) names for
+   this shape, and hole 8's precedent for recording a divergence that has no instance today.
+
+   **The same clause runs backwards and is why the change is version-stamped rather than presented as a
+   repair.** No earlier CLI was re-measured. On a host that honoured all three patterns and did *not*
+   treat `Edit` as tool-general, this narrowing **removes** two working permission rules. `compile` is a
+   tool every adopter runs, so that reaches further than this tree.
+
 
 ## Which identity acts
 

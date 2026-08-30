@@ -1242,6 +1242,8 @@ export function claudeCode(parsed, options = {}) {
     const ask = [];
     const matchers = new Set();
     const shellWriteGates = [];
+    // Write gates whose single emitted permission pattern is `Edit(path)` — see the note they produce.
+    const editCoveredGates = [];
 
     for (const rule of parsed.rules) {
         if (!HOST_GATE_TIERS.has(rule.tier)) {
@@ -1262,11 +1264,36 @@ export function claudeCode(parsed, options = {}) {
             emitted.push(`Bash(${rule.target}:*)`);
             matchers.add("Bash");
         } else {
-            for (const tool of rule.kind === "write" ? WRITE_TOOLS : READ_TOOLS) {
-                emitted.push(pattern(tool, rule.target));
-                matchers.add(tool);
-            }
+            // **The PERMISSION pattern narrows to `Edit`; the HOOK matchers keep all three.** These two
+            // lines used to be one loop, and that emitted `Write(path)` and `NotebookEdit(path)` beside
+            // `Edit(path)` — patterns the host **discards**. Measured on Claude Code 2.1.240, printed on
+            // every start of this repository:
+            //
+            //   Permission deny rule (.claude/settings.json): Write(./docs/vision.md) is not matched by
+            //   file permission checks — only Edit(path) rules are. Use Edit(./docs/vision.md) instead
+            //   (Edit rules cover all file-editing tools).
+            //
+            // and the same for the `ask` tier, so this was never a `deny`-only defect. The gate held
+            // throughout — `Edit(path)` is matched for every file-editing tool — so what was wrong was
+            // the compiler's **accounting**: three rules reported compiled where one enforces, plus a
+            // permanent warning, which is `../.portulan/memory/a-stated-enforcer-must-be-the-real-one.md`.
+            //
+            // **`matchers` is a different consumer and must not narrow with it.** It drives the
+            // `PreToolUse` hook, where all three tool names genuinely arrive and `matchesRule` above
+            // answers for each; narrowing it would open a real hole where today there is none. That is
+            // why the repair is not narrowing `WRITE_TOOLS` — two consumers of one constant, one of
+            // which changes. A suite case pins the matcher set for exactly this reason.
+            //
+            // **The dropped patterns are NOT `hookOnly`.** Measured with the pattern alone in `deny` and
+            // `Write` allowed: the host refused the write. So their coverage is carried by the
+            // permission layer, not by the hook, and filing them under a channel documented as *carried
+            // by the hook alone* would be a false claim in the weakening direction. The fact goes on
+            // `notes` instead, where it names its host version.
+            const permissionTools = rule.kind === "write" ? ["Edit"] : READ_TOOLS;
+            for (const tool of permissionTools) emitted.push(pattern(tool, rule.target));
+            for (const tool of rule.kind === "write" ? WRITE_TOOLS : READ_TOOLS) matchers.add(tool);
             if (rule.kind === "write") {
+                editCoveredGates.push(rule.id);
                 // The hook is wired for Bash so that a shell spelling of this write reaches
                 // `matchesRule`, which now answers for it. **This line is the load-bearing half.**
                 // The matcher alone would be inert in any workspace whose policy declares no shell
@@ -1360,6 +1387,21 @@ export function claudeCode(parsed, options = {}) {
                 `so no \`\${CLAUDE_PROJECT_DIR}\`-relative spelling exists. The compiled policy therefore stops working if the ` +
                 `package moves or is reinstalled elsewhere, and a missing hook FAILS OPEN. Install the package into the ` +
                 `project, or pass \`--runner\`/\`--stop-runner\` to name a path you control`,
+        );
+    }
+    if (editCoveredGates.length) {
+        notes.push(
+            `${editCoveredGates.length} write gate(s) — ${editCoveredGates.join(", ")} — emit \`Edit(path)\` as their only ` +
+                `permission pattern, and that ONE pattern is matched for every file-editing tool. Measured on Claude Code ` +
+                `2.1.240: with \`Edit(path)\` alone in the list and \`Write\` allowed, the host refused the write — and a ` +
+                `\`Write\` to a DIFFERENT path succeeded in the same session, the control that tells *refused* from ` +
+                `*refuses everything*. \`Write(path)\` ` +
+                `and \`NotebookEdit(path)\` are NOT emitted because the host discards them — it says so on every start — and a ` +
+                `compiler that emitted them would report three rules where one enforces. **Re-measure on a host change in EITHER ` +
+                `direction:** this is a fact about one CLI version. If a later host stops treating \`Edit\` as tool-general, ` +
+                `this gate narrows to one tool at the permission layer with nothing here going red. And no EARLIER host was ` +
+                `re-measured — on one that honoured all three patterns and did not treat \`Edit\` as tool-general, this ` +
+                `emission removes two working rules. The hook covers all three tool names on any host.`,
         );
     }
     if (shellWriteGates.length) {

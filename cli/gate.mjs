@@ -49,8 +49,9 @@
 //      `bash -c "git push …"` is invisible to it — measured, and the reason
 //      `../core/operating/autonomy.md` calls the platform floor the gate that holds when this
 //      layer fails. This runner unwraps one level of `sh -c` / `bash -c` / `zsh -c` before matching.
-//   2. A SHELL WRITE to a path a `write:` rule protects. `Edit(./docs/vision.md)` denies three
-//      tools, and `echo x >> docs/vision.md` is a fourth way to the same bytes. `matchesRule` now
+//   2. A SHELL WRITE to a path a `write:` rule protects. `Edit(./docs/vision.md)` denies all three
+//      file-editing tools — ONE emitted pattern, which the host matches for every one of them — and
+//      `echo x >> docs/vision.md` is a fourth way to the same bytes. `matchesRule` now
 //      answers for `Bash` on a write rule, by a table of redirections and file-writing commands
 //      that `./compile.mjs` states in full.
 //

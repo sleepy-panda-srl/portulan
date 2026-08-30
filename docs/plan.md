@@ -2598,3 +2598,14 @@ _The seam applies here too: no client-identifying references._
   isolated arm. **No baseline; no row moves. 23 recipes.** · Session-open A-W-A (12); **pre-commit
   REQUEST-CHANGES ×2 (5+13, then 2+9 over the fold)**; second opinion **CONCUR ×3**; Copilot 2 rounds. ·
   Seam scan clean. · [handoff](../.portulan/handoffs/2026-08-29-b-the-table-was-a-blacklist-and-the-arm-carried-the-index.md)
+
+- 2026-08-30 · Off the milestone row · **The compiler reported three rules where one enforced.**
+  [#373](https://github.com/sleepy-panda-srl/portulan/issues/373): Claude Code 2.1.240 discards
+  `Write(path)` and `NotebookEdit(path)` deny rules — *"only `Edit(path)` rules are"* — and warns on
+  every start, while [`compile.mjs`](../cli/compile.mjs) emitted all three. **The gate always held** via
+  `Edit(path)`, which the host matches for every file-editing tool; what was wrong was the accounting.
+  Now one pattern, **hook matchers untouched** — two consumers of one constant, one of which changes. ·
+  Session-open **A-W-A (10)**, and it measured two things I had wrong: the `ask` tier carries the same
+  defect, and `hookOnly` would have understated the enforcement. Both new invariants **forced red**. ·
+  23 recipes green; `compile` drill fired. · Seam scan clean. ·
+  [handoff](../.portulan/handoffs/2026-08-30-the-compiler-reported-three-rules-where-one-enforced.md)

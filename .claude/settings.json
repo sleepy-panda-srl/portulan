@@ -18,9 +18,7 @@
   },
   "permissions": {
     "deny": [
-      "Edit(./docs/vision.md)",
-      "Write(./docs/vision.md)",
-      "NotebookEdit(./docs/vision.md)"
+      "Edit(./docs/vision.md)"
     ],
     "ask": [
       "Bash(git push --force:*)",
