@@ -447,7 +447,7 @@ test("a mode that INVENTS its scratch directory removes it, and one that hands i
     const sink = { write() {} };
     assert.equal(run(["--check", "--repo-root", REPO, "--workspace", WORKSPACE], { stdout: sink, stderr: sink, cwd: REPO }), 0);
     const after = fs.readdirSync(os.tmpdir()).filter((d) => d.startsWith("portulan-ab-") && !before.has(d));
-    assert.deepEqual(after, [], `--check left ${after.length} scratch director(ies) behind`);
+    assert.deepEqual(after, [], `--check left ${after.length} scratch directory(ies) behind`);
 });
 
 test("a refused --check still sweeps, because the throw path is where a leak-fix leaks", () => {
@@ -461,7 +461,7 @@ test("a refused --check still sweeps, because the throw path is where a leak-fix
         const code = run(["--check", "--repo-root", dir, "--workspace", WORKSPACE], { stdout: sink, stderr: sink, cwd: REPO });
         assert.notEqual(code, 0, "the fixture must actually refuse, or this case passes for the wrong reason");
         const after = fs.readdirSync(os.tmpdir()).filter((d) => d.startsWith("portulan-ab-") && !before.has(d));
-        assert.deepEqual(after, [], `a refused --check left ${after.length} scratch director(ies) behind`);
+        assert.deepEqual(after, [], `a refused --check left ${after.length} scratch directory(ies) behind`);
     });
 });
 
