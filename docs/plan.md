@@ -2587,3 +2587,14 @@ _The seam applies here too: no client-identifying references._
   push writes the loop's record mid-loop, so it is false the moment another round lands. Deliberately
   **not** a proposal — nothing changes. · 22 recipes green; no row moves. · Seam scan clean, control
   reddening. · [handoff](../.portulan/handoffs/2026-08-29-rule-2-was-asked-to-relax-and-the-answer-is-no.md)
+
+- 2026-08-29 · M8, session 6b · **The A/B arm is built; nothing is graded.** [`cli/ab.mjs`](../cli/ab.mjs)
+  stages, validates, vendors, compiles and `git init`s arm A and a bare arm B, with an `ab` recipe, a
+  drill (roster 25), a byte-compared register and 37 tests. **Its disposition table is TOTAL and refuses
+  otherwise** — an arm built to [`arm.md`](../evals/ab/arm.md)'s six rows carried 30 rule titles, 146
+  handoff titles, `rule-carriers.json` and `labels.json`, `doctor` GREEN. `corpus.md`'s acceptance test
+  is **met in its first half** under an `--operator-env inherit` departure he accepted; **that
+  departure's stated reason was measured WRONG and corrected before merge** — a token DOES reach an
+  isolated arm. **No baseline; no row moves. 23 recipes.** · Session-open A-W-A (12); **pre-commit
+  REQUEST-CHANGES ×2 (5+13, then 2+9 over the fold)**; second opinion **CONCUR ×3**; Copilot 2 rounds. ·
+  Seam scan clean. · [handoff](../.portulan/handoffs/2026-08-29-b-the-table-was-a-blacklist-and-the-arm-carried-the-index.md)

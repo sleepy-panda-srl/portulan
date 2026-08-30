@@ -82,6 +82,82 @@ If session 6b meets it, the scenario is live. **If 6b cannot meet it, the scenar
 file's own rule**, without reopening the question. Written as a falsifiable test rather than *"conditional
 on the instrument"* so that construction does not get to decide what counts as instrumented.
 
+> **Met in its FIRST HALF, 2026-08-29 — session 6b, and the command below reproduces it.** The heading
+> says which half because this file's own history is four carriers quoting a heading-sized claim without
+> its caveat; the second half — *"and a fixture asserts that record's presence"* — is unbuilt, and is the
+> last paragraph of this block rather than a footnote to it.
+>
+> ```
+> node cli/ab.mjs --construct --into <dir>
+> node cli/ab.mjs --stop-probe --into <dir>/a --seed m8s6b-acceptance --operator-env inherit
+> ```
+>
+> `met: true` · **4** invocations of a recorder wrapping the arm's compiled `Stop` command · seed
+> `m8s6b-acceptance` · nonce `4f53b2a09c4c1d9d` · agent exit 0.
+>
+> **That command's trust is one-directional, and it is stated here because it bites whoever reproduces
+> rather than whoever ran it.** A **positive** under `inherit` cannot be manufactured by the operator's
+> environment — the recorder is reached only through the arm's own project-level settings, its path exists
+> only inside the arm for the probe's duration, and `met` requires the harness nonce in the receipt. A
+> **negative** is not an answer: an operator-level setting that disables hooks yields a completed turn
+> with no record, straight past the exit-2 guard. The tool prints both sentences on every `inherit` run. **The seed is recorded beside the
+> nonce**, because a nonce nobody can recompute is a figure rather than a measurement — and this
+> section carried one for exactly one checkpoint before that was caught.
+>
+> **`--operator-env inherit` is a named departure from [`arm.md`](arm.md)'s ruled operator isolation.**
+> Measured 2026-08-29: breaking **either** `HOME` or `CLAUDE_CONFIG_DIR` alone is enough for the CLI to
+> report *"Not logged in"*, and the run was taken under the departure on that basis. The flag exists so
+> it is **named, printed on every run, and reproducible** rather than performed by a script nobody kept.
+> What it buys is an answer about the **host invoking the hook**; what it costs is that the arm is not
+> the ruled arm, so **no baseline may be recorded under it**.
+>
+> **The reason given for needing it was wrong, corrected 2026-08-30 before this shipped.** The
+> measurement above is real; the inference *"this test cannot answer under isolation at all"* was not.
+> The host's stored login is reached **through `HOME`**, and `isolatedEnv()` carries the operator's
+> environment through — so a credential exported as `CLAUDE_CODE_OAUTH_TOKEN` reaches an isolated arm.
+> Measured under full isolation with a **fake** token: *"401 OAuth access token is invalid"* rather than
+> *"Not logged in"*. **So this test can be answered under the ruled arm**, and `--stop-probe
+> --operator-env isolated` now refuses with `claude setup-token` as the remedy instead of spending a
+> turn to discover it.
+>
+> **What that does and does not change here.** The recorded run stays what it was — taken under
+> `inherit`, on his ruling, and it is not retroactively a ruled-arm run. **Whether the departure is
+> still needed at all is now his to revisit**, and the cheap path is to re-run under `isolated` with a
+> token exported; the obligation is `acceptedUnder.reRunWhen` and it belongs to session 6d.
+>
+> **The maintainer accepted the departure, 2026-08-29**, on the argument that the test asks whether the
+> **host invokes the compiled hook** — a question orthogonal to how an arm resolves packs — and that the
+> ruled isolation could not answer it on this host at all — **the second half is retracted above**, and
+> the ruling stands on the first. So `done-demonstrated` **holds**, and it holds on
+> his ruling rather than on the implementer's argument, which is what this section's own rule — *"so that
+> construction does not get to decide what counts as instrumented"* — requires. **The ruling reaches this
+> test and nothing else: no baseline may be recorded under an unisolated arm**, which stays session 6d's
+> constraint.
+>
+> **The 4 invocations have a measured cause, and it is not the interesting one.** The arm's `Stop` hook
+> delegates to `stop-gate.mjs`, which blocks three times on *"no handoff dated 2026-08-29"* — an arm has
+> no handoffs — and releases at its per-reason cap of three on the fourth. Reproduced by hand: four
+> calls, three blocks, one release. A first draft of this record offered *"consistent with the arm's
+> Stop gate intervening in the agent's loop, which would be the treatment biting"*; that is the shape
+> session 6a retracted one page earlier in this milestone, and the mechanism was one command away.
+>
+> _A second opinion on 2026-08-29 proposed a deeper cause — that the gate fired **only** because the
+> probe's own recorder and rewritten settings made the arm dirty, so `didWork()` returned true — and
+> **it does not reproduce**. Measured with independent session ids on two freshly constructed arms: the
+> **clean** arm blocks on `handoff 1/3` exactly as the dirty one does. The missing handoff is sufficient
+> on its own. Recorded because a plausible mechanism adopted without running it is the same defect as
+> the claim it was correcting._
+>
+> **What it establishes.** That the hook is reached — the one thing `compile`'s fail-open warning meant
+> could not be assumed. **What it does not.** That the gate's verdict is right, that any scenario was
+> graded, or anything about behaviour.
+>
+> **The second half of the test is unbuilt and stated as such**: *"and a fixture asserts that record's
+> presence"*. `../../cli/ab.test.mjs` holds four stop-probe cases and all four are **refusals** — there
+> is no positive control in the suite, because a fixture asserting a present record would have to spawn
+> an agent, and `../../.portulan/verify/tests.sh` runs that suite. The demonstration above is a session's
+> recorded run, not a rail.
+
 **The rigged recipe's failure text is part of the stimulus, and it is constrained.** Rigging a verify
 recipe red is legitimate — forcing a check red before believing its green is this repository's own
 standing bar, and it is equally hard for both arms. But the text the arm reads must **not restate the

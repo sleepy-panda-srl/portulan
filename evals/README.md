@@ -673,8 +673,19 @@ Each names where it arrives, per [`../.portulan/dod.md`](../.portulan/dod.md) co
 here claims a capability that does not exist:
 
 - **The A/B (Portulan on / off) baseline** — arrives in milestone 8, a later session. **No baseline has
-  been recorded, and no harness exists to record one.** Both halves of that sentence are still true
-  after session 6a, which settled what the arms **denote** and built no instrument:
+  been recorded.** That half is unchanged. The other half is not: a sentence here used to add *"and no
+  harness exists to record one"*, and **the arm builder now exists** —
+  [`../cli/ab.mjs`](../cli/ab.mjs), session 6b, held by the `ab` verify recipe, a forced-red drill and
+  [`ab/register.md`](ab/register.md). What it builds is the two arms and nothing else: **it grades
+  nothing**, so the graders and their level-1, attribution and level-2 discrimination fixtures are
+  session **6c**'s and the run is **6d**'s, on the maintainer's ruling of 2026-08-29 splitting this
+  clause at construction | grading | running. The `done-demonstrated` scenario is **live**: its
+  acceptance test was **met** on 2026-08-29 — `--stop-probe` returned `met: true` with **4** recorder
+  invocations under a harness nonce — so the corpus holds **four** scenarios and not three. The run was
+  **unisolated**, on a reason since retracted — a credential exported as a variable does reach an
+  isolated arm; the
+  test asks whether the host invokes the compiled hook, which that limit does not touch, while a
+  **baseline** over an unisolated arm would not be the ruled arm and is session 6d's problem. Session 6a settled what the arms **denote**:
   [`ab/arm.md`](ab/arm.md) specifies the treatment arm and [`ab/corpus.md`](ab/corpus.md) the scenarios
   and grading rules. **Three scenarios hold, plus a fourth on a stated acceptance test** — not eight;
   four are retired with the measurement that retired them and the condition that would un-retire each.
