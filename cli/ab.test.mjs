@@ -374,6 +374,43 @@ test("a stop probe refuses an unkeyed record, because an unkeyed one cannot be a
     });
 });
 
+test("a mode that INVENTS its scratch directory removes it, and one that hands it over does not", () => {
+    // The leak Copilot found in round 1. `--check` and `--write` build two arms to answer a question;
+    // `--construct` exists to hand the caller an arm, so sweeping it would delete the deliverable. A
+    // leak per run is invisible until somebody counts, and `ab` is a recipe — it runs on every commit.
+    const before = new Set(fs.readdirSync(os.tmpdir()).filter((d) => d.startsWith("portulan-ab-")));
+    const sink = { write() {} };
+    assert.equal(run(["--check", "--repo-root", REPO, "--workspace", WORKSPACE], { stdout: sink, stderr: sink, cwd: REPO }), 0);
+    const after = fs.readdirSync(os.tmpdir()).filter((d) => d.startsWith("portulan-ab-") && !before.has(d));
+    assert.deepEqual(after, [], `--check left ${after.length} scratch director(ies) behind`);
+});
+
+test("a refused --check still sweeps, because the throw path is where a leak-fix leaks", () => {
+    // The first repair for the finding above put `rmSync` at four early returns and still leaked on the
+    // exception path — a scratch leak surviving its own fix. `--check` against a workspace with no
+    // register refuses; the directory must go anyway.
+    withTemp((dir) => {
+        const before = new Set(fs.readdirSync(os.tmpdir()).filter((d) => d.startsWith("portulan-ab-")));
+        const sink = { write() {} };
+        // A repo root with no evals/ab/register.md: the run refuses rather than returning 0.
+        const code = run(["--check", "--repo-root", dir, "--workspace", WORKSPACE], { stdout: sink, stderr: sink, cwd: REPO });
+        assert.notEqual(code, 0, "the fixture must actually refuse, or this case passes for the wrong reason");
+        const after = fs.readdirSync(os.tmpdir()).filter((d) => d.startsWith("portulan-ab-") && !before.has(d));
+        assert.deepEqual(after, [], `a refused --check left ${after.length} scratch director(ies) behind`);
+    });
+});
+
+test("isolatedEnv names four directories, and every one of them is a directory the probe must create", () => {
+    // The correctness half of Copilot's gated note: `CLAUDE_CONFIG_DIR` pointed at a path that was never
+    // created, so the isolation rested on the host tolerating a missing directory rather than on an
+    // empty one existing. This pins the set so a fifth variable cannot be added without being made.
+    const env = isolatedEnv("/tmp/op", {});
+    assert.deepEqual(
+        [env.HOME, env.XDG_CONFIG_HOME, env.XDG_CACHE_HOME, env.CLAUDE_CONFIG_DIR].map((d) => d.replace("/tmp/op/", "")),
+        ["home", "home/.config", "home/.cache", "claude"],
+    );
+});
+
 test("the register path is the one the recipe and the register's own header name", () => {
     assert.equal(REGISTER, "evals/ab/register.md");
     const committed = fs.readFileSync(path.join(REPO, REGISTER), "utf8");

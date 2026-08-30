@@ -1471,71 +1471,92 @@ export function run(argv = [], { stdout = process.stdout, stderr = process.stder
 
         if (parsed.mode === "construct" || parsed.mode === "check" || parsed.mode === "write") {
             const into = parsed.into ? path.resolve(cwd, parsed.into) : fs.mkdtempSync(path.join(os.tmpdir(), "portulan-ab-"));
-            // **Not a guard on `--into`** — an explicit `--into` may name anywhere, and only `<into>/a`
-            // and `<into>/b` are ever written or removed. What this asserts is that the DEFAULT
-            // destination really is under the OS temp directory, since `mkdtempSync` honours `TMPDIR`
-            // and a caller with a hostile one would otherwise have this tool `rmSync` a path it chose.
-            // _(The first spelling was `!isInside(...) && parsed.into === null`, which is unreachable:
-            // when `--into` is absent the path is always a `mkdtempSync` under `os.tmpdir()`. A dead
-            // check reads as a rail. Found at the pre-commit checkpoint.)_
-            if (parsed.into === null && !isInside(fs.realpathSync(os.tmpdir()), fs.realpathSync(into))) {
-                throw new CouldNotRun(`the default destination ${into} is not under ${os.tmpdir()} — refusing to write and remove a path this tool did not choose`);
-            }
-            const armA = constructArmA({ workspaceDir: workspace, into: path.join(into, "a"), repoRoot, cliRoot: repoRoot, tracked: trackedUnder(repoRoot, workspace) });
-            const armB = constructArmB(path.join(into, "b"));
+            // **A directory this tool INVENTED is a directory this tool removes**, and only for the modes
+            // that have no further use for it. `--check` and `--write` build two arms to answer a
+            // question and are done with them; `--construct` exists to HAND the caller an arm, so
+            // removing it would delete the deliverable. A caller who passed `--into` owns the path and
+            // this never touches it.
+            //
+            // `../.portulan/verify/tests.sh` sweeps the scratch directory for exactly this class and the
+            // handoff `2026-08-13-the-suites-that-never-swept-their-scratch.md` is what it was written
+            // from — a leak per run is invisible until somebody counts. `ab` is a recipe, so it runs on
+            // every commit and in CI: this one would have leaked two arms a run, forever. Copilot, round 1.
+            const sweep = parsed.into === null && parsed.mode !== "construct";
 
-            const differ = armsDifferOnlyByTreatment(armA.files, armB.files);
-            if (differ.onlyInA.length || differ.onlyInB.length || differ.treatmentInB.length) {
-                stderr.write(
-                    `ab: the arms differ outside the treatment — only in A: ${differ.onlyInA.join(", ") || "none"}; only in B: ` +
-                        `${differ.onlyInB.join(", ") || "none"}; treatment paths in B: ${differ.treatmentInB.join(", ") || "none"}\n`,
-                );
-                return 1;
-            }
-
-            const text = register(armA, armB, path.relative(repoRoot, workspace) || parsed.workspace);
-            const registerPath = path.join(repoRoot, REGISTER);
-
-            if (parsed.mode === "write") {
-                fs.mkdirSync(path.dirname(registerPath), { recursive: true });
-                fs.writeFileSync(registerPath, text);
-                stdout.write(`ab: wrote ${REGISTER} — ${armA.files.length} file(s) in arm A, ${armB.files.length} in arm B\n`);
-                return 0;
-            }
-
-            if (parsed.mode === "construct") {
-                stdout.write(`ab: arm A at ${armA.root} (${armA.files.length} file(s)), arm B at ${armB.root} (${armB.files.length} file(s))\n`);
-                stdout.write(`ab: ${armA.pinnedHooks.length} hook(s) pinned to an absolute path on this machine — the arm is machine-bound, as arm.md records\n`);
-                return 0;
-            }
-
-            // --check: the corpus discriminates, then the register is byte-compared.
-            let status = 0;
-            for (const c of NORMATIVE_CORPUS) {
-                const got = c.text === "" ? false : isNormative(c.text);
-                if (got !== c.caught) {
-                    stderr.write(`ab: rule-2 corpus case \`${c.id}\` expected caught=${c.caught} and the matcher said ${got}\n`);
-                    status = 1;
+            // **One `finally`, not a sweep at each return.** The first repair added `rmSync` at four
+            // early returns and still leaked on the throw path — which is how a scratch leak survives a
+            // fix for itself. The directory is removed on every exit from this block, including a
+            // refusal and an exception.
+            try {
+                // **Not a guard on `--into`** — an explicit `--into` may name anywhere, and only `<into>/a`
+                // and `<into>/b` are ever written or removed. What this asserts is that the DEFAULT
+                // destination really is under the OS temp directory, since `mkdtempSync` honours `TMPDIR`
+                // and a caller with a hostile one would otherwise have this tool `rmSync` a path it chose.
+                // _(The first spelling was `!isInside(...) && parsed.into === null`, which is unreachable:
+                // when `--into` is absent the path is always a `mkdtempSync` under `os.tmpdir()`. A dead
+                // check reads as a rail. Found at the pre-commit checkpoint.)_
+                if (parsed.into === null && !isInside(fs.realpathSync(os.tmpdir()), fs.realpathSync(into))) {
+                    throw new CouldNotRun(`the default destination ${into} is not under ${os.tmpdir()} — refusing to write and remove a path this tool did not choose`);
                 }
+                const armA = constructArmA({ workspaceDir: workspace, into: path.join(into, "a"), repoRoot, cliRoot: repoRoot, tracked: trackedUnder(repoRoot, workspace) });
+                const armB = constructArmB(path.join(into, "b"));
+
+                const differ = armsDifferOnlyByTreatment(armA.files, armB.files);
+                if (differ.onlyInA.length || differ.onlyInB.length || differ.treatmentInB.length) {
+                    stderr.write(
+                        `ab: the arms differ outside the treatment — only in A: ${differ.onlyInA.join(", ") || "none"}; only in B: ` +
+                            `${differ.onlyInB.join(", ") || "none"}; treatment paths in B: ${differ.treatmentInB.join(", ") || "none"}\n`,
+                    );
+                    return 1;
+                }
+
+                const text = register(armA, armB, path.relative(repoRoot, workspace) || parsed.workspace);
+                const registerPath = path.join(repoRoot, REGISTER);
+
+                if (parsed.mode === "write") {
+                    fs.mkdirSync(path.dirname(registerPath), { recursive: true });
+                    fs.writeFileSync(registerPath, text);
+                    stdout.write(`ab: wrote ${REGISTER} — ${armA.files.length} file(s) in arm A, ${armB.files.length} in arm B\n`);
+                    return 0;
+                }
+
+                if (parsed.mode === "construct") {
+                    // Deliberately NOT swept: this mode's whole output is the two arms on disk.
+                    stdout.write(`ab: arm A at ${armA.root} (${armA.files.length} file(s)), arm B at ${armB.root} (${armB.files.length} file(s))\n`);
+                    stdout.write(`ab: ${armA.pinnedHooks.length} hook(s) pinned to an absolute path on this machine — the arm is machine-bound, as arm.md records\n`);
+                    return 0;
+                }
+
+                // --check: the corpus discriminates, then the register is byte-compared.
+                let status = 0;
+                for (const c of NORMATIVE_CORPUS) {
+                    const got = c.text === "" ? false : isNormative(c.text);
+                    if (got !== c.caught) {
+                        stderr.write(`ab: rule-2 corpus case \`${c.id}\` expected caught=${c.caught} and the matcher said ${got}\n`);
+                        status = 1;
+                    }
+                }
+                if (!fs.existsSync(registerPath)) {
+                    stderr.write(`ab: ${REGISTER} does not exist — run \`node cli/ab.mjs --write\`\n`);
+                    return 1;
+                }
+                const committed = fs.readFileSync(registerPath, "utf8");
+                if (committed !== text) {
+                    stderr.write(`ab: ${REGISTER} has drifted from a fresh construction — regenerate it with \`node cli/ab.mjs --write\`\n`);
+                    status = 1;
+                } else {
+                    stdout.write(`ab: ${REGISTER} matches a fresh construction byte for byte (${armA.files.length} file(s) in arm A)\n`);
+                }
+                if (status === 0) {
+                    stdout.write(
+                        `ab: the disposition table is total over ${armA.staged.length} path(s), and arm.md's rule-2 matcher separates ` +
+                            `${NORMATIVE_CORPUS.length} corpus case(s) — ${NORMATIVE_CORPUS.filter((c) => !c.caught && !c.trueNegative).length} of them documented misses\n`,
+                    );
+                }
+                return status;
+            } finally {
+                if (sweep) fs.rmSync(into, { recursive: true, force: true });
             }
-            if (!fs.existsSync(registerPath)) {
-                stderr.write(`ab: ${REGISTER} does not exist — run \`node cli/ab.mjs --write\`\n`);
-                return 1;
-            }
-            const committed = fs.readFileSync(registerPath, "utf8");
-            if (committed !== text) {
-                stderr.write(`ab: ${REGISTER} has drifted from a fresh construction — regenerate it with \`node cli/ab.mjs --write\`\n`);
-                status = 1;
-            } else {
-                stdout.write(`ab: ${REGISTER} matches a fresh construction byte for byte (${armA.files.length} file(s) in arm A)\n`);
-            }
-            if (status === 0) {
-                stdout.write(
-                    `ab: the disposition table is total over ${armA.staged.length} path(s), and arm.md's rule-2 matcher separates ` +
-                        `${NORMATIVE_CORPUS.length} corpus case(s) — ${NORMATIVE_CORPUS.filter((c) => !c.caught && !c.trueNegative).length} of them documented misses\n`,
-                );
-            }
-            return status;
         }
 
         if (parsed.mode === "stop-probe") {
@@ -1549,12 +1570,26 @@ export function run(argv = [], { stdout = process.stdout, stderr = process.stder
             const seed = parsed.seed ?? crypto.randomBytes(8).toString("hex");
             const nonce = nonceFor("done-demonstrated", "a", 0, seed);
 
+            // **The operator directory is created, USED, and removed** — and the second half was missing.
+            // `mkdtempSync` per probe with no removal leaves a `portulan-ab-operator-*` behind on every
+            // run, and on every FAILED run too, which is the shape `../.portulan/verify/tests.sh` sweeps
+            // the scratch directory for. Copilot promoted this one to a gated note. It also caught the
+            // half that is a correctness bug rather than tidiness: `CLAUDE_CONFIG_DIR` was pointed at a
+            // path that **was never created**, so the isolation this flag exists to provide rested on the
+            // host tolerating a missing directory rather than on an empty one being there.
             let env;
+            let operator = null;
             if (parsed.operatorEnv === "isolated") {
-                const operator = fs.mkdtempSync(path.join(os.tmpdir(), "portulan-ab-operator-"));
-                fs.mkdirSync(path.join(operator, "home"), { recursive: true });
-                env = isolatedEnv(operator);
+                operator = fs.mkdtempSync(path.join(os.tmpdir(), "portulan-ab-operator-"));
+                const isolated = isolatedEnv(operator);
+                // Every directory the environment names is made, not only `home` — an isolated config
+                // directory that does not exist is not isolation, it is an absent variable with a value.
+                for (const dir of [isolated.HOME, isolated.XDG_CONFIG_HOME, isolated.XDG_CACHE_HOME, isolated.CLAUDE_CONFIG_DIR]) {
+                    fs.mkdirSync(dir, { recursive: true });
+                }
+                env = isolated;
             } else {
+
                 // **A named departure, printed rather than implied.** `arm.md` rules operator isolation;
                 // this bypasses it. It exists because the ruling and a runnable agent were measured to be
                 // incompatible on at least one host, and because a result nobody can reproduce with the
@@ -1575,7 +1610,12 @@ export function run(argv = [], { stdout = process.stdout, stderr = process.stder
                 stdout.write("ab: would produce a completed turn with no record. Re-run with --operator-env isolated to trust a negative.\n");
             }
 
-            const probe = armStopProbe(armRoot, { nonce, env });
+            let probe;
+            try {
+                probe = armStopProbe(armRoot, { nonce, env });
+            } finally {
+                if (operator !== null) fs.rmSync(operator, { recursive: true, force: true });
+            }
             stdout.write(
                 `ab: stop probe — hook ${probe.met ? "WAS" : "was NOT"} invoked; ${probe.invocations} record(s); ` +
                     `the agent exited ${probe.agentExit}\n`,
