@@ -30,8 +30,10 @@
 //
 // **So the disposition table below is TOTAL, and this module refuses to construct when it is not.**
 // Every path under the source workspace must be classified by exactly one entry. A file customer zero
-// adds tomorrow is an `unclassified` refusal — exit 2, naming it — rather than a silent passenger in the
-// treatment arm. The rail is the totality, not the contents: the contents are a judgement and are
+// adds tomorrow is an `unclassified` refusal — **exit 1**, naming it — rather than a silent passenger in
+// the treatment arm. _(This read *exit 2* until Copilot's round 2 read it against the code. The verify
+// recipe's own copy of the sentence had already been corrected and this sibling was left standing —
+// `evolution.md`'s *a fix is not done at the site it was found*, missed at the site that names it.)_ The rail is the totality, not the contents: the contents are a judgement and are
 // argued in `../evals/ab/arm.md`, where a reviewer can attack them.
 //
 // ## `arm.md`'s rule 2, and exactly how far the matcher reaches
@@ -717,13 +719,16 @@ export const SCENARIOS = [
     // **`holds`.** `../evals/ab/corpus.md`'s acceptance test was met on 2026-08-29 —
     // `--stop-probe --seed m8s6b-acceptance --operator-env inherit` returned `met: true`, 4 invocations,
     // nonce `4f53b2a09c4c1d9d`, agent exit 0 — but under a **named departure** from `arm.md`'s ruled
-    // operator isolation, which that host makes the agent unrunnable under. `corpus.md` reserves this
+    // operator isolation. _(The reason first given for needing it — that the ruled isolation could not
+    // authenticate at all — was measured WRONG and retracted; a credential variable reaches an isolated
+    // arm. The run stands as taken, under his ruling; the departure's necessity is his to revisit.)_ `corpus.md` reserves this
     // decision to the maintainer in terms: the test is worded *"so that construction does not get to
     // decide what counts as instrumented"*, and an implementer ruling the departure acceptable would be
     // construction deciding. **The maintainer accepted it on 2026-08-29** — the test asks whether the
-    // host invokes the hook, which the isolation question does not touch, and the ruled isolation cannot
-    // answer it on that host at all. His ruling reaches this test and nothing else: **no baseline may be
-    // recorded under an unisolated arm.**
+    // host invokes the hook, which the isolation question does not touch. _(The second half of that
+    // argument, *and the ruled isolation cannot answer it at all*, was measured wrong the next day: with
+    // a credential variable exported it can. The ruling stands on its first half.)_ His ruling reaches
+    // this test and nothing else: **no baseline may be recorded under an unisolated arm.**
     {
         id: "done-demonstrated",
         state: "holds",
@@ -739,7 +744,7 @@ export const SCENARIOS = [
             ruledBy: "maintainer",
             date: "2026-08-29",
             scope: "this acceptance test only — no baseline may be recorded under an unisolated arm",
-            reRunWhen: "an isolated operator environment can authenticate an agent",
+            reRunWhen: "REACHABLE NOW — re-run --stop-probe --operator-env isolated with a credential variable exported; owner: session 6d",
         },
     },
     { id: "gated-canary", state: "retired", why: "confounded three ways — see corpus.md" },
@@ -768,10 +773,20 @@ export function nonceFor(scenario, arm, run, seed) {
 /**
  * Operator isolation — a clean config directory and home per arm.
  *
- * `arm.md` rules it and leaves it unbuilt: *"a populated and an isolated environment resolve packs
- * differently, so an arm built without isolation is not the ruled arm."* This returns the environment an
- * arm's agent is launched under. `HOME` and `CLAUDE_CONFIG_DIR` both move, because a plugin cache found
- * through either would let the host resolve packs the arm never declared.
+ * `arm.md` rules it: *"a populated and an isolated environment resolve packs differently, so an arm
+ * built without isolation is not the ruled arm."* `HOME` and `CLAUDE_CONFIG_DIR` both move, because a
+ * plugin cache found through either would let the host resolve packs the arm never declared.
+ *
+ * **What it does NOT do, stated because a first draft of this file implied otherwise: it does not
+ * isolate the ENVIRONMENT.** The spread below carries every variable the operator has — measured, this
+ * session's own shell has `ANTHROPIC_BASE_URL` set and it crosses into the arm untouched. `arm.md`'s
+ * ruled words are *"a clean config directory and home per arm"*, which is what this delivers and no
+ * more; a clean **environment** would be a different and larger property, and turning this into a
+ * deny-by-default allow-list would mean enumerating `PATH`, `TMPDIR`, `SHELL`, `LANG` and the rest or
+ * the arm could not run anything. `./ab.test.mjs` pins the carry as a deliberate property.
+ *
+ * **That inheritance is why a credential reaches an isolated arm at all**, and it is the fact this
+ * module got backwards for a whole session. See `armStopProbe`.
  */
 export function isolatedEnv(operatorDir, base = process.env) {
     const home = path.join(operatorDir, "home");
@@ -1342,7 +1357,7 @@ const USAGE = `portulan-ab — build the A/B arms milestone 8's baseline clause 
   node cli/ab.mjs --construct --into <dir> [--workspace <dir>]
   node cli/ab.mjs --check [--workspace <dir>] [--repo-root <dir>]
   node cli/ab.mjs --write [--workspace <dir>] [--repo-root <dir>]
-  node cli/ab.mjs --stop-probe --into <dir> [--seed <s>]
+  node cli/ab.mjs --stop-probe --into <dir> [--seed <s>] [--operator-env <isolated|inherit>]
 
   --plan        print the disposition of every path under the source workspace, and refuse if the
                 table does not classify all of them
@@ -1357,10 +1372,18 @@ const USAGE = `portulan-ab — build the A/B arms milestone 8's baseline clause 
                 publish: a nonce with no seed is a figure nobody can recompute.
   --operator-env <isolated|inherit>
                 whose environment the probed agent runs under. Default \`isolated\` — arm.md's ruled
-                clean home and config directory. \`inherit\` is a NAMED DEPARTURE from that ruling:
-                on a host whose credential lives in the operator's home, isolated is measured to make
-                the agent unrunnable, and inherit is the only way this test answers at all. What it
-                buys is an answer about the HOST invoking the hook; what it costs is that the arm is
+                clean home and config directory.
+
+                \`isolated\` needs a credential IN THE ENVIRONMENT, because the host's stored login is
+                reached through \`HOME\` and an isolated home has none. Run \`claude setup-token\` once
+                and export CLAUDE_CODE_OAUTH_TOKEN. Two refusals, both before any agent is spawned:
+                when NONE of CLAUDE_CODE_OAUTH_TOKEN, ANTHROPIC_API_KEY or ANTHROPIC_AUTH_TOKEN is
+                set, and when MORE THAN ONE is — they are three distinguishable auth paths and a
+                baseline must name the one it used. It cannot see a Bedrock/Vertex setup or an
+                apiKeyHelper; for those, \`inherit\`.
+
+                \`inherit\` is a NAMED DEPARTURE from the ruling, for an operator who has no such
+                token. It buys an answer about the HOST invoking the hook; it costs that the arm is
                 not the ruled arm, so no baseline may be recorded under it.
 
 This builds arms. It does not grade them and it records no baseline: the graders are session 6c's and
@@ -1569,6 +1592,7 @@ export function run(argv = [], { stdout = process.stdout, stderr = process.stder
             // and no seed anywhere.
             const seed = parsed.seed ?? crypto.randomBytes(8).toString("hex");
             const nonce = nonceFor("done-demonstrated", "a", 0, seed);
+            let credentialVar = null;
 
             // **The operator directory is created, USED, and removed** — and the second half was missing.
             // `mkdtempSync` per probe with no removal leaves a `portulan-ab-operator-*` behind on every
@@ -1577,9 +1601,61 @@ export function run(argv = [], { stdout = process.stdout, stderr = process.stder
             // half that is a correctness bug rather than tidiness: `CLAUDE_CONFIG_DIR` was pointed at a
             // path that **was never created**, so the isolation this flag exists to provide rested on the
             // host tolerating a missing directory rather than on an empty one being there.
+            // **A precondition it can check before spending a turn.** An isolated run with no credential
+            // in the environment produces *"Not logged in"*, exit 1, and `armStopProbe` correctly reports
+            // could-not-run — after paying for an agent launch to learn something knowable beforehand.
+            // `../.portulan/memory/verify-preconditions-fail-closed.md` is the rule; the remedy is named
+            // rather than left to be searched for.
+            //
+            // **ONE variable, and more than one is refused.** Measured under full isolation with fake
+            // values, three DISTINGUISHABLE auth paths — not three bills:
+            //
+            //   CLAUDE_CODE_OAUTH_TOKEN  401 OAuth access token is invalid
+            //   ANTHROPIC_API_KEY        401 API key is invalid
+            //   ANTHROPIC_AUTH_TOKEN     401 Invalid bearer token
+            //   (none)                   Not logged in · Please run /login
+            //
+            // A baseline recorded under whichever the operator's shell happened to carry would be a
+            // baseline that does not name its own auth path — the argument `corpus.md` already makes
+            // about the seed. The channel is printed beside it.
+            //
+            // **`ANTHROPIC_AUTH_TOKEN` is here because a first version of this list left it out, on a
+            // measurement that was wrong, in the change that exists to retract a measurement that was
+            // wrong.** That version asserted in two carriers that it *"falls through to Not logged in
+            // and authenticates nothing here"*. Re-measured at the pre-commit checkpoint and again by
+            // hand: it authenticates. Excluding it made the refusal below block an operator who has a
+            // working credential — the `ANTHROPIC_BASE_URL` gateway case, and `ANTHROPIC_BASE_URL` is
+            // set on the very host this was measured on.
+            const CREDENTIAL_VARS = ["CLAUDE_CODE_OAUTH_TOKEN", "ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN"];
             let env;
             let operator = null;
             if (parsed.operatorEnv === "isolated") {
+                const present = CREDENTIAL_VARS.filter((v) => (process.env[v] ?? "") !== "");
+                if (present.length === 0) {
+                    // **The refusal names what it can and cannot see.** It reads three variables; it
+                    // cannot see a Bedrock or Vertex configuration, and it cannot see an `apiKeyHelper`,
+                    // which lives in the config directory the isolation replaces. Measured: a
+                    // `CLAUDE_CODE_USE_BEDROCK` operator hits this refusal and the `setup-token` remedy
+                    // is not theirs. Whether such an operator would OTHERWISE succeed was not measured —
+                    // this host has no AWS or GCP credentials — so the message states the limit rather
+                    // than a universal, which is the claim the previous version got wrong.
+                    throw new CouldNotRun(
+                        `none of ${CREDENTIAL_VARS.join(", ")} is set, and \`--operator-env isolated\` gives the arm a clean home — ` +
+                            `the host's stored login is reached through \`HOME\`, so an isolated arm has none of its own. Run ` +
+                            `\`claude setup-token\` and export \`CLAUDE_CODE_OAUTH_TOKEN\`, or pass \`--operator-env inherit\`. ` +
+                            `NOTE: this reads three variables and nothing else — a Bedrock or Vertex configuration, or an ` +
+                            `\`apiKeyHelper\` in the config directory isolation replaces, is a credential channel it cannot see, ` +
+                            `and for those \`inherit\` is the honest answer rather than this refusal being right`,
+                    );
+                }
+                if (present.length > 1) {
+                    throw new CouldNotRun(
+                        `${present.join(" and ")} are both set, and they are different auth paths — refusing rather than letting ` +
+                            `the run pick one silently. A measurement that does not name its own credential channel is the defect ` +
+                            `a recorded nonce with no seed already cost this instrument once. Unset one`,
+                    );
+                }
+                credentialVar = present[0];
                 operator = fs.mkdtempSync(path.join(os.tmpdir(), "portulan-ab-operator-"));
                 const isolated = isolatedEnv(operator);
                 // Every directory the environment names is made, not only `home` — an isolated config
@@ -1591,8 +1667,8 @@ export function run(argv = [], { stdout = process.stdout, stderr = process.stder
             } else {
 
                 // **A named departure, printed rather than implied.** `arm.md` rules operator isolation;
-                // this bypasses it. It exists because the ruling and a runnable agent were measured to be
-                // incompatible on at least one host, and because a result nobody can reproduce with the
+                // this bypasses it. It exists for an operator with no credential variable to export — NOT because
+                // isolation cannot authenticate, which was measured wrong and retracted — and because a result nobody can reproduce with the
                 // shipped tool is worse than a limit written down — which is the defect the second
                 // pre-commit checkpoint blocked this session on.
                 env = process.env;
@@ -1620,7 +1696,10 @@ export function run(argv = [], { stdout = process.stdout, stderr = process.stder
                 `ab: stop probe — hook ${probe.met ? "WAS" : "was NOT"} invoked; ${probe.invocations} record(s); ` +
                     `the agent exited ${probe.agentExit}\n`,
             );
-            stdout.write(`ab: seed ${seed} · nonce ${probe.nonce} · operator-env ${parsed.operatorEnv}\n`);
+            stdout.write(
+                `ab: seed ${seed} · nonce ${probe.nonce} · operator-env ${parsed.operatorEnv}` +
+                    `${credentialVar ? ` · credential ${credentialVar}` : ""}\n`,
+            );
             stdout.write(`ab: it delegates to ${probe.delegatedTo}\n`);
             stdout.write("ab: this grades nothing and records no figure. One stop is not a baseline.\n");
             stdout.write("ab: the arm is restored — settings.json, the recorder and the receipt are all put back.\n");

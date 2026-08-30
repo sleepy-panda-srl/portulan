@@ -104,17 +104,31 @@ on the instrument"* so that construction does not get to decide what counts as i
 > nonce**, because a nonce nobody can recompute is a figure rather than a measurement — and this
 > section carried one for exactly one checkpoint before that was caught.
 >
-> **`--operator-env inherit` is a named departure from [`arm.md`](arm.md)'s ruled operator isolation,
-> and it is the maintainer's to accept or refuse.** Measured 2026-08-29: breaking **either** `HOME` or
-> `CLAUDE_CONFIG_DIR` alone is enough for the CLI to report *"Not logged in"*, so on that host the
-> ruled isolation makes the agent unrunnable and this test cannot answer under it at all. The flag
-> exists so the departure is **named, printed on every run, and reproducible** rather than performed by
-> a script nobody kept. What it buys is an answer about the **host invoking the hook**; what it costs is
-> that the arm is not the ruled arm, so **no baseline may be recorded under it**.
+> **`--operator-env inherit` is a named departure from [`arm.md`](arm.md)'s ruled operator isolation.**
+> Measured 2026-08-29: breaking **either** `HOME` or `CLAUDE_CONFIG_DIR` alone is enough for the CLI to
+> report *"Not logged in"*, and the run was taken under the departure on that basis. The flag exists so
+> it is **named, printed on every run, and reproducible** rather than performed by a script nobody kept.
+> What it buys is an answer about the **host invoking the hook**; what it costs is that the arm is not
+> the ruled arm, so **no baseline may be recorded under it**.
+>
+> **The reason given for needing it was wrong, corrected 2026-08-30 before this shipped.** The
+> measurement above is real; the inference *"this test cannot answer under isolation at all"* was not.
+> The host's stored login is reached **through `HOME`**, and `isolatedEnv()` carries the operator's
+> environment through — so a credential exported as `CLAUDE_CODE_OAUTH_TOKEN` reaches an isolated arm.
+> Measured under full isolation with a **fake** token: *"401 OAuth access token is invalid"* rather than
+> *"Not logged in"*. **So this test can be answered under the ruled arm**, and `--stop-probe
+> --operator-env isolated` now refuses with `claude setup-token` as the remedy instead of spending a
+> turn to discover it.
+>
+> **What that does and does not change here.** The recorded run stays what it was — taken under
+> `inherit`, on his ruling, and it is not retroactively a ruled-arm run. **Whether the departure is
+> still needed at all is now his to revisit**, and the cheap path is to re-run under `isolated` with a
+> token exported; the obligation is `acceptedUnder.reRunWhen` and it belongs to session 6d.
 >
 > **The maintainer accepted the departure, 2026-08-29**, on the argument that the test asks whether the
 > **host invokes the compiled hook** — a question orthogonal to how an arm resolves packs — and that the
-> ruled isolation cannot answer it on this host at all. So `done-demonstrated` **holds**, and it holds on
+> ruled isolation could not answer it on this host at all — **the second half is retracted above**, and
+> the ruling stands on the first. So `done-demonstrated` **holds**, and it holds on
 > his ruling rather than on the implementer's argument, which is what this section's own rule — *"so that
 > construction does not get to decide what counts as instrumented"* — requires. **The ruling reaches this
 > test and nothing else: no baseline may be recorded under an unisolated arm**, which stays session 6d's

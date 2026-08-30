@@ -154,18 +154,54 @@ by comparing the two trees and requiring them identical outside the enumerated t
   holding it would red the `ab` rail on work that never touched the arms.)_
 - **Operator isolation** (a clean config directory and home per arm) is **built** — `isolatedEnv()` moves
   `HOME`, the XDG directories and `CLAUDE_CONFIG_DIR`, since a plugin cache found through either would let
-  the host resolve packs the arm never declared. **What it costs is measured, and it is not a detail:**
-  breaking **either** `HOME` or `CLAUDE_CONFIG_DIR` alone is enough for `claude -p` to report *"Not
-  logged in"* — measured both ways on 2026-08-29 — so on that host **the ruled isolation makes the agent
-  unrunnable**, full stop. The credential is not a file this harness can carry; carrying it is the
-  obvious repair and is **not built**. `corpus.md`'s acceptance test was therefore run under
-  `--stop-probe --operator-env inherit`, a **named departure** the tool prints on every run — **accepted
-  by the maintainer on 2026-08-29**, for that test and for nothing else, because the question it asks is
-  whether the host invokes the hook and the ruled isolation cannot answer it on that host at all. **A
-  baseline recorded over an unisolated arm is not the ruled arm**, and session 6d either carries the
-  credential into an isolated home or records its own departure. **And when an isolated operator
-  environment can authenticate an agent, the stop probe is RE-RUN under it** — required by a second
-  opinion on 2026-08-29 and written here rather than left for 6d to infer: the acceptance evidence is
-  environment-specific, re-confirmation costs one turn, and the receipt mechanism already exists. The
-  obligation is carried machine-readably too, as `acceptedUnder.reRunWhen` on the scenario's own entry in
-  [`../../cli/ab.mjs`](../../cli/ab.mjs).
+  the host resolve packs the arm never declared.
+
+  **What it costs, corrected 2026-08-30 — a first version of this bullet had the mechanism backwards and
+  said so as a fact.** It read *"the ruled isolation makes the agent unrunnable on this host, full
+  stop"*, on the measurement that breaking **either** `HOME` or `CLAUDE_CONFIG_DIR` alone yields *"Not
+  logged in"*. That measurement is real and reproduces. **The inference from it was wrong.** The host's
+  stored login is reached **through `HOME`** — a fresh home simply has none — and `isolatedEnv()` carries
+  the operator's whole environment through, so a credential supplied as a **variable** reaches an
+  isolated arm untouched. Measured under full isolation: with no credential, *"Not logged in · Please run
+  /login"*; with a **fake** `CLAUDE_CODE_OAUTH_TOKEN`, *"401 OAuth access token is invalid"* — it
+  reached the CLI. So the cost is **the operator having no token exported**, which `claude setup-token`
+  fixes, and not an impossibility. `--stop-probe --operator-env isolated` now refuses with that remedy
+  before spending a turn.
+
+  **The credential is one named variable and two is refused**, because the channels are
+  **distinguishable auth paths** rather than distinguishable bills — measured under full isolation with
+  fake values: `CLAUDE_CODE_OAUTH_TOKEN` → `401 OAuth access token is invalid`, `ANTHROPIC_API_KEY` →
+  `401 API key is invalid`, `ANTHROPIC_AUTH_TOKEN` → `401 Invalid bearer token`, none → *"Not logged
+  in"*. A baseline that does not name its own channel is the defect a nonce with no seed already cost
+  this instrument once, so the channel is printed beside the seed.
+
+  _**A retraction, and it is the reason this paragraph is worth reading twice.** A first version of this
+  bullet asserted that `ANTHROPIC_AUTH_TOKEN` *"falls through to Not logged in and authenticates nothing
+  here"* and excluded it. That was **measured wrong** — it authenticates, as the table above now records
+  — and it was written **into the change whose whole purpose was retracting a measured-wrong claim**.
+  Caught at the pre-commit checkpoint, which re-ran it five times. The cost was not only a false sentence:
+  the refusal below would have blocked an operator holding a working credential, on a gateway
+  configuration `ANTHROPIC_BASE_URL` exists to serve — and `ANTHROPIC_BASE_URL` is set on the host this
+  was measured on._
+
+  **What the refusal cannot see, named rather than implied.** It reads three variables. A **Bedrock** or
+  **Vertex** configuration and an **`apiKeyHelper`** — which lives in the config directory the isolation
+  replaces — are credential channels it does not detect; measured, a `CLAUDE_CODE_USE_BEDROCK` operator
+  hits the refusal and is handed a `setup-token` remedy that is not theirs. **Whether such an operator
+  would otherwise succeed was not measured** — this host has no AWS or GCP credentials — so the message
+  states the limit and points at `--operator-env inherit` instead of asserting a universal, which is the
+  shape of the claim this whole bullet exists to retract.
+
+  **The isolation is of the HOME and the CONFIG DIRECTORY, and not of the environment** — this bullet's
+  ruled words are *"a clean config directory and home per arm"* and that is exactly what is delivered.
+  Measured limit, named rather than left to be found: **`ANTHROPIC_BASE_URL` is set in the operator shell
+  that ran this and crosses into the arm untouched**, as would any `ANTHROPIC_*` or `CLAUDE_CODE_*`
+  variable. Making this deny-by-default would mean enumerating `PATH`, `TMPDIR`, `SHELL`, `LANG` and the
+  rest or the arm could not run anything — a **tightening of the ruling** and therefore the maintainer's
+  amendment, not an implementer's line.
+
+  **So session 6d has three doors, not two**: export a token and record the baseline under the **ruled**
+  arm; carry a credential some other way; or record its own departure. The first is now the cheap one.
+  `acceptedUnder.reRunWhen` on the scenario's entry in [`../../cli/ab.mjs`](../../cli/ab.mjs) is
+  **reachable today** — re-running the stop probe under `--operator-env isolated` with a token exported
+  is one command — and it is **session 6d's to discharge**, named here so the obligation has an owner.

@@ -266,11 +266,76 @@ test("operator isolation moves HOME and the config directory, so packs resolve f
     const env = isolatedEnv("/tmp/op", { PATH: "/usr/bin", HOME: "/Users/someone", CLAUDE_CONFIG_DIR: "/Users/someone/.claude" });
     assert.equal(env.HOME, path.join("/tmp/op", "home"));
     assert.equal(env.CLAUDE_CONFIG_DIR, path.join("/tmp/op", "claude"));
+    // **The carry is deliberate and it is the reason a credential can reach an isolated arm at all.**
+    // `isolatedEnv` isolates the home and the config directory, NOT the environment: turning it into a
+    // deny-by-default allow-list would mean enumerating PATH, TMPDIR, SHELL, LANG and the rest, or the
+    // arm could not run anything. This session got that backwards for a whole session and shipped
+    // "isolated is measured to make the agent unrunnable" as a fact.
     assert.equal(env.PATH, "/usr/bin", "the rest of the environment is carried, or the arm cannot run anything");
     assert.equal(env.OTEL_EXPORTER_OTLP_ENDPOINT, "", "the arm must not inherit the operator's telemetry transport");
 });
 
 // ---------------------------------------------------------------- the arms differ only by the treatment
+
+test("a credential variable crosses into the isolated arm, which is why isolation is runnable at all", () => {
+    // The claim this session had backwards. Measured end to end on 2026-08-30 and recorded in
+    // `evals/ab/arm.md`: under a fully isolated HOME/XDG/CLAUDE_CONFIG_DIR, `claude -p` with NO
+    // credential variable prints "Not logged in · Please run /login", and with a FAKE
+    // CLAUDE_CODE_OAUTH_TOKEN prints "401 OAuth access token is invalid" — it reached the CLI.
+    //
+    // That end-to-end pair cannot be a case here: it spawns an agent, and `.portulan/verify/tests.sh`
+    // runs this suite. What IS testable without spawning anything is the half the pair turns on —
+    // whether the variable survives `isolatedEnv`.
+    const env = isolatedEnv("/tmp/op", { CLAUDE_CODE_OAUTH_TOKEN: "fake", ANTHROPIC_API_KEY: "fake2", ANTHROPIC_AUTH_TOKEN: "fake3", PATH: "/usr/bin" });
+    assert.equal(env.CLAUDE_CODE_OAUTH_TOKEN, "fake");
+    assert.equal(env.ANTHROPIC_API_KEY, "fake2");
+    // The third channel, which a first version of this module measured as authenticating nothing and
+    // excluded — wrongly, in the change that exists to retract a wrong measurement. It yields
+    // `401 Invalid bearer token` under isolation, a path distinct from both others.
+    assert.equal(env.ANTHROPIC_AUTH_TOKEN, "fake3");
+    // And the isolation the ruling is actually about is untouched by that.
+    assert.equal(env.HOME, path.join("/tmp/op", "home"));
+    assert.equal(env.CLAUDE_CONFIG_DIR, path.join("/tmp/op", "claude"));
+});
+
+test("an isolated stop probe refuses with the remedy when no credential is set, before spending a turn", () => {
+    withTemp((dir) => {
+        const saved = { ...process.env };
+        for (const v of ["CLAUDE_CODE_OAUTH_TOKEN", "ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN"]) delete process.env[v];
+        try {
+            const err = [];
+            // `--into` names a directory with no compiled settings; if the precondition did NOT fire the
+            // run would get past it and refuse for a different reason, so the message is asserted rather
+            // than only the code — the trap `review-meter.test.mjs` records paying for three times.
+            const code = run(["--stop-probe", "--into", dir, "--seed", "t"], { stdout: { write() {} }, stderr: { write: (s) => err.push(s) }, cwd: REPO });
+            assert.equal(code, 2);
+            assert.match(err.join(""), /claude setup-token/, "the refusal must name the remedy, not merely refuse");
+            assert.match(err.join(""), /Bedrock or Vertex/, "it must name the channels it CANNOT see, or it asserts a universal it has not measured");
+            assert.doesNotMatch(err.join(""), /was never compiled/, "it must refuse BEFORE reaching the arm, or it has paid for the launch it exists to avoid");
+        } finally {
+            Object.assign(process.env, saved);
+        }
+    });
+});
+
+test("two credential variables at once is refused, so a baseline cannot be recorded under an ambiguous channel", () => {
+    withTemp((dir) => {
+        const saved = { ...process.env };
+        process.env.CLAUDE_CODE_OAUTH_TOKEN = "fake";
+        process.env.ANTHROPIC_API_KEY = "fake2";
+        try {
+            const err = [];
+            assert.equal(run(["--stop-probe", "--into", dir, "--seed", "t"], { stdout: { write() {} }, stderr: { write: (s) => err.push(s) }, cwd: REPO }), 2);
+            assert.match(err.join(""), /different auth paths/);
+            // The values must never reach the output — the tool copies a credential across and reads it
+            // for presence only.
+            assert.doesNotMatch(err.join(""), /fake2?/, "a refusal naming the variable must not print its value");
+        } finally {
+            for (const v of ["CLAUDE_CODE_OAUTH_TOKEN", "ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN"]) delete process.env[v];
+            Object.assign(process.env, saved);
+        }
+    });
+});
 
 test("the arms-differ assertion sees a treatment path in arm B, and a stray file in either", () => {
     assert.deepEqual(armsDifferOnlyByTreatment(["AGENTS.md", ".portulan/dod.md", "src/x.js"], ["src/x.js"]), {

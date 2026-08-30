@@ -682,7 +682,8 @@ here claims a capability that does not exist:
   clause at construction | grading | running. The `done-demonstrated` scenario is **live**: its
   acceptance test was **met** on 2026-08-29 — `--stop-probe` returned `met: true` with **4** recorder
   invocations under a harness nonce — so the corpus holds **four** scenarios and not three. The run was
-  **unisolated**, because the credential needs both the real `HOME` and the real config directory; the
+  **unisolated**, on a reason since retracted — a credential exported as a variable does reach an
+  isolated arm; the
   test asks whether the host invokes the compiled hook, which that limit does not touch, while a
   **baseline** over an unisolated arm would not be the ruled arm and is session 6d's problem. Session 6a settled what the arms **denote**:
   [`ab/arm.md`](ab/arm.md) specifies the treatment arm and [`ab/corpus.md`](ab/corpus.md) the scenarios

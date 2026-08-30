@@ -141,17 +141,30 @@ The flag now exists, prints the departure on every run, and the seed is recorded
 stop-probe cases in the suite are refusals, because a positive control would have to spawn an agent and
 `tests.sh` runs that suite. The demonstration is a session's recorded run, not a rail.
 
-**The first two attempts could not run, and the second failure is the finding.** The operator's own
-session had expired — that was incidental. What is not incidental: after he logged in, the probe **still**
-refused, because `isolatedEnv()` gives the arm a fresh `HOME`. Measured both ways on the way out:
-breaking **`HOME` alone** or **`CLAUDE_CONFIG_DIR` alone** is each enough for `claude -p` to report *"Not
-logged in"*. So **the ruled operator isolation makes the agent unrunnable on this host**, and the
-credential is not a file this harness can carry. That belongs to 6d and it is written into
-[`arm.md`](../../evals/ab/arm.md) rather than left here.
+**The first two attempts could not run, and I drew the wrong conclusion from the second.** The operator's
+session had expired — incidental. After he logged in the probe **still** refused, because `isolatedEnv()`
+gives the arm a fresh `HOME`; breaking **`HOME` alone** or **`CLAUDE_CONFIG_DIR` alone** is each enough
+for *"Not logged in"*. That measurement is real and reproduces.
 
-The test was therefore run **unisolated**, which is sound for the question it asks — *does the host invoke
-the compiled hook* — and **not** sound for a baseline. A baseline over an unisolated arm is not the ruled
-arm.
+**The inference from it was wrong, and it nearly shipped as a fact.** I wrote *"the ruled operator
+isolation makes the agent unrunnable on this host, full stop"* into four carriers plus the tool's own
+`--help`. A session-open checkpoint on the follow-up refuted it in one command: the stored login is
+reached **through `HOME`** — a fresh home simply has none — and `isolatedEnv()` **carries the operator's
+whole environment through** (`...base`), so a credential exported as a **variable** reaches an isolated
+arm untouched. Measured under full isolation with a **fake** token: *"401 OAuth access token is invalid"*
+rather than *"Not logged in"*. **The token had been reaching the arm all along; nothing needed building.**
+
+Three things follow. The cost is **the operator having no token exported**, which `claude setup-token`
+fixes — so `--stop-probe --operator-env isolated` now **refuses with that remedy** instead of paying for
+a launch to discover it. The recorded run stays what it was, taken under `inherit` on his ruling, and is
+not retroactively a ruled-arm run. And **6d has three doors, not two**; the cheap one is a re-run under
+`isolated`, which is `acceptedUnder.reRunWhen` and now has an owner.
+
+_Two more corrections the checkpoint forced, both in evidence I had already written down: the credential
+is **not** per-user-and-not-per-HOME — the login keychain is located **through** `HOME` — and my
+file-copying tests landed at paths the CLI does not read, since with `CLAUDE_CONFIG_DIR` set it reads
+`$CLAUDE_CONFIG_DIR/.claude.json`. **A true conclusion from a test that did not test it** is the same
+instrument error this handoff already records twice._
 
 **The probe's first cut answered anyway, and that was the worse bug.** It returned `hook was NOT invoked`
 when the agent had exited 1 without completing a turn. `compile` warns that a missing hook *fails open*;
@@ -203,7 +216,10 @@ with the retired four and their reasons, and `armsDifferOnlyByTreatment()` is th
 assertion. What is **not** built is any grader, any minimal pair, and the inversion fixture — and
 `corpus.md` is explicit that a grader which cannot separate its own pair is *red, never skipped*.
 
-**Operator isolation has an unresolved cost.** A fresh `HOME` carries no credential. The ruled isolation
-and a runnable agent want opposite things from it; carrying the credential alone into an isolated home is
-the obvious repair and is not built. It belongs to 6d, and it is written into `arm.md` rather than left
-here.
+**Operator isolation has a cost, and it is smaller than this section first claimed.** A fresh `HOME`
+carries no stored login — that reproduces. But a credential exported as a **variable** reaches an
+isolated arm, because `isolatedEnv()` carries the environment through, so the cost is **the operator
+having no token exported** and `claude setup-token` fixes it. The probe now refuses with that remedy.
+**So 6d has three doors and the cheap one is a re-run under `isolated`** — that is
+`acceptedUnder.reRunWhen`, it is reachable today, and **6d owns it**. Nobody has yet watched the ruled
+arm answer, which is the thing still owed.
