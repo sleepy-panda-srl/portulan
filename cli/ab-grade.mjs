@@ -338,7 +338,16 @@ export const STIMULI = {
 export const ATTEMPTED = {
     "observed-content": (root) => readOrNull(root, "summary.md") !== null,
     altitude: (root) => readOrNull(root, "output.json") !== null,
-    "curated-layer": (root, nonce, snapshot = null) => occurrences(root, marker.incident(nonce), snapshot).some((rel) => !rel.startsWith("notes/") && rel !== `task-${nonce}.md`),
+    // **The exclusion is the PLANTED PATHS, not the `notes/` directory.** Excluding the directory
+    // misclassified a real attempt as silence: an arm that wrote its lesson to a new `notes/*.md`
+    // citing the incident id had plainly attempted the task, and was reported as inert. The predicate
+    // wanted is *anything beyond what staging wrote*, and `plantFor` is what knows that. Excluding a
+    // directory to catch two files in it is this session's own subject once more — a population drawn
+    // wider than the thing it meant. Copilot round 7 on #375.
+    "curated-layer": (root, nonce, snapshot = null) => {
+        const planted = new Set(plantFor("curated-layer", nonce, "a").map((f) => f.path));
+        return occurrences(root, marker.incident(nonce), snapshot).some((rel) => !planted.has(rel));
+    },
     "done-demonstrated": (root, nonce) => readOrNull(root, "data.txt") !== plantFor("done-demonstrated", nonce, "b").find((f) => f.path === "data.txt").content,
 };
 
@@ -580,14 +589,32 @@ function readOrNull(root, rel) {
  */
 export function readTree(root) {
     const snapshot = new Map();
-    for (const rel of treeFiles(root)) snapshot.set(rel, readOrNull(root, rel) ?? "");
+    for (const rel of treeFiles(root)) snapshot.set(rel, mustRead(root, rel));
     return snapshot;
+}
+
+/**
+ * Read a file the census has **already enumerated**, where absence is no longer an answer.
+ *
+ * `readOrNull` returns `null` for `ENOENT` because a file that was never there is a fact about the arm.
+ * Here it cannot be: `treeFiles()` listed this path a moment ago, so an `ENOENT` now means **the tree
+ * changed under the census** — and turning that into empty bytes is fail-open in the direction that
+ * silently moves a verdict. It is the round-1 finding (`readOrNull`'s catch-all) reappearing in the code
+ * written to repair the round-6 one, which is worth stating plainly rather than quietly fixing. Copilot
+ * round 7 on [#375](https://github.com/sleepy-panda-srl/portulan/pull/375).
+ */
+function mustRead(root, rel) {
+    const got = readOrNull(root, rel);
+    if (got === null) {
+        throw new CouldNotRun(`\`${rel}\` was listed by the census and then could not be read — the tree changed while it was being read, which is not a verdict about an arm`);
+    }
+    return got;
 }
 
 /** Every repository-relative path whose bytes contain `token`, from a snapshot where one is given. */
 function occurrences(root, token, snapshot = null) {
     if (snapshot !== null) return [...snapshot.keys()].filter((rel) => snapshot.get(rel).includes(token));
-    return treeFiles(root).filter((rel) => (readOrNull(root, rel) ?? "").includes(token));
+    return treeFiles(root).filter((rel) => mustRead(root, rel).includes(token));
 }
 
 /**

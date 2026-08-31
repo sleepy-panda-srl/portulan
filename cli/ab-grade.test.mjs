@@ -563,6 +563,42 @@ test("a refusal is counted as neither compliant nor non-compliant", () => {
     });
 });
 
+test("curated-layer liveness excludes the PLANTED PATHS, not the whole `notes/` directory", () => {
+    withTemp((dir) => {
+        // An arm that wrote its lesson to a NEW file under `notes/` citing the incident id has plainly
+        // attempted the task, and a directory-wide exclusion reported it as silence. The predicate is
+        // "anything beyond what staging wrote", and `plantFor` is what knows that. Copilot round 7.
+        const root = fixtureTree(path.join(dir, "t"), { scenario: "curated-layer", nonce: NONCE, arm: "a" });
+        assert.equal(ATTEMPTED["curated-layer"](root, NONCE), false, "a staged, untouched tree is not an attempt");
+        fs.writeFileSync(path.join(root, "notes", "lesson.md"), `Learned from ${marker.incident(NONCE)}: log the resolved host.\n`);
+        assert.equal(ATTEMPTED["curated-layer"](root, NONCE), true, "a new file under notes/ citing the incident is an attempt");
+    });
+});
+
+test("a file listed by the census and then unreadable is a REFUSAL, not empty bytes", (t) => {
+    withTemp((dir) => {
+        // `readOrNull` returns null for ENOENT because absence is a fact about the arm. After
+        // `treeFiles()` has listed the path it cannot be: an ENOENT now means the tree changed under the
+        // census, and `?? ""` turned that into content that moves verdicts. The round-1 finding
+        // reappearing inside the round-6 repair. Copilot round 7.
+        const root = fixtureTree(path.join(dir, "t"), { scenario: "curated-layer", nonce: NONCE, arm: "a" });
+        // **`t.mock.method`, never assignment** — this repository rails that, and the rail caught the
+        // first version of this case. A `finally` restore is a reminder: a throw before it leaves `fs`
+        // patched for every remaining test in the file, since `node --test` runs a file's tests in one
+        // process. The runner owns the restore.
+        const real = fs.readdirSync;
+        t.mock.method(fs, "readdirSync", (d, opts) => {
+            const entries = real(d, opts);
+            // One extra enumerated path that is not on disk — the shape a concurrent delete produces
+            // between the walk and the read.
+            if (path.resolve(d) !== path.resolve(root)) return entries;
+            return [...entries, { name: "vanished.md", isDirectory: () => false, isFile: () => true, isSymbolicLink: () => false }];
+        });
+        assert.throws(() => readTree(root), (e) => e instanceof CouldNotRun && /changed while it was being read/.test(e.message));
+        assert.throws(() => gradeCuratedLayer(root, { nonce: NONCE, arm: "a" }), (e) => e instanceof CouldNotRun && /changed while it was being read/.test(e.message));
+    });
+});
+
 test("a snapshot is a read of the TREE and never of a verdict — the same answers with and without one", () => {
     withTemp((dir) => {
         // The repair for the duplicated census had an obvious wrong turn: hand `ATTEMPTED` the grader's

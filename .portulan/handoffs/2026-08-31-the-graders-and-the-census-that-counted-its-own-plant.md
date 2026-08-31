@@ -87,6 +87,13 @@ addressed"* is the grant rule 4 requires, recorded as a grant.
 with the same defect in `--stimuli`, where fixing *per scenario* left *per arm* hardcoded. **Each repair
 was scoped to the site the note named — `0020` three times, inside a change that cites `0020`.**
 
+**Round 7's two findings are both classes this session had already repaired elsewhere.** The liveness
+test excluded the whole `notes/` directory rather than the planted paths, so an arm writing its lesson to
+a new file there read as silence — a population drawn wider than meant, the mirror of `altitude`'s
+whitelist drawn narrower. And `readTree()` used `?? ""` on files `treeFiles()` had just enumerated, where
+an ENOENT means the tree changed mid-census — **round 1's catch-all, inside the code written to repair
+round 6**. The fix for one instance of a class was written without carrying the class.
+
 Round 6's other finding was the arc's only non-correctness one and got a measurement rather than an
 argument: two censuses of one tree, **2.3 ms of a 5.6 ms `gradeRun`**. The obvious repair — hand the
 liveness test the grader's own `hits` — would make liveness a function of the verdict, the exact coupling
