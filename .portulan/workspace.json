@@ -234,6 +234,15 @@
           "node"
         ],
         "doc": "verify/README.md"
+      },
+      {
+        "id": "ab-grade",
+        "run": "./.portulan/verify/ab-grade.sh",
+        "requires": [
+          "bash",
+          "node"
+        ],
+        "doc": "verify/README.md"
       }
     ]
   },

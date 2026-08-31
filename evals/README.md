@@ -37,6 +37,12 @@ landed 2026-08-26; **OTel opt-in config** landed 2026-08-28. **Three remain** �
 rule change merged or rejected on eval evidence, and a release carrying an eval result. Each is listed
 below with the sentence [`../.portulan/dod.md`](../.portulan/dod.md) condition 4 requires.
 
+**The A/B clause is three sessions and two have landed, and it is still counted among the three that
+remain.** The maintainer split it on 2026-08-29 at construction | grading | running: 6b built the arms,
+6c the graders and their discrimination fixtures, and **6d owns the run**. A clause whose criterion says
+*baseline recorded* is not partly done when no agent has been run — so the count above does not move, and
+the instrument's existence is reported under *what is NOT built yet* rather than here.
+
 ```
 evals/goldens/gates/<rule-id>.json      one fixture file per rule in the yielded gate policy
 ```
@@ -673,13 +679,23 @@ Each names where it arrives, per [`../.portulan/dod.md`](../.portulan/dod.md) co
 here claims a capability that does not exist:
 
 - **The A/B (Portulan on / off) baseline** — arrives in milestone 8, a later session. **No baseline has
-  been recorded.** That half is unchanged. The other half is not: a sentence here used to add *"and no
-  harness exists to record one"*, and **the arm builder now exists** —
-  [`../cli/ab.mjs`](../cli/ab.mjs), session 6b, held by the `ab` verify recipe, a forced-red drill and
-  [`ab/register.md`](ab/register.md). What it builds is the two arms and nothing else: **it grades
-  nothing**, so the graders and their level-1, attribution and level-2 discrimination fixtures are
-  session **6c**'s and the run is **6d**'s, on the maintainer's ruling of 2026-08-29 splitting this
-  clause at construction | grading | running. The `done-demonstrated` scenario is **live**: its
+  been recorded.** That half is unchanged and is the one that decides this bullet's place in this
+  section. The other half has moved twice: a sentence here used to add *"and no harness exists to record
+  one"*, and **the arm builder now exists** — [`../cli/ab.mjs`](../cli/ab.mjs), session 6b, held by the
+  `ab` verify recipe, a forced-red drill and [`ab/register.md`](ab/register.md) — and **so do the
+  graders**: [`../cli/ab-grade.mjs`](../cli/ab-grade.mjs), session 6c, held by the `ab-grade` recipe, its
+  own forced-red drill and [`ab/graders.md`](ab/graders.md), carrying the four scenarios' stimuli, four
+  graders, and all three classes of discrimination [`ab/corpus.md`](ab/corpus.md) requires — level 1
+  per grader, an attribution pair per grader, and level-2 inversion **at the delta**. Neither builder
+  runs an agent. **Every figure either one produces is about the instrument**, every 6c fixture is a
+  synthetic post-turn tree, and the run is **6d**'s, on the maintainer's ruling of 2026-08-29 splitting
+  this clause at construction | grading | running.
+
+  **Two of the four scenarios are compliant when an arm does nothing**, measured: not destroying a
+  planted target and not claiming completion are both satisfied by inaction. Each grader therefore
+  reports `attempted` beside its verdict, from a per-scenario artifact rather than from the verdict, and
+  a run that banks an inert arm as a compliance has measured silence. That is a constraint on 6d rather
+  than a defect in a grader, and it is named here so the constraint has somewhere to be found. The `done-demonstrated` scenario is **live**: its
   acceptance test was **met** on 2026-08-29 — `--stop-probe` returned `met: true` with **4** recorder
   invocations under a harness nonce — so the corpus holds **four** scenarios and not three. The run was
   **unisolated**, on a reason since retracted — a credential exported as a variable does reach an
