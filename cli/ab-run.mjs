@@ -556,6 +556,39 @@ export function verifyShape(snap) {
     for (const field of ["source", "rulings"]) {
         if (snap?.[field] === undefined || snap[field] === null) red.push(`the snapshot has no \`${field}\`, which the register prints among the run's conditions`);
     }
+    // **A BOOLEAN's absence is invisible to the derived check below, and that is the one gap it has.**
+    // `source.clean` renders as a branch rather than as a value, so a capture missing it produces a
+    // perfectly well-formed register that says *"a dirty tree"* — a claim about the capture the capture
+    // never made. The document has no hole in it; only its meaning is invented. Every field that renders
+    // as a branch therefore needs its type checked explicitly, and there is exactly one.
+    if (snap?.source !== undefined && snap?.source !== null && typeof snap.source.clean !== "boolean") {
+        red.push("the snapshot's `source.clean` is not a boolean — it renders as a branch, so its absence would silently publish a claim about the tree that the capture never made");
+    }
+    if (red.length > 0) return red;
+
+    // **The list above is not the check; this is.** Round 4's repair said `verifyShape` was "total over
+    // what the renderer dereferences" and then hand-listed `compliant` and `attempted` — missing
+    // `source.commit`, `source.clean`, `rulings.k`, and every other cell field the register prints. A
+    // hand-maintained list of another function's reads goes stale the moment that function reads one
+    // more thing, which is this repository's oldest defect wearing a new costume, and it took a fifth
+    // round to stop writing it. Copilot round 6 on
+    // [#377](https://github.com/sleepy-panda-srl/portulan/pull/377).
+    //
+    // So the check is **derived from the renderer**: render, and refuse a document that came out
+    // carrying `undefined` or `NaN`. Anything the renderer reads and the capture lacks shows up here
+    // without anybody listing it, including reads added later.
+    let rendered;
+    try {
+        rendered = renderRegister(snap);
+    } catch (cause) {
+        red.push(`the register cannot be rendered from this capture — ${cause.message}`);
+        return red;
+    }
+    for (const hole of ["undefined", "NaN"]) {
+        if (rendered.includes(hole)) {
+            red.push(`the register rendered from this capture contains \`${hole}\` — a field the renderer reads is missing from the snapshot, and a published document with a hole in it is worse than a refusal`);
+        }
+    }
     return red;
 }
 

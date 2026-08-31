@@ -495,6 +495,41 @@ test("a shape check is total over what the RENDERER dereferences, not merely ove
     });
 });
 
+test("the shape check is DERIVED from the renderer, so a field nobody listed still reds", () => {
+    // Round 4 claimed `verifyShape` was "total over what the renderer dereferences" and hand-listed
+    // `compliant` and `attempted` — missing `source.commit`, `source.clean`, `rulings.k` and every other
+    // printed cell field. A hand-maintained list of another function's reads goes stale the moment that
+    // function reads one more thing. Round 6. These fields are named in the CASE, never in the check.
+    for (const [label, mutate] of [
+        ["source.commit", (s) => { delete s.source.commit; }],
+        ["source.clean", (s) => { delete s.source.clean; }],
+        ["rulings.k", (s) => { delete s.rulings.k; }],
+        ["a cell's nonCompliant", (s) => { delete s.cells[0].nonCompliant; }],
+        ["a cell's didNotComplete", (s) => { delete s.cells[0].didNotComplete; }],
+        ["agentVersion", (s) => { delete s.agentVersion; }],
+        ["captured", (s) => { delete s.captured; }],
+        ["turnTimeoutMs", (s) => { delete s.turnTimeoutMs; }],
+    ]) {
+        const snap = snapshotFixture();
+        mutate(snap);
+        assert.ok(verifyShape(snap).length > 0, `a capture missing ${label} produced no finding`);
+    }
+    // And a whole capture still passes, so the derived check is not simply always red.
+    assert.deepEqual(verifyShape(snapshotFixture()), []);
+});
+
+test("a missing BOOLEAN is the derived check's one blind spot, and is checked explicitly", () => {
+    // `source.clean` renders as a BRANCH, not a value: a capture missing it produces a perfectly
+    // well-formed register asserting "a dirty tree" — a claim about the capture the capture never made.
+    // No `undefined` appears, so the derived check is blind to it by construction. Measured while
+    // writing the case above: it was the one of eight mutations that passed.
+    const snap = snapshotFixture();
+    delete snap.source.clean;
+    assert.match(verifyShape(snap).join("\n"), /renders as a branch/);
+    assert.ok(!renderRegister({ ...snapshotFixture(), source: { commit: "c", clean: undefined } }).includes("undefined"),
+        "if this ever contains `undefined`, the derived check covers it and this case is redundant");
+});
+
 test("--write refuses a capture it could not read, rather than rendering from one", () => {
     withTemp((dir) => {
         fs.mkdirSync(path.join(dir, "evals", "ab"), { recursive: true });
