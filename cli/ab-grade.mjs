@@ -85,10 +85,30 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 
 import { CouldNotRun } from "./goldens.mjs";
-import { ArmRed, SCENARIOS, isNormative, nonceFor, sentences } from "./ab.mjs";
+import { ArmRed, SCENARIOS, SCRATCH_PREFIX as AB_SCRATCH_PREFIX, isNormative, nonceFor, sentences } from "./ab.mjs";
 
 /** The generated register this module writes and byte-compares. */
 export const REGISTER = "evals/ab/graders.md";
+
+/**
+ * The prefix every scratch directory this module invents carries.
+ *
+ * **It deliberately does not read `portulan-ab-grade-`, and the missing hyphen is the whole point.**
+ * `./ab.mjs`'s own scratch prefix is `portulan-ab-`, and its suite asserts that a `--check` leaves no
+ * surviving directory matching it. `portulan-ab-grade-` **prefix-matches that** — so a directory this
+ * module had legitimately in flight was counted as that module's leak whenever the two suites ran
+ * concurrently. Green on the author's machine, **red on CI**, and flaky in both places: the first
+ * genuine finding on this change that neither a checkpoint nor a review found, and it took a different
+ * machine's scheduling to produce it.
+ *
+ * Careful naming is a reminder, not a rail, so `./ab-grade.test.mjs` asserts that neither module's
+ * prefix is a prefix of the other's — which is what makes the next module's collision a red rather than
+ * a flake.
+ */
+export const SCRATCH_PREFIX = "portulan-abgrade-";
+
+/** `./ab.mjs`'s prefix, re-exported so the disjointness rail has both names from their owners. */
+export { AB_SCRATCH_PREFIX };
 
 /** The scenarios that hold — the four this session owes graders for, derived rather than re-listed. */
 export function holdingScenarios() {
@@ -358,7 +378,13 @@ export function plantFor(scenario, nonce, arm) {
  * session 6d's and is deliberately not reachable from here.
  */
 export function stageScenario(armRoot, { scenario, nonce, arm }) {
-    if (!fs.existsSync(armRoot)) throw new CouldNotRun(`${armRoot} does not exist — an arm is constructed by \`./ab.mjs --construct\` before a scenario is staged into it`);
+    // **`isDirectory()`, not `existsSync`** — the same distinction the graders make between absent and
+    // unreadable, one layer up. An `armRoot` that exists and is a file would otherwise fail somewhere
+    // inside `mkdirSync` with a generic errno, reported as an unexpected exception rather than as a
+    // diagnosis. `./vendor.mjs` validates its roots this way. Copilot round 2 on #375.
+    const rootStat = fs.existsSync(armRoot) ? fs.statSync(armRoot) : null;
+    if (rootStat === null) throw new CouldNotRun(`${armRoot} does not exist — an arm is constructed by \`./ab.mjs --construct\` before a scenario is staged into it`);
+    if (!rootStat.isDirectory()) throw new CouldNotRun(`${armRoot} exists but is not a directory — a scenario is staged into an arm's root, and this is not one`);
     const planted = plantFor(scenario, nonce, arm);
     for (const file of planted) {
         const target = path.join(armRoot, file.path);
@@ -690,7 +716,9 @@ export function gradeRun(runDir, { seed, run = 0 }) {
     // **A run directory that is not there is a could-not-run, never eight refusals.** Every grader
     // refuses a tree it cannot attribute, so a mistyped path would otherwise come back as a full table
     // of refusals — which reads as a finding about the arms and is a fact about the argument.
-    if (!fs.existsSync(runDir)) throw new CouldNotRun(`${runDir} does not exist — there is no run to grade, which is not a verdict about either arm`);
+    const runStat = fs.existsSync(runDir) ? fs.statSync(runDir) : null;
+    if (runStat === null) throw new CouldNotRun(`${runDir} does not exist — there is no run to grade, which is not a verdict about either arm`);
+    if (!runStat.isDirectory()) throw new CouldNotRun(`${runDir} exists but is not a directory — a run is laid out as <run-dir>/<scenario>/<arm>, and this cannot hold one`);
     const rows = [];
     for (const scenario of holdingScenarios()) {
         const row = { scenario: scenario.id };
@@ -1155,8 +1183,14 @@ export function run(argv = [], { stdout = process.stdout, stderr = process.stder
     let scratch = null;
     try {
         if (parsed.mode === "stimuli") {
-            const nonce = parsed.seed === null ? "<nonce>" : nonceFor(holdingScenarios()[0].id, "a", parsed.run, parsed.seed);
+            // **The nonce is derived PER SCENARIO.** A first cut derived one from `holdingScenarios()[0]`
+            // and printed every scenario's stimuli under it, so three of the four showed markers that
+            // belong to no `(scenario, arm, run, seed)` this harness would ever generate — in the mode
+            // whose entire purpose is that a person can read the exact bytes an arm will see, and check
+            // them against `arm.md`'s rule 2. Reproducibility that reproduces the wrong thing is worse
+            // than none. Copilot round 2, suppressed-note channel, on #375.
             for (const scenario of holdingScenarios()) {
+                const nonce = parsed.seed === null ? "<nonce>" : nonceFor(scenario.id, "a", parsed.run, parsed.seed);
                 stdout.write(`\n=== ${scenario.id} — ${scenario.mandate}\n`);
                 stdout.write(`prompt (both arms): ${STIMULI[scenario.id].prompt(nonce)}\n`);
                 for (const arm of ["a", "b"]) {
@@ -1200,7 +1234,7 @@ export function run(argv = [], { stdout = process.stdout, stderr = process.stder
             return 0;
         }
 
-        scratch = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), "portulan-ab-grade-"));
+        scratch = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), SCRATCH_PREFIX));
         const result = discriminate(scratch);
         const rendered = register(result);
 

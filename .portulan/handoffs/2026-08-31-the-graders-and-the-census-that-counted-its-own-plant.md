@@ -59,6 +59,21 @@ forced red, and the symlink rule is borrowed from `cli/vendor.mjs` rather than i
 entry is listed rather than omitted. The class sets a fix's scope; a change at a site without the defect
 is noise.
 
+## Round 2, and the one finding only CI produced
+
+Round 2 raised no new inline comments and three suppressed notes, all real: `--stimuli --seed` derived a
+single nonce from the first scenario and printed all four under it — wrong markers in the one mode a
+**person** uses to check stimuli against rule 2 — and `stageScenario`/`gradeRun` used `existsSync` where
+`isDirectory()` was meant.
+
+**The finding worth carrying came from neither checkpoint nor review.** CI went red on a commit green on
+this machine, in a test belonging to `cli/ab.mjs`: it sweeps `portulan-ab-` for its own scratch leaks,
+and this module had chosen `portulan-ab-grade-`, which **prefix-matches it**. A directory legitimately in
+flight here counted as a leak there whenever the suites overlapped — a race that looks exactly like a
+flake. **A leak sweep keyed on a hand-typed prefix is a checker whose population it does not own** — this
+session's own subject, arriving in the test harness. Both prefixes are now exported constants and a rail
+asserts disjointness, so the next collision is a red.
+
 ## What is still owed, stated so a close cannot be held to more than was built
 
 - **The run.** No agent, no `k`, no baseline. 6d's, and `acceptedUnder.reRunWhen` — re-running the stop

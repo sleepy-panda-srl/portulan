@@ -35,12 +35,14 @@ process.env.CLAUDE_CONFIG_DIR = HERMETIC_HOST;
 process.on("exit", () => fs.rmSync(HERMETIC_HOST, { recursive: true, force: true }));
 
 import {
+    AB_SCRATCH_PREFIX,
     ATTEMPTED,
     DELTAS,
     GRADERS,
     INERT_VERDICT,
     REGISTER,
     RIG,
+    SCRATCH_PREFIX,
     STIMULI,
     VERDICT_VOCABULARY,
     attribution,
@@ -692,6 +694,28 @@ test("--grade prints every verdict and says a run is not a baseline", () => {
     });
 });
 
+test("--stimuli derives the nonce PER SCENARIO, not once from the first one", () => {
+    // A shared nonce printed three of the four scenarios under markers belonging to no
+    // (scenario, arm, run, seed) this harness generates — in the mode whose purpose is that a person can
+    // check the exact bytes an arm will see. Copilot round 2, suppressed-note channel.
+    const out = [];
+    assert.equal(run(["--stimuli", "--seed", "s"], { stdout: { write: (x) => out.push(x) }, stderr: sink, cwd: REPO }), 0);
+    for (const scenario of holdingScenarios()) {
+        assert.ok(out.join("").includes(marker.task(nonceFor(scenario.id, "a", 0, "s"))), `${scenario.id} did not print its own nonce`);
+    }
+});
+
+test("staging and grading refuse a root that exists and is NOT a directory", () => {
+    withTemp((dir) => {
+        const file = path.join(dir, "not-a-dir");
+        fs.writeFileSync(file, "x\n");
+        // `existsSync` alone would let this through and fail later with a generic errno, reported as an
+        // unexpected exception rather than as a diagnosis. `vendor.mjs` validates its roots this way.
+        assert.throws(() => stageScenario(file, { scenario: "altitude", nonce: NONCE, arm: "a" }), (e) => e instanceof CouldNotRun && /not a directory/.test(e.message));
+        assert.throws(() => gradeRun(file, { seed: "s" }), (e) => e instanceof CouldNotRun && /not a directory/.test(e.message));
+    });
+});
+
 test("--stimuli prints every planted byte, which is what a person reads for arm.md's rule 2", () => {
     const out = [];
     assert.equal(run(["--stimuli"], { stdout: { write: (s) => out.push(s) }, stderr: sink, cwd: REPO }), 0);
@@ -701,10 +725,23 @@ test("--stimuli prints every planted byte, which is what a person reads for arm.
     assert.match(text, /a person reads these/i);
 });
 
+test("no module's scratch prefix is a prefix of another's — the rail behind the missing hyphen", () => {
+    // **This is the one finding on this change that neither checkpoint nor review produced.** It took
+    // CI. `ab.mjs` sweeps `portulan-ab-` for its own leaks; this module first chose
+    // `portulan-ab-grade-`, which matches that prefix, so a directory legitimately in flight here was
+    // counted as a leak there whenever the two suites overlapped — green locally, red on CI, flaky in
+    // both. Careful naming is a reminder; this is the rail, and it is what makes the NEXT module's
+    // collision a red instead of a flake.
+    assert.ok(!SCRATCH_PREFIX.startsWith(AB_SCRATCH_PREFIX), `${SCRATCH_PREFIX} is inside ${AB_SCRATCH_PREFIX}'s namespace`);
+    assert.ok(!AB_SCRATCH_PREFIX.startsWith(SCRATCH_PREFIX), `${AB_SCRATCH_PREFIX} is inside ${SCRATCH_PREFIX}'s namespace`);
+    // And the test harness's own directories must sit outside both, or this suite leaks into that one.
+    assert.ok(!"portulan-abg-test-".startsWith(AB_SCRATCH_PREFIX));
+});
+
 test("--check invents its scratch directory and removes it", () => {
-    const before = fs.readdirSync(os.tmpdir()).filter((n) => n.startsWith("portulan-ab-grade-"));
+    const before = fs.readdirSync(os.tmpdir()).filter((n) => n.startsWith(SCRATCH_PREFIX));
     run(["--check", "--repo-root", REPO], { stdout: sink, stderr: sink, cwd: REPO });
-    const after = fs.readdirSync(os.tmpdir()).filter((n) => n.startsWith("portulan-ab-grade-"));
+    const after = fs.readdirSync(os.tmpdir()).filter((n) => n.startsWith(SCRATCH_PREFIX));
     // A leak per run is invisible until somebody counts, and this is a verify recipe: it runs on every
     // commit. `ab.mjs` shipped exactly this leak and Copilot found it in round 1.
     assert.deepEqual(after, before);

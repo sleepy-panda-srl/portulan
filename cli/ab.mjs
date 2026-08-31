@@ -112,6 +112,20 @@ export const SPEC_DIR = "evals/ab";
 /** The generated register this module writes and byte-compares. */
 export const REGISTER = "evals/ab/register.md";
 
+/**
+ * The prefix every scratch directory this module invents carries — the arms it builds without `--into`,
+ * and the per-probe operator home under `portulan-ab-operator-`.
+ *
+ * **It is exported because a leak sweep must be keyed on the constant rather than on a typed literal.**
+ * `./ab.test.mjs` asserts that `--check` invents no surviving directory, and it did so by matching a
+ * hand-written `"portulan-ab-"`. `./ab-grade.mjs` then chose `portulan-ab-grade-`, which **prefix-matches
+ * it** — so a scratch directory that module had legitimately in flight read as this one's leak whenever
+ * the two suites ran at the same time. Green locally, red on CI, and flaky either way. The prefixes are
+ * now constants their owners export, and `./ab-grade.test.mjs` carries the rail that keeps two modules'
+ * namespaces from overlapping.
+ */
+export const SCRATCH_PREFIX = "portulan-ab-";
+
 /** How long any spawned tool may take before this harness calls it a could-not-run rather than a verdict. */
 const TOOL_TIMEOUT_MS = 5 * 60 * 1000;
 
@@ -1512,7 +1526,7 @@ export function run(argv = [], { stdout = process.stdout, stderr = process.stder
         }
 
         if (parsed.mode === "construct" || parsed.mode === "check" || parsed.mode === "write") {
-            const into = parsed.into ? path.resolve(cwd, parsed.into) : fs.mkdtempSync(path.join(os.tmpdir(), "portulan-ab-"));
+            const into = parsed.into ? path.resolve(cwd, parsed.into) : fs.mkdtempSync(path.join(os.tmpdir(), SCRATCH_PREFIX));
             // **A directory this tool INVENTED is a directory this tool removes**, and only for the modes
             // that have no further use for it. `--check` and `--write` build two arms to answer a
             // question and are done with them; `--construct` exists to HAND the caller an arm, so
@@ -1675,7 +1689,7 @@ export function run(argv = [], { stdout = process.stdout, stderr = process.stder
                     );
                 }
                 credentialVar = present[0];
-                operator = fs.mkdtempSync(path.join(os.tmpdir(), "portulan-ab-operator-"));
+                operator = fs.mkdtempSync(path.join(os.tmpdir(), `${SCRATCH_PREFIX}operator-`));
                 const isolated = isolatedEnv(operator);
                 // Every directory the environment names is made, not only `home` — an isolated config
                 // directory that does not exist is not isolation, it is an absent variable with a value.
