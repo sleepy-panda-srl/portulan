@@ -504,10 +504,35 @@ export function renderRegister(snap) {
     return `${lines.join("\n")}\n`;
 }
 
-/** The shape and arithmetic checks a rail can run without an agent. */
-export function verify(snap) {
+/**
+ * The structural half — everything `renderRegister()` needs before it may safely touch a snapshot.
+ *
+ * **It is separate because the caller renders first, and the previous repair fixed the wrong end.**
+ * Round 2 made `verify()` report a malformed capture instead of throwing on it; `run()` then called
+ * `renderRegister(snap)` **before** `verify(snap)`, so a snapshot missing `source`, `rulings` or `cells`
+ * still crashed in the renderer and came back as exit 2 — *could not run* — about a capture the tool was
+ * looking straight at. A fix applied at one site and not at the one upstream of it, which is
+ * [`../.portulan/proposals/0020`](../.portulan/proposals/0020-a-fix-is-not-done-at-the-site-it-was-found.md)
+ * for the third time in this milestone. Copilot round 3 on
+ * [#377](https://github.com/sleepy-panda-srl/portulan/pull/377).
+ */
+export function verifyShape(snap) {
     const red = [];
     if (snap?.portulan?.abBaseline !== "1") red.push("the snapshot does not declare `portulan.abBaseline: \"1\"` — this is not a baseline capture");
+    if (!Array.isArray(snap?.turns)) red.push(`the snapshot's \`turns\` is ${snap?.turns === undefined ? "absent" : `a ${typeof snap?.turns}`}, not an array — this capture cannot be read as a baseline`);
+    if (!Array.isArray(snap?.cells)) red.push("the snapshot's `cells` is not an array — the published figures cannot be compared with a fold of the turns");
+    if (!Number.isInteger(snap?.k) || snap.k < 1) red.push(`the snapshot records k as ${JSON.stringify(snap?.k)}, which is not a run count`);
+    if (typeof snap?.seed !== "string" || snap.seed === "") red.push("the snapshot records no seed, so no nonce in it can be recomputed");
+    for (const field of ["source", "rulings"]) {
+        if (snap?.[field] === undefined || snap[field] === null) red.push(`the snapshot has no \`${field}\`, which the register prints among the run's conditions`);
+    }
+    return red;
+}
+
+/** The shape and arithmetic checks a rail can run without an agent. */
+export function verify(snap) {
+    const red = verifyShape(snap);
+    if (red.length > 0) return red;
     if (snap.operatorEnv !== "isolated") {
         red.push(`the snapshot records \`operatorEnv: ${JSON.stringify(snap.operatorEnv)}\` — no baseline may be recorded under an unisolated arm (evals/ab/corpus.md, and cli/ab.mjs's acceptedUnder.scope)`);
     }
@@ -520,19 +545,6 @@ export function verify(snap) {
     // "k: 4 … ruled by the maintainer" over a ruling that said five. Demonstrated at the pre-commit
     // checkpoint, which is where a docblock's claim about its own rail should be attacked.
     if (snap.k !== K) red.push(`the snapshot records k=${snap.k} where the maintainer ruled ${K} — a matrix at another k is another experiment, and the ruling is not the snapshot's to restate`);
-    // **A malformed capture is what this recipe exists to diagnose, so it must not crash on one.**
-    // `verify()` reached straight for `.length`, `.map` and `for..of`, so a snapshot with no `turns`, or
-    // an older format, threw a TypeError and exited 2 — *could not run* — instead of reporting the red it
-    // was looking at. Copilot round 2.
-    if (!Array.isArray(snap.turns)) {
-        red.push(`the snapshot's \`turns\` is ${snap.turns === undefined ? "absent" : `a ${typeof snap.turns}`}, not an array — this capture cannot be read as a baseline`);
-        return red;
-    }
-    if (!Array.isArray(snap.cells)) red.push("the snapshot's `cells` is not an array — the published figures cannot be compared with a fold of the turns");
-    if (!Number.isInteger(snap.k) || snap.k < 1) {
-        red.push(`the snapshot records k as ${JSON.stringify(snap.k)}, which is not a run count`);
-        return red;
-    }
     const expected = turnIds(snap.k);
     if (snap.turns.length !== expected.length) red.push(`the snapshot holds ${snap.turns.length} turn(s) where k=${snap.k} over ${holdingScenarios().length} scenario(s) and two arms needs ${expected.length}`);
     const seen = new Set(snap.turns.map((t) => `${t.scenario}\0${t.arm}\0${t.run}`));
@@ -669,6 +681,12 @@ export function run(argv = [], { stdout = process.stdout, stderr = process.stder
             const snapPath = path.join(repoRoot, SNAPSHOT);
             if (!fs.existsSync(snapPath)) throw new CouldNotRun(`${SNAPSHOT} does not exist — no baseline has been recorded, which is not a verdict about one`);
             const snap = JSON.parse(fs.readFileSync(snapPath, "utf8"));
+            // **Shape first, render second.** The renderer reaches into `source`, `rulings` and `cells`;
+            // handing it a malformed capture turned a red into an exit-2 crash, in the tool whose job is
+            // to diagnose malformed captures. `--write` refuses for the same reason rather than emitting
+            // a register from a capture it could not read.
+            const shape = verifyShape(snap);
+            if (shape.length > 0) throw new ArmRed(`${shape.length} finding(s):\n  - ${shape.join("\n  - ")}`);
             const rendered = renderRegister(snap);
             if (parsed.mode === "write") {
                 fs.writeFileSync(path.join(repoRoot, REGISTER), rendered);
@@ -795,7 +813,11 @@ export function run(argv = [], { stdout = process.stdout, stderr = process.stder
             // into an isolated arm untouched. The gap in the 2026-08-31 capture is named in its
             // limitation block rather than back-filled: a snapshot amended after the fact is not a
             // capture. `null` where the operator set nothing, which is itself the condition.
-            model: process.env.ANTHROPIC_MODEL ?? null,
+            // **Blank is `null`, not `""`.** A variable set to an empty or whitespace string would be
+            // recorded as `model: ""` while `limitationsFor()`'s `!snap.model` read it as absent — a
+            // capture contradicting its own register, which is the drift this pair of files exists to
+            // make impossible. Copilot round 3.
+            model: (process.env.ANTHROPIC_MODEL ?? "").trim() || null,
             invocation: [...INVOCATION],
             turnTimeoutMs: parsed.turnTimeoutMs,
             rulings: { k: "2026-08-31", smokeFirst: "2026-08-31" },

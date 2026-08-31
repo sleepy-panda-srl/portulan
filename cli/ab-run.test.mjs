@@ -47,6 +47,7 @@ import {
     seedOperator,
     turnIds,
     verify,
+    verifyShape,
 } from "./ab-run.mjs";
 import { COMPLIANT_VERDICT, holdingScenarios } from "./ab-grade.mjs";
 import { nonceFor } from "./ab.mjs";
@@ -453,6 +454,47 @@ test("verify REPORTS a malformed capture instead of crashing on it", () => {
         const red = verify(snap);
         assert.ok(red.length > 0, `${label} produced no finding`);
     }
+});
+
+test("--verify REPORTS a malformed capture rather than crashing in the renderer", () => {
+    withTemp((dir) => {
+        // Round 2's repair made `verify()` report a bad capture; `run()` then called `renderRegister()`
+        // BEFORE it, so a snapshot missing `source`, `rulings` or `cells` still threw there and came back
+        // exit 2 — could-not-run — about a capture the tool was looking straight at. The fix applied at
+        // one site and not the one upstream of it. Round 3.
+        fs.mkdirSync(path.join(dir, "evals", "ab"), { recursive: true });
+        for (const missing of ["source", "rulings", "cells", "turns"]) {
+            const snap = snapshotFixture();
+            delete snap[missing];
+            fs.writeFileSync(path.join(dir, SNAPSHOT), JSON.stringify(snap));
+            const err = [];
+            const code = run(["--verify", "--repo-root", dir], { stdout: sink, stderr: { write: (x) => err.push(x) }, cwd: REPO });
+            assert.equal(code, 1, `missing \`${missing}\` gave exit ${code}, not a red`);
+            assert.match(err.join(""), /finding\(s\)/);
+        }
+    });
+});
+
+test("--write refuses a capture it could not read, rather than rendering from one", () => {
+    withTemp((dir) => {
+        fs.mkdirSync(path.join(dir, "evals", "ab"), { recursive: true });
+        const snap = snapshotFixture();
+        delete snap.rulings;
+        fs.writeFileSync(path.join(dir, SNAPSHOT), JSON.stringify(snap));
+        assert.equal(run(["--write", "--repo-root", dir], { stdout: sink, stderr: sink, cwd: REPO }), 1);
+        assert.ok(!fs.existsSync(path.join(dir, REGISTER)), "a register was written from a capture that could not be read");
+    });
+});
+
+test("a blank model variable is `null`, not an empty string that contradicts the register", () => {
+    // `model: ""` would be recorded while `limitationsFor()`'s `!snap.model` read it as absent — a
+    // capture contradicting its own published limitation. Round 3.
+    const blank = { ...snapshotFixture(), model: "" };
+    assert.match(limitationsFor(blank).join("\n"), /is not recorded/);
+    assert.match(renderRegister(blank), /\*\*Model:\*\* \*\*not recorded\*\*/);
+    // And the capture side normalises, so the contradiction cannot be written in the first place.
+    const source = fs.readFileSync(path.join(REPO, "cli", "ab-run.mjs"), "utf8");
+    assert.match(source, /\(process\.env\.ANTHROPIC_MODEL \?\? ""\)\.trim\(\) \|\| null/);
 });
 
 test("the register names the conditions a reader needs to restate the run", () => {
