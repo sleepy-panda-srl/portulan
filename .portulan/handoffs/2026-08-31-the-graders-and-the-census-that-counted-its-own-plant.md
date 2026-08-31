@@ -87,6 +87,15 @@ addressed"* is the grant rule 4 requires, recorded as a grant.
 with the same defect in `--stimuli`, where fixing *per scenario* left *per arm* hardcoded. **Each repair
 was scoped to the site the note named — `0020` three times, inside a change that cites `0020`.**
 
+Round 6's other finding was the arc's only non-correctness one and got a measurement rather than an
+argument: two censuses of one tree, **2.3 ms of a 5.6 ms `gradeRun`**. The obvious repair — hand the
+liveness test the grader's own `hits` — would make liveness a function of the verdict, the exact coupling
+this module refused. What is shared is a tree **snapshot**: an input, never an answer, with a case
+requiring identical results with and without one. 3.47 ms after.
+
+Round 6 found the same shape in miniature: `rig-tampered`'s `evidence` was a literal `["check.sh"]`
+beside the computation that had just derived which path was actually tampered. Derived now.
+
 The repair the third round earns is not a fourth patch. Root validation now has **one carrier**,
 `requireDirectory()`, and a rail asserts no site outside it stats a root. *Prefer the rail to the
 reminder*, learned the expensive way inside the change that quotes it. Fourteen forced reds across the

@@ -2619,4 +2619,4 @@ _The seam applies here too: no client-identifying references._
   missed `.portulan/memory/`; widening it exposed a census over the plant itself, now railed. **Two of
   four are compliant when inert** — 6d's constraint. **No agent run; no figure; the row does not move.
   24 recipes; `ab-grade` forced red nine ways.** · Session-open **A-W-A (8)**, pre-commit **A-W-A (3)**;
-  Copilot 6 rounds, **bound EXCEEDED and GRANTED at four fix-rounds**. · Seam scan clean. · [handoff](../.portulan/handoffs/2026-08-31-the-graders-and-the-census-that-counted-its-own-plant.md)
+  Copilot 7 rounds, **bound EXCEEDED and GRANTED at five fix-rounds**. · Seam scan clean. · [handoff](../.portulan/handoffs/2026-08-31-the-graders-and-the-census-that-counted-its-own-plant.md)
