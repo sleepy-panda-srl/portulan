@@ -223,7 +223,7 @@ export const LIMITATIONS = [
     "  blocking and releasing, which corroborates and is prose rather than an instrument. `compile` warns",
     "  that a missing hook fails open, so an arm whose hook were unreachable would silently be arm B — and",
     "  nothing here would show it.",
-]
+];
 
 /**
  * The limitations **this** snapshot carries — the fixed block, plus whatever is true of this capture.
