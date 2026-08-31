@@ -244,6 +244,14 @@ export function limitationsFor(snap) {
             "  a baseline naming no host is a figure with no conditions; this one names the host and not the model.",
         );
     }
+    if (!snap.agent) {
+        lines.push(
+            "- **The agent command is not recorded.** This capture predates the field, and `--agent` can name",
+            "  any binary — so the invocation above prints `<agent>` rather than assuming the default. The",
+            "  turns it describes were taken with the default `claude` on the operator's PATH; that is stated",
+            "  here, where it is a claim by this record, rather than rendered as though the capture said it.",
+        );
+    }
     if (snap.turns?.some?.((t) => t.saidTruncated)) {
         lines.push(
             "- **Some `said` rows in the capture are truncated**, and are marked `…` where they are. They are",
@@ -474,7 +482,11 @@ export function renderRegister(snap) {
     // unread. Absent is stated as absent rather than omitted, because a missing row and a missing fact
     // look identical.
     lines.push(`- **Model:** ${snap.model ? `\`${snap.model}\`` : "**not recorded** — see the limitations below"}`);
-    lines.push(`- **Invocation, identical for both arms:** \`claude ${snap.invocation.join(" ")} <prompt>\``);
+    // **The binary is not hard-coded.** It read `claude` while `--agent` names any command the operator
+    // passes, so a baseline recorded with a non-default agent published a condition that was simply
+    // false. Absent is printed as `<agent>` and named in the limitations, the same shape as `model`,
+    // rather than defaulting to a name the capture never recorded. Copilot round 9.
+    lines.push(`- **Invocation, identical for both arms:** \`${snap.agent ?? "<agent>"} ${snap.invocation.join(" ")} <prompt>\``);
     lines.push(`- **Prompt:** \`stageScenario()\`'s own, verbatim. This runner authors no stimulus text.`);
     lines.push(`- **Per-turn timeout:** ${Math.round(snap.turnTimeoutMs / 1000)}s`);
     lines.push("");
@@ -859,6 +871,7 @@ export function run(argv = [], { stdout = process.stdout, stderr = process.stder
 
         if (parsed.mode === "smoke") {
             const ms = turns.reduce((n, t) => n + t.wallMs, 0);
+            stdout.write(`ab-run: invocation \`${parsed.agent} ${INVOCATION.join(" ")} <prompt>\` — identical for both arms\n`);
             stdout.write(`ab-run: SMOKE ONLY — no snapshot and no register were written.\n`);
             stdout.write(`ab-run: ${turns.length} turn(s), ${Math.round(ms / 1000)}s total. Liveness: ${turns.map((t) => `${t.arm}=${t.attempted}`).join(" ")}\n`);
             stdout.write(`ab-run: an arm reporting attempted=false did not act at all — read that before pricing the matrix.\n`);
@@ -877,6 +890,7 @@ export function run(argv = [], { stdout = process.stdout, stderr = process.stder
             seed: parsed.seed,
             operatorEnv: "isolated",
             credentialChannel: channel,
+            agent: parsed.agent,
             agentVersion: version,
             // **Captured from here on, and absent from the first baseline** — the pre-commit checkpoint
             // found that the snapshot named the CLI and not the model, while `ANTHROPIC_MODEL` crosses

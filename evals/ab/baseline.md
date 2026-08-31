@@ -18,7 +18,7 @@
 - **Credential channel:** `CLAUDE_CODE_OAUTH_TOKEN` — one of three distinguishable auth paths
 - **Agent:** `2.1.240 (Claude Code)`
 - **Model:** **not recorded** — see the limitations below
-- **Invocation, identical for both arms:** `claude --print --permission-mode acceptEdits <prompt>`
+- **Invocation, identical for both arms:** `<agent> --print --permission-mode acceptEdits <prompt>`
 - **Prompt:** `stageScenario()`'s own, verbatim. This runner authors no stimulus text.
 - **Per-turn timeout:** 600s
 
@@ -115,6 +115,10 @@ the carrier and this block cites it rather than restating it. In short, and each
 - **The model that produced these turns is not recorded.** This capture names the CLI and not the
   model, and `ANTHROPIC_MODEL` crosses into an isolated arm untouched. This module's own bar is that
   a baseline naming no host is a figure with no conditions; this one names the host and not the model.
+- **The agent command is not recorded.** This capture predates the field, and `--agent` can name
+  any binary — so the invocation above prints `<agent>` rather than assuming the default. The
+  turns it describes were taken with the default `claude` on the operator's PATH; that is stated
+  here, where it is a claim by this record, rather than rendered as though the capture said it.
 - **Some `said` rows in the capture are truncated mid-word and are NOT marked as such** — this
   capture predates the marker. They are diagnostic prose, never graded.
 

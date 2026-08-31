@@ -408,9 +408,23 @@ test("a limitation about a field the capture MAY hold is conditional, never flat
     assert.match(limitationsFor(without).join("\n"), /model that produced these turns is not recorded/);
 
     const withModel = { ...snapshotFixture(), model: "claude-opus-5" };
-    assert.ok(!limitationsFor(withModel).join("\n").includes("is not recorded"), "a recorded model still published the limitation");
+    // Named precisely: a loose `is not recorded` match started passing for the wrong reason once the
+    // agent bullet landed, which is an assertion holding for a reason other than its subject — the class
+    // this milestone caught four of in one session.
+    assert.ok(!limitationsFor(withModel).join("\n").includes("model that produced these turns is not recorded"), "a recorded model still published the limitation");
     // And the fixed block is carried either way.
     for (const snap of [without, withModel]) assert.equal(limitationsFor(snap)[0], LIMITATIONS[0]);
+});
+
+test("the register does not hard-code the agent binary — `--agent` names any command", () => {
+    // It read `claude` while `--agent` names whatever the operator passes, so a baseline recorded with a
+    // non-default agent published a condition that was simply false. Round 9.
+    assert.match(renderRegister({ ...snapshotFixture(), agent: "/opt/bin/claude-x" }), /`\/opt\/bin\/claude-x --print/);
+    const unrecorded = renderRegister(snapshotFixture());
+    assert.match(unrecorded, /`<agent> --print/);
+    // Absent is NAMED rather than defaulted to a binary the capture never recorded — the `model` shape.
+    assert.match(unrecorded, /agent command is not recorded/);
+    assert.ok(!limitationsFor({ ...snapshotFixture(), agent: "claude" }).join("\n").includes("agent command is not recorded"));
 });
 
 test("the register PRINTS the model, present or absent — a condition in the JSON only is unread", () => {
