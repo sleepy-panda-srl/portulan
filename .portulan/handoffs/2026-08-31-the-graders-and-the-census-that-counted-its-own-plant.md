@@ -74,10 +74,17 @@ flake. **A leak sweep keyed on a hand-typed prefix is a checker whose population
 session's own subject, arriving in the test harness. Both prefixes are now exported constants and a rail
 asserts disjointness, so the next collision is a red.
 
-**The bound was met, not granted.** Rule 4 allows two fix-rounds; this spent exactly two, and round 3
-came back empty on `54620960`. The maintainer's *"keep looping until everything has been addressed"* was
-a grant given in advance and not needed — recorded that way round, because a met bound and a waived one
-must not read the same. Nine forced reds in total across the session.
+**The bound was EXCEEDED and GRANTED at three fix-rounds, and the sentence that stood here for one
+commit said it was met.** Rounds 1 and 2 spent rule 4's two. Round 3 was empty on `54620960`, this
+handoff declared the loop closed — and the records push carrying that sentence drew **round 4, which
+found a real defect**. *"An empty round is not a close if anything is pushed after it"*, demonstrated by
+the paragraph claiming the loop had closed. The maintainer's *"keep looping until everything has been
+addressed"* is the grant rule 4 requires, recorded as a grant.
+
+**Round 4's finding is `0020` inside a change that cites it.** The `existsSync`-is-not-`isDirectory`
+repair landed at the two sites the note named and not at `treeFiles()`, which both of them call — so the
+could-not-run-versus-verdict distinction stayed broken at the one site nobody visited. Eleven forced reds
+across the session.
 
 ## What is still owed, stated so a close cannot be held to more than was built
 

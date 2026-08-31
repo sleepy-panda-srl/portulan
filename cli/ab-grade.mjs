@@ -507,7 +507,23 @@ export function treeFiles(root) {
             }
         }
     };
-    if (!fs.existsSync(root)) throw new CouldNotRun(`${root} does not exist — there is no tree to grade, which is not a verdict about an arm`);
+    // **The ROOT gets the same check the entries get, and this was the site the repair missed.**
+    // Round 2's `existsSync`-is-not-`isDirectory` finding was fixed at `stageScenario()` and
+    // `gradeRun()` and left standing here — so a root that existed and was a file reached
+    // `readdirSync` and threw a raw `ENOTDIR`, surfacing as an unexpected exception rather than as a
+    // refusal, which is the very distinction this module is built on. `../.portulan/proposals/0020`,
+    // *a fix is not done at the site it was found*, inside a change that cites it. Found by Copilot
+    // round 4 on #375. `lstatSync` rather than `statSync`, so a symlinked root is refused for the same
+    // reason a symlinked entry is: resolving it would let the census read a tree that is not the arm.
+    let rootStat;
+    try {
+        rootStat = fs.lstatSync(root);
+    } catch (cause) {
+        if (cause.code === "ENOENT") throw new CouldNotRun(`${root} does not exist — there is no tree to grade, which is not a verdict about an arm`);
+        throw new CouldNotRun(`${root} could not be read — ${cause.code ?? cause.message}. That is not the same as it being absent`);
+    }
+    if (rootStat.isSymbolicLink()) throw new CouldNotRun(`${root} is a symlink, and a census refuses to descend through one — what it resolves to may not be the arm`);
+    if (!rootStat.isDirectory()) throw new CouldNotRun(`${root} exists but is not a directory — there is no tree to walk, which is not a verdict about an arm`);
     walk(root, "");
     return out;
 }

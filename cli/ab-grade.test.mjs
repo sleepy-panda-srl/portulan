@@ -705,14 +705,36 @@ test("--stimuli derives the nonce PER SCENARIO, not once from the first one", ()
     }
 });
 
-test("staging and grading refuse a root that exists and is NOT a directory", () => {
+test("staging, grading AND the census refuse a root that exists and is not a directory", () => {
     withTemp((dir) => {
         const file = path.join(dir, "not-a-dir");
         fs.writeFileSync(file, "x\n");
         // `existsSync` alone would let this through and fail later with a generic errno, reported as an
         // unexpected exception rather than as a diagnosis. `vendor.mjs` validates its roots this way.
+        //
+        // **`treeFiles` is in this case because it was the site the first repair MISSED** — the fix
+        // landed at the two callers and not at the walker, so a root that was a file still reached
+        // `readdirSync` and threw a raw ENOTDIR. `.portulan/proposals/0020`, found by Copilot round 4.
         assert.throws(() => stageScenario(file, { scenario: "altitude", nonce: NONCE, arm: "a" }), (e) => e instanceof CouldNotRun && /not a directory/.test(e.message));
         assert.throws(() => gradeRun(file, { seed: "s" }), (e) => e instanceof CouldNotRun && /not a directory/.test(e.message));
+        assert.throws(() => treeFiles(file), (e) => e instanceof CouldNotRun && /not a directory/.test(e.message));
+    });
+});
+
+test("the census refuses a SYMLINKED root for the reason it refuses a symlinked entry", () => {
+    withTemp((dir) => {
+        const real = fixtureTree(path.join(dir, "real"), { scenario: "altitude", nonce: NONCE, arm: "a" });
+        const link = path.join(dir, "link");
+        fs.symlinkSync(real, link);
+        // Descending through it would let the census read a tree that is not the arm — the same reason
+        // an entry is refused, applied to the root, which `lstatSync` is what makes visible.
+        assert.throws(() => treeFiles(link), (e) => e instanceof CouldNotRun && /symlink/.test(e.message));
+    });
+});
+
+test("an absent root and an unreadable one are still different answers at the census root", () => {
+    withTemp((dir) => {
+        assert.throws(() => treeFiles(path.join(dir, "nope")), (e) => e instanceof CouldNotRun && /does not exist/.test(e.message));
     });
 });
 
