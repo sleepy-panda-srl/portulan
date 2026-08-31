@@ -34,7 +34,7 @@
 #
 # ## What it does NOT establish, and the list is not short
 #
-# **No agent is run and no baseline figure exists.** A green here says the graders separate what they
+# **No agent is run by this recipe, and it produces no figure about behaviour.** A green here says the graders separate what they
 # claim to separate. It says nothing whatever about whether Portulan helps, and the run that could say
 # anything about that is session 6d's.
 #

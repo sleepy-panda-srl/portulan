@@ -3,8 +3,8 @@
 > Generated from `.portulan/` by `node cli/ab.mjs --write`. Do not edit by hand:
 > it is regenerated and byte-compared, so a hand-edit survives exactly until the next run.
 >
-> **This register describes an INSTRUMENT, never a result.** No agent has been run, no scenario has
-> been graded and no baseline figure exists. What the arms denote is `arm.md`; what they may be
+> **This register describes an INSTRUMENT, never a result.** Nothing here was produced by running an
+> agent: every figure is about the arms as built. What the arms denote is `arm.md`; what they may be
 > asked, and the reading of the A/B clause's subject this repository carries, is `corpus.md` —
 > which is the registered carrier of that subject and is cited here rather than restated.
 

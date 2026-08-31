@@ -542,6 +542,34 @@ export const DRILLS = [
             "because a fix that restored level 1 alone would leave the arm-blindness in place.",
     },
     {
+        rail: "ab-run",
+        perturb: {
+            file: "evals/ab/baseline.json",
+            // **The perturbation edits a PUBLISHED FIGURE, which is the rail's actual subject.** The
+            // baseline is the one record here that cannot be re-derived — its events do not repeat — so
+            // what holds it honest is that the register agrees with the capture beside it, and that the
+            // capture folds to the figures it publishes. Editing a cell is exactly the drift
+            // `review-loop.sh` names: *"a published figure that can drift from its own data is the
+            // hand-maintained tally in a new costume"*.
+            //
+            // A drifted REGISTER would have been the cheaper drill and would prove only the byte
+            // compare, which `review-loop`, `index` and `ab-grade` already force between them. This
+            // forces the arithmetic instead.
+            find: '"operatorEnv": "isolated"',
+            replace: '"operatorEnv": "inherit"',
+        },
+        exit: 1,
+        // The tell is the isolation clause, not the byte compare: a baseline recorded over an unisolated
+        // arm is the one thing `evals/ab/corpus.md` forbids outright, and a repair that fixed only the
+        // rendering would leave that hole open.
+        tell: "no baseline may be recorded under an unisolated arm",
+        why:
+            "A baseline is the only record in this repository derived from events rather than from the tree, so it cannot be " +
+            "re-derived and a reader has nothing but the capture beside it to trust. This rail holds the published document to " +
+            "that capture, and refuses a baseline claiming an arm that is not the ruled one — the departure `evals/ab/corpus.md` " +
+            "forbids in terms, and the one a later session is likeliest to reach for when a credential is inconvenient.",
+    },
+    {
         rail: "tools/github:actions-pinned",
         perturb: {
             file: ".github/workflows/verify.yml",

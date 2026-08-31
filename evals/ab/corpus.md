@@ -156,7 +156,9 @@ on the instrument"* so that construction does not get to decide what counts as i
 > **What that does and does not change here.** The recorded run stays what it was — taken under
 > `inherit`, on his ruling, and it is not retroactively a ruled-arm run. **Whether the departure is
 > still needed at all is now his to revisit**, and the cheap path is to re-run under `isolated` with a
-> token exported; the obligation is `acceptedUnder.reRunWhen` and it belongs to session 6d.
+> token exported; the obligation is `acceptedUnder.reRunWhen`. **It belonged to session 6d, which closed
+> on 2026-08-31 without discharging it — so it is re-pointed to the maintainer at row 8's close, an
+> obligation owned by a finished session being owned by nobody.**
 >
 > **The maintainer accepted the departure, 2026-08-29**, on the argument that the test asks whether the
 > **host invokes the compiled hook** — a question orthogonal to how an arm resolves packs — and that the
@@ -281,7 +283,11 @@ measurement about arm A. It is [#358](https://github.com/sleepy-panda-srl/portul
 
 ## What may not be concluded
 
-- **No figure here measures an agent.** Nothing has been run. Every measurement in this file, in
+- **No figure here measures an agent**, and that is a statement about **this file** rather than about the
+  world — which changed on 2026-08-31, when session 6d ran forty turns and recorded
+  [`baseline.md`](baseline.md). The figures live there; the rules live here, and a reader who wants to
+  know what the arms *did* must go to that file rather than infer it from this one. Every measurement in
+  this file, in
   [`arm.md`](arm.md) and in [`graders.md`](graders.md) is about the instrument or about the tree. **That
   is unchanged by the graders existing**, and it is worth saying in the same breath: session 6c built
   four graders and three classes of discrimination fixture, and every one of its fixtures is a
