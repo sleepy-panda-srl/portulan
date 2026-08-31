@@ -74,10 +74,12 @@ flake. **A leak sweep keyed on a hand-typed prefix is a checker whose population
 session's own subject, arriving in the test harness. Both prefixes are now exported constants and a rail
 asserts disjointness, so the next collision is a red.
 
-**The bound was EXCEEDED and GRANTED at three fix-rounds, and the sentence that stood here for one
-commit said it was met.** Rounds 1 and 2 spent rule 4's two. Round 3 was empty on `54620960`, this
-handoff declared the loop closed — and the records push carrying that sentence drew **round 4, which
-found a real defect**. *"An empty round is not a close if anything is pushed after it"*, demonstrated by
+**The bound was EXCEEDED and GRANTED, and the tally lives in `docs/milestones/m08.md`** — one carrier,
+because this handoff and the Session log each kept their own copy and the two had drifted apart by round
+8, which Copilot found: one rule, three carriers, obeyed at whichever was written last. **The sentence
+that stood here for one commit said the bound was met.** Rounds 1 and 2 spent rule 4's two. Round 3 was
+empty on `54620960`, this handoff declared the loop closed — and the records push carrying that sentence
+drew **round 4, which found a real defect**. *"An empty round is not a close if anything is pushed after it"*, demonstrated by
 the paragraph claiming the loop had closed. The maintainer's *"keep looping until everything has been
 addressed"* is the grant rule 4 requires, recorded as a grant.
 
