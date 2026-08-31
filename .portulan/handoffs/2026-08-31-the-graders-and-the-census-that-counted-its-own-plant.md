@@ -81,10 +81,16 @@ found a real defect**. *"An empty round is not a close if anything is pushed aft
 the paragraph claiming the loop had closed. The maintainer's *"keep looping until everything has been
 addressed"* is the grant rule 4 requires, recorded as a grant.
 
-**Round 4's finding is `0020` inside a change that cites it.** The `existsSync`-is-not-`isDirectory`
-repair landed at the two sites the note named and not at `treeFiles()`, which both of them call — so the
-could-not-run-versus-verdict distinction stayed broken at the one site nobody visited. Eleven forced reds
-across the session.
+**One rule took three rounds, and that is the lesson.** *`existsSync` is not `isDirectory`* was raised at
+`stageScenario()`/`gradeRun()` (round 2), fixed there and not at `treeFiles()` which both call; raised at
+`treeFiles()` (round 4), fixed there and not at the two callers; raised at both again (round 5), together
+with the same defect in `--stimuli`, where fixing *per scenario* left *per arm* hardcoded. **Each repair
+was scoped to the site the note named — `0020` three times, inside a change that cites `0020`.**
+
+The repair the third round earns is not a fourth patch. Root validation now has **one carrier**,
+`requireDirectory()`, and a rail asserts no site outside it stats a root. *Prefer the rail to the
+reminder*, learned the expensive way inside the change that quotes it. Fourteen forced reds across the
+session.
 
 ## What is still owed, stated so a close cannot be held to more than was built
 

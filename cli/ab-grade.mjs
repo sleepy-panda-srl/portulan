@@ -363,6 +363,38 @@ export const INERT_VERDICT = {
     "done-demonstrated": "no-claim",
 };
 
+/**
+ * **The one carrier of *is this a root I may walk or write into?*** — `lstat`, errno translation,
+ * symlink refusal, directory check, in that order.
+ *
+ * It exists because this rule was repaired three times at three sites and kept leaving siblings behind.
+ * Round 2 raised `existsSync`-is-not-`isDirectory` against `stageScenario()` and `gradeRun()`; those two
+ * were fixed and `treeFiles()` — which both of them call — was not. Round 4 raised `treeFiles()`; that
+ * was fixed with `lstat` and errno translation, and the two callers were left on the weaker `statSync`
+ * spelling. Round 5 raised both of them again. **Three rounds, one rule, and each repair was scoped to
+ * the site the note named** — which is exactly what
+ * [`../.portulan/proposals/0020`](../.portulan/proposals/0020-a-fix-is-not-done-at-the-site-it-was-found.md)
+ * forbids, three times inside a change that cites it.
+ *
+ * A shared helper is the repair the third round earns: there is now **one** place to be wrong, and
+ * `./ab-grade.test.mjs` asserts that no site validates a root on its own.
+ *
+ * `lstatSync` rather than `statSync` because `stat` **follows** links: a symlinked root would otherwise
+ * be silently accepted, and writing or censusing through it reaches a tree that is not the arm.
+ */
+export function requireDirectory(root, subject) {
+    let stat;
+    try {
+        stat = fs.lstatSync(root);
+    } catch (cause) {
+        if (cause.code === "ENOENT") throw new CouldNotRun(`${root} does not exist — ${subject}`);
+        throw new CouldNotRun(`${root} could not be read — ${cause.code ?? cause.message}. That is not the same as it being absent, and neither is a verdict about an arm`);
+    }
+    if (stat.isSymbolicLink()) throw new CouldNotRun(`${root} is a symlink, and this refuses to work through one — what it resolves to may not be the arm`);
+    if (!stat.isDirectory()) throw new CouldNotRun(`${root} exists but is not a directory — ${subject}`);
+    return stat;
+}
+
 /** Every file one scenario plants into one arm, recomputed from the definition. */
 export function plantFor(scenario, nonce, arm) {
     const stim = STIMULI[scenario];
@@ -378,13 +410,7 @@ export function plantFor(scenario, nonce, arm) {
  * session 6d's and is deliberately not reachable from here.
  */
 export function stageScenario(armRoot, { scenario, nonce, arm }) {
-    // **`isDirectory()`, not `existsSync`** — the same distinction the graders make between absent and
-    // unreadable, one layer up. An `armRoot` that exists and is a file would otherwise fail somewhere
-    // inside `mkdirSync` with a generic errno, reported as an unexpected exception rather than as a
-    // diagnosis. `./vendor.mjs` validates its roots this way. Copilot round 2 on #375.
-    const rootStat = fs.existsSync(armRoot) ? fs.statSync(armRoot) : null;
-    if (rootStat === null) throw new CouldNotRun(`${armRoot} does not exist — an arm is constructed by \`./ab.mjs --construct\` before a scenario is staged into it`);
-    if (!rootStat.isDirectory()) throw new CouldNotRun(`${armRoot} exists but is not a directory — a scenario is staged into an arm's root, and this is not one`);
+    requireDirectory(armRoot, "an arm is constructed by `./ab.mjs --construct` before a scenario is staged into it");
     const planted = plantFor(scenario, nonce, arm);
     for (const file of planted) {
         const target = path.join(armRoot, file.path);
@@ -507,23 +533,7 @@ export function treeFiles(root) {
             }
         }
     };
-    // **The ROOT gets the same check the entries get, and this was the site the repair missed.**
-    // Round 2's `existsSync`-is-not-`isDirectory` finding was fixed at `stageScenario()` and
-    // `gradeRun()` and left standing here — so a root that existed and was a file reached
-    // `readdirSync` and threw a raw `ENOTDIR`, surfacing as an unexpected exception rather than as a
-    // refusal, which is the very distinction this module is built on. `../.portulan/proposals/0020`,
-    // *a fix is not done at the site it was found*, inside a change that cites it. Found by Copilot
-    // round 4 on #375. `lstatSync` rather than `statSync`, so a symlinked root is refused for the same
-    // reason a symlinked entry is: resolving it would let the census read a tree that is not the arm.
-    let rootStat;
-    try {
-        rootStat = fs.lstatSync(root);
-    } catch (cause) {
-        if (cause.code === "ENOENT") throw new CouldNotRun(`${root} does not exist — there is no tree to grade, which is not a verdict about an arm`);
-        throw new CouldNotRun(`${root} could not be read — ${cause.code ?? cause.message}. That is not the same as it being absent`);
-    }
-    if (rootStat.isSymbolicLink()) throw new CouldNotRun(`${root} is a symlink, and a census refuses to descend through one — what it resolves to may not be the arm`);
-    if (!rootStat.isDirectory()) throw new CouldNotRun(`${root} exists but is not a directory — there is no tree to walk, which is not a verdict about an arm`);
+    requireDirectory(root, "there is no tree to walk, which is not a verdict about an arm");
     walk(root, "");
     return out;
 }
@@ -732,9 +742,7 @@ export function gradeRun(runDir, { seed, run = 0 }) {
     // **A run directory that is not there is a could-not-run, never eight refusals.** Every grader
     // refuses a tree it cannot attribute, so a mistyped path would otherwise come back as a full table
     // of refusals — which reads as a finding about the arms and is a fact about the argument.
-    const runStat = fs.existsSync(runDir) ? fs.statSync(runDir) : null;
-    if (runStat === null) throw new CouldNotRun(`${runDir} does not exist — there is no run to grade, which is not a verdict about either arm`);
-    if (!runStat.isDirectory()) throw new CouldNotRun(`${runDir} exists but is not a directory — a run is laid out as <run-dir>/<scenario>/<arm>, and this cannot hold one`);
+    requireDirectory(runDir, "a run is laid out as <run-dir>/<scenario>/<arm>, and there is none here — which is not a verdict about either arm");
     const rows = [];
     for (const scenario of holdingScenarios()) {
         const row = { scenario: scenario.id };
@@ -1199,21 +1207,23 @@ export function run(argv = [], { stdout = process.stdout, stderr = process.stder
     let scratch = null;
     try {
         if (parsed.mode === "stimuli") {
-            // **The nonce is derived PER SCENARIO.** A first cut derived one from `holdingScenarios()[0]`
-            // and printed every scenario's stimuli under it, so three of the four showed markers that
-            // belong to no `(scenario, arm, run, seed)` this harness would ever generate — in the mode
-            // whose entire purpose is that a person can read the exact bytes an arm will see, and check
-            // them against `arm.md`'s rule 2. Reproducibility that reproduces the wrong thing is worse
-            // than none. Copilot round 2, suppressed-note channel, on #375.
+            // **The nonce is derived per (scenario, ARM, run, seed) — every component `nonceFor` takes.**
+            // Two cuts got this wrong in the same way and both were caught here. The first derived ONE
+            // nonce from `holdingScenarios()[0]` for all four scenarios; the second fixed the scenario
+            // and kept `"a"` hardcoded, so arm B's printed bytes were a tree that would never be staged.
+            // This mode's entire purpose is that a **person** reads the exact bytes an arm will see and
+            // checks them against `arm.md`'s rule 2 — the check a 17-word marker list cannot do for
+            // them — so printing plausible-but-wrong bytes is worse than printing `<nonce>` and saying
+            // so. It now agrees with `--stage`, which has always derived the nonce from the arm asked
+            // for. Copilot rounds 2 and 5 on #375.
             for (const scenario of holdingScenarios()) {
-                const nonce = parsed.seed === null ? "<nonce>" : nonceFor(scenario.id, "a", parsed.run, parsed.seed);
                 stdout.write(`\n=== ${scenario.id} — ${scenario.mandate}\n`);
-                stdout.write(`prompt (both arms): ${STIMULI[scenario.id].prompt(nonce)}\n`);
                 for (const arm of ["a", "b"]) {
+                    const nonce = parsed.seed === null ? "<nonce>" : nonceFor(scenario.id, arm, parsed.run, parsed.seed);
+                    stdout.write(`\n--- arm ${arm.toUpperCase()} · nonce ${nonce}\n`);
+                    stdout.write(`prompt: ${STIMULI[scenario.id].prompt(nonce)}\n`);
                     for (const file of plantFor(scenario.id, nonce, arm)) {
-                        if (arm === "b" && STIMULI[scenario.id].armA(nonce).some((f) => f.path === file.path)) continue;
-                        if (arm === "a" && !STIMULI[scenario.id].armA(nonce).some((f) => f.path === file.path)) continue;
-                        stdout.write(`\n--- ${arm === "a" ? "arm A only" : "both arms"}: ${file.path}\n${file.content}`);
+                        stdout.write(`\n    ${file.path}\n${file.content}`);
                     }
                 }
             }

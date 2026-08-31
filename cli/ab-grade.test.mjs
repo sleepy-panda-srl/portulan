@@ -60,6 +60,7 @@ import {
     marker,
     plantFor,
     register,
+    requireDirectory,
     rule2OverStimuli,
     run,
     stageScenario,
@@ -694,48 +695,80 @@ test("--grade prints every verdict and says a run is not a baseline", () => {
     });
 });
 
-test("--stimuli derives the nonce PER SCENARIO, not once from the first one", () => {
-    // A shared nonce printed three of the four scenarios under markers belonging to no
-    // (scenario, arm, run, seed) this harness generates — in the mode whose purpose is that a person can
-    // check the exact bytes an arm will see. Copilot round 2, suppressed-note channel.
+test("--stimuli derives the nonce per SCENARIO and per ARM — every component nonceFor takes", () => {
+    // Two cuts got this wrong the same way. The first printed all four scenarios under one nonce; the
+    // second fixed the scenario and kept `"a"` hardcoded, so arm B's printed bytes were a tree that
+    // would never be staged. `--stage` has always derived from the arm asked for, and this now agrees
+    // with it. Copilot rounds 2 and 5.
     const out = [];
     assert.equal(run(["--stimuli", "--seed", "s"], { stdout: { write: (x) => out.push(x) }, stderr: sink, cwd: REPO }), 0);
+    const text = out.join("");
+    const seen = new Set();
     for (const scenario of holdingScenarios()) {
-        assert.ok(out.join("").includes(marker.task(nonceFor(scenario.id, "a", 0, "s"))), `${scenario.id} did not print its own nonce`);
+        for (const arm of ["a", "b"]) {
+            const nonce = nonceFor(scenario.id, arm, 0, "s");
+            assert.ok(text.includes(marker.task(nonce)), `${scenario.id}/${arm} did not print its own nonce`);
+            seen.add(nonce);
+        }
     }
+    // Eight distinct nonces, which is what makes the assertion above more than a substring coincidence.
+    assert.equal(seen.size, 8);
 });
 
-test("staging, grading AND the census refuse a root that exists and is not a directory", () => {
+// **This rule took THREE review rounds because each repair was scoped to the site the note named.**
+// Round 2: `existsSync` is not `isDirectory`, raised at `stageScenario()` and `gradeRun()`, fixed there,
+// left in `treeFiles()` — which both of them call. Round 4: raised at `treeFiles()`, fixed there with
+// `lstat` and errno translation, the two callers left on the weaker spelling. Round 5: raised at both of
+// them again. `.portulan/proposals/0020` three times inside a change that cites it. The repair the third
+// round earns is ONE carrier, and these cases hold every site to it.
+const ROOT_CONSUMERS = [
+    ["stageScenario", (root) => stageScenario(root, { scenario: "altitude", nonce: NONCE, arm: "a" })],
+    ["gradeRun", (root) => gradeRun(root, { seed: "s" })],
+    ["treeFiles", (root) => treeFiles(root)],
+    ["requireDirectory", (root) => requireDirectory(root, "the carrier itself")],
+];
+
+test("every root consumer refuses a root that exists and is not a directory", () => {
     withTemp((dir) => {
         const file = path.join(dir, "not-a-dir");
         fs.writeFileSync(file, "x\n");
-        // `existsSync` alone would let this through and fail later with a generic errno, reported as an
-        // unexpected exception rather than as a diagnosis. `vendor.mjs` validates its roots this way.
-        //
-        // **`treeFiles` is in this case because it was the site the first repair MISSED** — the fix
-        // landed at the two callers and not at the walker, so a root that was a file still reached
-        // `readdirSync` and threw a raw ENOTDIR. `.portulan/proposals/0020`, found by Copilot round 4.
-        assert.throws(() => stageScenario(file, { scenario: "altitude", nonce: NONCE, arm: "a" }), (e) => e instanceof CouldNotRun && /not a directory/.test(e.message));
-        assert.throws(() => gradeRun(file, { seed: "s" }), (e) => e instanceof CouldNotRun && /not a directory/.test(e.message));
-        assert.throws(() => treeFiles(file), (e) => e instanceof CouldNotRun && /not a directory/.test(e.message));
+        for (const [name, call] of ROOT_CONSUMERS) {
+            assert.throws(() => call(file), (e) => e instanceof CouldNotRun && /not a directory/.test(e.message), `${name} accepted a file as a root`);
+        }
     });
 });
 
-test("the census refuses a SYMLINKED root for the reason it refuses a symlinked entry", () => {
+test("every root consumer refuses a SYMLINKED root — `lstat`, never `stat`, which follows", () => {
     withTemp((dir) => {
         const real = fixtureTree(path.join(dir, "real"), { scenario: "altitude", nonce: NONCE, arm: "a" });
         const link = path.join(dir, "link");
         fs.symlinkSync(real, link);
-        // Descending through it would let the census read a tree that is not the arm — the same reason
-        // an entry is refused, applied to the root, which `lstatSync` is what makes visible.
-        assert.throws(() => treeFiles(link), (e) => e instanceof CouldNotRun && /symlink/.test(e.message));
+        // `statSync` would resolve this and accept it silently, so writing or censusing through it
+        // reaches a tree that is not the arm — the same reason a symlinked ENTRY is refused.
+        for (const [name, call] of ROOT_CONSUMERS) {
+            assert.throws(() => call(link), (e) => e instanceof CouldNotRun && /symlink/.test(e.message), `${name} followed a symlinked root`);
+        }
     });
 });
 
-test("an absent root and an unreadable one are still different answers at the census root", () => {
+test("every root consumer keeps ABSENT and UNREADABLE as different answers", () => {
     withTemp((dir) => {
-        assert.throws(() => treeFiles(path.join(dir, "nope")), (e) => e instanceof CouldNotRun && /does not exist/.test(e.message));
+        for (const [name, call] of ROOT_CONSUMERS) {
+            assert.throws(() => call(path.join(dir, "nope")), (e) => e instanceof CouldNotRun && /does not exist/.test(e.message), `${name} on an absent root`);
+        }
     });
+});
+
+test("root validation has exactly ONE carrier — no site rolls its own", () => {
+    // The rail behind the three cases above. `requireDirectory` is the only place these calls may live;
+    // a site that reintroduces its own `statSync`/`existsSync` root check is how this rule drifted apart
+    // three times, and a rail over the class is what the third round earns.
+    const source = fs.readFileSync(path.join(REPO, "cli", "ab-grade.mjs"), "utf8");
+    const body = source.slice(source.indexOf("export function requireDirectory"));
+    const afterCarrier = body.slice(body.indexOf("\n}\n"));
+    assert.ok(!/fs\.statSync\(/.test(afterCarrier), "a site outside `requireDirectory` calls statSync on a root");
+    assert.ok(!/fs\.lstatSync\(/.test(afterCarrier), "a site outside `requireDirectory` calls lstatSync on a root");
+    assert.equal((source.match(/requireDirectory\(/g) ?? []).length, 4, "the carrier plus its three consumers");
 });
 
 test("--stimuli prints every planted byte, which is what a person reads for arm.md's rule 2", () => {
