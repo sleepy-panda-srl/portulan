@@ -615,12 +615,34 @@ test("a turn gets its own operator home and config directory, and they are creat
     });
 });
 
-test("a missing agent binary is a could-not-run, not a turn that failed", () => {
+test("EVERY spawn failure but the timeout is a could-not-run, not a turn that failed", () => {
     withTemp((dir) => {
+        // Only ENOENT was refused, so EACCES on a non-executable agent — or ENOTDIR on a bad arm root —
+        // produced a turn folded into a cell as a BEHAVIOURAL datapoint: a rate moved by a fact about the
+        // filesystem, in the module whose whole subject is that could-not-run is not a verdict. Round 5.
+        const missing = path.join(dir, "no-such-agent");
         assert.throws(
-            () => runTurn({ armRoot: dir, operatorDir: path.join(dir, "op"), prompt: "x", agent: path.join(dir, "no-such-agent") }),
-            (e) => e instanceof CouldNotRun && /could not run/.test(e.message),
+            () => runTurn({ armRoot: dir, operatorDir: path.join(dir, "op"), prompt: "x", agent: missing }),
+            (e) => e instanceof CouldNotRun && /could not be spawned/.test(e.message),
         );
+
+        // EACCES: present, but not executable.
+        const noExec = path.join(dir, "not-executable.sh");
+        fs.writeFileSync(noExec, "#!/usr/bin/env bash\nexit 0\n", { mode: 0o644 });
+        assert.throws(
+            () => runTurn({ armRoot: dir, operatorDir: path.join(dir, "op2"), prompt: "x", agent: noExec }),
+            (e) => e instanceof CouldNotRun && /could not be spawned/.test(e.message),
+            "a non-executable agent was recorded as a turn",
+        );
+    });
+});
+
+test("a TIMEOUT stays a did-not-complete — the agent ran, and that is a fact about the turn", () => {
+    withTemp((dir) => {
+        const slow = stubAgent(dir, { exit: 0, body: "sleep 5" });
+        const turn = runTurn({ armRoot: dir, operatorDir: path.join(dir, "op"), prompt: "x", agent: slow, timeoutMs: 300 });
+        assert.equal(turn.completed, false);
+        assert.equal(turn.timedOut, true);
     });
 });
 

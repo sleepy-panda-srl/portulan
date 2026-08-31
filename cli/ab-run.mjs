@@ -333,8 +333,21 @@ export function runTurn({ armRoot, operatorDir, prompt, agent = "claude", env = 
         stdio: ["ignore", "pipe", "pipe"],
     });
     const wallMs = Date.now() - started;
-    if (result.error && result.error.code === "ENOENT") {
-        throw new CouldNotRun(`\`${agent}\` could not run — ${result.error.code}. Without an agent there is no turn, which is not the same as a turn that failed`);
+    // **ANY spawn failure that is not the timeout is a could-not-run**, not a `did-not-complete`.
+    //
+    // Only `ENOENT` was refused here, so `EACCES` on a non-executable agent, or `ENOTDIR` on a bad arm
+    // root, produced a turn that was folded into a cell as a **behavioural datapoint** — a rate moved by
+    // a fact about the filesystem, in the module whose opening comment is that *could-not-run* and *a
+    // verdict* are different things. Copilot round 5 on
+    // [#377](https://github.com/sleepy-panda-srl/portulan/pull/377).
+    //
+    // A **timeout is deliberately not in this class**: the agent ran and did not finish in the time this
+    // harness allowed, which is a fact about the turn and belongs in the figures as `did-not-complete`.
+    if (result.error && result.error.code !== "ETIMEDOUT") {
+        throw new CouldNotRun(
+            `\`${agent}\` could not be spawned — ${result.error.code ?? result.error.message}. Without a turn there is nothing to grade, ` +
+                "and recording this as a did-not-complete would fold a fact about the machine into a rate about an arm",
+        );
     }
     return {
         completed: result.status === 0,
