@@ -74,6 +74,11 @@ flake. **A leak sweep keyed on a hand-typed prefix is a checker whose population
 session's own subject, arriving in the test harness. Both prefixes are now exported constants and a rail
 asserts disjointness, so the next collision is a red.
 
+**The bound was met, not granted.** Rule 4 allows two fix-rounds; this spent exactly two, and round 3
+came back empty on `54620960`. The maintainer's *"keep looping until everything has been addressed"* was
+a grant given in advance and not needed — recorded that way round, because a met bound and a waived one
+must not read the same. Nine forced reds in total across the session.
+
 ## What is still owed, stated so a close cannot be held to more than was built
 
 - **The run.** No agent, no `k`, no baseline. 6d's, and `acceptedUnder.reRunWhen` — re-running the stop

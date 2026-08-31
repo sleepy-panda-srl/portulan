@@ -2618,5 +2618,5 @@ _The seam applies here too: no client-identifying references._
   means the check was rewritten, which the plan had called the good outcome. `altitude`'s whitelist
   missed `.portulan/memory/`; widening it exposed a census over the plant itself, now railed. **Two of
   four are compliant when inert** — 6d's constraint. **No agent run; no figure; the row does not move.
-  24 recipes; `ab-grade` forced red six ways.** · Session-open **A-W-A (8)**, pre-commit **A-W-A (3)**. ·
-  Seam scan clean. · [handoff](../.portulan/handoffs/2026-08-31-the-graders-and-the-census-that-counted-its-own-plant.md)
+  24 recipes; `ab-grade` forced red nine ways.** · Session-open **A-W-A (8)**, pre-commit **A-W-A (3)**;
+  Copilot 3 rounds, **bound MET at two fix-rounds**. · Seam scan clean. · [handoff](../.portulan/handoffs/2026-08-31-the-graders-and-the-census-that-counted-its-own-plant.md)
