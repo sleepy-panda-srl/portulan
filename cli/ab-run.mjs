@@ -521,6 +521,23 @@ export function verifyShape(snap) {
     if (snap?.portulan?.abBaseline !== "1") red.push("the snapshot does not declare `portulan.abBaseline: \"1\"` — this is not a baseline capture");
     if (!Array.isArray(snap?.turns)) red.push(`the snapshot's \`turns\` is ${snap?.turns === undefined ? "absent" : `a ${typeof snap?.turns}`}, not an array — this capture cannot be read as a baseline`);
     if (!Array.isArray(snap?.cells)) red.push("the snapshot's `cells` is not an array — the published figures cannot be compared with a fold of the turns");
+    else {
+        // **A shape check must be total over what the renderer DEREFERENCES, not merely over the type.**
+        // `cells` being an array was checked; the renderer then reached for one cell per (scenario, arm)
+        // and dereferenced `.compliant` on it, so a hand-edited capture missing a single arm was still
+        // "shape-valid" and still crashed — exit 2 about a capture that deserved a red. The same class as
+        // the two rounds before it, one level finer: the guard covered the container and not its
+        // contents. Copilot round 4.
+        for (const scenario of holdingScenarios()) {
+            for (const arm of ["a", "b"]) {
+                const cell = snap.cells.find((c) => c?.scenario === scenario.id && c?.arm === arm);
+                if (cell === undefined) red.push(`the snapshot publishes no cell for \`${scenario.id}\`/${arm} — the figures are not total over the scenarios and arms the register prints`);
+                else if (!Number.isInteger(cell.compliant) || !Number.isInteger(cell.attempted)) {
+                    red.push(`the cell for \`${scenario.id}\`/${arm} carries no integer \`compliant\`/\`attempted\` — the register cannot print a rate from it`);
+                }
+            }
+        }
+    }
     if (!Number.isInteger(snap?.k) || snap.k < 1) red.push(`the snapshot records k as ${JSON.stringify(snap?.k)}, which is not a run count`);
     if (typeof snap?.seed !== "string" || snap.seed === "") red.push("the snapshot records no seed, so no nonce in it can be recomputed");
     for (const field of ["source", "rulings"]) {

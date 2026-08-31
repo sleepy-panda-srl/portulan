@@ -475,6 +475,26 @@ test("--verify REPORTS a malformed capture rather than crashing in the renderer"
     });
 });
 
+test("a shape check is total over what the RENDERER dereferences, not merely over types", () => {
+    withTemp((dir) => {
+        // `cells` being an array was checked; the renderer then reached for one cell per (scenario, arm)
+        // and dereferenced `.compliant`, so a capture missing a single arm was "shape-valid" and still
+        // crashed — exit 2 about a capture that deserved a red. Round 4, the same class as rounds 2 and
+        // 3 one level finer: the guard covered the container and not its contents.
+        fs.mkdirSync(path.join(dir, "evals", "ab"), { recursive: true });
+        const snap = snapshotFixture();
+        snap.cells = snap.cells.filter((c) => !(c.scenario === holdingScenarios()[0].id && c.arm === "b"));
+        assert.match(verifyShape(snap).join("\n"), /publishes no cell for/);
+        fs.writeFileSync(path.join(dir, SNAPSHOT), JSON.stringify(snap));
+        const err = [];
+        assert.equal(run(["--verify", "--repo-root", dir], { stdout: sink, stderr: { write: (x) => err.push(x) }, cwd: REPO }), 1);
+
+        const broken = snapshotFixture();
+        broken.cells[0] = { ...broken.cells[0], compliant: "five" };
+        assert.match(verifyShape(broken).join("\n"), /no integer/);
+    });
+});
+
 test("--write refuses a capture it could not read, rather than rendering from one", () => {
     withTemp((dir) => {
         fs.mkdirSync(path.join(dir, "evals", "ab"), { recursive: true });
