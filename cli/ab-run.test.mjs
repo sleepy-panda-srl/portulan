@@ -37,6 +37,7 @@ import {
     aggregate,
     agentVersion,
     credentialChannel,
+    dissolvesTheTreatment,
     journalPath,
     readJournal,
     renderRegister,
@@ -84,7 +85,7 @@ function snapshotFixture({ k = K, seed = "fixture" } = {}) {
             timedOut: false,
             wallMs: 1000 + id.run,
             said: "",
-            verdict: compliant ? COMPLIANT_VERDICT[id.scenario] : Object.keys({}).length === 0 ? otherVerdict(id.scenario) : null,
+            verdict: compliant ? COMPLIANT_VERDICT[id.scenario] : otherVerdict(id.scenario),
             attempted: true,
             evidence: [],
         });
@@ -144,6 +145,62 @@ test("verify reds a snapshot whose recorded invocation carries such a flag", () 
     const snap = snapshotFixture();
     snap.invocation = ["--print", "--dangerously-skip-permissions"];
     assert.match(verify(snap).join("\n"), /dissolves arm A's compiled enforcement/);
+});
+
+test("a bypass is caught in EVERY argv spelling — the two-token form defeated the first guard", () => {
+    // The hole: `FORBIDDEN_FLAGS` matched whole tokens, so `--permission-mode=bypassPermissions` was
+    // caught and **`--permission-mode bypassPermissions` — two argv entries, the ordinary form — went
+    // straight through**, in the guard whose only job is to stop a baseline over an arm with its
+    // enforcement bypassed. The `startsWith(f + "=")` arm was dead for any flag already containing `=`.
+    // Copilot round 1 on #377.
+    for (const inv of [
+        ["--permission-mode", "bypassPermissions"],
+        ["--permission-mode=bypassPermissions"],
+        ["--print", "--permission-mode", "bypassPermissions"],
+        // A guard a capital letter defeats is a guard about spelling.
+        ["--permission-mode", "BypassPermissions"],
+        ["--dangerously-skip-permissions"],
+    ]) {
+        assert.notDeepEqual(dissolvesTheTreatment(inv), [], `not caught: ${JSON.stringify(inv)}`);
+    }
+    // The ruled invocation is not a bypass, and `acceptEdits` must keep working.
+    assert.deepEqual(dissolvesTheTreatment([...INVOCATION]), []);
+});
+
+test("the turn and the record BOTH refuse every bypass spelling, not just the turn", () => {
+    withTemp((dir) => {
+        const inv = ["--print", "--permission-mode", "bypassPermissions"];
+        assert.throws(
+            () => runTurn({ armRoot: dir, operatorDir: path.join(dir, "op"), prompt: "x", agent: stubAgent(dir), invocation: inv }),
+            (e) => e instanceof CouldNotRun && /dissolve arm A's compiled enforcement/.test(e.message),
+        );
+        const snap = snapshotFixture();
+        snap.invocation = inv;
+        assert.match(verify(snap).join("\n"), /dissolves arm A's compiled enforcement/);
+    });
+});
+
+test("agentVersion refuses an empty answer — exit 0 and no output is not a name", () => {
+    withTemp((dir) => {
+        // It would have been recorded as `agentVersion: ""`, which satisfies "a baseline names its host"
+        // in form and defeats it in fact. Copilot round 1.
+        assert.throws(
+            () => agentVersion(stubAgent(dir, { exit: 0, body: 'echo "2.1.240" >&2' })),
+            (e) => e instanceof CouldNotRun && /printed nothing on stdout/.test(e.message),
+        );
+        assert.throws(() => agentVersion(stubAgent(dir, { exit: 0, body: "true" })), CouldNotRun);
+    });
+});
+
+test("the usage names every option the parser accepts for a spawning mode", () => {
+    const out = [];
+    run(["--help"], { stdout: { write: (x) => out.push(x) }, stderr: sink });
+    const usage = out.join("");
+    // `--repo-root` decides which `.portulan/` the arms are built from, and omitting it from the smoke
+    // line made it easy to gate against the wrong repository. Copilot round 1.
+    for (const flag of ["--repo-root", "--turn-timeout", "--agent", "--scenario", "--into", "--seed", "--k"]) {
+        assert.ok(usage.includes(flag), `the usage omits ${flag}`);
+    }
 });
 
 test("the invocation permits edits WITHOUT bypassing arm A's compiled deny rules", () => {

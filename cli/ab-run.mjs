@@ -114,8 +114,45 @@ export const K = 5;
  */
 export const INVOCATION = Object.freeze(["--print", "--permission-mode", "acceptEdits"]);
 
-/** Flags that would dissolve the treatment. Refused in code, because a comment saying "do not pass this" is a reminder. */
-const FORBIDDEN_FLAGS = ["--dangerously-skip-permissions", "--permission-mode=bypassPermissions"];
+/** The standalone flag that dissolves the treatment outright. */
+const FORBIDDEN_FLAGS = ["--dangerously-skip-permissions"];
+
+/** Permission modes that dissolve arm A's compiled enforcement, whichever spelling carries them. */
+const FORBIDDEN_MODES = ["bypasspermissions"];
+
+/**
+ * Every reason this invocation would dissolve the treatment, read as **argv** rather than as strings.
+ *
+ * **A token scan does not work here, and the first cut was one.** `--permission-mode` takes its value in
+ * either of two spellings, and a flag list matching whole tokens caught `--permission-mode=bypassPermissions`
+ * while **`--permission-mode bypassPermissions` — two separate argv entries, the ordinary form — went
+ * straight through.** A baseline could then have been recorded over an arm with its enforcement
+ * bypassed, by the guard whose entire job is to prevent exactly that. Worse, the `startsWith(f + "=")`
+ * arm was dead for any flag that already contained `=`. Found by Copilot round 1 on
+ * [#377](https://github.com/sleepy-panda-srl/portulan/pull/377).
+ *
+ * So this walks the argv the way the host does: a standalone forbidden flag, or a `--permission-mode`
+ * whose **value** is forbidden, in either spelling. The mode is compared case-insensitively, because a
+ * guard that a capital letter defeats is a guard about spelling.
+ */
+export function dissolvesTheTreatment(invocation) {
+    const found = [];
+    const argv = [...invocation].map(String);
+    for (let i = 0; i < argv.length; i += 1) {
+        const token = argv[i];
+        if (FORBIDDEN_FLAGS.includes(token)) {
+            found.push(`\`${token}\``);
+            continue;
+        }
+        let mode = null;
+        if (token === "--permission-mode") mode = argv[i + 1];
+        else if (token.startsWith("--permission-mode=")) mode = token.slice("--permission-mode=".length);
+        if (mode !== undefined && mode !== null && FORBIDDEN_MODES.includes(mode.toLowerCase())) {
+            found.push(`\`--permission-mode ${mode}\``);
+        }
+    }
+    return found;
+}
 
 /** How long one turn may take before it is a did-not-complete rather than a verdict. */
 export const TURN_TIMEOUT_MS = 10 * 60 * 1000;
@@ -230,7 +267,12 @@ export function credentialChannel(env = process.env) {
 export function agentVersion(agent = "claude") {
     const r = spawnSync(agent, ["--version"], { encoding: "utf8", timeout: 60_000 });
     if (r.error || r.status !== 0) throw new CouldNotRun(`\`${agent} --version\` did not answer — ${r.error?.code ?? `exit ${r.status}`}. A baseline that cannot name its host is a figure with no conditions`);
-    return (r.stdout ?? "").trim().split("\n")[0] ?? "";
+    // **Exit 0 and nothing on stdout is not a name.** A CLI that printed its version to stderr, or
+    // printed nothing at all, would have been recorded as `agentVersion: ""` — which satisfies the
+    // sentence above in form and defeats it in fact. Copilot round 1 on #377.
+    const line = (r.stdout ?? "").trim().split("\n")[0]?.trim() ?? "";
+    if (line === "") throw new CouldNotRun(`\`${agent} --version\` exited 0 and printed nothing on stdout, so this baseline would name no host — which is the condition the check above exists to prevent, not a version`);
+    return line;
 }
 
 /**
@@ -241,10 +283,12 @@ export function agentVersion(agent = "claude") {
  * — but the turn's own state is recorded beside the verdict rather than replacing it.
  */
 export function runTurn({ armRoot, operatorDir, prompt, agent = "claude", env = process.env, timeoutMs = TURN_TIMEOUT_MS, invocation = INVOCATION }) {
-    for (const flag of invocation) {
-        if (FORBIDDEN_FLAGS.some((f) => flag === f || flag.startsWith(`${f}=`))) {
-            throw new CouldNotRun(`\`${flag}\` would dissolve arm A's compiled enforcement, which is the treatment under test — this refuses rather than recording a baseline over an arm that is not the ruled arm`);
-        }
+    const dissolving = dissolvesTheTreatment(invocation);
+    if (dissolving.length > 0) {
+        throw new CouldNotRun(
+            `${dissolving.join(" and ")} would dissolve arm A's compiled enforcement, which is the treatment under test — ` +
+                "this refuses rather than recording a baseline over an arm that is not the ruled arm",
+        );
     }
     seedOperator(operatorDir);
     const started = Date.now();
@@ -427,8 +471,8 @@ export function verify(snap) {
     if (snap.operatorEnv !== "isolated") {
         red.push(`the snapshot records \`operatorEnv: ${JSON.stringify(snap.operatorEnv)}\` — no baseline may be recorded under an unisolated arm (evals/ab/corpus.md, and cli/ab.mjs's acceptedUnder.scope)`);
     }
-    for (const f of FORBIDDEN_FLAGS) {
-        if ((snap.invocation ?? []).some((x) => x === f || String(x).startsWith(`${f}=`))) red.push(`the invocation carries \`${f}\`, which dissolves arm A's compiled enforcement`);
+    for (const found of dissolvesTheTreatment(snap.invocation ?? [])) {
+        red.push(`the recorded invocation carries ${found}, which dissolves arm A's compiled enforcement`);
     }
     // **The RULED k, not merely the recorded one.** `K`'s docblock said `--verify` checks totality
     // against it and `--verify` checked against `snap.k` — so a snapshot with every run-4 turn deleted
@@ -461,7 +505,8 @@ export function verify(snap) {
 const USAGE = `portulan-ab-run — run the A/B matrix and record the baseline. THE ONLY MODULE HERE THAT SPAWNS AN AGENT.
 
   node cli/ab-run.mjs --matrix --seed <s> [--k <n>] [--into <dir>] [--repo-root <dir>]
-  node cli/ab-run.mjs --smoke --seed <s> [--scenario <id>] [--into <dir>]
+  node cli/ab-run.mjs --smoke --seed <s> [--scenario <id>] [--into <dir>] [--repo-root <dir>]
+                                        [--turn-timeout <s>] [--agent <path>]
   node cli/ab-run.mjs --verify [--repo-root <dir>]
   node cli/ab-run.mjs --write [--repo-root <dir>]
 
