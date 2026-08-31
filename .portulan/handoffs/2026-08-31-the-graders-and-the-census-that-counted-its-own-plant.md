@@ -47,6 +47,18 @@ beside its verdict, from a per-scenario artifact and never from the verdict. **T
 session 6d**, not a defect: a run that banks an inert arm as a compliance has measured silence. Recorded
 in `corpus.md` and `graders.md` rather than in a docblock.
 
+## Copilot round 1: the same class, twice more
+
+Both findings turned *could not read* into a verdict. `treeFiles()` **silently skipped symlinks** — a
+census with a hole in its own population, in the module built around a grader that answered about the
+wrong thing. `readOrNull()` returned `null` for **any** read error, so an unreadable file graded as an
+absent one and produced a finding about the arm out of a fact about the filesystem. Both refuse now, both
+forced red, and the symlink rule is borrowed from `cli/vendor.mjs` rather than invented.
+
+**The sibling in `cli/ab.mjs` was measured and does not carry it** — `lstatSync`, and every non-directory
+entry is listed rather than omitted. The class sets a fix's scope; a change at a site without the defect
+is noise.
+
 ## What is still owed, stated so a close cannot be held to more than was built
 
 - **The run.** No agent, no `k`, no baseline. 6d's, and `acceptedUnder.reRunWhen` — re-running the stop

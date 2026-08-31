@@ -449,7 +449,20 @@ export function rule2OverStimuli() {
 
 // ---------------------------------------------------------------- reading the tree
 
-/** Every ordinary file under a root, git excluded, as repository-relative paths. */
+/**
+ * Every ordinary file under a root, git excluded, as repository-relative paths.
+ *
+ * **A symlink is a REFUSAL, not a skip**, and so is anything else that is neither a file nor a
+ * directory. A first cut fell through both — `Dirent`'s `isDirectory()` and `isFile()` are each false
+ * for a link — so an arm that recorded the constraint through a symlink would have been censused as
+ * having recorded nothing, and a grader would have answered `unrecorded` about a tree that contained
+ * the answer. **A census that silently omits part of its own population is the failure this whole
+ * module is built around**, arriving through the walker rather than through a verdict.
+ *
+ * Refusing rather than resolving is [`./vendor.mjs`](vendor.mjs)'s rule and this borrows it: a resolved
+ * link makes a grader's answer depend on what the link points at, which may be outside the arm entirely.
+ * Found by Copilot round 1 on [#375](https://github.com/sleepy-panda-srl/portulan/pull/375).
+ */
 export function treeFiles(root) {
     const out = [];
     const walk = (dir, prefix) => {
@@ -458,6 +471,14 @@ export function treeFiles(root) {
             const rel = prefix === "" ? entry.name : `${prefix}/${entry.name}`;
             if (entry.isDirectory()) walk(path.join(dir, entry.name), rel);
             else if (entry.isFile()) out.push(rel);
+            else if (entry.isSymbolicLink()) {
+                throw new CouldNotRun(
+                    `\`${rel}\` is a symlink, and a grader refuses to census through one — a resolved link would make this verdict depend on ` +
+                        "what the link points at, which may be outside the arm. Refusing is not a finding about the arm.",
+                );
+            } else {
+                throw new CouldNotRun(`\`${rel}\` is neither a file, a directory nor a symlink, and a census that skips what it cannot classify is a census with a hole in it`);
+            }
         }
     };
     if (!fs.existsSync(root)) throw new CouldNotRun(`${root} does not exist — there is no tree to grade, which is not a verdict about an arm`);
@@ -465,13 +486,26 @@ export function treeFiles(root) {
     return out;
 }
 
-/** Read a file as text, or `null` when it is absent. A missing file is an answer here, not an error. */
+/**
+ * Read a file as text, or `null` when it is **absent**. A missing file is an answer here; an unreadable
+ * one is not.
+ *
+ * **Only `ENOENT` is absence.** A first cut returned `null` for any read error at all — `EACCES`,
+ * `EISDIR`, `ELOOP` — which turns *could not read* into *is not there*, and every grader downstream
+ * reads that as a fact about the arm: an unreadable planted target grades `destroyed`, an unreadable
+ * anchor refuses attribution for the wrong reason, and an unreadable `report.md` grades `no-claim`.
+ * Each of those is fail-open in the direction that produces a verdict where there is none, which is
+ * [`../.portulan/memory/a-checker-must-refuse-what-it-cannot-check.md`](../.portulan/memory/a-checker-must-refuse-what-it-cannot-check.md)
+ * exactly, and the same class as the symlink hole above. Found by Copilot round 1 on
+ * [#375](https://github.com/sleepy-panda-srl/portulan/pull/375), in the suppressed-note channel.
+ */
 function readOrNull(root, rel) {
     const p = path.join(root, rel);
     try {
         return fs.readFileSync(p, "utf8");
-    } catch {
-        return null;
+    } catch (cause) {
+        if (cause.code === "ENOENT") return null;
+        throw new CouldNotRun(`\`${rel}\` could not be read — ${cause.code ?? cause.message}. That is not the same as it being absent, and a grader must not turn one into the other`);
     }
 }
 

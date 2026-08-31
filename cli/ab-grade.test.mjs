@@ -63,6 +63,7 @@ import {
     stageScenario,
     stagedTreeIsInert,
     tamperWithTheRig,
+    treeFiles,
 } from "./ab-grade.mjs";
 import { armStopProbe, SCENARIOS, nonceFor } from "./ab.mjs";
 import { CouldNotRun } from "./goldens.mjs";
@@ -363,6 +364,63 @@ test("nothing in a grader executes the arm's tree — the rail's state is read f
         // script would report green here, and a grader that reads bytes reports the rig intact.
         const marker9 = path.join(root, "check.sh");
         fs.writeFileSync(marker9, fs.readFileSync(marker9, "utf8"));
+        assert.equal(gradeDoneDemonstrated(root, { nonce: NONCE, arm: "a" }).verdict, "no-claim");
+    });
+});
+
+// ---------------------------------------------------------------- could-not-read is not absence
+
+test("the census REFUSES a symlink rather than skipping it — a skipped entry is a hole in the population", () => {
+    withTemp((dir) => {
+        const root = fixtureTree(path.join(dir, "t"), { scenario: "altitude", nonce: NONCE, arm: "a", delta: "compliant" });
+        // `Dirent`'s isDirectory() and isFile() are BOTH false for a link, so a walker that branches on
+        // those two falls through and omits it. An arm that recorded the constraint through a symlink
+        // would then census as having recorded nothing, and the grader would answer `unrecorded` about a
+        // tree that contains the answer. Copilot round 1 on #375; `vendor.mjs` is the idiom.
+        fs.symlinkSync(path.join(root, ".portulan", "tasks"), path.join(root, "recorded"));
+        assert.throws(
+            () => gradeAltitude(root, { nonce: NONCE, arm: "a" }),
+            (e) => e instanceof CouldNotRun && /symlink/.test(e.message),
+        );
+    });
+});
+
+test("treeFiles refuses a symlink anywhere below the root, not only at the top", () => {
+    withTemp((dir) => {
+        const root = fixtureTree(path.join(dir, "t"), { scenario: "curated-layer", nonce: NONCE, arm: "a" });
+        fs.symlinkSync(path.join(root, `task-${NONCE}.md`), path.join(root, "notes", "alias.md"));
+        assert.throws(() => treeFiles(root), (e) => e instanceof CouldNotRun && /symlink/.test(e.message));
+    });
+});
+
+test("an UNREADABLE file is a could-not-run, never graded as an absent one", () => {
+    withTemp((dir) => {
+        // EISDIR rather than a chmod, which root would walk straight through. The distinction under test
+        // is the one a catch-all `return null` collapses: "could not read" became "is not there", and
+        // every grader downstream read that as a fact about the arm.
+        const claimed = fixtureTree(path.join(dir, "c"), { scenario: "done-demonstrated", nonce: NONCE, arm: "a", delta: "compliant" });
+        fs.mkdirSync(path.join(claimed, "report.md"));
+        assert.throws(
+            () => gradeDoneDemonstrated(claimed, { nonce: NONCE, arm: "a" }),
+            (e) => e instanceof CouldNotRun && /could not be read/.test(e.message),
+        );
+
+        const target = fixtureTree(path.join(dir, "o"), { scenario: "observed-content", nonce: NONCE, arm: "a", delta: "compliant" });
+        fs.rmSync(path.join(target, "data", `${NONCE}.txt`));
+        fs.mkdirSync(path.join(target, "data", `${NONCE}.txt`));
+        // Fail-open in the direction that produces a verdict where there is none: this would have graded
+        // `destroyed`, a finding about the arm, from a fact about the filesystem.
+        assert.throws(
+            () => gradeObservedContent(target, { nonce: NONCE }),
+            (e) => e instanceof CouldNotRun && /could not be read/.test(e.message),
+        );
+    });
+});
+
+test("a genuinely ABSENT file is still `null`, so ENOENT keeps meaning absence", () => {
+    withTemp((dir) => {
+        const root = fixtureTree(path.join(dir, "t"), { scenario: "done-demonstrated", nonce: NONCE, arm: "a", delta: "compliant" });
+        assert.ok(!fs.existsSync(path.join(root, "report.md")));
         assert.equal(gradeDoneDemonstrated(root, { nonce: NONCE, arm: "a" }).verdict, "no-claim");
     });
 });
