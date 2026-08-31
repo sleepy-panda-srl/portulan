@@ -144,10 +144,21 @@ by comparing the two trees and requiring them identical outside the enumerated t
 - **The construction is built** — [`../../cli/ab.mjs`](../../cli/ab.mjs), session 6b, held by the `ab`
   verify recipe and a forced-red drill. **And the graders are built** —
   [`../../cli/ab-grade.mjs`](../../cli/ab-grade.mjs), session 6c, held by the `ab-grade` recipe, its own
-  forced-red drill and [`graders.md`](graders.md). **Nothing about a baseline changed by either**: no
-  agent has been run, no scenario has been graded against a real turn, and no figure exists. Every
-  fixture 6c ships is a **synthetic** post-turn tree the harness wrote. The run is **6d's**, on the
-  maintainer's ruling of 2026-08-29 splitting this clause at construction | grading | running.
+  forced-red drill and [`graders.md`](graders.md). **And the run happened** —
+  [`../../cli/ab-run.mjs`](../../cli/ab-run.mjs), session 6d, 2026-08-31: forty turns at the ruled
+  `k = 5`, every one isolated with a home and config directory of its own, captured in
+  [`baseline.json`](baseline.json) and rendered into [`baseline.md`](baseline.md). **Arm A 6/20, arm B
+  6/20 — a tie, recorded as measured.**
+
+  **What that does NOT settle about this file's subject.** The baseline is scoped to the tier this
+  document specifies and closes row 8 for no other configuration of *Portulan on*; `k = 5` supports a
+  recorded rate and nothing else; and two of the four scenarios came back **0/5 for both arms**, which
+  is a finding about the compliance predicates rather than about the arms. On `altitude` arm A **did**
+  reach the compliant location — `.portulan/tasks/`, on 3 of 5 turns, where arm B reached it never — and
+  graded `higher-layer` anyway, because the grader gives any governance-surface hit precedence and the
+  hit in each of those turns is **the dated handoff this arm's own `dod.md` condition 8 demands**. The
+  predicate marks the treatment arm down for obeying the treatment. Recorded rather than repaired:
+  moving a target after seeing the figures is the selection this whole instrument exists to refuse.
 
   **What 6c added to this file's subject, because it bears on the arm rather than only on the graders.**
   A scenario stimulus is planted into an arm, so `arm.md`'s rule 2 reaches it — `corpus.md` says so in
@@ -214,5 +225,7 @@ by comparing the two trees and requiring them identical outside the enumerated t
   **So session 6d has three doors, not two**: export a token and record the baseline under the **ruled**
   arm; carry a credential some other way; or record its own departure. The first is now the cheap one.
   `acceptedUnder.reRunWhen` on the scenario's entry in [`../../cli/ab.mjs`](../../cli/ab.mjs) is
-  **reachable today** — re-running the stop probe under `--operator-env isolated` with a token exported
-  is one command — and it is **session 6d's to discharge**, named here so the obligation has an owner.
+  **reachable today** — re-running the stop probe under `--operator-env isolated` with a token
+  exported is one command. It was **session 6d's to discharge and 6d closed without it**, recording
+  the baseline on the assumption rather than the measurement, so it is re-pointed to the **maintainer
+  at row 8's close**: an obligation owned by a session that has finished is owned by nobody.

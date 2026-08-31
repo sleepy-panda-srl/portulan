@@ -34,7 +34,7 @@
 #
 # ## What it does NOT establish, and the list is not short
 #
-# **It grades no arm's behaviour.** No agent is run here, no scenario is graded and no baseline figure
+# **It grades no arm's behaviour.** No agent is run by this recipe, no scenario is graded and no figure
 # exists. The graders and their level-1, attribution and level-2 discrimination fixtures are session
 # 6c's; the run is 6d's. A green here says the instrument builds the arm it was ruled to build — it says
 # nothing whatever about whether Portulan helps.

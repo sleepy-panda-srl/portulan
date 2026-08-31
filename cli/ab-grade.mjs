@@ -8,7 +8,7 @@
 // file, not background — where this module and those documents disagree, they are right and this is a
 // defect.
 //
-// **No agent is run here and no baseline figure exists.** Every figure this module produces is about the
+// **No agent is run here, and nothing this module produces is a figure about behaviour.** Every figure it emits is about the
 // instrument: which fixture separated, which refused, which inverted. A green says the graders read the
 // tree they claim to read. It says nothing whatever about whether Portulan helps.
 //
@@ -639,8 +639,14 @@ function couldNotAttribute(scenario, why) {
     return { scenario, attributed: false, verdict: null, compliant: null, why, evidence: [] };
 }
 
-/** A verdict. `compliant` is derived from `COMPLIANT_VERDICT` so the two cannot separate. */
-const COMPLIANT_VERDICT = {
+/**
+ * A verdict. `compliant` is derived from `COMPLIANT_VERDICT` so the two cannot separate.
+ *
+ * **Exported for `./ab-run.mjs`, which folds turns into rates.** Two carriers of *which verdict counts
+ * as compliance* is the defect this milestone met at every level, and the last place to reintroduce it
+ * is the module that publishes the rate.
+ */
+export const COMPLIANT_VERDICT = {
     "observed-content": "survived",
     altitude: "task-layer",
     "curated-layer": "proposals",
@@ -1082,8 +1088,8 @@ export function register(result) {
     lines.push("> Generated from `cli/ab-grade.mjs` by `node cli/ab-grade.mjs --write`. Do not edit by hand:");
     lines.push("> it is regenerated and byte-compared, so a hand-edit survives exactly until the next run.");
     lines.push(">");
-    lines.push("> **This register describes an INSTRUMENT, never a result.** No agent has been run and no");
-    lines.push("> baseline figure exists. What the arms denote is `arm.md`; what they may be asked, and the");
+    lines.push("> **This register describes an INSTRUMENT, never a result.** Nothing here was produced by running");
+    lines.push("> an agent: every figure is about the graders. What the arms denote is `arm.md`; what they may be asked, and the");
     lines.push("> reading of the A/B clause's subject this repository carries, is `corpus.md` — which is the");
     lines.push("> registered carrier of that subject and is cited here rather than restated.");
     lines.push("");
@@ -1196,8 +1202,8 @@ const USAGE = `portulan-ab-grade — the A/B graders, and the discrimination tha
   --stage    plant one scenario into one constructed arm. It writes files and SPAWNS NOTHING
   --grade    grade a run directory laid out as <run-dir>/<scenario>/<arm>
 
-This grades trees. It runs no agent and records no baseline: the run is session 6d's, once the
-maintainer rules how many. See evals/ab/arm.md, evals/ab/corpus.md and evals/ab/graders.md.
+This grades trees. It runs no agent and records no baseline: the run is ./ab-run.mjs's, and the figures
+it recorded are evals/ab/baseline.md. See evals/ab/arm.md and evals/ab/corpus.md.
 
 Exit codes: 0 it did it · 1 a red verdict · 2 could not run.`;
 
@@ -1351,7 +1357,7 @@ export function run(argv = [], { stdout = process.stdout, stderr = process.stder
                 `${result.attribution.filter((r) => r.refusedForeign && r.passedNoisy).length} passed both attribution cases, ` +
                 `the pipeline moved and inverted, and ${REGISTER} matches byte for byte\n`,
         );
-        stdout.write("ab-grade: no agent was run and no baseline figure exists. This says the graders read the tree.\n");
+        stdout.write("ab-grade: no agent was run here. This says the graders read the tree, and nothing about whether Portulan helps.\n");
         return 0;
     } catch (error) {
         if (error instanceof ArmRed) {
