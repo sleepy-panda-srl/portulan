@@ -43,6 +43,7 @@ import {
     NORMATIVE_MARKERS,
     REGISTER,
     SCENARIOS,
+    SCRATCH_PREFIX,
     TREATMENT_PATHS,
     armsDifferOnlyByTreatment,
     dispositionFor,
@@ -443,10 +444,10 @@ test("a mode that INVENTS its scratch directory removes it, and one that hands i
     // The leak Copilot found in round 1. `--check` and `--write` build two arms to answer a question;
     // `--construct` exists to hand the caller an arm, so sweeping it would delete the deliverable. A
     // leak per run is invisible until somebody counts, and `ab` is a recipe — it runs on every commit.
-    const before = new Set(fs.readdirSync(os.tmpdir()).filter((d) => d.startsWith("portulan-ab-")));
+    const before = new Set(fs.readdirSync(os.tmpdir()).filter((d) => d.startsWith(SCRATCH_PREFIX)));
     const sink = { write() {} };
     assert.equal(run(["--check", "--repo-root", REPO, "--workspace", WORKSPACE], { stdout: sink, stderr: sink, cwd: REPO }), 0);
-    const after = fs.readdirSync(os.tmpdir()).filter((d) => d.startsWith("portulan-ab-") && !before.has(d));
+    const after = fs.readdirSync(os.tmpdir()).filter((d) => d.startsWith(SCRATCH_PREFIX) && !before.has(d));
     assert.deepEqual(after, [], `--check left ${after.length} scratch directory(ies) behind`);
 });
 
@@ -455,12 +456,12 @@ test("a refused --check still sweeps, because the throw path is where a leak-fix
     // exception path — a scratch leak surviving its own fix. `--check` against a workspace with no
     // register refuses; the directory must go anyway.
     withTemp((dir) => {
-        const before = new Set(fs.readdirSync(os.tmpdir()).filter((d) => d.startsWith("portulan-ab-")));
+        const before = new Set(fs.readdirSync(os.tmpdir()).filter((d) => d.startsWith(SCRATCH_PREFIX)));
         const sink = { write() {} };
         // A repo root with no evals/ab/register.md: the run refuses rather than returning 0.
         const code = run(["--check", "--repo-root", dir, "--workspace", WORKSPACE], { stdout: sink, stderr: sink, cwd: REPO });
         assert.notEqual(code, 0, "the fixture must actually refuse, or this case passes for the wrong reason");
-        const after = fs.readdirSync(os.tmpdir()).filter((d) => d.startsWith("portulan-ab-") && !before.has(d));
+        const after = fs.readdirSync(os.tmpdir()).filter((d) => d.startsWith(SCRATCH_PREFIX) && !before.has(d));
         assert.deepEqual(after, [], `a refused --check left ${after.length} scratch directory(ies) behind`);
     });
 });

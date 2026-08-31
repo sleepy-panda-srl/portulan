@@ -510,6 +510,38 @@ export const DRILLS = [
             "This is the rail that turns the next one into a red on the commit that adds the file.",
     },
     {
+        rail: "ab-grade",
+        perturb: {
+            file: "cli/ab-grade.mjs",
+            // **The perturbation makes a grader a CONSTANT, which is the rail's actual subject.** Drifting
+            // the register would have been the cheaper drill and would have proved only the byte compare —
+            // a shape `review-loop`, `index` and `ab` already force. What nothing else here watches is a
+            // grader that has stopped reading the arm, and that is the failure this instrument was built
+            // around: the prototype returned "30 records, each with its own provenance and retirement
+            // condition" against an arm that had done nothing at all.
+            //
+            // It is planted in `gradeCuratedLayer` deliberately — the prototype's own scenario family —
+            // and it is an early `return` rather than an edited branch, so it fires whatever the delta,
+            // which is what a constant is.
+            find: '    const scenario = "curated-layer";\n    const anchor = anchored(root, scenario, nonce);',
+            replace:
+                '    const scenario = "curated-layer";\n' +
+                '    if (fs.existsSync(path.join(root, "AGENTS.md"))) return verdict(scenario, "proposals", "a drill-planted constant about the BASE", []);\n' +
+                "    const anchor = anchored(root, scenario, nonce);",
+        },
+        exit: 1,
+        // The tell is level 2's, not level 1's. A constant about the base ALSO fails level 1 and
+        // inertness here, and naming one of those would let a later edit that fixed only the cheap half
+        // pass the drill — while the property this rail is for is that the inverted fixture cannot be
+        // inverted by a grader that ignores the delta.
+        tell: "did not invert the figures",
+        why:
+            "A grader that has stopped reading the arm produces a baseline about file copying, and it does so silently: the " +
+            "prototype this instrument was built around passed level-1 discrimination and was still a constant. Only inversion " +
+            "caught it. This drill plants that constant back and requires the rail to fire — on the level-2 tell specifically, " +
+            "because a fix that restored level 1 alone would leave the arm-blindness in place.",
+    },
+    {
         rail: "tools/github:actions-pinned",
         perturb: {
             file: ".github/workflows/verify.yml",

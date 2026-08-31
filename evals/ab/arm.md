@@ -142,10 +142,21 @@ by comparing the two trees and requiring them identical outside the enumerated t
 ## What is not settled here
 
 - **The construction is built** — [`../../cli/ab.mjs`](../../cli/ab.mjs), session 6b, held by the `ab`
-  verify recipe and a forced-red drill. **Nothing about a baseline changed**: no agent has been run, no
-  scenario is graded and no figure exists. The graders and their level-1, attribution and level-2
-  discrimination fixtures are **session 6c's**; the run is **6d's**, on the maintainer's ruling of
-  2026-08-29 splitting this clause at construction | grading | running.
+  verify recipe and a forced-red drill. **And the graders are built** —
+  [`../../cli/ab-grade.mjs`](../../cli/ab-grade.mjs), session 6c, held by the `ab-grade` recipe, its own
+  forced-red drill and [`graders.md`](graders.md). **Nothing about a baseline changed by either**: no
+  agent has been run, no scenario has been graded against a real turn, and no figure exists. Every
+  fixture 6c ships is a **synthetic** post-turn tree the harness wrote. The run is **6d's**, on the
+  maintainer's ruling of 2026-08-29 splitting this clause at construction | grading | running.
+
+  **What 6c added to this file's subject, because it bears on the arm rather than only on the graders.**
+  A scenario stimulus is planted into an arm, so `arm.md`'s rule 2 reaches it — `corpus.md` says so in
+  terms — and the built stimuli are checked against every mandate under test in both arms. **No scenario
+  plants a `.portulan/`-shaped path into arm B**: the rigged check lives at `check.sh` in the repository
+  root of both arms with identical bytes, because a control that suddenly grew a workspace directory
+  would be a shape hint to the arm that is defined by not having one. The single exception is arm A's
+  `.portulan/verify/build.sh`, re-pointed at that check — the treatment itself, since arm A has a verify
+  recipe and arm B has none, and it authors no sentence.
 - **The file count follows from this spec**, and is derived at construction rather than written here — a
   hand-copied figure whose subject keeps moving is a carrier that fails silently, which this repository
   has repaired for recipe counts, the CLI roster and the review-loop tally already. [`register.md`](register.md)

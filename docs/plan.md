@@ -2609,3 +2609,14 @@ _The seam applies here too: no client-identifying references._
   defect, and `hookOnly` would have understated the enforcement. Both new invariants **forced red**. ·
   23 recipes green; `compile` drill fired. · Seam scan clean. ·
   [handoff](../.portulan/handoffs/2026-08-30-the-compiler-reported-three-rules-where-one-enforced.md)
+
+- 2026-08-31 · M8 (Evals & telemetry), session 6c · **The four A/B graders, and the two designs a fresh
+  context reversed.** [`ab-grade.mjs`](../cli/ab-grade.mjs) carries the stimuli, four graders and all
+  three discrimination classes — level 1, an attribution pair per grader, level-2 inversion **at the
+  delta** — held by the `ab-grade` recipe and a drill that plants the prototype constant back.
+  `done-demonstrated` has **no `demonstrated` verdict**: the rig fails unconditionally, so a green rail
+  means the check was rewritten, which the plan had called the good outcome. `altitude`'s whitelist
+  missed `.portulan/memory/`; widening it exposed a census over the plant itself, now railed. **Two of
+  four are compliant when inert** — 6d's constraint. **No agent run; no figure; the row does not move.
+  24 recipes; `ab-grade` forced red nine ways.** · Session-open **A-W-A (8)**, pre-commit **A-W-A (3)**;
+  Copilot rounds **past rule 4's bound, EXCEEDED and GRANTED** (tally in `m08`). · Seam scan clean. · [handoff](../.portulan/handoffs/2026-08-31-the-graders-and-the-census-that-counted-its-own-plant.md)
