@@ -2631,6 +2631,16 @@ _The seam applies here too: no client-identifying references._
   as compliance and published as **A 9/20 vs B 6/20**. · 25 recipes; `ab-run` forced red. · Seam scan
   clean. · [handoff](../.portulan/handoffs/2026-08-31-b-the-baseline-recorded-at-a-tie.md)
 
+- 2026-08-31 · M5 (Memory lifecycle & librarian) · **Scheduled librarian pass**, filed by
+  `cli/librarian.mjs` rather than by a person: 2 workspaces passed,
+  0 stale record(s), 0 sealed stamp(s) due for re-validation, 0 proposal(s) nagged, no index drift.
+  · Mined: 18 incident(s) with nothing pointing back at them, 75 path(s) drawing
+  repeat review findings, 3 record group(s) citing one incident.
+  · No supervisor checkpoint: a scheduled pass makes no decision for one to grade.
+  · Seam scan clean by construction — this pass composes no new prose at run time, so its
+  diff carries nothing the scan had not already passed.
+  Handoff: [`2026-08-31`](../.portulan/handoffs/2026-08-31-librarian-pass.md).
+
 - 2026-09-01 · M8 (Evals & telemetry), session 7b · **The figure the citation did not carry.** No row
   moves; doctrine work under the gate map's checkpoint sentence. The A/B aggregate stood in **three live
   sentences** as a hand-typed sum nothing checked. [`ab-run.mjs`](../cli/ab-run.mjs) now **derives** it

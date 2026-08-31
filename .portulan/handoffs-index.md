@@ -2,7 +2,7 @@
 
 > Generated from `handoffs/` by `node cli/index.mjs`. Do not edit by hand: it is regenerated
 > and byte-compared, so a hand-edit survives exactly until the next run.
-> 156 handoff(s), newest first. No budget: the series is append-only, so
+> 157 handoff(s), newest first. No budget: the series is append-only, so
 > the only remedy a budget could ask for is one this project rules out.
 
 - 2026-09-01 · [2026-09-01 — the shape check named what it could not see](handoffs/2026-09-01-the-shape-check-named-what-it-could-not-see.md)
@@ -12,6 +12,7 @@
 - 2026-09-01 · [2026-09-01 — the figure the citation did not carry](handoffs/2026-09-01-b-the-figure-the-citation-did-not-carry.md)
 - 2026-09-01 · [2026-09-01 — A release carries an eval result: the mechanism, and the instance it is owed](handoffs/2026-09-01-a-release-carries-an-eval-result.md)
 - 2026-08-31 · [2026-08-31 — the graders, and the census that counted its own plant](handoffs/2026-08-31-the-graders-and-the-census-that-counted-its-own-plant.md)
+- 2026-08-31 · [Handoff — the librarian's scheduled pass](handoffs/2026-08-31-librarian-pass.md)
 - 2026-08-31 · [2026-08-31 — the baseline, recorded at a tie](handoffs/2026-08-31-b-the-baseline-recorded-at-a-tie.md)
 - 2026-08-30 · [Handoff — the compiler reported three rules where one enforced](handoffs/2026-08-30-the-compiler-reported-three-rules-where-one-enforced.md)
 - 2026-08-29 · [Handoff — rule 2 was asked to relax, and the measurement said no](handoffs/2026-08-29-rule-2-was-asked-to-relax-and-the-answer-is-no.md)
