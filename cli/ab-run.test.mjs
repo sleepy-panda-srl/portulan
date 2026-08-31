@@ -38,6 +38,7 @@ import {
     agentVersion,
     credentialChannel,
     dissolvesTheTreatment,
+    limitationsFor,
     journalPath,
     readJournal,
     renderRegister,
@@ -395,6 +396,62 @@ test("the register CITES corpus.md rather than restating the A/B clause's subjec
     // wording — so a paraphrase here would be an unregistered fifth carrier by construction.
     for (const spelling of ["judgement row", "judgement-only", "the A/B clause's subject is"]) {
         assert.ok(!text.includes(spelling), `the register restates the subject: ${spelling}`);
+    }
+});
+
+test("a limitation about a field the capture MAY hold is conditional, never flat", () => {
+    // The model bullet was written unconditionally while `--matrix` had just started recording `model`,
+    // so the next baseline would publish "the model is not recorded" over a snapshot that recorded it.
+    // Prose outrunning the mechanism, in the block whose whole job is to be exactly true. Round 2.
+    const without = snapshotFixture();
+    assert.match(limitationsFor(without).join("\n"), /model that produced these turns is not recorded/);
+
+    const withModel = { ...snapshotFixture(), model: "claude-opus-5" };
+    assert.ok(!limitationsFor(withModel).join("\n").includes("is not recorded"), "a recorded model still published the limitation");
+    // And the fixed block is carried either way.
+    for (const snap of [without, withModel]) assert.equal(limitationsFor(snap)[0], LIMITATIONS[0]);
+});
+
+test("the register PRINTS the model, present or absent — a condition in the JSON only is unread", () => {
+    assert.match(renderRegister({ ...snapshotFixture(), model: "claude-opus-5" }), /\*\*Model:\*\* `claude-opus-5`/);
+    assert.match(renderRegister(snapshotFixture()), /\*\*Model:\*\* \*\*not recorded\*\*/);
+});
+
+test("a truncated `said` is MARKED, and a capture that predates the marker says so", () => {
+    withTemp((dir) => {
+        const long = runTurn({
+            armRoot: dir,
+            operatorDir: path.join(dir, "op"),
+            prompt: "x",
+            agent: stubAgent(dir, { exit: 0, body: `printf 'y%.0s' $(seq 1 400)` }),
+        });
+        assert.equal(long.saidTruncated, true);
+        assert.ok(long.said.endsWith("…"), "a mid-word cut with no marker leaves a terse message and a clipped one indistinguishable");
+
+        const short = runTurn({ armRoot: dir, operatorDir: path.join(dir, "op2"), prompt: "x", agent: stubAgent(dir, { exit: 0, body: 'echo "brief"' }) });
+        assert.equal(short.saidTruncated, false);
+        assert.ok(!short.said.endsWith("…"));
+
+        // The committed capture predates the marker and its register must say so rather than imply the
+        // rows are whole.
+        const old = snapshotFixture();
+        old.turns[0].said = "z".repeat(300);
+        assert.match(limitationsFor(old).join("\n"), /NOT marked as such/);
+    });
+});
+
+test("verify REPORTS a malformed capture instead of crashing on it", () => {
+    // The recipe exists to diagnose bad captures, and `verify()` reached straight for `.length`, `.map`
+    // and `for..of` — so a snapshot with no `turns` threw a TypeError and exited 2, *could not run*,
+    // instead of reporting the red it was looking at. Round 2.
+    for (const [label, snap] of [
+        ["absent turns", { ...snapshotFixture(), turns: undefined }],
+        ["turns as an object", { ...snapshotFixture(), turns: {} }],
+        ["k as a string", { ...snapshotFixture(), k: "five" }],
+        ["cells absent", { ...snapshotFixture(), cells: undefined }],
+    ]) {
+        const red = verify(snap);
+        assert.ok(red.length > 0, `${label} produced no finding`);
     }
 });
 

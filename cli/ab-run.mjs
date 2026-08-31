@@ -223,10 +223,40 @@ export const LIMITATIONS = [
     "  blocking and releasing, which corroborates and is prose rather than an instrument. `compile` warns",
     "  that a missing hook fails open, so an arm whose hook were unreachable would silently be arm B — and",
     "  nothing here would show it.",
-    "- **The model that produced these turns is not recorded.** The snapshot names the CLI but not the",
-    "  model, and `ANTHROPIC_MODEL` crosses into an isolated arm untouched. This module's own bar is that a",
-    "  baseline naming no host is a figure with no conditions; this one names the host and not the model.",
-];
+]
+
+/**
+ * The limitations **this** snapshot carries — the fixed block, plus whatever is true of this capture.
+ *
+ * **A limitation stated unconditionally about a field the capture may or may not hold is a false
+ * sentence waiting for its first counterexample.** The model bullet was written flat, and `--matrix`
+ * had just started recording `model`: the next baseline would have published *"the model is not
+ * recorded"* over a snapshot that recorded it. That is this milestone's own signature defect — prose
+ * outrunning the mechanism — in the block whose whole job is to be exactly true. Copilot round 2 on
+ * [#377](https://github.com/sleepy-panda-srl/portulan/pull/377).
+ */
+export function limitationsFor(snap) {
+    const lines = [...LIMITATIONS];
+    if (!snap.model) {
+        lines.push(
+            "- **The model that produced these turns is not recorded.** This capture names the CLI and not the",
+            "  model, and `ANTHROPIC_MODEL` crosses into an isolated arm untouched. This module's own bar is that",
+            "  a baseline naming no host is a figure with no conditions; this one names the host and not the model.",
+        );
+    }
+    if (snap.turns?.some?.((t) => t.saidTruncated)) {
+        lines.push(
+            "- **Some `said` rows in the capture are truncated**, and are marked `…` where they are. They are",
+            "  diagnostic prose, never graded — `evals/ab/corpus.md` grades the tree an arm left behind.",
+        );
+    } else if (snap.turns?.some?.((t) => typeof t.said === "string" && t.said.length >= 300)) {
+        lines.push(
+            "- **Some `said` rows in the capture are truncated mid-word and are NOT marked as such** — this",
+            "  capture predates the marker. They are diagnostic prose, never graded.",
+        );
+    }
+    return lines;
+};
 
 // ---------------------------------------------------------------- the matrix
 
@@ -315,7 +345,13 @@ export function runTurn({ armRoot, operatorDir, prompt, agent = "claude", env = 
         // refusal to act. `../evals/ab/corpus.md` grades the tree an arm left behind, never its prose.
         // stderr FIRST, and never graded: a turn that failed is usually explained there while stdout is
         // empty, and reporting only stdout is how "it hung" gets recorded instead of the reason.
-        said: [(result.stderr ?? "").trim(), (result.stdout ?? "").trim()].filter(Boolean).join(" | ").split("\n")[0]?.slice(0, 300) ?? "",
+        ...(() => {
+            // **Truncation is MARKED.** A mid-word cut with no marker leaves a later reader unable to tell
+            // a terse message from a clipped one — and the first capture has several. Copilot round 2.
+            const whole = [(result.stderr ?? "").trim(), (result.stdout ?? "").trim()].filter(Boolean).join(" | ").split("\n")[0] ?? "";
+            const saidTruncated = whole.length > 300;
+            return { said: saidTruncated ? `${whole.slice(0, 300)}…` : whole, saidTruncated };
+        })(),
     };
 }
 
@@ -421,6 +457,10 @@ export function renderRegister(snap) {
     lines.push(`- **Operator environment:** isolated, a fresh home and config directory **per turn** (${snap.turns.length} of them)`);
     lines.push(`- **Credential channel:** \`${snap.credentialChannel}\` — one of three distinguishable auth paths`);
     lines.push(`- **Agent:** \`${snap.agentVersion}\``);
+    // Printed here or a reader has to open the JSON to find it, which is where a condition goes to be
+    // unread. Absent is stated as absent rather than omitted, because a missing row and a missing fact
+    // look identical.
+    lines.push(`- **Model:** ${snap.model ? `\`${snap.model}\`` : "**not recorded** — see the limitations below"}`);
     lines.push(`- **Invocation, identical for both arms:** \`claude ${snap.invocation.join(" ")} <prompt>\``);
     lines.push(`- **Prompt:** \`stageScenario()\`'s own, verbatim. This runner authors no stimulus text.`);
     lines.push(`- **Per-turn timeout:** ${Math.round(snap.turnTimeoutMs / 1000)}s`);
@@ -459,7 +499,7 @@ export function renderRegister(snap) {
         );
     }
     lines.push("");
-    lines.push(...LIMITATIONS);
+    lines.push(...limitationsFor(snap));
     lines.push("");
     return `${lines.join("\n")}\n`;
 }
@@ -480,6 +520,19 @@ export function verify(snap) {
     // "k: 4 … ruled by the maintainer" over a ruling that said five. Demonstrated at the pre-commit
     // checkpoint, which is where a docblock's claim about its own rail should be attacked.
     if (snap.k !== K) red.push(`the snapshot records k=${snap.k} where the maintainer ruled ${K} — a matrix at another k is another experiment, and the ruling is not the snapshot's to restate`);
+    // **A malformed capture is what this recipe exists to diagnose, so it must not crash on one.**
+    // `verify()` reached straight for `.length`, `.map` and `for..of`, so a snapshot with no `turns`, or
+    // an older format, threw a TypeError and exited 2 — *could not run* — instead of reporting the red it
+    // was looking at. Copilot round 2.
+    if (!Array.isArray(snap.turns)) {
+        red.push(`the snapshot's \`turns\` is ${snap.turns === undefined ? "absent" : `a ${typeof snap.turns}`}, not an array — this capture cannot be read as a baseline`);
+        return red;
+    }
+    if (!Array.isArray(snap.cells)) red.push("the snapshot's `cells` is not an array — the published figures cannot be compared with a fold of the turns");
+    if (!Number.isInteger(snap.k) || snap.k < 1) {
+        red.push(`the snapshot records k as ${JSON.stringify(snap.k)}, which is not a run count`);
+        return red;
+    }
     const expected = turnIds(snap.k);
     if (snap.turns.length !== expected.length) red.push(`the snapshot holds ${snap.turns.length} turn(s) where k=${snap.k} over ${holdingScenarios().length} scenario(s) and two arms needs ${expected.length}`);
     const seen = new Set(snap.turns.map((t) => `${t.scenario}\0${t.arm}\0${t.run}`));

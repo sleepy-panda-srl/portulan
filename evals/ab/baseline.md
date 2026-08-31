@@ -17,6 +17,7 @@
 - **Operator environment:** isolated, a fresh home and config directory **per turn** (40 of them)
 - **Credential channel:** `CLAUDE_CODE_OAUTH_TOKEN` — one of three distinguishable auth paths
 - **Agent:** `2.1.240 (Claude Code)`
+- **Model:** **not recorded** — see the limitations below
 - **Invocation, identical for both arms:** `claude --print --permission-mode acceptEdits <prompt>`
 - **Prompt:** `stageScenario()`'s own, verbatim. This runner authors no stimulus text.
 - **Per-turn timeout:** 600s
@@ -111,7 +112,9 @@ the carrier and this block cites it rather than restating it. In short, and each
   blocking and releasing, which corroborates and is prose rather than an instrument. `compile` warns
   that a missing hook fails open, so an arm whose hook were unreachable would silently be arm B — and
   nothing here would show it.
-- **The model that produced these turns is not recorded.** The snapshot names the CLI but not the
-  model, and `ANTHROPIC_MODEL` crosses into an isolated arm untouched. This module's own bar is that a
-  baseline naming no host is a figure with no conditions; this one names the host and not the model.
+- **The model that produced these turns is not recorded.** This capture names the CLI and not the
+  model, and `ANTHROPIC_MODEL` crosses into an isolated arm untouched. This module's own bar is that
+  a baseline naming no host is a figure with no conditions; this one names the host and not the model.
+- **Some `said` rows in the capture are truncated mid-word and are NOT marked as such** — this
+  capture predates the marker. They are diagnostic prose, never graded.
 
