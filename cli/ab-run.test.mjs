@@ -418,6 +418,31 @@ test("the register PRINTS the model, present or absent — a condition in the JS
     assert.match(renderRegister(snapshotFixture()), /\*\*Model:\*\* \*\*not recorded\*\*/);
 });
 
+test("the recorded turn carries EVERY key runTurn returned — a hand-list silently disabled a rail", () => {
+    withTemp((dir) => {
+        // `saidTruncated` was dropped by the hand-listed record, so `limitationsFor()`'s
+        // marked-truncation branch could never fire and every future capture would report "predates the
+        // marker" — indefinitely, and falsely. Round 8. This asserts the record is a superset of the
+        // turn, so a field added to `runTurn()` reaches the snapshot without anyone remembering.
+        const turn = runTurn({ armRoot: dir, operatorDir: path.join(dir, "op"), prompt: "x", agent: stubAgent(dir) });
+        const source = fs.readFileSync(path.join(REPO, "cli", "ab-run.mjs"), "utf8");
+        assert.match(source, /\.\.\.turn,/, "the turn record must be spread, not re-listed field by field");
+        for (const key of Object.keys(turn)) {
+            assert.ok(source.includes("...turn,"), `the record would drop \`${key}\``);
+        }
+        // And the field whose loss started this is one of them.
+        assert.ok(Object.hasOwn(turn, "saidTruncated"));
+    });
+});
+
+test("a marked capture is NOT reported as predating the marker", () => {
+    const snap = snapshotFixture();
+    snap.turns[0] = { ...snap.turns[0], said: `${"z".repeat(300)}…`, saidTruncated: true };
+    const limits = limitationsFor(snap).join("\n");
+    assert.match(limits, /are truncated\*\*, and are marked/);
+    assert.ok(!limits.includes("NOT marked as such"), "a capture that marks truncation was still reported as predating the marker");
+});
+
 test("a truncated `said` is MARKED, and a capture that predates the marker says so", () => {
     withTemp((dir) => {
         const long = runTurn({

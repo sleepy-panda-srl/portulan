@@ -811,11 +811,18 @@ export function run(argv = [], { stdout = process.stdout, stderr = process.stder
             turns.push({
                 ...id,
                 nonce,
-                completed: turn.completed,
-                exit: turn.exit,
-                timedOut: turn.timedOut,
-                wallMs: turn.wallMs,
-                said: turn.said,
+                // **The turn is SPREAD, not re-listed field by field.** It was enumerated by hand, and
+                // the hand-list dropped `saidTruncated` — so `limitationsFor()`'s marked-truncation
+                // branch could never fire and **every future capture would report "predates the
+                // marker"**, indefinitely and falsely. That is the hand-listing defect this pull request
+                // has now met at four sites, in the one place it silently disables a rail rather than
+                // merely going stale. Copilot round 8 on
+                // [#377](https://github.com/sleepy-panda-srl/portulan/pull/377).
+                //
+                // Spreading means a field added to `runTurn()`'s answer reaches the record without
+                // anyone remembering to add it here, and `./ab-run.test.mjs` asserts the record carries
+                // every key the turn returned.
+                ...turn,
                 // Recorded per turn, not only per run: the journal has to be able to tell a turn taken
                 // under one invocation from a turn taken under another.
                 invocation: [...INVOCATION],
