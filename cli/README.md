@@ -16,6 +16,41 @@ that differs from its staged blob. _(The roster the package
 ships is narrower than the tree and is not restated here as a number — `npm pack --dry-run` derives
 it, and a hand-copied count is the thing that keeps going wrong in this file.)_
 
+**What the payload leaves behind, and the criterion it leaves it behind on.** `package.json`'s `files`
+array excludes by name on top of the directory roster, under the rule set at the first publish — *the
+package ships the product, not the workshop*: a file that is not part of the product surface that an
+`npx` user runs does not travel. The suite and its fixtures went first, then `eval-bundle` and its licence
+template, on the eval payload's own reasoning — an evaluee receives the stamped licence, never the
+stamp press. `ab`, `ab-run` and `ab-grade` joined them on 2026-09-01.
+
+**The argument for the A/B trio is that the rig has one subject, and it is not the reader's
+repository.** `ab.mjs`'s `DISPOSITIONS` classifies *this* workspace's `.portulan/` path by path, and
+the table is compiled into the module rather than read from beside it: pointed at an adopter's
+workspace `--check` exits 2 and names every disposition that matched nothing. There is no
+configuration under which the trio does a consumer's tree any good — `ab-run`'s `SNAPSHOT` is one
+baseline, of one arm, on one date, and `ab.mjs` refuses to build an arm it cannot classify entirely.
+
+_**Not** because their registers resolve under `evals/`, which contributes nothing to the payload.
+That reasoning is already ruled out in this tree, and the exclusion holds **despite** it rather than
+because of it:_ [`eval-bundle.mjs`](eval-bundle.mjs)'s `EXCLUDED_TOP_LEVEL.evals` settled on 2026-08-24
+that **the tool is product and the policy it reads is this team's** — `goldens` ships without its
+corpus the way `compile` ships without `gates.json`. That distinction carries the whole load here:
+`readCorpus(repoRoot, dir = CORPUS_DIR)` takes its directory as an argument, so an adopter can point it
+somewhere; `ab.mjs`'s disposition table takes nothing and can be pointed nowhere.
+
+_**The exclusion is narrower than the criterion, and the gap is wider than this list suggests.** The
+transitive import closure of [`portulan.mjs`](portulan.mjs) and its eight subcommands, less the two
+compiled-hook runners, leaves **thirteen** shipped modules reachable from nothing the package exposes:
+`control-chars`, `drills`, `fuzz-shell`, `goldens`, `librarian`, `mutants`, `pack-identity`,
+`pack-version`, `review-meter`, `rule-carriers`, `skill-goldens`, `telemetry` and `version-carriers`.
+Most are the `goldens` shape and the 2026-08-24 rule keeps them; none has been put the question the
+trio was, and whether any follows is the maintainer's call — the same sentence this file already makes
+about a ninth subcommand. What keeps the question invisible is that **nothing derives payload
+membership**: `pack-identity` holds every packed file byte-identical to its source and is silent on
+which files those are — measured, by staging a new `cli/` module and watching it join the tarball under
+a green — so the `!` lines above are a hand-maintained roster of exactly the kind this file retired
+everywhere else._
+
 **All eight dispatch.** The entry point calls each one's exported `run` and returns the code
 unchanged.
 
