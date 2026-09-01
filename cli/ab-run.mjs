@@ -507,11 +507,17 @@ export function renderRegister(snap) {
     // already holds every other line, and registered as `ab-baseline-figures` in
     // `.portulan/rule-carriers.json`.
     //
-    // `.find()` per scenario rather than a `filter().reduce()` over `snap.cells`: a filter would silently
-    // UNDER-COUNT a capture missing a cell and publish a smaller total as though it were measured, while
-    // this throws and `verifyShape()` turns that into *cannot be rendered from this capture*. A missing
-    // `compliant` folds to `NaN`, which the same function's hole check already refuses. Both guards are
-    // inherited rather than restated — the totals get the coverage the rows have.
+    // Looked up per scenario rather than folded with a `filter().reduce()` over `snap.cells`: a filter
+    // would silently UNDER-COUNT a capture missing a cell and publish a smaller total as though it were
+    // measured. A missing `compliant` folds to `NaN`, which `verifyShape()`'s hole check already refuses.
+    //
+    // **The missing-cell case is thrown EXPLICITLY, and the first spelling of this got it wrong.** That
+    // comment said "`.find()` throws" — `Array.prototype.find()` returns `undefined`, and what threw was
+    // the dereference one line later, so the sentence described a mechanism the code did not have and the
+    // operator got `Cannot read properties of undefined (reading 'compliant')` for a capture defect. The
+    // throw is now deliberate and says which cell is absent; `verifyShape()` still turns it into *cannot
+    // be rendered from this capture*, so the guard is inherited rather than restated. Copilot, #379
+    // round 1, on both this comment and its twin in the suite.
     //
     // The fold iterates `holdingScenarios()` while the rows table above iterates `snap.cells`, and the
     // two are not the same list. A capture carrying an EXTRA cell — a scenario this build no longer
@@ -519,7 +525,12 @@ export function renderRegister(snap) {
     // the turns), but `--write` runs `verifyShape()` only, so on that path alone a foreign cell can be
     // printed above a total that does not include it. Named rather than fixed: `holdingScenarios()` is
     // the right denominator, and silently summing whatever a capture happens to carry would be worse.
-    const cellsFor = (arm) => holdingScenarios().map((s) => snap.cells.find((c) => c.scenario === s.id && c.arm === arm));
+    const cellsFor = (arm) =>
+        holdingScenarios().map((s) => {
+            const cell = snap.cells.find((c) => c.scenario === s.id && c.arm === arm);
+            if (cell === undefined) throw new Error(`the capture publishes no cell for \`${s.id}\`/${arm}, so no total can be folded from it`);
+            return cell;
+        });
     const totalFor = (arm) => cellsFor(arm).reduce((n, c) => n + c.compliant, 0);
     const totalA = totalFor("a");
     const totalB = totalFor("b");

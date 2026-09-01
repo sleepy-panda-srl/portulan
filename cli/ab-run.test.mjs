@@ -660,11 +660,13 @@ test("the aggregate carries the caveat that it is a sum of counts and not a rate
 
 test("a capture missing a cell is REFUSED rather than published with a smaller total", () => {
     // The failure mode a `filter().reduce()` would have had: a missing cell silently under-counts and
-    // the register publishes a total nobody measured. `.find()` throws, and verifyShape turns that into
-    // a refusal — the total inherits the coverage the rows already have.
+    // the register publishes a total nobody measured. Instead the renderer throws EXPLICITLY, naming the
+    // absent cell, and verifyShape turns that into a refusal — the total inherits the coverage the rows
+    // already have. (An earlier comment here said "`.find()` throws"; it returns `undefined`, and the
+    // throw was an incidental dereference. Copilot, #379 round 1.)
     const snap = snapshotFixture();
     snap.cells = snap.cells.filter((c) => !(c.scenario === "altitude" && c.arm === "b"));
-    assert.throws(() => renderRegister(snap));
+    assert.throws(() => renderRegister(snap), /publishes no cell for `altitude`\/b/);
     // The refusal is the structural one `verifyShape` already had for this capture — the totals did not
     // need a new message, they needed to fail the same way the rows do. Asserted at the sentence the
     // code actually emits rather than one written from memory.
