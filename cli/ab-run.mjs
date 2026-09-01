@@ -486,7 +486,15 @@ export function renderRegister(snap) {
     // passes, so a baseline recorded with a non-default agent published a condition that was simply
     // false. Absent is printed as `<agent>` and named in the limitations, the same shape as `model`,
     // rather than defaulting to a name the capture never recorded. Copilot round 9.
-    lines.push(`- **Invocation, identical for both arms:** \`${snap.agent ?? "<agent>"} ${snap.invocation.join(" ")} <prompt>\``);
+    //
+    // **`??` is gone, and the branch is on `=== undefined` alone.** The fallback swallowed `null` as
+    // well as absence; the branch does not, and that is deliberate — `${null}` renders the literal
+    // string `null` inside the backticked command line, which is a well-formed document the
+    // `undefined`/`NaN` probe below cannot see. So `agent`'s by-name check is LOAD-BEARING rather than
+    // belt-and-braces: it is the only thing standing between a capture with `agent: null` and a
+    // published invocation reading `` `null --print …` ``. `parse()` accepts `--agent ""` too, which is
+    // why that check reads *non-empty* string.
+    lines.push(`- **Invocation, identical for both arms:** \`${snap.agent === undefined ? "<agent>" : snap.agent} ${snap.invocation.join(" ")} <prompt>\``);
     lines.push(`- **Prompt:** \`stageScenario()\`'s own, verbatim. This runner authors no stimulus text.`);
     lines.push(`- **Per-turn timeout:** ${Math.round(snap.turnTimeoutMs / 1000)}s`);
     lines.push("");
@@ -580,8 +588,15 @@ export function renderRegister(snap) {
     lines.push("| Scenario | Arm | run | verdict | attempted | exit | ms |");
     lines.push("|---|---|---|---|---|---|---|");
     for (const t of snap.turns) {
+        // **`??` is gone here too, and this was the worse of the two.** A turn whose `verdict` the
+        // capture simply lacks was published as `could-not-attribute` — not a placeholder, but one of
+        // this module's three named states, asserted about a turn nothing had graded. `null` is the
+        // RECORDED could-not-attribute, which is `aggregate()`'s own definition one screen up, so the
+        // branch tests it strictly and an absent verdict now renders a hole the probe refuses. The
+        // backticks the `??` form produced are kept: byte-neutral for the committed capture, which
+        // records no null verdict, and not byte-neutral for the next one.
         lines.push(
-            `| \`${t.scenario}\` | ${t.arm.toUpperCase()} | ${t.run} | ${t.completed ? `\`${t.verdict ?? "could-not-attribute"}\`` : "**did-not-complete**"} | ` +
+            `| \`${t.scenario}\` | ${t.arm.toUpperCase()} | ${t.run} | ${t.completed ? `\`${t.verdict === null ? "could-not-attribute" : t.verdict}\`` : "**did-not-complete**"} | ` +
                 `${t.attempted === null ? "—" : t.attempted} | ${t.exit === null ? "—" : t.exit} | ${t.wallMs} |`,
         );
     }
@@ -590,6 +605,54 @@ export function renderRegister(snap) {
     lines.push("");
     return `${lines.join("\n")}\n`;
 }
+
+/**
+ * **The fields `renderRegister()` reads as a BRANCH rather than as a value** — the derived probe's
+ * blind set, and the whole of it.
+ *
+ * A branch-read field is one where deleting **every** occurrence renders a document with no
+ * `undefined` and no `NaN` in it, that does not throw, and whose **bytes differ**: a perfectly
+ * well-formed register in which only the meaning has been invented. The probe at the foot of
+ * `verifyShape()` cannot see any of these, and it sees everything else.
+ *
+ * **This list is declared here and MEASURED in the test, both ways** — a name the probe already covers
+ * fails as redundant, and a branch-read leaf nobody named fails as short. That two-way audit is what
+ * separates this from the hand-list it replaces: it is not maintained, it is checked, against the
+ * renderer, on every run. `ab-run.test.mjs` sweeps `evals/ab/baseline.json` and an enriched fixture and
+ * requires this set to equal the union of what it measures over the two.
+ *
+ * **This array is a list of field names. The list of what the check still CANNOT see is four items and
+ * lives in `verifyShape()`'s own docblock below** — they are different lists and a pointer that confuses
+ * them sends a reader to a frozen array of names to look for a residue that is not there.
+ */
+export const BRANCH_READ = Object.freeze([
+    "agent",
+    "invocation[]",
+    "model",
+    "source.clean",
+    "turns[].completed",
+    "turns[].said",
+    "turns[].saidTruncated",
+]);
+
+/**
+ * The three of those the committed capture does not record — **permitted absent, checked if present.**
+ *
+ * `evals/ab/baseline.json` is a capture of events that do not repeat: it cannot be re-captured and it
+ * is not edited, so requiring these three would red a record that must not move.
+ *
+ * **Two of the three announce their own absence and the third does not.** `agent` and `model` each get a
+ * limitation bullet, which is why the register says in its own voice that neither is recorded. A missing
+ * `saidTruncated` is announced only when some `said` reaches the length that fires the other truncation
+ * bullet — with every row short, absence is **silent**. The committed capture happens to carry four rows
+ * at exactly that length, which is why it reads correctly today; that is luck, not mechanism, and the
+ * off-by-one behind it is filed to the maintainer rather than repaired here.
+ *
+ * **The test audits this set too**: each member must be absent from the committed capture, and every
+ * `BRANCH_READ` field that is NOT a member must be present in it. So the exemption is derived from the
+ * artifact rather than asserted about it, and it shrinks by itself when a capture records more.
+ */
+export const PERMITTED_ABSENT = Object.freeze(["agent", "model", "turns[].saidTruncated"]);
 
 /**
  * The structural half — everything `renderRegister()` needs before it may safely touch a snapshot.
@@ -602,6 +665,38 @@ export function renderRegister(snap) {
  * [`../.portulan/proposals/0020`](../.portulan/proposals/0020-a-fix-is-not-done-at-the-site-it-was-found.md)
  * for the third time in this milestone. Copilot round 3 on
  * [#377](https://github.com/sleepy-panda-srl/portulan/pull/377).
+ *
+ * **This is also the check `--write` runs, and `--write` runs no other.** `verify()` is `--verify`-only,
+ * so a by-name check placed there would not guard the mode that publishes the register. Everything
+ * below is here for that reason as much as for tidiness.
+ *
+ * ## What this check does NOT see, stated as a list rather than as a number
+ *
+ * It said *"there is exactly one"* — a boolean — and it was false **inside its own frame and outside
+ * it**. Inside: `turns[].completed` is a boolean, was invisible, and rendered `**did-not-complete**`
+ * about a turn that recorded no such thing. Outside: `turns[].verdict`, `turns[].said` and the
+ * invocation's elements are not booleans and were invisible too — and a missing `verdict` was published
+ * as `could-not-attribute`, one of this module's three named states, asserted about a turn nothing had
+ * graded. So the count was wrong, and the frame that produced the count was wrong.
+ * Found the only way this class ever is — by deleting every field the renderer reads, one at a time,
+ * in a context that had not written the check.
+ *
+ * So, measured rather than reasoned, four things remain uncaught and none of them is closed by
+ * pretending otherwise:
+ *
+ *   1. **`agent`, `model` and `turns[].saidTruncated` deleted from a capture that recorded them.**
+ *      `PERMITTED_ABSENT` says why: absence is indistinguishable from the 2026-08-31 vintage, and the
+ *      only mechanism that would separate them is a declared capture format the maintainer has not
+ *      ruled on. Filed, not invented here.
+ *   2. **A column the producer stops writing.** Row homogeneity catches a row that diverges from its
+ *      neighbours; forty rows that agree on missing the same field agree.
+ *   3. **A future branch on a field neither swept artifact carries.** The two-way audit measures the
+ *      leaves of the capture and the fixture, so a renderer that starts reading something absent from
+ *      both is not measured — the staleness moves from the check to the fixture rather than vanishing.
+ *      This is exactly what `agent` and `model` were, and the answer is that enriching the fixture is a
+ *      hand step that the sweep's own totality claim does not cover.
+ *   4. **Shape is not truth.** `source.clean: true` over a dirty tree, or a `captured` naming the wrong
+ *      day, passes every check in this file. Nothing here reads the world; it reads the capture.
  */
 export function verifyShape(snap) {
     const red = [];
@@ -630,13 +725,110 @@ export function verifyShape(snap) {
     for (const field of ["source", "rulings"]) {
         if (snap?.[field] === undefined || snap[field] === null) red.push(`the snapshot has no \`${field}\`, which the register prints among the run's conditions`);
     }
-    // **A BOOLEAN's absence is invisible to the derived check below, and that is the one gap it has.**
-    // `source.clean` renders as a branch rather than as a value, so a capture missing it produces a
-    // perfectly well-formed register that says *"a dirty tree"* — a claim about the capture the capture
-    // never made. The document has no hole in it; only its meaning is invented. Every field that renders
-    // as a branch therefore needs its type checked explicitly, and there is exactly one.
+    // ── THE BRANCH-READ FIELDS, BY NAME. `BRANCH_READ` is the declaration; this is the check. ──────
+    //
+    // Every one of these is invisible to the derived probe below and to nothing else. A name the probe
+    // already covers is NOT added here: that would be two carriers of one policy, and the test audits
+    // the set in both directions so a redundant name fails as loudly as a missing one.
     if (snap?.source !== undefined && snap?.source !== null && typeof snap.source.clean !== "boolean") {
         red.push("the snapshot's `source.clean` is not a boolean — it renders as a branch, so its absence would silently publish a claim about the tree that the capture never made");
+    }
+    // The three the 2026-08-31 capture does not record: **checked if present, permitted if absent**, and
+    // `PERMITTED_ABSENT` says why. Present-and-wrong is the half that can be closed, and it is not
+    // hypothetical — `parse()` accepts `--agent ""`, and `run()` writes `model: … || null`.
+    if (snap?.agent !== undefined && (typeof snap.agent !== "string" || snap.agent === "")) {
+        red.push("the snapshot's `agent` is present but is not a non-empty string — it renders inside the recorded command line, where `null` would publish an invocation reading `null --print …`");
+    }
+    if (snap?.model !== undefined && snap.model !== null && (typeof snap.model !== "string" || snap.model === "")) {
+        red.push("the snapshot's `model` is present but is neither `null` nor a non-empty string — `null` is how *the operator set none* is recorded, and anything else renders as a condition nobody measured");
+    }
+    if (Array.isArray(snap?.turns)) {
+        for (const t of snap.turns) {
+            const id = `(${t?.scenario}, ${t?.arm}, run ${t?.run})`;
+            if (typeof t?.completed !== "boolean") {
+                red.push(`${id} carries no boolean \`completed\` — it renders as a branch, so its absence would publish **did-not-complete** about a turn that recorded no such thing`);
+            }
+            if (typeof t?.said !== "string") {
+                red.push(`${id} carries no string \`said\` — the limitation block reads its length to decide whether this capture predates the truncation marker`);
+            }
+            if (t?.saidTruncated !== undefined && typeof t.saidTruncated !== "boolean") {
+                red.push(`${id} carries a \`saidTruncated\` that is not a boolean — it selects which truncation limitation the register publishes`);
+            }
+            // **A VALUE check, not a branch-read one**, and deliberately outside the audited set: the
+            // sweep deletes fields, and neither of the two hazards below is a deletion. An absent
+            // `verdict` renders a hole now that the `??` is gone; `verdict: ""` renders empty backticks,
+            // and `null` is the recorded could-not-attribute that `aggregate()` counts.
+            if (t?.verdict !== null && (typeof t?.verdict !== "string" || t.verdict === "")) {
+                red.push(`${id} carries a \`verdict\` that is neither \`null\` nor a non-empty string — \`null\` is how *could-not-attribute* is recorded, and the register prints the rest verbatim`);
+            }
+        }
+    }
+    // The same class one level up: a `null` element survives a JSON round-trip and `join(" ")` renders
+    // it as nothing, so the published command line is silently SHORTER than the one that ran.
+    // **`every()` over an EMPTY array is `true`, and that was this check's own blind spot** — the
+    // two-way audit below caught it on the first run: emptying `invocation` renders the agent's name
+    // followed by nothing at all — `` `<agent>  <prompt>` `` over the committed capture — a command line
+    // carrying none of the flags the turns ran under, with no hole for the probe to see.
+    // Non-empty is checked before the elements are.
+    if (Array.isArray(snap?.invocation) && snap.invocation.length === 0) {
+        red.push("the snapshot records an empty `invocation` — the register would publish a command line carrying none of the flags the turns actually ran under");
+    }
+    if (Array.isArray(snap?.invocation) && !snap.invocation.every((a) => typeof a === "string" && a !== "")) {
+        red.push("the snapshot's recorded `invocation` holds an element that is not a non-empty string — `join(\" \")` renders it as nothing, publishing a shorter command line than the one the turns ran under");
+    }
+
+    // **The vacuity one level up, and it is the same defect this file just credited itself with
+    // closing.** `for (const t of snap.turns)` over an empty array runs the by-name checks zero times,
+    // and the homogeneity loop below skips an empty one — so `turns: []` with the cells left intact was
+    // shape-VALID, and `--write` published a register carrying eight full figure rows, an empty per-turn
+    // table and *"a fresh home and config directory per turn (0 of them)"*. `verify()` catches it, but
+    // `--write` runs this check and no other, which is the whole reason the by-name checks live here.
+    // Found at the pre-commit checkpoint, by someone reading the comment above and asking where else the
+    // same sentence was true. `cells` gets the same guard for the same reason.
+    if (Array.isArray(snap?.turns) && snap.turns.length === 0) {
+        red.push("the snapshot records no turns at all — a baseline with an empty matrix publishes figures over a denominator nothing measured");
+    }
+    if (Array.isArray(snap?.cells) && snap.cells.length === 0) {
+        red.push("the snapshot publishes no cells at all — the register's figure tables would render empty beneath their headings");
+    }
+    // **A SUBSTITUTION, not a deletion, so the sweep cannot reach it**: `Math.round(null / 1000)` is
+    // `0`, so a null timeout publishes *"Per-turn timeout: 0s"* — a plausible invented condition with no
+    // hole in it. Same shape as `agent: null`, which is guarded a few lines up for the same reason.
+    if (snap?.turnTimeoutMs !== undefined && (!Number.isInteger(snap.turnTimeoutMs) || snap.turnTimeoutMs <= 0)) {
+        red.push("the snapshot's `turnTimeoutMs` is not a positive integer — it renders through `Math.round`, so `null` would publish a per-turn timeout of `0s` that no run was given");
+    }
+
+    // ── ROW HOMOGENEITY — derived, and it names no field. ──────────────────────────────────────────
+    //
+    // Every turn must carry the same key set as every other turn, and likewise every cell, and
+    // `verdicts` within a scenario. This closes `nonce`, `timedOut`, `evidence`, `invocation`,
+    // `saidTruncated` **and every field added later**, without listing one of them — which is the only
+    // form of totality this file has not yet had to rewrite.
+    //
+    // **Its reach is stated rather than implied: it catches a row that diverges from its neighbours,
+    // NOT a column the producer stopped writing.** Measured — `evidence` deleted from one of forty
+    // rows reds here; deleted from all forty, nothing fires. That residue is named in `verifyShape`'s
+    // docblock rather than papered over, because a mechanism credited with more than it does is the
+    // "exactly one" claim in a new costume.
+    const keysOf = (o) => Object.keys(o ?? {}).sort().join(",");
+    for (const [label, rows] of [["turn", snap?.turns], ["cell", snap?.cells]]) {
+        if (!Array.isArray(rows) || rows.length === 0) continue;
+        const shapes = new Set(rows.map(keysOf));
+        if (shapes.size > 1) {
+            red.push(`the snapshot's ${label} rows do not all carry the same fields (${shapes.size} different shapes) — a row missing what its neighbours record is an edit, not a capture`);
+        }
+    }
+    if (Array.isArray(snap?.cells)) {
+        const byScenario = new Map();
+        for (const c of snap.cells) {
+            if (!byScenario.has(c?.scenario)) byScenario.set(c?.scenario, new Set());
+            byScenario.get(c?.scenario).add(keysOf(c?.verdicts));
+        }
+        // Per scenario, not globally: each scenario has its OWN verdict vocabulary, so the eight cells
+        // carry four different `verdicts` shapes by construction.
+        for (const [scenario, shapes] of byScenario) {
+            if (shapes.size > 1) red.push(`the cells for \`${scenario}\` publish different \`verdicts\` vocabularies — one scenario has one vocabulary`);
+        }
     }
     if (red.length > 0) return red;
 

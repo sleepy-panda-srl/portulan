@@ -4,6 +4,13 @@
 # One check, which is several questions `../../cli/ab-run.mjs --verify` answers in one pass, **and it
 # runs no agent**:
 #   capture     `../../evals/ab/baseline.json` declares itself a baseline capture.
+#   shape       every field the register renders as a BRANCH rather than as a value is checked by name,
+#               because a branch leaves no hole for the derived probe to find — absence would publish a
+#               claim the capture never made, in a document with nothing visibly wrong with it. And the
+#               turn rows must agree with each other on which fields they carry. **What this still does
+#               NOT see is four named items, not a number**, and they are written in `verifyShape()`'s
+#               own docblock in `../../cli/ab-run.mjs` — three of the branch-read fields are permitted to
+#               be ABSENT, because the 2026-08-31 capture predates them and cannot be re-captured.
 #   isolated    it records `operatorEnv: "isolated"`. A baseline over an unisolated arm is refused here
 #               as well as at the turn, because a record is the thing a later reader trusts.
 #   invocation  the recorded invocation carries no flag that would dissolve arm A's compiled

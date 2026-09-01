@@ -2663,3 +2663,5 @@ _The seam applies here too: no client-identifying references._
   joined the tarball under a green. `identity.md`'s 76 stands per its at-each-cut convention. · 25 recipes
   green, suite 2366. · Seam scan clean over diff + message + branch, control-verified.
   · [handoff](../.portulan/handoffs/2026-09-01-the-payload-carried-an-experiment-about-itself.md)
+
+PLACEHOLDER_MINE
