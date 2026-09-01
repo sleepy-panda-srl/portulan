@@ -1170,6 +1170,16 @@ const HOST_TIER_NOT_A_GATE = {
 };
 
 /**
+ * The compiled-hook runners, in the order `claudeCode` spells them: the PreToolUse gate, then the Stop
+ * gate. **This is their one carrier.** They are invoked by generated host configuration rather than
+ * imported by anything, so no import graph can find them and every other roster that needs to know
+ * which `cli/` modules are runners has to ask here — `./payload.mjs` does. A third runner added below
+ * without a name added here would classify as unreachable in that rail, which is the direction that
+ * fails loudly rather than the one that ships something unnoticed.
+ */
+export const HOOK_RUNNERS = ["gate.mjs", "stop-gate.mjs"];
+
+/**
  * Translate the policy into a Claude Code settings object.
  *
  * The mapping, each line of it measured against a running host rather than read from documentation:
@@ -1233,8 +1243,8 @@ export function claudeCode(parsed, options = {}) {
         pinned.push({ file, abs });
         return `"${abs}"`;
     };
-    const runner = options.runner ?? spell("gate.mjs");
-    const stopRunner = options.stopRunner ?? spell("stop-gate.mjs");
+    const runner = options.runner ?? spell(HOOK_RUNNERS[0]);
+    const stopRunner = options.stopRunner ?? spell(HOOK_RUNNERS[1]);
 
     const compiled = [];
     const refused = [];

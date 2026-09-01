@@ -43,8 +43,15 @@ class CannotRun extends Error {}
 
 const run = (cmd, args, opts = {}) => execFileSync(cmd, args, { encoding: "buffer", maxBuffer: 64 * 1024 * 1024, ...opts });
 
-/** What the package would contain, as repo-relative paths. */
-function packedPaths(root) {
+/**
+ * What the package would contain, as repo-relative paths.
+ *
+ * **Exported because `./payload.mjs` classifies exactly this roster**, and two enumerations of *what
+ * npm would pack* is the second-carrier defect this repository keeps paying for. That rail asks which
+ * files ship; this one asks whether each is byte-identical to its source. One question about
+ * membership, asked once, answered here.
+ */
+export function packedPaths(root) {
     let out;
     try {
         out = run("npm", ["pack", "--dry-run", "--json"], { cwd: root, stdio: ["ignore", "pipe", "pipe"] }).toString("utf8");

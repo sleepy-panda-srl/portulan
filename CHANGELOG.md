@@ -43,6 +43,62 @@ records how things were found. This is per *release* and records what a reader g
 
 ### Added
 
+- **Nothing joins the npm payload unclassified any more**
+  ([#383](https://github.com/sleepy-panda-srl/portulan/issues/383)'s first half). `cli/payload.mjs` and
+  the `payload` recipe require every `cli/*.mjs` the package would ship to fall in exactly one class —
+  the `bin`, a `SUBCOMMANDS` module, a module one of those imports, a compiled-hook runner, a module
+  ruled into `PRODUCT`, or the frozen `UNRULED` set — and every declared exclusion to agree with what `npm pack` actually emits.
+  It is `cli/eval-bundle.mjs`'s `assertPartition` one level down: a new module fails every pull request
+  until somebody decides whether it ships.
+
+  **The gap it closes was demonstrated, not inferred.** `pack-identity` holds every packed file
+  byte-identical to its source and is deliberately silent on *which* files those are, so a module
+  landing in `cli/` joined the published package with nothing saying so — measured by staging a
+  `cli/workshop-thing.mjs` into a scratch clone and watching it enter the tarball under a
+  `pack-identity` green over 84 files. That is how `ab.mjs`, `ab-run.mjs` and `ab-grade.mjs` shipped
+  for three sessions before #382 removed them.
+
+  **It rosters nothing it can re-derive**, which is the defect class this repository keeps paying for.
+  Roots come from `package.json`'s own `bin`; the dispatched set is imported from `portulan.mjs`'s
+  `SUBCOMMANDS`; the hook runners are imported from a new `HOOK_RUNNERS` export in `compile.mjs`, which
+  spells them into generated host configuration and is therefore their one carrier; and the packed
+  roster comes from `pack-identity.mjs`'s now-exported `packedPaths`, so *what npm would pack* is
+  enumerated once rather than twice. The walk reads re-exports and side-effect imports as edges — carried on the
+  grammar being total rather than on a live example, since a module reachable only by `export … from`
+  is one edit away and would arrive silently — and it **refuses** rather than walking past a dynamic
+  `import(` it has not accounted for. What it does not cover it says out loud: a static edge into a
+  subdirectory or a parent is dropped rather than refused, and no shipped module has one today.
+
+  **The thirteen unreachable modules are recorded as `unruled`, which is not a ruling.** `control-chars`,
+  `drills`, `fuzz-shell`, `goldens`, `librarian`, `mutants`, `pack-identity`, `pack-version`,
+  `review-meter`, `rule-carriers`, `skill-goldens`, `telemetry` and `version-carriers` ship and are
+  reachable from nothing the package exposes. Most are the shape `eval-bundle.mjs`'s
+  `EXCLUDED_TOP_LEVEL.evals` already ruled ships — *the tool is product, the policy it reads is this
+  team's* — but that ruling was about `goldens` and was never put to the rest, and which of them ship is
+  the maintainer's call. **The class is FROZEN at those thirteen and carries #383** — on the class, and in the text of every
+  finding and every green: a fourteenth
+  module may not join it, and the unclassified finding says so in its own text, because the cheap fix
+  under pressure is exactly the fail-open. #383 stays open; this rail is its first half, never its
+  discharge.
+
+  Forced red as a drill on a real tree, not only in a unit test: an unstaged module planted in `cli/`
+  fires it at exit 1 saying "SHIPS and is classified by nothing". **Unstaged deliberately** — `npm pack`
+  reads the working tree, so a module ships before anyone commits it, which is the likelier arrival and
+  the one a staged drill would have left untested.
+
+  **A fourteenth module arrived while this was being written, and it is the best evidence the rail
+  works.** `cli/release-eval.mjs` landed on `main` in #381 and joined the payload unremarked — the same
+  way the A/B trio had. Rebasing onto it, the rail refused to classify it and refused the escape hatch
+  by name. The maintainer ruled it **product** on 2026-09-01, which is what created the `PRODUCT` class:
+  a gap the rail exposed in itself, since it could record the *absence* of a ruling and had nowhere to
+  put its *presence*. That class is where `UNRULED` empties into as #383 is answered.
+
+  **Two holes in the new class were found by forcing them, not by reading.** A fourteenth name pushed
+  into `UNRULED` produced no finding at all while the code claimed the rail asserted the enumeration —
+  the overstated-enforcer defect — so the freeze is now a number the rail checks. And a module present
+  in two registers at once, which only became representable when `PRODUCT` existed, was silent: the
+  three registers are now held pairwise disjoint, on `eval-bundle.mjs`'s `assertPartition` precedent.
+
 - **A rail now refuses a release that carries no eval result — and no release carries one yet** —
   milestone 8's ninth clause, landed to its mechanism and **half-vouched**: nothing has been cut since
   the clause acquired an owner on 2026-08-24, so the rail's green today reads *no release from `0.1.3`
