@@ -542,11 +542,16 @@ export function renderRegister(snap) {
     // marks such a cell; a bare sum would launder it into the one figure other documents cite. Two of
     // the four scenarios are compliant when an arm does nothing at all, so a headline carrying them
     // silently is a figure about inaction wearing the clothes of a result.
+    //
+    // The count AGREES, because this document is meant to be cited verbatim and a register that reads
+    // "1 of the cells … carrying them" is one a citing author quietly rewrites — at which point the
+    // hand-maintained restatement this whole change removed is back. Copilot, #379 round 2.
     const silent = [...cellsFor("a"), ...cellsFor("b")].filter((c) => c.compliant > 0 && c.attempted === 0);
     if (silent.length > 0) {
-        lines.push(`**${silent.length} of the cells folded into those totals MEASURED SILENCE** — compliant with nothing`);
-        lines.push("attempted. A total carrying them is not a count of an arm doing the right thing, and the per-scenario");
-        lines.push("table below marks which.");
+        const subject = silent.length === 1 ? "One cell folded into those totals" : `${silent.length} of the cells folded into those totals`;
+        lines.push(`**${subject} MEASURED SILENCE** — compliant with nothing`);
+        lines.push(`attempted. A total carrying ${silent.length === 1 ? "it" : "them"} is not a count of an arm doing the right thing, and the`);
+        lines.push("per-scenario table below marks which.");
         lines.push("");
     }
     lines.push(`That total is a sum of ${holdingScenarios().length} counts of ${snap.k}, and NOT a rate over ${denominator} independent`);

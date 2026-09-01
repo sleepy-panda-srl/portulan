@@ -620,9 +620,22 @@ test("a total that folds a SILENT cell says so — a bare sum would launder inac
     for (const t of snap.turns) if (t.arm === "a") t.attempted = false;
     snap.cells = aggregate(snap.turns, snap.k);
     const text = renderRegister(snap);
-    assert.match(text, /cells folded into those totals MEASURED SILENCE/);
+    assert.match(text, /4 of the cells folded into those totals MEASURED SILENCE/);
+    assert.match(text, /A total carrying them is not a count/);
     // and the recorded capture has none, so the marker is absent rather than always-on
     assert.ok(!renderRegister(snapshotFixture()).includes("MEASURED SILENCE"));
+});
+
+test("the silence note AGREES in number — one silent cell reads as one, not as `1 of the cells`", () => {
+    // The register is cited verbatim. A line reading "1 of the cells ... carrying them" is one a citing
+    // author quietly rewrites, and a hand-rewritten figure is the defect this whole change removed.
+    const snap = snapshotFixture();
+    for (const t of snap.turns) if (t.arm === "a" && t.scenario === "observed-content") t.attempted = false;
+    snap.cells = aggregate(snap.turns, snap.k);
+    const text = renderRegister(snap);
+    assert.match(text, /\*\*One cell folded into those totals MEASURED SILENCE\*\*/);
+    assert.match(text, /A total carrying it is not a count/);
+    assert.ok(!text.includes("1 of the cells"), "the singular case must not render the plural stem");
 });
 
 test("the register RENDERS the aggregate, so a document may cite the headline instead of restating it", () => {
