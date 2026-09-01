@@ -389,6 +389,18 @@ test("limitations are a FUNCTION of the capture, never a fixed paragraph", () =>
     assert.doesNotMatch(limitationsFor(none).join("\n"), /figures are NOT restated/);
 });
 
+test("every register says whose build it measures — it is read inside somebody else's node_modules", () => {
+    // The record ships in the npm payload, so it is read where nothing around it says what it is about.
+    // A table headed "N of M recipes this workspace yielded", sitting in a consumer's dependency tree,
+    // invites exactly one wrong reading. The disclaimer travels with the document rather than living in
+    // a README that does not ship beside it.
+    for (const snap of [goodSnap(), { ...goodSnap(), abBaseline: null }]) {
+        const doc = renderRegister(snap);
+        assert.match(doc, /measures the Portulan repository's own build/);
+        assert.match(doc, /never the workspace, project or package this release is installed into/);
+    }
+});
+
 test("the register names the self-exclusion rather than dropping the row", () => {
     assert.match(renderRegister(goodSnap()), new RegExp(`\\\`${SELF}\\\` is excluded`));
 });

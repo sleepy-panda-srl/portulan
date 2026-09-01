@@ -76,6 +76,16 @@ records how things were found. This is per *release* and records what a reader g
   set. The clause's central arm is exercised by a forced-red drill that moves the boundary until an
   already-cut release becomes governed and requires the rail to fire.
 
+  **The record ships.** `evals/releases/` is in `package.json`'s `files`, so a release carries its eval
+  result in the npm payload as well as in the tagged tree — the maintainer's decision of 2026-09-01,
+  taken on an option the amendment had left open and the implementer had closed the other way. What
+  settled it was a measurement rather than an argument: a record written into the **unpacked tarball**
+  is graded `exit 0` by `cli/release-eval.mjs --tagged`, which already ships, so the artifact carries
+  both the claim and the tool that checks it. Every register also says whose build it measures, because
+  a table headed *"N of M recipes this workspace yielded"*, read inside a consumer's `node_modules`,
+  invites exactly one wrong reading.
+
+
 - **Compiled gates now ship with the attack cases that prove their coverage** — milestone 8 clause (a).
   `cli/goldens.mjs` grades a corpus at `evals/goldens/gates/` against the gate policy a workspace
   **yields**, through the compiler's own exported `matchesRule` rather than a second implementation, and

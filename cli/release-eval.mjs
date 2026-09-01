@@ -311,6 +311,13 @@ export function limitationsFor(snap) {
             "captured at a commit that does not exist yet, and printing the one it was captured at is the only honest form.",
         `**\`${SELF}\` is excluded from the rows above**, because a capture cannot be accurate about the record it is inside. ` +
             "Its verdict for this release is the rail's own run on the pull request that carries this file.",
+        // **The record ships inside the npm payload, so it is read where nothing around it says what it
+        // is about.** In a consumer's `node_modules` a table headed *"N of M recipes this workspace
+        // yielded"* invites being read as a claim about THEIR workspace. It is a claim about this
+        // repository's own build and nothing else, and the sentence saying so travels with the document
+        // rather than living in a README that does not.
+        "**This record measures the Portulan repository's own build**, at the commit named above — never the workspace, " +
+            "project or package this release is installed into. Nothing here has looked at your tree.",
     ];
     out.push(
         snap?.source?.clean === true

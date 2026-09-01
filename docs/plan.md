@@ -2642,13 +2642,13 @@ _The seam applies here too: no client-identifying references._
   against a bound of 2 — EXCEEDED, not granted**; rounds 3–5 drawn by my own record pushes. · Seam scan
   clean. · [handoff](../.portulan/handoffs/2026-09-01-b-the-figure-the-citation-did-not-carry.md)
 
-- 2026-09-01 · M8 (Evals & telemetry), session 7 · **A release carries an eval result — the mechanism;
-  ruled the same day to await a real cut.** [`release-eval.mjs`](../cli/release-eval.mjs) captures every
-  yielded recipe's verdict at a named commit and renders a register it byte-compares; records live under
-  [`evals/releases/`](../evals/releases/), and `--tagged` runs at publish. The amendment's three open
-  questions are ruled: every recipe; one file per version citing the A/B baseline **by identity not
-  figure**; **both** a rail and a person. **Four fresh contexts, three of which changed the code** — a
-  red rail could be laundered into `excluded`, a fabricated register stood unseen, `--tagged` was green
-  on its own motivating case, and a null field rendered as a measurement. **No governed release exists**,
-  so the green is a state; the drill fires the missing-record arm. · 26 recipes green; `release-eval`
-  forced red · Seam scan clean · [handoff](../.portulan/handoffs/2026-09-01-a-release-carries-an-eval-result.md)
+- 2026-09-01 · M8 (Evals & telemetry), session 7 · **A release carries an eval result — the mechanism,
+  and it ships.** [`release-eval.mjs`](../cli/release-eval.mjs) captures every yielded recipe's verdict at
+  a named commit and renders a register it byte-compares; records live under
+  [`evals/releases/`](../evals/releases/), now in `files`, and `--tagged` runs at publish. **Four fresh
+  contexts, three of which changed the code** — a red rail could be laundered into `excluded`, a
+  fabricated register stood unseen, `--tagged` was green on its own motivating case, a null field
+  rendered as a measurement. **His two rulings, same day:** the clause awaits a real cut, and the record
+  ships — settled by grading a record inside the **unpacked tarball**, where the shipped tool returns
+  exit 0. No governed release exists, so the green is a state; the drill fires the missing-record arm. ·
+  26 recipes green · Seam scan clean · [handoff](../.portulan/handoffs/2026-09-01-a-release-carries-an-eval-result.md)

@@ -739,13 +739,7 @@ There is no *eval* subset of the recipe set — [`../cli/recipe-set.mjs`](../cli
 such category — so an "eval recipes only" record would have required a hand-listed roster, which is the
 defect the record exists to avoid.
 
-**Where it is carried.** One file per version, cited and never restated. Its **reach is the implementer's
-design choice, not a ruling**: `package.json`'s `files` ships neither `evals/` nor `CHANGELOG.md`, so a
-release record is carried by the **tagged tree** and not by the npm payload. That is defensible — a
-release is a tag — but it was a choice among the three the amendment listed, it carries no owner and no
-date the way this repository's rulings do, and adding `evals/releases/` to `files` remains open to the
-maintainer. Named here rather than left to be discovered by whoever first looks for the record inside a
-tarball.
+**Where it is carried.** One file per version, cited and never restated — **and it ships**. `evals/releases/` is in `package.json`'s `files`, the maintainer's decision of 2026-09-01 on an option the amendment had left open and the implementer had closed the other way. **A measurement settled it:** a record written into the *unpacked tarball* is graded `exit 0` by `cli/release-eval.mjs --tagged`, which already ships — so the artifact carries both the claim and the tool that checks it, and the objection that an npm consumer can run no recipe was true and beside the point. [`../docs/milestones/m08.md`](../docs/milestones/m08.md) carries the adjudication, the one citation that does not survive packing, and why absolute URLs were refused.
 
 **Rail or person — both, split by what each can reach.** The `release-eval` recipe grades the tree on
 every commit. [`../.github/workflows/publish-github-packages.yml`](../.github/workflows/publish-github-packages.yml)

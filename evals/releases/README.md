@@ -17,8 +17,16 @@ either, because a rule with two carriers is obeyed at the narrower one.
 - `<version>.md` — the **register**, rendered from the capture. Generated; do not edit. `--write`
   re-renders it and the `release-eval` recipe refuses any difference.
 
-**This directory is empty of records, and that is the honest state rather than an oversight.** The clause
-binds *from milestone 8* — [`../../docs/plan.md`](../../docs/plan.md), Protocol → Versioning — and
-`v0.1.0`, `v0.1.1` and `v0.1.2` were all cut before it had an owner. No release has been cut since, so
-none carries a record. The rail says exactly that on every run rather than reporting a green that reads
-like a graded set; the first record lands with the first cut from `0.1.3` onward.
+**Which releases have records is not written here.** `ls` this directory, or run
+`node cli/release-eval.mjs --verify`, which prints the governed set and is the carrier — a sentence
+counting the files beside it would be a hand-maintained figure of a subject that grows once per release,
+which is the defect this repository deletes on sight.
+
+**What is fixed, and is the only thing this file states about coverage:** the clause binds *from
+milestone 8* — [`../../docs/plan.md`](../../docs/plan.md), Protocol → Versioning — so `v0.1.0`, `v0.1.1`
+and `v0.1.2` carry none and are never asked to. That is history and cannot change.
+
+_(This paragraph read **"This directory is empty of records"** as a standing claim. It would have gone
+false in the very commit that wrote the first record — and, since this directory ships inside the npm
+payload, it would then have been **frozen false beside the record it denied**, in a tarball only another
+release could correct. Caught by a second opinion before the first cut rather than by a reader of it.)_

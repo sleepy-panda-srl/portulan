@@ -144,7 +144,21 @@ now covered.
   is set, and an isolated `HOME` reaches no stored login. **The refusal is recorded, and a recorded
   refusal is not a discharge.** This handoff is its carrier. Note the probe's own caveat: it reads those
   three variables and nothing else, and this host has `ANTHROPIC_BASE_URL` set — a channel it cannot see.
-- **The record's reach is the implementer's choice and is NOT a ruling**, which is what a first draft
+- **RULED 2026-09-01: the record SHIPS.** `evals/releases/` is in `package.json`'s `files`. The reach was
+  the implementer's choice and the tree marked it open to him three times; he took it, after a second
+  opinion adjudicated adversarially against both positions and returned SHIP-WITH-CHANGES. **A
+  measurement settled it, not an argument:** a record written into the *unpacked tarball* is graded
+  `exit 0` by `cli/release-eval.mjs --tagged`, which already ships — so the artifact carries both the
+  claim and the tool that checks it, and the objection that an npm consumer can run no recipe was true
+  and beside the point. Consistency runs the same way: without a shipped record, the grader is itself
+  the ships-but-cannot-run class a concurrent change is purging. Three repairs came with it — every
+  register now says **whose build it measures** (a consumer reading it inside `node_modules` would
+  otherwise take it for a claim about their tree); `evals/releases/README.md`'s *"empty of records"* was
+  a standing claim that would have shipped **frozen false beside the record it denied**; and both landed
+  before the first record exists, since a later renderer change forces a re-render of every register
+  already cut. Growth is accepted knowingly: ~8KB per release, monotonic, against a 749KB payload.
+  _(What follows is the position it replaced, kept because the reasoning is the record.)_
+- **The record's reach WAS the implementer's choice and was NOT a ruling**, which is what a first draft
   called it. `package.json`'s `files` ships neither `evals/` nor `CHANGELOG.md`, so a release record is
   carried by the **tagged tree** and not by the npm payload. **Measured before leaving it there:** a
   plugin adopter already receives the whole tree, so only the npm tarball is a subset; shipping
@@ -158,3 +172,18 @@ now covered.
   module adopted its shape: `snap.agent ?? "<agent>"` and — worse — `t.verdict ?? "could-not-attribute"`,
   where a missing verdict renders as that specific verdict. Not repaired here: it belongs to the A/B
   clause and its capture is a committed record of events that do not repeat. Filed as its own task.
+
+## One principle, two branches — for whoever merges second
+
+A concurrent change removes `cli/ab.mjs`, `cli/ab-run.mjs` and `cli/ab-grade.mjs` from the payload; this
+one adds `evals/releases/` to it. They look opposed and are **one rule**: *the tarball carries what can
+run inside it, plus the release's own record.* The `ab*` modules go because they read `evals/ab/`, which
+stays repository-only, and because none is one of the eight dispatched subcommands — they ship and can
+never run. The record comes because `cli/release-eval.mjs --tagged` grades it **in place**, measured on a
+real `npm pack`. Had the record stayed out, that grader would have been the same ships-but-cannot-run
+class its sibling branch is purging, which is how the two changes check each other.
+
+The two edits touch the same six lines of `package.json`'s `files`. A second opinion ran `git merge-file`
+over base/ours/theirs: **exit 0, both land, no conflict.** Either order is fine; whichever merges second
+should carry this paragraph forward rather than restating half of it, and both must land **before the
+`0.1.3` cut** — the first tarball that can carry a record should be the first one that does.
