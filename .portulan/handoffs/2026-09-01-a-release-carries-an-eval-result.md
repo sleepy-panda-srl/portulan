@@ -164,6 +164,24 @@ a floor and not a name check; round 2 found a repair that reintroduced its own d
 reading a diff produces, and both were confirmed by running the case before the fix rather than from the
 description.
 
+## The bound was EXCEEDED and GRANTED, and rebasing made a record of this session's own class
+
+**The maintainer granted the loop past rule 4's bound** — *"address feedback until it's empty"* — and it
+is recorded as a **grant**, never as a bound that was met. A waived rule written down as a met one is how
+a bound stops meaning anything, and the sibling session 7b recorded its own overrun as **EXCEEDED, not
+granted** on the same day; the two entries must not read alike when they are not.
+
+**And the rebase onto `main` falsified two of this handoff's own sentences.** They said the one-carrier
+rule could not be registered because the A/B aggregate stood in three live prose carriers. Session 7b
+merged first and fixed exactly that — deriving the figure into the byte-compared register and registering
+`ab-baseline-figures` against `evals/ab/baseline.md`. Re-measured after the rebase: the aggregate now
+appears in **one** live file, the carrier. The sentences are corrected above rather than left standing,
+because a record that keeps asserting what a sibling has since repaired is the stale-carrier defect this
+whole session is about — met here in the session's own account of itself.
+
+**Both `docs/plan.md` conflicts were the append point conflicting by construction**, and both were
+resolved by keeping both entries and **regenerating** the indexes rather than hand-merging them.
+
 ## What is owed, and to whom
 
 - **RULED the same day: the clause waits for a real cut.** Put to him rather than left for a
@@ -173,12 +191,19 @@ description.
   then the row closes. **The cut is the last act of the milestone rather than the first act after it** —
   which is what puts the record in the tagged tree the close reads. `docs/milestones/m08.md` carries the
   ruling and what a cut mechanically is, measured from `b410c020` rather than described.
-- **The one-carrier rule is NOT registered in `rule-carriers.json`, and the reason is measured.** The
-  registry's dead-tell audit reds on a tell matching nothing, so a fresh rule cannot be registered with
-  invented spellings. Worse, the natural tell already fails: the A/B figures `6/20` stand in **three live
-  prose carriers** — `evals/README.md:52,60` and `evals/ab/arm.md:150` — outside the record layer.
-  Registering the rule today would red on merged, reviewed prose from two prior sessions. Reported rather
-  than either widened or ignored; filed as its own task.
+- **The one-carrier rule was not registrable when this session measured it, and it is registered now —
+  by the sibling session, not by this one.** The finding here was that `rule-carriers.json`'s dead-tell
+  audit reds on a tell matching nothing, so a fresh rule cannot carry invented spellings; and that the
+  natural tell already failed, because the A/B figures stood in **three live prose carriers** outside the
+  record layer, so registering would have red on merged, reviewed prose from two earlier sessions. It was
+  filed rather than repaired inside a change about releases.
+  **Session 7b took it and went further than the brief:** the three sentences now cite a figure
+  `ab-run.mjs` *derives* into the byte-compared register — the carrier had held per-cell counts only, so a
+  citation would have sent a reader to sum four rows — and `ab-baseline-figures` is registered with
+  `evals/ab/baseline.md` as its carrier. **Re-measured on the rebased tree: `6/20` now appears in exactly
+  one live file, the carrier.** _(This bullet asserted the unregistered state as current until the rebase
+  onto `main`; a record that keeps asserting what a sibling has since fixed is the stale-carrier defect
+  this session spent itself on, so it is corrected here rather than left standing.)_
 - **`acceptedUnder.reRunWhen` is still NOT discharged.** `ab --stop-probe --operator-env isolated`
   refuses at exit 2 here: none of `CLAUDE_CODE_OAUTH_TOKEN`, `ANTHROPIC_API_KEY`, `ANTHROPIC_AUTH_TOKEN`
   is set, and an isolated `HOME` reaches no stored login. **The refusal is recorded, and a recorded

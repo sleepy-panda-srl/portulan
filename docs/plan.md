@@ -2646,9 +2646,9 @@ _The seam applies here too: no client-identifying references._
   and it ships.** [`release-eval.mjs`](../cli/release-eval.mjs) captures every yielded recipe's verdict at
   a named commit and renders a register it byte-compares; records live under
   [`evals/releases/`](../evals/releases/), now in `files`, and `--tagged` runs at publish. **Six fresh
-  contexts, five of which changed the code** — a red rail could be laundered into `excluded`, a fabricated
-  register stood unseen, `--tagged` was green on its own motivating case, a null field rendered as a
-  measurement, `source.commit` accepted `"HEAD"`, and the grader checkout fetched the tree it exists to
-  avoid. **His two rulings:** the clause awaits a real cut, and the record ships. No governed release
-  exists, so the green is a state. · 26 recipes green; two new rails watched firing · Seam scan clean ·
+  contexts, five changed the code** — a red rail could be laundered into `excluded`, a fabricated register
+  stood unseen, `--tagged` was green on its own motivating case, a null field rendered as a measurement,
+  `source.commit` took `"HEAD"`, and the grader checkout fetched the tree it exists to avoid. **His two
+  rulings:** the clause awaits a real cut; the record ships. · 26 recipes; two new rails watched firing;
+  **Copilot past rule 4's bound — EXCEEDED and GRANTED** · Seam scan clean ·
   [handoff](../.portulan/handoffs/2026-09-01-a-release-carries-an-eval-result.md)
