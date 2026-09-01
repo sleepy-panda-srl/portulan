@@ -1,9 +1,19 @@
 # 2026-09-01 — the shape check named what it could not see
 
 **Milestone 8, triage on `cli/ab-run.mjs`.** No clause moves, no agent was run, no figure exists, and
-`evals/ab/baseline.json` was neither edited nor re-captured. `evals/ab/baseline.md` is **byte-identical**
-to what shipped on 2026-08-31 — the renderer changed and the document did not, which is the strongest
-available evidence that the repair touched the check and not the record.
+`evals/ab/baseline.json` was neither edited nor re-captured, and **this branch changes no file under
+`evals/` at all** — `git diff origin/main -- evals/` is empty. The renderer changed and the published
+document did not, which is the strongest available evidence that the repair touched the check and not
+the record.
+
+**That claim moved under the branch, and the correction is worth more than the sentence.** It first read
+*"byte-identical to what shipped on 2026-08-31"*. [#379](https://github.com/sleepy-panda-srl/portulan/pull/379)
+then landed on `main` and **regenerated `baseline.md` itself**, adding the derived headline block — so the
+register this branch byte-compares is #379's, not 6d's, and a date-anchored claim had gone stale. The
+honest form is measured against `origin/main` rather than against a day. Exactly the class this diff
+repairs, in this diff's own handoff, and caught by **re-running the measurement after the rebase instead
+of re-reading the sentence.** The `BRANCH_READ` audit survived that rebase unchanged, over a renderer
+block it had never seen, which is the strongest evidence the two-way audit is doing real work.
 
 ## What was wrong
 
@@ -90,6 +100,12 @@ null` renders *"Per-turn timeout: 0s"* through `Math.round`, a plausible invente
 cannot reach because it is a substitution rather than a deletion.
 
 ## Filed to the maintainer — NOT fixed here
+
+All six are issues on the backlog board, added and field-set on 2026-09-01:
+**[#390](https://github.com/sleepy-panda-srl/portulan/issues/390)** (1) · **[#388](https://github.com/sleepy-panda-srl/portulan/issues/388)** (2) · **[#387](https://github.com/sleepy-panda-srl/portulan/issues/387)** (3) · **[#391](https://github.com/sleepy-panda-srl/portulan/issues/391)** (4) · **[#389](https://github.com/sleepy-panda-srl/portulan/issues/389)** (5) · **[#392](https://github.com/sleepy-panda-srl/portulan/issues/392)** (6).
+#387 is the only **Now** — the publishing path skips the isolation refusal `corpus.md` forbids
+outright. #390 and #392 ride *Blocked on: Maintainer ruling*. **#388 and #389 must move together**, and
+#389 exists to say why.
 
 1. **The capture-format gate**, with its measured downgrade hazard. It is the only mechanism that would
    close residue item 1, and it is the maintainer's ruling to make.

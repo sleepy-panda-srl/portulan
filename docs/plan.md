@@ -2664,4 +2664,13 @@ _The seam applies here too: no client-identifying references._
   green, suite 2366. · Seam scan clean over diff + message + branch, control-verified.
   · [handoff](../.portulan/handoffs/2026-09-01-the-payload-carried-an-experiment-about-itself.md)
 
-PLACEHOLDER_MINE
+- 2026-09-01 · M8 (Evals & telemetry), triage · **The shape check named what it could not see.**
+  `verifyShape()` claimed *"exactly one"* blind spot; it had more, and the frame was wrong before the
+  count — `snap.agent ?? "<agent>"` and, worse, `t.verdict ?? "could-not-attribute"`, which **published
+  one of three named states about a turn nothing had graded**. Both `??` gone, every branch-read field
+  checked by name, the name list **audited against the renderer both ways** — it caught a real escape on
+  its first run and survived two rebases. Residue: **four named items, not a number.** No file under
+  `evals/` changes; findings filed as #387–#392, #395. **The row does not move.** · ab-run tests 63→74. ·
+  Session-open **R-C, R-C, A-W-A (14)**, pre-commit **A-W-A (6)**; **Copilot 2 rounds, 5 accepted, at
+  the bound** — whitespace passed every non-empty check. · Seam scan clean. ·
+  [handoff](../.portulan/handoffs/2026-09-01-the-shape-check-named-what-it-could-not-see.md)
