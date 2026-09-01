@@ -2727,4 +2727,4 @@ _The seam applies here too: no client-identifying references._
   measured — so it was answered by the choice of repair; the residual is closed by a third swept fixture
   with a rail on it, and #389's general question is re-filed as #399. No `evals/` change. · 26 recipes;
   tests 82→89, three red first. · Session-open **A-W-A (12)**, pre-commit **A-W-A (9)**, Copilot
-  **3 rounds, 10 accepted** — each round caught the previous round's fix falling short. · Seam scan clean. · [handoff](../.portulan/handoffs/2026-09-01-d-the-marker-and-the-proxy-it-was-read-through.md)
+  **4 rounds, 11 accepted** — every round caught the PREVIOUS round's fix falling short. · Seam scan clean. · [handoff](../.portulan/handoffs/2026-09-01-d-the-marker-and-the-proxy-it-was-read-through.md)

@@ -135,6 +135,21 @@ The third was **refused as stale**, with the measurement in the reply: the marke
 re-promoted across three rounds at shifting line numbers because the surrounding lines keep moving, and
 `limitationsFor()` has carried no bare glyph since round 1.
 
+## Copilot round 4 — approved, one note, and it is the fourth self-inflicted in four rounds
+
+The case repairing a guard that *read as total and was not* contained the comment *"every shape a turn
+can be and not be a turn"* over a list of five. Arrays and functions are non-turn values too. **A claim
+of totality above an enumeration is a named class in this repository's own memory**, and I wrote one into
+the fix for its sibling. Reworded to what the list is — the shapes that previously threw at an `in` or a
+property read — and widened to include `[]` and a function.
+
+**The rate is the finding, and it is worth recording plainly.** Four rounds, and every one caught the
+previous round's repair falling short rather than the original defect: round 2 caught round 1's `?? {}`,
+round 3 caught a count I contradicted while fixing round 2's records, round 4 caught a totality claim I
+wrote while fixing round 3's. The maintainer's own bound memo measured this on #362 — six of thirty-two
+findings introduced by an earlier round's fix — and this change ran at four of ten. The findings are all
+real; what they are about is the fixing, not the subject.
+
 ## Left to the maintainer
 
 **#389's general question is NOT closed by this commit:** *a check whose necessity depends on a known
@@ -147,7 +162,7 @@ comment that #389's own closure would bury with it.
 ## Evidence
 
 26 recipes green, run rather than printed. `cli/ab-run.test.mjs` 82 → **89**, three red before the repair, three
-added across three Copilot rounds. **Six mutations caught**, each named because a count
+added across four Copilot rounds. **Six mutations caught**, each named because a count
 without its members is the claim this milestone keeps repairing: dropping the pre-marker artifact; the
 naive #388 fix (5 cases **and** `ab-run.sh`); unguarding the vintage branch; changing
 `TRUNCATION_MARKER` (8 cases); reverting `isTurn()` to round 1's `?? {}` predicate; and relaxing the marked bullet back to a truthy read. Drill forced red

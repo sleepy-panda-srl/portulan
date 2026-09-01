@@ -1166,10 +1166,17 @@ test("a capture whose turns are not objects reds rather than throwing out of the
     // malformed turn threw a TypeError that the renderer's guard caught and reported as *cannot be
     // rendered* — an exception standing in for a shape finding, the class this file keeps repairing.
     //
-    // **The list below is every shape a turn can be and not be a turn, because the round-1 fix wrote
-    // `(t ?? {})` and that reads as total while catching only two of them.** `??` does not catch a
-    // primitive, and `"x" in "str"` throws exactly as loudly. Copilot round 2 caught what round 1 left.
-    for (const bad of [null, undefined, "a string", 42, true]) {
+    // **The list below is the shapes that previously THREW at an `in` or a property read — not "every
+    // shape a turn can be without being one", which is what this comment first claimed.** Arrays and
+    // functions are non-turn values too; they are in the list now, and the list is still a list rather
+    // than a proof. A claim of totality above an enumeration is a named defect in this repository, and
+    // I wrote one into the case repairing a guard that read as total and was not. Copilot round 4.
+    //
+    // The occasion was round 1's `(t ?? {})`: `??` does not catch a primitive, and `"x" in "str"` throws
+    // exactly as loudly. An array passes `isTurn` and is fine — `in` works on it — and reds on the
+    // by-name checks instead, which is the point: every one of these must reach the operator as a
+    // FINDING, whichever check gets there first.
+    for (const bad of [null, undefined, "a string", 42, true, [], () => {}]) {
         const snap = recordingFixture();
         snap.turns[0] = bad;
         let red;
