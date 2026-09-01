@@ -306,7 +306,18 @@ export function limitationsFor(snap) {
     // Guarded by `isTurn`, not by `?? {}`: `in` throws on a primitive right-hand side too, so the
     // round-1 patch read as total and was not. A malformed capture must reach `verifyShape()` as a
     // FINDING, never as a TypeError caught by the renderer's guard. Copilot rounds 1 and 2.
-    } else if (!snap.turns?.some?.((t) => isTurn(t) && "saidTruncated" in t) && snap.turns?.some?.((t) => typeof t?.said === "string" && t.said.length >= 300)) {
+    // **And the mirror of it, which completes the pair.** Round 6 made the MARKED bullet carry its own
+    // evidence; this is the same gap in the VINTAGE bullet, and Copilot found it one round later. A
+    // capture whose `saidTruncated` column was dropped while its rows still carry the marker is not a
+    // pre-marker capture — it is a corrupted modern one — and describing it as predating a marker its
+    // own rows carry is a claim contradicted by the document it appears in. `verifyShape()`'s in-band
+    // witness reds exactly that capture, but `renderRegister()` is reachable without it, so the
+    // predicate carries the evidence rather than borrowing it from a check the caller may not run.
+    //
+    // **Both bullets now say what they can see, in the renderer, without help.** Copilot round 7.
+    } else if (!snap.turns?.some?.((t) => isTurn(t) && "saidTruncated" in t)
+        && !snap.turns?.some?.((t) => typeof t?.said === "string" && t.said.endsWith(TRUNCATION_MARKER))
+        && snap.turns?.some?.((t) => typeof t?.said === "string" && t.said.length >= 300)) {
         lines.push(
             "- **Some `said` rows in the capture are truncated mid-word and are NOT marked as such** — this",
             "  capture predates the marker. They are diagnostic prose, never graded.",

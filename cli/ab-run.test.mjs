@@ -1150,6 +1150,24 @@ test("a row whose marker and flag DISAGREE is caught, in both directions", () =>
     assert.deepEqual(verifyShape(plain), []);
 });
 
+test("NEITHER truncation bullet borrows its truth from a check the caller may not have run", () => {
+    // The pair, stated together because they are one property: each bullet's predicate must BE its
+    // claim. Round 6 fixed the marked one, round 7 the vintage one — a capture whose column was dropped
+    // while its rows carry the marker is a corrupted modern capture, not a pre-marker one, and calling
+    // it pre-marker contradicts the very rows the same document describes. `verifyShape()` reds both,
+    // but `renderRegister()` is exported and reachable without it.
+    const corrupted = snapshotFixture();
+    for (const t of corrupted.turns) delete t.saidTruncated;
+    corrupted.turns[0] = { ...corrupted.turns[0], said: `${"x".repeat(300)}${TRUNCATION_MARKER}` };
+    assert.doesNotMatch(renderRegister(corrupted), /predates the marker/, "rows carrying the marker cannot predate it");
+    assert.match(verifyShape(corrupted).join("\n"), /rows carry the truncation marker while no turn records/);
+
+    // The genuine vintage — no column, no marker in any row — still publishes it, which is the
+    // committed capture and the line this whole change refused to delete.
+    assert.match(renderRegister(preMarkerFixture()), /predates the marker/);
+    assert.deepEqual(verifyShape(preMarkerFixture()), []);
+});
+
 test("the marked bullet carries its own EVIDENCE — the flag alone does not publish it", () => {
     // Round 3 made the flag exact and not evidenced: a row flagged truncated whose `said` lacks the
     // marker still published "rows … are marked `…` where they are". `verifyShape()` reds that, but

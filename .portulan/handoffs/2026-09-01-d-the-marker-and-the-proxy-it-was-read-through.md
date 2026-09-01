@@ -175,6 +175,19 @@ row is flagged AND carries the marker. Dropping the evidence half reds a case.
 The second note was three `endsWith` assertions still spelling the glyph — round 2's literal sweep was
 incomplete, which is the same shape as round 1's `?? {}`: a per-site pass that read as a sweep.
 
+## Copilot round 7 — the mirror, which makes rounds 6 and 7 one property
+
+The *vintage* bullet had round 6's gap exactly: it could publish *"predates the marker"* for a capture
+whose `saidTruncated` column was dropped while its rows still carry the marker — a **corrupted modern**
+capture, not a pre-marker one, described as predating a marker its own rows carry, in the document that
+describes those rows. `verifyShape()`'s in-band witness reds it; `renderRegister()` is reachable without.
+
+**So the two rounds are one property, and it is worth stating as one:** each bullet's predicate must BE
+its claim, in the renderer, without borrowing truth from a check the caller may not have run. Both are
+now evidence-bearing, one case asserts the pair together, and dropping either evidence half reds it.
+The committed capture is unaffected — no row carries the marker, so the vintage bullet still publishes,
+which is the line this whole change refused to delete.
+
 ## Left to the maintainer
 
 **#389's general question is NOT closed by this commit:** *a check whose necessity depends on a known
@@ -186,8 +199,8 @@ comment that #389's own closure would bury with it.
 
 ## Evidence
 
-26 recipes green, run rather than printed. `cli/ab-run.test.mjs` 82 → **91** — three red before the repair, one
-at the pre-commit checkpoint, five across Copilot's rounds. **Counted from the tree, not typed from
+26 recipes green, run rather than printed. `cli/ab-run.test.mjs` 82 → **92** — three red before the repair, one
+at the pre-commit checkpoint, the rest across Copilot's rounds. **Counted from the tree, not typed from
 memory** — the figure was wrong twice in this change, which is [#401](https://github.com/sleepy-panda-srl/portulan/issues/401). **Six mutations caught**, each named because a count
 without its members is the claim this milestone keeps repairing: dropping the pre-marker artifact; the
 naive #388 fix (5 cases **and** `ab-run.sh`); unguarding the vintage branch; changing
