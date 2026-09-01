@@ -545,8 +545,8 @@ test("a shape check is total over what the RENDERER dereferences, not merely ove
  * **A sweep over a fixture that lacks a field can say nothing about that field.** `snapshotFixture()`
  * records no `agent`, no `model`, no `turns[].saidTruncated` and no `turns[].invocation`, so a sweep
  * over it alone would have been a false green over exactly the two sites this repair exists for. The
- * committed capture lacks the same three, which is why both artifacts are swept and the audited set is
- * the UNION over the two.
+ * committed capture lacks the same three, which is why all three artifacts are swept and the audited
+ * set is the UNION over them.
  *
  * **Every boolean here is set to the polarity under which absence DIFFERS**, and that is not tidiness.
  * `evals/ab/baseline.json` records `source.clean: false`, and deleting a field whose branch already
@@ -554,14 +554,23 @@ test("a shape check is total over what the RENDERER dereferences, not merely ove
  * "tidy-up" aligning this fixture with the real capture would make the one check `verifyShape` has had
  * longest fail the audit as redundant, and pressure the next reader to delete it.
  *
- * **`turns[].said` carries the same trap, and it is not hypothetical — it is coupled to a filed bug.**
- * The committed capture's longest `said` is exactly **300 and unmarked**; this fixture's is
- * **301 and marked** (300 characters plus the `…` `runTurn()` appends), which is what a genuinely
- * truncated row looks like — and `saidTruncated: true` masks the length branch entirely. Repairing the filed `>= 300` / `> 300` off-by-one in `limitationsFor()` makes
- * `turns[].said` inert on BOTH artifacts, so the audit will fail it as redundant — and the remedy the
- * audit's own rule suggests is to delete the name and its check, reopening a real blind spot. **Give the
- * fixture a `said` that is read on the correct side of the boundary at the same time**, or the audit
- * will walk the next reader into it.
+ * **`turns[].said` carried the same trap, #389 was filed about it, and the resolution was to take a
+ * different repair rather than to work around it.** The warning here used to say: repairing the
+ * `>= 300` / `> 300` off-by-one makes `said` inert on both artifacts, the audit fails it as redundant,
+ * and the audit's own rule then invites deleting a real check — so move this fixture's `said` across
+ * the boundary in the same commit.
+ *
+ * **The warning's PREMISE was wrong, which made both of its halves conditional — the halves themselves
+ * were not.** The trap is real: under the naive repair the audit does red with `turns[].said` missing
+ * from the measured set, exactly as #389 filed it. What does not hold is that the naive repair is the
+ * repair — it is a REGRESSION, deleting a true limitation from the committed register and redding
+ * `ab-run.sh`. Under the repair actually taken (guard the vintage question, keep the length as
+ * evidence) `said` stays branch-read and nothing needed moving. **So the trap was real and conditional
+ * on taking the repair the issue's title suggested**, which is the whole reason the two had to move
+ * together — and #389 should be believed, not discounted.
+ *
+ * What remains is why `preMarkerFixture()` is swept: without it `said` is branch-read on
+ * `evals/ab/baseline.json` alone, and that is a file that can be replaced.
  */
 function recordingFixture({ k = K, seed = "fixture" } = {}) {
     const snap = snapshotFixture({ k, seed });
@@ -625,9 +634,35 @@ function renderClass(snap, base) {
     return doc === base ? "inert" : "branch";
 }
 
+/**
+ * A capture of the PRE-MARKER vintage: it records `saidTruncated` nowhere, and carries rows cut to
+ * exactly 300 with no marker character — which is what `runTurn` produced before the marker existed.
+ *
+ * **It is swept because otherwise `turns[].said` is branch-read on exactly one artifact, and that
+ * artifact is a file.** `evals/ab/baseline.json` is the only pre-marker capture in the tree; the moment
+ * it is replaced by a modern one, `said` goes inert on everything swept and the audit fails it as
+ * redundant — inviting the deletion #389 was filed about. Measured, not predicted: with only the two
+ * artifacts, the guarded repair leaves `said` branch-read on the committed capture alone.
+ */
+function preMarkerFixture() {
+    const snap = snapshotFixture();
+    for (const t of snap.turns) {
+        delete t.saidTruncated;
+        t.said = "x".repeat(300);
+    }
+    return snap;
+}
+
+/**
+ * What the sweep and the audit run over. The third element says whether the artifact is **the committed
+ * capture** — a file that can be replaced — rather than a fixture this suite controls. It is a flag and
+ * not a name because the rail below excludes on it, and keying that exclusion on the display string
+ * meant a rename silently turned the rail into a duplicate of the audit it exists to back up.
+ */
 const ARTIFACTS = () => [
-    ["evals/ab/baseline.json", () => JSON.parse(fs.readFileSync(path.join(REPO, SNAPSHOT), "utf8"))],
-    ["the recording fixture", recordingFixture],
+    ["evals/ab/baseline.json", () => JSON.parse(fs.readFileSync(path.join(REPO, SNAPSHOT), "utf8")), true],
+    ["the recording fixture", recordingFixture, false],
+    ["the pre-marker fixture", preMarkerFixture, false],
 ];
 
 test("EVERY field the renderer reads is caught when deleted — swept, not hand-listed", () => {
@@ -679,8 +714,37 @@ test("BRANCH_READ equals what the renderer MEASURES — audited both ways, so a 
     assert.deepEqual(
         [...measured].sort(),
         [...BRANCH_READ].sort(),
-        "BRANCH_READ must equal the union of what the renderer measures over both swept artifacts",
+        "BRANCH_READ must equal the union of what the renderer measures over every swept artifact",
     );
+});
+
+test("no BRANCH_READ field depends on the committed capture alone — that artifact is a file", () => {
+    // **The insurance #389 needs, with a rail on it.** Under the repair, `turns[].said` is branch-read
+    // because a PRE-MARKER capture reads its length — and `evals/ab/baseline.json` is the only
+    // pre-marker capture in the tree. Replace it with a modern one and `said` goes inert everywhere
+    // swept, the audit fails it as redundant, and the audit's own rule invites deleting a real check:
+    // exactly the trap #389 was filed about, merely deferred.
+    //
+    // So the fixtures alone must measure the whole set. Drop `preMarkerFixture()` from `ARTIFACTS` and
+    // this reds, which is what makes it insurance rather than a comment.
+    // **Keyed on the LOADER, not on the label, and the count is asserted.** Keying the exclusion on the
+    // display string meant renaming that label silently turned this into a second copy of the two-way
+    // audit — measured at the pre-commit checkpoint: 86 green with the insurance gone. A rail whose
+    // subject is "that artifact is a file that can be replaced" must not be defeated by a rename.
+    const fixtures = ARTIFACTS().filter(([, , isCommitted]) => !isCommitted);
+    assert.equal(ARTIFACTS().length - fixtures.length, 1, "exactly one swept artifact is the committed capture");
+    assert.ok(fixtures.length >= 2, "and the fixtures must be able to measure the set between them");
+    const base = new Set();
+    for (const [, make] of fixtures) {
+        const doc = renderRegister(make());
+        for (const shape of new Set(leafShapes(make()))) {
+            const snap = make();
+            deleteEvery(snap, splitShape(shape));
+            if (renderClass(snap, doc) === "branch") base.add(shape);
+        }
+    }
+    assert.deepEqual([...base].sort(), [...BRANCH_READ].sort(),
+        "every branch-read field must be measurable from the FIXTURES, so no name depends on a capture that can be replaced");
 });
 
 test("PERMITTED_ABSENT is derived from the committed capture, not asserted about it", () => {
@@ -808,7 +872,7 @@ test("a `null` INVOCATION element publishes a shorter command line than the one 
 test("row homogeneity catches a DIVERGING row, and the residue it does not catch is pinned", () => {
     // It names no field, so it closes `nonce`, `timedOut`, `evidence`, `invocation` and everything added
     // later without listing one of them. Its reach is a row that disagrees with its neighbours — so the
-    // case is SWEPT rather than hand-picked, over every per-row leaf of both artifacts. A hand-picked
+    // case is SWEPT rather than hand-picked, over every per-row leaf of every artifact. A hand-picked
     // field would have proved it for that field, which is the shape of defect this file keeps repairing.
     for (const [name, make] of ARTIFACTS()) {
         for (const shape of new Set(leafShapes(make()))) {
@@ -1027,6 +1091,57 @@ test("the withholding message does not assert a PREVIOUS register when there is 
         assert.match(err.join(""), /was NOT written/);
         assert.doesNotMatch(err.join(""), /still the PREVIOUS run's/, "there is no previous register to be stale");
     });
+});
+
+// ---------------------------------------------------------------- the marker, and its vintage
+
+test("the VINTAGE bullet is decided by whether the capture records the marker, never by a length", () => {
+    // **#388 named this an off-by-one and it is not one.** The branch asks *does this capture predate
+    // the marker* and answered by measuring a string, so a modern capture that records `saidTruncated`
+    // on every turn and happens to hold a row of exactly 300 published *"this capture predates the
+    // marker"* — over a capture carrying it. Guarded by the actual question now.
+    //
+    // **The fix #388 named — aligning `>= 300` with `> 300` — is a REGRESSION, measured.** It deletes a
+    // TRUE limitation from the committed register (whose rows are cut to exactly 300) and reds
+    // `ab-run.sh` on drift. The tree already objected: an existing case here goes red under it.
+    const modern = snapshotFixture();
+    for (const t of modern.turns) { t.saidTruncated = false; t.said = "x".repeat(300); }
+    assert.doesNotMatch(renderRegister(modern).split("\n").join("\n"), /predates the marker/,
+        "a capture that RECORDS the marker cannot predate it, whatever its rows measure");
+
+    // The pin, not a red-first case: this is `main`'s behaviour and must survive the repair.
+    const vintage = JSON.parse(fs.readFileSync(path.join(REPO, SNAPSHOT), "utf8"));
+    assert.match(renderRegister(vintage).split("\n").join("\n"), /predates the marker/,
+        "and a capture that records it NOWHERE still says so — the committed register carries this line");
+
+    // Marked rows win over both.
+    const marked = snapshotFixture();
+    marked.turns[0] = { ...marked.turns[0], saidTruncated: true, said: `${"x".repeat(300)}…` };
+    assert.match(renderRegister(marked).split("\n").join("\n"), /truncated\*\*, and are marked/);
+});
+
+test("a turn MARKED truncated must carry the marker the register says it carries", () => {
+    // The marked bullet claims rows "are marked `…` where they are". A turn flagged truncated whose
+    // `said` does not carry `MARKER` makes that claim false — a substitution, so the deletion sweep
+    // cannot reach it and it is checked by value, beside `verdict` and `invocation`.
+    const snap = recordingFixture();
+    snap.turns[0] = { ...snap.turns[0], saidTruncated: true, said: "short, and not marked" };
+    assert.match(verifyShape(snap).join("\n"), /marked truncated but its `said` does not end/);
+    // And the honest twin passes.
+    assert.deepEqual(verifyShape(recordingFixture()), []);
+});
+
+test("a capture that LOST its marker column is caught by the marker still in its rows", () => {
+    // Residue 1 said the three permitted-absent fields could only be separated by a declared capture
+    // format. That is too strong for `saidTruncated`: the marker is an IN-BAND witness. A capture whose
+    // rows end in `…` while no turn records the field had the field and lost it, and nothing else in
+    // the tree would notice.
+    const snap = recordingFixture();
+    for (const t of snap.turns) delete t.saidTruncated;
+    assert.match(verifyShape(snap).join("\n"), /rows carry the truncation marker while no turn records/);
+    // The genuine vintage — marker in neither place — stays permitted, which is what keeps the
+    // committed capture green.
+    assert.deepEqual(verifyShape(preMarkerFixture()), []);
 });
 
 test("--write refuses a capture it could not read, rather than rendering from one", () => {

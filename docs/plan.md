@@ -2717,3 +2717,14 @@ _The seam applies here too: no client-identifying references._
   reads **nine** more than the 149 examined. Repaired by a **dated note, not a rewrite**; the emitted
   sentence is **left unfixed on purpose**, a shipped-module change a rebase must not smuggle. · 27
   recipes green. · Triage lane. · Seam scan clean, control-verified. · [handoff](../.portulan/handoffs/2026-09-01-d-the-pass-was-rebased-and-its-prediction-went-stale.md)
+
+- 2026-09-01 · M8 (Evals & telemetry), triage · **The marker, and the proxy it was read through.**
+  #388 + #389, which had to move together. **#388 was not an off-by-one and its named fix is a
+  REGRESSION** — aligning the comparisons deletes a TRUE limitation from the committed register and reds
+  `ab-run.sh`; the two `300`s are different constants that happen to be equal, one frozen because only
+  one pre-marker capture exists. The real defect: a limitation asserted through a **proxy**, a length
+  standing in for a vintage. **#389's trap was real and conditional on the naive repair** — both arms
+  measured — so it was answered by the choice of repair; the residual is closed by a third swept fixture
+  with a rail on it, and #389's general question is re-filed as #399. No `evals/` change. · 26 recipes;
+  tests 82→86, three red first, four mutations caught. · Session-open **A-W-A (12)**, pre-commit
+  **A-W-A (9)**. · Seam scan clean. · [handoff](../.portulan/handoffs/2026-09-01-d-the-marker-and-the-proxy-it-was-read-through.md)
