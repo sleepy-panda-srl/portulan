@@ -41,6 +41,7 @@ import {
     credentialChannel,
     dissolvesTheTreatment,
     limitationsFor,
+    publishMatrix,
     journalPath,
     readJournal,
     renderRegister,
@@ -845,7 +846,7 @@ test("an EMPTY collection is not a valid capture — the `[].every()` class one 
     // `turns`: the by-name loop runs zero times over an empty array and homogeneity skips it, so
     // `turns: []` with the cells left intact was shape-valid and `--write` published a register with
     // eight full figure rows above an empty per-turn table. Found by reading that comment and asking
-    // where else it was true. `--write` runs `verifyShape` and no other check, so this is the layer.
+    // where else it was true. This check runs before the renderer, which is why it is the layer.
     const noTurns = recordingFixture();
     noTurns.turns = [];
     assert.match(verifyShape(noTurns).join("\n"), /records no turns at all/);
@@ -871,6 +872,161 @@ test("a scenario's cells share one verdict vocabulary, and the check is per scen
     const snap = recordingFixture();
     delete snap.cells[0].verdicts.survived;
     assert.match(verifyShape(snap).join("\n"), /different `verdicts` vocabularies/);
+});
+
+// ---------------------------------------------------------------- what PUBLISHES must ASK
+
+/** A committed-shaped capture in a scratch repo root, mutated by `edit` before it is written. */
+function publishedInto(dir, edit = () => {}) {
+    fs.mkdirSync(path.join(dir, "evals", "ab"), { recursive: true });
+    const snap = JSON.parse(fs.readFileSync(path.join(REPO, SNAPSHOT), "utf8"));
+    edit(snap);
+    fs.writeFileSync(path.join(dir, SNAPSHOT), `${JSON.stringify(snap, null, 2)}\n`);
+    return snap;
+}
+
+test("--write REFUSES what --verify would red — the publishing mode asks the publishing question", () => {
+    // **The mode that publishes the most checked the least.** `--write` ran `verifyShape()` and
+    // returned before `verify()` was reached, so a capture recording `operatorEnv: "host"` with a
+    // forged nonce was PUBLISHED at exit 0 and red two ways on the very next command. A rail the
+    // publishing path does not run is a rail about a file nobody is required to produce.
+    for (const [label, edit, tell] of [
+        ["an unisolated arm", (s) => { s.operatorEnv = "host"; }, /no baseline may be recorded under an unisolated arm/],
+        ["a forged nonce", (s) => { s.turns[0].nonce = "deadbeef"; }, /cannot attribute anything/],
+        ["an unruled k", (s) => { s.k = 4; }, /where the maintainer ruled/],
+    ]) {
+        withTemp((dir) => {
+            publishedInto(dir, edit);
+            const err = [];
+            const code = run(["--write", "--repo-root", dir], { stdout: sink, stderr: { write: (x) => err.push(x) }, cwd: REPO });
+            assert.equal(code, 1, `--write must refuse ${label}`);
+            assert.match(err.join(""), tell);
+            assert.ok(!fs.existsSync(path.join(dir, REGISTER)), `${label}: no register may be written from a capture the rail reds`);
+        });
+    }
+});
+
+test("--write still renders a capture that is merely UNCHANGED — the refusal is not a blanket one", () => {
+    withTemp((dir) => {
+        publishedInto(dir);
+        assert.equal(run(["--write", "--repo-root", dir], { stdout: sink, stderr: sink, cwd: REPO }), 0);
+        assert.equal(
+            fs.readFileSync(path.join(dir, REGISTER), "utf8"),
+            fs.readFileSync(path.join(REPO, REGISTER), "utf8"),
+            "and what it renders is byte-identical to the committed register",
+        );
+    });
+});
+
+test("the register RENDERS the operator environment rather than asserting it", () => {
+    // `renderRegister()` hard-coded the word `isolated` and never read `snap.operatorEnv` at all — so
+    // a capture recording `host` published a document claiming isolation. **A deletion sweep cannot see
+    // this**: a hard-coded claim does not change when you delete the field it purports to describe, so
+    // it classified as inert and nothing required it. That is the shape of "shape is not truth" that
+    // `verifyShape()`'s residue 4 did not name.
+    const isolated = JSON.parse(fs.readFileSync(path.join(REPO, SNAPSHOT), "utf8"));
+    assert.match(renderRegister(isolated), /\*\*Operator environment:\*\* isolated, a fresh home/);
+
+    const host = { ...isolated, operatorEnv: "host" };
+    const doc = renderRegister(host);
+    assert.doesNotMatch(doc, /\*\*Operator environment:\*\* isolated/, "it must not claim isolation the capture denies");
+    assert.match(doc, /`host`/, "and it must name what the capture actually recorded");
+
+    // Deleting it must reach the probe as a HOLE — measured, not predicted, because the audit
+    // classifies by what the renderer does and a wrong prediction here fails `BRANCH_READ`'s equality.
+    const gone = { ...isolated };
+    delete gone.operatorEnv;
+    assert.ok(renderRegister(gone).includes("undefined"), "absence must render a hole the derived probe refuses");
+    assert.ok(verifyShape(gone).length > 0);
+});
+
+test("--k is refused BEFORE the money is spent, not after forty turns", () => {
+    // `verify()` has always known that a matrix at another k is another experiment — but only
+    // `--verify` ran it, so the ruling was enforced after the spend. The parser is where it belongs.
+    // **`--repo-root` and `--agent` are supplied even though the parse pin should make them
+    // unreachable**, because this file's first trap is "no case runs a real agent": if the pin ever
+    // regressed on a machine with `CLAUDE_CODE_OAUTH_TOKEN` exported — the maintainer's matrix machine —
+    // a bare call here would spawn 24 real turns and write a capture at the cwd. The case must not
+    // depend for its safety on the behaviour it is asserting. Pre-commit checkpoint.
+    withTemp((dir) => {
+        const err = [];
+        const e = { write: (x) => err.push(x) };
+        const agent = stubAgent(dir, { body: 'echo "0.0.0-stub"' });
+        assert.equal(run(["--matrix", "--seed", "s", "--k", "3", "--repo-root", dir, "--agent", agent], { stdout: sink, stderr: e }), 2);
+        assert.match(err.join(""), /the maintainer ruled/);
+        assert.equal(run(["--matrix", "--seed", "s", "--k", "0", "--repo-root", dir, "--agent", agent], { stdout: sink, stderr: e }), 2);
+    });
+});
+
+test("the closing line prints the RULED k rather than a literal that cannot be wrong quietly", () => {
+    // `--matrix` printed "k=5 supports a recorded rate and nothing else" from a string literal, so a
+    // `--k 3` run announced k=5. The same defect as the `isolated` literal, in the same mode, one line
+    // below the write. **No count is asserted here**: the first draft said "the two places `K` is
+    // quoted" and there were four operator-visible sites, in a repository whose recent history is a
+    // countable claim in a comment being wrong.
+    assert.ok(!/k=5 supports a recorded rate/.test(fs.readFileSync(path.join(REPO, "cli", "ab-run.mjs"), "utf8")),
+        "the closing line must derive its k from K, never spell it");
+});
+
+test("--matrix keeps the CAPTURE whatever the checks say, and withholds the REGISTER when they red", () => {
+    // **Nothing in the tree held this repair, and the pre-commit checkpoint measured that**: reverting
+    // the check to `[]` left all 79 cases here and all 2382 in the suite green. The centrepiece of the
+    // change could be deleted in silence — the session's own thesis, that a rail a publishing path does
+    // not run is not a rail, turned on the change that argues it.
+    //
+    // `publishMatrix()` is the carrier precisely so this can grip: `run()`'s matrix arm needs a repo
+    // root, a credential and forty arm constructions before it reaches the publish step, and a rail
+    // that cannot be run is not one either.
+    withTemp((dir) => {
+        fs.mkdirSync(path.join(dir, "evals", "ab"), { recursive: true });
+        const before = "PREVIOUS RUN'S REGISTER\n";
+        fs.writeFileSync(path.join(dir, REGISTER), before);
+        const snap = snapshotFixture();
+        snap.operatorEnv = "host"; // the one departure evals/ab/corpus.md forbids outright
+        const out = [];
+        const err = [];
+        const code = publishMatrix({ repoRoot: dir, snap, into: "/tmp/journal-x", stdout: { write: (x) => out.push(x) }, stderr: { write: (x) => err.push(x) } });
+
+        assert.equal(code, 1, "a capture the tool cannot stand behind is a red, not a publish");
+        // **The captured half is kept unconditionally** — forty turns of events that do not repeat.
+        assert.ok(fs.existsSync(path.join(dir, SNAPSHOT)), "the snapshot must be written whatever the checks say");
+        assert.match(out.join(""), /the turns are kept whatever the checks say/);
+        // **The derived half is withheld**, and the previous one is left exactly as it was.
+        assert.equal(fs.readFileSync(path.join(dir, REGISTER), "utf8"), before, "the register must not be overwritten from a red capture");
+        assert.match(err.join(""), /was NOT written/);
+        assert.match(err.join(""), /no baseline may be recorded under an unisolated arm/);
+        // **The stale state is named**, because withholding does not leave the register absent.
+        assert.match(err.join(""), /still the PREVIOUS run's/);
+        // **Where the turns are**, because recovery depends on it and `--into` can be a temp directory.
+        assert.match(out.join(""), /journalled under \/tmp\/journal-x/);
+    });
+});
+
+test("--matrix publishes BOTH halves when the capture passes — the refusal is not a blanket one", () => {
+    // Without this twin, "withhold on red" is satisfied by withholding always.
+    withTemp((dir) => {
+        fs.mkdirSync(path.join(dir, "evals", "ab"), { recursive: true });
+        const out = [];
+        const code = publishMatrix({ repoRoot: dir, snap: snapshotFixture(), into: "/tmp/j", stdout: { write: (x) => out.push(x) }, stderr: sink });
+        assert.equal(code, 0);
+        assert.ok(fs.existsSync(path.join(dir, SNAPSHOT)) && fs.existsSync(path.join(dir, REGISTER)));
+        // The closing line DERIVES its k rather than spelling it — a `--k 3` run once announced k=5.
+        assert.match(out.join(""), new RegExp(`k=${K} supports a recorded rate`));
+    });
+});
+
+test("the withholding message does not assert a PREVIOUS register when there is none", () => {
+    // The same class this change repaired in `--verify`'s remediation string — "named only when it will
+    // work" — left unfixed at the sibling site the change itself added. Caught at pre-commit.
+    withTemp((dir) => {
+        fs.mkdirSync(path.join(dir, "evals", "ab"), { recursive: true });
+        const snap = snapshotFixture();
+        snap.operatorEnv = "host";
+        const err = [];
+        assert.equal(publishMatrix({ repoRoot: dir, snap, stdout: sink, stderr: { write: (x) => err.push(x) } }), 1);
+        assert.match(err.join(""), /was NOT written/);
+        assert.doesNotMatch(err.join(""), /still the PREVIOUS run's/, "there is no previous register to be stale");
+    });
 });
 
 test("--write refuses a capture it could not read, rather than rendering from one", () => {
