@@ -17,7 +17,10 @@ defect class, a hand-maintained figure whose subject can move.
    the same cells the rows come from, with the caveat that it is a sum of four counts of five and not a
    rate over twenty trials — and it **marks a total that folds a cell which measured silence**, because
    the contrast table already marked such a cell and the headline is the figure other documents cite.
-   Five new tests; `evals/ab/baseline.md` regenerated via `--write`.
+   **Six** new tests; `evals/ab/baseline.md` regenerated via `--write`. _(This said `Five` until after
+   merge: the sixth arrived with round 1's own fix, and the count did not move with it. Corrected
+   post-merge under the review bound's rule 2 — see the Verification section, where the same thing
+   happened to the suite total.)_
 2. The three sentences now **cite** the register instead of restating it.
 3. The rule is registered as `ab-baseline-figures` in [`../rule-carriers.json`](../rule-carriers.json).
 

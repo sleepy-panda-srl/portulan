@@ -2635,9 +2635,9 @@ _The seam applies here too: no client-identifying references._
   moves; doctrine work under the gate map's checkpoint sentence. The A/B aggregate stood in **three live
   sentences** as a hand-typed sum nothing checked. [`ab-run.mjs`](../cli/ab-run.mjs) now **derives** it
   into the byte-compared register — the carrier held per-cell counts only, so a citation would have sent
-  a reader to sum four rows — the three sentences cite it, and `ab-baseline-figures` is registered.
-  **The brief's premise was measured FALSE:** both carriers already cited `baseline.md` and `cites` is
-  per-file, so registering first would have printed green over the prose it targets. · 25 recipes;
-  `rule-carriers` forced red at `graders.md`. · Session-open **A-W-A (9)**, pre-commit **A-W-A (7)**;
-  **Copilot 3 rounds**, its promoted note catching a stale count in the handoff. · Seam scan clean. ·
-  [handoff](../.portulan/handoffs/2026-09-01-b-the-figure-the-citation-did-not-carry.md)
+  a reader to sum four rows — the three sentences cite it, `ab-baseline-figures` is registered, and the
+  s7 merge hazard is [#380](https://github.com/sleepy-panda-srl/portulan/issues/380). **The brief's
+  premise was measured FALSE:** both carriers already cited `baseline.md` and `cites` is per-file. ·
+  25 recipes. · Session-open **A-W-A (9)**, pre-commit **A-W-A (7)**; **Copilot 5 rounds, 3 fix-rounds
+  against a bound of 2 — EXCEEDED, not granted**; rounds 3–5 drawn by my own record pushes. · Seam scan
+  clean. · [handoff](../.portulan/handoffs/2026-09-01-b-the-figure-the-citation-did-not-carry.md)
