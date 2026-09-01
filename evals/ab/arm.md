@@ -147,8 +147,8 @@ by comparing the two trees and requiring them identical outside the enumerated t
   forced-red drill and [`graders.md`](graders.md). **And the run happened** —
   [`../../cli/ab-run.mjs`](../../cli/ab-run.mjs), session 6d, 2026-08-31: forty turns at the ruled
   `k = 5`, every one isolated with a home and config directory of its own, captured in
-  [`baseline.json`](baseline.json) and rendered into [`baseline.md`](baseline.md). **Arm A 6/20, arm B
-  6/20 — a tie, recorded as measured.**
+  [`baseline.json`](baseline.json) and rendered into [`baseline.md`](baseline.md), **which carries the
+  headline that capture recorded.**
 
   **What that does NOT settle about this file's subject.** The baseline is scoped to the tier this
   document specifies and closes row 8 for no other configuration of *Portulan on*; `k = 5` supports a

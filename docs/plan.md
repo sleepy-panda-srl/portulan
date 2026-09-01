@@ -2630,3 +2630,14 @@ _The seam applies here too: no client-identifying references._
   verdict paid more**: arm A rewrote the rigged check 3/5, which the original design would have scored
   as compliance and published as **A 9/20 vs B 6/20**. · 25 recipes; `ab-run` forced red. · Seam scan
   clean. · [handoff](../.portulan/handoffs/2026-08-31-b-the-baseline-recorded-at-a-tie.md)
+
+- 2026-09-01 · M8 (Evals & telemetry), session 7b · **The figure the citation did not carry.** No row
+  moves; doctrine work under the gate map's checkpoint sentence. The A/B aggregate stood in **three live
+  sentences** as a hand-typed sum nothing checked. [`ab-run.mjs`](../cli/ab-run.mjs) now **derives** it
+  into the byte-compared register — the carrier held per-cell counts only, so a citation would have sent
+  a reader to sum four rows — the three sentences cite it, and `ab-baseline-figures` is registered.
+  **The brief's premise was measured FALSE:** both carriers already cited `baseline.md` and `cites` is
+  per-file, so registering first would have printed green over the prose it targets. · 25 recipes;
+  `rule-carriers` forced red at `graders.md`. · Session-open **A-W-A (9)**, pre-commit **A-W-A (7)** —
+  it caught the sweep's own replacements sitting in the rail's numeral blind spot. · Seam scan clean. ·
+  [handoff](../.portulan/handoffs/2026-09-01-b-the-figure-the-citation-did-not-carry.md)

@@ -98,6 +98,44 @@
         ".portulan/products/",
         ".portulan/verify/"
       ]
+    },
+    {
+      "id": "ab-baseline-figures",
+      "carrier": "evals/ab/baseline.md",
+      "summary": "The A/B baseline's AGGREGATE figures — the per-arm sum of compliant cells, `6/20` each at the 2026-08-31 capture. Their one carrier is the rendered register. Reduced 2026-09-01: three live sentences (two in `evals/README.md`, one in `evals/ab/arm.md`) restated a sum typed from a reading of the register's rows, with nothing checking them, so a re-run would have left all three stale and silent — this repository's most-named defect class, a hand-maintained figure whose subject can move. The reduction had a precondition the other two rules did not: THE CARRIER DID NOT CARRY THE FIGURE. `baseline.md` rendered per-cell counts only (`5`/5, `0`/5, `0`/5, `1`/5) and the aggregate existed nowhere but in prose, so pointing the sentences at it would have sent a reader to sum four rows by hand. So `cli/ab-run.mjs`'s `renderRegister()` now DERIVES the aggregate from the same cells the rows come from, and it is held by the byte-compare that already held every other line of that document.",
+      "incident": "Reported by the milestone-8 session-7 handoff `.portulan/handoffs/2026-09-01-a-release-carries-an-eval-result.md`, which found the defect under the `release-eval` clause and deliberately did NOT repair it there because it belongs to the A/B clause. THAT PATH DOES NOT RESOLVE IN THIS TREE, and the citation says so rather than pointing at a file a reader cannot open: it lives on the UNMERGED branch `m8-s7-a-release-carries-an-eval-result`, commit f9009d60, which is not an ancestor of main (main was e192f6b5 when this rule was registered). Verified with `git log --all --diff-filter=A` rather than assumed from the brief, which cited the path as though it were present. NO ISSUE NUMBER IS CITED: `gh` could not be reached from this worktree, and an invented number is worse than a named absence — the other two rules here cite URLs, this one cites the record that exists and where it actually is.",
+      "registered": "2026-09-01",
+      "_tells_comment": "Every tell below was MEASURED through `normalise()` ITSELF against the post-sweep tree, never through `git grep` — rule `ab-clause-subject` records what that mistake costs: git grep is LINE-BASED and the scanner is not, so the wrong instrument once produced a false correction of a right verdict. Liveness after the sweep, measured: `arm A 6/20, arm B 6/20` survives in the CARRIER plus docs/plan.md, docs/milestones/m08.md and the 2026-08-31 handoff; `A 9/20 against B 6/20` survives in docs/milestones/m08.md and that handoff ONLY — NOT in docs/plan.md, which spells the same claim `A 9/20 vs B 6/20` (line 2631), a different string that would not have matched. A first draft of this session's plan asserted plan.md carried it; the session-open checkpoint measured that false, and it is recorded here because the unmeasured version was one edit from becoming this comment. A TRAP THE CHECKPOINT ALSO CAUGHT: the tell taken at the README's fuller spelling — `the headline is a tie: arm A 6/20, arm B 6/20` — exists nowhere else in the tree and would have gone DEAD on the sweep, exit 2. The shorter spellings are registered for that reason. `a tie, 6/20 each` is registered though it lives only under globally excluded paths — docs/plan.md row 8's Status cell, and this session's own handoff — which rule `ab-clause-subject` declined to do for an equivalent case; the reason it is not the same case is that this one is the spelling of a LIVE, hand-edited aggregate in row 8's Status cell rather than a retired sentence in a record, which makes it the spelling most likely to be copied into scoped prose.",
+      "_coverage_comment": "WHAT THIS RULE DOES NOT COVER, measured rather than reasoned, because the brief this session was given asserted the opposite and was wrong. (1) THE BRIEF'S PREMISE WAS FALSE: registering this rule BEFORE the sweep would NOT have redded on the merged prose — it would have printed GREEN over exactly the restatements the sweep removed. `cites` is a per-FILE substring test, and BOTH live carriers already cited `baseline.md` for unrelated reasons, at evals/README.md:44 and evals/ab/arm.md:150 — the latter in the SAME SENTENCE as the restatement. Verified by building this rule and running `scan()`: `findings: []`, and a control with an unmatchable `cites` produced both findings, proving the machinery fires. (2) CONSEQUENCE: this rail CANNOT catch a regression in the two files just swept. Both still legitimately cite the register, so re-adding the aggregate to either is invisible to it. What it CAN catch is a NEW live carrier in scope that restates without citing — and that is concrete, not hypothetical: `evals/ab/graders.md` is in scope and does NOT cite `baseline.md`. THE REGRESSION IS NOT HYPOTHETICAL EITHER, and this is the instance to expect: the unmerged branch `m8-s7-a-release-carries-an-eval-result` ALSO edits `evals/README.md`, and its copy still carries BOTH pre-sweep sentences. Whichever of the two merges second can reinstate exactly the prose this rule was registered over, and by the limit stated one sentence ago the rail will print GREEN on it. That merge has to be resolved by hand against this entry; no rail will do it. (3) IT IS KEYED TO NUMERALS. The tells carry the literals `6/20` and `9/20`, so the rail sees a STALE figure surviving a re-run but is blind to the identical defect committed with a NEW aggregate — a future `arm A 7/20` hand-typed into uncited live prose matches nothing here. THAT BLIND SPOT ALSO CONTAINS THE SWEEP'S OWN REPLACEMENTS, which is the honest half of this entry: `evals/README.md` and `evals/ab/arm.md` still assert the RESULT in words — `the headline is a tie`, `an arm-A lead` — the same derived claim spelled without numerals. They are bound to the 2026-08-31 capture date so that a re-run makes them historical rather than false, and THAT DATING, not this rail, is what holds them. (4) THREE restatements sit permanently outside this rail, not one. docs/plan.md row 8's Status cell carries `a tie, 6/20 each` in the most prominent place in the tree; docs/milestones/m08.md carries the aggregate twice more in live declarative prose — `The result is a tie: arm A 6/20, arm B 6/20` at line 774, and the `A 9/20` counterfactual at 784. All are unreachable because docs/plan.md and docs/milestones/ are globally excluded. That is NOT design: whether the whole of docs/plan.md belongs on the exclude list is unsettled and filed as #367, which this file's own top `_comment` already flags. (5) THE REAL DEFENCE IS NOT THIS RAIL. It is that the figure is now DERIVED and byte-compared, so it cannot go stale at all — removing what would otherwise need enforcing, which `core/operating/evolution.md` ranks above enforcing it. This registration is the second line, and it is registered knowing the first line is the one doing the work. The option not taken: delete the aggregate outright and cite the per-cell table. It loses because the headline of a baseline is what every citing document actually needs, and a reader made to sum four rows will type the sum back into prose — recreating this defect by hand.",
+      "tells": [
+        "arm A 6/20, arm B 6/20",
+        "A 9/20 against B 6/20",
+        "a tie, 6/20 each"
+      ],
+      "cites": [
+        "ab/baseline.md",
+        "baseline.md"
+      ],
+      "scope": [
+        "README.md",
+        "CONTRIBUTING.md",
+        "core/",
+        "spec/",
+        "plugin/",
+        "cli/",
+        "packs/",
+        "agents/",
+        "evals/",
+        ".github/workflows/",
+        ".portulan/dod.md",
+        ".portulan/identity.md",
+        ".portulan/principles.md",
+        ".portulan/gate-map.md",
+        ".portulan/README.md",
+        ".portulan/repos/",
+        ".portulan/products/",
+        ".portulan/verify/"
+      ]
     }
   ]
 }

@@ -498,6 +498,52 @@ export function renderRegister(snap) {
         lines.push(`| \`${c.scenario}\` | ${c.arm.toUpperCase()} | **${c.compliant}**/${snap.k} | ${c.nonCompliant} | ${c.couldNotAttribute} | ${c.didNotComplete} | ${c.attempted}/${snap.k} |`);
     }
     lines.push("");
+    // **The aggregate, RENDERED rather than hand-maintained — which is the whole reason it is here.**
+    // Three live sentences in `evals/README.md` and `evals/ab/arm.md` carried this sum as prose, typed
+    // from a reading of the rows above, with nothing checking them: a re-run would have left all three
+    // stale and silent, which is this repository's most-named defect class. Reducing them to citations
+    // of this document is only a reduction if THIS document carries the figure — otherwise the citation
+    // sends a reader to sum four rows by hand. So the sum is derived here, held by the byte-compare that
+    // already holds every other line, and registered as `ab-baseline-figures` in
+    // `.portulan/rule-carriers.json`.
+    //
+    // `.find()` per scenario rather than a `filter().reduce()` over `snap.cells`: a filter would silently
+    // UNDER-COUNT a capture missing a cell and publish a smaller total as though it were measured, while
+    // this throws and `verifyShape()` turns that into *cannot be rendered from this capture*. A missing
+    // `compliant` folds to `NaN`, which the same function's hole check already refuses. Both guards are
+    // inherited rather than restated — the totals get the coverage the rows have.
+    //
+    // The fold iterates `holdingScenarios()` while the rows table above iterates `snap.cells`, and the
+    // two are not the same list. A capture carrying an EXTRA cell — a scenario this build no longer
+    // holds — renders a row the total then excludes. `--verify` catches that (it re-folds the cells from
+    // the turns), but `--write` runs `verifyShape()` only, so on that path alone a foreign cell can be
+    // printed above a total that does not include it. Named rather than fixed: `holdingScenarios()` is
+    // the right denominator, and silently summing whatever a capture happens to carry would be worse.
+    const cellsFor = (arm) => holdingScenarios().map((s) => snap.cells.find((c) => c.scenario === s.id && c.arm === arm));
+    const totalFor = (arm) => cellsFor(arm).reduce((n, c) => n + c.compliant, 0);
+    const totalA = totalFor("a");
+    const totalB = totalFor("b");
+    const denominator = snap.k * holdingScenarios().length;
+    const verdict = totalA === totalB ? "a tie" : `a difference of ${totalA - totalB > 0 ? "+" : ""}${totalA - totalB}`;
+    lines.push(`**Arm A ${totalA}/${denominator}, arm B ${totalB}/${denominator} — ${verdict}, recorded as measured.**`);
+    lines.push("");
+    // **A total may fold a cell that measured SILENCE, and it must say so.** The contrast table below
+    // marks such a cell; a bare sum would launder it into the one figure other documents cite. Two of
+    // the four scenarios are compliant when an arm does nothing at all, so a headline carrying them
+    // silently is a figure about inaction wearing the clothes of a result.
+    const silent = [...cellsFor("a"), ...cellsFor("b")].filter((c) => c.compliant > 0 && c.attempted === 0);
+    if (silent.length > 0) {
+        lines.push(`**${silent.length} of the cells folded into those totals MEASURED SILENCE** — compliant with nothing`);
+        lines.push("attempted. A total carrying them is not a count of an arm doing the right thing, and the per-scenario");
+        lines.push("table below marks which.");
+        lines.push("");
+    }
+    lines.push(`That total is a sum of ${holdingScenarios().length} counts of ${snap.k}, and NOT a rate over ${denominator} independent`);
+    lines.push("trials. It carries no significance, no interval, and no claim that a difference between the arms is");
+    lines.push("an effect of the treatment. The per-scenario rows above are the measurement; this line exists so a");
+    lines.push("document citing the headline does not have to restate it, and every limitation below governs it");
+    lines.push("exactly as it governs the rows.");
+    lines.push("");
     lines.push("### Arm B's absolute rate, beside every contrast");
     lines.push("");
     lines.push("| Scenario | arm A | arm B | difference |");

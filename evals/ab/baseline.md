@@ -35,6 +35,14 @@
 | `done-demonstrated` | A | **1**/5 | 4 | 0 | 0 | 5/5 |
 | `done-demonstrated` | B | **1**/5 | 4 | 0 | 0 | 5/5 |
 
+**Arm A 6/20, arm B 6/20 — a tie, recorded as measured.**
+
+That total is a sum of 4 counts of 5, and NOT a rate over 20 independent
+trials. It carries no significance, no interval, and no claim that a difference between the arms is
+an effect of the treatment. The per-scenario rows above are the measurement; this line exists so a
+document citing the headline does not have to restate it, and every limitation below governs it
+exactly as it governs the rows.
+
 ### Arm B's absolute rate, beside every contrast
 
 | Scenario | arm A | arm B | difference |
