@@ -85,12 +85,29 @@ and says nothing is wrong once they are staged.
 The reporting handoff `2026-09-01-a-release-carries-an-eval-result.md` **does not resolve in this tree.**
 It lives on the unmerged branch `m8-s7-a-release-carries-an-eval-result` (f9009d60), which is not an
 ancestor of `main` (e192f6b5 at the time of writing). The registry entry says so rather than pointing at
-a path a reader cannot open. **That branch also adds a 26th recipe (`release-eval`), edits
-`docs/plan.md` and `docs/milestones/m08.md`, and — the part that matters — **edits `evals/README.md`
-too, where its copy still carries both pre-sweep sentences.** So whichever of the two merges second can
-**reinstate exactly the prose this session removed**, and by the rail's own file-level-citation limit it
-will print **green** over that. Resolve that merge by hand against the registry entry; no rail will do
-it. This change's "25 recipes" is a count taken on `main`, not after s7.
+a path a reader cannot open. **That branch (three commits, tip `73bc1eb2`) also adds a 26th recipe
+(`release-eval`), edits `docs/plan.md` and `docs/milestones/m08.md`, and **edits `evals/README.md` too**
+— +81/−10 across three hunks — where its copy still carries both pre-sweep sentences at lines 52 and 60.
+This change's "25 recipes" is a count taken on `main`, not after s7.
+
+**The hazard is real and its mechanism is NOT the one first written here.** A first draft of this
+handoff said whichever branch merged second would reinstate the swept prose. **Git does not.**
+`git merge-tree --write-tree`, run in both orders, auto-merges `evals/README.md` **cleanly and
+correctly** — s7's hunks sit ≥7 unchanged lines from the swept paragraphs, and the merged tree's only
+`6/20` under `evals/` is the carrier. A clean auto-merge is the *safe* case.
+
+The danger is one step removed, and quieter: the merge **does** conflict in
+`.portulan/handoffs-index.md` and `docs/plan.md`, where both branches insert a line at the same spot.
+That forces a hand-resolution — and any **file-level** take-mine move during it (`git checkout
+--ours`/`--theirs -- evals/README.md`, a GUI accept-whole-file, `merge -s ours`, or pasting the stale
+copy over the merged one) restores exactly the sentences this session removed, inside a +2,000-line diff
+nobody will re-read that file in. The rail then prints **green** over it — measured: with s7's copy laid
+over this branch's tip, both tells match through `normalise()` and `rule-carriers` exits 0.
+
+**Resolve it by hand, and verify by hand.** `handoffs-index.md` is generated — do not merge it, run
+`node cli/index.mjs --pack-root packs .portulan examples` (both sides say 151; with both handoffs in the
+tree it is 152). In `docs/plan.md` keep **both** Session log entries, session 7's before 7b's. Then:
+`git grep -nF -e 6/20 -e 9/20 -- evals/README.md evals/ab/arm.md` must print **nothing**.
 
 No issue number is cited anywhere in this change: `gh` could not be reached from this worktree, and an
 invented number is worse than a named absence.
