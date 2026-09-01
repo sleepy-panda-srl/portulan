@@ -517,7 +517,11 @@ export function verifyShape(snap) {
                 "a baseline cited by a name nothing can resolve is cited by nothing",
         );
     }
-    if (typeof snap?.captured === "string" && !ISO_DATE.test(snap.captured.trim())) {
+    // **No `.trim()`**, and its presence here was the degenerate-value class once more. Trimming before
+    // the test accepted `"2026-09-01 "` and the renderer then printed the padding into the table —
+    // a value that passes a format check and violates the format it was checked against. A check that
+    // normalises its input is checking something other than what will be published. Copilot round 3.
+    if (typeof snap?.captured === "string" && !ISO_DATE.test(snap.captured)) {
         red.push(`the record's \`captured\` is ${JSON.stringify(snap.captured)}, which is not a \`YYYY-MM-DD\` date — it is printed as one`);
     }
 

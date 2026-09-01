@@ -164,6 +164,25 @@ a floor and not a name check; round 2 found a repair that reintroduced its own d
 reading a diff produces, and both were confirmed by running the case before the fix rather than from the
 description.
 
+### Round 3 raised no thread and its two suppressed notes were both right
+
+**A padded date passed a check that had normalised its own input.** `ISO_DATE.test(captured.trim())`
+accepted `"2026-09-01 "`, and the renderer then printed the padding into the table — a value that passes
+a format check and violates the format it was checked against. **A check that normalises its input is
+checking something other than what will be published.** The `.trim()` is gone.
+
+**And the leaf sweep skipped arrays, in the test whose name claims every leaf path.** `!Array.isArray(v)`
+treated an array as a leaf, so `recipes[].id`, `recipes[].exit`, `excluded[].id` and `excluded[].why` —
+four fields the renderer reads — were **never swept**. Measured: 14 leaves walked against 16 that exist.
+**That is the third time in this change a totality claim outran the body under it, and the second time in
+this very function**, which was itself written to replace a test whose title claimed totality over six
+hand-picked drops. The two sweeps in the file were also two copies of one walk, one of them wrong; they
+share a single helper now, so they cannot drift apart again the way they just did.
+
+Both were **suppressed notes rather than threads**, so under the loop's rule 3 they blocked nothing and
+would ordinarily have earned one batched reply and no push. They are fixed because the maintainer granted
+the loop past its bound with *"address feedback until it's empty"*.
+
 ## The bound was EXCEEDED and GRANTED, and rebasing made a record of this session's own class
 
 **The maintainer granted the loop past rule 4's bound** — *"address feedback until it's empty"* — and it

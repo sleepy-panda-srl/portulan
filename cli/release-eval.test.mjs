@@ -48,6 +48,18 @@ import {
 
 // ---------------------------------------------------------------- fixtures
 
+/**
+ * Every leaf of an object as a path, **arrays included**.
+ *
+ * Shared by both sweeps below rather than written twice: they were two copies of one walk, one of them
+ * skipping arrays, and the copy that skipped them sat under a test asserting totality over every leaf.
+ */
+function leafPaths(value, prefix = []) {
+    if (value === null || typeof value !== "object") return [prefix];
+    return Object.entries(value).flatMap(([k, v]) => leafPaths(v, [...prefix, k]));
+}
+
+
 /** A capture that is valid in every respect, for a governed release. Cases mutate a clone of it. */
 function goodSnap(version = "0.1.3") {
     return {
@@ -174,12 +186,17 @@ test("EVERY field the renderer reads is caught when deleted — swept, not hand-
     // title asserts totality and whose body asserts six cases is the defect it was written against.
     //
     // So the sweep is derived: walk every leaf path of a valid capture, delete it, and require a red.
-    const leaves = (obj, prefix = []) =>
-        Object.entries(obj).flatMap(([k, v]) =>
-            v !== null && typeof v === "object" && !Array.isArray(v) ? leaves(v, [...prefix, k]) : [[...prefix, k]],
-        );
-    const paths = leaves(goodSnap());
-    assert.ok(paths.length >= 12, `the sweep must cover a real capture, not a stub (${paths.length} leaves)`);
+    // **`!Array.isArray(v)` was here and it made this title false a second time.** Treating an array as
+    // a leaf meant `recipes[].id`, `recipes[].exit`, `excluded[].id` and `excluded[].why` were never
+    // swept — four fields the renderer reads, inside a test whose name claims *every* leaf path. That is
+    // the third time in this change that a totality claim outran the body under it, and the second time
+    // in this very function. Arrays are walked. Copilot round 3.
+    const paths = leafPaths(goodSnap());
+    assert.ok(
+        paths.some((p) => p[0] === "recipes" && p.length > 1),
+        "the sweep must reach inside arrays — skipping them is what made this test's name false",
+    );
+    assert.ok(paths.length >= 16, `the sweep must cover a real capture, not a stub (${paths.length} leaves)`);
     for (const p of paths) {
         const snap = goodSnap();
         let node = snap;
@@ -253,11 +270,7 @@ test("a PRESENT-DEGENERATE value is refused — null and blank render as values,
 
 test("the leaf sweep NULLS and BLANKS every leaf as well as deleting it", () => {
     // Deleting alone is why the degenerate class survived a round that fixed the identical claim once.
-    const leaves = (obj, prefix = []) =>
-        Object.entries(obj).flatMap(([k, v]) =>
-            v !== null && typeof v === "object" && !Array.isArray(v) ? leaves(v, [...prefix, k]) : [[...prefix, k]],
-        );
-    for (const p of leaves(goodSnap())) {
+    for (const p of leafPaths(goodSnap())) {
         for (const value of [null, ""]) {
             const snap = goodSnap();
             let node = snap;
@@ -314,6 +327,19 @@ test("no field the renderer reads has a FALLBACK — a placeholder reads like a 
     for (const placeholder of ["<undated>", "<uncommitted>", "<commit>", "<agent>"]) {
         assert.ok(!doc.includes(placeholder), `a valid capture must not render \`${placeholder}\``);
     }
+});
+
+test("a padded date is refused — a check that normalises its input checks something else", () => {
+    // `ISO_DATE.test(snap.captured.trim())` accepted `"2026-09-01 "` and the renderer printed the padding
+    // straight into the table: a value that passes a format check and violates the format it was checked
+    // against. Copilot round 3, and the degenerate-value class once more — present, non-blank, and wrong.
+    for (const bad of ["2026-09-01 ", " 2026-09-01", "\t2026-09-01"]) {
+        const snap = goodSnap();
+        snap.captured = bad;
+        assert.ok(verifyShape(snap).some((r) => /is not a `YYYY-MM-DD` date/.test(r)), `${JSON.stringify(bad)} must red`);
+    }
+    const ok = goodSnap();
+    assert.deepEqual(verifyShape(ok), [], "an exact date still passes");
 });
 
 test("`abBaseline.clean: null` is refused — the third state rendered as the false arm", () => {
