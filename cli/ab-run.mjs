@@ -279,10 +279,13 @@ export function limitationsFor(snap) {
             "  here, where it is a claim by this record, rather than rendered as though the capture said it.",
         );
     }
-    // `=== true`, not truthy. `verifyShape()` refuses a non-boolean `saidTruncated` before the renderer
-    // is reached, so this is belt against a direct `renderRegister()` call — but a register that treats
-    // `"yes"` as *marked* is publishing from a value nobody validated, and the exactness is free.
-    if (snap.turns?.some?.((t) => isTurn(t) && t.saidTruncated === true)) {
+    // **The bullet carries its own evidence.** It claims rows "are marked `…` where they are", and round
+    // 3 made the flag EXACT (`=== true`, not truthy) without making it EVIDENCED — so a row flagged
+    // truncated whose `said` does not end with the marker still published the claim. `verifyShape()`
+    // reds that, but `renderRegister()` is exported and reachable without it, and a bullet whose truth
+    // depends on a check the caller may not have run is the shape of defect this whole change is about.
+    // The predicate now IS the claim: some row is flagged and carries the marker. Copilot round 6.
+    if (snap.turns?.some?.((t) => isTurn(t) && t.saidTruncated === true && typeof t.said === "string" && t.said.endsWith(TRUNCATION_MARKER))) {
         lines.push(
             `- **Some \`said\` rows in the capture are truncated**, and are marked \`${TRUNCATION_MARKER}\` where they are. They are`,
             "  diagnostic prose, never graded — `evals/ab/corpus.md` grades the tree an arm left behind.",

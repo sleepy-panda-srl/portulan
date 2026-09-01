@@ -470,11 +470,11 @@ test("a truncated `said` is MARKED, and a capture that predates the marker says 
             agent: stubAgent(dir, { exit: 0, body: `printf 'y%.0s' $(seq 1 400)` }),
         });
         assert.equal(long.saidTruncated, true);
-        assert.ok(long.said.endsWith("…"), "a mid-word cut with no marker leaves a terse message and a clipped one indistinguishable");
+        assert.ok(long.said.endsWith(TRUNCATION_MARKER), "a mid-word cut with no marker leaves a terse message and a clipped one indistinguishable");
 
         const short = runTurn({ armRoot: dir, operatorDir: path.join(dir, "op2"), prompt: "x", agent: stubAgent(dir, { exit: 0, body: 'echo "brief"' }) });
         assert.equal(short.saidTruncated, false);
-        assert.ok(!short.said.endsWith("…"));
+        assert.ok(!short.said.endsWith(TRUNCATION_MARKER));
 
         // The committed capture predates the marker and its register must say so rather than imply the
         // rows are whole.
@@ -1148,6 +1148,22 @@ test("a row whose marker and flag DISAGREE is caught, in both directions", () =>
     const plain = recordingFixture();
     plain.turns[0] = { ...plain.turns[0], saidTruncated: false, said: "short" };
     assert.deepEqual(verifyShape(plain), []);
+});
+
+test("the marked bullet carries its own EVIDENCE — the flag alone does not publish it", () => {
+    // Round 3 made the flag exact and not evidenced: a row flagged truncated whose `said` lacks the
+    // marker still published "rows … are marked `…` where they are". `verifyShape()` reds that, but
+    // `renderRegister()` is exported and reachable without it — a bullet whose truth depends on a check
+    // the caller may not have run is this change's own subject. Copilot round 6.
+    const lying = snapshotFixture();
+    lying.turns[0] = { ...lying.turns[0], saidTruncated: true, said: "flagged, but not marked" };
+    assert.doesNotMatch(renderRegister(lying), /rows in the capture are truncated\*\*, and are marked/);
+    assert.match(verifyShape(lying).join("\n"), /marked truncated but its `said` does not end/);
+
+    // And an honest marked capture still publishes it.
+    const honest = snapshotFixture();
+    honest.turns[0] = { ...honest.turns[0], saidTruncated: true, said: `${"x".repeat(300)}${TRUNCATION_MARKER}` };
+    assert.match(renderRegister(honest), /rows in the capture are truncated\*\*, and are marked/);
 });
 
 test("the marked bullet reads `=== true`, so a value nobody validated cannot publish it", () => {

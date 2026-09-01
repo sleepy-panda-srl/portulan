@@ -163,6 +163,18 @@ them, and that is filed as [#401](https://github.com/sleepy-panda-srl/portulan/i
 invented here: a record whose figure is a hand-typed count of something the tree can compute is a
 hand-maintained tally in a new costume, which is `review-loop.sh`'s own sentence about a different figure.
 
+## Copilot round 6 — the exactness was not evidence
+
+Round 3 made the marked bullet's flag **exact** (`=== true`, not truthy) and stopped there. The bullet
+claims rows *"are marked `…` where they are"*, and the flag alone does not establish that: a row flagged
+truncated whose `said` lacks the marker still published the claim. `verifyShape()` reds it — but
+`renderRegister()` is exported and reachable without that check, and **a bullet whose truth depends on a
+check the caller may not have run is this change's own subject**. The predicate now IS the claim: some
+row is flagged AND carries the marker. Dropping the evidence half reds a case.
+
+The second note was three `endsWith` assertions still spelling the glyph — round 2's literal sweep was
+incomplete, which is the same shape as round 1's `?? {}`: a per-site pass that read as a sweep.
+
 ## Left to the maintainer
 
 **#389's general question is NOT closed by this commit:** *a check whose necessity depends on a known
@@ -174,8 +186,9 @@ comment that #389's own closure would bury with it.
 
 ## Evidence
 
-26 recipes green, run rather than printed. `cli/ab-run.test.mjs` 82 → **90** — three red before the repair, one
-at the pre-commit checkpoint, four across Copilot's rounds. **Six mutations caught**, each named because a count
+26 recipes green, run rather than printed. `cli/ab-run.test.mjs` 82 → **91** — three red before the repair, one
+at the pre-commit checkpoint, five across Copilot's rounds. **Counted from the tree, not typed from
+memory** — the figure was wrong twice in this change, which is [#401](https://github.com/sleepy-panda-srl/portulan/issues/401). **Six mutations caught**, each named because a count
 without its members is the claim this milestone keeps repairing: dropping the pre-marker artifact; the
 naive #388 fix (5 cases **and** `ab-run.sh`); unguarding the vintage branch; changing
 `TRUNCATION_MARKER` (8 cases); reverting `isTurn()` to round 1's `?? {}` predicate; and relaxing the marked bullet back to a truthy read. Drill forced red
