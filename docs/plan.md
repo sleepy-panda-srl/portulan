@@ -2638,6 +2638,6 @@ _The seam applies here too: no client-identifying references._
   a reader to sum four rows — the three sentences cite it, and `ab-baseline-figures` is registered.
   **The brief's premise was measured FALSE:** both carriers already cited `baseline.md` and `cites` is
   per-file, so registering first would have printed green over the prose it targets. · 25 recipes;
-  `rule-carriers` forced red at `graders.md`. · Session-open **A-W-A (9)**, pre-commit **A-W-A (7)** —
-  it caught the sweep's own replacements sitting in the rail's numeral blind spot. · Seam scan clean. ·
+  `rule-carriers` forced red at `graders.md`. · Session-open **A-W-A (9)**, pre-commit **A-W-A (7)**;
+  **Copilot 3 rounds**, its promoted note catching a stale count in the handoff. · Seam scan clean. ·
   [handoff](../.portulan/handoffs/2026-09-01-b-the-figure-the-citation-did-not-carry.md)

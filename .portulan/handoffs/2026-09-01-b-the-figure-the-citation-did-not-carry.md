@@ -73,7 +73,14 @@ register. What it can catch is a *new* in-scope carrier that restates without ci
 **25 recipes green** (`node cli/recipe-set.mjs --workspace .portulan --repo-root . --pack-root packs`).
 `rule-carriers` **forced red** by planting the swept sentence in `evals/ab/graders.md` — it named the
 file, the rule, the tell and the carrier, exit 1 — then restored to green. `ab-run` green, so the
-regenerated register still byte-matches its renderer. `ab-run` suite 61/61.
+regenerated register still byte-matches its renderer. **`ab-run` suite 63/63**, re-measured at the end
+of the session rather than left at the 61/61 this line first carried.
+
+**That stale count was caught by this repository's own promoted-note channel, and it is the defect this
+whole session is about.** The figure was true when written and went stale two review rounds later, when
+the suite grew — a hand-maintained number whose subject moved underneath it, sitting in the verification
+section of the handoff arguing against hand-maintained numbers. It is recorded rather than quietly
+corrected, because the irony is the evidence: the class does not spare the person naming it.
 
 Two traps worth the next session's time: **`timeout` is not on macOS**, and a run harness using it
 reported all 25 recipes red at exit 127 — a false red that a less noisy exit code would have hidden.
