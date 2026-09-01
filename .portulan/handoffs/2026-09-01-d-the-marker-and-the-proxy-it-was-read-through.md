@@ -200,10 +200,28 @@ Fixed out-of-tree, and added to [#401](https://github.com/sleepy-panda-srl/portu
 strengthens the case for *naming the command instead of quoting the count*: a rail over in-tree records
 would have left this carrier stale, and the commit-message carrier cannot be corrected at all.
 
-**This entry is the last push this change makes.** Rule 2 puts records last, which guarantees a push
+**Round 9 then found one more**, so this was not the last push after all — see below.
+
+**The intended close.** Rule 2 puts records last, which guarantees a push
 after the final round — so *"iterate until empty"* has no fixed point unless one round is allowed to
 judge a commit carrying its predecessor's record. That is what the next round does, and the close will
 name the commit it judged.
+
+## Copilot round 9 — a comment in the wrong branch
+
+No new comments; one previously-missed note, and it is right. Three explanations had accumulated between
+the marked branch's body and the vintage `else if` — added in rounds 1, 2 and 7 — so a reader met the
+pre-marker cap's rationale as though it justified the *marked* predicate. **A comment in the wrong branch
+is a claim about the wrong code**, which is this change's own subject arriving in its own comments for
+the second time.
+
+Restructured: the marked branch keeps only what describes it; the vintage branch carries its three
+conditions explained in order — no column, no marker in any row, some row at the cap — with the frozen
+`300` where it belongs. No behaviour change.
+
+**The maintainer capped the loop here: merge on a clean round, otherwise two more rounds and stop.**
+That bound is what closes this change, and it is recorded rather than left to be inferred from the
+merge — nine rounds is four and a half times rule 4's, all under an explicit grant.
 
 ## Left to the maintainer
 

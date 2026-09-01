@@ -2724,7 +2724,7 @@ _The seam applies here too: no client-identifying references._
   `ab-run.sh`; the two `300`s are different constants that happen to be equal, one frozen because only
   one pre-marker capture exists. The real defect: a limitation asserted through a **proxy**, a length
   standing in for a vintage. **#389's trap was real and conditional on the naive repair** — both arms
-  measured — so it was answered by the choice of repair; the residual is closed by a third swept fixture
-  with a rail on it, and #389's general question is re-filed as #399. No `evals/` change. · 26 recipes;
-  tests 82→92, three red first. · Session-open **A-W-A (12)**, pre-commit **A-W-A (9)**, Copilot
-  **8 rounds, 16 accepted** — 6+7 are one property; 8 found a carrier no in-tree rail can see. · Seam scan clean. · [handoff](../.portulan/handoffs/2026-09-01-d-the-marker-and-the-proxy-it-was-read-through.md)
+  measured — so it was answered by the choice of repair; its general question is re-filed as #399. No
+  `evals/` change. · 26 recipes; tests 82→92. · Session-open **A-W-A (12)**, pre-commit **A-W-A (9)**,
+  **Copilot 9 rounds, 17 accepted** under his grant and his cap — 6+7 one property, 8 a carrier no
+  in-tree rail sees. · Seam scan clean. · [handoff](../.portulan/handoffs/2026-09-01-d-the-marker-and-the-proxy-it-was-read-through.md)

@@ -290,34 +290,40 @@ export function limitationsFor(snap) {
             `- **Some \`said\` rows in the capture are truncated**, and are marked \`${TRUNCATION_MARKER}\` where they are. They are`,
             "  diagnostic prose, never graded — `evals/ab/corpus.md` grades the tree an arm left behind.",
         );
-        // **This `300` is the PRE-MARKER cutter's cap and must never be aligned with, shared with, or
-        // moved alongside `runTurn()`'s.** They are different constants that happen to be equal: that one
-        // is today's cap and may move, this one is frozen forever, because exactly one pre-marker capture
-        // exists and it cannot be re-taken. Measured at the session-open checkpoint — setting both to 500
-        // reds `ab-run.sh`. A reader who "tidies" them into one constant gets a register drift and fixes
-        // it by re-rendering the record, which is the wrong repair.
-        //
-        // **And the guard above it is the whole of #388.** That issue named an off-by-one; there is none.
-        // The branch asks *does this capture predate the marker* and answered by measuring a string, so a
-        // modern capture recording `saidTruncated` everywhere and holding a row of exactly 300 published
-        // that it predates a marker it carried. The vintage question is now asked directly. **#388's own
-        // named fix — aligning the two comparisons — is a REGRESSION**: it deletes this true limitation
-        // from the committed register, whose four rows sit at exactly 300 with none above it.
-    // Guarded by `isTurn`, not by `?? {}`: `in` throws on a primitive right-hand side too, so the
-    // round-1 patch read as total and was not. A malformed capture must reach `verifyShape()` as a
-    // FINDING, never as a TypeError caught by the renderer's guard. Copilot rounds 1 and 2.
-    // **And the mirror of it, which completes the pair.** Round 6 made the MARKED bullet carry its own
-    // evidence; this is the same gap in the VINTAGE bullet, and Copilot found it one round later. A
-    // capture whose `saidTruncated` column was dropped while its rows still carry the marker is not a
-    // pre-marker capture — it is a corrupted modern one — and describing it as predating a marker its
-    // own rows carry is a claim contradicted by the document it appears in. `verifyShape()`'s in-band
-    // witness reds exactly that capture, but `renderRegister()` is reachable without it, so the
-    // predicate carries the evidence rather than borrowing it from a check the caller may not run.
-    //
-    // **Both bullets now say what they can see, in the renderer, without help.** Copilot round 7.
     } else if (!snap.turns?.some?.((t) => isTurn(t) && "saidTruncated" in t)
         && !snap.turns?.some?.((t) => typeof t?.said === "string" && t.said.endsWith(TRUNCATION_MARKER))
         && snap.turns?.some?.((t) => typeof t?.said === "string" && t.said.length >= 300)) {
+        // **Everything below describes THIS branch, and it used to sit in the one above.** Three
+        // explanations accumulated between the marked branch's body and this condition over rounds 1, 2
+        // and 7, so a reader met the pre-marker cap's rationale as though it justified the marked
+        // predicate. Copilot round 9 — a comment in the wrong branch is a claim about the wrong code.
+        //
+        // **The three conditions, in order.** No turn records `saidTruncated`, so the capture predates
+        // the field — the vintage question asked directly, which is the whole of #388. That issue named
+        // an off-by-one; there is none. The branch answered *does this capture predate the marker* by
+        // measuring a string, so a modern capture recording the field everywhere and holding a row of
+        // exactly 300 published that it predated a marker it carried. **#388's own named fix — aligning
+        // the two comparisons — is a REGRESSION**: it deletes this true limitation from the committed
+        // register, whose four rows sit at exactly 300 with none above it.
+        //
+        // No row carries the marker either, because a capture that carries it did not predate it — it is
+        // a corrupted modern one, and calling it pre-marker contradicts the rows this same document
+        // describes. `verifyShape()`'s in-band witness reds that capture, but `renderRegister()` is
+        // reachable without it, so the predicate carries the evidence rather than borrowing it. The
+        // mirror of round 6's finding; Copilot found it one round later, and the two are one property:
+        // **both bullets say what they can see, in the renderer, without help.**
+        //
+        // And some row reaches the cap, which is the evidence that rows were cut. **That `300` is the
+        // PRE-MARKER cutter's cap and must never be aligned with, shared with, or moved alongside
+        // `runTurn()`'s.** They are different constants that happen to be equal: that one is today's cap
+        // and may move, this one is frozen forever, because exactly one pre-marker capture exists and it
+        // cannot be re-taken. Measured at the session-open checkpoint — setting both to 500 reds
+        // `ab-run.sh`. A reader who "tidies" them into one constant gets a register drift and repairs it
+        // by re-rendering the record, which is the wrong repair.
+        //
+        // `isTurn`, not `?? {}`: `in` throws on a primitive right-hand side too, so the round-1 patch
+        // read as total and was not. A malformed capture must reach `verifyShape()` as a FINDING, never
+        // as a TypeError caught by the renderer's guard. Copilot rounds 1 and 2.
         lines.push(
             "- **Some `said` rows in the capture are truncated mid-word and are NOT marked as such** — this",
             "  capture predates the marker. They are diagnostic prose, never graded.",
