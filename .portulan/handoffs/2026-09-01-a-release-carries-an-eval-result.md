@@ -183,6 +183,21 @@ Both were **suppressed notes rather than threads**, so under the loop's rule 3 t
 would ordinarily have earned one batched reply and no push. They are fixed because the maintainer granted
 the loop past its bound with *"address feedback until it's empty"*.
 
+### Round 4: the guard's SHAPE was the defect, and sweeping its class found a site nobody named
+
+Rule 4 was written *"if it is a string, validate it"*, so every value that was **not** a string skipped
+the check entirely: `source.commit: 1234567890` rendered `` `1234567890` ``, `true` rendered `` `true` ``,
+`["a"]` rendered `` `a` `` — each a plausible measurement passing the check whose whole subject is that
+field. **A type-conditional guard is a guard over the field only when someone already used the right
+type.** It is the same shape as rule 3's own origin: *is anything there* and *is it the kind of thing it
+claims to be* must be asked of the value, never of the value's type.
+
+**And the fix was scoped to the class rather than the site, which is what
+[`0020`](../proposals/0020-a-fix-is-not-done-at-the-site-it-was-found.md) asks for — so it turned up a
+hole round 4 did not name.** Sweeping every type-conditional guard in the module found `host.node`:
+`host.node: 22` rendered `` `22` `` among the conditions the release was measured under and passed
+everything. Both host fields are strings or a red now. A fix stopping at the named site would have left it.
+
 ## The bound was EXCEEDED and GRANTED, and rebasing made a record of this session's own class
 
 **The maintainer granted the loop past rule 4's bound** — *"address feedback until it's empty"* — and it

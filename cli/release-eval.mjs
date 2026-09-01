@@ -491,6 +491,18 @@ export function verifyShape(snap) {
     for (const field of ["source", "host"]) {
         if (snap?.[field] === undefined || snap[field] === null) red.push(`the record has no \`${field}\`, which the register prints among the release's conditions`);
     }
+    // **The host's two fields are printed as conditions, so they are strings or they are a claim nobody
+    // measured.** Found by sweeping rule 4's *class* — a type-conditional guard — across this file rather
+    // than by fixing the site the note named: `host.node: 22` rendered `` `22` `` and passed everything.
+    // `../.portulan/proposals/0020-a-fix-is-not-done-at-the-site-it-was-found.md` is the reason the sweep
+    // happened at all, and this is the site it turned up that round 4 did not name.
+    if (snap?.host !== undefined && snap?.host !== null) {
+        for (const k of ["node", "platform"]) {
+            if (typeof snap.host[k] !== "string") {
+                red.push(`the record's \`host.${k}\` is ${JSON.stringify(snap.host[k])}, not a string — the register prints it as one of the conditions the release was measured under`);
+            }
+        }
+    }
     // **The booleans, explicitly** — the derived check's one blind spot, measured rather than reasoned.
     if (snap?.source !== undefined && snap?.source !== null && typeof snap.source.clean !== "boolean") {
         red.push("the record's `source.clean` is not a boolean — it renders as a branch, so its absence would publish a claim about the tree that the capture never made");
@@ -504,18 +516,25 @@ export function verifyShape(snap) {
     if (snap?.abBaseline === undefined) {
         red.push("the record has no `abBaseline` — `null` is how *no baseline* is recorded, and an absent field renders as one without ever having been measured");
     }
-    // **Rule 4: a field that names a commit must look like one.** See `OBJECT_NAME`.
-    if (snap?.source !== undefined && snap?.source !== null && typeof snap.source.commit === "string" && !OBJECT_NAME.test(snap.source.commit)) {
-        red.push(
-            `the record's \`source.commit\` is ${JSON.stringify(snap.source.commit)}, which is not a full object name — ` +
-                "the record's central claim is that it was measured at a named commit, and any string at all would satisfy it otherwise",
-        );
-    }
-    if (snap?.abBaseline !== undefined && snap?.abBaseline !== null && typeof snap.abBaseline.commit === "string" && !OBJECT_NAME.test(snap.abBaseline.commit)) {
-        red.push(
-            `the record's \`abBaseline.commit\` is ${JSON.stringify(snap.abBaseline.commit)}, which is not a full object name — ` +
-                "a baseline cited by a name nothing can resolve is cited by nothing",
-        );
+    // **Rule 4: a field that names a commit must BE a string that names one.** See `OBJECT_NAME`.
+    //
+    // **The guard's shape is the finding, not the pattern.** Written as *"if it is a string, validate
+    // it"*, the check skipped every value that was not a string — so `source.commit: 1234567890` rendered
+    // `` `1234567890` ``, `true` rendered `` `true` ``, and `["a"]` rendered `` `a` ``, each a plausible
+    // measurement passing a check whose whole subject is that field. A type-conditional guard is not a
+    // guard over the field; it is a guard over the field *when someone already used the right type*.
+    // Copilot round 4, and the same shape as rule 3's own origin: `is anything there` and `is it the kind
+    // of thing it claims to be` have to be asked of the value, never of the value's type.
+    const commitFields = [
+        ["source.commit", snap?.source, "the record's central claim is that it was measured at a named commit"],
+        ["abBaseline.commit", snap?.abBaseline, "a baseline cited by a name nothing can resolve is cited by nothing"],
+    ];
+    for (const [label, holder, why] of commitFields) {
+        if (holder === undefined || holder === null) continue;
+        const value = holder.commit;
+        if (typeof value !== "string" || !OBJECT_NAME.test(value)) {
+            red.push(`the record's \`${label}\` is ${JSON.stringify(value)}, which is not a full object name — ${why}`);
+        }
     }
     // **No `.trim()`**, and its presence here was the degenerate-value class once more. Trimming before
     // the test accepted `"2026-09-01 "` and the renderer then printed the padding into the table —

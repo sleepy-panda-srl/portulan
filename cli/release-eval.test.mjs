@@ -226,6 +226,26 @@ test("a commit field must NAME a commit — `banana` and `HEAD` both rendered as
             `\`${field}.commit = ${JSON.stringify(value)}\` must red — it renders as a measurement`,
         );
     }
+    // **A NON-STRING skipped the check entirely**, because the guard read *"if it is a string, validate
+    // it"* rather than *"it must be a string that validates"*. `1234567890` rendered as
+    // `` `1234567890` ``, `true` as `` `true` ``, `["a"]` as `` `a` `` — each a plausible measurement
+    // passing the check whose whole subject is that field. A type-conditional guard is a guard over the
+    // field only when someone already used the right type. Copilot round 4.
+    for (const field of ["source", "abBaseline"]) {
+        for (const value of [1234567890, true, ["a"], {}, undefined]) {
+            const snap = goodSnap();
+            snap[field].commit = value;
+            assert.ok(
+                verifyShape(snap).some((r) => new RegExp(`\`${field}\.commit\``).test(r)),
+                `\`${field}.commit = ${JSON.stringify(value) ?? "undefined"}\` must red by name`,
+            );
+        }
+    }
+    // `abBaseline: null` stays the one legitimate absence, and tightening must not have swallowed it.
+    const none = goodSnap();
+    none.abBaseline = null;
+    assert.deepEqual(verifyShape(none), [], "shipping against no baseline is still a recorded state");
+
     // A SHA-256 repository's object names are 64 hex, and refusing those would red a tree nothing is
     // wrong with. Both widths pass; nothing else does.
     for (const width of [40, 64]) {
@@ -326,6 +346,19 @@ test("no field the renderer reads has a FALLBACK — a placeholder reads like a 
     const doc = renderRegister(goodSnap());
     for (const placeholder of ["<undated>", "<uncommitted>", "<commit>", "<agent>"]) {
         assert.ok(!doc.includes(placeholder), `a valid capture must not render \`${placeholder}\``);
+    }
+});
+
+test("the host's conditions must be strings — found by sweeping the class, not the site", () => {
+    // Round 4 named `source.commit`. Sweeping its class — a type-conditional guard — across the module
+    // turned up `host.node`, which nothing had named: `host.node: 22` rendered `` `22` `` and passed
+    // every check. A fix scoped to the site the note named would have left it.
+    for (const k of ["node", "platform"]) {
+        for (const value of [22, true, null, undefined]) {
+            const snap = goodSnap();
+            snap.host[k] = value;
+            assert.ok(verifyShape(snap).length > 0, `\`host.${k} = ${JSON.stringify(value) ?? "undefined"}\` must red`);
+        }
     }
 });
 
