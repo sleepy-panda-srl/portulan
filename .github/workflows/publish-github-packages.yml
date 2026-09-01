@@ -134,9 +134,23 @@ jobs:
       # therefore skippable by choosing an old ref rather than by anything in this file. It is named
       # rather than defended against: the actor is the maintainer, `publish-a-release` is Gated to him,
       # and a check cannot bind a version of itself that does not exist. Raised by a second opinion.
-      - name: Check out the grader from this workflow's own ref
+      - name: Check out the grader from the default branch
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          # **`ref` is REQUIRED here and its absence was the same defect twice at this step.**
+          # `actions/checkout` defaults `ref` to "the reference or SHA for that event" — which on the
+          # `release: published` path is the TAG. So a grader checkout with no `ref` fetches the tagged
+          # tree, the very tree that has no `cli/release-eval.mjs` for `v0.1.0`–`v0.1.2`, and the
+          # `MODULE_NOT_FOUND` crash this second checkout exists to prevent comes straight back. The step
+          # was added one commit earlier to fix that crash and reintroduced it in its own repair. Raised
+          # by Copilot, round 2 on [#381](https://github.com/sleepy-panda-srl/portulan/pull/381).
+          #
+          # The default branch is named rather than `github.workflow_sha`, and the difference matters on
+          # the two paths this workflow has: on `release: published` GitHub runs the workflow file from
+          # the default branch, so the default branch IS this workflow's own ref there; on
+          # `workflow_dispatch` from an older ref, taking the grader from the default branch is the
+          # better answer anyway, since the grader should be current even when the subject is not.
+          ref: ${{ github.event.repository.default_branch }}
           path: .release-eval-grader
           persist-credentials: false
 

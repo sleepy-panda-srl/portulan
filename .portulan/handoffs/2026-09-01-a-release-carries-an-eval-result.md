@@ -124,6 +124,46 @@ layer; the second found it in the *values inside a record that passes*. Neither 
 diff, and the second was found in a check that had just been hardened and had just written down what it
 now covered.
 
+## Copilot's two rounds, and both found this change's own repairs
+
+**Round 1 — a commit field that names nothing.** `verifyShape` carried three rules by then, each added by
+an earlier reviewer, and none of them asked whether `source.commit` *names* a commit. Verified before
+fixing: `"banana"` passed, `"HEAD"` passed — the worse of the two, because it reads like an answer — and
+so did an abbreviated `a642d55`. **Rule 3 is a floor under every leaf and a name check for none**, so a
+present, non-blank, perfectly-rendering string sailed through it. Rules 3 and 4 are different questions
+about the same leaf: *is anything there*, and *is it the kind of thing it claims to be*. Full object
+names only now, 40 hex or 64 for a SHA-256 repository, abbreviations refused because nothing here writes
+one. The docblock said *three rules* and says four, with the note that each after the first came from a
+further round of the same class — a docblock claiming totality is what the two rounds before it caught
+this file doing.
+
+**Round 2 — the grader checkout fetched the tree it exists to avoid, inside its own repair.**
+`actions/checkout` defaults `ref` to *"the reference or SHA for that event"*, which on
+`release: published` is the **tag**. The second checkout added one commit earlier — to stop the grader
+being run out of a tagged tree that has no `cli/release-eval.mjs` — carried no `ref`, so it fetched
+exactly that tree and brought `MODULE_NOT_FOUND` back on the dispatch path the workflow documents for
+those tags. The ref is `github.event.repository.default_branch` now, named rather than
+`github.workflow_sha` because on `release: published` GitHub runs the workflow file *from* the default
+branch, so there that genuinely is this workflow's own ref — and on a dispatch from an older ref, a
+current grader is the better answer anyway.
+
+**Twice at one step is this repository's threshold for stopping the patching**
+([`../proposals/0020-a-fix-is-not-done-at-the-site-it-was-found.md`](../proposals/0020-a-fix-is-not-done-at-the-site-it-was-found.md)),
+so round 2 built a rail: `cli/checkout-refs.live.test.mjs` — *a workflow that checks out more than once
+names the ref of every checkout after the first.* **The narrowness was measured before the rule was
+written, because the obvious rule is wrong:** five of the seven checkouts in `.github/workflows/` carry
+no `ref` and **every one of them is correct**, so a blanket rule would red five right answers to expose
+one wrong one, which is how a recipe gets switched off. Checking out *twice* is a statement that two
+different trees are wanted, so the second cannot inherit a default whose value depends on which event
+fired. Verified both ways — green on the fixed tree, red when the `ref:` is deleted. What it does **not**
+establish is written into it: an explicit tag on a grader would pass and be the same bug; it establishes
+that the choice was made rather than inherited.
+
+**The pattern across both rounds is the one this session keeps producing.** Round 1 found a rule that was
+a floor and not a name check; round 2 found a repair that reintroduced its own defect. Neither is what
+reading a diff produces, and both were confirmed by running the case before the fix rather than from the
+description.
+
 ## What is owed, and to whom
 
 - **RULED the same day: the clause waits for a real cut.** Put to him rather than left for a
