@@ -2652,3 +2652,14 @@ _The seam applies here too: no client-identifying references._
   rulings:** the clause awaits a real cut; the record ships. · 26 recipes; two new rails watched firing;
   **Copilot past rule 4's bound — EXCEEDED and GRANTED** · Seam scan clean ·
   [handoff](../.portulan/handoffs/2026-09-01-a-release-carries-an-eval-result.md)
+
+- 2026-09-01 · Off the milestone row · packaging · **The payload carried an experiment about itself.**
+  `cli/ab.mjs`, `ab-run.mjs`, `ab-grade.mjs` shipped from the day they landed — `files` sweeps `cli/` and
+  nothing asks. Excluded by name, **89 → 86** (re-measured on the rebase); never published (registry: 73/74/76, no `ab*`).
+  **Pre-commit refuted the draft's own argument twice**: *cannot run* is false (`ab-grade --stimuli` exits
+  0 from an installed tree, byte-identical), and it inverted `eval-bundle.mjs`'s 2026-08-24 rule that the
+  tool is product and the policy this team's. What survives is parameterisation. **Thirteen shipped
+  modules are reachable from nothing, and nothing derives payload membership** — a staged `cli/` module
+  joined the tarball under a green. `identity.md`'s 76 stands per its at-each-cut convention. · 25 recipes
+  green, suite 2366. · Seam scan clean over diff + message + branch, control-verified.
+  · [handoff](../.portulan/handoffs/2026-09-01-the-payload-carried-an-experiment-about-itself.md)

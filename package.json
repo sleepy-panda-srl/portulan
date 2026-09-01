@@ -22,7 +22,10 @@
     "!cli/*.test.mjs",
     "!cli/fixtures",
     "!cli/eval-bundle.mjs",
-    "!cli/eval-license.template.md"
+    "!cli/eval-license.template.md",
+    "!cli/ab.mjs",
+    "!cli/ab-run.mjs",
+    "!cli/ab-grade.mjs"
   ],
   "repository": {
     "type": "git",

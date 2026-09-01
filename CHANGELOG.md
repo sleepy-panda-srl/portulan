@@ -138,6 +138,54 @@ records how things were found. This is per *release* and records what a reader g
 
 ### Changed
 
+- **The package stops shipping an A/B rig whose only subject is this repository.** `cli/ab.mjs`,
+  `cli/ab-run.mjs` and `cli/ab-grade.mjs` are excluded by name in `package.json`'s `files`, joining
+  `cli/eval-bundle.mjs` and its licence template under the rule the first publish set — *the package
+  ships the product, not the workshop*. Measured with `npm pack --dry-run --json` on the rebased tree:
+  **89 files before, 86 after**, exactly those three removed and nothing else moved; 776,883 → 704,631
+  bytes packed and 2,472,005 → 2,227,493 unpacked. _(An earlier draft of this entry said 86 → 83, true
+  of the tree before this branch was rebased onto `main`: session 7 added `evals/releases/` to `files`
+  and session 7b grew `ab-run.mjs`, so both endpoints moved under it. Re-measured rather than adjusted —
+  which is this file's own rule about a figure whose subject moves.)_
+
+  **The argument is that the rig has one subject and it is not the reader's.** `ab.mjs`'s
+  `DISPOSITIONS` classifies *this* workspace's `.portulan/` path by path, compiled into the module
+  rather than read from beside it; pointed at a synthetic adopter workspace, `--check` exits 2 and
+  names every disposition that matched nothing. `ab-run`'s `SNAPSHOT` is one baseline, of one arm, on
+  one date. Being unreachable is true but not sufficient — `portulan.mjs` dispatches eight subcommands
+  and none is `ab`, and so are thirteen other shipped modules.
+
+  _**What this does NOT rest on, because the tree already ruled against it.**_ An earlier draft argued
+  that the three resolve their registers under `evals/`, which ships nothing, and so cannot run.
+  `cli/eval-bundle.mjs`'s `EXCLUDED_TOP_LEVEL.evals` settled the opposite on 2026-08-24 — *the tool is
+  product, the policy it reads is this team's*, `goldens` shipping without its corpus the way `compile`
+  ships without `gates.json`. The claim was also false as measured: `ab-grade.mjs --stimuli` exits **0**
+  from an installed tree with no `evals/`, no `.portulan/` and no git, byte-identical to its output from
+  the checkout, and `ab.mjs` resolves `TREATMENT_PATHS` and three sibling tools that do ship. The
+  distinction that survives is parameterisation — `readCorpus(repoRoot, dir = CORPUS_DIR)` takes its
+  directory as an argument; `ab.mjs`'s table takes nothing.
+
+  **No published version ever carried them, measured against the registry rather than assumed** — the
+  published tarballs hold 73, 74 and 76 entries for `0.1.0`, `0.1.1` and `0.1.2`, and no `ab*` in any;
+  the three are not tracked at any tag, landing after `v0.1.2`. This prevents a first shipment rather
+  than withdrawing a regression, which is also why `.portulan/identity.md`'s **76** is left standing:
+  that file re-measures at each cut on a clean clone of the tag, and a working-tree figure is the drift
+  it warns about. **The obligation that creates is carried nowhere** — there is no release checklist,
+  so the next cut must re-measure or the figure is wrong by seven.
+
+  Verified the way the first exclusion was: `npm pack` + `npm install ./*.tgz` into a scratch project,
+  the installed `bin` printing `0.1.2` and listing all eight subcommands, and **every one of the 30
+  shipped `cli/*.mjs` modules imported from the installed tree**. That check was forced red before it
+  was believed — restoring `ab-run.mjs` alone into the installed tree raises `ERR_MODULE_NOT_FOUND` on
+  `cli/ab.mjs`, which is also why the three come out as a set.
+
+  _**Stated because the exclusion is narrower than its own criterion.** Thirteen shipped modules are
+  reachable from nothing the package exposes; most are the `goldens` shape the 2026-08-24 rule keeps,
+  and none has been put the question these three were. The reason such a gap is invisible: **nothing
+  derives payload membership.** Demonstrated rather than asserted — staging a new `cli/` module into a
+  scratch clone put it in the tarball with `pack-identity` green over 84 files. The module's *arrival*
+  is railed by `cli-roster.live.test.mjs`; its payload consequence is not._
+
 - **A GitHub Packages visibility flip is paid once per package, not once per release.** `0.1.2`
   recorded that `npm publish --access public` does not govern on that registry and that making the
   package public took two manual UI steps with no API behind either. What it left open — because the
