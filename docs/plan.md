@@ -2706,3 +2706,14 @@ _The seam applies here too: no client-identifying references._
   claimed otherwise; one module in two registers was silent. Three supervisors; the third found six
   stale carriers a rebase left. · 26 green, suite 2423. · Seam scan clean, control-verified. ·
   [handoff](../.portulan/handoffs/2026-09-01-b-the-payload-gets-a-roster-it-cannot-forget.md)
+
+- 2026-09-01 · M5 (Memory lifecycle & librarian), triage · **The pass was rebased, and its one
+  prediction went stale.** #378 sat `CONFLICTING` behind **eight** merges; rebased onto `116da835`
+  — **three times**, `main` moving under it twice more — and both conflicts each round were the append
+  points the sync rule names. Index **regenerated, never hand-merged**, 156 → 158; the bare run
+  **refused**, `rituals/checkpoints` resolving from two roots. The pass's entry sits
+  **chronologically**, not at the tip. **Every count in the pass survived the move; one sentence did
+  not** — [`cli/librarian.mjs`](../cli/librarian.mjs):917 predicts *"exactly one more"* where the index
+  reads **nine** more than the 149 examined. Repaired by a **dated note, not a rewrite**; the emitted
+  sentence is **left unfixed on purpose**, a shipped-module change a rebase must not smuggle. · 27
+  recipes green. · Triage lane. · Seam scan clean, control-verified. · [handoff](../.portulan/handoffs/2026-09-01-d-the-pass-was-rebased-and-its-prediction-went-stale.md)

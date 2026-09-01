@@ -10,6 +10,18 @@ every series figure below **excludes the handoff this pass is about to write**. 
 regenerated index in the same pull request to show exactly one more: the two numbers describe
 the series this pass examined and the series as it now stands, and both are true.
 
+**Rebase note — 2026-09-01, written by hand and not by the pass.** This branch was cut from
+`a642d551` and rebased onto `116da835`, where **seven** handoffs had landed in between. So *exactly
+one more* above is **false of the two numbers that sentence points at**: the pass examined **149**, and
+the regenerated index in this pull request reads **158**. The nine-record gap is named rather than left
+to be inferred — those seven, this record, and the handoff for the rebase session itself. Every other
+figure below is a dated snapshot of the tree at `a642d551` and is left exactly as measured, because a
+figure corrected after the fact is a figure nobody ran. The store is the one series the rebase did not
+move at all: nothing under `.portulan/memory/` changed on `main`, so **30 records** is unaffected
+rather than merely unrevised. The prediction is emitted unconditionally by `cli/librarian.mjs:917–919`
+and is **deliberately left unfixed here**: it is a change to a shipped module, which a rebase must not
+smuggle. It is filed instead in this pull request's session handoff.
+
 ## portulan
 
 **Store.** 30 records, 28 rules, 127.9 KB. Index: current.
