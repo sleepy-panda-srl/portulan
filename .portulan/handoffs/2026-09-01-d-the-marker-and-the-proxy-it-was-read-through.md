@@ -150,6 +150,19 @@ wrote while fixing round 3's. The maintainer's own bound memo measured this on #
 findings introduced by an earlier round's fix — and this change ran at four of ten. The findings are all
 real; what they are about is the fixing, not the subject.
 
+## Copilot round 5 — one finding, and it is a MISCOUNT for the second time in this change
+
+The test count read `82 → 89` in two carriers; the file holds **90**. It drifted when round 3 added a
+case and I did not update the figure. Round 3's own finding was *"five mutations caught"* over a list of
+three — **the same class, in the same change, two rounds apart, in the same paragraph.**
+
+**That is worth more than the fix.** A hand-typed figure with two carriers is this repository's signature
+defect, and a session that has spent four rounds writing about claims outrunning their mechanism typed
+one twice. The counts are corrected and their breakdowns named — but the durable answer is not to type
+them, and that is filed as [#401](https://github.com/sleepy-panda-srl/portulan/issues/401) rather than
+invented here: a record whose figure is a hand-typed count of something the tree can compute is a
+hand-maintained tally in a new costume, which is `review-loop.sh`'s own sentence about a different figure.
+
 ## Left to the maintainer
 
 **#389's general question is NOT closed by this commit:** *a check whose necessity depends on a known
@@ -161,8 +174,8 @@ comment that #389's own closure would bury with it.
 
 ## Evidence
 
-26 recipes green, run rather than printed. `cli/ab-run.test.mjs` 82 → **89**, three red before the repair, three
-added across four Copilot rounds. **Six mutations caught**, each named because a count
+26 recipes green, run rather than printed. `cli/ab-run.test.mjs` 82 → **90** — three red before the repair, one
+at the pre-commit checkpoint, four across Copilot's rounds. **Six mutations caught**, each named because a count
 without its members is the claim this milestone keeps repairing: dropping the pre-marker artifact; the
 naive #388 fix (5 cases **and** `ab-run.sh`); unguarding the vintage branch; changing
 `TRUNCATION_MARKER` (8 cases); reverting `isTurn()` to round 1's `?? {}` predicate; and relaxing the marked bullet back to a truthy read. Drill forced red
