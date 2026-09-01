@@ -416,7 +416,9 @@ export function renderRegister(snap) {
  * not publish an unmeasured claim, then rendered as `**not clean**`. Caught by a fresh context deleting
  * every field the renderer reads, one at a time, which is the only way this class is ever found.
  *
- * So there are **three** rules, and the third was itself a second round of this same defect. (1) The
+ * So there are **four** rules, and each after the first was a further round of this same defect — which
+ * is the honest way to carry the count, since a docblock claiming totality is what the last two rounds
+ * caught this file doing. (1) The
  * renderer supplies no fallback, so absence renders as a hole. (2) Every field that renders as a
  * **branch** rather than a value is checked here by name, because no hole appears for those — only the
  * meaning is invented. (3) **No leaf may be `null` and no string leaf may be blank**, because a
@@ -427,10 +429,31 @@ export function renderRegister(snap) {
  *
  * Rule 3 is **structural rather than a list of fields**: it walks the capture's own leaves. A
  * hand-written roster of "fields that must be non-empty" is the defect this file has now met at three
- * depths, and it would go stale the moment the renderer read one more.
+ * depths, and it would go stale the moment the renderer read one more. (4) **A field that names a commit
+ * must look like one** — rule 3 is a floor under every leaf and a *name* check for none, so
+ * `source.commit: "banana"` passed it, and `"HEAD"` passed while reading like an answer. Rules 3 and 4
+ * are different questions about the same leaf: *is anything there* and *is it the kind of thing it
+ * claims to be*.
  */
 /** `YYYY-MM-DD`. A capture that stamps itself from anything else cannot be reproduced, and it is printed. */
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
+
+/**
+ * A full object name — 40 hex for SHA-1, 64 for a SHA-256 repository.
+ *
+ * **A commit field is a NAME, and a name-shaped check is the only one that can tell a commit from a
+ * word.** `source.commit: "banana"` passed shape, the render probe and the non-blank walk alike, because
+ * it is a present, non-empty string that renders perfectly — and `"HEAD"` passed too, which is worse,
+ * since it reads like an answer. The record's central claim is that it was measured *at a named commit*;
+ * without this the claim is satisfied by any prose at all. Copilot's round 1 on
+ * [#381](https://github.com/sleepy-panda-srl/portulan/pull/381), and it is the degenerate-value class one
+ * field further in than the round before it reached: rule 3 asks whether a leaf is *present and
+ * non-blank*, which is a floor under every field and a name check for none.
+ *
+ * Abbreviated shas are refused. Nothing here writes one — `sourceOf` runs `git rev-parse HEAD` — and a
+ * short name is ambiguous in exactly the way a record meant to be re-derived cannot afford.
+ */
+const OBJECT_NAME = /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/;
 
 /**
  * Every leaf of the capture, as a dotted path — the subject of rule 3 above.
@@ -480,6 +503,19 @@ export function verifyShape(snap) {
     }
     if (snap?.abBaseline === undefined) {
         red.push("the record has no `abBaseline` — `null` is how *no baseline* is recorded, and an absent field renders as one without ever having been measured");
+    }
+    // **Rule 4: a field that names a commit must look like one.** See `OBJECT_NAME`.
+    if (snap?.source !== undefined && snap?.source !== null && typeof snap.source.commit === "string" && !OBJECT_NAME.test(snap.source.commit)) {
+        red.push(
+            `the record's \`source.commit\` is ${JSON.stringify(snap.source.commit)}, which is not a full object name — ` +
+                "the record's central claim is that it was measured at a named commit, and any string at all would satisfy it otherwise",
+        );
+    }
+    if (snap?.abBaseline !== undefined && snap?.abBaseline !== null && typeof snap.abBaseline.commit === "string" && !OBJECT_NAME.test(snap.abBaseline.commit)) {
+        red.push(
+            `the record's \`abBaseline.commit\` is ${JSON.stringify(snap.abBaseline.commit)}, which is not a full object name — ` +
+                "a baseline cited by a name nothing can resolve is cited by nothing",
+        );
     }
     if (typeof snap?.captured === "string" && !ISO_DATE.test(snap.captured.trim())) {
         red.push(`the record's \`captured\` is ${JSON.stringify(snap.captured)}, which is not a \`YYYY-MM-DD\` date — it is printed as one`);

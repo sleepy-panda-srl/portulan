@@ -189,6 +189,43 @@ test("EVERY field the renderer reads is caught when deleted — swept, not hand-
     }
 });
 
+test("a commit field must NAME a commit — `banana` and `HEAD` both rendered as measurements", () => {
+    // Copilot round 1 on #381, and it is the degenerate-value class one field further in than the round
+    // before it reached: rule 3 asks whether a leaf is present and non-blank, which is a floor under
+    // every field and a name check for none. `"HEAD"` is the worse of the two, because it reads like an
+    // answer. The record's central claim is that it was measured at a named commit.
+    for (const [field, value] of [
+        ["source", "banana"],
+        ["source", "HEAD"],
+        ["source", "a642d55"],
+        ["source", "A".repeat(40)],
+        ["abBaseline", "banana"],
+        ["abBaseline", ""],
+    ]) {
+        const snap = goodSnap();
+        snap[field].commit = value;
+        assert.ok(
+            verifyShape(snap).length > 0,
+            `\`${field}.commit = ${JSON.stringify(value)}\` must red — it renders as a measurement`,
+        );
+    }
+    // A SHA-256 repository's object names are 64 hex, and refusing those would red a tree nothing is
+    // wrong with. Both widths pass; nothing else does.
+    for (const width of [40, 64]) {
+        const snap = goodSnap();
+        snap.source.commit = "a".repeat(width);
+        assert.deepEqual(verifyShape(snap), [], `${width}-hex object names are real`);
+    }
+});
+
+test("this repository's own committed A/B baseline satisfies the object-name check", () => {
+    // A rail tightened against a hand-edited capture must not red the real one beside it. Live read.
+    const here = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+    const id = abBaselineIdentity(here);
+    const snap = { ...goodSnap(), abBaseline: id };
+    assert.deepEqual(verifyShape(snap), [], "the committed baseline's own commit must pass");
+});
+
 test("a PRESENT-DEGENERATE value is refused — null and blank render as values, not as holes", () => {
     // **The second round of this same defect, and the reason the docblock now says three rules.** A
     // capture with `source.commit: null` renders `| Commit | \`null\` |` and one with `""` renders an
