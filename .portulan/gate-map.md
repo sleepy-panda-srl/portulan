@@ -340,6 +340,25 @@ file: where a rule and its clarification live apart, only the rule gets read.)_
   compiles to **nothing** — a transfer is ordinarily a web-UI action and no permission rule reaches it.
 - `tag-a-release` and `publish-a-release`; `publish-to-a-package-registry`, which covers a plugin
   marketplace.
+
+  **From milestone 8 these carry an obligation as well as a tier, and it is SPLIT between a rail and a
+  person because the two halves are answerable at different times** — the shape the drill calendar below
+  already uses for its own halves. The obligation is `../docs/plan.md`'s Protocol → Versioning: *a
+  release carries an eval result*.
+
+  The **rail** reaches the tree, on every commit: the `release-eval` recipe requires every release from
+  `0.1.3` onward to carry `../evals/releases/<version>.json` and a register byte-identical to what that
+  capture renders, with no rail recorded red. It reaches the **tagged tree** once, from
+  [`../.github/workflows/publish-github-packages.yml`](../.github/workflows/publish-github-packages.yml),
+  which runs `release-eval --tagged` against the tag's own checkout before anything is published.
+
+  The **person** owns what no check can read, and it is named rather than left implied: **the release
+  body cites the version's register**, and the eval result is not restated in it. Nothing enforces that
+  — a release body is authored on GitHub, outside every tree — so it is a condition on the maintainer's
+  own act, in the tier where his acts already live. _(The rail also cannot see a tag created from a tree
+  whose `## Unreleased` accumulator was never renamed; `--tagged` is what catches that, at the publish
+  rather than before it. Recorded here because a split that names only its strong half reads as
+  coverage.)_
 - `spend-money-or-register-a-domain`.
 - `send-something-outside-this-repository` on the team's behalf.
 

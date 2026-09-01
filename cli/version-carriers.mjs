@@ -70,6 +70,19 @@ export const MUST_CARRY = ["README.md", "SECURITY.md", ".portulan/products/portu
 // The record layer. These files preserve sentences that are no longer true, on purpose.
 export const RECORD_PREFIXES = [
     "CHANGELOG.md",
+    // **A release record is record-layer by nature**, and it was classified here deliberately rather
+    // than left to whether a pattern happens to match one. `evals/releases/<version>.md` is generated
+    // per release and preserves that release's conditions forever — so the moment `0.1.4` exists,
+    // `0.1.3`'s register is a document stating, correctly and permanently, facts about a version that
+    // is no longer current. That is precisely what this exclusion is for. Its own drift is held by the
+    // `release-eval` recipe, which byte-compares each register against the capture it was rendered
+    // from — so for `<version>.json` and `<version>.md` this moves coverage to the rail that can
+    // actually read them rather than removing it. **`evals/releases/README.md` is the exception and is
+    // named rather than glossed:** `release-eval` reads only the two version-keyed files, so that
+    // README now sits under an excluded prefix with nothing covering it. Harmless today — it states no
+    // current version — and it is exactly this module's own third named residual, a live claim under an
+    // excluded prefix, so it is recorded here instead of being discovered by the next reader.
+    "evals/releases/",
     "docs/plan.md",
     "docs/milestones/",
     ".portulan/handoffs/",

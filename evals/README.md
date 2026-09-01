@@ -29,14 +29,17 @@ keeps the row's own word; the tools take a narrower one.
 
 ## What is built today
 
-**Seven clauses of row 8, of nine.** (a), adversarial fixtures per compiled gate, landed 2026-08-24;
+**Seven clauses of row 8, of nine, and an eighth built to its mechanism but not to its instance.** (a), adversarial fixtures per compiled gate, landed 2026-08-24;
 **(b)**, mutation testing over both matchers and grammar-aware fuzzing over the shell segmenter,
 landed 2026-08-25; **(d)**, scheduled forced-red drills, landed 2026-08-25; **(c)**, review-loop
 metering, landed 2026-08-26; **golden tasks per core skill** — the row's original first subject —
 landed 2026-08-26; **OTel opt-in config** landed 2026-08-28; and **the A/B baseline** landed 2026-08-31,
 across three sessions the maintainer split at construction | grading | running — 6b the arms, 6c the
-graders, **6d the run**. **Two remain** — a rule change merged or rejected on eval evidence, and a
-release carrying an eval result. Each is listed below with the sentence
+graders, **6d the run**. **A release carries an eval result** landed as a *mechanism*
+2026-09-01 — the record layer, the rail and its forced-red drill — and is **half-vouched**, the row's own
+word for a clause whose demonstration is owed to an event that has not happened yet: this repository has
+cut no release since the clause acquired an owner, so no release carries one. **One clause remains
+outright** — a rule change merged or rejected on eval evidence. Each is listed below with the sentence
 [`../.portulan/dod.md`](../.portulan/dod.md) condition 4 requires.
 
 ## The A/B baseline — what 40 turns measured, and what they did not
@@ -710,6 +713,70 @@ takes, one clause over.
 - **Metrics only.** OTLP's trace payload is a second shape with a second set of semantics; one signal
   demonstrated beats two asserted.
 
+## A release carries an eval result — the mechanism, and the instance it is still owed
+
+Row 8's **ninth** clause, added by the maintainer's ruling of 2026-08-24. The mandate is older than the
+clause: [`../docs/plan.md`](../docs/plan.md)'s Protocol → Versioning has said *"from milestone 8,
+releases carry an eval result"* since the plan was locked, and it belonged to **no row** until that day —
+so a close re-deriving row 8's criterion clause by clause would have re-derived eight and left it
+unbuilt. [`releases/`](releases/) is where a release's record lives, one pair per version:
+`<version>.json` is the capture and `<version>.md` the register rendered from it and byte-compared.
+
+### The three things the amendment left open, and what was ruled here
+
+The amendment named what it did **not** settle — *"what an eval result attached to a release consists of,
+where it is carried (the changelog entry, the release body, a file in the payload), and whether a release
+with no eval result is refused by a rail or by a person"*.
+
+**What it consists of.** The verdict every recipe the workspace **yields** returned, measured by running
+them at a named commit, plus the **identity** of the A/B baseline the release ships against — path,
+capture date, commit, cleanliness. Never that baseline's figures: those have one carrier and a second
+copy of them inside a per-release record is the hand-maintained figure this milestone deleted six of.
+There is no *eval* subset of the recipe set — [`../cli/recipe-set.mjs`](../cli/recipe-set.mjs) has no
+such category — so an "eval recipes only" record would have required a hand-listed roster, which is the
+defect the record exists to avoid.
+
+**Where it is carried.** One file per version, cited and never restated. Its **reach is a ruling and is
+recorded as one**: `package.json`'s `files` ships neither `evals/` nor `CHANGELOG.md`, so a release
+record is carried by the **tagged tree** and not by the npm payload. That is defensible — a release is a
+tag — but it was a choice among the three the amendment listed, and adding `evals/releases/` to `files`
+remains available to the maintainer. Named here rather than left to be discovered by whoever first looks
+for the record inside a tarball.
+
+**Rail or person — both, split by what each can reach.** The `release-eval` recipe grades the tree on
+every commit. [`../.github/workflows/publish-github-packages.yml`](../.github/workflows/publish-github-packages.yml)
+runs `release-eval --tagged` against the tag's own checkout, before publishing — the one mechanical
+surface at the release act. The maintainer owns the rest, and
+[`../.portulan/gate-map.md`](../.portulan/gate-map.md) carries that half beside the tier it belongs to.
+
+### Two designs a fresh context reversed before a line was written
+
+**Cut detection off `CHANGELOG.md`'s top heading never fires.** The cut commit re-seeds `## Unreleased`
+*above* the version it just wrote — `b410c020` — because that file's own header requires the tagged tree
+to contain its own entry. The top heading is `Unreleased` on every commit including the cut, so a rail
+keyed to it would have reported *no cut in this tree* on precisely the tree it was built to grade.
+
+**A rail keyed to `package.json`'s version alone grades one record at a time.** The moment `0.1.4` is
+declared, `0.1.3`'s record can be deleted and nothing is looking at it. The subject is therefore **every
+version the changelog records**, from `0.1.3` onward, permanently — and the set is graded in both
+directions, so a record for a release that was never cut reds as well.
+
+### What this rail does NOT establish
+
+- **Nothing about whether a release is good.** Each recipe's green establishes what that recipe's own
+  documentation says and no more; this checks that the record exists, agrees with its capture, and
+  records no red.
+- **The recipes did not run at the tag.** A record is committed *in* the change that cuts a release, so
+  its `source.commit` is the pre-cut HEAD — a capture cannot name a commit that does not exist yet. The
+  register prints the commit it was taken at and says this, the way the A/B capture prints `clean`.
+- **`release-eval`'s own row is excluded from every capture**, because a capture cannot be accurate about
+  the record it lives inside. The exclusion is printed with its reason rather than the row being dropped.
+- **No release carries one yet.** The rail's green today reads *no release from `0.1.3` onward has been
+  cut yet*, which is a **state, not a measurement** — and the module says so on its own face rather than
+  letting exit 0 imply otherwise. The clause's central arm is exercised by its forced-red drill, which
+  moves the boundary so an already-cut release becomes governed and requires the rail to fire; it fired
+  on 2026-09-01. A drill is not a release.
+
 ## What is NOT built yet
 
 Each names where it arrives, per [`../.portulan/dod.md`](../.portulan/dod.md) condition 4 — nothing
@@ -717,10 +784,9 @@ here claims a capability that does not exist:
 
 - **A rule change merged or rejected on eval evidence** — arrives in milestone 8, a later session.
   Every rule in [`../.portulan/memory/`](../.portulan/memory/) to date was merged on review alone.
-- **A release carries an eval result** ([`../docs/plan.md`](../docs/plan.md), Protocol → Versioning).
-  Arrives in milestone 8, a later session. **This was the row's ninth clause as of 2026-08-24 and was
-  nobody's until that day**: the Protocol had carried the obligation since the plan was locked while
-  row 8's criterion listed eight deliverables and did not include it, so a close re-deriving the
-  criterion clause by clause would have re-derived eight and left it unbuilt. Named here first as
-  *unassigned*; the maintainer then ruled it a close condition and it is now in the row itself. What
-  an eval result consists of, and where a release carries it, is still open.
+- **A release actually carrying an eval result.** The mechanism is built — its section is above — and the
+  instance is not, because no release has been cut since the clause acquired an owner. **Whether row 8
+  closes on the mechanism or waits for the instance is the maintainer's**, and it is put to him in
+  [`../docs/milestones/m08.md`](../docs/milestones/m08.md)'s session note rather than left for a
+  milestone-close reviewer to discover: a clause about releases, held satisfied while zero governed
+  releases exist, is true the way *a baseline names its host* was true of an empty string.
