@@ -36,6 +36,7 @@ import {
     PERMITTED_ABSENT,
     REGISTER,
     SNAPSHOT,
+    TRUNCATION_MARKER,
     aggregate,
     agentVersion,
     credentialChannel,
@@ -1122,13 +1123,59 @@ test("the VINTAGE bullet is decided by whether the capture records the marker, n
 
 test("a turn MARKED truncated must carry the marker the register says it carries", () => {
     // The marked bullet claims rows "are marked `…` where they are". A turn flagged truncated whose
-    // `said` does not carry `MARKER` makes that claim false — a substitution, so the deletion sweep
+    // `said` does not carry `TRUNCATION_MARKER` makes that claim false — a substitution, so the deletion sweep
     // cannot reach it and it is checked by value, beside `verdict` and `invocation`.
     const snap = recordingFixture();
     snap.turns[0] = { ...snap.turns[0], saidTruncated: true, said: "short, and not marked" };
     assert.match(verifyShape(snap).join("\n"), /marked truncated but its `said` does not end/);
     // And the honest twin passes.
     assert.deepEqual(verifyShape(recordingFixture()), []);
+});
+
+test("a row whose marker and flag DISAGREE is caught, in both directions", () => {
+    // The marked-row check asks *flag true implies the marker*; the in-band witness asks *is the column
+    // missing*. Between them a row could still contradict itself: `said` ending in the marker while its
+    // own `saidTruncated` says `false` or `null`, with the column present so the witness stays silent.
+    // The pre-commit checkpoint noted this converse as unclaimed rather than as a defect; Copilot
+    // promoted it, correctly. The pair is total now.
+    for (const flag of [false, null]) {
+        const snap = recordingFixture();
+        snap.turns[0] = { ...snap.turns[0], saidTruncated: flag, said: `${"x".repeat(10)}${TRUNCATION_MARKER}` };
+        assert.match(verifyShape(snap).join("\n"), /the row contradicts itself/, `saidTruncated: ${JSON.stringify(flag)} must red`);
+    }
+    // And the two honest rows stay green: marked-and-flagged, and unmarked-and-unflagged.
+    assert.deepEqual(verifyShape(recordingFixture()), []);
+    const plain = recordingFixture();
+    plain.turns[0] = { ...plain.turns[0], saidTruncated: false, said: "short" };
+    assert.deepEqual(verifyShape(plain), []);
+});
+
+test("a capture whose turns are not objects reds rather than throwing out of the renderer", () => {
+    // `"saidTruncated" in t` needs an object on the right. A `null` turn threw a TypeError that the
+    // renderer's guard caught and reported as *cannot be rendered* — an exception standing in for a
+    // shape finding, which is the class this whole file has been repairing. Copilot.
+    const snap = recordingFixture();
+    snap.turns[0] = null;
+    const red = verifyShape(snap).join("\n");
+    assert.ok(red.length > 0);
+    assert.doesNotMatch(red, /cannot be rendered/, "a malformed turn is a finding, not a caught exception");
+});
+
+test("the register's marked bullet is built from TRUNCATION_MARKER, not from a second spelling of it", () => {
+    // `TRUNCATION_MARKER` exists to hold the cutter, the register prose and the checks together, and the
+    // prose went on spelling the glyph. Copilot, twice in one round.
+    //
+    // **The first draft of this case scanned the source for bare `…` and was the wrong instrument** —
+    // the character is also ordinary prose elision, so it flagged nine comments that have nothing to do
+    // with truncation. A checker that cannot tell its subject from a lookalike measures itself. What is
+    // checkable at runtime is that the rendered bullet carries the constant; that the four sites would
+    // MOVE together is shown by mutation, not by a rail — changing the constant reds seven cases.
+    const marked = snapshotFixture();
+    marked.turns[0] = { ...marked.turns[0], saidTruncated: true, said: `${"x".repeat(300)}${TRUNCATION_MARKER}` };
+    const bullet = renderRegister(marked).split("\n").find((l) => l.includes("rows in the capture are truncated**"));
+    assert.ok(bullet?.includes(`\`${TRUNCATION_MARKER}\``), "the bullet must name the marker the cutter appends");
+    // And the cutter's own output agrees with it, which is the pair that could silently drift.
+    assert.ok(marked.turns[0].said.endsWith(TRUNCATION_MARKER));
 });
 
 test("a capture that LOST its marker column is caught by the marker still in its rows", () => {

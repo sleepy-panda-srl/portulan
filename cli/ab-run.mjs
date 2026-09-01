@@ -268,7 +268,7 @@ export function limitationsFor(snap) {
     }
     if (snap.turns?.some?.((t) => t.saidTruncated)) {
         lines.push(
-            "- **Some `said` rows in the capture are truncated**, and are marked `…` where they are. They are",
+            `- **Some \`said\` rows in the capture are truncated**, and are marked \`${TRUNCATION_MARKER}\` where they are. They are`,
             "  diagnostic prose, never graded — `evals/ab/corpus.md` grades the tree an arm left behind.",
         );
         // **This `300` is the PRE-MARKER cutter's cap and must never be aligned with, shared with, or
@@ -284,7 +284,9 @@ export function limitationsFor(snap) {
         // that it predates a marker it carried. The vintage question is now asked directly. **#388's own
         // named fix — aligning the two comparisons — is a REGRESSION**: it deletes this true limitation
         // from the committed register, whose four rows sit at exactly 300 with none above it.
-    } else if (!snap.turns?.some?.((t) => "saidTruncated" in t) && snap.turns?.some?.((t) => typeof t.said === "string" && t.said.length >= 300)) {
+    // `(t ?? {})`, because `in` throws on a null right-hand side and a malformed capture must reach
+    // `verifyShape()` as a FINDING rather than as a TypeError caught by the renderer's guard. Copilot.
+    } else if (!snap.turns?.some?.((t) => "saidTruncated" in (t ?? {})) && snap.turns?.some?.((t) => typeof t?.said === "string" && t.said.length >= 300)) {
         lines.push(
             "- **Some `said` rows in the capture are truncated mid-word and are NOT marked as such** — this",
             "  capture predates the marker. They are diagnostic prose, never graded.",
@@ -932,6 +934,21 @@ export function verifyShape(snap) {
         && !snap.turns.some((t) => "saidTruncated" in (t ?? {}))
         && snap.turns.some((t) => typeof t?.said === "string" && t.said.endsWith(TRUNCATION_MARKER))) {
         red.push(`some turns' \`said\` rows carry the truncation marker while no turn records \`saidTruncated\` — a capture that carries the marker did not predate it, so the field was dropped rather than never written`);
+    }
+    // **And the row-level disagreement, which the witness above does not reach.** That one asks whether
+    // the COLUMN is missing; this asks whether a row's two halves agree. A `said` ending in the marker
+    // while its own `saidTruncated` says `false` — or `null` — is a row contradicting itself, and it
+    // passed everything: the column is present, so the witness is silent, and the marked-row check runs
+    // only when the flag is `true`. The pre-commit checkpoint noted this converse as unclaimed rather
+    // than as a defect; Copilot promoted it, correctly. The pair is total now — flag true needs the
+    // marker, marker needs the flag true.
+    if (Array.isArray(snap?.turns)) {
+        for (const t of snap.turns) {
+            if (t?.saidTruncated !== undefined && t.saidTruncated !== true
+                && typeof t?.said === "string" && t.said.endsWith(TRUNCATION_MARKER)) {
+                red.push(`(${t?.scenario}, ${t?.arm}, run ${t?.run}) carries a \`said\` ending in \`${TRUNCATION_MARKER}\` while its \`saidTruncated\` records ${JSON.stringify(t.saidTruncated)} — the row contradicts itself, and the register reads the flag`);
+            }
+        }
     }
 
     // ── ROW HOMOGENEITY — derived, and it names no field. ──────────────────────────────────────────

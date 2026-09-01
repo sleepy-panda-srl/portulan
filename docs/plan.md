@@ -2726,5 +2726,5 @@ _The seam applies here too: no client-identifying references._
   standing in for a vintage. **#389's trap was real and conditional on the naive repair** — both arms
   measured — so it was answered by the choice of repair; the residual is closed by a third swept fixture
   with a rail on it, and #389's general question is re-filed as #399. No `evals/` change. · 26 recipes;
-  tests 82→86, three red first, four mutations caught. · Session-open **A-W-A (12)**, pre-commit
-  **A-W-A (9)**. · Seam scan clean. · [handoff](../.portulan/handoffs/2026-09-01-d-the-marker-and-the-proxy-it-was-read-through.md)
+  tests 82→89, three red first. · Session-open **A-W-A (12)**, pre-commit **A-W-A (9)**, Copilot
+  round 1 **4 accepted** — incl. a converse pre-commit had noted and not claimed. · Seam scan clean. · [handoff](../.portulan/handoffs/2026-09-01-d-the-marker-and-the-proxy-it-was-read-through.md)

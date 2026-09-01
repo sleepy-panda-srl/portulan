@@ -78,6 +78,30 @@ maintainer a general question. It caught four sentences the repair falsifies, in
 false**. And it asked me to evidence *"genuinely the ones `runTurn` cut"* rather than assert it, in a
 change whose subject is assertions.
 
+## Copilot round 1 — five comments, four findings, all accepted
+
+**The sharpest was one the pre-commit checkpoint had NOTED and not claimed.** Its observations section
+said the converse of the marked-row check was unguarded — a row whose `said` ends in the marker while
+its own `saidTruncated` says `false` — and left it as "not claimed as covered, so not a defect in the
+claim". Copilot promoted it to a finding, correctly: the column-level witness stays silent because the
+column is present, and the marked-row check runs only when the flag is `true`, so a row contradicting
+itself passed everything. **The pair is total now** — flag true needs the marker, marker needs the flag
+true — and that is the difference between a limit that is stated and a limit that is closed.
+
+`"saidTruncated" in t` **threw on a `null` turn**, and the renderer's guard caught it and reported
+*cannot be rendered* — an exception standing in for a shape finding, which is the class this file has
+spent three sessions repairing. And `TRUNCATION_MARKER`, introduced in this very commit to hold the
+marker's sites together, was **not used by the register prose that describes it** — flagged twice in one
+round, which is what a constant introduced and then not adopted looks like.
+
+**One rail I wrote for that was the wrong instrument and I replaced it.** It scanned the source for a
+bare `…` — and the character is also ordinary prose elision, so it flagged nine comments about
+`--agent ""` and `k: 4 …` that have nothing to do with truncation. A checker that cannot tell its
+subject from a lookalike measures itself, which is [[portulan-checker-design]]'s first class. What is
+checkable at runtime is that the rendered bullet carries the constant; that the four sites move together
+is shown by **mutation** — changing the constant reds eight cases — and the case says so rather than
+implying a rail exists.
+
 ## Left to the maintainer
 
 **#389's general question is NOT closed by this commit:** *a check whose necessity depends on a known
@@ -89,7 +113,7 @@ comment that #389's own closure would bury with it.
 
 ## Evidence
 
-26 recipes green, run rather than printed. `cli/ab-run.test.mjs` 82 → **86**, three red before the
-repair. Three mutations caught: dropping the pre-marker artifact, the naive #388 fix (5 cases **and**
+26 recipes green, run rather than printed. `cli/ab-run.test.mjs` 82 → **89**, three red before the repair and
+three added for Copilot's round. Three mutations caught: dropping the pre-marker artifact, the naive #388 fix (5 cases **and**
 `ab-run.sh`), and unguarding the vintage branch. Drill forced red with `--working-copy`, tell intact.
 Seam scan clean.
