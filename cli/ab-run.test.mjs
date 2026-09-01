@@ -613,6 +613,82 @@ test("a compliant cell with zero attempted is rendered as MEASURED SILENCE", () 
     assert.match(renderRegister(snap), /arm A measured silence/);
 });
 
+test("a total that folds a SILENT cell says so — a bare sum would launder inaction into a result", () => {
+    // The contrast table already marked such a cell; the headline is the figure other documents cite, so
+    // it is the one place the marker could not be left out.
+    const snap = snapshotFixture();
+    for (const t of snap.turns) if (t.arm === "a") t.attempted = false;
+    snap.cells = aggregate(snap.turns, snap.k);
+    const text = renderRegister(snap);
+    assert.match(text, /4 of the cells folded into those totals MEASURED SILENCE/);
+    assert.match(text, /A total carrying them is not a count/);
+    // and the recorded capture has none, so the marker is absent rather than always-on
+    assert.ok(!renderRegister(snapshotFixture()).includes("MEASURED SILENCE"));
+});
+
+test("the silence note AGREES in number — one silent cell reads as one, not as `1 of the cells`", () => {
+    // The register is cited verbatim. A line reading "1 of the cells ... carrying them" is one a citing
+    // author quietly rewrites, and a hand-rewritten figure is the defect this whole change removed.
+    const snap = snapshotFixture();
+    for (const t of snap.turns) if (t.arm === "a" && t.scenario === "observed-content") t.attempted = false;
+    snap.cells = aggregate(snap.turns, snap.k);
+    const text = renderRegister(snap);
+    assert.match(text, /\*\*One cell folded into those totals MEASURED SILENCE\*\*/);
+    assert.match(text, /A total carrying it is not a count/);
+    assert.ok(!text.includes("1 of the cells"), "the singular case must not render the plural stem");
+});
+
+test("the register RENDERS the aggregate, so a document may cite the headline instead of restating it", () => {
+    // The defect this line exists to close: three live sentences carried the sum as hand-typed prose,
+    // with nothing checking them, so a re-run would have left all three stale and silent. The figure is
+    // now derived from the same cells the rows are, and inherits the byte-compare that holds them.
+    const snap = snapshotFixture();
+    // The fixture is arm A compliant everywhere, arm B nowhere — 20/20 against 0/20.
+    assert.match(renderRegister(snap), /\*\*Arm A 20\/20, arm B 0\/20 — a difference of \+20, recorded as measured\.\*\*/);
+});
+
+test("the aggregate names a TIE as a tie rather than as a difference of zero", () => {
+    // The recorded baseline is a tie, and `a difference of +0` would be a true sentence that reads as a
+    // result. The spelling registered in `.portulan/rule-carriers.json` is this one.
+    const snap = snapshotFixture();
+    for (const t of snap.turns) t.verdict = t.arm === "a" ? COMPLIANT_VERDICT[t.scenario] : otherVerdict(t.scenario);
+    for (const t of snap.turns) if (t.scenario !== "observed-content") t.verdict = otherVerdict(t.scenario);
+    snap.cells = aggregate(snap.turns, snap.k);
+    const text = renderRegister(snap);
+    assert.match(text, /\*\*Arm A 5\/20, arm B 0\/20 — a difference of \+5, recorded as measured\.\*\*/);
+    // and a genuine tie
+    for (const t of snap.turns) t.verdict = otherVerdict(t.scenario);
+    snap.cells = aggregate(snap.turns, snap.k);
+    assert.match(renderRegister(snap), /\*\*Arm A 0\/20, arm B 0\/20 — a tie, recorded as measured\.\*\*/);
+});
+
+test("the aggregate carries the caveat that it is a sum of counts and not a rate over independent trials", () => {
+    // A bare `6/20` invites reading as a rate over twenty trials, which would license an interval this
+    // capture cannot support. The caveat is rendered beside the figure rather than left to the citing
+    // document, because the citing document is exactly what stopped being trustworthy.
+    const text = renderRegister(snapshotFixture());
+    assert.match(text, /sum of 4 counts of 5, and NOT a rate over 20 independent/);
+    assert.match(text, /no significance, no interval/);
+});
+
+test("a capture missing a cell is REFUSED rather than published with a smaller total", () => {
+    // The failure mode a `filter().reduce()` would have had: a missing cell silently under-counts and
+    // the register publishes a total nobody measured. Instead the renderer throws EXPLICITLY, naming the
+    // absent cell, and verifyShape turns that into a refusal — the total inherits the coverage the rows
+    // already have. (An earlier comment here said "`.find()` throws"; it returns `undefined`, and the
+    // throw was an incidental dereference. Copilot, #379 round 1.)
+    const snap = snapshotFixture();
+    snap.cells = snap.cells.filter((c) => !(c.scenario === "altitude" && c.arm === "b"));
+    assert.throws(() => renderRegister(snap), /publishes no cell for `altitude`\/b/);
+    // The refusal is the structural one `verifyShape` already had for this capture — the totals did not
+    // need a new message, they needed to fail the same way the rows do. Asserted at the sentence the
+    // code actually emits rather than one written from memory.
+    assert.ok(
+        verifyShape(snap).some((r) => /publishes no cell for `altitude`\/b/.test(r)),
+        "a capture the renderer cannot fold must be refused, not rendered short",
+    );
+});
+
 test("the renderer is deterministic — the same snapshot renders the same bytes", () => {
     const snap = snapshotFixture();
     assert.equal(renderRegister(snap), renderRegister(JSON.parse(JSON.stringify(snap))));

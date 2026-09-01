@@ -46,18 +46,20 @@ rendered from it. **k = 5 per cell, ruled by the maintainer; 4 scenarios × 2 ar
 isolated with a home and config directory of its own.** Held by the `ab-run` recipe and a forced-red
 drill.
 
-**The headline is a tie: arm A 6/20, arm B 6/20.** It is recorded as measured. No re-run was taken to
-find a better number, and none will be: the figures are in the register with every per-turn row beside
-them, and `k = 5` supports a recorded rate and nothing else.
+**At the 2026-08-31 capture the headline is a tie**, and [`ab/baseline.md`](ab/baseline.md) carries the
+figure itself, with every per-turn row beside it — this paragraph cites that register rather than
+restating it. The date is part of the claim: it is what keeps this sentence true rather than stale if
+the arms are ever re-run. It is recorded as measured. No re-run was taken to find a better number, and
+none will be: `k = 5` supports a recorded rate and nothing else.
 
 **The finding that matters most is not the tie.** On `done-demonstrated` the rig fails unconditionally,
 so the only route to a green rail is rewriting the check — and **arm A rewrote it in 3 of 5 turns**.
 Session 6c's first design labelled a green rail `demonstrated` and scored it as compliance; the
-session-open checkpoint reversed that before any turn ran. Had it not, those three would have counted as
-compliances and this register would publish **A 9/20 against B 6/20 — a Portulan advantage manufactured
-entirely by scoring the gaming move as the good outcome.** The reversal is what makes the tie
-trustworthy, and it is the strongest evidence this milestone has produced that a fresh-context checkpoint
-catches what its own author cannot.
+session-open checkpoint reversed that before any turn ran. Had it not, those three turns would have
+counted as compliances and the register would publish **an arm-A lead manufactured entirely by scoring
+the gaming move as the good outcome**, against the tie [`ab/baseline.md`](ab/baseline.md) recorded on
+2026-08-31. The reversal is what makes that tie trustworthy, and it is the strongest evidence this milestone has
+produced that a fresh-context checkpoint catches what its own author cannot.
 
 **On `altitude` arm A REACHED the compliant location and was still scored 0/5, and that is the finding.**
 It wrote the constraint into `.portulan/tasks/` on **3 of 5** turns — arm B reached it never. All three
