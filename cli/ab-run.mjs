@@ -202,6 +202,19 @@ export function seedOperator(operatorDir) {
 export const CREDENTIAL_VARS = ["CLAUDE_CODE_OAUTH_TOKEN", "ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN"];
 
 /**
+ * Is this a turn-shaped thing at all? **One carrier, because guarding per site was tried and was
+ * incomplete.** Round 1 wrote `(t ?? {})` at the two `in` sites, which reads as total and is not: `??`
+ * catches `null` and `undefined`, and `"x" in "str"` throws just as loudly on a primitive. Two other
+ * predicates read `t.saidTruncated` with no guard at all.
+ *
+ * A malformed turn must arrive at `verifyShape()` as a **finding**; a TypeError out of `limitationsFor()`
+ * reaches the operator as *cannot be rendered*, which is an exception standing in for a shape finding —
+ * the class this module has spent three sessions removing. Copilot rounds 1 and 2, the second catching
+ * what the first fix left.
+ */
+const isTurn = (t) => t !== null && typeof t === "object";
+
+/**
  * The limitation block every rendered record carries, **citing** `../evals/ab/corpus.md` rather than
  * restating it.
  *
@@ -266,7 +279,7 @@ export function limitationsFor(snap) {
             "  here, where it is a claim by this record, rather than rendered as though the capture said it.",
         );
     }
-    if (snap.turns?.some?.((t) => t.saidTruncated)) {
+    if (snap.turns?.some?.((t) => isTurn(t) && t.saidTruncated)) {
         lines.push(
             `- **Some \`said\` rows in the capture are truncated**, and are marked \`${TRUNCATION_MARKER}\` where they are. They are`,
             "  diagnostic prose, never graded — `evals/ab/corpus.md` grades the tree an arm left behind.",
@@ -284,9 +297,10 @@ export function limitationsFor(snap) {
         // that it predates a marker it carried. The vintage question is now asked directly. **#388's own
         // named fix — aligning the two comparisons — is a REGRESSION**: it deletes this true limitation
         // from the committed register, whose four rows sit at exactly 300 with none above it.
-    // `(t ?? {})`, because `in` throws on a null right-hand side and a malformed capture must reach
-    // `verifyShape()` as a FINDING rather than as a TypeError caught by the renderer's guard. Copilot.
-    } else if (!snap.turns?.some?.((t) => "saidTruncated" in (t ?? {})) && snap.turns?.some?.((t) => typeof t?.said === "string" && t.said.length >= 300)) {
+    // Guarded by `isTurn`, not by `?? {}`: `in` throws on a primitive right-hand side too, so the
+    // round-1 patch read as total and was not. A malformed capture must reach `verifyShape()` as a
+    // FINDING, never as a TypeError caught by the renderer's guard. Copilot rounds 1 and 2.
+    } else if (!snap.turns?.some?.((t) => isTurn(t) && "saidTruncated" in t) && snap.turns?.some?.((t) => typeof t?.said === "string" && t.said.length >= 300)) {
         lines.push(
             "- **Some `said` rows in the capture are truncated mid-word and are NOT marked as such** — this",
             "  capture predates the marker. They are diagnostic prose, never graded.",
@@ -931,7 +945,7 @@ export function verifyShape(snap) {
     // carry. The genuine vintage — marker in neither place — stays permitted, which is what keeps the
     // committed capture green.
     if (Array.isArray(snap?.turns) && snap.turns.length > 0
-        && !snap.turns.some((t) => "saidTruncated" in (t ?? {}))
+        && !snap.turns.some((t) => isTurn(t) && "saidTruncated" in t)
         && snap.turns.some((t) => typeof t?.said === "string" && t.said.endsWith(TRUNCATION_MARKER))) {
         red.push(`some turns' \`said\` rows carry the truncation marker while no turn records \`saidTruncated\` — a capture that carries the marker did not predate it, so the field was dropped rather than never written`);
     }

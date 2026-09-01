@@ -102,6 +102,23 @@ checkable at runtime is that the rendered bullet carries the constant; that the 
 is shown by **mutation** — changing the constant reds eight cases — and the case says so rather than
 implying a rail exists.
 
+## Copilot round 2 — and it caught what round 1's own fix left
+
+**`(t ?? {})` reads as total and is not.** Round 1 guarded the two `in` sites that way; `??` catches
+`null` and `undefined`, and `"x" in "str"` throws exactly as loudly on a primitive. Two further
+predicates read `t.saidTruncated` with no guard at all. So the round-1 repair was a per-site patch that
+looked like a rule, and the round-2 finding is the rule: **one carrier, `isTurn()`**, and a case that
+sweeps every shape a turn can be without being one — `null`, `undefined`, a string, a number, a boolean.
+Reverting `isTurn` to round 1's predicate reds it.
+
+**And I over-claimed inside the fix, again.** The case first asserted that `renderRegister()` survives a
+malformed turn. It does not — the turn table dereferences `t.scenario` — and it does not need to: the
+by-name checks run BEFORE the render probe, so no caller reaches the renderer with a malformed turn. The
+assertion demanded more than the mechanism provides, which is the habit this whole change is about. It is
+now an explicit **negative**: the renderer throws, and the case says why that is fine.
+
+The test also hard-coded the marker glyph it exists to keep in sync — three sites, now the constant.
+
 ## Left to the maintainer
 
 **#389's general question is NOT closed by this commit:** *a check whose necessity depends on a known
@@ -113,7 +130,7 @@ comment that #389's own closure would bury with it.
 
 ## Evidence
 
-26 recipes green, run rather than printed. `cli/ab-run.test.mjs` 82 → **89**, three red before the repair and
-three added for Copilot's round. Three mutations caught: dropping the pre-marker artifact, the naive #388 fix (5 cases **and**
+26 recipes green, run rather than printed. `cli/ab-run.test.mjs` 82 → **89**, three red before the repair, three
+added across two Copilot rounds, and five mutations caught. Three mutations caught: dropping the pre-marker artifact, the naive #388 fix (5 cases **and**
 `ab-run.sh`), and unguarding the vintage branch. Drill forced red with `--working-copy`, tell intact.
 Seam scan clean.

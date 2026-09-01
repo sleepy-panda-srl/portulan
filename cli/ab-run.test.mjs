@@ -455,7 +455,7 @@ test("the recorded turn carries EVERY key runTurn returned — a hand-list silen
 
 test("a marked capture is NOT reported as predating the marker", () => {
     const snap = snapshotFixture();
-    snap.turns[0] = { ...snap.turns[0], said: `${"z".repeat(300)}…`, saidTruncated: true };
+    snap.turns[0] = { ...snap.turns[0], said: `${"z".repeat(300)}${TRUNCATION_MARKER}`, saidTruncated: true };
     const limits = limitationsFor(snap).join("\n");
     assert.match(limits, /are truncated\*\*, and are marked/);
     assert.ok(!limits.includes("NOT marked as such"), "a capture that marks truncation was still reported as predating the marker");
@@ -578,7 +578,7 @@ function recordingFixture({ k = K, seed = "fixture" } = {}) {
     snap.agent = "claude";
     snap.model = "claude-opus-5";
     for (const t of snap.turns) {
-        t.said = `${"x".repeat(300)}…`;
+        t.said = `${"x".repeat(300)}${TRUNCATION_MARKER}`;
         t.saidTruncated = true;
         t.invocation = [...INVOCATION];
         t.evidence = ["one"];
@@ -1117,7 +1117,7 @@ test("the VINTAGE bullet is decided by whether the capture records the marker, n
 
     // Marked rows win over both.
     const marked = snapshotFixture();
-    marked.turns[0] = { ...marked.turns[0], saidTruncated: true, said: `${"x".repeat(300)}…` };
+    marked.turns[0] = { ...marked.turns[0], saidTruncated: true, said: `${"x".repeat(300)}${TRUNCATION_MARKER}` };
     assert.match(renderRegister(marked).split("\n").join("\n"), /truncated\*\*, and are marked/);
 });
 
@@ -1151,14 +1151,30 @@ test("a row whose marker and flag DISAGREE is caught, in both directions", () =>
 });
 
 test("a capture whose turns are not objects reds rather than throwing out of the renderer", () => {
-    // `"saidTruncated" in t` needs an object on the right. A `null` turn threw a TypeError that the
-    // renderer's guard caught and reported as *cannot be rendered* — an exception standing in for a
-    // shape finding, which is the class this whole file has been repairing. Copilot.
-    const snap = recordingFixture();
-    snap.turns[0] = null;
-    const red = verifyShape(snap).join("\n");
-    assert.ok(red.length > 0);
-    assert.doesNotMatch(red, /cannot be rendered/, "a malformed turn is a finding, not a caught exception");
+    // `"saidTruncated" in t` needs an object on the right, and `t.saidTruncated` needs one too. A
+    // malformed turn threw a TypeError that the renderer's guard caught and reported as *cannot be
+    // rendered* — an exception standing in for a shape finding, the class this file keeps repairing.
+    //
+    // **The list below is every shape a turn can be and not be a turn, because the round-1 fix wrote
+    // `(t ?? {})` and that reads as total while catching only two of them.** `??` does not catch a
+    // primitive, and `"x" in "str"` throws exactly as loudly. Copilot round 2 caught what round 1 left.
+    for (const bad of [null, undefined, "a string", 42, true]) {
+        const snap = recordingFixture();
+        snap.turns[0] = bad;
+        let red;
+        assert.doesNotThrow(() => { red = verifyShape(snap).join("\n"); }, `a turn that is ${JSON.stringify(bad)} must not throw`);
+        assert.ok(red.length > 0, `a turn that is ${JSON.stringify(bad)} must red`);
+        assert.doesNotMatch(red, /cannot be rendered/, "a malformed turn is a finding, not a caught exception");
+    }
+    // **What is NOT claimed: that `renderRegister()` survives a malformed turn.** It does not — the turn
+    // table dereferences `t.scenario` and throws on `null`. It does not need to, and the reason is the
+    // ordering rather than a guard: the by-name checks above run BEFORE the render probe, so a malformed
+    // turn is already a finding and no caller reaches the renderer with one. An assertion that the
+    // renderer is total here was written and removed — it demanded more than the mechanism provides,
+    // which is the habit this whole change is about.
+    const nulled = recordingFixture();
+    nulled.turns[0] = null;
+    assert.throws(() => renderRegister(nulled), /Cannot read properties of null/);
 });
 
 test("the register's marked bullet is built from TRUNCATION_MARKER, not from a second spelling of it", () => {
