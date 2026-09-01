@@ -128,6 +128,12 @@ jobs:
       # step did not. Checking the grader out beside the subject fixes it at the root: the grader is
       # always current, the subject is always the tag, and the version carve-out stays in one carrier
       # instead of being re-derived in shell.
+      # **One thing this step cannot cover, and it is inherent rather than a gap to close.** A
+      # `workflow_dispatch` runs the YAML of the ref it is dispatched *from* — so dispatching from a ref
+      # that predates this step runs a workflow with no eval check in it at all, and the step is
+      # therefore skippable by choosing an old ref rather than by anything in this file. It is named
+      # rather than defended against: the actor is the maintainer, `publish-a-release` is Gated to him,
+      # and a check cannot bind a version of itself that does not exist. Raised by a second opinion.
       - name: Check out the grader from this workflow's own ref
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:

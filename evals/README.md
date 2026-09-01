@@ -726,7 +726,10 @@ unbuilt. [`releases/`](releases/) is where a release's record lives, one pair pe
 
 The amendment named what it did **not** settle — *"what an eval result attached to a release consists of,
 where it is carried (the changelog entry, the release body, a file in the payload), and whether a release
-with no eval result is refused by a rail or by a person"*.
+with no eval result is refused by a rail or by a person. **Those are this row's remaining work, not this
+amendment's content.**"* The last sentence is quoted rather than trimmed because it is the half that makes
+the passage a **scoping limit** — without it the list reads as three open questions rather than as three
+questions assigned to this row — and a first draft of this section dropped it.
 
 **What it consists of.** The verdict every recipe the workspace **yields** returned, measured by running
 them at a named commit, plus the **identity** of the A/B baseline the release ships against — path,
@@ -786,8 +789,9 @@ here claims a capability that does not exist:
 - **A rule change merged or rejected on eval evidence** — arrives in milestone 8, a later session.
   Every rule in [`../.portulan/memory/`](../.portulan/memory/) to date was merged on review alone.
 - **A release actually carrying an eval result.** The mechanism is built — its section is above — and the
-  instance is not, because no release has been cut since the clause acquired an owner. **Whether row 8
-  closes on the mechanism or waits for the instance is the maintainer's**, and it is put to him in
-  [`../docs/milestones/m08.md`](../docs/milestones/m08.md)'s session note rather than left for a
-  milestone-close reviewer to discover: a clause about releases, held satisfied while zero governed
-  releases exist, is true the way *a baseline names its host* was true of an empty string.
+  instance is not, because no release has been cut since the clause acquired an owner. **Ruled 2026-09-01:
+  it waits for a real cut**, and the release is done once milestone 8's other work is finished — so this
+  clause is not closable on the mechanism, and the cut is the milestone's last act rather than its first
+  sequel. The argument that was put to him, and what a cut mechanically is, are in
+  [`../docs/milestones/m08.md`](../docs/milestones/m08.md): a clause about releases, held satisfied while
+  zero governed releases exist, is true the way *a baseline names its host* was true of an empty string.

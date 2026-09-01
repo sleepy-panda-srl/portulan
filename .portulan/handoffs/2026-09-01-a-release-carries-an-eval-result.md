@@ -126,8 +126,13 @@ now covered.
 
 ## What is owed, and to whom
 
-- **Whether row 8 closes on the mechanism or waits for a cut is the maintainer's**, and it is put to him
-  in `docs/milestones/m08.md`'s session note rather than left for a milestone-close reviewer to find.
+- **RULED the same day: the clause waits for a real cut.** Put to him rather than left for a
+  milestone-close reviewer to find, and answered — *"it waits for a real cut; a new release will be done
+  after M8 is finished."* So the ninth clause is **not** closable on the mechanism, and the sequence is
+  fixed: the last remaining clause lands, then `0.1.3` is cut carrying `evals/releases/0.1.3.{json,md}`,
+  then the row closes. **The cut is the last act of the milestone rather than the first act after it** —
+  which is what puts the record in the tagged tree the close reads. `docs/milestones/m08.md` carries the
+  ruling and what a cut mechanically is, measured from `b410c020` rather than described.
 - **The one-carrier rule is NOT registered in `rule-carriers.json`, and the reason is measured.** The
   registry's dead-tell audit reds on a tell matching nothing, so a fresh rule cannot be registered with
   invented spellings. Worse, the natural tell already fails: the A/B figures `6/20` stand in **three live
@@ -141,9 +146,14 @@ now covered.
   three variables and nothing else, and this host has `ANTHROPIC_BASE_URL` set — a channel it cannot see.
 - **The record's reach is the implementer's choice and is NOT a ruling**, which is what a first draft
   called it. `package.json`'s `files` ships neither `evals/` nor `CHANGELOG.md`, so a release record is
-  carried by the **tagged tree** and not by the npm payload. Defensible — a release is a tag — but every
-  ruling here carries an owner and a date and this carries neither, so it stays **open to the
-  maintainer**: adding `evals/releases/` to `files` is one line.
+  carried by the **tagged tree** and not by the npm payload. **Measured before leaving it there:** a
+  plugin adopter already receives the whole tree, so only the npm tarball is a subset; shipping
+  `evals/releases/` alone would send a document whose central citation — `evals/ab/baseline.md` — is not
+  in the payload, in a record whose whole design is to cite rather than restate; shipping all of `evals/`
+  is 376KB of corpora about this repository's own build; and an npm consumer cannot run any recipe a
+  record reports on, because `.portulan/` does not ship either. It stays **open to the maintainer** —
+  adding `evals/releases/` to `files` is one line — but the honest instrument for supply-chain provenance
+  is a signed attestation rather than a Markdown file, and npm freezes content per version.
 - **`cli/ab-run.mjs` carries the identical false claim and the identical hole**, inherited because this
   module adopted its shape: `snap.agent ?? "<agent>"` and — worse — `t.verdict ?? "could-not-attribute"`,
   where a missing verdict renders as that specific verdict. Not repaired here: it belongs to the A/B
