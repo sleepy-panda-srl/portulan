@@ -776,12 +776,21 @@ test("an absent `invocation` is a SHAPE finding, not a caught JS exception stand
     // It was checked only once it was already an array, so absence fell through to the renderer, threw at
     // `.join(" ")`, and reached the operator as `snap.invocation.join is not a function` — red, but a JS
     // error message doing a shape check's job for a field this module names. Copilot round 1.
-    for (const [label, value] of [["absent", undefined], ["a string", "--print"]]) {
+    // **`null` is in this table because it was the case the first spelling got wrong.** `typeof null`
+    // is `"object"`, so `a ${typeof x}` reported the likeliest hand-edit of the four as `a object` —
+    // ungrammatical, and naming the one thing it is not.
+    for (const [label, value, tell] of [
+        ["absent", undefined, /`invocation` is absent, not an array/],
+        ["a string", "--print", /`invocation` is a string, not an array/],
+        ["null", null, /`invocation` is `null`, not an array/],
+        ["an object", { 0: "--print" }, /`invocation` is an object, not an array/],
+    ]) {
         const snap = recordingFixture();
         if (value === undefined) delete snap.invocation; else snap.invocation = value;
         const red = verifyShape(snap).join("\n");
-        assert.match(red, /`invocation` is (absent|a string), not an array/, `${label} must be named`);
+        assert.match(red, tell, `${label} must be named, and named correctly`);
         assert.doesNotMatch(red, /is not a function/, "and must not surface as a caught JS exception");
+        assert.doesNotMatch(red, /\ba object\b/, "and never `a object`");
     }
 });
 

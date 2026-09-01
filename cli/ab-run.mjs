@@ -655,6 +655,20 @@ export const BRANCH_READ = Object.freeze([
 export const PERMITTED_ABSENT = Object.freeze(["agent", "model", "turns[].saidTruncated"]);
 
 /**
+ * How a finding names a value it rejected. **`a ${typeof x}` was the first spelling and it was wrong
+ * twice over**: ungrammatical for the vowel-initial types (`a object`), and — because `typeof null` is
+ * `"object"` — it reported `null` as `a object`, misnaming the likeliest hand-edit there is. A check
+ * whose whole contract is that its findings describe the capture accurately cannot misname the thing it
+ * is refusing.
+ */
+function spell(value) {
+    if (value === undefined) return "absent";
+    if (value === null) return "`null`";
+    if (Array.isArray(value)) return "an array";
+    return `${/^[aeiou]/.test(typeof value) ? "an" : "a"} ${typeof value}`;
+}
+
+/**
  * The structural half — everything `renderRegister()` needs before it may safely touch a snapshot.
  *
  * **It is separate because the caller renders first, and the previous repair fixed the wrong end.**
@@ -777,7 +791,12 @@ export function verifyShape(snap) {
     // capture — snap.invocation.join is not a function"*. That is red, and it is a JS error message
     // standing in for a shape finding about a field this file names. Copilot round 1.
     if (!Array.isArray(snap?.invocation)) {
-        red.push(`the snapshot's \`invocation\` is ${snap?.invocation === undefined ? "absent" : `a ${typeof snap.invocation}`}, not an array — the register prints it as the command line both arms ran under`);
+        // **`a ${typeof x}` prints `a object`, and prints it for `null` too** — `typeof null` is
+        // `"object"`, so the likeliest hand-edit of the four was reported as the one thing it is not.
+        // A finding that misnames what it found is the defect this whole check exists to remove, so it
+        // is spelled rather than interpolated. Copilot, promoted suppressed note; fixed under the
+        // maintainer's grant past the review bound.
+        red.push(`the snapshot's \`invocation\` is ${spell(snap?.invocation)}, not an array — the register prints it as the command line both arms ran under`);
     }
     // **`every()` over an EMPTY array is `true`, and that was this check's own blind spot** — the
     // two-way audit below caught it on the first run: emptying `invocation` renders the agent's name

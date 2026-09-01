@@ -136,7 +136,20 @@ with it. Two of the four arrived as **promoted suppressed notes**, which is the 
 the old shape they would have been low-confidence notes with no thread and nothing to distinguish
 answered from ignored.
 
-**Two fix-rounds spent, which is the bound.** Anything further goes to an issue rather than a third round.
+**Two fix-rounds spent, which is the bound** — so round 3's finding was triaged to
+[#395](https://github.com/sleepy-panda-srl/portulan/issues/395) rather than taken.
+
+**Then the maintainer GRANTED the bound past two, and it is recorded as a grant rather than as a rule
+that was met** — `a-review-loop-needs-a-bound.md`'s own instruction, because a waived rule written down
+as a satisfied one is how a bound stops meaning anything. The instruction was *"address all feedback
+until empty then merge"*. #395 came back into scope and closed: `a ${typeof x}` printed `a object`, and
+printed it for `null` too, since `typeof null === "object"` — the likeliest hand-edit of the four
+reported as the one thing it is not. A finding that misnames what it found is the defect this check
+exists to remove, so the value is now **spelled** rather than interpolated.
+
+**Rule 2 and "until empty" cannot both hold, and the grant chooses.** Records land last, which
+guarantees a push after the final round; `review_on_push: true` reviews that push. So the close is a
+round that judged a commit **nothing was pushed after**, and that commit is named below.
 
 ## Filed to the maintainer — NOT fixed here
 
