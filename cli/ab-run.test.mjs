@@ -1150,6 +1150,17 @@ test("a row whose marker and flag DISAGREE is caught, in both directions", () =>
     assert.deepEqual(verifyShape(plain), []);
 });
 
+test("the marked bullet reads `=== true`, so a value nobody validated cannot publish it", () => {
+    // `verifyShape()` refuses a non-boolean `saidTruncated` before the renderer is reached, so this is
+    // belt — but `renderRegister()` is exported, and a register calling `"yes"` *marked* publishes from
+    // a value nothing checked. Copilot round 3; the exactness is free.
+    const snap = snapshotFixture();
+    snap.turns[0] = { ...snap.turns[0], saidTruncated: "yes", said: "short" };
+    assert.doesNotMatch(renderRegister(snap), /rows in the capture are truncated\*\*, and are marked/);
+    // And the by-name check is what actually stops it reaching a published document.
+    assert.match(verifyShape(snap).join("\n"), /`saidTruncated` that is not a boolean/);
+});
+
 test("a capture whose turns are not objects reds rather than throwing out of the renderer", () => {
     // `"saidTruncated" in t` needs an object on the right, and `t.saidTruncated` needs one too. A
     // malformed turn threw a TypeError that the renderer's guard caught and reported as *cannot be

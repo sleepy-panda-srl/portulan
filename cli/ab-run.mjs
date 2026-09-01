@@ -279,7 +279,10 @@ export function limitationsFor(snap) {
             "  here, where it is a claim by this record, rather than rendered as though the capture said it.",
         );
     }
-    if (snap.turns?.some?.((t) => isTurn(t) && t.saidTruncated)) {
+    // `=== true`, not truthy. `verifyShape()` refuses a non-boolean `saidTruncated` before the renderer
+    // is reached, so this is belt against a direct `renderRegister()` call — but a register that treats
+    // `"yes"` as *marked* is publishing from a value nobody validated, and the exactness is free.
+    if (snap.turns?.some?.((t) => isTurn(t) && t.saidTruncated === true)) {
         lines.push(
             `- **Some \`said\` rows in the capture are truncated**, and are marked \`${TRUNCATION_MARKER}\` where they are. They are`,
             "  diagnostic prose, never graded — `evals/ab/corpus.md` grades the tree an arm left behind.",

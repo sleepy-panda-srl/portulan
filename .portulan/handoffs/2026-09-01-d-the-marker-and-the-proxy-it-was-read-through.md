@@ -119,6 +119,22 @@ now an explicit **negative**: the renderer throws, and the case says why that is
 
 The test also hard-coded the marker glyph it exists to keep in sync — three sites, now the constant.
 
+## Copilot round 3 — two real, one refused as stale
+
+`limitationsFor()` treated **any truthy** `saidTruncated` as marked. `verifyShape()` refuses a
+non-boolean before the renderer is reached, so nothing published from it — but `renderRegister()` is
+exported, and a register calling `"yes"` *marked* reads a value nothing validated. `=== true` now, and
+railed.
+
+**And I created a contradiction while fixing round 2's.** The evidence paragraph said *"five mutations
+caught"* and then *"Three mutations caught:"* over a list of three — I updated the count and left the
+old sentence beside it. The count names its five members now, because a count without them is the claim
+this milestone keeps repairing, and I had just written that sentence two rounds earlier.
+
+The third was **refused as stale**, with the measurement in the reply: the marker note has been
+re-promoted across three rounds at shifting line numbers because the surrounding lines keep moving, and
+`limitationsFor()` has carried no bare glyph since round 1.
+
 ## Left to the maintainer
 
 **#389's general question is NOT closed by this commit:** *a check whose necessity depends on a known
@@ -131,6 +147,8 @@ comment that #389's own closure would bury with it.
 ## Evidence
 
 26 recipes green, run rather than printed. `cli/ab-run.test.mjs` 82 → **89**, three red before the repair, three
-added across two Copilot rounds, and five mutations caught. Three mutations caught: dropping the pre-marker artifact, the naive #388 fix (5 cases **and**
-`ab-run.sh`), and unguarding the vintage branch. Drill forced red with `--working-copy`, tell intact.
-Seam scan clean.
+added across three Copilot rounds. **Six mutations caught**, each named because a count
+without its members is the claim this milestone keeps repairing: dropping the pre-marker artifact; the
+naive #388 fix (5 cases **and** `ab-run.sh`); unguarding the vintage branch; changing
+`TRUNCATION_MARKER` (8 cases); reverting `isTurn()` to round 1's `?? {}` predicate; and relaxing the marked bullet back to a truthy read. Drill forced red
+with `--working-copy`, tell intact. Seam scan clean.
