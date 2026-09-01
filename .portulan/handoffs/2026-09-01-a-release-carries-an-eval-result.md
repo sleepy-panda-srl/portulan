@@ -216,6 +216,23 @@ adopted rather than re-derived, path in the environment so the entry guard canno
 verified — exit 2 with a diagnosis on a broken module, 0 restored. **Found by breaking the module rather
 than by reading it**, which is the only way this class has ever been found here.
 
+### Round 6: a value that reached a path builder before it reached a validator
+
+**`--version` was unvalidated and it names a file.** `--write --version ../../pwned` rendered into
+`evals/releases/../../pwned.md` — outside the record directory entirely, overwriting a file two levels
+up. **Demonstrated on a scratch tree rather than reasoned about**, which is the only reading of a
+traversal claim worth having.
+
+`X.Y.Z` contains no `/` and no `..`, so validating the **shape** closes the traversal as a side effect of
+validating the **meaning** — and that is the better order: the value is refused for not being a version,
+not for looking like an attack. A rule written against the attack would have to anticipate its spellings;
+a rule written against the format does not.
+
+**Swept with `--tagged`, which the note did not name.** The tag reaches the same path builder once its
+`v` is stripped. `isGoverned` would have refused a malformed tag downstream, but *a value that reaches a
+path builder before it reaches a validator* is one shape appearing twice, and only one of the two was
+reported. `--date` was already validated; that is what made the other two visible as the odd ones out.
+
 ## The bound was EXCEEDED and GRANTED, and rebasing made a record of this session's own class
 
 **The maintainer granted the loop past rule 4's bound** — *"address feedback until it's empty"* — and it

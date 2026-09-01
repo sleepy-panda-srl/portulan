@@ -689,7 +689,15 @@ function parse(argv) {
             if (out.mode !== null) throw new CouldNotRun(`pass exactly one of ${MODES.join(", ")}`);
             out.mode = a.slice(2);
             // `--tagged` names the version being published; the others take it optionally.
-            if (a === "--tagged") out.tagged = need("the tag being published, for example `v0.1.3`");
+            if (a === "--tagged") {
+                // Swept with `--version` rather than left because the note named only one of them: the
+                // tag also reaches `snapshotPath()` after its `v` is stripped. `isGoverned` would refuse
+                // a malformed tag downstream, but a value that reaches a path builder before it reaches
+                // a validator is the same shape twice, and only one of the two was reported.
+                const t = need("the tag being published, for example `v0.1.3`");
+                if (!SEMVER.test(t.replace(/^v/, ""))) throw new CouldNotRun(`\`--tagged\` takes a tag naming an \`X.Y.Z\` version, not \`${t}\``);
+                out.tagged = t;
+            }
             continue;
         }
         switch (a) {
@@ -705,12 +713,23 @@ function parse(argv) {
                 out.date = v;
                 break;
             }
-            case "--version":
+            case "--version": {
                 // Meaningful for `--write` alone: it names which committed record to re-render. Passing
                 // it anywhere else is a refusal rather than a silently ignored argument, because an
                 // argument that looks accepted and does nothing is how the collision above went unseen.
-                out.version = need("an `X.Y.Z` version");
+                //
+                // **And it is validated HERE, because it reaches `path.join` as a path segment.**
+                // Unvalidated, `--write --version ../../pwned` rendered into
+                // `evals/releases/../../pwned.md` — outside the record directory entirely, overwriting a
+                // file two levels up. Demonstrated rather than reasoned about. `X.Y.Z` contains no `/`
+                // and no `..`, so validating the shape closes the traversal as a side effect of
+                // validating the meaning, which is the better order: the value is refused for not being
+                // a version, not for looking like an attack. Copilot round 6.
+                const v = need("an `X.Y.Z` version");
+                if (!SEMVER.test(v)) throw new CouldNotRun(`\`--version\` takes an \`X.Y.Z\` version, not \`${v}\` — it names a record file, so anything else is a path rather than a version`);
+                out.version = v;
                 break;
+            }
             case "--help":
             case "-h":
                 out.mode = "help";

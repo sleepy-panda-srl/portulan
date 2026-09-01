@@ -665,6 +665,32 @@ test("--write refuses a capture it could not read, rather than rendering from on
 
 // ---------------------------------------------------------------- the CLI's own edges
 
+test("an argument that reaches a path is validated before it gets there", () => {
+    // `--version` is used to build `snapshotPath()`/`registerPath()` and then joined onto the repo root,
+    // so unvalidated it was a traversal: `--write --version ../../pwned` rendered into
+    // `evals/releases/../../pwned.md` and overwrote a file two directories up. Demonstrated, not
+    // reasoned about. Copilot round 6. `--tagged` is swept with it — the note named only `--version`,
+    // and the tag reaches the same path builder once its `v` is stripped.
+    const root = fixtureRepo({ version: "0.1.3", records: { "0.1.3": goodSnap() } });
+    const outside = path.join(root, "pwned.md");
+    fs.writeFileSync(outside, "ORIGINAL\n");
+
+    for (const bad of ["../../pwned", "0.1.3/../../x", "../../../etc/passwd", "..", "0.1.3/x"]) {
+        const c = capture();
+        assert.equal(run(["--write", "--version", bad, "--repo-root", root], c.io), 2, `--version ${JSON.stringify(bad)} must refuse`);
+    }
+    assert.equal(fs.readFileSync(outside, "utf8"), "ORIGINAL\n", "nothing outside the record directory may be written");
+
+    for (const bad of ["../../x", "v../../x", "0.1.3/../x"]) {
+        const c = capture();
+        assert.equal(run(["--tagged", bad, "--repo-root", root], c.io), 2, `--tagged ${JSON.stringify(bad)} must refuse`);
+    }
+    // The legitimate spellings still work.
+    const ok = capture();
+    assert.equal(run(["--write", "--version", "0.1.3", "--repo-root", root], ok.io), 0);
+    fs.rmSync(root, { recursive: true, force: true });
+});
+
 test("`--tagged` and `--version` cannot collide — one slot was carrying two meanings", () => {
     // Both once lived in `out.version`, so `--tagged v0.1.3 --version 0.1.2` overwrote the TAG with the
     // payload's own version and the tag-versus-payload refusal became exit 0 — the check defeated by an
