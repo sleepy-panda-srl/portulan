@@ -126,6 +126,18 @@ failed twice, correctly, before it passed:
 A hand-picked case would have proved the mechanism for one field. The swept one disagreed with the
 mechanism twice, which is the right way round for a case to fail.
 
+**Copilot round 2 — one finding, four comments, accepted.** The finding message for a bad `invocation`
+element said `join(" ")` *"renders it as nothing, publishing a shorter command line"*. True of `null`, a
+hole and `undefined`; **false of the whitespace-only string the round-1 fix had just started catching**,
+which joins to blank space and PADS the line rather than shortening it. A finding message describing a
+mechanism the code does not have — this diff's own subject, arriving in this diff's own error text, one
+round after the fix that created it. The message now names both renderings and three assertions moved
+with it. Two of the four arrived as **promoted suppressed notes**, which is the mechanism working: under
+the old shape they would have been low-confidence notes with no thread and nothing to distinguish
+answered from ignored.
+
+**Two fix-rounds spent, which is the bound.** Anything further goes to an issue rather than a third round.
+
 ## Filed to the maintainer — NOT fixed here
 
 All six are issues on the backlog board, added and field-set on 2026-09-01:

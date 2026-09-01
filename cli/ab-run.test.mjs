@@ -751,7 +751,7 @@ test("WHITESPACE is not a value — a blank string publishes an emptiness with n
         ["agent", (x) => { x.agent = "   "; }, /`agent` is present but is not a non-empty string/],
         ["model", (x) => { x.model = "\t"; }, /`model` is present but is neither/],
         ["a verdict", (x) => { x.turns[0].verdict = "  "; }, /neither `null` nor a non-empty string/],
-        ["an invocation element", (x) => { x.invocation = ["  ", "--permission-mode", "acceptEdits"]; }, /publishing a shorter command line/],
+        ["an invocation element", (x) => { x.invocation = ["  ", "--permission-mode", "acceptEdits"]; }, /the published command line is not the one the turns ran under/],
     ]) {
         const snap = recordingFixture();
         mutate(snap);
@@ -768,8 +768,8 @@ test("a SPARSE invocation is caught — `every()` skips holes, which the empty-a
     const snap = recordingFixture();
     snap.invocation = [...INVOCATION];
     delete snap.invocation[0];
-    assert.ok(!renderRegister(snap).includes("undefined"), "it renders a SHORTER command line, not a hole");
-    assert.match(verifyShape(snap).join("\n"), /publishing a shorter command line/);
+    assert.ok(!renderRegister(snap).includes("undefined"), "a hole in the array SHORTENS the line rather than leaving a hole in the document");
+    assert.match(verifyShape(snap).join("\n"), /the published command line is not the one the turns ran under/);
 });
 
 test("an absent `invocation` is a SHAPE finding, not a caught JS exception standing in for one", () => {
@@ -792,7 +792,7 @@ test("a `null` INVOCATION element publishes a shorter command line than the one 
     const snap = recordingFixture();
     snap.invocation = [null, "--permission-mode", "acceptEdits"];
     assert.ok(!renderRegister(snap).includes("undefined"));
-    assert.match(verifyShape(snap).join("\n"), /publishing a shorter command line/);
+    assert.match(verifyShape(snap).join("\n"), /the published command line is not the one the turns ran under/);
 });
 
 test("row homogeneity catches a DIVERGING row, and the residue it does not catch is pinned", () => {

@@ -795,7 +795,12 @@ export function verifyShape(snap) {
     // a hole into `null`, which was already caught — so this is unreachable from a committed file, and it
     // is fixed anyway: the check should be true of the object it is handed, not of the objects it expects.)
     if (Array.isArray(snap?.invocation) && !Array.from(snap.invocation).every((a) => typeof a === "string" && a.trim() !== "")) {
-        red.push("the snapshot's recorded `invocation` holds an element that is not a non-empty string — `join(\" \")` renders it as nothing, publishing a shorter command line than the one the turns ran under");
+        // **The message names both renderings, because they are not the same failure.** `null`,
+        // `undefined` and a hole `join` to nothing, which SHORTENS the line; a whitespace-only string
+        // joins to blank space, which pads it. Saying "renders it as nothing" covered the first and was
+        // simply false of the second — a finding message describing a mechanism the code does not have,
+        // which is this diff's own subject arriving in its own error text. Copilot round 2.
+        red.push("the snapshot's recorded `invocation` holds an element that is not a non-empty string — `join(\" \")` renders `null` and holes as nothing and a blank string as empty space, so the published command line is not the one the turns ran under");
     }
 
     // **The vacuity one level up, and it is the same defect this file just credited itself with
