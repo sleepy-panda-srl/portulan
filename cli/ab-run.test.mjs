@@ -28,10 +28,12 @@ process.env.CLAUDE_CONFIG_DIR = HERMETIC_HOST;
 process.on("exit", () => fs.rmSync(HERMETIC_HOST, { recursive: true, force: true }));
 
 import {
+    BRANCH_READ,
     CREDENTIAL_VARS,
     INVOCATION,
     K,
     LIMITATIONS,
+    PERMITTED_ABSENT,
     REGISTER,
     SNAPSHOT,
     aggregate,
@@ -534,39 +536,341 @@ test("a shape check is total over what the RENDERER dereferences, not merely ove
     });
 });
 
-test("the shape check is DERIVED from the renderer, so a field nobody listed still reds", () => {
-    // Round 4 claimed `verifyShape` was "total over what the renderer dereferences" and hand-listed
-    // `compliant` and `attempted` — missing `source.commit`, `source.clean`, `rulings.k` and every other
-    // printed cell field. A hand-maintained list of another function's reads goes stale the moment that
-    // function reads one more thing. Round 6. These fields are named in the CASE, never in the check.
-    for (const [label, mutate] of [
-        ["source.commit", (s) => { delete s.source.commit; }],
-        ["source.clean", (s) => { delete s.source.clean; }],
-        ["rulings.k", (s) => { delete s.rulings.k; }],
-        ["a cell's nonCompliant", (s) => { delete s.cells[0].nonCompliant; }],
-        ["a cell's didNotComplete", (s) => { delete s.cells[0].didNotComplete; }],
-        ["agentVersion", (s) => { delete s.agentVersion; }],
-        ["captured", (s) => { delete s.captured; }],
-        ["turnTimeoutMs", (s) => { delete s.turnTimeoutMs; }],
-    ]) {
-        const snap = snapshotFixture();
-        mutate(snap);
-        assert.ok(verifyShape(snap).length > 0, `a capture missing ${label} produced no finding`);
+// ---------------------------------------------------------------- the sweep, and the two-way audit
+
+/**
+ * A capture that records EVERY field the renderer reads — which `snapshotFixture()` does not.
+ *
+ * **A sweep over a fixture that lacks a field can say nothing about that field.** `snapshotFixture()`
+ * records no `agent`, no `model`, no `turns[].saidTruncated` and no `turns[].invocation`, so a sweep
+ * over it alone would have been a false green over exactly the two sites this repair exists for. The
+ * committed capture lacks the same three, which is why both artifacts are swept and the audited set is
+ * the UNION over the two.
+ *
+ * **Every boolean here is set to the polarity under which absence DIFFERS**, and that is not tidiness.
+ * `evals/ab/baseline.json` records `source.clean: false`, and deleting a field whose branch already
+ * renders the false arm changes no byte — so on that artifact `source.clean` looks inert, and a later
+ * "tidy-up" aligning this fixture with the real capture would make the one check `verifyShape` has had
+ * longest fail the audit as redundant, and pressure the next reader to delete it.
+ *
+ * **`turns[].said` carries the same trap, and it is not hypothetical — it is coupled to a filed bug.**
+ * The committed capture's longest `said` is exactly **300 and unmarked**; this fixture's is
+ * **301 and marked** (300 characters plus the `…` `runTurn()` appends), which is what a genuinely
+ * truncated row looks like — and `saidTruncated: true` masks the length branch entirely. Repairing the filed `>= 300` / `> 300` off-by-one in `limitationsFor()` makes
+ * `turns[].said` inert on BOTH artifacts, so the audit will fail it as redundant — and the remedy the
+ * audit's own rule suggests is to delete the name and its check, reopening a real blind spot. **Give the
+ * fixture a `said` that is read on the correct side of the boundary at the same time**, or the audit
+ * will walk the next reader into it.
+ */
+function recordingFixture({ k = K, seed = "fixture" } = {}) {
+    const snap = snapshotFixture({ k, seed });
+    snap.agent = "claude";
+    snap.model = "claude-opus-5";
+    for (const t of snap.turns) {
+        t.said = `${"x".repeat(300)}…`;
+        t.saidTruncated = true;
+        t.invocation = [...INVOCATION];
+        t.evidence = ["one"];
     }
-    // And a whole capture still passes, so the derived check is not simply always red.
-    assert.deepEqual(verifyShape(snapshotFixture()), []);
+    snap.cells = aggregate(snap.turns, k);
+    return snap;
+}
+
+/** Every leaf SHAPE: array indices collapsed to `[]`, and an empty array contributes no leaf. */
+function leafShapes(value, prefix = []) {
+    if (value !== null && typeof value === "object") {
+        return Object.entries(value).flatMap(([k, v]) => leafShapes(v, [...prefix, /^\d+$/.test(k) ? "[]" : k]));
+    }
+    // `turns[].completed`, not `turns.[].completed` — the same spelling `BRANCH_READ` declares, so the
+    // audit compares like with like rather than failing on notation.
+    return [prefix.reduce((acc, part) => (part === "[]" ? `${acc}[]` : acc === "" ? part : `${acc}.${part}`), "")];
+}
+
+/** `turns[].completed` -> ["turns", "[]", "completed"]. */
+function splitShape(shape) {
+    return shape.split(".").flatMap((part) => (part.endsWith("[]") ? [part.slice(0, -2), "[]"] : [part]));
+}
+
+/** Delete EVERY concrete occurrence of a shape — the only oracle that can speak about a column. */
+function deleteEvery(node, parts) {
+    if (parts.length === 0 || node === null || typeof node !== "object") return;
+    const [head, ...rest] = parts;
+    if (head === "[]") {
+        if (Array.isArray(node)) for (const el of node) deleteEvery(el, rest);
+        return;
+    }
+    if (rest.length === 0) delete node[head];
+    else if (Array.isArray(node[head]) && rest[0] === "[]" && rest.length === 1) node[head].length = 0;
+    else deleteEvery(node[head], rest);
+}
+
+/** Delete ONE occurrence — what a hand-edit of a single row looks like. */
+function deleteFirst(snap, shape) {
+    let node = snap;
+    const parts = splitShape(shape);
+    for (const part of parts.slice(0, -1)) node = part === "[]" ? node[0] : node[part];
+    if (node !== undefined && node !== null) delete node[parts.at(-1)];
+}
+
+/** The renderer's own verdict on a perturbed capture: does the document break, hole, or merely change? */
+function renderClass(snap, base) {
+    let doc;
+    try {
+        doc = renderRegister(snap);
+    } catch {
+        return "throws";
+    }
+    if (doc.includes("undefined") || doc.includes("NaN")) return "hole";
+    return doc === base ? "inert" : "branch";
+}
+
+const ARTIFACTS = () => [
+    ["evals/ab/baseline.json", () => JSON.parse(fs.readFileSync(path.join(REPO, SNAPSHOT), "utf8"))],
+    ["the recording fixture", recordingFixture],
+];
+
+test("EVERY field the renderer reads is caught when deleted — swept, not hand-listed", () => {
+    // **The title used to claim this and the body enumerated eight hand-chosen drops.** Round 4 said
+    // `verifyShape` was "total over what the renderer dereferences" and hand-listed two fields; round 6
+    // moved the list into the test and called that derived. It was not: a list in a case goes stale the
+    // moment the renderer reads one more thing, and it did — `snap.agent` and `t.verdict` were read
+    // through `??` fallbacks that no case here ever deleted. A test whose title asserts totality and
+    // whose body asserts eight cases is the defect it was written against.
+    //
+    // So the sweep is derived: walk every leaf of a capture, delete it, and require a finding for every
+    // leaf the register PUBLISHES. Arrays of objects are descended — without that, `turns[].verdict` is
+    // not reachable at all, and it is the worse of the two sites this repair exists for.
+    for (const [name, make] of ARTIFACTS()) {
+        const base = renderRegister(make());
+        const shapes = [...new Set(leafShapes(make()))];
+        assert.ok(shapes.length >= 40, `${name} must be a real capture, not a stub (${shapes.length} leaves)`);
+        for (const shape of shapes) {
+            const snap = make();
+            deleteEvery(snap, splitShape(shape));
+            const klass = renderClass(snap, base);
+            if (klass === "inert") continue; // residue 2 — see the case below, which pins it
+            if (PERMITTED_ABSENT.includes(shape)) continue; // residue 1 — pinned by its own case below
+            assert.ok(
+                verifyShape(snap).length > 0,
+                `${name}: deleting every \`${shape}\` ${klass === "throws" ? "breaks" : "changes"} the register and must red, and it does not`,
+            );
+        }
+        // And a whole capture still passes, so the sweep is not simply always red.
+        assert.deepEqual(verifyShape(make()), []);
+    }
 });
 
-test("a missing BOOLEAN is the derived check's one blind spot, and is checked explicitly", () => {
-    // `source.clean` renders as a BRANCH, not a value: a capture missing it produces a perfectly
-    // well-formed register asserting "a dirty tree" — a claim about the capture the capture never made.
-    // No `undefined` appears, so the derived check is blind to it by construction. Measured while
-    // writing the case above: it was the one of eight mutations that passed.
-    const snap = snapshotFixture();
-    delete snap.source.clean;
-    assert.match(verifyShape(snap).join("\n"), /renders as a branch/);
-    assert.ok(!renderRegister({ ...snapshotFixture(), source: { commit: "c", clean: undefined } }).includes("undefined"),
-        "if this ever contains `undefined`, the derived check covers it and this case is redundant");
+test("BRANCH_READ equals what the renderer MEASURES — audited both ways, so a stale name fails too", () => {
+    // The check names fields again, which round 6 had removed on purpose. The difference is that this
+    // list is not maintained, it is CHECKED: a name the derived probe already covers fails here as
+    // redundant, and a branch-read leaf nobody named fails as short. A field is branch-read iff deleting
+    // every occurrence renders with no hole, without throwing, and changes the bytes — a well-formed
+    // register in which only the meaning was invented.
+    const measured = new Set();
+    for (const [, make] of ARTIFACTS()) {
+        const base = renderRegister(make());
+        for (const shape of new Set(leafShapes(make()))) {
+            const snap = make();
+            deleteEvery(snap, splitShape(shape));
+            if (renderClass(snap, base) === "branch") measured.add(shape);
+        }
+    }
+    assert.deepEqual(
+        [...measured].sort(),
+        [...BRANCH_READ].sort(),
+        "BRANCH_READ must equal the union of what the renderer measures over both swept artifacts",
+    );
+});
+
+test("PERMITTED_ABSENT is derived from the committed capture, not asserted about it", () => {
+    // The exemption exists because `evals/ab/baseline.json` cannot be re-captured or edited — so it is
+    // read off that artifact rather than declared over it, and it shrinks by itself when a capture
+    // records more. Every other branch-read field must be present there, or it would be exempt too and
+    // nobody would have said so.
+    const committed = JSON.parse(fs.readFileSync(path.join(REPO, SNAPSHOT), "utf8"));
+    const carries = new Set(leafShapes(committed));
+    for (const shape of PERMITTED_ABSENT) {
+        assert.ok(!carries.has(shape), `\`${shape}\` IS recorded in the committed capture, so it must not be exempt`);
+        assert.ok(BRANCH_READ.includes(shape), `\`${shape}\` is exempt from a set it is not in`);
+    }
+    for (const shape of BRANCH_READ) {
+        if (PERMITTED_ABSENT.includes(shape)) continue;
+        assert.ok(carries.has(shape), `\`${shape}\` is required but the committed capture does not record it — the rail would be red`);
+    }
+});
+
+test("the exemption is a PERMISSION and it is load-bearing — present-and-wrong still reds", () => {
+    // A rule that has never fired has not been shown to work. Absence is permitted; every other spelling
+    // of "not a recorded value" is not — and neither is hypothetical. `parse()` accepts `--agent ""`,
+    // and `run()` writes `model: … || null`, so both arrive through the front door.
+    for (const [label, mutate, tell] of [
+        ["agent: null", (s) => { s.agent = null; }, /`agent` is present but is not a non-empty string/],
+        ["agent: \"\"", (s) => { s.agent = ""; }, /`agent` is present but is not a non-empty string/],
+        ["model: 5", (s) => { s.model = 5; }, /`model` is present but is neither/],
+        ["saidTruncated: \"yes\"", (s) => { s.turns[0].saidTruncated = "yes"; }, /`saidTruncated` that is not a boolean/],
+    ]) {
+        const snap = recordingFixture();
+        mutate(snap);
+        assert.match(verifyShape(snap).join("\n"), tell, `${label} must red`);
+    }
+    // `agent: null` is the one the `??` could not have caught: it renders the literal string `null`
+    // inside the command line, so the document has no hole in it and the probe returns clean.
+    const nulled = recordingFixture();
+    nulled.agent = null;
+    assert.ok(!renderRegister(nulled).includes("undefined"), "the register renders cleanly — that is why the by-name check is load-bearing");
+    assert.match(renderRegister(nulled), /\*\*Invocation, identical for both arms:\*\* `null /);
+});
+
+test("the two REPORTED sites: absence renders a hole, and `null` keeps its recorded meaning", () => {
+    // `snap.agent ?? "<agent>"` and `t.verdict ?? "could-not-attribute"`. The second was the worse: a
+    // turn whose verdict the capture lacked was published as one of this module's three named states,
+    // asserted about a turn nothing had graded.
+    const missing = recordingFixture();
+    delete missing.turns[0].verdict;
+    assert.ok(renderRegister(missing).includes("undefined"), "an absent verdict must render a HOLE, never a verdict");
+    assert.ok(verifyShape(missing).length > 0, "and the probe must refuse it");
+
+    // `null` is the RECORDED could-not-attribute — `aggregate()`'s own definition — and still renders.
+    const recorded = recordingFixture();
+    recorded.turns[0] = { ...recorded.turns[0], verdict: null };
+    recorded.cells = aggregate(recorded.turns, K);
+    assert.deepEqual(verifyShape(recorded), []);
+    assert.match(renderRegister(recorded), /\| `could-not-attribute` \|/);
+
+    // An empty verdict renders empty backticks — a hole the probe cannot see, so it is checked by value.
+    const blank = recordingFixture();
+    blank.turns[0] = { ...blank.turns[0], verdict: "" };
+    assert.match(verifyShape(blank).join("\n"), /neither `null` nor a non-empty string/);
+});
+
+test("WHITESPACE is not a value — a blank string publishes an emptiness with no hole in it", () => {
+    // `!== ""` and "carries a value" are different questions, and `agent: "   "` is the difference: it
+    // renders a command line with a blank where the binary goes, and the probe sees a clean document.
+    // Copilot named this at four sites at once, which is what a class looks like when it is reported well.
+    for (const [label, mutate, tell] of [
+        ["agent", (x) => { x.agent = "   "; }, /`agent` is present but is not a non-empty string/],
+        ["model", (x) => { x.model = "\t"; }, /`model` is present but is neither/],
+        ["a verdict", (x) => { x.turns[0].verdict = "  "; }, /neither `null` nor a non-empty string/],
+        ["an invocation element", (x) => { x.invocation = ["  ", "--permission-mode", "acceptEdits"]; }, /the published command line is not the one the turns ran under/],
+    ]) {
+        const snap = recordingFixture();
+        mutate(snap);
+        assert.ok(!renderRegister(snap).includes("undefined"), `${label}: renders cleanly — that is the whole problem`);
+        assert.match(verifyShape(snap).join("\n"), tell, `a whitespace-only ${label} must red`);
+    }
+});
+
+test("a SPARSE invocation is caught — `every()` skips holes, which the empty-array guard did not cover", () => {
+    // Surfaced by the swept single-row case above rather than by reading the check: `[ <hole>, "a", "b" ]`
+    // has length 3, two entries, and `every()` never visits the gap. Unreachable from a committed file —
+    // JSON turns a hole into `null`, which was already caught — and fixed regardless, because a check
+    // should hold for the object it is handed rather than for the ones it expects.
+    const snap = recordingFixture();
+    snap.invocation = [...INVOCATION];
+    delete snap.invocation[0];
+    assert.ok(!renderRegister(snap).includes("undefined"), "a hole in the array SHORTENS the line rather than leaving a hole in the document");
+    assert.match(verifyShape(snap).join("\n"), /the published command line is not the one the turns ran under/);
+});
+
+test("an absent `invocation` is a SHAPE finding, not a caught JS exception standing in for one", () => {
+    // It was checked only once it was already an array, so absence fell through to the renderer, threw at
+    // `.join(" ")`, and reached the operator as `snap.invocation.join is not a function` — red, but a JS
+    // error message doing a shape check's job for a field this module names. Copilot round 1.
+    // **`null` is in this table because it was the case the first spelling got wrong.** `typeof null`
+    // is `"object"`, so `a ${typeof x}` reported the likeliest hand-edit of the four as `a object` —
+    // ungrammatical, and naming the one thing it is not.
+    for (const [label, value, tell] of [
+        ["absent", undefined, /`invocation` is absent, not an array/],
+        ["a string", "--print", /`invocation` is a string, not an array/],
+        ["null", null, /`invocation` is `null`, not an array/],
+        ["an object", { 0: "--print" }, /`invocation` is an object, not an array/],
+    ]) {
+        const snap = recordingFixture();
+        if (value === undefined) delete snap.invocation; else snap.invocation = value;
+        const red = verifyShape(snap).join("\n");
+        assert.match(red, tell, `${label} must be named, and named correctly`);
+        assert.doesNotMatch(red, /is not a function/, "and must not surface as a caught JS exception");
+        assert.doesNotMatch(red, /\ba object\b/, "and never `a object`");
+    }
+});
+
+test("a `null` INVOCATION element publishes a shorter command line than the one that ran", () => {
+    // Not a deletion — a JSON round-trip of one. `join(" ")` renders `null` as nothing, so the register
+    // prints a command the turns did not run under and no hole appears. Outside the swept set by
+    // construction, which is why it is checked by value rather than left to the sweep.
+    const snap = recordingFixture();
+    snap.invocation = [null, "--permission-mode", "acceptEdits"];
+    assert.ok(!renderRegister(snap).includes("undefined"));
+    assert.match(verifyShape(snap).join("\n"), /the published command line is not the one the turns ran under/);
+});
+
+test("row homogeneity catches a DIVERGING row, and the residue it does not catch is pinned", () => {
+    // It names no field, so it closes `nonce`, `timedOut`, `evidence`, `invocation` and everything added
+    // later without listing one of them. Its reach is a row that disagrees with its neighbours — so the
+    // case is SWEPT rather than hand-picked, over every per-row leaf of both artifacts. A hand-picked
+    // field would have proved it for that field, which is the shape of defect this file keeps repairing.
+    for (const [name, make] of ARTIFACTS()) {
+        for (const shape of new Set(leafShapes(make()))) {
+            // **A ROW'S OWN KEYS, and the scope is a measured limit rather than a convenience.**
+            // Homogeneity compares key SETS one level down, so two things are outside its subject and
+            // the sweep must not claim them: a top-level array of scalars (`invocation[]` — not a row),
+            // and an element of an array nested inside a row (`turns[].invocation[]` — deleting it
+            // leaves the row's key set identical). Both were found by this sweep asserting more than
+            // the mechanism does, which is the right way round for a case to fail.
+            if (!/^(turns|cells)\[\]\.[^.[\]]+$/.test(shape)) continue;
+            const snap = make();
+            deleteFirst(snap, shape);
+            assert.ok(
+                verifyShape(snap).length > 0,
+                `${name}: deleting ONE \`${shape}\` leaves a row disagreeing with its neighbours and must red`,
+            );
+        }
+    }
+
+    const cell = recordingFixture();
+    delete cell.cells[0].verdicts;
+    assert.ok(verifyShape(cell).length > 0);
+
+    // **And this is residue item 2, measured rather than claimed.** Forty rows that agree on missing the
+    // same field agree, so a column the producer stops writing passes. The docblock says so; if this
+    // assertion ever fails, the mechanism grew and the docblock owes an update.
+    const column = recordingFixture();
+    for (const t of column.turns) delete t.evidence;
+    column.cells = aggregate(column.turns, K);
+    assert.deepEqual(verifyShape(column), [], "a uniformly dropped column is NOT caught — residue 2");
+});
+
+test("an EMPTY collection is not a valid capture — the `[].every()` class one level up", () => {
+    // The check credits itself with catching an emptied `invocation`, and the same sentence was true of
+    // `turns`: the by-name loop runs zero times over an empty array and homogeneity skips it, so
+    // `turns: []` with the cells left intact was shape-valid and `--write` published a register with
+    // eight full figure rows above an empty per-turn table. Found by reading that comment and asking
+    // where else it was true. `--write` runs `verifyShape` and no other check, so this is the layer.
+    const noTurns = recordingFixture();
+    noTurns.turns = [];
+    assert.match(verifyShape(noTurns).join("\n"), /records no turns at all/);
+    const noCells = recordingFixture();
+    noCells.cells = [];
+    assert.match(verifyShape(noCells).join("\n"), /publishes no cells at all/);
+});
+
+test("a SUBSTITUTED condition invents a plausible value where a deletion would leave a hole", () => {
+    // `Math.round(null / 1000)` is `0`. The sweep deletes and cannot reach this, so it is checked by
+    // value — the same reason `agent: null` and a `null` invocation element are.
+    const snap = recordingFixture();
+    snap.turnTimeoutMs = null;
+    assert.match(renderRegister(snap), /Per-turn timeout:\*\* 0s/, "a null timeout renders a condition, not a hole");
+    assert.ok(!renderRegister(snap).includes("undefined"), "and the probe cannot see it — that is why it is named");
+    assert.match(verifyShape(snap).join("\n"), /`turnTimeoutMs` is not a positive integer/);
+});
+
+test("a scenario's cells share one verdict vocabulary, and the check is per scenario not global", () => {
+    // The eight cells carry four different `verdicts` shapes by construction, so a global homogeneity
+    // check over cells' `verdicts` would be red on every valid capture.
+    assert.deepEqual(verifyShape(recordingFixture()), []);
+    const snap = recordingFixture();
+    delete snap.cells[0].verdicts.survived;
+    assert.match(verifyShape(snap).join("\n"), /different `verdicts` vocabularies/);
 });
 
 test("--write refuses a capture it could not read, rather than rendering from one", () => {
