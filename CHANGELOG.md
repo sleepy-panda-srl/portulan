@@ -43,6 +43,49 @@ records how things were found. This is per *release* and records what a reader g
 
 ### Added
 
+- **A rail now refuses a release that carries no eval result — and no release carries one yet** —
+  milestone 8's ninth clause, landed to its mechanism and **half-vouched**: nothing has been cut since
+  the clause acquired an owner on 2026-08-24, so the rail's green today reads *no release from `0.1.3`
+  onward has been cut yet*. The lede says so because every other carrier of this change does, and a
+  changelog entry announcing a state four paragraphs before correcting it is read by more people than
+  the correction. [`cli/release-eval.mjs`](cli/release-eval.mjs) captures, for the version being cut, the verdict
+  every recipe the workspace **yields** returned at a named commit, and renders a register from it that
+  the `release-eval` verify recipe byte-compares. Records live one pair per version under
+  [`evals/releases/`](evals/releases/); [`.github/workflows/publish-github-packages.yml`](.github/workflows/publish-github-packages.yml)
+  runs `--tagged` against the tag's own checkout before publishing, which is the only check here that
+  sees a release rather than a tree.
+
+  **What an eval result consists of, where it is carried, and whether a rail or a person refuses one
+  were the three things the 2026-08-24 amendment left open.** They are settled as: every yielded
+  recipe's verdict plus the A/B baseline's **identity and never its figures**; one file per version that
+  the changelog and the release body cite rather than restate; and **both** — a rail for the tree and the
+  tagged checkout, a person for the release body, split because those are answerable at different times
+  and no in-tree check reaches a body authored on GitHub.
+
+  **Two designs were reversed before a line was written, both by a fresh context.** Keying cut detection
+  to `CHANGELOG.md`'s top heading never fires — the cut re-seeds `## Unreleased` above the version it
+  just wrote, so that heading is `Unreleased` on the cut commit too. And keying it to `package.json`'s
+  version alone grades one record at a time: once `0.1.4` is declared, `0.1.3`'s record could be deleted
+  in silence. The subject is every version this file records from `0.1.3` onward, permanently, graded in
+  both directions so a record for a release that was never cut reds as well.
+
+  **`0.1.0`–`0.1.2` carry no record and are not asked for one.** The Protocol's wording is *from
+  milestone 8*, and a retro-fitted record would be a capture nobody ran. **No release has been cut since
+  the clause acquired an owner, so nothing carries one yet** — the rail's green today reads *no release
+  from `0.1.3` onward has been cut yet*, and it prints that rather than letting exit 0 imply a graded
+  set. The clause's central arm is exercised by a forced-red drill that moves the boundary until an
+  already-cut release becomes governed and requires the rail to fire.
+
+  **The record ships.** `evals/releases/` is in `package.json`'s `files`, so a release carries its eval
+  result in the npm payload as well as in the tagged tree — the maintainer's decision of 2026-09-01,
+  taken on an option the amendment had left open and the implementer had closed the other way. What
+  settled it was a measurement rather than an argument: a record written into the **unpacked tarball**
+  is graded `exit 0` by `cli/release-eval.mjs --tagged`, which already ships, so the artifact carries
+  both the claim and the tool that checks it. Every register also says whose build it measures, because
+  a table headed *"N of M recipes this workspace yielded"*, read inside a consumer's `node_modules`,
+  invites exactly one wrong reading.
+
+
 - **Compiled gates now ship with the attack cases that prove their coverage** — milestone 8 clause (a).
   `cli/goldens.mjs` grades a corpus at `evals/goldens/gates/` against the gate policy a workspace
   **yields**, through the compiler's own exported `matchesRule` rather than a second implementation, and

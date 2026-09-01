@@ -106,6 +106,74 @@ jobs:
           ref: ${{ github.event.release.tag_name || github.event.inputs.ref }}
           persist-credentials: false
 
+      # Milestone 8's ninth clause — *a release carries an eval result* — at the ONE moment a check can
+      # see a release rather than a tree. Every other rail here grades a pull request, and a pull
+      # request is not a release: the heading rename that makes a tree a cut happens "in a change
+      # merged before the tag is created", which is human-owned prose in `CHANGELOG.md`, in a file
+      # that says of its neighbouring rule "nothing checks this". A maintainer who tags a commit whose
+      # accumulator was never renamed produces a release no tree state ever flagged. This step reads
+      # the TAG's own checkout and asks only its own question.
+      #
+      # It runs BEFORE the publish, deliberately: refusing after the registry entry exists would leave
+      # the thing it was protecting already shipped.
+      #
+      # **The grader is checked out SEPARATELY, from this workflow's own ref, and running it out of the
+      # tagged tree was a crash rather than a carve-out.** `cli/release-eval.mjs` exists in no tag
+      # before `v0.1.3` — measured, `git ls-tree v0.1.1 --name-only cli/release-eval.mjs` is empty for
+      # all three — so on the manual-dispatch path this workflow documents *for exactly those tags*
+      # (its input's example is `v0.1.1`), `node cli/release-eval.mjs` would hit MODULE_NOT_FOUND, exit
+      # 1 under `set -euo pipefail`, and block a publish it was supposed to wave through. That is the
+      # fifth appearance of the defect `.portulan/verify/release-eval.sh` guards against by name —
+      # node on a missing file exits 1 and reads as a finding — and the recipe had the guard while the
+      # step did not. Checking the grader out beside the subject fixes it at the root: the grader is
+      # always current, the subject is always the tag, and the version carve-out stays in one carrier
+      # instead of being re-derived in shell.
+      # **One thing this step cannot cover, and it is inherent rather than a gap to close.** A
+      # `workflow_dispatch` runs the YAML of the ref it is dispatched *from* — so dispatching from a ref
+      # that predates this step runs a workflow with no eval check in it at all, and the step is
+      # therefore skippable by choosing an old ref rather than by anything in this file. It is named
+      # rather than defended against: the actor is the maintainer, `publish-a-release` is Gated to him,
+      # and a check cannot bind a version of itself that does not exist. Raised by a second opinion.
+      - name: Check out the grader from the default branch
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # **`ref` is REQUIRED here and its absence was the same defect twice at this step.**
+          # `actions/checkout` defaults `ref` to "the reference or SHA for that event" — which on the
+          # `release: published` path is the TAG. So a grader checkout with no `ref` fetches the tagged
+          # tree, the very tree that has no `cli/release-eval.mjs` for `v0.1.0`–`v0.1.2`, and the
+          # `MODULE_NOT_FOUND` crash this second checkout exists to prevent comes straight back. The step
+          # was added one commit earlier to fix that crash and reintroduced it in its own repair. Raised
+          # by Copilot, round 2 on [#381](https://github.com/sleepy-panda-srl/portulan/pull/381).
+          #
+          # The default branch is named rather than `github.workflow_sha`, and the difference matters on
+          # the two paths this workflow has: on `release: published` GitHub runs the workflow file from
+          # the default branch, so the default branch IS this workflow's own ref there; on
+          # `workflow_dispatch` from an older ref, taking the grader from the default branch is the
+          # better answer anyway, since the grader should be current even when the subject is not.
+          ref: ${{ github.event.repository.default_branch }}
+          path: .release-eval-grader
+          persist-credentials: false
+
+      - name: The tagged tree carries its own eval result
+        run: |
+          set -euo pipefail
+          # **The TAG is passed, never `package.json`'s version, and that was a real hole rather than a
+          # preference.** This step's motivating scenario is a tag created from a tree whose
+          # `## Unreleased` accumulator was never renamed — and in exactly that tree `package.json`
+          # still declares the PREVIOUS version. A first cut read the version from the payload and
+          # passed it, so the step asked about `0.1.2`, was told it predates the clause, and published:
+          # green in every reachable variant of the one case it exists for. `release-eval --tagged`
+          # strips the `v`, and refuses a tag whose version the payload does not declare — which IS
+          # that scenario, reported as a finding rather than as a note beside a publish that proceeds.
+          node .release-eval-grader/cli/release-eval.mjs \
+            --tagged "${{ github.event.release.tag_name || github.event.inputs.ref }}" \
+            --repo-root .
+
+      # The grader is not part of the payload and must not become one. `files` would exclude it anyway,
+      # and deleting it is the carrier that does not depend on that staying true.
+      - name: Remove the grader before anything is packed
+        run: rm -rf .release-eval-grader
+
       # No `actions/setup-node`: the runner's node is preinstalled and every other workflow here
       # relies on that. The `.npmrc` that step would generate is three lines, written below where it
       # can be read, rather than produced by an action whose output nobody sees.

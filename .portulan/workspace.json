@@ -252,6 +252,15 @@
           "node"
         ],
         "doc": "verify/README.md"
+      },
+      {
+        "id": "release-eval",
+        "run": "./.portulan/verify/release-eval.sh",
+        "requires": [
+          "bash",
+          "node"
+        ],
+        "doc": "verify/README.md"
       }
     ]
   },

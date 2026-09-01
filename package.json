@@ -15,6 +15,7 @@
     "core/",
     "spec/",
     "packs/",
+    "evals/releases/",
     "README.md",
     "LICENSE",
     "NOTICE",

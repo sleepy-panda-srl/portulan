@@ -542,6 +542,37 @@ export const DRILLS = [
             "because a fix that restored level 1 alone would leave the arm-blindness in place.",
     },
     {
+        rail: "release-eval",
+        perturb: {
+            file: "cli/release-eval.mjs",
+            // **The perturbation moves the CLAUSE BOUNDARY, which is the rail's actual subject.**
+            // Editing a committed record would have been the cheaper drill and would have proved only
+            // the byte compare — a shape `review-loop`, `index`, `ab` and `ab-run` already force. What
+            // nothing else here watches is the check this clause exists for: *a release the clause
+            // governs, carrying no eval result*. This repository has cut no governed release yet, so
+            // that arm is unreachable from the committed tree — until the boundary moves. Dropping it
+            // to `0.1.2` makes an already-cut release governed, and the rail must then say the record
+            // is missing.
+            //
+            // It is the boundary rather than a record because a boundary that silently widened is the
+            // failure mode with teeth: a release would be graded that nobody captured for, or — the
+            // direction that matters — one that should be graded would fall outside and the rail would
+            // report green having looked at nothing.
+            find: 'export const FIRST_GOVERNED_VERSION = "0.1.3";',
+            replace: 'export const FIRST_GOVERNED_VERSION = "0.1.2";',
+        },
+        exit: 1,
+        // The tell is the missing-record arm specifically, not the boundary arithmetic. A fix that
+        // restored only the constant while leaving the presence check broken would pass a looser tell.
+        tell: "is a release from milestone 8 onward and there is no",
+        why:
+            "Milestone 8's ninth clause is that a release carries an eval result, and the check that carries it is *a governed " +
+            "release with no record reds*. Until a governed release is cut, that arm cannot be exercised from the committed " +
+            "tree at all — the rail's green today is `no release from 0.1.3 onward has been cut yet`, which is a state rather " +
+            "than a measurement. This drill moves the boundary so the arm becomes reachable and requires it to fire, so the " +
+            "clause's central check is watched working rather than assumed from a green over an empty set.",
+    },
+    {
         rail: "ab-run",
         perturb: {
             file: "evals/ab/baseline.json",
