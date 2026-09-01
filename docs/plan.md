@@ -2674,3 +2674,14 @@ _The seam applies here too: no client-identifying references._
   Session-open **R-C, R-C, A-W-A (14)**, pre-commit **A-W-A (6)**; **Copilot 2 rounds, 5 accepted, at
   the bound** — whitespace passed every non-empty check. · Seam scan clean. ·
   [handoff](../.portulan/handoffs/2026-09-01-the-shape-check-named-what-it-could-not-see.md)
+
+- 2026-09-01 · M8 (Evals & telemetry), triage · **The mode that published the most checked the least.**
+  [#387](https://github.com/sleepy-panda-srl/portulan/issues/387). `--write` ran shape only and `--matrix`
+  ran neither, so a capture recording `operatorEnv: "host"` published **at exit 0**, and `--matrix --k 3`
+  published *"ruled by the maintainer"* over a ruling he did not make. Both publishing paths verify now;
+  the matrix writes the capture **always** — the turns do not repeat — and the register only if it can
+  stand behind it; the ruled `k` is refused at parse. **Deeper: `renderRegister()` printed `isolated` as
+  a LITERAL, never reading `snap.operatorEnv`** — a class a deletion sweep cannot see. No file under
+  `evals/` changes. · 26 recipes; tests 74→82. · Session-open **A-W-A (11)**, pre-commit **A-W-A (6)** —
+  the centrepiece had no rail and was deleted with the whole suite green. · Seam scan clean. ·
+  [handoff](../.portulan/handoffs/2026-09-01-c-the-mode-that-published-the-most-checked-the-least.md)

@@ -475,7 +475,36 @@ export function renderRegister(snap) {
     lines.push(`- **Arms constructed from:** \`${snap.source.commit}\`${snap.source.clean ? "" : " — **a dirty tree**, which is a fact about this baseline's subject"}`);
     lines.push(`- **k:** ${snap.k} per cell, ruled by the maintainer ${snap.rulings.k}`);
     lines.push(`- **Seed:** \`${snap.seed}\` — every nonce derives from it, so a reader can recompute them`);
-    lines.push(`- **Operator environment:** isolated, a fresh home and config directory **per turn** (${snap.turns.length} of them)`);
+    // **This line said `isolated` as a STRING LITERAL and never read `snap.operatorEnv` at all**, so a
+    // capture recording `host` published a document asserting the one condition
+    // `../evals/ab/corpus.md` forbids departing from. Not a blind spot in a check — the register
+    // making a claim out of a constant.
+    //
+    // **And a deletion sweep cannot see this class.** A hard-coded claim does not change when you
+    // delete the field it purports to describe, so `operatorEnv` measured as *inert* and nothing
+    // required it. `verifyShape()`'s residue 4 says "shape is not truth"; this is the sharper form it
+    // did not name — **the register can assert a condition it never read.**
+    //
+    // Rendered from the capture now. Isolated renders exactly what it rendered before, so the
+    // committed register does not move; anything else names what was recorded and says plainly that
+    // it is not the ruled arm. Absence renders `undefined`, which the derived probe refuses — measured
+    // rather than predicted, because the audit classifies by what the renderer does.
+    //
+    // **What this is worth once both publishing paths run `verify()`:** such a document is never
+    // WRITTEN — which is not the same as never rendered. This line is still reached on a `host`
+    // capture, three times per `--write`: once by the derived probe inside `verifyShape()`, once by
+    // `run()`, and once by `verify()`'s own shape call. The first draft of this comment said "can no
+    // longer reach this line at all", which was a claim out of a constant inside the comment explaining
+    // a claim out of a constant. Measured at the pre-commit checkpoint. It is worth two things
+    // anyway — `renderRegister()` is EXPORTED and callable without either mode, and a reader who opens
+    // the register alone is entitled to a document whose conditions come from the capture rather than
+    // from the source. Note the boundary honestly: `--matrix` writes `operatorEnv: "isolated"` as a
+    // literal too, so this is faithfulness to the CAPTURE and never to the world.
+    lines.push(
+        snap.operatorEnv === "isolated"
+            ? `- **Operator environment:** isolated, a fresh home and config directory **per turn** (${snap.turns.length} of them)`
+            : `- **Operator environment:** \`${snap.operatorEnv}\` — **NOT the isolated arm this baseline is ruled to run in** (${snap.turns.length} turns)`,
+    );
     lines.push(`- **Credential channel:** \`${snap.credentialChannel}\` — one of three distinguishable auth paths`);
     lines.push(`- **Agent:** \`${snap.agentVersion}\``);
     // Printed here or a reader has to open the JSON to find it, which is where a condition goes to be
@@ -530,9 +559,9 @@ export function renderRegister(snap) {
     // The fold iterates `holdingScenarios()` while the rows table above iterates `snap.cells`, and the
     // two are not the same list. A capture carrying an EXTRA cell — a scenario this build no longer
     // holds — renders a row the total then excludes. `--verify` catches that (it re-folds the cells from
-    // the turns), but `--write` runs `verifyShape()` only, so on that path alone a foreign cell can be
-    // printed above a total that does not include it. Named rather than fixed: `holdingScenarios()` is
-    // the right denominator, and silently summing whatever a capture happens to carry would be worse.
+    // the turns), and since #387 `--write` runs `verify()` too — so the path that once published a
+    // foreign cell above a total excluding it no longer exists. `holdingScenarios()` remains the right
+    // denominator; silently summing whatever a capture happens to carry would still be worse.
     const cellsFor = (arm) =>
         holdingScenarios().map((s) => {
             const cell = snap.cells.find((c) => c.scenario === s.id && c.arm === arm);
@@ -680,9 +709,13 @@ function spell(value) {
  * for the third time in this milestone. Copilot round 3 on
  * [#377](https://github.com/sleepy-panda-srl/portulan/pull/377).
  *
- * **This is also the check `--write` runs, and `--write` runs no other.** `verify()` is `--verify`-only,
- * so a by-name check placed there would not guard the mode that publishes the register. Everything
- * below is here for that reason as much as for tidiness.
+ * **`--write` runs this check FIRST, and since #387 it runs `verify()` after it.** The sentence here
+ * used to read *"`--write` runs no other"*, and that was the defect rather than the design: the mode
+ * that publishes the register checked less than the mode that only reports on it, so a capture
+ * recording `operatorEnv: "host"` with a forged nonce published at exit 0 and red twice on the next
+ * command. The by-name checks still belong **here** rather than in `verify()`, for a reason that
+ * survives the repair: this is the check that runs before the renderer is handed the capture, and a
+ * shape finding must arrive as a finding rather than as an exception thrown out of `renderRegister()`.
  *
  * ## What this check does NOT see, stated as a list rather than as a number
  *
@@ -826,8 +859,9 @@ export function verifyShape(snap) {
     // closing.** `for (const t of snap.turns)` over an empty array runs the by-name checks zero times,
     // and the homogeneity loop below skips an empty one — so `turns: []` with the cells left intact was
     // shape-VALID, and `--write` published a register carrying eight full figure rows, an empty per-turn
-    // table and *"a fresh home and config directory per turn (0 of them)"*. `verify()` catches it, but
-    // `--write` runs this check and no other, which is the whole reason the by-name checks live here.
+    // table and *"a fresh home and config directory per turn (0 of them)"*. `verify()` catches it too,
+    // and since #387 `--write` runs `verify()` — but this check runs BEFORE the renderer, which is why
+    // the by-name checks live here: a shape defect must arrive as a finding, not as a thrown exception.
     // Found at the pre-commit checkpoint, by someone reading the comment above and asking where else the
     // same sentence was true. `cells` gets the same guard for the same reason.
     if (Array.isArray(snap?.turns) && snap.turns.length === 0) {
@@ -939,17 +973,60 @@ export function verify(snap) {
     return red;
 }
 
+/**
+ * How a matrix run publishes its two halves — **one carrier, because they are not symmetric.**
+ *
+ * The snapshot is forty agent turns of events that do not repeat, so it is written **unconditionally**:
+ * a failed check must never be a reason to drop the one artifact nothing can re-derive. The register is
+ * a **derived claim**, and a claim the tool cannot stand behind is the one thing it must not publish.
+ * Before #387 this path wrote both and asked nothing.
+ *
+ * **It is a function rather than eight lines inside `run()` because otherwise nothing holds it.** The
+ * pre-commit checkpoint reverted the check to `[]` and the entire suite — 79 cases here, 2382 in the
+ * tree — stayed green: the centrepiece of that change could be deleted in silence. `run()`'s matrix arm
+ * cannot be reached without a repo root, a credential and forty arm constructions, so the rail has to
+ * grip somewhere a test can hold. This is that place.
+ */
+export function publishMatrix({ repoRoot, snap, into, stdout, stderr }) {
+    fs.writeFileSync(path.join(repoRoot, SNAPSHOT), `${JSON.stringify(snap, null, 2)}\n`);
+    stdout.write(`ab-run: wrote ${SNAPSHOT} — the turns are kept whatever the checks say, because they do not repeat\n`);
+    // **Where the journal is, printed here and not only by `--smoke`.** Everything below depends on it
+    // for recovery, and `--into` defaults to an unnamed temp directory: a run that fails its checks
+    // without saying where its turns are has lost them in practice.
+    if (into !== undefined) stdout.write(`ab-run: turns journalled under ${into} — re-run with the same --seed and --into to reuse them, spawning nothing\n`);
+    const published = verify(snap);
+    if (published.length > 0) {
+        stderr.write(`ab-run: ${published.length} finding(s), so ${REGISTER} was NOT written:\n  - ${published.join("\n  - ")}\n`);
+        // **Said only when it is true.** Withholding does not leave the register absent — both files are
+        // committed, so it leaves the PREVIOUS run's register beside the new capture, a published figure
+        // that no longer matches its own data. But when there is no previous register, saying so would
+        // be this change asserting a state it never read — the same class it repaired in `--verify`'s
+        // remediation string, at a site it had just added. Caught at the pre-commit checkpoint.
+        if (fs.existsSync(path.join(repoRoot, REGISTER))) {
+            stderr.write(`ab-run: ${REGISTER} is still the PREVIOUS run's and no longer matches ${SNAPSHOT} beside it — \`--verify\` will red until the capture is repaired or reverted\n`);
+        }
+        return 1;
+    }
+    fs.writeFileSync(path.join(repoRoot, REGISTER), renderRegister(snap));
+    stdout.write(`ab-run: wrote ${REGISTER}\n`);
+    // **`k=5` was a string literal here**, so a `--k 3` run announced k=5 — the same defect as the
+    // `isolated` literal in the renderer, in the same mode, one line below the write. Derived now.
+    stdout.write(`ab-run: k=${snap.k} supports a recorded rate and nothing else. The register says so in its own voice.\n`);
+    return 0;
+}
+
 // ---------------------------------------------------------------- the CLI
 
 const USAGE = `portulan-ab-run — run the A/B matrix and record the baseline. THE ONLY MODULE HERE THAT SPAWNS AN AGENT.
 
-  node cli/ab-run.mjs --matrix --seed <s> [--k <n>] [--into <dir>] [--repo-root <dir>]
+  node cli/ab-run.mjs --matrix --seed <s> [--k ${K}] [--into <dir>] [--repo-root <dir>]
   node cli/ab-run.mjs --smoke --seed <s> [--scenario <id>] [--into <dir>] [--repo-root <dir>]
                                         [--turn-timeout <s>] [--agent <path>]
   node cli/ab-run.mjs --verify [--repo-root <dir>]
   node cli/ab-run.mjs --write [--repo-root <dir>]
 
-  --matrix   run every (scenario, arm, run) and write ${SNAPSHOT} and ${REGISTER}.
+  --matrix   run every (scenario, arm, run), write ${SNAPSHOT} ALWAYS — the turns do not repeat — and
+             write ${REGISTER} only if the capture passes the same checks --verify runs.
              ${K * 2 * holdingScenarios().length} turns at k=${K}. SPENDS REAL TOKENS. Any turn
              already journalled under --into for this seed is REUSED, never re-run: pass the smoke
              gate's --into to continue from it, and to resume after a crash.
@@ -960,7 +1037,8 @@ const USAGE = `portulan-ab-run — run the A/B matrix and record the baseline. T
   --verify   the recipe's mode: no agent. The snapshot's shape and arithmetic, the matrix's
              totality over k, an unisolated claim, and ${REGISTER} byte-compared through this
              module's own renderer.
-  --write    re-render ${REGISTER} from the committed snapshot. Runs no agent.
+  --write    re-render ${REGISTER} from the committed snapshot. Runs no agent, and REFUSES a capture
+             \`--verify\` would red — the mode that publishes asks the publishing question.
 
 There is NO --operator-env flag. Every turn runs isolated, with a fresh home and config directory of
 its own, because evals/ab/corpus.md forbids a baseline over an unisolated arm — a departure would be
@@ -1001,6 +1079,11 @@ function parse(argv) {
             case "--k": {
                 const v = Number(value());
                 if (!Number.isInteger(v) || v < 1) throw new CouldNotRun("`--k` takes a positive integer");
+                // **Refused here, before the first spawn, and it used to be refused after the last
+                // one.** `verify()` has always known that a matrix at another k is another experiment —
+                // but only `--verify` ran it, so the ruling was enforced *after* forty agent turns had
+                // been paid for. The parser is where a ruling about how many turns to run belongs.
+                if (v !== K) throw new CouldNotRun(`\`--k ${v}\` — the maintainer ruled ${K}, and a run at another k is another experiment. Refused before any turn is spawned rather than after all of them; the ruling is not this tool's to restate`);
                 out.k = v;
                 break;
             }
@@ -1060,16 +1143,49 @@ export function run(argv = [], { stdout = process.stdout, stderr = process.stder
             // to diagnose malformed captures. `--write` refuses for the same reason rather than emitting
             // a register from a capture it could not read.
             const shape = verifyShape(snap);
-            if (shape.length > 0) throw new ArmRed(`${shape.length} finding(s):\n  - ${shape.join("\n  - ")}`);
+            // The shape refusal says what is on disk too. One command answering in two voices, only one
+            // of which tells the operator whether anything was written, is a smaller version of the
+            // defect this whole change is about. Pre-commit checkpoint.
+            if (shape.length > 0) {
+                throw new ArmRed(
+                    parsed.mode === "write"
+                        ? `${shape.length} finding(s), so ${REGISTER} was NOT written:\n  - ${shape.join("\n  - ")}`
+                        : `${shape.length} finding(s):\n  - ${shape.join("\n  - ")}`,
+                );
+            }
             const rendered = renderRegister(snap);
             if (parsed.mode === "write") {
+                // **`--write` asks the publishing question now, and it did not.** It ran `verifyShape()`
+                // and returned here, so a capture recording `operatorEnv: "host"` with a forged nonce
+                // was published at exit 0 and red two ways on the very next command — the mode that
+                // publishes checking less than the mode that only reports.
+                //
+                // **One edge here is load-bearing and it is not the one this comment first claimed.**
+                // Shape-before-`verify()` is free — `verify()` calls `verifyShape()` itself, and
+                // reordering the two produces byte-identical output, measured. What must not move is
+                // `verifyShape()` before the UNGUARDED `renderRegister()` a few lines up: #377 round 3
+                // shipped that inverse and a malformed capture crashed inside the renderer, returning
+                // exit 2 — *could not run* — about a capture the tool was looking straight at. Stating
+                // the wrong constraint would have had the next maintainer defend a rule that is not one.
+                const published = verify(snap);
+                if (published.length > 0) throw new ArmRed(`${published.length} finding(s), so ${REGISTER} was NOT written:\n  - ${published.join("\n  - ")}`);
                 fs.writeFileSync(path.join(repoRoot, REGISTER), rendered);
                 stdout.write(`ab-run: wrote ${REGISTER} from ${SNAPSHOT}\n`);
                 return 0;
             }
             const red = verify(snap);
             const onDisk = fs.existsSync(path.join(repoRoot, REGISTER)) ? fs.readFileSync(path.join(repoRoot, REGISTER), "utf8") : null;
-            if (onDisk === null) red.push(`${REGISTER} is missing — render it with \`node cli/ab-run.mjs --write\``);
+            // **The remedy is named only when it will work.** This said *"render it with `--write`"*
+            // unconditionally; now that `--write` runs `verify()`, a red capture makes that a remedy the
+            // same run refuses — a message the tree falsifies the moment anyone follows it. So the
+            // findings decide which sentence is true. Caught at the session-open checkpoint.
+            if (onDisk === null) {
+                red.push(
+                    red.length > 0
+                        ? `${REGISTER} is missing, and \`--write\` will refuse to render it until the finding(s) above are repaired`
+                        : `${REGISTER} is missing — render it with \`node cli/ab-run.mjs --write\``,
+                );
+            }
             else if (onDisk !== rendered) red.push(`${REGISTER} does not match a fresh render of ${SNAPSHOT} — a published figure has drifted from its own data`);
             if (!rendered.includes(LIMITATIONS[0])) red.push("the rendered register carries no limitation block");
             if (red.length > 0) throw new ArmRed(`${red.length} finding(s):\n  - ${red.join("\n  - ")}`);
@@ -1207,11 +1323,7 @@ export function run(argv = [], { stdout = process.stdout, stderr = process.stder
             turns,
             cells: aggregate(turns, parsed.k),
         };
-        fs.writeFileSync(path.join(repoRoot, SNAPSHOT), `${JSON.stringify(snap, null, 2)}\n`);
-        fs.writeFileSync(path.join(repoRoot, REGISTER), renderRegister(snap));
-        stdout.write(`ab-run: wrote ${SNAPSHOT} and ${REGISTER}\n`);
-        stdout.write("ab-run: k=5 supports a recorded rate and nothing else. The register says so in its own voice.\n");
-        return 0;
+        return publishMatrix({ repoRoot, snap, into, stdout, stderr });
     } catch (error) {
         if (error instanceof ArmRed) {
             stderr.write(`ab-run: ${error.message}\n`);
