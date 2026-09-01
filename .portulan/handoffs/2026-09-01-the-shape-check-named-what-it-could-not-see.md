@@ -99,6 +99,33 @@ same sentence was true. Closed, with `cells`, and with the substitution twin bes
 null` renders *"Per-turn timeout: 0s"* through `Math.round`, a plausible invented condition the sweep
 cannot reach because it is a substitution rather than a deletion.
 
+## Copilot round 1 — four findings, and the sweep that answered one of them found two more
+
+**All four accepted, none triaged.** The load-bearing one: **whitespace-only strings passed every
+non-empty check**, at four sites at once — `agent: "   "` renders a command line with a blank where the
+binary goes, no hole in the document, and the probe sees nothing. That is this diff's own headline class
+at sites this diff wrote. Every non-empty test now reads `.trim()`, which is the standard `run()` already
+applied to `model`. An absent or non-array `invocation` reached the operator as *"snap.invocation.join is
+not a function"* — red, but a JS exception standing in for a shape finding about a field this module
+names; it is a targeted finding now. The `recordingFixture()` docblock said 300 where the fixture holds
+301, in a note **about an off-by-one**. And `deleteFirst()` was dead code.
+
+**Answering the dead-code finding is what earned the round.** Rather than delete the helper, the
+homogeneity case became a **swept** single-row deletion over every row key of both artifacts — and it
+failed twice, correctly, before it passed:
+
+1. **`Array.prototype.every()` skips holes.** A sparse `invocation` has `length` 3, two entries, and the
+   element check never visited the gap — the empty-array defect's twin, one step along, in the guard
+   written to close the empty-array defect. `Array.from()` materialises the holes. Unreachable from a
+   committed file (JSON turns a hole into `null`, already caught) and fixed regardless: a check should
+   hold for the object it is handed, not for the ones it expects.
+2. **Homogeneity's scope is a row's OWN keys**, and the sweep had claimed more — a top-level array of
+   scalars is not a row, and an element of an array nested inside a row leaves the row's key set
+   identical. Both are now stated as measured limits rather than assumed away.
+
+A hand-picked case would have proved the mechanism for one field. The swept one disagreed with the
+mechanism twice, which is the right way round for a case to fail.
+
 ## Filed to the maintainer — NOT fixed here
 
 All six are issues on the backlog board, added and field-set on 2026-09-01:
@@ -132,6 +159,6 @@ outright. #390 and #392 ride *Blocked on: Maintainer ruling*. **#388 and #389 mu
 
 ## Evidence
 
-25 recipes green, run rather than printed. `cli/ab-run.test.mjs` 57 → **65**. `ab-run` forced red with
+25 recipes green, run rather than printed. `cli/ab-run.test.mjs` 63 → **74**. `ab-run` forced red with
 `--working-copy` and its tell — *"no baseline may be recorded under an unisolated arm"* — intact, which
 matters because `verify()` returns `verifyShape()`'s findings first and returns early. Seam scan clean.

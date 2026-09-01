@@ -554,8 +554,9 @@ test("a shape check is total over what the RENDERER dereferences, not merely ove
  * longest fail the audit as redundant, and pressure the next reader to delete it.
  *
  * **`turns[].said` carries the same trap, and it is not hypothetical — it is coupled to a filed bug.**
- * The committed capture's longest `said` is exactly 300 and this fixture masks the boundary with
- * `saidTruncated: true`. Repairing the filed `>= 300` / `> 300` off-by-one in `limitationsFor()` makes
+ * The committed capture's longest `said` is exactly **300 and unmarked**; this fixture's is
+ * **301 and marked** (300 characters plus the `…` `runTurn()` appends), which is what a genuinely
+ * truncated row looks like — and `saidTruncated: true` masks the length branch entirely. Repairing the filed `>= 300` / `> 300` off-by-one in `limitationsFor()` makes
  * `turns[].said` inert on BOTH artifacts, so the audit will fail it as redundant — and the remedy the
  * audit's own rule suggests is to delete the name and its check, reopening a real blind spot. **Give the
  * fixture a `said` that is read on the correct side of the boundary at the same time**, or the audit
@@ -742,6 +743,48 @@ test("the two REPORTED sites: absence renders a hole, and `null` keeps its recor
     assert.match(verifyShape(blank).join("\n"), /neither `null` nor a non-empty string/);
 });
 
+test("WHITESPACE is not a value — a blank string publishes an emptiness with no hole in it", () => {
+    // `!== ""` and "carries a value" are different questions, and `agent: "   "` is the difference: it
+    // renders a command line with a blank where the binary goes, and the probe sees a clean document.
+    // Copilot named this at four sites at once, which is what a class looks like when it is reported well.
+    for (const [label, mutate, tell] of [
+        ["agent", (x) => { x.agent = "   "; }, /`agent` is present but is not a non-empty string/],
+        ["model", (x) => { x.model = "\t"; }, /`model` is present but is neither/],
+        ["a verdict", (x) => { x.turns[0].verdict = "  "; }, /neither `null` nor a non-empty string/],
+        ["an invocation element", (x) => { x.invocation = ["  ", "--permission-mode", "acceptEdits"]; }, /publishing a shorter command line/],
+    ]) {
+        const snap = recordingFixture();
+        mutate(snap);
+        assert.ok(!renderRegister(snap).includes("undefined"), `${label}: renders cleanly — that is the whole problem`);
+        assert.match(verifyShape(snap).join("\n"), tell, `a whitespace-only ${label} must red`);
+    }
+});
+
+test("a SPARSE invocation is caught — `every()` skips holes, which the empty-array guard did not cover", () => {
+    // Surfaced by the swept single-row case above rather than by reading the check: `[ <hole>, "a", "b" ]`
+    // has length 3, two entries, and `every()` never visits the gap. Unreachable from a committed file —
+    // JSON turns a hole into `null`, which was already caught — and fixed regardless, because a check
+    // should hold for the object it is handed rather than for the ones it expects.
+    const snap = recordingFixture();
+    snap.invocation = [...INVOCATION];
+    delete snap.invocation[0];
+    assert.ok(!renderRegister(snap).includes("undefined"), "it renders a SHORTER command line, not a hole");
+    assert.match(verifyShape(snap).join("\n"), /publishing a shorter command line/);
+});
+
+test("an absent `invocation` is a SHAPE finding, not a caught JS exception standing in for one", () => {
+    // It was checked only once it was already an array, so absence fell through to the renderer, threw at
+    // `.join(" ")`, and reached the operator as `snap.invocation.join is not a function` — red, but a JS
+    // error message doing a shape check's job for a field this module names. Copilot round 1.
+    for (const [label, value] of [["absent", undefined], ["a string", "--print"]]) {
+        const snap = recordingFixture();
+        if (value === undefined) delete snap.invocation; else snap.invocation = value;
+        const red = verifyShape(snap).join("\n");
+        assert.match(red, /`invocation` is (absent|a string), not an array/, `${label} must be named`);
+        assert.doesNotMatch(red, /is not a function/, "and must not surface as a caught JS exception");
+    }
+});
+
 test("a `null` INVOCATION element publishes a shorter command line than the one that ran", () => {
     // Not a deletion — a JSON round-trip of one. `join(" ")` renders `null` as nothing, so the register
     // prints a command the turns did not run under and no hole appears. Outside the swept set by
@@ -754,10 +797,26 @@ test("a `null` INVOCATION element publishes a shorter command line than the one 
 
 test("row homogeneity catches a DIVERGING row, and the residue it does not catch is pinned", () => {
     // It names no field, so it closes `nonce`, `timedOut`, `evidence`, `invocation` and everything added
-    // later without listing one of them. Its reach is a row that disagrees with its neighbours.
-    const one = recordingFixture();
-    delete one.turns[0].evidence;
-    assert.match(verifyShape(one).join("\n"), /do not all carry the same fields/);
+    // later without listing one of them. Its reach is a row that disagrees with its neighbours — so the
+    // case is SWEPT rather than hand-picked, over every per-row leaf of both artifacts. A hand-picked
+    // field would have proved it for that field, which is the shape of defect this file keeps repairing.
+    for (const [name, make] of ARTIFACTS()) {
+        for (const shape of new Set(leafShapes(make()))) {
+            // **A ROW'S OWN KEYS, and the scope is a measured limit rather than a convenience.**
+            // Homogeneity compares key SETS one level down, so two things are outside its subject and
+            // the sweep must not claim them: a top-level array of scalars (`invocation[]` — not a row),
+            // and an element of an array nested inside a row (`turns[].invocation[]` — deleting it
+            // leaves the row's key set identical). Both were found by this sweep asserting more than
+            // the mechanism does, which is the right way round for a case to fail.
+            if (!/^(turns|cells)\[\]\.[^.[\]]+$/.test(shape)) continue;
+            const snap = make();
+            deleteFirst(snap, shape);
+            assert.ok(
+                verifyShape(snap).length > 0,
+                `${name}: deleting ONE \`${shape}\` leaves a row disagreeing with its neighbours and must red`,
+            );
+        }
+    }
 
     const cell = recordingFixture();
     delete cell.cells[0].verdicts;

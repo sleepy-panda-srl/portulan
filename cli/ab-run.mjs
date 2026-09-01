@@ -736,10 +736,16 @@ export function verifyShape(snap) {
     // The three the 2026-08-31 capture does not record: **checked if present, permitted if absent**, and
     // `PERMITTED_ABSENT` says why. Present-and-wrong is the half that can be closed, and it is not
     // hypothetical — `parse()` accepts `--agent ""`, and `run()` writes `model: … || null`.
-    if (snap?.agent !== undefined && (typeof snap.agent !== "string" || snap.agent === "")) {
-        red.push("the snapshot's `agent` is present but is not a non-empty string — it renders inside the recorded command line, where `null` would publish an invocation reading `null --print …`");
+    // **`!== ""` is not the same question as "carries a value", and a whitespace-only string is the
+    // difference.** `agent: "   "` renders `` `    --print …` `` — a command line with a blank where the
+    // binary goes, no hole in the document, and an emptiness the probe cannot see. Every non-empty test
+    // in this check therefore reads `.trim()`, which is the same standard `run()` already applies to
+    // `model` (`(… ?? "").trim() || null`) and the one a record should meet if a capture does.
+    // Copilot round 1, which named this at four sites at once.
+    if (snap?.agent !== undefined && (typeof snap.agent !== "string" || snap.agent.trim() === "")) {
+        red.push("the snapshot's `agent` is present but is not a non-empty string — it renders inside the recorded command line, where `null` or blank space would publish an invocation reading `null --print …`");
     }
-    if (snap?.model !== undefined && snap.model !== null && (typeof snap.model !== "string" || snap.model === "")) {
+    if (snap?.model !== undefined && snap.model !== null && (typeof snap.model !== "string" || snap.model.trim() === "")) {
         red.push("the snapshot's `model` is present but is neither `null` nor a non-empty string — `null` is how *the operator set none* is recorded, and anything else renders as a condition nobody measured");
     }
     if (Array.isArray(snap?.turns)) {
@@ -758,13 +764,21 @@ export function verifyShape(snap) {
             // sweep deletes fields, and neither of the two hazards below is a deletion. An absent
             // `verdict` renders a hole now that the `??` is gone; `verdict: ""` renders empty backticks,
             // and `null` is the recorded could-not-attribute that `aggregate()` counts.
-            if (t?.verdict !== null && (typeof t?.verdict !== "string" || t.verdict === "")) {
+            if (t?.verdict !== null && (typeof t?.verdict !== "string" || t.verdict.trim() === "")) {
                 red.push(`${id} carries a \`verdict\` that is neither \`null\` nor a non-empty string — \`null\` is how *could-not-attribute* is recorded, and the register prints the rest verbatim`);
             }
         }
     }
     // The same class one level up: a `null` element survives a JSON round-trip and `join(" ")` renders
     // it as nothing, so the published command line is silently SHORTER than the one that ran.
+    // **The structural half owes a targeted finding, not a caught exception.** `invocation` was checked
+    // only once it was already an array, so an absent or non-array one fell through to the renderer,
+    // threw at `.join(" ")`, and reached the operator as *"the register cannot be rendered from this
+    // capture — snap.invocation.join is not a function"*. That is red, and it is a JS error message
+    // standing in for a shape finding about a field this file names. Copilot round 1.
+    if (!Array.isArray(snap?.invocation)) {
+        red.push(`the snapshot's \`invocation\` is ${snap?.invocation === undefined ? "absent" : `a ${typeof snap.invocation}`}, not an array — the register prints it as the command line both arms ran under`);
+    }
     // **`every()` over an EMPTY array is `true`, and that was this check's own blind spot** — the
     // two-way audit below caught it on the first run: emptying `invocation` renders the agent's name
     // followed by nothing at all — `` `<agent>  <prompt>` `` over the committed capture — a command line
@@ -773,7 +787,14 @@ export function verifyShape(snap) {
     if (Array.isArray(snap?.invocation) && snap.invocation.length === 0) {
         red.push("the snapshot records an empty `invocation` — the register would publish a command line carrying none of the flags the turns actually ran under");
     }
-    if (Array.isArray(snap?.invocation) && !snap.invocation.every((a) => typeof a === "string" && a !== "")) {
+    // **`every()` SKIPS HOLES, which is the empty-array defect's twin one step along.** A sparse
+    // `invocation` — a deleted element rather than a nulled one — has `length` 3 and two entries, and
+    // `every()` never visits the gap, so the check passed a capture that renders a command line missing a
+    // flag. `Array.from` materialises the holes as `undefined` so they are tested like anything else.
+    // Found by the swept single-row case in the suite, not by reading this line. (A JSON round-trip turns
+    // a hole into `null`, which was already caught — so this is unreachable from a committed file, and it
+    // is fixed anyway: the check should be true of the object it is handed, not of the objects it expects.)
+    if (Array.isArray(snap?.invocation) && !Array.from(snap.invocation).every((a) => typeof a === "string" && a.trim() !== "")) {
         red.push("the snapshot's recorded `invocation` holds an element that is not a non-empty string — `join(\" \")` renders it as nothing, publishing a shorter command line than the one the turns ran under");
     }
 
