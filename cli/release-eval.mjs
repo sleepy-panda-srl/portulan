@@ -645,17 +645,21 @@ const USAGE = `portulan-release-eval — the eval result a release carries.
   node cli/release-eval.mjs --capture [--repo-root <dir>] [--date <YYYY-MM-DD>]
   node cli/release-eval.mjs --write   [--repo-root <dir>] [--version <X.Y.Z>]
   node cli/release-eval.mjs --verify  [--repo-root <dir>]
-  node cli/release-eval.mjs --tagged <X.Y.Z> [--repo-root <dir>]
+  node cli/release-eval.mjs --tagged <tag>   [--repo-root <dir>]
 
   --capture  RUN every recipe this workspace yields and write ${RECORD_DIR}/<version>.json and .md
              for the version package.json declares. Spends real time — it is the whole recipe set.
-  --write    re-render a register from its committed capture. Runs no recipe.
+  --write    re-render a register from its committed capture. Runs no recipe. \`--version\` names
+             which record, and belongs to this mode alone: it is refused elsewhere rather than
+             ignored, because it once shared a slot with the tag and silently overrode it.
   --verify   the recipe's mode. EVERY governed release CHANGELOG.md records has a record; each
              record's shape; no recorded red; each register byte-compared through this module's own
              renderer; no record for a release that was never cut; and the newest heading agrees
              with package.json.
   --tagged   the release act's mode, for a checkout OF THE TAG: does this tree carry a record for
-             the version being published. \`.github/workflows/publish-github-packages.yml\` runs it.
+             the version being published, and does the payload declare the version the tag names.
+             Takes the TAG (\`v0.1.3\` or \`0.1.3\`). \`.github/workflows/publish-github-packages.yml\`
+             runs it.
 
 Every governed release stays under the rail permanently, not only the newest: a rail that graded one
 record at a time would let an older one be deleted in silence. Releases before ${FIRST_GOVERNED_VERSION}
@@ -666,7 +670,13 @@ Exit 0 green · 1 a finding · 2 could not run.`;
 const MODES = ["--capture", "--write", "--verify", "--tagged"];
 
 function parse(argv) {
-    const out = { mode: null, root: ".", date: null, version: null };
+    // **`tagged` and `version` are SEPARATE fields, and sharing one was a real defeat of the rail.**
+    // Both meanings once lived in `out.version`: `--tagged`'s argument — the tag being published — and
+    // `--write`'s optional target. So `--tagged v0.1.3 --version 0.1.2` silently overwrote the tag with
+    // the payload's own version, and the tag-versus-payload refusal that `--tagged` exists for became
+    // `exit 0`; reversing the two arguments gave the opposite answer, which is the tell that one slot was
+    // carrying two meanings. Two names cannot collide. Copilot round 5.
+    const out = { mode: null, root: ".", date: null, version: null, tagged: null };
     for (let i = 0; i < argv.length; i += 1) {
         const a = argv[i];
         const need = (what) => {
@@ -679,7 +689,7 @@ function parse(argv) {
             if (out.mode !== null) throw new CouldNotRun(`pass exactly one of ${MODES.join(", ")}`);
             out.mode = a.slice(2);
             // `--tagged` names the version being published; the others take it optionally.
-            if (a === "--tagged") out.version = need("the `X.Y.Z` version being published");
+            if (a === "--tagged") out.tagged = need("the tag being published, for example `v0.1.3`");
             continue;
         }
         switch (a) {
@@ -696,6 +706,9 @@ function parse(argv) {
                 break;
             }
             case "--version":
+                // Meaningful for `--write` alone: it names which committed record to re-render. Passing
+                // it anywhere else is a refusal rather than a silently ignored argument, because an
+                // argument that looks accepted and does nothing is how the collision above went unseen.
                 out.version = need("an `X.Y.Z` version");
                 break;
             case "--help":
@@ -707,6 +720,9 @@ function parse(argv) {
         }
     }
     if (out.mode === null) throw new CouldNotRun(`pass one of ${MODES.join(", ")}`);
+    if (out.version !== null && out.mode !== "write") {
+        throw new CouldNotRun("`--version` names which committed record `--write` re-renders, and means nothing in any other mode — refusing rather than ignoring it");
+    }
     return out;
 }
 
@@ -837,7 +853,7 @@ export function run(argv = [], { stdout = process.stdout, stderr = process.stder
         // in that tree `package.json` still declares the PREVIOUS version, so a step that asked
         // `--tagged $(package.json version)` asked about `0.1.2`, got *predates the clause*, and published.
         // The tag is the only thing in that scenario that names what is being released.
-        const tagged = parsed.version.replace(/^v/, "");
+        const tagged = parsed.tagged.replace(/^v/, "");
         let taggedGoverned;
         try {
             taggedGoverned = isGoverned(tagged);

@@ -198,6 +198,24 @@ hole round 4 did not name.** Sweeping every type-conditional guard in the module
 `host.node: 22` rendered `` `22` `` among the conditions the release was measured under and passed
 everything. Both host fields are strings or a red now. A fix stopping at the named site would have left it.
 
+### Round 5: one slot carrying two meanings, and a precondition my own recipe cited and did not have
+
+**`--tagged`'s argument and the `--version` flag shared `out.version`.** So
+`--tagged v0.1.3 --version 0.1.2` silently overwrote the **tag** with the payload's own version, and the
+tag-versus-payload refusal that `--tagged` exists for became **exit 0** — the check defeated by an
+argument. Reversing the two gave the opposite answer, which is the tell that one slot was carrying two
+meanings. They are separate fields now, and `--version` is refused outside `--write` rather than ignored,
+because an argument that looks accepted and does nothing is how the collision went unseen.
+
+**And fixing it surfaced a defect nobody reported.** A stray edit left the module unparseable for a
+moment, and `.portulan/verify/release-eval.sh` reported **exit 1 — a finding about this repository's
+releases — over a module nothing could read.** Measured deliberately afterwards with `const broken = ;`.
+That is the **fifth** appearance of the class this recipe's own header names for the *missing-file* case,
+and my recipe guarded the missing file and not the unparseable one. `./drills.sh`'s loadability probe is
+adopted rather than re-derived, path in the environment so the entry guard cannot fire; both directions
+verified — exit 2 with a diagnosis on a broken module, 0 restored. **Found by breaking the module rather
+than by reading it**, which is the only way this class has ever been found here.
+
 ## The bound was EXCEEDED and GRANTED, and rebasing made a record of this session's own class
 
 **The maintainer granted the loop past rule 4's bound** — *"address feedback until it's empty"* — and it

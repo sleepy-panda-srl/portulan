@@ -665,6 +665,33 @@ test("--write refuses a capture it could not read, rather than rendering from on
 
 // ---------------------------------------------------------------- the CLI's own edges
 
+test("`--tagged` and `--version` cannot collide — one slot was carrying two meanings", () => {
+    // Both once lived in `out.version`, so `--tagged v0.1.3 --version 0.1.2` overwrote the TAG with the
+    // payload's own version and the tag-versus-payload refusal became exit 0 — the check defeated by an
+    // argument. Reversing the two gave the opposite answer, which is the tell that one slot held two
+    // meanings. Copilot round 5.
+    const root = fixtureRepo({ version: "0.1.2", released: ["0.1.2", "0.1.1", "0.1.0"] });
+
+    const plain = capture();
+    assert.equal(run(["--tagged", "v0.1.3", "--repo-root", root], plain.io), 1, "the mismatch is a finding");
+
+    for (const argv of [
+        ["--tagged", "v0.1.3", "--version", "0.1.2", "--repo-root", root],
+        ["--version", "0.1.2", "--tagged", "v0.1.3", "--repo-root", root],
+    ]) {
+        const c = capture();
+        assert.equal(run(argv, c.io), 2, `${JSON.stringify(argv.slice(0, 4))} must refuse, in either order`);
+        assert.match(c.err, /means nothing in any other mode/);
+    }
+
+    // `--version` keeps its one real job.
+    const w = fixtureRepo({ version: "0.1.3", records: { "0.1.3": goodSnap() } });
+    const ok = capture();
+    assert.equal(run(["--write", "--version", "0.1.3", "--repo-root", w], ok.io), 0);
+    fs.rmSync(root, { recursive: true, force: true });
+    fs.rmSync(w, { recursive: true, force: true });
+});
+
 test("no mode, two modes, and an unknown argument are all could-not-run with the usage", () => {
     for (const argv of [[], ["--verify", "--capture"], ["--nope"]]) {
         const c = capture();

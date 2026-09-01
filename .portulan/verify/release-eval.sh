@@ -57,7 +57,7 @@
 set -uo pipefail
 
 # Every external command this recipe runs — see ./docs.sh for the measurement behind the shape.
-for need in dirname node; do
+for need in cut dirname mktemp node rm tr; do
     command -v "$need" >/dev/null 2>&1 || {
         printf 'verify: %s not found — this recipe needs it; see .portulan/verify/README.md\n' "$need" >&2
         exit 2
@@ -76,6 +76,24 @@ for required in cli/release-eval.mjs CHANGELOG.md package.json; do
         exit 2
     fi
 done
+
+# **And the runner's PARSEABILITY is a precondition too, checked by loading rather than assumed.** The
+# roster above catches a missing file; it cannot catch a present one that does not parse — and `node`
+# on an unparseable module exits **1**, which the passthrough below would have reported as a finding
+# about this repository's releases. Measured: a deliberate syntax error made this recipe exit 1 with
+# `const broken = ;` in its output, red over a module nothing had read. That is the fifth appearance of
+# the class named in the block above, and it was found by breaking the module rather than by review.
+# `./drills.sh` carries the same probe for the same reason, and its shape is adopted rather than
+# re-derived — the path arrives in the ENVIRONMENT, never as an argument, so `process.argv[1]` is unset,
+# the module's entry guard cannot fire, and importing is only importing.
+probe=$(mktemp) || exit 2
+if ! PORTULAN_RELEASE_EVAL_MODULE="$root/cli/release-eval.mjs" \
+    node --input-type=module -e 'await import(process.env.PORTULAN_RELEASE_EVAL_MODULE);' 2>"$probe"; then
+    printf 'verify: cli/release-eval.mjs could not be loaded — %s\n' "$(tr '\n' ' ' <"$probe" | cut -c1-300)" >&2
+    rm -f -- "$probe"
+    exit 2
+fi
+rm -f -- "$probe"
 
 printf 'release-eval: checking that every release from milestone 8 onward carries an eval result that agrees with its capture\n'
 
