@@ -363,6 +363,37 @@ export const DRILLS = [
         why: "`.portulan/identity.md` claims the `npx` path installs the same bytes as the tree. This rail is that claim's only continuous check; an unstaged edit is precisely the drift it owns.",
     },
     {
+        rail: "payload",
+        perturb: {
+            create: "cli/a-module-the-drill-left-unclassified.mjs",
+            content: [
+                "// A forced-red drill fixture, written by `cli/drills.mjs` into a throwaway worktree and never",
+                "// committed. If you are reading this file inside the repository, a drill did not clean up after",
+                "// itself and that is the bug.",
+                "//",
+                "// It is here because `package.json`'s `files` sweeps `cli/`, so ANY module landing here joins the",
+                "// npm payload. `cli/pack-identity.mjs` would report green over it — it checks the bytes of what is",
+                "// packed and never the roster — which is how `ab.mjs`, `ab-run.mjs` and `ab-grade.mjs` shipped for",
+                "// three sessions before #382 removed them.",
+                "",
+                "export const theDrillPlantedThis = true;",
+                "",
+            ].join("\n"),
+        },
+        // **NOT staged, and that is the drill's second subject.** `npm pack` reads the WORKING TREE, so an
+        // untracked module ships — measured before this drill was written. A drill that staged first would
+        // pass while leaving the likelier arrival untested: a module written, packed and published before
+        // anyone committed it. `pack-identity` above is the mirror case and stages for the opposite reason.
+        stage: false,
+        exit: 1,
+        tell: "SHIPS and is classified by nothing",
+        why:
+            "`package.json`'s `files` array governs the payload and nothing derived its membership until #383 — " +
+            "`pack-identity` holds the packed BYTES and is silent on which files are packed. The drill proves the " +
+            "rail sees a real arrival in the tree rather than only a synthetic report handed to `findings()`, " +
+            "which is the half a unit test cannot reach.",
+    },
+    {
         rail: "eval-bundle",
         perturb: {
             create: "drill-top-level-path/README.md",

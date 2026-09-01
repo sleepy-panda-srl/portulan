@@ -25,7 +25,8 @@
     "!cli/eval-license.template.md",
     "!cli/ab.mjs",
     "!cli/ab-run.mjs",
-    "!cli/ab-grade.mjs"
+    "!cli/ab-grade.mjs",
+    "!cli/payload.mjs"
   ],
   "repository": {
     "type": "git",

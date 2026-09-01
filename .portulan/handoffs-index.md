@@ -2,12 +2,13 @@
 
 > Generated from `handoffs/` by `node cli/index.mjs`. Do not edit by hand: it is regenerated
 > and byte-compared, so a hand-edit survives exactly until the next run.
-> 155 handoff(s), newest first. No budget: the series is append-only, so
+> 156 handoff(s), newest first. No budget: the series is append-only, so
 > the only remedy a budget could ask for is one this project rules out.
 
 - 2026-09-01 · [2026-09-01 — the shape check named what it could not see](handoffs/2026-09-01-the-shape-check-named-what-it-could-not-see.md)
 - 2026-09-01 · [2026-09-01 — the payload carried an experiment about itself](handoffs/2026-09-01-the-payload-carried-an-experiment-about-itself.md)
 - 2026-09-01 · [2026-09-01 — the mode that published the most checked the least](handoffs/2026-09-01-c-the-mode-that-published-the-most-checked-the-least.md)
+- 2026-09-01 · [2026-09-01 — the payload gets a roster it cannot forget](handoffs/2026-09-01-b-the-payload-gets-a-roster-it-cannot-forget.md)
 - 2026-09-01 · [2026-09-01 — the figure the citation did not carry](handoffs/2026-09-01-b-the-figure-the-citation-did-not-carry.md)
 - 2026-09-01 · [2026-09-01 — A release carries an eval result: the mechanism, and the instance it is owed](handoffs/2026-09-01-a-release-carries-an-eval-result.md)
 - 2026-08-31 · [2026-08-31 — the graders, and the census that counted its own plant](handoffs/2026-08-31-the-graders-and-the-census-that-counted-its-own-plant.md)

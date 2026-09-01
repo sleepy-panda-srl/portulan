@@ -2685,3 +2685,14 @@ _The seam applies here too: no client-identifying references._
   `evals/` changes. · 26 recipes; tests 74→82. · Session-open **A-W-A (11)**, pre-commit **A-W-A (6)** —
   the centrepiece had no rail and was deleted with the whole suite green. · Seam scan clean. ·
   [handoff](../.portulan/handoffs/2026-09-01-c-the-mode-that-published-the-most-checked-the-least.md)
+
+- 2026-09-01 · Off the milestone row · packaging · **A module cannot join the payload without somebody
+  deciding that it should** — [#383](https://github.com/sleepy-panda-srl/portulan/issues/383)'s first
+  half. `cli/payload.mjs` + the `payload` recipe put every shipped `cli/*.mjs` in exactly one of **31 =
+  1 bin · 8 subcommand · 6 imported · 2 hook-runner · 1 product · 13 unruled**, rostering nothing they
+  can re-derive. **A fourteenth unreachable module arrived mid-session** — `release-eval.mjs`, from
+  #381 — the frozen class refused it, and his ruling made it `product`, the class `unruled` empties
+  into. **Two holes forced, not read**: a fourteenth name in `UNRULED` fired nothing while the code
+  claimed otherwise; one module in two registers was silent. Three supervisors; the third found six
+  stale carriers a rebase left. · 26 green, suite 2423. · Seam scan clean, control-verified. ·
+  [handoff](../.portulan/handoffs/2026-09-01-b-the-payload-gets-a-roster-it-cannot-forget.md)
