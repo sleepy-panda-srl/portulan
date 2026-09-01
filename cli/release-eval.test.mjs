@@ -189,6 +189,84 @@ test("EVERY field the renderer reads is caught when deleted — swept, not hand-
     }
 });
 
+test("a PRESENT-DEGENERATE value is refused — null and blank render as values, not as holes", () => {
+    // **The second round of this same defect, and the reason the docblock now says three rules.** A
+    // capture with `source.commit: null` renders `| Commit | \`null\` |` and one with `""` renders an
+    // empty cell — neither is `undefined` or `NaN`, so the derived probe sees a clean page, and neither
+    // is a branch, so the by-name checks miss it too. Six of these passed a check that had just been
+    // hardened against hand-written records.
+    const mutations = [
+        ["source.commit", null],
+        ["source.commit", ""],
+        ["host.node", null],
+        ["host.platform", ""],
+        ["abBaseline.captured", null],
+        ["abBaseline.commit", ""],
+        ["captured", "   "],
+    ];
+    for (const [dotted, value] of mutations) {
+        const snap = goodSnap();
+        const parts = dotted.split(".");
+        let node = snap;
+        for (const k of parts.slice(0, -1)) node = node[k];
+        node[parts.at(-1)] = value;
+        assert.ok(verifyShape(snap).length > 0, `\`${dotted} = ${JSON.stringify(value)}\` must red, and it does not`);
+    }
+});
+
+test("the leaf sweep NULLS and BLANKS every leaf as well as deleting it", () => {
+    // Deleting alone is why the degenerate class survived a round that fixed the identical claim once.
+    const leaves = (obj, prefix = []) =>
+        Object.entries(obj).flatMap(([k, v]) =>
+            v !== null && typeof v === "object" && !Array.isArray(v) ? leaves(v, [...prefix, k]) : [[...prefix, k]],
+        );
+    for (const p of leaves(goodSnap())) {
+        for (const value of [null, ""]) {
+            const snap = goodSnap();
+            let node = snap;
+            for (const k of p.slice(0, -1)) node = node[k];
+            node[p.at(-1)] = value;
+            assert.ok(verifyShape(snap).length > 0, `setting \`${p.join(".")}\` to ${JSON.stringify(value)} must red`);
+        }
+    }
+});
+
+test("`abBaseline: null` stays the legitimate null — the walk skips it rather than exempting a field", () => {
+    const snap = goodSnap();
+    snap.abBaseline = null;
+    assert.deepEqual(verifyShape(snap), [], "shipping against no baseline is a recorded state");
+});
+
+test("--date is validated at the front door, the one reachable route into the degenerate class", () => {
+    for (const bad of ["banana", "   ", "2026-9-1"]) {
+        const c = capture();
+        assert.equal(run(["--capture", "--date", bad, "--repo-root", "."], c.io), 2, `--date ${JSON.stringify(bad)} must refuse`);
+        assert.match(c.err, /YYYY-MM-DD/);
+    }
+});
+
+test("changelogVersions skips FENCED regions — a worked example is not a release", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "portulan-release-eval-"));
+    fs.writeFileSync(path.join(root, "package.json"), '{"version":"0.1.3"}\n');
+    fs.writeFileSync(
+        path.join(root, "CHANGELOG.md"),
+        ["# Changelog", "", "## Unreleased", "", "A cut looks like this:", "", "```", "## 9.9.9 — 2020-01-01", "```", "", "## 0.1.3 — 2026-09-01", "", "## 0.1.2 — 2026-08-20", ""].join("\n"),
+    );
+    assert.deepEqual(changelogVersions(root), ["0.1.3", "0.1.2"], "a fenced example must not enter the released set");
+    fs.rmSync(root, { recursive: true, force: true });
+});
+
+test("a version-shaped heading that is not X.Y.Z is REFUSED, never silently skipped", () => {
+    // `compareVersions` refuses a prerelease out loud on the ground that a partial ordering would
+    // silently decide whether a release is governed. Dropping the heading decides the same thing by
+    // omission, which is the quieter half of one rule.
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "portulan-release-eval-"));
+    fs.writeFileSync(path.join(root, "package.json"), '{"version":"0.1.3"}\n');
+    fs.writeFileSync(path.join(root, "CHANGELOG.md"), "# Changelog\n\n## Unreleased\n\n## 0.1.3-rc.1 — 2026-09-02\n\n## 0.1.3 — 2026-09-01\n");
+    assert.throws(() => changelogVersions(root), /which is not `## X\.Y\.Z`/);
+    fs.rmSync(root, { recursive: true, force: true });
+});
+
 test("no field the renderer reads has a FALLBACK — a placeholder reads like a measurement", () => {
     // The mechanism behind the sweep above: absence must reach the document as a hole. `<undated>` and
     // `<uncommitted>` were holes filled in by the renderer, so the derived probe saw a clean document.

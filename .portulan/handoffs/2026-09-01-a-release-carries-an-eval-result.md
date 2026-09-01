@@ -87,6 +87,43 @@ read now, and the case asserts the git read did **not** happen.
 came from mechanically deleting every field the renderer reads. Neither is a review technique that
 reading a diff produces.
 
+## And a second opinion on the diff found the same class again, one level down
+
+The pre-commit round hardened `verifyShape` against hand-written records and wrote a comment saying two
+rules were the whole of it. **A second fresh context then produced six counterexamples that pass both.**
+
+**A present-degenerate value is neither absent nor a branch.** `source.commit: null` renders
+`| Commit | \`null\` |`; `""` renders an empty cell; `captured: "   "` renders whitespace. None is
+`undefined` or `NaN`, so the derived probe sees a clean page, and none is a boolean, so the by-name
+checks miss them. The rule is **three** now, and the third is structural rather than a field list — no
+leaf may be `null`, no string leaf may be blank — because a hand-written roster of "fields that must be
+non-empty" is this file's own defect at a fourth depth. `--date` was the one route in through the front
+door and is validated at parse. A leftover `?? "<commit>"` survived the round that removed the fallbacks,
+in the limitations block whose whole subject is claims a capture never made.
+
+**And the totality test deleted leaves without ever nulling or blanking them** — which is structurally
+why the class survived a round that fixed the identical claim once already. It does both now.
+
+**The republish path CRASHED, and the comment above it claimed it passed.** `cli/release-eval.mjs`
+exists in no tag before `v0.1.3` — `git ls-tree v0.1.1 --name-only cli/release-eval.mjs` is empty for all
+three — so on the manual-dispatch path the workflow documents *for exactly those tags*, running the
+grader out of the tagged checkout hits `MODULE_NOT_FOUND`, exits 1 under `set -euo pipefail`, and blocks
+a publish it was meant to wave through. Reproduced on a real `git archive v0.1.1`. **That is the fifth
+appearance of the defect this session's own recipe guards against by name** — node on a missing file
+exits 1 and reads as a finding — and the recipe had the guard while the workflow step did not. The
+grader is checked out separately from the workflow's own ref now, so it is always current and the subject
+is always the tag; the version carve-out stays in one carrier instead of being re-derived in shell.
+
+**`changelogVersions` had two latent holes.** A column-0 fenced example of a cut would enter the released
+set as a phantom release, and a `## 0.1.3-rc.1` heading was dropped **silently** — deciding by omission
+exactly what `compareVersions` refuses out loud two functions away. Fences are skipped and a
+version-shaped heading that is not `X.Y.Z` now refuses.
+
+**Two rounds, two fresh contexts, and the same class both times.** The first found it in the record
+layer; the second found it in the *values inside a record that passes*. Neither is produced by reading a
+diff, and the second was found in a check that had just been hardened and had just written down what it
+now covered.
+
 ## What is owed, and to whom
 
 - **Whether row 8 closes on the mechanism or waits for a cut is the maintainer's**, and it is put to him
@@ -102,10 +139,11 @@ reading a diff produces.
   is set, and an isolated `HOME` reaches no stored login. **The refusal is recorded, and a recorded
   refusal is not a discharge.** This handoff is its carrier. Note the probe's own caveat: it reads those
   three variables and nothing else, and this host has `ANTHROPIC_BASE_URL` set — a channel it cannot see.
-- **The record's reach is a ruling, and it is recorded as one.** `package.json`'s `files` ships neither
-  `evals/` nor `CHANGELOG.md`, so a release record is carried by the **tagged tree** and not by the npm
-  payload. Defensible — a release is a tag — but it was a choice among the three carriers the amendment
-  listed, and adding `evals/releases/` to `files` stays available to the maintainer.
+- **The record's reach is the implementer's choice and is NOT a ruling**, which is what a first draft
+  called it. `package.json`'s `files` ships neither `evals/` nor `CHANGELOG.md`, so a release record is
+  carried by the **tagged tree** and not by the npm payload. Defensible — a release is a tag — but every
+  ruling here carries an owner and a date and this carries neither, so it stays **open to the
+  maintainer**: adding `evals/releases/` to `files` is one line.
 - **`cli/ab-run.mjs` carries the identical false claim and the identical hole**, inherited because this
   module adopted its shape: `snap.agent ?? "<agent>"` and — worse — `t.verdict ?? "could-not-attribute"`,
   where a missing verdict renders as that specific verdict. Not repaired here: it belongs to the A/B

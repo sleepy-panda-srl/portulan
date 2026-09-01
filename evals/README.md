@@ -736,12 +736,13 @@ There is no *eval* subset of the recipe set — [`../cli/recipe-set.mjs`](../cli
 such category — so an "eval recipes only" record would have required a hand-listed roster, which is the
 defect the record exists to avoid.
 
-**Where it is carried.** One file per version, cited and never restated. Its **reach is a ruling and is
-recorded as one**: `package.json`'s `files` ships neither `evals/` nor `CHANGELOG.md`, so a release
-record is carried by the **tagged tree** and not by the npm payload. That is defensible — a release is a
-tag — but it was a choice among the three the amendment listed, and adding `evals/releases/` to `files`
-remains available to the maintainer. Named here rather than left to be discovered by whoever first looks
-for the record inside a tarball.
+**Where it is carried.** One file per version, cited and never restated. Its **reach is the implementer's
+design choice, not a ruling**: `package.json`'s `files` ships neither `evals/` nor `CHANGELOG.md`, so a
+release record is carried by the **tagged tree** and not by the npm payload. That is defensible — a
+release is a tag — but it was a choice among the three the amendment listed, it carries no owner and no
+date the way this repository's rulings do, and adding `evals/releases/` to `files` remains open to the
+maintainer. Named here rather than left to be discovered by whoever first looks for the record inside a
+tarball.
 
 **Rail or person — both, split by what each can reach.** The `release-eval` recipe grades the tree on
 every commit. [`../.github/workflows/publish-github-packages.yml`](../.github/workflows/publish-github-packages.yml)

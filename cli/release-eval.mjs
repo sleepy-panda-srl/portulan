@@ -168,7 +168,10 @@ export function declaredVersion(root) {
  * **This is the released set, and it is the rail's subject.** `../CHANGELOG.md` carries one `## X.Y.Z —
  * DATE` heading per release and one `## Unreleased` accumulator that is re-seeded at every cut, so the
  * version headings are the releases and the accumulator is never one. A heading is matched only in
- * column 0 at depth 2, because the entries below quote their own retired headings.
+ * column 0 at depth 2, because the entries below quote their own retired headings — and **fenced
+ * regions are skipped**, because a worked example of a cut belongs in one and would otherwise enter the
+ * released set as a phantom release. A version-shaped heading that is not `X.Y.Z` is refused rather than
+ * skipped, so the subject list cannot decide by omission what `compareVersions` refuses out loud.
  */
 export function changelogVersions(root) {
     let text;
@@ -178,9 +181,32 @@ export function changelogVersions(root) {
         throw new CouldNotRun(`could not read CHANGELOG.md: ${e.message}`);
     }
     const out = [];
+    let fenced = false;
     for (const line of text.split("\n")) {
+        // **Fenced regions are skipped**, because a column-0 fence is exactly where this file would show
+        // a reader what a cut looks like — and a worked example naming `## 9.9.9` would enter the
+        // released set as a phantom, producing a false red on both the cut-integrity arm and the
+        // missing-record arm. Latent today; the docstring above claimed a robustness the fence broke.
+        if (/^(```|~~~)/.test(line)) {
+            fenced = !fenced;
+            continue;
+        }
+        if (fenced) continue;
         const m = /^## (\d+\.\d+\.\d+)(?:\s|$)/.exec(line);
-        if (m) out.push(m[1]);
+        if (m) {
+            out.push(m[1]);
+            continue;
+        }
+        // **A version-shaped heading this cannot order is REFUSED, never skipped.** `compareVersions`
+        // refuses a prerelease loudly on the ground that a partial ordering would silently decide whether
+        // a release is governed — and the subject-list builder was dropping `## 0.1.3-rc.1` without a
+        // word, which decides the same thing by omission. The two halves now agree.
+        if (/^## \d/.test(line)) {
+            throw new CouldNotRun(
+                `CHANGELOG.md carries the release heading ${JSON.stringify(line.trim())}, which is not \`## X.Y.Z\` — this rail ` +
+                    "does not order prereleases or build tags, and skipping one would decide by omission whether it is governed",
+            );
+        }
     }
     if (out.length === 0) throw new CouldNotRun("CHANGELOG.md records no `## X.Y.Z` release heading — refusing to report green over a file nothing could be read from");
     return out;
@@ -277,7 +303,10 @@ export function limitationsFor(snap) {
         "**A green says this record agrees with its own capture — never that the release is good.** Every " +
             "line below is what the recipes returned at one commit, and a recipe's own green establishes only what " +
             "that recipe's documentation says it establishes.",
-        `**The recipes were not run at the tag.** They ran at \`${snap?.source?.commit ?? "<commit>"}\`, and this record is ` +
+        // No `??` here either — the fallback survived one round of removing them, in the block whose
+        // subject is claims a capture never made, so a null-commit record printed `null` in its table and
+        // `<commit>` in its limitations. `verifyShape` refuses such a capture before this is reached.
+        `**The recipes were not run at the tag.** They ran at \`${snap?.source?.commit}\`, and this record is ` +
             "committed *in* the cut change — so the tagged tree is this commit plus the cut itself. A record cannot be " +
             "captured at a commit that does not exist yet, and printing the one it was captured at is the only honest form.",
         `**\`${SELF}\` is excluded from the rows above**, because a capture cannot be accurate about the record it is inside. ` +
@@ -380,10 +409,33 @@ export function renderRegister(snap) {
  * not publish an unmeasured claim, then rendered as `**not clean**`. Caught by a fresh context deleting
  * every field the renderer reads, one at a time, which is the only way this class is ever found.
  *
- * So there are two rules and the second is what makes the first true: **the renderer supplies no
- * fallback**, so absence renders as a hole; and every field that renders as a **branch** rather than a
- * value is checked here by name, because no hole appears for those — only the meaning is invented.
+ * So there are **three** rules, and the third was itself a second round of this same defect. (1) The
+ * renderer supplies no fallback, so absence renders as a hole. (2) Every field that renders as a
+ * **branch** rather than a value is checked here by name, because no hole appears for those — only the
+ * meaning is invented. (3) **No leaf may be `null` and no string leaf may be blank**, because a
+ * present-degenerate value is neither absent nor a branch: `${null}` renders the four characters `null`
+ * and `""` renders nothing at all, so the document comes out well-formed and the probe below — which
+ * looks for `undefined` and `NaN` — sees a clean page. Six of these passed a check that had just been
+ * hardened against exactly this class and whose comment claimed two rules were the whole of it.
+ *
+ * Rule 3 is **structural rather than a list of fields**: it walks the capture's own leaves. A
+ * hand-written roster of "fields that must be non-empty" is the defect this file has now met at three
+ * depths, and it would go stale the moment the renderer read one more.
  */
+/** `YYYY-MM-DD`. A capture that stamps itself from anything else cannot be reproduced, and it is printed. */
+const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
+
+/**
+ * Every leaf of the capture, as a dotted path — the subject of rule 3 above.
+ *
+ * `abBaseline: null` is the one legitimate null and is skipped by the caller rather than exempted here,
+ * because an exemption inside a total walk is how a second one gets added later without argument.
+ */
+function leafPaths(value, prefix = []) {
+    if (value === null || typeof value !== "object") return [[prefix, value]];
+    return Object.entries(value).flatMap(([k, v]) => leafPaths(v, [...prefix, k]));
+}
+
 export function verifyShape(snap) {
     const red = [];
     if (snap?.portulan?.releaseEval !== "1") red.push("the record does not declare `portulan.releaseEval: \"1\"` — this is not a release eval capture");
@@ -422,6 +474,27 @@ export function verifyShape(snap) {
     if (snap?.abBaseline === undefined) {
         red.push("the record has no `abBaseline` — `null` is how *no baseline* is recorded, and an absent field renders as one without ever having been measured");
     }
+    if (typeof snap?.captured === "string" && !ISO_DATE.test(snap.captured.trim())) {
+        red.push(`the record's \`captured\` is ${JSON.stringify(snap.captured)}, which is not a \`YYYY-MM-DD\` date — it is printed as one`);
+    }
+
+    // **Rule 3: no leaf is `null`, no string leaf is blank.** A present-degenerate value renders as a
+    // value, so neither the fallback rule nor the branch checks nor the probe below can see it: `null`
+    // prints the text `null` into a table cell and `""` prints nothing, and the register comes out
+    // looking measured. Structural rather than a field list, for the reason the docblock gives.
+    if (snap !== null && typeof snap === "object") {
+        const skip = snap.abBaseline === null ? "abBaseline" : null;
+        for (const [pathParts, leaf] of leafPaths(snap)) {
+            const dotted = pathParts.join(".");
+            if (skip !== null && pathParts[0] === skip) continue;
+            if (leaf === null) {
+                red.push(`the record's \`${dotted}\` is \`null\` — it renders as the text \`null\` in a document that otherwise reads as measured`);
+            } else if (typeof leaf === "string" && leaf.trim() === "") {
+                red.push(`the record's \`${dotted}\` is blank — it renders as nothing at all, which is a hole no probe can see`);
+            }
+        }
+    }
+
     if (red.length > 0) return red;
 
     // **The list above is not the check; this is.** Render, and refuse a document that came out carrying
@@ -547,9 +620,15 @@ function parse(argv) {
             case "--repo-root":
                 out.root = need("a directory");
                 break;
-            case "--date":
-                out.date = need("a YYYY-MM-DD date");
+            case "--date": {
+                // Validated here rather than trusted: `--date banana` satisfied the parser and the shape
+                // check alike, and the usage below promises `YYYY-MM-DD`. The front door was the one
+                // reachable route into the degenerate-value class.
+                const v = need("a YYYY-MM-DD date");
+                if (!ISO_DATE.test(v)) throw new CouldNotRun(`\`--date\` takes a \`YYYY-MM-DD\` date, not \`${v}\``);
+                out.date = v;
                 break;
+            }
             case "--version":
                 out.version = need("an `X.Y.Z` version");
                 break;
