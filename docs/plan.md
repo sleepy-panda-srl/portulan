@@ -2727,4 +2727,4 @@ _The seam applies here too: no client-identifying references._
   measured — so it was answered by the choice of repair; the residual is closed by a third swept fixture
   with a rail on it, and #389's general question is re-filed as #399. No `evals/` change. · 26 recipes;
   tests 82→92, three red first. · Session-open **A-W-A (12)**, pre-commit **A-W-A (9)**, Copilot
-  **7 rounds, 15 accepted** — 6 and 7 are one property: a bullet must carry its own evidence. · Seam scan clean. · [handoff](../.portulan/handoffs/2026-09-01-d-the-marker-and-the-proxy-it-was-read-through.md)
+  **8 rounds, 16 accepted** — 6+7 are one property; 8 found a carrier no in-tree rail can see. · Seam scan clean. · [handoff](../.portulan/handoffs/2026-09-01-d-the-marker-and-the-proxy-it-was-read-through.md)

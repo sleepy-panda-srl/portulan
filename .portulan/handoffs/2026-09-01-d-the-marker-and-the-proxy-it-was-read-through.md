@@ -188,6 +188,23 @@ now evidence-bearing, one case asserts the pair together, and dropping either ev
 The committed capture is unaffected — no row carries the marker, so the vintage bullet still publishes,
 which is the line this whole change refused to delete.
 
+## Copilot round 8 — a carrier no rail in this repository can see
+
+The **pull request description** still read `Tests 82 → 86` after seven rounds had moved the figure to
+92, while both in-tree records were correct. So the count has four carriers — the handoff, the Session
+log entry, the PR body, and the commit messages — and the PR body is the worst of them: written once at
+open, read first by a reviewer, and **outside anything `docs.sh` can check**, because that recipe sees
+the repository and not the forge. It drifted through seven rounds with no rail noticing.
+
+Fixed out-of-tree, and added to [#401](https://github.com/sleepy-panda-srl/portulan/issues/401), where it
+strengthens the case for *naming the command instead of quoting the count*: a rail over in-tree records
+would have left this carrier stale, and the commit-message carrier cannot be corrected at all.
+
+**This entry is the last push this change makes.** Rule 2 puts records last, which guarantees a push
+after the final round — so *"iterate until empty"* has no fixed point unless one round is allowed to
+judge a commit carrying its predecessor's record. That is what the next round does, and the close will
+name the commit it judged.
+
 ## Left to the maintainer
 
 **#389's general question is NOT closed by this commit:** *a check whose necessity depends on a known
