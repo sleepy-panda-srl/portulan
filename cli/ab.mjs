@@ -1449,14 +1449,19 @@ export function armStopProbe(armRoot, { nonce, prompt = "Reply with the single w
                 return null;
             }
         };
-        const stops = () => {
+        // **Named `stops` at first, which SHADOWED the Stop-hook array bound at the top of this function.**
+        // Inside this `try` the name resolved to the helper, so a later edit reaching for `stops[0]` — the
+        // spelling used twice above — would have got `undefined` from a zero-arity function rather than a
+        // hook, silently. Copilot round 1 on
+        // [#407](https://github.com/sleepy-panda-srl/portulan/pull/407).
+        const firingNote = () => {
             const n = firings();
             return n === null
                 ? " The receipt could not be read, so how many times the hook fired is unknown — which is not the same as none."
                 : ` The arm's Stop hook fired ${n} time(s) before this: ${n === 0 ? "the agent never reached a stop, so this is about the agent or its credential rather than the gate" : "the agent did stop, so the turn was not silent — a large count here is a gate that would not let go"}.`;
         };
 
-        if (result.error) throw new CouldNotRun(`\`${agent}\` could not run — ${result.error.code ?? result.error.message}. Without a real stop this test has no answer, which is not the same as a failure.${stops()}`);
+        if (result.error) throw new CouldNotRun(`\`${agent}\` could not run — ${result.error.code ?? result.error.message}. Without a real stop this test has no answer, which is not the same as a failure.${firingNote()}`);
 
         // **An agent that never completed a turn produces no stop, and NO STOP IS NOT AN UNINVOKED HOOK.**
         // The first cut returned `met: false` here and printed *"hook was NOT invoked"* — the answer this
@@ -1468,7 +1473,7 @@ export function armStopProbe(armRoot, { nonce, prompt = "Reply with the single w
         if (result.status !== 0) {
             throw new CouldNotRun(
                 `\`${agent}\` exited ${result.status} without completing a turn, so no stop occurred and this test has no answer — ` +
-                    `which is not the same as the hook being unreachable.${stops()} What it said: ` +
+                    `which is not the same as the hook being unreachable.${firingNote()} What it said: ` +
                     `${JSON.stringify(((result.stdout ?? "") + (result.stderr ?? "")).trim().split("\n")[0] ?? "")}`,
             );
         }

@@ -45,3 +45,13 @@ will say.
 
 **Nothing here was measured against a real host.** The counts are exercised with stand-in agents; no test
 spawns `claude`, deliberately, since one would spend a real turn inside a verify recipe.
+
+## Copilot round 1: the diagnostic shadowed the thing it was diagnosing
+
+The helper was named `stops`, and `stops` was already bound at the top of `armStopProbe` to the compiled
+Stop-hook **array** — the binding two lines use as `stops.length` and `stops[0]`. Inside the `try` the
+name resolved to the helper, so a later edit reaching for `stops[0]` would have got `undefined` from a
+zero-arity function rather than a hook, and silently: a function has a `.length` too, and it is `0`.
+
+Renamed to `firingNote`. Not a stylistic tidy — the failure it prevents is the same shape as everything
+else in this arc, a name that reads as one thing and resolves to another.
