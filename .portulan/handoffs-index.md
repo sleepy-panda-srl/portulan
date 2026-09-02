@@ -2,9 +2,10 @@
 
 > Generated from `handoffs/` by `node cli/index.mjs`. Do not edit by hand: it is regenerated
 > and byte-compared, so a hand-edit survives exactly until the next run.
-> 159 handoff(s), newest first. No budget: the series is append-only, so
+> 160 handoff(s), newest first. No budget: the series is append-only, so
 > the only remedy a budget could ask for is one this project rules out.
 
+- 2026-09-02 · [2026-09-02 — The probe hung on an unseeded home, and I published the wrong reason for it](handoffs/2026-09-02-the-probe-hung-on-an-unseeded-home.md)
 - 2026-09-01 · [2026-09-01 — the shape check named what it could not see](handoffs/2026-09-01-the-shape-check-named-what-it-could-not-see.md)
 - 2026-09-01 · [2026-09-01 — the payload carried an experiment about itself](handoffs/2026-09-01-the-payload-carried-an-experiment-about-itself.md)
 - 2026-09-01 · [Handoff — the pass was rebased, and its one prediction went stale](handoffs/2026-09-01-d-the-pass-was-rebased-and-its-prediction-went-stale.md)

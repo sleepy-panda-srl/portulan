@@ -1414,8 +1414,16 @@ test("the operator seed touches onboarding and trust and NOTHING else, and takes
         for (const forbidden of ["permissions", "hooks", "allowedTools", "model", "env"]) {
             assert.ok(!(forbidden in seed), `the operator seed carries \`${forbidden}\`, which would be treatment`);
         }
-        // The mechanical reason the two arms get identical bytes, rather than a promise that they do.
-        assert.equal(seedOperator.length, 1);
+        // **The mechanical reason the two arms get identical bytes — and `Function.length` was NOT it.**
+        // It excludes defaulted parameters, so `seedOperator(dir, arm = null)` branching on `arm`
+        // satisfied `length === 1` while the whole suite stayed green. Measured by a pre-commit
+        // checkpoint on 2026-09-02. The property is that the bytes do not move, so that is what is
+        // asserted: call it with extra arguments and compare what lands.
+        const plain = fs.readFileSync(written, "utf8");
+        for (const extra of [["A"], ["B"], [{ arm: "A" }], [true]]) {
+            const other = path.join(dir, `op-${JSON.stringify(extra).replace(/\W/g, "")}`);
+            assert.equal(fs.readFileSync(seedOperator(other, ...extra), "utf8"), plain, `an extra argument ${JSON.stringify(extra)} must change nothing`);
+        }
     });
 });
 

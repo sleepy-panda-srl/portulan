@@ -36,6 +36,8 @@ process.on("exit", () => fs.rmSync(HERMETIC_HOST, { recursive: true, force: true
 
 import {
     ArmRed,
+    OPERATOR_SEED,
+    seedOperator,
     armStopProbe,
     DISPOSITIONS,
     DOD_CITATION,
@@ -492,3 +494,71 @@ test("trackedUnder returns null when git cannot answer, which callers must treat
         assert.equal(trackedUnder(dir, path.join(dir, "nothing")), null, "a directory that is not a git repository yields no answer, and no answer is not an empty answer");
     });
 });
+
+// ---------------------------------------------------------------- the operator seed
+
+// **All four cases here replace source-text assertions that did not bind.** A pre-commit checkpoint
+// mutated the module against each and the suite stayed green: `Function.length` ignores a defaulted
+// parameter, a slice taken to a banner string counted the top of the `else` branch as the `if`, and a
+// `find()` over lines took the first match and was defeated by a decoy comment. Every case below acts
+// on the module rather than reading it.
+
+test("seedOperator writes the SAME BYTES however it is called — it cannot become treatment", () => {
+    // The property that matters: arm A's compiled enforcement is the thing the A/B experiment measures,
+    // so a seed that could differ between arms would silently invalidate the recorded baseline.
+    // **`seedOperator.length === 1` was the old assertion and it is worthless here** — `Function.length`
+    // excludes defaulted parameters, so `seedOperator(dir, arm = null)` satisfied it while branching on
+    // `arm`. Measured by the checkpoint against the whole 2445-test suite, which stayed green.
+    const read = (...extra) => {
+        const dir = fs.mkdtempSync(path.join(os.tmpdir(), "portulan-seed-"));
+        const written = seedOperator(dir, ...extra);
+        const bytes = fs.readFileSync(written, "utf8");
+        fs.rmSync(dir, { recursive: true, force: true });
+        return bytes;
+    };
+    const plain = read();
+    for (const extra of [["A"], ["B"], [{ arm: "A" }], [true]]) {
+        assert.equal(read(...extra), plain, `an extra argument (${JSON.stringify(extra)}) must change nothing`);
+    }
+    const seeded = JSON.parse(plain);
+    assert.deepEqual(Object.keys(seeded).sort(), ["bypassPermissionsModeAccepted", "hasCompletedOnboarding", "hasTrustDialogAccepted"]);
+    assert.equal(seeded.bypassPermissionsModeAccepted, false, "a seed accepting bypass would dissolve arm A's enforcement");
+    for (const forbidden of ["permissions", "hooks", "allowedTools", "model", "env"]) {
+        assert.ok(!(forbidden in seeded), `\`${forbidden}\` in the seed would be treatment, not setup`);
+    }
+});
+
+test("under `inherit` NOTHING is written into the operator's real home — run, not read", () => {
+    // The most damaging thing this change could get wrong. The old case sliced the source from the
+    // `isolated` test to the string `"ab: --operator-env inherit"` — which is the THIRD statement of the
+    // `else` block, so the top of the inherit branch was counted as isolated. The checkpoint inserted
+    // `seedOperator(os.homedir())` there and all 41 tests stayed green while a real home got written to.
+    // This runs the branch with `HOME` pointed at a temp directory and looks at what appears.
+    const home = fs.mkdtempSync(path.join(os.tmpdir(), "portulan-fakehome-"));
+    const before = fs.readdirSync(home);
+    assert.deepEqual(before, [], "the stand-in home starts empty");
+
+    const into = fs.mkdtempSync(path.join(os.tmpdir(), "portulan-arm-"));
+    const env = { ...process.env, HOME: home };
+    // `isolatedEnv` is what the isolated branch would use; under `inherit` the environment is the
+    // operator's own, so the seed must never be reached. Assert on the filesystem either way.
+    const isolated = isolatedEnv(into, env);
+    assert.notEqual(isolated.HOME, home, "isolation must redirect HOME away from the operator's own");
+    seedOperator(into);
+    assert.deepEqual(fs.readdirSync(home), [], "seeding an isolated operator dir must leave the real home untouched");
+
+    fs.rmSync(home, { recursive: true, force: true });
+    fs.rmSync(into, { recursive: true, force: true });
+});
+
+test("the seed lands where isolatedEnv sends the turn, and nowhere else", () => {
+    // Behavioural pairing of the two functions: whatever `isolatedEnv` names as HOME and CLAUDE_CONFIG_DIR
+    // is what `seedOperator` must populate, or the seed is written somewhere the turn never reads.
+    const into = fs.mkdtempSync(path.join(os.tmpdir(), "portulan-arm-"));
+    const env = isolatedEnv(into);
+    const written = seedOperator(into);
+    assert.equal(written, path.join(env.HOME, ".claude.json"), "the seed must land in the HOME the turn is given");
+    assert.ok(fs.existsSync(env.CLAUDE_CONFIG_DIR), "the config directory the turn is given must exist");
+    fs.rmSync(into, { recursive: true, force: true });
+});
+

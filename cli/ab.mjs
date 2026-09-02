@@ -798,6 +798,42 @@ export function nonceFor(scenario, arm, run, seed) {
 }
 
 /**
+ * The one-time state a fresh operator directory does not have, written identically into **both** arms.
+ *
+ * **Measured: the first real smoke turn hung.** `isolatedEnv()` hands each turn an empty `HOME` and an
+ * empty `CLAUDE_CONFIG_DIR`, so the host runs its first-run flow — onboarding, and a trust prompt for a
+ * directory it has never seen — and `--print` has nobody to answer it. A ten-minute timeout then turns a
+ * two-second question into a ten-minute hang, forty times over.
+ *
+ * **That is the WHOLE cause, and the `stdio` passed beside it is no part of it.** Session 6d's note read
+ * as though closing stdin were half the repair, and `./ab.mjs`'s probe fix repeated it. Measured
+ * 2026-09-02: `spawnSync` defaults to `pipe`, so a turn spawned without `stdio` already gets a pipe that
+ * EOFs at once — fd 0 a socket, `isTTY:false` — and only an explicit `"inherit"` would hand over a
+ * terminal. `stdio: ["ignore", "pipe", "pipe"]` is hygiene worth keeping and was never load-bearing. The
+ * claim propagated through three modules and a session note before anyone ran it.
+ *
+ * **This is harness setup, and it is bounded so it cannot become treatment.** It touches onboarding and
+ * trust and **nothing else**: no permission mode, no hook, no tool allow-list, no model. Arm A's compiled
+ * enforcement lives in the arm's own `.claude/settings.json` and nothing here reaches it, and the same
+ * bytes go to both arms — `seedOperator()` takes no arm argument, which is a mechanical reason rather
+ * than a promise.
+ */
+export const OPERATOR_SEED = Object.freeze({
+    hasCompletedOnboarding: true,
+    bypassPermissionsModeAccepted: false,
+    hasTrustDialogAccepted: true,
+});
+
+/** Write that state into one turn's operator directory. **No arm argument, by construction.** */
+export function seedOperator(operatorDir) {
+    const home = path.join(operatorDir, "home");
+    fs.mkdirSync(home, { recursive: true });
+    fs.mkdirSync(path.join(operatorDir, "claude"), { recursive: true });
+    fs.writeFileSync(path.join(home, ".claude.json"), JSON.stringify(OPERATOR_SEED, null, 2) + "\n");
+    return path.join(home, ".claude.json");
+}
+
+/**
  * Operator isolation — a clean config directory and home per arm.
  *
  * `arm.md` rules it: *"a populated and an isolated environment resolve packs differently, so an arm
@@ -1347,7 +1383,16 @@ export function armStopProbe(armRoot, { nonce, prompt = "Reply with the single w
         settings.hooks.Stop[0].hooks[0].command = JSON.stringify(recorder);
         fs.writeFileSync(settingsPath, `${JSON.stringify(settings, null, 2)}\n`);
 
-        const result = spawnSync(agent, ["-p", prompt], { cwd: armRoot, encoding: "utf8", timeout: TOOL_TIMEOUT_MS, env });
+        // **`stdio` here is hygiene, NOT the repair — and a first cut of this comment said the opposite.**
+        // It claimed the child "inherits this terminal" without `stdio`. Measured on this platform and it
+        // is false: `spawnSync` defaults to `pipe`, so the child already got a pipe that EOFs at once
+        // (`isTTY:false`, fd 0 a socket); only an explicit `"inherit"` hands over the parent's stdin.
+        // What this line changes is fd 0 from an already-dead pipe to `/dev/null`. It is kept because it
+        // says what it means, and because `./ab-run.mjs` passes the same three — but **the seed below is
+        // the whole cause of the hang**, and attributing it here would leave the next reader repairing
+        // the wrong thing. The false mechanism was inherited from session 6d's note and propagated
+        // without being run, which is precisely the defect this change exists to repair.
+        const result = spawnSync(agent, ["-p", prompt], { cwd: armRoot, encoding: "utf8", timeout: TOOL_TIMEOUT_MS, env, stdio: ["ignore", "pipe", "pipe"] });
         if (result.error) throw new CouldNotRun(`\`${agent}\` could not run — ${result.error.code ?? result.error.message}. Without a real stop this test has no answer, which is not the same as a failure`);
 
         // **An agent that never completed a turn produces no stop, and NO STOP IS NOT AN UNINVOKED HOOK.**
@@ -1696,6 +1741,14 @@ export function run(argv = [], { stdout = process.stdout, stderr = process.stder
                 for (const dir of [isolated.HOME, isolated.XDG_CONFIG_HOME, isolated.XDG_CACHE_HOME, isolated.CLAUDE_CONFIG_DIR]) {
                     fs.mkdirSync(dir, { recursive: true });
                 }
+                // **Seed the operator directory past the host's first-run flow.** `isolatedEnv` hands the
+                // turn an empty HOME and an empty config directory, so the host asks its onboarding and
+                // trust questions — and `-p` has nobody to answer them. Bounded to onboarding and trust
+                // and nothing else, by `seedOperator`'s own construction: it takes no arm argument, so it
+                // cannot become treatment. Seeded ONLY here, inside the isolated branch — under
+                // `inherit` the HOME is the operator's real one and writing this would edit their own
+                // `~/.claude.json`.
+                seedOperator(operator);
                 env = isolated;
             } else {
 
