@@ -586,3 +586,71 @@ test("the seed lands in EVERY location isolatedEnv names, derived rather than li
         assert.ok(fs.existsSync(env.CLAUDE_CONFIG_DIR), "the config directory the turn is given must exist");
     });
 });
+
+// ---------------------------------------------------------------- the probe's refusal diagnostics
+
+/** An arm with just enough compiled shape for `armStopProbe` to reach its spawn. */
+function probeArm(dir) {
+    const arm = path.join(dir, "arm");
+    fs.mkdirSync(path.join(arm, ".claude"), { recursive: true });
+    fs.writeFileSync(
+        path.join(arm, ".claude", "settings.json"),
+        JSON.stringify({ hooks: { Stop: [{ hooks: [{ type: "command", command: "true" }] }] } }, null, 2),
+    );
+    return arm;
+}
+
+/** A stand-in agent. Never `claude` — a test that spawned one would spend a real turn. */
+function fakeAgent(dir, body) {
+    const p = path.join(dir, `agent-${Math.random().toString(36).slice(2)}.sh`);
+    fs.writeFileSync(p, body, { mode: 0o755 });
+    return p;
+}
+
+test("the receipt is TRUNCATED at probe start — an interrupted run must not inflate the next", () => {
+    // `restore()` deletes the receipt in `finally`, so an ordinary run starts clean — but an INTERRUPTED
+    // run never reaches `finally`, and the recorder only appends. So a probe in an arm where an earlier
+    // probe was killed counted that run's firings too, and the count is what this test PUBLISHES: a
+    // `met: true` with an inflated number is a figure nobody can reproduce, in the record row 8's close
+    // reads. Measured while adding the diagnostic below — an arm holding a killed run's receipt reported
+    // 4,582 firings for a stub that fired none.
+    withTemp((dir) => {
+        const arm = probeArm(dir);
+        fs.writeFileSync(path.join(arm, ".portulan-stop-receipt"), "stale\n".repeat(500));
+        const agent = fakeAgent(dir, "#!/usr/bin/env bash\necho no\nexit 3\n");
+        assert.throws(
+            () => armStopProbe(arm, { nonce: "n", agent }),
+            (e) => /fired 0 time\(s\)/.test(e.message),
+            "500 lines from a killed run must not be counted as this run's firings",
+        );
+    });
+});
+
+test("every refusal reports how many times the hook fired, and says what the count means", () => {
+    // `ETIMEDOUT` alone cannot distinguish *the agent never stopped* from *the agent stopped hundreds of
+    // times and was sent back* — opposite defects, one about the credential or the host and one about a
+    // gate that will not let go. Three sessions were spent on that distinction while `restore()` deleted
+    // the only datum that settled it.
+    withTemp((dir) => {
+        const arm = probeArm(dir);
+        const receipt = path.join(arm, ".portulan-stop-receipt");
+        const agent = fakeAgent(dir, `#!/usr/bin/env bash\nfor i in 1 2 3; do printf 'x\\n' >> ${JSON.stringify(receipt)}; done\necho no\nexit 3\n`);
+        assert.throws(
+            () => armStopProbe(arm, { nonce: "n", agent }),
+            (e) => /fired 3 time\(s\)/.test(e.message) && /the agent did stop/.test(e.message),
+            "a non-zero count must be reported and read as the agent having stopped",
+        );
+    });
+});
+
+test("a zero count is read as the agent never reaching a stop, not as the gate looping", () => {
+    withTemp((dir) => {
+        const arm = probeArm(dir);
+        const agent = fakeAgent(dir, "#!/usr/bin/env bash\necho no\nexit 3\n");
+        assert.throws(
+            () => armStopProbe(arm, { nonce: "n", agent }),
+            (e) => /fired 0 time\(s\)/.test(e.message) && /never reached a stop/.test(e.message),
+            "zero must point at the agent or its credential, not at the gate",
+        );
+    });
+});
