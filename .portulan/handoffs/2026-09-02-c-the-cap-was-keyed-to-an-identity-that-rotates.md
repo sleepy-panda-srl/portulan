@@ -55,9 +55,21 @@ session *is* — put here rather than answered.
 **No rail covers the livelock.** The bound is exercised by unit cases and by the reproduction above; no
 recipe drives a real host through a rotating-id retry, because none can without spawning an agent.
 
-## And the three wrong diagnoses are the record worth keeping
+## And the three wrong causal claims are the record worth keeping
 
-`stdio` was hygiene, not a cause — `spawnSync` defaults to `pipe` and never inherits a terminal. The
-seed's target was a genuine defect on 2.1.251 and not this one. Calling either *"the whole cause"* was
-the same error twice: a mechanism published on the strength of one symptom disappearing, without a
-measurement that isolated it. The symptom disappeared both times because I was watching a different turn.
+Enumerated, because three carriers of this session carried three different counts of them and a reviewer
+had to point that out:
+
+1. **`stdio` — the child inherits the terminal** (#404). **False**, measured: `spawnSync` defaults to
+   `pipe`, so the child always got a pipe that EOFs at once; only an explicit `"inherit"` hands over a
+   terminal.
+2. **The unseeded home and its first-run flow** (#404). Real on 2.1.215–2.1.226 and **not the cause
+   here**: the probe still hung after the seed landed and the host merged it.
+3. **The seed landing in the file the host stopped reading** (#405). A genuine defect on 2.1.251, worth
+   fixing on its own, and **still not the cause**.
+
+**And *"the whole cause"* was claimed twice** — in #404 and again in #405 — which is the error underneath
+all three: a mechanism published on the strength of one symptom disappearing, with no measurement
+isolating it. The symptom disappeared both times because a different turn was being watched. _(This
+section said "three" while its own last sentence said "twice" and `docs/plan.md` said "two". Three claims,
+two of them announced as final. Both numbers were right about different things and neither said which.)_

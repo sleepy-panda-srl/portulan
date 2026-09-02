@@ -2758,6 +2758,6 @@ _The seam applies here too: no client-identifying references._
   outcome: *a gate that cannot stop is not a gate, it is a hang.* The platform's `stop_hook_active` was
   listed in this file's payload docs and **read nowhere**; it identifies the retry chain without a session
   id. `MAX_CHAIN_BLOCKS = 12`, keyed to the tree, above the specific caps so they still fire first.
-  Livelock terminates at retry 14; stable sessions unchanged. **Two earlier diagnoses were wrong.** ·
+  Livelock terminates at retry 14; stable sessions unchanged. **Three earlier causal claims were wrong.** ·
   26 recipes green; three mutations caught · Seam scan clean ·
   [handoff](../.portulan/handoffs/2026-09-02-c-the-cap-was-keyed-to-an-identity-that-rotates.md)

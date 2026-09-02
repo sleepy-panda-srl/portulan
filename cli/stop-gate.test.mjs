@@ -951,6 +951,22 @@ test("the chain release says what it means: the per-session counters could not s
     assert.match(m, /ending \*\*RED\*\*/, "a release is still not a pass");
 });
 
+test("bumpChain does not advance past a write it could not make", () => {
+    // The first cut returned the increment whether or not the write succeeded, so the value it returned
+    // diverged from what the next invocation would read: on an unwritable directory the chain appeared
+    // to climb within a call and reset on every following one. The comment beside it asserted the
+    // opposite of what the code did — the class this whole change is about. Copilot round 1 on #406.
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "portulan-chain-ro-"));
+    try {
+        fs.chmodSync(dir, 0o500);
+        assert.deepEqual([bumpChain(true, dir), bumpChain(true, dir), bumpChain(true, dir)], [0, 0, 0],
+            "an unwritable counter cannot grow, so the backstop simply does not fire");
+    } finally {
+        fs.chmodSync(dir, 0o700);
+        fs.rmSync(dir, { recursive: true, force: true });
+    }
+});
+
 test("bumpChain follows stop_hook_active and is keyed to the tree, not the session", () => {
     // The whole point: it must count a chain that no session id survives.
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), "portulan-chain-"));

@@ -276,20 +276,28 @@ export function bumpChain(provoked, dir = os.tmpdir()) {
         }
         return 0;
     }
-    let n = 0;
+    let previous = 0;
     try {
-        n = Number(JSON.parse(fs.readFileSync(file, "utf8"))?.chain) || 0;
+        previous = Number(JSON.parse(fs.readFileSync(file, "utf8"))?.chain) || 0;
     } catch {
-        n = 0;
+        previous = 0;
     }
-    n += 1;
+    // **The count advances only if the write does, and the first cut returned the increment either
+    // way.** That made the returned value diverge from what the next invocation would read: on an
+    // unwritable temp dir the chain appeared to climb within one call and reset on every following one,
+    // so the bound could fire on a session that had never accumulated anything, or never fire at all —
+    // and the comment below asserted the opposite of what the code did, which is the class this whole
+    // change is about. Copilot round 1 on [#406](https://github.com/sleepy-panda-srl/portulan/pull/406).
+    //
+    // Unwritable state therefore means the chain **cannot grow**: this backstop simply does not fire and
+    // the specific caps are unaffected. Silent because it is a fact about the filesystem, not about the
+    // session's work.
     try {
-        fs.writeFileSync(file, JSON.stringify({ chain: n }));
+        fs.writeFileSync(file, JSON.stringify({ chain: previous + 1 }));
     } catch {
-        // Unwritable state means the chain cannot grow, so this backstop simply does not fire — the
-        // specific caps are unaffected. Silent because it is not a fact about the session's work.
+        return previous;
     }
-    return n;
+    return previous + 1;
 }
 
 /** The stored shape: one consecutive count per reason, plus the non-resetting refusal total. */
