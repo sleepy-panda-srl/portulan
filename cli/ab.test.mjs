@@ -513,12 +513,17 @@ test("seedOperator writes the SAME BYTES however it is called — it cannot beco
     // excludes defaulted parameters, so `seedOperator(dir, arm = null)` satisfied it while branching on
     // `arm`. Measured by the checkpoint against the whole suite, which stayed green.
     withTemp((dir) => {
-        const read = (label, ...extra) => fs.readFileSync(seedOperator(path.join(dir, label), ...extra), "utf8");
+        // Every written path is read, not just the first: the seed lands in two places since 2.1.251
+        // moved which one the host consults, and an assertion over one of them would go stale the next
+        // time that moves — which is precisely how this defect got here.
+        const read = (label, ...extra) => seedOperator(path.join(dir, label), ...extra).map((f) => fs.readFileSync(f, "utf8"));
         const plain = read("plain");
+        assert.ok(plain.length >= 2, "the seed must reach every location the turn's environment names");
         for (const extra of [["A"], ["B"], [{ arm: "A" }], [true]]) {
-            assert.equal(read(`x${JSON.stringify(extra).replace(/\W/g, "")}`, ...extra), plain, `an extra argument ${JSON.stringify(extra)} must change nothing`);
+            assert.deepEqual(read(`x${JSON.stringify(extra).replace(/\W/g, "")}`, ...extra), plain, `an extra argument ${JSON.stringify(extra)} must change nothing`);
         }
-        const seeded = JSON.parse(plain);
+        assert.equal(new Set(plain).size, 1, "every location gets the same bytes, or the arms could differ by which one is read");
+        const seeded = JSON.parse(plain[0]);
         assert.deepEqual(Object.keys(seeded).sort(), ["bypassPermissionsModeAccepted", "hasCompletedOnboarding", "hasTrustDialogAccepted"]);
         assert.equal(seeded.bypassPermissionsModeAccepted, false, "a seed accepting bypass would dissolve arm A's enforcement");
         for (const forbidden of ["permissions", "hooks", "allowedTools", "model", "env"]) {
@@ -561,14 +566,23 @@ test("`--operator-env inherit` reaches its refusal without writing into the oper
     });
 });
 
-test("the seed lands where isolatedEnv sends the turn, and nowhere else", () => {
-    // Behavioural pairing: whatever `isolatedEnv` names as HOME and CLAUDE_CONFIG_DIR is what
-    // `seedOperator` must populate, or the seed is written somewhere the turn never reads.
+test("the seed lands in EVERY location isolatedEnv names, derived rather than listed", () => {
+    // **`$HOME/.claude.json` alone was measured sufficient on 2.1.215–2.1.226 and is not on 2.1.251.**
+    // With `CLAUDE_CONFIG_DIR` set the host reads and writes the config-dir copy and never looks at
+    // `$HOME`'s — measured from a hung probe's leftovers, where our three keys sat untouched in
+    // `home/.claude.json` while the host had written `claude/.claude.json` itself, carrying
+    // `firstStartVersion: "2.1.251"` and no `hasCompletedOnboarding`.
+    //
+    // The expected set is DERIVED from `isolatedEnv` rather than written out here, so a location added
+    // to the turn's environment later is covered on the day it is added — the alternative is two
+    // hand-written copies of one layout, which is how these drifted apart to begin with.
     withTemp((dir) => {
         const into = path.join(dir, "arm");
         const env = isolatedEnv(into);
         const written = seedOperator(into);
-        assert.equal(written, path.join(env.HOME, ".claude.json"), "the seed must land in the HOME the turn is given");
+        const expected = [path.join(env.HOME, ".claude.json"), path.join(env.CLAUDE_CONFIG_DIR, ".claude.json")];
+        assert.deepEqual([...written].sort(), [...expected].sort(), "the seed must land wherever the turn is sent to look");
+        for (const f of written) assert.ok(fs.existsSync(f), `${f} must actually exist on disk`);
         assert.ok(fs.existsSync(env.CLAUDE_CONFIG_DIR), "the config directory the turn is given must exist");
     });
 });

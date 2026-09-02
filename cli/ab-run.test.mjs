@@ -1407,8 +1407,12 @@ test("the operator seed touches onboarding and trust and NOTHING else, and takes
         // The first real smoke turn HUNG: a fresh HOME and config dir make the host run its first-run
         // flow, and `--print` has nobody to answer it. Seeding is harness setup — but a seed that
         // reached permissions, hooks or the tool allow-list would BE treatment, silently.
+        // `seedOperator` returns EVERY path it wrote — two since 2.1.251 moved which one the host reads.
         const written = seedOperator(path.join(dir, "op"));
-        const seed = JSON.parse(fs.readFileSync(written, "utf8"));
+        assert.ok(Array.isArray(written) && written.length >= 2, "the seed reaches every location the turn's environment names");
+        const bodies = written.map((f) => fs.readFileSync(f, "utf8"));
+        assert.equal(new Set(bodies).size, 1, "identical bytes in every location, or which file is read could change the arm");
+        const seed = JSON.parse(bodies[0]);
         assert.deepEqual(Object.keys(seed).sort(), ["bypassPermissionsModeAccepted", "hasCompletedOnboarding", "hasTrustDialogAccepted"]);
         assert.equal(seed.bypassPermissionsModeAccepted, false, "the seed must never pre-accept a permission bypass");
         for (const forbidden of ["permissions", "hooks", "allowedTools", "model", "env"]) {
@@ -1419,10 +1423,12 @@ test("the operator seed touches onboarding and trust and NOTHING else, and takes
         // satisfied `length === 1` while the whole suite stayed green. Measured by a pre-commit
         // checkpoint on 2026-09-02. The property is that the bytes do not move, so that is what is
         // asserted: call it with extra arguments and compare what lands.
-        const plain = fs.readFileSync(written, "utf8");
+        const plain = bodies[0];
         for (const extra of [["A"], ["B"], [{ arm: "A" }], [true]]) {
             const other = path.join(dir, `op-${JSON.stringify(extra).replace(/\W/g, "")}`);
-            assert.equal(fs.readFileSync(seedOperator(other, ...extra), "utf8"), plain, `an extra argument ${JSON.stringify(extra)} must change nothing`);
+            for (const f of seedOperator(other, ...extra)) {
+                assert.equal(fs.readFileSync(f, "utf8"), plain, `an extra argument ${JSON.stringify(extra)} must change nothing, at any location`);
+            }
         }
     });
 });

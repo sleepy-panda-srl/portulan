@@ -824,13 +824,37 @@ export const OPERATOR_SEED = Object.freeze({
     hasTrustDialogAccepted: true,
 });
 
-/** Write that state into one turn's operator directory. **No arm argument, by construction.** */
+/**
+ * Write that state into one turn's operator directory. **No arm argument, by construction.**
+ *
+ * **BOTH locations, because which one the host reads has moved.** The seed wrote `$HOME/.claude.json`
+ * alone, which was measured sufficient on Claude Code **2.1.215**–**2.1.226**. On **2.1.251** it is not:
+ * with `CLAUDE_CONFIG_DIR` set, the host reads and writes `$CLAUDE_CONFIG_DIR/.claude.json` and never
+ * looks at `$HOME`'s. Measured on a hung probe, from the artefacts it left behind — our seed sat
+ * untouched in `home/.claude.json` with its three keys while the host had created `claude/.claude.json`
+ * itself, carrying `firstStartVersion: "2.1.251"` and **no `hasCompletedOnboarding`**. So the onboarding
+ * flow ran, `-p` had nobody to answer it, and the hang survived the repair that was supposed to end it.
+ *
+ * **Both are written rather than one chosen by version**, because a version test here would be a
+ * hand-maintained figure of a subject that has already moved once, in a file that cannot see the host it
+ * is about to spawn. Seeding a location the host ignores costs a few bytes in a directory thrown away
+ * after the turn; seeding the wrong one costs a ten-minute hang and, last time, a repair published with
+ * the wrong cause. `../.portulan/repos/portulan.md` already carries the standing instruction this fell
+ * to: **re-measure host behaviour at the next upgrade.**
+ *
+ * Returns every path written, so a caller — and a test — can see both rather than the first.
+ */
 export function seedOperator(operatorDir) {
-    const home = path.join(operatorDir, "home");
-    fs.mkdirSync(home, { recursive: true });
-    fs.mkdirSync(path.join(operatorDir, "claude"), { recursive: true });
-    fs.writeFileSync(path.join(home, ".claude.json"), JSON.stringify(OPERATOR_SEED, null, 2) + "\n");
-    return path.join(home, ".claude.json");
+    // Derived from `isolatedEnv`, never re-typed: the seed must land exactly where the turn is sent, and
+    // two hand-written copies of that layout are how the two drifted apart in the first place.
+    const env = isolatedEnv(operatorDir, {});
+    const targets = [path.join(env.HOME, ".claude.json"), path.join(env.CLAUDE_CONFIG_DIR, ".claude.json")];
+    const body = JSON.stringify(OPERATOR_SEED, null, 2) + "\n";
+    for (const target of targets) {
+        fs.mkdirSync(path.dirname(target), { recursive: true });
+        fs.writeFileSync(target, body);
+    }
+    return targets;
 }
 
 /**
