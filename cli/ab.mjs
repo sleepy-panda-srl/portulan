@@ -1407,17 +1407,61 @@ export function armStopProbe(armRoot, { nonce, prompt = "Reply with the single w
         settings.hooks.Stop[0].hooks[0].command = JSON.stringify(recorder);
         fs.writeFileSync(settingsPath, `${JSON.stringify(settings, null, 2)}\n`);
 
+        // **The receipt is TRUNCATED here, and its absence was never guaranteed.** `restore()` deletes it
+        // in `finally`, so an ordinary run starts clean — but an INTERRUPTED run does not run `finally`,
+        // and the recorder only ever appends. So a probe in an arm where an earlier probe was killed
+        // counts that earlier probe's firings too, and the count is what this test publishes as evidence:
+        // `met: true` with an inflated number is a figure nobody can reproduce, in the one record row 8's
+        // close reads. Measured while adding the refusal diagnostic below — an arm carrying a killed
+        // run's receipt reported 4,582 firings for a stub that fired none.
+        fs.writeFileSync(receipt, "");
+
         // **`stdio` here is hygiene, NOT the repair — and a first cut of this comment said the opposite.**
         // It claimed the child "inherits this terminal" without `stdio`. Measured on this platform and it
         // is false: `spawnSync` defaults to `pipe`, so the child already got a pipe that EOFs at once
         // (`isTTY:false`, fd 0 a socket); only an explicit `"inherit"` hands over the parent's stdin.
         // What this line changes is fd 0 from an already-dead pipe to `/dev/null`. It is kept because it
-        // says what it means, and because `./ab-run.mjs` passes the same three — but **the seed below is
-        // the whole cause of the hang**, and attributing it here would leave the next reader repairing
-        // the wrong thing. The false mechanism was inherited from session 6d's note and propagated
-        // without being run, which is precisely the defect this change exists to repair.
+        // says what it means, and because `./ab-run.mjs` passes the same three.
+        //
+        // **This comment then said "the seed below is the whole cause of the hang", and that was wrong
+        // too.** It survived two further repairs because neither touched this line. The cause was a
+        // LIVELOCK in `./stop-gate.mjs`: both its caps were keyed to `session_id`, this host issues a new
+        // one per retry, and neither cap could ever be reached — 85,839 hook invocations from one probe.
+        // Fixed in [#406](https://github.com/sleepy-panda-srl/portulan/pull/406). Three causal claims
+        // about this hang were published before the right one, each because a symptom disappeared, and
+        // this line is the last carrier of the second.
         const result = spawnSync(agent, ["-p", prompt], { cwd: armRoot, encoding: "utf8", timeout: TOOL_TIMEOUT_MS, env, stdio: ["ignore", "pipe", "pipe"] });
-        if (result.error) throw new CouldNotRun(`\`${agent}\` could not run — ${result.error.code ?? result.error.message}. Without a real stop this test has no answer, which is not the same as a failure`);
+
+        // **Every refusal below reports how many times the hook fired, and the first cut reported none.**
+        // `restore()` deletes the receipt unconditionally — correctly, so a probed arm is still the arm
+        // that was constructed — and the chain counter clears on the first unprovoked stop. So after a
+        // refusal there is NOTHING on disk to say what happened, and `ETIMEDOUT` alone cannot distinguish
+        // *the agent never stopped* from *the agent stopped hundreds of times and was sent back*. Those
+        // are opposite defects: one is the credential or the host, the other is a gate that will not let
+        // go. **Three sessions were spent on that distinction**, and the datum was under `restore()`'s
+        // foot the whole time — recovered once only because an interrupted run happened to skip cleanup.
+        const firings = () => {
+            try {
+                return fs.readFileSync(receipt, "utf8").split("\n").filter((l) => l.trim() !== "").length;
+            } catch {
+                // Unreadable is reported as unknown rather than as zero: zero is a claim about the host
+                // and this is a fact about a file, which is the whole distinction this block exists for.
+                return null;
+            }
+        };
+        // **Named `stops` at first, which SHADOWED the Stop-hook array bound at the top of this function.**
+        // Inside this `try` the name resolved to the helper, so a later edit reaching for `stops[0]` — the
+        // spelling used twice above — would have got `undefined` from a zero-arity function rather than a
+        // hook, silently. Copilot round 1 on
+        // [#407](https://github.com/sleepy-panda-srl/portulan/pull/407).
+        const firingNote = () => {
+            const n = firings();
+            return n === null
+                ? " The receipt could not be read, so how many times the hook fired is unknown — which is not the same as none."
+                : ` The arm's Stop hook fired ${n} time(s) before this: ${n === 0 ? "the agent never reached a stop, so this is about the agent or its credential rather than the gate" : "the agent did stop, so the turn was not silent — a large count here is a gate that would not let go"}.`;
+        };
+
+        if (result.error) throw new CouldNotRun(`\`${agent}\` could not run — ${result.error.code ?? result.error.message}. Without a real stop this test has no answer, which is not the same as a failure.${firingNote()}`);
 
         // **An agent that never completed a turn produces no stop, and NO STOP IS NOT AN UNINVOKED HOOK.**
         // The first cut returned `met: false` here and printed *"hook was NOT invoked"* — the answer this
@@ -1429,7 +1473,7 @@ export function armStopProbe(armRoot, { nonce, prompt = "Reply with the single w
         if (result.status !== 0) {
             throw new CouldNotRun(
                 `\`${agent}\` exited ${result.status} without completing a turn, so no stop occurred and this test has no answer — ` +
-                    `which is not the same as the hook being unreachable. What it said: ` +
+                    `which is not the same as the hook being unreachable.${firingNote()} What it said: ` +
                     `${JSON.stringify(((result.stdout ?? "") + (result.stderr ?? "")).trim().split("\n")[0] ?? "")}`,
             );
         }

@@ -2761,3 +2761,14 @@ _The seam applies here too: no client-identifying references._
   Livelock terminates at retry 14; stable sessions unchanged. **Three earlier causal claims were wrong.** ·
   26 recipes green; three mutations caught · Seam scan clean ·
   [handoff](../.portulan/handoffs/2026-09-02-c-the-cap-was-keyed-to-an-identity-that-rotates.md)
+
+- 2026-09-02 · M8 (Evals & telemetry), out-of-band · **The probe deleted its own evidence.** No row moves.
+  After `4b64c762` the probe ends rather than hanging — but `ETIMEDOUT` cannot tell *the agent never
+  stopped* from *the gate would not let go*, the distinction three sessions were spent on, and
+  `restore()` deletes the receipt that settles it. Every refusal now reports the firing count and what it
+  means. **And the count was wrong when it survived:** the receipt is never truncated, so a probe in an
+  arm where an earlier one was killed counts that run's firings — measured at **4,582 for a stub that
+  fired none** — and the **success path counts the same file**, so `met: true` would have published an
+  inflated figure into row 8's close evidence. Truncated at probe start. `ab.mjs`'s last *"whole cause"*
+  claim from #404 is corrected. · 26 recipes green; two mutations caught · Seam scan clean ·
+  [handoff](../.portulan/handoffs/2026-09-02-d-the-probe-deleted-its-own-evidence.md)
