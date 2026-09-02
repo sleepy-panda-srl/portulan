@@ -2,10 +2,11 @@
 
 > Generated from `handoffs/` by `node cli/index.mjs`. Do not edit by hand: it is regenerated
 > and byte-compared, so a hand-edit survives exactly until the next run.
-> 161 handoff(s), newest first. No budget: the series is append-only, so
+> 162 handoff(s), newest first. No budget: the series is append-only, so
 > the only remedy a budget could ask for is one this project rules out.
 
 - 2026-09-02 · [2026-09-02 — The probe hung on an unseeded home, and I published the wrong reason for it](handoffs/2026-09-02-the-probe-hung-on-an-unseeded-home.md)
+- 2026-09-02 · [2026-09-02 — The cap was keyed to an identity the host was free to rotate](handoffs/2026-09-02-c-the-cap-was-keyed-to-an-identity-that-rotates.md)
 - 2026-09-02 · [2026-09-02 — The seed landed where the host stopped looking](handoffs/2026-09-02-b-the-seed-landed-where-the-host-stopped-looking.md)
 - 2026-09-01 · [2026-09-01 — the shape check named what it could not see](handoffs/2026-09-01-the-shape-check-named-what-it-could-not-see.md)
 - 2026-09-01 · [2026-09-01 — the payload carried an experiment about itself](handoffs/2026-09-01-the-payload-carried-an-experiment-about-itself.md)

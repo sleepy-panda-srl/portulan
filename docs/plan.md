@@ -2750,3 +2750,14 @@ _The seam applies here too: no client-identifying references._
   I had also called the earlier seed *"the whole cause"* — necessary, insufficient. · 26 recipes green;
   four mutations caught · Seam scan clean ·
   [handoff](../.portulan/handoffs/2026-09-02-b-the-seed-landed-where-the-host-stopped-looking.md)
+
+- 2026-09-02 · M8 (Evals & telemetry), out-of-band · **The cap was keyed to an identity the host rotates.**
+  No row moves. The probe was livelocking, not hanging: `counterFile()` keys both caps by `session_id`,
+  **this host issues a new one per retry**, so every consecutive count restarted at zero and neither cap
+  was reached — **85,839 hook invocations, 6,985 counter files**. `stop-gate.mjs`'s own comment named the
+  outcome: *a gate that cannot stop is not a gate, it is a hang.* The platform's `stop_hook_active` was
+  listed in this file's payload docs and **read nowhere**; it identifies the retry chain without a session
+  id. `MAX_CHAIN_BLOCKS = 12`, keyed to the tree, above the specific caps so they still fire first.
+  Livelock terminates at retry 14; stable sessions unchanged. **Two earlier diagnoses were wrong.** ·
+  26 recipes green; three mutations caught · Seam scan clean ·
+  [handoff](../.portulan/handoffs/2026-09-02-c-the-cap-was-keyed-to-an-identity-that-rotates.md)

@@ -30,7 +30,7 @@ import path from "node:path";
 import { execFileSync, spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
-import { bumpCount, clearReason, today, verdict, REASONS, MAX_BLOCKS, MAX_TOTAL_BLOCKS } from "./stop-gate.mjs";
+import { bumpChain, bumpCount, clearReason, today, verdict, REASONS, MAX_BLOCKS, MAX_CHAIN_BLOCKS, MAX_TOTAL_BLOCKS } from "./stop-gate.mjs";
 
 // A HERMETIC HOST. The tools consult the host's installed-plugin record on the UNASKED path as of
 // 2026-08-13, so a suite that does not neutralise it reads the machine it runs on and a fixture's
@@ -913,4 +913,55 @@ describe("which tree the gate answers about (#220, second arm)", () => {
         assert.doesNotMatch(stderr, /different repository|not inside a git repository/, "silence, not degradation");
         assert.doesNotMatch(reason, /not the one this hook was told/, "and no divergence clause");
     });
+});
+
+// ---------------------------------------------------------------- the chain bound
+
+test("a host that rotates session_id per retry is bounded — the defect this closes", () => {
+    // **Measured 2026-09-02 on Claude Code 2.1.251, inside an A/B arm.** The gate refused, the agent
+    // retried, and the retry arrived under a NEW session id — so `counterFile()` opened a fresh counter
+    // and every consecutive count restarted at zero. 85,839 hook invocations and 6,985 distinct counter
+    // files from one probe, never a fourth consecutive refusal. Both existing caps are keyed to an
+    // identity the host was free to rotate, and this module's own words name the result: *a Stop-gate
+    // that cannot stop is not a gate, it is a hang.*
+    const problems = [{ reason: "handoff", text: "no handoff" }];
+    for (let chain = 0; chain <= MAX_CHAIN_BLOCKS; chain += 1) {
+        assert.equal(verdict({ problems, chain }).action, "block", `chain ${chain} is within the bound`);
+    }
+    assert.equal(verdict({ problems, chain: MAX_CHAIN_BLOCKS + 1 }).action, "release", "past the bound it must let go");
+});
+
+test("the chain bound is a BACKSTOP — a stable session still meets its specific cap first", () => {
+    // If this ever inverted, every release message would name the wrong bound and send a reader to the
+    // wrong constant, which is a defect this message has already had fixed twice.
+    const problems = [{ reason: "handoff", text: "no handoff" }];
+    const both = verdict({ problems, counts: { handoff: MAX_BLOCKS + 1 }, chain: MAX_CHAIN_BLOCKS + 1 });
+    assert.equal(both.action, "release");
+    assert.match(both.message, /cap of 3 consecutive refusals/, "the per-reason cap names itself when both are spent");
+    assert.doesNotMatch(both.message, /hook-provoked/, "the backstop must not claim a release the specific cap earned");
+
+    assert.ok(MAX_CHAIN_BLOCKS > MAX_TOTAL_BLOCKS, "the backstop must sit above the ceiling, or it would pre-empt it");
+});
+
+test("the chain release says what it means: the per-session counters could not see their history", () => {
+    const problems = [{ reason: "handoff", text: "no handoff" }];
+    const m = verdict({ problems, chain: MAX_CHAIN_BLOCKS + 1 }).message;
+    assert.match(m, /consecutive hook-provoked stops/);
+    assert.match(m, /new session id per retry/, "reaching this bound is a finding about the host and must read as one");
+    assert.match(m, /ending \*\*RED\*\*/, "a release is still not a pass");
+});
+
+test("bumpChain follows stop_hook_active and is keyed to the tree, not the session", () => {
+    // The whole point: it must count a chain that no session id survives.
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "portulan-chain-"));
+    try {
+        assert.equal(bumpChain(false, dir), 0, "an unprovoked stop starts no chain");
+        assert.equal(bumpChain(true, dir), 1);
+        assert.equal(bumpChain(true, dir), 2);
+        assert.equal(bumpChain(true, dir), 3, "the count survives without any session id being passed");
+        assert.equal(bumpChain(false, dir), 0, "a stop nothing provoked ends the chain");
+        assert.equal(bumpChain(true, dir), 1, "and the next chain starts fresh");
+    } finally {
+        fs.rmSync(dir, { recursive: true, force: true });
+    }
 });
