@@ -951,6 +951,26 @@ test("the chain release says what it means: the per-session counters could not s
     assert.match(m, /ending \*\*RED\*\*/, "a release is still not a pass");
 });
 
+test("the chain is keyed to the tree being JUDGED, not to this module's own repo", () => {
+    // The first cut called `chainFile(dir)` with no root, so every session shared one file whatever
+    // `resolveSessionTree(payload.cwd)` had resolved — and this gate answers about another worktree often
+    // enough to carry a branch for it. Two arms, or an arm and this repository, contended on one chain:
+    // one tree's retries could spend another's budget or release it early. The docblock said *keyed to
+    // the tree* while the code keyed to a constant. Copilot round 2 on #406.
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "portulan-chainkey-"));
+    try {
+        assert.deepEqual([1, 2, 3].map(() => bumpChain(true, dir, "/tmp/tree-a")), [1, 2, 3]);
+        assert.deepEqual([1, 2].map(() => bumpChain(true, dir, "/tmp/tree-b")), [1, 2], "a second tree starts its own chain");
+        assert.equal(bumpChain(true, dir, "/tmp/tree-a"), 4, "and the first tree's chain is untouched by it");
+        assert.equal(fs.readdirSync(dir).length, 2, "one file per tree, not one file shared");
+        // Clearing one tree's chain must not clear another's.
+        assert.equal(bumpChain(false, dir, "/tmp/tree-a"), 0);
+        assert.equal(bumpChain(true, dir, "/tmp/tree-b"), 3, "tree B kept counting while tree A was cleared");
+    } finally {
+        fs.rmSync(dir, { recursive: true, force: true });
+    }
+});
+
 test("bumpChain does not advance past a write it could not make", () => {
     // The first cut returned the increment whether or not the write succeeded, so the value it returned
     // diverged from what the next invocation would read: on an unwritable directory the chain appeared

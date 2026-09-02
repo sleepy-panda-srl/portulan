@@ -28,6 +28,14 @@ deliberately, so a session whose id is stable always meets the specific caps fir
 not this one, are what a person normally reads. Reaching this bound is itself a finding about the host,
 and the release message says so.
 
+**And *"the tree"* meant `REPO` in the first cut, not the tree being judged.** `bumpChain` called
+`chainFile()` without a root, so every session shared one file whatever `resolveSessionTree(payload.cwd)`
+had resolved — and this gate answers about another worktree often enough to carry a branch for it. Two
+arms, or an arm and this repository, contended on one chain: one tree's retries could spend another's
+budget or release it early. **My own reproduction ran that way**, keyed to this worktree rather than to
+the arm it was measuring. The docblock said *keyed to the tree* while the code keyed to a constant —
+the same overclaim shape, in the sentence describing the fix for it. Copilot round 2.
+
 **Deliberately the one piece of gate state two sessions in a worktree share.** The per-session counters
 are keyed apart precisely so one session cannot disarm another's gate; this is keyed together precisely
 so it can see a chain no session id survives. The tension is real and stated rather than smoothed over.

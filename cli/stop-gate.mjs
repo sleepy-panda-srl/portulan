@@ -247,6 +247,14 @@ function counterFile(sessionId, dir, root = REPO) {
  * for the case that key cannot survive: a host issuing a new session id per retry. So it is deliberately
  * the one piece of gate state two sessions in a worktree share — the sharing the per-session counters
  * exist to prevent is exactly what makes this able to see a chain the counters cannot.
+ *
+ * **"The tree" means the tree being JUDGED, and the first cut keyed it to `REPO` instead.** `bumpChain`
+ * called this without a root, so every session shared one file whatever `resolveSessionTree(payload.cwd)`
+ * had resolved — and this gate answers about another worktree often enough that line ~775 has a branch
+ * for it. Two arms, or an arm and this repository, contended on one chain: one tree's retries could
+ * spend another tree's budget, or release it early. The docblock above said *keyed to the tree* while
+ * the code keyed to a constant. Copilot round 2 on
+ * [#406](https://github.com/sleepy-panda-srl/portulan/pull/406).
  */
 function chainFile(dir, root = REPO) {
     const digest = (v) => {
@@ -265,8 +273,8 @@ function chainFile(dir, root = REPO) {
  * direction for the per-session counters and the LOOSER one here, so it is stated rather than inherited:
  * a chain this gate cannot count is a chain it does not charge, and the specific caps still apply.
  */
-export function bumpChain(provoked, dir = os.tmpdir()) {
-    const file = chainFile(dir);
+export function bumpChain(provoked, dir = os.tmpdir(), root = REPO) {
+    const file = chainFile(dir, root);
     if (!provoked) {
         try {
             fs.rmSync(file, { force: true });
@@ -898,7 +906,7 @@ function main() {
     // the stop being judged was provoked by a hook block, so it identifies the retry chain without any
     // session id. Cleared on a stop nothing provoked — including a green one, which ends a chain as
     // surely as a fixed problem does.
-    const chain = bumpChain(problems.length > 0 && payload.stop_hook_active === true);
+    const chain = bumpChain(problems.length > 0 && payload.stop_hook_active === true, os.tmpdir(), tree.root);
     const result = verdict({ problems, counts: state.counts, total: state.total, chain });
 
     if (result.action === "allow") allow();
