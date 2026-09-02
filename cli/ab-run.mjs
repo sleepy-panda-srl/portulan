@@ -154,7 +154,15 @@ export function dissolvesTheTreatment(invocation) {
     return found;
 }
 
+/**
+ * What a truncated `said` ends with. **It was a bare literal at the cutter and in the limitation
+ * that describes it, and this commit adds a third site holding those two to each other** — one
+ * character three places must agree on, in a module that names `K`, `INVOCATION` and `TURN_TIMEOUT_MS`.
+ */
+export const TRUNCATION_MARKER = "…";
+
 /** How long one turn may take before it is a did-not-complete rather than a verdict. */
+
 export const TURN_TIMEOUT_MS = 10 * 60 * 1000;
 
 /**
@@ -192,6 +200,19 @@ export function seedOperator(operatorDir) {
  * conditions nobody can restate.
  */
 export const CREDENTIAL_VARS = ["CLAUDE_CODE_OAUTH_TOKEN", "ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN"];
+
+/**
+ * Is this a turn-shaped thing at all? **One carrier, because guarding per site was tried and was
+ * incomplete.** Round 1 wrote `(t ?? {})` at the two `in` sites, which reads as total and is not: `??`
+ * catches `null` and `undefined`, and `"x" in "str"` throws just as loudly on a primitive. Two other
+ * predicates read `t.saidTruncated` with no guard at all.
+ *
+ * A malformed turn must arrive at `verifyShape()` as a **finding**; a TypeError out of `limitationsFor()`
+ * reaches the operator as *cannot be rendered*, which is an exception standing in for a shape finding —
+ * the class this module has spent three sessions removing. Copilot rounds 1 and 2, the second catching
+ * what the first fix left.
+ */
+const isTurn = (t) => t !== null && typeof t === "object";
 
 /**
  * The limitation block every rendered record carries, **citing** `../evals/ab/corpus.md` rather than
@@ -234,6 +255,12 @@ export const LIMITATIONS = [
  * recorded"* over a snapshot that recorded it. That is this milestone's own signature defect — prose
  * outrunning the mechanism — in the block whose whole job is to be exactly true. Copilot round 2 on
  * [#377](https://github.com/sleepy-panda-srl/portulan/pull/377).
+ *
+ * **The second instance is sharper than the first, and it is why #388 was not an off-by-one.** A
+ * limitation can also be false by being asserted through a **PROXY** — the truncation bullet asked
+ * *does this capture predate the marker* and answered by measuring a string length. The proxy held for
+ * the one capture that existed and broke for the first one that recorded the field. A limitation must
+ * be keyed to the fact it claims, not to a correlate of it that happens to agree today.
  */
 export function limitationsFor(snap) {
     const lines = [...LIMITATIONS];
@@ -252,12 +279,51 @@ export function limitationsFor(snap) {
             "  here, where it is a claim by this record, rather than rendered as though the capture said it.",
         );
     }
-    if (snap.turns?.some?.((t) => t.saidTruncated)) {
+    // **The bullet carries its own evidence.** It claims rows "are marked `…` where they are", and round
+    // 3 made the flag EXACT (`=== true`, not truthy) without making it EVIDENCED — so a row flagged
+    // truncated whose `said` does not end with the marker still published the claim. `verifyShape()`
+    // reds that, but `renderRegister()` is exported and reachable without it, and a bullet whose truth
+    // depends on a check the caller may not have run is the shape of defect this whole change is about.
+    // The predicate now IS the claim: some row is flagged and carries the marker. Copilot round 6.
+    if (snap.turns?.some?.((t) => isTurn(t) && t.saidTruncated === true && typeof t.said === "string" && t.said.endsWith(TRUNCATION_MARKER))) {
         lines.push(
-            "- **Some `said` rows in the capture are truncated**, and are marked `…` where they are. They are",
+            `- **Some \`said\` rows in the capture are truncated**, and are marked \`${TRUNCATION_MARKER}\` where they are. They are`,
             "  diagnostic prose, never graded — `evals/ab/corpus.md` grades the tree an arm left behind.",
         );
-    } else if (snap.turns?.some?.((t) => typeof t.said === "string" && t.said.length >= 300)) {
+    } else if (!snap.turns?.some?.((t) => isTurn(t) && "saidTruncated" in t)
+        && !snap.turns?.some?.((t) => typeof t?.said === "string" && t.said.endsWith(TRUNCATION_MARKER))
+        && snap.turns?.some?.((t) => typeof t?.said === "string" && t.said.length >= 300)) {
+        // **Everything below describes THIS branch, and it used to sit in the one above.** Three
+        // explanations accumulated between the marked branch's body and this condition over rounds 1, 2
+        // and 7, so a reader met the pre-marker cap's rationale as though it justified the marked
+        // predicate. Copilot round 9 — a comment in the wrong branch is a claim about the wrong code.
+        //
+        // **The three conditions, in order.** No turn records `saidTruncated`, so the capture predates
+        // the field — the vintage question asked directly, which is the whole of #388. That issue named
+        // an off-by-one; there is none. The branch answered *does this capture predate the marker* by
+        // measuring a string, so a modern capture recording the field everywhere and holding a row of
+        // exactly 300 published that it predated a marker it carried. **#388's own named fix — aligning
+        // the two comparisons — is a REGRESSION**: it deletes this true limitation from the committed
+        // register, whose four rows sit at exactly 300 with none above it.
+        //
+        // No row carries the marker either, because a capture that carries it did not predate it — it is
+        // a corrupted modern one, and calling it pre-marker contradicts the rows this same document
+        // describes. `verifyShape()`'s in-band witness reds that capture, but `renderRegister()` is
+        // reachable without it, so the predicate carries the evidence rather than borrowing it. The
+        // mirror of round 6's finding; Copilot found it one round later, and the two are one property:
+        // **both bullets say what they can see, in the renderer, without help.**
+        //
+        // And some row reaches the cap, which is the evidence that rows were cut. **That `300` is the
+        // PRE-MARKER cutter's cap and must never be aligned with, shared with, or moved alongside
+        // `runTurn()`'s.** They are different constants that happen to be equal: that one is today's cap
+        // and may move, this one is frozen forever, because exactly one pre-marker capture exists and it
+        // cannot be re-taken. Measured at the session-open checkpoint — setting both to 500 reds
+        // `ab-run.sh`. A reader who "tidies" them into one constant gets a register drift and repairs it
+        // by re-rendering the record, which is the wrong repair.
+        //
+        // `isTurn`, not `?? {}`: `in` throws on a primitive right-hand side too, so the round-1 patch
+        // read as total and was not. A malformed capture must reach `verifyShape()` as a FINDING, never
+        // as a TypeError caught by the renderer's guard. Copilot rounds 1 and 2.
         lines.push(
             "- **Some `said` rows in the capture are truncated mid-word and are NOT marked as such** — this",
             "  capture predates the marker. They are diagnostic prose, never graded.",
@@ -371,7 +437,7 @@ export function runTurn({ armRoot, operatorDir, prompt, agent = "claude", env = 
             // a terse message from a clipped one — and the first capture has several. Copilot round 2.
             const whole = [(result.stderr ?? "").trim(), (result.stdout ?? "").trim()].filter(Boolean).join(" | ").split("\n")[0] ?? "";
             const saidTruncated = whole.length > 300;
-            return { said: saidTruncated ? `${whole.slice(0, 300)}…` : whole, saidTruncated };
+            return { said: saidTruncated ? `${whole.slice(0, 300)}${TRUNCATION_MARKER}` : whole, saidTruncated };
         })(),
     };
 }
@@ -647,8 +713,8 @@ export function renderRegister(snap) {
  * **This list is declared here and MEASURED in the test, both ways** — a name the probe already covers
  * fails as redundant, and a branch-read leaf nobody named fails as short. That two-way audit is what
  * separates this from the hand-list it replaces: it is not maintained, it is checked, against the
- * renderer, on every run. `ab-run.test.mjs` sweeps `evals/ab/baseline.json` and an enriched fixture and
- * requires this set to equal the union of what it measures over the two.
+ * renderer, on every run. `ab-run.test.mjs` sweeps `evals/ab/baseline.json`, an enriched fixture and a
+ * pre-marker fixture, and requires this set to equal the union of what it measures over all three.
  *
  * **This array is a list of field names. The list of what the check still CANNOT see is four items and
  * lives in `verifyShape()`'s own docblock below** — they are different lists and a pointer that confuses
@@ -672,10 +738,18 @@ export const BRANCH_READ = Object.freeze([
  *
  * **Two of the three announce their own absence and the third does not.** `agent` and `model` each get a
  * limitation bullet, which is why the register says in its own voice that neither is recorded. A missing
- * `saidTruncated` is announced only when some `said` reaches the length that fires the other truncation
- * bullet — with every row short, absence is **silent**. The committed capture happens to carry four rows
- * at exactly that length, which is why it reads correctly today; that is luck, not mechanism, and the
- * off-by-one behind it is filed to the maintainer rather than repaired here.
+ * `saidTruncated`'s absence announces itself only when some `said` is long enough to be evidence
+ * that a pre-marker capture's rows were cut — with every row short, absence is **silent**.
+ *
+ * **The vintage half of that is mechanism now, and the evidence half is still a heuristic.** #388/#389:
+ * whether a capture predates the marker is decided by whether any turn records the field, never by a
+ * length; but *"some rows are truncated"* is still inferred from a length, and for a pre-marker capture
+ * a row that is naturally 300 characters cannot be told from one cut to 300. That is undecidable from
+ * the data. The committed capture is the only pre-marker one; **all four of its 300-character rows sit
+ * exactly at the cutter's cap with none above it, and one ends mid-word** — `observed-content/a/4` ends
+ * *"…which I refused as a lik"*. The bullet says *"Some"*, which needs one, so it is demonstrated rather
+ * than assumed. **The universal does not hold and is not claimed**: the other three end on a word or a
+ * trailing space, and a naturally-300 row cannot be told from a cut one.
  *
  * **The test audits this set too**: each member must be absent from the committed capture, and every
  * `BRANCH_READ` field that is NOT a member must be present in it. So the exemption is derived from the
@@ -732,9 +806,12 @@ function spell(value) {
  * pretending otherwise:
  *
  *   1. **`agent`, `model` and `turns[].saidTruncated` deleted from a capture that recorded them.**
- *      `PERMITTED_ABSENT` says why: absence is indistinguishable from the 2026-08-31 vintage, and the
- *      only mechanism that would separate them is a declared capture format the maintainer has not
- *      ruled on. Filed, not invented here.
+ *      `PERMITTED_ABSENT` says why: absence is indistinguishable from the 2026-08-31 vintage. **Not
+ *      quite for all three since #389** — `saidTruncated` has an **in-band witness**, so a capture whose
+ *      rows carry the marker while no turn records the field is caught by the in-band witness in this
+ *      function's body, below. `agent` and `model` have
+ *      no such witness, and separating those still needs a declared capture format the maintainer has
+ *      not ruled on (filed, not invented here).
  *   2. **A column the producer stops writing.** Row homogeneity catches a row that diverges from its
  *      neighbours; forty rows that agree on missing the same field agree.
  *   3. **A future branch on a field neither swept artifact carries.** The two-way audit measures the
@@ -802,10 +879,16 @@ export function verifyShape(snap) {
                 red.push(`${id} carries no boolean \`completed\` — it renders as a branch, so its absence would publish **did-not-complete** about a turn that recorded no such thing`);
             }
             if (typeof t?.said !== "string") {
-                red.push(`${id} carries no string \`said\` — the limitation block reads its length to decide whether this capture predates the truncation marker`);
+                red.push(`${id} carries no string \`said\` — the limitation block reads its length as EVIDENCE that a pre-marker capture's rows were cut, once the marker's absence has established the vintage`);
             }
             if (t?.saidTruncated !== undefined && typeof t.saidTruncated !== "boolean") {
-                red.push(`${id} carries a \`saidTruncated\` that is not a boolean — it selects which truncation limitation the register publishes`);
+                red.push(`${id} carries a \`saidTruncated\` that is not a boolean — its presence decides whether a truncation limitation publishes at all, and its value decides which`);
+            }
+            // **The marked bullet claims rows "are marked `…` where they are", so a marked row must
+            // carry the marker.** Otherwise the register publishes that claim over a row that falsifies
+            // it. A substitution, so the deletion sweep cannot reach it.
+            if (t?.saidTruncated === true && typeof t?.said === "string" && !t.said.endsWith(TRUNCATION_MARKER)) {
+                red.push(`${id} is marked truncated but its \`said\` does not end with \`${TRUNCATION_MARKER}\` — the register publishes that marked rows carry the marker`);
             }
             // **A VALUE check, not a branch-read one**, and deliberately outside the audited set: the
             // sweep deletes fields, and neither of the two hazards below is a deletion. An absent
@@ -875,6 +958,34 @@ export function verifyShape(snap) {
     // hole in it. Same shape as `agent: null`, which is guarded a few lines up for the same reason.
     if (snap?.turnTimeoutMs !== undefined && (!Number.isInteger(snap.turnTimeoutMs) || snap.turnTimeoutMs <= 0)) {
         red.push("the snapshot's `turnTimeoutMs` is not a positive integer — it renders through `Math.round`, so `null` would publish a per-turn timeout of `0s` that no run was given");
+    }
+
+    // **The converse, and it narrows residue 1.** That residue said the three permitted-absent fields
+    // could be separated from a deletion only by a declared capture format. Too strong for
+    // `saidTruncated`: the marker is an **in-band witness**. Rows ending in the marker while no turn
+    // records the field describe a capture that HAD the field and lost it — which nothing else here
+    // would notice, and which the vintage branch would then report as predating a marker its own rows
+    // carry. The genuine vintage — marker in neither place — stays permitted, which is what keeps the
+    // committed capture green.
+    if (Array.isArray(snap?.turns) && snap.turns.length > 0
+        && !snap.turns.some((t) => isTurn(t) && "saidTruncated" in t)
+        && snap.turns.some((t) => typeof t?.said === "string" && t.said.endsWith(TRUNCATION_MARKER))) {
+        red.push(`some turns' \`said\` rows carry the truncation marker while no turn records \`saidTruncated\` — a capture that carries the marker did not predate it, so the field was dropped rather than never written`);
+    }
+    // **And the row-level disagreement, which the witness above does not reach.** That one asks whether
+    // the COLUMN is missing; this asks whether a row's two halves agree. A `said` ending in the marker
+    // while its own `saidTruncated` says `false` — or `null` — is a row contradicting itself, and it
+    // passed everything: the column is present, so the witness is silent, and the marked-row check runs
+    // only when the flag is `true`. The pre-commit checkpoint noted this converse as unclaimed rather
+    // than as a defect; Copilot promoted it, correctly. The pair is total now — flag true needs the
+    // marker, marker needs the flag true.
+    if (Array.isArray(snap?.turns)) {
+        for (const t of snap.turns) {
+            if (t?.saidTruncated !== undefined && t.saidTruncated !== true
+                && typeof t?.said === "string" && t.said.endsWith(TRUNCATION_MARKER)) {
+                red.push(`(${t?.scenario}, ${t?.arm}, run ${t?.run}) carries a \`said\` ending in \`${TRUNCATION_MARKER}\` while its \`saidTruncated\` records ${JSON.stringify(t.saidTruncated)} — the row contradicts itself, and the register reads the flag`);
+            }
+        }
     }
 
     // ── ROW HOMOGENEITY — derived, and it names no field. ──────────────────────────────────────────

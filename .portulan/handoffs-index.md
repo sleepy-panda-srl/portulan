@@ -2,12 +2,13 @@
 
 > Generated from `handoffs/` by `node cli/index.mjs`. Do not edit by hand: it is regenerated
 > and byte-compared, so a hand-edit survives exactly until the next run.
-> 158 handoff(s), newest first. No budget: the series is append-only, so
+> 159 handoff(s), newest first. No budget: the series is append-only, so
 > the only remedy a budget could ask for is one this project rules out.
 
 - 2026-09-01 · [2026-09-01 — the shape check named what it could not see](handoffs/2026-09-01-the-shape-check-named-what-it-could-not-see.md)
 - 2026-09-01 · [2026-09-01 — the payload carried an experiment about itself](handoffs/2026-09-01-the-payload-carried-an-experiment-about-itself.md)
 - 2026-09-01 · [Handoff — the pass was rebased, and its one prediction went stale](handoffs/2026-09-01-d-the-pass-was-rebased-and-its-prediction-went-stale.md)
+- 2026-09-01 · [2026-09-01 — the marker, and the proxy it was read through](handoffs/2026-09-01-d-the-marker-and-the-proxy-it-was-read-through.md)
 - 2026-09-01 · [2026-09-01 — the mode that published the most checked the least](handoffs/2026-09-01-c-the-mode-that-published-the-most-checked-the-least.md)
 - 2026-09-01 · [2026-09-01 — the payload gets a roster it cannot forget](handoffs/2026-09-01-b-the-payload-gets-a-roster-it-cannot-forget.md)
 - 2026-09-01 · [2026-09-01 — the figure the citation did not carry](handoffs/2026-09-01-b-the-figure-the-citation-did-not-carry.md)
