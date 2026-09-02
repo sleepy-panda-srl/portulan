@@ -2739,3 +2739,14 @@ _The seam applies here too: no client-identifying references._
   assertions the checkpoint defeated by mutation**; they act on the module now. · Pre-commit
   **REQUEST-CHANGES (6)** · 26 recipes green · Seam scan clean ·
   [handoff](../.portulan/handoffs/2026-09-02-the-probe-hung-on-an-unseeded-home.md)
+
+- 2026-09-02 · M8 (Evals & telemetry), out-of-band · **The seed landed where the host stopped looking.**
+  No row moves. The probe **still hung** after `ca39daa2`. Its leftovers said why: our seed sat untouched
+  in `$HOME/.claude.json` while the host had written `$CLAUDE_CONFIG_DIR/.claude.json` itself —
+  `firstStartVersion: "2.1.251"`, no `hasCompletedOnboarding`. With that variable set the host never
+  consults `$HOME`'s. **6d's measurement was correct on 2.1.215–2.1.226 and has expired**, which
+  [`repos/portulan.md`](../.portulan/repos/portulan.md)'s standing *re-measure at the next upgrade* had
+  already asked for. Both locations are seeded now, **derived from `isolatedEnv`**, not chosen by version.
+  I had also called the earlier seed *"the whole cause"* — necessary, insufficient. · 26 recipes green;
+  four mutations caught · Seam scan clean ·
+  [handoff](../.portulan/handoffs/2026-09-02-b-the-seed-landed-where-the-host-stopped-looking.md)
