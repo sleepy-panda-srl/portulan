@@ -81,3 +81,24 @@ that never holds the credential.
 runs it; the four cases added are source-shape and behaviour assertions, one of them verified to fail
 when the fix is reverted. A rail that actually exercises the probe would need a credential in CI, which
 is a decision nobody has taken.
+
+## Copilot round 1: three subjects, and the third is this pull request's own defect again
+
+**A test named for a thing it did not do.** `under \`inherit\` NOTHING is written into the operator's real
+home — run, not read` **ran nothing**: it called `seedOperator` directly and never entered the `inherit`
+branch. A name claiming coverage the body has not got is the defect this whole change is about, committed
+inside its own repair, one round after the checkpoint caught the same shape three times. It drives
+`run()` down the real branch now, with `HOME` at a stand-in and an `--into` holding no constructed arm so
+the probe refuses before spawning — **and it asserts the branch's own banner reached stdout**, because
+exit 2 and an untouched home are equally true of a refusal that never got there. Without that assertion
+the replacement would have overclaimed one layer down.
+
+**Temp directories leaked on the failure path**, at three sites: `fs.rmSync` after the assertions runs
+only when they pass, so the runs that leak are exactly the ones somebody is debugging. All three use this
+file's own `withTemp`, which already existed — the fix was to use the helper rather than hand-roll
+`try/finally` beside it. Measured after: five failing tests, zero new directories.
+
+**A dead import.** `OPERATOR_SEED` was imported when an earlier version of these tests used it and left
+behind when they were rewritten.
+
+Two of the five threads were suppressed low-confidence notes promoted to gating threads. Both were right.
