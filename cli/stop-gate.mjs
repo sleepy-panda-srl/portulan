@@ -194,6 +194,28 @@ export const MAX_BLOCKS = 3;
 // refusal, or a two-reason session would reach the ceiling in half the attempts.
 export const MAX_TOTAL_BLOCKS = 9;
 
+// **Both caps above are keyed to `session_id`, and a host that rotates it per retry defeats them.**
+//
+// Measured 2026-09-02 on Claude Code 2.1.251, inside an A/B arm: the gate refused a stop, the agent
+// retried, and the retry arrived under a NEW session id — so `counterFile()` opened a fresh counter,
+// every consecutive count restarted at zero, and neither cap was ever reached. **85,839 hook
+// invocations and 6,985 distinct counter files from one probe**, none of them ever a fourth consecutive
+// refusal. This module's own comment names the result exactly: *a Stop-gate that cannot stop is not a
+// gate, it is a hang.*
+//
+// The platform already answers this and the answer was documented here and never read. `stop_hook_active`
+// is true precisely when the stop being judged was itself provoked by a hook block — so it identifies
+// the retry CHAIN without reference to any session id. This counter follows it: cleared on a stop that
+// no hook provoked, incremented on one that a hook did, and keyed to the TREE alone, which is the thing
+// that cannot rotate underneath it.
+//
+// **It is a backstop, not a replacement.** The per-reason and per-session caps keep their meaning where
+// the id is stable, which is every ordinary session; this only bounds the case where they cannot see
+// their own history. It is set above `MAX_TOTAL_BLOCKS` deliberately: a session whose id is stable must
+// always meet the specific caps first, so their messages, not this one, are what a person normally
+// reads.
+export const MAX_CHAIN_BLOCKS = 12;
+
 const RECIPE_TIMEOUT_MS = 90_000;
 
 /**
@@ -216,6 +238,74 @@ function counterFile(sessionId, dir, root = REPO) {
     // same holds for two ids sharing a 60-character prefix. Found by review on the pull request.
     const readable = String(sessionId).replace(/[^a-zA-Z0-9-]/g, "").slice(0, 40);
     return path.join(dir, `portulan-stopgate-${readable}-${digest(sessionId)}-${digest(root)}`);
+}
+
+/**
+ * Where the retry CHAIN's counter lives — keyed by tree, never by session.
+ *
+ * `counterFile()` is keyed by session id and is the right key for the per-reason caps. This one exists
+ * for the case that key cannot survive: a host issuing a new session id per retry. So it is deliberately
+ * the one piece of gate state two sessions in a worktree share — the sharing the per-session counters
+ * exist to prevent is exactly what makes this able to see a chain the counters cannot.
+ *
+ * **"The tree" means the tree being JUDGED, and the first cut keyed it to `REPO` instead.** `bumpChain`
+ * called this without a root, so every session shared one file whatever `resolveSessionTree(payload.cwd)`
+ * had resolved — and this gate answers about another worktree often enough that line ~775 has a branch
+ * for it. Two arms, or an arm and this repository, contended on one chain: one tree's retries could
+ * spend another tree's budget, or release it early. The docblock above said *keyed to the tree* while
+ * the code keyed to a constant. Copilot round 2 on
+ * [#406](https://github.com/sleepy-panda-srl/portulan/pull/406).
+ */
+function chainFile(dir, root = REPO) {
+    const digest = (v) => {
+        let h = 0;
+        for (const ch of String(v)) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+        return h.toString(36);
+    };
+    return path.join(dir, `portulan-stopgate-chain-${digest(root)}`);
+}
+
+/**
+ * How many consecutive hook-provoked stops this tree has seen, and the bump that maintains it.
+ *
+ * `provoked` is the payload's `stop_hook_active`: false means this stop was not caused by a block, so
+ * whatever chain existed has ended. Reading a missing or unreadable file as zero is the stricter
+ * direction for the per-session counters and the LOOSER one here, so it is stated rather than inherited:
+ * a chain this gate cannot count is a chain it does not charge, and the specific caps still apply.
+ */
+export function bumpChain(provoked, dir = os.tmpdir(), root = REPO) {
+    const file = chainFile(dir, root);
+    if (!provoked) {
+        try {
+            fs.rmSync(file, { force: true });
+        } catch {
+            // A chain counter that cannot be cleared costs a later session part of its budget, which is
+            // the safe direction: it can only make this backstop fire sooner, never later.
+        }
+        return 0;
+    }
+    let previous = 0;
+    try {
+        previous = Number(JSON.parse(fs.readFileSync(file, "utf8"))?.chain) || 0;
+    } catch {
+        previous = 0;
+    }
+    // **The count advances only if the write does, and the first cut returned the increment either
+    // way.** That made the returned value diverge from what the next invocation would read: on an
+    // unwritable temp dir the chain appeared to climb within one call and reset on every following one,
+    // so the bound could fire on a session that had never accumulated anything, or never fire at all —
+    // and the comment below asserted the opposite of what the code did, which is the class this whole
+    // change is about. Copilot round 1 on [#406](https://github.com/sleepy-panda-srl/portulan/pull/406).
+    //
+    // Unwritable state therefore means the chain **cannot grow**: this backstop simply does not fire and
+    // the specific caps are unaffected. Silent because it is a fact about the filesystem, not about the
+    // session's work.
+    try {
+        fs.writeFileSync(file, JSON.stringify({ chain: previous + 1 }));
+    } catch {
+        return previous;
+    }
+    return previous + 1;
 }
 
 /** The stored shape: one consecutive count per reason, plus the non-resetting refusal total. */
@@ -725,7 +815,7 @@ function collectProblems(tree = { root: REPO, workspace: WORKSPACE, origin: "tol
  *   block   — refuse this stop, and charge it.
  *   release — the cap is spent. The session may end, and the record must say RED rather than done.
  */
-export function verdict({ problems, counts = {}, total = 0, max = MAX_BLOCKS, maxTotal = MAX_TOTAL_BLOCKS }) {
+export function verdict({ problems, counts = {}, total = 0, chain = 0, max = MAX_BLOCKS, maxTotal = MAX_TOTAL_BLOCKS, maxChain = MAX_CHAIN_BLOCKS }) {
     if (problems.length === 0) return { action: "allow" };
 
     const text = problems.map((p) => p.text).join("\n\n");
@@ -734,14 +824,22 @@ export function verdict({ problems, counts = {}, total = 0, max = MAX_BLOCKS, ma
     // stop through on the strength of a problem that no longer exists.
     const spent = problems.map((p) => p.reason).filter((reason) => (counts[reason] ?? 0) > max);
 
-    if (spent.length || total > maxTotal) {
+    if (spent.length || total > maxTotal || chain > maxChain) {
         // Name the bound that actually released it. Saying "cap of 3" after nine refusals with a
         // per-reason count of 1 is false, and it is the same defect already fixed once in this very
         // message — a release that misreports why it happened sends a reader to the wrong constant.
         // Per-reason counters add one more way to be wrong: naming the cap without naming whose.
+        // The chain bound is named LAST, so the two session-keyed bounds keep reporting themselves
+        // wherever they can — a session whose id is stable must always meet those first. Reaching this
+        // one is itself a finding about the host: it means the per-session counters could not see their
+        // own history, which is what 2.1.251 does inside an isolated arm.
         const bound = spent.length
             ? `the cap of ${max} consecutive refusals for \`${spent.join("`, `")}\` was reached`
-            : `the absolute ceiling of ${maxTotal} refusals was reached (no single reason had reached its cap of ${max})`;
+            : total > maxTotal
+              ? `the absolute ceiling of ${maxTotal} refusals was reached (no single reason had reached its cap of ${max})`
+              : `${chain} consecutive hook-provoked stops were seen in this tree, past the chain bound of ${maxChain} — ` +
+                `the per-session caps never fired, which means this host issued a new session id per retry and their ` +
+                `counters could not see their own history`;
         return {
             action: "release",
             message:
@@ -804,7 +902,12 @@ function main() {
     const state = problems.length === 0
         ? { counts: {}, total: 0 }
         : bumpCount(sessionId, [...new Set(problems.map((p) => p.reason))]);
-    const result = verdict({ problems, counts: state.counts, total: state.total });
+    // **The chain follows the platform's own signal, not ours.** `stop_hook_active` is true exactly when
+    // the stop being judged was provoked by a hook block, so it identifies the retry chain without any
+    // session id. Cleared on a stop nothing provoked — including a green one, which ends a chain as
+    // surely as a fixed problem does.
+    const chain = bumpChain(problems.length > 0 && payload.stop_hook_active === true, os.tmpdir(), tree.root);
+    const result = verdict({ problems, counts: state.counts, total: state.total, chain });
 
     if (result.action === "allow") allow();
     if (result.action === "release") {
