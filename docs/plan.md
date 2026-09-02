@@ -2728,3 +2728,14 @@ _The seam applies here too: no client-identifying references._
   `evals/` change. · 26 recipes; tests 82→92. · Session-open **A-W-A (12)**, pre-commit **A-W-A (9)**,
   **Copilot 9 rounds, 17 accepted** under his grant and his cap — 6+7 one property, 8 a carrier no
   in-tree rail sees. · Seam scan clean. · [handoff](../.portulan/handoffs/2026-09-01-d-the-marker-and-the-proxy-it-was-read-through.md)
+
+- 2026-09-02 · M8 (Evals & telemetry), out-of-band · **The probe hung on an unseeded home, and I
+  published the wrong reason for it.** No row moves. `--stop-probe --operator-env isolated` hung because
+  `isolatedEnv` gives the turn an empty `HOME`, so the host runs its first-run flow with `-p` unable to
+  answer — 6d's finding, fixed in [`ab-run.mjs`](../cli/ab-run.mjs) and never in `ab.mjs`, which is
+  [`0020`](../.portulan/proposals/0020-a-fix-is-not-done-at-the-site-it-was-found.md) inside the milestone
+  that named the class. **I also published a second cause that is false** — `spawnSync` defaults to
+  `pipe`, so no terminal was inherited — in six carriers, unrun. **All four new tests were source-text
+  assertions the checkpoint defeated by mutation**; they act on the module now. · Pre-commit
+  **REQUEST-CHANGES (6)** · 26 recipes green · Seam scan clean ·
+  [handoff](../.portulan/handoffs/2026-09-02-the-probe-hung-on-an-unseeded-home.md)

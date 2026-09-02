@@ -81,7 +81,7 @@ import { spawnSync } from "node:child_process";
 import { pathToFileURL } from "node:url";
 
 import { CouldNotRun } from "./goldens.mjs";
-import { ArmRed, constructArmA, constructArmB, isolatedEnv, nonceFor, trackedUnder } from "./ab.mjs";
+import { ArmRed, OPERATOR_SEED, constructArmA, constructArmB, isolatedEnv, nonceFor, seedOperator, trackedUnder } from "./ab.mjs";
 import { ATTEMPTED, COMPLIANT_VERDICT, GRADERS, VERDICT_VOCABULARY, holdingScenarios, stageScenario } from "./ab-grade.mjs";
 
 /** The committed machine-readable capture. The unreproducible half, and the only one. */
@@ -165,34 +165,21 @@ export const TRUNCATION_MARKER = "…";
 
 export const TURN_TIMEOUT_MS = 10 * 60 * 1000;
 
-/**
- * The one-time state a fresh operator directory does not have, written identically into **both** arms.
- *
- * **Measured: the first real smoke turn hung.** `isolatedEnv()` hands each turn an empty `HOME` and an
- * empty `CLAUDE_CONFIG_DIR`, so the host runs its first-run flow — onboarding, and a trust prompt for a
- * directory it has never seen — and `--print` has nobody to answer it. A ten-minute timeout then turns a
- * two-second question into a ten-minute hang, forty times over.
- *
- * **This is harness setup, and it is bounded so it cannot become treatment.** It touches onboarding and
- * trust and **nothing else**: no permission mode, no hook, no tool allow-list, no model. Arm A's compiled
- * enforcement lives in the arm's own `.claude/settings.json` and nothing here reaches it, and the same
- * bytes go to both arms — `seedOperator()` takes no arm argument, which is a mechanical reason rather
- * than a promise.
- */
-export const OPERATOR_SEED = Object.freeze({
-    hasCompletedOnboarding: true,
-    bypassPermissionsModeAccepted: false,
-    hasTrustDialogAccepted: true,
-});
+// **`OPERATOR_SEED` and `seedOperator` MOVED to `./ab.mjs` and are re-exported here**, because the
+// module that needed them second could not import the module that needed them first: `ab-run.mjs`
+// imports `ab.mjs`, so the seed had to live at the lower layer or be written twice. It was written
+// once, here, and `ab.mjs`'s own stop probe — the acceptance test this whole family rests on — never
+// got it: a fresh HOME made the host run its first-run flow, `-p` had nobody to answer it, and the probe
+// hung. The repair reached the forty turns and not the one. _(An earlier line here said the probe hung
+// on "the terminal it had inherited"; it had not — see the seed's docblock in `./ab.mjs`.)_
+// Re-exported rather than moved silently, so every importer of this module keeps working.
+// **Imported AND re-exported, which is two statements and not one.** `export { x } from "./y"` forwards
+// the name to this module's consumers and binds NOTHING locally — so `runTurn` below, which calls
+// `seedOperator`, threw `ReferenceError` while every importer of this module saw the symbol just fine.
+// Caught by the suite; a test asserting the re-export's *spelling* had passed over it, which is an
+// assertion about how a line is written rather than about whether it works.
+export { OPERATOR_SEED, seedOperator };
 
-/** Write that state into one turn's operator directory. **No arm argument, by construction.** */
-export function seedOperator(operatorDir) {
-    const home = path.join(operatorDir, "home");
-    fs.mkdirSync(home, { recursive: true });
-    fs.mkdirSync(path.join(operatorDir, "claude"), { recursive: true });
-    fs.writeFileSync(path.join(home, ".claude.json"), JSON.stringify(OPERATOR_SEED, null, 2) + "\n");
-    return path.join(home, ".claude.json");
-}
 
 /**
  * The credential channels `./ab.mjs` distinguishes. Exactly one must be set: they are three
