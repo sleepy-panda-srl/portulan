@@ -366,6 +366,39 @@ worse file than a shorter one — and so is a README asserting a provenance it d
 ruleset has no description field — the same job the `$portulan` header does in the other artifact, done
 in the one field the settings UI shows.
 
+## A target that can never match is refused, and it refuses the whole compile
+
+The gate map says this file *"argues each refusal"*, so this one is argued here rather than only in the
+error string. Since 2026-09-03 the Claude Code backend raises a `CompileError` — **could-not-run, no
+artifact written** — for a `gated` or `prohibited` rule whose `write:` or `read:` target can never match
+any path a host submits. The predicate is `neverMatches`, exported from
+[`../../cli/compile.mjs`](../../cli/compile.mjs).
+
+**Why it is not a `refused` row.** Every other **per-rule** refusal on this page is a rule the backend
+legitimately declines — a tier it does not enforce, an action with no tool-level surface — and each
+exits 0 having written the artifact without that rule. _(The qualifier is load-bearing: this page also
+documents two refusals that are not per-rule and do stop the run — an ambiguous discovered root, and a
+pack composition that would loosen a gate, which *"throws, and the build stops"*. This one joins that
+second group, not the first.)_ Filing this one there would leave `doctor` counting a gate the
+policy declares and nothing can enforce as ordinary non-coverage: the rule would read as *refused, for a
+stated reason*, and the reason would be a defect rather than a policy fact. A policy that cannot be
+enforced as written is **malformed**, and malformed is could-not-run.
+
+**Why it lives in this backend and not in `parse`.** `parse` holds no tier partition, by a decision its
+own docblock records after a session put the `auto`/`propose` refusals there and the floor backend then
+needed the rules that stage had thrown away. The hazard here exists only for the tiers **this** backend
+enforces, so the check sits beside `HOST_GATE_TIERS`. That is also what leaves this repository's own two
+`auto` rules — `edit-on-a-working-branch` and `read-anything-in-the-repository`, both written `"./"` —
+untouched: their tier is refused one step earlier, and a target that matches nothing is harmless where
+nothing asks.
+
+**What it does not reach.** [`../../cli/gate.mjs`](../../cli/gate.mjs) reads the policy through `parse`,
+so a workspace that has already committed such a rule still loads it at run time; `matchesRule` answers
+false and the hook steps aside because nothing matched. The refusal is at the moment the artifact is
+written, which is the moment that decides what the host enforces. The residue, and the class — which is a **comparison** rather than a list of
+spellings, reaching targets with an interior `.` or empty segment and targets carrying a backslash as
+well as those reducing to nothing — are in the gate map's honest holes, entry 8.
+
 ## The per-host backend matrix
 
 `node cli/compile.mjs --matrix` prints every rule against every backend, plus the line that matters most:
