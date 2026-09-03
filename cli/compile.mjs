@@ -723,6 +723,71 @@ function normalisePath(p) {
 }
 
 /**
+ * Can any path a host actually submits fall under this target? `false` means none can.
+ *
+ * **The predicate is a comparison between two forms of the target, and that is what makes it the
+ * class rather than a list.** `matchesPath` compares a *tail* — it strips a leading `./` and any
+ * leading `/` and then asks whether the candidate ends with, or contains, what is left. A host is
+ * **expected** to hand over a normalised absolute path — no `.` segment, no empty segment, no
+ * backslash — and that is an assumption rather than something measured here, argued below. So the
+ * target can match only if its comparison form is already normalised. Where the two forms differ, the comparison is against
+ * a spelling no candidate can carry, and the rule matches nothing whatever it says.
+ *
+ * That covers three families at once, which is why it is written as a comparison and not as a list of
+ * spellings a reader would have to keep in step:
+ *
+ * - **The target that reduces to nothing**, which compiles to `Edit(./)`, `Edit(./.)`, or — for one
+ *   spelling — the real subtree glob `Edit(././**)`.
+ * - **The target with an interior `.` or empty segment**, each compiling to a named surface that reads
+ *   like a real gate on a plausible path, and matches nothing.
+ * - **The target carrying a backslash**, and this one is why the argument above needs its second half
+ *   stated: `matchesPath` normalises the **candidate**'s backslashes to `/` and never the target's, so
+ *   a backslash in a target is compared against a character no candidate can still contain, **on every
+ *   platform**. Unlike the first two families this one has no conditional reading at all.
+ *
+ * **The host assumption, named because it is one.** *No `.` segment, no empty segment, no backslash*
+ * describes what a host is expected to send, and this repository does not control that and has not
+ * measured an unnormalised `file_path` arriving. The refusal does not rest on it: a rule matching only
+ * `/repo/x/.` gates nothing anybody meant to gate whichever way the assumption falls.
+ *
+ * **Four cuts, three of them incomplete, always in the same direction — and that arc is why this is a
+ * comparison rather than a list.** Cut 1 lifted `matchesPath`'s own strip and caught two of the first
+ * family's five. Cut 2 asked whether the target normalised to **empty**, catching that family alone
+ * while three carriers of its prose claimed the class. Cut 3 added the interior family. Cut 4 added the
+ * backslashes. Every miss was found by putting neighbouring spellings through the function at a
+ * checkpoint, never by re-reading the sentence. A predicate defined by the instances it was written for
+ * is ../.portulan/proposals/0020-a-fix-is-not-done-at-the-site-it-was-found.md's shape, and **this
+ * docblock is the one carrier of that arc** — the records cite it rather than recounting it.
+ *
+ * The thirteen spellings and the controls that must stay matchable are enumerated **once**, in
+ * `./compile.test.mjs`'s `NEVER` and `CONTROLS`, and measured there rather than listed here.
+ *
+ * **`matchesPath` is left byte-identical on purpose**, and that is a decision rather than an omission:
+ * its answers are asserted by eleven `documented-hole` cases in ../evals/goldens/gates/ and by
+ * `mutants` operators anchored on its text, so moving its strip would move two census anchors and exit
+ * the census 2 — could-not-run wearing a pass's clothes. This function re-spells that strip rather than
+ * importing it, which is one carrier more than ideal and is pinned by a suite case comparing the two on
+ * every target below.
+ *
+ * The subtree marker is **meaning, not spelling**: exactly one trailing `/` says *the subtree* and is
+ * removed before the comparison, which is why `docs/` is a real target and `docs//` is not.
+ *
+ * What this does NOT answer is what `./` should MEAN as a policy target. That is
+ * https://github.com/sleepy-panda-srl/portulan/issues/337's reserved question, and this predicate
+ * answers only whether a target can ever match.
+ */
+export function neverMatches(target) {
+    const clean = String(target ?? "").replace(/^\.\//, "").replace(/^\/+/, "");
+    if (clean === "" || clean === "/") return true;
+    const body = clean.endsWith("/") ? clean.slice(0, -1) : clean;
+    // The backslash arm is separate because it is about the CANDIDATE's normalisation rather than the
+    // target's: `matchesPath` rewrites `\\` to `/` in what the host hands over, so a target keeping one
+    // is compared against a character the comparison has already removed from every candidate.
+    if (body.includes("\\")) return true;
+    return body === "" || normalisePath(body) !== body;
+}
+
+/**
  * The directories a target lives under, as exact paths: `a/b/c.md` -> `a`, `a/b`.
  *
  * No trailing slash, and that is the whole correctness of it. Spelled `a/` these would be SUBTREE
@@ -1266,6 +1331,60 @@ export function claudeCode(parsed, options = {}) {
             // can review against the policy.
             refused.push({ id: rule.id, tier: rule.tier, why: rule.target });
             continue;
+        }
+        // ---- a path target no path can match, refused HERE and not at `parse`
+        //
+        // **Hole 8 of ../.portulan/gate-map.md, closed at the tier that asks the question.** A
+        // `gated` or `prohibited` rule whose path target can never match — see `neverMatches` for the
+        // three families, of which *reduces to nothing* is only the first — compiles to a named
+        // permission surface (`Edit(./)`, `Edit(./.)`, `Edit(././**)`, `Edit(./docs/./vision.md)`,
+        // `Edit(./docs\\vision.md)`) while `matchesRule` answers `false` for every path a host submits. The compiler then reports the rule COMPILED, and
+        // `doctor` counts it as covered. That is a hollow gate that reads from outside exactly like a
+        // whole one: hole 3's failure mode reached by a different road.
+        //
+        // **Why a throw and not a `refused` row.** `refused` is the accounting for a rule a backend
+        // legitimately declines — an `auto` tier, a `none` kind — and it writes the artifact without
+        // the rule and exits 0. Filing this there would leave `doctor` reporting a gate the policy
+        // declares and nothing enforces as ordinary non-coverage, which is precisely the laundering
+        // `parse`'s own target refusals (absolute, `..`, whitespace) already decline to do. A policy
+        // that cannot be enforced as written is malformed, and malformed is could-not-run.
+        //
+        // **Why here and not at `parse`.** That stage holds no tier partition, by a decision recorded
+        // in its own docblock: *"A partition that is one backend's opinion must live in that backend,
+        // or the second one is structurally incapable of disagreeing."* A session once put the
+        // `auto`/`propose` refusals there and the floor backend then needed the rules it had thrown
+        // away. This is that same shape — the hazard exists only for the tiers THIS backend enforces —
+        // so it lives with `HOST_GATE_TIERS` above it, and the two `auto` rules in
+        // ../.portulan/gates.json — `edit-on-a-working-branch` (`write: "./"`) and
+        // `read-anything-in-the-repository` (`read: "./"`), one of each path kind — keep their spelling
+        // and are refused one line earlier, for their tier, exactly as before.
+        //
+        // **One site, and the predicate exported rather than inlined.** The floor backend compiles no
+        // path target at all (see `floorRefusal`), so there is no second site to sweep today and
+        // saying "the same treatment there" would be a claim about code that does not exist.
+        // `neverMatches` is exported for the backend that does compile one, and for the tests.
+        //
+        // **What this does NOT reach, said here rather than left to be discovered.** ./gate.mjs reads
+        // the policy through `parse`, which this change does not touch, so a workspace that has
+        // committed such a rule still loads it at the hook, `matchesRule` answers `false`, and the
+        // hook steps aside because nothing matched. The rule is refused at COMPILE time — which is
+        // when the artifact that gates the host is written — and the residue is recorded in hole 8.
+        //
+        // Found by the milestone-8 gate corpus on its first run (#336) and put as three options in
+        // #337; this is the third, the narrowest, and it deliberately leaves open what `./` should
+        // MEAN as a policy target.
+        if ((rule.kind === "write" || rule.kind === "read") && neverMatches(rule.target)) {
+            throw new CompileError(
+                `rule \`${rule.id}\` is ${rule.tier} and its ${rule.kind} target ${JSON.stringify(rule.target)} matches no path a host ` +
+                    `can submit: the matcher compares a tail, and this target's comparison form is one no candidate can carry. ` +
+                    `This backend would emit ${pattern(rule.kind === "write" ? "Edit" : READ_TOOLS[0], rule.target)} ` +
+                    `and report the rule compiled, while the runtime matcher answered false for every input: a gate that reads as whole ` +
+                    `from outside and enforces nothing. Name the path the rule protects in its normalised spelling — no ` +
+                    `\`.\` or empty segment, no backslash — or drop the rule; and where this ` +
+                    `rule came from a pack, it is the pack that carries it, not the workspace composing it. ` +
+                    `(A never-matching target is harmless at \`auto\`, which this backend refuses one step earlier; it is a hollow gate only ` +
+                    `at the tiers that enforce. See .portulan/gate-map.md, honest holes, entry 8.)`,
+            );
         }
         const into = rule.tier === "prohibited" ? deny : ask;
         const emitted = []; // permission patterns — the layer that cannot fail open

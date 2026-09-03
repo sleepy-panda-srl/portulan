@@ -53,6 +53,7 @@ import {
     composeFragments,
     tierRank,
     shellWords,
+    neverMatches,
 } from "./compile.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -608,6 +609,183 @@ describe("the Claude Code backend", () => {
 //   1. It never invents policy. No declared floor → no artifact and no invented branch name.
 //   2. It never emits half a mapping. `pull_request` without `required_status_checks` imports
 //      cleanly and reads as a configured floor while letting a red pull request merge.
+
+describe("a path target no path can match — hole 8, closed at the tier that asks", () => {
+    // **Three families, and the predicate is a COMPARISON so that it is the class rather than this
+    // list.** `matchesPath` compares a tail; a host submits an absolute path with no `.` segment, no
+    // empty segment and no backslash — the assumption named below `hostWouldSubmit`. A target whose
+    // comparison form cannot be one of those matches nothing, whatever it says.
+    //
+    //   "./"               -> Edit(./)                   matches nothing
+    //   "."  / "./."       -> Edit(./.)                  matches only a candidate ending `/.`
+    //   "././"             -> Edit(././**)               a REAL subtree glob, needing a `/./`
+    //   ".//"              -> Edit(./)                   matches nothing
+    //   "docs/./vision.md" -> Edit(./docs/./vision.md)   reads like a real path; matches nothing
+    //   "docs//"           -> Edit(./docs//**)           and `docs/` is a REAL target — one slash is meaning
+    //   "docs\\vision.md"  -> Edit(./docs\\vision.md)     the candidate's backslashes are normalised, the target's are not
+    //
+    // **Four cuts, three of them incomplete.** `neverMatches`' docblock is the one carrier of that arc;
+    // this block is where the spellings and the controls are enumerated, once, and measured.
+    const REDUCES_TO_NOTHING = ["./", ".", "./.", "././", ".//"];
+    const INTERIOR_DOT_OR_EMPTY = ["docs/./vision.md", "docs//vision.md", "docs//", "docs/.", "./docs/./", "docs/vision.md/."];
+    const CARRIES_A_BACKSLASH = ["docs\\vision.md", "docs\\"];
+    const NEVER = [...REDUCES_TO_NOTHING, ...INTERIOR_DOT_OR_EMPTY, ...CARRIES_A_BACKSLASH];
+    // `docs//` is never-matching and `docs/` is a real subtree target, which is the whole reason the
+    // predicate removes exactly ONE trailing slash: the marker is meaning, not spelling.
+    const CONTROLS = ["docs/", "./docs/", "docs/vision.md", "core/operating/loop.md", ".portulan/", ".hidden", ".gitignore", "docs/.gitignore", "..hidden"];
+
+    const one = (target, tier, kind = "write") => ({
+        portulan: { spec: "2.2" },
+        why: "gate-map.md",
+        rules: [{ id: "probe", tier, reason: "probe", action: { [kind]: target } }],
+    });
+
+    test("the predicate answers for every never-matching spelling, and for none of the controls", () => {
+        for (const t of NEVER) assert.ok(neverMatches(t), `${JSON.stringify(t)} should never match`);
+        for (const t of CONTROLS) assert.ok(!neverMatches(t), `${JSON.stringify(t)} is a real target`);
+        // The two `parse` already refuses, kept so the predicate's own answer is pinned rather than
+        // left resting on an upstream guard that could move.
+        assert.ok(neverMatches(""));
+        assert.ok(neverMatches("/"));
+    });
+
+    test("the predicate agrees with the matcher it speaks for", () => {
+        // The property itself, asserted rather than described: for a never-matching target there is no
+        // path a host could hand over that `matchesRule` answers true for. The candidates are the
+        // shapes a host actually submits — absolute, normalised, carrying no `.` segment.
+        const candidates = ["/repo/x.md", "/repo/docs/vision.md", "/repo/core/operating/loop.md", "/repo/a/b/c"];
+        for (const t of NEVER) {
+            const rule = parse(one(t, "auto")).rules[0];
+            for (const c of candidates) {
+                assert.equal(matchesRule(rule, "Write", { file_path: c }), false, `${JSON.stringify(t)} vs ${c}`);
+            }
+        }
+    });
+
+
+    // **The assumption this whole block rests on, named rather than left implicit.** The predicate says
+    // *no path a host submits*, not *no string*. `matchesPath("/r/.", ".")` is `true` — a candidate
+    // ending `/.` does match `.` — so the claim is false about arbitrary strings and true about the
+    // paths a host actually hands over: absolute, no `.` segment, no empty segment, no backslash. This
+    // repository does not control what the host sends and has not measured an unnormalised `file_path`
+    // arriving; the refusal is right either way, because a rule matching only `/r/.` gates nothing
+    // anybody meant to gate. Stated because a fold grade found four carriers asserting the normalisation
+    // as a fact about the host.
+    const hostWouldSubmit = (c) => !c.includes("\\") && !c.includes("//") && !/(^|\/)\.(\/|$)/.test(c);
+
+    test("the predicate agrees with `matchesPath` itself, target by target", () => {
+        // **This case calls `matchesPath`.** Its first version did not: it re-implemented the strip and
+        // then asserted things about its own re-implementation, so removing the strip from EITHER
+        // function left it green while two carriers claimed it pinned them together. Caught at a fold
+        // grade. The property is the one that matters — for a target the predicate calls never-matching
+        // there must be no host-shaped candidate `matchesPath` accepts, and for a real one there must be
+        // at least one.
+        const derive = (t) => {
+            const clean = String(t).replace(/^\.\//, "").replace(/^\/+/, "");
+            const body = clean.endsWith("/") ? clean.slice(0, -1) : clean;
+            return [`/r/${clean}`, `/r/${body}`, `/r/${body}/x`, `/r/${body}x`, `/r/x/${body}`, "/r/x.md", "/r/a/b/c"].filter(hostWouldSubmit);
+        };
+        for (const t of NEVER) {
+            for (const c of derive(t)) {
+                assert.equal(matchesPath(c, t), false, `${JSON.stringify(t)} must not match ${c}`);
+            }
+        }
+        for (const t of CONTROLS) {
+            assert.ok(
+                derive(t).some((c) => matchesPath(c, t)),
+                `${JSON.stringify(t)} is a real target and must match at least one derived candidate`,
+            );
+        }
+        // **And the equivalence itself, which is what the docblock claims and the two loops above do
+        // not.** They assert the lists, not the predicate: they would pass unchanged if `neverMatches`
+        // were deleted. This line calls both functions on every target and requires them to agree, and
+        // it reds when the strip is removed from EITHER of them — measured both ways, failing on
+        // `./docs/` each time. Before it, the sentence in `compile.mjs` saying a suite case compares the
+        // two was false, which is the same defect this block is about wearing a test's clothes.
+        for (const t of [...NEVER, ...CONTROLS]) {
+            assert.equal(
+                neverMatches(t),
+                !derive(t).some((c) => matchesPath(c, t)),
+                `${JSON.stringify(t)}: the predicate and the matcher disagree`,
+            );
+        }
+    });
+
+    test("the interior family compiles to a named surface and still matches nothing — the hazard, not a typo", () => {
+        // Why this family is the same defect and not a lesser one: each compiles to a surface that
+        // reads like a real gate on a real path, which is strictly more misleading than `Edit(./)`.
+        assert.equal(claudeCode(parse(one("docs/./vision.md", "auto"))).compiled.length, 0, "auto compiles nothing");
+        // The surface itself, because "it compiles to something that reads like a real gate" is the
+        // half that makes this family worse than `Edit(./)` and nothing else asserted it.
+        assert.throws(
+            () => claudeCode(parse(one("docs/./vision.md", "gated"))),
+            (e) => e.message.includes("Edit(./docs/./vision.md)"),
+        );
+        for (const t of INTERIOR_DOT_OR_EMPTY) {
+            const rule = parse(one(t, "auto")).rules[0];
+            for (const c of ["/repo/docs/vision.md", "/repo/docs", "/repo/docs/a/b", "/repo/x.md"]) {
+                assert.equal(matchesRule(rule, "Write", { file_path: c }), false, `${JSON.stringify(t)} vs ${c}`);
+            }
+        }
+    });
+
+    for (const tier of ["gated", "prohibited"]) {
+        test(`the Claude Code backend refuses a ${tier} write target that can never match`, () => {
+            for (const t of NEVER) {
+                assert.throws(
+                    () => claudeCode(parse(one(t, tier))),
+                    (e) => e instanceof CompileError && e.message.includes("matches no path a host") && e.message.includes(JSON.stringify(t)),
+                    `${tier} ${JSON.stringify(t)}`,
+                );
+            }
+        });
+
+        test(`and refuses it for a ${tier} READ target too — one predicate, both path kinds`, () => {
+            assert.throws(() => claudeCode(parse(one("./", tier, "read"))), CompileError);
+        });
+    }
+
+    test("the `auto` tier is untouched — the two rules this workspace actually has keep their spelling", () => {
+        // The whole reason the refusal sits with HOST_GATE_TIERS rather than at `parse`: a
+        // never-matching target is harmless at a tier no backend enforces, and `.portulan/gates.json`
+        // carries two of them (`edit-on-a-working-branch`, `read-anything-in-the-repository`). Option 1
+        // of #337 would have taken their spelling; this one does not, and this case is what says so.
+        for (const t of NEVER) {
+            const out = claudeCode(parse(one(t, "auto")));
+            assert.equal(out.compiled.length, 0);
+            assert.equal(out.refused.length, 1);
+            assert.equal(out.refused[0].tier, "auto");
+        }
+    });
+
+    test("a `shell` target is not a path, and is not touched by this", () => {
+        // `shell: "./"` is a command prefix, not a path — a different meaning this predicate has no
+        // business answering for. Pinned so a later reader does not "finish the job" by widening it.
+        const out = claudeCode(parse(one("./", "gated", "shell")));
+        assert.ok(out.compiled.some((c) => c.surface.includes("Bash(./:*)")));
+    });
+
+    test("a real target still compiles, so the refusal is not a blanket", () => {
+        for (const t of CONTROLS) {
+            const out = claudeCode(parse(one(t, "gated")));
+            assert.equal(out.compiled.length, 1);
+            assert.ok(out.compiled[0].surface.startsWith("Edit("));
+        }
+    });
+
+    test("the refusal names the surface it would have emitted, and points at the record", () => {
+        // A refusal that does not say what the rule WOULD have become sends its reader looking for a
+        // permissions problem. Both halves are asserted because both were written for a reader.
+        try {
+            claudeCode(parse(one("././", "gated")));
+            assert.fail("expected a refusal");
+        } catch (e) {
+            assert.ok(e instanceof CompileError);
+            assert.ok(e.message.includes("Edit(././**)"), e.message);
+            assert.ok(e.message.includes("entry 8"), e.message);
+        }
+    });
+});
 
 describe("the floor backend", () => {
     const ruleset = (p = withFloor()) => githubRuleset(parse(p)).artifact.value;

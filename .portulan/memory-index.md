@@ -2,7 +2,7 @@
 
 > Generated from `memory/` by `node cli/index.mjs`. Do not edit by hand: it is regenerated
 > and byte-compared, so a hand-edit survives exactly until the next run.
-> 30 record(s) · budget 40 lines.
+> 31 record(s) · budget 40 lines.
 
 - [A branch syncs with main before it merges](memory/a-branch-syncs-with-main-before-it-merges.md) — rule
 - [A checker must refuse what it cannot check](memory/a-checker-must-refuse-what-it-cannot-check.md) — rule
@@ -23,6 +23,7 @@
 - [A shared stage must not hold one backends opinion](memory/a-shared-stage-must-not-hold-one-backends-opinion.md) — rule
 - [A stated enforcer must be the real one](memory/a-stated-enforcer-must-be-the-real-one.md) — rule
 - [A superlative is a count nobody ran](memory/a-superlative-is-a-count-nobody-ran.md) — rule
+- [A target is validated at the tier that enforces it](memory/a-target-is-validated-at-the-tier-that-enforces-it.md) — rule
 - [Agent activity is attributable](memory/agent-activity-is-attributable.md) — rule
 - [An answer lands on the thread that raised it](memory/an-answer-lands-on-the-thread-that-raised-it.md) — rule
 - [An exit code read through a pipe is the pipes](memory/an-exit-code-read-through-a-pipe-is-the-pipes.md) — rule

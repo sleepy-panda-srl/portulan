@@ -41,6 +41,40 @@ records how things were found. This is per *release* and records what a reader g
 
 ## Unreleased
 
+### Changed
+
+- **A gate rule whose path target can never match is now refused, and it refuses the whole compile**
+  ([#337](https://github.com/sleepy-panda-srl/portulan/issues/337), option 3). **This can break an
+  upgrade, which is why it leads.** If your gate policy carries a **`gated` or `prohibited`** rule whose
+  `write:` or `read:` target cannot match any path a host submits, `portulan compile` now exits **2**
+  with a message naming the rule, the surface it would have emitted, and what to do — where before it
+  exited 0 and wrote an artifact. Nothing at the `auto` or `propose` tiers changes.
+
+  **Which targets those are.** `matchesPath` compares a **tail**, and a host is expected to hand over an
+  absolute path with no `.` segment, no empty segment and no backslash — an assumption about the host,
+  not something this project measures — so a target whose comparison form is not already normalised is
+  compared against a spelling no candidate can carry. The refusal does not rest on the assumption: a
+  rule matching only `/repo/x/.` gates nothing anybody meant to gate either way. In practice, three families: a target
+  that reduces to nothing (`./`, `.`, `./.`, `././`, `.//`); a target with an interior `.` or empty
+  segment (`docs/./vision.md`, `docs//vision.md`, `docs//`, `docs/.`, `./docs/./`, `docs/vision.md/.`);
+  and **a target containing a backslash** (`docs\\vision.md`), which the matcher can never reach because
+  it normalises the candidate's backslashes and not the target's. `docs/` and `./docs/` are real subtree targets and are unaffected — exactly one
+  trailing slash means *the subtree*, so `docs//` is refused and `docs/` is not.
+
+  **What it was protecting you from.** Such a rule compiled to a named permission surface — `Edit(./)`,
+  or for the second family something that reads like a real path, `Edit(./docs/./vision.md)` — while the
+  runtime matcher answered `false` for every path a host submits. The compiler reported the rule
+  *compiled* and `doctor` counted it as covered, so the gate map, the artifact and the report all agreed
+  about a gate that enforced nothing.
+
+  **The repair is to name the path the rule protects in its normalised spelling, or to drop the rule.**
+  A target meaning *the whole repository* has no supported spelling today: what `./` should mean as a
+  policy target is deliberately still open, and this change closes the hazard without answering it.
+
+  The predicate ships as `neverMatches`, exported from `cli/compile.mjs`. The gate-policy spec is
+  **unchanged at 2.2** — a tightening of what compiles, in the same class as the earlier refusals of
+  absolute and `..`-bearing targets and of whitespace in a target, neither of which moved the spec.
+
 ### Added
 
 - **Nothing joins the npm payload unclassified any more**
@@ -155,9 +189,10 @@ records how things were found. This is per *release* and records what a reader g
 
   It went red on its first run and found a hole nobody had recorded: **a rule whose target is `./`
   matches nothing at runtime**, because `matchesPath` reduces `"./"` to the empty string and refuses it.
-  Nothing is mis-enforced today — the two rules shaped that way are `auto`, which no layer asks about —
-  but a *gated* rule written that way would compile to a permission rule covering the tree and a matcher
-  covering nothing. Now entry 8 of the gate map's honest-holes list, and asserted in the corpus.
+  Nothing was mis-enforced — the two rules shaped that way are `auto`, which no layer asks about — but a
+  *gated* rule written that way compiled to a named permission surface and a matcher covering nothing.
+  Entry 8 of the gate map's honest-holes list, asserted in the corpus, and **closed at the enforcing
+  tiers by the first entry in this release** — which is why this paragraph is in the past tense.
 
 ### Fixed
 
