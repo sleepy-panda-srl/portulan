@@ -246,6 +246,39 @@ export const DRILLS = [
         why: "`doctor` resolving a slot path is the check the Workspace Definition rests on: a manifest naming a file that is not there must never validate.",
     },
     {
+        // ---- the SECOND drill on the `doctor` rail, and the reason there are two
+        //
+        // `check()` counts a rail as drilled once any drill names it, so a second entry adds coverage
+        // rather than a duplicate — the DRILLS docblock's "one per rail" is a floor, not a cap. This
+        // arm needs its own because the one above perturbs a slot path and this one perturbs the gate
+        // POLICY: different file, different check inside `doctor`, and nothing about the first would
+        // have noticed if this one stopped firing.
+        //
+        // **Why it is a `doctor` drill and not a `compile` one.** The refusal it forces is a
+        // `CompileError`, so `compile` exits **2** — and `check()` refuses any drill declaring
+        // `exit: 2`, correctly, because it "would read a refusal as a verdict". `doctor` runs the
+        // backends inside its own try and turns the same refusal into a `fail`, which is exit 1 and is
+        // a verdict. Measured on this tree, 2026-09-03: with `edit-on-a-working-branch` flipped to
+        // `gated`, `compile` exits 2, `goldens` stays 0, and `doctor` exits 1 printing the sentence
+        // below.
+        rail: "doctor",
+        perturb: {
+            file: ".portulan/gates.json",
+            // The flip is the whole hazard in one word: this rule's target is `./`, which matches no
+            // path a host submits, and at `auto` that is harmless — the tier is refused before any
+            // target is read. At `gated` it becomes a hollow gate, reported compiled and enforcing
+            // nothing. So the perturbation manufactures exactly the state hole 8 describes, from the
+            // policy this repository actually ships.
+            find: '"id": "edit-on-a-working-branch",\n      "tier": "auto",',
+            replace: '"id": "edit-on-a-working-branch",\n      "tier": "gated",',
+        },
+        exit: 1,
+        // Scoped to the sentence only this refusal prints. `doctor` has other enforcement failures and
+        // a tell like "enforcement" would be satisfied by any of them.
+        tell: "matches no path a host can submit",
+        why: "A gate whose target can never match is the one defect this repository cannot see by reading a policy: the compiler reports it COMPILED and `doctor` counts it covered, so the gate map, the artifact and the report all agree about a gate that enforces nothing. Hole 8 of the gate map, closed by #337's option 3 — and the only rail that can watch the closure is the one whose exit is a verdict rather than a refusal.",
+    },
+    {
         rail: "tests",
         perturb: {
             create: "cli/drill.test.mjs",

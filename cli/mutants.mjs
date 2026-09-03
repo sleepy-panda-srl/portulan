@@ -233,8 +233,14 @@ export const OPERATORS = [
     {
         id: "matchesPath-stops-stripping-a-leading-dot-slash",
         member: "matchesPath",
-        find: "const clean = String(target ?? \"\").replace(/^\\.\\//, \"\").replace(/^\\/+/, \"\");",
-        replace: "const clean = String(target ?? \"\").replace(/^\\/+/, \"\");",
+        // **The anchor carries the line BELOW it, and that is not decoration.** `neverMatches` in the
+        // same file re-spells this strip — deliberately, so that predicate reads without `matchesPath`
+        // in front of you — and the moment it did, this operator placed TWICE and the whole census
+        // exited 2: could-not-run wearing a pass's clothes, over a cause no reader would guess from the
+        // exit code. The recipe's own advice is to lengthen the anchor until it is unique, and the
+        // `if (clean === ...)` guard is the line only `matchesPath` has. Measured 2026-09-03.
+        find: "const clean = String(target ?? \"\").replace(/^\\.\\//, \"\").replace(/^\\/+/, \"\");\n    if (clean === \"\" || clean === \"/\") return false;",
+        replace: "const clean = String(target ?? \"\").replace(/^\\/+/, \"\");\n    if (clean === \"\" || clean === \"/\") return false;",
         outcome: "killed",
         why: "A target written `./docs/vision.md` stops matching; and `./` stops reducing to empty, which moves hole 8.",
     },

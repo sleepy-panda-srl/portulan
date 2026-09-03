@@ -29,17 +29,18 @@ keeps the row's own word; the tools take a narrower one.
 
 ## What is built today
 
-**Seven clauses of row 8, of nine, and an eighth built to its mechanism but not to its instance.** (a), adversarial fixtures per compiled gate, landed 2026-08-24;
+**Eight clauses of row 8, of nine, and a ninth built to its mechanism but not to its instance.** (a), adversarial fixtures per compiled gate, landed 2026-08-24;
 **(b)**, mutation testing over both matchers and grammar-aware fuzzing over the shell segmenter,
 landed 2026-08-25; **(d)**, scheduled forced-red drills, landed 2026-08-25; **(c)**, review-loop
 metering, landed 2026-08-26; **golden tasks per core skill** — the row's original first subject —
-landed 2026-08-26; **OTel opt-in config** landed 2026-08-28; and **the A/B baseline** landed 2026-08-31,
+landed 2026-08-26; **OTel opt-in config** landed 2026-08-28; **the A/B baseline** landed 2026-08-31,
 across three sessions the maintainer split at construction | grading | running — 6b the arms, 6c the
-graders, **6d the run**. **A release carries an eval result** landed as a *mechanism*
+graders, **6d the run**; and **a rule change merged or rejected on eval evidence** landed 2026-09-03,
+its own section below. **A release carries an eval result** landed as a *mechanism*
 2026-09-01 — the record layer, the rail and its forced-red drill — and is **half-vouched**, the row's own
 word for a clause whose demonstration is owed to an event that has not happened yet: this repository has
-cut no release since the clause acquired an owner, so no release carries one. **One clause remains
-outright** — a rule change merged or rejected on eval evidence. Each is listed below with the sentence
+cut no release since the clause acquired an owner, so no release carries one. **Nothing remains
+outright.** Each is listed below with the sentence
 [`../.portulan/dod.md`](../.portulan/dod.md) condition 4 requires.
 
 ## The A/B baseline — what 40 turns measured, and what they did not
@@ -230,8 +231,17 @@ A hole nobody had recorded: **a rule whose target is the whole repository (`./`)
 runtime.** `matchesPath` reduces `"./"` to the empty string and then refuses the empty string, so
 `edit-on-a-working-branch` and `read-anything-in-the-repository` answer false for every input. Nothing
 is mis-enforced today — both are `auto`, and neither layer ever asks — but a **gated** rule written
-that way would compile to a permission rule covering the tree and a matcher covering nothing. Now
-entry 8 of [`../.portulan/gate-map.md`](../.portulan/gate-map.md)'s honest-holes list, tracked as [#337](https://github.com/sleepy-panda-srl/portulan/issues/337), and asserted here.
+that way would compile to a named permission surface while the matcher covered nothing. Now
+entry 8 of [`../.portulan/gate-map.md`](../.portulan/gate-map.md)'s honest-holes list, tracked as [#337](https://github.com/sleepy-panda-srl/portulan/issues/337), asserted here, and **closed at the
+enforcing tiers on 2026-09-03** — see *A rule change decided on eval evidence* below.
+
+_(This paragraph said the gated rule **"would compile to a permission rule covering the tree"**, and
+that was wrong in a way worth keeping rather than quietly deleting: re-derived on 2026-09-03, a real
+target compiles to a `**` glob and `./` does not — the emitted spec is the bare `Edit(./)`, whose host
+meaning this repository installs nothing to measure. Either reading is a hazard, and the one this
+repository can measure offline is the narrower and sharper one: the compiler reports the rule **compiled**
+while the matcher answers false for every input. Corrected under
+[`../.portulan/proposals/0022-a-claim-about-a-mechanism-is-re-derived-like-a-figure.md`](../.portulan/proposals/0022-a-claim-about-a-mechanism-is-re-derived-like-a-figure.md).)_
 
 Ten of the corpus's own hand-written expectations were refuted by the rail on the same run, which is
 the argument for the rail in one sentence.
@@ -284,8 +294,8 @@ weekly — is a watcher, so it owes its own observation under
 [`../.portulan/proposals/0007-every-watcher-ships-with-its-observation-procedure.md`](../.portulan/proposals/0007-every-watcher-ships-with-its-observation-procedure.md):
 `workflow_dispatch` is **answered** — run
 [`32883413709`](https://github.com/sleepy-panda-srl/portulan/actions/runs/32883413709) on `da9c06e`, 21 of
-21 — and the **schedule** is answered by its first run and nothing earlier. **Until that run the calendar
-is half-vouched, and the unvouched half's silence is not evidence.** And a *missing* run stays undetectable — that is `0007`'s silence problem one altitude up,
+21 — and the **schedule** is answered by its first run and nothing earlier. **The schedule has now answered
+twice, and both runs — with the dispatch before them — are in [`../.portulan/verify/README.md`](../.portulan/verify/README.md), the one carrier of that answer.** And a *missing* run stays undetectable — that is `0007`'s silence problem one altitude up,
 tracked as [#344](https://github.com/sleepy-panda-srl/portulan/issues/344) rather than built.
 
 _This paragraph said the gap was already **filed** — the fifth carrier of that sentence, and the one a
@@ -775,13 +785,91 @@ directions, so a record for a release that was never cut reds as well.
   moves the boundary so an already-cut release becomes governed and requires the rail to fire; it fired
   on 2026-09-01. A drill is not a release.
 
+## A rule change decided on eval evidence — the ninth clause
+
+**The clause is instance-shaped, and this is the instance.** Row 8 asks that *a rule change merges or
+is rejected on eval evidence*, and until 2026-09-03 the honest sentence in this file was that **every
+rule in [`../.portulan/memory/`](../.portulan/memory/) had been merged on review alone**. What changed
+is not that a rule was minted — rules are minted often — but that a **decision between three drafted
+answers was made by running the instruments** rather than by argument.
+
+**The rule change.** Hole 8 of [`../.portulan/gate-map.md`](../.portulan/gate-map.md): a `gated` or
+`prohibited` gate rule whose path target can never match compiles to a named permission surface while
+the runtime matcher answers false for every input — a gate reported as covered that enforces nothing.
+[#337](https://github.com/sleepy-panda-srl/portulan/issues/337) set out three defensible answers and
+presumed none, precisely so the choice could be made on evidence.
+
+**The evidence, measured on this tree.** Each candidate applied as a scratch mutation — `cli/mutants.mjs`'
+own technique — and every instrument run and read:
+
+| candidate | `compile` | `goldens` | `mutants` | `doctor` | `tests` |
+|---|---|---|---|---|---|
+| baseline (`main`) | 0 | 0 | 0 | 0 | 0 |
+| **1** — refuse it at `parse`, every tier | **2** | **2** | **2** | **1** | **1** |
+| **2** — make `./` match the tree | 0 | **1** | **2** | 0 | **1** |
+| **3** — refuse it in the backend that enforces | 0 | 0 | 0 | 0 | 0 |
+| **the hazard itself**, on a clean `main` clone — `edit-on-a-working-branch` flipped to `gated` | 1 | 0 | 0 | **0** | 1 |
+| **the hazard itself**, on this tree | **2** | 0 | 0 | **1** | 1 |
+
+**What the table decided, and what it did not.** Option 1 is **rejected on the measurement**: this
+workspace's own policy carries two `auto` rules written `write: "./"` and `read: "./"`, so refusing the
+shape at `parse` takes their spelling — three instruments could not run and two went red, and
+*could-not-run* is the worse of the two outcomes because it reports nothing about the tree. That is
+#337's own prediction re-derived rather than quoted. Option 2's reds are **not** a rejection and must not
+be read as one: they are the record-keeping rails firing exactly as designed — `goldens` reds whenever the
+documented hole moves, *including when it closes*, and `cli/mutants.mjs` already records that same edit
+as the operator `matchesPath-admits-the-empty-target`, `killed`, with the note *"CLOSES hole 8 … the
+good-news direction the corpus exists to catch"*. Its other two reds are that one fact twice more rather
+than three independent objections: `mutants` exits 2 because the census refuses to run over a reddened
+corpus, and the eight suite failures are the cases that **pin** that census and that corpus. Option 2 is
+declined on **authority**: it decides what
+`./` should MEAN as a policy target, which is the question #337 reserves. Option 3 keeps every
+instrument green and closes the hazard, and it is the one taken.
+
+**The last two rows are what decide the merge half.** On the first four rows alone, option 3 and *doing
+nothing* are indistinguishable — both are all-green — so the choice would rest on argument. They grade
+the **defect** instead, by flipping this repository's own `edit-on-a-working-branch` from `auto` to
+`gated`. **Every cell in this table is a verify recipe's exit**, so `compile` there is `compile --check`;
+the clean-clone row is measured on a detached checkout of `main`, not on this tree with a file swapped,
+because a hybrid is neither tree.
+
+**The discriminating cell is `doctor`, and it is the whole argument.** On `main`, `doctor` exits **0**
+over that policy — it counts the hollow gate among *11 of 25 rule(s) compiled* and names five gates no
+backend compiles, none of them this one, so the tree reports the rule as covered and nothing contradicts
+it. On this tree it exits **1**, printing the refusal. In write mode the same policy at `main` also
+*emits* the rule, surface `Edit(./) · hook: a Bash command writing ./`; the recipe's **1** is the drift
+that emission causes against the committed artifact, which is a different fact and is why the cell is
+labelled by its instrument.
+
+**`tests` is 1 on both sides and discriminates nothing**, which is stated rather than hidden behind a
+prettier cell: on `main` one case fails, *"every rule is cited under the gate map section matching its
+TIER"*, because the prose still files that rule under Auto; on this tree sixteen do — **eight**
+because the new drill's anchor searches for the `"tier": "auto"` line the fixture rewrote, **seven**
+because the refusal fires, and one that fails on `main` too. Both are
+artefacts of perturbing a policy the suite pins, on either tree, and neither says anything about the
+change.
+
+**So the clause discharges as *merges on eval evidence*, with option 1 a measured-cost rejection** — and
+the second half of *"merges or is rejected"* is not overclaimed beyond that.
+
+**What the rail is.** The predicate `neverMatches` in [`../cli/compile.mjs`](../cli/compile.mjs), the
+backend refusal beside `HOST_GATE_TIERS`, a suite block that goes red in five cases when the refusal is
+disabled, and a second forced-red drill on the `doctor` rail — `doctor` rather than `compile`, because a
+`CompileError` exits 2 and `cli/drills.mjs`'s coverage check refuses a drill declaring `exit: 2`, on the
+ground that it *"would read a refusal as a verdict"*.
+
+**Its limits, in the shape this directory asks for.** The refusal is at **compile** time, not at the
+hook: `cli/gate.mjs` reads the policy through `parse`, which this change deliberately does not touch, so
+a workspace that has already committed such a rule still loads it at run time and the hook steps aside
+because nothing matched. And the hazard cannot live in the gate corpus itself — `cli/goldens.mjs`
+derives its denominator from the **yielded policy**, and adding a `gated` `./` rule to `gates.json` to
+satisfy a corpus would be manufacturing the defect. The suite block and the drill are its home.
+
 ## What is NOT built yet
 
 Each names where it arrives, per [`../.portulan/dod.md`](../.portulan/dod.md) condition 4 — nothing
 here claims a capability that does not exist:
 
-- **A rule change merged or rejected on eval evidence** — arrives in milestone 8, a later session.
-  Every rule in [`../.portulan/memory/`](../.portulan/memory/) to date was merged on review alone.
 - **A release actually carrying an eval result.** The mechanism is built — its section is above — and the
   instance is not, because no release has been cut since the clause acquired an owner. **Ruled 2026-09-01:
   it waits for a real cut**, and the release is done once milestone 8's other work is finished — so this

@@ -2,9 +2,10 @@
 
 > Generated from `handoffs/` by `node cli/index.mjs`. Do not edit by hand: it is regenerated
 > and byte-compared, so a hand-edit survives exactly until the next run.
-> 163 handoff(s), newest first. No budget: the series is append-only, so
+> 164 handoff(s), newest first. No budget: the series is append-only, so
 > the only remedy a budget could ask for is one this project rules out.
 
+- 2026-09-03 · [2026-09-03 — A rule change decided by the instruments, and two of my own claims falsified](handoffs/2026-09-03-a-rule-change-decided-by-the-instruments.md)
 - 2026-09-02 · [2026-09-02 — The probe hung on an unseeded home, and I published the wrong reason for it](handoffs/2026-09-02-the-probe-hung-on-an-unseeded-home.md)
 - 2026-09-02 · [2026-09-02 — The probe deleted its own evidence, and counted a killed run's firings as this one's](handoffs/2026-09-02-d-the-probe-deleted-its-own-evidence.md)
 - 2026-09-02 · [2026-09-02 — The cap was keyed to an identity the host was free to rotate](handoffs/2026-09-02-c-the-cap-was-keyed-to-an-identity-that-rotates.md)

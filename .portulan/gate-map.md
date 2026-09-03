@@ -501,6 +501,14 @@ exactly one of **compiled** or **refused with a stated reason**, and the counts 
 because the distinctive failure of a compiler that emits gate machinery is a rule that goes in and nothing
 comes out: the map reads as configured and the machine enforces nothing.
 
+**There is a third outcome, and it is not a per-rule one — it refuses the whole compile.** Since
+2026-09-03 a **`gated` or `prohibited`** rule whose path target can never match any path a host submits
+raises a `CompileError`, so the run is **could-not-run** and no artifact is written. It is deliberately
+not a `refused` row: `refused` is the accounting for a rule a backend legitimately declines, and it exits
+0 having written the artifact without that rule — which would leave `doctor` reporting a gate the policy
+declares and nothing enforces as ordinary non-coverage. A policy that cannot be enforced as written is
+malformed rather than partially covered. Honest holes, entry 8, carries the argument and the residue.
+
 **Two backends read this policy, and what each refuses is different.** The refusals below are the
 **Claude Code** backend's — the host on this machine. Since milestone 4 session 1 there is a second, the
 **GitHub repository ruleset** in [`compile/github-ruleset.json`](compile/github-ruleset.json), which is
@@ -827,19 +835,75 @@ Corrected here rather than left, because a gate map that overstates a hole is as
 
    **Nothing is mis-enforced today, and the reason is the whole shape of this entry.** Both rules are
    `auto`; the compiler refuses the `auto` tier wholesale, and [`cli/gate.mjs`](../cli/gate.mjs) reads
-   only `gated` and `prohibited`, so neither layer ever asks. What exists is a divergence waiting for
-   its first author: a **gated** or **prohibited** rule written `./` would compile to a permission rule
-   that covers the tree and a runtime matcher that covers nothing — a partial gate that looks from the
-   outside exactly like a whole one, which is hole 3's failure mode reached by a different road.
+   only `gated` and `prohibited`, so neither layer ever asks. What existed, **until this entry's closure below on
+   2026-09-03**, was a divergence waiting for its first author: a **gated** or **prohibited** rule written
+   `./` compiled to a named permission surface — the bare `Edit(./)` — while the runtime matcher covered
+   nothing, so the compiler reported it **compiled** and `doctor` counted it covered: a partial gate that looks from the outside exactly like a
+   whole one, which is hole 3's failure mode reached by a different road. _(This sentence read *"a
+   permission rule that covers the tree"* until 2026-09-03. Re-derived: a real target compiles to a `**`
+   glob and `./` does not, so what is emitted is the bare spec and what a host makes of it this
+   repository installs nothing to measure. Either reading is a hazard; the one measurable here is the
+   accounting.)_
 
    This is the same class as the path-prefix divergence [`cli/compile.mjs`](../cli/compile.mjs) records
    at `matchesRule`, and it was found the same way that one's cost was: by attacking the matcher rather
    than reading it. Recorded here and asserted in
    [`evals/goldens/gates/`](../evals/goldens/gates/) as `documented-hole` cases, so if someone repairs
-   `matchesPath` the corpus goes red until this entry is updated. **Not repaired in the change that
-   found it** — deciding what `./` should mean at the write matcher is a policy question about the
-   widest possible target, and one of those at a time is the honest order. Tracked as [#337](https://github.com/sleepy-panda-srl/portulan/issues/337), which
+   `matchesPath` the corpus goes red until this entry is updated. Tracked as [#337](https://github.com/sleepy-panda-srl/portulan/issues/337), which
    sets out the three defensible answers rather than presuming one.
+
+   **CLOSED at the enforcing tiers, 2026-09-03 — and the entry stays, because only half of it closed.**
+   The change that closed it took #337's **option 3**, the narrowest of the three: the Claude Code
+   backend now refuses outright — a `CompileError`, so the compile is could-not-run rather than a
+   partial artifact — a **`gated` or `prohibited`** rule whose path target can never match. The
+   predicate is `neverMatches` in [`../cli/compile.mjs`](../cli/compile.mjs), derived from that file's
+   own `normalisePath`, and the refusal sits beside `HOST_GATE_TIERS` rather than at `parse`, because
+   `parse` holds no tier partition by a decision its own docblock records. So the hazard this entry
+   was written about — a hollow gate reported as compiled — can no longer be **compiled**, and so can no
+   longer merge: `compile` exits 2 and `doctor` exits 1, and both run inside `workspace-verify`, whose
+   loop fails the required check on any non-zero recipe. **Nothing fires at commit time**, and the reason
+   is the tier rather than the absence of a reader: `commit-to-a-working-branch` is `auto`, and
+   [`../cli/gate.mjs`](../cli/gate.mjs) — which *does* read this policy, on every `Bash` call — acts only
+   on `gated` and `prohibited`.
+
+   **What remains, and it is why every case below still expects FALSE.** The two rules above are
+   `auto`, that tier is refused one step earlier, and their targets still answer false for every
+   input: the divergence between what `./` says and what it matches is untouched, because **what `./`
+   should MEAN as a policy target is still nobody's ruling** — option 3 exists precisely to leave that
+   open. And the residue at the hook is real: [`../cli/gate.mjs`](../cli/gate.mjs) reads the policy
+   through `parse`, which this change does not touch, so a workspace that has already committed such a
+   rule still loads it at run time, `matchesRule` answers false, and the hook steps aside because
+   nothing matched. The refusal is at **compile** time — when the artifact that gates the host is
+   written — and not at the hook.
+
+   **The class is wider than the spelling this entry names, and it took several cuts to find its width
+   — [`../cli/compile.mjs`](../cli/compile.mjs)'s `neverMatches` docblock is the one carrier of that arc.**
+   It is not a list of spellings but a comparison: `matchesPath` compares a **tail**, and a host hands
+   over an absolute path with no `.` segment, no empty segment and no backslash — **an assumption about
+   the host, stated rather than measured**, since nothing here controls what `file_path` arrives. The
+   refusal does not rest on it either way: a rule matching only `/repo/x/.` gates nothing anybody meant
+   to gate. So a target whose comparison form is not already normalised is compared against a spelling
+   no candidate can carry. Three families fall under it. **Targets that reduce
+   to nothing** — `./` `.` `./.` `././` `.//` — compiling to `Edit(./)`, `Edit(./.)` or, for `././`, the
+   real subtree glob `Edit(././**)`. And **targets with an interior `.` or empty segment** —
+   `docs/./vision.md`, `docs//vision.md`, `docs//`, `docs/.`, `./docs/./`, `docs/vision.md/.` — each
+   compiling to a named surface on a real-looking path, which is strictly more misleading than
+   `Edit(./)` and is the same hollow gate. **And a third: a target carrying a backslash** —
+   `docs\\vision.md`, `docs\\` — which `matchesPath` can never match, because it normalises the
+   *candidate*'s backslashes to `/` and never the target's; that one holds on every platform and has no
+   conditional reading at all. Thirteen measured, against `docs/` `./docs/` `docs/vision.md`
+   `core/operating/loop.md` as controls that must stay matchable; `docs//` is hollow and `docs/` is not,
+   which is why exactly one trailing slash is read as *the subtree* and removed before the comparison.
+
+   _(The first cut of the predicate asked only whether a target reduced to **empty**. It caught the
+   first family, and three carriers of its prose — this entry among them — claimed the class. Found at
+   a pre-commit checkpoint by probing the neighbouring spellings rather than by re-reading the sentence;
+   the third went the same way one grade later. Each time the checkpoint offered narrowing the prose as
+   an equally honest repair and each time the predicate was widened instead, because defining a class by
+   the examples it was written for is
+   [`0020`](proposals/0020-a-fix-is-not-done-at-the-site-it-was-found.md)'s shape. **Three forced reds
+   hold it**: disabling the refusal reds six suite cases, narrowing the predicate to normalise-to-empty
+   reds five, and dropping the backslash arm alone reds four.)_
 
 All of which is the same point: **this layer is a convenience above a rail, not the rail.** The rail is the
 platform floor below, which refuses the push at the server regardless of what any local file says, and is
@@ -1444,7 +1508,7 @@ worked examples of what the rule asks for:
 | Dependabot version updates | the pin was deliberately regressed one patch to v7.0.0; Dependabot opened the bump back to v7.0.1, and merging that was simultaneously the proof and the revert |
 | Dependency graph, alerts, security updates | the SBOM went `404` → `200`, and then tracked a pin *through a change* — which the first reading alone could not have shown |
 | Copilot auto-review ruleset | recorded as unvouched-for with its test stated in advance — the first pull request opened after `09:30:38Z` — and Copilot was then requested on that pull request at open, unasked |
-| The forced-red drill calendar — [`../.github/workflows/drills.yml`](../.github/workflows/drills.yml), 2026-08-25 | **Split, because its two halves are answerable at different times, and the procedure is written before either answer exists.** The **sweep** is demonstrated: `node cli/drills.mjs` forced all twenty-one rails red by hand on 2026-08-25 and every one fired, transcript in that session's handoff. The **`workflow_dispatch`** half is **observed**: run [`32883413709`](https://github.com/sleepy-panda-srl/portulan/actions/runs/32883413709), dispatched on `da9c06e` immediately after the merge put the file on the default branch, 21 of 21 forced red and fired — recorded in [`verify/README.md`](verify/README.md)'s register, which is where the procedure said it would go. The **`schedule`** half is answered by the first Thursday run and by nothing earlier, so until that run this calendar is **half-vouched** — the dispatch answered, the schedule not — and **the unvouched half's silence is not evidence**. _(This clause read *"until then this calendar is unvouched"* after the dispatch was recorded one sentence above it, which contradicted the split the same row establishes and the wording the two other carriers had already taken. A row that observes one half and then calls the whole thing unvouched is the carrier disagreement this file's own header warns about, inside the row whose subject is halves answered at different times. Copilot, round 1 on #349.)_ |
+| The forced-red drill calendar — [`../.github/workflows/drills.yml`](../.github/workflows/drills.yml), 2026-08-25 | **Split, because its two halves are answerable at different times, and the procedure is written before either answer exists.** The **sweep** is demonstrated: `node cli/drills.mjs` forced all twenty-one rails red by hand on 2026-08-25 and every one fired, transcript in that session's handoff. The **`workflow_dispatch`** half is **observed**: run [`32883413709`](https://github.com/sleepy-panda-srl/portulan/actions/runs/32883413709), dispatched on `da9c06e` immediately after the merge put the file on the default branch, 21 of 21 forced red and fired — recorded in [`verify/README.md`](verify/README.md)'s register, which is where the procedure said it would go. The **`schedule`** half was answered by the first Thursday run and by nothing earlier; **it has now answered twice**, and both runs — with the dispatch above them — are in [`verify/README.md`](verify/README.md)'s register, which is the **one carrier** of that answer and the place to read it from rather than this row. What is unchanged is that **a silence is still not evidence**: a scheduled run that never starts stays undetectable from inside ([#344](https://github.com/sleepy-panda-srl/portulan/issues/344)), so *the schedule is vouched* and *a missing run would be noticed* are two claims and only the first is true. _(This clause read *"until then this calendar is unvouched"* after the dispatch was recorded one sentence above it, which contradicted the split the same row establishes and the wording the two other carriers had already taken. A row that observes one half and then calls the whole thing unvouched is the carrier disagreement this file's own header warns about, inside the row whose subject is halves answered at different times. Copilot, round 1 on #349.)_ |
 
 **The honest limits, because the rule is weaker than it sounds.** Nothing here checks it: whether a watcher
 works is a fact about live services, and `doctor` already reports live settings as something it does not
