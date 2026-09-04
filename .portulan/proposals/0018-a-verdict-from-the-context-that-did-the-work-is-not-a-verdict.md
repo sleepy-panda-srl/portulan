@@ -101,11 +101,22 @@ a defect rather than a preference.
 | **Pack** | the procedure: named moments, a persona to staff them, a verdict vocabulary | the lane boundary; a standard of its own | `packs/rituals/checkpoints/` — which already refuses both |
 | **Workspace** | the threshold (which work crosses into the full lane), the who, the recording surface | a lowering of core's floor | `.portulan/gate-map.md` § Supervised-build checkpoints; `dod.md` conditions 7 and 8 |
 
-**Model names never enter core.** That Opus 5 implements and Fable 5 supervises is customer zero's
-instantiation, recorded in [`../../docs/plan.md`](../../docs/plan.md)'s protocol and in
-[`../identity.md`](../identity.md), and it is exactly the kind of specific
+**Model names never enter core.** *Which* models fill the two tiers is customer zero's instantiation,
+recorded in [`../../docs/plan.md`](../../docs/plan.md)'s Protocol — **one carrier, and this sentence
+cites it rather than restating it**. It is exactly the kind of specific
 [`../../docs/vision.md`](../../docs/vision.md) thesis 6 says persists only in the layer its owner
 controls.
+
+_(Corrected 2026-09-04, and the correction is kept here rather than applied silently, because this
+file is a merged record. It read: *"That Opus 5 implements and **Fable 5** supervises … recorded in
+`docs/plan.md`'s protocol and in `identity.md`"*. Two faults. **The citation named two carriers and
+neither held the fact** — measured at `6e8a5ed0`, `identity.md` names no model at all, and the Protocol
+named only the implementer's band. **And the supervisor's name had gone stale**: the checkpoint
+subagents this repository runs are requested by the alias `fable`, whose resolved model answers
+**Fable 5.1** when asked to quote its own system context. Whether the id `claude-fable-5` still resolves
+was **not measured**, so nothing here claims it does not. The sentence now names no model and cites the
+one place that does, which is [`0020`](0020-a-fix-is-not-done-at-the-site-it-was-found.md)'s repair
+applied to a citation rather than to an enforcement site.)_
 
 ## Provenance — this build's own record, verified at source
 
