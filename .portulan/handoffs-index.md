@@ -2,10 +2,11 @@
 
 > Generated from `handoffs/` by `node cli/index.mjs`. Do not edit by hand: it is regenerated
 > and byte-compared, so a hand-edit survives exactly until the next run.
-> 165 handoff(s), newest first. No budget: the series is append-only, so
+> 166 handoff(s), newest first. No budget: the series is append-only, so
 > the only remedy a budget could ask for is one this project rules out.
 
 - 2026-09-07 · [Handoff — the librarian's scheduled pass](handoffs/2026-09-07-librarian-pass.md)
+- 2026-09-04 · [2026-09-04 — The records named a supervisor the alias no longer resolves to, and the citation named two homes with nothing in either](handoffs/2026-09-04-the-records-named-a-supervisor-the-alias-no-longer-resolves-to.md)
 - 2026-09-03 · [2026-09-03 — A rule change decided by the instruments, and two of my own claims falsified](handoffs/2026-09-03-a-rule-change-decided-by-the-instruments.md)
 - 2026-09-02 · [2026-09-02 — The probe hung on an unseeded home, and I published the wrong reason for it](handoffs/2026-09-02-the-probe-hung-on-an-unseeded-home.md)
 - 2026-09-02 · [2026-09-02 — The probe deleted its own evidence, and counted a killed run's firings as this one's](handoffs/2026-09-02-d-the-probe-deleted-its-own-evidence.md)
