@@ -2772,3 +2772,13 @@ _The seam applies here too: no client-identifying references._
   inflated figure into row 8's close evidence. Truncated at probe start. `ab.mjs`'s last *"whole cause"*
   claim from #404 is corrected. · 26 recipes green; two mutations caught · Seam scan clean ·
   [handoff](../.portulan/handoffs/2026-09-02-d-the-probe-deleted-its-own-evidence.md)
+
+- 2026-09-07 · M5 (Memory lifecycle & librarian) · **Scheduled librarian pass**, filed by
+  `cli/librarian.mjs` rather than by a person: 2 workspaces passed,
+  0 stale record(s), 0 sealed stamp(s) due for re-validation, 0 proposal(s) nagged, no index drift.
+  · Mined: 14 incident(s) with nothing pointing back at them, 79 path(s) drawing
+  repeat review findings, 3 record group(s) citing one incident.
+  · No supervisor checkpoint: a scheduled pass makes no decision for one to grade.
+  · Seam scan clean by construction — this pass composes no new prose at run time, so its
+  diff carries nothing the scan had not already passed.
+  Handoff: [`2026-09-07`](../.portulan/handoffs/2026-09-07-librarian-pass.md).
