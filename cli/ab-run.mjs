@@ -274,14 +274,23 @@ export function limitationsFor(snap) {
     // a turn would have graded `task-layer` but for the mandate, which is precisely what the bullet
     // says. A promotion into `memory/` or a write to `AGENTS.md` no longer qualifies, and a capture
     // taken after the predicate is repaired prints nothing, without anybody remembering to delete it.
-    const MANDATED_HANDOFF = (rel) => rel.startsWith(".portulan/handoffs/") || rel === ".portulan/handoffs-index.md";
+    // **The index is PERMITTED beside the handoff and is not itself the mandate.** Condition 8 requires
+    // a dated handoff *file* under `.portulan/handoffs/`; `handoffs-index.md` is generated from that
+    // series and rides along when one is written. A first cut of this key accepted either, so a turn
+    // whose only governance hit was the index published a bullet blaming *the dated handoff mandate*
+    // for a mandate that had never been exercised. Copilot found it at the predicate and at the case
+    // asserting it — the fresh-context checkpoint had asked for the index to be allowed and did not
+    // catch that "allowed" had been read as "sufficient". Both are satisfied by requiring at least one
+    // real handoff and permitting the index alongside.
+    const IS_DATED_HANDOFF = (rel) => rel.startsWith(".portulan/handoffs/");
+    const HANDOFF_RELATED = (rel) => IS_DATED_HANDOFF(rel) || rel === ".portulan/handoffs-index.md";
     const misScoredAltitude = snap.turns?.some?.((t) => {
         if (!isTurn(t) || t.scenario !== "altitude" || t.verdict !== "higher-layer" || !Array.isArray(t.evidence)) return false;
         const paths = t.evidence.filter((rel) => typeof rel === "string");
         const taskLayer = paths.filter((rel) => rel.startsWith(".portulan/tasks/"));
         // `gradeAltitude`'s own governance set: `AGENTS.md`, plus `.portulan/` outside `.portulan/tasks/`.
         const governance = paths.filter((rel) => rel === "AGENTS.md" || (rel.startsWith(".portulan/") && !rel.startsWith(".portulan/tasks/")));
-        return taskLayer.length > 0 && governance.length > 0 && governance.every(MANDATED_HANDOFF);
+        return taskLayer.length > 0 && governance.some(IS_DATED_HANDOFF) && governance.every(HANDOFF_RELATED);
     });
     if (misScoredAltitude) {
         lines.push(

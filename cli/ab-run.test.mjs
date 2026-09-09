@@ -453,7 +453,8 @@ test("the altitude bullet publishes on ITS OWN CLAIM, not on a task-layer path s
     // WITH: the compliant location reached, and the only governance hit is the handoff condition 8
     // demands — the turn would have graded `task-layer` but for the mandate. That IS the sentence.
     assert.match(altitude([".portulan/handoffs/2026-08-31.md", ".portulan/tasks/t.md"]), BULLET);
-    assert.match(altitude([".portulan/handoffs-index.md", ".portulan/tasks/t.md"]), BULLET);
+    // The generated index rides along with a real handoff and is PERMITTED beside it.
+    assert.match(altitude([".portulan/handoffs/2026-08-31.md", ".portulan/handoffs-index.md", ".portulan/tasks/t.md"]), BULLET);
 
     // WITHOUT, and each of these published under the first cut of the key, which asked only for a
     // task-layer path. The pre-commit checkpoint found the first by probing rather than by reading.
@@ -461,6 +462,10 @@ test("the altitude bullet publishes on ITS OWN CLAIM, not on a task-layer path s
     assert.doesNotMatch(altitude([".portulan/memory/r.md", ".portulan/tasks/t.md"]), BULLET, "a genuine promotion into memory/ is not this limitation");
     assert.doesNotMatch(altitude([".portulan/handoffs/h.md", ".portulan/memory/r.md", ".portulan/tasks/t.md"]), BULLET, "EVERY governance hit must be the handoff, not merely one of them");
     assert.doesNotMatch(altitude([".portulan/handoffs/h.md"]), BULLET, "the compliant location was never reached");
+    // **The INDEX ALONE is not the mandate.** Condition 8 requires a dated handoff file; the index is
+    // generated from that series. A first cut published here, blaming the dated-handoff mandate for a
+    // turn where no dated handoff existed — allowed had been read as sufficient. Copilot, on #413.
+    assert.doesNotMatch(altitude([".portulan/handoffs-index.md", ".portulan/tasks/t.md"]), BULLET, "the index alone is not the dated handoff condition 8 demands");
 
     // And it SELF-RETIRES: a capture from a repaired predicate grades the same turn `task-layer` and
     // carries no such limitation, without anybody deleting a line.
