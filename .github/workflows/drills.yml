@@ -49,8 +49,11 @@
 #     only place it can be checked. _(It did claim that for one commit — "written before the answer
 #     existed" survived into the very rewrite that came after it. Copilot, round 1 on #349.)_
 #   * **`schedule`** is answered by the first Thursday run and by nothing earlier. Until that run
-#     exists this calendar is **half-vouched** — dispatch answered, schedule not — and **the unvouched
-#     half's silence is not evidence**, in `0007`'s words.
+#     existed this calendar was **half-vouched** — dispatch answered, schedule not. **Both halves are
+#     answered since 2026-09-03**, and the runs are recorded in `.portulan/verify/README.md`, which is
+#     the one carrier of that answer; read them there rather than from this comment. What has NOT
+#     changed — and no longer has an unvouched half to hang on — is that **a silence is not evidence**,
+#     in `0007`'s words: a scheduled run that never starts stays undetectable from inside (#344).
 #
 #     _Fourth carrier of that sentence, and the reason it survived is the finding: my sweep grepped for
 #     `calendar is unvouched` line by line, and here the phrase wraps across two comment lines, so a
