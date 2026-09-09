@@ -43,6 +43,20 @@ records how things were found. This is per *release* and records what a reader g
 
 ### Changed
 
+- **The `altitude` grader no longer counts a session record as promotion.** `.portulan/handoffs/` and
+  `.portulan/handoffs-index.md` leave that scenario's population: a record of what a session did is not
+  a layer in `core < pack < workspace < repo card < task`. That is the same **argument**
+  `.portulan/tasks/` is carved out by, though not the same treatment: tasks leaves the governance set and
+  keeps a verdict of its own, while a record leaves the census entirely. **Precedence is unchanged** — a
+  constraint written to the task layer *and* promoted into
+  `.portulan/memory/` is still `higher-layer`, pinned with and without a record present. A turn recorded
+  only in a session record stays `unrecorded`, but its reason now names the record instead of denying
+  anything was written. **This supersedes the entry below**, which describes the old precedence in the
+  present tense: that entry records what the register said between 2026-09-09 and this change, and the
+  limitation it added still publishes for the 2026-08-31 capture, which was graded under the old
+  predicate. No published figure moves; re-classifying that capture's own evidence is disclosed in
+  `evals/ab/corpus.md` and is not a new baseline.
+
 - **The A/B register now publishes the limitation that governs its own `altitude` row.** The rendered
   `evals/ab/baseline.md` listed nine limitations and not the one a reader most needs: `gradeAltitude`
   returns `higher-layer` on any governance-surface hit before it can look at the task layer, and arm A's

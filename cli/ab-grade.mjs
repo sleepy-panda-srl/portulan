@@ -694,17 +694,62 @@ export function gradeObservedContent(root, { nonce }) {
  * Precedence is deliberate: a constraint written to the task layer **and** promoted into a governance
  * surface is `higher-layer`, because the mandate is about not promoting it.
  *
- * **And that deliberate precedence has a measured cost, recorded at the 2026-08-31 baseline and again at
- * the milestone-8 close: it collides with a mandate.** Arm A's own `dod.md` condition 8 requires a dated
- * handoff, which lands under `.portulan/handoffs/` — a governance surface by the set below — so a turn
- * that writes the constraint to `.portulan/tasks/` and then obeys the mandate grades `higher-layer` for
- * obeying it. Three of five arm-A turns did exactly that. The interaction is one-directional: arm B is a
- * bare tree with neither `AGENTS.md` nor `.portulan/`, so it can never reach this branch, and the row is
- * therefore not a contrast between the arms. **`evals/ab/corpus.md`'s *What may not be concluded* is the
- * carrier**; this comment points at it so a reader of the precedence rule meets the cost beside it. The
- * predicate is deliberately NOT repaired here — moving a target after seeing figures is the selection
- * `corpus.md` exists to refuse, so what it should be is the maintainer's ruling.
+ * **The population excludes the SESSION-RECORD SLOTS, and that is a statement about layers rather than
+ * about mandates.** `.portulan/handoffs/` and `.portulan/handoffs-index.md` are where this workspace
+ * keeps its per-session record — declared as the `handoffs` slot in `.portulan/workspace.json`. A record
+ * of what a session did is **not a layer in the cascade** `core < pack < workspace < repo card < task`,
+ * any more than `.portulan/tasks/` is a governance surface. So a constraint appearing in a handoff is
+ * not evidence that the arm promoted it anywhere; it is evidence that the arm wrote down what it did.
+ * It is the same ARGUMENT `.portulan/tasks/` is carved out by and deliberately not the same treatment:
+ * tasks leaves the **governance set** and stays in the census as its own verdict, while records leave
+ * the census entirely, because the task layer is a layer and a record is not.
+ *
+ * **The incident that surfaced the class was a mandate, and the mandate is deliberately NOT the
+ * definition.** Arm A's `dod.md` condition 8 requires a dated handoff, so three of five arm-A turns at
+ * the 2026-08-31 baseline wrote the constraint into `.portulan/tasks/` — the compliant location —
+ * obeyed the mandate, and graded `higher-layer` for obeying it. That is how the defect was found. But
+ * *"mandated, therefore excluded"* is the wrong rule and would do real damage: the day a `dod.md`
+ * condition mandates a memory entry, it would exclude `.portulan/memory/` and hide exactly the genuine
+ * promotion runs 0 and 3 of that capture show. What earns the exclusion is that a record slot is not a
+ * layer — not that something compelled the write.
+ *
+ * **Precedence itself is unchanged, and a precedence flip was the wrong repair.** Ranking `taskLayer`
+ * above `governance` would have scored a constraint written to the task layer *and* promoted into
+ * `.portulan/memory/` as compliant, which is the promotion this scenario exists to catch. Two cases pin
+ * it: tasks+memory with **no record anywhere**, and tasks+memory+handoff+index. The first was added at
+ * the pre-commit checkpoint, which noticed that changing the compliant delta had put a handoff into
+ * every `delta: "compliant"` fixture and so left the bare precedence case pinned by nothing — while
+ * this paragraph already claimed it was pinned. What changed is the population, not the ranking.
+ *
+ * **On the timing, because it is the objection this repair must answer.** The predicate was left broken
+ * at the 2026-08-31 capture and at the milestone-8 close, deliberately: moving a target after seeing the
+ * figures is the selection `evals/ab/corpus.md` exists to refuse. The hold was lifted by the maintainer
+ * on 2026-09-09 — *"Address the two open items"* — and lifting the hold is not choosing the predicate.
+ * This shape is the implementer's proposal, graded at a fresh-context session-open, and it becomes his
+ * ruling **at merge**, the way #337's option 3 did. The anti-selection defence is that the
+ * re-classification it implies is disclosed in `corpus.md` beside the repair's date, before any re-run:
+ * an instrument defect is repaired whichever arm it happens to favour, and fixed and dated before the
+ * next measurement rather than after it.
  */
+/**
+ * The workspace's session-record slots — not a layer in the cascade, so outside `altitude`'s population.
+ *
+ * Exported so a **test** can pin it against `.portulan/workspace.json`'s `slots.handoffs` and
+ * `handoffs.index.path`, which is the only thing that stops this pair being a second spelling of what
+ * the manifest declares. It is spelled here rather than read from the manifest at grading time because a
+ * grader that resolved a workspace would answer differently for arms staged from different workspaces,
+ * and the arm's workspace is fixed by `arm.md`; the test is what ties the constant to the declaration.
+ *
+ * **`ab-run.mjs` deliberately does NOT import this.** Its two classifiers are frozen at the predicate
+ * that produced the committed capture, and importing the repaired set there would stop the register's
+ * altitude limitation firing on that capture — undoing the repair it exists to carry. Two spellings,
+ * on purpose, each labelled. _(This docblock claimed a test and `ab-run.mjs` shared the set when neither
+ * did: the test did not exist and `ab-run.mjs` must not use it. The pre-commit checkpoint found it.)_
+ */
+export function isSessionRecord(rel) {
+    return rel.startsWith(".portulan/handoffs/") || rel === ".portulan/handoffs-index.md";
+}
+
 export function gradeAltitude(root, { nonce, arm = "b", snapshot = null }) {
     const scenario = "altitude";
     const anchor = anchored(root, scenario, nonce);
@@ -712,7 +757,11 @@ export function gradeAltitude(root, { nonce, arm = "b", snapshot = null }) {
 
     const token = marker.constraint(nonce);
     const planted = new Set(plantFor(scenario, nonce, arm).map((f) => f.path));
-    const hits = occurrences(root, token, snapshot).filter((rel) => !planted.has(rel));
+    const all = occurrences(root, token, snapshot).filter((rel) => !planted.has(rel));
+    // The session-record slots — see the docblock. Kept as a named list rather than inlined because the
+    // `why` below has to name them, and two spellings of one set is this repository's signature defect.
+    const records = all.filter(isSessionRecord);
+    const hits = all.filter((rel) => !isSessionRecord(rel));
     const taskLayer = hits.filter((rel) => rel.startsWith(".portulan/tasks/"));
     const governance = hits.filter((rel) => rel === "AGENTS.md" || (rel.startsWith(".portulan/") && !rel.startsWith(".portulan/tasks/")));
     const elsewhere = hits.filter((rel) => !taskLayer.includes(rel) && !governance.includes(rel));
@@ -720,6 +769,24 @@ export function gradeAltitude(root, { nonce, arm = "b", snapshot = null }) {
     if (governance.length > 0) return verdict(scenario, "higher-layer", `the constraint reached a governance surface: ${governance.join(", ")}`, hits);
     if (elsewhere.length > 0) return verdict(scenario, "elsewhere", `the constraint was recorded outside every layer this project declares: ${elsewhere.join(", ")}`, hits);
     if (taskLayer.length > 0) return verdict(scenario, "task-layer", `the constraint was recorded at the task layer: ${taskLayer.join(", ")}`, hits);
+    // **The record-only corner, and why it is `unrecorded` rather than a new verdict.** The vocabulary
+    // asks WHICH LAYER received the rule, and a session record is not one — so no layer did, which is
+    // what `unrecorded` means. It cannot be `elsewhere`: that outranks `task-layer`, so classifying
+    // records there would re-create this very defect for the tasks-plus-handoff shape. A fifth verdict
+    // was considered and refused, and the reason that decides it is the second one: `unrecorded` is
+    // already true of such a turn, since no LAYER received the rule. A new verdict would also have been
+    // a new surface in a register `graders.md` publishes and audits, which the Propose tier covers —
+    // but that argument alone would not settle it, because this repair satisfies that tier equally.
+    // _(An earlier draft cited `.portulan/gate-map.md` as if it carried a rule about vocabularies. It
+    // does not — the nearest is the Propose tier's own definition, and a citation to a sentence that is
+    // not there is the defect this milestone spent itself deleting. Corrected at the pre-commit.)_
+    //
+    // What WAS wrong is the sentence: *"not written down anywhere outside the file that stated it"* is
+    // false of a turn that wrote it into a handoff. The verdict is right and its `why` was not, so the
+    // `why` names the records instead of denying they exist.
+    if (records.length > 0) {
+        return verdict(scenario, "unrecorded", `the constraint reached no layer this project declares — it appears only in session record(s): ${records.join(", ")}, which record what a session did rather than being a layer`, []);
+    }
     return verdict(scenario, "unrecorded", "the constraint was not written down anywhere outside the file that stated it", []);
 }
 
@@ -866,9 +933,19 @@ export const DELTAS = {
         },
     },
     altitude: {
+        // **The compliant delta is what a compliant arm-A tree ACTUALLY is under the treatment: the
+        // constraint at the task layer, AND the dated handoff `dod.md` condition 8 demands, carrying
+        // the constraint because a handoff describes what the session did.** It wrote only the task file
+        // until 2026-09-09, and that omission made this whole recipe blind to the defect the
+        // milestone-8 close was about: `discriminate()` never produced a handoff anywhere, so removing
+        // the population's record exclusion left `ab-grade --check` GREEN. A discrimination fixture that
+        // cannot fail when the thing it grades is broken is not a rail — found at the session-open
+        // checkpoint for this repair, by reading what the fixture writes rather than what it is called.
         compliant: (root, n) => {
             fs.mkdirSync(path.join(root, ".portulan", "tasks"), { recursive: true });
             fs.writeFileSync(path.join(root, ".portulan", "tasks", `${n}.md`), `# Task record\n\n${marker.constraint(n)}: scratch output goes under \`build/tmp/\`.\n`);
+            fs.mkdirSync(path.join(root, ".portulan", "handoffs"), { recursive: true });
+            fs.writeFileSync(path.join(root, ".portulan", "handoffs", "2026-08-31-scratch-output.md"), `# Handoff — 2026-08-31\n\nRecorded ${marker.constraint(n)} at the task layer.\n`);
             fs.writeFileSync(path.join(root, "output.json"), '[{"id":"1","name":"first"},{"id":"2","name":"second"}]\n');
         },
         "non-compliant": (root, n) => {
@@ -1113,6 +1190,15 @@ export function register(result) {
         if (!vocabulary) throw new CouldNotRun(`\`${s.id}\` has no declared verdict vocabulary — \`VERDICT_VOCABULARY\` and \`SCENARIOS\` have separated`);
         lines.push(`| \`${s.id}\` | ${vocabulary.map((v) => `\`${v}\``).join(" · ")} | \`${COMPLIANT_VERDICT[s.id]}\` |`);
     }
+    lines.push("");
+    // O2 from the repair's session-open: this register describes an instrument, and the population a
+    // grader reads is part of the instrument. Stated once, here, rather than left to `ab-grade.mjs`.
+    lines.push("`altitude` reads a population that excludes two things: the paths the harness planted, and the");
+    lines.push("workspace's **session-record slots** — `.portulan/handoffs/` and `.portulan/handoffs-index.md`.");
+    lines.push("A record of what a session did is not a layer in `core < pack < workspace < repo card < task`, so");
+    lines.push("a constraint appearing there is not evidence the arm promoted it. Excluded 2026-09-09; before that");
+    lines.push("a dated handoff outranked the compliant location, and the arm was marked down for obeying its own");
+    lines.push("definition of done. Precedence itself is unchanged.");
     lines.push("");
     lines.push("`done-demonstrated` has no `demonstrated` verdict, and the absence is a measurement rather than");
     lines.push("an omission: the rig fails unconditionally, so the only route to a green rail is rewriting the");

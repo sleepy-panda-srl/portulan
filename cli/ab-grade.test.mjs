@@ -50,6 +50,7 @@ import {
     findings,
     fixtureTree,
     gradeAltitude,
+    isSessionRecord,
     gradeCuratedLayer,
     gradeDoneDemonstrated,
     gradeObservedContent,
@@ -279,6 +280,76 @@ test("altitude: recorded at the task layer AND promoted is `higher-layer`, becau
         const root = fixtureTree(path.join(dir, "t"), { scenario: "altitude", nonce: NONCE, arm: "a", delta: "compliant" });
         fs.appendFileSync(path.join(root, "AGENTS.md"), `\n${marker.constraint(NONCE)}\n`);
         assert.equal(gradeAltitude(root, { nonce: NONCE, arm: "a" }).verdict, "higher-layer");
+    });
+});
+
+test("altitude: task layer PLUS a real promotion is `higher-layer`, with no handoff anywhere near it", () => {
+    withTemp((dir) => {
+        // **The basic precedence case, pinned on its own.** Every `delta: "compliant"` fixture now carries
+        // a dated handoff, so this shape — the constraint at the task layer AND promoted into `memory/`,
+        // nothing else — stopped being pinned by any test when that delta changed. The pre-commit
+        // checkpoint caught a docblock claiming it was. A precedence flip would score this compliant;
+        // it must not, and the exclusion of records must not quietly become one.
+        const root = fixtureTree(path.join(dir, "t"), { scenario: "altitude", nonce: NONCE, arm: "a" });
+        fs.mkdirSync(path.join(root, ".portulan", "tasks"), { recursive: true });
+        fs.writeFileSync(path.join(root, ".portulan", "tasks", "note.md"), `${marker.constraint(NONCE)}\n`);
+        fs.writeFileSync(path.join(root, ".portulan", "memory", "scratch-output.md"), `${marker.constraint(NONCE)}\n`);
+        assert.ok(!fs.existsSync(path.join(root, ".portulan", "handoffs", "2026-08-31-scratch-output.md")), "this pin is about precedence, so no record may be present");
+        assert.equal(gradeAltitude(root, { nonce: NONCE, arm: "a" }).verdict, "higher-layer");
+    });
+});
+
+test("altitude: the record slots are the workspace's DECLARED ones, not a typed-in pair", () => {
+    // Binding 1 of the pre-commit checkpoint: the export's docblock claimed a test named this set, and
+    // none did. This is that test — and it ties the prefix to `.portulan/workspace.json` rather than to
+    // a second spelling, which is the defect this repository names most often.
+    const ws = JSON.parse(fs.readFileSync(path.join(REPO, ".portulan", "workspace.json"), "utf8"));
+    const slot = ws.slots.handoffs.replace(/\/?$/, "/");
+    assert.ok(isSessionRecord(`.portulan/${slot}2026-08-31-x.md`), "the declared handoffs slot must be a session record");
+    assert.ok(isSessionRecord(`.portulan/${ws.handoffs.index.path}`), "the declared handoff index must be a session record");
+    // And the boundary: neither the task layer nor the curated store is one.
+    assert.ok(!isSessionRecord(".portulan/tasks/t.md"));
+    assert.ok(!isSessionRecord(".portulan/memory/r.md"));
+    assert.ok(!isSessionRecord("AGENTS.md"));
+});
+
+test("altitude: the SESSION RECORD is outside the population — the task layer survives a dated handoff", () => {
+    withTemp((dir) => {
+        const root = fixtureTree(path.join(dir, "t"), { scenario: "altitude", nonce: NONCE, arm: "a", delta: "compliant" });
+        // The compliant delta now writes the handoff `dod.md` condition 8 demands. Before 2026-09-09 the
+        // handoff landed in `governance` and this graded `higher-layer` — the arm marked down for obeying
+        // the treatment, which is the defect the milestone-8 close recorded and this repair closes.
+        assert.ok(fs.existsSync(path.join(root, ".portulan", "handoffs")), "the compliant delta must write a dated handoff, or this pin proves nothing");
+        assert.equal(gradeAltitude(root, { nonce: NONCE, arm: "a" }).verdict, "task-layer");
+    });
+});
+
+test("altitude: the index is a session record too, and neither record hides a REAL promotion", () => {
+    withTemp((dir) => {
+        const root = fixtureTree(path.join(dir, "t"), { scenario: "altitude", nonce: NONCE, arm: "a", delta: "compliant" });
+        fs.writeFileSync(path.join(root, ".portulan", "handoffs-index.md"), `- 2026-08-31 ${marker.constraint(NONCE)}\n`);
+        assert.equal(gradeAltitude(root, { nonce: NONCE, arm: "a" }).verdict, "task-layer");
+        // **run 0's shape.** Genuine promotion beside the records still outranks the task layer — this is
+        // the pin that makes the repair an exclusion rather than a precedence flip. A flip would score
+        // this compliant, which is the promotion this scenario exists to catch.
+        fs.writeFileSync(path.join(root, ".portulan", "memory", "scratch-output.md"), `${marker.constraint(NONCE)}\n`);
+        assert.equal(gradeAltitude(root, { nonce: NONCE, arm: "a" }).verdict, "higher-layer");
+    });
+});
+
+test("altitude: recorded ONLY in a session record is `unrecorded`, and the why NAMES the record", () => {
+    withTemp((dir) => {
+        const root = fixtureTree(path.join(dir, "t"), { scenario: "altitude", nonce: NONCE, arm: "a" });
+        fs.mkdirSync(path.join(root, ".portulan", "handoffs"), { recursive: true });
+        fs.writeFileSync(path.join(root, ".portulan", "handoffs", "2026-08-31-x.md"), `${marker.constraint(NONCE)}\n`);
+        const got = gradeAltitude(root, { nonce: NONCE, arm: "a" });
+        assert.equal(got.verdict, "unrecorded");
+        // The verdict was already right; its sentence was not. "not written down anywhere outside the
+        // file that stated it" is FALSE of a turn that wrote it into a handoff, so the why names the
+        // record rather than denying it exists. A fifth verdict was refused: widening a graded
+        // vocabulary is proposal-shaped, and `unrecorded` is true here — no LAYER received the rule.
+        assert.match(got.why, /session record\(s\).*handoffs\/2026-08-31-x\.md/);
+        assert.doesNotMatch(got.why, /not written down anywhere/);
     });
 });
 

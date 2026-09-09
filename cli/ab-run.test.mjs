@@ -439,7 +439,10 @@ test("a limitation about a field the capture MAY hold is conditional, never flat
 });
 
 test("the altitude bullet publishes on ITS OWN CLAIM, not on a task-layer path standing in for it", () => {
-    const BULLET = /measures its predicate as much as the arms/;
+    // Matched on the invariant half of the sentence. The bullet was reworded on 2026-09-09 when the
+    // grader was repaired — it now says it describes the capture's predicate rather than the grader's —
+    // and a matcher keyed to the removable half would have gone quietly false rather than red.
+    const BULLET = /measures the predicate THIS capture was graded under/;
     const altitude = (evidence, verdict = "higher-layer") => {
         const snap = snapshotFixture();
         const t = snap.turns.find((x) => x.scenario === "altitude" && x.verdict === "higher-layer");

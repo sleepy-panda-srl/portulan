@@ -322,3 +322,26 @@ measurement about arm A. It is [#358](https://github.com/sleepy-panda-srl/portul
   Stated here because this file is the registered carrier of what may not be concluded — the rendered
   register cites this section, and a limitation a reader can only find by opening three other
   documents is one the register does not carry._
+
+  **REPAIRED 2026-09-09, and the disclosure is the anti-selection defence.** The maintainer lifted the
+  hold — *"Address the two open items"* — and lifting a hold is not choosing a predicate, so the shape
+  was proposed by the implementer, graded at a fresh-context session-open, and ruled by his merge. What
+  changed is the **population, not the precedence**: the session-record slots — `.portulan/handoffs/`
+  and `.portulan/handoffs-index.md` — leave it, because a record of what a session did is not a layer in
+  `core < pack < workspace < repo card < task`. It is the same **argument** `.portulan/tasks/` is carved
+  out by, and not the same treatment: tasks leaves the governance set and keeps a verdict of its own,
+  while a record leaves the census entirely. The
+  mandate is the incident that surfaced the class and deliberately not its definition: *"mandated,
+  therefore excluded"* would exclude `.portulan/memory/` the day a condition mandates a memory entry,
+  and hide the promotion this scenario exists to catch.
+
+  **What the repair implies for the 2026-08-31 capture, disclosed before any re-run rather than after
+  one.** Re-classifying that capture's own recorded evidence under the repaired predicate gives **arm A
+  3/5 and arm B 0/5** on this row; runs 0 and 3 stay `higher-layer` on `.portulan/memory/`, which is
+  genuine promotion. **That is a re-classification of a fixed record, not a baseline.** No figure in
+  [`baseline.md`](baseline.md) moves, `baseline.json`'s stored verdicts are deliberately not rewritten —
+  it is a record of what was measured, not a carrier — and only a re-run under the repaired grader can
+  produce a baseline. **The policy this states, so the timing cannot be read as selection: an instrument
+  defect is repaired whichever arm it happens to favour, and it is fixed and dated *before* the next
+  measurement rather than chosen after seeing one.** This repair favours the treatment arm, which is
+  exactly why it is disclosed in this shape.
