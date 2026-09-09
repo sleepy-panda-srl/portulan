@@ -1,4 +1,4 @@
-# 2026-09-04 — The records named a supervisor the alias no longer resolves to, and the citation named two homes with nothing in either
+# 2026-09-04 — The records named a supervisor the alias no longer resolves to, and the citation named two homes, one of which did not exist
 
 Off the milestone row. No row moves. A two-sentence currency fix that turned out to carry a broken
 citation, and a much larger sweep that was asked for and is deliberately **not** done.
@@ -60,8 +60,8 @@ was titled *"a supervisor nobody can request"*, which asserted exactly that.
 
 ## The repair
 
-The **Protocol** now carries the instantiation, dated, in two sentences: which models fill the two tiers,
-and that earlier records keep the name they were signed with. `0018` names **no model** and cites the
+The **Protocol** now carries the instantiation, dated, in two sentences: which model fills the
+**supervisor** tier, and that earlier records keep the name they were signed with. `0018` names **no model** and cites the
 Protocol, with the correction preserved as a dated note rather than applied silently — this file is a
 merged record, and the note is how a live doctrinal sentence changes without the original disappearing.
 `identity.md` is left naming no model, deliberately: a workspace's identity slot answers *who and with
@@ -73,9 +73,12 @@ what*, and the model line belongs beside the two-tier protocol that reads it.
   landed in `c353a308` (2026-07-24), whose own trailer is `Claude Opus 4.8`; Opus 5 has signed **610**
   commits since — `git log c353a308..6e8a5ed0 --grep="Claude Opus 5" --format=%H | wc -l`, the command
   given because an earlier draft of this bullet printed **216**, a number nobody ran. It reads as a band and was written as a pin. The instruction covered the supervisor and
-  the sentence is the maintainer's, so it is left — **but the Protocol bullet now names the implementer
-  twice, which is the shape `0020` names.** *His ruling wanted: delete it, or keep it as a band and say
-  so.*
+  the sentence is the maintainer's, so it is left. **A first cut of this change restated the implementer
+  two lines under it, which is the shape `0020` names**; Copilot's single thread on #409 caught that, and
+  the restatement is withdrawn — the bullet now names the implementer once, in his own July words. The
+  cost of the withdrawal is stated rather than hidden: the doctrine is **silent on the implementer's
+  current model** until he rules, and the fact survives only in `0018`'s correction note and in 610
+  commit trailers. *His ruling wanted: delete `Opus 4.8-class`, or keep it as a band and say so.*
 - **Nothing checks the new line.** It goes stale the next time the harness moves a model, and no rail can
   read it — a model name is not derivable from the tree. A recorded limit is not a managed one
   ([`a-recorded-limit-is-not-a-managed-limit`](../memory/a-recorded-limit-is-not-a-managed-limit.md)).

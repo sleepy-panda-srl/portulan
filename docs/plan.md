@@ -100,9 +100,9 @@ questions come back no.**
   learn); write learnings back into the product repo's own memory. The repo is customer #0.
 - **Two-tier supervised build.** Implementer: Opus 4.8-class. Supervisor: strongest available
   model, ALWAYS in a fresh context (subagent or separate session — never sharing the implementer's
-  context). **Which models fill the two tiers has one live carrier, and this is it: as of 2026-09-04 the
-  implementer is Opus 5 and the supervisor is Fable 5.1**, the latter read from a supervisor's own
-  system context rather than from the name a caller passed. Earlier records keep the name they were
+  context). **Which model fills the supervisor tier has one live carrier, and this is it: as of 2026-09-04 the
+  supervisor is Fable 5.1**, read from a supervisor's own system context rather than from the name a
+  caller passed. Earlier records keep the name they were
   signed with — a fidelity note says who verified, so re-attributing one is falsifying it, not
   refreshing it. Three checkpoints: (1) session-open — supervisor approves the session plan against
   plan.md + vision.md; (2) pre-commit — fresh-context diff review against the milestone exit
