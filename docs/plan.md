@@ -100,7 +100,15 @@ questions come back no.**
   learn); write learnings back into the product repo's own memory. The repo is customer #0.
 - **Two-tier supervised build.** Implementer: Opus 4.8-class. Supervisor: strongest available
   model, ALWAYS in a fresh context (subagent or separate session — never sharing the implementer's
-  context). Three checkpoints: (1) session-open — supervisor approves the session plan against
+  context). **"Strongest available" is the rule, and this sentence is its one LIVE
+  carrier — the place to read for which model currently satisfies it: as of 2026-09-04, Fable 5.1** —
+  read from a supervisor's own system context rather than from the name a caller passed. Dated records
+  elsewhere state it too (the Session log, a handoff, `0018`'s correction note) and are not carriers: a
+  record says what was true on its day and never moves, a carrier is what a reader consults and moves
+  when the fact does. The rule is what binds; the name is what
+  happens to meet it today, and it moves without the rule moving. Earlier records keep the name they were
+  signed with — a fidelity note says who verified, so re-attributing one is falsifying it, not
+  refreshing it. Three checkpoints: (1) session-open — supervisor approves the session plan against
   plan.md + vision.md; (2) pre-commit — fresh-context diff review against the milestone exit
   criterion; (3) milestone-close — supervisor verifies the exit criterion was *demonstrated* and
   records a signed fidelity note in the Status column: **the supervisor, the date, and the verdict in
@@ -2783,6 +2791,17 @@ _The seam applies here too: no client-identifying references._
   rather than run among them; the predicate took four cuts and now answers the class. · **Nine fresh-context
   gradings** — session-open ×3, pre-commit ×2, 0035 fold grade ×4 — every finding folded, optional
   included on his instruction; residue triaged in the PR body under the bounded-loop rule · 27 green, suite 2465 (+12) · Seam scan clean · [handoff](../.portulan/handoffs/2026-09-03-a-rule-change-decided-by-the-instruments.md)
+
+- 2026-09-04 · Off the milestone row · **The records named a supervisor the alias no longer resolves to.**
+  No row moves. Asked to sweep `Fable 5` → `Fable 5.1`; counted **162 occurrences on 158 lines** and swept
+  **one**. The rest are records — fidelity notes, signed Status verdicts, proposal decisions, task
+  checkpoint sections — and re-attributing *"the supervisor, the date, and the verdict"* to a model that
+  did not give it falsifies a record rather than refreshing it. **The live carrier was wrong twice over:**
+  `0018` said the instantiation lives *"in `plan.md`'s protocol and in `identity.md`"* — measured,
+  `identity.md` names **no model** and the Protocol named only the implementer's band, so one cited carrier
+  did not exist and the other held half the fact. The Protocol carries it now; `0018` cites it. · Pre-commit
+  **R-C (8) → A-W-A (4)**: a wrong count, a wrong date, an unmeasured platform claim, a rebase predicted
+  clean, and two invented figures · 27 green, suite 2453 · Seam scan clean · [handoff](../.portulan/handoffs/2026-09-04-the-records-named-a-supervisor-the-alias-no-longer-resolves-to.md)
 
 - 2026-09-07 · M5 (Memory lifecycle & librarian) · **Scheduled librarian pass**, filed by
   `cli/librarian.mjs` rather than by a person: 2 workspaces passed,
