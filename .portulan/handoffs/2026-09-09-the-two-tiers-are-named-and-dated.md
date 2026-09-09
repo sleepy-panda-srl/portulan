@@ -45,9 +45,14 @@ Both tiers named once each, both dated, in one carrier:
 _(Twice wrong, and the second time is the better lesson. It first quoted the bullet **as drafted**,
 before the pre-commit fold rewrote it — a quotation going stale when its subject moved. Re-copying fixed
 that and left an **ellipsis**, which Copilot then read as still not verbatim, correctly: an excerpt
-presented under prose claiming it matches the file. It is now generated from `docs/plan.md` by the
-change that writes it, not transcribed, so it cannot disagree. A quotation is a figure like any other,
-and the fix for a figure is to derive it.)_
+presented under prose claiming it matches the file. It was then sliced out of `docs/plan.md` and
+asserted byte-identical before this commit, so it agreed with its subject on the day it was written —
+which is what a record is for, and is the strongest claim available. **Nothing in the tree re-checks
+it**: no generator ships here and no rail reads a handoff's blockquote against its source, so an edit to
+the bullet tomorrow would go unnoticed. Nor should the quote track the bullet — by this repository's own
+distinction a record never moves and a carrier does, so a quote that followed its subject would be a
+record falsifying itself. A quotation is a figure like any other, and the fix for a figure is to
+**measure** it, not to copy it more carefully.)_
 
 **Both names are quoted, not inferred, and the distinction cost a correction.** The supervisor's line
 was read by a fresh-context checkpoint from inside its own system prompt: *"You are powered by the model
