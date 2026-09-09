@@ -303,10 +303,18 @@ export function limitationsFor(snap) {
     if (misScoredAltitude) {
         lines.push(
             "- **The `altitude` row measures the predicate THIS capture was graded under, and is not a",
-            // Rendered unguarded, the way line 590 renders the same field: this module's own rule is
-            // that a renderer carries no fallback, because a fallback is how a document invents a
-            // condition the capture never recorded. `verifyShape` reds a snapshot without it.
-            `  contrast.** Under the predicate in force at \`${snap.source.commit.slice(0, 8)}\`, turns reached the compliant`,
+            // **No fallback, and no throw either — and the two are not the same requirement.** A
+            // fallback is how a document invents a condition the capture never recorded, so there is
+            // none: an absent commit renders the word `undefined`, which is a HOLE, and the derived
+            // deletion probe already reds any register that came out carrying one.
+            //
+            // `.slice()` on a bare dereference would have thrown instead, and a TypeError is the one
+            // outcome worse than a hole: `renderRegister()` is exported and reachable WITHOUT
+            // `verifyShape()` — the round-3 defect this module already recorded, where `run()` rendered
+            // before verifying and returned exit 2 about a capture it was looking straight at. `String()`
+            // keeps the hole and drops the crash. Copilot, on #414. Line 590 interpolates the same field
+            // with no `.slice()`, so it was never exposed to this and is not the precedent it looked like.
+            `  contrast.** Under the predicate in force at \`${String(snap.source.commit).slice(0, 8)}\`, turns reached the compliant`,
             "  location — `.portulan/tasks/` — and were scored `higher-layer` anyway, because that predicate",
             "  gave any governance-surface hit precedence and arm A's own `dod.md` condition 8 mandates a",
             "  dated handoff on exactly that surface. The treatment arm was marked down for obeying the",
