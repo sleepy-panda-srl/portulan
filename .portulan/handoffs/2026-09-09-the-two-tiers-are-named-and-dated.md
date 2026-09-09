@@ -35,9 +35,16 @@ relation *was* the ruling — which is the whole reason an implementer could not
 
 Both tiers named once each, both dated, in one carrier:
 
-> Implementer: **Opus 5**. Supervisor: strongest available model — **as of 2026-09-09, Fable 5.1** —
-> ALWAYS in a fresh context … **This line is the one live carrier of both names**, each read from its own
-> running context's system prompt rather than from the name a caller passed.
+> As of **2026-09-09**: implementer **Opus 5**, supervisor **Fable 5.1** — the supervisor tier's rule
+> being *strongest available model*, ALWAYS in a fresh context … **This line is the one live carrier of
+> both names**, each quoted from its own running context's system prompt rather than from the name a
+> caller passed or from a commit trailer, which records the session's configured attribution and not the
+> model that ran.
+
+_(That blockquote was stale for one commit. It quoted the bullet as first drafted; the pre-commit fold
+then rewrote the bullet — dating both tiers together and adding the trailer clause — and the quote was
+not re-read against the tree afterwards. Caught by Copilot. A quotation is a figure like any other: it
+goes stale when its subject moves, and the only fix is to re-copy it rather than to remember it.)_
 
 **Both names are quoted, not inferred, and the distinction cost a correction.** The supervisor's line
 was read by a fresh-context checkpoint from inside its own system prompt: *"You are powered by the model

@@ -107,7 +107,7 @@ questions come back no.**
   elsewhere state them too and are not carriers — a record says what was true on its day and never
   moves, a carrier is what a reader consults and moves when the fact does. Earlier records keep the name
   they were signed with: a fidelity note says who verified, so re-attributing one is falsifying it, not
-  refreshing it. _(The implementer LINE read `Opus 4.8-class` from this file's first commit until 2026-09-09,
+  refreshing it. _(This line named the implementer as `Opus 4.8-class` from this file's first commit until 2026-09-09,
   a phrase written in `c353a308` — the bootstrap, whose own trailer reads `Claude Opus 4.8` — and left
   standing through **612 commits whose trailer reads `Claude Opus 5`** (786 counting the id-form
   `claude-opus-5` as well, with no overlap). Whether `-class` was a capability floor or a name nobody
