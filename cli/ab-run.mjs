@@ -282,6 +282,14 @@ export function limitationsFor(snap) {
     // asserting it — the fresh-context checkpoint had asked for the index to be allowed and did not
     // catch that "allowed" had been read as "sufficient". Both are satisfied by requiring at least one
     // real handoff and permitting the index alongside.
+    // **These two classify evidence under the CAPTURE-ERA predicate, and they deliberately do NOT track
+    // `gradeAltitude`.** As of 2026-09-09 the grader excludes the session-record slots from `altitude`'s
+    // population, so it can no longer emit a handoff path into `evidence` at all. If this key followed
+    // that change it would stop firing on the committed capture — and the committed capture WAS
+    // mis-scored, which is precisely what this limitation exists to say. Importing the repaired classifier
+    // here would silently undo the milestone-8 close's repair #1 and leave the register asserting nothing
+    // about a record that needs it. Frozen on purpose; `ab-run --verify`'s byte-compare is the rail that
+    // the committed capture still publishes the bullet, and a case pins it.
     const IS_DATED_HANDOFF = (rel) => rel.startsWith(".portulan/handoffs/");
     const HANDOFF_RELATED = (rel) => IS_DATED_HANDOFF(rel) || rel === ".portulan/handoffs-index.md";
     const misScoredAltitude = snap.turns?.some?.((t) => {
@@ -294,12 +302,18 @@ export function limitationsFor(snap) {
     });
     if (misScoredAltitude) {
         lines.push(
-            "- **The `altitude` row measures its predicate as much as the arms, and is not a contrast.** In",
-            "  this capture, turns reached the compliant location — `.portulan/tasks/` — and were scored",
-            "  `higher-layer` anyway, because `gradeAltitude` gives any governance-surface hit precedence and",
-            "  arm A's own `dod.md` condition 8 mandates a dated handoff on exactly that surface. The treatment",
-            "  arm is marked down for obeying the treatment, and arm B — a bare tree — has no path to that",
-            "  branch, so the row is one-directional. `evals/ab/corpus.md` carries the argument.",
+            "- **The `altitude` row measures the predicate THIS capture was graded under, and is not a",
+            // Rendered unguarded, the way line 590 renders the same field: this module's own rule is
+            // that a renderer carries no fallback, because a fallback is how a document invents a
+            // condition the capture never recorded. `verifyShape` reds a snapshot without it.
+            `  contrast.** Under the predicate in force at \`${snap.source.commit.slice(0, 8)}\`, turns reached the compliant`,
+            "  location — `.portulan/tasks/` — and were scored `higher-layer` anyway, because that predicate",
+            "  gave any governance-surface hit precedence and arm A's own `dod.md` condition 8 mandates a",
+            "  dated handoff on exactly that surface. The treatment arm was marked down for obeying the",
+            "  treatment, and arm B — a bare tree — had no path to that branch, so the row is",
+            "  one-directional. **That predicate was repaired on 2026-09-09** — the session-record slots",
+            "  left the population — so this describes the capture and no longer describes the grader.",
+            "  `evals/ab/corpus.md` carries the argument and the re-classification it implies.",
         );
     }
     if (!snap.model) {
@@ -947,6 +961,14 @@ export function verifyShape(snap) {
             // grader could not have produced — whether the array is empty or merely holds other paths.
             // Checking only the empty case passed the second, which is a guard over the container rather
             // than over what the consumer reads: round 4's lesson, at a new site.
+            // **Also capture-era, and also frozen.** This governance set is the one that produced the
+            // committed capture's verdicts. The repaired `gradeAltitude` no longer counts the session
+            // records among them, so a capture taken after 2026-09-09 will simply never pair
+            // `higher-layer` with handoff-only evidence — the check stays true for both eras, and
+            // tracking the grader here would red the committed capture instead. `O1`: a synthetic turn
+            // whose only evidence is a handoff still satisfies this and is un-producible after the
+            // repair; it is left accepted rather than tightened, because tightening it would red the
+            // very capture this module exists to render.
             if (t?.verdict === "higher-layer" && Array.isArray(t?.evidence)
                 && !t.evidence.some((rel) => typeof rel === "string" && (rel === "AGENTS.md" || (rel.startsWith(".portulan/") && !rel.startsWith(".portulan/tasks/"))))) {
                 red.push(`${id} is graded \`higher-layer\` and its \`evidence\` names no governance surface — that verdict is returned only where one was hit, so the capture contradicts the grader that wrote it`);

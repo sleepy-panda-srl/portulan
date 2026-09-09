@@ -155,14 +155,16 @@ by comparing the two trees and requiring them identical outside the enumerated t
   recorded rate and nothing else; and two of the four scenarios came back **0/5 for both arms**, which
   is a finding about the compliance predicates rather than about the arms. On `altitude` arm A **did**
   reach the compliant location — `.portulan/tasks/`, on 3 of 5 turns, where arm B reached it never — and
-  graded `higher-layer` anyway, because the grader gives any governance-surface hit precedence and the
-  hit in each of those turns is **the dated handoff this arm's own `dod.md` condition 8 demands**. The
-  predicate marks the treatment arm down for obeying the treatment. Recorded rather than repaired:
-  moving a target after seeing the figures is the selection this whole instrument exists to refuse.
-  **[`corpus.md`](corpus.md)'s *What may not be concluded* is the registered carrier of that limit** and
-  since the milestone-8 close states it in full, including the half this paragraph omits: arm B, a bare
-  tree, has no path to the penalising branch at all, so the row is one-directional. This paragraph cites
-  it rather than being a second carrier of the argument.
+  graded `higher-layer` anyway, because the grader **gave** any governance-surface hit precedence over a
+  population that then included the session records, and the hit in each of those turns is **the dated
+  handoff this arm's own `dod.md` condition 8 demands**. The
+  predicate marked the treatment arm down for obeying the treatment. **[`corpus.md`](corpus.md)'s *What
+  may not be concluded* is the registered carrier of that limit**, states it in full — including the half
+  this paragraph omits, that arm B has no path to the penalising branch at all — and since **2026-09-09**
+  records that the predicate was **repaired**: the session-record slots left the population, and the
+  re-classification that implies for this capture is disclosed there. This paragraph cites it rather than
+  being a second carrier. The sentences above are in the tense they were written in and describe the
+  capture of 2026-08-31, which was graded under the predicate as it then stood.
 
   **What 6c added to this file's subject, because it bears on the arm rather than only on the graders.**
   A scenario stimulus is planted into an arm, so `arm.md`'s rule 2 reaches it — `corpus.md` says so in

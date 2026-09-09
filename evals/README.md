@@ -72,8 +72,8 @@ produced that a fresh-context checkpoint catches what its own author cannot.
 It wrote the constraint into `.portulan/tasks/` on **3 of 5** turns — arm B reached it never. All three
 graded `higher-layer` because `gradeAltitude` gives any governance-surface occurrence precedence, and in
 every one of those turns the governance hit is **the dated handoff arm A's own `dod.md` condition 8
-demands**. So the predicate counts a **gate-mandated artifact as promotion** and penalises the treatment
-arm for obeying the treatment: a treatment–instrument interaction, not a fact about the arm. _(Runs 0 and
+demands**. So the predicate **counted** a gate-mandated artifact as promotion and **penalised** the
+treatment arm for obeying the treatment: a treatment–instrument interaction, not a fact about the arm. _(Runs 0 and
 3 are different and are genuine promotion — they wrote the constraint into `memory/`.)_ **The registered
 carrier of what may not be concluded from this is
 [`ab/corpus.md`](ab/corpus.md)'s section of that name**, which since the milestone-8 close carries the
@@ -83,8 +83,13 @@ cites that section; this paragraph cites it too rather than becoming a fourth un
 `curated-layer` arm A wrote into `memory/` twice and arm B touched neither curated directory — a visible
 difference, 0/5 both.
 
-Recorded rather than repaired: moving a target after seeing the figures is the selection this instrument
-exists to refuse, and what to do about it is the maintainer's. **The baseline is scoped to the
+Recorded rather than repaired at the capture and at the close: moving a target after seeing the figures
+is the selection this instrument exists to refuse, and what to do about it was the maintainer's.
+**Repaired 2026-09-09, the same day the close named it**, when he lifted the hold — the session-record
+slots left `altitude`'s population, precedence was left alone, and what that implies for the 2026-08-31
+capture is a **re-classification of a fixed record and never a new baseline**, disclosed in
+[`ab/corpus.md`](ab/corpus.md) beside the date. The paragraph above describes that capture and stays in
+its own tense: it is a record, not a carrier. **The baseline is scoped to the
 vendored-and-compiled tier** [`ab/arm.md`](ab/arm.md) specifies, and closes row 8 for no other
 configuration of *Portulan on*.
 
