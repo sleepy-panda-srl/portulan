@@ -502,7 +502,7 @@ because the distinctive failure of a compiler that emits gate machinery is a rul
 comes out: the map reads as configured and the machine enforces nothing.
 
 **There is a third outcome, and it is not a per-rule one — it refuses the whole compile.** Since
-2026-09-03 a **`gated` or `prohibited`** rule whose path target can never match any path a host submits
+2026-09-09 a **`gated` or `prohibited`** rule whose path target can never match any path a host submits
 raises a `CompileError`, so the run is **could-not-run** and no artifact is written. It is deliberately
 not a `refused` row: `refused` is the accounting for a rule a backend legitimately declines, and it exits
 0 having written the artifact without that rule — which would leave `doctor` reporting a gate the policy
@@ -836,11 +836,11 @@ Corrected here rather than left, because a gate map that overstates a hole is as
    **Nothing is mis-enforced today, and the reason is the whole shape of this entry.** Both rules are
    `auto`; the compiler refuses the `auto` tier wholesale, and [`cli/gate.mjs`](../cli/gate.mjs) reads
    only `gated` and `prohibited`, so neither layer ever asks. What existed, **until this entry's closure below on
-   2026-09-03**, was a divergence waiting for its first author: a **gated** or **prohibited** rule written
+   2026-09-09**, was a divergence waiting for its first author: a **gated** or **prohibited** rule written
    `./` compiled to a named permission surface — the bare `Edit(./)` — while the runtime matcher covered
    nothing, so the compiler reported it **compiled** and `doctor` counted it covered: a partial gate that looks from the outside exactly like a
    whole one, which is hole 3's failure mode reached by a different road. _(This sentence read *"a
-   permission rule that covers the tree"* until 2026-09-03. Re-derived: a real target compiles to a `**`
+   permission rule that covers the tree"* until 2026-09-09. Re-derived: a real target compiles to a `**`
    glob and `./` does not, so what is emitted is the bare spec and what a host makes of it this
    repository installs nothing to measure. Either reading is a hazard; the one measurable here is the
    accounting.)_
@@ -852,7 +852,11 @@ Corrected here rather than left, because a gate map that overstates a hole is as
    `matchesPath` the corpus goes red until this entry is updated. Tracked as [#337](https://github.com/sleepy-panda-srl/portulan/issues/337), which
    sets out the three defensible answers rather than presuming one.
 
-   **CLOSED at the enforcing tiers, 2026-09-03 — and the entry stays, because only half of it closed.**
+   **CLOSED at the enforcing tiers, 2026-09-09 — and the entry stays, because only half of it closed.**
+   _(Every date in this entry read **2026-09-03** — the day the evidence table was measured — until the
+   milestone-8 close re-derived the merge: [#408](https://github.com/sleepy-panda-srl/portulan/pull/408)
+   was created `2026-09-03T18:57:23Z` and merged `2026-09-09T07:48:12Z`. A closure is dated by the act
+   that closes it, and here that is the merge; six carriers across three files said otherwise.)_
    The change that closed it took #337's **option 3**, the narrowest of the three: the Claude Code
    backend now refuses outright — a `CompileError`, so the compile is could-not-run rather than a
    partial artifact — a **`gated` or `prohibited`** rule whose path target can never match. The

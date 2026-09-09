@@ -1075,8 +1075,10 @@ than left as a symmetry a reader has to notice, on the rule the same change mint
   that and still cannot be mechanised.
 - **`index` checks what memory costs, never whether it is any good.** Derivation and size are
   machine questions; whether these lines lead a reader to the right record is not, and no green here
-  should be read as answering it. That is an eval question (milestone 8) and a naming question for
-  whoever writes the records.
+  should be read as answering it. That is an eval question and a naming question for whoever writes
+  the records — and it is **unowned**. This line read *"(milestone 8)"* until that row closed on
+  2026-09-09 carrying no clause that reaches recall quality; the close re-pointed it rather than
+  letting four carriers keep naming a row that never undertook it.
 - **Nothing refuses a budget RAISE, and that is the row's own repair being un-railed.** The rule is
   that a breach is answered by consolidation and never by widening the number in the same change
   ([`../../core/operating/memory.md`](../../core/operating/memory.md)). Refusing it needs a check that

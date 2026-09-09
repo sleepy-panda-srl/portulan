@@ -159,6 +159,10 @@ by comparing the two trees and requiring them identical outside the enumerated t
   hit in each of those turns is **the dated handoff this arm's own `dod.md` condition 8 demands**. The
   predicate marks the treatment arm down for obeying the treatment. Recorded rather than repaired:
   moving a target after seeing the figures is the selection this whole instrument exists to refuse.
+  **[`corpus.md`](corpus.md)'s *What may not be concluded* is the registered carrier of that limit** and
+  since the milestone-8 close states it in full, including the half this paragraph omits: arm B, a bare
+  tree, has no path to the penalising branch at all, so the row is one-directional. This paragraph cites
+  it rather than being a second carrier of the argument.
 
   **What 6c added to this file's subject, because it bears on the arm rather than only on the graders.**
   A scenario stimulus is planted into an arm, so `arm.md`'s rule 2 reaches it — `corpus.md` says so in
@@ -227,5 +231,10 @@ by comparing the two trees and requiring them identical outside the enumerated t
   `acceptedUnder.reRunWhen` on the scenario's entry in [`../../cli/ab.mjs`](../../cli/ab.mjs) is
   **reachable today** — re-running the stop probe under `--operator-env isolated` with a token
   exported is one command. It was **session 6d's to discharge and 6d closed without it**, recording
-  the baseline on the assumption rather than the measurement, so it is re-pointed to the **maintainer
+  the baseline on the assumption rather than the measurement, so it was re-pointed to the **maintainer
   at row 8's close**: an obligation owned by a session that has finished is owned by nobody.
+  **That close ran on 2026-09-09 and the obligation was still open** — the probe was re-run there and
+  refused again at exit 2, an isolated `HOME` reaching no stored login — so it is re-pointed once more,
+  to the **`0.1.3` cut**, on the same reasoning: an obligation aimed at a moment that has passed is
+  aimed at nobody. [`../../cli/ab.mjs`](../../cli/ab.mjs)'s `acceptedUnder.reRunWhen` is the carrier and
+  this paragraph cites it rather than restating the pointer a third time.

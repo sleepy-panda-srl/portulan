@@ -369,7 +369,7 @@ in the one field the settings UI shows.
 ## A target that can never match is refused, and it refuses the whole compile
 
 The gate map says this file *"argues each refusal"*, so this one is argued here rather than only in the
-error string. Since 2026-09-03 the Claude Code backend raises a `CompileError` — **could-not-run, no
+error string. Since 2026-09-09 the Claude Code backend raises a `CompileError` — **could-not-run, no
 artifact written** — for a `gated` or `prohibited` rule whose `write:` or `read:` target can never match
 any path a host submits. The predicate is `neverMatches`, exported from
 [`../../cli/compile.mjs`](../../cli/compile.mjs).

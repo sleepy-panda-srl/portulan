@@ -145,8 +145,10 @@ Post-split: the bound **7,047 B (86%)**, the channel **3,095 B (38%)**, index **
 
 ## What it does not solve
 
-Not **recall quality** — an eval question, milestone 8, and the split changed what a recall loads without
-anyone measuring whether either half recalls better. Not [#75](https://github.com/sleepy-panda-srl/portulan/issues/75):
+Not **recall quality** — an eval question, and the split changed what a recall loads without
+anyone measuring whether either half recalls better. _(This read "milestone 8" until that row closed on
+2026-09-09 carrying no clause that reaches recall quality. Re-pointed by the close rather than left
+naming a row that never undertook it: the question is **unowned**, which is a state worth seeing.)_ Not [#75](https://github.com/sleepy-panda-srl/portulan/issues/75):
 nothing yet refuses a cap raise in a breaching change, and this adds one more key that rule must cover.
 Not the count-axis conversation above. And `memory/README.md` remains the one `.md` name invisible to
 both byte rails — pre-existing, consistent across three tools, and the old aggregate missed it

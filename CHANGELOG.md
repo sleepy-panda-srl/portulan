@@ -43,6 +43,17 @@ records how things were found. This is per *release* and records what a reader g
 
 ### Changed
 
+- **The A/B register now publishes the limitation that governs its own `altitude` row.** The rendered
+  `evals/ab/baseline.md` listed nine limitations and not the one a reader most needs: `gradeAltitude`
+  returns `higher-layer` on any governance-surface hit before it can look at the task layer, and arm A's
+  own definition of done mandates a dated handoff on exactly that surface — so the treatment arm is
+  scored down for obeying the treatment, and the bare control arm has no path to that branch at all.
+  The argument now lives in `evals/ab/corpus.md` and the register cites it. **The bullet is keyed to the
+  fact rather than asserted flat**: it publishes only where the capture actually holds such a turn, so a
+  capture taken after the predicate is repaired prints no stale limitation. `verifyShape` gained a
+  by-name check on `turns[].evidence[]`, which renders nowhere and so was invisible to the derived
+  deletion probe. Found by the milestone-8 close.
+
 - **A gate rule whose path target can never match is now refused, and it refuses the whole compile**
   ([#337](https://github.com/sleepy-panda-srl/portulan/issues/337), option 3). **This can break an
   upgrade, which is why it leads.** If your gate policy carries a **`gated` or `prohibited`** rule whose

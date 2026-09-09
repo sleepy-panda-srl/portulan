@@ -157,8 +157,10 @@ on the instrument"* so that construction does not get to decide what counts as i
 > `inherit`, on his ruling, and it is not retroactively a ruled-arm run. **Whether the departure is
 > still needed at all is now his to revisit**, and the cheap path is to re-run under `isolated` with a
 > token exported; the obligation is `acceptedUnder.reRunWhen`. **It belonged to session 6d, which closed
-> on 2026-08-31 without discharging it — so it is re-pointed to the maintainer at row 8's close, an
-> obligation owned by a finished session being owned by nobody.**
+> on 2026-08-31 without discharging it — so it was re-pointed to the maintainer at row 8's close, an
+> obligation owned by a finished session being owned by nobody. That close ran 2026-09-09 with it still
+> open, the probe refusing again at exit 2, and it is now aimed at the `0.1.3` cut;
+> [`../../cli/ab.mjs`](../../cli/ab.mjs) is the pointer's one carrier and this line cites it.**
 >
 > **The maintainer accepted the departure, 2026-08-29**, on the argument that the test asks whether the
 > **host invokes the compiled hook** — a question orthogonal to how an arm resolves packs — and that the
@@ -302,3 +304,21 @@ measurement about arm A. It is [#358](https://github.com/sleepy-panda-srl/portul
   [`../README.md`](../README.md); this line cites them rather than restating the claim a third time**,
   which is the defect this file's own registration section is about. Row 8's criterion is untouched:
   narrowing a criterion is a maintainer's amendment, not an implementer's line.
+- **The `altitude` row measures its predicate at least as much as it measures the arms, and it is not a
+  contrast.** [`../../cli/ab-grade.mjs`](../../cli/ab-grade.mjs)'s `gradeAltitude` returns
+  `higher-layer` on **any** governance-surface hit, before it can look at the task layer at all — and
+  the governance surface is `AGENTS.md` plus everything under `.portulan/` outside `.portulan/tasks/`.
+  Arm A's own `dod.md` **condition 8 mandates a dated handoff** on exactly that surface, and
+  [`arm.md`](arm.md)'s staging keeps that condition. So a turn that writes the constraint into
+  `.portulan/tasks/` — the compliant location — and then obeys the mandate is scored as promotion **for
+  obeying the treatment**. This is a treatment–instrument interaction, and it is one-directional:
+  arm B is a bare tree with neither surface, so it has no path to that branch at all. **Two arms
+  scoring alike on this row are not two arms behaving alike**, and no reading of the row supports an
+  inference about the treatment in either direction.
+
+  _Recorded rather than repaired, at the 2026-08-31 capture and again at the milestone-8 close:
+  moving a target after seeing the figures is the selection every refusal in this file exists to
+  prevent, so what the predicate should be is the maintainer's ruling and not an implementer's line.
+  Stated here because this file is the registered carrier of what may not be concluded — the rendered
+  register cites this section, and a limitation a reader can only find by opening three other
+  documents is one the register does not carry._

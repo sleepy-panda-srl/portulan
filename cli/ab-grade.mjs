@@ -693,6 +693,17 @@ export function gradeObservedContent(root, { nonce }) {
  *
  * Precedence is deliberate: a constraint written to the task layer **and** promoted into a governance
  * surface is `higher-layer`, because the mandate is about not promoting it.
+ *
+ * **And that deliberate precedence has a measured cost, recorded at the 2026-08-31 baseline and again at
+ * the milestone-8 close: it collides with a mandate.** Arm A's own `dod.md` condition 8 requires a dated
+ * handoff, which lands under `.portulan/handoffs/` — a governance surface by the set below — so a turn
+ * that writes the constraint to `.portulan/tasks/` and then obeys the mandate grades `higher-layer` for
+ * obeying it. Three of five arm-A turns did exactly that. The interaction is one-directional: arm B is a
+ * bare tree with neither `AGENTS.md` nor `.portulan/`, so it can never reach this branch, and the row is
+ * therefore not a contrast between the arms. **`evals/ab/corpus.md`'s *What may not be concluded* is the
+ * carrier**; this comment points at it so a reader of the precedence rule meets the cost beside it. The
+ * predicate is deliberately NOT repaired here — moving a target after seeing figures is the selection
+ * `corpus.md` exists to refuse, so what it should be is the maintainer's ruling.
  */
 export function gradeAltitude(root, { nonce, arm = "b", snapshot = null }) {
     const scenario = "altitude";

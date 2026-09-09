@@ -9,8 +9,9 @@
 // What this suite CANNOT establish: that the index is any good at recall. It checks that the file is
 // derived from the store, that nothing in it was hand-written, and that a breach of the declared
 // budget is red. Whether a reader given these lines finds the right record is a question for evals
-// (milestone 8) and for the humans who name the records, and no assertion here should be read as
-// answering it.
+// and for the humans who name the records, and no assertion here should be read as answering it.
+// It is UNOWNED — this comment said "(milestone 8)" until that row closed on 2026-09-09 with no
+// clause reaching recall quality, and the close re-pointed it rather than deleting it silently.
 //
 // The last group binds the two live stores byte-for-byte, the way ./doctor.test.mjs binds their
 // retirement conditions: for this repository the suite is the rail, and an index left stale by a

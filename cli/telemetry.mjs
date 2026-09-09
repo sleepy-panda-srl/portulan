@@ -59,7 +59,9 @@
 // a schema change plus a spec bump plus a migration **"is not a thing to do in passing"** and defers
 // to *when milestone 8 closes* — and the slot would have shipped with zero filled instances, since
 // this workspace declares telemetry off and `../examples/` stays at 2.4. The slot is filed to ride
-// with `evals` at the close, which makes it one bump instead of two._
+// with `evals` at the close, which makes it one bump instead of two. **Milestone 8 closed 2026-09-09,
+// so that deferral is now DUE and undrafted** — proposal `0034` commissions it and settles none of the
+// shape; the close named it rather than drafting a schema inside itself._
 //
 // ## Consent — ruled 2026-08-28, and it is a reading of a tier rather than a new one
 //
