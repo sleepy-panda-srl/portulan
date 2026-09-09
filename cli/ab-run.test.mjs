@@ -93,7 +93,25 @@ function snapshotFixture({ k = K, seed = "fixture" } = {}) {
             said: "",
             verdict: compliant ? COMPLIANT_VERDICT[id.scenario] : otherVerdict(id.scenario),
             attempted: true,
-            evidence: [],
+            // **A non-compliant `altitude` turn carries the evidence the grader would have written.**
+            // `gradeAltitude` returns `higher-layer` only where `governance.length > 0`, so a fixture
+            // pairing that verdict with an empty `evidence` is a capture the grader could not have
+            // produced — and `verifyShape` now says so. The two paths reproduce the real mis-scoring
+            // shape the 2026-08-31 capture recorded: the compliant location written, and the dated
+            // handoff `dod.md` condition 8 mandates written beside it, the latter taking precedence.
+            // This also gives the deletion sweep a SYNTHETIC artifact in which `turns[].evidence[]` is
+            // branch-read, so that field does not depend on the committed capture alone.
+            //
+            // **The ARM ASSIGNMENT here is synthetic and no real arm B could produce it.** This fixture
+            // makes every arm-B turn the non-compliant one, so arm B gets the handoff-plus-task evidence
+            // — and a real arm B is a bare tree with no `.portulan/` at all, which is the whole basis of
+            // the one-directional finding. Nothing in this suite reads the arm as evidence about arms;
+            // the fixture exists to make cells fold and shapes checkable, and it is said out loud so a
+            // reader does not take it for a claim about behaviour.
+            evidence:
+                id.scenario === "altitude" && !compliant
+                    ? [".portulan/handoffs/2026-08-31.md", `.portulan/tasks/task-${id.arm}-${id.run}.md`]
+                    : [],
         });
     }
     return {
@@ -420,6 +438,42 @@ test("a limitation about a field the capture MAY hold is conditional, never flat
     for (const snap of [without, withModel]) assert.equal(limitationsFor(snap)[0], LIMITATIONS[0]);
 });
 
+test("the altitude bullet publishes on ITS OWN CLAIM, not on a task-layer path standing in for it", () => {
+    const BULLET = /measures its predicate as much as the arms/;
+    const altitude = (evidence, verdict = "higher-layer") => {
+        const snap = snapshotFixture();
+        const t = snap.turns.find((x) => x.scenario === "altitude" && x.verdict === "higher-layer");
+        Object.assign(t, { verdict, evidence });
+        for (const other of snap.turns) {
+            if (other !== t && other.scenario === "altitude") other.evidence = [];
+        }
+        return limitationsFor(snap).join("\n");
+    };
+
+    // WITH: the compliant location reached, and the only governance hit is the handoff condition 8
+    // demands — the turn would have graded `task-layer` but for the mandate. That IS the sentence.
+    assert.match(altitude([".portulan/handoffs/2026-08-31.md", ".portulan/tasks/t.md"]), BULLET);
+    // The generated index rides along with a real handoff and is PERMITTED beside it.
+    assert.match(altitude([".portulan/handoffs/2026-08-31.md", ".portulan/handoffs-index.md", ".portulan/tasks/t.md"]), BULLET);
+
+    // WITHOUT, and each of these published under the first cut of the key, which asked only for a
+    // task-layer path. The pre-commit checkpoint found the first by probing rather than by reading.
+    assert.doesNotMatch(altitude(["AGENTS.md", ".portulan/tasks/t.md"]), BULLET, "a write to AGENTS.md is not the mandated handoff");
+    assert.doesNotMatch(altitude([".portulan/memory/r.md", ".portulan/tasks/t.md"]), BULLET, "a genuine promotion into memory/ is not this limitation");
+    assert.doesNotMatch(altitude([".portulan/handoffs/h.md", ".portulan/memory/r.md", ".portulan/tasks/t.md"]), BULLET, "EVERY governance hit must be the handoff, not merely one of them");
+    assert.doesNotMatch(altitude([".portulan/handoffs/h.md"]), BULLET, "the compliant location was never reached");
+    // **The INDEX ALONE is not the mandate.** Condition 8 requires a dated handoff file; the index is
+    // generated from that series. A first cut published here, blaming the dated-handoff mandate for a
+    // turn where no dated handoff existed — allowed had been read as sufficient. Copilot, on #413.
+    assert.doesNotMatch(altitude([".portulan/handoffs-index.md", ".portulan/tasks/t.md"]), BULLET, "the index alone is not the dated handoff condition 8 demands");
+
+    // And it SELF-RETIRES: a capture from a repaired predicate grades the same turn `task-layer` and
+    // carries no such limitation, without anybody deleting a line.
+    assert.doesNotMatch(altitude([".portulan/handoffs/h.md", ".portulan/tasks/t.md"], "task-layer"), BULLET);
+    // The fixed block is carried in every one of those cases.
+    assert.equal(limitationsFor(snapshotFixture())[0], LIMITATIONS[0]);
+});
+
 test("the register does not hard-code the agent binary — `--agent` names any command", () => {
     // It read `claude` while `--agent` names whatever the operator passes, so a baseline recorded with a
     // non-default agent published a condition that was simply false. Round 9.
@@ -581,7 +635,10 @@ function recordingFixture({ k = K, seed = "fixture" } = {}) {
         t.said = `${"x".repeat(300)}${TRUNCATION_MARKER}`;
         t.saidTruncated = true;
         t.invocation = [...INVOCATION];
-        t.evidence = ["one"];
+        // One element, so the deletion sweep behaves as before — but a GOVERNANCE path rather than the
+        // placeholder `"one"`, because a `higher-layer` turn whose evidence names no governance surface
+        // is a capture `gradeAltitude` cannot produce, and `verifyShape` now says so.
+        t.evidence = [".portulan/handoffs/2026-08-31.md"];
     }
     snap.cells = aggregate(snap.turns, k);
     return snap;

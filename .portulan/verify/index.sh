@@ -46,8 +46,10 @@
 # and still too big.
 #
 # What this recipe CANNOT establish: that the index is any good at recall. It checks derivation and
-# cost. Whether these lines lead a reader to the right record is an eval question (milestone 8) and
-# a naming question for whoever writes the records.
+# cost. Whether these lines lead a reader to the right record is an eval question and a naming
+# question for whoever writes the records. It is UNOWNED: this sentence said "(milestone 8)" until
+# that row closed on 2026-09-09 carrying no clause that reaches recall quality, and the close
+# re-pointed it rather than leaving a reader to infer an owner that never existed.
 #
 # The workspaces are named rather than discovered, and the named list is audited against the tree —
 # the shape ./doctor.sh explains at length and this recipe reuses rather than re-deriving. Note the

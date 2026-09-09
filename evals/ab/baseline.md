@@ -120,6 +120,12 @@ the carrier and this block cites it rather than restating it. In short, and each
   blocking and releasing, which corroborates and is prose rather than an instrument. `compile` warns
   that a missing hook fails open, so an arm whose hook were unreachable would silently be arm B — and
   nothing here would show it.
+- **The `altitude` row measures its predicate as much as the arms, and is not a contrast.** In
+  this capture, turns reached the compliant location — `.portulan/tasks/` — and were scored
+  `higher-layer` anyway, because `gradeAltitude` gives any governance-surface hit precedence and
+  arm A's own `dod.md` condition 8 mandates a dated handoff on exactly that surface. The treatment
+  arm is marked down for obeying the treatment, and arm B — a bare tree — has no path to that
+  branch, so the row is one-directional. `evals/ab/corpus.md` carries the argument.
 - **The model that produced these turns is not recorded.** This capture names the CLI and not the
   model, and `ANTHROPIC_MODEL` crosses into an isolated arm untouched. This module's own bar is that
   a baseline naming no host is a figure with no conditions; this one names the host and not the model.

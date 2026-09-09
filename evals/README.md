@@ -35,8 +35,11 @@ landed 2026-08-25; **(d)**, scheduled forced-red drills, landed 2026-08-25; **(c
 metering, landed 2026-08-26; **golden tasks per core skill** — the row's original first subject —
 landed 2026-08-26; **OTel opt-in config** landed 2026-08-28; **the A/B baseline** landed 2026-08-31,
 across three sessions the maintainer split at construction | grading | running — 6b the arms, 6c the
-graders, **6d the run**; and **a rule change merged or rejected on eval evidence** landed 2026-09-03,
-its own section below. **A release carries an eval result** landed as a *mechanism*
+graders, **6d the run**; and **a rule change merged or rejected on eval evidence** was decided by the
+instruments 2026-09-03 and **discharged on its merge, 2026-09-09** — the clause reads *merges*, and the
+session that measured the table said in terms that *"his merge is the ruling"*, so the date the evidence
+was taken is not the date the clause landed; its own section is below. **A release carries an eval
+result** landed as a *mechanism*
 2026-09-01 — the record layer, the rail and its forced-red drill — and is **half-vouched**, the row's own
 word for a clause whose demonstration is owed to an event that has not happened yet: this repository has
 cut no release since the clause acquired an owner, so no release carries one. **Nothing remains
@@ -71,7 +74,12 @@ graded `higher-layer` because `gradeAltitude` gives any governance-surface occur
 every one of those turns the governance hit is **the dated handoff arm A's own `dod.md` condition 8
 demands**. So the predicate counts a **gate-mandated artifact as promotion** and penalises the treatment
 arm for obeying the treatment: a treatment–instrument interaction, not a fact about the arm. _(Runs 0 and
-3 are different and are genuine promotion — they wrote the constraint into `memory/`.)_ On
+3 are different and are genuine promotion — they wrote the constraint into `memory/`.)_ **The registered
+carrier of what may not be concluded from this is
+[`ab/corpus.md`](ab/corpus.md)'s section of that name**, which since the milestone-8 close carries the
+argument in full — including the half this paragraph does not state, that arm B has no path to the
+penalising branch at all, so the row is one-directional rather than merely noisy. The rendered register
+cites that section; this paragraph cites it too rather than becoming a fourth uncited restatement. On
 `curated-layer` arm A wrote into `memory/` twice and arm B touched neither curated directory — a visible
 difference, 0/5 both.
 
@@ -233,7 +241,8 @@ runtime.** `matchesPath` reduces `"./"` to the empty string and then refuses the
 is mis-enforced today — both are `auto`, and neither layer ever asks — but a **gated** rule written
 that way would compile to a named permission surface while the matcher covered nothing. Now
 entry 8 of [`../.portulan/gate-map.md`](../.portulan/gate-map.md)'s honest-holes list, tracked as [#337](https://github.com/sleepy-panda-srl/portulan/issues/337), asserted here, and **closed at the
-enforcing tiers on 2026-09-03** — see *A rule change decided on eval evidence* below.
+enforcing tiers on 2026-09-09**, the date the change merged — see *A rule change decided on eval
+evidence* below.
 
 _(This paragraph said the gated rule **"would compile to a permission rule covering the tree"**, and
 that was wrong in a way worth keeping rather than quietly deleting: re-derived on 2026-09-03, a real
@@ -621,7 +630,10 @@ would have shipped with **zero filled instances**, since this workspace declares
 [`../examples/`](../examples/) stays at 2.4 — which is
 [`../spec/slots.md`](../spec/slots.md)'s *"splitting on speculation is how a schema acquires slots
 nobody fills"* exactly. It is filed as [`0034`](../.portulan/proposals/0034-one-spec-bump-carries-both-evals-and-telemetry.md) — **accepted by the maintainer 2026-08-28** — to ride with
-`evals` at the close, which makes it one bump instead of two. The acceptance commissions the drafting
+`evals` at the close, which makes it one bump instead of two. **That close ran 2026-09-09, so the
+deferral is now due and still undrafted** — named by the close rather than performed inside it, since
+drafting a schema there is the *"splitting on speculation"* the same entry warns against. The acceptance
+commissions the drafting
 and settles none of the shape: the key names, either slot's structure, and whether a migration is owed
 are the drafted work, and the close remains the earliest sensible moment because `slots.md`'s deferral
 conditions the `evals` half on row 8 having decided what an eval artifact is here.
@@ -788,8 +800,12 @@ directions, so a record for a release that was never cut reds as well.
 ## A rule change decided on eval evidence — the ninth clause
 
 **The clause is instance-shaped, and this is the instance.** Row 8 asks that *a rule change merges or
-is rejected on eval evidence*, and until 2026-09-03 the honest sentence in this file was that **every
-rule in [`../.portulan/memory/`](../.portulan/memory/) had been merged on review alone**. What changed
+is rejected on eval evidence*, and until 2026-09-09 the honest sentence in this file was that **every
+rule in [`../.portulan/memory/`](../.portulan/memory/) had been merged on review alone**. _(The evidence
+was taken on 2026-09-03 and the change merged on 2026-09-09; the clause's verb is **merges**, so the
+later date is the one that discharges it. Three sentences in this file dated it to the session rather
+than to the merge until the milestone-8 close re-derived it from `gh pr view 408` — created
+`2026-09-03T18:57:23Z`, merged `2026-09-09T07:48:12Z`.)_ What changed
 is not that a rule was minted — rules are minted often — but that a **decision between three drafted
 answers was made by running the instruments** rather than by argument.
 

@@ -251,6 +251,57 @@ export const LIMITATIONS = [
  */
 export function limitationsFor(snap) {
     const lines = [...LIMITATIONS];
+    // **The largest limitation this register carried was the one it did not print.** Found by the
+    // milestone-8 close (2026-09-09): the block above listed nine limitations and said nothing about the
+    // `altitude` predicate, while citing `evals/ab/corpus.md`, which did not carry it either. A reader
+    // who opened the register met `altitude 0/5 · 0/5 · +0` with no warning that the row is two
+    // different measurements. `corpus.md` now carries the argument and this bullet cites it.
+    //
+    // **Keyed to the fact, never asserted flat about the grader** — the rule this module learned twice
+    // over, at the `model` bullet and again at #388: a limitation asserted unconditionally about
+    // something a capture may or may not exhibit is a false sentence waiting for its first
+    // counterexample, and one asserted through a PROXY is worse.
+    //
+    // **A first cut of this key WAS that proxy, and the pre-commit checkpoint probed it out.** It asked
+    // only for a `.portulan/tasks/` path beside the `higher-layer` verdict — so a turn whose governance
+    // hit was `AGENTS.md`, or `.portulan/memory/`, published a bullet saying the turn had been "marked
+    // down for obeying the treatment" when it had been marked down for a **genuine promotion** that
+    // happened to sit beside a task-layer write. The correlate agreed with the committed capture and
+    // with nothing else, which is #388's shape exactly, committed by the change whose comment cites it.
+    //
+    // **So the key is now the sentence's own claim**: the turn reached the compliant location, AND every
+    // governance surface it hit is the dated handoff `dod.md` condition 8 mandates — nothing else. Such
+    // a turn would have graded `task-layer` but for the mandate, which is precisely what the bullet
+    // says. A promotion into `memory/` or a write to `AGENTS.md` no longer qualifies, and a capture
+    // taken after the predicate is repaired prints nothing, without anybody remembering to delete it.
+    // **The index is PERMITTED beside the handoff and is not itself the mandate.** Condition 8 requires
+    // a dated handoff *file* under `.portulan/handoffs/`; `handoffs-index.md` is generated from that
+    // series and rides along when one is written. A first cut of this key accepted either, so a turn
+    // whose only governance hit was the index published a bullet blaming *the dated handoff mandate*
+    // for a mandate that had never been exercised. Copilot found it at the predicate and at the case
+    // asserting it — the fresh-context checkpoint had asked for the index to be allowed and did not
+    // catch that "allowed" had been read as "sufficient". Both are satisfied by requiring at least one
+    // real handoff and permitting the index alongside.
+    const IS_DATED_HANDOFF = (rel) => rel.startsWith(".portulan/handoffs/");
+    const HANDOFF_RELATED = (rel) => IS_DATED_HANDOFF(rel) || rel === ".portulan/handoffs-index.md";
+    const misScoredAltitude = snap.turns?.some?.((t) => {
+        if (!isTurn(t) || t.scenario !== "altitude" || t.verdict !== "higher-layer" || !Array.isArray(t.evidence)) return false;
+        const paths = t.evidence.filter((rel) => typeof rel === "string");
+        const taskLayer = paths.filter((rel) => rel.startsWith(".portulan/tasks/"));
+        // `gradeAltitude`'s own governance set: `AGENTS.md`, plus `.portulan/` outside `.portulan/tasks/`.
+        const governance = paths.filter((rel) => rel === "AGENTS.md" || (rel.startsWith(".portulan/") && !rel.startsWith(".portulan/tasks/")));
+        return taskLayer.length > 0 && governance.some(IS_DATED_HANDOFF) && governance.every(HANDOFF_RELATED);
+    });
+    if (misScoredAltitude) {
+        lines.push(
+            "- **The `altitude` row measures its predicate as much as the arms, and is not a contrast.** In",
+            "  this capture, turns reached the compliant location — `.portulan/tasks/` — and were scored",
+            "  `higher-layer` anyway, because `gradeAltitude` gives any governance-surface hit precedence and",
+            "  arm A's own `dod.md` condition 8 mandates a dated handoff on exactly that surface. The treatment",
+            "  arm is marked down for obeying the treatment, and arm B — a bare tree — has no path to that",
+            "  branch, so the row is one-directional. `evals/ab/corpus.md` carries the argument.",
+        );
+    }
     if (!snap.model) {
         lines.push(
             "- **The model that produced these turns is not recorded.** This capture names the CLI and not the",
@@ -713,6 +764,7 @@ export const BRANCH_READ = Object.freeze([
     "model",
     "source.clean",
     "turns[].completed",
+    "turns[].evidence[]",
     "turns[].said",
     "turns[].saidTruncated",
 ]);
@@ -870,6 +922,34 @@ export function verifyShape(snap) {
             }
             if (t?.saidTruncated !== undefined && typeof t.saidTruncated !== "boolean") {
                 red.push(`${id} carries a \`saidTruncated\` that is not a boolean — its presence decides whether a truncation limitation publishes at all, and its value decides which`);
+            }
+            // **`evidence` renders nowhere, so its elements are a pure branch-read** — the per-turn table
+            // prints verdict and `attempted` and never the paths, which is why the derived probe cannot
+            // see this one and it is named here instead. The altitude limitation added at the milestone-8
+            // close is keyed to a `.portulan/tasks/` path among these elements: empty them and the bullet
+            // stops publishing, leaving a register that silently drops the largest thing it has to say.
+            //
+            // **The invariant is the grader's, not a preference.** `gradeAltitude` returns `higher-layer`
+            // only where `governance.length > 0`, so a turn carrying that verdict was produced BY a hit
+            // and cannot honestly carry an empty `evidence`. An empty array elsewhere is legitimate — an
+            // `unrecorded` turn wrote nothing, and the committed capture holds exactly such a row — so
+            // this asks the question only where the verdict already answers it.
+            if (t?.evidence !== undefined && !Array.isArray(t.evidence)) {
+                red.push(`${id} carries an \`evidence\` that is not an array — it is read to decide whether the altitude limitation publishes, and a non-array reads as no evidence at all`);
+            }
+            if (Array.isArray(t?.evidence) && t.evidence.some((rel) => typeof rel !== "string" || rel.trim() === "")) {
+                red.push(`${id} carries an \`evidence\` entry that is not a non-empty path string — the altitude limitation tests these for a \`.portulan/tasks/\` prefix, and a blank entry answers that question silently`);
+            }
+            // **"At least one governance path" subsumes the empty check** — the pre-commit checkpoint's
+            // optional 7, and it is the same question asked at the right width. `gradeAltitude` returns
+            // `higher-layer` only where `governance.length > 0` and `verdict()` writes `hits ⊇ governance`
+            // into `evidence`, so a turn carrying that verdict with NO governance path is a capture the
+            // grader could not have produced — whether the array is empty or merely holds other paths.
+            // Checking only the empty case passed the second, which is a guard over the container rather
+            // than over what the consumer reads: round 4's lesson, at a new site.
+            if (t?.verdict === "higher-layer" && Array.isArray(t?.evidence)
+                && !t.evidence.some((rel) => typeof rel === "string" && (rel === "AGENTS.md" || (rel.startsWith(".portulan/") && !rel.startsWith(".portulan/tasks/"))))) {
+                red.push(`${id} is graded \`higher-layer\` and its \`evidence\` names no governance surface — that verdict is returned only where one was hit, so the capture contradicts the grader that wrote it`);
             }
             // **The marked bullet claims rows "are marked `…` where they are", so a marked row must
             // carry the marker.** Otherwise the register publishes that claim over a row that falsifies

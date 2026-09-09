@@ -787,6 +787,17 @@ Each of these was a candidate; none is an oversight.
   Filling it is a schema change, a spec version bump and a migration, so it is not a thing to do in
   passing.
 
+  **Milestone 8 closed 2026-09-09, so this deferral is now DUE and is not discharged here.** The
+  close names it rather than filling it, which is what the sentence above asks for: the drafting is
+  commissioned by proposal
+  [`../.portulan/proposals/0034-one-spec-bump-carries-both-evals-and-telemetry.md`](../.portulan/proposals/0034-one-spec-bump-carries-both-evals-and-telemetry.md)
+  — accepted 2026-08-28 — which carries `evals` **and** `telemetry` in **one** MINOR and settles none of
+  the shape: the key names, either slot's structure, and whether a migration is owed are the drafted
+  work. Doing that drafting inside the close would be the *"splitting on speculation"* this entry warns
+  against, in the change that closed the row it was waiting for. **What the close settled is the
+  precondition, not the slot:** `evals/` now holds two corpora, a metering register, an A/B capture and
+  a per-release record layer, which is the shape a slot would have to name.
+
 ## What v2.0 is not
 
 - **It has been validated against exactly two instances**, one of which it was derived from. The demo in
