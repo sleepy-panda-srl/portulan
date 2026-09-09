@@ -100,9 +100,12 @@ questions come back no.**
   learn); write learnings back into the product repo's own memory. The repo is customer #0.
 - **Two-tier supervised build.** Implementer: Opus 4.8-class. Supervisor: strongest available
   model, ALWAYS in a fresh context (subagent or separate session — never sharing the implementer's
-  context). **"Strongest available" is the rule, and this sentence is the only place
-  recording which model currently satisfies it: as of 2026-09-04, Fable 5.1** — read from a supervisor's
-  own system context rather than from the name a caller passed. The rule is what binds; the name is what
+  context). **"Strongest available" is the rule, and this sentence is its one LIVE
+  carrier — the place to read for which model currently satisfies it: as of 2026-09-04, Fable 5.1** —
+  read from a supervisor's own system context rather than from the name a caller passed. Dated records
+  elsewhere state it too (the Session log, a handoff, `0018`'s correction note) and are not carriers: a
+  record says what was true on its day and never moves, a carrier is what a reader consults and moves
+  when the fact does. The rule is what binds; the name is what
   happens to meet it today, and it moves without the rule moving. Earlier records keep the name they were
   signed with — a fidelity note says who verified, so re-attributing one is falsifying it, not
   refreshing it. Three checkpoints: (1) session-open — supervisor approves the session plan against

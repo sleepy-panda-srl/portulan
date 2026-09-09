@@ -102,8 +102,9 @@ a defect rather than a preference.
 | **Workspace** | the threshold (which work crosses into the full lane), the who, the recording surface | a lowering of core's floor | `.portulan/gate-map.md` § Supervised-build checkpoints; `dod.md` conditions 7 and 8 |
 
 **Model names never enter core.** *Which* models fill the two tiers is customer zero's instantiation,
-recorded in [`../../docs/plan.md`](../../docs/plan.md)'s Protocol — **one carrier, and this sentence
-cites it rather than restating it**. It is exactly the kind of specific
+recorded in [`../../docs/plan.md`](../../docs/plan.md)'s Protocol — **its one live carrier, and this
+sentence cites it rather than restating it**. Dated records elsewhere state the same fact and are not
+carriers; the note below is one of them. It is exactly the kind of specific
 [`../../docs/vision.md`](../../docs/vision.md) thesis 6 says persists only in the layer its owner
 controls.
 

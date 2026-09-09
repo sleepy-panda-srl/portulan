@@ -83,7 +83,7 @@ what*, and the model line belongs beside the two-tier protocol that reads it.
   read it — a model name is not derivable from the tree. A recorded limit is not a managed one
   ([`a-recorded-limit-is-not-a-managed-limit`](../memory/a-recorded-limit-is-not-a-managed-limit.md)).
   The cheap candidate — a session asking its supervisor to quote its system context, as this one did, and
-  redding when the answer differs from the Protocol — is **named and not built**.
+  failing when the answer differs from the Protocol — is **named and not built**.
 - **This branch is off `main`, not stacked on #408, and it WILL conflict with it.** Measured:
   `git merge-tree --write-tree` exits **1**, conflicting in `docs/plan.md` and
   `.portulan/handoffs-index.md` — both branches append a Session log entry at the tail and both
