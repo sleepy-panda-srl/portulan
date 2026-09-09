@@ -597,19 +597,6 @@ describe("the Claude Code backend", () => {
     });
 });
 
-// ===========================================================================================
-// 4a. The floor backend — a GitHub repository ruleset, compiled from the same policy
-// ===========================================================================================
-//
-// The milestone-4 criterion positions this as **the floor backend**: what every host falls back to,
-// and all that a host with no hook system has. So its refusals matter more than the other backend's,
-// not less — this is the column an adopter reads to learn what their host cannot give them.
-//
-// Two properties are asserted hardest, because both were reachable failures at design time:
-//   1. It never invents policy. No declared floor → no artifact and no invented branch name.
-//   2. It never emits half a mapping. `pull_request` without `required_status_checks` imports
-//      cleanly and reads as a configured floor while letting a red pull request merge.
-
 describe("a path target no path can match — hole 8, closed at the tier that asks", () => {
     // **Three families, and the predicate is a COMPARISON so that it is the class rather than this
     // list.** `matchesPath` compares a tail; a host submits an absolute path with no `.` segment, no
@@ -822,6 +809,19 @@ describe("a path target no path can match — hole 8, closed at the tier that as
         }
     });
 });
+
+// ===========================================================================================
+// 4a. The floor backend — a GitHub repository ruleset, compiled from the same policy
+// ===========================================================================================
+//
+// The milestone-4 criterion positions this as **the floor backend**: what every host falls back to,
+// and all that a host with no hook system has. So its refusals matter more than the other backend's,
+// not less — this is the column an adopter reads to learn what their host cannot give them.
+//
+// Two properties are asserted hardest, because both were reachable failures at design time:
+//   1. It never invents policy. No declared floor → no artifact and no invented branch name.
+//   2. It never emits half a mapping. `pull_request` without `required_status_checks` imports
+//      cleanly and reads as a configured floor while letting a red pull request merge.
 
 describe("the floor backend", () => {
     const ruleset = (p = withFloor()) => githubRuleset(parse(p)).artifact.value;
