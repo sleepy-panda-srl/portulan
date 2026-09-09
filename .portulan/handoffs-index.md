@@ -2,9 +2,10 @@
 
 > Generated from `handoffs/` by `node cli/index.mjs`. Do not edit by hand: it is regenerated
 > and byte-compared, so a hand-edit survives exactly until the next run.
-> 166 handoff(s), newest first. No budget: the series is append-only, so
+> 167 handoff(s), newest first. No budget: the series is append-only, so
 > the only remedy a budget could ask for is one this project rules out.
 
+- 2026-09-09 · [2026-09-09 — Both tiers are named and dated, and the phrase that was neither is retired](handoffs/2026-09-09-the-two-tiers-are-named-and-dated.md)
 - 2026-09-07 · [Handoff — the librarian's scheduled pass](handoffs/2026-09-07-librarian-pass.md)
 - 2026-09-04 · [2026-09-04 — The records named a supervisor the alias no longer resolves to, and the citation named two homes, one of which did not exist](handoffs/2026-09-04-the-records-named-a-supervisor-the-alias-no-longer-resolves-to.md)
 - 2026-09-03 · [2026-09-03 — A rule change decided by the instruments, and two of my own claims falsified](handoffs/2026-09-03-a-rule-change-decided-by-the-instruments.md)
