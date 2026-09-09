@@ -723,7 +723,14 @@ function normalisePath(p) {
 }
 
 /**
- * Can any path a host actually submits fall under this target? `false` means none can.
+ * Does this target match NO path a host actually submits? `true` means none can — the rule matches
+ * nothing, whatever it says.
+ *
+ * _(That first line asked the inverse question until 2026-09-09 — "can any path fall under this target?
+ * `false` means none can" — so it described a return value the function does not have. Eight
+ * fresh-context gradings read past it, four of them grading this docblock's accuracy: every one checked
+ * whether the predicate was right and none checked whether its opening sentence matched its own
+ * `return`. Found by Copilot on #408.)_
  *
  * **The predicate is a comparison between two forms of the target, and that is what makes it the
  * class rather than a list.** `matchesPath` compares a *tail* — it strips a leading `./` and any
@@ -759,11 +766,12 @@ function normalisePath(p) {
  * is ../.portulan/proposals/0020-a-fix-is-not-done-at-the-site-it-was-found.md's shape, and **this
  * docblock is the one carrier of that arc** — the records cite it rather than recounting it.
  *
- * The thirteen spellings and the controls that must stay matchable are enumerated **once**, in
- * `./compile.test.mjs`'s `NEVER` and `CONTROLS`, and measured there rather than listed here.
+ * The thirteen spellings and the controls that must stay matchable are enumerated **and measured** in
+ * `./compile.test.mjs`'s `NEVER` and `CONTROLS` — the only carrier that measures them. Four records
+ * enumerate them for a reader; this docblock cites the suite rather than joining them.
  *
  * **`matchesPath` is left byte-identical on purpose**, and that is a decision rather than an omission:
- * its answers are asserted by eleven `documented-hole` cases in ../evals/goldens/gates/ and by
+ * its answers are asserted by twelve `documented-hole` cases in ../evals/goldens/gates/ and by
  * `mutants` operators anchored on its text, so moving its strip would move two census anchors and exit
  * the census 2 — could-not-run wearing a pass's clothes. This function re-spells that strip rather than
  * importing it, which is one carrier more than ideal and is pinned by a suite case comparing the two on
@@ -774,7 +782,7 @@ function normalisePath(p) {
  *
  * What this does NOT answer is what `./` should MEAN as a policy target. That is
  * https://github.com/sleepy-panda-srl/portulan/issues/337's reserved question, and this predicate
- * answers only whether a target can ever match.
+ * answers only whether a target can *never* match.
  */
 export function neverMatches(target) {
     const clean = String(target ?? "").replace(/^\.\//, "").replace(/^\/+/, "");

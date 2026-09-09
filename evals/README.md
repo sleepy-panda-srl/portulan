@@ -853,7 +853,7 @@ change.
 the second half of *"merges or is rejected"* is not overclaimed beyond that.
 
 **What the rail is.** The predicate `neverMatches` in [`../cli/compile.mjs`](../cli/compile.mjs), the
-backend refusal beside `HOST_GATE_TIERS`, a suite block that goes red in five cases when the refusal is
+backend refusal beside `HOST_GATE_TIERS`, a suite block that goes red in six cases when the refusal is
 disabled, and a second forced-red drill on the `doctor` rail — `doctor` rather than `compile`, because a
 `CompileError` exits 2 and `cli/drills.mjs`'s coverage check refuses a drill declaring `exit: 2`, on the
 ground that it *"would read a refusal as a verdict"*.

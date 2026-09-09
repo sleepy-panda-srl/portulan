@@ -60,7 +60,7 @@ gate is counted among *11 of 25 rule(s) compiled* and nothing in the tree disagr
 `tests` is 1 on both sides for unrelated reasons and discriminates nothing.
 
 **And an earlier draft had a rejection branch that was a rejection for finding nothing** — *if the hazard
-does not reproduce, the clause is discharged by a rejection*. It cannot: eleven `documented-hole` cases
+does not reproduce, the clause is discharged by a rejection*. It cannot: eleven `documented-hole` cases citing entry 8
 re-run that measurement on every commit. Deleted at the second session-open.
 
 ## Claims of mine were falsified at every checkpoint
@@ -117,7 +117,7 @@ from two validator runs. What is new is narrower, and is the clause's own subjec
 only find the defect, it **chose between the drafted answers**. This sentence went through three drafts
 before it said something true, which is itself the argument for counting.)_
 
-`matchesPath` is **byte-untouched**, deliberately: its answers are asserted by eleven `documented-hole`
+`matchesPath` is **byte-untouched**, deliberately: its answers are asserted by twelve `documented-hole`
 cases and by `mutants` operators anchored on its text, and moving its strip would have moved two anchors
 and exited the census 2 — a could-not-run wearing a pass's clothes.
 
@@ -167,7 +167,7 @@ that refuses a commit whose graded hash nobody recorded — is not built and is 
   a bullet about carrier counts, wrong at every attempt until somebody ran a grep for the sentinel
   spelling instead of counting from memory.)_ _(A first draft of this bullet said "eight or more" and listed
   nine, three of which — the refusal string, the drill, `evals/README.md` — enumerate none of the set; the refusal string does not even contain a literal `./`, printing one only through the interpolated target. A
-  carrier count, wrong, in a bullet about carrier counts. Corrected on a grep.)_ One of the six had already
+  carrier count, wrong, in a bullet about carrier counts. Corrected on a grep.)_ One of the five had already
   drifted before the diff was committed, saying *committed* where the mechanism is *compiled*. Caught at
   the pre-commit checkpoint. That is the arrears: not a rule to register today, but a fact with more carriers than it
   can keep in step, and the next session that touches it should reduce before it adds.

@@ -859,12 +859,23 @@ Corrected here rather than left, because a gate map that overstates a hole is as
    predicate is `neverMatches` in [`../cli/compile.mjs`](../cli/compile.mjs), derived from that file's
    own `normalisePath`, and the refusal sits beside `HOST_GATE_TIERS` rather than at `parse`, because
    `parse` holds no tier partition by a decision its own docblock records. So the hazard this entry
-   was written about — a hollow gate reported as compiled — can no longer be **compiled**, and so can no
-   longer merge: `compile` exits 2 and `doctor` exits 1, and both run inside `workspace-verify`, whose
-   loop fails the required check on any non-zero recipe. **Nothing fires at commit time**, and the reason
-   is the tier rather than the absence of a reader: `commit-to-a-working-branch` is `auto`, and
-   [`../cli/gate.mjs`](../cli/gate.mjs) — which *does* read this policy, on every `Bash` call — acts only
-   on `gated` and `prohibited`.
+   was written about — a hollow gate **of this class**, a target whose comparison form is not normalised —
+   can no longer be **compiled**, and so can no longer merge: `compile` exits 2 and `doctor` exits 1, and
+   both run inside `workspace-verify`, whose loop fails the required check on any non-zero recipe. _(The
+   qualifier is owed and was missing: `docs/**` at `gated` compiles to a surface byte-identical to a real
+   `docs/` target's while `matchesRule` answers false for every input, so a hollow gate is still
+   reachable by a **glob metacharacter**, which this predicate does not read and #337 did not scope.
+   Measured on #408's review; filed rather than folded.)_
+
+   **Nothing fires at commit time, and not for want of a reader.**
+   [`../cli/gate.mjs`](../cli/gate.mjs) reads this policy on every `Bash` call, `git commit` included.
+   But it matches the *action* against the rules and validates no target — it loads the policy through
+   `parse`, which carries no such check — so at any tier it could only ever have gated the commit
+   itself, never read the rule being committed; and the rule a `git commit` falls under,
+   `commit-to-a-working-branch`, is `auto`, so it does not do even that. _(This paragraph said the reason
+   was "the tier rather than the absence of a reader", which is the wrong half: the tier is why the hook
+   does not act, and the absence of a target check is why it could not have helped at any tier. Copilot
+   on #408 caught the reference; the review caught the causation.)_
 
    **What remains, and it is why every case below still expects FALSE.** The two rules above are
    `auto`, that tier is refused one step earlier, and their targets still answer false for every
@@ -892,7 +903,9 @@ Corrected here rather than left, because a gate map that overstates a hole is as
    `docs\\vision.md`, `docs\\` — which `matchesPath` can never match, because it normalises the
    *candidate*'s backslashes to `/` and never the target's; that one holds on every platform and has no
    conditional reading at all. Thirteen measured, against `docs/` `./docs/` `docs/vision.md`
-   `core/operating/loop.md` as controls that must stay matchable; `docs//` is hollow and `docs/` is not,
+   `core/operating/loop.md` among the controls that must stay matchable — nine are pinned by
+   [`../cli/compile.test.mjs`](../cli/compile.test.mjs)'s `CONTROLS`, which is the carrier that measures
+   them and the one to read rather than this line; `docs//` is hollow and `docs/` is not,
    which is why exactly one trailing slash is read as *the subtree* and removed before the comparison.
 
    _(The first cut of the predicate asked only whether a target reduced to **empty**. It caught the
