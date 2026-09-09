@@ -103,7 +103,11 @@ what*, and the model line belongs beside the two-tier protocol that reads it.
   index is not one. Same shape as this repository's standing rule to re-measure the package on a clean
   checkout rather than in a working tree — a measurement taken against the wrong object reports
   confidently about something nobody asked.)_
-- **Out of tree, and left standing:** the maintainer's own memory file
-  `portulan-supervised-build.md` states *"Fable 5 supervises ONLY"* as a present-tense rule. Not this
-  diff's to change; named so it is not missed.
+- **Out of tree, and left standing.** The maintainer keeps a memory note, in his own agent-memory store
+  and **not anywhere in this repository**, stating *"Fable 5 supervises ONLY"* as a present-tense rule.
+  It is deliberately not given as a path: nothing in the tree carries it, so a reader cannot open it and
+  should not be sent looking. Not this diff's to change; named so it is not missed. _(A first cut wrote
+  it as a bare filename, which reads as an in-repo file — a citation naming a carrier the reader cannot
+  reach, in the change whose entire subject is a citation naming carriers that held nothing. Caught by a
+  suppressed-channel note on #409.)_
 - **Undemonstrated:** which resolved model signed each record between 2026-08-18 and 2026-09-02.
