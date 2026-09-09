@@ -98,17 +98,22 @@ questions come back no.**
 
 - **Portulan builds itself with itself**: run the loop (research → plan → implement → verify →
   learn); write learnings back into the product repo's own memory. The repo is customer #0.
-- **Two-tier supervised build.** Implementer: Opus 4.8-class. Supervisor: strongest available
-  model, ALWAYS in a fresh context (subagent or separate session — never sharing the implementer's
-  context). **"Strongest available" is the rule, and this sentence is its one LIVE
-  carrier — the place to read for which model currently satisfies it: as of 2026-09-04, Fable 5.1** —
-  read from a supervisor's own system context rather than from the name a caller passed. Dated records
-  elsewhere state it too (the Session log, a handoff, `0018`'s correction note) and are not carriers: a
-  record says what was true on its day and never moves, a carrier is what a reader consults and moves
-  when the fact does. The rule is what binds; the name is what
-  happens to meet it today, and it moves without the rule moving. Earlier records keep the name they were
-  signed with — a fidelity note says who verified, so re-attributing one is falsifying it, not
-  refreshing it. Three checkpoints: (1) session-open — supervisor approves the session plan against
+- **Two-tier supervised build.** As of **2026-09-09**: implementer **Opus 5**, supervisor **Fable 5.1**
+  — the supervisor tier's rule being *strongest available model*, ALWAYS in a fresh context (subagent or
+  separate session, never sharing the implementer's context). **This line is the one live carrier of both
+  names**, each quoted from its own running context's system prompt rather than from the name a caller
+  passed or from a commit trailer, which records the session's configured attribution and not the model
+  that ran. Dated records
+  elsewhere state them too and are not carriers — a record says what was true on its day and never
+  moves, a carrier is what a reader consults and moves when the fact does. Earlier records keep the name
+  they were signed with: a fidelity note says who verified, so re-attributing one is falsifying it, not
+  refreshing it. _(The implementer LINE read `Opus 4.8-class` from this file's first commit until 2026-09-09,
+  a phrase written in `c353a308` — the bootstrap, whose own trailer reads `Claude Opus 4.8` — and left
+  standing through **612 commits whose trailer reads `Claude Opus 5`** (786 counting the id-form
+  `claude-opus-5` as well, with no overlap). Whether `-class` was a capability floor or a name nobody
+  updated was the maintainer's to settle, and he settled it: a name, now current.)_
+
+  Three checkpoints: (1) session-open — supervisor approves the session plan against
   plan.md + vision.md; (2) pre-commit — fresh-context diff review against the milestone exit
   criterion; (3) milestone-close — supervisor verifies the exit criterion was *demonstrated* and
   records a signed fidelity note in the Status column: **the supervisor, the date, and the verdict in
@@ -2812,3 +2817,14 @@ _The seam applies here too: no client-identifying references._
   · Seam scan clean by construction — this pass composes no new prose at run time, so its
   diff carries nothing the scan had not already passed.
   Handoff: [`2026-09-07`](../.portulan/handoffs/2026-09-07-librarian-pass.md).
+
+- 2026-09-09 · Off the milestone row · **Both tiers are named and dated, and the phrase that was neither is
+  retired.** No row moves. `Implementer: Opus 4.8-class` came from `c353a308`, the bootstrap, and stood
+  through **612 commits whose trailer reads `Claude Opus 5`** — whether `-class` was a capability floor or
+  a name nobody updated was his alone. **His ruling: "Implementer is now Opus 5 and supervisor is Fable
+  5.1."** This closes the residue [#409](https://github.com/sleepy-panda-srl/portulan/pull/409) left him;
+  two of its other items stay open. **A trailer turns out not to be evidence of the running model** — the
+  checkpoint's own prompt identifies it as Fable 5.1 while instructing it to sign `Claude Opus 5` — so
+  both names here are quoted from system prompts, and the unbuilt rail must read those and never trailers.
+  · Pre-commit **A-W-A (3 binding, 5 optional)**, fresh-context Fable 5.1, all folded · 27 recipes green ·
+  Seam scan clean · [handoff](../.portulan/handoffs/2026-09-09-the-two-tiers-are-named-and-dated.md)
