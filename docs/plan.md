@@ -109,7 +109,7 @@ questions come back no.**
   they were signed with: a fidelity note says who verified, so re-attributing one is falsifying it, not
   refreshing it. _(This line named the implementer as `Opus 4.8-class` from this file's first commit until 2026-09-09,
   a phrase written in `c353a308` — the bootstrap, whose own trailer reads `Claude Opus 4.8` — and left
-  standing through **612 commits whose trailer reads `Claude Opus 5`** (786 counting the id-form
+  standing through **612 commits whose trailers read `Claude Opus 5`** (786 counting the id-form
   `claude-opus-5` as well, with no overlap). Whether `-class` was a capability floor or a name nobody
   updated was the maintainer's to settle, and he settled it: a name, now current.)_
 
@@ -2820,7 +2820,7 @@ _The seam applies here too: no client-identifying references._
 
 - 2026-09-09 · Off the milestone row · **Both tiers are named and dated, and the phrase that was neither is
   retired.** No row moves. `Implementer: Opus 4.8-class` came from `c353a308`, the bootstrap, and stood
-  through **612 commits whose trailer reads `Claude Opus 5`** — whether `-class` was a capability floor or
+  through **612 commits whose trailers read `Claude Opus 5`** — whether `-class` was a capability floor or
   a name nobody updated was his alone. **His ruling: "Implementer is now Opus 5 and supervisor is Fable
   5.1."** This closes the residue [#409](https://github.com/sleepy-panda-srl/portulan/pull/409) left him;
   two of its other items stay open. **A trailer turns out not to be evidence of the running model** — the

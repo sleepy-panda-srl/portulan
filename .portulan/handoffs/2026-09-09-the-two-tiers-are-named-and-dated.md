@@ -7,7 +7,7 @@ the residue [#409](https://github.com/sleepy-panda-srl/portulan/pull/409) left o
 
 `docs/plan.md`'s Protocol read **`Implementer: Opus 4.8-class`**. The phrase landed in `c353a308`, this
 repository's bootstrap commit of 2026-07-24 — itself signed `Claude Opus 4.8` — and stood unchanged
-through **612 commits whose trailer reads `Claude Opus 5`** — 786 if the id-form `claude-opus-5` is
+through **612 commits whose trailers read `Claude Opus 5`** — 786 if the id-form `claude-opus-5` is
 counted too, and the two spellings do not overlap. So `-class` was doing one of two jobs and nobody had
 said which: a **capability floor** ("at least this capable", satisfied by Opus 5 and correct as written), or
 a **name** written when 4.8 was the implementer and never updated.
