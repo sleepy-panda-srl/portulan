@@ -786,6 +786,12 @@ function normalisePath(p) {
  */
 export function neverMatches(target) {
     const clean = String(target ?? "").replace(/^\.\//, "").replace(/^\/+/, "");
+    // `clean === "/"` is UNREACHABLE, and so is the `body === ""` arm below — the strip above removes
+    // every leading slash, so `"/"` arrives here as `""`. Measured, not assumed. They are kept anyway
+    // because `matchesPath` carries the identical pair one screen down and this predicate is meant to be
+    // read beside it: deleting them here would make two functions that answer the same question about
+    // the same string look different, to save two comparisons nobody runs. Copilot raised it on #408;
+    // the answer is that the redundancy is deliberate and now says so, which is the half it was missing.
     if (clean === "" || clean === "/") return true;
     const body = clean.endsWith("/") ? clean.slice(0, -1) : clean;
     // The backslash arm is separate because it is about the CANDIDATE's normalisation rather than the
