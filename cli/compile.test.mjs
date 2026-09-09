@@ -773,6 +773,42 @@ describe("a path target no path can match — hole 8, closed at the tier that as
         }
     });
 
+// ---- the neighbouring family this predicate deliberately does NOT claim
+    //
+    // **A glob metacharacter in a target is unmatchable by the hook and is NOT refused, and the reason
+    // is that the two halves of the gate disagree rather than both being dead.** Measured: `docs/**` at
+    // `gated` emits `Edit(./docs/**)` — byte-identical to the surface a legitimate `docs/` target
+    // produces, since `pathSpec` spells a subtree that way — while `matchesRule` answers false for every
+    // candidate. So the permission layer is doing real work and only the hook half is inert.
+    //
+    // That is the opposite shape from the three families above, where BOTH halves are null, and it is
+    // why widening `neverMatches` to cover globs would be wrong: the refusal would delete a working
+    // permission gate, which is fail-open in the layer `compile` promises cannot fail open. The repair
+    // is to make the matcher read what the emitter writes, and that is a change to `matchesPath` — a
+    // function this change leaves byte-identical on purpose. Raised twice on #408, by the fresh-context
+    // review and by Copilot independently; filed rather than folded.
+    //
+    // These cases pin the divergence as it stands, so whichever way it is settled cannot move quietly.
+    test("a glob metacharacter is unmatchable by the hook, is NOT flagged, and says so", () => {
+        for (const t of ["docs/**", "docs/*", "docs/?.md"]) {
+            assert.equal(neverMatches(t), false, `${JSON.stringify(t)} is deliberately not flagged`);
+            const rule = parse(one(t, "auto")).rules[0];
+            for (const c of ["/repo/docs/vision.md", "/repo/docs/a/b.md", "/repo/x.md"]) {
+                assert.equal(matchesRule(rule, "Write", { file_path: c }), false, `${JSON.stringify(t)} vs ${c}`);
+            }
+        }
+    });
+
+    test("and `docs/**` emits the same surface a real subtree target does — which is why refusing it would remove a gate", () => {
+        const glob = claudeCode(parse(one("docs/**", "gated"))).compiled[0].surface;
+        const real = claudeCode(parse(one("docs/", "gated"))).compiled[0].surface;
+        assert.equal(glob, real);
+        assert.ok(glob.startsWith("Edit(./docs/**)"), glob);
+        // The half that differs is the hook, and only the hook.
+        assert.equal(matchesRule(parse(one("docs/", "auto")).rules[0], "Write", { file_path: "/repo/docs/a.md" }), true);
+        assert.equal(matchesRule(parse(one("docs/**", "auto")).rules[0], "Write", { file_path: "/repo/docs/a.md" }), false);
+    });
+
     test("the refusal names the surface it would have emitted, and points at the record", () => {
         // A refusal that does not say what the rule WOULD have become sends its reader looking for a
         // permissions problem. Both halves are asserted because both were written for a reader.
