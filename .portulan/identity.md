@@ -65,7 +65,21 @@ figure for the tree `0.1.0` was published from, which is `d6498f0` and is what `
 Measured on a clean `git clone` fixture at each tag rather than in a working tree, because
 re-measuring amid uncommitted edits reports the measurer's own edits as drift — the trap this file
 already records below. The 74 above remains the correct figure for the tree `v0.1.1` tags, and the
-property is unchanged at 76.)_ _(First measured 2026-07-31 at 72 files, all 72 identical — recorded then against `0f49868`, **an object that does not resolve in this repository today**, the branch having been squashed at merge; the date is the durable half and the sha is kept only as the original record. The property
+property is unchanged at 76.)_ _(**Re-measured at the 0.1.3 cut: 88.** Twelve files joined the payload
+since `0.1.2` published and none left it: milestone 8's eight instruments — `cli/drills.mjs`,
+`cli/fuzz-shell.mjs`, `cli/goldens.mjs`, `cli/mutants.mjs`, `cli/release-eval.mjs`,
+`cli/review-meter.mjs`, `cli/skill-goldens.mjs` and `cli/telemetry.mjs` — plus
+`evals/README.md`, `evals/releases/README.md` and the record pair
+`evals/releases/0.1.3.{json,md}`, which ships because a release carries its eval result in the payload
+as well as in the tagged tree. The 76 above remains the correct figure for the tree `v0.1.2` tags, and
+the property is unchanged at 88 — byte-identity is railed on every commit by `pack-identity` rather
+than measured by hand here. **This figure is about the pull request's head tree**, measured on a clean
+export of that tree — `git archive` of the index tree `d64ef46c`, unpacked and packed outside the
+working copy — because re-measuring amid uncommitted edits reports the measurer's own edits as drift.
+The 76 beside it was re-measured on a `git clone` fixture at `v0.1.2`, which is the spelling available
+once a tag exists. The tree the tag names is the maintainer's to confirm at the cut, and that nothing
+carries that obligation is [#384](https://github.com/sleepy-panda-srl/portulan/issues/384), which this
+change does not close.)_ _(First measured 2026-07-31 at 72 files, all 72 identical — recorded then against `0f49868`, **an object that does not resolve in this repository today**, the branch having been squashed at merge; the date is the durable half and the sha is kept only as the original record. The property
 strengthened as the package grew; only the count moved, and it is restated rather than left standing,
 because a count is the half of this claim that goes stale silently. **Measure it on a clean checkout:**
 re-measuring inside a working tree with uncommitted edits reports those edits as drift — it did here,

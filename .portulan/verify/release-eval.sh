@@ -47,9 +47,18 @@
 # the pull request, `release-eval --tagged` from
 # `../../.github/workflows/publish-github-packages.yml` at the release act, and a person for the rest.
 #
-# **It cannot see whether a maintainer tagged a tree whose accumulator was never renamed.** That
-# ordering is human-owned prose in `../../CHANGELOG.md`, in a file that says of its neighbouring rule
-# *"nothing checks this"*. `--tagged` is what catches it, and it catches it at publish rather than here.
+# **An accumulator that was never renamed is caught by TWO checks between them, and by neither alone —
+# and this paragraph used to name only one.** That ordering is human-owned prose in `../../CHANGELOG.md`,
+# in a file that says of its neighbouring rule *"nothing checks this"*. Measured rather than reasoned:
+#   * nothing else moved either, so the tag names a version `package.json` does not — `--tagged` catches
+#     it, at publish, on `tagged !== version`;
+#   * `package.json` moved and a record was written but the heading was not renamed — **`--tagged` exits
+#     0 on that tree**, because it never reads `../../CHANGELOG.md` at all. THIS check catches it, on
+#     the pull request, with `cut` and `invented` both red.
+# **So the residue is a tag cut from a tree this recipe never ran on**, where the first case does not
+# apply — no in-tree run precedes it and `--tagged` is looking at the wrong file to notice. Named here
+# rather than closed: whether `--tagged` should read the heading too is
+# https://github.com/sleepy-panda-srl/portulan/issues/419.
 #
 # Exits 2 — could not run, never a green — when a precondition fails, per
 # ../memory/verify-preconditions-fail-closed.md.

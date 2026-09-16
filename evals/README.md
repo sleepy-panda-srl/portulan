@@ -41,9 +41,12 @@ session that measured the table said in terms that *"his merge is the ruling"*, 
 was taken is not the date the clause landed; its own section is below. **A release carries an eval
 result** landed as a *mechanism*
 2026-09-01 — the record layer, the rail and its forced-red drill — and is **half-vouched**, the row's own
-word for a clause whose demonstration is owed to an event that has not happened yet: this repository has
-cut no release since the clause acquired an owner, so no release carries one. **Nothing remains
-outright.** Each is listed below with the sentence
+word for a clause whose demonstration was owed to an event that had not happened yet. It has now half
+happened: `0.1.3` carries a record **in the tree**, and what is still owed is the tag and a published
+body citing it — both Gated and both the maintainer's. The two are not equally unreachable, and saying
+so loosely is the overclaim this file warns about elsewhere: `release-eval --tagged` reaches the
+**tagged tree** at the publish, from the release workflow, while the **body** — authored on GitHub — is
+the surface no check reaches at all. **Nothing remains outright.** Each is listed below with the sentence
 [`../.portulan/dod.md`](../.portulan/dod.md) condition 4 requires.
 
 ## The A/B baseline — what 40 turns measured, and what they did not
@@ -792,15 +795,20 @@ directions, so a record for a release that was never cut reds as well.
   documentation says and no more; this checks that the record exists, agrees with its capture, and
   records no red.
 - **The recipes did not run at the tag.** A record is committed *in* the change that cuts a release, so
-  its `source.commit` is the pre-cut HEAD — a capture cannot name a commit that does not exist yet. The
-  register prints the commit it was taken at and says this, the way the A/B capture prints `clean`.
+  its `source.commit` names a commit **inside that change** rather than the tag — a capture cannot name a
+  commit that does not exist yet. How much of the cut precedes it is a property of how the change is
+  sequenced, and `--capture` refuses a version below the first governed one, so a clean capture can never
+  run before the version bump. The register prints the commit it was taken at and says this, the way the
+  A/B capture prints `clean`.
 - **`release-eval`'s own row is excluded from every capture**, because a capture cannot be accurate about
   the record it lives inside. The exclusion is printed with its reason rather than the row being dropped.
-- **No release carries one yet.** The rail's green today reads *no release from `0.1.3` onward has been
-  cut yet*, which is a **state, not a measurement** — and the module says so on its own face rather than
-  letting exit 0 imply otherwise. The clause's central arm is exercised by its forced-red drill, which
-  moves the boundary so an already-cut release becomes governed and requires the rail to fire; it fired
-  on 2026-09-01. A drill is not a release.
+- **`0.1.3` carries one, so the rail grades a non-empty set.** Before that cut its green read *no release
+  from `0.1.3` onward has been cut yet*, which was a **state, not a measurement**; the module said so on
+  its own face rather than letting exit 0 imply otherwise, and it prints whichever of the two holds. The
+  clause's central arm — *a governed release with no record* — is still unreachable from the committed
+  tree, now because the one governed release **has** its record rather than because none exists, so it
+  remains exercised by the forced-red drill that moves the boundary; it fired on 2026-09-01. A drill is
+  not a release, and a record in the tree is not a published one.
 
 ## A rule change decided on eval evidence — the ninth clause
 
@@ -891,10 +899,12 @@ satisfy a corpus would be manufacturing the defect. The suite block and the dril
 Each names where it arrives, per [`../.portulan/dod.md`](../.portulan/dod.md) condition 4 — nothing
 here claims a capability that does not exist:
 
-- **A release actually carrying an eval result.** The mechanism is built — its section is above — and the
-  instance is not, because no release has been cut since the clause acquired an owner. **Ruled 2026-09-01:
-  it waits for a real cut**, and the release is done once milestone 8's other work is finished — so this
-  clause is not closable on the mechanism, and the cut is the milestone's last act rather than its first
-  sequel. The argument that was put to him, and what a cut mechanically is, are in
+- **A release actually *published* with its eval result.** The mechanism is built — its section is above —
+  and since the `0.1.3` cut so is the instance's in-tree half: `evals/releases/0.1.3.{json,md}`. What is
+  still not built is the half no tree can hold. **Ruled 2026-09-01: it waits for a real cut**, and the
+  release is done once milestone 8's other work is finished — so this clause was never closable on the
+  mechanism, and the cut is the milestone's last act rather than its first sequel. `tag-a-release` and
+  `publish-a-release` are Gated, so the clause stays undemonstrated until the maintainer takes them and
+  the release body cites the register. The argument that was put to him, and what a cut mechanically is, are in
   [`../docs/milestones/m08.md`](../docs/milestones/m08.md): a clause about releases, held satisfied while
   zero governed releases exist, is true the way *a baseline names its host* was true of an empty string.

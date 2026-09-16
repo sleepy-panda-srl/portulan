@@ -51,7 +51,10 @@
 // The heading rename happens *"in a change merged before the tag is created"* — `CHANGELOG.md`'s own
 // header — and that ordering is human-owned prose in a file that says of its neighbouring rule *"nothing
 // checks this"*. A maintainer who tags a commit whose accumulator was never renamed produces a release
-// no tree state ever flagged. No in-tree rail can see that, because the act is a tag.
+// no tree state ever flagged **where nothing else moved either** — `--verify` is green on such a tree,
+// since `package.json` and the heading still agree with each other. Where the version WAS bumped and a
+// record written, `--verify` reds it here on the pull request; what no rail sees is that same tree
+// reached by a tag rather than by a merge, since `--tagged` below never reads `CHANGELOG.md`.
 //
 // `../.github/workflows/publish-github-packages.yml` fires on `release: published` and checks out the
 // tag — the one mechanical surface at the release act itself — and it runs `--tagged` below against that
@@ -307,8 +310,9 @@ export function limitationsFor(snap) {
         // subject is claims a capture never made, so a null-commit record printed `null` in its table and
         // `<commit>` in its limitations. `verifyShape` refuses such a capture before this is reached.
         `**The recipes were not run at the tag.** They ran at \`${snap?.source?.commit}\`, and this record is ` +
-            "committed *in* the cut change — so the tagged tree is this commit plus the cut itself. A record cannot be " +
-            "captured at a commit that does not exist yet, and printing the one it was captured at is the only honest form.",
+            "committed *in* the cut change — so the tagged tree is this commit plus whatever that change still adds " +
+            "after the capture, the record itself at minimum. A record cannot be captured at a commit that does not " +
+            "exist yet, and printing the one it was captured at is the only honest form.",
         `**\`${SELF}\` is excluded from the rows above**, because a capture cannot be accurate about the record it is inside. ` +
             "Its verdict for this release is the rail's own run on the pull request that carries this file.",
         // **The record ships inside the npm payload, so it is read where nothing around it says what it

@@ -387,7 +387,7 @@ export const DRILLS = [
         rail: "pack-identity",
         perturb: {
             file: "README.md",
-            find: "**Current release: `0.1.2`**",
+            find: "**Current release: `0.1.3`**",
             replace: "**Current release: `0.1.2`** <!-- the drill edited this and did not stage it -->",
         },
         stage: false,
@@ -474,7 +474,7 @@ export const DRILLS = [
         rail: "version-carriers",
         perturb: {
             file: "README.md",
-            find: "**Current release: `0.1.2`**",
+            find: "**Current release: `0.1.3`**",
             replace: "**Current release: `0.2.0`**",
         },
         // **Staged, because this rail reads the INDEX** — `git show :<path>`, the same way
@@ -613,8 +613,8 @@ export const DRILLS = [
             // Editing a committed record would have been the cheaper drill and would have proved only
             // the byte compare — a shape `review-loop`, `index`, `ab` and `ab-run` already force. What
             // nothing else here watches is the check this clause exists for: *a release the clause
-            // governs, carrying no eval result*. This repository has cut no governed release yet, so
-            // that arm is unreachable from the committed tree — until the boundary moves. Dropping it
+            // governs, carrying no eval result*. Every governed release this repository has cut carries its
+            // record, so that arm is unreachable from the committed tree — until the boundary moves. Dropping it
             // to `0.1.2` makes an already-cut release governed, and the rail must then say the record
             // is missing.
             //
@@ -631,9 +631,10 @@ export const DRILLS = [
         tell: "is a release from milestone 8 onward and there is no",
         why:
             "Milestone 8's ninth clause is that a release carries an eval result, and the check that carries it is *a governed " +
-            "release with no record reds*. Until a governed release is cut, that arm cannot be exercised from the committed " +
-            "tree at all — the rail's green today is `no release from 0.1.3 onward has been cut yet`, which is a state rather " +
-            "than a measurement. This drill moves the boundary so the arm becomes reachable and requires it to fire, so the " +
+            "release with no record reds*. Every governed release this repository has cut carries its record, so that arm cannot " +
+            "be exercised from the committed tree at all — the rail's green grades a non-empty set and finds every member " +
+            "complete, which is a measurement whose red arm nothing in the tree can reach. This drill moves the boundary so " +
+            "the arm becomes reachable and requires it to fire, so the " +
             "clause's central check is watched working rather than assumed from a green over an empty set.",
     },
     {

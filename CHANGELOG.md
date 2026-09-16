@@ -41,32 +41,24 @@ records how things were found. This is per *release* and records what a reader g
 
 ## Unreleased
 
+## 0.1.3 — 2026-09-16
+
+**The first release that carries its own eval result — and one refusal that can break an upgrade.** If
+your gate policy holds a **`gated` or `prohibited`** rule whose `write:` or `read:` target cannot match
+any path a host submits, `portulan compile` now exits **2** naming the rule, the surface it would have
+emitted and what to do — where before it exited **0** and wrote an artifact. Nothing at the `auto` or
+`propose` tiers moves, and the entry below says exactly which targets can never match. That is the
+upgrade-breaking change in this release, and it is why it leads.
+
+Beside it, milestone 8's ninth clause reaches its first instance **in the tree**: this release carries an
+eval result, and every verdict behind it lives in
+[`evals/releases/0.1.3.md`](evals/releases/0.1.3.md), which this file and the release body **cite rather
+than restate**. The tag, and a published release body citing that register, are the maintainer's acts and
+are still ahead of this entry. Also here: the `altitude` grader stops counting
+a session record as promotion, and the A/B register now publishes the limitation that governs its own
+`altitude` row.
+
 ### Changed
-
-- **The `altitude` grader no longer counts a session record as promotion.** `.portulan/handoffs/` and
-  `.portulan/handoffs-index.md` leave that scenario's population: a record of what a session did is not
-  a layer in `core < pack < workspace < repo card < task`. That is the same **argument**
-  `.portulan/tasks/` is carved out by, though not the same treatment: tasks leaves the governance set and
-  keeps a verdict of its own, while a record leaves the census entirely. **Precedence is unchanged** — a
-  constraint written to the task layer *and* promoted into
-  `.portulan/memory/` is still `higher-layer`, pinned with and without a record present. A turn recorded
-  only in a session record stays `unrecorded`, but its reason now names the record instead of denying
-  anything was written. **This supersedes the entry below**, which describes the old precedence in the
-  present tense: that entry records what the register said between 2026-09-09 and this change, and the
-  limitation it added still publishes for the 2026-08-31 capture, which was graded under the old
-  predicate. No published figure moves; re-classifying that capture's own evidence is disclosed in
-  `evals/ab/corpus.md` and is not a new baseline.
-
-- **The A/B register now publishes the limitation that governs its own `altitude` row.** The rendered
-  `evals/ab/baseline.md` listed nine limitations and not the one a reader most needs: `gradeAltitude`
-  returns `higher-layer` on any governance-surface hit before it can look at the task layer, and arm A's
-  own definition of done mandates a dated handoff on exactly that surface — so the treatment arm is
-  scored down for obeying the treatment, and the bare control arm has no path to that branch at all.
-  The argument now lives in `evals/ab/corpus.md` and the register cites it. **The bullet is keyed to the
-  fact rather than asserted flat**: it publishes only where the capture actually holds such a turn, so a
-  capture taken after the predicate is repaired prints no stale limitation. `verifyShape` gained a
-  by-name check on `turns[].evidence[]`, which renders nowhere and so was invisible to the derived
-  deletion probe. Found by the milestone-8 close.
 
 - **A gate rule whose path target can never match is now refused, and it refuses the whole compile**
   ([#337](https://github.com/sleepy-panda-srl/portulan/issues/337), option 3). **This can break an
@@ -100,169 +92,43 @@ records how things were found. This is per *release* and records what a reader g
   **unchanged at 2.2** — a tightening of what compiles, in the same class as the earlier refusals of
   absolute and `..`-bearing targets and of whitespace in a target, neither of which moved the spec.
 
-### Added
+- **The `altitude` grader no longer counts a session record as promotion.** `.portulan/handoffs/` and
+  `.portulan/handoffs-index.md` leave that scenario's population: a record of what a session did is not
+  a layer in `core < pack < workspace < repo card < task`. That is the same **argument**
+  `.portulan/tasks/` is carved out by, though not the same treatment: tasks leaves the governance set and
+  keeps a verdict of its own, while a record leaves the census entirely. **Precedence is unchanged** — a
+  constraint written to the task layer *and* promoted into
+  `.portulan/memory/` is still `higher-layer`, pinned with and without a record present. A turn recorded
+  only in a session record stays `unrecorded`, but its reason now names the record instead of denying
+  anything was written. **This supersedes the entry below**, which describes the old precedence in the
+  present tense: that entry records what the register said between 2026-09-09 and this change, and the
+  limitation it added still publishes for the 2026-08-31 capture, which was graded under the old
+  predicate. No published figure moves; re-classifying that capture's own evidence is disclosed in
+  `evals/ab/corpus.md` and is not a new baseline.
 
-- **Nothing joins the npm payload unclassified any more**
-  ([#383](https://github.com/sleepy-panda-srl/portulan/issues/383)'s first half). `cli/payload.mjs` and
-  the `payload` recipe require every `cli/*.mjs` the package would ship to fall in exactly one class —
-  the `bin`, a `SUBCOMMANDS` module, a module one of those imports, a compiled-hook runner, a module
-  ruled into `PRODUCT`, or the frozen `UNRULED` set — and every declared exclusion to agree with what `npm pack` actually emits.
-  It is `cli/eval-bundle.mjs`'s `assertPartition` one level down: a new module fails every pull request
-  until somebody decides whether it ships.
-
-  **The gap it closes was demonstrated, not inferred.** `pack-identity` holds every packed file
-  byte-identical to its source and is deliberately silent on *which* files those are, so a module
-  landing in `cli/` joined the published package with nothing saying so — measured by staging a
-  `cli/workshop-thing.mjs` into a scratch clone and watching it enter the tarball under a
-  `pack-identity` green over 84 files. That is how `ab.mjs`, `ab-run.mjs` and `ab-grade.mjs` shipped
-  for three sessions before #382 removed them.
-
-  **It rosters nothing it can re-derive**, which is the defect class this repository keeps paying for.
-  Roots come from `package.json`'s own `bin`; the dispatched set is imported from `portulan.mjs`'s
-  `SUBCOMMANDS`; the hook runners are imported from a new `HOOK_RUNNERS` export in `compile.mjs`, which
-  spells them into generated host configuration and is therefore their one carrier; and the packed
-  roster comes from `pack-identity.mjs`'s now-exported `packedPaths`, so *what npm would pack* is
-  enumerated once rather than twice. The walk reads re-exports and side-effect imports as edges — carried on the
-  grammar being total rather than on a live example, since a module reachable only by `export … from`
-  is one edit away and would arrive silently — and it **refuses** rather than walking past a dynamic
-  `import(` it has not accounted for. What it does not cover it says out loud: a static edge into a
-  subdirectory or a parent is dropped rather than refused, and no shipped module has one today.
-
-  **The thirteen unreachable modules are recorded as `unruled`, which is not a ruling.** `control-chars`,
-  `drills`, `fuzz-shell`, `goldens`, `librarian`, `mutants`, `pack-identity`, `pack-version`,
-  `review-meter`, `rule-carriers`, `skill-goldens`, `telemetry` and `version-carriers` ship and are
-  reachable from nothing the package exposes. Most are the shape `eval-bundle.mjs`'s
-  `EXCLUDED_TOP_LEVEL.evals` already ruled ships — *the tool is product, the policy it reads is this
-  team's* — but that ruling was about `goldens` and was never put to the rest, and which of them ship is
-  the maintainer's call. **The class is FROZEN at those thirteen and carries #383** — on the class, and in the text of every
-  finding and every green: a fourteenth
-  module may not join it, and the unclassified finding says so in its own text, because the cheap fix
-  under pressure is exactly the fail-open. #383 stays open; this rail is its first half, never its
-  discharge.
-
-  Forced red as a drill on a real tree, not only in a unit test: an unstaged module planted in `cli/`
-  fires it at exit 1 saying "SHIPS and is classified by nothing". **Unstaged deliberately** — `npm pack`
-  reads the working tree, so a module ships before anyone commits it, which is the likelier arrival and
-  the one a staged drill would have left untested.
-
-  **A fourteenth module arrived while this was being written, and it is the best evidence the rail
-  works.** `cli/release-eval.mjs` landed on `main` in #381 and joined the payload unremarked — the same
-  way the A/B trio had. Rebasing onto it, the rail refused to classify it and refused the escape hatch
-  by name. The maintainer ruled it **product** on 2026-09-01, which is what created the `PRODUCT` class:
-  a gap the rail exposed in itself, since it could record the *absence* of a ruling and had nowhere to
-  put its *presence*. That class is where `UNRULED` empties into as #383 is answered.
-
-  **Two holes in the new class were found by forcing them, not by reading.** A fourteenth name pushed
-  into `UNRULED` produced no finding at all while the code claimed the rail asserted the enumeration —
-  the overstated-enforcer defect — so the freeze is now a number the rail checks. And a module present
-  in two registers at once, which only became representable when `PRODUCT` existed, was silent: the
-  three registers are now held pairwise disjoint, on `eval-bundle.mjs`'s `assertPartition` precedent.
-
-- **A rail now refuses a release that carries no eval result — and no release carries one yet** —
-  milestone 8's ninth clause, landed to its mechanism and **half-vouched**: nothing has been cut since
-  the clause acquired an owner on 2026-08-24, so the rail's green today reads *no release from `0.1.3`
-  onward has been cut yet*. The lede says so because every other carrier of this change does, and a
-  changelog entry announcing a state four paragraphs before correcting it is read by more people than
-  the correction. [`cli/release-eval.mjs`](cli/release-eval.mjs) captures, for the version being cut, the verdict
-  every recipe the workspace **yields** returned at a named commit, and renders a register from it that
-  the `release-eval` verify recipe byte-compares. Records live one pair per version under
-  [`evals/releases/`](evals/releases/); [`.github/workflows/publish-github-packages.yml`](.github/workflows/publish-github-packages.yml)
-  runs `--tagged` against the tag's own checkout before publishing, which is the only check here that
-  sees a release rather than a tree.
-
-  **What an eval result consists of, where it is carried, and whether a rail or a person refuses one
-  were the three things the 2026-08-24 amendment left open.** They are settled as: every yielded
-  recipe's verdict plus the A/B baseline's **identity and never its figures**; one file per version that
-  the changelog and the release body cite rather than restate; and **both** — a rail for the tree and the
-  tagged checkout, a person for the release body, split because those are answerable at different times
-  and no in-tree check reaches a body authored on GitHub.
-
-  **Two designs were reversed before a line was written, both by a fresh context.** Keying cut detection
-  to `CHANGELOG.md`'s top heading never fires — the cut re-seeds `## Unreleased` above the version it
-  just wrote, so that heading is `Unreleased` on the cut commit too. And keying it to `package.json`'s
-  version alone grades one record at a time: once `0.1.4` is declared, `0.1.3`'s record could be deleted
-  in silence. The subject is every version this file records from `0.1.3` onward, permanently, graded in
-  both directions so a record for a release that was never cut reds as well.
-
-  **`0.1.0`–`0.1.2` carry no record and are not asked for one.** The Protocol's wording is *from
-  milestone 8*, and a retro-fitted record would be a capture nobody ran. **No release has been cut since
-  the clause acquired an owner, so nothing carries one yet** — the rail's green today reads *no release
-  from `0.1.3` onward has been cut yet*, and it prints that rather than letting exit 0 imply a graded
-  set. The clause's central arm is exercised by a forced-red drill that moves the boundary until an
-  already-cut release becomes governed and requires the rail to fire.
-
-  **The record ships.** `evals/releases/` is in `package.json`'s `files`, so a release carries its eval
-  result in the npm payload as well as in the tagged tree — the maintainer's decision of 2026-09-01,
-  taken on an option the amendment had left open and the implementer had closed the other way. What
-  settled it was a measurement rather than an argument: a record written into the **unpacked tarball**
-  is graded `exit 0` by `cli/release-eval.mjs --tagged`, which already ships, so the artifact carries
-  both the claim and the tool that checks it. Every register also says whose build it measures, because
-  a table headed *"N of M recipes this workspace yielded"*, read inside a consumer's `node_modules`,
-  invites exactly one wrong reading.
-
-
-- **Compiled gates now ship with the attack cases that prove their coverage** — milestone 8 clause (a).
-  `cli/goldens.mjs` grades a corpus at `evals/goldens/gates/` against the gate policy a workspace
-  **yields**, through the compiler's own exported `matchesRule` rather than a second implementation, and
-  runs as the `goldens` verify recipe. Two rails: a rule that compiles to a matcher and carries no
-  fixture is red, so coverage is measured rather than named; and a case marked `documented-hole` that
-  starts being *caught* is red too, so a hole record cannot go stale in either direction.
-
-  **What it is not** is stated in the tool, the recipe and `evals/README.md` alike: a **presence floor**.
-  One trivial fixture per rule satisfies it while proving nothing adversarial, and no check can tell the
-  difference — the runner prints that limit on every green rather than letting an exit code imply more.
-
-  It went red on its first run and found a hole nobody had recorded: **a rule whose target is `./`
-  matches nothing at runtime**, because `matchesPath` reduces `"./"` to the empty string and refuses it.
-  Nothing was mis-enforced — the two rules shaped that way are `auto`, which no layer asks about — but a
-  *gated* rule written that way compiled to a named permission surface and a matcher covering nothing.
-  Entry 8 of the gate map's honest-holes list, asserted in the corpus, and **closed at the enforcing
-  tiers by the first entry in this release** — which is why this paragraph is in the past tense.
-
-### Fixed
-
-- **A leading redirection no longer defeats a shell gate**
-  ([#71](https://github.com/sleepy-panda-srl/portulan/issues/71)). `2>&1 git push --force …`,
-  `> /tmp/log git push --force …` and their kin reached no gate: a word in front of a command inside a
-  segment escapes the matcher, and this was the one such word whose grammar is *closed* — an optional
-  file descriptor, one operator, a word — so it could be stripped with an edge a reader can check.
-
-  Closing it also required `commandSegments` to stop reading the `&` of `>&`/`&>` and the `|` of `>|`
-  as separators, since those spellings were already in pieces before any strip could see them — which
-  closed `>|` and `&>` as well, two spellings the issue never named. **The five remaining leaders —
-  `env`, `sudo`, a leading assignment, a `then`/`do` branch, a brace group — are untouched by decision:**
-  a named table of command prefixes has no natural edge, and one omission buys exactly the false
-  confidence a hole list exists to deny.
-
-  **The grammar says "and a word", and the first cut read that as *non-whitespace*.** A quoted or
-  escaped target holds spaces, so `> "foo bar" git push --force …` stripped `> "foo` and left
-  `bar" git push --force …` — no gate. Five spellings escaped, and bash was measured running the command
-  after each. The target reader recognises quoted spans and escaped characters now, and the *unquoted*
-  two-word spelling stays ungated, because there the shell really does run the second word.
-
-  **A third round found the same class one level in** — `"[^"]*"` could not hold a backslash-escaped
-  quote *inside* a double-quoted span. Two rounds, one class, each fixed at the spelling that was
-  quoted; so the suite stopped asserting spellings and now asserts the **rule**: whatever `shellWords`
-  calls one word, the strip consumes whole, with an unquoted two-word counterexample keeping that from
-  becoming *consume everything*. `shellWords` is exported for it. A fourth sibling reds in the suite
-  rather than arriving in a review.
-
-- **Three writer-table entries were covered by the matcher and exercised by nothing**
-  ([#70](https://github.com/sleepy-panda-srl/portulan/issues/70)). `shred`, `gsed` and `ruby` now have
-  admit cases, **generated from the declaring tables** rather than hand-listed, so a fifteenth entry
-  cannot ship unasserted. `&>` gained the regression test it never had, alongside `2>`, `>|` and `>>`.
-
-### Changed
+- **The A/B register now publishes the limitation that governs its own `altitude` row.** The rendered
+  `evals/ab/baseline.md` listed nine limitations and not the one a reader most needs: `gradeAltitude`
+  returns `higher-layer` on any governance-surface hit before it can look at the task layer, and arm A's
+  own definition of done mandates a dated handoff on exactly that surface — so the treatment arm is
+  scored down for obeying the treatment, and the bare control arm has no path to that branch at all.
+  The argument now lives in `evals/ab/corpus.md` and the register cites it. **The bullet is keyed to the
+  fact rather than asserted flat**: it publishes only where the capture actually holds such a turn, so a
+  capture taken after the predicate is repaired prints no stale limitation. `verifyShape` gained a
+  by-name check on `turns[].evidence[]`, which renders nowhere and so was invisible to the derived
+  deletion probe. Found by the milestone-8 close.
 
 - **The package stops shipping an A/B rig whose only subject is this repository.** `cli/ab.mjs`,
   `cli/ab-run.mjs` and `cli/ab-grade.mjs` are excluded by name in `package.json`'s `files`, joining
   `cli/eval-bundle.mjs` and its licence template under the rule the first publish set — *the package
   ships the product, not the workshop*. Measured with `npm pack --dry-run --json` on the rebased tree:
-  **89 files before, 86 after**, exactly those three removed and nothing else moved; 776,883 → 704,631
-  bytes packed and 2,472,005 → 2,227,493 unpacked. _(An earlier draft of this entry said 86 → 83, true
-  of the tree before this branch was rebased onto `main`: session 7 added `evals/releases/` to `files`
-  and session 7b grew `ab-run.mjs`, so both endpoints moved under it. Re-measured rather than adjusted —
-  which is this file's own rule about a figure whose subject moves.)_
+  **91 files before, 88 after**, exactly those three removed and nothing else moved; 812,492 → 718,836
+  bytes packed and 2,580,525 → 2,271,010 unpacked. _(**Both endpoints have now moved twice under this one
+  entry.** A first draft said 86 → 83, true of the tree before this branch was rebased onto `main`:
+  session 7 added `evals/releases/` to `files` and session 7b grew `ab-run.mjs`. A second said 89 → 86,
+  true until **the cut itself** filed `evals/releases/0.1.3.{json,md}` into that same glob — so the
+  figure went stale inside the change that publishes it, which is the sharpest form of the defect this
+  parenthesis exists to record. Re-measured against the tree this release actually ships, each time,
+  rather than adjusted.)_
 
   **The argument is that the rig has one subject and it is not the reader's.** `ab.mjs`'s
   `DISPOSITIONS` classifies *this* workspace's `.portulan/` path by path, compiled into the module
@@ -326,7 +192,159 @@ records how things were found. This is per *release* and records what a reader g
   this repository keeps getting wrong is a measurement true of one case written down as though it were
   true of the class._ The workflow header carries the same correction beside the claim it qualifies.
 
+### Added
+
+- **Nothing joins the npm payload unclassified any more**
+  ([#383](https://github.com/sleepy-panda-srl/portulan/issues/383)'s first half). `cli/payload.mjs` and
+  the `payload` recipe require every `cli/*.mjs` the package would ship to fall in exactly one class —
+  the `bin`, a `SUBCOMMANDS` module, a module one of those imports, a compiled-hook runner, a module
+  ruled into `PRODUCT`, or the frozen `UNRULED` set — and every declared exclusion to agree with what `npm pack` actually emits.
+  It is `cli/eval-bundle.mjs`'s `assertPartition` one level down: a new module fails every pull request
+  until somebody decides whether it ships.
+
+  **The gap it closes was demonstrated, not inferred.** `pack-identity` holds every packed file
+  byte-identical to its source and is deliberately silent on *which* files those are, so a module
+  landing in `cli/` joined the published package with nothing saying so — measured by staging a
+  `cli/workshop-thing.mjs` into a scratch clone and watching it enter the tarball under a
+  `pack-identity` green over 84 files. That is how `ab.mjs`, `ab-run.mjs` and `ab-grade.mjs` shipped
+  for three sessions before #382 removed them.
+
+  **It rosters nothing it can re-derive**, which is the defect class this repository keeps paying for.
+  Roots come from `package.json`'s own `bin`; the dispatched set is imported from `portulan.mjs`'s
+  `SUBCOMMANDS`; the hook runners are imported from a new `HOOK_RUNNERS` export in `compile.mjs`, which
+  spells them into generated host configuration and is therefore their one carrier; and the packed
+  roster comes from `pack-identity.mjs`'s now-exported `packedPaths`, so *what npm would pack* is
+  enumerated once rather than twice. The walk reads re-exports and side-effect imports as edges — carried on the
+  grammar being total rather than on a live example, since a module reachable only by `export … from`
+  is one edit away and would arrive silently — and it **refuses** rather than walking past a dynamic
+  `import(` it has not accounted for. What it does not cover it says out loud: a static edge into a
+  subdirectory or a parent is dropped rather than refused, and no shipped module has one today.
+
+  **The thirteen unreachable modules are recorded as `unruled`, which is not a ruling.** `control-chars`,
+  `drills`, `fuzz-shell`, `goldens`, `librarian`, `mutants`, `pack-identity`, `pack-version`,
+  `review-meter`, `rule-carriers`, `skill-goldens`, `telemetry` and `version-carriers` ship and are
+  reachable from nothing the package exposes. Most are the shape `eval-bundle.mjs`'s
+  `EXCLUDED_TOP_LEVEL.evals` already ruled ships — *the tool is product, the policy it reads is this
+  team's* — but that ruling was about `goldens` and was never put to the rest, and which of them ship is
+  the maintainer's call. **The class is FROZEN at those thirteen and carries #383** — on the class, and in the text of every
+  finding and every green: a fourteenth
+  module may not join it, and the unclassified finding says so in its own text, because the cheap fix
+  under pressure is exactly the fail-open. #383 stays open; this rail is its first half, never its
+  discharge.
+
+  Forced red as a drill on a real tree, not only in a unit test: an unstaged module planted in `cli/`
+  fires it at exit 1 saying "SHIPS and is classified by nothing". **Unstaged deliberately** — `npm pack`
+  reads the working tree, so a module ships before anyone commits it, which is the likelier arrival and
+  the one a staged drill would have left untested.
+
+  **A fourteenth module arrived while this was being written, and it is the best evidence the rail
+  works.** `cli/release-eval.mjs` landed on `main` in #381 and joined the payload unremarked — the same
+  way the A/B trio had. Rebasing onto it, the rail refused to classify it and refused the escape hatch
+  by name. The maintainer ruled it **product** on 2026-09-01, which is what created the `PRODUCT` class:
+  a gap the rail exposed in itself, since it could record the *absence* of a ruling and had nowhere to
+  put its *presence*. That class is where `UNRULED` empties into as #383 is answered.
+
+  **Two holes in the new class were found by forcing them, not by reading.** A fourteenth name pushed
+  into `UNRULED` produced no finding at all while the code claimed the rail asserted the enumeration —
+  the overstated-enforcer defect — so the freeze is now a number the rail checks. And a module present
+  in two registers at once, which only became representable when `PRODUCT` existed, was silent: the
+  three registers are now held pairwise disjoint, on `eval-bundle.mjs`'s `assertPartition` precedent.
+
+- **A rail now refuses a release that carries no eval result — and this is the first release to carry
+  one.** Milestone 8's ninth clause landed to its mechanism on 2026-09-01 and was **half-vouched** until
+  this cut: nothing had been released since the clause acquired an owner on 2026-08-24, so the rail's
+  green read *no release from `0.1.3` onward has been cut yet*. It grades a non-empty set now. The lede
+  leads on this because every other carrier of the change does, and a changelog entry announcing a state
+  four paragraphs before correcting it is read by more people than the correction. **Still not
+  demonstrated: the published half** — the tag and a release body citing the register. `--tagged` reaches
+  the tagged tree at publish; the body, authored on GitHub, is the half nothing reaches. [`cli/release-eval.mjs`](cli/release-eval.mjs) captures, for the version being cut, the verdict
+  every recipe the workspace **yields** returned at a named commit, and renders a register from it that
+  the `release-eval` verify recipe byte-compares. Records live one pair per version under
+  [`evals/releases/`](evals/releases/); [`.github/workflows/publish-github-packages.yml`](.github/workflows/publish-github-packages.yml)
+  runs `--tagged` against the tag's own checkout before publishing, which is the only check here that
+  sees a release rather than a tree.
+
+  **What an eval result consists of, where it is carried, and whether a rail or a person refuses one
+  were the three things the 2026-08-24 amendment left open.** They are settled as: every yielded
+  recipe's verdict plus the A/B baseline's **identity and never its figures**; one file per version that
+  the changelog and the release body cite rather than restate; and **both** — a rail for the tree and the
+  tagged checkout, a person for the release body, split because those are answerable at different times
+  and no in-tree check reaches a body authored on GitHub.
+
+  **Two designs were reversed before a line was written, both by a fresh context.** Keying cut detection
+  to `CHANGELOG.md`'s top heading never fires — the cut re-seeds `## Unreleased` above the version it
+  just wrote, so that heading is `Unreleased` on the cut commit too. And keying it to `package.json`'s
+  version alone grades one record at a time: once `0.1.4` is declared, `0.1.3`'s record could be deleted
+  in silence. The subject is every version this file records from `0.1.3` onward, permanently, graded in
+  both directions so a record for a release that was never cut reds as well.
+
+  **`0.1.0`–`0.1.2` carry no record and are not asked for one.** The Protocol's wording is *from
+  milestone 8*, and a retro-fitted record would be a capture nobody ran. **`0.1.3` is the first release the
+  clause governs, and it carries a record** — where before this cut the rail's green read *no release
+  from `0.1.3` onward has been cut yet*, which it printed rather than letting exit 0 imply a graded
+  set. The clause's central arm is exercised by a forced-red drill that moves the boundary until an
+  already-cut release becomes governed and requires the rail to fire.
+
+  **The record ships.** `evals/releases/` is in `package.json`'s `files`, so a release carries its eval
+  result in the npm payload as well as in the tagged tree — the maintainer's decision of 2026-09-01,
+  taken on an option the amendment had left open and the implementer had closed the other way. What
+  settled it was a measurement rather than an argument: a record written into the **unpacked tarball**
+  is graded `exit 0` by `cli/release-eval.mjs --tagged`, which already ships, so the artifact carries
+  both the claim and the tool that checks it. Every register also says whose build it measures, because
+  a table headed *"N of M recipes this workspace yielded"*, read inside a consumer's `node_modules`,
+  invites exactly one wrong reading.
+
+
+- **Compiled gates now ship with the attack cases that prove their coverage** — milestone 8 clause (a).
+  `cli/goldens.mjs` grades a corpus at `evals/goldens/gates/` against the gate policy a workspace
+  **yields**, through the compiler's own exported `matchesRule` rather than a second implementation, and
+  runs as the `goldens` verify recipe. Two rails: a rule that compiles to a matcher and carries no
+  fixture is red, so coverage is measured rather than named; and a case marked `documented-hole` that
+  starts being *caught* is red too, so a hole record cannot go stale in either direction.
+
+  **What it is not** is stated in the tool, the recipe and `evals/README.md` alike: a **presence floor**.
+  One trivial fixture per rule satisfies it while proving nothing adversarial, and no check can tell the
+  difference — the runner prints that limit on every green rather than letting an exit code imply more.
+
+  It went red on its first run and found a hole nobody had recorded: **a rule whose target is `./`
+  matches nothing at runtime**, because `matchesPath` reduces `"./"` to the empty string and refuses it.
+  Nothing was mis-enforced — the two rules shaped that way are `auto`, which no layer asks about — but a
+  *gated* rule written that way compiled to a named permission surface and a matcher covering nothing.
+  Entry 8 of the gate map's honest-holes list, asserted in the corpus, and **closed at the enforcing
+  tiers by the first entry in this release** — which is why this paragraph is in the past tense.
+
 ### Fixed
+
+- **A leading redirection no longer defeats a shell gate**
+  ([#71](https://github.com/sleepy-panda-srl/portulan/issues/71)). `2>&1 git push --force …`,
+  `> /tmp/log git push --force …` and their kin reached no gate: a word in front of a command inside a
+  segment escapes the matcher, and this was the one such word whose grammar is *closed* — an optional
+  file descriptor, one operator, a word — so it could be stripped with an edge a reader can check.
+
+  Closing it also required `commandSegments` to stop reading the `&` of `>&`/`&>` and the `|` of `>|`
+  as separators, since those spellings were already in pieces before any strip could see them — which
+  closed `>|` and `&>` as well, two spellings the issue never named. **The five remaining leaders —
+  `env`, `sudo`, a leading assignment, a `then`/`do` branch, a brace group — are untouched by decision:**
+  a named table of command prefixes has no natural edge, and one omission buys exactly the false
+  confidence a hole list exists to deny.
+
+  **The grammar says "and a word", and the first cut read that as *non-whitespace*.** A quoted or
+  escaped target holds spaces, so `> "foo bar" git push --force …` stripped `> "foo` and left
+  `bar" git push --force …` — no gate. Five spellings escaped, and bash was measured running the command
+  after each. The target reader recognises quoted spans and escaped characters now, and the *unquoted*
+  two-word spelling stays ungated, because there the shell really does run the second word.
+
+  **A third round found the same class one level in** — `"[^"]*"` could not hold a backslash-escaped
+  quote *inside* a double-quoted span. Two rounds, one class, each fixed at the spelling that was
+  quoted; so the suite stopped asserting spellings and now asserts the **rule**: whatever `shellWords`
+  calls one word, the strip consumes whole, with an unquoted two-word counterexample keeping that from
+  becoming *consume everything*. `shellWords` is exported for it. A fourth sibling reds in the suite
+  rather than arriving in a review.
+
+- **Three writer-table entries were covered by the matcher and exercised by nothing**
+  ([#70](https://github.com/sleepy-panda-srl/portulan/issues/70)). `shred`, `gsed` and `ruby` now have
+  admit cases, **generated from the declaring tables** rather than hand-listed, so a fifteenth entry
+  cannot ship unasserted. `&>` gained the regression test it never had, alongside `2>`, `>|` and `>>`.
 
 - **`compile` reported a workspace that declares no gate policy as an unreadable file.** A workspace
   with no top-level `gates` key falls back to the conventional `gates.json` path — a shape
