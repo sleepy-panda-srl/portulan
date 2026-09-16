@@ -24,7 +24,7 @@
           {
             "key": "telemetry.sdk.version",
             "value": {
-              "stringValue": "0.1.2"
+              "stringValue": "0.1.3"
             }
           },
           {
@@ -45,7 +45,7 @@
         {
           "scope": {
             "name": "portulan/review-loop",
-            "version": "0.1.2"
+            "version": "0.1.3"
           },
           "metrics": [
             {

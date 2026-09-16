@@ -41,6 +41,21 @@ records how things were found. This is per *release* and records what a reader g
 
 ## Unreleased
 
+## 0.1.3 — 2026-09-16
+
+**The first release that carries its own eval result — and one refusal that can break an upgrade.** If
+your gate policy holds a **`gated` or `prohibited`** rule whose `write:` or `read:` target cannot match
+any path a host submits, `portulan compile` now exits **2** naming the rule, the surface it would have
+emitted and what to do — where before it exited **0** and wrote an artifact. Nothing at the `auto` or
+`propose` tiers moves, and the entry below says exactly which targets those are. That is the
+upgrade-breaking change in this release, and it is why it leads.
+
+Beside it, milestone 8's ninth clause reaches its first instance: this release carries an eval result,
+and every verdict behind it lives in the register under `evals/releases/`, which this
+file and the release body **cite rather than restate**. Also here: the `altitude` grader stops counting
+a session record as promotion, and the A/B register now publishes the limitation that governs its own
+`altitude` row.
+
 ### Changed
 
 - **The `altitude` grader no longer counts a session record as promotion.** `.portulan/handoffs/` and
