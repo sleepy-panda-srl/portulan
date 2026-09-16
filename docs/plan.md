@@ -2862,12 +2862,12 @@ _The seam applies here too: no client-identifying references._
   Handoff: [`2026-09-14`](../.portulan/handoffs/2026-09-14-librarian-pass.md).
 
 - 2026-09-16 · M8 (Evals & telemetry) — **the ninth clause's in-tree half** · **`0.1.3` is cut in the tree
-  and carries its eval result.** [#418](https://github.com/sleepy-panda-srl/portulan/pull/418): seven
-  version carriers, the accumulator renamed and re-seeded, `evals/releases/0.1.3.{json,md}` — 26 rows at
-  `fac7b6d3`, clean, all exit 0, baseline by identity. **NOT demonstrated**: the tag and a body citing the
-  register are Gated and his; the Status cell does not move. **The number was his**, asked because all five
-  in-tree `0.1.3`s were agent-written forward references while the accumulator's leading breaking change
-  reads toward `0.2.0`. **Two carriers move at a cut that no list names** — `drills.mjs`'s anchors and the
-  telemetry golden, either poisoning the capture; filed #417. Three headers claimed open rows against
-  `done`. Payload 88. · Session-open **A-W-A (11+5)**, pre-commit **A-W-A (6+4)**, Fable 5.1, all folded ·
-  27 green · Seam scan clean · [handoff](../.portulan/handoffs/2026-09-16-the-0-1-3-cut-prepared-and-three-stale-headers.md)
+  and carries its eval result.** [#418](https://github.com/sleepy-panda-srl/portulan/pull/418): seven version
+  carriers, the accumulator renamed and re-seeded, `evals/releases/0.1.3.{json,md}` — 26 rows at `fac7b6d3`,
+  clean, all exit 0. **NOT demonstrated**: the tag and a body citing the register are Gated and his; the
+  Status cell does not move. **The number was his** — all five in-tree `0.1.3`s were agent-written forward
+  references while the leading breaking change read toward `0.2.0`. **Two carriers move at a cut no list
+  names** (`drills.mjs`'s anchors, the telemetry golden), either poisoning the capture — **#417**. Payload 88.
+  **Review: 3 rounds, 13 threads, 4 refused on measurements**, one right: **`--tagged` is green on an unrenamed
+  accumulator** — a stated enforcer that was not the real one; prose fixed, mechanism filed **#419**.
+  · Session-open **A-W-A (11+5)** · pre-commit **A-W-A (6+4)** · Fable 5.1, all folded · 27 green · Seam scan clean · [handoff](../.portulan/handoffs/2026-09-16-the-0-1-3-cut-prepared-and-three-stale-headers.md)

@@ -52,3 +52,16 @@ optional on his standing instruction. 27 green, `--pack-root packs` pinned.
 `fac7b6d3`, a branch commit, and this repository squash-merges and deletes branches — so after merge
 that sha resolves in no clone, the `0f49868` class `identity.md` already records. Nothing reds;
 `--verify` is shape-only. The choice of merge strategy is his and the PR says why it is his.
+
+**The review's own finding, and it is the one worth keeping.** Three Copilot rounds, thirteen threads.
+Four were the same wrong claim — that `evals/README.md` cannot ship because the allowlist names
+`evals/releases/` — refused each time on a clean-export measurement, since npm matches a bare
+`README.md` entry at **any depth**. Three were the capture anchor, which is the maintainer's merge
+strategy and not a defect to fix. **But one was right and nothing in this repository had noticed it:**
+`.portulan/verify/release-eval.sh` claimed `--tagged` catches a tag whose `## Unreleased` accumulator
+was never renamed. Constructed, it does not — `--tagged` never reads `CHANGELOG.md` at all, and exits 0
+on that tree while `--verify` reds it with two findings. Two shapes, and the prose named only the one
+`--tagged` catches. That is `a-stated-enforcer-must-be-the-real-one` in a sentence about this very
+recipe. Prose corrected at both carriers; whether `--tagged` should read the heading is
+[#419](https://github.com/sleepy-panda-srl/portulan/issues/419), with the argument against written into
+it — widening it duplicates `--verify`'s `cut` check at a second site.
