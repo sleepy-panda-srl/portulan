@@ -307,8 +307,9 @@ export function limitationsFor(snap) {
         // subject is claims a capture never made, so a null-commit record printed `null` in its table and
         // `<commit>` in its limitations. `verifyShape` refuses such a capture before this is reached.
         `**The recipes were not run at the tag.** They ran at \`${snap?.source?.commit}\`, and this record is ` +
-            "committed *in* the cut change — so the tagged tree is this commit plus the cut itself. A record cannot be " +
-            "captured at a commit that does not exist yet, and printing the one it was captured at is the only honest form.",
+            "committed *in* the cut change — so the tagged tree is this commit plus whatever that change still adds " +
+            "after the capture, the record itself at minimum. A record cannot be captured at a commit that does not " +
+            "exist yet, and printing the one it was captured at is the only honest form.",
         `**\`${SELF}\` is excluded from the rows above**, because a capture cannot be accurate about the record it is inside. ` +
             "Its verdict for this release is the rail's own run on the pull request that carries this file.",
         // **The record ships inside the npm payload, so it is read where nothing around it says what it
