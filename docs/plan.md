@@ -2850,3 +2850,13 @@ _The seam applies here too: no client-identifying references._
   **open** — probe refuses at exit 2, command recorded; a release-gate rail refused as scope creep. ·
   Session-open **A-W-A (10+5)**, pre-commit **A-W-A (6+5)**, Fable 5.1, all folded — two docblocks
   claimed pins that did not exist · 27 green · Seam scan clean · [handoff](../.portulan/handoffs/2026-09-09-b-the-altitude-population-excludes-session-records.md)
+
+- 2026-09-14 · M5 (Memory lifecycle & librarian) · **Scheduled librarian pass**, filed by
+  `cli/librarian.mjs` rather than by a person: 2 workspaces passed,
+  0 stale record(s), 0 sealed stamp(s) due for re-validation, 0 proposal(s) nagged, no index drift.
+  · Mined: 3 incident(s) with nothing pointing back at them, 79 path(s) drawing
+  repeat review findings, 3 record group(s) citing one incident.
+  · No supervisor checkpoint: a scheduled pass makes no decision for one to grade.
+  · Seam scan clean by construction — this pass composes no new prose at run time, so its
+  diff carries nothing the scan had not already passed.
+  Handoff: [`2026-09-14`](../.portulan/handoffs/2026-09-14-librarian-pass.md).
