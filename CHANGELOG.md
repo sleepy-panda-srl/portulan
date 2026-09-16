@@ -121,11 +121,14 @@ a session record as promotion, and the A/B register now publishes the limitation
   `cli/ab-run.mjs` and `cli/ab-grade.mjs` are excluded by name in `package.json`'s `files`, joining
   `cli/eval-bundle.mjs` and its licence template under the rule the first publish set — *the package
   ships the product, not the workshop*. Measured with `npm pack --dry-run --json` on the rebased tree:
-  **89 files before, 86 after**, exactly those three removed and nothing else moved; 776,883 → 704,631
-  bytes packed and 2,472,005 → 2,227,493 unpacked. _(An earlier draft of this entry said 86 → 83, true
-  of the tree before this branch was rebased onto `main`: session 7 added `evals/releases/` to `files`
-  and session 7b grew `ab-run.mjs`, so both endpoints moved under it. Re-measured rather than adjusted —
-  which is this file's own rule about a figure whose subject moves.)_
+  **91 files before, 88 after**, exactly those three removed and nothing else moved; 812,492 → 718,836
+  bytes packed and 2,580,525 → 2,271,010 unpacked. _(**Both endpoints have now moved twice under this one
+  entry.** A first draft said 86 → 83, true of the tree before this branch was rebased onto `main`:
+  session 7 added `evals/releases/` to `files` and session 7b grew `ab-run.mjs`. A second said 89 → 86,
+  true until **the cut itself** filed `evals/releases/0.1.3.{json,md}` into that same glob — so the
+  figure went stale inside the change that publishes it, which is the sharpest form of the defect this
+  parenthesis exists to record. Re-measured against the tree this release actually ships, each time,
+  rather than adjusted.)_
 
   **The argument is that the rig has one subject and it is not the reader's.** `ab.mjs`'s
   `DISPOSITIONS` classifies *this* workspace's `.portulan/` path by path, compiled into the module

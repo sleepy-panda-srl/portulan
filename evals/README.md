@@ -43,8 +43,10 @@ result** landed as a *mechanism*
 2026-09-01 — the record layer, the rail and its forced-red drill — and is **half-vouched**, the row's own
 word for a clause whose demonstration was owed to an event that had not happened yet. It has now half
 happened: `0.1.3` carries a record **in the tree**, and what is still owed is the tag and a published
-body citing it — both Gated, both the maintainer's, neither reachable by any in-tree check. **Nothing
-remains outright.** Each is listed below with the sentence
+body citing it — both Gated and both the maintainer's. The two are not equally unreachable, and saying
+so loosely is the overclaim this file warns about elsewhere: `release-eval --tagged` reaches the
+**tagged tree** at the publish, from the release workflow, while the **body** — authored on GitHub — is
+the surface no check reaches at all. **Nothing remains outright.** Each is listed below with the sentence
 [`../.portulan/dod.md`](../.portulan/dod.md) condition 4 requires.
 
 ## The A/B baseline — what 40 turns measured, and what they did not
