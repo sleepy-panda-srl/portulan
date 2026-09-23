@@ -2,10 +2,11 @@
 
 > Generated from `handoffs/` by `node cli/index.mjs`. Do not edit by hand: it is regenerated
 > and byte-compared, so a hand-edit survives exactly until the next run.
-> 187 handoff(s), newest first. No budget: the series is append-only, so
+> 188 handoff(s), newest first. No budget: the series is append-only, so
 > the only remedy a budget could ask for is one this project rules out.
 
 - 2026-09-23 · [Handoff — 2026-09-23: what a host loads into every context is proposed for a budget, and row 12 runs first](handoffs/2026-09-23-the-always-tier-is-proposed-for-a-budget.md)
+- 2026-09-23 · [Handoff — 2026-09-23: the request job reads with its own token and asks with his](handoffs/2026-09-23-q-the-request-job-reads-with-its-own-token-and-asks-with-his.md)
 - 2026-09-23 · [Handoff — 2026-09-23: the boot report says when the packs step did not load](handoffs/2026-09-23-p-the-boot-report-says-when-the-packs-step-did-not-load.md)
 - 2026-09-23 · [Handoff — 2026-09-23: what a boot reads is measured, and Portulan's own share is railed](handoffs/2026-09-23-o-what-a-boot-reads-is-measured-and-portulans-share-railed.md)
 - 2026-09-23 · [Handoff — 2026-09-23: the always tier has its doctrine and its manifest key](handoffs/2026-09-23-n-the-always-tier-has-its-doctrine-and-its-key.md)

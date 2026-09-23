@@ -39,23 +39,27 @@
 # started at 15:50:09, and its review landed at 15:54:21. The route works. The job went red anyway,
 # because it judged the request by GitHub's answer to it, and that answer could not have shown it.
 #
-# ## Why GraphQL, and why its answer is the proof
+# ## Which token does what, and how the request is confirmed
 #
-# The first cut asked over REST, `POST /pulls/{n}/requested_reviewers` naming
-# `copilot-pull-request-reviewer[bot]`, which *Using GitHub Copilot code review* documents, and went red
-# unless the pull request in GitHub's answer listed Copilot among its `requested_reviewers`. That list
-# never names a Bot. On #435 it was empty after a request the timeline recorded; the maintainer's earlier
-# script in another repository had measured the same, REST reporting no reviewers while GraphQL showed
-# Copilot requested; and the field reports cited in this change's handoff say it too. A check keyed on
-# that list was red by construction, which is the #286 failure turned inside out: there a success
-# claimed a request that did not exist, and here a failure denied one that did.
+# The maintainer's token does one thing: `POST /pulls/{n}/requested_reviewers` naming
+# `copilot-pull-request-reviewer[bot]`, which *Using GitHub Copilot code review* documents and which
+# recorded the request on #435, above. Every read uses the job's own `GITHUB_TOKEN`, granted
+# `pull-requests: read`, so no read depends on what his fine-grained token was scoped to.
 #
-# So the request is the GraphQL mutation `requestReviews`, with Copilot's Bot node id in `botIds` and
-# `union: true`, so a reviewer already on the pull request is kept, and it selects the pull request's
-# `reviewRequests` in its own answer. That answer is the state after the mutation, it does list a Bot,
-# and reading it is not a second look that could race Copilot taking the request up. The design is the
-# earlier script's, reused. The node id is looked up at run time from the REST login rather than written
-# here, so the platform facts this file hard-codes stay the logins below.
+# REST cannot prove the request: its `requested_reviewers` never lists a Bot. On #435 it was empty after
+# a request the timeline recorded; the maintainer's earlier script in another repository had measured the
+# same, REST reporting no reviewers while GraphQL showed Copilot requested; and the field reports cited in
+# #436's handoff say it too. A check keyed on that list was red by construction, the #286 failure turned
+# inside out: there a success claimed a request that did not exist, and here a failure denied one that
+# did. So the one GraphQL read is the pull request's `reviewRequests`, which does list a Bot: before
+# asking, to see a round in flight, and after, as the proof.
+#
+# That read selects each reviewer's type and a Bot's login, and it tolerates a reviewer it may not read.
+# `CODEOWNERS` requests a team on every pull request here, and reading a Team needs the organisation's
+# *Members* permission, which neither token is given. GitHub then answers the rest beside a `FORBIDDEN`
+# error whose path runs through that `requestedReviewer`; that error, and only that one, is read as a
+# reviewer not shown, and so is a reviewer GitHub answers as null. A hidden reviewer may be Copilot, so a
+# request the reads after it do not find is red only when they showed every reviewer.
 #
 # ## A round for the newest head, and never a request over a round in flight
 #
@@ -76,7 +80,7 @@
 # The gain is that a re-run after a refusal asks.
 #
 # One job per pull request runs at a time. A newer push waits behind the running job rather than
-# cancelling it, so a request is never cut off between the call and the reading of its answer; a third
+# cancelling it, so a request is never cut off between the call and the read that confirms it; a third
 # push cancels the second's pending run, which shows as cancelled and costs nothing, because the run
 # for the newest push is the one left to ask.
 #
@@ -96,32 +100,35 @@
 # request. The token is a secret of environment `copilot-request`, whose deployment branches the
 # maintainer limits to `main`. GitHub sends no job that names an environment to a runner until that
 # environment's rules pass, so a workflow pushed on any other branch cannot read the token either. This
-# file cannot check the limit; it is part of his one-time setup. `permissions: {}`, because
-# `GITHUB_TOKEN` is not used at all.
+# file cannot check the limit; it is part of his one-time setup. The job's `GITHUB_TOKEN` gets
+# `pull-requests: read` and nothing else, for the reads.
 #
 # The price of `pull_request_target` is that the pull request changing this file cannot exercise it: the
 # copy that runs is the one on `main`.
 #
 # ## Observation procedure (proposal 0007)
 #
-# The REST cut's procedure ran on #435 and is recorded above. This cut's runs on the next bot-authored
-# pull request after it merges: this job's log shows GitHub's answer to the mutation listing Copilot,
-# the timeline shows "<maintainer> requested a review from Copilot" at the job's time, and a Copilot run
-# for that head starts. That the token's *Pull requests: read and write* is enough for the mutation is
-# the one thing it establishes for the first time, since the earlier script measured the mutation with
-# `GITHUB_TOKEN`. On a push made while a round is running, the log shows the wait, and the timeline
-# shows the request after the running round's review.
+# The first cut's procedure ran on #435 and is recorded above; the second cut's first runs, refused, are
+# in the handoff of the change that replaced it. This cut's runs on the next push to a pull request a
+# bot opened, after it merges: this job's log shows the reads and the request, and its summary Copilot
+# among the review requests; the timeline shows "<maintainer> requested a review from Copilot" at the
+# job's time; and a Copilot run for that head starts. On a push made while a round is running, the log
+# shows the wait.
 #
 # ## What is red, and what is a warning
 #
-# Red is a fault that needs the maintainer: no token, a token GitHub refuses at the read (401, bad
-# credentials, resource not accessible), a lookup or a request GitHub refuses, an answer that cannot be
-# read, and an answer that does not list Copilot, which is a request GitHub did not record. A rename of
-# the reviewer's login shows there too, with the logins printed. A request this job could not make,
-# because the API stayed unreadable or Copilot still held a request when the wait ran out, is a warning
-# and exit 0: nothing is broken that a re-run of this job does not repair, and the warning says so. What
-# this job cannot see is a request GitHub records and Copilot then drops; only `copilot-reviewed` notices
-# that, when no round arrives.
+# Red is a fault that needs the maintainer: no token; a request GitHub refuses, which an expired or
+# revoked token, or one without *Pull requests: write*, gets; a read before the request that the job's
+# own token is refused, other than the one reviewer error above, which is this file's `permissions`;
+# and a request GitHub accepted whose review requests, read three times after it, show every reviewer
+# and never Copilot, which is a request GitHub did not record. A warning and exit 0: a request this job
+# could not make, because the pull request or its review requests stayed unreadable or Copilot still
+# held a request when the wait ran out, which a re-run of this job repairs; a request made whose review
+# requests could not be read after it; and one whose review requests list no Copilot but hide a
+# reviewer, which may be Copilot's. So while a hidden reviewer such as the team above holds a request,
+# the check goes red only for a request refused or never made. A rename of the reviewer's login shows in
+# either, with the logins printed. What this job cannot see is a request GitHub records and Copilot then
+# drops; only `copilot-reviewed` notices that, when no round arrives.
 
 name: copilot request
 
@@ -141,13 +148,17 @@ jobs:
     # Above the 15-minute wait below, so the wait's own warning ends the run and a job timeout never does.
     timeout-minutes: 20
     environment: copilot-request
+    permissions:
+      pull-requests: read
     concurrency:
       group: copilot-request-${{ github.event.pull_request.number }}
       cancel-in-progress: false
     steps:
       - name: Copilot is requested on a pull request a bot opened
         env:
-          GH_TOKEN: ${{ secrets.COPILOT_REQUEST_TOKEN }}
+          # The job's own token, for every read; the maintainer's, for the request alone.
+          GH_TOKEN: ${{ github.token }}
+          REQUEST_TOKEN: ${{ secrets.COPILOT_REQUEST_TOKEN }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
           PR_AUTHOR: ${{ github.event.pull_request.user.login }}
           EVENT_HEAD: ${{ github.event.pull_request.head.sha }}
@@ -159,14 +170,17 @@ jobs:
 
           REVIEWER='copilot-pull-request-reviewer[bot]'
           # The logins that count as Copilot, lower-cased. REST names the reviewer with the `[bot]`
-          # suffix and has shown it as `Copilot` (#86); GraphQL's `Bot.login`, which the mutation's
-          # answer and the reads below carry, drops the suffix. The REST spellings are a second
-          # carrier of `REVIEWERS` in `copilot-review.yml`, which this job cannot read because it
-          # checks nothing out; the GraphQL one is this file's alone while that file reads REST. A
-          # rename reds this job with the logins printed, the failure direction that file prefers.
+          # suffix and has shown it as `Copilot` (#86); GraphQL's `Bot.login`, which the review
+          # requests read below carries, drops the suffix. The REST spellings are a second carrier of
+          # `REVIEWERS` in `copilot-review.yml`, which this job cannot read because it checks nothing
+          # out; the GraphQL one is this file's alone while that file reads REST. A rename reds this
+          # job with the logins printed, the failure direction that file prefers.
           COPILOT_LOGINS='copilot-pull-request-reviewer[bot] copilot-pull-request-reviewer copilot copilot[bot]'
           POLL_SECONDS=15
           WAIT_SECONDS=900
+          # After asking, the review requests are read up to three times this far apart, so a read that
+          # lags the request is not taken for a request GitHub dropped.
+          CONFIRM_SECONDS=5
 
           # Everything this job concludes goes to the job summary as well as the log, because a log
           # line alone is the notification nobody reads (proposal 0006).
@@ -192,7 +206,7 @@ jobs:
             return 1
           }
 
-          if [ -z "${GH_TOKEN:-}" ]; then
+          if [ -z "${REQUEST_TOKEN:-}" ]; then
             printf '::error::no token to request Copilot with on #%s — COPILOT_REQUEST_TOKEN is empty in environment copilot-request\n' "$PR_NUMBER"
             report "Copilot was NOT requested on #${PR_NUMBER}, opened by ${PR_AUTHOR}." \
               "" \
@@ -205,67 +219,78 @@ jobs:
 
           owner=${GITHUB_REPOSITORY%%/*}
           repo=${GITHUB_REPOSITORY#*/}
+          err_file=$(mktemp)
+          body_file=$(mktemp)
 
-          # One read per look, printed as two lines: the pull request's node id, head, state and draft
-          # flag; and the logins holding a review request. A missing pull request prints an empty id
-          # and head, which the loop reads as unreadable.
-          STATE_QUERY='query($owner: String!, $repo: String!, $number: Int!) {
+          # The pull request's head, state and draft flag, over REST with the job's own token. A head
+          # the answer does not carry prints an empty first field, which the loop reads as unreadable.
+          read_pr() {
+            gh api "repos/${GITHUB_REPOSITORY}/pulls/${PR_NUMBER}" \
+              --jq '[.head.sha, .state, (.draft | tostring)] | join("|")' 2>"$err_file"
+          }
+
+          # The review requests, over GraphQL with the job's own token: each reviewer's type and a
+          # Bot's login, nothing more. `gh` exits non-zero on any GraphQL error and then prints the
+          # whole answer unfiltered, so the answer is judged here. `ok`, then `hidden` or `shown`, then
+          # the Bot logins: the pull request is in it, and every error is a reviewer GitHub would not
+          # show, which is the team `CODEOWNERS` requests; `hidden` when such a reviewer, or one GitHub
+          # answers as null, is among them. `refused`: a FORBIDDEN error anywhere else, a fault of this
+          # job's token or its `permissions`. `unread`: anything else, which the next look repeats.
+          REQUESTS_QUERY='query($owner: String!, $repo: String!, $number: Int!) {
             repository(owner: $owner, name: $repo) {
               pullRequest(number: $number) {
-                id headRefOid state isDraft
-                reviewRequests(first: 100) { nodes { requestedReviewer { ... on Bot { login } ... on User { login } } } }
+                reviewRequests(first: 100) { nodes { requestedReviewer { __typename ... on Bot { login } } } }
               }
             }
           }'
-          MUTATION='mutation($pullRequestId: ID!, $botId: ID!) {
-            requestReviews(input: {pullRequestId: $pullRequestId, botIds: [$botId], union: true}) {
-              pullRequest { reviewRequests(first: 100) { nodes { requestedReviewer { ... on Bot { login } ... on User { login } } } } }
-            }
-          }'
+          read_requests() {
+            gh api graphql -f query="$REQUESTS_QUERY" -f owner="$owner" -f repo="$repo" -F number="$PR_NUMBER" \
+              >"$body_file" 2>"$err_file" || true
+            jq -r 'if type != "object" or ((has("data") or has("errors")) | not) then "unread" elif any(.errors[]?; .type == "FORBIDDEN" and ((.path // []) | any(.[]; . == "requestedReviewer") | not)) then "refused" elif (.data.repository.pullRequest | type) != "object" or any(.errors[]?; .type != "FORBIDDEN") then "unread" else .data.repository.pullRequest.reviewRequests.nodes as $nodes | "ok " + (if ((.errors // []) | length) > 0 or any($nodes[]?; .requestedReviewer == null) then "hidden" else "shown" end) + " " + ([$nodes[]?.requestedReviewer.login // empty] | join(" ")) end' \
+              "$body_file" 2>>"$err_file" || printf 'unread\n'
+          }
 
-          err_file=$(mktemp)
+          # Red at once, with GitHub's answer: a read the job's own token is refused is this file's
+          # fault, and waiting fifteen minutes on it would only hide the repair.
+          refused_read() {
+            printf '::error::GitHub refused to show #%s to the job token\n' "$PR_NUMBER"
+            printf '%s\n' "$1"
+            report "Copilot was NOT requested on #${PR_NUMBER}, opened by ${PR_AUTHOR}: GitHub refused a read of the pull request to the job's own token." \
+              "" \
+              '```' "$1" '```' \
+              "" \
+              "The job reads with GITHUB_TOKEN and pull-requests: read; check this file's permissions. Request" \
+              "Copilot from the Reviewers menu meanwhile."
+            exit 1
+          }
+
           started=$(date +%s)
           looks=0
           unread=0
-          last_error=''
           while :; do
             looks=$((looks + 1))
-            pr_id=''
+            # Each look starts with no error, so the warning at the end of the wait quotes the last
+            # look's failure and never an earlier one's.
+            last_error=''
+            verdict=''
+            shown=''
+            requested=''
             head=''
             pr_state=''
             draft=''
-            pending=''
-            if state=$(gh api graphql -f query="$STATE_QUERY" -f owner="$owner" -f repo="$repo" -F number="$PR_NUMBER" \
-                  --jq '.data.repository.pullRequest | ([.id, .headRefOid, .state, (.isDraft | tostring)] | join("|")), ([.reviewRequests.nodes[]?.requestedReviewer.login // empty] | join(" "))' \
-                  2>"$err_file"); then
-              # `$(...)` strips trailing newlines, so an empty last line, or two, never arrives; a
-              # `read` that meets the end sets its variable empty and must not end the step.
-              {
-                IFS='|' read -r pr_id head pr_state draft || true
-                IFS= read -r pending || true
-              } <<<"$state"
+            held=''
+            if state=$(read_pr); then
+              IFS='|' read -r head pr_state draft <<<"$state" || true
             else
               last_error=$(cat "$err_file")
-              # A token GitHub rejects is not a slow API, and waiting fifteen minutes on it would only
-              # hide the repair: red at once, as a refused request is.
               case "$last_error" in
-                *'HTTP 401'*|*'Bad credentials'*|*'Resource not accessible'*)
-                  printf '::error::GitHub refused to show #%s to the token\n' "$PR_NUMBER"
-                  printf '%s\n' "$last_error"
-                  report "Copilot was NOT requested on #${PR_NUMBER}, opened by ${PR_AUTHOR}: GitHub refused to show the pull request to the token." \
-                    "" \
-                    '```' "$last_error" '```' \
-                    "" \
-                    "An expired or revoked token, or one without Pull requests read on this repository, fails" \
-                    "here. Request Copilot from the Reviewers menu meanwhile."
-                  exit 1
-                  ;;
+                *'HTTP 401'*|*'Bad credentials'*|*'Resource not accessible'*) refused_read "$last_error" ;;
               esac
             fi
 
-            if [ -z "$pr_id" ] || [ -z "$head" ]; then
+            if [ -z "$head" ]; then
               unread=$((unread + 1))
-            elif [ "$pr_state" != 'OPEN' ]; then
+            elif [ "$pr_state" != 'open' ]; then
               report "Nothing asked on #${PR_NUMBER}: it is ${pr_state}."
               exit 0
             elif [ "$draft" = 'true' ]; then
@@ -274,88 +299,113 @@ jobs:
             elif [ "$head" != "$EVENT_HEAD" ]; then
               report "Nothing asked on #${PR_NUMBER} for ${EVENT_HEAD}: its head is now ${head}, and the run for that push asks for it."
               exit 0
-            elif found=$(copilot_in "$pending"); then
+            else
+              verdict=$(read_requests)
+              case "$verdict" in
+                refused) refused_read "$(cat "$body_file")" ;;
+                'ok '*) read -r _ shown requested <<<"$verdict" || true ;;
+                *)
+                  last_error=$(cat "$err_file" "$body_file")
+                  last_error=${last_error:-the review requests read answered nothing}
+                  unread=$((unread + 1))
+                  ;;
+              esac
+            fi
+
+            if [ -z "$shown" ]; then
+              # This look read nothing to act on: the pull request or its review requests were unreadable.
+              :
+            elif held=$(copilot_in "$requested"); then
               if [ "$looks" -eq 1 ] || [ $((looks % 4)) -eq 0 ]; then
                 printf 'waiting: %s holds a review request on #%s, so a round is running or on order; the head is %s\n' \
-                  "$found" "$PR_NUMBER" "$head"
+                  "$held" "$PR_NUMBER" "$head"
               fi
             else
-              # Nothing on order: ask, once. The Bot's node id is looked up here rather than written
-              # down, from the REST login GitHub documents for the request.
-              reviewer_path=$(printf '%s' "$REVIEWER" | sed 's/\[/%5B/g; s/\]/%5D/g')
-              bot_id=$(gh api "users/${reviewer_path}" --jq '.node_id // empty' 2>"$err_file") || bot_id=''
-              if [ -z "$bot_id" ]; then
-                lookup_error=$(cat "$err_file")
-                printf '::error::could not look up the node id of %s to request it on #%s\n' "$REVIEWER" "$PR_NUMBER"
-                printf '%s\n' "${lookup_error:-the lookup answered without a node id}"
-                report "Copilot was NOT requested on #${PR_NUMBER} (${head}), opened by ${PR_AUTHOR}: the node id of ${REVIEWER} could not be looked up." \
-                  "" \
-                  '```' "${lookup_error:-the lookup answered without a node id}" '```' \
-                  "" \
-                  "A renamed or removed reviewer account fails here. Request Copilot from the Reviewers menu meanwhile."
-                exit 1
-              fi
-              # The answer is kept rather than discarded: on a refusal everything `gh` wrote is
-              # printed, and on an acceptance its `reviewRequests` are the state after the mutation.
-              if ! answer=$(gh api graphql -f query="$MUTATION" -f pullRequestId="$pr_id" -f botId="$bot_id" 2>"$err_file"); then
+              # Nothing on order: ask, once, over REST, with the maintainer's token and nothing else.
+              if ! GH_TOKEN=$REQUEST_TOKEN gh api --method POST "repos/${GITHUB_REPOSITORY}/pulls/${PR_NUMBER}/requested_reviewers" \
+                    -f "reviewers[]=${REVIEWER}" >"$body_file" 2>"$err_file"; then
                 printf '::error::GitHub refused the request for %s on #%s\n' "$REVIEWER" "$PR_NUMBER"
                 cat "$err_file"
-                printf '%s\n' "$answer"
                 report "Copilot was NOT requested on #${PR_NUMBER} (${head}), opened by ${PR_AUTHOR}: GitHub refused the call." \
                   "" \
-                  '```' "$(cat "$err_file")" "$answer" '```' \
+                  '```' "$(cat "$err_file")" '```' \
                   "" \
                   "An expired or revoked token, or one without Pull requests write on this repository, fails" \
                   "here. Request Copilot from the Reviewers menu meanwhile."
                 exit 1
               fi
-              if ! requested=$(printf '%s' "$answer" | jq -r '[.data.requestReviews.pullRequest.reviewRequests.nodes[]?.requestedReviewer.login // empty] | join(" ")'); then
-                printf '::error::GitHub accepted the request on #%s, and its answer could not be read — refusing to report a request this job cannot see\n' "$PR_NUMBER"
-                printf '%s\n' "$answer"
-                report "Copilot's request on #${PR_NUMBER} (${head}) is UNCONFIRMED: GitHub accepted the call and its answer could not be read." \
+              asked="Requested ${REVIEWER} on #${PR_NUMBER} (${head}) with the maintainer's token after $(( $(date +%s) - started ))s."
+              # ACCEPTED IS NOT RECORDED. The proof is Copilot among the review requests after the call.
+              read_any=''
+              hidden_any=''
+              for confirm in 1 2 3; do
+                verdict=$(read_requests)
+                case "$verdict" in
+                  'ok '*)
+                    read -r _ shown requested <<<"$verdict" || true
+                    read_any=yes
+                    if [ "$shown" = hidden ]; then
+                      hidden_any=yes
+                    fi
+                    if found=$(copilot_in "$requested"); then
+                      report "$asked GitHub lists ${found} among the review requests." \
+                        "" \
+                        "The author, ${PR_AUTHOR}, is a bot, and GitHub bills a review on a bot's pull request to the" \
+                        "organisation. A request by the maintainer is attributed to him, like his click in the Reviewers" \
+                        "menu. Whether Copilot's round lands is what copilot-reviewed checks."
+                      exit 0
+                    fi
+                    ;;
+                  *)
+                    last_error=$(cat "$err_file" "$body_file")
+                    last_error=${last_error:-the review requests read answered nothing}
+                    ;;
+                esac
+                if [ "$confirm" -lt 3 ]; then
+                  sleep "$CONFIRM_SECONDS"
+                fi
+              done
+              if [ -n "$hidden_any" ]; then
+                # A reviewer this job may not see can be Copilot's request, so its absence proves nothing.
+                printf '::warning::requested Copilot on #%s, unconfirmed: the review requests list no Copilot and hide a reviewer, which may be Copilot\n' "$PR_NUMBER"
+                printf 'Bot review requests after the call:%s\n' "${requested:+ $requested}"
+                report "$asked GitHub accepted the call, and its review requests list no Copilot but hide a reviewer from this job, which may be Copilot's request, so it is unconfirmed." \
                   "" \
-                  "The answer is printed in full in this job's log. Request Copilot from the Reviewers menu."
+                  "Copilot's own run for this head shows among the pull request's checks when it starts."
+                exit 0
+              fi
+              if [ -n "$read_any" ]; then
+                printf '::error::GitHub accepted the request on #%s, and its review requests, every one shown, do not list Copilot\n' "$PR_NUMBER"
+                printf 'Bot review requests after the call:%s\n' "${requested:+ $requested}"
+                report "Copilot was NOT requested on #${PR_NUMBER} (${head}), opened by ${PR_AUTHOR}: GitHub accepted the call, and its review requests after it show every reviewer and no Copilot." \
+                  "" \
+                  "GitHub did not record the request. Request Copilot from the Reviewers menu; if that works" \
+                  "where this did not, the token is what to look at."
                 exit 1
               fi
-              # ACCEPTED IS NOT RECORDED. The mutation answers with the pull request as it stands
-              # after the call, and a request GitHub did not record is one whose review requests do
-              # not name Copilot; the earlier script measured exactly that on pull requests GitHub
-              # would not bill.
-              if ! found=$(copilot_in "$requested"); then
-                printf '::error::GitHub accepted the request on #%s, and its answer does not list Copilot among the review requests\n' "$PR_NUMBER"
-                printf 'Review requests in the answer:%s\n' "${requested:+ $requested}"
-                printf '%s\n' "$answer"
-                report "Copilot was NOT requested on #${PR_NUMBER} (${head}), opened by ${PR_AUTHOR}: GitHub answered and its review requests are: ${requested:-none}." \
-                  "" \
-                  "GitHub did not record the request. The answer is printed in full in this job's log." \
-                  "Request Copilot from the Reviewers menu; if that works where this did not, the token is" \
-                  "what to look at."
-                exit 1
-              fi
-              printf '%s\n' "$answer"
-              waited=$(( $(date +%s) - started ))
-              report "Requested ${REVIEWER} on #${PR_NUMBER} (${head}) with the maintainer's token after ${waited}s, and" \
-                "GitHub's answer lists ${found} among the review requests." \
+              printf '::warning::requested Copilot on #%s, unconfirmed: the review requests could not be read after the call\n' "$PR_NUMBER"
+              printf '%s\n' "$last_error"
+              report "$asked GitHub accepted the call, and the review requests could not be read after it, so it is unconfirmed." \
                 "" \
-                "The author, ${PR_AUTHOR}, is a bot, and GitHub bills a review on a bot's pull request to the" \
-                "organisation. A request by the maintainer is attributed to him, like his click in the Reviewers" \
-                "menu. Whether Copilot's round lands is what copilot-reviewed checks."
+                '```' "$last_error" '```' \
+                "" \
+                "Copilot's own run for this head shows among the pull request's checks when it starts."
               exit 0
             fi
 
             if [ $(( $(date +%s) - started )) -ge "$WAIT_SECONDS" ]; then
-              if [ -n "$pr_id" ] && [ -n "$head" ]; then
+              if [ -n "$held" ]; then
                 printf '::warning::Copilot still held a review request on #%s at the last look, %ss in, so nothing was asked for %s\n' \
                   "$PR_NUMBER" "$WAIT_SECONDS" "$head"
                 report "Nothing asked on #${PR_NUMBER} (${head}): Copilot still held a review request at the last look, ${WAIT_SECONDS}s in, so a round was running or on order." \
                   "" \
                   "If no round lands on ${head}, re-run this job, which asks once nothing is on order."
               else
-                printf '::warning::the pull request #%s could not be read at %s of %s looks in %ss, so nothing was asked\n' \
+                printf '::warning::the pull request #%s or its review requests could not be read at %s of %s looks in %ss, so nothing was asked\n' \
                   "$PR_NUMBER" "$unread" "$looks" "$WAIT_SECONDS"
-                report "Nothing asked on #${PR_NUMBER}: the pull request could not be read at ${unread} of ${looks} looks, the last one included." \
+                report "Nothing asked on #${PR_NUMBER}: the pull request or its review requests could not be read at ${unread} of ${looks} looks, the last one included." \
                   "" \
-                  '```' "${last_error:-the read answered without a pull request}" '```' \
+                  '```' "${last_error:-the read answered without a head}" '```' \
                   "" \
                   "Re-run this job once GitHub answers, or request Copilot from the Reviewers menu."
               fi
