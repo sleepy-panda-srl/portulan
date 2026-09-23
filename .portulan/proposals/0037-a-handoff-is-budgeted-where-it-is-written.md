@@ -85,22 +85,25 @@ and one sentence of `loop.md` narrowed (rule 4). No kernel line: 0036 already pu
    The cutoff is set by the change that declares the cap and moves only in one that tightens the cap or lowers the
    ratio, each time to that change's date or the newest handoff's date, whichever is later: a merged handoff cannot be
    compressed to meet a bound that tightened after it merged, and a filename date is not a merge date, so the later
-   date exempts every handoff already in the tree. Where a cap is declared, a handoff dated more than a day after the
-   UTC date a recipe checks it on is red, that day being what time zones need, so no filename carries the cutoff
-   further ahead. A date cannot tell a handoff merged in the morning from one written that evening, so the rule has one
-   known gap, which the Session log's entry budget has too: a handoff written after the setting change but dated no
-   later than the cutoff stays unbound, the setting change's own among them, because binding that day would turn a
-   merged one red with no legal repair. The gap closes when the cutoff's day ends. A merged handoff keeps its name as
-   it keeps its text; a rename that dates one past the cutoff is bound in the change that makes it, whose repair is to
-   undo the rename.
+   date exempts every handoff already in the tree. No handoff may be dated more than a day after the UTC date a recipe
+   checks it on, that day being what time zones need, so the newest handoff's date never runs ahead of the tree. A date
+   cannot tell a handoff merged in the morning from one written that evening, so the cap binds from the day after the
+   cutoff and the cutoff day's own handoffs stay unbound, the setting change's among them: that one day is the rule's
+   known gap, which the Session log's entry budget has too, because binding it would turn a merged one red with no
+   legal repair. A merged handoff keeps its name as it keeps its text, save where the index refuses its date; a rename
+   that dates one past the cutoff is bound in the change that makes it, whose repair is to undo the rename.
 3. **A breach is repaired by compression, or by moving a fact to the record that owns it**, never by splitting (two
    dated handoffs against one session red the correspondence), never by retiring, never by cutting a decision's why,
-   and never by a raise or a later cutoff in the change that breached it. What a handoff carries is the template's:
-   the state, each decision with its why, the open questions, the next action, and what is left unsafe. What landed
-   is the change's own record (the diff, the commit, and here the Session log), a figure is the record's that
-   measured it, a durable rule is memory's or the doctrine's, and the handoff links them rather than restating them.
-   A dated correction counts toward a bound handoff's cap; one that would breach it is written in the correcting
-   session's own handoff, which names the handoff it corrects.
+   and never by a raise or a later cutoff in the change that breached it. Nor does the cutoff ever move earlier, nor a
+   handoff carry a date earlier than the day it is written: an earlier cutoff binds merged handoffs that compression
+   may not touch, and an earlier date lets a handoff that can still be compressed escape the cap. A manifest edit that
+   moves the cutoff back, or a handoff dated back to fall on or before it, is the same class of hand edit as that
+   raise, a rule no checker establishes because the truth lives in history, and its repair is undoing the edit. What a
+   handoff carries is the template's: the state, each decision with its why, the open questions, the next action, and
+   what is left unsafe. What landed is the change's own record (the diff, the commit, and here the Session log), a
+   figure is the record's that measured it, a durable rule is memory's or the doctrine's, and the handoff links them
+   rather than restating them. A dated correction counts toward a bound handoff's cap; one that would breach it is
+   written in the correcting session's own handoff, which names the handoff it corrects.
 4. **The session-end gate stays blind to length; the cap is a verify rail.** `loop.md`'s *"a gate on this checks that
    one exists and is dated — never its structure or its length"* is narrowed to the session-end gate, and says a
    workspace may cap a handoff from above in a verify recipe. There is still no floor: short is fine, absent is not.
@@ -121,10 +124,13 @@ and one sentence of `loop.md` narrowed (rule 4). No kernel line: 0036 already pu
 - **The cap (a rail).** The `index` recipe checks it in `cli/index.mjs`, beside memory's per-record cap: a bound
   handoff over its cap is red, and the finding names the handoff, its tokens at the declared ratio, the cap, the
   overage and the repair menu, for every handoff over and not only the first. It fires in the change that writes the
-  handoff, before merge, while compression is still a legal repair, or in the one that renames it past the cutoff,
-  and a handoff dated more than a day ahead of the check is red there too. The schema requires the cutoff with the
-  cap; `doctor` refuses either budget with no declared ratio to count it by, which the schema's subset cannot state
-  across two objects, and any figure that is not a positive integer.
+  handoff, before merge, while compression is still a legal repair, or in the one that renames it past the cutoff. The
+  schema requires the cutoff with the cap; `doctor` refuses either budget with no declared ratio to count it by, which
+  the schema's subset cannot state across two objects, and any figure that is not a positive integer.
+- **Dates (a rail in every workspace).** The `index` recipe already refuses a handoff whose filename leads with no
+  valid date and names the repair, renaming the file. It also refuses one dated more than a day after the UTC date it
+  runs on, with the same repair, whether or not a cap is declared, so the newest handoff's date never runs ahead of the
+  tree and no filename carries the cutoff forward.
 - **The window (generated).** `cli/index.mjs` writes it and the `index` recipe byte-compares it, as it does today. Its
   header states the declared budget in place of *"No budget"*, and its closing line the count left out. The generator
   refuses a budget too small for those two lines and names the least one that holds them; nothing else turns it red
@@ -170,14 +176,14 @@ the maintainer's criterion of better performance:
    MINOR, beside 0038's keys and 0034's slots if drafted together, and none waits for another.
 2. **Tokens, at the declared ratio**: 0036's unit, so a handoff's cap is counted like the fresh context it joins; never
    a per-run count, by 0036's second ruling.
-3. **This repository's figures: 3,000 tokens a handoff, and 3,000 for the index**, declared once its ratio is, with
-   that change's date as the cutoff. At 0036's estimate 3,000 tokens is about 8,970 bytes: near memory's 8 KB record
-   cap, about twice the mean of the handoffs dated 2026-09-23, and above every one of them. 76 of the 187 handoffs
-   (41%) are over it, holding 466,687 bytes above it. Counting today's 342-byte header and a closing line of about 100
-   bytes, the window lists the newest 52 handoffs here, back to 2026-08-25, and the index is 8,879 bytes against
-   today's 29,108; it stays near that as the series grows. The window saves on-demand reads of the index, not the
-   boot, which reads nothing of the series. One figure for both on purpose: opening the index to find a handoff costs
-   about what reading one does.
+3. **This repository's figures: 3,000 tokens a handoff, and 3,000 for the index**, declared once its ratio is, with the
+   cutoff at that change's date or the newest handoff's, whichever is later. At 0036's estimate 3,000 tokens is about
+   8,970 bytes: near memory's 8 KB record cap, about twice the mean of the handoffs dated 2026-09-23, and above every
+   one of them. 76 of the 187 handoffs (41%) are over it, holding 466,687 bytes above it. Counting today's 342-byte
+   header and a closing line of about 100 bytes, the window lists the newest 52 handoffs here, back to 2026-08-25, and
+   the index is 8,879 bytes against today's 29,108; it stays near that as the series grows. The window saves on-demand
+   reads of the index, not the boot, which reads nothing of the series. One figure for both on purpose: opening the
+   index to find a handoff costs about what reading one does.
 4. **Where each piece lives**: the cap and the window in `cli/index.mjs`, which already reads the series and rails
    memory's per-record cap; the measurement in `context.mjs` and the report in `doctor`, as 0036 set for the always
    tier.
