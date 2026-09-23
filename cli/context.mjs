@@ -735,8 +735,8 @@ export function alwaysLine(workspaceDir, manifest, { bundleRoot = BUNDLE_ROOT } 
     const budgeted = manifest.context?.always !== undefined;
     const notMeasured = (why) =>
         budgeted
-            ? { verdict: "unjudged", line: `${MEASURED_HOST}: the declared budget cannot be judged — ${why}` }
-            : { verdict: "unmeasured", line: `${MEASURED_HOST}: the always tier is not measured — ${why}` };
+            ? { verdict: "unjudged", line: printable(`${MEASURED_HOST}: the declared budget cannot be judged — ${why}`) }
+            : { verdict: "unmeasured", line: printable(`${MEASURED_HOST}: the always tier is not measured — ${why}`) };
     let declared;
     let root;
     let always;
@@ -748,7 +748,8 @@ export function alwaysLine(workspaceDir, manifest, { bundleRoot = BUNDLE_ROOT } 
         always = alwaysTier(root);
     } catch (error) {
         if (!(error instanceof ContextError)) throw error;
-        return notMeasured(error.message);
+        // In the repository's own paths, as the rest of the line is. Raised by Copilot on #446.
+        return notMeasured(root ? error.message.split(`${root}${path.sep}`).join("") : error.message);
     }
     // The plugin's descriptions are an aside, not the workspace's: a defect in the bundle is said and
     // never withholds the repository's figure.
@@ -777,19 +778,34 @@ export function alwaysLine(workspaceDir, manifest, { bundleRoot = BUNDLE_ROOT } 
     } else {
         parts.push("nothing in it: no CLAUDE.md, .claude/CLAUDE.md, unscoped rule, or project skill, command or agent");
     }
-    if (always.scoped) parts.push(always.scoped === 1 ? "1 path-scoped rule sits on-path" : `${grouped(always.scoped)} path-scoped rules sit on-path`);
+    // Both counts are said at zero too, so none reads apart from a count the line left out. Raised by
+    // Copilot on #446.
+    const scoped = always.scoped;
+    parts.push(scoped === 0 ? "no path-scoped rule sits on-path" : scoped === 1 ? "1 path-scoped rule sits on-path" : `${grouped(scoped)} path-scoped rules sit on-path`);
     // Loaded by the host and not in the figure, so the figure must not read as the whole of it.
     const outside = always.outside.length;
-    if (outside) {
-        parts.push(outside === 1 ? "1 import or link out of the repository loads and is not counted" : `${grouped(outside)} imports or links out of the repository load and are not counted`);
-    }
+    parts.push(
+        outside === 0
+            ? "no import or link out of the repository loads"
+            : outside === 1
+              ? "1 import or link out of the repository loads and is not counted"
+              : `${grouped(outside)} imports or links out of the repository load and are not counted`,
+    );
     parts.push(
         plugin.unavailable === undefined
             ? `the Portulan plugin's descriptions add ~${grouped(tokensOf(sum(plugin.entries), ratio))} tokens wherever it is enabled, Portulan's to budget, not this workspace's`
             : `the Portulan plugin's descriptions are not measured — ${plugin.unavailable}`,
     );
     parts.push(judged.text);
-    return { verdict: judged.verdict, line: `${MEASURED_HOST}: ${parts.join("; ")}` };
+    return { verdict: judged.verdict, line: printable(`${MEASURED_HOST}: ${parts.join("; ")}`) };
+}
+
+/**
+ * One line whatever a file is named: a control character in a path is escaped, never printed, so a name
+ * can neither end the line nor reach a terminal as a sequence. Raised by Copilot on #446.
+ */
+function printable(text) {
+    return text.replace(/[\u0000-\u001f\u007f-\u009f\u2028\u2029]/g, (c) => `\\u${c.charCodeAt(0).toString(16).padStart(4, "0")}`);
 }
 
 // ===========================================================================================

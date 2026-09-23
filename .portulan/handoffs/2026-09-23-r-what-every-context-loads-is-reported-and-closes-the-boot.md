@@ -17,7 +17,7 @@ serves the full report and the line, and the full report's output is byte for by
 **Measured on `457b0b6`, before and after.** The skill went 8,917 → 9,111 bytes (+194), so the engine half
 is 12,019 of its 12,062 rail, 43 bytes of headroom; this repository's boot read-set went 88,947 → 89,141
 (82,086 without the manifest), 1,585 bytes under its rail, and the demo's 35,393 → 35,587 (33,785). The
-line the boot prints here is 501 bytes. **No rail moved**: this change adds what `0036` asks the boot to
+line the boot prints here is 582 bytes. **No rail moved**: this change adds what `0036` asks the boot to
 say, and demotes nothing, so nothing was raised and nothing is owed a lower line. The context drill put
 510 bytes on the kernel, which would have left the demo's boot rail 4 bytes clear of firing beside the
 engine rail; it puts 408 now, so the one rail that owns the kernel is still the one that fires, checked
@@ -27,7 +27,7 @@ by applying it.
 coordinator session at 19:42 UTC as its delegated calls, made on the maintainer's delegation on the
 criterion of the better performance enhancement. `--brief` is a flag on the measurement module and not a
 ninth subcommand: `0036` reaches the measurement through `doctor` and a recipe, step 2a of the boot
-already runs a module from the bundle, and the line is 501 bytes here where `doctor`'s whole output would
+already runs a module from the bundle, and the line is 582 bytes here where `doctor`'s whole output would
 be several kilobytes on every boot. Only the always tier is in the line: the boot read-set is the boot's
 own on-invoke cost, and the full report's. Nothing in the line waits on the boot read-set, so a slot
 naming nothing, which `doctor` fails on its own, withholds no figure. A pointer is said and not measured,
@@ -46,17 +46,31 @@ note beside what checks it now. The comment on `doctor`'s budget check said noth
 and it classifies as `imported`, which the `payload` rail would otherwise have failed as a stale entry; so
 [`cli/README.md`](../../cli/README.md) counts fourteen modules reachable from nothing, not fifteen.
 
-**How it was checked.** Ten new cases in [`cli/context.test.mjs`](../../cli/context.test.mjs): the largest
-files in order and what each is, what sits on-path and what loads uncounted, a line that does not move with
-the directory it runs from, the full report judging the same budget in the same words, exit 2 only where a
-declared budget cannot be judged, a malformed key, a pointer, a slot naming nothing, a plugin it cannot
-read, and `--rail`, `--repo` or a second `--brief` refused. Six in
-[`cli/doctor.test.mjs`](../../cli/doctor.test.mjs), among them row 12's first demonstration in miniature (a
-declared budget forced over is red, and the same words moved into a rule `paths:` scopes return it green
-with nothing raised) and `doctor`'s finding equal to the boot's line on one fixture.
+**How it was checked.** Eleven new cases in [`cli/context.test.mjs`](../../cli/context.test.mjs): the
+largest files in order and what each is, what sits on-path and what loads uncounted, a line that does not
+move with the directory it runs from, the full report judging the same budget in the same words, exit 2
+only where a declared budget cannot be judged, a malformed key, a pointer, a slot naming nothing, a
+plugin it cannot read, a file name with a control character, and `--rail`, `--repo` or a second `--brief`
+refused. Six in [`cli/doctor.test.mjs`](../../cli/doctor.test.mjs), among them row 12's first
+demonstration in miniature (a declared budget forced over is red, and the same words moved into a rule
+`paths:` scopes return it green with nothing raised) and `doctor`'s finding equal to the boot's line on
+one fixture.
+
+**Copilot's two rounds, on b544a90 and 7ab7022.** Both threads were right. A count of none left its
+clause out, so a line with no path-scoped rule and no import out of the repository read the same as one
+that never counted them: both are said at zero now, which puts the line here at 582 bytes, and the
+empty-tier case pins both zeros and both plurals. *What is machinery today* said `doctor` fails only over
+a declared budget; it now names the other failure, a declared budget it cannot judge. Of what the
+summaries named besides, one held: a measurement error printed absolute paths, and a file's name could
+carry a control character into the line, so errors now give the repository's own paths and control
+characters are escaped, which keeps the line one line. The rest is as designed: a manifest that is not an
+object exits 2, a malformed key is a verdict only where it declares a budget, the line measures the tree
+whatever `kind` says, a pointer excepted, and leaves a defective kind to `doctor`, and a boot with no
+workspace goes from step 2 to step 4 without step 3's reads, which the line runs with.
 
 **Checkpoints.** Skipped by his instruction of 2026-09-23 12:38 (no fresh-context runs unless he asks).
-The coordinator session reviewed the diff before the commit; his review is on the pull request.
+The coordinator session reviewed the diff before the commit; his review is on the pull request. The
+fixes for Copilot's rounds are under the coordinator session's review after their push.
 
 **Green in this container needs a non-root run.** As root, `tests` fails its permission cases, because a
 chmod-000 fixture never denies root. All 28 recipes ran green as a non-root user on a copy of this tree.

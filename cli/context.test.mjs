@@ -555,8 +555,23 @@ describe("--brief: the line `doctor` reports and the boot closes with", () => {
         assert.match(out, /; budget: undeclared \(context\.always\.budget\.tokens\) — a report, not a rail; init would offer the larger of 8,000 tokens and today's load: 8,000 tokens$/);
     });
 
-    test("an empty tier is said, not left blank", () => {
-        assert.match(brief(repository()).out, /; nothing in it: no CLAUDE\.md, \.claude\/CLAUDE\.md, unscoped rule, or project skill, command or agent; /);
+    test("an empty tier is said, not left blank, and so is none on-path and none out of the repository", () => {
+        assert.match(
+            brief(repository()).out,
+            /; nothing in it: no CLAUDE\.md, \.claude\/CLAUDE\.md, unscoped rule, or project skill, command or agent; no path-scoped rule sits on-path; no import or link out of the repository loads; /,
+        );
+        const { out } = brief(
+            repository({
+                files: {
+                    "CLAUDE.md": "@a.md @b.md @~/one.md @~/two.md\n",
+                    "a.md": "a\n",
+                    "b.md": "b\n",
+                    ".claude/rules/one.md": "---\npaths: src/**\n---\n\nOne.\n",
+                    ".claude/rules/two.md": "---\npaths: docs/**\n---\n\nTwo.\n",
+                },
+            }),
+        );
+        assert.match(out, /; 2 path-scoped rules sit on-path; 2 imports or links out of the repository load and are not counted; /);
     });
 
     test("the line does not move with the directory it is run from", () => {
@@ -595,7 +610,15 @@ describe("--brief: the line `doctor` reports and the boot closes with", () => {
         fs.symlinkSync("CLAUDE.md", path.join(looped, "CLAUDE.md"));
         const unread = brief(looped);
         assert.equal(unread.code, 2);
-        assert.match(unread.out, /cannot be judged — .*CLAUDE\.md could not be read \(ELOOP\)/);
+        assert.match(unread.out, /cannot be judged — CLAUDE\.md could not be read \(ELOOP\)$/);
+        assert.ok(!unread.out.includes(looped), "in the repository's own paths, as the rest of the line is");
+    });
+
+    test("a file's name cannot break the line: a control character in it is escaped, never printed", () => {
+        const escaped = (code) => "\\" + "u" + code.toString(16).padStart(4, "0");
+        const name = `.claude/rules/a${String.fromCharCode(10)}b${String.fromCharCode(27)}[2J.md`;
+        const { out } = brief(repository({ files: { "CLAUDE.md": "x".repeat(900), [name]: "r".repeat(598) } }));
+        assert.ok(out.includes(`, .claude/rules/a${escaped(10)}b${escaped(27)}[2J.md ~200 (rule); `), out);
     });
 
     test("a malformed key withholds the figure, and is a verdict only where it declares a budget", () => {
@@ -628,7 +651,10 @@ describe("--brief: the line `doctor` reports and the boot closes with", () => {
         fs.writeFileSync(path.join(bundleRoot, ".claude-plugin/plugin.json"), "{ not json");
         const { code, out } = brief(repository({ files: { "CLAUDE.md": "x".repeat(30) } }), [], { bundleRoot });
         assert.equal(code, 0);
-        assert.match(out, /the largest: CLAUDE\.md ~10 \(instructions\); the Portulan plugin's descriptions are not measured — the plugin manifest does not parse/);
+        assert.match(
+            out,
+            /the largest: CLAUDE\.md ~10 \(instructions\); no path-scoped rule sits on-path; no import or link out of the repository loads; the Portulan plugin's descriptions are not measured — the plugin manifest does not parse/,
+        );
     });
 
     test("a rail, a card or itself twice is refused, never taken and dropped — exit 2", () => {
