@@ -144,7 +144,8 @@ questions come back no.**
 
 Predecessor-IP hygiene (fresh expression only; own time and equipment; the written-clearance track
 continues post-flip — the 2026-07-27 flip preceded its completion, the maintainer's decision on
-record in the Session log; details governed in the private context) ·
+record in the Session log, at `git show c18b314:docs/plan.md`; details governed in the private
+context) ·
 scope creep (milestone map is the scope; new ideas become proposals) ·
 instruction bloat (≤60-line always-loaded core; evals prune;
 librarian demotes) · competitors moving down-stack (speed on spec; open-standard positioning) ·

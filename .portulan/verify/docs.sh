@@ -671,14 +671,15 @@ fi
 #
 # Scope is the milestone-table rows of docs/plan.md and nothing else, which is load-bearing rather
 # than tidy. A file-wide grep for either marker would red the very records this change preserves:
-# `Session N of` appears in eight Session log entries, and every `docs/milestones/*.md` contains
-# `**Criterion amended` by design — it is the relocated argument. A rail that fired on the archive it
+# `Session N of` appeared in eight Session log entries while the log was in the plan (it retired
+# 2026-09-23), and every `docs/milestones/*.md` contains `**Criterion amended` by design — it is the
+# relocated argument. A rail that fired on the archive it
 # just created would be unusable on the first run, so both markers are matched **inside a row only**.
 PLAN_STATUS_BUDGET=500   # bytes; see 6c below for the derivation
 if [ ! -f "$PLAN" ]; then
     : # already reported by the record check above; nothing here to add
 else
-    # A milestone row starts with a pipe and a number. The header, the separator, the Session log's
+    # A milestone row starts with a pipe and a number. The header, the separator, the retired log's
     # `- YYYY-MM-DD ·` entries and ordinary prose all fail that shape, so none of them is examined.
     : >"$tmp/rows"
     grep -nE '^\| *[0-9]+ *\|' "$PLAN" >"$tmp/rows"

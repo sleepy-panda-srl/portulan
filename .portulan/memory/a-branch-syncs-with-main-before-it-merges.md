@@ -17,10 +17,10 @@ fallen behind is a true statement about a tree that no longer exists, sitting be
 that will produce a different one. The gap is not theoretical here, because this repository's recipes
 check *correspondence* rather than syntax, and correspondence is exactly what two independently green
 branches break when they meet: `links` goes red when one branch deletes a file another links to, `map`
-when one adds a top-level directory and another rewrites the README's layout table, `record` when one
-adds a Session log date whose handoff is on the other. Each side green, the union red — and red on
-`main`, where the next pull request inherits it and the required check stops distinguishing that
-branch's defects from the one it was handed.
+when one adds a top-level directory and another rewrites the README's layout table, and `record`, until
+the Session log retired on 2026-09-23, when one added a log date whose handoff was on the other. Each
+side green, the union red — and red on `main`, where the next pull request inherits it and the required
+check stops distinguishing that branch's defects from the one it was handed.
 
 **When to apply:** immediately before every merge, as the last thing checked rather than something
 remembered at open time — a branch that was in sync when it was reviewed is behind the moment anything
