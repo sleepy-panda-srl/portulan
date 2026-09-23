@@ -325,9 +325,9 @@ describe("a budget or a threshold that is not a positive integer", () => {
         // the hole they were repaired for — the sibling rule of `.portulan/proposals/0020`, applied to
         // the check that exists because of it.
         ["memory.store.budget.record_kilobytes", (m, v) => ((m.memory = { store: { budget: { record_kilobytes: v } } }), m)],
-        // Workspace Definition 2.9's always-tier budget, the fifth, on the same terms. The ratio beside it
-        // is well-formed, so the only failure in play is the one under test.
-        ["context.always.budget.tokens", (m, v) => ((m.context = { always: { budget: { tokens: v } }, ratio: { bytes_per_token: 3, calibrated_by: "claude-code" } }), m)],
+        // Workspace Definition 2.9's always-tier budget, the fifth, refused on the same terms by its own
+        // check. The ratio beside it is well-formed, so the only failure in play is the one under test.
+        ["context.always.budget.tokens", (m, v) => ((m.portulan = { spec: "2.9" }), (m.context = { always: { budget: { tokens: v } }, ratio: { bytes_per_token: 3, calibrated_by: "claude-code" } }), m)],
     ];
 
     for (const [name, set] of KEYS) {
@@ -369,7 +369,20 @@ describe("the always tier's ratio, and the budget that needs it", () => {
     // Workspace Definition 2.9. The ratio is the one number of the family that is not an integer, since
     // 2.99 bytes per token is a real figure, so it is held to at least one rather than to positive: a
     // token covers at least one byte, and a smaller figure is tokens per byte entered inverted.
-    const withRatio = (ratio) => ({ ...wellFormed(), context: { ratio } });
+    const withRatio = (ratio) => ({ ...wellFormed(), portulan: { spec: "2.9" }, context: { ratio } });
+
+    // Copilot on #440: the newest schema grades every manifest, so a key 2.9 added would pass in a manifest
+    // declaring 2.8, whose own validator refuses it. Gated at birth, so no manifest that passed can newly fail.
+    for (const spec of ["2.0", "2.8"]) {
+        test(`\`context\` in a manifest declaring ${spec} is a failure that names 2.9`, async () => {
+            const m = { ...withRatio({ bytes_per_token: 3, calibrated_by: "claude-code" }), portulan: { spec } };
+            const dir = tree(scratch(), { ...minimalFiles, "workspace.json": JSON.stringify(m) });
+            const { findings } = await inspect(dir, { schema: SCHEMA });
+            const hit = severities(findings, "fail").find((f) => /`context` is Workspace Definition 2\.9's/.test(f.message));
+            assert.ok(hit, `expected the version gate to refuse \`context\` under ${spec}`);
+            assert.match(hit.message, new RegExp(`declares ${spec.replace(".", "\\.")}`));
+        });
+    }
 
     for (const bad of [0, -1, 0.33]) {
         test(`bytes_per_token ${bad} is a failure that says why`, async () => {
@@ -381,6 +394,18 @@ describe("the always tier's ratio, and the budget that needs it", () => {
             assert.match(hit.message, /inverted/);
         });
     }
+
+    // Copilot on #440: the budget first rode the shared loop, whose message cites a consuming tool's
+    // exit 2. Nothing consumes this budget yet, so its refusal must not claim one.
+    test("a budget that is not a positive integer is refused without claiming a consumer", async () => {
+        const m = withRatio({ bytes_per_token: 3, calibrated_by: "claude-code" });
+        m.context.always = { budget: { tokens: 0 } };
+        const dir = tree(scratch(), { ...minimalFiles, "workspace.json": JSON.stringify(m) });
+        const { findings } = await inspect(dir, { schema: SCHEMA });
+        const hit = severities(findings, "fail").find((f) => /context\.always\.budget\.tokens/.test(f.message));
+        assert.ok(hit, "expected a failure naming context.always.budget.tokens");
+        assert.doesNotMatch(hit.message, /exit 2|consuming tool/);
+    });
 
     for (const good of [1, 2.99]) {
         test(`bytes_per_token ${good} passes`, async () => {

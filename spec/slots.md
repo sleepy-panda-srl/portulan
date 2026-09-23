@@ -718,7 +718,9 @@ on a later tier would sit beside it rather than force a rename, which would be a
 **Nothing is defaulted**, on memory's rule: an undeclared budget is not checked. `doctor` refuses a
 declared token budget that is not a positive integer, as it refuses the memory budgets, and a ratio under
 1, because a token covers at least one byte and a smaller figure is tokens per byte entered inverted.
-Both are `doctor`'s because the subset has no `minimum` and cannot say `integer`.
+Both are `doctor`'s because the subset has no `minimum` and cannot say `integer`. `doctor` also refuses
+`context` in a manifest declaring a version before 2.9, whose own validator refuses it as unknown: the
+key is gated from birth, when no manifest can newly fail the check.
 
 **What nothing checks yet: the budget itself.** Nothing measures the always tier until row 12's
 measurement lands, so no workspace in this tree declares the key: a budget nothing checks reads as a rail,

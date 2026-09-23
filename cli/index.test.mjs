@@ -704,6 +704,16 @@ describe("what this tool refuses to judge", () => {
         assert.throws(() => inspect(dir), IndexError);
     });
 
+    test("…and the version the shipped schema declares is not one of them", () => {
+        // The refusal is keyed on a list edited by hand at every bump, and a bump that missed it would
+        // refuse every manifest written against the new version. Copilot on #440. Read from the schema's
+        // `$id`, so the next bump is held to it too.
+        const { $id } = JSON.parse(fs.readFileSync(path.join(REPO, "spec", "workspace.schema.json"), "utf8"));
+        const spec = $id.match(/\/spec\/(\d+\.\d+)\//)[1];
+        const dir = workspace({ "memory/a-first.md": record("rule") }, wellFormed({ portulan: { spec } }));
+        assert.doesNotThrow(() => inspect(dir));
+    });
+
     test("a manifest declaring `memory` with no memory slot", () => {
         // The store is `slots.memory`; the budget object governs it. Declaring the second without
         // the first asks for an index of nothing — and the declared JSON Schema subset has no

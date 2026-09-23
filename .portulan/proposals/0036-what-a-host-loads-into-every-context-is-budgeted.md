@@ -206,7 +206,11 @@ move.
 **A coordination note, not a question.** The manifest key needs a MINOR. `2.9` is commissioned by
 [`0034`](0034-one-spec-bump-carries-both-evals-and-telemetry.md) for `evals` and `telemetry` and is not
 drafted yet. By 0034's own argument this key rides that MINOR if they are drafted together, and neither
-waits for the other if they are not.
+waits for the other if they are not. _(Settled the same day, when the key was drafted: `0034`'s slots were
+not drafted with it, and `0034`'s accepted text commissions one MINOR without naming its number, so the key
+took `2.9` alone in [#440](https://github.com/sleepy-panda-srl/portulan/pull/440) and `0034`'s slots take
+the next free MINOR. Annotated rather than rewritten, so the record keeps what was accepted beside what
+changed.)_
 
 ## Order of work after acceptance — one change per pull request
 

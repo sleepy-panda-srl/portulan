@@ -605,6 +605,17 @@ describe("passWorkspace — refusals", () => {
         assert.throws(() => passWorkspace(path.join(dir, ".portulan"), { asOf: "2026-06-15" }), LibrarianError);
     });
 
+    test("…and the version the shipped schema declares is implemented", () => {
+        // The same hand-edited list as `index`'s, held to the schema's `$id` the same way. Copilot on #440.
+        const { $id } = JSON.parse(fs.readFileSync(path.resolve(HERE, "..", "spec", "workspace.schema.json"), "utf8"));
+        const spec = $id.match(/\/spec\/(\d+\.\d+)\//)[1];
+        const dir = repo(
+            { ".portulan/memory/r.md": [linked(), "2026-01-01"] },
+            { workspace: { ...MANIFEST({ librarian: { staleness: STALENESS } }), portulan: { spec } } },
+        );
+        assert.doesNotThrow(() => passWorkspace(path.join(dir, ".portulan"), { asOf: "2026-06-15" }));
+    });
+
     test("a `librarian` object with no `slots.memory` to read is refused", () => {
         const dir = repo(
             { ".portulan/other/r.md": [linked(), "2026-01-01"] },

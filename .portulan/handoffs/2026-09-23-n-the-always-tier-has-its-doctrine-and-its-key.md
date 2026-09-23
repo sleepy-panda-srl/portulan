@@ -40,12 +40,25 @@ because the commit dates the ratio. `calibrated_by` is a slug, and `slots.md`'s 
 measures the always tier yet. `.portulan` stays on 2.8 and `examples/` on 2.4, and `doctor` is GREEN on both
 across the bump. The four writers stay at 2.7.
 
-**Measured, with the method of #432 and #437.** This repository's boot read-set went from 95,602 to 95,613
-bytes and the demo workspace's from 36,195 to 36,206: the 11 bytes of ` · context` in the kernel, which
-stays at 47 lines. The page itself is on-read, 5,829 bytes in 94 lines, and no boot reads it.
+**Measured, with the method of #432 and #437, on main after #439.** This repository's boot read-set went
+from 92,895 to 92,906 bytes and the demo workspace's from 33,488 to 33,499: the 11 bytes of ` · context`
+in the kernel, which stays at 47 lines. The page itself is on-read, 5,829 bytes in 94 lines, and no boot reads it.
 
 **What stayed out.** The measurement module and recipe, the `doctor` report, compile targets, `init`'s
 offer (it needs the measurement) and 0038's second part of the page.
+
+**Copilot's rounds, answered in a third commit.** The first asked for three things. The budget's refusal rode
+the shared positive-integer check, whose message cites a consuming tool's exit 2, and nothing consumes this
+budget yet: it now has its own check and message, and a test that the message claims no consumer. `index`
+and `librarian` gain tests that they read the version the schema's `$id` declares. And a key a later MINOR
+added passed in a manifest declaring an earlier one: `doctor` now refuses `context` below 2.9, gated at
+birth because no manifest can newly fail it. The older keys share the hole, and gating them could fail a
+manifest that passes today, which `spec/README.md` calls a MAJOR, so they are left to a change of their own.
+The second found `0036`, `0038` and `m12.md` still saying `0034` had commissioned `2.9`. `0034`'s accepted
+text names no number, and each passage now carries an annotation saying how the version was settled,
+rather than a rewrite.
+The coordinator session did not review this commit before it was made: it asked for reviews to be answered
+as they land.
 
 **Checkpoints.** Skipped by his instruction of 2026-09-23 12:38 (no fresh-context runs unless he asks); the
 coordinator session reviewed the diff before the commit; his review is on the pull request.

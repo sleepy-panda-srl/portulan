@@ -2999,8 +2999,9 @@ _The seam applies here too: no client-identifying references._
   key.** [`context.md`](../core/operating/context.md) states `0036`'s rule (four load tiers, one level of
   index, the always tier budgeted in tokens like memory, Portulan budgeting its own contribution) and the
   kernel's map points at it. Workspace Definition 2.9 adds `context` (`always.budget.tokens`, and the
-  `ratio` it is counted at, required with it); `doctor` refuses a budget that is not a positive integer and a
-  ratio under 1. Boot read-sets +11 bytes each (95,613; 36,206). · Checkpoints skipped by his instruction of
+  `ratio` it is counted at, required with it); `doctor` refuses a budget that is not a positive integer, a
+  ratio under 1, and the key under an earlier declared version (Copilot's round, a third commit). Boot
+  read-sets +11 bytes each (92,906; 33,499). · Checkpoints skipped by his instruction of
   2026-09-23 12:38 (no fresh-context runs unless he asks); the coordinator session reviewed the diff before
   the commit; his review is on the PR · 27 green, `tests` as non-root · Seam scan clean against the private
   terms this project names; the term-list scan is his · [handoff](../.portulan/handoffs/2026-09-23-n-the-always-tier-has-its-doctrine-and-its-key.md)

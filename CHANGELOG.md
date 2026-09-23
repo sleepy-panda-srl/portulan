@@ -78,8 +78,8 @@ records how things were found. This is per *release* and records what a reader g
   reaches the agent in time, with one level of index, and the always tier is budgeted in tokens like
   memory, never defaulted and repaired by demotion, merge or retirement rather than a raise. Workspace
   Definition **2.9** adds one optional key, `context`, for that budget and the bytes-per-token ratio it is
-  counted at, and `doctor` checks their shape; every 2.8 manifest stays valid unchanged. Nothing measures
-  the tier yet: that is the next change. The kernel gains one word, 11 bytes on every boot.
+  counted at, and `doctor` checks their shape and refuses the key under an earlier declared version; every
+  2.8 manifest stays valid unchanged. Nothing measures the tier yet: that is the next change. The kernel gains one word, 11 bytes on every boot.
 
 ## 0.1.3 — 2026-09-16
 
