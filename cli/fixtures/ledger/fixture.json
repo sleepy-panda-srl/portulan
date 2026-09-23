@@ -1,0 +1,66 @@
+{
+  "roots": [
+    "/work/demo",
+    "/work/demo-feature"
+  ],
+  "branch": "feature/x",
+  "expect": {
+    "records": 42,
+    "duplicates": 18,
+    "synthetic": 1,
+    "malformed": 1,
+    "requests": [
+      15,
+      5
+    ],
+    "uncached": [
+      21,
+      9
+    ],
+    "written1h": [
+      251000,
+      0
+    ],
+    "written5m": [
+      20000,
+      51500
+    ],
+    "writtenUnknown": [
+      0,
+      0
+    ],
+    "read": [
+      332800,
+      29000
+    ],
+    "output": [
+      4370,
+      1100
+    ],
+    "sessions": 3,
+    "subagentContexts": 3,
+    "compactions": 1,
+    "largest": 85001,
+    "rebuilds": 6,
+    "rebuilt": 181310,
+    "causes": {
+      "compaction": 1,
+      "effort change": 1,
+      "lifetime lapsed": 2,
+      "model change": 1,
+      "unexplained": 1
+    },
+    "host": [
+      {
+        "session": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+        "difference": {
+          "uncached": -12,
+          "written": 0,
+          "read": 0,
+          "output": -150
+        }
+      }
+    ],
+    "threshold": 80004
+  }
+}

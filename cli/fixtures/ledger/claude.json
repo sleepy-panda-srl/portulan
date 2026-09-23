@@ -1,0 +1,34 @@
+{
+  "numStartups": 3,
+  "projects": {
+    "/elsewhere": {
+      "lastSessionId": "99999999-9999-4999-8999-999999999999",
+      "lastTotalInputTokens": 1,
+      "lastTotalOutputTokens": 1,
+      "lastTotalCacheCreationInputTokens": 1,
+      "lastTotalCacheReadInputTokens": 1
+    },
+    "/work/demo": {
+      "lastSessionId": "ffffffff-ffff-4fff-8fff-ffffffffffff",
+      "lastTotalInputTokens": 5,
+      "lastTotalOutputTokens": 5,
+      "lastTotalCacheCreationInputTokens": 5,
+      "lastTotalCacheReadInputTokens": 5
+    },
+    "/work/demo/.claude/worktrees/w1": {
+      "lastSessionId": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+      "lastTotalInputTokens": 16,
+      "lastTotalOutputTokens": 1650,
+      "lastTotalCacheCreationInputTokens": 75000,
+      "lastTotalCacheReadInputTokens": 110000,
+      "lastCost": 0
+    },
+    "/work/demo-old": {
+      "lastSessionId": "dddddddd-dddd-4ddd-8ddd-dddddddddddd",
+      "lastTotalInputTokens": 7,
+      "lastTotalOutputTokens": 7,
+      "lastTotalCacheCreationInputTokens": 7,
+      "lastTotalCacheReadInputTokens": 7
+    }
+  }
+}

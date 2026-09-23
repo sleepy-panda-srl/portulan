@@ -1,6 +1,7 @@
 # `doctor` fixtures
 
-Material for [`../doctor.test.mjs`](../doctor.test.mjs). The task that produced `doctor` calls the
+Material for [`../doctor.test.mjs`](../doctor.test.mjs), and since proposal `0038` for
+[`../ledger.mjs`](../ledger.mjs), which `doctor` is to reach. The task that produced `doctor` calls the
 known-bad manifest **not optional**, and says why: *a validator that goes green on first contact with
 a manifest written to satisfy it has demonstrated nothing.* So the first thing here is a family of
 manifests that must fail, each isolating one violation, plus one that must pass — because a suite in
@@ -29,6 +30,8 @@ fixture does not merely test badly — it turns CI red for reasons unrelated to 
 | [`manifests/`](manifests/) | One manifest per schema violation, plus `valid.json`. Every file parses; every file but `valid.json` must produce at least one error naming the constraint and its location. |
 | [`drifted-workspace/`](drifted-workspace/) | A whole workspace whose repo card claims a path its tree does not contain — the red path of the claims lint, which neither real workspace exercises, since customer zero passes it and the demo declares no `tree`. |
 | [`guidance/`](guidance/) | A workspace declaring one guidance unit in each load tier, and no gate policy — the source [`../compile.test.mjs`](../compile.test.mjs) compiles into Claude Code's rules and skill, and the on-path target of milestone 12's second demonstration: copy it out, run `compile --workspace` on the copy, open a host there, and touch `api/`. Nothing compiled is committed here, so no copy of its output can go stale. |
+| [`ledger/`](ledger/) | Synthetic host usage records for [`../ledger.mjs`](../ledger.mjs), in the shape Claude Code 2.1.280 writes them, and `fixture.json` carrying the totals they are known to sum to, which [`generate-ledger.mjs`](generate-ledger.mjs) sums from the requests it writes rather than the ledger. Among them: requests written once per content block, a request copied into a second transcript, a torn line, a record the host writes with no request behind it, a compaction, each rebuild cause, subagents in their own files at two depths and one written inline, a worktree inside the repository and one outside it, a sibling directory whose key shares the repository's prefix, and a project that must never be opened. Paths, ids and models are invented; no line of any real session is here. |
+| [`generate-ledger.mjs`](generate-ledger.mjs) | Writes `ledger/`, records and known totals together; [`../ledger.test.mjs`](../ledger.test.mjs) runs it into a temporary directory and compares the result with the committed fixture byte for byte, so the totals are the generator's and no hand's. |
 
 Cases that need a broken filesystem rather than a broken document — a slot pointing nowhere, a
 directory slot pointing at a file, a workspace escaping its own directory — are built in temp

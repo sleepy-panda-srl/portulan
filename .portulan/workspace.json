@@ -112,6 +112,15 @@
         "doc": "verify/README.md"
       },
       {
+        "id": "ledger",
+        "run": "./.portulan/verify/ledger.sh",
+        "requires": [
+          "bash",
+          "node"
+        ],
+        "doc": "verify/README.md"
+      },
+      {
         "id": "control-chars",
         "run": "./.portulan/verify/control-chars.sh",
         "requires": [
