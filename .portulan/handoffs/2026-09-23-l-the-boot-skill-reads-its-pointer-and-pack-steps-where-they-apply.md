@@ -5,24 +5,28 @@
 question put to him at 13:44, and the move it allows. Step 2a of the boot skill, resolving a pointer
 manifest, now sits in [`pointer-manifest.md`](../../plugin/skills/portulan/pointer-manifest.md), and step
 3a, what declared packs deliver, in [`packs.md`](../../plugin/skills/portulan/packs.md). The skill keeps
-each step's heading and one instruction: where the condition holds, read the file and follow it, and a
-denied read is step 1's case. 0036's *keeps its procedure* sentence carries the amendment as an
-annotation, and the ruling is recorded there with his words. No mechanism changed.
+each step's heading and one instruction: where the condition holds, read the file and follow it, and
+where the read is denied, say that the step did not load. 0036's *keeps its procedure* sentence carries
+the amendment as an annotation, and the ruling is recorded there with his words. No mechanism changed.
 
 **Measured on `74a2a31`, before and after.** [`SKILL.md`](../../plugin/skills/portulan/SKILL.md) went
-from 17,813 to 8,451 bytes, which is all a boot on a workspace that is not a pointer and names no pack
-now reads of it. A workspace naming packs reads 14,732 with `packs.md`. This repository and the demo both
-name two, so their boot read-sets went from 95,602 to 92,521 and from 36,195 to 33,114 bytes. A pointer
-reads 12,899 with `pointer-manifest.md`, and one whose workspace names packs reads both files, 19,180
-bytes, 1,367 more than before: the two stubs and two headers are the price of the on-read path. At 0036's
-estimate of 2.99 bytes per token, a boot on a workspace with neither saves about 3,130 tokens, and this
-repository's boot about 1,030.
+from 17,813 to 8,646 bytes, which is all a boot on a workspace that is not a pointer and names no pack
+now reads of it. A workspace naming packs reads 14,927 with `packs.md`. This repository and the demo both
+name two, so their boot read-sets went from 95,602 to 92,716 and from 36,195 to 33,309 bytes. A pointer
+reads 13,094 with `pointer-manifest.md`, and one whose workspace names packs reads both files, 19,375
+bytes, 1,562 more than before: the two stubs and two headers are the price of the on-read path. At 0036's
+estimate of 2.99 bytes per token, a boot on a workspace with neither saves about 3,070 tokens, and this
+repository's boot about 970.
 
 **How "moved, not deleted" was checked.** #432's clause-level comparison, run over three files: of the
 old skill's 229 clauses, 108 stayed in the skill, 56 moved verbatim to `pointer-manifest.md` and 63 to
 `packs.md`, and 2 were given an antecedent (*the `packs` note below* is now *step 3a*, and *the slots
 above* is now *step 3's slots*). None is missing and none sits in two files. The skill's intro and the
 header of [`rationale.md`](../../plugin/skills/portulan/rationale.md) now say where steps 2a and 3a are.
+
+**One review finding, fixed.** Copilot's round on the pull request found that the first wording of both
+instructions, *a denied read is step 1's case*, could be read as the kernel not loading. They now state
+the outcome directly, which added 195 bytes to the skill; the figures above include them.
 
 **One limit, kept rather than rounded off.** The two files sit in the bundle beside the skill, so a
 session whose reads are scoped to the project, the case step 1 measured, is denied them as it is denied

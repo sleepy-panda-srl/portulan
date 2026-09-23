@@ -37,7 +37,8 @@ do not fall back to searching upward or outward.
 
 **Where the manifest's `kind` is `pointer`, read [`pointer-manifest.md`](pointer-manifest.md) and follow
 it before step 3: it is this step in full.** Any other manifest is the workspace itself, and its boot
-skips the file. A denied read is step 1's case.
+skips the file. If the read is denied, this step did not load: say so, ask for read access to the file,
+and do not proceed as though it had.
 
 ## 3. Read the slots the manifest names
 
@@ -69,7 +70,8 @@ the default. *Declared* and *runnable* are not the same list; step 3a carries th
 
 **Where the workspace's manifest, in the project or resolved at step 2a, names a pack in `packs`, read
 [`packs.md`](packs.md) and follow it: it is this step in full.** A boot on a manifest naming no pack
-skips the file. A denied read is step 1's case.
+skips the file. If the read is denied, this step did not load: say so, ask for read access to the file,
+and do not report the packs as though it had.
 
 ## 4. If the project has no workspace
 

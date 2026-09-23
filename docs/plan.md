@@ -2988,8 +2988,8 @@ _The seam applies here too: no client-identifying references._
   only where they apply**, on his later ruling on 0036 (17:07 UTC), recorded there with the amended sentence
   annotated: steps 2a and 3a moved to [`pointer-manifest.md`](../plugin/skills/portulan/pointer-manifest.md)
   and [`packs.md`](../plugin/skills/portulan/packs.md), none deleted and none kept twice. The skill 17,813 →
-  8,451 bytes; with `packs.md`, which this repository and the demo read, 14,732, so their boot read-sets go
-  95,602 → 92,521 and 36,195 → 33,114; a pointer naming packs reads 1,367 more. · Checkpoints skipped by his
+  8,646 bytes; with `packs.md`, which this repository and the demo read, 14,927, so their boot read-sets go
+  95,602 → 92,716 and 36,195 → 33,309; a pointer naming packs reads 1,562 more. · Checkpoints skipped by his
   instruction of 2026-09-23 12:38 (no fresh-context runs unless he asks); the coordinator session reviewed the
   diff before the commit; his review is on the PR · 27 green, `tests` as non-root · Seam scan clean against the
   private terms this project names; the term-list scan is his ·
