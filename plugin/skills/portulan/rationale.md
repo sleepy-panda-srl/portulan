@@ -1,11 +1,12 @@
 # Boot Portulan — the reasons behind each step
 
-> **Read on demand, never at boot.** [`SKILL.md`](SKILL.md) is the whole procedure, and every
-> instruction a boot follows is there. This file holds the reasons, measurements and incidents behind
-> those instructions, under the same step numbers; step 4 gives none, so it has no section. It was split
-> out of `SKILL.md` on 2026-09-23, under proposal 0036: every boot paid for these paragraphs, and a boot
-> needs them only when a step does not fit its case or someone asks why. They moved: none was deleted,
-> and none is kept in both files.
+> **Read on demand, never at boot.** [`SKILL.md`](SKILL.md) is the procedure, and every instruction a
+> boot follows is there or, for steps 2a and 3a, in [`pointer-manifest.md`](pointer-manifest.md) and
+> [`packs.md`](packs.md), which it opens where they apply. This file holds the reasons, measurements and
+> incidents behind those instructions, under the same step numbers; step 4 gives none, so it has no
+> section. It was split out of `SKILL.md` on 2026-09-23, under proposal 0036: every boot paid for these
+> paragraphs, and a boot needs them only when a step does not fit its case or someone asks why. They
+> moved: none was deleted, and none is kept in both files.
 
 ## 1. Load the kernel
 

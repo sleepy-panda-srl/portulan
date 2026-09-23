@@ -2983,3 +2983,14 @@ _The seam applies here too: no client-identifying references._
   fresh-context runs unless he asks); the coordinator session reviewed the diff before the commit; his review is on
   the PR · `docs` and `index` green · Seam scan clean against the private terms this project names; the term-list
   scan is his · [handoff](../.portulan/handoffs/2026-09-23-k-0038-is-accepted.md)
+
+- 2026-09-23 · M12 (Context economy) — row stays todo · **The boot skill reads its pointer and pack steps
+  only where they apply**, on his later ruling on 0036 (17:07 UTC), recorded there with the amended sentence
+  annotated: steps 2a and 3a moved to [`pointer-manifest.md`](../plugin/skills/portulan/pointer-manifest.md)
+  and [`packs.md`](../plugin/skills/portulan/packs.md), none deleted and none kept twice. The skill 17,813 →
+  8,825 bytes; with `packs.md`, which this repository and the demo read, 15,106, so their boot read-sets go
+  95,602 → 92,895 and 36,195 → 33,488; a pointer naming packs reads 1,741 more. · Checkpoints skipped by his
+  instruction of 2026-09-23 12:38 (no fresh-context runs unless he asks); the coordinator session reviewed the
+  diff before the commit; his review is on the PR · 27 green, `tests` as non-root · Seam scan clean against the
+  private terms this project names; the term-list scan is his ·
+  [handoff](../.portulan/handoffs/2026-09-23-l-the-boot-skill-reads-its-pointer-and-pack-steps-where-they-apply.md)
