@@ -506,8 +506,11 @@ Observations of the rebuilt checks, each run on this tree and reverted:
 | a `- 2026-09-24 · …` line appended to `docs/plan.md` | **red**, naming the line |
 | a fragment holding two top-level bullets | **red**, naming the file |
 | a fragment named `x.improved.md` | **red**, naming the file and the six sections |
+| a fragment that is a link to a good one | **red**, naming it; `--changes` refuses it too, exit 1 |
 | a bullet added under `## Unreleased` in `CHANGELOG.md` | **red**, with the count |
 | HEAD re-committed without its `Seam-scan:` line | **red**, naming the commit |
+| the same, authored as `claude[bot]` | **red**, naming the commit; any `[bot]` author passed before Copilot's round on #451 |
+| the same, authored as `dependabot[bot]` | green, a bump owing none |
 | a merge commit on top, its second parent without the line, then with it | **red** naming the second parent, then green |
 | `main` merged into the branch on top, `main` carrying a change committed later, the branch's own commit with its line, then without | green, then **red**, both naming the branch's own commit; a plain `git log -1 --no-merges HEAD^2` read the later change on `main` |
 | a merge ref over that branch, as CI builds it | the same two results, naming the same commit |
@@ -958,9 +961,11 @@ than left as a symmetry a reader has to notice, on the rule the same change mint
   its second parent where HEAD is a merge (the shape both `main` and a pull request's merge ref have),
   or from its first parent where the second is already on `origin/main` (a branch that merged `main`
   in). A copy with no such ref cannot tell the sides apart and takes the second parent. Only the newest
-  change is read, so the rule needs no cutoff date and no older commit is judged by it. A commit whose
-  author is an App (`[bot]`) owes no line, so a session committing under an App's name passes
-  unexamined.
+  change is read, so the rule needs no cutoff date and no older commit is judged by it. A commit
+  authored as `dependabot[bot]` owes no line. The author is metadata the commit's maker sets, so a
+  session committing under that name passes unexamined, which is the trust the line itself gets. Until
+  Copilot's round on #451 every `[bot]` author was exempt, `claude[bot]` included, which is what a
+  session committing through an App's API is.
 - **The stray-file audit stops at `*.md`.** A `notes.txt` in `../handoffs/` is not examined, so the
   untracked debris a working tree collects passes.
 - **The fragment rule has two carriers.** `docs.sh` checks fragments in bash because the recipe needs no

@@ -487,14 +487,18 @@ fi
 # 4c. Changelog fragments. One file per change, `<slug>.<section>.md` holding one top-level bullet;
 # the index tool's `--changes` groups them for the cut, which pastes them under the version and
 # deletes them. That tool refuses the same fragments this does: the name pattern below and one bullet
-# are the rule both carry, and this copy is bash because this recipe needs no node.
+# are the rule both carry, and this copy is bash because this recipe needs no node. A link is refused
+# in both rather than followed: `[ -f ]` alone followed one the index tool refused, a green the cut
+# could not assemble (Copilot, #451).
 : >"$tmp/fragments"
 : >"$tmp/badfragments"
 while IFS= read -r f; do
-    [ -f "$f" ] || continue
+    [ -f "$f" ] || [ -L "$f" ] || continue
     base=${f#"$CHANGES"/}
     [ "$base" = README.md ] && continue
-    if ! [[ "$base" =~ ^[a-z0-9][a-z0-9-]*\.(added|changed|deprecated|removed|fixed|security)\.md$ ]]; then
+    if [ -L "$f" ]; then
+        printf '%s is not a regular file: a fragment is a file of its own, never a link\n' "$f" >>"$tmp/badfragments"
+    elif ! [[ "$base" =~ ^[a-z0-9][a-z0-9-]*\.(added|changed|deprecated|removed|fixed|security)\.md$ ]]; then
         printf '%s is not named <slug>.<section>.md, the section one of added, changed, deprecated, removed, fixed, security\n' "$f" >>"$tmp/badfragments"
     elif ! awk 'NR == 1 && !/^- / { bad = 1 } /^[^[:space:]]/ { top++ } END { exit (NR == 0 || bad || top != 1) }' "$f"; then
         printf '%s is not one top-level bullet: its first line opens "- ", and every later line is indented or blank\n' "$f" >>"$tmp/badfragments"
@@ -530,9 +534,12 @@ fi
 # parent is taken. A squash merge keeps the trailer because GitHub composes the squash message from the
 # commits' own, which is why a leading `* ` is allowed. There is no cutoff date: only the newest change
 # is read, so no commit made before this rule is ever judged by it. The check reads PRESENCE, never
-# whether the scan ran. An App's commit (a Dependabot bump, the librarian's pass) composes nothing from
-# private context, so it owes none; that is also how a session committing under an App's name would
-# pass, stated in ./README.md.
+# whether the scan ran. **Only Dependabot is exempt**, since a version bump composes nothing from
+# private context. Until Copilot's round on #451 every `[bot]` author was, and that let through a
+# session committing through an App's API (`claude[bot]`), which composes from the same context a
+# local commit does; the librarian's pass writes the line itself. The author is metadata the commit's
+# maker sets, so a session committing under Dependabot's name would still pass: the same trust the
+# line itself gets, since only its presence is read (./README.md, known limits).
 side=HEAD
 if git rev-parse -q --verify 'HEAD^2' >/dev/null; then
     side='HEAD^2'
@@ -550,8 +557,8 @@ fi
 author=$(sed -n 1p "$tmp/change")
 short=$(git rev-parse --short "$change")
 case "$author" in
-    *'[bot]')
-        pass "record — the newest change ($short) is an App's commit ($author), which owes no seam attestation" ;;
+    'dependabot[bot]')
+        pass "record — the newest change ($short) is a Dependabot bump, which composes nothing and owes no seam attestation" ;;
     *)
         if tail -n +2 "$tmp/change" | grep -qiE '^[[:space:]*-]*seam-scan:.*clean'; then
             pass "record — the newest change ($short) carries a Seam-scan trailer"

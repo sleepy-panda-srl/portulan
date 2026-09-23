@@ -998,7 +998,17 @@ function judgeHandoffs(dir, workspace, { write, fail, remedyFlags = "" }) {
     // conflicted on every merge that added a handoff — all 15 of that day's pull requests that had
     // another merge land while they were open — and carried nothing the series does not. `--handoffs`
     // prints it on demand.
-    const kept = fs.existsSync(indexPath);
+    // `lstat`, never `existsSync`, which follows a link and reads a dangling one as no copy at all, so
+    // `--check` was green over a kept index nobody could read. Copilot, #451.
+    let kept = true;
+    try {
+        fs.lstatSync(indexPath);
+    } catch (cause) {
+        if (cause.code !== "ENOENT") {
+            throw new IndexError(`cannot look for the index at ${declaredPath} — ${cause.code ?? cause.message}`);
+        }
+        kept = false;
+    }
     if (kept) compareOrWrite({ dir, declaredPath, indexPath, expected, write, series: "handoffs", source: "series", fail, remedyFlags });
 
     return { declared: true, path: indexPath, expected, count: series.records.length, kept };
@@ -1313,8 +1323,14 @@ export function readChanges(dir) {
     const problems = [];
     for (const entry of entries.sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0))) {
         if (NOT_A_RECORD.has(entry.name)) continue;
+        if (!entry.isFile()) {
+            // A link is refused, not followed, and `docs.sh` refuses it alike: a link that passed there
+            // and failed here was a green that the cut could not assemble. Copilot, #451.
+            problems.push({ name: entry.name, message: "is not a regular file: a fragment is a file of its own, never a link" });
+            continue;
+        }
         const match = CHANGE_NAME.exec(entry.name);
-        if (!entry.isFile() || !match) {
+        if (!match) {
             problems.push({
                 name: entry.name,
                 message: `is not a fragment: name it <slug>.<section>.md, the section one of ${CHANGE_SECTIONS.join(", ")}`,

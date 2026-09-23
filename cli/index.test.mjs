@@ -1077,6 +1077,16 @@ describe("a kept handoff index is byte-compared like the store's", () => {
         assert.deepEqual(fs.readFileSync(path.join(dir, "handoffs-index.md")), before);
     });
 
+    test("a dangling link where the index is kept is a copy nobody can read, and red", () => {
+        // Found by Copilot on #451: `existsSync` follows the link, so a dangling one read as no copy.
+        const dir = workspace({ "handoffs/2026-07-01-a.md": handoff("A") }, withSeries());
+        fs.symlinkSync("gone.md", path.join(dir, "handoffs-index.md"));
+        const bad = failures(inspect(dir));
+        assert.equal(bad.length, 1);
+        assert.equal(bad[0].check, "index");
+        assert.match(text(bad), /declared and absent/);
+    });
+
     test("a write regenerates a kept index", () => {
         const dir = kept({ "handoffs/2026-07-01-a.md": handoff("A") });
         tree(dir, { "handoffs/2026-07-28-b.md": handoff("B") });
@@ -1191,6 +1201,16 @@ describe("changelog fragments", () => {
         const said = [];
         assert.equal(run(["--changes", dir], (l) => said.push(l)), 1);
         assert.doesNotMatch(said.join("\n"), /### Changed/, "a cut must never paste around a broken fragment");
+    });
+
+    test("a link is refused rather than followed, as docs.sh refuses it", () => {
+        // Found by Copilot on #451: docs.sh's `[ -f ]` followed the link that this refused.
+        const dir = tree(scratch(), { "fine.changed.md": "- Fine.\n" });
+        fs.symlinkSync("fine.changed.md", path.join(dir, "link.changed.md"));
+        const { fragments, problems } = readChanges(dir);
+        assert.deepEqual(problems.map((p) => p.name), ["link.changed.md"]);
+        assert.match(problems[0].message, /not a regular file/);
+        assert.deepEqual(fragments.map((f) => f.name), ["fine.changed.md"]);
     });
 
     test("a missing directory is an empty set, since the cut deletes every fragment", () => {
