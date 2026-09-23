@@ -195,7 +195,12 @@ function advance(kept, transcriptPath, size) {
     }
 }
 
-/** Keep the figures for the next call: written whole to a new file and renamed over the old, so no reader sees half. */
+/**
+ * Keep the figures for the next call: written whole to a new file and renamed over the old, so no reader
+ * sees half. The prompt's call and the status line's can race, and the one that read less may rename last;
+ * what it leaves is still one snapshot, the offset, the digest and the figures together, so the next call
+ * reads again from that offset and counts nothing twice.
+ */
 function keep(file, kept, warn) {
     const temporary = `${file}.${process.pid}-${Date.now().toString(36)}`;
     let created = false;
@@ -268,7 +273,7 @@ export function statusLine(figure) {
     const m = figure.multipliers;
     const multiplied = `${m.source === "declared" ? "multipliers declared" : "multipliers undeclared"}: read ${m.read}×, write ${m.write}×`;
     return figure.context >= figure.threshold
-        ? `context ${compact(figure.context)} is past its ${compact(figure.threshold)} restart threshold: write the handoff and restart · ${multiplied}`
+        ? `context ${compact(figure.context)} has reached its ${compact(figure.threshold)} restart threshold: write the handoff and restart · ${multiplied}`
         : `context ${compact(figure.context)} of a ${compact(figure.threshold)} restart threshold · ${multiplied}`;
 }
 

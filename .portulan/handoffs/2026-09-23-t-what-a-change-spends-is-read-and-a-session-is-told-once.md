@@ -20,10 +20,12 @@ configuration home (`CLAUDE_CONFIG_DIR`, else `~/.claude`), one per subagent und
 `[a-zA-Z0-9]` a dash, cut at 200 with a hash past that; the host's own totals per directory in
 `.claude.json` beside the home, as `lastTotal*` counters and `lastSessionId`. The key function and the
 subagent paths were read from the host's own program text, as strings, not from its documentation, which
-covers neither. **Inferred, not read:** that the status-line command runs with `CLAUDE_PROJECT_DIR` set,
-as hooks do, which the compiled command's path needs; the program text does not show it, and the first
-status line in a real terminal will. Every usage record is written once per content block: this session's transcript held 123 records for
-66 requests when the ledger first read it.
+covers neither. **Read, not yet seen:** the status-line command runs with `CLAUDE_PROJECT_DIR` set, which
+the compiled command's path needs, because the host runs it through the one runner it runs every hook
+command through, and that runner puts the project root in the variable, as the program text of 2.1.281
+shows. This container draws no status line, so the first one in a real terminal is still to be seen. Every
+usage record is written once per content block: this session's transcript held 123 records for 66
+requests when the ledger first read it.
 
 **The threshold.** `C* ≈ F × (1 + m_w / (n × m_r))` with `n` = 20. `F` is the session's first request after
 its last compaction: the host's floor and the always tier as it sent them. It leaves out the handoff and the
@@ -83,7 +85,7 @@ earlier with no rework. The status line is compiled by default: `0038` places it
 the note naming `settings.local.json` carries the override, and item 4 adds the declaration that turns it
 off. `F` is the first request after the last compaction, stated as erring toward an earlier line.
 
-**How it was checked.** 34 cases in [`cli/ledger.test.mjs`](../../cli/ledger.test.mjs) and 19 in
+**How it was checked.** 34 cases in [`cli/ledger.test.mjs`](../../cli/ledger.test.mjs) and 20 in
 [`cli/advisory.test.mjs`](../../cli/advisory.test.mjs), every one over a temporary directory or the
 committed fixture, and one new case in `compile.test.mjs` with the no-shell case widened to the two new
 commands. Among them: every fixture transcript folded in two pieces, cut at every line, gives what one
@@ -115,6 +117,14 @@ pre-filter and each record's own `cwd` decides, which a case pins with a sibling
 request is counted once per message id and a copy in a second transcript once; the running figures pass
 over repeats among the latest 16 ids, because the host writes a request's blocks one after another, and
 the cases that fold a transcript in pieces hold them to a whole read.
+
+**Copilot's rounds on d539ecc and edc8921.** Three threads. That the status line may run without
+`CLAUDE_PROJECT_DIR`, since the handoff called it inferred: the host sets it, as the paragraph on its
+format now says, so the command is unchanged. That the prompt's call and the status line's can race and
+the older snapshot rename last, replaying lines and compactions: a snapshot is its offset, its digest and
+its figures together, so the next call reads again from that offset and counts nothing twice, which a
+case now pins. And that the status line said a context "is past" a threshold it had only reached: it
+says "has reached" now.
 
 **Checkpoints.** Skipped by his instruction of 2026-09-23 12:38: no fresh-context runs unless he asks. The
 coordinator session reviewed the diff before the first commit; his review is on the pull request. The

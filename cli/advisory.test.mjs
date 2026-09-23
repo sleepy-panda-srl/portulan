@@ -263,6 +263,25 @@ describe("what a call reads", () => {
             assert.deepEqual([kept.figures.fresh, kept.figures.last], [40000, 50000]);
         });
     });
+
+    test("an older snapshot renamed over a newer one, as racing calls can leave, costs a re-read and counts nothing twice", () => {
+        withTemp((dir) => {
+            const state = path.join(dir, "state");
+            fs.mkdirSync(state);
+            const file = session(dir, [50000]);
+            const call = { session_id: "race", transcript_path: file };
+            onStatus(call, { dir: state });
+            const older = fs.readFileSync(stateFile("race", state));
+            grow(file, [boundary, ...record({ w1h: 29999 }), ...record({ read: 30000, w1h: 9999 })]);
+            onStatus(call, { dir: state });
+            // The call that read less renames its snapshot last.
+            fs.writeFileSync(stateFile("race", state), older);
+            assert.equal(onStatus(call, { dir: state }), "context 40k of a 60k restart threshold · multipliers undeclared: read 0.1×, write 2×");
+            const kept = JSON.parse(fs.readFileSync(stateFile("race", state), "utf8")).figures;
+            assert.deepEqual(kept, readTranscript(file).figures);
+            assert.equal(kept.compactions, 1, "the compaction the older snapshot had not read is counted once");
+        });
+    });
 });
 
 describe("the status line", () => {
@@ -270,7 +289,7 @@ describe("the status line", () => {
         withTemp((dir) => {
             const file = session(dir, [50000]);
             const current_usage = { input_tokens: 3, cache_creation_input_tokens: 997, cache_read_input_tokens: 90000 };
-            assert.equal(onStatus({ transcript_path: file, context_window: { current_usage } }), "context 91k is past its 80k restart threshold: write the handoff and restart · multipliers undeclared: read 0.1×, write 2×");
+            assert.equal(onStatus({ transcript_path: file, context_window: { current_usage } }), "context 91k has reached its 80k restart threshold: write the handoff and restart · multipliers undeclared: read 0.1×, write 2×");
             assert.equal(onStatus({ transcript_path: file, context_window: { current_usage: null } }), "context 50k of a 80k restart threshold · multipliers undeclared: read 0.1×, write 2×");
         });
     });
