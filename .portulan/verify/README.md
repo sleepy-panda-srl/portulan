@@ -506,7 +506,7 @@ Observations of the rebuilt checks, each run on this tree and reverted:
 | a `- 2026-09-24 · …` line appended to `docs/plan.md` | **red**, naming the line |
 | a fragment holding two top-level bullets | **red**, naming the file |
 | a fragment named `x.improved.md` | **red**, naming the file and the six sections |
-| a fragment that is a link to a good one | **red**, naming it; `--changes` refuses it too, exit 1 |
+| a fragment that is a link to a good one, a directory holding one, or a submodule | **red**, naming it; `--changes` refuses each too, exit 1 |
 | a bullet added under `## Unreleased` in `CHANGELOG.md` | **red**, with the count |
 | HEAD re-committed without its `Seam-scan:` line | **red**, naming the commit |
 | the same, authored as `claude[bot]` | **red**, naming the commit; any `[bot]` author passed before Copilot's round on #451 |

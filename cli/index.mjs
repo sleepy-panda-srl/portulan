@@ -1324,9 +1324,10 @@ export function readChanges(dir) {
     for (const entry of entries.sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0))) {
         if (NOT_A_RECORD.has(entry.name)) continue;
         if (!entry.isFile()) {
-            // A link is refused, not followed, and `docs.sh` refuses it alike: a link that passed there
-            // and failed here was a green that the cut could not assemble. Copilot, #451.
-            problems.push({ name: entry.name, message: "is not a regular file: a fragment is a file of its own, never a link" });
+            // A link or a directory is refused, never followed or skipped, and `docs.sh` refuses both
+            // alike: one that passed there and failed here was a green the cut could not assemble.
+            // Copilot, #451.
+            problems.push({ name: entry.name, message: "is not a regular file: a fragment is a file of its own, never a link or a directory" });
             continue;
         }
         const match = CHANGE_NAME.exec(entry.name);

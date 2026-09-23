@@ -487,17 +487,19 @@ fi
 # 4c. Changelog fragments. One file per change, `<slug>.<section>.md` holding one top-level bullet;
 # the index tool's `--changes` groups them for the cut, which pastes them under the version and
 # deletes them. That tool refuses the same fragments this does: the name pattern below and one bullet
-# are the rule both carry, and this copy is bash because this recipe needs no node. A link is refused
-# in both rather than followed: `[ -f ]` alone followed one the index tool refused, a green the cut
-# could not assemble (Copilot, #451).
+# are the rule both carry, and this copy is bash because this recipe needs no node. Anything that is
+# not a regular file, a link or a directory git lists (a submodule), is refused in both rather than
+# followed or skipped: `[ -f ]` alone followed a link and passed over a directory that the index tool
+# refused, a green the cut could not assemble (Copilot, #451). Only a path listed and gone from the
+# tree is passed over, as the index tool never sees it either.
 : >"$tmp/fragments"
 : >"$tmp/badfragments"
 while IFS= read -r f; do
-    [ -f "$f" ] || [ -L "$f" ] || continue
+    [ -e "$f" ] || [ -L "$f" ] || continue
     base=${f#"$CHANGES"/}
     [ "$base" = README.md ] && continue
-    if [ -L "$f" ]; then
-        printf '%s is not a regular file: a fragment is a file of its own, never a link\n' "$f" >>"$tmp/badfragments"
+    if [ -L "$f" ] || [ ! -f "$f" ]; then
+        printf '%s is not a regular file: a fragment is a file of its own, never a link or a directory\n' "$f" >>"$tmp/badfragments"
     elif ! [[ "$base" =~ ^[a-z0-9][a-z0-9-]*\.(added|changed|deprecated|removed|fixed|security)\.md$ ]]; then
         printf '%s is not named <slug>.<section>.md, the section one of added, changed, deprecated, removed, fixed, security\n' "$f" >>"$tmp/badfragments"
     elif ! awk 'NR == 1 && !/^- / { bad = 1 } /^[^[:space:]]/ { top++ } END { exit (NR == 0 || bad || top != 1) }' "$f"; then
