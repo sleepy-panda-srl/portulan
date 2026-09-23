@@ -625,6 +625,46 @@ describe("vendoring into a host", () => {
         assert.match(md, /Their files are not here/, "the pack layer is named as NOT composed");
     });
 
+    // Proposal `0036`: the vendored file inherits the tiers. It is the one file its hosts are sure to load, so
+    // the always units ride in it whole and every other unit is a one-line pointer to its file.
+    test("AGENTS.md inherits the guidance's tiers: always inline, the rest as one-line pointers", async () => {
+        const root = scratch();
+        const src = path.join(root, "feed", "acme");
+        fs.mkdirSync(src, { recursive: true });
+        seedWorkspace(src, { kind: "portfolio", tree: null, card: null, extra: { portulan: { spec: "2.10" } } });
+        const manifest = readManifest(src);
+        manifest.slots.context = "context/";
+        write(src, "workspace.json", json(manifest));
+        write(src, "context/conventions.md", "---\ntier: always\n---\n\n# Conventions\n\nTest first.\n");
+        write(src, "context/api.md", '---\ntier: on-path\npaths: ["api/**"]\ndescription: Handlers.\n---\n\n# API\n\nValidate.\n');
+        const host = path.join(root, "host");
+        fs.mkdirSync(host, { recursive: true });
+        assert.equal(await run([src, "--into", path.join(host, ".portulan"), "--residence", "in-repo", "--host", "generic"], harness().options), 0);
+        const md = fs.readFileSync(path.join(host, "AGENTS.md"), "utf8");
+        assert.match(md, /## Guidance\n\n# Conventions\n\nTest first\.\n/);
+        assert.match(md, /^- `\.portulan\/context\/api\.md`: when you work on `api\/\*\*`\. Handlers\.$/m);
+        assert.doesNotMatch(md, /Validate\./, "an on-path unit's guidance is pointed at, not inlined");
+        assert.deepEqual(await green(path.join(host, ".portulan")), []);
+    });
+
+    test("a unit `compile` would refuse stops the vendoring before anything is written", async () => {
+        const root = scratch();
+        const src = path.join(root, "feed", "acme");
+        fs.mkdirSync(src, { recursive: true });
+        seedWorkspace(src, { kind: "portfolio", tree: null, card: null, extra: { portulan: { spec: "2.10" } } });
+        const manifest = readManifest(src);
+        manifest.slots.context = "context/";
+        write(src, "workspace.json", json(manifest));
+        write(src, "context/bad.md", "---\ntier: sometimes\n---\n\nA.\n");
+        const host = path.join(root, "host");
+        fs.mkdirSync(host, { recursive: true });
+        const h = harness();
+        assert.equal(await run([src, "--into", path.join(host, ".portulan"), "--residence", "in-repo", "--host", "generic"], h.options), 2);
+        assert.match(text(h), /context\/bad\.md: `tier` is "sometimes"/);
+        assert.ok(!exists(path.join(host, "AGENTS.md")));
+        assert.ok(!exists(path.join(host, ".portulan")));
+    });
+
     test("the vendored tree really carries the kernel, end to end", async () => {
         const root = scratch();
         const src = path.join(root, "feed", "acme");

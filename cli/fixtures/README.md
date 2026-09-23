@@ -28,6 +28,7 @@ fixture does not merely test badly — it turns CI red for reasons unrelated to 
 |---|---|
 | [`manifests/`](manifests/) | One manifest per schema violation, plus `valid.json`. Every file parses; every file but `valid.json` must produce at least one error naming the constraint and its location. |
 | [`drifted-workspace/`](drifted-workspace/) | A whole workspace whose repo card claims a path its tree does not contain — the red path of the claims lint, which neither real workspace exercises, since customer zero passes it and the demo declares no `tree`. |
+| [`guidance/`](guidance/) | A workspace declaring one guidance unit in each load tier, and no gate policy — the source [`../compile.test.mjs`](../compile.test.mjs) compiles into Claude Code's rules and skill, and the on-path target of milestone 12's second demonstration: copy it out, run `compile --workspace` on the copy, open a host there, and touch `api/`. Nothing compiled is committed here, so no copy of its output can go stale. |
 
 Cases that need a broken filesystem rather than a broken document — a slot pointing nowhere, a
 directory slot pointing at a file, a workspace escaping its own directory — are built in temp

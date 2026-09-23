@@ -1,0 +1,25 @@
+{
+  "portulan": {
+    "spec": "2.10"
+  },
+  "name": "guidance",
+  "summary": "A fixture workspace declaring one guidance unit in each load tier — the source compile emits Claude Code's rules and skill from.",
+  "kind": "demo",
+
+  "slots": {
+    "identity": "identity.md",
+    "principles": "principles.md",
+    "gates": "gate-map.md",
+    "context": "context/"
+  },
+
+  "verify": {
+    "default": "check",
+    "recipes": [
+      {
+        "id": "check",
+        "run": "./verify.sh"
+      }
+    ]
+  }
+}

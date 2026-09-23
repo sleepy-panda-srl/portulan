@@ -3090,3 +3090,14 @@ _The seam applies here too: no client-identifying references._
   diff before the commit; his review is on the PR · 28 green, `tests` as non-root · Seam scan clean against the
   private terms this project names; the term-list scan is his ·
   [handoff](../.portulan/handoffs/2026-09-23-j-the-session-awaits-copilot-and-no-check-does.md)
+
+- 2026-09-23 · M12 (Context economy) — row stays todo · **A workspace's guidance compiles into the tier it
+  declares.** Workspace Definition 2.10's `slots.context` holds Markdown units, each naming one of `0036`'s four
+  tiers; [`compile`](../cli/compile.mjs) emits Claude Code's unscoped rules, `paths:` rules, project skills and
+  one index of pointers, byte-compared by `--check`, and `vendor --host`'s `AGENTS.md` carries the rest as
+  pointers. Four commits, the key first: the coordinator session's delegated call. No boot read-set moves; the
+  on-path target is [`cli/fixtures/guidance/`](../cli/fixtures/guidance/) · Checkpoints skipped by his
+  instruction of 2026-09-23 12:38 (no fresh-context runs unless he asks); the coordinator session reviewed the
+  diff before the commit; his review is on the PR · 28 green, `tests` as non-root · Seam scan clean against the
+  private terms this project names; the term-list scan is his ·
+  [handoff](../.portulan/handoffs/2026-09-23-s-a-workspaces-guidance-compiles-into-the-tier-it-declares.md)

@@ -54,7 +54,18 @@ import {
     tierRank,
     shellWords,
     neverMatches,
+    LOAD_TIERS,
+    GUIDANCE_HOSTS,
+    GUIDANCE_RULES_DIR,
+    RULES_MARKER,
+    ON_READ_INDEX,
+    SKILLS_DIR,
+    parseUnit,
+    guidanceUnits,
+    claudeCodeGuidance,
+    agentsMdGuidance,
 } from "./compile.mjs";
+import { alwaysTier } from "./context.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO = path.resolve(HERE, "..");
@@ -3310,5 +3321,350 @@ describe("the drift RED names the origin difference (#264)", () => {
             assert.equal(code, 1, `still a drift: ${hostile.slice(0, 24)}`);
             assert.match(out, /has drifted from/, "and still says so");
         }
+    });
+});
+
+
+// ===========================================================================================
+// Guidance — `slots.context`, compiled to each host's load tiers (proposal 0036)
+// ===========================================================================================
+//
+// Workspace Definition 2.10's slot: one unit per file, each declaring its tier. What these cases can
+// establish is emission fidelity, and that the measurement counts what is emitted in the tier it claims;
+// that the host loads an on-path rule when its path is first touched, and not before, is row 12's second
+// demonstration, on a running host, against `fixtures/guidance/`.
+
+const GUIDANCE_FIXTURE = path.join(HERE, "fixtures", "guidance");
+
+/** A scratch copy of the committed guidance fixture, so a test may compile into it. */
+function guidanceCopy() {
+    const dir = scratch();
+    fs.cpSync(GUIDANCE_FIXTURE, dir, { recursive: true });
+    return dir;
+}
+
+/** Run `compile`, capturing what it says. */
+function said(t, argv) {
+    const out = [];
+    t.mock.method(process.stdout, "write", (chunk) => (out.push(String(chunk)), true));
+    t.mock.method(process.stderr, "write", (chunk) => (out.push(String(chunk)), true));
+    let code;
+    try {
+        code = run(argv);
+    } finally {
+        t.mock.restoreAll();
+    }
+    return { code, out: out.join("") };
+}
+
+const unitText = (lines, body = "Guidance.") => `---\n${lines.join("\n")}\n---\n\n${body}\n`;
+
+describe("guidance: a unit declares its tier, and what cannot be read is refused", () => {
+    test("the tier vocabulary is 0036's four words, and every host says what it does with each", () => {
+        assert.deepEqual(LOAD_TIERS, ["always", "on-path", "on-invoke", "on-read"]);
+        for (const [id, host] of Object.entries(GUIDANCE_HOSTS)) {
+            for (const tier of LOAD_TIERS) assert.ok(Object.hasOwn(host, tier), `${id} says nothing about ${tier}`);
+        }
+        assert.ok(LOAD_TIERS.every((tier) => GUIDANCE_HOSTS["claude-code"][tier] !== null), "Claude Code expresses every tier");
+        assert.deepEqual(LOAD_TIERS.filter((tier) => GUIDANCE_HOSTS["agents-md"][tier] === null), ["on-path", "on-invoke"]);
+    });
+
+    test("each tier reads, with `paths` as a flow list or a block list", () => {
+        assert.deepEqual(parseUnit("a", unitText(["tier: always"], "# A\n\nText.")), { name: "a", tier: "always", paths: null, description: null, body: "# A\n\nText.\n", source: "a.md" });
+        assert.deepEqual(parseUnit("b", unitText(["tier: on-path", 'paths: ["api/**", "db/*.sql"]', "description: Handlers."])).paths, ["api/**", "db/*.sql"]);
+        assert.deepEqual(parseUnit("b", unitText(["tier: on-path", "paths:", '  - "api/**"', "  - db/*.sql", "description: Handlers."])).paths, ["api/**", "db/*.sql"]);
+        assert.equal(parseUnit("c", unitText(["tier: on-invoke", 'description: "Release: the checklist."'])).description, "Release: the checklist.");
+        assert.equal(parseUnit("d", unitText(["tier: on-read", "description: 'Why it''s split.'"])).description, "Why it's split.");
+    });
+
+    const refused = [
+        ["no frontmatter", "a", "# A\n", /first line must be `---`/],
+        ["frontmatter never closed", "a", "---\ntier: always\n\nA.\n", /never closed/],
+        ["a key no unit takes", "a", unitText(["tier: always", "model: fast"]), /`model` is not a key a unit takes/],
+        ["a key declared twice", "a", unitText(["tier: always", "tier: always"]), /declared twice/],
+        ["no tier", "a", unitText(["description: A."]), /`tier` is missing/],
+        ["a tier outside the four", "a", unitText(["tier: sometimes"]), /must be one of/],
+        ["an on-path unit with no paths", "a", unitText(["tier: on-path", "description: A."]), /names none/],
+        ["paths on a unit that is not on-path", "a", unitText(["tier: on-read", 'paths: ["a/**"]', "description: A."]), /scopes an on-path unit/],
+        ["a description on an always unit", "a", unitText(["tier: always", "description: A."]), /loaded whole/],
+        ["an on-read unit with no description", "a", unitText(["tier: on-read"]), /an on-read unit needs a one-line `description`/],
+        ["paths that are not a list", "a", unitText(["tier: on-path", "paths: api/**", "description: A."]), /is not a list/],
+        ["an absolute glob", "a", unitText(["tier: on-path", 'paths: ["/etc/**"]', "description: A."]), /relative to the repository/],
+        ["a glob that climbs out", "a", unitText(["tier: on-path", 'paths: ["../x/**"]', "description: A."]), /relative to the repository/],
+        ["no guidance under the frontmatter", "a", "---\ntier: always\n---\n\n", /carries no guidance/],
+        ["a name that is not a slug", "API", unitText(["tier: always"]), /must be a slug/],
+        ["the index's own name", "on-read", unitText(["tier: always"]), /no unit may take it/],
+        ["an unclosed single quote", "a", unitText(["tier: on-read", "description: 'A."]), /single-quoted and either not closed/],
+        ["a lone quote inside single quotes", "a", unitText(["tier: on-read", "description: 'a'''b'"]), /not written `''`/],
+    ];
+    for (const [why, name, text, pattern] of refused) {
+        test(`refused, as could-not-compile: ${why}`, () => {
+            assert.throws(() => parseUnit(name, text), (error) => {
+                assert.ok(error instanceof CompileError, `a ${error.constructor.name}, not a CompileError`);
+                assert.match(error.message, pattern);
+                return true;
+            });
+        });
+    }
+
+    test("a byte-order mark is dropped, and a doubled quote inside single quotes is one quote", () => {
+        const unit = parseUnit("a", `\uFEFF${unitText(["tier: on-read", "description: 'The team''s history.'"])}`);
+        assert.equal(unit.description, "The team's history.");
+    });
+});
+
+describe("guidance: Claude Code gets one file per unit, in its tier's own form", () => {
+    const guidance = guidanceUnits(GUIDANCE_FIXTURE, ".");
+    const files = new Map(claudeCodeGuidance(guidance).files.map((f) => [f.path, f.text]));
+
+    test("the fixture holds one unit in each tier, read in name order", () => {
+        assert.equal(guidance.source, "context/");
+        assert.deepEqual(guidance.units.map((u) => [u.name, u.tier]), [["api", "on-path"], ["conventions", "always"], ["history", "on-read"], ["release", "on-invoke"]]);
+    });
+
+    test("always is an unscoped rule carrying the unit's guidance and nothing else", () => {
+        assert.equal(files.get(`${GUIDANCE_RULES_DIR}/conventions.md`), guidance.units.find((u) => u.name === "conventions").body);
+    });
+
+    test("on-path is a rule scoped by `paths:`, each glob quoted", () => {
+        assert.match(files.get(`${GUIDANCE_RULES_DIR}/api.md`), /^---\npaths:\n {2}- "api\/\*\*"\n---\n\n# Handlers\n/);
+    });
+
+    test("on-invoke is a project skill, named for the unit and marked as compiled", () => {
+        const skill = files.get(`${SKILLS_DIR}/release/SKILL.md`);
+        assert.match(skill, /^---\nname: release\ndescription: "Cut a release\. The checklist, for when a release is what the task is\."\n---\n\n<!-- compiled by `portulan compile` from context\/release\.md;/);
+    });
+
+    test("on-read is one pointer line per unit in the index, and nothing else", () => {
+        const index = files.get(`${GUIDANCE_RULES_DIR}/${ON_READ_INDEX}`);
+        assert.equal(index, "- `context/history.md`: Why the service is split the way it is. Read it before restructuring it.\n");
+        assert.ok(!files.has(`${GUIDANCE_RULES_DIR}/history.md`), "the on-read unit itself is never copied into a rule");
+    });
+
+    test("the vendored AGENTS.md carries always inline and every other tier as a pointer", () => {
+        const { inline, pointers } = agentsMdGuidance(guidance, ".portulan/context/");
+        assert.deepEqual(inline, [guidance.units.find((u) => u.name === "conventions").body]);
+        assert.deepEqual(pointers.map((p) => p.slice(0, p.indexOf(":"))), ["- `.portulan/context/api.md`", "- `.portulan/context/history.md`", "- `.portulan/context/release.md`"]);
+        assert.match(pointers[0], /when you work on `api\/\*\*`/);
+    });
+
+    test("the measurement counts each emitted file in the tier the unit declared", (t) => {
+        const dir = guidanceCopy();
+        assert.equal(said(t, ["--workspace", dir]).code, 0);
+        const measured = alwaysTier(dir);
+        const always = measured.entries.map((e) => path.relative(dir, e.file).split(path.sep).join("/")).sort();
+        assert.deepEqual(always, [`${GUIDANCE_RULES_DIR}/conventions.md`, `${GUIDANCE_RULES_DIR}/${ON_READ_INDEX}`, `${SKILLS_DIR}/release/SKILL.md`]);
+        assert.equal(measured.scoped, 1, "the on-path rule is scoped, so it is not in the always tier");
+    });
+});
+
+describe("guidance: written, then byte-compared", () => {
+    test("a workspace with guidance and no gate policy compiles it, and says the policy is absent", (t) => {
+        const dir = guidanceCopy();
+        const { code, out } = said(t, ["--workspace", dir]);
+        assert.equal(code, 0);
+        assert.match(out, /declares no gate policy.*No enforcement is compiled; the workspace's guidance still is/);
+        assert.match(out, /AGENTS\.md, vendored: expresses always and on-read; on-path and on-invoke degrade to an on-read pointer/);
+        for (const rel of ["conventions.md", "api.md", ON_READ_INDEX]) assert.ok(fs.existsSync(path.join(dir, GUIDANCE_RULES_DIR, rel)), rel);
+        assert.ok(fs.existsSync(path.join(dir, SKILLS_DIR, "release", "SKILL.md")));
+        assert.ok(!fs.existsSync(path.join(dir, ".claude", "settings.json")), "no policy, so no enforcement artifact");
+        const check = said(t, ["--workspace", dir, "--check"]);
+        assert.equal(check.code, 0, check.out);
+        assert.match(check.out, /GREEN — every compiled guidance file matches its unit/);
+    });
+
+    test("a compiled file edited by hand is red, and names the unit to edit instead", (t) => {
+        const dir = guidanceCopy();
+        said(t, ["--workspace", dir]);
+        fs.appendFileSync(path.join(dir, GUIDANCE_RULES_DIR, "api.md"), "A hand-fix.\n");
+        const { code, out } = said(t, ["--workspace", dir, "--check"]);
+        assert.equal(code, 1);
+        assert.match(out, /api\.md has drifted from context\/api\.md\. Edit the unit, then recompile\./);
+    });
+
+    test("a unit that is removed leaves nothing behind: red until recompiled, and the recompile removes it", (t) => {
+        const dir = guidanceCopy();
+        said(t, ["--workspace", dir]);
+        fs.rmSync(path.join(dir, "context", "api.md"));
+        fs.rmSync(path.join(dir, "context", "release.md"));
+        const check = said(t, ["--workspace", dir, "--check"]);
+        assert.equal(check.code, 1);
+        assert.match(check.out, /api\.md is where this compiler writes guidance, and no unit compiles to it/);
+        assert.match(check.out, /release[\\/]SKILL\.md is where this compiler writes guidance/);
+        const rewrite = said(t, ["--workspace", dir]);
+        assert.equal(rewrite.code, 0);
+        assert.match(rewrite.out, /removed .*api\.md — no unit compiles to it/);
+        assert.ok(!fs.existsSync(path.join(dir, GUIDANCE_RULES_DIR, "api.md")));
+        assert.ok(!fs.existsSync(path.join(dir, SKILLS_DIR, "release")), "the emptied skill directory goes with it");
+        assert.equal(said(t, ["--workspace", dir, "--check"]).code, 0);
+    });
+
+    test("a file in the rules directory that this compiler never writes is red, and left for a human", (t) => {
+        const dir = guidanceCopy();
+        said(t, ["--workspace", dir]);
+        fs.writeFileSync(path.join(dir, GUIDANCE_RULES_DIR, "notes.txt"), "mine\n");
+        const checked = said(t, ["--workspace", dir, "--check"]);
+        assert.equal(checked.code, 1);
+        assert.match(checked.out, /notes\.txt is in the directory this compiler owns, and is not a file it writes, so a recompile leaves it\. Move it out by hand\./);
+        const { out } = said(t, ["--workspace", dir]);
+        assert.match(out, /left .*notes\.txt — it is not a file this compiler writes/);
+        assert.ok(fs.existsSync(path.join(dir, GUIDANCE_RULES_DIR, "notes.txt")));
+        assert.equal(said(t, ["--workspace", dir, "--check"]).code, 1);
+    });
+
+    test("the first write leaves the marker before any rule, and a check holds it byte for byte", (t) => {
+        assert.ok(!RULES_MARKER.endsWith(".md"), "Claude Code loads only .md files as rules, so the marker costs no context");
+        const dir = guidanceCopy();
+        const marker = path.join(dir, GUIDANCE_RULES_DIR, RULES_MARKER);
+        const { out } = said(t, ["--workspace", dir]);
+        assert.equal(out.indexOf("wrote "), out.indexOf(`wrote ${marker}`), "the marker is the first file written");
+        fs.writeFileSync(marker, "mine\n");
+        const checked = said(t, ["--workspace", dir, "--check"]);
+        assert.equal(checked.code, 1);
+        assert.match(checked.out, /has drifted from the marker this compiler writes/);
+        assert.equal(said(t, ["--workspace", dir]).code, 0);
+        assert.equal(said(t, ["--workspace", dir, "--check"]).code, 0);
+    });
+
+    test("without the marker, Markdown in the rules directory is not this compiler's: exit 2, and nothing is written", (t) => {
+        const dir = guidanceCopy();
+        const rules = path.join(dir, GUIDANCE_RULES_DIR);
+        fs.mkdirSync(rules, { recursive: true });
+        fs.writeFileSync(path.join(rules, "conventions.md"), "Ours.\n");
+        fs.writeFileSync(path.join(rules, "notes.md"), "Ours too.\n");
+        for (const argv of [["--workspace", dir], ["--workspace", dir, "--check"]]) {
+            const { code, out } = said(t, argv);
+            assert.equal(code, 2);
+            assert.match(out, /holds conventions\.md, notes\.md and no `\.compiled` marker, so nothing shows this compiler wrote them/);
+        }
+        assert.deepEqual(fs.readdirSync(rules).sort(), ["conventions.md", "notes.md"]);
+        assert.equal(fs.readFileSync(path.join(rules, "conventions.md"), "utf8"), "Ours.\n");
+        assert.ok(!fs.existsSync(path.join(dir, SKILLS_DIR)));
+    });
+
+    test("a skill written by hand is never replaced: exit 2, and the file is untouched", (t) => {
+        const dir = guidanceCopy();
+        const mine = path.join(dir, SKILLS_DIR, "release", "SKILL.md");
+        fs.mkdirSync(path.dirname(mine), { recursive: true });
+        fs.writeFileSync(mine, "---\nname: release\ndescription: Ours.\n---\n\nOurs.\n");
+        for (const argv of [["--workspace", dir], ["--workspace", dir, "--check"]]) {
+            const { code, out } = said(t, argv);
+            assert.equal(code, 2);
+            assert.match(out, /exists and was not compiled here/);
+        }
+        assert.equal(fs.readFileSync(mine, "utf8"), "---\nname: release\ndescription: Ours.\n---\n\nOurs.\n");
+        assert.ok(!fs.existsSync(path.join(dir, GUIDANCE_RULES_DIR)), "refused before anything was written");
+    });
+
+    test("a skill written by hand stops a workspace with a gate policy too, before the policy is written", (t) => {
+        const dir = workspace();
+        const manifestPath = path.join(dir, ".portulan", "workspace.json");
+        const m = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
+        m.portulan.spec = "2.10";
+        m.slots.context = "context/";
+        fs.writeFileSync(manifestPath, JSON.stringify(m, null, 2));
+        fs.mkdirSync(path.join(dir, ".portulan", "context"));
+        fs.writeFileSync(path.join(dir, ".portulan", "context", "release.md"), unitText(["tier: on-invoke", "description: Cut a release."]));
+        const mine = path.join(dir, SKILLS_DIR, "release", "SKILL.md");
+        fs.mkdirSync(path.dirname(mine), { recursive: true });
+        fs.writeFileSync(mine, "Ours.\n");
+        const { code, out } = said(t, ["--workspace", dir]);
+        assert.equal(code, 2);
+        assert.match(out, /exists and was not compiled here/);
+        assert.ok(!fs.existsSync(path.join(dir, ".claude", "settings.json")), "no gate artifact written beside the refusal");
+        assert.equal(fs.readFileSync(mine, "utf8"), "Ours.\n");
+    });
+
+    test("a slot naming the workspace directory itself, or a directory outside it, is refused", (t) => {
+        for (const declared of ["./", "../elsewhere/"]) {
+            const dir = guidanceCopy();
+            const manifestPath = path.join(dir, "workspace.json");
+            const m = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
+            m.slots.context = declared;
+            fs.writeFileSync(manifestPath, JSON.stringify(m, null, 2));
+            const { code, out } = said(t, ["--workspace", dir]);
+            assert.equal(code, 2, declared);
+            assert.match(out, /resolves to the workspace directory itself or outside it/);
+            assert.ok(!fs.existsSync(path.join(dir, ".claude")));
+        }
+    });
+
+    test("a unit that is a link out of the workspace is refused, and nothing is written", (t) => {
+        const dir = guidanceCopy();
+        const outside = path.join(scratch(), "outside.md");
+        fs.writeFileSync(outside, unitText(["tier: always"]));
+        fs.symlinkSync(outside, path.join(dir, "context", "outside.md"));
+        const { code, out } = said(t, ["--workspace", dir]);
+        assert.equal(code, 2);
+        assert.match(out, /context\/outside\.md is a link out of the workspace/);
+        assert.ok(!fs.existsSync(path.join(dir, ".claude")));
+    });
+
+    test("a malformed unit stops the run before anything is written", (t) => {
+        const dir = guidanceCopy();
+        fs.writeFileSync(path.join(dir, "context", "bad.md"), unitText(["tier: sometimes"]));
+        const { code, out } = said(t, ["--workspace", dir]);
+        assert.equal(code, 2);
+        assert.match(out, /context\/bad\.md: `tier` is "sometimes"/);
+        assert.ok(!fs.existsSync(path.join(dir, ".claude")));
+    });
+
+    test("with a gate policy beside it, both compile, and the check covers both", (t) => {
+        const dir = workspace();
+        const manifestPath = path.join(dir, ".portulan", "workspace.json");
+        const m = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
+        m.portulan.spec = "2.10";
+        m.slots.context = "context/";
+        fs.writeFileSync(manifestPath, JSON.stringify(m, null, 2));
+        fs.mkdirSync(path.join(dir, ".portulan", "context"));
+        fs.writeFileSync(path.join(dir, ".portulan", "context", "history.md"), unitText(["tier: on-read", "description: Why."]));
+        assert.equal(said(t, ["--workspace", dir]).code, 0);
+        assert.equal(fs.readFileSync(path.join(dir, GUIDANCE_RULES_DIR, ON_READ_INDEX), "utf8"), "- `.portulan/context/history.md`: Why.\n");
+        assert.ok(fs.existsSync(path.join(dir, ".claude", "settings.json")));
+        const { code, out } = said(t, ["--workspace", dir, "--check"]);
+        assert.equal(code, 0, out);
+        assert.match(out, /GREEN — every emitted artifact matches the policy, and every guidance file its unit/);
+    });
+
+    test("a workspace that stops declaring guidance owes none, so the rules it left are red, then removed", (t) => {
+        const dir = workspace();
+        const manifestPath = path.join(dir, ".portulan", "workspace.json");
+        const m = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
+        m.portulan.spec = "2.10";
+        m.slots.context = "context/";
+        fs.writeFileSync(manifestPath, JSON.stringify(m, null, 2));
+        fs.mkdirSync(path.join(dir, ".portulan", "context"));
+        fs.writeFileSync(path.join(dir, ".portulan", "context", "history.md"), unitText(["tier: on-read", "description: Why."]));
+        assert.equal(said(t, ["--workspace", dir]).code, 0);
+        delete m.slots.context;
+        fs.writeFileSync(manifestPath, JSON.stringify(m, null, 2));
+        const check = said(t, ["--workspace", dir, "--check"]);
+        assert.equal(check.code, 1);
+        assert.match(check.out, /on-read\.md is where this compiler writes guidance, and no unit compiles to it/);
+        assert.equal(said(t, ["--workspace", dir]).code, 0);
+        assert.ok(!fs.existsSync(path.join(dir, GUIDANCE_RULES_DIR)), "the marker goes with the rules it marked");
+        assert.equal(said(t, ["--workspace", dir, "--check"]).code, 0);
+    });
+
+    test("a rules directory without the marker is not this compiler's where it owes no rule: left, and green", (t) => {
+        const dir = workspace();
+        fs.mkdirSync(path.join(dir, GUIDANCE_RULES_DIR), { recursive: true });
+        fs.writeFileSync(path.join(dir, GUIDANCE_RULES_DIR, "ours.md"), "Ours.\n");
+        assert.equal(said(t, ["--workspace", dir]).code, 0);
+        assert.equal(said(t, ["--workspace", dir, "--check"]).code, 0);
+        assert.equal(fs.readFileSync(path.join(dir, GUIDANCE_RULES_DIR, "ours.md"), "utf8"), "Ours.\n");
+    });
+
+    test("--matrix prints each unit against each host, and writes nothing", (t) => {
+        const dir = guidanceCopy();
+        const { code, out } = said(t, ["--workspace", dir, "--matrix"]);
+        assert.equal(code, 0);
+        assert.match(out, /^ {2}api +on-path +expressed +pointer +$/m);
+        assert.ok(!fs.existsSync(path.join(dir, ".claude")));
+    });
+
+    test("this repository declares no guidance, and carries no compiled guidance", () => {
+        assert.equal(guidanceUnits(REPO, ".portulan"), null);
+        assert.ok(!fs.existsSync(path.join(REPO, GUIDANCE_RULES_DIR)));
     });
 });
