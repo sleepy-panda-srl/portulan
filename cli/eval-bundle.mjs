@@ -143,6 +143,8 @@ export class Refused extends Error {}
 // `README.md`, `NOTICE` and `CHANGELOG.md` ship because an evaluee needs the front door, the
 // attribution, and the release record — and `changes`, since 2026-09-23, because the entries for the
 // next release live there, one file each, where CHANGELOG.md's Unreleased section used to hold them.
+// Its README.md stays when a cut deletes every fragment, so `changes` is still a tracked top-level
+// path and the partition below still holds (Copilot, #451). docs.sh's record check requires it.
 export const PAYLOAD = [
     "cli",
     "core",

@@ -305,6 +305,9 @@ export function readHandoffs(dir, workspace) {
     }
 
     const seriesDir = path.resolve(dir, slot);
+    // The series directory is walked for links first, as an index's path is: `readdirSync` follows a
+    // link, and every handoff under it would then pass the per-file check below. Copilot, #451.
+    refuseLinks(dir, slot, seriesDir, "a handoff series is read where its path says");
     const files = listSeries(seriesDir, slot, "handoff series").reverse();
     const records = [];
     let bytes = 0;
@@ -872,7 +875,7 @@ function siteOutside(dir, declaredPath, slot, word) {
  * way, and a component not there yet ends the walk: nothing below it exists to follow. `lstat` at every
  * step, never `existsSync`, which follows a link and reads a dangling one as nothing there.
  */
-function refuseLinks(dir, declaredPath, indexPath) {
+function refuseLinks(dir, declaredPath, indexPath, rule = "a kept index is a file of its own where its path says") {
     let probe = path.resolve(dir);
     while (!isInside(probe, indexPath)) probe = path.dirname(probe);
     for (const part of path.relative(probe, indexPath).split(path.sep)) {
@@ -886,8 +889,8 @@ function refuseLinks(dir, declaredPath, indexPath) {
         }
         if (stat.isSymbolicLink()) {
             throw new IndexError(
-                `${declaredPath} leads through a link at ${path.relative(path.resolve(dir), probe)}, and a kept index is a file of its own ` +
-                    "where its path says — nothing was read or written through it. Replace the link with what it points at",
+                `${declaredPath} leads through a link at ${path.relative(path.resolve(dir), probe)}, and ${rule} — ` +
+                    "nothing was read or written through it. Replace the link with what it points at",
             );
         }
     }
@@ -1357,8 +1360,8 @@ const CHANGE_NAME = new RegExp(`^[a-z0-9][a-z0-9-]*\\.(${CHANGE_SECTIONS.join("|
 
 /**
  * Every fragment in `dir`, in name order, and what is wrong with any that cannot be pasted. A missing
- * directory is an empty set rather than an error: the cut deletes every fragment, and git keeps no
- * empty directory.
+ * directory is an empty set rather than an error: a workspace may keep none. This repository keeps
+ * `changes/README.md`, which the cut does not delete, so the directory outlives the fragments.
  */
 export function readChanges(dir) {
     // The directory itself too: `readdirSync` follows a link, and every fragment would then come from

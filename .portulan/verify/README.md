@@ -503,12 +503,14 @@ Observations of the rebuilt checks, each run on this tree and reverted:
 |---|---|
 | clean tree, HEAD carrying its `Seam-scan:` line | green on all four |
 | a handoff named `2026-02-30-x.md`, a day no calendar has | **red**, naming the file; the index recipe refuses it too, but the Stop gate runs this recipe alone |
+| `.portulan/handoffs/` itself a link to a directory of handoffs | **red**, naming it, and `index --check` exit 2 beside it; before Copilot's round on 2ed9dd7 both passed, this recipe with no handoff examined |
 | a dated handoff that is a link to a directory | **red**, naming it, and `index --check` exit 2 beside it, as for a link to a file; this recipe skipped it before Copilot's round on d48fef5 |
 | a handoff named `0099-12-31-x.md` | green, and `index --check` green beside it; until Copilot's round on #451 the index tool read the year as 1999 and refused the file this recipe passed |
 | a `- 2026-09-24 · …` line appended to `docs/plan.md` | **red**, naming the line |
 | a fragment holding two top-level bullets | **red**, naming the file |
 | a fragment named `x.improved.md` | **red**, naming the file and the six sections |
 | a fragment that is a link to a good one, a directory holding one, or a submodule | **red**, naming it; `--changes` refuses each too, exit 1 |
+| a cut: every fragment deleted, `changes/README.md` kept | green, and the evaluation bundle's partition holds; with the README deleted too, **red** here, and the partition refuses `changes` as no longer tracked (Copilot, the round on 2ed9dd7) |
 | `changes/` itself a link to a directory of good fragments | **red**, naming the link; `--changes` refuses it, exit 2. Green before Copilot's round on 84d2857, with no fragment examined |
 | a bullet added under `## Unreleased` in `CHANGELOG.md` | **red**, with the count |
 | `## Unreleased` renamed `## [Unreleased]` with a bullet under it, then the heading deleted | **red** on both, naming the missing heading; the rename passed as none before Copilot's round on #451 |

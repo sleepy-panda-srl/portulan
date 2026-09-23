@@ -7,7 +7,7 @@ from `v0.1.0`, and from milestone 8 each release carries an eval result as well.
 **`## Unreleased` accumulates, one file per entry.** A change that a reader of a release would want to
 know about adds its entry as it lands, as a file in [`changes/`](changes/) named `<slug>.<section>.md`
 and holding one bullet. The cut runs `node cli/index.mjs --changes changes`, pastes what it prints under a
-new version heading below `## Unreleased`, dates it and deletes the fragments, in a change merged before
+new version heading below `## Unreleased`, dates it and deletes the fragments, keeping `changes/README.md`, in a change merged before
 the tag is created, so the tagged tree still contains its own entry. _(One file per entry since
 2026-09-23: every change appending to one section conflicted with every other change open at once.)_
 

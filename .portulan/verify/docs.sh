@@ -449,6 +449,10 @@ real_day() {
 : >"$tmp/handoffdates"
 : >"$tmp/strays"
 : >"$tmp/irregular"
+# The directory itself too, as for changes/ below: git lists a link there as one entry, so no handoff
+# under it was examined here while the index tool read them from wherever it led (Copilot, #451).
+[ ! -L "$HANDOFFS" ] ||
+    printf '%s itself is a link, so no handoff under it is examined here\n' "$HANDOFFS" >>"$tmp/irregular"
 while IFS= read -r h; do
     [ -e "$h" ] || [ -L "$h" ] || continue
     base=${h##*/}
@@ -475,7 +479,7 @@ if [ -s "$tmp/strays" ] || [ -s "$tmp/irregular" ]; then
         sed 's/^/        /' "$tmp/strays"
     fi
     if [ -s "$tmp/irregular" ]; then
-        fail "record — Markdown entr(ies) in $HANDOFFS/ that are not regular files: a handoff is a file of its own, never a link or a directory"
+        fail "record — entr(ies) in $HANDOFFS/ that are not regular files of this tree: a handoff is a file of its own, never a link or a directory"
         sed 's/^/        /' "$tmp/irregular"
     fi
 else
@@ -513,6 +517,10 @@ fi
 # here while `--changes` read every one from wherever it led (Copilot, #451).
 [ ! -L "$CHANGES" ] ||
     printf '%s is a link: fragments are files of this tree, read where they are written\n' "$CHANGES" >>"$tmp/badfragments"
+# Its README stays through a cut, which deletes every fragment: git keeps no empty directory, and the
+# evaluation bundle ships `changes` as a tracked top-level path (Copilot, #451).
+grep -qx "$CHANGES/README.md" "$manifest" ||
+    printf '%s/README.md is missing: a cut deletes every fragment, and git keeps no empty directory for the evaluation bundle to ship\n' "$CHANGES" >>"$tmp/badfragments"
 while IFS= read -r f; do
     [ -e "$f" ] || [ -L "$f" ] || continue
     base=${f#"$CHANGES"/}

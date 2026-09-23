@@ -1168,6 +1168,14 @@ describe("a kept handoff index is byte-compared like the store's", () => {
         }
     });
 
+    test("a handoff series directory that is a link is refused before it is listed", () => {
+        // Copilot, #451: `readdirSync` followed it, and every handoff under it passed the per-file check.
+        const away = tree(scratch(), { "2026-07-01-a.md": handoff("From outside") });
+        const dir = workspace({}, withSeries());
+        fs.symlinkSync(away, path.join(dir, "handoffs"));
+        assert.throws(() => inspect(dir), (e) => e instanceof IndexError && /a handoff series is read where its path says/.test(e.message));
+    });
+
     test("a write regenerates a kept index", () => {
         const dir = kept({ "handoffs/2026-07-01-a.md": handoff("A") });
         tree(dir, { "handoffs/2026-07-28-b.md": handoff("B") });
