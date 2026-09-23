@@ -455,50 +455,110 @@ const CASES = [
         stdout: "- `bug` — A defect\n",
         status: 0,
     },
-    // ---- copilot-request.yml: the requested reviewers in GitHub's answer ------------------------
+    // ---- copilot-request.yml: the pull request, read before asking -----------------------------
+    //
+    // One GraphQL read per look, printed as three lines the shell reads in order: node id, head,
+    // state and draft flag; the logins holding a review request; the logins that reviewed the head.
+    // GraphQL's `Bot.login` carries no `[bot]` suffix, which is why the shell's login set has both.
     {
-        id: "request-answer-lists-copilot",
-        anchor: ".requested_reviewers[]?",
-        why: "the logins the pull request GitHub answered with lists as requested, on one line, for "
-            + "the shell loop that looks for Copilot among them. The list names it `Copilot` (#86), "
-            + "not the login the request was made with, which is why that loop reads a set",
-        input: '{"requested_reviewers":[{"login":"Copilot"},{"login":"a-person"}]}',
-        stdout: "Copilot a-person\n",
+        id: "request-state-pending",
+        anchor: ".headRefOid as $head",
+        why: "Copilot holding a request, next to a Team reviewer that matches neither inline fragment "
+            + "and arrives as `{}`: its null login is dropped rather than printed, and a review on an "
+            + "older commit is not on the head. The shell waits on the second line",
+        input: '{"data":{"repository":{"pullRequest":{"id":"PR_1","headRefOid":"h2","state":"OPEN",'
+            + '"isDraft":false,"reviewRequests":{"nodes":[{"requestedReviewer":{"login":'
+            + '"copilot-pull-request-reviewer"}},{"requestedReviewer":{}}]},"reviews":{"nodes":'
+            + '[{"author":{"login":"copilot-pull-request-reviewer"},"commit":{"oid":"h1"}}]}}}}}',
+        stdout: "PR_1|h2|OPEN|false\ncopilot-pull-request-reviewer\n\n",
         status: 0,
     },
     {
-        id: "request-answer-hollow",
-        anchor: ".requested_reviewers[]?",
-        why: "the hollow acceptance of #286: a success whose list is empty. One empty line and exit "
-            + "0, which the loop reads as Copilot absent, so the job goes red and says so",
-        input: '{"requested_reviewers":[]}',
+        id: "request-state-round-on-head",
+        anchor: ".headRefOid as $head",
+        why: "a round already on the head prints its author on the third line, and a review whose "
+            + "author was deleted (null) or whose commit is null is skipped rather than printed as "
+            + "`null` or erroring. The shell stops without asking",
+        input: '{"data":{"repository":{"pullRequest":{"id":"PR_1","headRefOid":"h2","state":"OPEN",'
+            + '"isDraft":false,"reviewRequests":{"nodes":[]},"reviews":{"nodes":[{"author":null,'
+            + '"commit":{"oid":"h2"}},{"author":{"login":"a-person"},"commit":null},{"author":'
+            + '{"login":"copilot-pull-request-reviewer"},"commit":{"oid":"h2"}}]}}}}}',
+        stdout: "PR_1|h2|OPEN|false\n\ncopilot-pull-request-reviewer\n",
+        status: 0,
+    },
+    {
+        id: "request-state-no-pull-request",
+        anchor: ".headRefOid as $head",
+        why: "a null pull request prints an empty id and head, because `join` renders null as the "
+            + "empty string, and two empty lines. The shell reads the empty head as unreadable and "
+            + "looks again, which is the answer it gives a failed read",
+        input: '{"data":{"repository":{"pullRequest":null}}}',
+        stdout: "|||null\n\n\n",
+        status: 0,
+    },
+    {
+        id: "request-state-not-an-object",
+        anchor: ".headRefOid as $head",
+        why: "an answer that is JSON but not an object is an error, exit 5, which `gh` passes on as "
+            + "a failed read: the same unreadable branch",
+        input: '"a string"',
+        stdout: "",
+        status: 5,
+    },
+    // ---- copilot-request.yml: the Bot's node id -------------------------------------------------
+    {
+        id: "request-bot-id",
+        anchor: ".node_id // empty",
+        why: "the node id the mutation's `botIds` takes, looked up from the REST login at run time "
+            + "rather than written into the workflow",
+        input: '{"login":"copilot-pull-request-reviewer[bot]","node_id":"BOT_kgDOCnlnWA"}',
+        stdout: "BOT_kgDOCnlnWA\n",
+        status: 0,
+    },
+    {
+        id: "request-bot-id-null",
+        anchor: ".node_id // empty",
+        why: "a null node id prints nothing rather than the word `null`, so the shell's empty test "
+            + "reds the lookup instead of sending `null` to the mutation as an id",
+        input: '{"login":"copilot-pull-request-reviewer[bot]","node_id":null}',
+        stdout: "",
+        status: 0,
+    },
+    // ---- copilot-request.yml: the review requests in the mutation's own answer ------------------
+    {
+        id: "request-answer-lists-copilot",
+        anchor: ".data.requestReviews",
+        why: "the review requests after the mutation, on one line, for the shell loop that looks for "
+            + "Copilot among them: the proof the request was recorded. GraphQL names it without the "
+            + "`[bot]` suffix",
+        input: '{"data":{"requestReviews":{"pullRequest":{"reviewRequests":{"nodes":[{"requestedReviewer":'
+            + '{"login":"copilot-pull-request-reviewer"}},{"requestedReviewer":{"login":"a-person"}}]}}}}}',
+        stdout: "copilot-pull-request-reviewer a-person\n",
+        status: 0,
+    },
+    {
+        id: "request-answer-not-recorded",
+        anchor: ".data.requestReviews",
+        why: "an answer whose review requests are empty is a request GitHub did not record: one empty "
+            + "line and exit 0, which the loop reads as Copilot absent, so the job goes red and says so",
+        input: '{"data":{"requestReviews":{"pullRequest":{"reviewRequests":{"nodes":[]}}}}}',
         stdout: "\n",
         status: 0,
     },
     {
         id: "request-answer-null",
-        anchor: ".requested_reviewers[]?",
-        why: "a null list takes the same branch rather than an iteration error, because `[]?` yields "
-            + "nothing over null. Red either way; this way the job summary names the empty list "
-            + "instead of calling the answer unreadable",
-        input: '{"requested_reviewers":null}',
+        anchor: ".data.requestReviews",
+        why: "a null node in the list is dropped by `// empty` rather than printed as `null`, so the "
+            + "line is empty and the job goes red on it as on an empty list",
+        input: '{"data":{"requestReviews":{"pullRequest":{"reviewRequests":{"nodes":[null]}}}}}',
         stdout: "\n",
         status: 0,
     },
     {
-        id: "request-answer-null-login",
-        anchor: ".requested_reviewers[]?",
-        why: "an entry with a null login is dropped by `// empty` rather than printed as the word "
-            + "`null` in the list the job summary shows, and the entries around it still count",
-        input: '{"requested_reviewers":[{"login":null},{"login":"Copilot"}]}',
-        stdout: "Copilot\n",
-        status: 0,
-    },
-    {
-        id: "request-answer-not-a-pull-request",
-        anchor: ".requested_reviewers[]?",
-        why: "an answer that is JSON but not a pull request is an error, exit 5, which is the "
-            + "workflow's `could not be read` branch: red, with the answer printed in full",
+        id: "request-answer-not-an-object",
+        anchor: ".data.requestReviews",
+        why: "an answer that is JSON but not an object is an error, exit 5, which is the workflow's "
+            + "`could not be read` branch: red, with the answer printed in full",
         input: '"a string"',
         stdout: "",
         status: 5,
