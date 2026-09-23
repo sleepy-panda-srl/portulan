@@ -1151,6 +1151,23 @@ describe("a kept handoff index is byte-compared like the store's", () => {
         assert.throws(() => inspect(dir), (e) => e instanceof IndexError && /leads through a link at indexes\b/.test(e.message));
     });
 
+    test("a handoff the index cannot render does not hide a link on the index's path", () => {
+        // Copilot, #451, the round on d48fef5: the early return for a broken handoff came before the walk.
+        const dir = workspace({ "handoffs/2026-07-01-a.md": "no heading\n" }, withSeries());
+        fs.symlinkSync("gone.md", path.join(dir, "handoffs-index.md"));
+        assert.throws(() => inspect(dir), (e) => e instanceof IndexError && /leads through a link at handoffs-index\.md/.test(e.message));
+    });
+
+    test("a handoff that is a link or a directory is refused, never followed", () => {
+        // Copilot, #451: docs.sh skipped one that this then failed to read. Both refuse it now.
+        const outside = tree(scratch(), { "x.md": handoff("From outside") });
+        for (const make of [(p) => fs.symlinkSync(path.join(outside, "x.md"), p), (p) => fs.mkdirSync(p)]) {
+            const dir = workspace({ "handoffs/2026-07-01-a.md": handoff("A") }, withSeries());
+            make(path.join(dir, "handoffs", "2026-07-02-b.md"));
+            assert.throws(() => inspect(dir), (e) => e instanceof IndexError && /2026-07-02-b\.md is not a regular file/.test(e.message));
+        }
+    });
+
     test("a write regenerates a kept index", () => {
         const dir = kept({ "handoffs/2026-07-01-a.md": handoff("A") });
         tree(dir, { "handoffs/2026-07-28-b.md": handoff("B") });

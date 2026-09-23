@@ -448,9 +448,17 @@ real_day() {
 }
 : >"$tmp/handoffdates"
 : >"$tmp/strays"
+: >"$tmp/irregular"
 while IFS= read -r h; do
-    [ -f "$h" ] || continue
+    [ -e "$h" ] || [ -L "$h" ] || continue
     base=${h##*/}
+    # A link, or a directory or submodule git lists under the name, is refused rather than skipped: the
+    # index tool lists the name and then refuses to read it, so skipping it was a green beside that red.
+    # Copilot, #451, as for fragments below.
+    if [ -L "$h" ] || [ ! -f "$h" ]; then
+        printf '%s\n' "$h" >>"$tmp/irregular"
+        continue
+    fi
     case "$base" in
         [0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]-*.md)
             if real_day "${base:0:10}"; then
@@ -461,9 +469,15 @@ while IFS= read -r h; do
         *) printf '%s\n' "$h" >>"$tmp/strays" ;;
     esac
 done < <(grep "^${HANDOFFS_RE}/.*\.md$" "$manifest")
-if [ -s "$tmp/strays" ]; then
-    fail "record — Markdown file(s) in $HANDOFFS/ whose name does not lead with a real YYYY-MM-DD day, so no index line can be derived"
-    sed 's/^/        /' "$tmp/strays"
+if [ -s "$tmp/strays" ] || [ -s "$tmp/irregular" ]; then
+    if [ -s "$tmp/strays" ]; then
+        fail "record — Markdown file(s) in $HANDOFFS/ whose name does not lead with a real YYYY-MM-DD day, so no index line can be derived"
+        sed 's/^/        /' "$tmp/strays"
+    fi
+    if [ -s "$tmp/irregular" ]; then
+        fail "record — Markdown entr(ies) in $HANDOFFS/ that are not regular files: a handoff is a file of its own, never a link or a directory"
+        sed 's/^/        /' "$tmp/irregular"
+    fi
 else
     # The count names what was examined. Zero is a legitimate series now: a handoff is owed only by a
     # session that ends with work not committed and pushed.

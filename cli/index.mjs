@@ -310,10 +310,17 @@ export function readHandoffs(dir, workspace) {
     let bytes = 0;
 
     for (const file of files) {
+        // A link or a directory named like a handoff is refused, never followed, and `docs.sh` refuses it
+        // alike: it had skipped one that this then failed to read. Copilot, #451.
         let source;
         try {
+            const stat = fs.lstatSync(path.join(seriesDir, file));
+            if (stat.isSymbolicLink() || !stat.isFile()) {
+                throw new IndexError(`${path.join(slot, file)} is not a regular file: a handoff is a file of its own, never a link or a directory`);
+            }
             source = fs.readFileSync(path.join(seriesDir, file), "utf8");
         } catch (cause) {
+            if (cause instanceof IndexError) throw cause;
             throw new IndexError(`cannot read the handoff ${path.join(slot, file)} — ${cause.code ?? cause.message}`);
         }
         bytes += Buffer.byteLength(source);
@@ -848,6 +855,9 @@ function siteOutside(dir, declaredPath, slot, word) {
                 `would count the index as one of its members. Site the index beside the ${word}, not in it`,
         );
     }
+    // Here, where the path is sited, and not where it is compared: every judge returns early on a
+    // record it cannot render, and a link was then never looked for. Copilot, #451, the round on d48fef5.
+    refuseLinks(dir, declaredPath, indexPath);
     return indexPath;
 }
 
@@ -860,8 +870,7 @@ function siteOutside(dir, declaredPath, slot, word) {
  * Only the components the declared path adds are looked at, so a workspace that itself sits under a
  * link (macOS's `/var`, a linked checkout) is judged as before. A dangling link is refused the same
  * way, and a component not there yet ends the walk: nothing below it exists to follow. `lstat` at every
- * step, never `existsSync`, which follows a link and reads a dangling one as nothing there. Returns
- * whether the index is there.
+ * step, never `existsSync`, which follows a link and reads a dangling one as nothing there.
  */
 function refuseLinks(dir, declaredPath, indexPath) {
     let probe = path.resolve(dir);
@@ -872,7 +881,7 @@ function refuseLinks(dir, declaredPath, indexPath) {
         try {
             stat = fs.lstatSync(probe);
         } catch (cause) {
-            if (cause.code === "ENOENT") return false;
+            if (cause.code === "ENOENT") return;
             throw new IndexError(`cannot look for the index at ${declaredPath} — ${cause.code ?? cause.message}`);
         }
         if (stat.isSymbolicLink()) {
@@ -882,7 +891,6 @@ function refuseLinks(dir, declaredPath, indexPath) {
             );
         }
     }
-    return true;
 }
 
 /**
@@ -908,8 +916,15 @@ function refuseLinks(dir, declaredPath, indexPath) {
  */
 function compareOrWrite({ dir, declaredPath, indexPath, expected, write, series, source, fail, remedyFlags = "", optional = false }) {
     // An optional index, the handoffs', is kept or not by a copy on disk: with none, nothing is written
-    // or compared. Returns whether a copy is kept.
-    if (!refuseLinks(dir, declaredPath, indexPath) && optional) return false;
+    // or compared. Returns whether a copy is kept. `siteOutside` has already refused a link on the path.
+    if (optional) {
+        try {
+            fs.lstatSync(indexPath);
+        } catch (cause) {
+            if (cause.code === "ENOENT") return false;
+            throw new IndexError(`cannot look for the index at ${declaredPath} — ${cause.code ?? cause.message}`);
+        }
+    }
     if (write) {
         try {
             fs.mkdirSync(path.dirname(indexPath), { recursive: true });
@@ -1039,10 +1054,10 @@ function judgeHandoffs(dir, workspace, { write, fail, remedyFlags = "" }) {
     // conflicted on every merge that added a handoff — all 15 of that day's pull requests that had
     // another merge land while they were open — and carried nothing the series does not. `--handoffs`
     // prints it on demand.
-    // Whether a copy is kept is read by `compareOrWrite`'s walk, after its link refusal, so a link on the
-    // path is refused whether or not anything is behind it, as for every series. Copilot, #451, twice:
-    // `existsSync` read a dangling link as no copy at all, and a presence check of its own ran before the
-    // refusal and passed a linked directory with no index behind it.
+    // Whether a copy is kept is read by `compareOrWrite`, after `siteOutside` refused any link on the
+    // path, so a link is refused whether or not anything is behind it, as for every series. Copilot, #451,
+    // twice: `existsSync` read a dangling link as no copy at all, and a presence check of its own ran
+    // before the refusal and passed a linked directory with no index behind it.
     const kept = compareOrWrite({ dir, declaredPath, indexPath, expected, write, series: "handoffs", source: "series", fail, remedyFlags, optional: true });
 
     return { declared: true, path: indexPath, expected, count: series.records.length, kept };

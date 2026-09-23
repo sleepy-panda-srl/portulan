@@ -503,6 +503,7 @@ Observations of the rebuilt checks, each run on this tree and reverted:
 |---|---|
 | clean tree, HEAD carrying its `Seam-scan:` line | green on all four |
 | a handoff named `2026-02-30-x.md`, a day no calendar has | **red**, naming the file; the index recipe refuses it too, but the Stop gate runs this recipe alone |
+| a dated handoff that is a link to a directory | **red**, naming it, and `index --check` exit 2 beside it, as for a link to a file; this recipe skipped it before Copilot's round on d48fef5 |
 | a handoff named `0099-12-31-x.md` | green, and `index --check` green beside it; until Copilot's round on #451 the index tool read the year as 1999 and refused the file this recipe passed |
 | a `- 2026-09-24 · …` line appended to `docs/plan.md` | **red**, naming the line |
 | a fragment holding two top-level bullets | **red**, naming the file |
@@ -645,7 +646,8 @@ explained — a workspace cannot quietly acquire the rail whose every legal reme
 kept, to a file outside the workspace → **exit 2**, *leads through a link*, and the file is untouched,
 for the store's index as for the handoffs'. Before it a write overwrote the file the link led to. A
 linked directory on the way with no index behind it is refused too, the handoffs' included, whose check
-for a kept copy had read it as none (Copilot, the round on 84d2857).
+for a kept copy had read it as none (Copilot, the round on 84d2857), and a handoff the index cannot
+render no longer hides it: the walk is part of siting the path (the round on d48fef5).
 
 The `proposal` check was added 2026-07-28, at milestone 5, against a sentence
 [`../../core/operating/evolution.md`](../../core/operating/evolution.md) had carried since milestone 1:
