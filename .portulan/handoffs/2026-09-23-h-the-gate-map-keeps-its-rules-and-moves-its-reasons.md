@@ -26,7 +26,9 @@ third.
 
 **Readers.** CODEOWNERS and the three scope lists in `rule-carriers.json` cover `gate-map/`, and the A/B
 register gives it the gate map's own disposition. `compile.test.mjs` checks every on-read file for rule ids
-no rule declares and that each is linked from the index; `telemetry.test.mjs` finds the consent refusals in
+no rule declares and that each is linked from the index, and, after Copilot's first round, that every section
+link between the gate map's files lands on a heading, since `docs.sh` drops a link's fragment;
+`telemetry.test.mjs` finds the consent refusals in
 `gate-map/gated.md`, where they moved; `verify/README.md`'s five links to the 0007 rule point at
 `gate-map/platform-floor.md`, which states it. About 150 prose references in about 45 files cite a gate-map
 section or hole by name, and each still resolves, because every moved section keeps its heading and a
@@ -46,5 +48,6 @@ coordinator session reviewed the diff before the commit; his review is on the pu
 **Green in this container needs a non-root run.** As root, `tests` fails its permission cases, because a
 chmod-000 fixture never denies root. All 27 recipes ran green as a non-root user on a copy of this tree.
 
-**Next action.** His review of the pull request, and a Copilot request on it from the Reviewers menu, since
-Copilot does not review a pull request an App opened (#161).
+**Next action.** His review of the pull request. Copilot is requested on each push by
+[`copilot-request.yml`](../../.github/workflows/copilot-request.yml), so no request from the Reviewers menu is
+needed; that workflow's own check reads red on a bot's pull request until #436 lands.
