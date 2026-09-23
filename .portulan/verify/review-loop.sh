@@ -45,7 +45,7 @@
 # to go red about the world rather than about the tree.
 #
 # **This paragraph used to end "and CI here installs nothing, so `gh` is not on the runner at all",
-# and that is false.** Caught at the pre-commit checkpoint: `gh` ships on `ubuntu-latest`, four
+# and that is false.** Caught at the pre-commit checkpoint: `gh` ships on `ubuntu-latest`,
 # workflows here run it with no install step, and one of them is the REQUIRED `pr-labels` check. The
 # ../identity.md analogy it drew does not transfer either — `claude plugin validate --strict` is kept
 # out of the recipe set because INSTALLING it would make this workflow a build, and `gh` needs no

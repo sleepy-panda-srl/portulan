@@ -6,8 +6,9 @@
 # ## Why this exists: resolution was only half the rule
 #
 # `main` already requires conversation resolution, which covers the RESOLVED half — a Copilot thread
-# cannot be ignored. Nothing covered the AWAITED half. Copilot is *requested* on every pull request by
-# repository ruleset and nothing made a merge wait for it, so a merge could land in the window between
+# cannot be ignored. Nothing covered the AWAITED half. Copilot is *requested* on every pull request, by
+# repository ruleset when a person opens it and by `copilot-request.yml` when a bot does, and nothing
+# made a merge wait for it, so a merge could land in the window between
 # the final push and the review arriving — and did: the maintainer found closed pull requests where
 # Copilot's round on the last push landed after the merge, its feedback disregarded by nobody in
 # particular. That is the shape of `.portulan/memory/a-mandate-nothing-checks-is-already-broken.md`: a

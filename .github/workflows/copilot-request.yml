@@ -1,0 +1,185 @@
+# A pull request a bot opens gets its Copilot review requested in the name of a person GitHub can bill.
+#
+# The policy is `.portulan/gate-map.md` → *Which identity acts* and *Merge discipline*; this file is
+# only the actuator, and `copilot-review.yml` stays the checker that awaits the round it asks for.
+#
+# ## Why the ruleset is not enough
+#
+# Ruleset `copilot auto-review on pull requests` requests Copilot on a pull request a person opens, and
+# on every push to it. On a pull request a GitHub App opens (`claude[bot]` from a cloud session,
+# `portulan-agent[bot]` from the scheduled librarian) it does not, and what GitHub documents points at
+# who pays. *About GitHub Copilot code review*, read 2026-09-23, under "Code review usage":
+#
+# > For pull requests authored by other bots, or when a bot requests the review, usage is billed
+# > directly to the organization.
+#
+# The same page names the organisation's *AI credits paid usage* policy as what allows a charge for
+# code review. Nothing here is paying the organisation's share, and whether that is because the
+# organisation has no Copilot plan or because the policy is off cannot be read from this repository.
+# The timelines fit it, read 2026-09-23. On the six App-authored pull requests read, every
+# Copilot round was started "on behalf of" the maintainer after a request made in his name (#86, #157,
+# #415, #429, #430), and #421, which had no such request, drew no round. Neither #415, #429 nor #430
+# carries the "requested due to automatic review settings" event that the person-authored #418 carries
+# on every push.
+#
+# The re-request in `copilot-review.yml` does not fill the gap: it is made with `GITHUB_TOKEN`, which is
+# `github-actions[bot]`, so it is a bot's request as well. That fits the *requested, accepted, and gone*
+# signature issue #161 records on #157 and #248, and explains no more of that issue than its re-requests.
+#
+# ## What this does instead
+#
+# It asks the way he does. It requests `copilot-pull-request-reviewer[bot]`, the login GitHub's *Using
+# GitHub Copilot code review* names for a request through the REST API, with a token of the
+# maintainer's, and the page quoted above attributes a review "manually requested by another user" to
+# that user. It replaces his click and does not change who pays. The route that needs no token is the
+# organisation paying, through that policy, which is his decision; if it is ever taken, this file
+# becomes a second request for the same round and should be removed.
+#
+# Only a pull request a bot opened, from this repository, and not a draft. A person's pull request is
+# the ruleset's, billed to its author. A fork's is not this repository's to spend his allowance on.
+# Drafts mirror the ruleset's `review_draft_pull_requests: false`, and `ready_for_review` asks when a
+# draft stops being one. `synchronize` mirrors its `review_on_push: true`, because `copilot-reviewed`
+# awaits a round on every head.
+#
+# ## Why `pull_request_target`, and why the token sits in an environment
+#
+# The token is the maintainer's, and *Pull requests: write*, the smallest permission that can request a
+# reviewer, also lets it submit reviews as him, approvals included. So nothing a pull request contains
+# may reach it. `pull_request_target` runs the base branch's copy of this file, so a pull request cannot
+# change what runs with the token, and this job checks nothing out and runs no code from the pull
+# request. The token is a secret of environment `copilot-request`, whose deployment branches the
+# maintainer limits to `main`. GitHub sends no job that names an environment to a runner until that
+# environment's rules pass, so a workflow pushed on any other branch cannot read the token either. This
+# file cannot check the limit; it is part of his one-time setup. `permissions: {}`, because
+# `GITHUB_TOKEN` is not used at all.
+#
+# The price of `pull_request_target` is that the pull request adding this file cannot exercise it: the
+# copy that runs is the one on `main`.
+#
+# ## Observation procedure, not yet run (proposal 0007)
+#
+# This works when a bot-authored pull request's timeline shows, at this job's time, "<maintainer>
+# requested a review from Copilot" and then "Copilot started reviewing on behalf of <maintainer>", and
+# `copilot-reviewed` finds the round on that head. The first bot-authored pull request after this file
+# merges is that observation, and its record says what it showed. Until then, a green run here is
+# evidence that GitHub accepted a request, and nothing more.
+#
+# ## Failure is red, and names its fault
+#
+# A missing token and a refused request both fail this job, with the repair printed to the log and the
+# job summary. What this job cannot see is a request GitHub accepts and Copilot then drops, which is the
+# signature above. Only `copilot-reviewed` notices that, when no round arrives.
+
+name: copilot request
+
+on:
+  pull_request_target:
+    types: [opened, reopened, ready_for_review, synchronize]
+
+permissions: {}
+
+jobs:
+  copilot-requested:
+    if: >-
+      github.event.pull_request.user.type == 'Bot' &&
+      !github.event.pull_request.draft &&
+      github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    environment: copilot-request
+    steps:
+      - name: Copilot is requested on a pull request a bot opened
+        env:
+          GH_TOKEN: ${{ secrets.COPILOT_REQUEST_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -uo pipefail
+          # No globbing: the reviewer login contains `[bot]`, which an unquoted expansion would read
+          # as a character class.
+          set -f
+
+          REVIEWER='copilot-pull-request-reviewer[bot]'
+          # The logins that count as Copilot in GitHub's answer, lower-cased: the request names the
+          # reviewer above, and the requested-reviewers list has been read naming it `Copilot` (#86).
+          # A second carrier of `REVIEWERS` in `copilot-review.yml`, which this job cannot read because
+          # it checks nothing out; a rename reds both, the failure direction that file prefers.
+          COPILOT_LOGINS='copilot-pull-request-reviewer[bot] copilot copilot[bot]'
+
+          # Everything this job concludes goes to the job summary as well as the log, because a log
+          # line alone is the notification nobody reads (proposal 0006).
+          report() {
+            printf '%s\n' "$@"
+            if [ -n "${GITHUB_STEP_SUMMARY:-}" ]; then
+              printf '%s\n' "$@" >>"$GITHUB_STEP_SUMMARY"
+            fi
+          }
+
+          if [ -z "${GH_TOKEN:-}" ]; then
+            printf '::error::no token to request Copilot with on #%s — COPILOT_REQUEST_TOKEN is empty in environment copilot-request\n' "$PR_NUMBER"
+            report "Copilot was NOT requested on #${PR_NUMBER} (${HEAD_SHA}), opened by ${PR_AUTHOR}." \
+              "" \
+              "The repair is the maintainer's: a fine-grained token of his, scoped to this repository with" \
+              "Pull requests read and write, stored as secret COPILOT_REQUEST_TOKEN in environment" \
+              "copilot-request, whose deployment branches are limited to main. Until then, request" \
+              "Copilot from the Reviewers menu, which is what this job does in his name."
+            exit 1
+          fi
+
+          # The answer is kept rather than discarded. On a refusal, everything `gh` wrote is printed:
+          # its one-line message and the response body, where a 422's `errors` are. On an acceptance,
+          # the body is the pull request as it stands after the call.
+          err_file=$(mktemp)
+          if ! answer=$(gh api --method POST "repos/${GITHUB_REPOSITORY}/pulls/${PR_NUMBER}/requested_reviewers" \
+                -f "reviewers[]=${REVIEWER}" 2>"$err_file"); then
+            printf '::error::GitHub refused the request for %s on #%s\n' "$REVIEWER" "$PR_NUMBER"
+            cat "$err_file"
+            printf '%s\n' "$answer"
+            report "Copilot was NOT requested on #${PR_NUMBER} (${HEAD_SHA}), opened by ${PR_AUTHOR}: GitHub refused the call." \
+              "" \
+              '```' "$(cat "$err_file")" "$answer" '```' \
+              "" \
+              "An expired or revoked token, or one without Pull requests write on this repository, fails" \
+              "here. Request Copilot from the Reviewers menu meanwhile."
+            exit 1
+          fi
+
+          # ACCEPTED IS NOT REQUESTED. A success whose requested reviewers do not name Copilot is the
+          # hollow acceptance measured on #286, recorded in `copilot-review.yml`: GitHub answered 200
+          # and the request did not exist. Green over it would claim a request nobody can find.
+          if ! requested=$(printf '%s' "$answer" | jq -r '[.requested_reviewers[]?.login // empty] | join(" ")'); then
+            printf '::error::GitHub accepted the request on #%s, and its answer could not be read — refusing to report a request this job cannot see\n' "$PR_NUMBER"
+            printf '%s\n' "$answer"
+            report "Copilot's request on #${PR_NUMBER} (${HEAD_SHA}) is UNCONFIRMED: GitHub accepted the call and its answer could not be read." \
+              "" \
+              "The answer is printed in full in this job's log. Request Copilot from the Reviewers menu."
+            exit 1
+          fi
+          found=''
+          for login in $requested; do
+            lower=$(printf '%s' "$login" | tr '[:upper:]' '[:lower:]')
+            for candidate in $COPILOT_LOGINS; do
+              if [ "$lower" = "$candidate" ]; then
+                found="$login"
+              fi
+            done
+          done
+          if [ -z "$found" ]; then
+            printf '::error::GitHub accepted the request on #%s, and the pull request it answered with does not list Copilot among its requested reviewers\n' "$PR_NUMBER"
+            printf 'Requested reviewers in the answer:%s\n' "${requested:+ $requested}"
+            printf '%s\n' "$answer"
+            report "Copilot was NOT requested on #${PR_NUMBER} (${HEAD_SHA}), opened by ${PR_AUTHOR}: GitHub answered with success and its requested reviewers are: ${requested:-none}." \
+              "" \
+              "That is the hollow acceptance of #286. The answer is printed in full in this job's log." \
+              "Request Copilot from the Reviewers menu; #286 records closing and reopening the pull" \
+              "request as what cleared this state there."
+            exit 1
+          fi
+
+          report "Requested ${REVIEWER} on #${PR_NUMBER} (${HEAD_SHA}) with the maintainer's token, and" \
+            "GitHub's answer lists ${found} among the requested reviewers." \
+            "" \
+            "The author, ${PR_AUTHOR}, is a bot, and GitHub bills a review on a bot's pull request to the" \
+            "organisation. A request by the maintainer is attributed to him, like his click in the Reviewers" \
+            "menu. Whether Copilot starts a round on it is what copilot-reviewed checks."
