@@ -54,13 +54,16 @@ received name the owner, repository, number, pull request node id and Bot id. `p
 environment and the concurrency group cannot run outside GitHub, and this pull request cannot exercise them.
 The harness is in the project's shared files, not in this repository.
 
-**Copilot's round on #436.** One Medium finding, fixed in a second commit: the state read took the last
-hundred reviews of the GraphQL connection, and replies to review threads are reviews too, so a long history
-after a round could push the round out of that window and draw a second request. The head's reviews are now
-read over REST with `--paginate`, as `copilot-review.yml` reads them; a look that cannot read them counts
-as unread. Three fixtures cover the new jq program, the four state fixtures lost the reviews line, and the
-old reviews-read anchor `.commit_id` became `.commit_id, .state` so each anchor still names one program. A
-seventeenth stub case, reviews unreadable throughout, ends in the warning.
+**Copilot's rounds on #436.** Two Medium findings, each fixed in its own commit. The first: the state
+read took the last hundred reviews of the GraphQL connection, and replies to review threads are reviews
+too, so a long history after a round could push the round out of that window and draw a second request.
+The head's reviews are now read over REST with `--paginate`, as `copilot-review.yml` reads them; a look
+that cannot read them counts as unread. Three fixtures cover the new jq program, the four state fixtures
+lost the reviews line, and the old reviews-read anchor `.commit_id` became `.commit_id, .state` so each
+anchor still names one program. The second, on the push that carried the first: that read kept a
+DISMISSED review, which `copilot-review.yml` treats as invalidated, so one could stand as the head's round
+and skip a request. The read now drops DISMISSED reviews, with a fixture. Two stub cases were added: the
+reviews unreadable throughout ends in the warning, and a dismissed Copilot review on the head asks.
 
 **Observation (proposal 0007).** On the first bot-authored pull request after the merge: this job's log
 shows the mutation's answer listing Copilot, the timeline shows the maintainer requesting Copilot at the

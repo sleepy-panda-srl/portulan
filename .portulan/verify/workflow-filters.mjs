@@ -498,9 +498,21 @@ const CASES = [
         why: "one line per review, login and commit, for the shell to keep the head's. A review "
             + "whose author was deleted prints an empty login, which the shell skips, rather than "
             + "the word `null`",
-        input: '[{"user":{"login":"copilot-pull-request-reviewer[bot]"},"commit_id":"h2"},'
-            + '{"user":{"login":"a-person"},"commit_id":"h1"},{"user":null,"commit_id":"h2"}]',
+        input: '[{"user":{"login":"copilot-pull-request-reviewer[bot]"},"commit_id":"h2","state":"COMMENTED"},'
+            + '{"user":{"login":"a-person"},"commit_id":"h1","state":"APPROVED"},'
+            + '{"user":null,"commit_id":"h2","state":"COMMENTED"}]',
         stdout: "copilot-pull-request-reviewer[bot]|h2\na-person|h1\n|h2\n",
+        status: 0,
+    },
+    {
+        id: "request-reviews-dismissed",
+        anchor: "[.user.login, .commit_id] | join",
+        why: "a DISMISSED review is an invalidated one, so it prints no line and cannot stand as the "
+            + "round on the head; any other state prints, and a review with no `state` at all is kept "
+            + "rather than dropped",
+        input: '[{"user":{"login":"copilot-pull-request-reviewer[bot]"},"commit_id":"h2","state":"DISMISSED"},'
+            + '{"user":{"login":"copilot-pull-request-reviewer[bot]"},"commit_id":"h1"}]',
+        stdout: "copilot-pull-request-reviewer[bot]|h1\n",
         status: 0,
     },
     {

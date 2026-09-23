@@ -239,11 +239,13 @@ jobs:
               # of the GraphQL connection: replies to review threads are reviews too, so a long history
               # after a round could push the round out of a fixed window and draw a second request for
               # it. Raised by Copilot on this change; `copilot-review.yml` paginates the same read for
-              # the same reason. A look that could not read the reviews has not established that no
-              # round is on the head, so it counts as unread and looks again.
+              # the same reason. A DISMISSED review is an invalidated one and is not a round on the head,
+              # which is how `copilot-review.yml` reads it too; raised by Copilot on the next push. A look
+              # that could not read the reviews has not established that no round is on the head, so it
+              # counts as unread and looks again.
               if [ -n "$pr_id" ] && [ -n "$head" ]; then
                 if reviews=$(gh api --paginate "repos/${GITHUB_REPOSITORY}/pulls/${PR_NUMBER}/reviews" \
-                      --jq '.[] | [.user.login, .commit_id] | join("|")' 2>"$err_file"); then
+                      --jq '.[] | select(.state != "DISMISSED") | [.user.login, .commit_id] | join("|")' 2>"$err_file"); then
                   while IFS='|' read -r login commit; do
                     if [ -n "$login" ] && [ "$commit" = "$head" ]; then
                       reviewed="${reviewed:+$reviewed }$login"
