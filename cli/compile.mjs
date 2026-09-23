@@ -13,6 +13,9 @@
 // theirs. That separation is the whole of "LLM-agnostic by construction" (../docs/vision.md) at this
 // layer, and the second backend is where it stopped being a claim.
 //
+// It compiles a workspace's **guidance** too, since Workspace Definition 2.10: the units in `slots.context`,
+// each to the Claude Code form of the load tier it declares, and none of them enforcement. Section 3c.
+//
 // ## Two layers, and which one is load-bearing
 //
 // Every gate is emitted TWICE: as a permission rule and as a hook. That is not belt-and-braces for
@@ -1835,6 +1838,13 @@ function artifactPaths(workspaceDir) {
     };
 }
 
+/**
+ * The top-level entries of a workspace directory this compiler writes into: `compile/` holds its artifacts,
+ * and `.claude/` is the host's own tree where a workspace is its own root. Exported because `./vendor.mjs`
+ * never carries them, and because no guidance may be read from them (`guidanceDeclaration`).
+ */
+export const GENERATED_DIRS = ["compile", ".claude"];
+
 /** Every backend, run against one parsed policy. The order is the order the matrix prints in. */
 export function backends(parsed, options = {}) {
     // **Provenance rides in the Claude Code artifact only, and that is an honest limit rather than an
@@ -1864,6 +1874,685 @@ export function matrix(parsed, options = {}) {
         }
         return { id: rule.id, tier: rule.tier, backends: cells };
     });
+}
+
+// ===========================================================================================
+// 3c. The guidance targets — `slots.context`, compiled to each host's load tiers
+// ===========================================================================================
+//
+// Proposal `0036`'s compile targets. `../core/operating/context.md` puts every piece of guidance in one of
+// four load tiers, and Workspace Definition 2.10's `slots.context` is where a workspace keeps it: one unit
+// per Markdown file, each declaring its tier in its own frontmatter (`../spec/slots.md` carries the
+// contract). This section turns those units into what each host loads, and says per host which tiers it
+// can express. A unit in a tier the host cannot express **degrades to an on-read pointer, never to
+// nothing**: a line in the always tier naming the file, one level deep, which is the only index
+// `context.md` allows.
+//
+// **Committed, regenerated from source, byte-compared** — the maintainer's ruling 3 on `0036`, and the
+// reason is a fresh checkout: a desktop session's worktree has only what is tracked, so a gitignored
+// rule would be missing from exactly the contexts this makes cheaper. `--check` compares every file below
+// with what the units compile to, so the existing compile recipe covers them with no edit of its own.
+//
+// **What this cannot tell you** is the sentence at the top of this file, one layer over: that the host
+// loads what is emitted, when the tier says it does. That is row 12's second demonstration, on a running
+// host, and not a test.
+
+/** `0036`'s four load tiers, in the order a context meets them, spelled as the proposal spells them. */
+export const LOAD_TIERS = ["always", "on-path", "on-invoke", "on-read"];
+
+/**
+ * The directory the Claude Code targets land in. **`compile` shows which rules in it are its own with a
+ * marker** (`RULES_MARKER` below) rather than a mark in each file, because every byte of an always-tier
+ * file is paid for by every context. It rewrites and removes only the rules the marker lists; anything else
+ * there is a team's own, named and left, and a unit that would compile onto one stops the run with exit 2.
+ * Where the directory holds Markdown files and no marker in this compiler's form, nothing shows any of them
+ * was compiled, so it stops with exit 2 and touches none of them.
+ */
+export const GUIDANCE_RULES_DIR = ".claude/rules/portulan";
+
+/**
+ * The marker: a file in that directory no host loads, since Claude Code loads only `.md` files as rules,
+ * so it costs no context. Its first line names the compiler and each line after it one rule it wrote.
+ * Written after the rules it lists and cut before any is removed, so it never lists a file this compiler
+ * has not written (`emitGuidance`). Byte-compared like every other compiled file, and trusted only when it
+ * reads exactly as this compiler writes one: a marker not in this compiler's form grants nothing. One in that form is read as the list it
+ * is, whoever wrote it, because whoever can edit it can as well remove the files it lists.
+ */
+export const RULES_MARKER = ".compiled";
+const RULES_MARKER_HEAD = "`portulan compile` wrote the rules listed below from slots.context; it rewrites and removes only these.";
+
+/** The marker a set of rule files is owed: the head line, then one file name per line. */
+const markerText = (names) => `${RULES_MARKER_HEAD}\n${names.map((name) => `${name}\n`).join("")}`;
+
+/** The rule files a marker lists, or null when its text is not one this compiler writes. */
+function markedRules(text) {
+    const lines = text.split("\n");
+    if (lines[0] !== RULES_MARKER_HEAD || lines.at(-1) !== "") return null;
+    const names = lines.slice(1, -1);
+    if (!names.every((name) => SLUG.test(name.replace(/\.md$/, "")) && name.endsWith(".md"))) return null;
+    return new Set(names).size === names.length ? new Set(names) : null;
+}
+
+/** The one file in that directory no unit names: the index of pointers to the on-read units. */
+export const ON_READ_INDEX = "on-read.md";
+
+/**
+ * Where an on-invoke unit lands. This directory is shared with skills a team writes by hand, so a
+ * compiled skill carries a mark naming its unit, as the line after its frontmatter, and only a skill whose
+ * mark reads there exactly as this compiler writes it is ever `compile`'s to rewrite or remove. Text
+ * quoting the mark anywhere else grants nothing.
+ */
+export const SKILLS_DIR = ".claude/skills";
+const SKILL_MARK = "<!-- compiled by `portulan compile` from ";
+const SKILL_MARK_TAIL = "; edit that file, then recompile -->";
+
+/** The unit a skill's mark names, or null when the line after its frontmatter is not a mark this compiler writes. */
+function skillSource(text) {
+    const lines = text.split("\n");
+    const close = lines[0] === "---" ? lines.indexOf("---", 1) : -1;
+    const line = close === -1 || lines[close + 1] !== "" ? "" : lines[close + 2] ?? "";
+    if (!line.startsWith(SKILL_MARK) || !line.endsWith(SKILL_MARK_TAIL)) return null;
+    return line.slice(SKILL_MARK.length, -SKILL_MARK_TAIL.length) || null;
+}
+
+/**
+ * Which tiers each host expresses, and how. `null` is a tier the host cannot express, whose units
+ * degrade to an on-read pointer. Exported so a report reads this table rather than restating it.
+ *
+ * Claude Code expresses all four: an unscoped rule is loaded at launch like `.claude/CLAUDE.md`, a rule
+ * with `paths:` when a matching file is first read, and a skill's description is listed in every context
+ * while its body loads when it runs. The vendored `AGENTS.md` is one file at a tree's root: the hosts that
+ * read nested `AGENTS.md` files would give it an on-path tier, but `vendor` writes only the root one.
+ */
+export const GUIDANCE_HOSTS = {
+    "claude-code": {
+        label: "Claude Code",
+        always: `an unscoped rule in \`${GUIDANCE_RULES_DIR}/\``,
+        "on-path": "a rule scoped by `paths:`",
+        "on-invoke": `a project skill in \`${SKILLS_DIR}/\``,
+        "on-read": `a line in \`${GUIDANCE_RULES_DIR}/${ON_READ_INDEX}\``,
+    },
+    "agents-md": {
+        label: "AGENTS.md, vendored",
+        always: "inline in `AGENTS.md`",
+        "on-path": null,
+        "on-invoke": null,
+        "on-read": "a line in `AGENTS.md`",
+    },
+};
+
+const UNIT_KEYS = new Set(["tier", "paths", "description"]);
+
+/** A line break, by any spelling a host might honour, or another control character. */
+const CONTROL = /[\u0000-\u001f\u007f\u0085\u2028\u2029]/;
+
+/** One scalar, as YAML writes it: double-quoted with JSON's escapes, single-quoted, or plain. */
+function scalar(raw, where) {
+    const value = raw.trim();
+    if (value.startsWith('"')) {
+        try {
+            const parsed = JSON.parse(value);
+            if (typeof parsed === "string") return parsed;
+        } catch {
+            // Refused below, with the sentence that says what to write instead.
+        }
+        throw new CompileError(`${where} is not a string this reader can parse — write it plain, or in double quotes with JSON's escapes`);
+    }
+    if (value.startsWith("'")) {
+        // Inside single quotes the only escape is a doubled quote, so every `'` in the span comes in a pair.
+        const inner = value.length >= 2 && value.endsWith("'") ? value.slice(1, -1) : null;
+        if (inner !== null && /^(?:[^']|'')*$/.test(inner)) return inner.replaceAll("''", "'");
+        throw new CompileError(`${where} is single-quoted and either not closed or holding a \`'\` not written \`''\``);
+    }
+    return value;
+}
+
+/**
+ * The frontmatter of one unit, read strictly. Three keys and no others; a scalar is plain or quoted, and
+ * `paths` is a list, in flow form (`["a/**", "b/*.md"]`, each item in double quotes) or as a block of
+ * `- ` items. Anything else is refused rather than guessed at: a key this reader skipped would be one the
+ * author believes is in force.
+ */
+function unitFrontmatter(lines, where) {
+    const fields = {};
+    for (let i = 0; i < lines.length; i += 1) {
+        const line = lines[i];
+        if (line.trim() === "") continue;
+        const match = /^([A-Za-z_][\w-]*):(?:\s+(.*))?$/.exec(line);
+        if (!match) throw new CompileError(`${where}: frontmatter line ${i + 2} is not \`key: value\` — ${JSON.stringify(line)}`);
+        const [, key, rest = ""] = match;
+        if (!UNIT_KEYS.has(key)) {
+            throw new CompileError(`${where}: \`${key}\` is not a key a unit takes — only \`tier\`, \`paths\` and \`description\` (spec/slots.md)`);
+        }
+        if (Object.hasOwn(fields, key)) throw new CompileError(`${where}: \`${key}\` is declared twice`);
+        if (key !== "paths") {
+            fields[key] = scalar(rest, `${where}: \`${key}\``);
+            continue;
+        }
+        if (rest.trim() !== "") {
+            let list;
+            try {
+                list = JSON.parse(rest.trim());
+            } catch {
+                list = null;
+            }
+            if (!Array.isArray(list)) {
+                throw new CompileError(`${where}: \`paths\` is not a list — write it \`["a/**", "b/*.md"]\`, each glob in double quotes, or as a block of \`- \` items`);
+            }
+            fields.paths = list;
+            continue;
+        }
+        const items = [];
+        while (i + 1 < lines.length && /^\s*-(\s|$)/.test(lines[i + 1])) {
+            i += 1;
+            items.push(scalar(lines[i].replace(/^\s*-\s*/, ""), `${where}: an item of \`paths\``));
+        }
+        fields.paths = items;
+    }
+    return fields;
+}
+
+/**
+ * Read one unit. `name` is its file's name less `.md`; `text` is the file; `source` is its path as a
+ * reader of the repository would type it, which is what a pointer names.
+ */
+export function parseUnit(name, text, source = `${name}.md`) {
+    const where = source;
+    if (!SLUG.test(name)) {
+        throw new CompileError(`${where}: a unit's name is its file's name less \`.md\`, and it must be a slug — lowercase letters, digits and single hyphens — because a host names a skill by it`);
+    }
+    if (name === path.basename(ON_READ_INDEX, ".md")) {
+        throw new CompileError(`${where}: \`${name}\` is the name of the index this compiler writes beside the rules, so no unit may take it`);
+    }
+    // A byte-order mark is an editor's, not the author's: it is dropped, as the host drops it.
+    const lines = text.replace(/^\uFEFF/, "").split(/\r?\n/);
+    if (lines[0] !== "---") throw new CompileError(`${where}: a unit opens with frontmatter naming its tier — the first line must be \`---\``);
+    const close = lines.indexOf("---", 1);
+    if (close === -1) throw new CompileError(`${where}: the frontmatter is never closed with a \`---\` line`);
+    const fields = unitFrontmatter(lines.slice(1, close), where);
+
+    const tier = fields.tier;
+    if (!LOAD_TIERS.includes(tier)) {
+        throw new CompileError(`${where}: \`tier\` is ${tier === undefined ? "missing" : JSON.stringify(tier)}, and it must be one of ${LOAD_TIERS.map((t) => `\`${t}\``).join(", ")}`);
+    }
+    let paths = null;
+    if (tier === "on-path") {
+        if (fields.paths === undefined || fields.paths.length === 0) {
+            throw new CompileError(`${where}: an on-path unit names the \`paths\` that load it, and this one names none`);
+        }
+        for (const glob of fields.paths) {
+            if (typeof glob !== "string" || glob.trim() === "" || glob !== glob.trim() || CONTROL.test(glob)) {
+                throw new CompileError(`${where}: every item of \`paths\` is a glob on one line with no surrounding space, and ${JSON.stringify(glob)} is not`);
+            }
+            // Relative to the repository, and inside it: a glob the host would resolve elsewhere is a rule
+            // that loads for files this workspace does not govern, or for none.
+            if (glob.startsWith("/") || /^[A-Za-z]:/.test(glob) || glob.split("/").includes("..") || glob.includes("\\")) {
+                throw new CompileError(`${where}: \`${glob}\` is not a glob relative to the repository and inside it — no leading \`/\`, no \`..\`, and \`/\` as the separator`);
+            }
+        }
+        paths = fields.paths;
+    } else if (fields.paths !== undefined) {
+        throw new CompileError(`${where}: \`paths\` scopes an on-path unit, and this one is \`${tier}\` — a key that loads nothing is one its author believes is in force`);
+    }
+    let description = null;
+    if (tier === "always") {
+        if (fields.description !== undefined) {
+            throw new CompileError(`${where}: an always unit is loaded whole, so nothing reads a description of it — remove \`description\`, or move the unit to a later tier`);
+        }
+    } else {
+        description = fields.description;
+        if (typeof description !== "string" || description.trim() === "") {
+            throw new CompileError(`${where}: an ${tier} unit needs a one-line \`description\`: it is what an agent reads to decide whether to open the unit`);
+        }
+        // A quoted scalar can spell a line break as an escape, and the description is written as one line
+        // of the index and of `AGENTS.md`: a break would make it two, the second a pointer nobody declared.
+        if (CONTROL.test(description)) {
+            throw new CompileError(`${where}: the \`description\` holds a line break or another control character, and it is written as one line of an index`);
+        }
+        description = description.trim();
+    }
+    const rest = lines.slice(close + 1);
+    while (rest.length && rest[0].trim() === "") rest.shift();
+    while (rest.length && rest[rest.length - 1].trim() === "") rest.pop();
+    if (rest.length === 0) throw new CompileError(`${where}: the unit carries no guidance below its frontmatter`);
+    return { name, tier, paths, description, body: `${rest.join("\n")}\n`, source };
+}
+
+/**
+ * Where the manifest puts its guidance, if it does. Read as `policyDeclaration` reads `gates`: the value
+ * held to the schema's `dirPath` shape and to containment after resolution, because a pattern alone
+ * passes a `../` chain. `doctor` refuses such a manifest, but this reader must not depend on `doctor`
+ * having run.
+ *
+ * @returns {{ dir: string, rel: string } | null} null when the manifest declares no `slots.context`, or
+ *   there is no readable manifest to declare one.
+ */
+export function guidanceDeclaration(workspaceRoot, workspaceDir = ".portulan") {
+    const base = path.join(workspaceRoot, workspaceDir);
+    let manifest;
+    try {
+        manifest = JSON.parse(fs.readFileSync(path.join(base, "workspace.json"), "utf8"));
+    } catch {
+        return null;
+    }
+    const declared = manifest?.slots?.context;
+    if (declared === undefined) return null;
+    if (typeof declared !== "string" || !/^[^#?:/][^#?:]*\/$/.test(declared) || CONTROL.test(declared)) {
+        throw new CompileError(`\`slots.context\` is ${JSON.stringify(declared)}, which is not a relative path to a directory ending in \`/\` — the schema's \`dirPath\``);
+    }
+    const dir = path.resolve(base, declared);
+    if (dir === path.resolve(base) || !isInside(path.resolve(base), dir)) {
+        throw new CompileError(`\`slots.context\` (${declared}) resolves to the workspace directory itself or outside it — guidance is read from a directory of its own inside it, never from elsewhere`);
+    }
+    // Nor from where this compiler writes: a unit there would be overwritten by what it compiles to, and
+    // `vendor` carries neither directory, so a pointer to it would dangle in a vendored copy.
+    const rel = path.relative(path.resolve(workspaceRoot), dir).split(path.sep).join("/");
+    const top = path.relative(path.resolve(base), dir).split(path.sep)[0];
+    if (rel.split("/")[0] === ".claude" || GENERATED_DIRS.includes(top)) {
+        throw new CompileError(
+            `\`slots.context\` (${declared}) lies in a directory \`compile\` writes into, \`.claude/\` or the workspace's \`compile/\` — ` +
+                `a unit there would be overwritten by what it compiles to, and \`vendor\` carries neither directory. Keep guidance in a directory of its own, such as \`context/\``,
+        );
+    }
+    return { dir, rel: `${rel}/` };
+}
+
+/**
+ * Every unit the workspace declares, read and checked, in code-unit order of name.
+ *
+ * Only the Markdown files at the top of the directory are units; anything else there is left alone. A
+ * unit that is a link out of the workspace is refused, as a copy through a link is in `./vendor.mjs`: it
+ * would compile a file the workspace does not hold into the host it governs.
+ *
+ * @returns {{ source: string, units: object[] } | null} null when no slot is declared.
+ */
+export function guidanceUnits(workspaceRoot, workspaceDir = ".portulan") {
+    const declared = guidanceDeclaration(workspaceRoot, workspaceDir);
+    if (declared === null) return null;
+    let entries;
+    try {
+        entries = fs.readdirSync(declared.dir, { withFileTypes: true });
+    } catch (cause) {
+        throw new CompileError(`\`slots.context\` names ${declared.rel}, which could not be listed — ${cause.code ?? cause.message}`);
+    }
+    let realBase;
+    try {
+        realBase = fs.realpathSync(path.join(workspaceRoot, workspaceDir));
+    } catch (cause) {
+        throw new CompileError(`the workspace directory could not be resolved — ${cause.code ?? cause.message}`);
+    }
+    // Where this compiler writes, resolved, so a unit that is a link into it is refused as a slot there is.
+    const written = [path.join(workspaceRoot, ".claude"), ...GENERATED_DIRS.map((g) => path.join(workspaceRoot, workspaceDir, g))].flatMap((at) => {
+        try {
+            return [fs.realpathSync(at)];
+        } catch (cause) {
+            if (cause.code === "ENOENT" || cause.code === "ENOTDIR") return [];
+            throw new CompileError(`${at} could not be resolved — ${cause.code ?? cause.message}`);
+        }
+    });
+    const units = [];
+    const names = entries
+        .filter((e) => e.name.endsWith(".md") && (e.isFile() || e.isSymbolicLink()))
+        .map((e) => e.name)
+        .sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
+    for (const file of names) {
+        const full = path.join(declared.dir, file);
+        const source = `${declared.rel}${file}`;
+        let real;
+        try {
+            real = fs.realpathSync(full);
+        } catch (cause) {
+            throw new CompileError(`${source} could not be resolved — ${cause.code ?? cause.message}`);
+        }
+        if (!isInside(realBase, real)) throw new CompileError(`${source} is a link out of the workspace — a unit is read from inside it, never from elsewhere`);
+        if (written.some((at) => isInside(at, real))) {
+            throw new CompileError(`${source} is a link into a directory \`compile\` writes into — a unit there would be overwritten by what it compiles to`);
+        }
+        let text;
+        try {
+            text = fs.readFileSync(full, "utf8");
+        } catch (cause) {
+            throw new CompileError(`${source} could not be read — ${cause.code ?? cause.message}`);
+        }
+        units.push(parseUnit(path.basename(file, ".md"), text, source));
+    }
+    return { source: declared.rel, units };
+}
+
+/** A string as YAML reads it, double-quoted. JSON's escapes are a subset of YAML's double-quoted ones. */
+const quoted = (s) => JSON.stringify(s);
+
+/**
+ * The Claude Code targets of a set of units: one file per unit, in the tier's own form, plus the index
+ * of pointers when any unit is on-read. Paths are relative to the repository root, and nothing here
+ * names a machine path (ruling 3).
+ */
+export function claudeCodeGuidance(guidance) {
+    const files = [];
+    const pointers = [];
+    for (const unit of guidance.units) {
+        if (unit.tier === "always") {
+            files.push({ unit, path: `${GUIDANCE_RULES_DIR}/${unit.name}.md`, text: unit.body });
+        } else if (unit.tier === "on-path") {
+            const header = ["---", "paths:", ...unit.paths.map((glob) => `  - ${quoted(glob)}`), "---", ""].join("\n");
+            files.push({ unit, path: `${GUIDANCE_RULES_DIR}/${unit.name}.md`, text: `${header}\n${unit.body}` });
+        } else if (unit.tier === "on-invoke") {
+            const header = ["---", `name: ${unit.name}`, `description: ${quoted(unit.description)}`, "---", ""].join("\n");
+            const mark = `${SKILL_MARK}${unit.source}${SKILL_MARK_TAIL}\n`;
+            files.push({ unit, path: `${SKILLS_DIR}/${unit.name}/SKILL.md`, text: `${header}\n${mark}\n${unit.body}` });
+        } else {
+            pointers.push(unit);
+        }
+    }
+    if (pointers.length) {
+        // One line per unit and nothing else: the index is an always-tier file, and a pointer may not point
+        // at another pointer.
+        files.push({
+            unit: null,
+            path: `${GUIDANCE_RULES_DIR}/${ON_READ_INDEX}`,
+            text: pointers.map((u) => `- \`${u.source}\`: ${u.description}\n`).join(""),
+        });
+    }
+    return { backend: "claude-code", label: GUIDANCE_HOSTS["claude-code"].label, files };
+}
+
+/**
+ * The vendored `AGENTS.md`'s share of the same units: the always units inline, and every other unit as a
+ * one-line pointer, because that file is the only tier its hosts are sure to load. `dir` is where the
+ * units sit in the vendored tree, as a reader beside `AGENTS.md` would type it.
+ */
+export function agentsMdGuidance(guidance, dir) {
+    const always = guidance.units.filter((u) => u.tier === "always");
+    const pointed = guidance.units.filter((u) => u.tier !== "always");
+    const pointer = (u) => {
+        const where = `\`${dir}${u.name}.md\``;
+        if (u.tier === "on-path") return `- ${where}: when you work on ${u.paths.map((g) => `\`${g}\``).join(", ")}. ${u.description}`;
+        return `- ${where}: ${u.description}`;
+    };
+    return { inline: always.map((u) => u.body), pointers: pointed.map(pointer) };
+}
+
+/**
+ * What stops a guidance path being written or tidied as a real `kind`, judged before anything is, part by
+ * part from the repository root with `lstat`: `null` when every part of it that exists is a real directory
+ * and the last, if it exists, a real `kind`. **A link stops it wherever it stands, even one that stays inside
+ * the repository**: writing or removing through it would change whatever it points at, which this compiler
+ * cannot show it wrote.
+ */
+function landing(workspaceRoot, rel, kind = "file") {
+    const parts = rel.split("/");
+    let at = workspaceRoot;
+    for (const [i, part] of parts.entries()) {
+        at = path.join(at, part);
+        let stat;
+        try {
+            stat = fs.lstatSync(at);
+        } catch (cause) {
+            if (cause.code === "ENOENT") return null;
+            throw new CompileError(`${rel} could not be examined — ${cause.code ?? cause.message}`);
+        }
+        const last = i === parts.length - 1;
+        const here = parts.slice(0, i + 1).join("/");
+        if (stat.isSymbolicLink()) {
+            return last ? "is a link, and writing it would change whatever the link points at" : `lies through a link, ${here}, and writing through it would change whatever the link points at`;
+        }
+        const want = last ? kind : "directory";
+        if (want === "file" ? !stat.isFile() : !stat.isDirectory()) return last ? `is not a ${kind}` : `cannot be created, because ${here} is not a directory`;
+    }
+    return null;
+}
+
+/** What a directory this compiler writes into holds: nothing when it is absent, or when `landing` stops it. */
+function listReal(workspaceRoot, rel) {
+    const dir = path.join(workspaceRoot, ...rel.split("/"));
+    if (landing(workspaceRoot, rel, "directory") !== null || !fs.existsSync(dir)) return [];
+    try {
+        return fs.readdirSync(dir, { withFileTypes: true });
+    } catch (cause) {
+        throw new CompileError(`${rel} could not be listed — ${cause.code ?? cause.message}`);
+    }
+}
+
+/**
+ * Everything the guidance half will write or remove, judged before either half writes anything, so a refusal
+ * leaves no gate artifact written beside it: `run` calls this first, under `--check` as under a write.
+ *
+ * What this compiler cannot show it wrote is not its to replace or remove. A skill shows it by its mark, and
+ * a rule by the marker beside it listing its name, so each refusal below is exit 2: a unit that would compile
+ * onto a skill or a rule written by hand, Markdown in the rules directory with no marker, a marker not in
+ * this compiler's form, and any path that is a link or lies through one.
+ *
+ * @returns {{ owedFiles: object[], stray: { path: string, removable: boolean }[] }}
+ */
+function planGuidance(guidance, workspaceRoot) {
+    const files = guidance ? claudeCodeGuidance(guidance).files : [];
+    const rules = files.filter((f) => f.path.startsWith(`${GUIDANCE_RULES_DIR}/`));
+    // The marker is judged and checked beside the rules it lists; `emitGuidance` writes it after them.
+    const owedFiles = rules.length
+        ? [{ unit: null, marker: true, path: `${GUIDANCE_RULES_DIR}/${RULES_MARKER}`, text: markerText(rules.map((f) => path.posix.basename(f.path))) }, ...files]
+        : files;
+    const owed = new Set(owedFiles.map((f) => f.path));
+
+    for (const file of owedFiles) {
+        const stop = landing(workspaceRoot, file.path);
+        if (stop) throw new CompileError(`${file.path} ${stop} — this compiler writes only real files, and nothing through a link`);
+    }
+
+    const rulesDir = path.join(workspaceRoot, ...GUIDANCE_RULES_DIR.split("/"));
+    const entries = listReal(workspaceRoot, GUIDANCE_RULES_DIR);
+    const markerEntry = entries.find((e) => e.name === RULES_MARKER);
+    let listed = null;
+    if (markerEntry) {
+        let text = null;
+        if (markerEntry.isFile()) {
+            try {
+                text = fs.readFileSync(path.join(rulesDir, RULES_MARKER), "utf8");
+            } catch (cause) {
+                throw new CompileError(`${GUIDANCE_RULES_DIR}/${RULES_MARKER} could not be read — ${cause.code ?? cause.message}`);
+            }
+        }
+        listed = text === null ? undefined : markedRules(text) ?? undefined;
+    }
+    if (rules.length) {
+        if (listed === undefined) {
+            throw new CompileError(`${GUIDANCE_RULES_DIR}/${RULES_MARKER} is not a marker this compiler wrote, so nothing shows which rules beside it are its own. Move the directory's files out, then compile again`);
+        }
+        if (listed === null) {
+            const markdown = entries.filter((e) => e.name.endsWith(".md")).map((e) => e.name).sort();
+            if (markdown.length) {
+                const them = markdown.length === 1 ? "it" : "them";
+                throw new CompileError(
+                    `${GUIDANCE_RULES_DIR}/ holds ${markdown.join(", ")} and no \`${RULES_MARKER}\` marker, so nothing shows this compiler wrote ${them}, and it will not overwrite or remove ${them}. Move ${them} out of the directory, then compile again`,
+                );
+            }
+        } else {
+            for (const file of rules) {
+                const name = path.posix.basename(file.path);
+                if (!entries.some((e) => e.name === name) || listed.has(name)) continue;
+                // Byte for byte what its unit compiles to is what a run stopped before its marker leaves, and
+                // taking that back changes nothing. Anything else is a rule written by hand.
+                let current;
+                try {
+                    current = fs.readFileSync(path.join(rulesDir, name), "utf8");
+                } catch (cause) {
+                    throw new CompileError(`${file.path} could not be read — ${cause.code ?? cause.message}`);
+                }
+                if (current !== file.text) {
+                    throw new CompileError(`${file.path} exists and was not compiled here — ${file.unit ? file.unit.source : `the on-read units in ${guidance.source}`} would replace a rule written by hand. Rename the unit or the rule`);
+                }
+            }
+        }
+    }
+    for (const file of files) {
+        if (!file.path.startsWith(`${SKILLS_DIR}/`)) continue;
+        let current;
+        try {
+            current = fs.readFileSync(path.join(workspaceRoot, ...file.path.split("/")), "utf8");
+        } catch {
+            continue;
+        }
+        const source = skillSource(current);
+        if (source === null) {
+            throw new CompileError(`${file.path} exists and was not compiled here — ${file.unit.source} would replace a skill written by hand. Rename the unit or the skill`);
+        }
+        if (source !== file.unit.source) {
+            throw new CompileError(
+                `${file.path} was compiled from ${source}, and ${file.unit.source} would replace it: two units compile to one skill. Rename one of them, or remove the skill by hand if its unit is gone, then compile again`,
+            );
+        }
+    }
+
+    // What is left where guidance is written, and whether this compiler can show it wrote it. Without a marker
+    // of its own the rules directory is looked at only when a rule is owed there, and then holds no Markdown.
+    const stray = [];
+    if (listed instanceof Set || rules.length) {
+        for (const entry of entries) {
+            const rel = `${GUIDANCE_RULES_DIR}/${entry.name}`;
+            if (owed.has(rel)) continue;
+            const ours = listed instanceof Set && entry.isFile() && (listed.has(entry.name) || entry.name === RULES_MARKER);
+            stray.push({ path: rel, removable: ours });
+        }
+    }
+    const skillsDir = path.join(workspaceRoot, ...SKILLS_DIR.split("/"));
+    for (const entry of listReal(workspaceRoot, SKILLS_DIR)) {
+        if (!entry.isDirectory()) continue;
+        const rel = `${SKILLS_DIR}/${entry.name}/SKILL.md`;
+        const file = path.join(skillsDir, entry.name, "SKILL.md");
+        let text;
+        try {
+            if (!fs.lstatSync(file).isFile()) continue;
+            text = fs.readFileSync(file, "utf8");
+        } catch {
+            continue;
+        }
+        if (skillSource(text) !== null && !owed.has(rel)) stray.push({ path: rel, removable: true });
+    }
+    // What the marker may list while a write is under way: the rules it lists now that are still there and
+    // still owed. Null where there is no marker to write.
+    const present = new Set(entries.filter((e) => e.isFile()).map((e) => e.name));
+    const kept = listed instanceof Set || rules.length
+        ? rules.map((f) => path.posix.basename(f.path)).filter((name) => listed instanceof Set && listed.has(name) && present.has(name))
+        : null;
+    return { owedFiles, stray, kept };
+}
+
+/**
+ * Compile a workspace's guidance: report it, and check it or write it, as `planGuidance` judged it. Returns
+ * how many files drifted under `check`, and 0 otherwise. Reached whether or not the workspace has a gate
+ * policy, because a workspace with none is a legitimate shape.
+ */
+function emitGuidance(guidance, plan, { workspaceRoot, check, say }) {
+    const { owedFiles, stray, kept } = plan;
+    if (guidance === null && stray.length === 0) return 0;
+
+    if (guidance) {
+        const files = owedFiles.filter((f) => !f.marker);
+        const counts = LOAD_TIERS.map((tier) => `${guidance.units.filter((u) => u.tier === tier).length} ${tier}`).join(", ");
+        say(`guidance: ${guidance.units.length} unit(s) in ${guidance.source} — ${counts}`);
+        for (const [id, host] of Object.entries(GUIDANCE_HOSTS)) {
+            const cannot = LOAD_TIERS.filter((tier) => host[tier] === null);
+            const degraded = guidance.units.filter((u) => cannot.includes(u.tier));
+            if (id === "claude-code") {
+                say(`  ${host.label}: expresses every tier — ${files.length} file(s)`);
+                for (const unit of guidance.units) {
+                    const target = unit.tier === "on-read" ? `${GUIDANCE_RULES_DIR}/${ON_READ_INDEX}, a pointer` : files.find((f) => f.unit === unit).path;
+                    say(`    unit    ${unit.name.padEnd(30)} ${unit.tier.padEnd(9)} → ${target}`);
+                }
+            } else {
+                say(
+                    `  ${host.label}: expresses ${LOAD_TIERS.filter((t) => host[t] !== null).join(" and ")}; ${cannot.join(" and ")} degrade to an on-read pointer` +
+                        ` — written by \`portulan vendor --host\`, not here`,
+                );
+                for (const unit of degraded) say(`    degrade ${unit.name.padEnd(30)} ${unit.tier.padEnd(9)} → a pointer in AGENTS.md`);
+            }
+        }
+    }
+
+    if (check) {
+        let drifted = 0;
+        for (const file of owedFiles) {
+            const target = path.join(workspaceRoot, ...file.path.split("/"));
+            let current = null;
+            try {
+                current = fs.readFileSync(target, "utf8");
+            } catch {
+                say(file.marker
+                    ? `RED — ${target} does not exist; it is the marker that lists the rules this compiler wrote. Recompile to write it.`
+                    : `RED — ${target} does not exist; ${file.unit ? file.unit.source : "an on-read unit"} compiles to it`);
+                drifted += 1;
+                continue;
+            }
+            if (current !== file.text) {
+                say(file.marker
+                    ? `RED — ${target} does not list the rules the units compile to now. Recompile to rewrite it.`
+                    : `RED — ${target} has drifted from ${file.unit ? file.unit.source : `the on-read units in ${guidance.source}`}. Edit the unit, then recompile.`);
+                drifted += 1;
+            }
+        }
+        for (const s of stray) {
+            const where = path.join(workspaceRoot, ...s.path.split("/"));
+            say(s.removable
+                ? `RED — ${where} is where this compiler writes guidance, and no unit compiles to it. Recompile to remove it.`
+                : `RED — ${where} is in the directory this compiler writes its rules to, and is not a file it wrote, so a recompile leaves it. Move it out by hand.`);
+            drifted += 1;
+        }
+        return drifted;
+    }
+
+    // Removing a file this compiler wrote is the one deletion it may do, as for the gate artifacts above: it
+    // is reproducible by definition. A rule is shown to be one by the marker that lists it, and a skill by its
+    // mark; anything else found where it writes is named and left alone.
+    //
+    // **The marker lists a rule only once it is written, and stops listing one before it is removed**, so a
+    // run stopped anywhere leaves no name listed that this compiler did not write, which a file put there
+    // later would inherit. What such a run can leave is a rule of its own that no marker lists: taken back by
+    // the next run where it is byte for byte what its unit compiles to, and otherwise left for a human.
+    // Copilot, round 4 on this change, when the marker was written first.
+    const markerPath = path.join(workspaceRoot, ...GUIDANCE_RULES_DIR.split("/"), RULES_MARKER);
+    if (kept !== null) {
+        fs.mkdirSync(path.dirname(markerPath), { recursive: true });
+        fs.writeFileSync(markerPath, markerText(kept));
+    }
+    for (const s of stray) {
+        const target = path.join(workspaceRoot, ...s.path.split("/"));
+        if (target === markerPath) continue;
+        if (!s.removable) {
+            say(`left ${target} — it is not a file this compiler wrote, so it is not this compiler's to remove`);
+            continue;
+        }
+        fs.rmSync(target);
+        say(`removed ${target} — no unit compiles to it`);
+        if (s.path.startsWith(`${SKILLS_DIR}/`)) {
+            try {
+                fs.rmdirSync(path.dirname(target));
+            } catch {
+                // Not empty: whatever else sits beside it was not written here.
+            }
+        }
+    }
+    for (const file of owedFiles) {
+        if (file.marker) continue;
+        const target = path.join(workspaceRoot, ...file.path.split("/"));
+        fs.mkdirSync(path.dirname(target), { recursive: true });
+        fs.writeFileSync(target, file.text);
+        say(`wrote ${target}`);
+    }
+    const marker = owedFiles.find((f) => f.marker);
+    if (marker) {
+        fs.writeFileSync(markerPath, marker.text);
+        say(`wrote ${markerPath}`);
+    } else if (kept !== null) {
+        fs.rmSync(markerPath);
+        say(`removed ${markerPath} — no unit compiles to a rule`);
+    }
+    if (landing(workspaceRoot, GUIDANCE_RULES_DIR, "directory") === null) {
+        try {
+            fs.rmdirSync(path.join(workspaceRoot, ...GUIDANCE_RULES_DIR.split("/")));
+        } catch {
+            // Absent, or holding files: either way there is nothing to tidy.
+        }
+    }
+    return 0;
 }
 
 // ===========================================================================================
@@ -1975,7 +2664,7 @@ export function policyPath(workspaceRoot, workspaceDir = ".portulan") {
  * tighten. That is the fact a reader needs and the one the old message could not carry: it threw
  * before `packContributions` was ever called.
  */
-function undeclaredPolicyMessage(policyFile, workspaceRoot, workspaceDir, packOptions, reason = "no-key") {
+function undeclaredPolicyMessage(policyFile, workspaceRoot, workspaceDir, packOptions, reason = "no-key", guidanceOnly = false) {
     const manifest = path.join(workspaceRoot, workspaceDir, "workspace.json");
     // **One opening per arm, because the arm is the reader's first question.** `no-key` is the shape
     // this whole change defends as legitimate; `no-manifest` is a workspace that has not been
@@ -1991,7 +2680,9 @@ function undeclaredPolicyMessage(policyFile, workspaceRoot, workspaceDir, packOp
                 `${manifest}, and there is no \`gates.json\` at ${policyFile}.`
               : `this workspace declares no gate policy — \`workspace.json\` has no top-level \`gates\` key, ` +
                 `and there is no \`gates.json\` at ${policyFile}.`;
-    const lines = [`${opening} Nothing was compiled and nothing was written.`];
+    // With guidance to compile, the run goes on without a policy, and the sentence must say so: *nothing was
+    // compiled* would be false about the files it writes next.
+    const lines = [`${opening} ${guidanceOnly ? "No enforcement is compiled; the workspace's guidance still is." : "Nothing was compiled and nothing was written."}`];
     let composed = null;
     try {
         composed = packContributions(workspaceRoot, workspaceDir, packOptions);
@@ -2588,6 +3279,30 @@ function printMatrix(say, parsed, columns, { source }) {
 }
 
 /**
+ * Print each unit against each host: the tier it declares, and what each host makes of it. The degradation
+ * report for guidance, derived from `GUIDANCE_HOSTS` rather than written beside it, as the gate matrix is
+ * derived from the backends.
+ */
+function printGuidanceMatrix(say, guidance) {
+    const hosts = Object.entries(GUIDANCE_HOSTS);
+    say(`guidance: ${guidance.source} — ${guidance.units.length} unit(s), ${hosts.length} host(s)`);
+    say();
+    for (const [id, host] of hosts) {
+        const cannot = LOAD_TIERS.filter((tier) => host[tier] === null);
+        say(`  ${id.padEnd(16)} ${cannot.length ? `expresses ${LOAD_TIERS.filter((t) => host[t] !== null).join(" and ")}; ${cannot.join(" and ")} degrade to an on-read pointer` : "expresses every tier"}`);
+    }
+    say();
+    const width = Math.max(4, ...guidance.units.map((u) => u.name.length));
+    say(`  ${"unit".padEnd(width)}  ${"tier".padEnd(9)}  ${hosts.map(([id]) => id.padEnd(16)).join("  ")}`);
+    for (const unit of guidance.units) {
+        const cells = hosts.map(([, host]) => (host[unit.tier] === null ? "pointer" : "expressed").padEnd(16));
+        say(`  ${unit.name.padEnd(width)}  ${unit.tier.padEnd(9)}  ${cells.join("  ")}`);
+    }
+    say();
+    say("  A unit a host cannot express in its tier is carried as a one-line pointer to its file: late, never lost.");
+}
+
+/**
  * What `--workspace <dir>` names, and where the workspace inside it lives.
  *
  * Two shapes, told apart by **`tree`** — the one thing proposal 0017 says is keyed to location, and the
@@ -2662,9 +3377,10 @@ function usage() {
         "",
         "  portulan compile [--check] [--matrix] [--workspace <dir>] [--pack-root <dir>|auto]...",
         "",
-        "  (no flag)     compile the policy and write each backend's artifact",
-        "  --check       write nothing; exit 1 if an artifact is out of date against the policy",
-        "  --matrix      print every rule against every backend, and the gates neither compiles",
+        "  (no flag)     compile the policy and the guidance, and write each artifact",
+        "  --check       write nothing; exit 1 if an artifact is out of date against the policy or the guidance",
+        "  --matrix      print every rule against every backend, the gates neither compiles, and every",
+        "                guidance unit against every host",
         "  --workspace   the workspace directory to compile; defaults to `.portulan`",
         "  --pack-root   where declared packs are resolved from; `auto` discovers the host's plugin cache.",
         "                A named root REPLACES every other source. A directory actually named `auto` is `./auto`",
@@ -2773,6 +3489,11 @@ export function run(argv, options = {}) {
         // The workspace may be named as a repository root or as the workspace directory itself, and the
         // second is how a feed-side workspace is reachable at all — see `resolveWorkspace`.
         const { workspaceRoot, workspaceDir } = resolveWorkspace(named);
+        // The guidance is read before the policy, because a malformed unit is a reason this run cannot
+        // compile honestly whichever half it reaches first, and because a workspace with guidance and no
+        // policy still has something to compile.
+        const guidance = guidanceUnits(workspaceRoot, workspaceDir);
+        const guidancePlan = showMatrix ? null : planGuidance(guidance, workspaceRoot);
         const { file: policyFile, declared: policyDeclared, reason: policyReason } = policyDeclaration(workspaceRoot, workspaceDir);
         // **Declared-and-missing and never-declared are different answers.** Only the first is a
         // failure to read something this workspace claimed to have; the second is a shape `policyPath`
@@ -2782,15 +3503,23 @@ export function run(argv, options = {}) {
         // and `policyReason` is what lets the message name the one it is in rather than assert the
         // commonest: this comment read "two different answers" while the code below had four.
         if (!policyDeclared && !fs.existsSync(policyFile)) {
-            throw new CompileError(
-                undeclaredPolicyMessage(
-                    policyFile,
-                    workspaceRoot,
-                    workspaceDir,
-                    { named: namedRoots, discovery: () => discoverPackRoots(), forced },
-                    policyReason,
-                ),
-            );
+            const packOptions = { named: namedRoots, discovery: () => discoverPackRoots(), forced };
+            if (guidance === null) {
+                throw new CompileError(undeclaredPolicyMessage(policyFile, workspaceRoot, workspaceDir, packOptions, policyReason));
+            }
+            // A workspace with no gate policy is a legitimate shape (`policyPath`), and its guidance is not
+            // enforcement: it compiles alone, and the state of the policy is said rather than refused.
+            say(`note    ${undeclaredPolicyMessage(policyFile, workspaceRoot, workspaceDir, packOptions, policyReason, true)}`);
+            say();
+            if (showMatrix) {
+                printGuidanceMatrix(say, guidance);
+                return 0;
+            }
+            const drifted = emitGuidance(guidance, guidancePlan, { workspaceRoot, check, say });
+            if (!check) return 0;
+            if (drifted) return 1;
+            say("GREEN — every compiled guidance file matches its unit");
+            return 0;
         }
         const policy = readJson(policyFile, "the gate policy");
         // The cascade's middle layer, composed before the policy is parsed so that a pack's fragment
@@ -2851,6 +3580,10 @@ export function run(argv, options = {}) {
 
         if (showMatrix) {
             printMatrix(say, parsed, columns, { source });
+            if (guidance) {
+                say();
+                printGuidanceMatrix(say, guidance);
+            }
             return 0;
         }
 
@@ -2923,8 +3656,9 @@ export function run(argv, options = {}) {
                     drifted += 1;
                 }
             }
+            drifted += emitGuidance(guidance, guidancePlan, { workspaceRoot, check, say });
             if (drifted) return 1;
-            say("GREEN — every emitted artifact matches the policy");
+            say(guidance ? "GREEN — every emitted artifact matches the policy, and every guidance file its unit" : "GREEN — every emitted artifact matches the policy");
             return 0;
         }
 
@@ -2947,6 +3681,7 @@ export function run(argv, options = {}) {
             fs.writeFileSync(file, column.artifact.text);
             say(`wrote ${file}`);
         }
+        emitGuidance(guidance, guidancePlan, { workspaceRoot, check, say });
         return 0;
     } catch (error) {
         // Anything reaching here means compile could not judge — including a defect in compile

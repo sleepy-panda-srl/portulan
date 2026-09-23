@@ -23,6 +23,10 @@ The always tier is paid for by every context, whether or not its task needs what
 tier is paid for only by the contexts that reach it. *In time* is the limit: guidance that arrives after
 the moment it applies has not reached the agent.
 
+A workspace sets its own guidance in these tiers in `slots.context`, since Workspace Definition 2.10: one
+unit per file, each declaring its tier, and `compile` emits each unit in its host's form of that tier.
+_(See [`../../spec/slots.md`](../../spec/slots.md).)_
+
 ## One level of index
 
 **One level of index only**: an always-tier line may point at content, and a pointer may not point at
@@ -84,9 +88,9 @@ Claude Code loads into every context from a workspace's `tree`; `doctor` reports
 and fails it only over a declared budget or where a declared budget cannot be judged; the boot closes
 with the same line; and this repository's `context` recipe rails Portulan's own footprint. A pointer's
 repository is not measured, because a pointer declares no tree. **Still to land**: the exact mode that
-calibrates a ratio, the Claude Code compile targets and the degradation report that says which tiers a
-host can express, the Stop-gate's named demotion, persona frontmatter and the librarian pass, one change
-at a time, in `0036`'s order of work and under row 12 of [`../../docs/plan.md`](../../docs/plan.md).
+calibrates a ratio, the degradation report that says which tiers a host can express, the Stop-gate's
+named demotion, persona frontmatter and the librarian pass, one change at a time, in `0036`'s order of work
+and under row 12 of [`../../docs/plan.md`](../../docs/plan.md).
 Until each lands, the rule it would enforce is held by the human gate, and saying so is the point: a rule
 nothing checks, presented as one that something does, is the failure this page exists to prevent.
 

@@ -583,7 +583,7 @@ function workflowJobs(source) {
 const PATH_SLOTS = {
     identity: "file", principles: "file", gates: "file", dod: "file",
     constitution: "either",
-    memory: "dir", repos: "dir", tasks: "dir", handoffs: "dir", proposals: "dir",
+    memory: "dir", repos: "dir", tasks: "dir", handoffs: "dir", proposals: "dir", context: "dir",
 };
 
 /**
@@ -1228,8 +1228,9 @@ export async function inspect(workspaceDir, options = {}) {
         // a manifest whose own version's validator refuses it as unknown. A key is refused at birth, when no
         // manifest can newly fail it; refusing an older one now could fail a manifest that passes today, which
         // ../spec/README.md calls a MAJOR. Raised by Copilot on #440, for `context`, the first key born gated.
-        for (const [key, since] of [["context", 9]]) {
-            if (major === 2 && minor < since && workspace[key] !== undefined) {
+        // `slots.context` is the second, at 2.10, and a slot is read one level down.
+        for (const [key, since, value] of [["context", 9, workspace.context], ["slots.context", 10, workspace.slots?.context]]) {
+            if (major === 2 && minor < since && value !== undefined) {
                 fail(
                     "schema",
                     `\`${key}\` is Workspace Definition 2.${since}'s, and this manifest declares ${major}.${minor}, ` +

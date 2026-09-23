@@ -3,7 +3,9 @@
 #
 # One check, over every backend the compiler has:
 #   compile   ../.claude/settings.json AND ../compile/github-ruleset.json are exactly what
-#             ../gates.json compiles to
+#             ../gates.json compiles to, and every file under ../../.claude/rules/portulan/ and every
+#             compiled skill is exactly what the manifest's `slots.context` compiles to — none, here,
+#             since this workspace declares no guidance, so a compiled file left behind is red
 #
 # Both, and by the same code path: `compile --check` walks the backends and compares each one's
 # artifact, so a backend added later joins this recipe with no edit here — the same property that
@@ -53,7 +55,7 @@ for required in cli/compile.mjs .portulan/gates.json; do
     fi
 done
 
-printf 'compile: checking .claude/settings.json and .portulan/compile/github-ruleset.json against .portulan/gates.json\n'
+printf 'compile: checking .claude/settings.json and .portulan/compile/github-ruleset.json against .portulan/gates.json, and any compiled guidance against slots.context\n'
 
 
 # ---------------------------------------------------------------------------------------------

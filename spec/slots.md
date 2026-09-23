@@ -52,6 +52,7 @@ experience a failure. *(Binding non-goal: no ceremony that can't scale down.)*
 | `slots.tasks` | path | no | content — [`tasks/`](../.portulan/tasks/); constitution — BMAD, the story file as atomic context unit |
 | `slots.handoffs` | path | no | content — [`handoffs/`](../.portulan/handoffs/); [`loop.md`](../core/operating/loop.md) — every session ends with one |
 | `slots.proposals` | path | no | content — [`proposals/`](../.portulan/proposals/); [`evolution.md`](../core/operating/evolution.md) |
+| `slots.context` | path | no | criterion — milestone 12, *`compile` emits Claude Code's on-path and on-invoke targets*; [`context.md`](../core/operating/context.md) — the four load tiers |
 | `verify` | structured | **for a governing kind** | criterion — *verify recipes*; [`verification.md`](../core/operating/verification.md) — the workspace sets the default |
 | `governed_by` | manifest | **for `kind: pointer`** | the maintainer's residence ruling, 2026-07-30 — [proposal 0017](../.portulan/proposals/0017-one-repository-one-governing-workspace.md); one repository, one governing workspace |
 | `products[]` | structured | no | criterion — *product-layer slot … portfolio-aware*; content — [`identity.md`](../.portulan/identity.md) |
@@ -731,6 +732,60 @@ is why no workspace here declared the key before something checked it.)_ No work
 declares it now either: Portulan's own contribution is railed by this repository's recipes, not by a
 budget in its manifest. And, as with memory, no checker establishes that a budget was not raised in the
 change that breached it.
+
+## `slots.context` — the guidance a host loads, each unit in its tier
+
+Added at **2.10**, with proposal `0036`'s compile targets. [`context.md`](../core/operating/context.md)
+defines the four tiers. This slot's pair is `context` above: the slot holds the guidance and the key its
+budget, as `slots.memory` holds the records and `memory` their configuration.
+
+A directory of Markdown files, one unit of guidance each; only the `.md` files at its top level are units,
+and anything else in it is left alone. The file's name, less `.md`, is the unit's name and must be a slug,
+because a host names a skill by it. Each file opens with frontmatter naming its tier:
+
+```markdown
+---
+tier: on-path
+paths: ["api/**", "migrations/*.sql"]
+description: How this team writes an API handler and a migration.
+---
+
+The guidance itself, which is what the host loads.
+```
+
+| Key | What it is |
+|---|---|
+| `tier` | `always`, `on-path`, `on-invoke` or `on-read`: `0036`'s four tiers, spelled as that proposal spells them. |
+| `paths` | On-path only, and required there: globs, relative to the repository the workspace governs, that load the unit when the agent first touches a match. A list, in flow form as above or as a block list of `- ` items. |
+| `description` | Every tier but `always`, and one line: what an agent reads to decide whether to open the unit. It is a skill's description on a host that lists skills, and the pointer line wherever the unit degrades to one. |
+
+**The tier is declared, never inferred**, and a unit sits in one tier, so what a unit costs is what its
+tier costs and nothing has to read the file to find out where it belongs.
+
+**`compile` emits it, per host.** For Claude Code, an `always` unit is an unscoped rule, loaded into every
+context; an `on-path` unit is a rule scoped by `paths:`; an `on-invoke` unit is a project skill, whose
+description is always loaded and whose body loads when it is invoked; and an `on-read` unit is one line in
+an unscoped index of pointers, while its file stays where it is for the agent to open. **A tier a host
+cannot express degrades to an on-read pointer, never to nothing**: the vendored `AGENTS.md` carries the
+`always` units inline and every other unit as a pointer, one level deep. The compiled files are committed
+and byte-compared against this slot, as the compiled settings are against `gates`, so a desktop session's
+fresh worktree has them. `compile` shows which rules in `.claude/rules/portulan/` are its own with a marker
+there, `.compiled`, a file no host loads that lists each rule it wrote: it rewrites or removes only a rule the
+marker lists, stops with exit 2 rather than replace one it does not list, and stops too where the directory
+holds Markdown files and no marker in its form. It writes and removes nothing through a link.
+
+**Checked by `compile`, not by the schema or `doctor`.** The subset cannot see inside a file, so the
+frontmatter is its consumer's to refuse: an unknown key, a tier outside the four, `paths` on a unit that is
+not on-path or reaching outside the repository, a missing `description` or one on an `always` unit, a unit
+with no guidance under its frontmatter, a link out of the workspace or into a directory `compile` writes into,
+a slot in one of those (`.claude/`, or the workspace's `compile/`, neither of which `vendor` carries), a name
+that is not a slug or is `on-read`, which the index takes, or a unit that would replace a skill written by
+hand or compiled from another unit stops `compile` with exit 2, *could not compile*. `doctor` checks what it
+checks of every directory slot, that the path resolves, and refuses the slot in a manifest declaring a version
+before 2.10, gated from birth as `context` was.
+
+**Nothing is defaulted.** A workspace that declares no slot compiles no guidance, and no directory in an
+adopter's workspace is chosen by a key nobody typed.
 
 ## `provenance` — a record field, not a manifest key
 

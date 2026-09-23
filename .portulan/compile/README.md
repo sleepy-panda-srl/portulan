@@ -414,6 +414,50 @@ are real is how a report gets skimmed. And it is **derived from the backends rat
 beside them** — a matrix written by hand is a claim about compilers, and a coverage claim that drifts
 does not look wrong, it looks like enforcement that quietly stopped covering something.
 
+## Guidance — the other thing `compile` emits, and the one that is not enforcement
+
+Since Workspace Definition 2.10 a workspace may keep its guidance in `slots.context`: one unit per
+Markdown file, each declaring in its frontmatter the load tier it belongs in
+([`../../core/operating/context.md`](../../core/operating/context.md) defines the four, and
+[`../../spec/slots.md`](../../spec/slots.md) the unit). `compile` emits each unit in the Claude Code form of
+its tier, proposal [`0036`](../proposals/0036-what-a-host-loads-into-every-context-is-budgeted.md)'s compile
+targets:
+
+| Tier | Claude Code form | Loaded |
+|---|---|---|
+| `always` | an unscoped rule, `.claude/rules/portulan/<unit>.md` | at launch, into every context |
+| `on-path` | a rule with `paths:`, `.claude/rules/portulan/<unit>.md` | when a matching file is first read |
+| `on-invoke` | a project skill, `.claude/skills/<unit>/SKILL.md` | its description at launch, its body when it runs |
+| `on-read` | one line in `.claude/rules/portulan/on-read.md` naming the unit's file | the line at launch, the file when opened |
+
+**`compile` shows which rules are its own with a marker**, `.claude/rules/portulan/.compiled`, listing each
+rule it wrote, written after them and cut before any is removed, so it never lists a file `compile` has not
+written, even when a run stops part-way: a file no host loads, because Claude Code loads only
+`.md` files as rules, so the rules themselves carry no mark, which matters most in the always tier, whose
+every byte every context pays. A listed rule no unit compiles to any more is red under `--check` and removed
+by the next compile, as a gate artifact the policy no longer produces is. A rule the marker does not list is
+the team's: red under `--check`, left by a write, and never replaced, so a unit that would compile onto it
+stops the run, exit 2. So does a marker not in the form this compiler writes, and Markdown in the directory
+with no marker at all. Skills share `.claude/skills/` with skills a team writes by hand, so a compiled skill
+carries a one-line mark naming its unit, as the line after its frontmatter, and `compile` refuses, exit 2, to
+replace a skill whose mark does not read there exactly so, or names another unit; text quoting the mark
+elsewhere grants nothing. Nothing is written or removed through a link, even one that stays inside the
+repository, and a directory reached through one is neither listed nor tidied. The slot itself may not lie
+where `compile` writes, in `.claude/` or the workspace's `compile/`, and no unit may be a link into either:
+a unit there would be overwritten by what it compiles to.
+
+**The vendored `AGENTS.md` inherits the tiers.** It is the one file its hosts are sure to load, so
+`vendor --host` carries the always units whole and every other unit as a one-line pointer to its file.
+`compile --matrix` prints that degradation per unit: a tier a host cannot express makes a unit late, never
+lost. `GUIDANCE_HOSTS` in [`../../cli/compile.mjs`](../../cli/compile.mjs) is the one table of which host
+expresses which tier, for any report to read.
+
+**This workspace declares no guidance.** Moving this repository's own guidance between tiers is a change
+to its curated layer, which is the maintainer's. [`../../cli/fixtures/guidance/`](../../cli/fixtures/guidance/)
+declares one unit in each tier, and it is what milestone 12's second demonstration compiles and opens in a
+running host, because what this file cannot tell you holds here too: that the host loads a rule when its
+path is first touched, and not before, is a fact about a running host.
+
 ## The pressure valve, named so it does not get opened quietly
 
 The compiler emits **restriction only** — `ask` and `deny`, never `allow`. That is a maintainer's

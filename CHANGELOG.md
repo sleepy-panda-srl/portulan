@@ -127,6 +127,21 @@ records how things were found. This is per *release* and records what a reader g
   item 4 of proposal [`0036`](.portulan/proposals/0036-what-a-host-loads-into-every-context-is-budgeted.md)'s
   order of work, and it arrives with the upgrade.
 
+- **A workspace's guidance compiles into the load tier it declares, so a long instruction file can be split
+  without losing a line.** Workspace Definition 2.10 adds one optional slot, `slots.context`: a directory of
+  Markdown units, each naming in its frontmatter one of proposal
+  [`0036`](.portulan/proposals/0036-what-a-host-loads-into-every-context-is-budgeted.md)'s four load tiers
+  (`always`, `on-path` with its `paths`, `on-invoke` or `on-read`) and, for every tier but `always`, the
+  one-line description an agent decides by. [`compile`](cli/compile.mjs) emits each in Claude Code's own
+  form: an unscoped rule in `.claude/rules/portulan/`, a rule scoped by `paths:`, a project skill, or one
+  line in an index of pointers, and `compile --check` byte-compares every one against its unit, so the
+  existing compile recipe reds a stale file. A tier a host cannot express degrades to a pointer, never to
+  nothing: the `AGENTS.md` that `vendor --host` writes carries the `always` units inline and the rest as
+  one line each. `compile` never writes `CLAUDE.md`, never writes or removes through a link, and never
+  replaces or removes a rule or a skill it cannot show it wrote. An adopter moves a section of an
+  always-loaded file into a unit and runs `npx @sleepy_panda_srl/portulan compile`. This repository declares
+  no guidance, so its boot read-set is unchanged.
+
 ## 0.1.3 — 2026-09-16
 
 **The first release that carries its own eval result — and one refusal that can break an upgrade.** If

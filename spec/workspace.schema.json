@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://portulan.dev/spec/2.9/workspace.schema.json",
-  "title": "Portulan Workspace Definition v2.9",
+  "$id": "https://portulan.dev/spec/2.10/workspace.schema.json",
+  "title": "Portulan Workspace Definition v2.10",
   "description": "The manifest at the root of a workspace. It is an index, not a container: it names the slots the engine resolves against and points at the Markdown that holds each slot's content and rationale. Written in a deliberately small subset of JSON Schema 2020-12 — see spec/README.md for the subset and for what validates it.",
   "type": "object",
   "additionalProperties": false,
@@ -126,6 +126,10 @@
         },
         "personas": {
           "description": "Optional, added in 2.6. The workspace's own per-persona layer: one directory per persona whose memory scope a composed pack declares. It is NOT where personas are defined — those live in `core/personas/` and in the packs — it is where the memory each of them scopes lands, in the layer its owner controls (docs/vision.md thesis 6: storage follows ownership). Declared rather than derived from `slots.memory`, and both halves of that are deliberate. Not derived, because a path this specification computed would be Portulan choosing a location inside every adopter's workspace in a key nobody typed — the same reasoning that leaves every memory budget undefaulted. And not a subdirectory of the store, because `core/operating/memory.md` holds per-agent memory apart precisely so a reviewer's recall does not spend the implementer's budget, and a nested store would be counted by the store's own KB rail and invisible to the walk that counts it (issue #76). Each directory is **empty until earned**: the pack declares the scope and carries none of its contents.",
+          "$ref": "#/$defs/dirPath"
+        },
+        "context": {
+          "description": "Optional, added in 2.10. The guidance a host loads, one unit per Markdown file, each declaring in its own frontmatter the load tier it belongs in: `always`, `on-path` (with the `paths` it is scoped to), `on-invoke` or `on-read`, the four tiers of core/operating/context.md. Its pair is the top-level `context`: this slot holds the guidance and that key its budget, as `slots.memory` holds the records and `memory` their configuration. `compile` reads it and emits each host's own form of each tier, and a tier a host cannot express degrades to an on-read pointer, never to nothing. The frontmatter is `compile`'s to check, since this subset cannot see inside a file, and so is that the slot lies outside `.claude/` and the workspace's `compile/`, where `compile` writes; spec/slots.md carries the contract.",
           "$ref": "#/$defs/dirPath"
         }
       }

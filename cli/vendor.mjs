@@ -71,6 +71,9 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
+// The guidance reader and its `AGENTS.md` form, from the compiler that owns them, so a unit is read by one
+// parser whichever of the two tools meets it first.
+import { agentsMdGuidance, CompileError, GENERATED_DIRS, guidanceUnits } from "./compile.mjs";
 import { inspect } from "./doctor.mjs";
 // The discovery keyword, imported so no parse site can spell it differently (#123). _(This said
 // "the five parse sites"; there are seven, and `discover.mjs`'s `NAMED_WITH_AUTO` had already been
@@ -124,7 +127,7 @@ const GOVERNING_KINDS = ["repository", "demo", "portfolio"];
  * Excluded and **named**, never dropped quietly, and `compile` is the one tool that may delete them
  * because it says so itself: a generated file is reproducible by definition.
  */
-const GENERATED = new Set(["compile", ".claude"]);
+const GENERATED = new Set(GENERATED_DIRS);
 
 const isGenerated = (rel) => GENERATED.has(rel.split("/")[0]);
 
@@ -660,7 +663,7 @@ workspace's gate policy, and no copy of files produces them. Run \`portulan comp
  * at a pinned version — which vendoring does not do. That third is named in the artifact rather than
  * quietly implied by the word "self-contained".
  */
-export function agentsMd(manifest, host, kernel = null) {
+export function agentsMd(manifest, host, kernel = null, guidance = null) {
     const lines = [
         `# AGENTS.md — ${manifest.name}`,
         "",
@@ -679,6 +682,7 @@ export function agentsMd(manifest, host, kernel = null) {
         gates: "which concrete actions are Auto, Propose, Gated or Prohibited",
         dod: "what *done* means here, beyond a green verify",
         constitution: "the team's ground truth, which outranks everything else here",
+        context: "this team's guidance, one unit per file in its load tier; *Guidance* below carries the always tier and names the rest",
     };
     const slots = Object.entries(manifest.slots ?? {});
     if (slots.length === 0) {
@@ -688,6 +692,16 @@ export function agentsMd(manifest, host, kernel = null) {
             lines.push(`- **\`.portulan/${value}\`** — ${GLOSS[slot] ?? `the \`${slot}\` slot`}.`);
         }
         lines.push("");
+    }
+
+    // **The vendored file inherits the tiers** (proposal `0036`). It is the one tier its hosts are sure to load,
+    // so the always units are carried whole and every other unit as a one-line pointer to its file, one
+    // level deep: a tier this host cannot express makes a unit late, never lost.
+    if (guidance && guidance.units.length) {
+        const { inline, pointers } = agentsMdGuidance(guidance, `.portulan/${manifest.slots.context}`);
+        lines.push("## Guidance", "");
+        for (const body of inline) lines.push(body.trimEnd(), "");
+        if (pointers.length) lines.push("Open each of these when it applies; each is one file:", "", ...pointers, "");
     }
 
     lines.push("## Verify — what *done* is checked against", "");
@@ -987,6 +1001,18 @@ export async function run(argv, options = {}) {
             );
         }
 
+        // The guidance the vendored `AGENTS.md` inherits, read before anything is written: a unit `compile`
+        // refuses is one that file would carry wrongly, so it is refused here too, in the same sentence.
+        let guidance = null;
+        if (parsed.host !== null) {
+            try {
+                guidance = guidanceUnits(source, ".");
+            } catch (error) {
+                if (error instanceof CompileError) throw new VendorError(error.message);
+                throw error;
+            }
+        }
+
         // ---- the scope bound, refused in both its shapes
 
         const cards = [];
@@ -1181,7 +1207,7 @@ export async function run(argv, options = {}) {
             } catch {
                 kernel = null;
             }
-            fs.writeFileSync(path.join(staging, "..AGENTS.md.vendoring"), agentsMd(retargeted, parsed.host, kernel));
+            fs.writeFileSync(path.join(staging, "..AGENTS.md.vendoring"), agentsMd(retargeted, parsed.host, kernel, guidance));
         }
         fault("materialise:files");
 
