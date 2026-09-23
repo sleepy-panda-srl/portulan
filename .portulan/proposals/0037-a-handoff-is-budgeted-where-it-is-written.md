@@ -80,12 +80,19 @@ and one sentence of `loop.md` narrowed (rule 4). No kernel line: 0036 already pu
    and counted at the manifest's declared ratio. It binds only handoffs dated after a declared **cutoff**, a date and
    not a list, as the Session log's entry budget binds, because a merged handoff is corrected by a dated note and
    never rewritten: a cap that reached back would be red with no legal repair. So a breach is local to the session
-   writing the handoff, in the change that can still edit it. The cutoff is set by the change that declares the cap
-   and moves only in one that tightens the cap or lowers the ratio, each time to that change's date or the newest
-   handoff's date, whichever is later: a merged handoff cannot be compressed to meet a bound that tightened after it
-   merged, and a filename date is not a merge date, so the later date exempts every handoff already in the tree, even
-   one dated ahead. A merged handoff keeps its name as it keeps its text; a rename that dates one past the cutoff is
-   bound in the change that makes it, whose repair is to undo the rename.
+   writing the handoff, in the change that can still edit it.
+
+   The cutoff is set by the change that declares the cap and moves only in one that tightens the cap or lowers the
+   ratio, each time to that change's date or the newest handoff's date, whichever is later: a merged handoff cannot be
+   compressed to meet a bound that tightened after it merged, and a filename date is not a merge date, so the later
+   date exempts every handoff already in the tree. Where a cap is declared, a handoff dated more than a day after the
+   UTC date a recipe checks it on is red, that day being what time zones need, so no filename carries the cutoff
+   further ahead. A date cannot tell a handoff merged in the morning from one written that evening, so the rule has one
+   known gap, which the Session log's entry budget has too: a handoff written after the setting change but dated no
+   later than the cutoff stays unbound, the setting change's own among them, because binding that day would turn a
+   merged one red with no legal repair. The gap closes when the cutoff's day ends. A merged handoff keeps its name as
+   it keeps its text; a rename that dates one past the cutoff is bound in the change that makes it, whose repair is to
+   undo the rename.
 3. **A breach is repaired by compression, or by moving a fact to the record that owns it**, never by splitting (two
    dated handoffs against one session red the correspondence), never by retiring, never by cutting a decision's why,
    and never by a raise or a later cutoff in the change that breached it. What a handoff carries is the template's:
@@ -114,9 +121,10 @@ and one sentence of `loop.md` narrowed (rule 4). No kernel line: 0036 already pu
 - **The cap (a rail).** The `index` recipe checks it in `cli/index.mjs`, beside memory's per-record cap: a bound
   handoff over its cap is red, and the finding names the handoff, its tokens at the declared ratio, the cap, the
   overage and the repair menu, for every handoff over and not only the first. It fires in the change that writes the
-  handoff, before merge, while compression is still a legal repair, or in the one that renames it past the cutoff.
-  The schema requires the cutoff with the cap; `doctor` refuses either budget with no declared ratio to count it by,
-  which the schema's subset cannot state across two objects, and any figure that is not a positive integer.
+  handoff, before merge, while compression is still a legal repair, or in the one that renames it past the cutoff,
+  and a handoff dated more than a day ahead of the check is red there too. The schema requires the cutoff with the
+  cap; `doctor` refuses either budget with no declared ratio to count it by, which the schema's subset cannot state
+  across two objects, and any figure that is not a positive integer.
 - **The window (generated).** `cli/index.mjs` writes it and the `index` recipe byte-compares it, as it does today. Its
   header states the declared budget in place of *"No budget"*, and its closing line the count left out. The generator
   refuses a budget too small for those two lines and names the least one that holds them; nothing else turns it red
