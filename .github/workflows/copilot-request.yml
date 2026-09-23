@@ -196,15 +196,14 @@ jobs:
           owner=${GITHUB_REPOSITORY%%/*}
           repo=${GITHUB_REPOSITORY#*/}
 
-          # One read per look, printed as three lines: the pull request's node id, head, state and
-          # draft flag; the logins holding a review request; and the logins that reviewed the head.
-          # A missing pull request prints an empty id and head, which the loop reads as unreadable.
+          # One read per look, printed as two lines: the pull request's node id, head, state and draft
+          # flag; and the logins holding a review request. A missing pull request prints an empty id
+          # and head, which the loop reads as unreadable. Who reviewed the head is a second read, below.
           STATE_QUERY='query($owner: String!, $repo: String!, $number: Int!) {
             repository(owner: $owner, name: $repo) {
               pullRequest(number: $number) {
                 id headRefOid state isDraft
                 reviewRequests(first: 100) { nodes { requestedReviewer { ... on Bot { login } ... on User { login } } } }
-                reviews(last: 100) { nodes { author { login } commit { oid } } }
               }
             }
           }'
@@ -228,15 +227,34 @@ jobs:
             pending=''
             reviewed=''
             if state=$(gh api graphql -f query="$STATE_QUERY" -f owner="$owner" -f repo="$repo" -F number="$PR_NUMBER" \
-                  --jq '.data.repository.pullRequest | ([.id, .headRefOid, .state, (.isDraft | tostring)] | join("|")), ([.reviewRequests.nodes[]?.requestedReviewer.login // empty] | join(" ")), (.headRefOid as $head | [.reviews.nodes[]? | select(.commit.oid == $head) | .author.login // empty] | join(" "))' \
+                  --jq '.data.repository.pullRequest | ([.id, .headRefOid, .state, (.isDraft | tostring)] | join("|")), ([.reviewRequests.nodes[]?.requestedReviewer.login // empty] | join(" "))' \
                   2>"$err_file"); then
               # `$(...)` strips trailing newlines, so an empty last line, or two, never arrives; a
               # `read` that meets the end sets its variable empty and must not end the step.
               {
                 IFS='|' read -r pr_id head pr_state draft || true
                 IFS= read -r pending || true
-                IFS= read -r reviewed || true
               } <<<"$state"
+              # WHO REVIEWED THE HEAD, over REST with `--paginate`, and not as the last hundred reviews
+              # of the GraphQL connection: replies to review threads are reviews too, so a long history
+              # after a round could push the round out of a fixed window and draw a second request for
+              # it. Raised by Copilot on this change; `copilot-review.yml` paginates the same read for
+              # the same reason. A look that could not read the reviews has not established that no
+              # round is on the head, so it counts as unread and looks again.
+              if [ -n "$pr_id" ] && [ -n "$head" ]; then
+                if reviews=$(gh api --paginate "repos/${GITHUB_REPOSITORY}/pulls/${PR_NUMBER}/reviews" \
+                      --jq '.[] | [.user.login, .commit_id] | join("|")' 2>"$err_file"); then
+                  while IFS='|' read -r login commit; do
+                    if [ -n "$login" ] && [ "$commit" = "$head" ]; then
+                      reviewed="${reviewed:+$reviewed }$login"
+                    fi
+                  done <<<"$reviews"
+                else
+                  last_error=$(cat "$err_file")
+                  pr_id=''
+                  head=''
+                fi
+              fi
             else
               last_error=$(cat "$err_file")
               # A token GitHub rejects is not a slow API, and waiting fifteen minutes on it would only

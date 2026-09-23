@@ -228,7 +228,7 @@ const CASES = [
     // ---- copilot-review.yml: the reviews read -------------------------------------------------
     {
         id: "reviews-normal",
-        anchor: ".commit_id",
+        anchor: ".commit_id, .state",
         why: "one line per review, in the order the API returns them — the loop's `last match wins` "
             + "rule for a re-reviewed SHA depends on that order",
         input: '[{"user":{"login":"copilot-pull-request-reviewer[bot]"},"commit_id":"6a05f59",'
@@ -241,7 +241,7 @@ const CASES = [
     },
     {
         id: "reviews-null-commit",
-        anchor: ".commit_id",
+        anchor: ".commit_id, .state",
         why: "the exact string the stubbed harness asserts: a null `commit_id` collapses to an empty "
             + "field, so the review can never match a head SHA and the await keeps waiting",
         input: '[{"user":{"login":"Copilot"},"commit_id":null,"state":"PENDING","id":7}]',
@@ -250,7 +250,7 @@ const CASES = [
     },
     {
         id: "reviews-ghost-user",
-        anchor: ".commit_id",
+        anchor: ".commit_id, .state",
         why: "GitHub returns `user: null` for a deleted account. The login field goes empty and the "
             + "loop's `[ -n \"${login:-}\" ] || continue` skips the line — it does not error",
         input: '[{"user":null,"commit_id":"6a05f59","state":"COMMENTED","id":9}]',
@@ -259,7 +259,7 @@ const CASES = [
     },
     {
         id: "reviews-empty",
-        anchor: ".commit_id",
+        anchor: ".commit_id, .state",
         why: "no reviews yet is the state every pull request starts in: no output at all, exit 0. "
             + "An empty read here must not look like a failed read",
         input: "[]",
@@ -462,46 +462,61 @@ const CASES = [
     // GraphQL's `Bot.login` carries no `[bot]` suffix, which is why the shell's login set has both.
     {
         id: "request-state-pending",
-        anchor: ".headRefOid as $head",
+        anchor: "(.isDraft | tostring)",
         why: "Copilot holding a request, next to a Team reviewer that matches neither inline fragment "
-            + "and arrives as `{}`: its null login is dropped rather than printed, and a review on an "
-            + "older commit is not on the head. The shell waits on the second line",
+            + "and arrives as `{}`: its null login is dropped rather than printed. The shell waits on "
+            + "the second line",
         input: '{"data":{"repository":{"pullRequest":{"id":"PR_1","headRefOid":"h2","state":"OPEN",'
             + '"isDraft":false,"reviewRequests":{"nodes":[{"requestedReviewer":{"login":'
-            + '"copilot-pull-request-reviewer"}},{"requestedReviewer":{}}]},"reviews":{"nodes":'
-            + '[{"author":{"login":"copilot-pull-request-reviewer"},"commit":{"oid":"h1"}}]}}}}}',
-        stdout: "PR_1|h2|OPEN|false\ncopilot-pull-request-reviewer\n\n",
-        status: 0,
-    },
-    {
-        id: "request-state-round-on-head",
-        anchor: ".headRefOid as $head",
-        why: "a round already on the head prints its author on the third line, and a review whose "
-            + "author was deleted (null) or whose commit is null is skipped rather than printed as "
-            + "`null` or erroring. The shell stops without asking",
-        input: '{"data":{"repository":{"pullRequest":{"id":"PR_1","headRefOid":"h2","state":"OPEN",'
-            + '"isDraft":false,"reviewRequests":{"nodes":[]},"reviews":{"nodes":[{"author":null,'
-            + '"commit":{"oid":"h2"}},{"author":{"login":"a-person"},"commit":null},{"author":'
-            + '{"login":"copilot-pull-request-reviewer"},"commit":{"oid":"h2"}}]}}}}}',
-        stdout: "PR_1|h2|OPEN|false\n\ncopilot-pull-request-reviewer\n",
+            + '"copilot-pull-request-reviewer"}},{"requestedReviewer":{}}]}}}}}',
+        stdout: "PR_1|h2|OPEN|false\ncopilot-pull-request-reviewer\n",
         status: 0,
     },
     {
         id: "request-state-no-pull-request",
-        anchor: ".headRefOid as $head",
+        anchor: "(.isDraft | tostring)",
         why: "a null pull request prints an empty id and head, because `join` renders null as the "
-            + "empty string, and two empty lines. The shell reads the empty head as unreadable and "
+            + "empty string, and an empty line. The shell reads the empty head as unreadable and "
             + "looks again, which is the answer it gives a failed read",
         input: '{"data":{"repository":{"pullRequest":null}}}',
-        stdout: "|||null\n\n\n",
+        stdout: "|||null\n\n",
         status: 0,
     },
     {
         id: "request-state-not-an-object",
-        anchor: ".headRefOid as $head",
+        anchor: "(.isDraft | tostring)",
         why: "an answer that is JSON but not an object is an error, exit 5, which `gh` passes on as "
             + "a failed read: the same unreadable branch",
         input: '"a string"',
+        stdout: "",
+        status: 5,
+    },
+    // ---- copilot-request.yml: who reviewed the head --------------------------------------------
+    {
+        id: "request-reviews-on-and-off-the-head",
+        anchor: "[.user.login, .commit_id] | join",
+        why: "one line per review, login and commit, for the shell to keep the head's. A review "
+            + "whose author was deleted prints an empty login, which the shell skips, rather than "
+            + "the word `null`",
+        input: '[{"user":{"login":"copilot-pull-request-reviewer[bot]"},"commit_id":"h2"},'
+            + '{"user":{"login":"a-person"},"commit_id":"h1"},{"user":null,"commit_id":"h2"}]',
+        stdout: "copilot-pull-request-reviewer[bot]|h2\na-person|h1\n|h2\n",
+        status: 0,
+    },
+    {
+        id: "request-reviews-none",
+        anchor: "[.user.login, .commit_id] | join",
+        why: "no reviews at all is the ordinary answer on a new pull request, and prints nothing",
+        input: "[]",
+        stdout: "",
+        status: 0,
+    },
+    {
+        id: "request-reviews-not-a-list",
+        anchor: "[.user.login, .commit_id] | join",
+        why: "an error object in place of the list fails the read, exit 5, so the look counts as "
+            + "unread instead of as a head nobody reviewed",
+        input: '{"message":"Not Found"}',
         stdout: "",
         status: 5,
     },
