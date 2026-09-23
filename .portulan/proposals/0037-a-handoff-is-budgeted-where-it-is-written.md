@@ -1,12 +1,12 @@
 # Proposal 0037 — a handoff is budgeted where it is written, and its index carries a window
 
-**Status. PROPOSED — drafted 2026-09-23.** Drafted on the maintainer's fourth ruling on
-[`0036`](0036-what-a-host-loads-into-every-context-is-budgeted.md), which gave the handoff size budget a proposal of
-its own (*"It's own proposal."*), as the ninth change in the order of work 0036's acceptance set. It proposes a rule
-and an order of work and builds nothing. It adds no milestone row, because 0036 already places this work in row 12 of
-[`../../docs/plan.md`](../../docs/plan.md); whether row 12's text should name it is the third question below. The
-three questions are his; the defaults taken elsewhere are listed as defaults. The rule itself is his to accept on this
-pull request.
+**Status. ACCEPTED — drafted and accepted 2026-09-23; its three questions answered by the maintainer the same
+day.** Drafted on his fourth ruling on [`0036`](0036-what-a-host-loads-into-every-context-is-budgeted.md), which gave
+the handoff size budget a proposal of its own (*"It's own proposal."*), as the ninth change in the order of work
+0036's acceptance set. It proposes a rule and an order of work and builds nothing. It adds no milestone row, because
+0036 already places this work in row 12 of [`../../docs/plan.md`](../../docs/plan.md); by his answer to the third
+question below, row 12 gained this proposal's demonstration in the change that recorded the acceptance. The defaults
+taken elsewhere are listed as defaults. The acceptance is recorded under *Decision*.
 
 **Pull request:** https://github.com/sleepy-panda-srl/portulan/pull/445
 
@@ -84,15 +84,15 @@ and one sentence of `loop.md` narrowed (rule 4). No kernel line: 0036 already pu
 
    The cutoff is set by the change that declares the cap and moves only in one that tightens the cap or lowers the
    ratio, each time to that change's date or the newest handoff's date, whichever is later: a merged handoff cannot be
-   compressed to meet a bound that tightened after it merged, and a filename date is not a merge date, so the later
-   date exempts every handoff already in the tree. No handoff may be dated more than a day after the UTC date it is
-   checked on, that day being what time zones need, and the `index` recipe will refuse one that is, so the newest
-   handoff's date never runs ahead of the tree. A date cannot tell a handoff merged in the morning from one written
-   that evening, so the cap binds from the day after the cutoff and the cutoff day's own handoffs stay unbound, the
-   setting change's among them: that one day is the rule's known gap, which `docs.sh`'s check 4c, the Session log's
-   entry budget, has too, because binding it would turn a merged one red with no legal repair. A merged handoff keeps
-   its name as it keeps its text, save where the index refuses its date; a rename that dates one past the cutoff is
-   bound in the change that makes it, whose repair is to undo the rename.
+   compressed to meet a bound that tightened after it merged, and a filename date is not a merge date, so the later date
+   exempts every handoff already merged (rule 3 says what an open change may carry). No handoff may be dated more than a
+   day after the UTC date it is checked on, that day being what time zones need, and the `index` recipe will refuse one
+   that is, so the newest handoff's date never runs ahead of the tree. A date cannot tell a handoff merged in the
+   morning from one written that evening, so the cap binds from the day after the cutoff and the cutoff day's own
+   handoffs stay unbound, the setting change's among them: that one day is the rule's known gap, which `docs.sh`'s check
+   4c, the Session log's entry budget, has too, because binding it would turn a merged one red with no legal repair. A
+   merged handoff keeps its name as it keeps its text, save where the index refuses its date; a rename that dates one
+   past the cutoff is bound in the change that makes it, whose repair is to undo the rename.
 3. **A breach is repaired by compression, or by moving a fact to the record that owns it**, never by splitting (two
    dated handoffs against one session red the correspondence), never by retiring, never by cutting a decision's why,
    and never by a raise or a later cutoff in the change that breached it. Nor does the cutoff ever move earlier, nor a
@@ -177,8 +177,9 @@ the maintainer's criterion of better performance:
 1. **The keys**: `handoffs.series.budget.record_tokens`, with `handoffs.series.budget.cutoff` required beside it, and
    `handoffs.index.budget.tokens`. That is memory's shape (`memory.store.budget.record_kilobytes`,
    `memory.index.budget.lines`) in `context`'s unit (`context.always.budget.tokens`), in the object the specification's
-   deferred question names. A cap needs no index, as memory's store budget needs none, though the specification still
-   requires one beside the series. The cutoff is a date in the manifest although
+   deferred question names. The cap is judged on the series itself, so the judge reads the series whenever a handoffs
+   slot is named, index or none; the specification keeps the index required beside a cap, and that read order is a
+   robustness fix, not a new shape. The cutoff is a date in the manifest although
    [`../../spec/slots.md`](../../spec/slots.md) declines one for the ratio, *"because the commit that changes the ratio
    dates it"*: the ratio's date is provenance, while the cutoff draws the rule's binding boundary, so it must read the
    same on every machine and cannot depend on git history, which a shallow checkout lacks. Judging only the handoffs a
@@ -189,9 +190,9 @@ the maintainer's criterion of better performance:
 3. **This repository's figures: 3,000 tokens a handoff, and 3,000 for the index**, declared once its ratio is, with the
    cutoff at that change's date or the newest handoff's, whichever is later. At 0036's estimate 3,000 tokens is about
    8,970 bytes: near memory's 8 KB record cap, about twice the mean of the handoffs dated 2026-09-23, and above every
-   one of them. 76 of the 187 handoffs (41%) are over it, holding 466,687 bytes above it. Counting today's 342-byte
-   header and a closing line of about 100 bytes, the window lists the newest 52 handoffs here, back to 2026-08-25, and
-   the index is 8,879 bytes against today's 29,108; it stays near that as the series grows. The window saves on-demand
+   one of them. At `457b0b6`, 76 of the 187 handoffs (41%) were over it, holding 466,687 bytes above it; counting the
+   342-byte header and a closing line of about 100 bytes, the window listed the newest 52 handoffs, back to 2026-08-25,
+   and the index was 8,879 bytes against 29,108; it stays near that as the series grows. The window saves on-demand
    reads of the index, not the boot, which reads nothing of the series. One figure for both on purpose: opening the
    index to find a handoff costs about what reading one does.
 4. **Where each piece lives**: the cap and the window in `cli/index.mjs`, which already reads the series and rails
@@ -208,9 +209,17 @@ the maintainer's criterion of better performance:
    half already leaves to a stated rule. The rule costs nothing at read time, and its repair is undoing the edit, as
    the raise's is.
 
-## Questions for the maintainer
+## What the maintainer ruled — three questions, 2026-09-23
 
-Each carries a recommendation. His answers will be quoted here as he gives them, as 0036's five were.
+Each question went to him with a recommendation, and he answered after
+[#445](https://github.com/sleepy-panda-srl/portulan/pull/445) merged this proposal, in two messages quoted as he gave
+them. The first (21:34 UTC) answered a summary that had put the second and third questions in other words:
+
+> Q1: enforced. Q2: window. Q3: no row.
+
+The second (21:39 UTC) came once those two were put to him as written here:
+
+> For Q2 and Q3, I go with you recommandation.
 
 **Q1 — Is a per-handoff cap the axis the specification left to you, with the series unbudgeted?** (a) Yes: railed
 where a workspace declares it, reported everywhere, and `loop.md`'s *"never its structure or its length"* narrowed to
@@ -218,17 +227,28 @@ the session-end gate. (b) A report only: no cap, and `loop.md` as it reads. **Re
 handoffs their authors can still edit, which is the live remedy 0036's ruling named, and a report alone leaves the
 restart 0038 asks for with no bound on what it reads.
 
+**Answered: (a)**, *"enforced"* (21:34 UTC). The cap is railed where a workspace declares it, so a handoff dated after
+the cutoff and over it is red; it is reported everywhere, and `loop.md`'s sentence narrows to the session-end gate.
+
 **Q2 — Does a windowed index still meet milestone 5's *"generated index over"* the series?** (a) Yes, where a
 workspace declares the window; without one the index stays whole. (b) No: the index always lists the whole series.
 **Recommended: (a).** Milestone 5's generation terms all hold (every field derived, the file byte-compared), every
 line the window leaves out stays derivable from the series, and a read of the index stops growing with it. It is his
 because it narrows what a done row's index carries.
 
+**Answered: (a)**, *"window"* (21:34 UTC), confirmed when he took the recommendation on the question as written
+(21:39 UTC). The window stands as milestone 5's generated index where a workspace declares it; without one the index
+stays whole.
+
 **Q3 — Where does the milestone map carry it?** 0036's order of work makes it row 12's ninth change, and row 12's text
 does not name it. (a) Row 12 gains one demonstration, in the change that records the acceptance: a bound handoff
 forced over its cap is red and compression returns it green, and the window holds its budget while the series grows.
 (b) Row 12 as it reads. (c) A new row. **Recommended: (a)**, because row 12 states its other changes as
 demonstrations, and a new row would split one economy across two.
+
+**Answered: (a)**, by the recommendation he took at 21:39 UTC. His *"no row"* (21:34 UTC) answered the summary's
+wording, whether this proposal takes a row of its own, and so set aside only (c). Row 12 gained the demonstration in
+the change that recorded the acceptance.
 
 ## Order of work after acceptance — one change per pull request
 
@@ -237,8 +257,10 @@ After 0036's measurement module, which this reuses:
 1. `context.md`'s part, `loop.md`'s narrowed sentence, and the template.
 2. The keys and the MINOR, with `doctor`'s refusals.
 3. The cap, the date refusal and the window in `cli/index.mjs`, each shown red and then green on a fixture series, the
-   cap and the date refusal on one that declares no index. The `index` recipe will refuse a handoff dated more than one
-   day after the UTC date it runs on, with the same finding class and repair as the invalid-date refusal beside it.
+   cap on one that declares its index, which the schema requires beside a cap, and the date refusal on one that names
+   the slot with no `handoffs` object; a unit test calls the judge directly to show the read ahead of its return. The
+   `index` recipe will refuse a handoff dated more than one day after the UTC date it runs on, with the same finding
+   class and repair as the invalid-date refusal beside it.
 4. The report in `context.mjs`, and in `doctor`'s, which 0036's fourth change built (#446).
 5. `init`'s offer.
 6. This repository's declaration, once its ratio is declared from the exact mode: the cap, the window and the cutoff,
@@ -255,4 +277,10 @@ and the argument for leaving the series unbudgeted is the specification's and
 **Retire when.** A handoff is no longer what a fresh context reads to take up handed-over work, because a host carries
 that reasoning itself and bounds it, so that the cap would bound a record no context loads.
 
-**Decision.** Marius Cetanas — pending. The rule is his to accept on this pull request.
+**Decision.** Marius Cetanas — accepted, on 2026-09-23 — because he answered its three questions after
+[#445](https://github.com/sleepy-panda-srl/portulan/pull/445) merged it with this line still reading pending:
+*"Q1: enforced. Q2: window. Q3: no row."* (21:34 UTC), then, with the second and third put to him as written, *"For Q2
+and Q3, I go with you recommandation."* (21:39 UTC). Accepted with (a) on all three, as recorded under *What the
+maintainer ruled*. Three text corrections from #445's last review landed with the acceptance and changed no ruling:
+rule 2 exempts every handoff already merged, *Defaults* 1 keeps the index required beside a cap, and *Defaults* 3's
+figures are dated at `457b0b6`.
