@@ -27,8 +27,10 @@ The sealed figures are the kickoff's of 2026-09-21 and were not re-measured here
 finding rests on the kickoff's citation of arXiv 2607.17598, which this session could not fetch; the
 proposal says so and asks for it to be read before merge.
 
-**Checkpoints.** No session-open checkpoint ran: the plan came from his kickoff and was drafted before one
-was called, and that is stated here rather than repaired after the fact. The pre-commit ran in a fresh
+**Checkpoints.** No session-open checkpoint ran. Supervision was available, so this was a missed checkpoint,
+not the gate map's *unavailable* case, and it cannot be run after the fact. The gate map's remedy is the
+same either way: the maintainer reviews the diff. He delegated that review on 2026-09-23 to the project's
+coordinator, and it is owed before merge. The pre-commit ran in a fresh
 context on the finished diff: **APPROVE-WITH-ADJUSTMENTS**, one blocking and three optional, all folded,
 and the fold graded on its own delta. The blocking one was mine: `m12.md` said memory's budgets *refuse* a
 raise in the same change, and nothing does; [`../../spec/slots.md`](../../spec/slots.md) says no checker
@@ -38,7 +40,7 @@ also showed the demo read-set reproducing only with the `combcount` repo card, s
 
 **The fidelity note names the supervisor by role, not by model.** Checkpointed entries since 2026-09-04
 name the model, and this one cannot: this session's operating rules keep model identifiers out of anything
-pushed. The Protocol line in `plan.md` stays the one carrier of the tier names.
+pushed. The Protocol line in `plan.md` stays the one carrier of each tier's model name.
 
 **Green in this container needs a non-root run.** As root, `tests` fails its permission cases, because a
 chmod-000 fixture never denies root. Every other recipe ran green as root, and `tests` ran green as a

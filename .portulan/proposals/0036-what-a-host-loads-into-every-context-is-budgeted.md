@@ -50,6 +50,13 @@ layer; the stamp under *Provenance* is its record here.
   [`../../core/operating/loop.md`](../../core/operating/loop.md) already says *"Compact the error, not the
   transcript, back into context"*, and Portulan's own hook does not.
 
+**Public, and measured on this proposal itself.** The project that drafted it, in this repository, which has
+no root instruction file, used **110.3M tokens** for a change of +328/−2 lines: 106.5M cache reads, 3M cache
+writes and 0.7M output, by the host's usage report of 2026-09-23. The drafting thread alone was 93M. Turns
+drove the cost: every turn re-reads the whole conversation, and each fresh-context checkpoint started over.
+An always-tier budget would not have caught it, since this repository's always tier is small; shorter
+sessions that hand off to a fresh context sooner would have.
+
 **Portulan's method multiplies the cost.** Its checkpoints run in fresh contexts by rule
 ([`../gate-map.md`](../gate-map.md), *Supervised-build checkpoints*). Its three agents in
 [`../../agents/`](../../agents/) set no `model` and no `omitClaudeMd`, so every spawn pays the full always
