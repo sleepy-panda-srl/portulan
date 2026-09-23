@@ -2,9 +2,10 @@
 
 > Generated from `handoffs/` by `node cli/index.mjs`. Do not edit by hand: it is regenerated
 > and byte-compared, so a hand-edit survives exactly until the next run.
-> 193 handoff(s), newest first. No budget: the series is append-only, so
+> 194 handoff(s), newest first. No budget: the series is append-only, so
 > the only remedy a budget could ask for is one this project rules out.
 
+- 2026-09-23 · [Handoff — 2026-09-23: 0037 is accepted](handoffs/2026-09-23-w-0037-is-accepted.md)
 - 2026-09-23 · [Handoff — a handoff is proposed for a budget where it is written, and its index for a window](handoffs/2026-09-23-u-a-handoff-is-proposed-for-a-budget-where-it-is-written.md)
 - 2026-09-23 · [Handoff — 2026-09-23: what a host loads into every context is proposed for a budget, and row 12 runs first](handoffs/2026-09-23-the-always-tier-is-proposed-for-a-budget.md)
 - 2026-09-23 · [Handoff — 2026-09-23: what a change spends is read, and a session is told once when to restart](handoffs/2026-09-23-t-what-a-change-spends-is-read-and-a-session-is-told-once.md)
