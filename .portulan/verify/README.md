@@ -503,12 +503,15 @@ Observations of the rebuilt checks, each run on this tree and reverted:
 |---|---|
 | clean tree, HEAD carrying its `Seam-scan:` line | green on all four |
 | a handoff named `2026-02-30-x.md`, a day no calendar has | **red**, naming the file; the index recipe refuses it too, but the Stop gate runs this recipe alone |
+| a handoff named `0099-12-31-x.md` | green, and `index --check` green beside it; until Copilot's round on #451 the index tool read the year as 1999 and refused the file this recipe passed |
 | a `- 2026-09-24 · …` line appended to `docs/plan.md` | **red**, naming the line |
 | a fragment holding two top-level bullets | **red**, naming the file |
 | a fragment named `x.improved.md` | **red**, naming the file and the six sections |
 | a fragment that is a link to a good one, a directory holding one, or a submodule | **red**, naming it; `--changes` refuses each too, exit 1 |
 | a bullet added under `## Unreleased` in `CHANGELOG.md` | **red**, with the count |
+| `## Unreleased` renamed `## [Unreleased]` with a bullet under it, then the heading deleted | **red** on both, naming the missing heading; the rename passed as none before Copilot's round on #451 |
 | HEAD re-committed without its `Seam-scan:` line | **red**, naming the commit |
+| the same with `Seam-scan: not clean`, `unclean` or `cleanly skipped` | **red** on each, naming the commit; all three passed before Copilot's round on #451. `clean by construction`, the librarian's line, green |
 | the same, authored as `claude[bot]` | **red**, naming the commit; any `[bot]` author passed before Copilot's round on #451 |
 | the same, authored as `dependabot[bot]` | green, a bump owing none |
 | a merge commit on top, its second parent without the line, then with it | **red** naming the second parent, then green |
@@ -635,6 +638,10 @@ and neither redundant — the generator physically cannot render a series it wou
 schema sets `additionalProperties: false` and 2.5 deliberately gives that object one key. The argued
 absence in [`../../spec/slots.md`](../../spec/slots.md) is therefore enforced rather than merely
 explained — a workspace cannot quietly acquire the rail whose every legal remedy is barred.
+
+**One move holds for all three indexes since Copilot's round on #451.** Put a link where an index is
+kept, to a file outside the workspace → **exit 2**, *leads through a link*, and the file is untouched,
+for the store's index as for the handoffs'. Before it a write overwrote the file the link led to.
 
 The `proposal` check was added 2026-07-28, at milestone 5, against a sentence
 [`../../core/operating/evolution.md`](../../core/operating/evolution.md) had carried since milestone 1:

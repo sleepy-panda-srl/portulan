@@ -665,6 +665,37 @@ describe("--check compares and never repairs", () => {
         );
     });
 
+    test("a link where the store's index goes is refused, and a write does not follow it", () => {
+        // Copilot, #451: one rule for all three series, in `compareOrWrite`.
+        const outside = path.join(scratch(), "elsewhere.md");
+        fs.writeFileSync(outside, "not an index\n");
+        const dir = workspace({ "memory/a-first.md": record("rule") });
+        fs.symlinkSync(outside, path.join(dir, "memory-index.md"));
+        assert.throws(() => inspect(dir, { write: true }), (e) => e instanceof IndexError && /leads through a link at memory-index\.md/.test(e.message));
+        assert.equal(fs.readFileSync(outside, "utf8"), "not an index\n");
+    });
+
+    test("an index declared through `../`, and a workspace reached through a link, are judged as before", () => {
+        // The escape a path may make is the one its value shows, and only the components the declared
+        // path adds are looked at, so neither of these is a link the refusal above is about.
+        const root = scratch();
+        const dir = tree(path.join(root, "ws"), {
+            "workspace.json": JSON.stringify(wellFormed({ memory: { index: { path: "../shared/memory-index.md" } } }), null, 2),
+            "identity.md": "Identity.\n",
+            "principles.md": "Principles.\n",
+            "gate-map.md": "Gate map.\n",
+            "memory/a-first.md": record("rule"),
+        });
+        fs.mkdirSync(path.join(root, "shared"));
+        assert.deepEqual(failures(inspect(dir, { write: true })), []);
+        assert.match(fs.readFileSync(path.join(root, "shared", "memory-index.md"), "utf8"), /a-first\.md/);
+        const plain = workspace({ "memory/a-first.md": record("rule") });
+        inspect(plain, { write: true });
+        const linked = path.join(scratch(), "linked-ws");
+        fs.symlinkSync(plain, linked);
+        assert.deepEqual(failures(inspect(linked, { write: true })), []);
+    });
+
     test("a permission failure is refused on the same rule", () => {
         const dir = workspace({ "memory/a-first.md": record("rule") });
         run([dir]); // written, correct, and about to be unopenable — the case the old red lied about
@@ -945,6 +976,15 @@ describe("a handoff's date comes from its filename", () => {
         assert.equal(dateOf("2026-7-8-short-fields.md"), null);
     });
 
+    test("reads a year below 100 as that year, as docs.sh does", () => {
+        // Copilot, #451: `Date.UTC` read years 0 to 99 as 1900 to 1999, so these passed `docs.sh`'s
+        // `real_day` and were refused here. Year 0 is a leap year and 100 is not, in both.
+        assert.equal(dateOf("0099-12-31-a.md"), "0099-12-31");
+        assert.equal(dateOf("0000-02-29-a.md"), "0000-02-29");
+        assert.equal(dateOf("0100-02-29-a.md"), null);
+        assert.equal(dateOf("0400-02-29-a.md"), "0400-02-29");
+    });
+
     test("refuses a date-shaped prefix that is not a date", () => {
         // `2026-13-45` sorts fine and means nothing. A generated index whose dates are unparseable
         // strings is a chronological index that is not chronological.
@@ -1077,14 +1117,30 @@ describe("a kept handoff index is byte-compared like the store's", () => {
         assert.deepEqual(fs.readFileSync(path.join(dir, "handoffs-index.md")), before);
     });
 
-    test("a dangling link where the index is kept is a copy nobody can read, and red", () => {
+    test("a dangling link where the index is kept is refused, not read as no copy", () => {
         // Found by Copilot on #451: `existsSync` follows the link, so a dangling one read as no copy.
         const dir = workspace({ "handoffs/2026-07-01-a.md": handoff("A") }, withSeries());
         fs.symlinkSync("gone.md", path.join(dir, "handoffs-index.md"));
-        const bad = failures(inspect(dir));
-        assert.equal(bad.length, 1);
-        assert.equal(bad[0].check, "index");
-        assert.match(text(bad), /declared and absent/);
+        assert.throws(() => inspect(dir), (e) => e instanceof IndexError && /leads through a link at handoffs-index\.md/.test(e.message));
+    });
+
+    test("a link to a file outside the workspace is refused, and nothing is read or written through it", () => {
+        // Found by Copilot on #451: a write followed the link and overwrote what it pointed at.
+        const outside = path.join(scratch(), "elsewhere.md");
+        fs.writeFileSync(outside, "not an index\n");
+        const dir = workspace({ "handoffs/2026-07-01-a.md": handoff("A") }, withSeries());
+        fs.symlinkSync(outside, path.join(dir, "handoffs-index.md"));
+        assert.throws(() => inspect(dir, { write: true }), (e) => e instanceof IndexError && /a kept index is a file of its own/.test(e.message));
+        assert.equal(fs.readFileSync(outside, "utf8"), "not an index\n");
+    });
+
+    test("a kept index under a linked directory is refused the same way", () => {
+        const away = scratch();
+        fs.writeFileSync(path.join(away, "handoffs-index.md"), "not an index\n");
+        const dir = workspace({ "handoffs/2026-07-01-a.md": handoff("A") }, withSeries({ handoffs: { index: { path: "indexes/handoffs-index.md" } } }));
+        fs.symlinkSync(away, path.join(dir, "indexes"));
+        assert.throws(() => inspect(dir, { write: true }), (e) => e instanceof IndexError && /leads through a link at indexes\b/.test(e.message));
+        assert.equal(fs.readFileSync(path.join(away, "handoffs-index.md"), "utf8"), "not an index\n");
     });
 
     test("a write regenerates a kept index", () => {

@@ -435,6 +435,7 @@ CHANGELOG=CHANGELOG.md
 # **A real day, not the shape of one.** `2026-13-45-x.md` matches the glob and names no day. The
 # index tool refuses it (`dateOf` in `cli/index.mjs`), but the Stop gate runs this recipe alone, and
 # until 2026-09-23 the log's correspondence by date caught a mistyped day here. Found by Copilot, #451.
+# The two agree on every four-digit year; `dateOf` read 0000 to 0099 as 1900 to 1999 until the same review.
 real_day() {
     local y=$((10#${1:0:4})) m=$((10#${1:5:2})) d=$((10#${1:8:2})) last
     case $m in
@@ -509,14 +510,21 @@ while IFS= read -r f; do
     fi
 done < <(grep "^${CHANGES}/" "$manifest")
 # The Unreleased section holds no bullet of its own, or two open changes would both append there
-# again. Its extent is from the heading to the next `## `.
+# again. Its extent is from the heading to the next `## `. **The heading must be there**: without it
+# nothing was counted, so bullets under a renamed one (`## [Unreleased]`, as Keep a Changelog spells
+# it) passed as none (Copilot, #451). The cut re-seeds it above the version it writes.
 unreleased=0
+noheading=
 if [ -f "$CHANGELOG" ]; then
-    unreleased=$(awk '/^## Unreleased/ { on = 1; next } /^## / { on = 0 } on && /^- / { n++ } END { print n + 0 }' "$CHANGELOG")
+    unreleased=$(awk '/^## Unreleased/ { h = 1; on = 1; next } /^## / { on = 0 } on && /^- / { n++ } END { print n + 0; exit !h }' "$CHANGELOG") ||
+        noheading=1
+    unreleased=${unreleased:-0}
 fi
-if [ -s "$tmp/badfragments" ] || [ "$unreleased" -ne 0 ]; then
-    fail "record — changelog entries that the index tool's \`--changes $CHANGES\` cannot assemble"
+if [ -s "$tmp/badfragments" ] || [ "$unreleased" -ne 0 ] || [ -n "$noheading" ]; then
+    fail "record — changelog entries outside what the index tool's \`--changes $CHANGES\` assembles"
     sed 's/^/        /' "$tmp/badfragments"
+    [ -z "$noheading" ] ||
+        printf '        %s has no ## Unreleased heading, so a bullet under a renamed one goes uncounted — the cut re-seeds it above the version it writes\n' "$CHANGELOG"
     [ "$unreleased" -eq 0 ] ||
         printf '        %s holds %s bullet(s) under ## Unreleased — a change'"'"'s entry is a file in %s/\n' "$CHANGELOG" "$unreleased" "$CHANGES"
 else
@@ -541,7 +549,10 @@ fi
 # session committing through an App's API (`claude[bot]`), which composes from the same context a
 # local commit does; the librarian's pass writes the line itself. The author is metadata the commit's
 # maker sets, so a session committing under Dependabot's name would still pass: the same trust the
-# line itself gets, since only its presence is read (./README.md, known limits).
+# line itself gets, since only its presence is read (./README.md, known limits). **The value opens with
+# `clean`.** Matching the word anywhere after the colon passed `Seam-scan: not clean` and
+# `Seam-scan: unclean` (Copilot, #451), so `clean` is the first word, ending there or at a space or
+# punctuation.
 side=HEAD
 if git rev-parse -q --verify 'HEAD^2' >/dev/null; then
     side='HEAD^2'
@@ -562,8 +573,8 @@ case "$author" in
     'dependabot[bot]')
         pass "record — the newest change ($short) is a Dependabot bump, which composes nothing and owes no seam attestation" ;;
     *)
-        if tail -n +2 "$tmp/change" | grep -qiE '^[[:space:]*-]*seam-scan:.*clean'; then
-            pass "record — the newest change ($short) carries a Seam-scan trailer"
+        if tail -n +2 "$tmp/change" | grep -qiE '^[[:space:]*-]*seam-scan:[[:space:]]*clean([^[:alnum:]_-]|$)'; then
+            pass "record — the newest change ($short) carries a \`Seam-scan: clean …\` line"
         else
             fail "record — the newest change ($short) carries no \`Seam-scan: clean …\` line in its commit message"
         fi ;;

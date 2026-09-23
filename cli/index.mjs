@@ -181,8 +181,10 @@ export function headingOf(source) {
  * **Validated, not merely matched.** `2026-13-45-impossible.md` matches the shape and names no day. An
  * index whose leading column is an unparseable string is a chronological index that is not
  * chronological, and every consumer downstream — the pass that ages the series, a reader scanning for
- * a month — would be reading a slug. The round-trip through `Date.UTC` is the cheapest complete check:
- * it rejects month 13, day 45, and 30 February, none of which a regex can see.
+ * a month — would be reading a slug. The round-trip through a UTC date is the cheapest complete check:
+ * it rejects month 13, day 45, and 30 February, none of which a regex can see. `setUTCFullYear`, never
+ * `Date.UTC`, which reads a year from 0 to 99 as 1900 to 1999: `0099-12-31` was refused here and passed
+ * by `docs.sh`'s `real_day`, which agrees with this on every four-digit year (Copilot, #451).
  *
  * `null` is a refusal, never a default. ../.portulan/verify/docs.sh already fails an undated file in
  * the series; this is not a second opinion about that rule but the generator being unable to derive a
@@ -192,7 +194,8 @@ export function dateOf(filename) {
     const m = filename.match(/^(\d{4})-(\d{2})-(\d{2})-/);
     if (!m) return null;
     const [, y, mo, d] = m;
-    const at = new Date(Date.UTC(Number(y), Number(mo) - 1, Number(d)));
+    const at = new Date(0);
+    at.setUTCFullYear(Number(y), Number(mo) - 1, Number(d));
     const iso = `${y}-${mo}-${d}`;
     return at.toISOString().slice(0, 10) === iso ? iso : null;
 }
@@ -849,6 +852,37 @@ function siteOutside(dir, declaredPath, slot, word) {
 }
 
 /**
+ * **A generated index is a file of its own where its declared path says**, for all three series. A link
+ * at that path, or at a directory the path names on the way to it, is refused before anything is read
+ * or written: `--check` judged the bytes it led to and a write overwrote them, outside the workspace as
+ * easily as inside (Copilot, #451). The schema lets a path leave the workspace only by `../`, "since
+ * escaping should be visible in the value itself", and a link is an escape the value does not show.
+ * Only the components the declared path adds are looked at, so a workspace that itself sits under a
+ * link (macOS's `/var`, a linked checkout) is judged as before. A dangling link is refused the same
+ * way, and a component not there yet ends the walk: nothing below it exists to follow.
+ */
+function refuseLinks(dir, declaredPath, indexPath) {
+    let probe = path.resolve(dir);
+    while (!isInside(probe, indexPath)) probe = path.dirname(probe);
+    for (const part of path.relative(probe, indexPath).split(path.sep)) {
+        probe = path.join(probe, part);
+        let stat;
+        try {
+            stat = fs.lstatSync(probe);
+        } catch (cause) {
+            if (cause.code === "ENOENT") return;
+            throw new IndexError(`cannot look for the index at ${declaredPath} — ${cause.code ?? cause.message}`);
+        }
+        if (stat.isSymbolicLink()) {
+            throw new IndexError(
+                `${declaredPath} leads through a link at ${path.relative(path.resolve(dir), probe)}, and a kept index is a file of its own ` +
+                    "where its path says — nothing was read or written through it. Replace the link with what it points at",
+            );
+        }
+    }
+}
+
+/**
  * Write (when asked) and byte-compare one generated index.
  *
  * Shared, because the ways this goes wrong are the same ways for every series and each has already
@@ -870,6 +904,7 @@ function siteOutside(dir, declaredPath, slot, word) {
  * one read in the repository that did not carry it.
  */
 function compareOrWrite({ dir, declaredPath, indexPath, expected, write, series, source, fail, remedyFlags = "" }) {
+    refuseLinks(dir, declaredPath, indexPath);
     if (write) {
         try {
             fs.mkdirSync(path.dirname(indexPath), { recursive: true });
@@ -999,7 +1034,8 @@ function judgeHandoffs(dir, workspace, { write, fail, remedyFlags = "" }) {
     // another merge land while they were open — and carried nothing the series does not. `--handoffs`
     // prints it on demand.
     // `lstat`, never `existsSync`, which follows a link and reads a dangling one as no copy at all, so
-    // `--check` was green over a kept index nobody could read. Copilot, #451.
+    // `--check` was green over a kept index nobody could read. Copilot, #451. Anything at the path is a
+    // kept copy, and a link there, dangling or not, is then refused by `compareOrWrite`, as for every series.
     let kept = true;
     try {
         fs.lstatSync(indexPath);
