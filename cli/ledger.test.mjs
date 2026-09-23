@@ -21,6 +21,7 @@ import { fileURLToPath } from "node:url";
 import {
     GENERAL_READ,
     HORIZON,
+    LedgerError,
     WRITE_BY_LIFETIME,
     collect,
     compareHost,
@@ -42,6 +43,7 @@ import {
     sessionFigures,
     tally,
     thresholdFor,
+    worktrees,
 } from "./ledger.mjs";
 
 // A HERMETIC HOST: the ledger's defaults read the host's configuration home, so this suite points it at
@@ -207,6 +209,22 @@ describe("reading one transcript", () => {
             }
         }
     });
+
+    test("a request written in more blocks than the running figures keep ids for is still one request", () => {
+        // They keep the latest 16 distinct ids, and a repeat is passed over before anything is kept, so a
+        // request's own blocks never push its id out, nor do a subagent's requests written between them.
+        withTemp((dir) => {
+            const toolResult = JSON.stringify({ type: "user", message: { content: [{ type: "tool_result", content: "never read" }] } });
+            const inline = Array.from({ length: 20 }, () => blocks({ sidechain: true, agentId: "q", read: 3 })).flat();
+            const long = blocks({ id: "msg_long", n: 40, w1h: 50000, read: 10000 });
+            const around = (middle) => [...blocks({ id: "msg_first", w1h: 40000 }), ...middle, ...blocks({ id: "msg_next", w1h: 500, read: 60000 })];
+            write(path.join(dir, "blocks.jsonl"), around([...long.slice(0, 20).flatMap((l) => [l, toolResult]), ...inline, ...long.slice(20)]));
+            write(path.join(dir, "once.jsonl"), around(long.slice(0, 1)));
+            const figures = readTranscript(path.join(dir, "blocks.jsonl")).figures;
+            assert.deepEqual(figures.recent, ["msg_first", "msg_long", "msg_next"]);
+            assert.deepEqual(figures, readTranscript(path.join(dir, "once.jsonl")).figures);
+        });
+    });
 });
 
 describe("rebuilds and their causes", () => {
@@ -312,6 +330,35 @@ describe("where the host keeps its records", () => {
             assert.equal(tally(c.contexts, "b").total.read, 1001);
             assert.equal(c.duplicates, 1);
         });
+    });
+
+    test("a copy outside the roots, read first, passes over no copy inside them", () => {
+        withTemp((dir) => {
+            const projects = path.join(dir, "projects");
+            // The sibling's key sorts before the second root's, so its copy is read first.
+            write(path.join(projects, projectKey("/w/demo-0ld"), "a.jsonl"), blocks({ id: "msg_shared", cwd: "/w/demo-0ld", read: 1000 }));
+            write(path.join(projects, projectKey("/w/demo-feature"), "b.jsonl"), blocks({ id: "msg_shared", cwd: "/w/demo-feature", read: 1000 }));
+            const c = collect({ projects, roots: ["/w/demo", "/w/demo-feature"] });
+            assert.equal(c.files, 2);
+            assert.equal(tally(c.contexts, "b").total.read, 1000);
+            assert.equal(c.duplicates, 0);
+        });
+    });
+
+    test("the request after copied ones is judged against them, whichever transcript is read first", () => {
+        const copied = [...blocks({ id: "msg_1", at: "2026-09-23T10:00:00.000Z", w1h: 40000 }), ...blocks({ id: "msg_2", at: "2026-09-23T10:01:00.000Z", w1h: 1000, read: 40000 })];
+        // Resumed two and a half hours later: the hour has lapsed, and the whole prefix is written again.
+        const resumed = [...copied, ...blocks({ id: "msg_3", at: "2026-09-23T12:31:00.000Z", w1h: 42000 })];
+        for (const [original, copy] of [["a", "b"], ["d", "c"]]) {
+            withTemp((dir) => {
+                const projects = path.join(dir, "projects");
+                write(path.join(projects, projectKey("/r"), `${original}.jsonl`), copied);
+                write(path.join(projects, projectKey("/r"), `${copy}.jsonl`), resumed);
+                const f = tally(collect({ projects, roots: ["/r"] }).contexts, "b");
+                assert.equal(f.main.requests, 3, `${copy} holding the copies`);
+                assert.deepEqual([f.rebuilds, f.rebuilt, f.causes], [1, 41001, { "lifetime lapsed": 1 }], `${copy} holding the copies`);
+            });
+        }
     });
 
     test("a request is attributed to the branch its own record names, whatever the session began on", () => {
@@ -481,6 +528,20 @@ describe("the command", () => {
         });
     });
 
+    test("a repository git cannot list the worktrees of is could-not-run, never a report of the one directory", () => {
+        withTemp((dir) => {
+            assert.equal(worktrees(dir), null, "no .git in it or above it: outside a repository");
+            // A worktree whose .git file names a directory that is gone.
+            const broken = path.join(dir, "broken");
+            fs.mkdirSync(broken);
+            fs.writeFileSync(path.join(broken, ".git"), `gitdir: ${path.join(dir, "gone")}\n`);
+            assert.throws(() => worktrees(broken), (e) => e instanceof LedgerError && /the worktrees of .*broken could not be listed — \S/.test(e.message));
+            const out = say();
+            assert.equal(run(["--branch", "b"], out.fn, { cwd: broken, env: { CLAUDE_CONFIG_DIR: dir }, home: dir }), 2);
+            assert.match(out.lines.join("\n"), /could not be listed/);
+        });
+    });
+
     test("a relative CLAUDE_CONFIG_DIR is could-not-run until both paths are named, never a read of ~/.claude", () => {
         withTemp((dir) => {
             const out = say();
@@ -501,6 +562,17 @@ describe("the command", () => {
             const lines = [];
             print(ledger({ projects, config: null, roots: ["/r"], branch: "b" }), (l) => lines.push(l));
             assert.ok(lines.includes("  hit rate: none — no input was recorded, so none could be read from cache"), lines.join("\n"));
+        });
+    });
+
+    test("a session exactly at its threshold has reached it, the word the advisory uses", () => {
+        withTemp((dir) => {
+            const projects = path.join(dir, "projects");
+            // A fresh context of 40,001 written for an hour: a threshold of 40,001 × (1 + 2 / (20 × 0.1)).
+            write(path.join(projects, projectKey("/r"), "s.jsonl"), [...blocks({ w1h: 40000 }), ...blocks({ uncached: 2, read: 80000 })]);
+            const lines = [];
+            print(ledger({ projects, config: null, roots: ["/r"], branch: "b" }), (l) => lines.push(l));
+            assert.ok(lines.some((l) => l.startsWith("  restart: session s is at 80,002 tokens and has reached its threshold of 80,002 = ")), lines.join("\n"));
         });
     });
 

@@ -86,7 +86,7 @@ earlier with no rework. The status line is compiled by default: `0038` places it
 the note naming `settings.local.json` carries the override, and item 4 adds the declaration that turns it
 off. `F` is the first request after the last compaction, stated as erring toward an earlier line.
 
-**How it was checked.** 37 cases in [`cli/ledger.test.mjs`](../../cli/ledger.test.mjs) and 20 in
+**How it was checked.** 42 cases in [`cli/ledger.test.mjs`](../../cli/ledger.test.mjs) and 20 in
 [`cli/advisory.test.mjs`](../../cli/advisory.test.mjs), every one over a temporary directory or the
 committed fixture, and one new case in `compile.test.mjs` with the no-shell case widened to the two new
 commands. Among them: every fixture transcript folded in two pieces, cut at every line, gives what one
@@ -131,6 +131,17 @@ as an unnamed effort already was. A relative `CLAUDE_CONFIG_DIR` was read as `~/
 this module that the host refuses one; the program text shows the host takes it as it stands, from the
 directory it was started in, so the ledger says so and asks for both paths, exit 2. And a branch whose
 requests recorded no input printed a hit rate of 0.0%: it says there is none.
+
+**Copilot's round on d846ed0.** Four threads and one item in its summary, and four held. A copy of a
+request outside the roots, read first, passed over the copy inside them; and the rebuild after copied
+requests went unreported, because copies were passed over before rebuilds were marked. Rebuilds are now
+marked over the whole context, copies included, and only a copy inside the roots passes another over, so
+neither depends on which transcript is read first. A repository git could not list the worktrees of read
+as no repository, and with `--branch` the report covered the one directory: where a `.git` is in it or
+above it, that is could-not-run now, naming git's reason. The ledger's restart line said "past" at
+equality, and says "has reached" now, as the advisory does. The fourth thread does not reproduce: the
+running figures keep 16 distinct ids and pass over a repeat before keeping anything, so a request's own
+blocks never push its id out, which a case with a request of 40 blocks pins.
 
 **Checkpoints.** Skipped by his instruction of 2026-09-23 12:38: no fresh-context runs unless he asks. The
 coordinator session reviewed the diff before the first commit; his review is on the pull request. The

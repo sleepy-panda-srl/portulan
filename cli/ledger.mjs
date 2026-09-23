@@ -420,7 +420,8 @@ const insideAny = (cwd, roots) => cwd !== null && roots.some((root) => isInside(
 /**
  * Read every transcript that may hold sessions run in `roots`, and keep the requests whose own working
  * directory is inside one of them. Each context's rebuilds are marked over all its requests, before any
- * branch is chosen, so a rebuild at a branch switch lands on the branch it happened on.
+ * branch is chosen, so a rebuild at a branch switch lands on the branch it happened on, and before any
+ * copy is passed over, so the request after a copied one is judged against the prefix it continued from.
  */
 export function collect({ projects, roots }) {
     const contexts = [];
@@ -435,21 +436,22 @@ export function collect({ projects, roots }) {
         }
         tally.files += 1;
         for (const k of ["records", "duplicates", "malformed", "synthetic"]) tally[k] += transcript[k];
-        // A request copied into a second transcript is still one request.
-        const fresh = transcript.requests.filter((r) => r.id === null || !seen.has(r.id));
-        for (const r of fresh) if (r.id !== null) seen.add(r.id);
-        tally.duplicates += transcript.requests.length - fresh.length;
         // A subagent's own transcript is its context whole. In a session's, a sidechain written inline,
         // as earlier hosts did, is a subagent's context and not the session's, one per agent id.
         const parts = new Map();
-        for (const r of fresh) {
+        for (const r of transcript.requests) {
             const agent = entry.agent ?? (r.sidechain ? `inline:${r.agent ?? "unnamed"}` : null);
             if (!parts.has(agent)) parts.set(agent, []);
             parts.get(agent).push(r);
         }
         for (const [agent, requests] of parts) {
             markRebuilds(requests);
-            const kept = requests.filter((r) => insideAny(r.cwd, roots));
+            // A request copied into a second transcript is still one request, counted in the first that
+            // keeps it. A copy outside the roots is not kept, so it passes over no copy inside them.
+            const inside = requests.filter((r) => insideAny(r.cwd, roots));
+            const kept = inside.filter((r) => r.id === null || !seen.has(r.id));
+            for (const r of kept) if (r.id !== null) seen.add(r.id);
+            tally.duplicates += inside.length - kept.length;
             if (kept.length) contexts.push({ file: entry.file, session: entry.session, agent, requests: kept, transcript: agent === null ? transcript : null });
         }
     }
@@ -566,18 +568,31 @@ function git(repo, args) {
     return execFileSync("git", ["-C", repo, ...args], { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }).trim();
 }
 
-/** The repository's worktrees, the main one first; null where `repo` is not inside a git repository. */
+/**
+ * The repository's worktrees, the main one first; null where `repo` is not inside a git repository, which
+ * is where no `.git` is in it or above it. Where one is and git cannot list them, the run cannot either: a
+ * report of the one directory would read as the whole repository's.
+ */
 export function worktrees(repo) {
     let listing;
     try {
         listing = git(repo, ["worktree", "list", "--porcelain"]);
-    } catch {
-        return null;
+    } catch (error) {
+        if (!underGit(repo)) return null;
+        throw new LedgerError(`the worktrees of ${repo} could not be listed — ${String(error.stderr ?? "").trim().split("\n")[0] || error.code || error.message}`);
     }
     return listing
         .split("\n")
         .filter((l) => l.startsWith("worktree "))
         .map((l) => l.slice("worktree ".length));
+}
+
+/** Whether `dir` or a directory above it holds a `.git`: the directory a repository keeps, or a worktree's file. */
+function underGit(dir) {
+    for (let at = path.resolve(dir); ; at = path.dirname(at)) {
+        if (fs.existsSync(path.join(at, ".git"))) return true;
+        if (path.dirname(at) === at) return false;
+    }
 }
 
 /** Lines added and removed on `branch` since its merge base with `base`, or the reason there is no figure. */
@@ -674,8 +689,8 @@ export function print(report, say) {
     }
     const m = restart.multipliers;
     say(
-        `  restart: session ${short(restart.session)} is at ${grouped(restart.context)} tokens, ` +
-            `${restart.context >= restart.threshold ? "past" : "below"} its threshold of ${grouped(restart.threshold)} = ` +
+        `  restart: session ${short(restart.session)} is at ${grouped(restart.context)} tokens and ` +
+            `${restart.context >= restart.threshold ? "has reached" : "is below"} its threshold of ${grouped(restart.threshold)} = ` +
             `${grouped(restart.fresh)} × (1 + ${m.write} / (${restart.horizon} × ${m.read})); ${describeMultipliers(m)}`,
     );
 }
