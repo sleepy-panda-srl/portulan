@@ -736,8 +736,8 @@ change that breached it.
 ## `slots.context` — the guidance a host loads, each unit in its tier
 
 Added at **2.10**, with proposal `0036`'s compile targets. [`context.md`](../core/operating/context.md)
-defines the four tiers; `context` above is the machine half of that page and this slot is the content
-half, in the pairing `memory` and `slots.memory` make.
+defines the four tiers. This slot's pair is `context` above: the slot holds the guidance and the key its
+budget, as `slots.memory` holds the records and `memory` their configuration.
 
 A directory of Markdown files, one unit of guidance each; only the `.md` files at its top level are units,
 and anything else in it is left alone. The file's name, less `.md`, is the unit's name and must be a slug,
@@ -769,9 +769,10 @@ an unscoped index of pointers, while its file stays where it is for the agent to
 cannot express degrades to an on-read pointer, never to nothing**: the vendored `AGENTS.md` carries the
 `always` units inline and every other unit as a pointer, one level deep. The compiled files are committed
 and byte-compared against this slot, as the compiled settings are against `gates`, so a desktop session's
-fresh worktree has them. `compile` proves `.claude/rules/portulan/` is its own with a marker, `.compiled`,
-a file no host loads: only where the marker is does it remove a rule there that no unit compiles to, and
-where the directory holds Markdown files without it, `compile` stops with exit 2 and touches none of them.
+fresh worktree has them. `compile` shows which rules in `.claude/rules/portulan/` are its own with a marker
+there, `.compiled`, a file no host loads that lists each rule it wrote: it rewrites or removes only a rule the
+marker lists, stops with exit 2 rather than replace one it does not list, and stops too where the directory
+holds Markdown files and no marker it wrote. It writes nothing through a link.
 
 **Checked by `compile`, not by the schema or `doctor`.** The subset cannot see inside a file, so the
 frontmatter is its consumer's to refuse: an unknown key, a tier outside the four, `paths` on a unit that is

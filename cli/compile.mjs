@@ -1894,20 +1894,35 @@ export function matrix(parsed, options = {}) {
 export const LOAD_TIERS = ["always", "on-path", "on-invoke", "on-read"];
 
 /**
- * The directory the Claude Code targets land in. **`compile` owns it, and proves it with a marker**
- * (`RULES_MARKER` below) rather than a mark in each file, because every byte of an always-tier file is
- * paid for by every context. Where the marker is, a file there that no unit compiles to is drift, and a
- * write removes it; where the directory holds Markdown files without it, nothing shows they were compiled,
- * so `compile` stops with exit 2 and touches none of them.
+ * The directory the Claude Code targets land in. **`compile` shows which rules in it are its own with a
+ * marker** (`RULES_MARKER` below) rather than a mark in each file, because every byte of an always-tier
+ * file is paid for by every context. It rewrites and removes only the rules the marker lists; anything else
+ * there is a team's own, named and left, and a unit that would compile onto one stops the run with exit 2.
+ * Where the directory holds Markdown files and no marker this compiler wrote, nothing shows any of them
+ * was compiled, so it stops with exit 2 and touches none of them.
  */
 export const GUIDANCE_RULES_DIR = ".claude/rules/portulan";
 
 /**
  * The marker: a file in that directory no host loads, since Claude Code loads only `.md` files as rules,
- * so it costs no context. Written before the first rule, so no run can leave a rule without it.
+ * so it costs no context. Its first line names the compiler and each line after it one rule it wrote.
+ * Byte-compared like every other compiled file, and trusted only when it reads exactly as this compiler
+ * writes one: a marker written by hand grants nothing.
  */
 export const RULES_MARKER = ".compiled";
-const RULES_MARKER_TEXT = "`portulan compile` owns this directory: every .md file here is compiled from slots.context, and one that no unit compiles to is removed\n";
+const RULES_MARKER_HEAD = "`portulan compile` wrote the rules listed below from slots.context; it rewrites and removes only these.";
+
+/** The marker a set of rule files is owed: the head line, then one file name per line. */
+const markerText = (names) => `${RULES_MARKER_HEAD}\n${names.map((name) => `${name}\n`).join("")}`;
+
+/** The rule files a marker lists, or null when its text is not one this compiler writes. */
+function markedRules(text) {
+    const lines = text.split("\n");
+    if (lines[0] !== RULES_MARKER_HEAD || lines.at(-1) !== "") return null;
+    const names = lines.slice(1, -1);
+    if (!names.every((name) => SLUG.test(name.replace(/\.md$/, "")) && name.endsWith(".md"))) return null;
+    return new Set(names).size === names.length ? new Set(names) : null;
+}
 
 /** The one file in that directory no unit names: the index of pointers to the on-read units. */
 export const ON_READ_INDEX = "on-read.md";
@@ -1946,6 +1961,9 @@ export const GUIDANCE_HOSTS = {
 };
 
 const UNIT_KEYS = new Set(["tier", "paths", "description"]);
+
+/** A line break, by any spelling a host might honour, or another control character. */
+const CONTROL = /[\u0000-\u001f\u007f\u0085\u2028\u2029]/;
 
 /** One scalar, as YAML writes it: double-quoted with JSON's escapes, single-quoted, or plain. */
 function scalar(raw, where) {
@@ -2042,8 +2060,8 @@ export function parseUnit(name, text, source = `${name}.md`) {
             throw new CompileError(`${where}: an on-path unit names the \`paths\` that load it, and this one names none`);
         }
         for (const glob of fields.paths) {
-            if (typeof glob !== "string" || glob.trim() === "" || glob !== glob.trim()) {
-                throw new CompileError(`${where}: every item of \`paths\` is a glob with no surrounding space, and ${JSON.stringify(glob)} is not`);
+            if (typeof glob !== "string" || glob.trim() === "" || glob !== glob.trim() || CONTROL.test(glob)) {
+                throw new CompileError(`${where}: every item of \`paths\` is a glob on one line with no surrounding space, and ${JSON.stringify(glob)} is not`);
             }
             // Relative to the repository, and inside it: a glob the host would resolve elsewhere is a rule
             // that loads for files this workspace does not govern, or for none.
@@ -2064,6 +2082,11 @@ export function parseUnit(name, text, source = `${name}.md`) {
         description = fields.description;
         if (typeof description !== "string" || description.trim() === "") {
             throw new CompileError(`${where}: an ${tier} unit needs a one-line \`description\`: it is what an agent reads to decide whether to open the unit`);
+        }
+        // A quoted scalar can spell a line break as an escape, and the description is written as one line
+        // of the index and of `AGENTS.md`: a break would make it two, the second a pointer nobody declared.
+        if (CONTROL.test(description)) {
+            throw new CompileError(`${where}: the \`description\` holds a line break or another control character, and it is written as one line of an index`);
         }
         description = description.trim();
     }
@@ -2093,7 +2116,7 @@ export function guidanceDeclaration(workspaceRoot, workspaceDir = ".portulan") {
     }
     const declared = manifest?.slots?.context;
     if (declared === undefined) return null;
-    if (typeof declared !== "string" || !/^[^#?:/][^#?:]*\/$/.test(declared)) {
+    if (typeof declared !== "string" || !/^[^#?:/][^#?:]*\/$/.test(declared) || CONTROL.test(declared)) {
         throw new CompileError(`\`slots.context\` is ${JSON.stringify(declared)}, which is not a relative path to a directory ending in \`/\` — the schema's \`dirPath\``);
     }
     const dir = path.resolve(base, declared);
@@ -2207,67 +2230,127 @@ export function agentsMdGuidance(guidance, dir) {
     return { inline: always.map((u) => u.body), pointers: pointed.map(pointer) };
 }
 
-/** What the rules directory holds now, and whether the marker shows it is this compiler's. */
-function rulesDirectory(workspaceRoot) {
-    const dir = path.join(workspaceRoot, ...GUIDANCE_RULES_DIR.split("/"));
-    let entries;
-    try {
-        entries = fs.readdirSync(dir, { withFileTypes: true });
-    } catch (cause) {
-        if (cause.code === "ENOENT") return { exists: false, marked: false, entries: [] };
-        if (cause.code === "ENOTDIR") return { exists: false, blocked: true, marked: false, entries: [] };
-        throw new CompileError(`${dir} could not be listed — ${cause.code ?? cause.message}`);
-    }
-    return { exists: true, marked: entries.some((e) => e.name === RULES_MARKER && e.isFile()), entries };
-}
-
-/** Whether any of these paths is a rule, which is what makes the marker owed. */
-const owesRules = (paths) => paths.some((p) => p.startsWith(`${GUIDANCE_RULES_DIR}/`));
-
 /**
- * Every file that sits where this compiler writes guidance and that it does not owe now. In the rules
- * directory only the marker makes a file removable; without it the directory is not this compiler's, and
- * it looks there only when it owes a rule, which `refuseUnowned` has made safe.
+ * Where a guidance path would be written, judged before anything is: `null` when it is a real file inside
+ * the repository or can be created as one, and otherwise what stops it. Writing through a link would change
+ * whatever the link points at, which may be outside the repository or a file this compiler never wrote.
  */
-function strayGuidance(workspaceRoot, owed) {
-    const stray = [];
-    const rules = rulesDirectory(workspaceRoot);
-    if (rules.exists && (rules.marked || owesRules([...owed]))) {
-        for (const entry of rules.entries) {
-            const rel = `${GUIDANCE_RULES_DIR}/${entry.name}`;
-            if (owed.has(rel)) continue;
-            stray.push({ path: rel, removable: rules.marked && entry.isFile() && (entry.name.endsWith(".md") || entry.name === RULES_MARKER) });
-        }
-    }
-    const skillsDir = path.join(workspaceRoot, ...SKILLS_DIR.split("/"));
-    let skills = [];
-    try {
-        skills = fs.readdirSync(skillsDir, { withFileTypes: true });
-    } catch (cause) {
-        if (cause.code !== "ENOENT" && cause.code !== "ENOTDIR") throw new CompileError(`${skillsDir} could not be listed — ${cause.code ?? cause.message}`);
-    }
-    for (const entry of skills) {
-        if (!entry.isDirectory()) continue;
-        const rel = `${SKILLS_DIR}/${entry.name}/SKILL.md`;
-        let text;
+function landing(realRoot, workspaceRoot, rel) {
+    const target = path.join(workspaceRoot, ...rel.split("/"));
+    for (let at = target; ; ) {
+        let stat = null;
         try {
-            text = fs.readFileSync(path.join(skillsDir, entry.name, "SKILL.md"), "utf8");
-        } catch {
+            stat = fs.lstatSync(at);
+        } catch (cause) {
+            if (cause.code !== "ENOENT" && cause.code !== "ENOTDIR") throw new CompileError(`${rel} could not be examined — ${cause.code ?? cause.message}`);
+        }
+        if (stat === null) {
+            const up = path.dirname(at);
+            if (up === at) return "lies nowhere this compiler can resolve";
+            at = up;
             continue;
         }
-        if (text.includes(SKILL_MARK) && !owed.has(rel)) stray.push({ path: rel, removable: true });
+        if (at === target && stat.isSymbolicLink()) return "is a link, and writing it would change whatever the link points at";
+        if (at === target && !stat.isFile()) return "is not a file";
+        let real;
+        try {
+            real = fs.realpathSync(at);
+        } catch {
+            return "lies through a link to nothing";
+        }
+        if (!isInside(realRoot, real)) return "lies through a link out of the repository";
+        if (at !== target && !fs.statSync(real).isDirectory()) return "cannot be created, because a file stands in its path";
+        return null;
     }
-    return stray;
 }
 
 /**
- * What this compiler cannot show it wrote is not its to replace or remove: a skill without the compiled
- * mark, and Markdown files in a rules directory without the marker. Either stops the run with exit 2, under
- * `--check` as under a write. Called by `run` before either half writes anything, so a refusal leaves no
- * gate artifact written beside it.
+ * What a directory this compiler writes into holds, listed only when it resolves inside the repository: one
+ * reached through a link out of it is not this repository's to tidy, and nothing is written there either.
  */
-function refuseUnowned(guidance, workspaceRoot) {
-    const { files } = claudeCodeGuidance(guidance);
+function listInside(realRoot, dir) {
+    let real;
+    try {
+        real = fs.realpathSync(dir);
+    } catch (cause) {
+        if (cause.code === "ENOENT" || cause.code === "ENOTDIR") return null;
+        throw new CompileError(`${dir} could not be resolved — ${cause.code ?? cause.message}`);
+    }
+    if (!isInside(realRoot, real) || !fs.statSync(real).isDirectory()) return null;
+    try {
+        return fs.readdirSync(dir, { withFileTypes: true });
+    } catch (cause) {
+        throw new CompileError(`${dir} could not be listed — ${cause.code ?? cause.message}`);
+    }
+}
+
+/**
+ * Everything the guidance half will write or remove, judged before either half writes anything, so a refusal
+ * leaves no gate artifact written beside it: `run` calls this first, under `--check` as under a write.
+ *
+ * What this compiler cannot show it wrote is not its to replace or remove. A skill shows it by its mark, and
+ * a rule by the marker beside it listing its name, so each refusal below is exit 2: a unit that would compile
+ * onto a skill or a rule written by hand, Markdown in the rules directory with no marker, a marker this
+ * compiler did not write, and any path that is a link or lies through one out of the repository.
+ *
+ * @returns {{ owedFiles: object[], stray: { path: string, removable: boolean }[] }}
+ */
+function planGuidance(guidance, workspaceRoot) {
+    let realRoot;
+    try {
+        realRoot = fs.realpathSync(workspaceRoot);
+    } catch (cause) {
+        throw new CompileError(`the repository root could not be resolved — ${cause.code ?? cause.message}`);
+    }
+    const files = guidance ? claudeCodeGuidance(guidance).files : [];
+    const rules = files.filter((f) => f.path.startsWith(`${GUIDANCE_RULES_DIR}/`));
+    // The marker first, so a run stopped part-way never leaves a rule that no marker lists.
+    const owedFiles = rules.length
+        ? [{ unit: null, marker: true, path: `${GUIDANCE_RULES_DIR}/${RULES_MARKER}`, text: markerText(rules.map((f) => path.posix.basename(f.path))) }, ...files]
+        : files;
+    const owed = new Set(owedFiles.map((f) => f.path));
+
+    for (const file of owedFiles) {
+        const stop = landing(realRoot, workspaceRoot, file.path);
+        if (stop) throw new CompileError(`${file.path} ${stop} — this compiler writes only real files inside the repository`);
+    }
+
+    const rulesDir = path.join(workspaceRoot, ...GUIDANCE_RULES_DIR.split("/"));
+    const entries = listInside(realRoot, rulesDir) ?? [];
+    const markerEntry = entries.find((e) => e.name === RULES_MARKER);
+    let listed = null;
+    if (markerEntry) {
+        let text = null;
+        if (markerEntry.isFile()) {
+            try {
+                text = fs.readFileSync(path.join(rulesDir, RULES_MARKER), "utf8");
+            } catch (cause) {
+                throw new CompileError(`${GUIDANCE_RULES_DIR}/${RULES_MARKER} could not be read — ${cause.code ?? cause.message}`);
+            }
+        }
+        listed = text === null ? undefined : markedRules(text) ?? undefined;
+    }
+    if (rules.length) {
+        if (listed === undefined) {
+            throw new CompileError(`${GUIDANCE_RULES_DIR}/${RULES_MARKER} is not a marker this compiler wrote, so nothing shows which rules beside it are its own. Move the directory's files out, then compile again`);
+        }
+        if (listed === null) {
+            const markdown = entries.filter((e) => e.name.endsWith(".md")).map((e) => e.name).sort();
+            if (markdown.length) {
+                const them = markdown.length === 1 ? "it" : "them";
+                throw new CompileError(
+                    `${GUIDANCE_RULES_DIR}/ holds ${markdown.join(", ")} and no \`${RULES_MARKER}\` marker, so nothing shows this compiler wrote ${them}, and it will not overwrite or remove ${them}. Move ${them} out of the directory, then compile again`,
+                );
+            }
+        } else {
+            for (const file of rules) {
+                const name = path.posix.basename(file.path);
+                if (entries.some((e) => e.name === name) && !listed.has(name)) {
+                    throw new CompileError(`${file.path} exists and was not compiled here — ${file.unit ? file.unit.source : `the on-read units in ${guidance.source}`} would replace a rule written by hand. Rename the unit or the rule`);
+                }
+            }
+        }
+    }
     for (const file of files) {
         if (!file.path.startsWith(`${SKILLS_DIR}/`)) continue;
         let current;
@@ -2280,42 +2363,55 @@ function refuseUnowned(guidance, workspaceRoot) {
             throw new CompileError(`${file.path} exists and was not compiled here — ${file.unit.source} would replace a skill written by hand. Rename the unit or the skill`);
         }
     }
-    if (!owesRules(files.map((f) => f.path))) return;
-    const rules = rulesDirectory(workspaceRoot);
-    if (rules.blocked) throw new CompileError(`${GUIDANCE_RULES_DIR} cannot be a directory here, because a file stands in its path — no rule can be written into it`);
-    if (!rules.exists || rules.marked) return;
-    const markdown = rules.entries.filter((e) => e.name.endsWith(".md")).map((e) => e.name).sort();
-    if (markdown.length) {
-        throw new CompileError(
-            `${GUIDANCE_RULES_DIR}/ holds ${markdown.join(", ")} and no \`${RULES_MARKER}\` marker, so nothing shows this compiler wrote ${markdown.length === 1 ? "it" : "them"}, and it will not overwrite or remove ${markdown.length === 1 ? "it" : "them"}. Move ${markdown.length === 1 ? "it" : "them"} out of the directory, then compile again`,
-        );
+
+    // What is left where guidance is written, and whether this compiler can show it wrote it. Without a marker
+    // of its own the rules directory is looked at only when a rule is owed there, and then holds no Markdown.
+    const stray = [];
+    if (listed instanceof Set || rules.length) {
+        for (const entry of entries) {
+            const rel = `${GUIDANCE_RULES_DIR}/${entry.name}`;
+            if (owed.has(rel)) continue;
+            const ours = listed instanceof Set && entry.isFile() && (listed.has(entry.name) || entry.name === RULES_MARKER);
+            stray.push({ path: rel, removable: ours });
+        }
     }
+    const skillsDir = path.join(workspaceRoot, ...SKILLS_DIR.split("/"));
+    for (const entry of listInside(realRoot, skillsDir) ?? []) {
+        if (!entry.isDirectory()) continue;
+        const rel = `${SKILLS_DIR}/${entry.name}/SKILL.md`;
+        const file = path.join(skillsDir, entry.name, "SKILL.md");
+        let text;
+        try {
+            if (!fs.lstatSync(file).isFile()) continue;
+            text = fs.readFileSync(file, "utf8");
+        } catch {
+            continue;
+        }
+        if (text.includes(SKILL_MARK) && !owed.has(rel)) stray.push({ path: rel, removable: true });
+    }
+    return { owedFiles, stray };
 }
 
 /**
- * Compile a workspace's guidance: report it, and check it or write it. Returns how many files drifted
- * under `check`, and 0 otherwise. Reached whether or not the workspace has a gate policy, because a
- * workspace with none is a legitimate shape.
+ * Compile a workspace's guidance: report it, and check it or write it, as `planGuidance` judged it. Returns
+ * how many files drifted under `check`, and 0 otherwise. Reached whether or not the workspace has a gate
+ * policy, because a workspace with none is a legitimate shape.
  */
-function emitGuidance(guidance, { workspaceRoot, check, say }) {
-    const compiled = guidance ? claudeCodeGuidance(guidance) : { files: [] };
-    // The marker first, so a run stopped part-way never leaves a rule the next run cannot show is its own.
-    const marker = { unit: null, marker: true, path: `${GUIDANCE_RULES_DIR}/${RULES_MARKER}`, text: RULES_MARKER_TEXT };
-    const owedFiles = owesRules(compiled.files.map((f) => f.path)) ? [marker, ...compiled.files] : compiled.files;
-    const owed = new Set(owedFiles.map((f) => f.path));
-    const stray = strayGuidance(workspaceRoot, owed);
+function emitGuidance(guidance, plan, { workspaceRoot, check, say }) {
+    const { owedFiles, stray } = plan;
     if (guidance === null && stray.length === 0) return 0;
 
     if (guidance) {
+        const files = owedFiles.filter((f) => !f.marker);
         const counts = LOAD_TIERS.map((tier) => `${guidance.units.filter((u) => u.tier === tier).length} ${tier}`).join(", ");
         say(`guidance: ${guidance.units.length} unit(s) in ${guidance.source} — ${counts}`);
         for (const [id, host] of Object.entries(GUIDANCE_HOSTS)) {
             const cannot = LOAD_TIERS.filter((tier) => host[tier] === null);
             const degraded = guidance.units.filter((u) => cannot.includes(u.tier));
             if (id === "claude-code") {
-                say(`  ${host.label}: expresses every tier — ${compiled.files.length} file(s)`);
+                say(`  ${host.label}: expresses every tier — ${files.length} file(s)`);
                 for (const unit of guidance.units) {
-                    const target = unit.tier === "on-read" ? `${GUIDANCE_RULES_DIR}/${ON_READ_INDEX}, a pointer` : compiled.files.find((f) => f.unit === unit).path;
+                    const target = unit.tier === "on-read" ? `${GUIDANCE_RULES_DIR}/${ON_READ_INDEX}, a pointer` : files.find((f) => f.unit === unit).path;
                     say(`    unit    ${unit.name.padEnd(30)} ${unit.tier.padEnd(9)} → ${target}`);
                 }
             } else {
@@ -2337,14 +2433,14 @@ function emitGuidance(guidance, { workspaceRoot, check, say }) {
                 current = fs.readFileSync(target, "utf8");
             } catch {
                 say(file.marker
-                    ? `RED — ${target} does not exist; it is the marker that shows this compiler wrote the rules beside it. Recompile to write it.`
+                    ? `RED — ${target} does not exist; it is the marker that lists the rules this compiler wrote. Recompile to write it.`
                     : `RED — ${target} does not exist; ${file.unit ? file.unit.source : "an on-read unit"} compiles to it`);
                 drifted += 1;
                 continue;
             }
             if (current !== file.text) {
                 say(file.marker
-                    ? `RED — ${target} has drifted from the marker this compiler writes. Recompile to restore it.`
+                    ? `RED — ${target} does not list the rules the units compile to now. Recompile to rewrite it.`
                     : `RED — ${target} has drifted from ${file.unit ? file.unit.source : `the on-read units in ${guidance.source}`}. Edit the unit, then recompile.`);
                 drifted += 1;
             }
@@ -2353,25 +2449,20 @@ function emitGuidance(guidance, { workspaceRoot, check, say }) {
             const where = path.join(workspaceRoot, ...s.path.split("/"));
             say(s.removable
                 ? `RED — ${where} is where this compiler writes guidance, and no unit compiles to it. Recompile to remove it.`
-                : `RED — ${where} is in the directory this compiler owns, and is not a file it writes, so a recompile leaves it. Move it out by hand.`);
+                : `RED — ${where} is in the directory this compiler writes its rules to, and is not a file it wrote, so a recompile leaves it. Move it out by hand.`);
             drifted += 1;
         }
         return drifted;
     }
 
-    for (const file of owedFiles) {
-        const target = path.join(workspaceRoot, ...file.path.split("/"));
-        fs.mkdirSync(path.dirname(target), { recursive: true });
-        fs.writeFileSync(target, file.text);
-        say(`wrote ${target}`);
-    }
-    // Removing a file this compiler wrote is the one deletion it may do, as for the gate artifacts above:
-    // it is reproducible by definition. A rule is shown to be one by the marker beside it, and a skill by
-    // its mark; anything else found where it writes is named and left alone.
+    // Removing a file this compiler wrote is the one deletion it may do, as for the gate artifacts above: it
+    // is reproducible by definition. A rule is shown to be one by the marker that lists it, and a skill by its
+    // mark; anything else found where it writes is named and left alone. Removed first, while the marker
+    // that shows they were compiled still lists them.
     for (const s of stray) {
         const target = path.join(workspaceRoot, ...s.path.split("/"));
         if (!s.removable) {
-            say(`left ${target} — it is not a file this compiler writes, so it is not this compiler's to remove`);
+            say(`left ${target} — it is not a file this compiler wrote, so it is not this compiler's to remove`);
             continue;
         }
         fs.rmSync(target);
@@ -2383,6 +2474,12 @@ function emitGuidance(guidance, { workspaceRoot, check, say }) {
                 // Not empty: whatever else sits beside it was not written here.
             }
         }
+    }
+    for (const file of owedFiles) {
+        const target = path.join(workspaceRoot, ...file.path.split("/"));
+        fs.mkdirSync(path.dirname(target), { recursive: true });
+        fs.writeFileSync(target, file.text);
+        say(`wrote ${target}`);
     }
     try {
         fs.rmdirSync(path.join(workspaceRoot, ...GUIDANCE_RULES_DIR.split("/")));
@@ -3330,7 +3427,7 @@ export function run(argv, options = {}) {
         // compile honestly whichever half it reaches first, and because a workspace with guidance and no
         // policy still has something to compile.
         const guidance = guidanceUnits(workspaceRoot, workspaceDir);
-        if (guidance && !showMatrix) refuseUnowned(guidance, workspaceRoot);
+        const guidancePlan = showMatrix ? null : planGuidance(guidance, workspaceRoot);
         const { file: policyFile, declared: policyDeclared, reason: policyReason } = policyDeclaration(workspaceRoot, workspaceDir);
         // **Declared-and-missing and never-declared are different answers.** Only the first is a
         // failure to read something this workspace claimed to have; the second is a shape `policyPath`
@@ -3352,7 +3449,7 @@ export function run(argv, options = {}) {
                 printGuidanceMatrix(say, guidance);
                 return 0;
             }
-            const drifted = emitGuidance(guidance, { workspaceRoot, check, say });
+            const drifted = emitGuidance(guidance, guidancePlan, { workspaceRoot, check, say });
             if (!check) return 0;
             if (drifted) return 1;
             say("GREEN — every compiled guidance file matches its unit");
@@ -3493,7 +3590,7 @@ export function run(argv, options = {}) {
                     drifted += 1;
                 }
             }
-            drifted += emitGuidance(guidance, { workspaceRoot, check, say });
+            drifted += emitGuidance(guidance, guidancePlan, { workspaceRoot, check, say });
             if (drifted) return 1;
             say(guidance ? "GREEN — every emitted artifact matches the policy, and every guidance file its unit" : "GREEN — every emitted artifact matches the policy");
             return 0;
@@ -3518,7 +3615,7 @@ export function run(argv, options = {}) {
             fs.writeFileSync(file, column.artifact.text);
             say(`wrote ${file}`);
         }
-        emitGuidance(guidance, { workspaceRoot, check, say });
+        emitGuidance(guidance, guidancePlan, { workspaceRoot, check, say });
         return 0;
     } catch (error) {
         // Anything reaching here means compile could not judge — including a defect in compile

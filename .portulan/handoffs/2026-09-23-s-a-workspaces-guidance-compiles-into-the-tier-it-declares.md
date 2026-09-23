@@ -36,12 +36,15 @@ own two: **a slot, not a key**, because the spec pairs content in a slot with ma
 as `slots.memory` and `memory` do, and 2.9's `context` is the machine half; and **frontmatter**, because every
 host's own form is frontmatter, so one source maps onto each.
 
-**What `compile` owns, and what it never touches.** It owns `.claude/rules/portulan/` and proves it with a
-marker, `.compiled`, written before the first rule and loaded by no host, because Claude Code loads only
-`.md` files as rules. Where the marker is, a rule no unit compiles to is removed and named; where the
-directory holds Markdown files without it, `compile` stops with exit 2, under `--check` too, and touches none
-of them; anything else there is named and left, red under `--check` until a human moves it. A workspace that
-owes no rule leaves an unmarked directory alone. A compiled skill carries a comment naming its unit, because
+**What `compile` owns, and what it never touches.** It shows which rules in `.claude/rules/portulan/` are
+its own with a marker, `.compiled`, written before the first rule, loaded by no host because Claude Code
+loads only `.md` files as rules, and listing each rule it wrote. A listed rule no unit compiles to is removed
+and named. A rule it does not list is the team's: named and left, red under `--check` until a human moves
+it, and never replaced, so a unit that would compile onto one stops with exit 2. It stops with exit 2, under
+`--check` too and before anything is written, where the directory holds Markdown files and no marker, where
+the marker is not one it wrote, and where any path it would write is a link or lies through one out of the
+repository. A workspace that owes no rule leaves an unmarked directory alone, and a directory reached
+through a link out of the repository is never tidied. A compiled skill carries a comment naming its unit, because
 `.claude/skills/` is shared: a skill without that comment is never replaced (exit 2, nothing written), and
 only a marked one is removed. It never writes `CLAUDE.md`, which adopters write by hand. A workspace
 declaring guidance and no gate policy now compiles its guidance and says no enforcement is compiled; one
@@ -59,14 +62,24 @@ emitted here: the nested-file form is a gap left open. Persona frontmatter, row 
 is a later change, and so is any host beyond Claude Code and `AGENTS.md`. Row 12's second demonstration, a host loading the fixture's `on-path` rule when
 `api/` is first touched and not before, needs a host session; the fixture is its target.
 
-**How it was checked.** 44 new cases in [`cli/compile.test.mjs`](../../cli/compile.test.mjs) (418): the
+**How it was checked.** 49 new cases in [`cli/compile.test.mjs`](../../cli/compile.test.mjs) (423): the
 vocabulary, every refusal the slot's contract names, each emitted form byte for byte, drift, removal, the
-marker present and absent, a hand-written skill, `--matrix`, and that this repository carries no compiled
-guidance. Two in
+marker present, absent and forged, a rule and a skill written by hand, links at and on the way to every
+target, `--matrix`, and that this repository carries no compiled guidance. Two in
 [`cli/vendor.test.mjs`](../../cli/vendor.test.mjs) (72) and four in
 [`cli/doctor.test.mjs`](../../cli/doctor.test.mjs) (254). As root, `doctor`'s 4, `index`'s 5 and
 `librarian`'s 1 permission cases fail, identically on `457b0b6`; all 28 recipes ran green as a non-root
 user on a copy of this tree.
+
+**Copilot's round.** Review 5296505043 on `1c72010` found five things, all fixed in the third commit. The
+directory marker trusted any file named `.compiled` and any Markdown beside it, so a rule added by hand after
+the first compile would have been removed, which the coordinator's call meant never to happen: the marker now
+lists each rule it wrote, is trusted only when it reads exactly as this compiler writes one, and grants
+nothing else. Writes followed links, so a linked rule or directory could send guidance out of the repository:
+every path is judged before anything is written. A quoted description could spell a line break and so write a
+second pointer line: descriptions and globs refuse control characters. The schema's pairing sentence named
+the wrong pair. Extending the marker to a list is past the coordinator's call, so it reviews that change
+after the push.
 
 **Checkpoints.** Skipped by his instruction of 2026-09-23 12:38: no fresh-context runs unless he asks. The
 coordinator session reviewed the diff before the commit; his review is on the pull request.

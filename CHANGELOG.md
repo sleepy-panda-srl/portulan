@@ -137,8 +137,8 @@ records how things were found. This is per *release* and records what a reader g
   line in an index of pointers, and `compile --check` byte-compares every one against its unit, so the
   existing compile recipe reds a stale file. A tier a host cannot express degrades to a pointer, never to
   nothing: the `AGENTS.md` that `vendor --host` writes carries the `always` units inline and the rest as
-  one line each. `compile` never writes `CLAUDE.md`, and never replaces or removes a rule or a skill it cannot
-  show it wrote. An adopter moves a section of an always-loaded file into a unit and runs
+  one line each. `compile` never writes `CLAUDE.md` or through a link, and never replaces or removes a rule
+  or a skill it cannot show it wrote. An adopter moves a section of an always-loaded file into a unit and runs
   `npx @sleepy_panda_srl/portulan compile`. This repository declares no guidance, so its boot read-set is
   unchanged.
 

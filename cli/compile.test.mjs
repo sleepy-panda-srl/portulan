@@ -3396,6 +3396,8 @@ describe("guidance: a unit declares its tier, and what cannot be read is refused
         ["the index's own name", "on-read", unitText(["tier: always"]), /no unit may take it/],
         ["an unclosed single quote", "a", unitText(["tier: on-read", "description: 'A."]), /single-quoted and either not closed/],
         ["a lone quote inside single quotes", "a", unitText(["tier: on-read", "description: 'a'''b'"]), /not written `''`/],
+        ["a line break spelled inside a quoted description", "a", unitText(["tier: on-read", 'description: "One.\\n- `x.md`: two."']), /holds a line break or another control character/],
+        ["a line break spelled inside a quoted glob", "a", unitText(["tier: on-path", 'paths: ["api/**\\nb"]', "description: A."]), /a glob on one line/],
     ];
     for (const [why, name, text, pattern] of refused) {
         test(`refused, as could-not-compile: ${why}`, () => {
@@ -3505,25 +3507,87 @@ describe("guidance: written, then byte-compared", () => {
         fs.writeFileSync(path.join(dir, GUIDANCE_RULES_DIR, "notes.txt"), "mine\n");
         const checked = said(t, ["--workspace", dir, "--check"]);
         assert.equal(checked.code, 1);
-        assert.match(checked.out, /notes\.txt is in the directory this compiler owns, and is not a file it writes, so a recompile leaves it\. Move it out by hand\./);
+        assert.match(checked.out, /notes\.txt is in the directory this compiler writes its rules to, and is not a file it wrote, so a recompile leaves it\. Move it out by hand\./);
         const { out } = said(t, ["--workspace", dir]);
-        assert.match(out, /left .*notes\.txt — it is not a file this compiler writes/);
+        assert.match(out, /left .*notes\.txt — it is not a file this compiler wrote/);
         assert.ok(fs.existsSync(path.join(dir, GUIDANCE_RULES_DIR, "notes.txt")));
         assert.equal(said(t, ["--workspace", dir, "--check"]).code, 1);
     });
 
-    test("the first write leaves the marker before any rule, and a check holds it byte for byte", (t) => {
+    test("the first write leaves the marker before any rule, listing each rule it wrote", (t) => {
         assert.ok(!RULES_MARKER.endsWith(".md"), "Claude Code loads only .md files as rules, so the marker costs no context");
         const dir = guidanceCopy();
         const marker = path.join(dir, GUIDANCE_RULES_DIR, RULES_MARKER);
         const { out } = said(t, ["--workspace", dir]);
         assert.equal(out.indexOf("wrote "), out.indexOf(`wrote ${marker}`), "the marker is the first file written");
-        fs.writeFileSync(marker, "mine\n");
+        const lines = fs.readFileSync(marker, "utf8").split("\n");
+        assert.match(lines[0], /^`portulan compile` wrote the rules listed below/);
+        assert.deepEqual(lines.slice(1), ["api.md", "conventions.md", "on-read.md", ""], "one rule a line, and no skill: a skill carries its own mark");
+    });
+
+    test("a marker this compiler did not write grants nothing: exit 2, and nothing is written or removed", (t) => {
+        const dir = guidanceCopy();
+        said(t, ["--workspace", dir]);
+        const rules = path.join(dir, GUIDANCE_RULES_DIR);
+        fs.writeFileSync(path.join(rules, RULES_MARKER), "mine\n");
+        fs.writeFileSync(path.join(dir, "context", "extra.md"), unitText(["tier: always"]));
+        const before = fs.readdirSync(rules).sort();
+        for (const argv of [["--workspace", dir], ["--workspace", dir, "--check"]]) {
+            const { code, out } = said(t, argv);
+            assert.equal(code, 2);
+            assert.match(out, /\.compiled is not a marker this compiler wrote, so nothing shows which rules beside it are its own/);
+        }
+        assert.deepEqual(fs.readdirSync(rules).sort(), before);
+        assert.equal(fs.readFileSync(path.join(rules, RULES_MARKER), "utf8"), "mine\n");
+    });
+
+    test("a rule added by hand beside compiled ones is the team's: red under --check, left by a write, never replaced", (t) => {
+        const dir = guidanceCopy();
+        said(t, ["--workspace", dir]);
+        const mine = path.join(dir, GUIDANCE_RULES_DIR, "mine.md");
+        fs.writeFileSync(mine, "Ours.\n");
         const checked = said(t, ["--workspace", dir, "--check"]);
         assert.equal(checked.code, 1);
-        assert.match(checked.out, /has drifted from the marker this compiler writes/);
-        assert.equal(said(t, ["--workspace", dir]).code, 0);
-        assert.equal(said(t, ["--workspace", dir, "--check"]).code, 0);
+        assert.match(checked.out, /mine\.md is in the directory this compiler writes its rules to, and is not a file it wrote/);
+        assert.match(said(t, ["--workspace", dir]).out, /left .*mine\.md — it is not a file this compiler wrote/);
+        assert.equal(fs.readFileSync(mine, "utf8"), "Ours.\n");
+        fs.writeFileSync(path.join(dir, "context", "mine.md"), unitText(["tier: always"]));
+        const { code, out } = said(t, ["--workspace", dir]);
+        assert.equal(code, 2);
+        assert.match(out, /mine\.md exists and was not compiled here — context\/mine\.md would replace a rule written by hand/);
+        assert.equal(fs.readFileSync(mine, "utf8"), "Ours.\n");
+    });
+
+    test("nothing is written through a link: a linked rule, rules directory or skill directory is exit 2, and what it points at is untouched", (t) => {
+        const elsewhere = scratch();
+        fs.writeFileSync(path.join(elsewhere, "keep.md"), "Keep.\n");
+        const cases = [
+            ["a compiled rule", (dir) => {
+                said(t, ["--workspace", dir]);
+                const rule = path.join(dir, GUIDANCE_RULES_DIR, "conventions.md");
+                fs.rmSync(rule);
+                fs.symlinkSync(path.join(elsewhere, "keep.md"), rule);
+            }, /conventions\.md is a link, and writing it would change whatever the link points at/],
+            ["the rules directory", (dir) => {
+                fs.mkdirSync(path.join(dir, ".claude", "rules"), { recursive: true });
+                fs.symlinkSync(elsewhere, path.join(dir, GUIDANCE_RULES_DIR));
+            }, /lies through a link out of the repository/],
+            ["a skill's directory", (dir) => {
+                fs.mkdirSync(path.join(dir, SKILLS_DIR), { recursive: true });
+                fs.symlinkSync(elsewhere, path.join(dir, SKILLS_DIR, "release"));
+            }, /release\/SKILL\.md lies through a link out of the repository/],
+        ];
+        for (const [what, arrange, pattern] of cases) {
+            const dir = guidanceCopy();
+            arrange(dir);
+            for (const argv of [["--workspace", dir], ["--workspace", dir, "--check"]]) {
+                const { code, out } = said(t, argv);
+                assert.equal(code, 2, what);
+                assert.match(out, pattern, what);
+            }
+            assert.deepEqual(fs.readdirSync(elsewhere), ["keep.md"], what);
+            assert.equal(fs.readFileSync(path.join(elsewhere, "keep.md"), "utf8"), "Keep.\n", what);
+        }
     });
 
     test("without the marker, Markdown in the rules directory is not this compiler's: exit 2, and nothing is written", (t) => {
