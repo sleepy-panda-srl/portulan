@@ -32,18 +32,20 @@ are the point:
 | Path | What lives here |
 |---|---|
 | [`workspace.json`](workspace.json) | The **manifest**: which slots this workspace fills and where each one lives |
-| [`identity.md`](identity.md) | Who this team is, the stack, the glossary |
+| [`identity.md`](identity.md) | Who this team is, the stack, the glossary — the file a boot reads |
+| [`identity/`](identity/) | The rest of the identity file: the stack's lines argued and measured, opened before a release, a checkpoint, or a change to what a recipe needs |
 | [`principles.md`](principles.md) | The constitution slot: the principles this team's work is graded against |
 | [`products/`](products/) | The product layer, one directory per product — mission/what/why, and agent affordances |
 | [`gate-map.md`](gate-map.md) | The policy half of autonomy: concrete actions bound to the engine's tiers — the index a boot reads |
 | [`gate-map/`](gate-map/) | The rest of the gate map, one file per tier and topic: conditions, measurements, amendments and reasons, opened when an action is on that path |
 | [`dod.md`](dod.md) | Definition of done here — this workspace's extension of core's floor |
+| [`dod/`](dod/) | The reasons behind conditions 5, 6 and 7 of the definition of done, each linked from its condition |
 | [`verify/`](verify/) | The verify recipes — one of which the Stop-gate now runs — and what each check enforces |
 | [`gates.json`](gates.json) | The gate policy the enforcement compiler reads: actions bound to tiers, in this workspace's vocabulary rather than a host's |
 | [`labels.json`](labels.json) | The pull-request label set, read by [`../.github/workflows/pr-labels.yml`](../.github/workflows/pr-labels.yml) — policy here, checker there |
 | [`compile/`](compile/) | The runtime the Claude Code artifact points at — the `PreToolUse` gate and the `Stop` gate — and the compiled platform floor, [`compile/github-ruleset.json`](compile/github-ruleset.json) |
 | [`tools/`](tools/) | Operator tooling — how this repository is *run*, as distinct from how a change is checked |
-| [`repos/`](repos/) | Repo cards — one per repository this workspace covers |
+| [`repos/`](repos/) | Repo cards — one per repository this workspace covers — and beside a card, a directory of its name for the history a boot need not read |
 | [`memory/`](memory/) | Durable facts with provenance, one per file |
 | [`memory-index.md`](memory-index.md) | The generated index of that store — one line per record, built by [`../cli/index.mjs`](../cli/index.mjs) and never by hand. It sits *beside* the store rather than in it, because `doctor` counts every `.md` in the store as a record |
 | [`tasks/`](tasks/) | Task files: the atomic unit of work and of context |

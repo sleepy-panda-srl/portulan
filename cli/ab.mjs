@@ -187,6 +187,14 @@ export const DISPOSITIONS = [
             "carrying a named one.",
     },
     {
+        match: "identity/",
+        kind: "keep",
+        row: "residual",
+        why:
+            "The on-read half of `identity.md`, split from it so that a boot reads only the rows and the glossary: the " +
+            "same document and the same residual, so the same disposition.",
+    },
+    {
         match: "principles.md",
         kind: "keep",
         row: "residual",
@@ -310,6 +318,16 @@ export const DISPOSITIONS = [
     },
 
     // ---------------------------------------------------------------- deletion
+    {
+        match: "dod/",
+        kind: "deletion",
+        row: 3,
+        why:
+            "`arm.md` row 3 removes conditions 5, 6 and 7 from `dod.md`, and this directory holds their reasons and " +
+            "nothing else, so the reasons go with the conditions. **A reason for a condition the arm keeps does not " +
+            "belong here**: it stays in `dod.md`, where `scratchDod()` carries it, or this disposition becomes a " +
+            "substitution.",
+    },
     {
         match: "repos/",
         kind: "deletion",

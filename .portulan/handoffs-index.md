@@ -2,13 +2,14 @@
 
 > Generated from `handoffs/` by `node cli/index.mjs`. Do not edit by hand: it is regenerated
 > and byte-compared, so a hand-edit survives exactly until the next run.
-> 186 handoff(s), newest first. No budget: the series is append-only, so
+> 187 handoff(s), newest first. No budget: the series is append-only, so
 > the only remedy a budget could ask for is one this project rules out.
 
 - 2026-09-23 · [Handoff — 2026-09-23: what a host loads into every context is proposed for a budget, and row 12 runs first](handoffs/2026-09-23-the-always-tier-is-proposed-for-a-budget.md)
 - 2026-09-23 · [Handoff — 2026-09-23: the boot report says when the packs step did not load](handoffs/2026-09-23-p-the-boot-report-says-when-the-packs-step-did-not-load.md)
 - 2026-09-23 · [Handoff — 2026-09-23: what a boot reads is measured, and Portulan's own share is railed](handoffs/2026-09-23-o-what-a-boot-reads-is-measured-and-portulans-share-railed.md)
 - 2026-09-23 · [Handoff — 2026-09-23: the always tier has its doctrine and its manifest key](handoffs/2026-09-23-n-the-always-tier-has-its-doctrine-and-its-key.md)
+- 2026-09-23 · [Handoff — 2026-09-23: three boot files keep their rules and move their reasons](handoffs/2026-09-23-m-three-boot-files-keep-their-rules-and-move-their-reasons.md)
 - 2026-09-23 · [Handoff — 2026-09-23: the boot skill reads its pointer and pack steps only where they apply](handoffs/2026-09-23-l-the-boot-skill-reads-its-pointer-and-pack-steps-where-they-apply.md)
 - 2026-09-23 · [Handoff — 2026-09-23: 0038 is accepted](handoffs/2026-09-23-k-0038-is-accepted.md)
 - 2026-09-23 · [Handoff — 2026-09-23: Copilot is requested over GraphQL, once no round is in flight](handoffs/2026-09-23-i-copilot-is-requested-over-graphql-once-no-round-is-in-flight.md)
