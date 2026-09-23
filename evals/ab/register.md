@@ -9,8 +9,8 @@
 > which is the registered carrier of that subject and is cited here rather than restated.
 
 - **Source workspace:** `.portulan`
-- **Moves:** 22 — 4 keep · 6 emptying · 3 substitution · 9 deletion
-- **Arm A files:** 12 · **arm B files:** 0
+- **Moves:** 23 — 5 keep · 6 emptying · 3 substitution · 9 deletion
+- **Arm A files:** 21 · **arm B files:** 0
 - **Hooks pinned to this machine:** 5
 
 **The source path count is deliberately not here.** It moves whenever a session writes a record,
@@ -25,6 +25,7 @@ noticed by this file.
 | `identity.md` | keep | residual |
 | `principles.md` | keep | residual |
 | `gate-map.md` | keep | residual |
+| `gate-map/` | keep | residual |
 | `gates.json` | keep | residual |
 | `memory/` | emptying | 1 |
 | `proposals/` | emptying | 1 |
@@ -51,6 +52,15 @@ noticed by this file.
 - `.portulan/compile/github-ruleset.json`
 - `.portulan/dod.md`
 - `.portulan/gate-map.md`
+- `.portulan/gate-map/auto.md`
+- `.portulan/gate-map/checkpoints.md`
+- `.portulan/gate-map/compiler.md`
+- `.portulan/gate-map/gated.md`
+- `.portulan/gate-map/identity.md`
+- `.portulan/gate-map/merge-discipline.md`
+- `.portulan/gate-map/platform-floor.md`
+- `.portulan/gate-map/prohibited.md`
+- `.portulan/gate-map/propose.md`
 - `.portulan/gates.json`
 - `.portulan/handoffs-index.md`
 - `.portulan/identity.md`

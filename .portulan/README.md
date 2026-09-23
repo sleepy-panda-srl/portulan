@@ -35,7 +35,8 @@ are the point:
 | [`identity.md`](identity.md) | Who this team is, the stack, the glossary |
 | [`principles.md`](principles.md) | The constitution slot: the principles this team's work is graded against |
 | [`products/`](products/) | The product layer, one directory per product — mission/what/why, and agent affordances |
-| [`gate-map.md`](gate-map.md) | The policy half of autonomy: concrete actions bound to the engine's tiers |
+| [`gate-map.md`](gate-map.md) | The policy half of autonomy: concrete actions bound to the engine's tiers — the index a boot reads |
+| [`gate-map/`](gate-map/) | The rest of the gate map, one file per tier and topic: conditions, measurements, amendments and reasons, opened when an action is on that path |
 | [`dod.md`](dod.md) | Definition of done here — this workspace's extension of core's floor |
 | [`verify/`](verify/) | The verify recipes — one of which the Stop-gate now runs — and what each check enforces |
 | [`gates.json`](gates.json) | The gate policy the enforcement compiler reads: actions bound to tiers, in this workspace's vocabulary rather than a host's |

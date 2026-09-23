@@ -488,7 +488,7 @@ doctrine-rewrite arc had merged with **no handoff and no Session log entry**, an
 entry had closed without the seam attestation its siblings carry. Written red-first against the tree it
 was aimed at: on the pre-repair record it failed on exactly the missing attestation (`docs/plan.md:714`)
 and went green only once the record was repaired. Its observation procedure is one move — delete the
-seam line from the newest entry and run the recipe ([the 0007 rule](../gate-map.md): a watcher earns its
+seam line from the newest entry and run the recipe ([the 0007 rule](../gate-map/platform-floor.md): a watcher earns its
 place by being watched). Forcing the date half red is a bigger move on today's tree: every logged date
 has more than one handoff, so it takes deleting all of a date's handoffs, not one.
 
@@ -641,7 +641,7 @@ stubs `gh`, so it asserts the *shape* the filters are assumed to produce (`Copil
 gained a check from a comment filed at low confidence, after the eleven false greens above; both are
 the same lesson, which is that the reviewer's least-certain half is where the unexercised claims are.
 
-Its observation procedure ([the 0007 rule](../gate-map.md)), all eight measured on a scratch copy of
+Its observation procedure ([the 0007 rule](../gate-map/platform-floor.md)), all eight measured on a scratch copy of
 the tree at the commit that added it, with `jq-1.7.1`: change a program's output (`join("|")` →
 `join(",")`) → **red, exit 1**, four fixtures named. Rename a selector a fixture anchors on
 (`.head.sha` → `.head.ref`) → **exit 2**, the anchor matching 0 of 7 programs. Add a jq program and no
@@ -688,7 +688,7 @@ first run against the tree, which is the third time a check here has
 ([`map`](../memory/readme-map-must-match-shape.md) and `doctor` were the others): one record's H1 said
 something its filename did not, and the store therefore held two answers to what that record is called.
 
-Its observation procedure ([the 0007 rule](../gate-map.md)), thirteen moves measured on a scratch copy
+Its observation procedure ([the 0007 rule](../gate-map/platform-floor.md)), thirteen moves measured on a scratch copy
 of the tree at the commit that added it. Add a record and do not regenerate → **red, exit 1**, *out of
 date*. Edit a record's **prose** and do not regenerate → **green**, and deliberately so: the index
 carries a title, a path and a type, all of which come from the record's *name* and one field, so it
@@ -735,7 +735,7 @@ pointers were then resolved **mechanically** — the commit that added each file
 commit→pull-request mapping, which resolves rebase-merged commits (measured: `5f1a91b` → `#73`) —
 rather than reconstructed from anyone's memory of which pull request that was.
 
-Its observation procedure ([the 0007 rule](../gate-map.md)), seven moves measured on a scratch copy of
+Its observation procedure ([the 0007 rule](../gate-map/platform-floor.md)), seven moves measured on a scratch copy of
 the tree at the commit that added it. Control → **green**, three lines naming 15 examined. Delete one
 proposal's pointer → **red, exit 1**, naming that file alone. Replace the URL with a bare `#8` →
 **red**: the URL shape is asserted deliberately, since `#8` is also how this repository writes an
@@ -754,7 +754,7 @@ characters, of which only 11% was criterion — 17k of amendment argument, 6.6k 
 reconciliation moved **55,643** characters into `docs/milestones/mN.md` verbatim and left 10,565 in
 the table; the rail is what makes that a state rather than a moment.
 
-Its observation procedure ([the 0007 rule](../gate-map.md)), seven moves measured on a scratch copy of the
+Its observation procedure ([the 0007 rule](../gate-map/platform-floor.md)), seven moves measured on a scratch copy of the
 tree at the commit that added it. Control → **green**, three lines each naming 12 rows examined. Type
 `**Criterion amended with Marius, …**` back into milestone 9's row → **red, exit 1**, naming
 `docs/plan.md` and the line. Type a session note back in the `(Session 0 of 1–2, …` spelling → **red**;
