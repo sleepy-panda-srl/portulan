@@ -1,4 +1,4 @@
-# Proposal 0038 — what a change spends is measured, and a session ends when continuing costs more than restarting
+# Proposal 0038 — what a change spends is measured, and a session is told to end when continuing costs more than restarting
 
 **Status. PROPOSED — drafted 2026-09-23; its five questions settled the same day**, the first by the maintainer and
 the other four, at his direction, by the project's coordinator session with the drafting session, on his criterion
@@ -110,10 +110,10 @@ adds `context` to the kernel's map.
    requests, tokens by class (uncached, written by lifetime, read, output), fresh contexts opened, largest context,
    hit rate, cache rebuilds and their causes, and tokens per changed line. **Numbers only**: nothing reads or prints
    what a context said. Where the host keeps totals of its own, the measurement states its difference from them.
-2. **Every request re-reads the context, so a session ends when continuing costs more than restarting.** The
-   threshold is computed from the price multipliers, the fresh context and a horizon, as above. At it the session is
-   told **once, where the agent is**: with its next tool result mid-stretch, or at its next prompt, to write its
-   handoff and end; the human sees the same figure. The handoff carries what the restart needs.
+2. **Every request re-reads the context, so a session is told to end when continuing costs more than
+   restarting.** The threshold is computed from the price multipliers, the fresh context and a horizon, as above. At
+   it the session is told **once, where the agent is**: with its next tool result mid-stretch, or at its next prompt,
+   to write its handoff and end; the human sees the same figure. The handoff carries what the restart needs.
 3. **The prefix stays stable.** 0036 lists switching model or effort mid-session as a non-goal; here it becomes a
    rule, because a switch rewrites everything after it: **model and effort are chosen when a context is created**,
    and tool definitions are deferred wherever the host can defer them. Content that varies per session (a date, an
@@ -137,9 +137,11 @@ adds `context` to the kernel's map.
   one record per content block (59 records for 24 requests, counted during drafting a few requests after the figures
   above), attributes by branch and working directory with worktrees included, and keeps subagent records apart. It is
   a **report and never a rail, and it never runs inside a recipe**: host records differ per machine, so a rail on them
-  would be red on one machine and green on the next. Its correctness is railed by a fixture of synthetic records with
-  known totals, the per-block duplicates included. Tokens by class are always exact; money appears only where the
-  manifest declares prices.
+  would be red on one machine and green on the next. `doctor` is itself a recipe here
+  ([`../verify/doctor.sh`](../verify/doctor.sh)), so that recipe runs it in a static mode that opens no host record,
+  and a rail runs the static mode beside a fixture of host records and checks its output matches the output without
+  them. The ledger's correctness is railed by a fixture of synthetic records with known totals, the per-block
+  duplicates included. Tokens by class are always exact; money appears only where the manifest declares prices.
 - **`doctor` names the biggest lever (report).** Beside 0036's always-tier figure, where records exist: spend by class
   for the current branch and recent sessions, the dominant class, and the lever it maps to. Reads map to session
   length and tool output; writes to fresh contexts, TTL gaps and busts, each rebuild's cause inferred from the gap
@@ -148,16 +150,18 @@ adds `context` to the kernel's map.
   records it says so and reports the static figure alone.
 - **The restart advisory (a report by default, a rail by declaration, through new compile targets).** For Claude
   Code, a non-blocking `Stop` hook's output never reaches the model, so the default goes where the agent is: one line,
-  once, when the threshold is crossed, as `additionalContext` from a compiled **`PostToolUse` hook** mid-stretch
-  (*finish the current step, then hand off*) or from a compiled **`UserPromptSubmit` hook** at the next prompt, each
+  once, at the first request whose recorded usage shows the threshold crossed, as `additionalContext` from a compiled
+  **`PostToolUse` hook** mid-stretch (*finish the current step, then hand off*) or from a compiled
+  **`UserPromptSubmit` hook** at the next prompt, each
   of which enters the context without an extra turn (the host's hooks reference and its context-window page, read
   2026-09-23). For the human, a compiled **status-line command** shows the same figure from the host's own last-call
   token counts, locally and at no token cost. Each reads the last request's usage from the transcript path in its
   input; the host writes the transcript asynchronously, so the figure may lag one request. Each prints the
   multipliers it assumed, or *undeclared* when the manifest declares none. **Where a workspace declares it**, crossing
   the threshold is instead a one-time Stop-gate block whose reason asks for the handoff: a block's reason reaches the
-  model and the turn continues, as [`../../cli/stop-gate.mjs`](../../cli/stop-gate.mjs) already does. Portulan
-  compiles none of these surfaces today.
+  model and the turn continues, as [`../../cli/stop-gate.mjs`](../../cli/stop-gate.mjs) already does. No surface
+  ends a session, the block included; ending it stays the agent's or the human's act, which is why rule 2 says the
+  session is *told*. Portulan compiles none of these surfaces today.
 - **Cache safety (a rail on Portulan, a report on workspaces).** This repository's recipes scan Portulan's compiled
   always-tier files and its hook text for dates, commit hashes, ids and absolute paths, against a committed golden.
   Rendering twice and comparing would prove determinism only, as [`../verify/README.md`](../verify/README.md) already

@@ -23,6 +23,11 @@ project's sessions run none unless he asks. The coordinator session reviewed bot
 and its twelve corrections are folded. The largest: a non-blocking `Stop` hook's output never reaches the model,
 so the advisory moved to the hooks whose output does; growth was wrongly said to lower the threshold; and the
 proposal now cites its outside sources by name rather than by link, as every earlier proposal does.
+Copilot's review of #433 then found three contradictions, fixed in a second commit: rule 2 said a session *ends*
+though nothing proposed ends one, so it is now *told* to; the ledger never runs inside a recipe though `doctor` is
+one, so that recipe runs a static mode railed to open no host record; and the advisory was due at the exact
+crossing though its hooks read a transcript the host writes asynchronously, so its demonstration allows one
+request's lag.
 
 **The commit's co-author line names no model.** This session's operating rules keep model identifiers out of
 anything pushed.
