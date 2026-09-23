@@ -7,12 +7,13 @@ token for one call: the REST `POST /pulls/{n}/requested_reviewers` naming
 and its review requests over GraphQL, selecting each reviewer's type and a Bot's login. The GraphQL answer is
 kept in a file and judged by one `jq` program rather than by `gh`'s exit status, because `gh` exits non-zero
 on any GraphQL error. A `FORBIDDEN` error whose path runs through a `requestedReviewer` is read as a reviewer
-the job may not see; any other `FORBIDDEN` is red at once, with the answer printed; any other error is a look
-that read nothing. The proof of the request is Copilot among the review requests, read up to three times, five
-seconds apart, after the call; reads that never find it are red only when all three answered and showed every
-reviewer. The mutation, the Bot node-id lookup and their fixtures are gone. The filters recipe covers the two
-new programs with fifteen fixtures in place of #436's nine, and the six fixtures of `copilot-review.yml`'s
-pull request read anchor on a longer fragment, because `.head.sha` now names two programs.
+the job may not see; any other `FORBIDDEN` is red at once, with the answer printed; any other error, or an
+answer without the list of review requests, is a look that read nothing. The proof of the request is Copilot
+among the review requests, read up to three times, five seconds apart, after the call; reads that never find
+it are red only when all three answered and showed every reviewer. The mutation, the Bot node-id lookup and
+their fixtures are gone. The filters recipe covers the two new programs with sixteen fixtures in place of
+#436's nine, and the six fixtures of `copilot-review.yml`'s pull request read anchor on a longer fragment,
+because `.head.sha` now names two programs.
 
 **What failed.** The first run of #436's job after it merged, on #443's head `2acddc7` at 18:21:40 UTC (run
 35901903000, job 107319935704), went red at its first look: `GitHub refused to show #443 to the token`, then
@@ -77,7 +78,10 @@ project's shared files, not in this repository.
 **Copilot's round on `1920a6d`.** One finding, moderate, and right: a read after the call that showed every
 reviewer, followed by two that could not be read, went red, though the rule above asks all three to show every
 reviewer. Absence is now proven only when all three answered; otherwise it is the unconfirmed warning. Two
-cases above cover it, with the unreadable reads last and first.
+cases above cover it, with the unreadable reads last and first. Its summary also named incomplete validation
+of the GraphQL answer, with no thread: an answer that carried the pull request but no list of review requests
+read as every reviewer shown, so three of them after the call went red. It is now a look that read nothing,
+with a fixture.
 
 **Observation (proposal 0007).** On the next push to a pull request a bot opened, after this merges: the
 job's log shows the reads and the request, and its summary Copilot among the review requests; the timeline

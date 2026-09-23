@@ -586,6 +586,15 @@ const CASES = [
         status: 0,
     },
     {
+        id: "request-verdict-no-list",
+        anchor: 'then "hidden" else "shown"',
+        why: "an answer that carries the pull request but no list of review requests is `unread`, so "
+            + "it is never taken for every reviewer shown and none of them Copilot",
+        input: '{"data":{"repository":{"pullRequest":{"reviewRequests":null}}}}',
+        stdout: "unread\n",
+        status: 0,
+    },
+    {
         id: "request-verdict-not-graphql",
         anchor: 'then "hidden" else "shown"',
         why: "an object with neither `data` nor `errors`, as an HTTP error body is, is `unread`",

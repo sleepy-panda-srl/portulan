@@ -232,10 +232,11 @@ jobs:
           # The review requests, over GraphQL with the job's own token: each reviewer's type and a
           # Bot's login, nothing more. `gh` exits non-zero on any GraphQL error and then prints the
           # whole answer unfiltered, so the answer is judged here. `ok`, then `hidden` or `shown`, then
-          # the Bot logins: the pull request is in it, and every error is a reviewer GitHub would not
-          # show, which is the team `CODEOWNERS` requests; `hidden` when such a reviewer, or one GitHub
-          # answers as null, is among them. `refused`: a FORBIDDEN error anywhere else, a fault of this
-          # job's token or its `permissions`. `unread`: anything else, which the next look repeats.
+          # the Bot logins: the pull request and its list of review requests are in it, and every error
+          # is a reviewer GitHub would not show, which is the team `CODEOWNERS` requests; `hidden` when
+          # such a reviewer, or one GitHub answers as null, is among them. `refused`: a FORBIDDEN error
+          # anywhere else, a fault of this job's token or its `permissions`. `unread`: anything else,
+          # which the next look repeats.
           REQUESTS_QUERY='query($owner: String!, $repo: String!, $number: Int!) {
             repository(owner: $owner, name: $repo) {
               pullRequest(number: $number) {
@@ -246,7 +247,7 @@ jobs:
           read_requests() {
             gh api graphql -f query="$REQUESTS_QUERY" -f owner="$owner" -f repo="$repo" -F number="$PR_NUMBER" \
               >"$body_file" 2>"$err_file" || true
-            jq -r 'if type != "object" or ((has("data") or has("errors")) | not) then "unread" elif any(.errors[]?; .type == "FORBIDDEN" and ((.path // []) | any(.[]; . == "requestedReviewer") | not)) then "refused" elif (.data.repository.pullRequest | type) != "object" or any(.errors[]?; .type != "FORBIDDEN") then "unread" else .data.repository.pullRequest.reviewRequests.nodes as $nodes | "ok " + (if ((.errors // []) | length) > 0 or any($nodes[]?; .requestedReviewer == null) then "hidden" else "shown" end) + " " + ([$nodes[]?.requestedReviewer.login // empty] | join(" ")) end' \
+            jq -r 'if type != "object" or ((has("data") or has("errors")) | not) then "unread" elif any(.errors[]?; .type == "FORBIDDEN" and ((.path // []) | any(.[]; . == "requestedReviewer") | not)) then "refused" elif (.data.repository.pullRequest | type) != "object" or (.data.repository.pullRequest.reviewRequests.nodes | type) != "array" or any(.errors[]?; .type != "FORBIDDEN") then "unread" else .data.repository.pullRequest.reviewRequests.nodes as $nodes | "ok " + (if ((.errors // []) | length) > 0 or any($nodes[]?; .requestedReviewer == null) then "hidden" else "shown" end) + " " + ([$nodes[]?.requestedReviewer.login // empty] | join(" ")) end' \
               "$body_file" 2>>"$err_file" || printf 'unread\n'
           }
 
