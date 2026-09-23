@@ -777,10 +777,12 @@ holds Markdown files and no marker in its form. It writes and removes nothing th
 **Checked by `compile`, not by the schema or `doctor`.** The subset cannot see inside a file, so the
 frontmatter is its consumer's to refuse: an unknown key, a tier outside the four, `paths` on a unit that is
 not on-path or reaching outside the repository, a missing `description` or one on an `always` unit, a unit
-with no guidance under its frontmatter, a link out of the workspace, a name that is not a slug or is
-`on-read`, which the index takes, or a unit that would replace a skill written by hand stops `compile` with
-exit 2, *could not compile*. `doctor` checks what it checks of every directory slot, that the path resolves, and refuses the
-slot in a manifest declaring a version before 2.10, gated from birth as `context` was.
+with no guidance under its frontmatter, a link out of the workspace or into a directory `compile` writes into,
+a slot in one of those (`.claude/`, or the workspace's `compile/`, neither of which `vendor` carries), a name
+that is not a slug or is `on-read`, which the index takes, or a unit that would replace a skill written by
+hand or compiled from another unit stops `compile` with exit 2, *could not compile*. `doctor` checks what it
+checks of every directory slot, that the path resolves, and refuses the slot in a manifest declaring a version
+before 2.10, gated from birth as `context` was.
 
 **Nothing is defaulted.** A workspace that declares no slot compiles no guidance, and no directory in an
 adopter's workspace is chosen by a key nobody typed.

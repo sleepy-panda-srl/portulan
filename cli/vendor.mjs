@@ -73,7 +73,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 
 // The guidance reader and its `AGENTS.md` form, from the compiler that owns them, so a unit is read by one
 // parser whichever of the two tools meets it first.
-import { agentsMdGuidance, CompileError, guidanceUnits } from "./compile.mjs";
+import { agentsMdGuidance, CompileError, GENERATED_DIRS, guidanceUnits } from "./compile.mjs";
 import { inspect } from "./doctor.mjs";
 // The discovery keyword, imported so no parse site can spell it differently (#123). _(This said
 // "the five parse sites"; there are seven, and `discover.mjs`'s `NAMED_WITH_AUTO` had already been
@@ -127,7 +127,7 @@ const GOVERNING_KINDS = ["repository", "demo", "portfolio"];
  * Excluded and **named**, never dropped quietly, and `compile` is the one tool that may delete them
  * because it says so itself: a generated file is reproducible by definition.
  */
-const GENERATED = new Set(["compile", ".claude"]);
+const GENERATED = new Set(GENERATED_DIRS);
 
 const isGenerated = (rel) => GENERATED.has(rel.split("/")[0]);
 

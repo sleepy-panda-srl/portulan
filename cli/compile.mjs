@@ -1838,6 +1838,13 @@ function artifactPaths(workspaceDir) {
     };
 }
 
+/**
+ * The top-level entries of a workspace directory this compiler writes into: `compile/` holds its artifacts,
+ * and `.claude/` is the host's own tree where a workspace is its own root. Exported because `./vendor.mjs`
+ * never carries them, and because no guidance may be read from them (`guidanceDeclaration`).
+ */
+export const GENERATED_DIRS = ["compile", ".claude"];
+
 /** Every backend, run against one parsed policy. The order is the order the matrix prints in. */
 export function backends(parsed, options = {}) {
     // **Provenance rides in the Claude Code artifact only, and that is an honest limit rather than an
@@ -1930,10 +1937,22 @@ export const ON_READ_INDEX = "on-read.md";
 
 /**
  * Where an on-invoke unit lands. This directory is shared with skills a team writes by hand, so a
- * compiled skill carries a mark, and only a marked skill is ever `compile`'s to rewrite or remove.
+ * compiled skill carries a mark naming its unit, as the line after its frontmatter, and only a skill whose
+ * mark reads there exactly as this compiler writes it is ever `compile`'s to rewrite or remove. Text
+ * quoting the mark anywhere else grants nothing.
  */
 export const SKILLS_DIR = ".claude/skills";
 const SKILL_MARK = "<!-- compiled by `portulan compile` from ";
+const SKILL_MARK_TAIL = "; edit that file, then recompile -->";
+
+/** The unit a skill's mark names, or null when the line after its frontmatter is not a mark this compiler writes. */
+function skillSource(text) {
+    const lines = text.split("\n");
+    const close = lines[0] === "---" ? lines.indexOf("---", 1) : -1;
+    const line = close === -1 || lines[close + 1] !== "" ? "" : lines[close + 2] ?? "";
+    if (!line.startsWith(SKILL_MARK) || !line.endsWith(SKILL_MARK_TAIL)) return null;
+    return line.slice(SKILL_MARK.length, -SKILL_MARK_TAIL.length) || null;
+}
 
 /**
  * Which tiers each host expresses, and how. `null` is a tier the host cannot express, whose units
@@ -2124,7 +2143,16 @@ export function guidanceDeclaration(workspaceRoot, workspaceDir = ".portulan") {
     if (dir === path.resolve(base) || !isInside(path.resolve(base), dir)) {
         throw new CompileError(`\`slots.context\` (${declared}) resolves to the workspace directory itself or outside it — guidance is read from a directory of its own inside it, never from elsewhere`);
     }
+    // Nor from where this compiler writes: a unit there would be overwritten by what it compiles to, and
+    // `vendor` carries neither directory, so a pointer to it would dangle in a vendored copy.
     const rel = path.relative(path.resolve(workspaceRoot), dir).split(path.sep).join("/");
+    const top = path.relative(path.resolve(base), dir).split(path.sep)[0];
+    if (rel.split("/")[0] === ".claude" || GENERATED_DIRS.includes(top)) {
+        throw new CompileError(
+            `\`slots.context\` (${declared}) lies in a directory \`compile\` writes into, \`.claude/\` or the workspace's \`compile/\` — ` +
+                `a unit there would be overwritten by what it compiles to, and \`vendor\` carries neither directory. Keep guidance in a directory of its own, such as \`context/\``,
+        );
+    }
     return { dir, rel: `${rel}/` };
 }
 
@@ -2152,6 +2180,15 @@ export function guidanceUnits(workspaceRoot, workspaceDir = ".portulan") {
     } catch (cause) {
         throw new CompileError(`the workspace directory could not be resolved — ${cause.code ?? cause.message}`);
     }
+    // Where this compiler writes, resolved, so a unit that is a link into it is refused as a slot there is.
+    const written = [path.join(workspaceRoot, ".claude"), ...GENERATED_DIRS.map((g) => path.join(workspaceRoot, workspaceDir, g))].flatMap((at) => {
+        try {
+            return [fs.realpathSync(at)];
+        } catch (cause) {
+            if (cause.code === "ENOENT" || cause.code === "ENOTDIR") return [];
+            throw new CompileError(`${at} could not be resolved — ${cause.code ?? cause.message}`);
+        }
+    });
     const units = [];
     const names = entries
         .filter((e) => e.name.endsWith(".md") && (e.isFile() || e.isSymbolicLink()))
@@ -2167,6 +2204,9 @@ export function guidanceUnits(workspaceRoot, workspaceDir = ".portulan") {
             throw new CompileError(`${source} could not be resolved — ${cause.code ?? cause.message}`);
         }
         if (!isInside(realBase, real)) throw new CompileError(`${source} is a link out of the workspace — a unit is read from inside it, never from elsewhere`);
+        if (written.some((at) => isInside(at, real))) {
+            throw new CompileError(`${source} is a link into a directory \`compile\` writes into — a unit there would be overwritten by what it compiles to`);
+        }
         let text;
         try {
             text = fs.readFileSync(full, "utf8");
@@ -2197,7 +2237,7 @@ export function claudeCodeGuidance(guidance) {
             files.push({ unit, path: `${GUIDANCE_RULES_DIR}/${unit.name}.md`, text: `${header}\n${unit.body}` });
         } else if (unit.tier === "on-invoke") {
             const header = ["---", `name: ${unit.name}`, `description: ${quoted(unit.description)}`, "---", ""].join("\n");
-            const mark = `${SKILL_MARK}${unit.source}; edit that file, then recompile -->\n`;
+            const mark = `${SKILL_MARK}${unit.source}${SKILL_MARK_TAIL}\n`;
             files.push({ unit, path: `${SKILLS_DIR}/${unit.name}/SKILL.md`, text: `${header}\n${mark}\n${unit.body}` });
         } else {
             pointers.push(unit);
@@ -2341,8 +2381,14 @@ function planGuidance(guidance, workspaceRoot) {
         } catch {
             continue;
         }
-        if (!current.includes(SKILL_MARK)) {
+        const source = skillSource(current);
+        if (source === null) {
             throw new CompileError(`${file.path} exists and was not compiled here — ${file.unit.source} would replace a skill written by hand. Rename the unit or the skill`);
+        }
+        if (source !== file.unit.source) {
+            throw new CompileError(
+                `${file.path} was compiled from ${source}, and ${file.unit.source} would replace it: two units compile to one skill. Rename one of them, or remove the skill by hand if its unit is gone, then compile again`,
+            );
         }
     }
 
@@ -2369,7 +2415,7 @@ function planGuidance(guidance, workspaceRoot) {
         } catch {
             continue;
         }
-        if (text.includes(SKILL_MARK) && !owed.has(rel)) stray.push({ path: rel, removable: true });
+        if (skillSource(text) !== null && !owed.has(rel)) stray.push({ path: rel, removable: true });
     }
     return { owedFiles, stray };
 }

@@ -45,11 +45,13 @@ never replaced, so a unit that would compile onto one stops with exit 2. It stop
 too and before anything is written, where the directory holds Markdown files and no marker, where the marker
 is not in the form it writes, and where any path it would write is a link or lies through one, even a link
 that stays inside the repository. A workspace that owes no rule leaves an unmarked directory alone, and a
-directory reached through a link is never listed or tidied. A compiled skill carries a comment naming its
-unit, because `.claude/skills/` is shared: a skill without that comment is never replaced (exit 2, nothing
-written), and only a marked one is removed. It never writes `CLAUDE.md`, which adopters write by hand. A
-workspace declaring guidance and no gate policy now compiles its guidance and says no enforcement is compiled;
-one declaring neither still exits 2.
+directory reached through a link is never listed or tidied. A compiled skill carries a comment naming its unit
+as the line after its frontmatter, because `.claude/skills/` is shared: a skill without that line, or whose
+line names another unit, is never replaced (exit 2, nothing written), only one carrying it is removed, and
+text quoting it elsewhere grants nothing. The slot may not lie where `compile` writes, in `.claude/` or the
+workspace's `compile/`, and no unit may be a link into either. It never writes `CLAUDE.md`, which adopters
+write by hand. A workspace declaring guidance and no gate policy now compiles its guidance and says no
+enforcement is compiled; one declaring neither still exits 2.
 
 **The measure agrees.** [`cli/context.mjs`](../../cli/context.mjs), untouched, counts the fixture's compiled
 `always` rule, its index and its skill's description as always-loaded and the `on-path` rule as scoped; a
@@ -63,11 +65,12 @@ emitted here: the nested-file form is a gap left open. Persona frontmatter, row 
 is a later change, and so is any host beyond Claude Code and `AGENTS.md`. Row 12's second demonstration, a host loading the fixture's `on-path` rule when
 `api/` is first touched and not before, needs a host session; the fixture is its target.
 
-**How it was checked.** 50 new cases in [`cli/compile.test.mjs`](../../cli/compile.test.mjs) (424): the
+**How it was checked.** 54 new cases in [`cli/compile.test.mjs`](../../cli/compile.test.mjs) (428): the
 vocabulary, every refusal the slot's contract names, each emitted form byte for byte, drift, removal, the
-marker present, absent and forged, a rule and a skill written by hand, links at and on the way to every
-target, inside the repository and out, `--matrix`, and that this repository carries no compiled guidance. Two
-in [`cli/vendor.test.mjs`](../../cli/vendor.test.mjs) (72) and four in
+marker present, absent and forged, a rule and a skill written by hand, a skill quoting the mark or compiled
+from another unit, a slot and a unit where `compile` writes, links at and on the way to every target, inside
+the repository and out, `--matrix`, and that this repository carries no compiled guidance. Three in
+[`cli/vendor.test.mjs`](../../cli/vendor.test.mjs) (73) and four in
 [`cli/doctor.test.mjs`](../../cli/doctor.test.mjs) (260). As root, `doctor`'s 4, `index`'s 5 and `librarian`'s
 1 permission cases fail, identically on `6e3aae6`; all 28 recipes ran green as a non-root user on a copy of
 this tree.
@@ -83,7 +86,12 @@ wrong pair. The coordinator session confirmed the listing marker as its call's i
 `f931e19` found one more, fixed in the fourth commit: a rules or skills directory reached through a link that
 stays inside the repository was still listed and tidied, so a removal could delete a file where the link
 points. Every part of a path is now judged with `lstat`, so a link anywhere on it, inside the repository or
-out, stops a write, and a directory reached through one is never listed.
+out, stops a write, and a directory reached through one is never listed. Review 5297009544 on `6e6201e` found
+three, fixed in the fifth: a slot in `.claude/rules/portulan/` would have had its units overwritten by their
+own output, and one in `.claude/` gave `AGENTS.md` pointers to files `vendor` does not carry, so a slot in
+`.claude/` or the workspace's `compile/`, or a unit linked into either, now stops `compile` and
+`vendor --host` with exit 2; and a skill quoting the mark anywhere was taken for compiled, so the mark now
+counts only as the line after the frontmatter, naming this unit.
 
 **Checkpoints.** Skipped by his instruction of 2026-09-23 12:38: no fresh-context runs unless he asks. The
 coordinator session reviewed the diff before the commit; his review is on the pull request.

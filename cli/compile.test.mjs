@@ -3648,6 +3648,40 @@ describe("guidance: written, then byte-compared", () => {
         assert.ok(!fs.existsSync(path.join(dir, GUIDANCE_RULES_DIR)), "refused before anything was written");
     });
 
+    test("a skill that only quotes the mark is not compiled: never replaced, and never removed", (t) => {
+        const dir = guidanceCopy();
+        const quoting = "---\nname: release\ndescription: Ours.\n---\n\nHow compile marks a skill:\n<!-- compiled by `portulan compile` from context/release.md; edit that file, then recompile -->\n";
+        const owed = path.join(dir, SKILLS_DIR, "release", "SKILL.md");
+        fs.mkdirSync(path.dirname(owed), { recursive: true });
+        fs.writeFileSync(owed, quoting);
+        const { code, out } = said(t, ["--workspace", dir]);
+        assert.equal(code, 2);
+        assert.match(out, /release\/SKILL\.md exists and was not compiled here/);
+        assert.equal(fs.readFileSync(owed, "utf8"), quoting);
+        // One no unit compiles to is the team's: left, and no finding of this compiler's.
+        fs.rmSync(path.dirname(owed), { recursive: true });
+        const mine = path.join(dir, SKILLS_DIR, "mine", "SKILL.md");
+        fs.mkdirSync(path.dirname(mine), { recursive: true });
+        fs.writeFileSync(mine, quoting.replace("name: release", "name: mine"));
+        assert.equal(said(t, ["--workspace", dir]).code, 0);
+        assert.equal(said(t, ["--workspace", dir, "--check"]).code, 0);
+        assert.equal(fs.readFileSync(mine, "utf8"), quoting.replace("name: release", "name: mine"));
+    });
+
+    test("a skill compiled from another unit is not this unit's to replace: exit 2, and the file is untouched", (t) => {
+        const dir = guidanceCopy();
+        assert.equal(said(t, ["--workspace", dir]).code, 0);
+        const skill = path.join(dir, SKILLS_DIR, "release", "SKILL.md");
+        const other = fs.readFileSync(skill, "utf8").replace("from context/release.md;", "from elsewhere/release.md;");
+        fs.writeFileSync(skill, other);
+        for (const argv of [["--workspace", dir], ["--workspace", dir, "--check"]]) {
+            const { code, out } = said(t, argv);
+            assert.equal(code, 2);
+            assert.match(out, /release\/SKILL\.md was compiled from elsewhere\/release\.md, and context\/release\.md would replace it/);
+        }
+        assert.equal(fs.readFileSync(skill, "utf8"), other);
+    });
+
     test("a skill written by hand stops a workspace with a gate policy too, before the policy is written", (t) => {
         const dir = workspace();
         const manifestPath = path.join(dir, ".portulan", "workspace.json");
@@ -3679,6 +3713,41 @@ describe("guidance: written, then byte-compared", () => {
             assert.match(out, /resolves to the workspace directory itself or outside it/);
             assert.ok(!fs.existsSync(path.join(dir, ".claude")));
         }
+    });
+
+    test("a slot where compile writes is refused, in .claude/ or the workspace's compile/, and nothing is written", (t) => {
+        for (const declared of [`${GUIDANCE_RULES_DIR}/`, `${GUIDANCE_RULES_DIR}/units/`, `${SKILLS_DIR}/units/`, ".claude/context/", "compile/context/"]) {
+            const dir = guidanceCopy();
+            const manifestPath = path.join(dir, "workspace.json");
+            const m = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
+            m.slots.context = declared;
+            fs.writeFileSync(manifestPath, JSON.stringify(m, null, 2));
+            const slot = path.join(dir, ...declared.split("/"));
+            fs.mkdirSync(path.dirname(slot), { recursive: true });
+            fs.renameSync(path.join(dir, "context"), slot);
+            const units = () => fs.readdirSync(slot).map((f) => [f, fs.readFileSync(path.join(slot, f), "utf8")]);
+            const before = units();
+            for (const argv of [["--workspace", dir], ["--workspace", dir, "--check"]]) {
+                const { code, out } = said(t, argv);
+                assert.equal(code, 2, declared);
+                assert.match(out, /lies in a directory `compile` writes into/, declared);
+            }
+            assert.deepEqual(units(), before, declared);
+            assert.ok(!fs.existsSync(path.join(dir, GUIDANCE_RULES_DIR, RULES_MARKER)), declared);
+        }
+    });
+
+    test("a unit that is a link into where compile writes is refused, and what it points at is untouched", (t) => {
+        const dir = guidanceCopy();
+        const target = path.join(dir, ".claude", "notes", "linked.md");
+        fs.mkdirSync(path.dirname(target), { recursive: true });
+        fs.writeFileSync(target, unitText(["tier: always"]));
+        fs.symlinkSync(target, path.join(dir, "context", "linked.md"));
+        const { code, out } = said(t, ["--workspace", dir]);
+        assert.equal(code, 2);
+        assert.match(out, /context\/linked\.md is a link into a directory `compile` writes into/);
+        assert.equal(fs.readFileSync(target, "utf8"), unitText(["tier: always"]));
+        assert.ok(!fs.existsSync(path.join(dir, GUIDANCE_RULES_DIR)));
     });
 
     test("a unit that is a link out of the workspace is refused, and nothing is written", (t) => {

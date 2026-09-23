@@ -129,7 +129,7 @@
           "$ref": "#/$defs/dirPath"
         },
         "context": {
-          "description": "Optional, added in 2.10. The guidance a host loads, one unit per Markdown file, each declaring in its own frontmatter the load tier it belongs in: `always`, `on-path` (with the `paths` it is scoped to), `on-invoke` or `on-read`, the four tiers of core/operating/context.md. Its pair is the top-level `context`: this slot holds the guidance and that key its budget, as `slots.memory` holds the records and `memory` their configuration. `compile` reads it and emits each host's own form of each tier, and a tier a host cannot express degrades to an on-read pointer, never to nothing. The frontmatter is `compile`'s to check, since this subset cannot see inside a file; spec/slots.md carries the contract.",
+          "description": "Optional, added in 2.10. The guidance a host loads, one unit per Markdown file, each declaring in its own frontmatter the load tier it belongs in: `always`, `on-path` (with the `paths` it is scoped to), `on-invoke` or `on-read`, the four tiers of core/operating/context.md. Its pair is the top-level `context`: this slot holds the guidance and that key its budget, as `slots.memory` holds the records and `memory` their configuration. `compile` reads it and emits each host's own form of each tier, and a tier a host cannot express degrades to an on-read pointer, never to nothing. The frontmatter is `compile`'s to check, since this subset cannot see inside a file, and so is that the slot lies outside `.claude/` and the workspace's `compile/`, where `compile` writes; spec/slots.md carries the contract.",
           "$ref": "#/$defs/dirPath"
         }
       }

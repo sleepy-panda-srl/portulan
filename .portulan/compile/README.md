@@ -438,9 +438,12 @@ by the next compile, as a gate artifact the policy no longer produces is. A rule
 the team's: red under `--check`, left by a write, and never replaced, so a unit that would compile onto it
 stops the run, exit 2. So does a marker not in the form this compiler writes, and Markdown in the directory
 with no marker at all. Skills share `.claude/skills/` with skills a team writes by hand, so a compiled skill
-carries a one-line mark, and `compile` refuses, exit 2, to replace a skill that does not. Nothing is written
-or removed through a link, even one that stays inside the repository, and a directory reached through one is
-neither listed nor tidied.
+carries a one-line mark naming its unit, as the line after its frontmatter, and `compile` refuses, exit 2, to
+replace a skill whose mark does not read there exactly so, or names another unit; text quoting the mark
+elsewhere grants nothing. Nothing is written or removed through a link, even one that stays inside the
+repository, and a directory reached through one is neither listed nor tidied. The slot itself may not lie
+where `compile` writes, in `.claude/` or the workspace's `compile/`, and no unit may be a link into either:
+a unit there would be overwritten by what it compiles to.
 
 **The vendored `AGENTS.md` inherits the tiers.** It is the one file its hosts are sure to load, so
 `vendor --host` carries the always units whole and every other unit as a one-line pointer to its file.

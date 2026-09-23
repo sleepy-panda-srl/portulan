@@ -665,6 +665,24 @@ describe("vendoring into a host", () => {
         assert.ok(!exists(path.join(host, ".portulan")));
     });
 
+    test("a slot in .claude/, which the copy never carries, stops the vendoring before anything is written", async () => {
+        const root = scratch();
+        const src = path.join(root, "feed", "acme");
+        fs.mkdirSync(src, { recursive: true });
+        seedWorkspace(src, { kind: "portfolio", tree: null, card: null, extra: { portulan: { spec: "2.10" } } });
+        const manifest = readManifest(src);
+        manifest.slots.context = ".claude/context/";
+        write(src, "workspace.json", json(manifest));
+        write(src, ".claude/context/api.md", '---\ntier: on-path\npaths: ["api/**"]\ndescription: Handlers.\n---\n\nValidate.\n');
+        const host = path.join(root, "host");
+        fs.mkdirSync(host, { recursive: true });
+        const h = harness();
+        assert.equal(await run([src, "--into", path.join(host, ".portulan"), "--residence", "in-repo", "--host", "generic"], h.options), 2);
+        assert.match(text(h), /lies in a directory `compile` writes into/);
+        assert.ok(!exists(path.join(host, "AGENTS.md")));
+        assert.ok(!exists(path.join(host, ".portulan")));
+    });
+
     test("the vendored tree really carries the kernel, end to end", async () => {
         const root = scratch();
         const src = path.join(root, "feed", "acme");
