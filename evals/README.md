@@ -370,8 +370,8 @@ structural. The second was decided by the awk in
 [`../.portulan/verify/workflow-filters.mjs`](../.portulan/verify/workflow-filters.mjs) until both left
 on 2026-09-23 — a matcher deliberately reduced to **one** carrier, and a **workspace-layer** one, while
 the tool is engine.
-Copying it would put two spellings of one rule on opposite sides of the boundary where neither could
-see the other drift. So the tool reports `submissions that found nothing ≤ submissions with no inline
+Copying it would have put two spellings of one rule on opposite sides of the boundary where neither
+could see the other drift. So the tool reports `submissions that found nothing ≤ submissions with no inline
 comment` and prints the right-hand side under its own name.
 
 **The boundary forbids a copy; it does not make the exact rate unreachable**, and the first draft of

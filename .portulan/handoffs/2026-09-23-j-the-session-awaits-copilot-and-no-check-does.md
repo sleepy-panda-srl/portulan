@@ -52,6 +52,15 @@ round found a Medium point, answered rather than fixed: a push landing between a
 request draws a second round of the newer head, which a re-read before the call would only narrow, since no
 request can pin a commit. The header's stated price now names that whole window.
 
+**Copilot's round on `4c242b2`.** One thread, Low, and right: the filters recipe's rewritten comment lost its
+verb and could be read as its harness still covering the removed workflow; it now says which workflow still
+branches on jq's null and which did. The summary named three more with no thread, all taken. A Moderate one:
+this change's own claim that every head a bot pushes draws a round ignored the pending run a later push
+cancels, which the request job's header already describes, so that header and *Merge discipline* now say the
+newest head's run is the one that asks. Two nits on the review meter: its comment still gave the deleted
+file's path and offered to lift a program that is gone. It now links the workflow's last version and puts the
+lift in the past, and its three other carriers say the copy would have been a second spelling.
+
 **How it was tested.** All 28 recipes green, `tests` as a non-root user in a copy. The lifted
 `copilot-request.yml` step ran against the stub `gh` in the twenty-four cases of #444's harness, with the same
 exits as #444's head in every case, and the same summaries but for the one line this change rewrites, in the

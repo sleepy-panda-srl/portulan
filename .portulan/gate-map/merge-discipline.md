@@ -10,13 +10,14 @@ The two halves have different carriers, and since 2026-09-23 neither is a check 
 | **Resolved** | No Copilot thread is left unaddressed | `required_conversation_resolution` on `main` — in [the floor](../gate-map.md#the-platform-floor) |
 | **Awaited** | A **round** on the **current head** has landed — and a review object is not a round | The session that owns the pull request, in the line its ready message carries (below); GitHub's own Copilot run shows on the head while the round is under way |
 
-**Copilot is asked for by CI, on every head.** The Copilot ruleset requests a round on a pull request a person
-opens and on every push to it; [`copilot-request.yml`](../../.github/workflows/copilot-request.yml) does the
-same on one a bot opens, which the ruleset does not, and goes red only when the maintainer's token is missing
+**Copilot is asked for by CI, on the newest head.** The Copilot ruleset requests a round on a pull request a
+person opens and on every push to it; [`copilot-request.yml`](../../.github/workflows/copilot-request.yml)
+asks on one a bot opens, which the ruleset does not, and goes red only when the maintainer's token is missing
 or its request refused, when the job's own token is refused a read before the request, or when three reads
 after the request all show every reviewer and none is Copilot. It judges no round: it asks for its event's
-head once Copilot holds no request, and whether a round landed on that head is the session's to read. See
-*Which identity acts* in [identity.md](identity.md) for why the request is his.
+head once Copilot holds no request, and a head pushed over before then draws none, because its run stops or
+is cancelled and the newest head's run is the one left to ask. Whether a round landed on the final head is
+the session's to read. See *Which identity acts* in [identity.md](identity.md) for why the request is his.
 
 **No check awaits the round — amended 2026-09-23, his ruling of 17:21 UTC and his choice at 21:22 UTC.** His
 words: *"Work with coordinator on this, the whole process needs to be rethought, discarded, approach

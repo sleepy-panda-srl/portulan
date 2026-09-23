@@ -90,8 +90,9 @@
 # the ruleset's, billed to its author. A fork's is not this repository's to spend his allowance on.
 # Drafts mirror the ruleset's `review_draft_pull_requests: false`, and `ready_for_review` asks when a
 # draft stops being one; a pull request that becomes a draft during the wait is not asked for either.
-# `synchronize` mirrors its `review_on_push: true`, so every head a bot pushes draws a round, as every
-# head a person pushes does.
+# `synchronize` mirrors its `review_on_push: true`, so each push a bot makes starts a run to ask for its
+# head. A head pushed over before its run asks draws no round, since that run stops or is cancelled as
+# above, and the newest head's run is the one left to ask.
 #
 # ## Why `pull_request_target`, and why the token sits in an environment
 #
