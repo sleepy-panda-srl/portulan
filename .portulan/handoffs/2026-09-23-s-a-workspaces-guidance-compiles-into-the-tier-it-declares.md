@@ -26,7 +26,8 @@ on 2.4, six MINORs behind at 2.10, as compatibility evidence, and `doctor` would
 so the target is the committed fixture [`cli/fixtures/guidance/`](../../cli/fixtures/guidance/), one unit per
 tier, which the tests compile. *Ownership proven by a marker*: `compile` removes only what it can show it
 wrote, and shows it with a file no host loads rather than a mark in each rule, so a rule written by hand is
-never deleted and the proof costs no context. *Its other rulings*: the tier words are `0036`'s four exactly;
+never deleted and the proof costs no context; the call's final form, confirmed after Copilot's first round,
+is a marker listing each rule it wrote. *Its other rulings*: the tier words are `0036`'s four exactly;
 the on-read index is one level deep, a pointer per unit and nothing else; the MINOR is taken independently of
 `0038`'s keys, and whichever merges second takes the next one; the `doctor.mjs` edit is its gate lines only;
 no content moves in this workspace, because the curated layer is the maintainer's, so this repository
@@ -36,19 +37,19 @@ own two: **a slot, not a key**, because the spec pairs content in a slot with ma
 as `slots.memory` and `memory` do, and 2.9's `context` is the machine half; and **frontmatter**, because every
 host's own form is frontmatter, so one source maps onto each.
 
-**What `compile` owns, and what it never touches.** It shows which rules in `.claude/rules/portulan/` are
-its own with a marker, `.compiled`, written before the first rule, loaded by no host because Claude Code
-loads only `.md` files as rules, and listing each rule it wrote. A listed rule no unit compiles to is removed
-and named. A rule it does not list is the team's: named and left, red under `--check` until a human moves
-it, and never replaced, so a unit that would compile onto one stops with exit 2. It stops with exit 2, under
-`--check` too and before anything is written, where the directory holds Markdown files and no marker, where
-the marker is not one it wrote, and where any path it would write is a link or lies through one out of the
-repository. A workspace that owes no rule leaves an unmarked directory alone, and a directory reached
-through a link out of the repository is never tidied. A compiled skill carries a comment naming its unit, because
-`.claude/skills/` is shared: a skill without that comment is never replaced (exit 2, nothing written), and
-only a marked one is removed. It never writes `CLAUDE.md`, which adopters write by hand. A workspace
-declaring guidance and no gate policy now compiles its guidance and says no enforcement is compiled; one
-declaring neither still exits 2.
+**What `compile` owns, and what it never touches.** It shows which rules in `.claude/rules/portulan/` are its
+own with a marker, `.compiled`, written before the first rule, loaded by no host because Claude Code loads
+only `.md` files as rules, and listing each rule it wrote. A listed rule no unit compiles to is removed and
+named. A rule it does not list is the team's: named and left, red under `--check` until a human moves it, and
+never replaced, so a unit that would compile onto one stops with exit 2. It stops with exit 2, under `--check`
+too and before anything is written, where the directory holds Markdown files and no marker, where the marker
+is not in the form it writes, and where any path it would write is a link or lies through one, even a link
+that stays inside the repository. A workspace that owes no rule leaves an unmarked directory alone, and a
+directory reached through a link is never listed or tidied. A compiled skill carries a comment naming its
+unit, because `.claude/skills/` is shared: a skill without that comment is never replaced (exit 2, nothing
+written), and only a marked one is removed. It never writes `CLAUDE.md`, which adopters write by hand. A
+workspace declaring guidance and no gate policy now compiles its guidance and says no enforcement is compiled;
+one declaring neither still exits 2.
 
 **The measure agrees.** [`cli/context.mjs`](../../cli/context.mjs), untouched, counts the fixture's compiled
 `always` rule, its index and its skill's description as always-loaded and the `on-path` rule as scoped; a
@@ -62,24 +63,27 @@ emitted here: the nested-file form is a gap left open. Persona frontmatter, row 
 is a later change, and so is any host beyond Claude Code and `AGENTS.md`. Row 12's second demonstration, a host loading the fixture's `on-path` rule when
 `api/` is first touched and not before, needs a host session; the fixture is its target.
 
-**How it was checked.** 49 new cases in [`cli/compile.test.mjs`](../../cli/compile.test.mjs) (423): the
+**How it was checked.** 50 new cases in [`cli/compile.test.mjs`](../../cli/compile.test.mjs) (424): the
 vocabulary, every refusal the slot's contract names, each emitted form byte for byte, drift, removal, the
 marker present, absent and forged, a rule and a skill written by hand, links at and on the way to every
-target, `--matrix`, and that this repository carries no compiled guidance. Two in
-[`cli/vendor.test.mjs`](../../cli/vendor.test.mjs) (72) and four in
-[`cli/doctor.test.mjs`](../../cli/doctor.test.mjs) (254). As root, `doctor`'s 4, `index`'s 5 and
-`librarian`'s 1 permission cases fail, identically on `457b0b6`; all 28 recipes ran green as a non-root
-user on a copy of this tree.
+target, inside the repository and out, `--matrix`, and that this repository carries no compiled guidance. Two
+in [`cli/vendor.test.mjs`](../../cli/vendor.test.mjs) (72) and four in
+[`cli/doctor.test.mjs`](../../cli/doctor.test.mjs) (260). As root, `doctor`'s 4, `index`'s 5 and `librarian`'s
+1 permission cases fail, identically on `6e3aae6`; all 28 recipes ran green as a non-root user on a copy of
+this tree.
 
-**Copilot's round.** Review 5296505043 on `1c72010` found five things, all fixed in the third commit. The
+**Copilot's rounds.** Review 5296505043 on `1c72010` found five things, all fixed in the third commit. The
 directory marker trusted any file named `.compiled` and any Markdown beside it, so a rule added by hand after
 the first compile would have been removed, which the coordinator's call meant never to happen: the marker now
 lists each rule it wrote, is trusted only when it reads exactly as this compiler writes one, and grants
 nothing else. Writes followed links, so a linked rule or directory could send guidance out of the repository:
 every path is judged before anything is written. A quoted description could spell a line break and so write a
-second pointer line: descriptions and globs refuse control characters. The schema's pairing sentence named
-the wrong pair. Extending the marker to a list is past the coordinator's call, so it reviews that change
-after the push.
+second pointer line: descriptions and globs refuse control characters. The schema's pairing sentence named the
+wrong pair. The coordinator session confirmed the listing marker as its call's intent. Review 5296849633 on
+`f931e19` found one more, fixed in the fourth commit: a rules or skills directory reached through a link that
+stays inside the repository was still listed and tidied, so a removal could delete a file where the link
+points. Every part of a path is now judged with `lstat`, so a link anywhere on it, inside the repository or
+out, stops a write, and a directory reached through one is never listed.
 
 **Checkpoints.** Skipped by his instruction of 2026-09-23 12:38: no fresh-context runs unless he asks. The
 coordinator session reviewed the diff before the commit; his review is on the pull request.

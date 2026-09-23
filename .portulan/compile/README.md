@@ -436,10 +436,11 @@ before the first rule and listing each rule it wrote: a file no host loads, beca
 every byte every context pays. A listed rule no unit compiles to any more is red under `--check` and removed
 by the next compile, as a gate artifact the policy no longer produces is. A rule the marker does not list is
 the team's: red under `--check`, left by a write, and never replaced, so a unit that would compile onto it
-stops the run, exit 2. So does a marker this compiler did not write, and Markdown in the directory with no
-marker at all. Skills share `.claude/skills/` with skills a team writes by hand, so a compiled skill carries a
-one-line mark, and `compile` refuses, exit 2, to replace a skill that does not. Nothing is written through a
-link, and a directory reached through a link out of the repository is neither written nor tidied.
+stops the run, exit 2. So does a marker not in the form this compiler writes, and Markdown in the directory
+with no marker at all. Skills share `.claude/skills/` with skills a team writes by hand, so a compiled skill
+carries a one-line mark, and `compile` refuses, exit 2, to replace a skill that does not. Nothing is written
+or removed through a link, even one that stays inside the repository, and a directory reached through one is
+neither listed nor tidied.
 
 **The vendored `AGENTS.md` inherits the tiers.** It is the one file its hosts are sure to load, so
 `vendor --host` carries the always units whole and every other unit as a one-line pointer to its file.

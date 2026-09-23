@@ -1898,7 +1898,7 @@ export const LOAD_TIERS = ["always", "on-path", "on-invoke", "on-read"];
  * marker** (`RULES_MARKER` below) rather than a mark in each file, because every byte of an always-tier
  * file is paid for by every context. It rewrites and removes only the rules the marker lists; anything else
  * there is a team's own, named and left, and a unit that would compile onto one stops the run with exit 2.
- * Where the directory holds Markdown files and no marker this compiler wrote, nothing shows any of them
+ * Where the directory holds Markdown files and no marker in this compiler's form, nothing shows any of them
  * was compiled, so it stops with exit 2 and touches none of them.
  */
 export const GUIDANCE_RULES_DIR = ".claude/rules/portulan";
@@ -1907,7 +1907,8 @@ export const GUIDANCE_RULES_DIR = ".claude/rules/portulan";
  * The marker: a file in that directory no host loads, since Claude Code loads only `.md` files as rules,
  * so it costs no context. Its first line names the compiler and each line after it one rule it wrote.
  * Byte-compared like every other compiled file, and trusted only when it reads exactly as this compiler
- * writes one: a marker written by hand grants nothing.
+ * writes one: a marker not in this compiler's form grants nothing. One in that form is read as the list it
+ * is, whoever wrote it, because whoever can edit it can as well remove the files it lists.
  */
 export const RULES_MARKER = ".compiled";
 const RULES_MARKER_HEAD = "`portulan compile` wrote the rules listed below from slots.context; it rewrites and removes only these.";
@@ -2231,56 +2232,43 @@ export function agentsMdGuidance(guidance, dir) {
 }
 
 /**
- * Where a guidance path would be written, judged before anything is: `null` when it is a real file inside
- * the repository or can be created as one, and otherwise what stops it. Writing through a link would change
- * whatever the link points at, which may be outside the repository or a file this compiler never wrote.
+ * What stops a guidance path being written or tidied as a real `kind`, judged before anything is, part by
+ * part from the repository root with `lstat`: `null` when every part of it that exists is a real directory
+ * and the last, if it exists, a real `kind`. **A link stops it wherever it stands, even one that stays inside
+ * the repository**: writing or removing through it would change whatever it points at, which this compiler
+ * cannot show it wrote.
  */
-function landing(realRoot, workspaceRoot, rel) {
-    const target = path.join(workspaceRoot, ...rel.split("/"));
-    for (let at = target; ; ) {
-        let stat = null;
+function landing(workspaceRoot, rel, kind = "file") {
+    const parts = rel.split("/");
+    let at = workspaceRoot;
+    for (const [i, part] of parts.entries()) {
+        at = path.join(at, part);
+        let stat;
         try {
             stat = fs.lstatSync(at);
         } catch (cause) {
-            if (cause.code !== "ENOENT" && cause.code !== "ENOTDIR") throw new CompileError(`${rel} could not be examined — ${cause.code ?? cause.message}`);
+            if (cause.code === "ENOENT") return null;
+            throw new CompileError(`${rel} could not be examined — ${cause.code ?? cause.message}`);
         }
-        if (stat === null) {
-            const up = path.dirname(at);
-            if (up === at) return "lies nowhere this compiler can resolve";
-            at = up;
-            continue;
+        const last = i === parts.length - 1;
+        const here = parts.slice(0, i + 1).join("/");
+        if (stat.isSymbolicLink()) {
+            return last ? "is a link, and writing it would change whatever the link points at" : `lies through a link, ${here}, and writing through it would change whatever the link points at`;
         }
-        if (at === target && stat.isSymbolicLink()) return "is a link, and writing it would change whatever the link points at";
-        if (at === target && !stat.isFile()) return "is not a file";
-        let real;
-        try {
-            real = fs.realpathSync(at);
-        } catch {
-            return "lies through a link to nothing";
-        }
-        if (!isInside(realRoot, real)) return "lies through a link out of the repository";
-        if (at !== target && !fs.statSync(real).isDirectory()) return "cannot be created, because a file stands in its path";
-        return null;
+        const want = last ? kind : "directory";
+        if (want === "file" ? !stat.isFile() : !stat.isDirectory()) return last ? `is not a ${kind}` : `cannot be created, because ${here} is not a directory`;
     }
+    return null;
 }
 
-/**
- * What a directory this compiler writes into holds, listed only when it resolves inside the repository: one
- * reached through a link out of it is not this repository's to tidy, and nothing is written there either.
- */
-function listInside(realRoot, dir) {
-    let real;
-    try {
-        real = fs.realpathSync(dir);
-    } catch (cause) {
-        if (cause.code === "ENOENT" || cause.code === "ENOTDIR") return null;
-        throw new CompileError(`${dir} could not be resolved — ${cause.code ?? cause.message}`);
-    }
-    if (!isInside(realRoot, real) || !fs.statSync(real).isDirectory()) return null;
+/** What a directory this compiler writes into holds: nothing when it is absent, or when `landing` stops it. */
+function listReal(workspaceRoot, rel) {
+    const dir = path.join(workspaceRoot, ...rel.split("/"));
+    if (landing(workspaceRoot, rel, "directory") !== null || !fs.existsSync(dir)) return [];
     try {
         return fs.readdirSync(dir, { withFileTypes: true });
     } catch (cause) {
-        throw new CompileError(`${dir} could not be listed — ${cause.code ?? cause.message}`);
+        throw new CompileError(`${rel} could not be listed — ${cause.code ?? cause.message}`);
     }
 }
 
@@ -2290,18 +2278,12 @@ function listInside(realRoot, dir) {
  *
  * What this compiler cannot show it wrote is not its to replace or remove. A skill shows it by its mark, and
  * a rule by the marker beside it listing its name, so each refusal below is exit 2: a unit that would compile
- * onto a skill or a rule written by hand, Markdown in the rules directory with no marker, a marker this
- * compiler did not write, and any path that is a link or lies through one out of the repository.
+ * onto a skill or a rule written by hand, Markdown in the rules directory with no marker, a marker not in
+ * this compiler's form, and any path that is a link or lies through one.
  *
  * @returns {{ owedFiles: object[], stray: { path: string, removable: boolean }[] }}
  */
 function planGuidance(guidance, workspaceRoot) {
-    let realRoot;
-    try {
-        realRoot = fs.realpathSync(workspaceRoot);
-    } catch (cause) {
-        throw new CompileError(`the repository root could not be resolved — ${cause.code ?? cause.message}`);
-    }
     const files = guidance ? claudeCodeGuidance(guidance).files : [];
     const rules = files.filter((f) => f.path.startsWith(`${GUIDANCE_RULES_DIR}/`));
     // The marker first, so a run stopped part-way never leaves a rule that no marker lists.
@@ -2311,12 +2293,12 @@ function planGuidance(guidance, workspaceRoot) {
     const owed = new Set(owedFiles.map((f) => f.path));
 
     for (const file of owedFiles) {
-        const stop = landing(realRoot, workspaceRoot, file.path);
-        if (stop) throw new CompileError(`${file.path} ${stop} — this compiler writes only real files inside the repository`);
+        const stop = landing(workspaceRoot, file.path);
+        if (stop) throw new CompileError(`${file.path} ${stop} — this compiler writes only real files, and nothing through a link`);
     }
 
     const rulesDir = path.join(workspaceRoot, ...GUIDANCE_RULES_DIR.split("/"));
-    const entries = listInside(realRoot, rulesDir) ?? [];
+    const entries = listReal(workspaceRoot, GUIDANCE_RULES_DIR);
     const markerEntry = entries.find((e) => e.name === RULES_MARKER);
     let listed = null;
     if (markerEntry) {
@@ -2376,7 +2358,7 @@ function planGuidance(guidance, workspaceRoot) {
         }
     }
     const skillsDir = path.join(workspaceRoot, ...SKILLS_DIR.split("/"));
-    for (const entry of listInside(realRoot, skillsDir) ?? []) {
+    for (const entry of listReal(workspaceRoot, SKILLS_DIR)) {
         if (!entry.isDirectory()) continue;
         const rel = `${SKILLS_DIR}/${entry.name}/SKILL.md`;
         const file = path.join(skillsDir, entry.name, "SKILL.md");
@@ -2481,10 +2463,12 @@ function emitGuidance(guidance, plan, { workspaceRoot, check, say }) {
         fs.writeFileSync(target, file.text);
         say(`wrote ${target}`);
     }
-    try {
-        fs.rmdirSync(path.join(workspaceRoot, ...GUIDANCE_RULES_DIR.split("/")));
-    } catch {
-        // Absent, or holding files: either way there is nothing to tidy.
+    if (landing(workspaceRoot, GUIDANCE_RULES_DIR, "directory") === null) {
+        try {
+            fs.rmdirSync(path.join(workspaceRoot, ...GUIDANCE_RULES_DIR.split("/")));
+        } catch {
+            // Absent, or holding files: either way there is nothing to tidy.
+        }
     }
     return 0;
 }

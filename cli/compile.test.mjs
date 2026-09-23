@@ -3558,36 +3558,64 @@ describe("guidance: written, then byte-compared", () => {
         assert.equal(fs.readFileSync(mine, "utf8"), "Ours.\n");
     });
 
-    test("nothing is written through a link: a linked rule, rules directory or skill directory is exit 2, and what it points at is untouched", (t) => {
-        const elsewhere = scratch();
-        fs.writeFileSync(path.join(elsewhere, "keep.md"), "Keep.\n");
+    test("nothing is written through a link, even one that stays inside the repository: a linked rule, rules directory or skill directory is exit 2, and what it points at is untouched", (t) => {
         const cases = [
-            ["a compiled rule", (dir) => {
+            ["a compiled rule", (dir, target) => {
                 said(t, ["--workspace", dir]);
                 const rule = path.join(dir, GUIDANCE_RULES_DIR, "conventions.md");
                 fs.rmSync(rule);
-                fs.symlinkSync(path.join(elsewhere, "keep.md"), rule);
+                fs.symlinkSync(path.join(target, "keep.md"), rule);
             }, /conventions\.md is a link, and writing it would change whatever the link points at/],
-            ["the rules directory", (dir) => {
+            ["the rules directory", (dir, target) => {
                 fs.mkdirSync(path.join(dir, ".claude", "rules"), { recursive: true });
-                fs.symlinkSync(elsewhere, path.join(dir, GUIDANCE_RULES_DIR));
-            }, /lies through a link out of the repository/],
-            ["a skill's directory", (dir) => {
+                fs.symlinkSync(target, path.join(dir, GUIDANCE_RULES_DIR));
+            }, /lies through a link, \.claude\/rules\/portulan, and writing through it would change whatever the link points at/],
+            ["a skill's directory", (dir, target) => {
                 fs.mkdirSync(path.join(dir, SKILLS_DIR), { recursive: true });
-                fs.symlinkSync(elsewhere, path.join(dir, SKILLS_DIR, "release"));
-            }, /release\/SKILL\.md lies through a link out of the repository/],
+                fs.symlinkSync(target, path.join(dir, SKILLS_DIR, "release"));
+            }, /release\/SKILL\.md lies through a link, \.claude\/skills\/release, and writing through it/],
         ];
-        for (const [what, arrange, pattern] of cases) {
-            const dir = guidanceCopy();
-            arrange(dir);
-            for (const argv of [["--workspace", dir], ["--workspace", dir, "--check"]]) {
-                const { code, out } = said(t, argv);
-                assert.equal(code, 2, what);
-                assert.match(out, pattern, what);
+        for (const inside of [false, true]) {
+            for (const [what, arrange, pattern] of cases) {
+                const dir = guidanceCopy();
+                const target = inside ? path.join(dir, "kept") : scratch();
+                const where = `${what}, linked ${inside ? "inside" : "out of"} the repository`;
+                fs.mkdirSync(target, { recursive: true });
+                fs.writeFileSync(path.join(target, "keep.md"), "Keep.\n");
+                arrange(dir, target);
+                for (const argv of [["--workspace", dir], ["--workspace", dir, "--check"]]) {
+                    const { code, out } = said(t, argv);
+                    assert.equal(code, 2, where);
+                    assert.match(out, pattern, where);
+                }
+                assert.deepEqual(fs.readdirSync(target), ["keep.md"], where);
+                assert.equal(fs.readFileSync(path.join(target, "keep.md"), "utf8"), "Keep.\n", where);
             }
-            assert.deepEqual(fs.readdirSync(elsewhere), ["keep.md"], what);
-            assert.equal(fs.readFileSync(path.join(elsewhere, "keep.md"), "utf8"), "Keep.\n", what);
         }
+    });
+
+    test("nothing is removed through a link, even one that stays inside the repository: a linked rules or skills directory is left as it is, and green", (t) => {
+        const dir = workspace();
+        const manifestPath = path.join(dir, ".portulan", "workspace.json");
+        const m = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
+        m.portulan.spec = "2.10";
+        m.slots.context = "context/";
+        fs.writeFileSync(manifestPath, JSON.stringify(m, null, 2));
+        fs.mkdirSync(path.join(dir, ".portulan", "context"));
+        fs.writeFileSync(path.join(dir, ".portulan", "context", "history.md"), unitText(["tier: on-read", "description: Why."]));
+        fs.writeFileSync(path.join(dir, ".portulan", "context", "release.md"), unitText(["tier: on-invoke", "description: Cut a release."]));
+        assert.equal(said(t, ["--workspace", dir]).code, 0);
+        // What compile wrote, moved inside the repository and reached from where it was through a link.
+        for (const [from, to] of [[GUIDANCE_RULES_DIR, "kept-rules"], [SKILLS_DIR, "kept-skills"]]) {
+            fs.renameSync(path.join(dir, from), path.join(dir, to));
+            fs.symlinkSync(path.join(dir, to), path.join(dir, from));
+        }
+        const before = [["kept-rules", RULES_MARKER], ["kept-rules", "on-read.md"], ["kept-skills", "release", "SKILL.md"]].map((p) => [p, fs.readFileSync(path.join(dir, ...p), "utf8")]);
+        delete m.slots.context;
+        fs.writeFileSync(manifestPath, JSON.stringify(m, null, 2));
+        assert.equal(said(t, ["--workspace", dir, "--check"]).code, 0);
+        assert.equal(said(t, ["--workspace", dir]).code, 0);
+        for (const [p, text] of before) assert.equal(fs.readFileSync(path.join(dir, ...p), "utf8"), text, p.join("/"));
     });
 
     test("without the marker, Markdown in the rules directory is not this compiler's: exit 2, and nothing is written", (t) => {

@@ -772,7 +772,7 @@ and byte-compared against this slot, as the compiled settings are against `gates
 fresh worktree has them. `compile` shows which rules in `.claude/rules/portulan/` are its own with a marker
 there, `.compiled`, a file no host loads that lists each rule it wrote: it rewrites or removes only a rule the
 marker lists, stops with exit 2 rather than replace one it does not list, and stops too where the directory
-holds Markdown files and no marker it wrote. It writes nothing through a link.
+holds Markdown files and no marker in its form. It writes and removes nothing through a link.
 
 **Checked by `compile`, not by the schema or `doctor`.** The subset cannot see inside a file, so the
 frontmatter is its consumer's to refuse: an unknown key, a tier outside the four, `paths` on a unit that is
