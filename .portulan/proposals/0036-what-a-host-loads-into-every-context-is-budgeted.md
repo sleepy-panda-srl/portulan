@@ -135,7 +135,11 @@ lines used today):
 - **Portulan's own footprint** is railed in this repository's recipes, as the kernel already is. Its
   budgets start at today's measured figures and are lowered as each demotion lands. The first two
   demotions are named here: the boot skill keeps its procedure and moves its rationale into on-read
-  references, and the Stop-gate relays failing lines only.
+  references, and the Stop-gate relays failing lines only. _(Amended the same day, on the later ruling
+  recorded under *What the maintainer ruled*: the boot skill's procedure for a pointer manifest and for
+  packs loads only where the manifest is a pointer or names a pack, and the rest of its procedure stays
+  in the skill. Annotated rather than rewritten, so the record keeps what was accepted beside what
+  changed.)_
 - **A librarian pass** reports always-tier headroom beside memory's and **drafts** demotions as a pull
   request. It never applies one, because the curated layer is agent-drafted and human-owned.
 - **`init` offers a starting budget** in its interview: the larger of 8k tokens and what the repository
@@ -184,6 +188,20 @@ Each question went to him with a recommendation, and he ruled on all five in one
    new repository gets room for an instruction file of about 200 lines, the host's own guidance (about
    5.4k tokens at the measured ratio), plus rules and descriptions. An existing repository is never red on
    the day it adopts, and slimming then lowers the figure.
+
+**A later ruling, the same day: the boot skill's procedure for pointers and packs loads only where it
+applies.** Once the first demotion had landed
+([#432](https://github.com/sleepy-panda-srl/portulan/pull/432)), the skill's pointer branch (its step
+2a) and pack limits (its step 3a) were 10,120 of its 17,813 bytes, read at every boot and needed only
+where a manifest is a pointer or names a pack. Reading them from files the skill opens on that
+condition moves procedure, which the *keeps its procedure* wording under *Enforcement* ruled out, so at
+13:44 UTC the question went to him with a recommendation to amend it. At 17:07 UTC he answered the calls
+then pending, this one among them:
+
+> My answer to the pending calls is yes.
+
+The wording under *Enforcement* carries the amendment as an annotation, made in the same change as the
+move.
 
 **A coordination note, not a question.** The manifest key needs a MINOR. `2.9` is commissioned by
 [`0034`](0034-one-spec-bump-carries-both-evals-and-telemetry.md) for `evals` and `telemetry` and is not

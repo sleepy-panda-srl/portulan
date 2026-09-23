@@ -10,9 +10,10 @@ description: Boot the Portulan engine in this repository — load the always-loa
 > tailored to *this* team rather than generically sensible. _(See
 > [`../../../core/engine.md`](../../../core/engine.md) and [`../../../docs/vision.md`](../../../docs/vision.md).)_
 >
-> **Every instruction is in this file; the reasons behind them are in [`rationale.md`](rationale.md)**,
-> under the same step numbers. A boot does not need it: read it when a step does not fit the case in
-> front of you, or when someone asks why.
+> **Every instruction is in this file or, for steps 2a and 3a, in the file that step opens where it
+> applies; the reasons behind them are in [`rationale.md`](rationale.md)**, under the same step numbers.
+> A boot does not need it: read it when a step does not fit the case in front of you, or when someone
+> asks why.
 
 ## 1. Load the kernel
 
@@ -34,62 +35,9 @@ do not fall back to searching upward or outward.
 
 ### 2a. If the manifest is a pointer, resolve it — the workspace is somewhere else, and the CLI finds it
 
-A manifest whose `kind` is `pointer` is **not** a workspace. It is one thin file saying that this
-repository's workspace resides elsewhere, and naming it: `governed_by.workspace` is the governing
-workspace's name, and `governed_by.feed`, where present, is the private feed it ships through. A
-pointer is the whole answer about residence, not a hint to be supplemented.
-
-**Ask the CLI where that workspace is. Do not go looking yourself.**
-
-```
-node ${CLAUDE_PLUGIN_ROOT}/cli/discover.mjs --json ${CLAUDE_PROJECT_DIR}/.portulan
-```
-
-**Substitute the project root yourself if `${CLAUDE_PROJECT_DIR}` is not set** — step 2's rule, that
-the working directory stands in for it, applies to this command too.
-
-It prints one object and exits **0** resolved · **1** not resolvable here · **2** could not run or
-could not look. Read the `state` field — never the prose, which is written for a human and is the half
-most likely to be reworded.
-
-| `state` | What you do |
-|---|---|
-| `resolved` | `root` **is** the workspace directory. Go to step 3 and read its slots exactly as you would an in-repo workspace's, resolving every slot path against **that** directory. |
-| `not-installed` | Go to step 4 and give that section's honest position — you have the engine and none of this team's policy. |
-| `ambiguous` | Two or more installs answer to one name and the resolver refused to pick. **Do not pick either.** Report every entry in `matches` and ask the user which is meant. |
-| `could-not-look` | The record exists and would not parse. This is *could not look*, which is not *not installed* — say which one you are reporting. |
-| **no object at all** | Exit 2 with **nothing on stdout** and a diagnostic on stderr: the command could not run — a bad argument, an unreadable manifest, no Node. Read the diagnostic, say the resolution did not happen and why, and take step 4's position **without** claiming the workspace is not installed. Silence is not an answer, and it is never *no*. |
-
-_(`node ${CLAUDE_PLUGIN_ROOT}/cli/doctor.mjs ${CLAUDE_PROJECT_DIR}/.portulan` prints the same answer as a
-`residence` note, and is the spelling to use when a human is reading. It grades the **pointer** and never
-the workspace it names: run `doctor` against `root` if you want a verdict on the workspace itself.)_
-
-**This is the one licensed exception to step 2's "search the project only", and it is licensed by the
-project itself.** It licenses no search of your own — if the CLI cannot run, you have no resolution, and
-*no resolution* is reported as itself rather than replaced by a guess.
-
-**A resolved root is outside the project directory, so the same denial that can stop step 1 can stop
-step 3 — and it must not be mistaken for absence.** That state is **resolved but unreadable**, and it is
-a third thing: the workspace *is* installed, you know precisely where, and you do not have it. Say that,
-ask for read access to the cache, and give step 4's position **for the policy you are missing** — never
-the *not installed here* sentence, which would send the user to install something they already have.
-
-Four things stay true whatever the answer is:
-
-- **Do not read the pointer's neighbours as policy.** A pointer carries no slots, and a `.portulan/`
-  directory beside it holding files anyway is a defect worth reporting, not a workspace to load.
-- **Do not treat this as "no workspace".**
-- **Say where the workspace came from, in the report at step 5.** Name the residence: *"Resolved from
-  the host's plugin cache: `<plugin>@<marketplace>` version `<v>`"*.
-- **Resolving the workspace does not resolve its packs.** Step 3a's four limits apply to a resolved
-  workspace exactly as they apply to an in-repo one. Where the resolved manifest declares a spec MINOR
-  older than this bundle's, say so as well: slots added since are simply absent, which is the contract
-  working rather than a fault.
-
-Where it is not installed and the user can install it — from the feed, or from a checkout beside this
-repository — that is the thing to ask for.
-
-
+**Where the manifest's `kind` is `pointer`, read [`pointer-manifest.md`](pointer-manifest.md) and follow
+it before step 3: it is this step in full.** Any other manifest is the workspace itself, and its boot
+skips the file. A denied read is step 1's case.
 
 ## 3. Read the slots the manifest names
 
@@ -115,80 +63,13 @@ Then read the recipe set. `verify.recipes` in the manifest is the workspace's **
 executable checks that decide "done" are the set
 [`../../../cli/recipe-set.mjs`](../../../cli/recipe-set.mjs) **yields** — those recipes plus the ones
 the workspace's composed packs contribute, namespaced by pack — and the manifest names which one is
-the default. *Declared* and *runnable* are not the same list; the
-`packs` note below carries the rest.
+the default. *Declared* and *runnable* are not the same list; step 3a carries the rest.
 
 ### 3a. Read `packs` too — no slot points at it, and what it delivers is partial
 
-The cascade is **core < pack < workspace < repo card < task**, so a workspace naming packs has a layer
-between the engine and its own policy. That layer is the manifest's `packs` array, and **none of the
-slots above points at it**: read them in order and you will never meet a pack. Read the key, and report
-what a declared pack does and does not deliver here, because the gap is invisible from inside a booted
-session.
-
-**A pack resolves against a root, and where that root came from decides what "resolved" proves.** The
-manifest's `tree` derives one — `<tree>/packs`. The CLI's `--pack-root` names any directory instead, as
-many as it is given, and named roots **replace** the derived one rather than being searched ahead of it.
-Where a pack resolves, its gate-policy fragments reach the compiled policy, add-restriction-only.
-Nothing here is pinned — a `packs` entry is a name, and the version is whatever the root holds. **Four
-things need stating about that layer — two limits that still bind, and two that once did and no longer
-do.**
-
-- **Discovering the root happens in the CLI only.** The CLI reads the host's
-  installed-plugin record, in both shapes a plugin lands in. It reads that record **by default**, because `--pack-root` and its siblings are *optional where discovery finds a root*.
-  `--pack-root auto` now selects the strict degrade (asked-and-could-not-look is exit 2) rather than
-  unlocking discovery, and a **named** root still **replaces** the derived one, which is the property that
-  never moved.
-
-  **What this changes for a boot's report, and it is the load-bearing half.** *"Declared"* and
-  *"resolved"* are still two states, and a boot still cannot assume a declared pack resolved **from a
-  feed** — a green certifies resolution, never provenance, and each pack's resolution names which root
-  answered and whether it was discovered or derived. What a boot may no longer say is that a declared pack
-  is unresolved *because nobody passed a flag*. **A workspace resolved from a pointer is in exactly the
-  same state about its own packs as an in-repo one.**
-
-  **What bounds it, at its real width.** A bare run's verdict *does* move with the host — `doctor` is a
-  per-host capability report and that is what it is for. What is bounded is narrower and is two things: a
-  **required** check names its root, which replaces every other source, so it cannot consult the host at
-  all; and a **discovered** root can turn an unresolved pack from a note into a resolution and never a
-  **miss** into a failure. A discovered copy that resolves and is *invalid* still fails, with its origin
-  named — so report the host's answer as the host's, and never as the repository's.
-- **A pack's skills register only where the plugin declares the directory that actually holds them.**
-  A *validator* also refuses a bundle where that declaration and the workspace's `packs`
-  array disagree — a rail on the packaging, never a change to how the host decides. A host expands a declared skills
-  path **one level** and no further, so a root pointing at a family of packs — `packs/rituals/`, with
-  skills at `<pack>/skills/<skill>/` — registers **nothing**, silently, while a validator walking
-  deeper counts them. Declaring `packs/rituals/<pack>/skills/` registers them.
-
-  Depth alone was never parity, and saying so is the point: **registration is a property of
-  `.claude-plugin/plugin.json` and of nothing else**. `plugin-lint`'s `compose` check pins the two
-  together in both directions — a composed pack whose skills no declared path reaches is red, and a
-  skills path inside `packs/` belonging to no composed pack is red — so *composed* and *registered* can
-  no longer drift apart in a bundle this validator runs over.
-
-  **The adopter's half is built** ([#184](https://github.com/sleepy-panda-srl/portulan/issues/184)). `cli/skills-set.mjs` is the one carrier of the **registrable set**: it reads each
-  composed pack's own `contributes.skills` and derives the paths a plugin manifest must declare, with
-  `--check` reporting drift and `--write` deriving the key. So the path is computed rather than typed.
-  **Two limits, because the clause is not whole.**
-  It writes no manifest from nothing — only the pack portion of a `skills` key in one that already
-  exists, since a workspace shipping no plugin is a state rather than a hole. And the row's
-  *demonstration* — a composed pack's skill **invoked** through a host the same way a core skill is —
-  is still owed by a session that runs and records it. Derivable is not demonstrated, and a boot that
-  reported this as parity would be making exactly the claim the clause refuses.
-- **A pack's personas reach the workspace's own layer, and not the host.** A composing workspace lands
-  the scope a pack's persona declares, and an index over it can be generated — so this one is not
-  simply absent, and reporting it as absent would be as wrong as reporting it as loaded.
-- **A pack's verify recipes reach the runnable set.**
-  [`../../../cli/recipe-set.mjs`](../../../cli/recipe-set.mjs) is the composing consumer and the
-  **one carrier** of the runnable set — CI calls it instead of enumerating a manifest, so *what the
-  workspace declares* and *what decides "done"* are no longer the same list. Composition is
-  **additive only**, and a composed id is `<category>/<name>:<id>`, whose `/` and `:` are outside the
-  slug grammar a workspace id and `verify.default` must both satisfy: a composed recipe therefore
-  cannot shadow one the workspace owns or become the default, by construction rather than by a check.
-  **What this does not settle is the adopter's side** — nothing here writes an adopter's pipeline, so
-  a composed recipe runs for them exactly where their own CI calls that carrier.
-
-**Name the packs, and say all of that in the same breath.**
+**Where the workspace's manifest, in the project or resolved at step 2a, names a pack in `packs`, read
+[`packs.md`](packs.md) and follow it: it is this step in full.** A boot on a manifest naming no pack
+skips the file. A denied read is step 1's case.
 
 ## 4. If the project has no workspace
 
