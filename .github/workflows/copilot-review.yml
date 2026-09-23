@@ -28,15 +28,20 @@
 #
 # | State | What it means | First cut | Now |
 # |---|---|---|---|
-# | Awaited | requested, not answered yet | **failure** | the job stays *in progress* — a pending check |
+# | Awaited | requested, not answered yet | **failure** | the job stays *in progress* — a pending check — for up to three minutes |
 # | Not owed | the ruleset does not request a round here | **failure**, permanently | success, with the reason printed |
-# | Missing | no round within the window, or the API is unreadable | failure | failure, when the 3-minute window closes |
+# | Missing | no round within the window, or the API is unreadable | failure | a warning at the 3-minute close, naming which of the two it was |
 #
 # The first row was guaranteed noise: Copilot cannot have reviewed a commit that did not exist when the
 # run started, so **every push produced a red check by construction**, and the reviews measured on this
 # repository landed 1m53s–3m47s later (#49, #54, #57, 2026-07-28). A red X that is *expected* on every
 # push is how a gate gets read as background weather. A pending check says the true thing — the answer is
 # not in yet — and it blocks a merge just as hard, which is the part that has to keep working.
+#
+# **AMENDED 2026-09-23: the first row lasts three minutes, and the third is a report.** A round still
+# outstanding when the window below closes is reported, not failed: the step ends with a warning and
+# the job stays green, on the maintainer's ruling recorded in the next section. So the pending check
+# blocks a merge for the window and not after it, an API unreadable at the close included.
 #
 # The second row was worse, because it never cleared: ruleset `copilot auto-review on pull requests` is
 # `review_draft_pull_requests: false`, so on a draft **no round is ever coming** and the old check red-X'd
@@ -48,24 +53,31 @@
 # His ruling: the Copilot review on every pull request is time-boxed to three minutes, and anything
 # past that is reported with whatever findings are available at that moment. So the await step looks
 # for three minutes from its own start (on a push, the moment the ruleset requests the round), and
-# its last look lands on the window's close. When that look finds no round, the step concludes red
-# and writes what it found to the job summary as well as the log: what landed on the awaited head
+# its last look lands on the window's close. When that look finds no round, the step ends with a
+# warning and writes what it found to the job summary as well as the log: what landed on the awaited head
 # (nothing, or a refusal), whether Copilot still holds the request, and Copilot's newest review on
 # the pull request. The window replaced a 20-minute budget set at five times the slowest round
-# measured, and rounds here have landed 1m53s–3m47s after a push, so some now land after it. That
-# red then reads *late*, not *lost*, and a re-run finds the round on its first look.
+# measured, and rounds here have landed 1m53s–3m47s after a push, so some now land after it. Such a
+# round is *late*, not *lost*, and a re-run finds it on its first look.
 #
-# **Red, not green, because of what this check's name claims.** `copilot-reviewed` says a round
-# landed on the head. Green over a head nobody reviewed is a positive claim this step has not
-# established, which is the defect of #286, and it would open the awaited half of *Merge discipline*
-# that the red holds. Merging past the red stays the maintainer's explicit, recorded act (proposal
-# 0023), as it was after twenty minutes.
+# **A warning, not a failure: his ruling of 2026-09-23, 14:07 UTC.** The close was red at first, on
+# his call of 13:39 that day, because `copilot-reviewed` says a round landed on the head and green
+# over a head nobody reviewed is a claim this step has not established, the defect of #286. #432's run
+# then went red at the close, and his ruling on it, verbatim: *"This shouldn't be an error and it
+# shouldn't cause the CI to fail."* So the close is a report, and what the green no longer says, the
+# warning annotation and the job summary do. `round=green`, the output that licenses the notes
+# promotion and the derived verdict, is still written only by a round, so neither runs on a head that
+# drew none. Past the window the awaited half of *Merge discipline* is a report, and merging without
+# a round is his call; proposal 0023's recorded override was for merging past a red, and there is no
+# red left to merge past.
 #
 # **What the window costs, named rather than found later.** A round landing after the close is
 # processed by nothing until the job is re-run: its suppressed notes are not promoted and no verdict
 # is derived from it. On a superseded head nobody re-runs, so those notes stay in the review body,
 # which is the loss the per-head concurrency group below was built to stop, back for rounds slower
-# than the window.
+# than the window. And since the 14:07 ruling a merge after the close meets a green check, so the
+# incident this file was written for, a merge landing before the round, is possible again past three
+# minutes, by his choice, with the warning as its notice.
 #
 # ## It also prints the half of the round that no gate can see
 #
@@ -75,7 +87,7 @@
 # `/pulls/N/reviews` that an agent had to remember, and forgetting it has already cost this repository a
 # correct finding that sat for three days
 # (`.portulan/memory/verify-preconditions-fail-closed.md`). This job reads that endpoint anyway, so on
-# green it extracts them into the run's job summary. **It changes no verdict** — a note is not a blocker,
+# a round it extracts them into the run's job summary. **It changes no verdict** — a note is not a blocker,
 # and making it one would be a different rule than the one the maintainer gave.
 #
 # ## And since 2026-07-29 the round's outcome is displayed as a review
@@ -88,22 +100,29 @@
 # branches, the staleness sweep, and what the step is NOT live in that step's own comment below; the
 # policy half is `.portulan/gate-map.md` → *Merge discipline*.
 #
-# ## It still fails CLOSED
+# ## It fails only on its own errors
 #
-# An unreadable API is never taken as an answer — it is retried, and if it is still unreadable when the
-# wait budget runs out, this reports FAILURE and prints the last error. "Could not look" is never
-# "nothing wrong" — `.portulan/memory/verify-preconditions-fail-closed.md`, and the same three-code
-# discipline the verify recipes use. The cost is that a GitHub API outage blocks merges; the alternative
-# is a gate that opens whenever it is unwell, which is not a gate.
+# An unreadable API is never taken as an answer — it is retried on every look, and if it is still
+# unreadable at the last look, the step ends with the same warning as a window with no round, and its
+# report says the API was unreadable at the last look, at how many of the window's looks a read failed,
+# and the last error. "Could not look" is still never "nothing wrong" —
+# `.portulan/memory/verify-preconditions-fail-closed.md` — but since 2026-09-23 the colour no longer
+# carries that difference: the report does, and no step output claims a round, so the notes and verdict
+# steps below skip. Until then this case was red, with the stated cost that a GitHub API outage blocked
+# merges. Making it a warning was the coordinator session's delegated call of 2026-09-23, on the
+# maintainer's ruling that a window closing with no round is not an error, recorded here so it can be
+# reversed. The step still fails where no waiting helps: an event with no pull request number, and a
+# pull request the API reports with no head commit.
 #
 # ## The fragile part, named rather than hidden
 #
 # **Which login is "Copilot" is a platform fact this file hard-codes**, and it is the thing most likely
-# to break silently — a rename would make this check red on every pull request (loud, fixable) or, worse,
-# match nothing while looking healthy. The set below is matched case-insensitively and covers the
+# to break silently — a rename would make this check warn on every pull request (visible, fixable) or,
+# worse, match nothing while looking healthy. The set below is matched case-insensitively and covers the
 # spellings observed on this repository (`copilot-pull-request-reviewer[bot]` raising threads on #44,
-# and `Copilot`). A rename shows up as a permanent red with the observed logins printed, which is the
-# failure direction to prefer.
+# and `Copilot`). A rename shows up as a warning on every pull request with the observed logins
+# printed. Until the ruling of 2026-09-23 it was a permanent red, which was louder; a warning that
+# never clears is now the sign to look for.
 
 name: copilot review
 
@@ -125,10 +144,11 @@ on:
   # The cost of dropping it: if the wait budget expires before the review lands, nothing re-triggers the
   # check — a maintainer re-runs the job, which is the same click as before but only in the rare case
   # rather than every time. **Since the three-minute window (2026-09-23) it is not the rare case:** a
-  # round slower than the window needs the same re-run.
+  # round slower than the window needs the same re-run, now to be processed rather than to turn the
+  # check green, which it already is, with a warning.
 
 # `write`, not `read`, as of 2026-07-29 — for the one POST below that re-requests Copilot at a re-run's
-# first look.
+# first look that can read the reviews.
 #
 # A `permissions:` block REPLACES the default, so every scope not named here is `none`: this job can
 # still touch nothing outside pull requests. What the widening does NOT buy is a single call —
@@ -205,7 +225,7 @@ jobs:
       # together.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - name: A Copilot round has landed on the current head commit
+      - name: A Copilot round is awaited on the current head commit
         id: await
         env:
           GH_TOKEN: ${{ github.token }}
@@ -246,14 +266,17 @@ jobs:
           # that it could not review. Read only by the expiry message below, which must not print
           # `no Copilot review` over a head that drew one and was told nothing came of it.
           refused_seen=''
-          # Set when a body read fails PAST the newest match, so the walk for an older round stopped
-          # early. Not a verdict about the head — a limit on what this step got to look at.
-          walk_unread=''
+          # Looks taken, and at how many of them a read failed, the head's (`unread`) or a walk's past
+          # the newest match (`walk_unread`), the two the re-request below waits out: for the report
+          # on an API unreadable at the close, where one failed read at the edge and an outage the
+          # window long are different findings. Both counted since Copilot's round on #435.
+          looks=0
+          unread_looks=0
 
           while : ; do
             # Reset per poll: these describe one look at the pull request, not the accumulation of
             # every look. An authors-seen line that grew by a full review history every 30 seconds
-            # would be unreadable in the one place it matters, the failure at the end.
+            # would be unreadable in the one place it matters, the report at the end.
             seen=''
             unread=''
             # Copilot's newest review on ANY commit of this pull request, for the report at the
@@ -261,6 +284,11 @@ jobs:
             latest_id=''
             latest_commit=''
             latest_state=''
+            # Set when a body read fails PAST the newest match, so the walk for an older round stopped
+            # early. Not a verdict about the head — a limit on what this look got to see. Per look
+            # since 2026-09-23, when the re-request below began to read it: a later look that walks
+            # the whole list has established what an earlier one could not.
+            walk_unread=''
 
             # The head SHA is read from the API rather than from the payload, and re-read on every
             # poll — a push during the wait must not be answered against the head this run started on.
@@ -306,7 +334,7 @@ jobs:
             fi
 
             # A failed or empty read is NOT an answer — fall through to the retry. Only the budget
-            # running out turns "could not look" into a verdict, and that verdict is red.
+            # running out turns "could not look" into a report, and the report says it could not look.
             if [ -z "$unread" ]; then
               if [ -z "$first_head" ]; then
                 first_head="$head"
@@ -797,9 +825,9 @@ jobs:
               fi
             fi
 
-            # ONE re-request, and since 2026-09-23 only on a RE-RUN, at its first look that finds no
-            # round — issue #88, and it is measured rather than guessed. On #86, the scheduled
-            # librarian's first real pull request, the auto-request was made and ACCEPTED
+            # ONE re-request, and since 2026-09-23 only on a RE-RUN, at its first look that READS the
+            # reviews and finds no round — issue #88, and it is measured rather than guessed. On #86,
+            # the scheduled librarian's first real pull request, the auto-request was made and ACCEPTED
             # (`requested_reviewers` read `["Copilot"]`) and no review came in the full twenty minutes.
             # An explicit re-request then produced one in about **ninety seconds**. So waiting alone
             # bought nothing and asking again bought everything, and the difference is not slowness —
@@ -809,10 +837,17 @@ jobs:
             # since landed. No point inside a three-minute window is: at 90 seconds every ordinary
             # round is still in flight, and a re-request then lands on a reviewer that is merely
             # working. So a first attempt leaves the ruleset's request alone, and a re-run, a person's
-            # explicit *try again* after a window closed, asks at once, which leaves the ~90s answer
-            # room inside its own window. What a re-request does to a round still in flight is not
-            # measured here, which is why the report at the close says to re-run once the review has
-            # appeared, or when none is coming.
+            # explicit *try again* after a window closed, asks as soon as it has read that the head has
+            # no round, which leaves the ~90s answer room inside its own window. What a re-request does
+            # to a round still in flight is not measured here, which is why the report at the close
+            # says to re-run once the review has appeared, or when none is coming.
+            #
+            # A LOOK THAT COULD NOT READ DOES NOT ASK. Raised by Copilot on #431, whose condition asked
+            # at a re-run's first look whatever that look had managed to read. A look whose read of the
+            # pull request or its reviews failed (`unread`), or whose walk stopped at a body it could
+            # not read (`walk_unread`), has not established that no round is on the head, and "could
+            # not look" is never "nothing there". So the one re-request waits for the first look that
+            # read everything it needed and found no round: still once, only later.
             #
             # The repair goes HERE rather than in `librarian.yml` because the fault is not the
             # librarian's: any App- or bot-authored pull request meets it, and this file is the one
@@ -832,7 +867,8 @@ jobs:
             # this same change removes from the timeout message. `rerequest_at` holds the second the
             # attempt actually happened rather than the second it was scheduled for, so the verdict
             # below has one carrier for that fact instead of two that can disagree.
-            if [ "$rerequest_state" = none ] && [ "${GITHUB_RUN_ATTEMPT:-1}" -gt 1 ]; then
+            if [ "$rerequest_state" = none ] && [ -z "$unread" ] && [ -z "$walk_unread" ] \
+                && [ "${GITHUB_RUN_ATTEMPT:-1}" -gt 1 ]; then
               rerequest_at="$SECONDS"
               rerequest_state=attempted
               if gh api --method POST \
@@ -846,6 +882,8 @@ jobs:
               fi
             fi
 
+            looks=$((looks + 1))
+            if [ -n "$unread" ] || [ -n "$walk_unread" ]; then unread_looks=$((unread_looks + 1)); fi
             [ "$SECONDS" -lt "$WAIT_SECONDS" ] || break
 
             if [ -n "$unread" ]; then
@@ -864,11 +902,11 @@ jobs:
           done
 
           # Two timeouts, two different faults, and the check must not claim the one it did not
-          # establish. "No review arrived" is a finding about Copilot. "The API stayed unreadable" is
+          # establish. "No review arrived" is a finding about Copilot. "The API was unreadable" is
           # a finding about GitHub, and it leaves `head` holding whatever the last SUCCESSFUL poll
           # returned — possibly minutes stale, possibly not the head any more. Naming that SHA as the
           # commit with no review would send a reader to investigate a reviewer that may have answered
-          # perfectly well. The verdict is red either way; only the sentence differs.
+          # perfectly well. Both end in the same warning; only the sentence differs.
           # The request list is read BEFORE the verdict is composed, and that ordering is the whole of
           # issue #89. It used to be printed *after* a paragraph that named two causes — a dead ruleset
           # or a renamed login — and on #86 neither was the cause: the check's own last two lines were
@@ -877,7 +915,7 @@ jobs:
           # reader past it. A message that names a cause it has not established is the same defect as a
           # checker that reports what it could not check
           # (`.portulan/memory/a-checker-must-refuse-what-it-cannot-check.md`), pointed at a diagnostic
-          # instead of a verdict. The check is right to fail here; only the sentence was wrong.
+          # instead of a verdict. What the check concluded was right; only the sentence was wrong.
           # FILTERED TO THE REVIEWERS THIS CHECK IS ABOUT, and the filtering is done HERE rather than
           # in the jq — raised by Copilot on #160. The read answers with every requested USER reviewer,
           # so on a pull request that also has a human waiting, `requested` was non-empty for a reason
@@ -920,19 +958,22 @@ jobs:
           # second half is that a review past the window is reported with whatever findings are
           # available at that moment, and a log line alone is the notification nobody reads, which
           # is the incident behind proposal 0006. So the report is composed once, into a file, and
-          # printed twice: to the log, where `::error::` still raises the annotation, and to the job
+          # printed twice: to the log, where its first line raises the annotation, and to the job
           # summary, which is the check's own page. The braces below close after the last line of it.
           report_file="$RUNNER_TEMP/copilot-window.txt"
           {
           if [ -n "$unread" ]; then
-            printf '::error::could not confirm a Copilot review on #%s after %ss — the API was still unreadable at the last attempt: %s\n' \
+            printf '::warning::could not confirm a Copilot review on #%s after %ss — the API was unreadable at the last look: %s\n' \
               "$PR_NUMBER" "$SECONDS" "$unread"
-            printf 'This is not a finding about the review. It is "could not look", held for the whole\n'
-            printf 'window, which stays red because a gate that opens when it is unwell is not a gate.\n'
+            printf 'A read failed at %s of %s looks. This is not a finding about the review: it is\n' \
+              "$unread_looks" "$looks"
+            printf '"could not look", reported rather than failed since 2026-09-23 (the header says why).\n'
+            printf 'Nothing about the round is established, so re-run this job once the API answers.\n'
             printf 'The last head SHA read successfully was %s, which may be stale — do not act on it.\n' "${head:-none}"
           elif [ -n "$refused_seen" ]; then
-            printf '::error::Copilot answered on %s to say it was unable to review it, and no round arrived in %ss.\n' \
+            printf '::warning::Copilot answered on %s to say it was unable to review it, and no round arrived in %ss.\n' \
               "$first_head" "$SECONDS"
+            printf 'Reported, not failed, like every window that closes with no round (ruled 2026-09-23).\n'
             printf 'This is NOT "no review came". A review object exists on this head and it reports\n'
             printf 'that the reviewer could not judge the change, so no round has happened. The four\n'
             printf 'request-state branches below do not apply: they answer "was a round ever asked\n'
@@ -944,15 +985,16 @@ jobs:
             printf 're-ran this workflow without re-requesting. CLOSING AND REOPENING the pull request\n'
             printf 'did: a real round in about 200 seconds.\n'
             printf 'Try it in the order the evidence supports. A re-run re-requests Copilot at its first\n'
-            printf 'look, the re-request measured to have worked on #86 (2026-07-29, about 90s), so\n'
-            printf 're-run this job first and close/reopen only if the refusal repeats.\n'
+            printf 'look that can read the reviews, the re-request measured to have worked on #86\n'
+            printf '(2026-07-29, about 90s), so re-run this job first and close/reopen only if the\n'
+            printf 'refusal repeats.\n'
             [ -z "$walk_unread" ] || printf 'ONE THING THIS DID NOT ESTABLISH: review %s could not be read,\nso an older round on this head may exist. Re-run before acting on the above.\n' "$walk_unread"
           else
-            printf '::error::no Copilot review on the commit this run awaited (%s) within the %ss window.\n' \
+            printf '::warning::no Copilot review on the commit this run awaited (%s) within the %ss window.\n' \
               "$first_head" "$WAIT_SECONDS"
-            printf 'A pull request may not merge until Copilot has delivered a ROUND on the commit it is\n'
-            printf 'merging, and until that feedback is resolved. Conversation resolution covers the\n'
-            printf 'resolved half; this covers the awaited half.\n\n'
+            printf 'Reported, not failed: the maintainer ruled on 2026-09-23 that a window closing with\n'
+            printf 'no round is not an error, so merging without one is his call. Conversation resolution\n'
+            printf 'still covers the resolved half.\n\n'
             # FOUR outcomes, because the answer to "was a round even requested?" has four states and
             # only three of them license naming a cause. Each names the repair that fits ITS fault.
             #
@@ -989,9 +1031,9 @@ jobs:
               printf 'opened the pull request — an App on #157, a user on #160 — which is the #86\n'
               printf 'condition this file already names two branches down. Lead, not finding.\n'
               printf 'See issue #161; add what you observe to it rather than acting on a guess.\n'
-              printf 'RULED 2026-08-09 (proposal 0023, exit 2): this check stays red. Merging past\n'
-              printf 'it is an explicit maintainer act, per occurrence and never standing, recorded\n'
-              printf 'on the pull request before the merge. See .portulan/gate-map.md, Merge discipline.\n'
+              printf 'RULED 2026-08-09 (proposal 0023, exit 2) that this check stays red here; since\n'
+              printf '2026-09-23 it reports instead, the maintainer having ruled that a window with no\n'
+              printf 'round is not an error. See .portulan/gate-map.md, Merge discipline.\n'
             elif [ -z "$requested" ]; then
               printf 'NOTHING IS HOLDING A REQUEST, and that is a different fault from a reviewer going\n'
               printf 'silent. What is established is the empty list and nothing more: no request from\n'
@@ -1017,9 +1059,10 @@ jobs:
               printf 'late, not lost. Once, on #86, it was a request that was never going to be answered.\n'
               printf 'Re-run this job once the review appears on the pull request and its first look will\n'
               printf 'find it; the re-run is not bot-triggered and needs no approval. If none appears,\n'
-              printf 're-run anyway: its first look re-requests Copilot. What a re-request does to a round\n'
-              printf 'still in flight is not measured here. If that fails too, check the Copilot ruleset\n'
-              printf 'is still active and that the login above has not been renamed.\n'
+              printf 're-run anyway: its first look that can read the reviews re-requests Copilot. What a\n'
+              printf 're-request does to a round still in flight is not measured here. If that fails too,\n'
+              printf 'check the Copilot ruleset is still active and that the login above has not been\n'
+              printf 'renamed.\n'
             fi
           fi
           printf '\nReview authors seen on this pull request:%s\n' "${seen:- none}"
@@ -1058,27 +1101,44 @@ jobs:
           # whichever commit, whose inline comments stay open as threads until resolved. Not claimed
           # when the last look failed, since an empty answer from a read that did not happen is not
           # "Copilot has reviewed nothing".
+          #
+          # THE LINK STAYS OUT OF THE FENCE. The summary quotes this report in a code fence, where a
+          # URL cannot be clicked, so the report names the review and its link is printed apart: on
+          # its own line in the log, which links it, and a Markdown link under the fence in the summary.
+          # Raised by Copilot on #431. The report carries no other URL.
+          latest_url=''
           if [ -n "$unread" ]; then
             printf 'Newest Copilot review on this pull request: COULD NOT READ.\n'
           elif [ -z "$latest_id" ]; then
             printf 'Newest Copilot review on this pull request: none, on any commit.\n'
           else
-            printf 'Newest Copilot review on this pull request: %s on %s (%s), %s/%s/pull/%s#pullrequestreview-%s\n' \
-              "$latest_id" "$latest_commit" "$latest_state" "$GITHUB_SERVER_URL" "$GITHUB_REPOSITORY" "$PR_NUMBER" "$latest_id"
+            printf 'Newest Copilot review on this pull request: %s on %s (%s).\n' \
+              "$latest_id" "$latest_commit" "$latest_state"
+            latest_url="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/pull/${PR_NUMBER}#pullrequestreview-${latest_id}"
           fi
           } >"$report_file"
           cat "$report_file"
+          if [ -n "$latest_url" ]; then
+            printf 'Its link: %s\n' "$latest_url"
+          fi
           if [ -n "${GITHUB_STEP_SUMMARY:-}" ]; then
             {
               printf '## Copilot review window closed at %ss\n\n' "$SECONDS"
               printf '````\n'
               while IFS= read -r line; do
-                printf '%s\n' "${line#::error::}"
+                printf '%s\n' "${line#::warning::}"
               done <"$report_file"
               printf '````\n'
+              if [ -n "$latest_url" ]; then
+                printf '\n[Open the newest Copilot review on this pull request](%s)\n' "$latest_url"
+              fi
             } >>"$GITHUB_STEP_SUMMARY"
           fi
-          exit 1
+          # THE STEP FAILS ONLY ON ITS OWN ERRORS. A window that closed with no round is reported and
+          # passes, on the maintainer's ruling of 2026-09-23 (the header), and so, on the coordinator
+          # session's delegated call of the same day, does an API unreadable at the last look. Nothing
+          # is written to `GITHUB_OUTPUT` in either case, so the notes and verdict steps below skip.
+          exit 0
 
       # THE VERDICT, CARRIED WHERE THE PLATFORM CAN DISPLAY IT — added 2026-07-29, on the
       # maintainer's directive that a clean round read as an approval. Copilot cannot say it: the

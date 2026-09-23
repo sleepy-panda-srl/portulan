@@ -1042,6 +1042,10 @@ found merges that had landed **before** Copilot's round on the final push arrive
 requested, the review happened, and its feedback reached a pull request that was already closed — so it
 was disregarded by nobody in particular, which is the worst way for it to happen.
 
+**Amended 2026-09-23, his ruling of 14:07 UTC: past three minutes, the awaited half is a report.** A
+window that closes with no round ends the check green with a warning rather than red. His words: *"This
+shouldn't be an error and it shouldn't cause the CI to fail."* Merging without a round is his call.
+
 The two halves need different mechanisms, and only one of them existed:
 
 | Half | What it means | What enforces it |
@@ -1059,8 +1063,8 @@ again — a reviewer everyone relied on, with nothing making the reliance real.
 **The head SHA is the whole design.** A review of an *earlier* commit does not satisfy the check, because
 that is precisely the defect: the review existed and described a different tree than the one merging. The
 check matches every review's `commit_id` against the pull request's current head and re-runs on
-`synchronize`, so pushing puts it back to pending. It also **fails closed** — an unreadable API is
-`could not look`, never `nothing wrong`.
+`synchronize`, so pushing puts it back to pending. An unreadable API is still `could not look`, never
+`nothing wrong`, though since 2026-09-23 the check reports it with a warning rather than failing.
 
 **A review object is not a round — amended 2026-08-18, issue [#286](https://github.com/sleepy-panda-srl/portulan/issues/286).**
 The row above said *the round has landed* and the check asked something weaker: that a review by the
@@ -1096,13 +1100,14 @@ never coming*. Since Copilot cannot have reviewed a commit that did not exist wh
 push produced a red check by construction**, and rounds on this repository land 1m53s–3m47s later (#49,
 #54, #57). A red that is expected on every push is how a gate becomes background weather. The check now
 waits inside its own run: the job stays *in progress* while the round is outstanding, which blocks a merge
-exactly as hard and says the true thing. Red is reserved for no round arriving within the window — **three
-minutes since 2026-09-23, the maintainer's time-box**, which replaced a 20-minute budget set at five times
-the slowest round measured — and for an API that stays unreadable, which is still `could not look`, never
-`nothing wrong`. At the close the check reports whatever had landed, in its job summary as well as its log:
+exactly as hard and says the true thing, until the window closes. The window is **three minutes since
+2026-09-23, the maintainer's time-box**, which replaced a 20-minute budget set at five times the slowest
+round measured. A window that closes with no round ends green with a warning, on his ruling above, and so
+does one whose last look could not read the API, on the coordinator session's delegated call. At the
+close the check reports whatever had landed, in its job summary as well as its log:
 what is on the awaited head, whether Copilot still holds the request, and Copilot's newest review on the
 pull request. Rounds here have landed up to 3m47s after a push, so a round slower than the window arrives
-after the red, which then reads *late*, not *lost*, and a re-run finds it.
+after the report, *late* rather than *lost*, and a re-run processes it.
 
 The same amendment closed a red that could never clear. The Copilot ruleset carries
 `review_draft_pull_requests: false`, so on a **draft** no round is owed and none was ever coming; the check
@@ -1110,8 +1115,8 @@ now reports success there, naming the reason, which opens nothing because GitHub
 at all and `ready_for_review` re-runs the real check. The window it leaves is named in the workflow.
 
 **Three limits, named rather than found later.** The reviewer's login is a platform fact the workflow
-hard-codes, and a rename would show up as a permanent red rather than a silent pass — the failure
-direction to prefer, but a fragility to know about. Resolution still does not mean *adjudication*:
+hard-codes, and a rename would show up as a warning on every pull request rather than a silent pass — the
+failure direction to prefer, but a fragility to know about. Resolution still does not mean *adjudication*:
 a reviewer can resolve its own thread, as recorded in the floor section below. This rule makes the round
 **happen before the merge**; it does not make anyone agree with it.
 
@@ -1121,9 +1126,10 @@ the bot, so GitHub held the run as `action_required` awaiting a maintainer's *Ap
 inside the `pull_request` run — which is not bot-triggered — removed that trigger and that click. What is
 left is the tail: if the budget expires before the round lands, **nothing re-triggers the check** and a
 maintainer re-runs the job. The same click as before, and since the three-minute window no longer only in
-the case that is already a fault: a round slower than the window needs it too. A re-run re-requests
-Copilot at its first look when the head has no round, which is where the one re-request moved from the
-middle of the old 20-minute wait.
+the case that is already a fault: a round slower than the window needs it too, to be processed, though the
+check is already green with a warning. A re-run re-requests Copilot at its first look that reads the
+reviews and finds no round on the head, which is where the one re-request moved from the middle of the old
+20-minute wait; a look that could not read them does not ask.
 
 **The guarantee is bounded; the process on top of it is now bounded too — 2026-07-28.** Answering
 Copilot was made mandatory and unbounded on the same day, and the unbounded half did not survive
@@ -1198,7 +1204,7 @@ proposal behind it is a floor nobody can audit.
 *agent* raises a ship-step prompt. This is a status check — a floor row once it joins the floor, per the
 paragraph below — and floor rows hold at every mode. So under `gated` a merge waits for both the
 maintainer's approval and this check; under `auto` the approval prompt is gone and **this check still
-holds**. Anyone reading `auto` as *"nothing waits"* should read this row again.
+waits out its window**. Anyone reading `auto` as *"nothing waits"* should read this row again.
 
 **Not yet required, deliberately** — the same reason as `pr-labeled` before it, from
 [`proposals/0004-ci-runs-every-declared-recipe.md`](proposals/0004-ci-runs-every-declared-recipe.md): a
@@ -1209,28 +1215,31 @@ after, by one command that is a repository-settings change and therefore **Gated
 **A head that never draws a round: merging past this check is an explicit, recorded maintainer act —
 ruled 2026-08-09, exit (2) of
 [`proposals/0023-a-head-that-never-draws-a-round-needs-an-answer.md`](proposals/0023-a-head-that-never-draws-a-round-needs-an-answer.md).**
+_Retired 2026-09-23 by his ruling of 14:07 UTC above: a window with no round now ends green with a
+warning, so this state has no red left to merge past, and merging without a round is his call. The rest
+of this paragraph and the next are the record of the procedure it replaced._
 The check can be left holding a state that never clears: on
 [#157](https://github.com/sleepy-panda-srl/portulan/pull/157) a rebase force-push drew no round at all
 — the re-request was accepted and abandoned — and the pull request merged past the red check on the
-maintainer's explicit override. That exception is now the procedure, unchanged in substance: **the check
-stays red**, because a gate that opens itself on an unexplained absence is not a gate, and the maintainer
-may merge past it **per occurrence, never as standing permission**, with the act recorded on the pull
-request *before* the merge — his own comment, or an agent's via [`tools/gh-bot`](tools/gh-bot) quoting
-his instruction verbatim. **The recording is the difference between an override and a habit.**
+maintainer's explicit override. That exception then became the procedure, unchanged in substance: **the
+check stayed red**, because a gate that opens itself on an unexplained absence is not a gate, and the
+maintainer could merge past it **per occurrence, never as standing permission**, with the act recorded on
+the pull request *before* the merge — his own comment, or an agent's via [`tools/gh-bot`](tools/gh-bot)
+quoting his instruction verbatim. **The recording was the difference between an override and a habit.**
 
 The cause is unestablished — authorship is the surviving lead
 ([#161](https://github.com/sleepy-panda-srl/portulan/issues/161)) — and while it stands the weekly
-librarian pass meets this whenever it needs a rebase, so the expected price is **one recorded override
+librarian pass meets this whenever it needs a rebase, so the expected price was **one recorded override
 per stranded pass**. _Dated 2026-09-23: the lead now has a documented mechanism. GitHub bills a review on
 a bot's pull request, or one a bot requests, to the organisation, and nothing here pays that share.
 [`copilot-request.yml`](../.github/workflows/copilot-request.yml) is the repair, the first bot-authored
-pull request after it is the observation, and the retirement condition below stands._ Measured 2026-08-09: the scheduled pass has run **once**, and it stranded. This is
+pull request after it is the observation, and the retirement condition below stands._ Measured 2026-08-09: the scheduled pass has run **once**, and it stranded. This was
 doctrine standing where a rail should eventually stand, and [`../docs/vision.md`](../docs/vision.md)'s
-*rails, not prose* is conceded rather than contradicted — the rail is the required-context flip above,
-declined for now **precisely because** it would make a known strand class unmergeable at 06:00 on a
-Monday with nobody at a keyboard. Retire this paragraph when a scheduled pass that needed a rebase draws
-its round and merges with no override, when `copilot-reviewed` joins the required contexts, or when
-Copilot review leaves the review path.
+*rails, not prose* was conceded rather than contradicted — the rail was the required-context flip above,
+declined then **precisely because** it would make a known strand class unmergeable at 06:00 on a
+Monday with nobody at a keyboard. It was to be retired when a scheduled pass that needed a rebase drew
+its round and merged with no override, when `copilot-reviewed` joined the required contexts, or when
+Copilot review left the review path.
 
 ## The triage threshold
 
