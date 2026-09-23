@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://portulan.dev/spec/2.8/workspace.schema.json",
-  "title": "Portulan Workspace Definition v2.8",
+  "$id": "https://portulan.dev/spec/2.9/workspace.schema.json",
+  "title": "Portulan Workspace Definition v2.9",
   "description": "The manifest at the root of a workspace. It is an index, not a container: it names the slots the engine resolves against and points at the Markdown that holds each slot's content and rationale. Written in a deliberately small subset of JSON Schema 2020-12 — see spec/README.md for the subset and for what validates it.",
   "type": "object",
   "additionalProperties": false,
@@ -300,6 +300,50 @@
             "proposal_days": {
               "description": "How long a proposal may sit undecided before the pass nags. Requires `slots.proposals`; without it the pass reports that it was not asked, which is not the same answer as none pending. A positive integer, on the same terms as `record_days`.",
               "type": "number"
+            }
+          }
+        }
+      }
+    },
+    "context": {
+      "description": "Optional, added in 2.9. What the always tier may cost, and the ratio it is counted at: the machine half of core/operating/context.md, the way `memory` is of core/operating/memory.md, and the page is the one source for what each load tier holds. Requires `ratio`, because a token budget with nothing to count it by is not a budget; that is the one dependency here the subset can state, so it is the schema's rather than `doctor`'s. Nothing is defaulted, on the memory budgets' reasoning: a default would be this specification setting a policy for every workspace that adopts it, in a key nobody typed.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["ratio"],
+      "properties": {
+        "always": {
+          "description": "The always tier, as core/operating/context.md defines it. Named for its tier, so a budget on a later tier would sit beside it rather than force a rename.",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["budget"],
+          "properties": {
+            "budget": {
+              "description": "A rail, not an aim, and never repaired by a raise in the same change (core/operating/context.md): a breach is repaired by demotion to a later tier, by merge or by retirement.",
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["tokens"],
+              "properties": {
+                "tokens": {
+                  "description": "The most tokens the always tier may load, counted at `ratio.bytes_per_token`. Must be a POSITIVE INTEGER: the subset has no `minimum` and cannot say `integer`, so `doctor` refuses zero, negative and non-integer values.",
+                  "type": "number"
+                }
+              }
+            }
+          }
+        },
+        "ratio": {
+          "description": "How bytes become tokens. Declared, and measured exactly on demand rather than on every run: the exact count asks the host, which is a network call no verify recipe may make, and a ratio that moved between runs would make one tree red on one run and green on the next.",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["bytes_per_token", "calibrated_by"],
+          "properties": {
+            "bytes_per_token": {
+              "description": "Bytes per token, as the host's exact count measured them. At least 1: a token covers at least one byte, so a smaller figure is tokens per byte entered inverted, and `doctor` refuses it, since the subset has no `minimum`.",
+              "type": "number"
+            },
+            "calibrated_by": {
+              "description": "The host whose exact count calibrated the ratio, by the id `compile` gives that host. No date is recorded here: the commit that changes the ratio dates it.",
+              "$ref": "#/$defs/slug"
             }
           }
         }

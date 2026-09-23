@@ -60,6 +60,7 @@ experience a failure. *(Binding non-goal: no ceremony that can't scale down.)*
 | `packs` | structured | no | constitution — thesis 1's cascade, `core < pack < workspace` |
 | `memory` | structured | no | criterion — milestone 5, *generated size-budgeted index whose budget is a rail*; [`memory.md`](../core/operating/memory.md) — the Index and Consolidate states of the lifecycle |
 | `handoffs` | structured | no | criterion — milestone 5 as amended, *a generated index over the handoff series*; [`loop.md`](../core/operating/loop.md) — the librarian that mines the series |
+| `context` | structured | no | criterion — milestone 12, *what a host loads into every context is measured, budgeted and demoted*; [`context.md`](../core/operating/context.md) — the always tier, budgeted in tokens |
 | `provenance` | record field | **on every rule** | criterion — *provenance slot*; [proposal 0002](../.portulan/proposals/0002-sealed-provenance.md), adopted |
 
 ## `kind` — which of the four workspace kinds this is, and which of them govern
@@ -679,6 +680,53 @@ section; it does not read these locations or judge what a scope contains, which 
 heading still holds. There is no budget for the same reason:
 there is nothing yet to budget, and the axis such a rail should use is per-persona rather than
 per-workspace, which belongs to the row where something finally reads these locations.
+
+## `context` — what the always tier may cost, and the ratio it is counted at
+
+Added at **2.9**, with proposal `0036`. [`context.md`](../core/operating/context.md) is the doctrine and the
+one source for what each load tier holds; this object is its machine half, as `memory` is
+[`memory.md`](../core/operating/memory.md)'s.
+
+| Field | What it is |
+|---|---|
+| `always.budget.tokens` | The most tokens the always tier may load, counted at the ratio below. |
+| `ratio.bytes_per_token` | Bytes per token, as a host's exact count measured them. At least 1. |
+| `ratio.calibrated_by` | The host whose exact count calibrated the ratio, by the id `compile` gives it: `claude-code`. |
+
+```json
+"context": {
+  "always": { "budget": { "tokens": 8000 } },
+  "ratio": { "bytes_per_token": 2.99, "calibrated_by": "claude-code" }
+}
+```
+
+**The ratio is required and the budget is not.** A token budget with nothing to count it by is not a
+budget, so the schema refuses `context` without `ratio`, and a ratio without the host that calibrated
+it. Those are dependencies the subset can state, so they are the schema's and join no list of `doctor`'s
+conditionals. A ratio alone is a legitimate shape: it is what a report in tokens needs, and the default
+is the report.
+
+**Declared, not measured per run.** The exact count asks the host, which is a network call no verify
+recipe may make, and a ratio that moved between runs would make one tree red on one run and green on the
+next. So the ratio is measured exactly on demand and declared, with the host that measured it. There is no
+date field, because the commit that changes the ratio dates it, and one ratio rather than one per host,
+because nothing yet reads a second.
+
+**Named for its tier.** Only the always tier is budgeted, and the budget sits under `always` so a budget
+on a later tier would sit beside it rather than force a rename, which would be a MAJOR.
+
+**Nothing is defaulted**, on memory's rule: an undeclared budget is not checked. `doctor` refuses a
+declared token budget that is not a positive integer, as it refuses the memory budgets, and a ratio under
+1, because a token covers at least one byte and a smaller figure is tokens per byte entered inverted.
+Both are `doctor`'s because the subset has no `minimum` and cannot say `integer`.
+
+**What nothing checks yet: the budget itself.** Nothing measures the always tier until row 12's
+measurement lands, so no workspace in this tree declares the key: a budget nothing checks reads as a rail,
+which is the failure
+[`a-mandate-nothing-checks-is-already-broken.md`](../.portulan/memory/a-mandate-nothing-checks-is-already-broken.md)
+names. Portulan's own contribution is railed by this repository's recipes, not by a budget in its
+manifest. And, as with memory, no checker establishes that a budget was not raised in the change that
+breached it.
 
 ## `provenance` — a record field, not a manifest key
 

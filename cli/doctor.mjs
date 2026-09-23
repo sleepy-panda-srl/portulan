@@ -1919,6 +1919,9 @@ export async function inspect(workspaceDir, options = {}) {
         ["librarian.staleness.record_days", workspace.librarian?.staleness?.record_days],
         ["librarian.staleness.sealed_days", workspace.librarian?.staleness?.sealed_days],
         ["librarian.staleness.proposal_days", workspace.librarian?.staleness?.proposal_days],
+        // Workspace Definition 2.9's always-tier budget, a fifth budget the subset can only type as
+        // `number`, so it arrives with its siblings' refusal rather than their original hole.
+        ["context.always.budget.tokens", workspace.context?.always?.budget?.tokens],
     ]) {
         if (value !== undefined && !positive(value)) {
             fail(
@@ -1929,6 +1932,20 @@ export async function inspect(workspaceDir, options = {}) {
                     "run, where the consuming tool refuses it with exit 2 and nobody is watching",
             );
         }
+    }
+
+    // The one number of this family that is not an integer: 2.99 bytes per token is a real figure. What is
+    // refused instead is a figure under one. A token covers at least one byte, so a smaller value is
+    // tokens per byte entered inverted, and it would overstate every count by the square of the true
+    // ratio. Workspace Definition 2.9, proposal `0036`.
+    const bytesPerToken = workspace.context?.ratio?.bytes_per_token;
+    if (bytesPerToken !== undefined && !(Number.isFinite(bytesPerToken) && bytesPerToken >= 1)) {
+        fail(
+            "schema",
+            `context.ratio.bytes_per_token is ${String(bytesPerToken)}, and it must be a finite number of at least 1. ` +
+                "A token covers at least one byte, so a smaller figure is tokens per byte entered inverted. The " +
+                "declared keyword subset has no `minimum`, so this is checked here",
+        );
     }
 
     if (workspace.librarian?.staleness?.proposal_days !== undefined && !workspace.slots?.proposals) {

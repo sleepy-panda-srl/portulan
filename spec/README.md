@@ -179,6 +179,14 @@ subset can say, and `doctor` returns at *the manifest must conform first* before
 runs. It is a live hole for `cli/index.mjs` alone, which validates against no schema by design and
 therefore refuses the string itself.)_
 
+**2.9 adds nothing to that list either**: `context` requires `ratio`, and `ratio` requires its two
+fields, in the schema itself, because `required` is in the subset. It adds **two** keys to the hand-check,
+so it covers **nine**. `context.always.budget.tokens` is the fifth budget the subset can only type as
+`number`. `context.ratio.bytes_per_token` is the first key held to something other than a positive
+integer: 2.99 bytes per token is a real figure, so the check is *at least 1*, since a token covers at
+least one byte and a smaller figure is tokens per byte entered inverted. For that key `minimum` alone
+would close the gap.
+
 _These figures are history rather than state: what 2.3 and 2.4 added cannot change, so they do not go
 stale the way the removed count did. The one forward-looking sentence is the growth rate, and it is
 dated by the version it names._
@@ -194,14 +202,30 @@ number governing both would make a bump in either mean a change in the other:
 
 | Schema | Manifest key | Current | What it governs |
 |---|---|---|---|
-| [`workspace.schema.json`](workspace.schema.json) | `portulan.spec` | **2.8** | the Workspace Definition — the manifest at a workspace root |
+| [`workspace.schema.json`](workspace.schema.json) | `portulan.spec` | **2.9** | the Workspace Definition — the manifest at a workspace root |
 | [`pack.schema.json`](pack.schema.json) | `portulan.pack` | **1.0** | the Pack Definition — the manifest at a pack root. |
 
 The rules below apply to each train independently. `portulan.spec` is `MAJOR.MINOR`, and the current
-Workspace Definition version is **2.8**. It did **not** move when the Pack Definition arrived, because
+Workspace Definition version is **2.9**. It did **not** move when the Pack Definition arrived, because
 `workspace.schema.json` was byte-identical across that change: `packs` already existed as an array of
 strings and was deliberately left that way, since tightening its items to the canonical `category/name`
 form would be a constraint an existing manifest could newly fail, which is a MAJOR.
+
+**2.9 is a MINOR on 2.8's terms: one optional key and nothing else.** `context` is the machine half of
+[`../core/operating/context.md`](../core/operating/context.md), from proposal `0036`: an always-tier
+budget in tokens and the bytes-per-token ratio it is counted at, with the host whose exact count
+calibrated it. Nothing is removed, renamed, tightened or defaulted, so every 2.8 manifest is a valid 2.9
+manifest unchanged. [`slots.md`](slots.md) argues the key. **It carries `context` alone.** Proposals
+`0034` (`evals` and `telemetry`) and `0038` (its spend keys) each say their keys ride the MINOR this key
+needs and that neither waits for the other; none of them is drafted, and `0034`'s accepted text names no
+version number, so they take the next free MINOR when they are drafted.
+
+**Measured across the bump, as for 2.7 and 2.8:** `node cli/doctor.mjs .portulan examples` is GREEN, with
+`.portulan` still on 2.8 and `examples/` on 2.4, both untouched. Neither declares the key, because
+nothing measures the always tier yet and a budget nothing checks reads as a rail. What it costs:
+`KNOWN_SPECS` in [`../cli/index.mjs`](../cli/index.mjs) and [`../cli/librarian.mjs`](../cli/librarian.mjs)
+gains `"2.9"` by addition, and the four writers stay at `2.7`, since nothing they scaffold declares the
+key.
 
 **2.8 is a MINOR on the plainest terms in this train's history: one optional key and nothing else.**
 `memory.store.budget.record_kilobytes` — the most bytes any single record may hold — joins the sibling

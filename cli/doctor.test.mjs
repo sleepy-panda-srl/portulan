@@ -325,6 +325,9 @@ describe("a budget or a threshold that is not a positive integer", () => {
         // the hole they were repaired for — the sibling rule of `.portulan/proposals/0020`, applied to
         // the check that exists because of it.
         ["memory.store.budget.record_kilobytes", (m, v) => ((m.memory = { store: { budget: { record_kilobytes: v } } }), m)],
+        // Workspace Definition 2.9's always-tier budget, the fifth, on the same terms. The ratio beside it
+        // is well-formed, so the only failure in play is the one under test.
+        ["context.always.budget.tokens", (m, v) => ((m.context = { always: { budget: { tokens: v } }, ratio: { bytes_per_token: 3, calibrated_by: "claude-code" } }), m)],
     ];
 
     for (const [name, set] of KEYS) {
@@ -362,9 +365,48 @@ describe("a budget or a threshold that is not a positive integer", () => {
     }
 });
 
+describe("the always tier's ratio, and the budget that needs it", () => {
+    // Workspace Definition 2.9. The ratio is the one number of the family that is not an integer, since
+    // 2.99 bytes per token is a real figure, so it is held to at least one rather than to positive: a
+    // token covers at least one byte, and a smaller figure is tokens per byte entered inverted.
+    const withRatio = (ratio) => ({ ...wellFormed(), context: { ratio } });
+
+    for (const bad of [0, -1, 0.33]) {
+        test(`bytes_per_token ${bad} is a failure that says why`, async () => {
+            const m = withRatio({ bytes_per_token: bad, calibrated_by: "claude-code" });
+            const dir = tree(scratch(), { ...minimalFiles, "workspace.json": JSON.stringify(m) });
+            const { findings } = await inspect(dir, { schema: SCHEMA });
+            const hit = severities(findings, "fail").find((f) => /bytes_per_token/.test(f.message));
+            assert.ok(hit, `expected a failure for bytes_per_token ${bad}`);
+            assert.match(hit.message, /inverted/);
+        });
+    }
+
+    for (const good of [1, 2.99]) {
+        test(`bytes_per_token ${good} passes`, async () => {
+            const m = withRatio({ bytes_per_token: good, calibrated_by: "claude-code" });
+            const dir = tree(scratch(), { ...minimalFiles, "workspace.json": JSON.stringify(m) });
+            const { findings } = await inspect(dir, { schema: SCHEMA });
+            assert.deepEqual(severities(findings, "fail"), []);
+        });
+    }
+
+    // Both refusals below are the schema's own, because `required` is in the subset: a budget with nothing
+    // to count it by, and a ratio that does not say which host's exact count it came from.
+    test("a budget with no ratio is refused by the schema", () => {
+        const errors = validate(SCHEMA, { ...wellFormed(), context: { always: { budget: { tokens: 8000 } } } });
+        assert.ok(errors.some((e) => e.pointer === "/context" && /`ratio`/.test(e.message)), JSON.stringify(errors));
+    });
+
+    test("a ratio with no calibrating host is refused by the schema", () => {
+        const errors = validate(SCHEMA, withRatio({ bytes_per_token: 2.99 }));
+        assert.ok(errors.some((e) => e.pointer === "/context/ratio" && /`calibrated_by`/.test(e.message)), JSON.stringify(errors));
+    });
+});
+
 describe("the schema declares which Workspace Definition version it implements", () => {
     test("the shipped schema carries it in `$id`", () => {
-        assert.deepEqual(schemaVersion(SCHEMA), { major: 2, minor: 8 });
+        assert.deepEqual(schemaVersion(SCHEMA), { major: 2, minor: 9 });
     });
 
     test("a schema whose `$id` does not carry one is refused", () => {
@@ -1657,7 +1699,9 @@ describe("exit codes: 0 validates, 1 does not, 2 could not run", () => {
             return tree(scratch(), { ...minimalFiles, "workspace.json": JSON.stringify(m) });
         };
         assert.equal(await run([build("9.9")], { quiet: true }), 2, "a MAJOR ahead");
-        assert.equal(await run([build("2.9")], { quiet: true }), 2, "a MINOR ahead");
+        // `2.10`, not a string one character on: the MINOR is compared as a number, so this also holds
+        // the comparison to its arithmetic now that the current version is `2.9`.
+        assert.equal(await run([build("2.10")], { quiet: true }), 2, "a MINOR ahead");
         assert.equal(await run([build("2.0")], { quiet: true }), 0, "the current version");
     });
 
@@ -1874,7 +1918,7 @@ describe("the packs a workspace declares", () => {
 
     test("the two version trains are read by different functions and do not collide", () => {
         assert.deepEqual(packSchemaVersion(PACK_SCHEMA), { major: 1, minor: 0 });
-        assert.deepEqual(schemaVersion(SCHEMA), { major: 2, minor: 8 });
+        assert.deepEqual(schemaVersion(SCHEMA), { major: 2, minor: 9 });
         // The workspace reader must not accept the pack `$id` as a workspace version.
         assert.throws(() => schemaVersion({ $id: "https://portulan.dev/spec/pack/1.0/pack.schema.json" }));
     });
