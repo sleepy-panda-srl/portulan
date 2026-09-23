@@ -3037,3 +3037,14 @@ _The seam applies here too: no client-identifying references._
   session reviewed the diff before the commit; his review is on the PR · 28 green, `tests` as non-root · Seam
   scan clean against the private terms this project names; the term-list scan is his ·
   [handoff](../.portulan/handoffs/2026-09-23-o-what-a-boot-reads-is-measured-and-portulans-share-railed.md)
+
+- 2026-09-23 · M12 (Context economy) — row stays todo · **Three boot files keep their rules and move their
+  reasons.** [`identity.md`](../.portulan/identity.md), [`dod.md`](../.portulan/dod.md) and the repo card keep
+  what routine work needs; their reasons, measurements and history moved verbatim to one on-read file each,
+  none deleted and none kept twice, and two stale sentences were corrected. The constitution is not cut: no
+  agent edits it. Boot read-set 92,998 → 81,892 bytes (88,947 with the manifest), about 3,700 fewer tokens
+  per boot at 0036's 2.99 bytes per token; its `context` rail 102,055 → 90,726; the demo's unchanged. ·
+  Checkpoints skipped by his instruction of 2026-09-23 12:38 (no fresh-context runs unless he asks); the
+  coordinator session reviewed the diff before the commit; his review is on the PR · 28 green, `tests` as
+  non-root · Seam scan clean against the private terms this project names; the term-list scan is his ·
+  [handoff](../.portulan/handoffs/2026-09-23-m-three-boot-files-keep-their-rules-and-move-their-reasons.md)

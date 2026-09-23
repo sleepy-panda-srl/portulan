@@ -22,7 +22,8 @@
 # ## How a rail is set, lowered and raised
 #
 # Each is the figure measured on the tree this recipe landed in, main at a534f15 with this change's own
-# recipe entry in the manifest, plus 2%, rounded up (railFor in ../../cli/context.mjs).
+# recipe entry in the manifest, plus 2%, rounded up (railFor in ../../cli/context.mjs), unless its line
+# names the handoff of the demotion that lowered it since, on that change's own figure.
 # At exactly today's figure every added byte in a file a boot reads would be red, and the memory index
 # alone is 37 of its 40 lines. The report says when a rail's headroom passes 5%, and gives the figure
 # to lower it to. **A change that demotes lowers its line here, in the same pull request**, or the gain
@@ -57,7 +58,7 @@ cd -- "$root" || exit 2
 }
 
 # The rails, one line each, in bytes.
-RAIL_OWN_BOOT=102055      # .portulan's boot read-set, 100,053 B (92,998 without the manifest)
+RAIL_OWN_BOOT=90726       # .portulan's boot read-set, 88,947 B (81,892 without), lowered in 2026-09-23-m
 RAIL_DEMO_BOOT=36101      # examples' boot read-set with the combcount card, 35,393 B (33,591 without)
 RAIL_ENGINE=12062         # the boot skill and the kernel, 11,825 B
 RAIL_STEPS=10944          # the skill's step files, pointer-manifest.md and packs.md, 10,729 B

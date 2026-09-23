@@ -9,8 +9,8 @@
 > which is the registered carrier of that subject and is cited here rather than restated.
 
 - **Source workspace:** `.portulan`
-- **Moves:** 23 — 5 keep · 6 emptying · 3 substitution · 9 deletion
-- **Arm A files:** 21 · **arm B files:** 0
+- **Moves:** 25 — 6 keep · 6 emptying · 3 substitution · 10 deletion
+- **Arm A files:** 22 · **arm B files:** 0
 - **Hooks pinned to this machine:** 5
 
 **The source path count is deliberately not here.** It moves whenever a session writes a record,
@@ -23,6 +23,7 @@ noticed by this file.
 | Path | Kind | `arm.md` row |
 |---|---|---|
 | `identity.md` | keep | residual |
+| `identity/` | keep | residual |
 | `principles.md` | keep | residual |
 | `gate-map.md` | keep | residual |
 | `gate-map/` | keep | residual |
@@ -36,6 +37,7 @@ noticed by this file.
 | `workspace.json` | substitution | 2,5,6 |
 | `dod.md` | substitution | 3 |
 | `verify/` | substitution | 2 |
+| `dod/` | deletion | 3 |
 | `repos/` | deletion | 4 |
 | `products/` | deletion | 6 |
 | `personas/` | deletion | 6b |
@@ -64,6 +66,7 @@ noticed by this file.
 - `.portulan/gates.json`
 - `.portulan/handoffs-index.md`
 - `.portulan/identity.md`
+- `.portulan/identity/stack.md`
 - `.portulan/memory-index.md`
 - `.portulan/principles.md`
 - `.portulan/verify/build.sh`

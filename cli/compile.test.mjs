@@ -2100,6 +2100,22 @@ describe("customer zero", () => {
         ];
     };
 
+    // The same demotion, applied the same day to three more files a boot read whole: each keeps what routine
+    // work needs and links the on-read files in the directory beside it. Paths are relative to `.portulan/`.
+    const TIERED = [
+        ["identity.md", "identity"],
+        ["dod.md", "dod"],
+        ["repos/portulan.md", "repos/portulan"],
+    ];
+    const tieredProse = ([boot, dir]) => {
+        const abs = path.join(REPO, ".portulan", dir);
+        const moved = fs.readdirSync(abs).filter((f) => f.endsWith(".md")).sort();
+        return [
+            [boot, fs.readFileSync(path.join(REPO, ".portulan", boot), "utf8")],
+            ...moved.map((f) => [`${dir}/${f}`, fs.readFileSync(path.join(abs, f), "utf8")]),
+        ];
+    };
+
     test("every rule id the gate map cites exists in the policy — declared or composed", () => {
         const ids = new Set([...real.rules, ...composedGates].map((r) => r.id));
         for (const [file, prose] of gateMapProse()) {
@@ -2118,13 +2134,26 @@ describe("customer zero", () => {
         for (const [file] of moved) assert.ok(index.includes(`](${file}`), `${file} is linked from nowhere a boot reads`);
     });
 
-    test("every section link between the gate map's files lands on a heading", () => {
-        // `docs.sh` resolves a link's file and drops its fragment, so a heading renamed in one half of the
-        // gate map would leave the other half's links landing at the top of a file, with nothing red.
+    test("every on-read file of a tiered boot file is linked from it", () => {
+        // The gate map's rail above, for the three files tiered after it: a file in the directory that its boot
+        // file does not link is text no session is ever sent to.
+        for (const pair of TIERED) {
+            const [[boot, prose], ...moved] = tieredProse(pair);
+            assert.ok(moved.length > 0, `${pair[1]}/ holds no files, so this rail checks nothing`);
+            for (const [file] of moved) {
+                const rel = path.posix.relative(path.posix.dirname(boot), file);
+                assert.ok(prose.includes(`](${rel}`), `${file} is not linked from ${boot}, which a boot reads`);
+            }
+        }
+    });
+
+    test("every section link between a boot file and its on-read files lands on a heading", () => {
+        // `docs.sh` resolves a link's file and drops its fragment, so a heading renamed in one half of a tiered
+        // file would leave the other half's links landing at the top of a file, with nothing red.
         // Slugged the way GitHub renders a heading: lower-cased, punctuation other than `-` and `_` dropped,
         // spaces to hyphens, a repeated heading suffixed `-1`, `-2`; a fenced block holds no headings.
         // (Copilot, round 1 on #437.)
-        const files = new Map(gateMapProse());
+        const files = new Map([...gateMapProse(), ...TIERED.flatMap(tieredProse)]);
         const slug = (heading) => heading.trim().toLowerCase().replace(/[^\p{L}\p{N} _-]/gu, "").replace(/ /g, "-");
         const anchors = new Map();
         for (const [file, prose] of files) {
@@ -2141,12 +2170,12 @@ describe("customer zero", () => {
         for (const [file, prose] of files) {
             for (const [, target, fragment] of prose.matchAll(/\]\(([^)\s#]*)#([^)\s]+)\)/g)) {
                 const resolved = target === "" ? file : path.posix.normalize(path.posix.join(path.posix.dirname(file), target));
-                if (!anchors.has(resolved)) continue; // a fragment into a file outside the gate map
+                if (!anchors.has(resolved)) continue; // a fragment into a file this rail does not read
                 checked++;
                 assert.ok(anchors.get(resolved).has(fragment), `${file} links \`${target}#${fragment}\`, and ${resolved} has no such heading`);
             }
         }
-        assert.ok(checked > 0, "no section link between the gate map's files was found, so this rail checks nothing");
+        assert.ok(checked > 0, "no section link between a boot file and its on-read files was found, so this rail checks nothing");
     });
 
     test("the composed set is non-empty, so the two rails above are not widened to a no-op", () => {

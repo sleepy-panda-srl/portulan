@@ -30,39 +30,20 @@ A change is done when **all** of the following hold.
    judgement, and still yours.
 4. **Nothing claims a capability that does not exist.** If a document describes enforcement, either the
    enforcement exists or the sentence names the milestone where it arrives. _Why: "write the limit, not
-   the aspiration" — [`identity.md`](identity.md)._
+   the aspiration" — [`principles.md`](principles.md)._
 5. **The pre-commit scan is clean** across the changed files, the commit message, and the branch name.
-   The term list lives outside this repository. _Why: this history **is** world-readable — the
-   repository was public 2026-07-27 → 2026-08-03, private after that, and is public again — and a
-   commit cannot be cleaned afterwards, only rewritten, which is worse and leaves its own trace.
-   **This clause has now survived visibility moving in both directions and relaxes on neither, and no
-   move of that setting may be read as relaxing it.** While the repository was private it bound
-   because clones from the first public window could not be recalled and the setting sat one Gated act
-   from moving back; it now binds for the plainest reason available — **every commit pushed is
-   world-readable the moment it lands**, so this scan is the last check before publication rather than
-   a check before some later one. A scan kept only while the repository happens to be public stops
-   exactly when it is cheapest to keep; a scan kept only while it is private has the argument
-   backwards. Visibility is a Gated setting that has moved three times. The clause binds at its
-   maximum now, and it has never bound less._
+   The term list lives outside this repository. _Why it binds whatever the repository's
+   visibility: [`dod/reasons.md`](dod/reasons.md#5-the-pre-commit-scan-is-clean)._
 6. **The plan reflects reality.** Every session appends its Session log entry to
    [`../docs/plan.md`](../docs/plan.md) — unconditionally, in the shape and within the budget that
    file's **Session log header** sets out. This condition **cites** that mandate and deliberately does
    not restate it, not even the budget's number: the header is the one carrier. The **Status column**
-   is the conditional half, and moves only when the work moved milestone state. _Why the split is
-   spelled out: this condition used to read "if the work moved milestone state, the same change updates
-   … Status column and Session log", which made the log entry conditional too — a second, narrower
-   carrier of a rule the plan already stated in full. Five handoff-documented sessions went unlogged
-   under it before a two-day review counted them. Both halves of the log↔handoff correspondence, and
-   the entry budget, are now rails in `docs.sh`'s `record` check rather than prose anyone must
-   remember._
+   is the conditional half, and moves only when the work moved milestone state.
+   _Why the split is spelled out: [`dod/reasons.md`](dod/reasons.md#6-the-plan-reflects-reality)._
 7. **The supervisor checkpoint passed**, in a fresh context, and is recorded. **Which** work requires
    one is stated in [`gate-map.md`](gate-map.md) → *Supervised-build checkpoints*, and this condition
-   **cites** that rule rather than restating it. _Why the split is spelled out: this condition read "for
-   anything milestone-affecting", which is narrower than the gate map's own full-lane boundary and
-   narrower than the trigger now recorded beside it — a second, narrower carrier of one rule, which is
-   the shape condition 6 was repaired **out of** one change earlier, and the class
-   [`0020`](proposals/0020-a-fix-is-not-done-at-the-site-it-was-found.md) names. The Dependabot arc ran checkpointless under the old wording with
-   nothing in this file to say it should not have._
+   **cites** that rule rather than restating it.
+   _Why the split is spelled out: [`dod/reasons.md`](dod/reasons.md#7-the-supervisor-checkpoint-passed)._
 8. **The session ended with a dated handoff** in [`handoffs/`](handoffs/). Five lines is enough; absent
    is not. _Why: the Session log in [`../docs/plan.md`](../docs/plan.md) records what landed, and the
    handoff records why — and the why is the part a later session cannot reconstruct from the diff. It is
