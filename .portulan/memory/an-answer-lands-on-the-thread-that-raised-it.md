@@ -18,14 +18,15 @@ general pull-request comment. **The gate stays closed until the thread is resolv
 things that lead to it: the reader hunting for a summary somewhere else on the page, and whoever
 resolves finding nothing on the thread to judge.
 
-**The suppressed notes are threads too — where promotion succeeds.** That qualifier is the rule, not
-a caveat on it. [`copilot-review.yml`](../../.github/workflows/copilot-review.yml) promotes each note
-to a comment at its `file:line`, deduplicated on path, line and a checksum, and **a promoted note is
-a reason to push exactly as a thread is** — the sentence this rule previously denied. **Promotion is
-best-effort** — absent App credentials, a failed dedup read, or a line the diff does not carry each
-leave a note surfaced-but-ungated — so **`required_conversation_resolution` does not always cover
-this channel**, and the step's `posted / already present / unattachable` line is what says which
-([`a-stated-enforcer-must-be-the-real-one.md`](a-stated-enforcer-must-be-the-real-one.md)).
+**The suppressed notes were threads too, where promotion succeeded — until 2026-09-23.**
+[`copilot-review.yml`](https://github.com/sleepy-panda-srl/portulan/blob/74a2a315c8c2641736eea6d87be3c2fba83827a5/.github/workflows/copilot-review.yml) promoted each note to a comment at its `file:line`, deduplicated on path,
+line and a checksum, and **a promoted note was a reason to push exactly as a thread is** — the
+sentence this rule had denied. Promotion was best-effort, so `required_conversation_resolution` did
+not always cover that channel
+([`a-stated-enforcer-must-be-the-real-one.md`](a-stated-enforcer-must-be-the-real-one.md)). Promotion
+left with the workflow on 2026-09-23. The session that owns the pull request now reads the review in
+whatever form Copilot files it, threads or body, and addresses each finding; a thread's answer lands on
+that thread, and unresolved threads still gate the merge.
 
 _Until 2026-08-07 it read "Threads block; suppressed notes do not" — sound about the notes, wrong
 about the **channel**, which carried no state at all. **The maintainer ruled shape 1** of proposal
@@ -35,6 +36,5 @@ about the **channel**, which carried no state at all. **The maintainer ruled sha
 **This rule's reversal, 2026-08-07, is argued above** — the measurement that forced it: on #167
 **thirteen of twenty-six notes never surfaced**.
 
-**Retire when:** Copilot review leaves the review path, or every finding arrives as a thread natively —
-at which point promotion has nothing left to promote and `required_conversation_resolution` covers the
-channel without it.
+**Retire when:** Copilot review leaves the review path. _Until 2026-09-23 it added "or every finding
+arrives as a thread natively"; that half was about the promotion, which left with its workflow._

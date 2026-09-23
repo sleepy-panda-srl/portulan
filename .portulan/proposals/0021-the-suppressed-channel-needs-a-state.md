@@ -64,7 +64,7 @@ expanded them onto it. Three separate faults, and only one of them is the one an
 | `d21a341` | 2 | the verdict review said *"3 … quoted below"* and **quoted one** |
 
 **Ten of the thirteen were lost to the merge gate cancelling itself.**
-Until 2026-08-07 [`../../.github/workflows/copilot-review.yml`](../../.github/workflows/copilot-review.yml)
+Until 2026-08-07 [`../../.github/workflows/copilot-review.yml`](https://github.com/sleepy-panda-srl/portulan/blob/74a2a315c8c2641736eea6d87be3c2fba83827a5/.github/workflows/copilot-review.yml)
 carried a `concurrency` block keyed on the pull-request number alone, whose `cancel-in-progress` was `true`, with
 the reason stated in its own comment: *"A push supersedes the run waiting on the commit it replaced."*
 **Past tense, and deliberately: this pull request changes that configuration** — see the closing section

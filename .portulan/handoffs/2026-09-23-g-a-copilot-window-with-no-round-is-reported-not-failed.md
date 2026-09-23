@@ -1,6 +1,6 @@
 # Handoff — 2026-09-23: a Copilot window with no round is reported, not failed
 
-**What landed.** When [`copilot-review.yml`](../../.github/workflows/copilot-review.yml)'s three-minute
+**What landed.** When [`copilot-review.yml`](https://github.com/sleepy-panda-srl/portulan/blob/74a2a315c8c2641736eea6d87be3c2fba83827a5/.github/workflows/copilot-review.yml)'s three-minute
 window closes without a round, the step now ends with a warning and exits 0, on the maintainer's ruling of
 2026-09-23 14:07 UTC, given on #432's red run, verbatim: *"This shouldn't be an error and it shouldn't
 cause the CI to fail."* The report is unchanged in substance and still goes to the log and the job

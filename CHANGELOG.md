@@ -107,6 +107,14 @@ records how things were found. This is per *release* and records what a reader g
   100,053 to 88,947 with the manifest, and the `context` recipe's rail on it drops to match, from 102,055
   to 90,726. The constitution is not cut, because no agent edits it. Nothing in the package changes, and
   the demo workspace's boot read-set is unchanged.
+- **The session that owns a pull request awaits Copilot's round and reports it; no check judges the
+  round.** This repository's merge discipline still requires Copilot's feedback to be awaited and
+  resolved. The owning session now awaits the round on the final head and names the review and the commit
+  it addressed when it says the pull request is ready, and unresolved Copilot threads still block the
+  merge. The `copilot-reviewed` check and its workflow are removed; the request for bot-authored pull
+  requests stays. The rule and its carriers are in
+  [`.portulan/gate-map/merge-discipline.md`](.portulan/gate-map/merge-discipline.md). Nothing in the
+  package changes.
 
 - **`doctor` reports what every context in your repository loads, and the boot closes with the same
   line.** Every `doctor` run now carries a `context` note for each workspace: Claude Code's always tier in

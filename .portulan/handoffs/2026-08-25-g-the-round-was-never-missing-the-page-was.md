@@ -33,7 +33,7 @@ all**, and that the remedy was to poll `/pulls/N/comments` instead of `/pulls/N/
 **A second fact fell out that nothing here carried:** an inline comment's `commit_id` **drifts onto a
 later head**. Two of those four threads report `5da07da1`, a commit made **21m37s after** they were
 written, `updated_at` unmoved; `original_commit_id` holds the sha actually judged. A *review's*
-`commit_id` is stable — which is why [`copilot-review.yml`](../../.github/workflows/copilot-review.yml),
+`commit_id` is stable — which is why [`copilot-review.yml`](https://github.com/sleepy-panda-srl/portulan/blob/74a2a315c8c2641736eea6d87be3c2fba83827a5/.github/workflows/copilot-review.yml),
 reading that field with `--paginate`, was never exposed to any of this. **No gate, workflow or tool
 changed, and none needed to:** nothing in `.github/workflows/`, `.portulan/tools/` or `.portulan/verify/`
 reads a comment's `commit_id`. This was an ad-hoc watcher's defect, not the repository's.

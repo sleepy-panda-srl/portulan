@@ -18,11 +18,12 @@
 //
 // ## Why the rule is "after the FIRST" rather than "every checkout"
 //
-// Measured before it was written, because the obvious rule is wrong. Five of the seven checkouts in
+// Measured before it was written, because the obvious rule is wrong. Four of the six checkouts in
 // `.github/workflows/` carry no `ref` and every one of them is **correct**: `verify.yml`,
-// `pr-labels.yml`, `copilot-review.yml`, `drills.yml` and `librarian.yml` each check out once and want
-// precisely the event's own ref. A rail demanding `ref` everywhere would red five right answers to make
-// one wrong answer visible, which is how a recipe gets switched off.
+// `pr-labels.yml`, `drills.yml` and `librarian.yml` each check out once and want precisely the event's
+// own ref. A rail demanding `ref` everywhere would red four right answers to make one wrong answer
+// visible, which is how a recipe gets switched off. (Five of seven until `copilot-review.yml` was
+// removed on 2026-09-23.)
 //
 // The narrow rule is the true one: **checking out twice is a statement that two different trees are
 // wanted**, so the second cannot be left to a default whose value depends on which event fired. It reds

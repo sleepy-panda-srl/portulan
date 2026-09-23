@@ -8,7 +8,7 @@ This one is [#176](https://github.com/sleepy-panda-srl/portulan/pull/176), for
 [#66](https://github.com/sleepy-panda-srl/portulan/issues/66).
 
 **State.** Proposal `0021` written, and shape 2 of it implemented — the concurrency key and the
-fenced-block fix in [`copilot-review.yml`](../../.github/workflows/copilot-review.yml), with three
+fenced-block fix in [`copilot-review.yml`](https://github.com/sleepy-panda-srl/portulan/blob/74a2a315c8c2641736eea6d87be3c2fba83827a5/.github/workflows/copilot-review.yml), with three
 fixtures added to [`../verify/workflow-filters.mjs`](../verify/workflow-filters.mjs), which already
 lifts these programs and runs them against real review bodies. All three were forced red against the
 old programs first, and the extractor's failure reproduces `d21a341` exactly: it stops after note one.

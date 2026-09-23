@@ -365,12 +365,13 @@ So the tool computes no fix-rounds, estimates none, and prints nothing that coul
 
 **The empty-round rate is an upper bound, and the reason is a layering rule.** Finding nothing has two
 halves — no inline thread, *and* no suppressed low-confidence note in the body. The first is
-structural. The second is decided by the awk in
-[`../.github/workflows/copilot-review.yml`](../.github/workflows/copilot-review.yml), fixtured in
-[`../.portulan/verify/workflow-filters.mjs`](../.portulan/verify/workflow-filters.mjs) — a matcher
-deliberately reduced to **one** carrier, and a **workspace-layer** one, while the tool is engine.
-Copying it would put two spellings of one rule on opposite sides of the boundary where neither could
-see the other drift. So the tool reports `submissions that found nothing ≤ submissions with no inline
+structural. The second was decided by the awk in
+[`copilot-review.yml`](https://github.com/sleepy-panda-srl/portulan/blob/74a2a315c8c2641736eea6d87be3c2fba83827a5/.github/workflows/copilot-review.yml), fixtured in
+[`../.portulan/verify/workflow-filters.mjs`](../.portulan/verify/workflow-filters.mjs) until both left
+on 2026-09-23 — a matcher deliberately reduced to **one** carrier, and a **workspace-layer** one, while
+the tool is engine.
+Copying it would have put two spellings of one rule on opposite sides of the boundary where neither
+could see the other drift. So the tool reports `submissions that found nothing ≤ submissions with no inline
 comment` and prints the right-hand side under its own name.
 
 **The boundary forbids a copy; it does not make the exact rate unreachable**, and the first draft of
@@ -378,7 +379,8 @@ this section conflated the two. `../.portulan/verify/workflow-filters.mjs` alrea
 those awk programs out of the workflow's parsed `run:` scalars, and `--fetch` already spawns — so a body
 could be piped through the lifted program at capture time and stored as one integer, no second spelling
 and still no bodies in the snapshot. Left unbuilt for **budget**, one clause per session, and tracked as
-[#355](https://github.com/sleepy-panda-srl/portulan/issues/355).
+[#355](https://github.com/sleepy-panda-srl/portulan/issues/355). _Since 2026-09-23 there is no program
+left to lift: the matcher went with its workflow._
 
 ### What the first run measured
 

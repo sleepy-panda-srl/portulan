@@ -89,12 +89,14 @@
 //
 // The rule's table counts submissions that found **nothing at all**. Finding nothing has two halves:
 // no inline comment thread, *and* no suppressed low-confidence note in the review body. The first
-// half is structural and this tool computes it exactly. The second is decided by a matcher — the awk
-// in `../.github/workflows/copilot-review.yml`, fixtured in
-// `../.portulan/verify/workflow-filters.mjs` — that is deliberately reduced to **one** carrier, and
-// that carrier is a workspace-layer gate while this file is engine.
+// half is structural and this tool computes it exactly. The second was decided by a matcher, the awk
+// in `copilot-review.yml`, deliberately reduced to **one** carrier, and that carrier was a
+// workspace-layer gate while this file is engine. The workflow and its fixtures in
+// `../.portulan/verify/workflow-filters.mjs` were removed on 2026-09-23, so nothing in the tree decides
+// the second half now. The matcher's last version:
+// https://github.com/sleepy-panda-srl/portulan/blob/74a2a315c8c2641736eea6d87be3c2fba83827a5/.github/workflows/copilot-review.yml
 //
-// Re-implementing it here would put a second spelling of one rule on the other side of the
+// Re-implementing it here would have put a second spelling of one rule on the other side of the
 // engine/workspace boundary, where neither could see the other drift. That is this repository's
 // signature defect and `../.portulan/proposals/0027` exists to refuse it. So the tool reports what it
 // can compute exactly and names the relation:
@@ -104,16 +106,17 @@
 // The right-hand side is what this prints, under its own name, as an **upper bound**.
 //
 // **What the layering rule does NOT establish is that the exact rate is out of reach**, and saying so
-// is the difference between a limit and an excuse. The tree already holds a lift-and-run consumer of
-// these very programs: `../.portulan/verify/workflow-filters.mjs` extracts each single-quoted awk
-// program out of the workflow's parsed `run:` scalars and executes it through the real `awk`. `--fetch`
-// already spawns, so a body could be piped through the **lifted** program at capture time and stored
-// as one integer — no second spelling, and still no bodies in the snapshot. That is the closing move,
-// it is a workspace-side consumer rather than a copy, and it is **not built here for budget** (one
-// clause, one session) rather than because the boundary forbids it. Tracked as
+// is the difference between a limit and an excuse. Until 2026-09-23 the tree held a lift-and-run
+// consumer of these very programs: `../.portulan/verify/workflow-filters.mjs` extracts each
+// single-quoted awk program out of a workflow's parsed `run:` scalars and executes it through the real
+// `awk`. `--fetch` already spawns, so a body could have been piped through the **lifted** program at
+// capture time and stored as one integer — no second spelling, and still no bodies in the snapshot.
+// That was the closing move, a workspace-side consumer rather than a copy, and it was **not built here
+// for budget** (one clause, one session) rather than because the boundary forbids it. Tracked as
 // https://github.com/sleepy-panda-srl/portulan/issues/355 — filed, and the number is here because
 // "filed rather than built" naming no filing is a claim in the past tense about an issue that does
-// not exist, which this repository has already shipped once.
+// not exist, which this repository has already shipped once. Since 2026-09-23 there is no program left
+// to lift: the matcher went with its workflow.
 //
 // ## What this tool is NOT
 //

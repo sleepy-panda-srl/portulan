@@ -1,6 +1,6 @@
 # Handoff — 2026-09-23: the Copilot review is time-boxed to three minutes
 
-**What landed.** [`copilot-review.yml`](../../.github/workflows/copilot-review.yml) waits three minutes
+**What landed.** [`copilot-review.yml`](https://github.com/sleepy-panda-srl/portulan/blob/74a2a315c8c2641736eea6d87be3c2fba83827a5/.github/workflows/copilot-review.yml) waits three minutes
 for a Copilot round on the head instead of twenty, on the maintainer's ruling of 2026-09-23, verbatim:
 *"The review from Copilot on each PR in Portulan needs to be time-boxed to 3 minutes. Anything that exceed
 3 minutes need to be reported with whatever findings are available at that moment."* When the window

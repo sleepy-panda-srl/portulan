@@ -3080,3 +3080,13 @@ _The seam applies here too: no client-identifying references._
   reviewed the diff before the commit; his review is on the PR · 28 green, `tests` as non-root · Seam scan clean
   against the private terms this project names; the term-list scan is his ·
   [handoff](../.portulan/handoffs/2026-09-23-u-a-handoff-is-proposed-for-a-budget-where-it-is-written.md) · [#445](https://github.com/sleepy-panda-srl/portulan/pull/445)
+
+- 2026-09-23 · Off the milestone row · **The session awaits Copilot's round, and no check does.** On his ruling
+  of 17:21 and his choice at 21:22, `copilot-review.yml` is removed, 1,658 lines, with its window, round
+  matcher, note promotion and derived verdict; it was never required and went red on #431 and #432. The owning
+  session awaits the round on the final head and names the review and commit in its ready message; conversation
+  resolution still gates threads, and `copilot-request.yml` still asks. · Checkpoints skipped by his
+  instruction of 2026-09-23 12:38 (no fresh-context runs unless he asks); the coordinator session reviewed the
+  diff before the commit; his review is on the PR · 28 green, `tests` as non-root · Seam scan clean against the
+  private terms this project names; the term-list scan is his ·
+  [handoff](../.portulan/handoffs/2026-09-23-j-the-session-awaits-copilot-and-no-check-does.md)

@@ -2,7 +2,7 @@
 
 **State.** Branch `awaiting-a-review-is-not-a-failure`, one commit `a561854`, **not pushed** — push and
 pull-request open are Gated and were left to the maintainer. Three files:
-[`../../.github/workflows/copilot-review.yml`](../../.github/workflows/copilot-review.yml) rewritten to
+[`../../.github/workflows/copilot-review.yml`](https://github.com/sleepy-panda-srl/portulan/blob/74a2a315c8c2641736eea6d87be3c2fba83827a5/.github/workflows/copilot-review.yml) rewritten to
 wait rather than fail, plus the two documents that stated the behaviour it changes
 ([`../gate-map.md`](../gate-map.md) *Merge discipline*,
 [`../memory/a-review-is-awaited-not-just-resolved.md`](../memory/a-review-is-awaited-not-just-resolved.md)).

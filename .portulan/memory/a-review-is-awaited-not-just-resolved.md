@@ -7,95 +7,55 @@
 feedback has been awaited and resolved.* Taken from his own observation while browsing **closed** pull
 requests, where merges had landed before Copilot's round on the final push arrived.
 
-**A merge waits for the Copilot round on the commit it is actually merging, three minutes at most, and for
-that feedback to be resolved.** Two halves, two mechanisms:
-[`../../.github/workflows/copilot-review.yml`](../../.github/workflows/copilot-review.yml) for *awaited*,
-`required_conversation_resolution` for *resolved*.
+**A merge waits for the Copilot round on the commit it is actually merging, and for that feedback to be
+resolved.** Two halves, two carriers: the session that owns the pull request for *awaited*,
+`required_conversation_resolution` for *resolved*. The session awaits the round on its final head, and its
+ready message names the review and the commit it addressed, in the one-line form
+[`../gate-map/merge-discipline.md`](../gate-map/merge-discipline.md) fixes. A pull request no session owns
+is awaited by whoever merges it.
 
 **Why it holds:** the repository already had the resolved half and had been reading it as the whole rule.
-Copilot is requested on every pull request by ruleset, so *"Copilot reviews everything"* was true and
-load-bearing in everyone's head — while nothing made a merge wait for the request to be answered. The
-window between a final push and a review arriving is small, ordinary, and exactly where a merge lands
-when someone is moving fast. The feedback then reaches a closed pull request and is disregarded by nobody
-in particular, which is worse than being argued with.
+Copilot is requested on every pull request, so *"Copilot reviews everything"* was true and load-bearing in
+everyone's head — while nothing made a merge wait for the request to be answered. The window between a
+final push and a review arriving is small, ordinary, and exactly where a merge lands when someone is
+moving fast. The feedback then reaches a closed pull request and is disregarded by nobody in particular,
+which is worse than being argued with.
 
 That is the third distinct instance of
 [`a-mandate-nothing-checks-is-already-broken.md`](a-mandate-nothing-checks-is-already-broken.md) in this
-subject area, and the pattern is now sharp enough to state: **a watcher that is only *requested* is not a
-gate.** Requesting a review, enabling an alert, and adding a bot all create the feeling of coverage; only
-something that refuses creates the coverage.
+subject area, and the pattern is sharp enough to state: **a watcher that is only *requested* is not a
+gate.** Requesting a review, enabling an alert, and adding a bot all create the feeling of coverage.
 
 **The head SHA is the rule, not an implementation detail.** A review of an earlier commit does not
 satisfy it. That is the defect itself — the review existed and described a different tree from the one
-merging — so a checker matching on *"a Copilot review exists"* would have reported green on every case
-this rule was written for.
+merging — so a reader asking *"does a Copilot review exist?"* answers yes on every case this rule was
+written for. The ready line names the commit so that it can be checked against the head in one look.
 
-**Demonstrated on the pull request that introduced it**, both halves, per
-[`a-watcher-earns-its-place-by-being-watched`](../proposals/0007-every-watcher-ships-with-its-observation-procedure.md):
-the check went **red** on a head with no Copilot review, printing that head's SHA and an authors-seen line naming no reviewer (the exact
-wording lives in the workflow and may drift; the observation, not the string, is the record); Copilot then reviewed **that exact SHA** and the `pull_request_review` re-trigger fired. It
-did **not** go green on its own — GitHub held the bot-triggered run as `action_required`, awaiting a
-maintainer's approval. So the rail worked and **cost one click per pull request**, recorded as a cost
-rather than smoothed over.
+**A review OBJECT is not a round — 2026-08-18,
+[#286](https://github.com/sleepy-panda-srl/portulan/issues/286).** Copilot returned a review reading only
+*"encountered an error and was unable to review this pull request"*, and the check of the day counted it,
+because it asked whether a review object existed — right login, right commit, not dismissed — and never
+whether a judgement had happened. The pattern above has a sibling: **an artifact a watcher produced is not
+the judgement it was asked for.** An error notice is no round, whoever reads it.
 
-**Amended 2026-07-28 — awaiting is pending, not failing, and the click is gone.** The first cut answered a
-three-state question with two colours: it could not distinguish *the round has not arrived yet* from *no
-round is coming*, and reported both as failure. That made the red on the first row **guaranteed** — Copilot
-cannot review a commit that did not exist when the run started — and the red on the second row
-**permanent**, because the ruleset carries `review_draft_pull_requests: false` and a draft is never sent.
-Rounds measured 1m53s–3m47s across #49, #54 and #57. The check now waits inside the `pull_request` run it
-already has, so awaiting shows as a pending check that blocks a merge just as hard; a draft reports success
-with its reason, which opens nothing, since GitHub will not merge a draft and `ready_for_review` re-runs the
-real check. Removing the `pull_request_review` trigger removed the `action_required` click with it — and
-also a class of false red, since the agent's own replies to Copilot are submitted as reviews and each one
-re-ran the check mid-round.
+**Amended 2026-09-23 — no check awaits the round.** His ruling of 17:21 UTC, and his choice at
+21:22 UTC, removed `copilot-review.yml`, whose `copilot-reviewed` check had awaited the round since
+2026-07-27. It was never a required context, so it held no merge; that day it went red at its
+three-minute close on #431 and #432, and it misread every round after Copilot's review body changed
+format under its matcher. His words: *"Today too many PRs have CI red because of the Copilot review
+step."* Its window, round matcher, promotion of suppressed notes, derived verdict and re-run re-request
+left with it; their history is in the handoffs that merge-discipline.md lists.
 
-**Three limits, stated because the rule is weaker than it sounds.** The reviewer's login is a platform fact
-the workflow hard-codes; a rename surfaces as a warning on every pull request rather than a silent pass,
-the right failure direction and still a fragility. *Resolved* is not *adjudicated*: a reviewer can
-resolve its own thread — measured on [#44](https://github.com/sleepy-panda-srl/portulan/pull/44) — so
-this rule guarantees the round **happened before the merge**, not that anyone agreed with it. And the wait
-is a window: three minutes, the maintainer's time-box of 2026-09-23, down from 20. Past it the check
-reports what had landed and, on his ruling of 14:07 that day, ends **green with a warning**: *"This
-shouldn't be an error and it shouldn't cause the CI to fail."* Past the window this rule no longer
-refuses; merging without a round is his call, and a round landing later waits for a re-run.
+**A rail given up, stated rather than smoothed over.** The awaited half is discipline now, the class the
+pattern above warns about, taken knowingly: the rail cost a red on most of that day's pull requests and
+held none. What makes it acceptable here is that every merge is Gated, so the maintainer reads the ready
+line against the head at a merge he approves anyway. **If merges here stop being Gated, this half needs a
+rail again**, and it should be one that reads the round rather than a clock.
 
-**It composes with the autonomy mode rather than substituting for one.** A mode decides whether an agent
-raises a ship-step prompt; this is a status check, and floor rows hold at every mode — it is not yet
-required, deliberately, per the gate map. Under `auto`, where no prompt is raised, this check still
-waits out its window. That composition is the reason the rule is worth more under a loose mode than
-under a strict one.
+**Two limits.** *Resolved* is not *adjudicated*: a reviewer can resolve its own thread — measured on
+[#44](https://github.com/sleepy-panda-srl/portulan/pull/44) — so this rule guarantees the round
+**happened before the merge**, not that anyone agreed with it. And a round that never lands does not hold
+the merge: the ready line says what was seen, and merging without a round is his call, on his ruling of
+14:07 that day: *"This shouldn't be an error and it shouldn't cause the CI to fail."*
 
-**One state cannot clear, and its exit is doctrine rather than machinery — added 2026-08-09.** A head
-can wait out the whole budget with the re-request accepted and no round arriving — measured twice on
-[#157](https://github.com/sleepy-panda-srl/portulan/pull/157)'s rebased heads, cause unexplained,
-authorship the surviving lead ([#161](https://github.com/sleepy-panda-srl/portulan/issues/161)). The
-ruling on [`../proposals/0023-a-head-that-never-draws-a-round-needs-an-answer.md`](../proposals/0023-a-head-that-never-draws-a-round-needs-an-answer.md),
-exit (2), kept the check red and made merging past it a recorded per-occurrence act **until 2026-09-23**,
-when his ruling that a window with no round is a warning left no red to merge past.
-
-**A review OBJECT is not a round — amended 2026-08-18,
-[#286](https://github.com/sleepy-panda-srl/portulan/issues/286).** The paragraph above says a checker
-matching on *"a Copilot review exists"* would have reported green on every case this rule was written
-for. It said that of the HEAD; the checker written from it made the same error one notch lower, asking
-whether a review object existed — right login, right commit, not dismissed — and never whether a
-judgement had happened. Copilot returned a review reading only *"encountered an error and was unable to
-review this pull request"*, `copilot-reviewed` went **green**, and the derived verdict asserted that
-round *"raised no inline comment and no suppressed low-confidence note"* — submitted **4m36s before** the
-only genuine round arrived on [#283](https://github.com/sleepy-panda-srl/portulan/pull/283), so it
-cannot have come from it.
-
-**The durable half is where a rule got weaker, not Copilot.** A rule stated at the right altitude was
-re-implemented one notch below it, in the file written to enforce it, while the sentence naming the error
-sat in this record throughout. So the pattern above — *a watcher that is only requested is not a gate* —
-has a sibling: **an artifact a watcher produced is not the judgement it was asked for.**
-
-**What changed.** The check classifies the matched body — round, refusal, unrecognised — and only a round
-satisfies the awaited half; the verdict now states what established that a round occurred. Both arms the
-issue proposed were measured against this repository's own corpus and neither survives alone. Fixtures
-are in [`../verify/workflow-filters.mjs`](../verify/workflow-filters.mjs); the residual — a reworded
-error notice greens the check again, the missing verdict being the tell — is stated in
-[`../gate-map.md`](../gate-map.md).
-
-**Retire when:** Copilot review is no longer part of this repository's review path, or the platform gains
-a native *"require a review from this app on the current head"* setting that makes the workflow redundant.
+**Retire when:** Copilot review is no longer part of this repository's review path.
