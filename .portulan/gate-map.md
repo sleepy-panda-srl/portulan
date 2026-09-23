@@ -960,9 +960,11 @@ should now be described as unconditional.
 
 **Three** identities operate on this repository, and which one acts is not a detail — the record of who
 did what is the thing the whole gate map exists to keep honest. The third arrived on 2026-07-28 with the
-scheduled librarian and is the only one that acts with nobody at a keyboard: the **workflow**, which
-commits and pushes as `github-actions[bot]` under the repository's own `GITHUB_TOKEN`. It is listed
-because an unattended actor left off this table is exactly the drift the table exists to catch.
+scheduled librarian and acts with nobody at a keyboard: the **workflow**, which commits and pushes as
+`github-actions[bot]` under the repository's own `GITHUB_TOKEN`. It is listed because an unattended actor
+left off this table is exactly the drift the table exists to catch. For the same reason the table has
+carried, since 2026-09-23, the one act the maintainer's credentials perform unattended: requesting
+Copilot's review on a pull request a bot opened.
 
 | Action | Identity | Why |
 |---|---|---|
@@ -974,6 +976,7 @@ because an unattended actor left off this table is exactly the drift the table e
 | **Filing an issue from `portulan feedback`** — by a person or a session here | **The maintainer's** GitHub credentials: the `gh` login already on the machine | Added 2026-08-10 with the sender, because an act this table does not name is exactly the drift it was built to catch — and the answer is the one worth recording: **no new identity**. The tool operates no service and mints nothing; it shells out to whatever `gh` is logged in, so every issue is attributable to an accountable account and GitHub's own abuse limits apply. That is proposal [`0014`](proposals/0014-a-feedback-pipe-points-out-of-the-seam.md)'s Q5(a), and it is why Q5(b) — a Sleepy-Panda-operated relay — stays unbuilt and constitutional. **The approval is the tool's rather than this table's:** `send` refuses without `--approve`, per send, never inherited from a draft or a preview. **The count above is unchanged**: an outside reporter running the same tool files under their own account, and that is not an actor on this team's behalf — this table's subject — any more than someone filling the web form is. |
 | **Resolving a review thread** | **The maintainer decides**; the command is his or an agent's, on his explicit per-action approval of the merge the thread blocks | Not the agent identity's **token** — the App, not the runtime the Identity cell means by *an agent's* — and that half is a platform refusal that still holds: `resolveReviewThread` returns `FORBIDDEN — Resource not accessible by integration` for a GitHub App, whatever its permission set. The maintainer's own credentials **can resolve a review thread** — measured 2026-07-27 on two Copilot threads on [#42](https://github.com/sleepy-panda-srl/portulan/pull/42), where resolution was a precondition of a merge he had already approved and the agent ran the command. This cell read "**The maintainer**, by hand" and called that question "untested and deliberately so"; the test arrived the only way it safely could, carried by an approved merge rather than sought for its own sake. The answer is the one row 223 already records: **impossibility stated where the truth is authorization**, and what stops an agent here is this row and the Gated tier's header, not the platform. The split is still right on the merits rather than only on capability — a reply is *what the agent says*, while resolving is *the judgement that a review point is settled*, and this repository requires conversation resolution before merge, which makes it part of the merge gate rather than part of the conversation. So the judgement travels **with** the merge approval, and never ahead of it: absent an approved merge there is nothing for an agent to resolve on. Measured once, with an admin account under `enforce_admins`; it says nothing about a non-admin collaborator's token. **And the requirement this row leans on is weaker than it reads.** `required_conversation_resolution` does not establish that a *human* judged a point settled: on [#44](https://github.com/sleepy-panda-srl/portulan/pull/44) the Copilot review bot — login *copilot-pull-request-reviewer* — raised a thread, and the account named `Copilot` resolved it once a reply addressed it, so the party that made the objection cleared the gate on it, unasked. Read `resolvedBy` before reading a resolved thread as anyone's judgement. Two things this is not: the comment's author is typed `Bot` and the resolver `User`, so it does not contradict the App refusal above; and the platform does **not** auto-resolve a thread for going outdated — that was inferred here from a resolution landing beside an outdated flag, and `resolvedBy` is the field that disproved it. |
 | **Submitting or dismissing the round's derived verdict** | **The agent identity**, via an App installation token minted inside the workflow | The verdict is computed from Copilot's round by [`copilot-review.yml`](../.github/workflows/copilot-review.yml) — approve, approve with the suppressed notes quoted, or nothing — **derived, never judged**, and the review body says so. Nobody else can carry it: Copilot submits every round as `COMMENTED` by platform design (re-checked against GitHub's documentation 2026-07-29), and `GITHUB_TOKEN` is refused approving reviews outright — `can_approve_pull_request_reviews` is `false` at organisation and repository, read back 2026-07-29 via `gh api repos/{owner}/{repo}/actions/permissions/workflow` — a refusal left standing on purpose, so the identity that runs unattended jobs and the identity that speaks about code stay distinct. Self-approval is platform-refused, so App-authored pull requests carry no derived verdict and the maintainer's review is the verdict there. This is a new act for this identity beyond conversation — the *Merge discipline* section owns the rationale, and the row exists because an act this table does not name is exactly the drift it was built to catch. |
+| **Requesting Copilot's review on a pull request a bot opened** | **The maintainer's** credentials, as a fine-grained token of his that [`copilot-request.yml`](../.github/workflows/copilot-request.yml) uses with nobody at a keyboard | GitHub bills a review on a pull request a bot opened, and a review a bot requests, to the organisation, and nothing here pays that share; it attributes a review a person requests to that person (*About GitHub Copilot code review*, read 2026-09-23). So unless the organisation pays, the request has to be his, and the timeline line it writes reads as his click, while the workflow's run is the record that it was not. That is acceptable for this act alone because a review request says nothing and decides nothing: it asks for the round a person's pull request already gets. The token's *Pull requests: write*, the smallest permission that can request a reviewer, would also let it approve as him, so it is held in environment `copilot-request`, which he limits to `main`, and read only from `pull_request_target`, so no pull request can change what runs with it. The route that needs no token is the organisation paying, through its *AI credits paid usage* policy, and that is his decision. |
 | Everything Gated above — settings, releases, merges | **The maintainer decides**; the command is his or an agent's, on his explicit per-action approval | The agent identity's token cannot **change** any of these — that half is a platform refusal and is the load-bearing one. The other half is a *prohibition*: an agent running with the maintainer's credentials can call most of these, so what stops it is the Gated tier's header, not the platform. This cell read "**The maintainer**, by hand", which stated impossibility where the truth is authorization — corrected 2026-07-27, the same conflation proposal [`0006`](proposals/0006-dependabot-security-updates.md) shipped and had to fix, here in the file that defines the tier. **And the correction did not go far enough, in the direction it was already about.** It then read "cannot do these *at all*", which is false of reading: the App's `metadata: read` carries repository **ruleset reads**, and `GET repos/{owner}/{repo}/rulesets` through [`tools/gh-bot`](tools/gh-bot) returned `200` on 2026-07-28 — while `branches/main/protection` returned `403`, so the surface is narrower than `gh api` and is not empty. The `gh api` gate covered reads on purpose while it stood, so this was a gap and not a technicality — and it is the read half that outlived the gate, since the wrapper still refuses it. Corrected 2026-07-28 by measuring rather than by re-reading: the permission set was recorded accurately below all along and the *inference* drawn from it here was too strong, which is the one drift a claims lint over this tree can never catch. |
 
 Note the asymmetry, because it looks inconsistent until you say it out loud: the commit record must stay
@@ -1046,9 +1049,10 @@ The two halves need different mechanisms, and only one of them existed:
 | **Resolved** | No Copilot thread is left unaddressed | `required_conversation_resolution` on `main` — already in the floor below |
 | **Awaited** | A **round** on the **current head** has landed — and a review object is not a round | [`../.github/workflows/copilot-review.yml`](../.github/workflows/copilot-review.yml) — new |
 
-**Awaited was the gap.** The Copilot ruleset *requests* a review on every pull request; nothing made a
-merge wait for one. So a merge could land in the window between the final push and the review arriving,
-and did. That is
+**Awaited was the gap.** The Copilot ruleset *requests* a review on every pull request a person opens,
+and [`copilot-request.yml`](../.github/workflows/copilot-request.yml) on one a bot opens, which the ruleset
+does not; nothing made a merge wait for one. So a merge could land in the window between the final push
+and the review arriving, and did. That is
 [`memory/a-mandate-nothing-checks-is-already-broken.md`](memory/a-mandate-nothing-checks-is-already-broken.md)
 again — a reviewer everyone relied on, with nothing making the reliance real.
 
@@ -1217,7 +1221,10 @@ his instruction verbatim. **The recording is the difference between an override 
 The cause is unestablished — authorship is the surviving lead
 ([#161](https://github.com/sleepy-panda-srl/portulan/issues/161)) — and while it stands the weekly
 librarian pass meets this whenever it needs a rebase, so the expected price is **one recorded override
-per stranded pass**. Measured 2026-08-09: the scheduled pass has run **once**, and it stranded. This is
+per stranded pass**. _Dated 2026-09-23: the lead now has a documented mechanism. GitHub bills a review on
+a bot's pull request, or one a bot requests, to the organisation, and nothing here pays that share.
+[`copilot-request.yml`](../.github/workflows/copilot-request.yml) is the repair, the first bot-authored
+pull request after it is the observation, and the retirement condition below stands._ Measured 2026-08-09: the scheduled pass has run **once**, and it stranded. This is
 doctrine standing where a rail should eventually stand, and [`../docs/vision.md`](../docs/vision.md)'s
 *rails, not prose* is conceded rather than contradicted — the rail is the required-context flip above,
 declined for now **precisely because** it would make a known strand class unmergeable at 06:00 on a
@@ -1388,9 +1395,10 @@ here can: `doctor` does not fetch settings and no verify recipe may make a netwo
 
 **A second ruleset exists and is deliberately not part of the floor.** `copilot auto-review on pull
 requests` — id `19805871`, repository-sourced, added 2026-07-27 — targets the same `~DEFAULT_BRANCH` and
-carries the single rule `copilot_code_review`, so every pull request gets a Copilot review requested without
-anyone remembering to ask. It is recorded here because anyone auditing `repos/{owner}/{repo}/rulesets` will
-now find two and needs to know which is which.
+carries the single rule `copilot_code_review`, so every pull request a person opens gets a Copilot review
+requested without anyone remembering to ask; a bot's is
+[`copilot-request.yml`](../.github/workflows/copilot-request.yml)'s, see *Which identity acts*. It is recorded
+here because anyone auditing `repos/{owner}/{repo}/rulesets` will now find two and needs to know which is which.
 
 It gates nothing directly: required approving reviews remain 0, and a Copilot review arrives as `COMMENTED`
 rather than as an approval. The honest qualification is that it can still decide whether a change lands —
@@ -1494,7 +1502,7 @@ that blurs those two has mislaid the distinction it exists to record.
 
 **What it buys today is one watched dependency**, and the count belongs in the record rather than rounded
 up: the workflows under [`../.github/workflows/`](../.github/workflows/) are the tree's only manifests,
-`actions/checkout` — one SHA, pinned in every one of them — their only entry. **Corrected at milestone 7:**
+`actions/checkout` — one SHA, pinned in every one that uses an action — their only entry. **Corrected at milestone 7:**
 this said there is no `package.json`. There is one now, at the root, carrying the CLI's `bin` — but it
 declares **no dependencies** and there is still **no lockfile**, so it adds nothing for a scanner to
 watch and what is watched is unchanged. The mechanism is the point and not the count — but a floor described as

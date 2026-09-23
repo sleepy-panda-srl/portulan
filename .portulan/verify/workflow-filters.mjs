@@ -45,8 +45,8 @@
 //   programs under jq 1.7.x, which is the binary the maintainer and every contributor has on the
 //   path and the one CI installs nothing to get. A gojq divergence on these programs is **not**
 //   covered, and covering it would mean installing a second interpreter — which would make this
-//   recipe a build (`../identity.md`). `jq -er '.labels[].name'` in `pr-labels.yml` is the real
-//   `jq` binary, so that one is exact.
+//   recipe a build (`../identity.md`). A program a workflow hands to `jq` itself rather than to
+//   `gh api --jq`, such as `jq -er '.labels[].name'` in `pr-labels.yml`, is exact.
 // - **`--jq` is modelled as `jq -r`**, because `gh` prints string results raw. Read off this
 //   repository's own run logs rather than assumed: the log line `found:
 //   copilot-pull-request-reviewer[bot] reviewed d4db12b (COMMENTED)` on #63 carries an unquoted
@@ -91,7 +91,11 @@ class CouldNotRun extends Error {}
 // because naming opens the mirror hole: a workflow *added* to the tree and not added here would be
 // covered by nothing, and nothing would say so. Both halves are `./doctor.sh`'s, whose README
 // paragraph explains the ordering at length.
-const WORKFLOWS = [".github/workflows/copilot-review.yml", ".github/workflows/pr-labels.yml"];
+const WORKFLOWS = [
+    ".github/workflows/copilot-request.yml",
+    ".github/workflows/copilot-review.yml",
+    ".github/workflows/pr-labels.yml",
+];
 const WORKFLOW_DIR = ".github/workflows";
 
 // A jq token: the `jq` command or `gh`'s `--jq` flag, as a word. Used for the audit — it answers
@@ -450,6 +454,54 @@ const CASES = [
         input: '{"labels":[{"name":"bug","description":"A defect","covers":null}]}',
         stdout: "- `bug` — A defect\n",
         status: 0,
+    },
+    // ---- copilot-request.yml: the requested reviewers in GitHub's answer ------------------------
+    {
+        id: "request-answer-lists-copilot",
+        anchor: ".requested_reviewers[]?",
+        why: "the logins the pull request GitHub answered with lists as requested, on one line, for "
+            + "the shell loop that looks for Copilot among them. The list names it `Copilot` (#86), "
+            + "not the login the request was made with, which is why that loop reads a set",
+        input: '{"requested_reviewers":[{"login":"Copilot"},{"login":"a-person"}]}',
+        stdout: "Copilot a-person\n",
+        status: 0,
+    },
+    {
+        id: "request-answer-hollow",
+        anchor: ".requested_reviewers[]?",
+        why: "the hollow acceptance of #286: a success whose list is empty. One empty line and exit "
+            + "0, which the loop reads as Copilot absent, so the job goes red and says so",
+        input: '{"requested_reviewers":[]}',
+        stdout: "\n",
+        status: 0,
+    },
+    {
+        id: "request-answer-null",
+        anchor: ".requested_reviewers[]?",
+        why: "a null list takes the same branch rather than an iteration error, because `[]?` yields "
+            + "nothing over null. Red either way; this way the job summary names the empty list "
+            + "instead of calling the answer unreadable",
+        input: '{"requested_reviewers":null}',
+        stdout: "\n",
+        status: 0,
+    },
+    {
+        id: "request-answer-null-login",
+        anchor: ".requested_reviewers[]?",
+        why: "an entry with a null login is dropped by `// empty` rather than printed as the word "
+            + "`null` in the list the job summary shows, and the entries around it still count",
+        input: '{"requested_reviewers":[{"login":null},{"login":"Copilot"}]}',
+        stdout: "Copilot\n",
+        status: 0,
+    },
+    {
+        id: "request-answer-not-a-pull-request",
+        anchor: ".requested_reviewers[]?",
+        why: "an answer that is JSON but not a pull request is an error, exit 5, which is the "
+            + "workflow's `could not be read` branch: red, with the answer printed in full",
+        input: '"a string"',
+        stdout: "",
+        status: 5,
     },
 ];
 

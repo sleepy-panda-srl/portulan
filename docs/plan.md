@@ -2940,3 +2940,14 @@ _The seam applies here too: no client-identifying references._
   12:38; the coordinator session reviewed both drafts, twelve corrections folded · `docs` and `index` green · Seam
   scan clean against the private terms this project names; the term-list scan is his ·
   [handoff](../.portulan/handoffs/2026-09-23-e-what-a-change-spends-is-proposed-for-measurement.md) · [#433](https://github.com/sleepy-panda-srl/portulan/pull/433)
+
+- 2026-09-23 · Off the milestone row · **Copilot is requested on a pull request a bot opens.** GitHub bills a
+  review on a bot's pull request, or one a bot requests, to the organisation, and nothing here pays that
+  share: on the six App-authored pull requests read, every round came from a request in his name.
+  `copilot-request.yml` now makes that request with a token of his, from `pull_request_target`, in an
+  environment limited to `main`, and goes red unless GitHub's answer lists Copilot; the gate map names the
+  act. The token and the environment are his to create; the first bot-authored pull request after the
+  merge is the observation. · Checkpoints skipped by his instruction of 2026-09-23 12:38 (no fresh-context
+  runs unless he asks); the coordinator session reviewed the diff before the commit; his review is on the
+  PR · 27 green, `tests` as non-root · Seam scan clean against the private terms this project names; the
+  term-list scan is his · [handoff](../.portulan/handoffs/2026-09-23-f-copilot-is-requested-on-a-pull-request-a-bot-opens.md)
