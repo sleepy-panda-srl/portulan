@@ -225,13 +225,17 @@ function locate(payload, dir) {
     } catch (error) {
         return { why: `the transcript could not be read — ${error.code ?? error.message}` };
     }
+    if (!stat.isFile()) return { why: "the transcript could not be read — it is not a file" };
     const sessionId = sessionOf(payload);
     const file = sessionId === null ? null : stateFile(sessionId, dir);
     const kept = (file === null ? null : restore(file, transcriptPath, stat)) ?? { v: STATE_VERSION, transcript: transcriptPath, ino: stat.ino, offset: 0, tail: "", figures: sessionFigures() };
     return { transcriptPath, sessionId, stat, file, kept };
 }
 
-/** Bring what `locate` found up to date with the transcript, and keep it; the figure, or the reason for none. */
+/**
+ * Bring what `locate` found up to date with the transcript, and keep it; the figure, or the reason for none,
+ * with `after` naming the request that brings one where the transcript was read and simply has none yet.
+ */
 function refresh(found, warn) {
     try {
         if (advance(found.kept, found.transcriptPath, found.stat.size) && found.file !== null) keep(found.file, found.kept, warn);
@@ -240,7 +244,9 @@ function refresh(found, warn) {
     }
     const figure = figureOf(found.kept.figures);
     if (figure !== null) return figure;
-    return { why: found.kept.figures.pending ? "no request is recorded since the compaction" : "no request is recorded yet" };
+    return found.kept.figures.pending
+        ? { why: "no request is recorded since the compaction", after: "the first request since the compaction" }
+        : { why: "no request is recorded yet", after: "the first recorded request" };
 }
 
 /** The line the agent reads: the figure, the multipliers it assumed, and what to do. */
@@ -302,14 +308,13 @@ export function onPrompt(payload, { dir = os.tmpdir(), warn = () => {} } = {}) {
 /**
  * The status-line half. The context is the host's own last-call counts where it sends them, which are
  * current where the transcript may lag one request; the fresh context and the lifetime come from the
- * records. Returns the line, or a short reason there is no figure yet.
+ * records. Returns the line, or why there is no figure: none yet, or a transcript it could not read, which
+ * is said as that and never as one with no request in it.
  */
 export function onStatus(payload, { dir = os.tmpdir(), warn = () => {} } = {}) {
     const found = locate(payload, dir);
     const figure = found.why === undefined ? refresh(found, warn) : found;
-    if (figure.why !== undefined) {
-        return figure.why === "no request is recorded since the compaction" ? "restart threshold: after the first request since the compaction" : "restart threshold: after the first recorded request";
-    }
+    if (figure.why !== undefined) return figure.after !== undefined ? `restart threshold: after ${figure.after}` : `restart threshold: not known, because ${figure.why}`;
     const usage = payload?.context_window?.current_usage;
     const counts = usage !== null && typeof usage === "object" ? ["input_tokens", "cache_creation_input_tokens", "cache_read_input_tokens"].map((k) => usage[k]) : [];
     if (counts.length === 3 && counts.every((n) => Number.isSafeInteger(n) && n >= 0)) figure.context = counts.reduce((a, b) => a + b, 0);

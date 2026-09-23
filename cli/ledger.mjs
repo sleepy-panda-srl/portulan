@@ -173,11 +173,15 @@ export const contextOf = (r) => r.uncached + r.written1h + r.written5m + r.writt
 
 const writtenOf = (r) => r.written1h + r.written5m + r.writtenUnknown;
 
+/** The context a record belongs to: the session's own, or a subagent's, by its id. */
+const chainOf = (r) => (r.sidechain ? `agent:${r.agent ?? ""}` : "session");
+
 /**
- * What one line of a transcript is to the ledger: `{ request }`, `{ boundary: true }` for a compaction
- * boundary, `{ malformed: true }` for a line that does not parse, or null for anything else. A line is
- * parsed only when it carries a usage object's key or the boundary's subtype, and a match inside content
- * is escaped there, so a prompt quoting either is passed over once parsed.
+ * What one line of a transcript is to the ledger: `{ request }`, `{ boundary: true, sidechain, agent }` for
+ * a compaction boundary and the context it compacted, `{ malformed: true }` for a line that does not parse,
+ * or null for anything else. A line is parsed only when it carries a usage object's key or the boundary's
+ * subtype, and a match inside content is escaped there, so a prompt quoting either is passed over once
+ * parsed.
  */
 export function readLine(line) {
     const usageLike = line.includes('"usage":');
@@ -189,7 +193,9 @@ export function readLine(line) {
     } catch {
         return { malformed: true };
     }
-    if (boundaryLike && record?.type === "system" && record.subtype === "compact_boundary") return { boundary: true };
+    if (boundaryLike && record?.type === "system" && record.subtype === "compact_boundary") {
+        return { boundary: true, sidechain: record.isSidechain === true, agent: text(record.agentId) };
+    }
     const request = requestOf(record);
     return request === null ? null : { request };
 }
@@ -205,7 +211,10 @@ export function readTranscript(file) {
     const requests = [];
     const tally = { records: 0, duplicates: 0, malformed: 0, synthetic: 0, compactions: 0 };
     const figures = sessionFigures();
-    let boundary = false;
+    // The contexts a boundary has compacted and no request has run in since. A subagent's own transcript
+    // writes every record as a sidechain, its boundaries too, so a boundary marks the next request of its
+    // own context: a subagent's compaction is never the session's.
+    const awaiting = new Set();
     for (const line of source.split("\n")) {
         const read = readLine(line);
         if (read === null) continue;
@@ -217,7 +226,7 @@ export function readTranscript(file) {
         foldFigures(figures, read);
         if (read.boundary) {
             tally.compactions += 1;
-            boundary = true;
+            awaiting.add(chainOf(read));
             continue;
         }
         const request = read.request;
@@ -235,10 +244,7 @@ export function readTranscript(file) {
             continue;
         }
         if (request.id !== null) byId.set(request.id, request);
-        // A boundary belongs to the session's own chain, so it marks the next request that is not a
-        // subagent's written inline.
-        request.compacted = boundary && !request.sidechain;
-        if (request.compacted) boundary = false;
+        request.compacted = awaiting.delete(chainOf(request));
         requests.push(request);
     }
     return { requests, figures, ...tally };
@@ -293,12 +299,14 @@ export function sessionFigures() {
 }
 
 /**
- * Fold one read line into a session's running figures, in place. A subagent's request written inline is
- * not the session's context, and a request's next content block repeats its input counts, so a repeat of
- * one of the latest ids is passed over: the host writes a request's blocks one after another.
+ * Fold one read line into a session's running figures, in place. A subagent's request or compaction
+ * written inline is not the session's context, and a request's next content block repeats its input
+ * counts, so a repeat of one of the latest ids is passed over: the host writes a request's blocks one
+ * after another.
  */
 export function foldFigures(figures, read) {
     if (read.boundary) {
+        if (read.sidechain) return figures;
         figures.compactions += 1;
         figures.pending = true;
         return figures;
@@ -736,10 +744,14 @@ function runFixture(dir, say) {
     } catch (error) {
         throw new LedgerError(`${path.join(dir, "fixture.json")} could not be read — ${error.code ?? error.message}`);
     }
-    if (!Array.isArray(spec?.roots) || typeof spec.branch !== "string" || spec.expect === null || typeof spec.expect !== "object") {
-        throw new LedgerError(`${path.join(dir, "fixture.json")} does not carry roots, a branch and the known totals to expect`);
+    const roots = Array.isArray(spec?.roots) && spec.roots.length > 0 && spec.roots.every((r) => typeof r === "string" && path.isAbsolute(r));
+    const expect = spec?.expect !== null && typeof spec?.expect === "object" && !Array.isArray(spec.expect);
+    if (!roots || typeof spec.branch !== "string" || spec.branch === "" || !expect) {
+        throw new LedgerError(`${path.join(dir, "fixture.json")} does not carry roots as absolute paths, a branch and the known totals to expect`);
     }
-    const report = ledger({ projects: path.join(dir, "projects"), config: path.join(dir, "claude.json"), roots: spec.roots, branch: spec.branch });
+    // The fixture names its records and its totals file by being a fixture, so either missing is
+    // could-not-run: read as none, it would say the reader no longer reproduces totals nothing was read for.
+    const report = ledger({ projects: named(dir, "projects", "--fixture", "directory"), config: named(dir, "claude.json", "--fixture", "file"), roots: spec.roots, branch: spec.branch });
     print(report, say);
     const got = pinned(report);
     const wrong = Object.keys({ ...spec.expect, ...got }).filter((k) => JSON.stringify(got[k]) !== JSON.stringify(spec.expect[k]));

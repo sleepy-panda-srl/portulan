@@ -76,7 +76,7 @@ const write = (file, lines) => {
     fs.writeFileSync(file, `${lines.join("\n")}\n`);
 };
 
-const boundary = () => JSON.stringify({ type: "system", subtype: "compact_boundary", timestamp: "2026-09-23T10:00:00.000Z" });
+const boundary = (chain = {}) => JSON.stringify({ type: "system", subtype: "compact_boundary", timestamp: "2026-09-23T10:00:00.000Z", ...chain });
 
 describe("reading one transcript", () => {
     test("a request written once per content block is counted once, each class at the largest its records carry", () => {
@@ -158,6 +158,31 @@ describe("reading one transcript", () => {
             const t = readTranscript(file);
             assert.deepEqual([t.figures.compactions, t.figures.pending], [1, true]);
             assert.equal(thresholdFor(t), null);
+        });
+    });
+
+    test("a subagent's compaction marks its own next request, and never the session's", () => {
+        withTemp((dir) => {
+            // Its own transcript: every record a sidechain, the boundary too, as the host writes them.
+            const projects = path.join(dir, "projects");
+            const own = { sidechain: true, agentId: "a" };
+            write(path.join(projects, projectKey("/r"), "s", "subagents", "agent-a.jsonl"), [
+                ...blocks({ ...own, id: "one", w1h: 40000 }),
+                ...blocks({ ...own, id: "two", w1h: 1000, read: 40001 }),
+                boundary({ isSidechain: true, agentId: "a" }),
+                ...blocks({ ...own, id: "three", w1h: 9000, read: 3000 }),
+            ]);
+            write(path.join(projects, projectKey("/r"), "s.jsonl"), blocks({ read: 5 }));
+            const sub = readTranscript(path.join(projects, projectKey("/r"), "s", "subagents", "agent-a.jsonl"));
+            assert.deepEqual(sub.requests.map((r) => r.compacted), [false, false, true]);
+            const f = tally(collect({ projects, roots: ["/r"] }).contexts, "b");
+            assert.deepEqual([f.causes, f.compactions], [{ compaction: 1 }, 0], "the rebuild is the subagent's compaction, and the session compacted nothing");
+            // Written inline by an earlier host: the session's next request is not compacted, and its figures stand.
+            const file = path.join(dir, "inline.jsonl");
+            write(file, [...blocks({ id: "m1", w1h: 40000 }), boundary({ isSidechain: true, agentId: "q" }), ...blocks({ id: "m2", w1h: 1000, read: 40001 })]);
+            const t = readTranscript(file);
+            assert.deepEqual(t.requests.map((r) => r.compacted), [false, false]);
+            assert.deepEqual([t.figures.compactions, t.figures.pending, t.figures.fresh], [0, false, 40001]);
         });
     });
 
@@ -373,6 +398,32 @@ describe("the command", () => {
             assert.equal(run(["--fixture", dir], out.fn), 1);
             assert.ok(out.lines.some((l) => /✗ fixture: rebuilds is 6, and its known total is 7/.test(l)));
         });
+    });
+
+    test("a fixture without its records or its totals file, or with roots that are not absolute paths, is could-not-run", () => {
+        const respec = (change) => (dir) => {
+            const file = path.join(dir, "fixture.json");
+            const spec = JSON.parse(fs.readFileSync(file, "utf8"));
+            change(spec);
+            fs.writeFileSync(file, JSON.stringify(spec));
+        };
+        const cases = [
+            [(dir) => fs.rmSync(path.join(dir, "projects"), { recursive: true }), /--fixture \S*projects could not be read — ENOENT/],
+            [(dir) => fs.rmSync(path.join(dir, "claude.json")), /--fixture \S*claude\.json could not be read — ENOENT/],
+            [respec((s) => (s.roots = ["work/demo"])), /does not carry roots as absolute paths/],
+            [respec((s) => (s.roots = [7])), /does not carry roots as absolute paths/],
+            [respec((s) => (s.roots = [])), /does not carry roots as absolute paths/],
+            [respec((s) => (s.expect = [])), /does not carry roots as absolute paths, a branch and the known totals/],
+        ];
+        for (const [spoil, said] of cases) {
+            withTemp((dir) => {
+                fs.cpSync(FIXTURE, dir, { recursive: true });
+                spoil(dir);
+                const out = say();
+                assert.equal(run(["--fixture", dir], out.fn), 2, out.lines.join("\n"));
+                assert.match(out.lines.join("\n"), said);
+            });
+        }
     });
 
     test("--fixture reads nothing but the fixture, so it takes no other argument", () => {

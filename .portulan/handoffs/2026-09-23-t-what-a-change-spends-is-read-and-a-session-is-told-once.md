@@ -67,7 +67,7 @@ where to keep one's own. The line at the prompt is unaffected.
 classifies it a hook runner and the ledger `imported` through it, and the fourteen modules reachable from
 nothing stay fourteen; `cli/README.md` carries the four rows, the roster names and that sentence;
 `verify/README.md` the recipe's row and run-list line; `cli/fixtures/README.md` the fixture's row; the
-manifest the recipe, 190 bytes more in this repository's boot read-set (88,947 → 89,137, under its rail
+manifest the recipe, 190 bytes more in this repository's boot read-set (89,141 → 89,331, under its rail
 of 90,726); `drills.mjs` its drill, which disables the per-block deduplication. The A/B arm is
 compiled like any workspace, so [`evals/ab/register.md`](../../evals/ab/register.md), regenerated, counts 6
 hooks pinned to this machine where it counted 5, and `arm.md` and `ab.mjs` say the status line is pinned
@@ -83,7 +83,7 @@ earlier with no rework. The status line is compiled by default: `0038` places it
 the note naming `settings.local.json` carries the override, and item 4 adds the declaration that turns it
 off. `F` is the first request after the last compaction, stated as erring toward an earlier line.
 
-**How it was checked.** 32 cases in [`cli/ledger.test.mjs`](../../cli/ledger.test.mjs) and 19 in
+**How it was checked.** 34 cases in [`cli/ledger.test.mjs`](../../cli/ledger.test.mjs) and 19 in
 [`cli/advisory.test.mjs`](../../cli/advisory.test.mjs), every one over a temporary directory or the
 committed fixture, and one new case in `compile.test.mjs` with the no-shell case widened to the two new
 commands. Among them: every fixture transcript folded in two pieces, cut at every line, gives what one
@@ -98,10 +98,27 @@ put this session at 288,127 tokens against a threshold of 160,958 at the general
 building the advisory was past the threshold it computes, and carried on to finish the step, as the line
 itself says to. Once `.claude/settings.json` carried the compiled hook, the host ran it at this session's
 next prompt and the line reached the context, 349,642 tokens against a threshold of 190,006 from a fresh
-context of 95,003; at the prompt after that, nothing came.
+context of 95,003; at the prompt after that, nothing came. After the session compacted again, the line came
+once more, 207,111 tokens against 163,928 from a fresh context of 81,964: a compaction re-arms it.
+
+**Copilot's round on 37554e7.** It posted no thread; its summary named five areas, and three held. The
+status line said "after the first recorded request" where the transcript could not be read or the host
+sent none, which reads as a session with nothing in it: it now says "not known, because" and the reason,
+and a path that is not a file is said as unreadable without being opened. A subagent's own transcript
+writes every record as a sidechain, its compaction boundary too, so the request after a subagent's
+compaction was never marked and its rebuild read `unexplained`: a boundary now marks the next request of
+its own context, and one an earlier host wrote inline no longer counts as the session's compaction or
+resets its fresh context. `--fixture` read a fixture without its records or its totals file as having
+none, which said the reader no longer reproduced totals nothing had been read for: either is could-not-run
+now, and the roots must be absolute paths. The other two are as designed. The directory filter is a
+pre-filter and each record's own `cwd` decides, which a case pins with a sibling sharing the prefix. A
+request is counted once per message id and a copy in a second transcript once; the running figures pass
+over repeats among the latest 16 ids, because the host writes a request's blocks one after another, and
+the cases that fold a transcript in pieces hold them to a whole read.
 
 **Checkpoints.** Skipped by his instruction of 2026-09-23 12:38: no fresh-context runs unless he asks. The
-coordinator session reviewed the diff before the first commit; his review is on the pull request.
+coordinator session reviewed the diff before the first commit; his review is on the pull request. The
+fixes for Copilot's round are under the coordinator session's review after their push.
 
 **Green in this container needs a non-root run.** As root, `tests` fails its permission cases, because a
 chmod-000 fixture never denies root. All 29 recipes ran green as a non-root user on a copy of this tree.

@@ -275,8 +275,14 @@ describe("the status line", () => {
         });
     });
 
-    test("before the first recorded request it says when the figure arrives", () => {
-        assert.equal(onStatus({}), "restart threshold: after the first recorded request");
+    test("before the first recorded request it says when the figure arrives, and a transcript it cannot read is said as that", () => {
+        withTemp((dir) => {
+            fs.writeFileSync(path.join(dir, "empty.jsonl"), `${JSON.stringify({ type: "user", message: { content: "hi" } })}\n`);
+            assert.equal(onStatus({ transcript_path: path.join(dir, "empty.jsonl") }, { dir }), "restart threshold: after the first recorded request");
+            assert.equal(onStatus({}, { dir }), "restart threshold: not known, because the host sent no transcript_path");
+            assert.equal(onStatus({ transcript_path: path.join(dir, "absent.jsonl") }, { dir }), "restart threshold: not known, because the transcript could not be read — ENOENT");
+            assert.equal(onStatus({ transcript_path: dir }, { dir }), "restart threshold: not known, because the transcript could not be read — it is not a file");
+        });
     });
 
     test("tokens are shown in thousands, and in millions past one", () => {
