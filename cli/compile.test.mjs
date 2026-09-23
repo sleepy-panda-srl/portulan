@@ -3514,18 +3514,77 @@ describe("guidance: written, then byte-compared", () => {
         assert.equal(said(t, ["--workspace", dir, "--check"]).code, 1);
     });
 
-    test("the first write leaves the marker before any rule, listing each rule it wrote", (t) => {
+    test("the marker is written after the rules it lists, and lists each of them", (t) => {
         assert.ok(!RULES_MARKER.endsWith(".md"), "Claude Code loads only .md files as rules, so the marker costs no context");
         const dir = guidanceCopy();
         const marker = path.join(dir, GUIDANCE_RULES_DIR, RULES_MARKER);
         const { out } = said(t, ["--workspace", dir]);
-        assert.equal(out.indexOf("wrote "), out.indexOf(`wrote ${marker}`), "the marker is the first file written");
+        assert.equal(out.lastIndexOf("wrote "), out.lastIndexOf(`wrote ${marker}`), "the marker is the last file written");
         const lines = fs.readFileSync(marker, "utf8").split("\n");
         assert.match(lines[0], /^`portulan compile` wrote the rules listed below/);
         assert.deepEqual(lines.slice(1), ["api.md", "conventions.md", "on-read.md", ""], "one rule a line, and no skill: a skill carries its own mark");
     });
 
-    test("a marker this compiler did not write grants nothing: exit 2, and nothing is written or removed", (t) => {
+    test("a run stopped before a rule is written leaves no marker listing it, so a file put there later is never taken", (t) => {
+        const dir = guidanceCopy();
+        assert.equal(said(t, ["--workspace", dir]).code, 0);
+        fs.writeFileSync(path.join(dir, "context", "extra.md"), unitText(["tier: always"]));
+        const extra = path.join(dir, GUIDANCE_RULES_DIR, "extra.md");
+        const marker = path.join(dir, GUIDANCE_RULES_DIR, RULES_MARKER);
+        const write = fs.writeFileSync;
+        t.mock.method(fs, "writeFileSync", (target, ...rest) => {
+            if (target === extra) throw new Error("stopped");
+            return write(target, ...rest);
+        });
+        assert.equal(said(t, ["--workspace", dir]).code, 2);
+        assert.doesNotMatch(fs.readFileSync(marker, "utf8"), /^extra\.md$/m, "no name is listed before its rule is written");
+        fs.writeFileSync(extra, "Ours.\n");
+        const { code, out } = said(t, ["--workspace", dir]);
+        assert.equal(code, 2);
+        assert.match(out, /extra\.md exists and was not compiled here/);
+        assert.equal(fs.readFileSync(extra, "utf8"), "Ours.\n");
+    });
+
+    test("a rule a stopped run wrote before its marker is taken back when it is byte for byte what its unit compiles to", (t) => {
+        const dir = guidanceCopy();
+        assert.equal(said(t, ["--workspace", dir]).code, 0);
+        fs.writeFileSync(path.join(dir, "context", "extra.md"), unitText(["tier: always"]));
+        const extra = path.join(dir, GUIDANCE_RULES_DIR, "extra.md");
+        const marker = path.join(dir, GUIDANCE_RULES_DIR, RULES_MARKER);
+        const write = fs.writeFileSync;
+        t.mock.method(fs, "writeFileSync", (target, ...rest) => {
+            if (target === marker && String(rest[0]).includes("extra.md")) throw new Error("stopped");
+            return write(target, ...rest);
+        });
+        assert.equal(said(t, ["--workspace", dir]).code, 2);
+        assert.ok(fs.existsSync(extra), "the rule was written");
+        assert.doesNotMatch(fs.readFileSync(marker, "utf8"), /^extra\.md$/m, "and the marker that lists it was not");
+        assert.equal(said(t, ["--workspace", dir, "--check"]).code, 1, "red, because the marker does not list it; not refused");
+        assert.equal(said(t, ["--workspace", dir]).code, 0);
+        assert.match(fs.readFileSync(marker, "utf8"), /^extra\.md$/m);
+        assert.equal(said(t, ["--workspace", dir, "--check"]).code, 0);
+    });
+
+    test("a rule no unit compiles to is unlisted before it is removed, so a run stopped between leaves it to a human", (t) => {
+        const dir = guidanceCopy();
+        assert.equal(said(t, ["--workspace", dir]).code, 0);
+        fs.rmSync(path.join(dir, "context", "conventions.md"));
+        const conventions = path.join(dir, GUIDANCE_RULES_DIR, "conventions.md");
+        const marker = path.join(dir, GUIDANCE_RULES_DIR, RULES_MARKER);
+        const rm = fs.rmSync;
+        t.mock.method(fs, "rmSync", (target, ...rest) => {
+            if (target === conventions) throw new Error("stopped");
+            return rm(target, ...rest);
+        });
+        assert.equal(said(t, ["--workspace", dir]).code, 2);
+        assert.doesNotMatch(fs.readFileSync(marker, "utf8"), /^conventions\.md$/m, "no name stays listed once its removal begins");
+        const { code, out } = said(t, ["--workspace", dir]);
+        assert.equal(code, 0);
+        assert.match(out, /left .*conventions\.md — it is not a file this compiler wrote/);
+        assert.ok(fs.existsSync(conventions));
+    });
+
+    test("a marker not in this compiler's form grants nothing: exit 2, and nothing is written or removed", (t) => {
         const dir = guidanceCopy();
         said(t, ["--workspace", dir]);
         const rules = path.join(dir, GUIDANCE_RULES_DIR);

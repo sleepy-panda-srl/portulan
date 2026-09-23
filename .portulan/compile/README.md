@@ -430,8 +430,9 @@ targets:
 | `on-invoke` | a project skill, `.claude/skills/<unit>/SKILL.md` | its description at launch, its body when it runs |
 | `on-read` | one line in `.claude/rules/portulan/on-read.md` naming the unit's file | the line at launch, the file when opened |
 
-**`compile` shows which rules are its own with a marker**, `.claude/rules/portulan/.compiled`, written
-before the first rule and listing each rule it wrote: a file no host loads, because Claude Code loads only
+**`compile` shows which rules are its own with a marker**, `.claude/rules/portulan/.compiled`, listing each
+rule it wrote, written after them and cut before any is removed, so it never lists a file `compile` has not
+written, even when a run stops part-way: a file no host loads, because Claude Code loads only
 `.md` files as rules, so the rules themselves carry no mark, which matters most in the always tier, whose
 every byte every context pays. A listed rule no unit compiles to any more is red under `--check` and removed
 by the next compile, as a gate artifact the policy no longer produces is. A rule the marker does not list is

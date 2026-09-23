@@ -38,7 +38,8 @@ as `slots.memory` and `memory` do, and 2.9's `context` is the machine half; and 
 host's own form is frontmatter, so one source maps onto each.
 
 **What `compile` owns, and what it never touches.** It shows which rules in `.claude/rules/portulan/` are its
-own with a marker, `.compiled`, written before the first rule, loaded by no host because Claude Code loads
+own with a marker, `.compiled`, written after the rules it lists and cut before any is removed, so a run
+stopped part-way never leaves a name listed that it did not write, loaded by no host because Claude Code loads
 only `.md` files as rules, and listing each rule it wrote. A listed rule no unit compiles to is removed and
 named. A rule it does not list is the team's: named and left, red under `--check` until a human moves it, and
 never replaced, so a unit that would compile onto one stops with exit 2. It stops with exit 2, under `--check`
@@ -65,12 +66,12 @@ emitted here: the nested-file form is a gap left open. Persona frontmatter, row 
 is a later change, and so is any host beyond Claude Code and `AGENTS.md`. Row 12's second demonstration, a host loading the fixture's `on-path` rule when
 `api/` is first touched and not before, needs a host session; the fixture is its target.
 
-**How it was checked.** 54 new cases in [`cli/compile.test.mjs`](../../cli/compile.test.mjs) (428): the
+**How it was checked.** 57 new cases in [`cli/compile.test.mjs`](../../cli/compile.test.mjs) (431): the
 vocabulary, every refusal the slot's contract names, each emitted form byte for byte, drift, removal, the
 marker present, absent and forged, a rule and a skill written by hand, a skill quoting the mark or compiled
-from another unit, a slot and a unit where `compile` writes, links at and on the way to every target, inside
-the repository and out, `--matrix`, and that this repository carries no compiled guidance. Three in
-[`cli/vendor.test.mjs`](../../cli/vendor.test.mjs) (73) and four in
+from another unit, a slot and a unit where `compile` writes, a run stopped before its marker or its removal,
+links at and on the way to every target, inside the repository and out, `--matrix`, and that this repository
+carries no compiled guidance. Three in [`cli/vendor.test.mjs`](../../cli/vendor.test.mjs) (73) and four in
 [`cli/doctor.test.mjs`](../../cli/doctor.test.mjs) (260). As root, `doctor`'s 4, `index`'s 5 and `librarian`'s
 1 permission cases fail, identically on `6e3aae6`; all 28 recipes ran green as a non-root user on a copy of
 this tree.
@@ -91,7 +92,11 @@ three, fixed in the fifth: a slot in `.claude/rules/portulan/` would have had it
 own output, and one in `.claude/` gave `AGENTS.md` pointers to files `vendor` does not carry, so a slot in
 `.claude/` or the workspace's `compile/`, or a unit linked into either, now stops `compile` and
 `vendor --host` with exit 2; and a skill quoting the mark anywhere was taken for compiled, so the mark now
-counts only as the line after the frontmatter, naming this unit.
+counts only as the line after the frontmatter, naming this unit. Review 5297050727 on `bf9dd5d` found one
+more, fixed in the sixth: the marker was written before its rules, so a run stopped between would have listed
+a rule never written, and a file put there later would have been taken. The marker is now written after its
+rules and cut before a removal, and a rule a stopped run left unlisted is taken back only when it is byte for
+byte what its unit compiles to.
 
 **Checkpoints.** Skipped by his instruction of 2026-09-23 12:38: no fresh-context runs unless he asks. The
 coordinator session reviewed the diff before the commit; his review is on the pull request.

@@ -1913,8 +1913,9 @@ export const GUIDANCE_RULES_DIR = ".claude/rules/portulan";
 /**
  * The marker: a file in that directory no host loads, since Claude Code loads only `.md` files as rules,
  * so it costs no context. Its first line names the compiler and each line after it one rule it wrote.
- * Byte-compared like every other compiled file, and trusted only when it reads exactly as this compiler
- * writes one: a marker not in this compiler's form grants nothing. One in that form is read as the list it
+ * Written after the rules it lists and cut before any is removed, so it never lists a file this compiler
+ * has not written (`emitGuidance`). Byte-compared like every other compiled file, and trusted only when it
+ * reads exactly as this compiler writes one: a marker not in this compiler's form grants nothing. One in that form is read as the list it
  * is, whoever wrote it, because whoever can edit it can as well remove the files it lists.
  */
 export const RULES_MARKER = ".compiled";
@@ -2326,7 +2327,7 @@ function listReal(workspaceRoot, rel) {
 function planGuidance(guidance, workspaceRoot) {
     const files = guidance ? claudeCodeGuidance(guidance).files : [];
     const rules = files.filter((f) => f.path.startsWith(`${GUIDANCE_RULES_DIR}/`));
-    // The marker first, so a run stopped part-way never leaves a rule that no marker lists.
+    // The marker is judged and checked beside the rules it lists; `emitGuidance` writes it after them.
     const owedFiles = rules.length
         ? [{ unit: null, marker: true, path: `${GUIDANCE_RULES_DIR}/${RULES_MARKER}`, text: markerText(rules.map((f) => path.posix.basename(f.path))) }, ...files]
         : files;
@@ -2367,7 +2368,16 @@ function planGuidance(guidance, workspaceRoot) {
         } else {
             for (const file of rules) {
                 const name = path.posix.basename(file.path);
-                if (entries.some((e) => e.name === name) && !listed.has(name)) {
+                if (!entries.some((e) => e.name === name) || listed.has(name)) continue;
+                // Byte for byte what its unit compiles to is what a run stopped before its marker leaves, and
+                // taking that back changes nothing. Anything else is a rule written by hand.
+                let current;
+                try {
+                    current = fs.readFileSync(path.join(rulesDir, name), "utf8");
+                } catch (cause) {
+                    throw new CompileError(`${file.path} could not be read — ${cause.code ?? cause.message}`);
+                }
+                if (current !== file.text) {
                     throw new CompileError(`${file.path} exists and was not compiled here — ${file.unit ? file.unit.source : `the on-read units in ${guidance.source}`} would replace a rule written by hand. Rename the unit or the rule`);
                 }
             }
@@ -2417,7 +2427,13 @@ function planGuidance(guidance, workspaceRoot) {
         }
         if (skillSource(text) !== null && !owed.has(rel)) stray.push({ path: rel, removable: true });
     }
-    return { owedFiles, stray };
+    // What the marker may list while a write is under way: the rules it lists now that are still there and
+    // still owed. Null where there is no marker to write.
+    const present = new Set(entries.filter((e) => e.isFile()).map((e) => e.name));
+    const kept = listed instanceof Set || rules.length
+        ? rules.map((f) => path.posix.basename(f.path)).filter((name) => listed instanceof Set && listed.has(name) && present.has(name))
+        : null;
+    return { owedFiles, stray, kept };
 }
 
 /**
@@ -2426,7 +2442,7 @@ function planGuidance(guidance, workspaceRoot) {
  * policy, because a workspace with none is a legitimate shape.
  */
 function emitGuidance(guidance, plan, { workspaceRoot, check, say }) {
-    const { owedFiles, stray } = plan;
+    const { owedFiles, stray, kept } = plan;
     if (guidance === null && stray.length === 0) return 0;
 
     if (guidance) {
@@ -2485,10 +2501,21 @@ function emitGuidance(guidance, plan, { workspaceRoot, check, say }) {
 
     // Removing a file this compiler wrote is the one deletion it may do, as for the gate artifacts above: it
     // is reproducible by definition. A rule is shown to be one by the marker that lists it, and a skill by its
-    // mark; anything else found where it writes is named and left alone. Removed first, while the marker
-    // that shows they were compiled still lists them.
+    // mark; anything else found where it writes is named and left alone.
+    //
+    // **The marker lists a rule only once it is written, and stops listing one before it is removed**, so a
+    // run stopped anywhere leaves no name listed that this compiler did not write, which a file put there
+    // later would inherit. What such a run can leave is a rule of its own that no marker lists: taken back by
+    // the next run where it is byte for byte what its unit compiles to, and otherwise left for a human.
+    // Copilot, round 4 on this change, when the marker was written first.
+    const markerPath = path.join(workspaceRoot, ...GUIDANCE_RULES_DIR.split("/"), RULES_MARKER);
+    if (kept !== null) {
+        fs.mkdirSync(path.dirname(markerPath), { recursive: true });
+        fs.writeFileSync(markerPath, markerText(kept));
+    }
     for (const s of stray) {
         const target = path.join(workspaceRoot, ...s.path.split("/"));
+        if (target === markerPath) continue;
         if (!s.removable) {
             say(`left ${target} — it is not a file this compiler wrote, so it is not this compiler's to remove`);
             continue;
@@ -2504,10 +2531,19 @@ function emitGuidance(guidance, plan, { workspaceRoot, check, say }) {
         }
     }
     for (const file of owedFiles) {
+        if (file.marker) continue;
         const target = path.join(workspaceRoot, ...file.path.split("/"));
         fs.mkdirSync(path.dirname(target), { recursive: true });
         fs.writeFileSync(target, file.text);
         say(`wrote ${target}`);
+    }
+    const marker = owedFiles.find((f) => f.marker);
+    if (marker) {
+        fs.writeFileSync(markerPath, marker.text);
+        say(`wrote ${markerPath}`);
+    } else if (kept !== null) {
+        fs.rmSync(markerPath);
+        say(`removed ${markerPath} — no unit compiles to a rule`);
     }
     if (landing(workspaceRoot, GUIDANCE_RULES_DIR, "directory") === null) {
         try {
