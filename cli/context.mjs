@@ -2,6 +2,7 @@
 // What a context loads, measured — the measurement module proposal `0036` names.
 //
 //   node cli/context.mjs --workspace <dir> [--repo <card>] [--rail <name>=<bytes>]...
+//   node cli/context.mjs --workspace <dir> --brief
 //
 // `0036` rules that what a host loads into every context is budgeted, like memory, and that nothing
 // could see it: every size rail in this CLI counted lines, columns or bytes of the curated layer, and
@@ -53,6 +54,17 @@
 // estimate and says so; a budget declared without a ratio could not be judged, so it exits 2. The exact
 // mode — asking the host for the true count, on demand and never in a recipe — is a later change.
 //
+// ## One line, for `doctor` and the boot
+//
+// `0036` has `doctor` report every workspace's always tier with no configuration — its size, the top
+// contributors and the tier each sits in — and says *the same figure closes the boot*. Both print
+// `alwaysLine`'s one line, `doctor` as its `context` finding and `--brief` for the boot, so a session is
+// never told a figure `doctor` does not report. It is the always tier alone: the boot read-set is the
+// boot's own on-invoke cost, and the full report's. Nothing in the line waits on the boot read-set, so a
+// slot naming nothing, which is `doctor`'s verdict to give, withholds no figure here; what cannot be
+// measured is said, and it is a verdict only where a budget is declared, because a budget that could not
+// be judged must not read as met.
+//
 // ## Rails
 //
 // `--rail <name>=<bytes>` fails the run when a measured group exceeds it: `boot` (the boot read-set,
@@ -63,7 +75,9 @@
 //
 // Exit 0 within every rail and declared budget, or nothing declared · 1 a rail or a declared budget
 // exceeded · 2 could not run: a manifest, slot, card or engine file missing, a key malformed, a pointer
-// or a manifest of no governing kind, or a rail over a figure this run could not measure.
+// or a manifest of no governing kind, or a rail over a figure this run could not measure. `--brief`
+// exits 1 over a declared budget and 2 only where it could not read the manifest or judge a declared
+// budget; a figure it could not measure with no budget declared is said, and exits 0.
 
 import fs from "node:fs";
 import path from "node:path";
@@ -117,6 +131,12 @@ export const NOTE_PERCENT = 5;
 
 /** The host follows imports this many hops from an instruction file, and no further. */
 export const IMPORT_DEPTH = 5;
+
+/** The host whose loading `alwaysTier` models, named in the line because another host loads other files. */
+export const MEASURED_HOST = "Claude Code";
+
+/** How many of the always tier's files the line names, largest first: where a demotion would start. */
+export const TOP_CONTRIBUTORS = 3;
 
 export const RAILS = ["boot", "engine", "steps", "descriptions"];
 
@@ -612,11 +632,11 @@ export function pluginDescriptions(bundleRoot = BUNDLE_ROOT) {
 
 const sum = (entries) => entries.reduce((total, e) => total + e.bytes, 0);
 
-export function measure(workspaceDir, { bundleRoot = BUNDLE_ROOT, repo = null } = {}) {
-    const manifestFile = path.join(workspaceDir, "workspace.json");
+/** The manifest in `workspaceDir`, parsed, or refused: a manifest that is not a JSON object is no workspace to measure. */
+export function readManifest(workspaceDir) {
     let manifest;
     try {
-        manifest = JSON.parse(readText(manifestFile, "the manifest"));
+        manifest = JSON.parse(readText(path.join(workspaceDir, "workspace.json"), "the manifest"));
     } catch (error) {
         if (error instanceof ContextError) throw error;
         throw new ContextError(`the manifest does not parse (${error.message})`);
@@ -624,17 +644,57 @@ export function measure(workspaceDir, { bundleRoot = BUNDLE_ROOT, repo = null } 
     if (manifest === null || typeof manifest !== "object" || Array.isArray(manifest)) {
         throw new ContextError("the manifest is not a JSON object");
     }
+    return manifest;
+}
+
+/**
+ * The repository whose instruction files the host loads: the one the manifest's `tree` names, or null
+ * where it names none. A `demo` declares none, and its always tier is not this repository's to report.
+ */
+export function treeOf(workspaceDir, manifest) {
+    if (manifest.tree === undefined) return null;
+    if (typeof manifest.tree !== "string") throw new ContextError(`tree is ${JSON.stringify(manifest.tree)}, not a path`);
+    const repoRoot = path.resolve(workspaceDir, manifest.tree);
+    // A tree naming nothing would be an always tier of nothing, and a declared budget green over it.
+    if (!isDir(repoRoot)) throw new ContextError(`tree (${manifest.tree}) names no directory, so there is no repository here whose always tier could be measured`);
+    return repoRoot;
+}
+
+/**
+ * The always tier against the budget the manifest declares: one judgement, which the full report and
+ * the line both print, so neither can call within a budget a figure the other calls over it. Where none
+ * is declared it is a report, with the offer `init` would make under `0036`'s ruling 5.
+ *
+ * @returns {{ verdict: "undeclared" | "within" | "over", tokens: number, text: string }}
+ */
+export function judgeBudget(declared, bytes) {
+    const tokens = tokensOf(bytes, declared.ratio ?? ESTIMATED_BYTES_PER_TOKEN);
+    if (declared.budget === null) {
+        return {
+            verdict: "undeclared",
+            tokens,
+            text:
+                "budget: undeclared (context.always.budget.tokens) — a report, not a rail; init would offer the larger of " +
+                `${grouped(OFFER_FLOOR_TOKENS)} tokens and today's load: ${grouped(Math.max(OFFER_FLOOR_TOKENS, tokens))} tokens`,
+        };
+    }
+    if (tokens > declared.budget) {
+        return {
+            verdict: "over",
+            tokens,
+            text:
+                `budget: the always tier is ~${grouped(tokens)} tokens, over the ${grouped(declared.budget)} declared by ${grouped(tokens - declared.budget)} — ` +
+                "repair by demotion to a later tier, by a merge or by a retirement, never by raising the budget in this change",
+        };
+    }
+    return { verdict: "within", tokens, text: `budget: the always tier is ~${grouped(tokens)} tokens of the ${grouped(declared.budget)} declared` };
+}
+
+export function measure(workspaceDir, { bundleRoot = BUNDLE_ROOT, repo = null } = {}) {
+    const manifest = readManifest(workspaceDir);
     const declared = declaredContext(manifest);
     const boot = bootReadSet(workspaceDir, manifest, { bundleRoot, repo });
-    // The repository whose instruction files the host loads is the one the manifest's `tree` names. A
-    // `demo` declares none, and its always tier is not this repository's to report.
-    let repoRoot = null;
-    if (manifest.tree !== undefined) {
-        if (typeof manifest.tree !== "string") throw new ContextError(`tree is ${JSON.stringify(manifest.tree)}, not a path`);
-        repoRoot = path.resolve(workspaceDir, manifest.tree);
-        // A tree naming nothing would be an always tier of nothing, and a declared budget green over it.
-        if (!isDir(repoRoot)) throw new ContextError(`tree (${manifest.tree}) names no directory, so there is no repository here whose always tier could be measured`);
-    }
+    const repoRoot = treeOf(workspaceDir, manifest);
     const always = repoRoot === null ? null : alwaysTier(repoRoot);
     const plugin = pluginDescriptions(bundleRoot);
     const steps = STEPS.map(({ rel }) => path.join(bundleRoot, rel));
@@ -657,14 +717,93 @@ export function measure(workspaceDir, { bundleRoot = BUNDLE_ROOT, repo = null } 
 }
 
 // ===========================================================================================
+// The line `doctor` reports and the boot closes with
+// ===========================================================================================
+
+/**
+ * The always tier in one line: its size, its largest files and what each is, what sits on-path beside
+ * it, and the verdict against a declared budget. Paths are the repository's own, so the line does not
+ * move with the directory it was run from.
+ *
+ * `over` and `unjudged` are verdicts: a budget exceeded, and a budget declared that could not be judged.
+ * `unmeasured` is a report, said where no budget waits on the figure.
+ *
+ * @returns {{ verdict: "undeclared" | "within" | "over" | "unmeasured" | "unjudged", line: string }}
+ */
+export function alwaysLine(workspaceDir, manifest, { bundleRoot = BUNDLE_ROOT } = {}) {
+    // Read raw, so a budget whose key is malformed still counts as one somebody meant to declare.
+    const budgeted = manifest.context?.always !== undefined;
+    const notMeasured = (why) =>
+        budgeted
+            ? { verdict: "unjudged", line: `${MEASURED_HOST}: the declared budget cannot be judged — ${why}` }
+            : { verdict: "unmeasured", line: `${MEASURED_HOST}: the always tier is not measured — ${why}` };
+    let declared;
+    let root;
+    let always;
+    try {
+        declared = declaredContext(manifest);
+        if (manifest.kind === "pointer") return notMeasured("the manifest is a pointer, which declares no tree, so the repository it sits in is not measured here");
+        root = treeOf(workspaceDir, manifest);
+        if (root === null) return notMeasured("this workspace declares no tree, so there is no repository here whose instruction files a host would load");
+        always = alwaysTier(root);
+    } catch (error) {
+        if (!(error instanceof ContextError)) throw error;
+        return notMeasured(error.message);
+    }
+    // The plugin's descriptions are an aside, not the workspace's: a defect in the bundle is said and
+    // never withholds the repository's figure.
+    let plugin;
+    try {
+        plugin = pluginDescriptions(bundleRoot);
+    } catch (error) {
+        if (!(error instanceof ContextError)) throw error;
+        plugin = { unavailable: error.message };
+    }
+
+    const ratio = declared.ratio ?? ESTIMATED_BYTES_PER_TOKEN;
+    const bytes = sum(always.entries);
+    const judged = judgeBudget(declared, bytes);
+    const parts = [
+        `this repository's always tier is ~${grouped(judged.tokens)} tokens, ${grouped(bytes)} B at ${ratio} bytes per token` +
+            (declared.ratio === null ? ", proposal 0036's estimate: none is declared" : `, declared, calibrated by ${declared.calibratedBy}`),
+    ];
+    if (always.entries.length) {
+        // Stable, so files of one size keep the host's own order.
+        const top = [...always.entries].sort((a, b) => b.bytes - a.bytes).slice(0, TOP_CONTRIBUTORS);
+        parts.push(
+            `the largest: ${top.map((e) => `${path.relative(root, e.file)} ~${grouped(tokensOf(e.bytes, ratio))} (${e.label})`).join(", ")}` +
+                (always.entries.length > top.length ? `, of ${grouped(always.entries.length)} files` : ""),
+        );
+    } else {
+        parts.push("nothing in it: no CLAUDE.md, .claude/CLAUDE.md, unscoped rule, or project skill, command or agent");
+    }
+    if (always.scoped) parts.push(always.scoped === 1 ? "1 path-scoped rule sits on-path" : `${grouped(always.scoped)} path-scoped rules sit on-path`);
+    // Loaded by the host and not in the figure, so the figure must not read as the whole of it.
+    const outside = always.outside.length;
+    if (outside) {
+        parts.push(outside === 1 ? "1 import or link out of the repository loads and is not counted" : `${grouped(outside)} imports or links out of the repository load and are not counted`);
+    }
+    parts.push(
+        plugin.unavailable === undefined
+            ? `the Portulan plugin's descriptions add ~${grouped(tokensOf(sum(plugin.entries), ratio))} tokens wherever it is enabled, Portulan's to budget, not this workspace's`
+            : `the Portulan plugin's descriptions are not measured — ${plugin.unavailable}`,
+    );
+    parts.push(judged.text);
+    return { verdict: judged.verdict, line: `${MEASURED_HOST}: ${parts.join("; ")}` };
+}
+
+// ===========================================================================================
 // The report
 // ===========================================================================================
 
 function parseArgs(argv) {
-    const options = { workspace: null, repo: null, rails: new Map() };
+    const options = { workspace: null, repo: null, rails: new Map(), brief: false };
     for (let i = 0; i < argv.length; i += 1) {
         const flag = argv[i];
-        if (flag === "--workspace" || flag === "--repo" || flag === "--rail") {
+        if (flag === "--brief") {
+            if (options.brief) throw new ContextError("--brief is given twice");
+            options.brief = true;
+        } else if (flag === "--workspace" || flag === "--repo" || flag === "--rail") {
             const value = argv[i + 1];
             i += 1;
             if (value === undefined) throw new ContextError(`${flag} needs a value`);
@@ -685,6 +824,11 @@ function parseArgs(argv) {
         }
     }
     if (options.workspace === null) throw new ContextError("--workspace <dir> is required: the directory holding workspace.json");
+    // Refused rather than ignored: the line judges no rail and reads no card, and a flag taken and
+    // dropped would read as a rail that held.
+    if (options.brief && (options.repo !== null || options.rails.size)) {
+        throw new ContextError("--brief prints the always tier's line, which judges no rail and reads no card — run without it to use --repo or --rail");
+    }
     return options;
 }
 
@@ -693,6 +837,12 @@ export function run(argv, say = (line) => process.stdout.write(`${line}\n`), { b
     let result;
     try {
         options = parseArgs(argv);
+        if (options.brief) {
+            const workspaceDir = path.resolve(cwd, options.workspace);
+            const { verdict, line } = alwaysLine(workspaceDir, readManifest(workspaceDir), { bundleRoot });
+            say(line);
+            return verdict === "over" ? 1 : verdict === "unjudged" ? 2 : 0;
+        }
         result = measure(path.resolve(cwd, options.workspace), { bundleRoot, repo: options.repo });
     } catch (error) {
         if (!(error instanceof ContextError)) throw error;
@@ -747,25 +897,13 @@ export function run(argv, say = (line) => process.stdout.write(`${line}\n`), { b
 
     let red = false;
     const couldNot = [];
-    if (declared.budget === null) {
-        const offer = always === null ? null : Math.max(OFFER_FLOOR_TOKENS, tokensOf(figures.always, ratio));
-        say(
-            `  budget: undeclared (context.always.budget.tokens) — a report, not a rail` +
-                (offer === null ? "" : `; init would offer the larger of ${grouped(OFFER_FLOOR_TOKENS)} tokens and today's load: ${grouped(offer)} tokens`),
-        );
-    } else if (always === null) {
-        couldNot.push("context.always.budget.tokens is declared, and this workspace declares no tree whose always tier it could budget");
+    if (always === null) {
+        if (declared.budget === null) say("  budget: undeclared (context.always.budget.tokens) — a report, not a rail");
+        else couldNot.push("context.always.budget.tokens is declared, and this workspace declares no tree whose always tier it could budget");
     } else {
-        const tokens = tokensOf(figures.always, ratio);
-        if (tokens > declared.budget) {
-            red = true;
-            say(
-                `  ✗ budget: the always tier is ~${grouped(tokens)} tokens, over the ${grouped(declared.budget)} declared by ${grouped(tokens - declared.budget)} — ` +
-                    "repair by demotion to a later tier, by a merge or by a retirement, never by raising the budget in this change",
-            );
-        } else {
-            say(`  ok budget: the always tier is ~${grouped(tokens)} tokens of the ${grouped(declared.budget)} declared`);
-        }
+        const judged = judgeBudget(declared, figures.always);
+        if (judged.verdict === "over") red = true;
+        say(`  ${{ undeclared: "", within: "ok ", over: "✗ " }[judged.verdict]}${judged.text}`);
     }
 
     for (const [name, rail] of options.rails) {

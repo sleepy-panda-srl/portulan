@@ -130,6 +130,9 @@ Close the boot by stating the honest position:
 
 - **Where the workspace came from is part of the report.** In the repository, or resolved from a
   pointer — and where it was resolved, name the plugin and the **version**.
+- **So is what every context here loads.** Give the line
+  `node ${CLAUDE_PLUGIN_ROOT}/cli/context.mjs --workspace ${CLAUDE_PROJECT_DIR}/.portulan --brief`
+  prints; run it with step 3's reads.
 
 State which of these apply to the workspace you just loaded, using its own documents. If a document
 claims an enforcement that does not exist, that is a defect worth reporting, not a detail to smooth

@@ -519,6 +519,128 @@ describe("a budget is a rail only where it is declared", () => {
     });
 });
 
+describe("--brief: the line `doctor` reports and the boot closes with", () => {
+    const context = (tokens, ratio = 3) => ({ context: { always: { budget: { tokens } }, ratio: { bytes_per_token: ratio, calibrated_by: "a-host" } } });
+    const brief = (root, argv = [], options) => {
+        const { code, out } = measured(root, ["--brief", ...argv], options);
+        assert.equal(out.split("\n").length, 1, `one line, not ${JSON.stringify(out)}`);
+        return { code, out };
+    };
+    /** A manifest with its tree removed, the shape of a demo or a portfolio. */
+    const treeless = (root) => {
+        const file = path.join(root, ".portulan/workspace.json");
+        const manifest = JSON.parse(fs.readFileSync(file, "utf8"));
+        delete manifest.tree;
+        fs.writeFileSync(file, JSON.stringify(manifest));
+        return root;
+    };
+
+    test("names the tier's size, its three largest files largest first and what each is, and what sits on-path", () => {
+        const { code, out } = brief(
+            repository({
+                files: {
+                    "CLAUDE.md": `${"x".repeat(2_990)}\n@docs/a.md @~/mine.md\n`,
+                    "docs/a.md": "a".repeat(598),
+                    ".claude/rules/style.md": "s".repeat(299),
+                    ".claude/rules/api.md": "---\npaths: src/api/**\n---\n\nScoped.\n",
+                    ".claude/skills/s/SKILL.md": skill("Tiny."),
+                },
+            }),
+        );
+        assert.equal(code, 0);
+        assert.match(out, /^Claude Code: this repository's always tier is ~1,309 tokens, 3,915 B at 2\.99 bytes per token, proposal 0036's estimate: none is declared; /);
+        assert.match(out, /; the largest: CLAUDE\.md ~1,008 \(instructions\), docs\/a\.md ~200 \(import, depth 1\), \.claude\/rules\/style\.md ~100 \(rule\), of 4 files; /);
+        assert.match(out, /; 1 path-scoped rule sits on-path; 1 import or link out of the repository loads and is not counted; /);
+        assert.match(out, /; the Portulan plugin's descriptions add ~\d+ tokens wherever it is enabled/);
+        assert.match(out, /; budget: undeclared \(context\.always\.budget\.tokens\) — a report, not a rail; init would offer the larger of 8,000 tokens and today's load: 8,000 tokens$/);
+    });
+
+    test("an empty tier is said, not left blank", () => {
+        assert.match(brief(repository()).out, /; nothing in it: no CLAUDE\.md, \.claude\/CLAUDE\.md, unscoped rule, or project skill, command or agent; /);
+    });
+
+    test("the line does not move with the directory it is run from", () => {
+        const root = repository({ files: { "CLAUDE.md": "x".repeat(300), ".claude/rules/r.md": "r\n" } });
+        const bundleRoot = bundle();
+        const here = brief(root, [], { bundleRoot }).out;
+        const lines = [];
+        assert.equal(run(["--workspace", path.join(root, ".portulan"), "--brief"], (line) => lines.push(line), { bundleRoot, cwd: bundle() }), 0);
+        assert.deepEqual(lines, [here]);
+    });
+
+    test("a declared budget is judged as the full report judges it: over is exit 1, within is 0", () => {
+        const over = repository({ manifest: context(5), files: { "CLAUDE.md": "x".repeat(30) } });
+        const { code, out } = brief(over);
+        assert.equal(code, 1);
+        assert.match(out, /3 bytes per token, declared, calibrated by a-host/);
+        const clause = "budget: the always tier is ~10 tokens, over the 5 declared by 5 — repair by demotion to a later tier, by a merge or by a retirement, never by raising the budget in this change";
+        assert.ok(out.endsWith(`; ${clause}`), out);
+        assert.ok(measured(over).out.includes(`✗ ${clause}`), "the full report judges the same budget in the same words");
+
+        const within = brief(repository({ manifest: context(100), files: { "CLAUDE.md": "x".repeat(30) } }));
+        assert.equal(within.code, 0);
+        assert.match(within.out, /; budget: the always tier is ~10 tokens of the 100 declared$/);
+    });
+
+    test("what it cannot measure is said; only a declared budget makes that exit 2, never a pass", () => {
+        const plain = brief(treeless(repository()));
+        assert.equal(plain.code, 0);
+        assert.match(plain.out, /^Claude Code: the always tier is not measured — this workspace declares no tree/);
+
+        const declared = brief(treeless(repository({ manifest: context(100) })));
+        assert.equal(declared.code, 2);
+        assert.match(declared.out, /^Claude Code: the declared budget cannot be judged — this workspace declares no tree/);
+
+        const looped = repository({ manifest: context(100) });
+        fs.symlinkSync("CLAUDE.md", path.join(looped, "CLAUDE.md"));
+        const unread = brief(looped);
+        assert.equal(unread.code, 2);
+        assert.match(unread.out, /cannot be judged — .*CLAUDE\.md could not be read \(ELOOP\)/);
+    });
+
+    test("a malformed key withholds the figure, and is a verdict only where it declares a budget", () => {
+        const ratio = brief(repository({ manifest: { context: { ratio: { bytes_per_token: 0.5, calibrated_by: "a-host" } } } }));
+        assert.equal(ratio.code, 0);
+        assert.match(ratio.out, /not measured — context\.ratio\.bytes_per_token is 0\.5/);
+        const budget = brief(repository({ manifest: context(0) }));
+        assert.equal(budget.code, 2);
+        assert.match(budget.out, /cannot be judged — context\.always\.budget\.tokens is 0/);
+    });
+
+    test("a pointer is said, never measured", () => {
+        const root = tree({ ".portulan/workspace.json": JSON.stringify({ portulan: { spec: "2.7" }, name: "p", kind: "pointer", governed_by: { workspace: "w" } }) });
+        const { code, out } = brief(root);
+        assert.equal(code, 0);
+        assert.match(out, /not measured — the manifest is a pointer, which declares no tree/);
+    });
+
+    test("nothing in it waits on the boot read-set, so a slot naming nothing withholds no figure", () => {
+        const root = repository({ files: { "CLAUDE.md": "x".repeat(30) } });
+        fs.rmSync(path.join(root, ".portulan/dod.md"));
+        assert.equal(measured(root).code, 2);
+        const { code, out } = brief(root);
+        assert.equal(code, 0);
+        assert.match(out, /the largest: CLAUDE\.md ~10 \(instructions\)/);
+    });
+
+    test("a plugin it cannot read withholds no figure of the repository's", () => {
+        const bundleRoot = bundle();
+        fs.writeFileSync(path.join(bundleRoot, ".claude-plugin/plugin.json"), "{ not json");
+        const { code, out } = brief(repository({ files: { "CLAUDE.md": "x".repeat(30) } }), [], { bundleRoot });
+        assert.equal(code, 0);
+        assert.match(out, /the largest: CLAUDE\.md ~10 \(instructions\); the Portulan plugin's descriptions are not measured — the plugin manifest does not parse/);
+    });
+
+    test("a rail, a card or itself twice is refused, never taken and dropped — exit 2", () => {
+        const root = repository();
+        for (const argv of [["--rail", "boot=100"], ["--repo", "app"], ["--brief"]]) {
+            const { code, out } = measured(root, ["--brief", ...argv]);
+            assert.equal(code, 2, argv.join(" "));
+            assert.match(out, /✗ --brief/, argv.join(" "));
+        }
+    });
+});
+
 describe("rails", () => {
     test("a figure over its rail is red, and names the repair", () => {
         const { code, out } = measured(repository(), ["--rail", "engine=1"]);

@@ -112,3 +112,10 @@ demonstrate, and saying so is the honest position rather than a caveat.
 **Why the version.** That install is pinned and a different pin is a different policy layer. A boot that
 does not say which of the two it loaded leaves the reader unable to tell a stale install from a current
 one.
+
+**Why what every context loads closes the boot.** Proposal `0036` has the figure `doctor` reports close
+the boot, so a session knows what every context here already pays before it adds to it, and whether a
+budget holds it. The line is `doctor`'s own, printed by the same function, so the two cannot disagree. It
+is one line because the boot pays for whatever it prints, and it runs with step 3's reads so it costs no
+request of its own. Where the manifest is a pointer the line says it measured nothing: a pointer names no
+tree, so the repository it sits in is not measured yet.

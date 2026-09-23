@@ -79,13 +79,16 @@ compiles to what hosts load and does not change how they load it.
 
 As of Workspace Definition 2.9 a workspace can declare the budget and the ratio, and both are checked
 for shape, by the schema and by `doctor`; the manifest key refuses a budget with no ratio to count it by.
-**Nothing measures the always tier yet.** The measurement module and its recipe, `doctor`'s report and
-the boot's closing figure, the Claude Code compile targets and the degradation report that says which
-tiers a host can express, the rail on Portulan's own footprint, persona frontmatter and the librarian
-pass land one change at a time, in `0036`'s order of work and under row 12 of
-[`../../docs/plan.md`](../../docs/plan.md). Until each lands, the rule it would enforce is held by the
-human gate, and saying so is the point: a rule nothing checks, presented as one that something does, is
-the failure this page exists to prevent.
+**The always tier is measured and reported.** [`cli/context.mjs`](../../cli/context.mjs) measures what
+Claude Code loads into every context from a workspace's `tree`; `doctor` reports that for every
+workspace and fails it only over a declared budget; the boot closes with the same line; and this
+repository's `context` recipe rails Portulan's own footprint. A pointer's repository is not measured,
+because a pointer declares no tree. **Still to land**: the exact mode that calibrates a ratio, the Claude
+Code compile targets and the degradation report that says which tiers a host can express, the Stop-gate's
+named demotion, persona frontmatter and the librarian pass, one change at a time, in `0036`'s order of
+work and under row 12 of [`../../docs/plan.md`](../../docs/plan.md). Until each lands, the rule it would
+enforce is held by the human gate, and saying so is the point: a rule nothing checks, presented as one
+that something does, is the failure this page exists to prevent.
 
 _(Provenance: proposal `0036`'s sealed incident, in which an adopting repository's always-loaded
 instruction files measured 130k tokens per fresh context, cache writes were most of the spend, and every
