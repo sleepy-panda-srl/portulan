@@ -2973,3 +2973,13 @@ _The seam applies here too: no client-identifying references._
   coordinator session reviewed the diff before the commit; his review is on the PR · 27 green, `tests` as
   non-root · Seam scan clean against the private terms this project names; the term-list scan is his ·
   [handoff](../.portulan/handoffs/2026-09-23-h-the-gate-map-keeps-its-rules-and-moves-its-reasons.md)
+
+- 2026-09-23 · M13 (Spend economy) — **accepted, not built** · **0038 is accepted.**
+  [#433](https://github.com/sleepy-panda-srl/portulan/pull/433) merged
+  [`0038`](../.portulan/proposals/0038-what-a-change-spends-is-measured.md) with its decision pending; asked afterwards
+  whether it should read accepted, the maintainer answered yes the same day. This change records that answer in its
+  Status and Decision lines and nothing else: no ruling and no word of the rule changed, so row 13 and
+  [`m13.md`](milestones/m13.md) stand as written. · Checkpoints skipped by his instruction of 2026-09-23 12:38 (no
+  fresh-context runs unless he asks); the coordinator session reviewed the diff before the commit; his review is on
+  the PR · `docs` and `index` green · Seam scan clean against the private terms this project names; the term-list
+  scan is his · [handoff](../.portulan/handoffs/2026-09-23-k-0038-is-accepted.md)

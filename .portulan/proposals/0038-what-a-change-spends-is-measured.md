@@ -1,14 +1,14 @@
 # Proposal 0038 — what a change spends is measured, and a session is told to end when continuing costs more than restarting
 
-**Status. PROPOSED — drafted 2026-09-23; its five questions settled the same day**, the first by the maintainer and
-the other four, at his direction, by the project's coordinator session with the drafting session, on his criterion
-of better performance. Drafted on his directive of that day (*"create a token optimization system in Portulan that
-will benefit Portulan and any user, model, customer of Portulan"*), from research into primary sources on prompt
-caching, context engineering, host cost behaviour and cost observability, each finding tagged by the host it applies
-to. It extends [`0036`](0036-what-a-host-loads-into-every-context-is-budgeted.md), accepted the same day, which
-budgets what a host loads into every context, to what a change actually spends. It proposes a rule and an order of
-work and builds nothing; the milestone row the first ruling asks for lands in this same change as row 13 of
-[`../../docs/plan.md`](../../docs/plan.md). The rule itself is his to accept on this pull request.
+**Status. ACCEPTED — drafted and accepted 2026-09-23; its five questions settled the same day**, the first by the
+maintainer and the other four, at his direction, by the project's coordinator session with the drafting session, on
+his criterion of better performance. Drafted on his directive of that day (*"create a token optimization system in
+Portulan that will benefit Portulan and any user, model, customer of Portulan"*), from research into primary sources
+on prompt caching, context engineering, host cost behaviour and cost observability, each finding tagged by the host it
+applies to. It extends [`0036`](0036-what-a-host-loads-into-every-context-is-budgeted.md), accepted the same day,
+which budgets what a host loads into every context, to what a change actually spends. It proposes a rule and an order
+of work and builds nothing; the milestone row the first ruling asks for landed with it as row 13 of
+[`../../docs/plan.md`](../../docs/plan.md). The acceptance is recorded under *Decision*.
 
 **Pull request:** https://github.com/sleepy-panda-srl/portulan/pull/433
 
@@ -271,4 +271,7 @@ is 0036's stamp.
 **Retire when.** A host reports what each change spent and tells a session when to end from its own prices, so that
 Portulan's ledger would describe the host's mechanism instead of supplying one.
 
-**Decision.** Marius Cetanas — pending. The rule is his to accept on this pull request.
+**Decision.** Marius Cetanas — accepted, on 2026-09-23 — because he answered yes when asked whether it should read
+accepted, after [#433](https://github.com/sleepy-panda-srl/portulan/pull/433) merged it with this line still reading
+pending: *"My answer to the pending calls is yes"* (17:07 UTC). Accepted as drafted, with the five rulings recorded
+under *What was ruled*; no ruling and no word of the rule changed.
