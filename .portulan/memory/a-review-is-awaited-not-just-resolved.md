@@ -55,9 +55,9 @@ the workflow hard-codes; a rename surfaces as a permanent red rather than a sile
 right failure direction and still a fragility. *Resolved* is not *adjudicated*: a reviewer can
 resolve its own thread — measured on [#44](https://github.com/sleepy-panda-srl/portulan/pull/44) — so
 this rule guarantees the round **happened before the merge**, not that anyone agreed with it. And the wait
-has a budget: 20 minutes, five times the slowest round measured. Past it the check reds and **nothing
-re-triggers it**, so a maintainer re-runs the job — the old click, surviving only in the case that is
-already a fault.
+is a window: three minutes, the maintainer's time-box of 2026-09-23, down from 20. Past it the check reds
+with a report of what had landed, and **nothing re-triggers it**, so a maintainer re-runs the job — the old
+click, now also the price of a round slower than the window.
 
 **It composes with the autonomy mode rather than substituting for one.** A mode decides whether an agent
 raises a ship-step prompt; this is a status check, and floor rows hold at every mode — it is not yet

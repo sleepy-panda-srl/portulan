@@ -2906,3 +2906,13 @@ _The seam applies here too: no client-identifying references._
   · No fresh-context checkpoint, by the coordinator's lean-thread setting; it and the maintainer reviewed
   the diff before commit · `docs` and `index` green · Seam scan clean against the kickoff's private
   terms; the term-list scan is his · [handoff](../.portulan/handoffs/2026-09-23-b-0036-is-accepted-and-its-study-is-read.md) · [#430](https://github.com/sleepy-panda-srl/portulan/pull/430)
+
+- 2026-09-23 · Off the milestone row · **The Copilot review is time-boxed to three minutes.** On his ruling
+  of 2026-09-23, `copilot-reviewed` waits three minutes for a round on the head instead of twenty, then goes
+  red with a report of whatever had landed, in the job summary as well as the log. The one re-request moved
+  from the middle of the wait to a re-run's first look. The gate map and the awaited-review memory record
+  say three minutes. Tested against a stub `gh` in six cases; the pull request's run is the first live one.
+  · Checkpoints skipped by his instruction of 2026-09-23 12:38 (no fresh-context runs unless he asks); the
+  coordinator session reviewed the diff before the commit; his review is on the PR · 27 green, `tests` as
+  non-root · Seam scan clean against the private terms this project names; the term-list scan is his ·
+  [handoff](../.portulan/handoffs/2026-09-23-c-the-copilot-review-window-is-three-minutes.md)
